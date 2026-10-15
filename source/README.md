@@ -20,6 +20,10 @@ Bản mới chưa thay thế đủ F01–F36; F31 chưa hoàn tất. Đề xuấ
 
 ## Đọc tài liệu nào?
 
+Hai nguồn chuẩn vừa thống nhất: [Vận hành — triển khai, rollback, sao lưu, khôi phục, xử lý sự cố](docs/VAN_HANH.md) và [Từ điển dữ liệu — cột A–P, ID, quyền](docs/TU_DIEN_DU_LIEU.md). [Chỉ mục docs](docs/README.md) phân chia trách nhiệm để tránh trùng lặp. Trên GitHub, **dự án nằm ở thư mục `source/`**, còn `index.html` ở **gốc repository** là file phát hành Pages, không phải file nguồn để sửa trực tiếp.
+
+
+
 | Nhu cầu | Tài liệu |
 |---|---|
 | Xem chỉ mục tài liệu và nơi chứa từng loại thông tin | [Chỉ mục tài liệu](docs/README.md) |
