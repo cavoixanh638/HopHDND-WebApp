@@ -1,5 +1,13 @@
 # Trạng thái hiện tại
 
+## Trang GitHub Pages bản sửa 16/10/2026 — code đã triển khai, trình duyệt người dùng chưa nghiệm thu
+
+- [PR #1](https://github.com/cavoixanh638/HopHDND-WebApp/pull/1) đã merge vào `main` tại commit `e2c59b9bb1fd79cd2c577ac309eaab86eb7f1e0e`; workflow [build và publish](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/38778740465) đạt, tự thay `index.html` ở gốc (blob `8d334e5d005f6420e00fcb36641489156778bce0`); [GitHub Pages deploy](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/38778852907) báo **success**. Đây là bằng chứng cập nhật artifact/hạ tầng, **chưa** phải xác nhận màn hình người dùng đã đọc 51 dòng.
+- UI có nhãn `0.7.0 · Sửa 16/10`, nút chọn lại nguồn Sheets mặc định và GID đang đọc, cho vào tùy chỉnh danh sách ngay cả khi 0 dòng; quản trị mở màn hình quyền theo cột/dòng/ô trực quan tại Danh sách. Trang tài khoản Firebase chỉ phục vụ xác thực. Quyền theo dòng/ô có cảnh báo rủi ro ID vị trí và yêu cầu xác nhận trước khi lưu.
+- [CI PR](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/38778566739) đạt: **212 unit tests, 12 emulator tests**, typecheck, docs check và build Pages. Một probe HTTP **chỉ đọc** trên GitHub runner nhận GViz `status=ok`, HTTP 200 và khoảng 53 hàng trong phản hồi tại gid `60961344` (bao gồm tiêu đề/nhóm, không phải 53 nội dung); không chứng minh truy cập bằng browser người dùng. **Vẫn cần xác nhận thực tế Pages hiển thị 51 nội dung, login admin, quyền và cơ chế lưu cấu hình**. Không đổi Rules production hay dữ liệu nguồn.
+- Workflow mới nằm tại `.github/workflows/{verify-source,publish-pages}.yml` và tự phát hành HTML từ source khi thay đổi `main`; **không** tự đồng bộ thư mục local Google Drive/Windows.
+
+
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.
 
 ## Cập nhật tài liệu và tình trạng Pages được báo cáo — 16/10/2026
