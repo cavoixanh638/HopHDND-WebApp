@@ -1,0 +1,16 @@
+node_modules/
+.cache/
+dist/
+dist-preact/
+dist-react/
+playwright-output/
+*.local
+.env*
+!.env.example
+.private-probes/
+server/dist-test/
+server/dist-enable/
+dist-pages/
+dist-pages-test/
+*-debug.log
+firebase-debug.*
