@@ -1,4 +1,23 @@
-# Cài đặt và chạy — Bản 0.5.1
+# Cài đặt và chạy — HopHDND (local, gồm Pages 0.7.0 và legacy)
+
+## Bản GitHub Pages 0.7.0 — điểm bắt đầu hiện hành
+
+Repo GitHub đặt toàn bộ mã trong `source/` và giữ HTML triển khai `index.html` ngoài gốc. **Chạy các lệnh dưới đây trong `source/`** khi làm việc với bản clone GitHub; nếu làm ở thư mục dự án Windows vốn là gốc mã nguồn thì chạy tại đó:
+
+```sh
+npm ci
+npm run typecheck
+npm test
+npm run test:firebase
+npm run docs:check
+npm run build:pages
+```
+
+Đầu ra Pages là `dist-pages/index.html`; trong repo GitHub đó là `source/dist-pages/index.html`. File `source/index.html` và `source/pages.html` là **đầu vào build**, không thay bằng file HTML đã đóng gói. Chỉ sau khi kiểm thử và được duyệt mới cập nhật `index.html` ở gốc repo. `test:firebase` cần emulator/điều kiện tương ứng. [VAN_HANH](VAN_HANH.md) là quy trình chuẩn phát hành, kiểm tra Pages, quay lại phiên bản, sao lưu/khôi phục, xử lý lỗi; các chỉ dẫn Apps Script và HTML legacy phía dưới là lịch sử/biến thể riêng, không dùng thay quy trình Pages.
+
+**Bản Pages hiện tại**: nội dung đọc từ Google Sheets/GViz, cấu hình/quyền dùng Firebase Auth/RTDB, sửa ô chỉ tạo nháp local. Không suy `npm run build:pages` thành triển khai Firebase Rules hay ghi dữ liệu thật. Trạng thái Pages người dùng phản ánh 0 dòng và chưa vào được tùy chỉnh; theo [CURRENT_STATE](CURRENT_STATE.md), chưa coi đã nghiệm thu production.
+
+
 
 Người dùng mở artifact HTML bằng browser và không cần Node.js/npm. Người phát triển cần Node.js 24 và npm.
 
