@@ -1,0 +1,52 @@
+# Điều phối triển khai
+
+Rà thiết kế sau PA1/PA2 ngày15/10: Luna rà chỉ đọc mã queue/batch và cập nhật kế hoạch1.18/README; parent kiểm nguồn chính thức, xác định lỗi và bổ sung ARCHITECTURE1.15 cùng trạng thái đánh giá. Đây là đề xuất, không phải triển khai native Sheets hoặc đổi quyền/nguồn thật. Xem kế hoạch mục18.15.
+
+Ngày cập nhật: 15/10/2026. Bảng này ghi phạm vi giao việc; kết quả/bằng chứng chuẩn xem [CURRENT_STATE](CURRENT_STATE.md). Dự án đã có Git; lượt này chưa tạo commit hoặc PR.
+
+| Công việc | Phụ trách | Phạm vi và phụ thuộc | Bàn giao |
+|---|---|---|---|
+| Chuẩn nghiệp vụ, ma trận và quy tắc AI | Luna, tổng chỉ huy duyệt | AGENTS/SYSTEM/FEATURES; giữ F01–F36 | Tài liệu nguồn chuẩn và stub link cũ |
+| Metadata trường, tìm kiếm và mẫu giả | Luna, tổng chỉ huy duyệt | Hợp đồng shared/types từ tổng chỉ huy | 13 trường, search, fixture; đã sửa lỗi bất nhất fixture sau review |
+| CSS giao diện | Luna, tổng chỉ huy duyệt | Class từ UI; bố cục/responsive/dialog/print | Styles; điều chỉnh sau ảnh kiểm tra |
+| Hướng dẫn chạy và dùng bản thử | Luna, tổng chỉ huy duyệt | Đọc UI thực tế; không hứa chức năng chưa có | Hai hướng dẫn tiếng Việt |
+| Chuyển kiến trúc sang một HTML | Luna cập nhật tài liệu; tổng chỉ huy quyết định | Chỉ đạo mới về Drive/Sheets | Kế hoạch 1.3, ARCHITECTURE và stub tài liệu cũ |
+| Nghiệp vụ, repository, nháp và UI tích hợp | Tổng chỉ huy | Kế hoạch, SYSTEM và hợp đồng | Bản thử 0.1.0, test và kiểm tra browser |
+| Đóng gói/đánh giá React–Preact | Tổng chỉ huy | Cùng source và fixture | Script trong repo, số đo và quyết định prototype |
+| Cấu hình nguồn và test cấu hình | Luna, tổng chỉ huy duyệt | URL/gid và storage; default source do người dùng chỉ định | Module, 15 tests; tổng chỉ huy bổ sung phản hồi storage và nhãn tiếng Việt |
+| Panel kết nối và hướng dẫn 0.2.0 | Luna, tổng chỉ huy duyệt | Panel theo hợp đồng App; hai hướng dẫn bám UI thực tế | Panel, hướng dẫn; tổng chỉ huy sửa giữ gid khi dán cùng file không có gid |
+| Test parser | Luna, tổng chỉ huy duyệt | Mapping/tiêu đề/mâu thuẫn/mã thiếu-trùng bằng fake | 7 tests; tổng chỉ huy review và chạy |
+| Adapter/parser, tích hợp nguồn thật chỉ đọc | Tổng chỉ huy | Nguồn cụ thể được người dùng yêu cầu; không ghi/đổi chia sẻ | 0.2.0, 51 nội dung; 4 tests adapter và browser HTTP; file/Drive workflow chưa kiểm |
+| Kế hoạch/kiến trúc/trạng thái/bản đồ/test report | Tổng chỉ huy | Phát sinh link nguồn, giới hạn quyền/persistence | Cập nhật tương ứng mốc 0.2.0 và revision kế hoạch 1.5 |
+| Rà các thao tác cũ: danh sách/danh mục/lịch sử/Excel/cache/ghi | Luna audit_legacy_controls, tổng chỉ huy đối chiếu | Read-only HTML đang dùng và hai script; phân biệt UI/code/JSON/deploy | Inventory dòng mã, xác minh ID/STT chỉ xem và JSON cấu hình khác backup Excel |
+| Rà độ phủ source mới F01–F36 | Luna audit_new_coverage, tổng chỉ huy duyệt | Chỉ mã hiện có; nguồn thật chỉ đọc khác lưu mẫu | Inventory khoảng trống; tổng chỉ huy đối chiếu lại popup cũ để không ghi nhầm trường bị mất |
+| Chuẩn đối chiếu và phương án gom tùy chỉnh | Tổng chỉ huy | Bằng chứng hai inventory + đọc trực tiếp báo cáo/editor cũ | CURRENT_STATE đủ 36 dòng; FEATURES chi tiết bổ sung; kế hoạch 1.6, ARCHITECTURE 1.5 mục 17 |
+
+Luna chỉ sửa các file được giao; tổng chỉ huy review, tích hợp và chạy kiểm tra. Khi phát sinh, cập nhật kế hoạch/quyết định, chỉ mục mã và hướng dẫn liên quan; task hoàn tất không đồng nghĩa toàn bộ Fxx được nghiệm thu sản xuất.
+
+Mốc 0.3.0: Luna `layout_panel` bàn giao ReportLayoutPanel và hai hướng dẫn. Tổng chỉ huy review, viết report-preferences/ReportSettings, tách chế độ xem/tùy chỉnh, kiểm 42 tests và browser HTTP, sửa Esc đọc trạng thái cũ, build một HTML và cập nhật kế hoạch 1.7/kiến trúc 1.6. Không ghi Sheets hoặc thêm thư viện.
+
+Mốc 0.4.0: ba agent Luna gồm `catalog_panel` (panel danh mục), `column_controls` (panel cột/tests/hướng dẫn), `inline_reports` (report preview/kết nối/tests/bản đồ mã). Tổng chỉ huy viết schema/domain/checkpoint/state, review/tích hợp App, kiểm các guard và quan hệ ở cả hai đường Lưu, kiểm browser và đóng gói. Danh mục/bố trí lưu cục bộ theo nguồn/browser; autosave chỉ giữ nháp phục hồi, không áp dụng cấu hình hoặc ghi Sheets; ID hiển thị không thay ID nguồn. 68 tests/12 file, typecheck và docs check đạt; build một HTML đạt, kích thước/bằng chứng chuẩn ở CURRENT_STATE. Không coi mốc local này là nghiệm thu toàn bộ app hoặc quy trình Drive.
+
+Mốc cấu hình dùng chung và thứ tự danh mục: Luna `catalog_order` phụ trách comparator/thứ tự; Luna `sync_panel` phụ trách panel và kiểm thử UI. Tổng chỉ huy tích hợp repository, RPC Apps Script, GViz reader, checkpoint và gói server; review kết quả local. Bằng chứng triển khai và kiểm tra hiện hành xem [CURRENT_STATE](CURRENT_STATE.md) và [Đồng bộ cấu hình](DONG_BO_CAU_HINH.md).
+
+Mốc 0.5.1: tổng chỉ huy phụ trách tích hợp bảng danh sách, cell picker, editor nội dung/ghi chú, checkpoint và cấu hình dùng chung. Tổng chỉ huy kiểm cloud đọc/ghi cả ba phần, đọc lại từ tab thứ hai, chặn stale save và giữ nháp; trả giá trị thử về ban đầu. Quyền kho đã đọc lại chỉ có owner. Người dùng chọn giữ riêng; không mở cho tài khoản khác. Bằng chứng, giới hạn và trạng thái còn lại được ghi tại [CURRENT_STATE](CURRENT_STATE.md) và [Đồng bộ cấu hình](DONG_BO_CAU_HINH.md); hướng dẫn thao tác tại [Hướng dẫn sử dụng](HUONG_DAN_SU_DUNG.md).
+
+
+
+Mốc 0.5.2: Luna sync_copy_review sửa nhãn chỉ đọc, rà save-failure của editor, thêm modal checkpoint khác base cho báo cáo/danh mục và cập nhật hai hướng dẫn. Tổng chỉ huy xử lý race tải cấu hình, gate App, retry/read/write sequencing, bảo vệ nháp bảng, viết regression tests và kiểm cloud. Kết quả/bằng chứng chuẩn ở CURRENT_STATE; không đổi quyền riêng tư hoặc cài mật khẩu mới.
+
+
+Mốc 0.6.0, mục 18 đã duyệt: Luna frame_controls sửa ItemColumnPanel/item-frame.css; Luna sync_copy_review sửa CellPicker/cell-picker.css và hai hướng dẫn. Tổng chỉ huy phụ trách repository/draft/guard/schema/server/test, review toàn bộ và nghiệm thu bản thử riêng. User xác nhận chưa triển khai Apps Script cũ. Đường ghi Excel vẫn đang kiểm; probe bản sao và tệp giả không cấp quyền ghi file nguồn hoặc mở kho. Kết quả cloud và phần chưa kiểm thuộc CURRENT_STATE.
+
+
+Mốc 0.6.1: tổng chỉ huy kiểm execution log dự án conditional probe, xác nhận200/412/readback/Trash trên tệp giả. Luna sync_copy_review sửa popup/SyncPanel/hai hướng dẫn, frame_controls sửa chữ CatalogSettings/CatalogPanel/ReportSettings. Tổng chỉ huy sửa App/ItemList/state/nhãn commit không sẵn sàng, review hướng dẫn, đóng gói và kiểm UI. Không ghi nguồn hoặc đổi deployment /exec/quyền Drive của app chính.
+
+Kiểm tiếp0.6.1: Luna frame_controls tạo fixture Excel giả3tab và cập nhật REPO_MAP; Luna sync_copy_review viết test core mã dòng/baseline/Unicode, bổ sung regression hàng tự đóng; guard tests nay9, full suite 138/19, typecheck và docs check đạt (18 Markdown, 265 liên kết, 36 mã Fxx). Tổng chỉ huy viết/review core ZIP/XML/conditional driver, kiểm Google workbook roundtrip200/412/Trash, rà quyền theo tệp và bản sao đọc muộn, kiểm modal giữ phần sửa rồi dọn marker riêng. OfficeConcurrencyProbe do tổng chỉ huy chuẩn bị và đã kiểm workbook giả. Quyền Drive đã cấp cho dự án thử riêng. Google lúc 23:19 trả `getAuthorizationInfo=NOT_REQUIRED`, About 200/account match chủ sở hữu bản sao=true, GET bản sao 200 XLSX/ETag. `testExistingCopyExcelRoundtrip` lúc 23:21–23:22 trên fixed copy `19fv…` đạt cùng ID/MIME, stale ETag 412, contentReadBack/blobMatchesUpload/otherParts/otherCells=true và restoredOriginalBytes=true; ảnh ở docs/assets/existing-copy-roundtrip-pass-0.6.1.png. Đây chỉ là kiểm tra bản sao cố định: workbook Excel nguồn/kho nguồn không đổi, writer chưa tích hợp vào app, F31 chưa xong. Kế hoạch1.15 cập nhật phát sinh; bằng chứng và giới hạn chuẩn ở CURRENT_STATE/KIEM_THU_VA_NGHIEM_THU.
+
+
+Mốc 0.6.2 — 15/10/2026: tổng chỉ huy tích hợp `ExcelRepository`/data RPC, `ExcelTransactions` (receipt, backup, CAS và unknown reply), `ExcelService` (Drive transport và registry owner-only), core pure codec và script `build:server`. Luna cập nhật REPO_MAP, README, WORKBOARD và hướng dẫn dùng để phân biệt **Lưu dữ liệu vào Excel** (app → Excel) với **Đọc lại dữ liệu và danh mục từ Google** (Google → app). Kiểm local đạt 191 tests/24 files, typecheck, build HTML/server; HTML149.008 byte/gzip43.601 byte.
+
+Mốc Firebase Pages: tổng chỉ huy phụ trách tích hợp repository, Auth, rules/emulator và kiểm tra browser; Luna bàn giao `FirebasePanel`, JSON profile transfer, nhãn storage cho cấu hình báo cáo/danh mục và hướng dẫn [Firebase Pages](FIREBASE_PAGES.md). Kiểm cục bộ đã báo 196 unit pass/9 skip, 9 emulator checks pass và `build:pages:test`/typecheck pass; kiểm Google popup chưa hoàn tất. Firebase production, Auth và rules chưa bị sửa.
+
+Theo duyệt của người dùng, main được kích hoạt và deploy tại deployment v6 lúc11:31 ngày15/10. `prepareDashboardExcelStorage` hoàn tất lúc11:29; `checkDashboardExcelConnection` lúc11:30:08 chỉ đọc và ghi log backendReady=true, actor `phucpixel2025@gmail.com`, 51 dòng, 0 cảnh báo, configRevision12. UI tải mới lúc11:34 xác nhận đúng nguồn (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, gid60961344), 51 dòng và chế độ sửa; không submit sửa lên nguồn chính. Ảnh: [main kết nối/sẵn sàng](assets/main-excel-ready-0.6.2.png), [kiểm tra chỉ đọc](assets/main-excel-connection-pass-0.6.2.png). Save/readback/restore chỉ được nghiệm thu trên copy riêng: [lưu UI bản sao](assets/ui-excel-save-pass-0.6.2.png), [khôi phục bản sao](assets/ui-excel-restore-pass-0.6.2.png). Không gộp hai bằng chứng thành ghi thành công nguồn thật. F31 chưa hoàn tất; lịch sử và tình trạng còn lại ở [CURRENT_STATE](CURRENT_STATE.md).
