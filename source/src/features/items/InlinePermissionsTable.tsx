@@ -102,7 +102,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
       </select><small className="permission-cell-preview">{labelFor(item,key)}</small></td>;})}
       </tr>)}{!items.length&&<tr><td colSpan={Math.max(1,cols.length+1)} className="empty">Chưa có dữ liệu nguồn. Vẫn có thể phân quyền theo cột ở tiêu đề.</td></tr>}</tbody>
     </table></div>
-    {rowScopeChanged&&<label className="layout-visibility"><input type="checkbox" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
+    {rowScopeChanged&&<label className="layout-visibility"><input type="checkbox" aria-label="Xác nhận rủi ro quyền theo dòng/ô" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
       Tôi hiểu quyền theo dòng/ô có thể áp nhầm sau khi sắp xếp hoặc chèn dòng trong nguồn Excel.</label>}
     <div className="top-actions"><button type="button" className="button ghost" disabled={locked} onClick={back}>Về bảng Danh sách</button>
       <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
