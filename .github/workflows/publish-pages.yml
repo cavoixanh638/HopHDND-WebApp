@@ -3,8 +3,15 @@ on:
   push:
     branches: [main]
     paths:
-      - "source/**"
-      - ".github/workflows/publish-pages.yml"
+      - "source/src/**"
+      - "source/shared/**"
+      - "source/scripts/**"
+      - "source/pages.html"
+      - "source/index.html"
+      - "source/vite.config.ts"
+      - "source/tsconfig.json"
+      - "source/package.json"
+      - "source/package-lock.json"
 
 permissions:
   contents: write
