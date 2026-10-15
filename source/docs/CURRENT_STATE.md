@@ -1,5 +1,14 @@
 # Trạng thái hiện tại
 
+## Cập nhật tài liệu và tình trạng Pages được báo cáo — 16/10/2026
+
+- Repository GitHub [HopHDND-WebApp](https://github.com/cavoixanh638/HopHDND-WebApp) có **một `index.html` ở gốc** để Pages phục vụ và **mã nguồn ở `source/`**. Đây là bản nhập mã từ dự án Drive/Windows, **không tự đồng bộ** các thay đổi sau này. Có commit cập nhật `index.html` bản build 0.7.0; việc commit thành công **không đồng nghĩa** đã nghiệm thu website.
+- Người dùng đã phản ánh **Pages vẫn hiển thị 0 dòng**, **chế độ tùy chỉnh danh sách chưa mở được**, và **quyền ô chỉnh sửa vẫn ở màn hình riêng thay vì trực quan ngay trong Danh sách**. Đây là lỗi/tồn tại chưa được xác minh đã khắc phục; không dùng kết quả thử local 51 dòng để ghi production PASS. Chưa xác nhận bộ Firebase Rules mới đã được áp dụng trên môi trường thật.
+- Đã bổ sung hai nguồn tài liệu chuẩn [VAN_HANH](VAN_HANH.md) và [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). [docs/README](README.md) quy định phần gộp để tránh trùng lặp: code rollback và data restore là hai việc riêng trong một tài liệu vận hành. Cập nhật tài liệu **không** sửa mã ứng dụng, không deploy Rules, không sửa nguồn Excel.
+- Việc kế tiếp ở mã ứng dụng: chẩn đoán Pages đọc 0 dòng từ GViz, sửa quyền vào chế độ tùy chỉnh khi dữ liệu đang trống, và tích hợp cấp quyền ô/dòng/cột trực tiếp vào bảng. Chỉ chuyển sang trạng thái PASS sau kiểm trình duyệt Pages và test đúng quyền.
+
+
+
 ## Pages 0.7.0 — đã sửa nguồn Sheets và thống nhất quản trị, 15/10/2026 21:58
 
 Chỉ đạo hiện hành thay cho thiết kế Firebase-only ở mốc lịch sử bên dưới: **Google Sheets vẫn là nguồn chính**. Pages khởi tạo SheetsRepository/GViz theo link/gid đã chọn, tái sử dụng parser A–P, đọc lại thủ công và polling 60 giây khi tab hiển thị/không có nháp. Không đọc `hdnd/items` làm dữ liệu hiển thị, không cần import dòng hoặc đồng bộ Sheets → Firebase. Firebase lỗi/đăng nhập chưa xong không chặn Sheets tải.
