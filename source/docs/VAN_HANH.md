@@ -51,7 +51,7 @@ Trước phát hành cần kiểm:
 3. Mở URL Pages, tải mới không dùng cache, xác nhận đúng phiên bản/artifact. Kiểm **số dòng thực tế** và chức năng với tài khoản khách lẫn quản trị.
 4. Lưu bằng chứng nghiệm thu vào [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md), cập nhật kết quả trong [CURRENT_STATE](CURRENT_STATE.md). Nếu trang lỗi, không gọi triển khai thành công chỉ vì commit thành công.
 
-**Hiện chưa có workflow `.github/workflows/` được xác nhận để build tự động từ `source/`.** Không mô tả quy trình copy ở trên là cơ chế CI/CD tự động.
+**Đã có CI/CD từ 16/10/2026:** `.github/workflows/verify-source.yml` kiểm thử trên Pull Request, `.github/workflows/publish-pages.yml` tự cài phụ thuộc, kiểm TypeScript, unit tests, Firebase emulator, docs, build Pages từ `source/` khi push `main`; chỉ khi đạt mới ghi `index.html` ở gốc và phát hành qua GitHub Pages. Không sửa HTML minified thủ công nữa. Việc tự build này **không tự đồng bộ** thư mục Windows/Google Drive, không deploy Firebase Rules hay thay dữ liệu Sheets. [Kết quả kiểm thực tế](CURRENT_STATE.md).
 
 ## 5. Quay lại phiên bản phần mềm (rollback code)
 
