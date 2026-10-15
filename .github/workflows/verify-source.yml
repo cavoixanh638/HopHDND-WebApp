@@ -1,0 +1,50 @@
+name: Verify HopHDND source
+on:
+  pull_request:
+    paths:
+      - "source/**"
+      - ".github/workflows/verify-source.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exact dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Documentation checks
+        run: npm run docs:check
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Firebase emulator tests
+        run: npm run test:firebase
+      - name: Probe source GViz endpoint (read-only, diagnostic)
+        run: node scripts/probe-gviz.mjs
+      - name: Build standalone Pages artifact
+        run: npm run build:pages
+      - name: Verify build exists
+        run: test -s dist-pages/index.html
+      - name: Preserve Pages HTML for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-pages-candidate
+          path: source/dist-pages/index.html
+          retention-days: 7

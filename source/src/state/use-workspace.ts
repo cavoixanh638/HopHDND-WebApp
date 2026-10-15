@@ -34,7 +34,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
       const rows = await repository.list();
       if (sourceRef.current !== repository) return;
       if(Object.keys(latestDraft.current.drafts).length){setMessage('Dữ liệu vừa đọc từ file nguồn chưa áp dụng vì bạn đang sửa. Phần sửa trên máy vẫn được giữ.');return;}
-      setItems(rows); setDataSource(repository); setLoadedAt(new Date().toLocaleString('vi-VN')); setMessage('');
+      setItems(rows); setDataSource(repository); setLoadedAt(new Date().toLocaleString('vi-VN')); setMessage(rows.length === 0 ? 'Nguồn đã phản hồi nhưng chưa có dòng nội dung. Kiểm tra link, GID, tiêu đề cột C/D và dữ liệu của tab đang chọn; không nhập dữ liệu sang Firebase để thay thế.' : '');
       if (canDraft && recovered.current !== repository) {
         recovered.current = repository;
         const saved = readWorkspaceRecovery(sourceKey);
