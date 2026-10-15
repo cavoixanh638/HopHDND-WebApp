@@ -1,0 +1,69 @@
+.cell-picker-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+  overscroll-behavior: contain;
+  z-index: 20;
+}
+
+.cell-picker-search {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 7px;
+  color: #42564e;
+  font-size: 12px;
+}
+
+.cell-picker-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid #cbd6cf;
+  border-radius: 7px;
+  font: inherit;
+}
+
+.cell-picker-note,
+.cell-picker-empty {
+  margin: 6px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cell-picker-options {
+  display: grid;
+  gap: 2px;
+}
+
+.cell-picker-option {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cell-picker-option:hover,
+.cell-picker-option[aria-selected="true"] {
+  background: var(--soft);
+}
+
+.cell-picker-option:focus-visible,
+.cell-picker-search input:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
