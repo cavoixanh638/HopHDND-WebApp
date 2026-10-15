@@ -1,0 +1,44 @@
+{
+  "name": "dashboard-hdnd",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --mode preact",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "benchmark": "node scripts/benchmark.mjs",
+    "build": "npm run typecheck && vite build --mode preact && node scripts/package-html.mjs dist",
+    "build:react": "npm run typecheck && vite build --mode production --outDir dist-react && node scripts/package-html.mjs dist-react",
+    "build:preact": "npm run typecheck && vite build --mode preact --outDir dist-preact && node scripts/package-html.mjs dist-preact",
+    "docs:check": "node scripts/check-docs.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "dev:pages": "vite --host 127.0.0.1 --mode pages-test",
+    "build:pages": "npm run typecheck && vite build --mode pages --outDir dist-pages && node scripts/package-html.mjs dist-pages",
+    "build:pages:test": "npm run typecheck && vite build --mode pages-test --outDir dist-pages-test && node scripts/package-html.mjs dist-pages-test",
+    "test:firebase": "node scripts/test-firebase.mjs"
+  },
+  "dependencies": {
+    "firebase": "13.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "firebase-tools": "15.34.0",
+    "preact": "11.0.1",
+    "typescript": "7.0.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.4"
+  },
+  "overrides": {
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.14.6"
+    }
+  }
+}
