@@ -36,6 +36,8 @@ jobs:
           java-version: '21'
       - name: Firebase emulator tests
         run: npm run test:firebase
+      - name: Probe source GViz endpoint (read-only, diagnostic)
+        run: node scripts/probe-gviz.mjs
       - name: Build standalone Pages artifact
         run: npm run build:pages
       - name: Verify build exists
