@@ -1,15 +1,17 @@
 # Kiểm tra theo mốc — đến candidate 0.6.2
 
+> **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.
+
 ## Pages 0.7.0 — Sheets và Firebase quản trị, 15/10/2026
 
 Kết quả lượt hiện hành: **209 unit/hook/component tests đạt**, **12 emulator tests đạt** riêng, typecheck/build legacy/build Pages/build thử/docs check đạt. Các test mới kiểm App đọc GViz đúng URL/gid ngay cả khi Firebase chưa sẵn sàng, manual/poll60s và tab ẩn, giữ snapshot/nháp khi lỗi, không ghi dữ liệu nguồn, admin dùng chung đường lưu profile, khách không lưu bố trí và nhập Excel bị khóa. Controller kiểm chưa đọc baseline/khác revision/khóa lưu trùng/đọc lại thật/logout. Emulator kiểm danh tính verified Google chính xác, khách không sửa cấu hình kể cả multi-location update, quyền Sheets cell/row không cần dòng RTDB và khóa ghi `hdnd/items`. Regression giao dịch Firebase tương lai chạy riêng nhánh fake `hdnd-test/items` chỉ trong fixture.
 
-UI HTML đã build cho emulator: đọc **51 nội dung trực tiếp từ GViz**, không có Firebase business rows; khách bị khóa cấu hình chung, sửa thử Nội dung NQ01 chỉ thành nháp local, refresh không xóa nháp. Sau thao tác, emulator vẫn không có items/profile; console ứng dụng không error/warn. [Ảnh](assets/sheets-guest-draft-0.7.0.png). Chưa kiểm lại OAuth Google thật trên Pages, chưa áp dụng Rules thật hoặc ghi dữ liệu nguồn. Số byte build và phạm vi chính xác ở [CURRENT_STATE](CURRENT_STATE.md).
+UI HTML đã build cho emulator: đọc **51 nội dung trực tiếp từ GViz**, không có Firebase business rows; khách bị khóa cấu hình chung, sửa thử Nội dung NQ01 chỉ thành nháp local, refresh không xóa nháp. Sau thao tác, emulator vẫn không có items/profile; console ứng dụng không error/warn. Ảnh (tệp chưa đồng bộ: `assets/sheets-guest-draft-0.7.0.png`). Chưa kiểm lại OAuth Google thật trên Pages, chưa áp dụng Rules thật hoặc ghi dữ liệu nguồn. Số byte build và phạm vi chính xác ở [CURRENT_STATE](CURRENT_STATE.md).
 
 
 ## Lịch sử: Firebase-only Pages0.7.0 — trước quyết định giữ Sheets
 
-Kết quả chuẩn và số liệu build tại [CURRENT_STATE](CURRENT_STATE.md), cách chạy/giới hạn tại [FIREBASE_PAGES](FIREBASE_PAGES.md).196 unit/hook/Excel tests và9 emulator tests đạt; chưa chạy trên Firebase thật. Trình duyệt kiểm HTML emulator: Anonymous,3 dòng giả, khóa riêng ô NQ02, popup cảnh báo, tự lưu có xác nhận, tab2 nhận không F5, nút export tải file3 dòng đúng giá trị. [Bằng chứng](assets/firebase-autosave-0.7.0.png). Google popup chưa hoàn tất trong IAB; chưa nghiệm thu OAuth/authorized domain thật. Không kết luận toàn bộ F01–F36 đạt hoặc đã đo tải50 người.
+Kết quả chuẩn và số liệu build tại [CURRENT_STATE](CURRENT_STATE.md), cách chạy/giới hạn tại [FIREBASE_PAGES](FIREBASE_PAGES.md).196 unit/hook/Excel tests và9 emulator tests đạt; chưa chạy trên Firebase thật. Trình duyệt kiểm HTML emulator: Anonymous,3 dòng giả, khóa riêng ô NQ02, popup cảnh báo, tự lưu có xác nhận, tab2 nhận không F5, nút export tải file3 dòng đúng giá trị. Bằng chứng (tệp chưa đồng bộ: `assets/firebase-autosave-0.7.0.png`). Google popup chưa hoàn tất trong IAB; chưa nghiệm thu OAuth/authorized domain thật. Không kết luận toàn bộ F01–F36 đạt hoặc đã đo tải50 người.
 
 ## Mốc local 0.6.2 — 15/10/2026
 
@@ -17,21 +19,21 @@ Kết quả chuẩn và số liệu build tại [CURRENT_STATE](CURRENT_STATE.md
 
 Test adapter/RPC mock giữ đúng mã nguồn NQ1, không dùng aliasNQ01 hoặc tự gửi lại sau mất phản hồi. Engine17 test IO fake kiểm backup/journal trước PUT,412, lost reply, replay cùng payload và giữ prepared khi chưa rõ. Service13 test fake Google/ZIP chạy actual codec/parser/engine: đổi Chuyên viên, đọc lại/history/replay, parts khác/style/ô khác, private/scope/source/baseline, journal-ID cache/Properties khi Drive index chậm và kiểm quan hệ khi đổi phân công. Hook/component kiểm Google writable vẫn là Google, refresh60s, trim, checkpoint/operationId, data-only không ghi bố trí và không thoát khi chưa lưu được. Fake ZIP không chứng minh workbook cloud; không coi các test này là20–30 người hoặc app đang mở đã được sửa.
 
-Ngày15/10 lúc10:55, UI riêng /dev trên bản sao đã đổi dropdown Chuyên viên Trương Việt Hải→Nguyễn Văn Kỳ tại mục “công nghiệp sinh thái” (UI hiện NQ37), báo **Đã lưu 1 nội dung vào Excel và đọc lại xác nhận**, pending hết và readback đúng. Callback ban đầu lỗi với phản hồi object dù backend ghi xong; RPC save chuyển JSON string và adapter parse/validate, malformed JSON bị từ chối để giữ nháp. Lúc10:56:18 bản sao được khôi phục có điều kiện; ETag/hash pass. [Ảnh lưu/readback bản sao](assets/ui-excel-save-pass-0.6.2.png), [ảnh khôi phục](assets/ui-excel-restore-pass-0.6.2.png). Đây là bằng chứng riêng cho copy test, không phải main/nguồn chính.
+Ngày15/10 lúc10:55, UI riêng /dev trên bản sao đã đổi dropdown Chuyên viên Trương Việt Hải→Nguyễn Văn Kỳ tại mục “công nghiệp sinh thái” (UI hiện NQ37), báo **Đã lưu 1 nội dung vào Excel và đọc lại xác nhận**, pending hết và readback đúng. Callback ban đầu lỗi với phản hồi object dù backend ghi xong; RPC save chuyển JSON string và adapter parse/validate, malformed JSON bị từ chối để giữ nháp. Lúc10:56:18 bản sao được khôi phục có điều kiện; ETag/hash pass. Ảnh lưu/readback bản sao (tệp chưa đồng bộ: `assets/ui-excel-save-pass-0.6.2.png`), ảnh khôi phục (tệp chưa đồng bộ: `assets/ui-excel-restore-pass-0.6.2.png`). Đây là bằng chứng riêng cho copy test, không phải main/nguồn chính.
 
 ### Main v6 — kiểm kết nối chỉ đọc, 15/10/2026
 
-Theo duyệt người dùng, activation prep hoàn tất11:29; `checkDashboardExcelConnection` chạy11:30:08 với `backendReady=true`, actor `phucpixel2025@gmail.com`, count51, warnings0, configRevision12. Helper chỉ đọc status/snapshot/config và log summary; không gửi thay đổi. Deployment `/exec` hiện hữu giữ URL, version6 lúc11:31, app0.6.2 với `USER_ACCESSING/MYSELF`. Reload UI mới lúc11:34 hiện đúng actor/nguồn chính (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, gid60961344), 51 items và chế độ sửa; không submit dữ liệu lên nguồn chính. [Ảnh main sẵn sàng](assets/main-excel-ready-0.6.2.png), [ảnh kiểm tra kết nối](assets/main-excel-connection-pass-0.6.2.png). Đây xác nhận backend/UI kết nối, không phải phép ghi nguồn thật. F31 chưa hoàn tất; các phần công thức/cache/quota/nhiều người và workflow backup/conflict còn cần kiểm.
+Theo duyệt người dùng, activation prep hoàn tất11:29; `checkDashboardExcelConnection` chạy11:30:08 với `backendReady=true`, actor `phucpixel2025@gmail.com`, count51, warnings0, configRevision12. Helper chỉ đọc status/snapshot/config và log summary; không gửi thay đổi. Deployment `/exec` hiện hữu giữ URL, version6 lúc11:31, app0.6.2 với `USER_ACCESSING/MYSELF`. Reload UI mới lúc11:34 hiện đúng actor/nguồn chính (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, gid60961344), 51 items và chế độ sửa; không submit dữ liệu lên nguồn chính. Ảnh main sẵn sàng (tệp chưa đồng bộ: `assets/main-excel-ready-0.6.2.png`), ảnh kiểm tra kết nối (tệp chưa đồng bộ: `assets/main-excel-connection-pass-0.6.2.png`). Đây xác nhận backend/UI kết nối, không phải phép ghi nguồn thật. F31 chưa hoàn tất; các phần công thức/cache/quota/nhiều người và workflow backup/conflict còn cần kiểm.
 
 ## Mốc 0.6.1 — quyền thử và nơi lưu
 
-Người dùng đã cấp quyền dự án conditional probe riêng. Log Google ngày 14/10 lúc 15:37: ghi đầu200, ghi dùng ETag cũ412, blob đọc lại giữ HDND_COMMITTED, pass=true; cleanup đưa tệp giả vào Trash200. [Script thử](../server/probes/DriveConditionalProbe.gs), [ảnh](assets/conditional-drive-pass-0.6.1.png). Phạm vi chỉ tệp giả tự tạo, không Office/Excel thật hoặc nhiều người nhập trực tiếp. Không chấp nhận kết quả này làm nghiệm thu F31.
+Người dùng đã cấp quyền dự án conditional probe riêng. Log Google ngày 14/10 lúc 15:37: ghi đầu200, ghi dùng ETag cũ412, blob đọc lại giữ HDND_COMMITTED, pass=true; cleanup đưa tệp giả vào Trash200. [Script thử](../server/probes/DriveConditionalProbe.gs), ảnh (tệp chưa đồng bộ: `assets/conditional-drive-pass-0.6.1.png`). Phạm vi chỉ tệp giả tự tạo, không Office/Excel thật hoặc nhiều người nhập trực tiếp. Không chấp nhận kết quả này làm nghiệm thu F31.
 
 138 tests/19 files, typecheck và docs check (18 Markdown/268 liên kết/36 mã Fxx) đạt; build HTML/server trước đó đạt; artifact 142.124 byte/gzip 41.537 byte. /dev nhận 0.6.1; /exec vẫn 0.5.2/v5, không phát hành lại. Quyền app chính/kho giữ nguyên.
 
 Google UI: menu Danh mục và bố trí dùng chung mở trang có mô tả/link kho riêng và đọc Google→app. Tùy chỉnh bảng vẫn mở được. Popup Ghi chú NQ01 dùng Áp dụng vào bảng; marker thử HDND_KIEM_TRA_NHAN_061 tạo1 phần sửa chưa ghi nguồn. Nút Chưa thể lưu vào Excel ở thanh dữ liệu và chế độ chỉnh đều disabled; Giữ thay đổi trên máy xác nhận chỉ browser. Đã kiểm marker đúng trước khi bỏ phần thử và trả cột Ghi chú về bố trí chung12; đọc51 dòng, console không error/warn. Không discard nháp của người dùng ở file HTML/trang đang dùng, không ghi NQ01 vào nguồn.
 
-![Thông báo nơi giữ thay đổi và trạng thái lưu Excel](assets/clear-save-state-0.6.1.png)
+Hình minh họa Thông báo nơi giữ thay đổi và trạng thái lưu Excel (tệp chưa đồng bộ: `assets/clear-save-state-0.6.1.png`)
 
 Luna sửa câu chữ UI/hướng dẫn theo file được giao, tổng chỉ huy review sửa các nhãn còn sót và guard thoát. Ghi Excel còn dở; action disabled chỉ làm rõ giới hạn, không coi là đã sửa chức năng ghi. Bước tiếp theo thuộc kế hoạch 1.15.
 
@@ -39,13 +41,13 @@ Luna sửa câu chữ UI/hướng dẫn theo file được giao, tổng chỉ hu
 
 [Driver](../server/probes/WorkbookRoundtripProbe.gs) dùng [core thử](../server/ExcelWriteCore.gs), fixture3tab tự tạo từ [script](../scripts/probes/create-write-fixture.py). Log có sameFileId/mimePreserved/firstStatus200/staleStatus412/blobMatchesUpload/contentReadBack/noteReadBack/otherPartsPreserved/otherCellsPreserved đều đúng, pass=true. Hash các part khác và raw XML ô không chỉnh nguyên; bao gồm công thức báo cáo/styles/tab phụ. Dò ID1 gốc rồi sửa C4 và chèn O4, không dựa ID hiển thị. Cleanup Trash200. Chưa kiểm mở Office đồng thời trong phép thử này, chưa adapter app.
 
-![Workbook giả ghi/đọc và từ chối phiên bản cũ](assets/workbook-roundtrip-pass-0.6.1.png)
+Hình minh họa Workbook giả ghi/đọc và từ chối phiên bản cũ (tệp chưa đồng bộ: `assets/workbook-roundtrip-pass-0.6.1.png`)
 
 Các lần lỗi trước pass đều dọn tệp giả Trash200: MIME xlsx phải đổi MIME bản sao blob thành application/zip để unzip; mã fixture phải ID1; parser row phải phân biệt hàng tự đóng để không nuốt đến dòng kế tiếp. Sửa core và thêm test cho hàng2/3 tự đóng trước4. Suite129/18+typecheck và docs check đạt sau sửa, gồm16 test core. Các test kiểm giá trị gốc/unknownfields/IDSTT/formula/merged/UTF/CR/dò mã dòng đã di chuyển.
 
 Kiểm UI /dev thêm: sửa Nội dung thành marker HDND_KIEM_TRA_THOAT_061 → Áp dụng vào bảng → Về chế độ xem hiện cảnh báo rõ; Giữ thay đổi trên máy và về xem giữ1 phần sửa, không gọi commit nguồn. Kiểm marker rồi bỏ đúng phần thử, console không warn/error, kho12. Không bỏ nháp HTML của người dùng.
 
-![Cảnh báo trước khi rời chế độ sửa](assets/exit-save-state-0.6.1.png)
+Hình minh họa Cảnh báo trước khi rời chế độ sửa (tệp chưa đồng bộ: `assets/exit-save-state-0.6.1.png`)
 
 ### Quyền và bản sao đọc muộn
 
@@ -57,7 +59,7 @@ Blob bản sao đọc muộn123.364byte/SHA256 eb7fd758b5e296026443fa820df27e1f3
 
 Tệp giả tự tạo19:45, UI giữ .xlsx/Private to only me. Sửa C5 qua Office rồi Saved to Drive. Driver đọc blob xác nhận Office marker/ETag mới trước bất cứ PUT nào. Yêu cầu dùng ETag trước sửa bị từ chối412; nạp blob mới/ghép C4 theo ID1, đọc lại đúng marker app và Office; hash part không sửa/raw ô khác/ID/MIME giữ. Log19:48:23 pass=true. Tab Office đang mở đọc C4 thấy marker writer. Đọc lại19:50:30 có lateReadOnly/officeValuePreserved/appValuePreserved/pass=true. Đã đóng tab Office thử và cleanup19:55 trả trashed=true/HTTP200. Không thử nhiều người hay workbook nguồn thật; không coi là nghiệm thu F31 hoặc authorization cho ghi nguồn.
 
-![Giữ sửa Office và từ chối ghi phiên bản cũ](assets/office-concurrency-pass-0.6.1.png)
+Hình minh họa Giữ sửa Office và từ chối ghi phiên bản cũ (tệp chưa đồng bộ: `assets/office-concurrency-pass-0.6.1.png`)
 
 Probe bản sao hiện hữu và manifest Drive rộng chỉ chuẩn bị local; chưa upload/chạy. Quyền mới chờ lựa chọn người dùng. Nếu kiểm bản sao, rollback phải có ETag của lần thử, không ghi đè sửa xảy ra sau test; nguồn ID/link Excel chính không được dùng trong probe.
 
@@ -67,7 +69,7 @@ Người dùng chấp thuận Drive rộng **chỉ dự án thử riêng**. Đã
 
 Luna thêm9 test mock: metadata404, tên/MIME sai, tệp trong Trash/thiếu trạng thái, permissions trống/public, ETag đổi khi đọc đều không PUT/POST và nhả lock; thiếu scope dừng trước token/lock/HTTP. Full138/19, typecheck đạt. Đây là kiểm guard local, không phải ghi bản sao cloud đã thành công. Trình tự tiếp: người dùng cấp quyền mới trên Google → kiểm GET bản sao200 → mới chạy roundtrip/rollback trên copy; không ghi nguồn.
 
-GET23:05 vẫn404 trong khi connector xác nhận copy/private/owner tồn tại. Sau thêm getAuthorizationInfo theo scope + requireScopes, execution23:14 log REQUIRED và báo thiếu drive; dừng trước GET/About/ghi. Hộp Review permissions đã được hiện để người dùng tự cấp. [Ảnh bước Google](assets/drive-scope-required-0.6.1.png). Mã không chủ động log token hoặc URL xác thực; Google tự hiện đường cấp quyền khi thiếu scope. Chưa xác định tài khoản sai hoặc chứng minh quyền mới đã cấp.
+GET23:05 vẫn404 trong khi connector xác nhận copy/private/owner tồn tại. Sau thêm getAuthorizationInfo theo scope + requireScopes, execution23:14 log REQUIRED và báo thiếu drive; dừng trước GET/About/ghi. Hộp Review permissions đã được hiện để người dùng tự cấp. Ảnh bước Google (tệp chưa đồng bộ: `assets/drive-scope-required-0.6.1.png`). Mã không chủ động log token hoặc URL xác thực; Google tự hiện đường cấp quyền khi thiếu scope. Chưa xác định tài khoản sai hoặc chứng minh quyền mới đã cấp.
 
 ### Quyền thực tế và bản sao cấu trúc nguồn — PASS
 
@@ -75,7 +77,7 @@ Google23:19: driveAuthorization NOT_REQUIRED, About200/tài khoản khớp owner
 
 Execution23:21:51–23:22:13 chạy ExistingCopyWorkbookProbe trên19fv9wGwsT2U0zPaFWpa-mnoKLsW2xBD7 đã xác minh private/title/MIME/labels/ETag. C4 có marker thử theo code gốc; readback/hash upload/các part và raw ô khác/sameID/MIME đúng; stale412. Rollback chỉ khi ETag vẫn đúng lần thử, đọc lại SHA blob bằng bản trước thử. Log mới in pass=true và restoredOriginalBytes=true sau xác nhận khôi phục. Không ghi Excel nguồn/kho; giữ copy sau thử. Proof JSON riêng ở .private-probes/existing-copy-roundtrip-result.json, không đưa dữ liệu workbook vào artifact app.
 
-![Bản sao nguồn ghi/đọc và khôi phục đúng bytes](assets/existing-copy-roundtrip-pass-0.6.1.png)
+Hình minh họa Bản sao nguồn ghi/đọc và khôi phục đúng bytes (tệp chưa đồng bộ: `assets/existing-copy-roundtrip-pass-0.6.1.png`)
 
 Giới hạn: một thao tác C4 trên copy, không nghiệm thu nhiều người/cache công thức/timeout/retry/backup bền. Các test fake bảo vệ trước ghi không thay thử cloud mọi nhánh. Writer chưa nối app và /exec chưa phát hành lại. Bước tích hợp nằm kế hoạch1.16; ghi source thật chưa được cấp quyền bởi thử copy.
 
@@ -94,13 +96,13 @@ Giới hạn: một thao tác C4 trên copy, không nghiệm thu nhiều ngườ
 | Lưu bố trí Google | Base10 →11/frame800; tab độc lập đọc11 và đo800; trả auto12, tab độc lập đọc12/card1209/table1500, giữ columns/catalogs người dùng |
 | Client cũ và URL preview | Test thiếu frameWidth bị chặn, /dev không làm editorUrl sai; UI save bố trí đạt sau sửa |
 
-![Cảnh báo đóng Ghi chú chưa lưu](assets/note-warning-0.6.0.png)
+Hình minh họa Cảnh báo đóng Ghi chú chưa lưu (tệp chưa đồng bộ: `assets/note-warning-0.6.0.png`)
 
-![Lỗi ghi Excel giữ nháp](assets/edit-draft-0.6.0.png)
+Hình minh họa Lỗi ghi Excel giữ nháp (tệp chưa đồng bộ: `assets/edit-draft-0.6.0.png`)
 
 Kiểm writer trên bản sao riêng, không trên nguồn: patch C4 bằng ZIP bảo toàn18 parts/3 tabs/142 formulas; Drive files.update giữ ID/link, blob tải lại đúng hash bản sửa. SHA256 gốc a74e4e77aa00f6dd895aa2bccdbbb360d50820141274f0db248418f53aa72bdc; bản sửa/readback2bf5e6489b7c10f1a6ada4f4cf72aff0225ffaf2bc0aa35b58baf1af5fa5ba04. Đã trả blob bản sao về gốc. SpreadsheetApp setValue/flush/getValue báo marker nhưng blob tải lại vẫn hash gốc và C4 không đổi; test này **không đạt ghi Excel**. Không dùng echo API làm nghiệm thu. Script/hash riêng ở .private-probes và server/probes, không đưa dữ liệu nguồn vào artifact HTML.
 
-Probe If-Match mới chỉ chuẩn bị và chờ người dùng cấp quyền dự án riêng, chưa có kết quả. [Hộp yêu cầu quyền](assets/drive-probe-permissions-0.6.0.png). Chưa chứng minh an toàn khi20–30 người nhập trực tiếp Office; không bật writer thật. X/Esc có bằng chứng UI, click nền chưa kiểm đầy đủ. HTTP localhost không truy cập được trong trình duyệt lượt này; không coi kiểm /dev là kiểm file://. Các nhánh partialack/race giữ nháp là test repository giả.
+Probe If-Match mới chỉ chuẩn bị và chờ người dùng cấp quyền dự án riêng, chưa có kết quả. Hộp yêu cầu quyền (tệp chưa đồng bộ: `assets/drive-probe-permissions-0.6.0.png`). Chưa chứng minh an toàn khi20–30 người nhập trực tiếp Office; không bật writer thật. X/Esc có bằng chứng UI, click nền chưa kiểm đầy đủ. HTTP localhost không truy cập được trong trình duyệt lượt này; không coi kiểm /dev là kiểm file://. Các nhánh partialack/race giữ nháp là test repository giả.
 
 ## Mốc 0.5.2 — 14/10/2026
 
@@ -108,9 +110,9 @@ Probe If-Match mới chỉ chuẩn bị và chờ người dùng cấp quyền d
 
 Google cập nhật deployment v5 lúc 10:06, giữ cùng URL/USER_ACCESSING/Only myself. Đọc cấu hình6 và 51 dòng thật đạt; chỉnh bảng width1500→1600 rồi Lưu và thoát báo Đã lưu chung7; tab kiểm tra độc lập cùng tài khoản đọc7 và giá trị1600. Khôi phục1500 rồi Lưu báo8; tab kiểm tra Làm mới đọc8, editor hiện1500. Không ghi nội dung nguồn. Màn chỉ đọc được ghi rõ Dữ liệu nguồn · Chỉ đọc.
 
-![Lưu cấu hình thật thành công](assets/shared-save-0.5.2.png)
+Hình minh họa Lưu cấu hình thật thành công (tệp chưa đồng bộ: `assets/shared-save-0.5.2.png`)
 
-![Deployment v5 thành công](assets/deployment-0.5.2.png)
+Hình minh họa Deployment v5 thành công (tệp chưa đồng bộ: `assets/deployment-0.5.2.png`)
 
 Giới hạn: chưa thử nhiều tài khoản/máy, chưa giả lập lỗi mạng bằng trình duyệt Google; các nhánh read lỗi/race được kiểm bằng tests local. Chưa kiểm hết modal checkpoint khác base qua UI Google. Không đổi quyền private hoặc triển khai mật khẩu/backend mới.
 
@@ -130,15 +132,15 @@ Typecheck, 92 tests/16 files, build và cú pháp core/server đạt. Một HTML
 | Server | Fake Google services kiểm init/section preservation/conflict/partial commit/retry/validation/lock; chưa bằng chứng cloud thật |
 | Cloud | v3 owner-only (v4 09:15 cập nhật lời hướng dẫn, read rev6 sau reload đạt): init1/catalog2/item3–4/report5–6 đều read/write qua RPC, đọc lại tab khác đúng; stale base2 width2200 bị chặn khi bản chung3 width2400, nháp còn nguyên. Hiện rev6 trả width/tên thử về gốc, giữ thứ tự VP theo ảnh |
 
-![Bố trí bảng dữ liệu mẫu](assets/table-edit-0.5.1.png)
+Hình minh họa Bố trí bảng dữ liệu mẫu (tệp chưa đồng bộ: `assets/table-edit-0.5.1.png`)
 
-![Deployment riêng thành công](assets/deployment-0.5.1.png)
+Hình minh họa Deployment riêng thành công (tệp chưa đồng bộ: `assets/deployment-0.5.1.png`)
 
 ![Trang yêu cầu người dùng cấp quyền Google](assets/google-authorization-0.5.1.png)
 
 Lỗi URL parser chỉ gặp trước v3, đã sửa và xác minh RPC sau đó. Duyệt tài liệu có một lượt ghi nhầm lỗi tái diễn sau revision2; parent đối chiếu UI revision6 và sửa.
 
-![Cấu hình chung đọc lại ở tab thứ hai](assets/shared-config-0.5.1.png)
+Hình minh họa Cấu hình chung đọc lại ở tab thứ hai (tệp chưa đồng bộ: `assets/shared-config-0.5.1.png`)
 
 Người dùng đã chọn giữ kho riêng; Drive API kiểm chỉ một owner. Hai tab cùng account không thay nghiệm thu hai máy/tài khoản.
 
@@ -166,9 +168,9 @@ Kiểm lại trên phiên sạch sau tích hợp: nhập tiêu đề thử, quan
 
 Kiểm tài liệu sau cập nhật: 17 Markdown, 153 link tương đối, đủ 36 mã FEATURES duy nhất, đạt.
 
-![Nhóm cột ngay gần bảng dữ liệu mẫu](assets/columns-0.4.0.png)
+Hình minh họa Nhóm cột ngay gần bảng dữ liệu mẫu (tệp chưa đồng bộ: `assets/columns-0.4.0.png`)
 
-![Tùy chỉnh báo cáo cạnh preview](assets/customize-0.4.0.png)
+Hình minh họa Tùy chỉnh báo cáo cạnh preview (tệp chưa đồng bộ: `assets/customize-0.4.0.png`)
 
 Phần thiếu được giữ tại CURRENT_STATE/FEATURES, không đánh dấu toàn bộ app đạt chỉ vì có menu danh mục hoặc autosave. Quy trình file:// bị công cụ chặn; chưa kiểm Drive/người nhận, print nhiều trang, tải đồng thời hoặc ghi/auth.
 
@@ -191,7 +193,7 @@ Tests mới kiểm tên/ID/cột/visibility không hợp lệ, thứ tự/ẩn k
 
 Ảnh sau sửa Esc đã lưu; lần chụp trước gặp lỗi/hạn mức duyệt tự động, lần thử sau thời điểm đặt lại hạn mức thành công qua cùng cơ chế duyệt:
 
-![Chế độ tùy chỉnh 0.3.0](assets/customize-0.3.0.jpg)
+Hình minh họa Chế độ tùy chỉnh 0.3.0 (tệp chưa đồng bộ: `assets/customize-0.3.0.jpg`)
 
 Phạm vi chưa có: thêm/xóa bảng, định dạng title/mapping/source/trục, JSON/Excel, cache dữ liệu bền, ghi/auth/lịch sử thật. Cột danh sách còn state component, chưa lưu bền. Tên/thứ tự/hiển thị báo cáo lưu riêng browser/source; không đổi cấu hình của tất cả người nhận HTML.
 
@@ -220,7 +222,7 @@ Tests cấu hình kiểm tra canonical URL, gid query/hash/override, reject host
 
 Ảnh kết nối không chứa nội dung bản ghi thực tế:
 
-![Kết nối nguồn — 51 nội dung](assets/connection-0.2.0.jpg)
+Hình minh họa Kết nối nguồn — 51 nội dung (tệp chưa đồng bộ: `assets/connection-0.2.0.jpg`)
 
 Giới hạn: đây là kiểm source qua HTTP cục bộ, chưa mở artifact trực tiếp file:// hoặc từ Drive do công cụ chặn giao thức đó. Chưa OAuth/nguồn riêng tư, đo chu kỳ polling/quota thực tế, nhiều tài khoản, nhiều người, in/Excel, hoặc ghi nguồn. HTML không chứa dữ liệu thật; lưu link riêng trên browser không đổi cấu hình của mọi người. Không có phép so sánh React/Preact mới ở 0.2.0. Số đo gzip không khẳng định Drive nén khi truyền file.
 
@@ -258,7 +260,7 @@ Ngày: 13/10/2026. Máy Windows hiện tại, Node v24.15.0; fixture giả 24 d�
 
 Ảnh chỉ chứng minh bố cục ở thời điểm chụp, không thay kiểm tra nghiệp vụ:
 
-![Bản thử dữ liệu giả](assets/prototype-0.1.0.jpg)
+Hình minh họa Bản thử dữ liệu giả (tệp chưa đồng bộ: `assets/prototype-0.1.0.jpg`)
 
 ## Benchmark hàm, chưa phải browser
 
