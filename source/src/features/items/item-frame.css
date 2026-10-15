@@ -16,3 +16,12 @@
   min-width: 0;
   overflow-x: auto;
 }
+
+.inline-permissions { margin-top: 1rem; }
+.inline-permission-table { width: max-content; min-width: 100%; border-collapse: collapse; }
+.inline-permission-table th, .inline-permission-table td { min-width: 130px; vertical-align: top; }
+.inline-permission-table th:first-child, .inline-permission-table td:first-child { min-width: 155px; position: sticky; left: 0; z-index: 1; background: var(--surface, #fff); }
+.inline-permission-table select { max-width: 180px; width: 100%; min-height: 34px; margin-top: 4px; }
+.inline-permission-table .permission-column-rule { display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; font-weight: 400; white-space: nowrap; }
+.inline-permission-table .permission-column-rule input { margin: 0; }
+.inline-permission-table .permission-cell-preview { display: block; color: var(--muted, #555); margin-top: 4px; max-width: 190px; overflow-wrap: anywhere; font-size: 0.72rem; }
