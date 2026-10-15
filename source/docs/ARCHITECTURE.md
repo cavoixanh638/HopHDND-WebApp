@@ -1,5 +1,9 @@
 # ARCHITECTURE — Kiến trúc ứng dụng
 
+> **Cách đọc:** phần “Pages 0.7.0 — Sheets là nguồn chính” đầu tiên là lựa chọn hiện hành; các phần có nhãn “đề xuất”, “legacy”, “giai đoạn” hoặc mô tả phiên bản trước là bối cảnh lịch sử, không phải bằng chứng triển khai thực tế. Schema/cột/ID chi tiết thuộc [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md); các thao tác build, rollback, khôi phục và ứng cứu thuộc [VAN_HANH](VAN_HANH.md). Trạng thái chạy thật tại [CURRENT_STATE](CURRENT_STATE.md).
+
+
+
 ## Pages 0.7.0 — Sheets là nguồn chính, Firebase quản trị
 
 Pages dùng lại App và `SheetsRepository/readSheet` để đọc GViz A–P từ Google Sheets. `useWorkspace` giữ đọc lại thủ công, polling 60 giây khi tab hiển thị, bảo toàn bản đọc trước khi lỗi và chờ xử lý nháp trước khi refresh. Không nhập dòng sang RTDB, không có tác vụ đồng bộ Sheets → Firebase. Entry Pages không chờ Auth để mount App; lỗi Firebase không chặn dữ liệu Sheets.
