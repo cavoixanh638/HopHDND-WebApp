@@ -12,7 +12,7 @@ try{
   const result=await fetch(url,{signal:ctrl.signal,redirect:'follow'});
   const body=await result.text();
   const status=body.match(/(?:["']?status["']?)\s*:\s*["'](ok|error|warning)["']/i)?.[1]??'not-recognized';
-  const apparentRows=(body.match(/(?:[,{]\s*)c\s*:\s*\[/g)??[]).length;
+  const apparentRows=(body.match(/(?:[,{]\s*)[\"']?c[\"']?\s*:\s*\[/g)??[]).length;
   const actualHost=new URL(result.url).hostname;
   console.log(JSON.stringify({httpStatus:result.status,host:actualHost,mime:result.headers.get('content-type'),gvizStatus:status,approxRows:apparentRows,bytes:body.length,sourceGid:gid}));
 }catch(cause){
