@@ -14,7 +14,7 @@ import {InlinePermissionsTable} from '../src/features/items/InlinePermissionsTab
 import type {Item} from '../shared/types';
 const nodes=(tree:any):any[]=>Array.isArray(tree)?tree.flatMap(nodes):tree&&typeof tree==='object'?[tree,...nodes(tree.props?.children)]:[];
 const label=(n:any):string=>nodes(n).map(x=>typeof x==='string'?x:'').join('');
-function render(onSave:ReturnType<typeof vi.fn>){
+function render(onSave:(next:any,baseline:any)=>Promise<void>){
   hooks.start();
   return InlinePermissionsTable({
     items:[{recordId:'sheet:60961344:row:3',displayCode:'NQ01',content:'Nội dung kiểm thử',isDropped:false} as Item],
