@@ -1,5 +1,13 @@
 # Bản đồ mã nguồn và quy tắc bố trí
 
+## Vị trí mã nguồn trên GitHub (chốt bố trí hiện hành)
+
+Repository [HopHDND-WebApp](https://github.com/cavoixanh638/HopHDND-WebApp) có `index.html` **đã build** ở gốc để phục vụ Pages và **toàn bộ dự án** dưới `source/` (`source/src`, `source/docs`, `source/tests`, `source/firebase`...). Các đường dẫn tương đối **trong tài liệu này** lấy gốc ở `source/`, nên `../src/app/App.tsx` là `source/src/app/App.tsx` trên GitHub. Thư mục dự án trên Windows tương ứng với nội dung `source/`, không có lớp `source/` bổ sung ở máy.
+
+Chỉ cập nhật bản phát hành bằng cách build từ code nguồn rồi đưa `source/dist-pages/index.html` vào `index.html` gốc repository. Không vá `index.html` đã minify thay cho `src/`. GitHub không tự đồng bộ thay đổi ở Windows/Google Drive; chưa xác nhận workflow tự build. Xem [VAN_HANH](VAN_HANH.md). Mô hình trường/ID ở [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
+
+
+
 ## Điểm vào Pages 0.7.0 — Sheets và Firebase quản trị
 
 - [pages.html](../pages.html), [pages-main.tsx](../src/pages-main.tsx): entry Pages, inject Auth/config controller vào App dùng chung; nội dung dùng SheetsRepository.
