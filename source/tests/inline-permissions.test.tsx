@@ -39,7 +39,7 @@ describe('inline admin rights',()=>{
     tree=render(save);
     const saveButton=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Lưu quyền chỉnh sửa');
     expect(saveButton.props.disabled).toBe(true);
-    const ack=nodes(tree).find(n=>n.type==='input'&&n.props?.type==='checkbox'&&n.props?.checked===false);
+    const ack=nodes(tree).find(n=>n.type==='input'&&n.props?.['aria-label']==='Xác nhận rủi ro quyền theo dòng/ô');
     expect(ack).toBeDefined();ack.props.onChange({currentTarget:{checked:true}});
     tree=render(save);
     const enabled=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Lưu quyền chỉnh sửa');
