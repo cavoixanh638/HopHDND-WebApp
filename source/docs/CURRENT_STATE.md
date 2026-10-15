@@ -234,8 +234,8 @@ Phụ trách tại [WORKBOARD](WORKBOARD.md), hướng dẫn tại [HUONG_DAN_SU
 Bảng này là bằng chứng tại mốc 0.2.0; thay đổi 0.3.0–0.4.0 được ghi ở phần mới phía trên. **Bản mới vẫn chưa thay thế đủ chức năng bản cũ.** Bảng dưới kiểm tra mã HTML đang dùng và hai bộ server cũ với mã mới, không lấy tên nút hoặc module mẫu làm bằng chứng đã có ghi/lịch sử thật. Lượt này rà source và tài liệu, không chạy lại bản cũ/Apps Script triển khai và không đổi HTML bàn giao. Kết quả browser/36 tests trước đó vẫn thuộc mốc kiểm tra riêng phía trên.
 
 Nguồn bằng chứng:
-- **C**: [HTML cũ đang dùng](<../../Dashboard Báo cáo tổng hợp/Báo cáo tiến độ HĐND.html>); số sau dấu hai chấm là dòng mã. Không dùng .bak làm chuẩn chức năng hiện tại.
-- **G**: [GoogleAppsScript_DongBo.js](<../../Dashboard Báo cáo tổng hợp/GoogleAppsScript_DongBo.js>); **D**: [Code_Dong_Bo.js](<../../Dashboard Báo cáo tổng hợp/Code_Dong_Bo.js>). Mã tồn tại không xác nhận server nào đã deploy hoặc hoạt động.
+- **C**: HTML cũ đang dùng (tệp khảo sát ngoài repository: `../../Dashboard Báo cáo tổng hợp/Báo cáo tiến độ HĐND.html`); số sau dấu hai chấm là dòng mã. Không dùng .bak làm chuẩn chức năng hiện tại.
+- **G**: GoogleAppsScript_DongBo.js (tệp khảo sát ngoài repository: `../../Dashboard Báo cáo tổng hợp/GoogleAppsScript_DongBo.js`); **D**: Code_Dong_Bo.js (tệp khảo sát ngoài repository: `../../Dashboard Báo cáo tổng hợp/Code_Dong_Bo.js`). Mã tồn tại không xác nhận server nào đã deploy hoặc hoạt động.
 - Mã mới: [App](../src/app/App.tsx), [reporting](../src/domain/reporting.ts), [ReportTable](../src/features/reports/ReportTable.tsx), [ItemList](../src/features/items/ItemList.tsx), [metadata](../shared/field-definitions.ts), [workspace](../src/state/use-workspace.ts), [mock](../src/data/mock-repository.ts), [Sheets](../src/data/sheets-repository.ts), [parser](../src/data/gviz-parser.ts), [kết nối](../src/features/settings/ConnectionPanel.tsx).
 
 “Có lõi đọc” chỉ xác nhận phạm vi nêu trong ô, chưa xác nhận toàn bộ tiêu chí Fxx; “mẫu” chỉ giữ trong phiên giả; “chưa” là chưa có luồng người dùng trong bản mới. Yêu cầu và thiết kế chuẩn xem [FEATURES](FEATURES.md) và [ARCHITECTURE](ARCHITECTURE.md).
