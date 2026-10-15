@@ -1,0 +1,98 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { assignmentIssue, CATALOG_KEYS, catalogFromItems, loadCatalog, saveCatalog, validateCatalog, type CatalogConfig } from '../src/data/catalogs';
+import { createDemoItems } from '../src/data/demo-items';
+
+afterEach(() => vi.unstubAllGlobals());
+
+function storage() {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  };
+}
+
+describe('Danh mục và quan hệ chuyên viên – phòng', () => {
+  it('khởi tạo đủ 11 danh mục từ trạng thái và hồ sơ', () => {
+    const items = createDemoItems(2);
+    const catalogs = catalogFromItems(items);
+    expect(Object.keys(catalogs.options)).toHaveLength(11);
+    expect(Object.keys(catalogs.options)).toEqual(CATALOG_KEYS);
+    expect(catalogs.options.department).toContain(items[0].department);
+    expect(catalogs.options.progressCouncil).toContain('Hoàn thành');
+    expect(catalogs.specialistRooms[items[0].specialist]).toContain(items[0].room);
+  });
+
+  it('từ chối giá trị trùng, quan hệ lạ và phòng ngoài danh mục', () => {
+    const valid = catalogFromItems(createDemoItems(1));
+    const duplicate = structuredClone(valid);
+    duplicate.options.department.push(`  ${duplicate.options.department[0]}  `);
+    expect(() => validateCatalog(duplicate)).toThrow();
+    expect(() => validateCatalog({ ...valid, specialistRooms: { Unknown: [] } })).toThrow();
+    expect(() => validateCatalog({ ...valid, specialistRooms: { [valid.options.specialist[0]]: ['Phòng không có'] } })).toThrow();
+  });
+
+  it('xử lý tên đặc biệt và khóa prototype an toàn', () => {
+    const config = catalogFromItems([]);
+    config.options.specialist = ['__proto__', 'constructor', 'Tên / có "dấu"'];
+    config.options.room = ['__proto__', 'constructor', 'Phòng & khu vực'];
+    config.specialistRooms['__proto__'] = ['__proto__', 'constructor'];
+    const constructorName: string = 'constructor';
+    config.specialistRooms[constructorName] = ['Phòng & khu vực'];
+    const parsed = validateCatalog(config);
+    expect(parsed.options.specialist).toEqual(config.options.specialist);
+    expect(parsed.specialistRooms['__proto__']).toEqual(['__proto__', 'constructor']);
+    expect(Object.getPrototypeOf(parsed.specialistRooms)).toBeNull();
+  });
+
+  it('tách cấu hình đã lưu theo nguồn và không dùng chung mảng với nguồn gốc', () => {
+    vi.stubGlobal('localStorage', storage());
+    const original = catalogFromItems(createDemoItems(1));
+    const changed: CatalogConfig = structuredClone(original);
+    changed.options.department.push('Danh mục riêng');
+    expect(saveCatalog('sheet-a:gid-1', changed)).toBe(true);
+    const loaded = loadCatalog('sheet-a:gid-1', []);
+    expect(loaded.options.department).toContain('Danh mục riêng');
+    expect(loadCatalog('sheet-a:gid-2', []).options.department).not.toContain('Danh mục riêng');
+    expect(original.options.department).not.toContain('Danh mục riêng');
+    loaded.options.department.push('Chỉ bản tải');
+    expect(loadCatalog('sheet-a:gid-1', []).options.department).not.toContain('Chỉ bản tải');
+  });
+
+  it('dùng dữ liệu gốc khi JSON lưu bị hỏng hoặc cấu hình không hợp lệ', () => {
+    const store = storage();
+    vi.stubGlobal('localStorage', store);
+    const items = createDemoItems(1);
+    store.setItem('hdnd.catalogs.v1:source', '{broken');
+    expect(loadCatalog('source', items)).toEqual(catalogFromItems(items));
+    store.setItem('hdnd.catalogs.v1:source', JSON.stringify({ options: {}, specialistRooms: {} }));
+    expect(loadCatalog('source', items)).toEqual(catalogFromItems(items));
+  });
+
+  it('giữ việc xóa trạng thái chưa dùng, thứ tự đã lưu và bổ sung giá trị mới quan sát được', () => {
+    vi.stubGlobal('localStorage', storage());
+    const items = createDemoItems(3).map(item => ({ ...item, progressCouncil: 'VP đang thực hiện' }));
+    items[0].department = 'Đơn vị mới quan sát';
+    const saved = catalogFromItems(items);
+    saved.options.department.reverse();
+    saved.options.progressCouncil = saved.options.progressCouncil.filter(value => value !== 'Sở xin rút');
+    expect(saveCatalog('catalog-order', saved)).toBe(true);
+
+    const loaded = loadCatalog('catalog-order', items);
+    expect(loaded.options.progressCouncil).not.toContain('Sở xin rút');
+    expect(loaded.options.department.slice(0, saved.options.department.length)).toEqual(saved.options.department);
+    expect(loaded.options.department).toContain('Đơn vị mới quan sát');
+  });
+
+  it('chấp nhận chuyên viên có nhiều phòng và báo khi hồ sơ chọn nhầm phòng', () => {
+    const items = createDemoItems(1);
+    const item = { ...items[0] };
+    const config = catalogFromItems(items);
+    config.options.room.push('Phòng phối hợp');
+    config.specialistRooms[item.specialist] = [item.room, 'Phòng phối hợp'];
+    expect(validateCatalog(config).specialistRooms[item.specialist]).toHaveLength(2);
+    expect(assignmentIssue(item, config)).toBe('');
+    item.room = 'Phòng khác';
+    expect(assignmentIssue(item, config)).toContain(`chưa được gán vào phòng ${item.room}`);
+  });
+});
