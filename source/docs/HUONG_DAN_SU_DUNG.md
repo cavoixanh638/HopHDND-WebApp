@@ -1,0 +1,50 @@
+# Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
+
+## Pages 0.7.0 — bản local chưa phát hành
+
+Mọi người tiếp tục nhập/sửa dữ liệu trên Google Sheets. Pages đọc A–P trực tiếp qua GViz, tự đọc lại mỗi 60 giây khi tab hiển thị hoặc qua **Đọc lại dữ liệu Sheets và cấu hình**. Khi có nháp, app chờ bạn giữ để đối chiếu hoặc bỏ phần sửa trước khi đọc lại. Lỗi đọc giữ bản trước; đăng nhập Firebase lỗi không ngăn Sheets hiển thị.
+
+**Tài khoản và quyền chỉnh sửa** dùng Firebase Authentication đã có. Chỉ Google `cavoixanh638@gmail.com` được lưu quyền ô/cột/dòng, bố trí danh sách/báo cáo và danh mục/giá trị lựa chọn dùng chung vào Firebase. Khách xem/tìm/lọc và sửa thử ô được cấp quyền; **Áp dụng vào bảng** và **Giữ thay đổi trên máy** chỉ giữ trên browser, không ghi nguồn. Quyền ô ưu tiên dòng rồi cột, mặc định khóa. Sau khi chèn/sắp hàng Sheets, quản trị cần rà lại quyền riêng do recordId legacy theo vị trí hàng.
+
+**Kết nối dữ liệu Google Sheets** chỉ đổi lựa chọn nguồn trên trình duyệt; không cấp quyền đọc bảng riêng tư hoặc quyền ghi. **Nhập / Xuất Excel** vẫn xuất snapshot Sheets và JSON cấu hình; nhập dữ liệu Excel bị khóa. Nhập JSON cấu hình cần Google quản trị và xác nhận lưu. Chưa push, triển khai Rules hoặc đổi dữ liệu thật. [Hướng dẫn Pages](FIREBASE_PAGES.md), [kết quả](CURRENT_STATE.md).
+
+## Main Google 0.6.2 — luồng đã phát hành trước đó
+
+Main `/exec` đã cập nhật deployment v6 ngày15/10/2026. Mở [ứng dụng trên Google](https://script.google.com/macros/s/AKfycbwV0mOUnaS3OuvFCE3qkkhdY_1kA6A7eW5cL2rmsmQqeKbyLojBec_vKYzB7XAsWlCb/exec) trong tab mới hoặc tải lại tab cũ. Kết nối main được kiểm lúc11:30:08: backend sẵn sàng, tài khoản `phucpixel2025@gmail.com`, 51 dòng, 0 cảnh báo, cấu hình revision12; UI tải mới lúc11:34 hiện đúng nguồn. Lần kiểm UI này không sửa dữ liệu nguồn chính. Save/readback thành công đã được chứng minh riêng trên bản sao thử; không coi đó là bằng chứng nguồn chính đã được ghi.
+
+Nguồn nhập liệu mặc định là [file Excel HĐND](https://docs.google.com/spreadsheets/d/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/edit?gid=60961344), `gid=60961344`. Nguồn thật và dữ liệu mẫu là hai loại nguồn khác nhau; một nguồn Google vẫn có thể ở chế độ chỉ đọc.
+
+## Mở và chọn nguồn
+
+Mở ứng dụng bằng link Google ở đầu tài liệu. Để sửa và lưu Excel, dùng Google app này; vào **⚙ Tùy chỉnh danh sách**, sửa ô rồi bấm **Lưu dữ liệu vào Excel**. HTML tải về chỉ là giao diện và không tự mang backend Apps Script; Drive preview và `file://` chưa được xác minh.
+
+Main v6 dùng nguồn đã đăng ký sẵn; không đổi link/`gid` trong lúc sửa. Nếu cần đổi nguồn, quản trị viên phải cập nhật nguồn đã đăng ký phía server trước. Các bản HTML độc lập/candidate có thể có **⚙ Tùy chọn → Kết nối dữ liệu**, nhưng chế độ đó không cấp quyền ghi Excel và không chuyển nháp sang Google app.
+
+## Xem và cập nhật dữ liệu
+
+Ở tab **Tổng quan**, xem KPI/báo cáo, đổi cách phân nhóm và bấm số để mở danh sách chi tiết. Có thể tùy chỉnh cột hiển thị; ẩn cột không đổi tổng. Tab **Danh sách nội dung** hỗ trợ tìm kiếm tiếng Việt có/không dấu, lọc theo loại, phạm vi, lãnh đạo VP và tiến độ; tối đa 50 dòng mỗi trang. Dòng chưa chuẩn hóa vẫn được báo để rà soát.
+
+Nguồn Excel được đọc theo cấu trúc hiện tại. Dùng link **Mở file Excel nhập liệu** để xem hoặc sửa file theo quyền của bạn. App tự đọc lại mỗi 60 giây khi tab hiển thị; **Đọc lại dữ liệu và danh mục từ Google** cũng tải dữ liệu Google vào app. Đây là chiều **Google → app**, không ghi nội dung ngược vào file.
+
+## Sửa nháp và giữ trên trình duyệt
+
+Trong Google app, mở **⚙ Tùy chỉnh danh sách**. Sửa ô hoặc mở popup **Nội dung trình/Ghi chú**; **Áp dụng vào bảng** chỉ đưa nội dung popup vào nháp. Bấm **Lưu dữ liệu vào Excel** để gửi phần sửa. App chỉ báo đã lưu khi đọc lại file và xác nhận giá trị; nếu có lỗi, xung đột hoặc kết quả chưa rõ, phần sửa được giữ để đối chiếu. Bản sửa được checkpoint trên browser khoảng 10 giây. **Giữ thay đổi trên máy** chỉ giữ bản sửa trên trình duyệt này, không cập nhật file.
+
+Nếu ứng dụng hiển thị **Chưa thể lưu vào Excel** hoặc vô hiệu hóa nút lưu, đừng coi bản nháp là đã lưu. Có thể tải/giữ phần sửa trên máy hoặc sửa trực tiếp file Excel rồi đọc lại. Hủy bản nháp bỏ phần chưa lưu; dữ liệu nguồn không đổi.
+
+## Hai thao tác có chiều dữ liệu khác nhau
+
+**Lưu dữ liệu vào Excel** là chiều **app → Excel**. Main v6 đã có backend và trạng thái kết nối được kiểm; UI chỉ báo lưu thành công sau khi server đọc lại file và xác nhận. Ghi dùng ETag/CAS để từ chối nguồn đã đổi. Save/readback trên bản sao đã pass, còn main UI mới được kiểm kết nối/sẵn sàng; không coi main đã ghi nguồn thật.
+
+HTML độc lập hoặc bản HTML tải về không có `google.script.run` nên chỉ giữ nháp trên browser; không thể dùng để ghi Excel. Nháp cũ trên HTML không tự chuyển sang nguồn/app Google; hãy đối chiếu và nhập lại nếu cần. Bằng chứng UI save/readback hiện có thuộc `PrivateExcelTestHost.gs` và fixed private copy trong project thử; không phải ghi nguồn chính.
+
+**Đọc lại dữ liệu và danh mục từ Google** là chiều **Google → app**. Lệnh này nạp lại nội dung nguồn và cấu hình/danh mục theo phạm vi được phép; nó không lưu nháp vào Excel. Lưu danh mục/bố trí dùng chung là một luồng riêng, không thay đổi các dòng nghiệp vụ trong file Excel.
+
+## Khi thao tác lưu báo lỗi
+
+- Nếu backend chưa bật, nút lưu bị khóa hoặc thông báo cho biết chưa thể lưu vào nguồn. Giữ nháp trên browser hoặc cập nhật trực tiếp Excel.
+- Nếu báo xung đột, file đã thay đổi trong lúc sửa. Đọc lại nguồn, đối chiếu với nháp rồi quyết định chỉnh lại.
+- Nếu timeout hoặc phản hồi chưa xác định, giữ bản sửa và đọc lại file trước khi thử lần khác. Hệ thống dùng receipt để đối soát và không tự gửi lại cả lần ghi một cách mù quáng.
+- Nếu thiếu quyền Drive/registry hoặc kho sao lưu không hợp lệ, dừng ở thông báo lỗi; việc truy cập nguồn đọc được không chứng minh quyền ghi đã có.
+
+Tham khảo [hợp đồng API](API.md), [bản đồ mã](REPO_MAP.md), [CURRENT_STATE](CURRENT_STATE.md) và [đồng bộ cấu hình](DONG_BO_CAU_HINH.md) để xem giới hạn và trạng thái triển khai. Candidate local hoặc test trên bản sao không xác nhận đã ghi thành công trong app đang mở.
