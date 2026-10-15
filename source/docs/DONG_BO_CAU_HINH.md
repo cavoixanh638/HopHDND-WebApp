@@ -1,5 +1,9 @@
 # Cấu hình dùng chung — Pages 0.7.0 và legacy Google
 
+> **Phân ranh:** Tài liệu này giữ cách vận hành kho cấu hình **Google Apps Script/HTML legacy** và giải thích khác biệt với Pages; không là quy trình phát hành GitHub Pages hiện hành. Phát hành/rollback/sao lưu/khôi phục và xử lý lỗi xem [VAN_HANH](VAN_HANH.md); Firebase Auth/Rules xem [FIREBASE_PAGES](FIREBASE_PAGES.md).
+
+
+
 Pages 0.7.0 dùng duy nhất Firebase Google admin để lưu `hdnd/profile` và `hdnd/permissions`; Sheets/GViz chỉ cung cấp nội dung nghiệp vụ. Không dùng kho cấu hình Google hoặc local layout legacy làm đường ghi cấu hình chung trên Pages. [FIREBASE_PAGES](FIREBASE_PAGES.md). Phần dưới chỉ hướng dẫn luồng Google/HTML legacy 0.6.x; không áp dụng để bỏ qua quyền quản trị Pages.
 
 ## Legacy Google/HTML 0.6.x
