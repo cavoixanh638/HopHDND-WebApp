@@ -1,7 +1,9 @@
 # HopHDND WebApp
 
-GitHub Pages deploys the built `index.html` from the repository root.
+GitHub Pages serves the generated **`index.html` at the repository root**. Source code, tests, configuration and documentation live under **`source/`**.
 
-Project source is kept in `source/`; to build it locally, run `cd source && npm ci && npm run build:pages`, then copy the generated `source/dist-pages/index.html` to the root `index.html` and commit.
+When source changes reach `main`, [the publish workflow](.github/workflows/publish-pages.yml) runs TypeScript checks, unit tests, Firebase emulator tests, documentation checks and `npm run build:pages`, then commits a regenerated root `index.html` only if the build succeeds. Pull requests are checked by [verify-source](.github/workflows/verify-source.yml).
 
-The imported source excludes dependency folders, private credentials, logs and generated bundles. This is a point-in-time import from the Google Drive project, not continuous synchronization.
+To develop locally: `cd source && npm ci && npm run dev`. To build manually: `cd source && npm run build:pages`. Never edit the bundled HTML as a substitute for TypeScript.
+
+For architecture and status, see [source docs](source/docs/README.md) and [current state](source/docs/CURRENT_STATE.md). This repository is **not automatically synchronized back to the user's Windows / Google Drive workspace**; Firebase Rules and Sheets business data are managed separately.
