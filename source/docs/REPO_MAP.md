@@ -6,7 +6,7 @@
 
 Repository [HopHDND-WebApp](https://github.com/cavoixanh638/HopHDND-WebApp) có `index.html` **đã build** ở gốc để phục vụ Pages và **toàn bộ dự án** dưới `source/` (`source/src`, `source/docs`, `source/tests`, `source/firebase`...). Các đường dẫn tương đối **trong tài liệu này** lấy gốc ở `source/`, nên `../src/app/App.tsx` là `source/src/app/App.tsx` trên GitHub. Thư mục dự án trên Windows tương ứng với nội dung `source/`, không có lớp `source/` bổ sung ở máy.
 
-Chỉ cập nhật bản phát hành bằng cách build từ code nguồn rồi đưa `source/dist-pages/index.html` vào `index.html` gốc repository. Không vá `index.html` đã minify thay cho `src/`. GitHub không tự đồng bộ thay đổi ở Windows/Google Drive; chưa xác nhận workflow tự build. Xem [VAN_HANH](VAN_HANH.md). Mô hình trường/ID ở [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
+Chỉ cập nhật bản phát hành bằng cách build từ code nguồn rồi đưa `source/dist-pages/index.html` vào `index.html` gốc repository. Không vá `index.html` đã minify thay cho `src/`. GitHub không tự đồng bộ thay đổi ở Windows/Google Drive; hiện đã có CI xác minh và workflow tự build/publish từ `source/` khi thay đổi `main`; xem [VAN_HANH](VAN_HANH.md). Xem [VAN_HANH](VAN_HANH.md). Mô hình trường/ID ở [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
 
 
 
