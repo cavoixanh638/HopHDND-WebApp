@@ -1,5 +1,8 @@
 # Bộ tài liệu, tra cứu và bàn giao dự án
 
+> **Quyết định tinh gọn tài liệu (16/10/2026):** Bảng “Danh mục tài liệu phải bàn giao” bên dưới phản ánh **đề xuất gốc ngày 13/10**, không còn là chỉ thị tạo mỗi dòng thành một file riêng. Quy ước cập nhật và nguồn chuẩn nằm ở [docs/README](README.md). Hiện chỉ bổ sung [VAN_HANH](VAN_HANH.md) (gộp triển khai, quay lại, sao lưu, khôi phục, xử lý sự cố) và [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). Hướng dẫn quản trị gộp trong [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md); lịch sử phiên bản trong [CURRENT_STATE](CURRENT_STATE.md); kế hoạch chuyển đổi cũ ở [KE_HOACH_VIET_LAI](KE_HOACH_VIET_LAI.md). Chỉ tách thêm nếu phát sinh nhu cầu thật, không tạo hồ sơ trùng lặp.
+
+
 Ngày: 13/10/2026. Đây là **đặc tả bộ tài liệu phải xây dựng cùng app**, không phải hướng dẫn xác nhận thao tác trên app mới đã chạy.
 
 ## 1. Cách tổ chức thông tin
