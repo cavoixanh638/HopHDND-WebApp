@@ -1,5 +1,9 @@
 # Firebase Realtime Database trên GitHub Pages
 
+> **Phân ranh tài liệu:** File này chỉ mô tả Firebase Auth/RTDB, schema và nguyên tắc Rules. Quy trình backup, khôi phục, cập nhật Pages, quay về bản cũ và xử lý sự cố tập trung ở [VAN_HANH](VAN_HANH.md). Ánh xạ trường và ID Sheets xem [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). Các ví dụ cấu hình không xác nhận đã áp dụng Rules thật.
+
+
+
 Ngày cập nhật: 15/10/2026. Bản GitHub Pages dùng Google Sheets qua `SheetsRepository`/GViz làm nguồn nội dung. Firebase chỉ phục vụ Auth, hồ sơ cấu hình `hdnd/profile` và quyền `hdnd/permissions`; không đồng bộ định kỳ dữ liệu Sheets sang Firebase. Tài liệu mô tả đích tích hợp, chưa áp dụng cấu hình, Auth providers, domain, hoặc Realtime Database rules lên Firebase thật; chưa ghi dữ liệu thật hay phát hành Pages.
 
 ## Thiết lập dự án thật (thủ công)
