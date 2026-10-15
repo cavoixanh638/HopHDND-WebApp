@@ -63,6 +63,20 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.onKeepDraft()).toBe(true);await expect(list.props.onSaveData()).resolves.toBe(false);expect(firebase.common.save).not.toHaveBeenCalled();
     await expect(list.props.onPersistLayout(list.props.initialLayout)).rejects.toThrow();
   });
+  it('keeps list customization available with an empty GViz sheet and embeds admin permissions in the list',async()=>{
+    render();
+    const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];
+    (window as any)[name]({status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[{c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]}]}});
+    await settle();render();
+    expect(button(render(),'Vào chế độ tùy chỉnh danh sách').props.disabled).toBe(false);
+    let list=nodes(open('Vào chế độ tùy chỉnh danh sách')).find(n=>n.type===ItemList);
+    expect(list.props.items).toHaveLength(0);
+    expect(list.props.permissions).toBeUndefined();
+    list.props.onClose();firebase.isAdmin=true;
+    list=nodes(open('Vào chế độ tùy chỉnh danh sách')).find(n=>n.type===ItemList);
+    expect(list.props.permissions).toEqual(firebase.permissions);
+    expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
+  });
   it('keeps the last Sheets snapshot when a subsequent GViz read fails',async()=>{
     render();respond();await settle();render();button(render(),'Đọc lại dữ liệu Sheets và cấu hình').props.onClick();scripts.at(-1).onerror();await settle();
     const tree=open('Danh sách nội dung'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
