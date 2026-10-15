@@ -1,5 +1,15 @@
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
+## Dành cho quản trị viên Pages 0.7.0 (quy tắc và giới hạn hiện tại)
+
+Tài khoản quản trị phải đăng nhập Google qua Firebase Authentication (email đã xác minh, nhà cung cấp `google.com`), không dùng mật khẩu nhúng trong HTML. Quyền cập nhật danh mục, báo cáo, bố trí danh sách, cột và quyền sửa thuộc **cùng cơ chế quản trị Firebase**; xem [FIREBASE_PAGES](FIREBASE_PAGES.md). Quyền theo ô ưu tiên trước dòng, rồi cột, mặc định không cho sửa. Các nút sửa nháp nghiệp vụ **không** ghi vào Google Sheets/Firebase.
+
+**Lưu ý nghiệm thu:** Người dùng đã phản ánh bản Pages hiển thị 0 dòng, chưa vào được chế độ tùy chỉnh Danh sách và quyền ô vẫn cấu hình ở panel riêng. Đây là **lỗi đang chờ sửa**, không hướng dẫn như thể quản trị đã cấp quyền trực tiếp bằng biểu tượng trên bảng. Khi có bản UI tích hợp trực quan và đã nghiệm thu, bổ sung quy trình click cụ thể tại đây thay vì tạo `HUONG_DAN_QUAN_TRI.md` trùng lặp.
+
+Quy trình vận hành/quay lại, sao lưu, khôi phục và xử lý lỗi: [VAN_HANH](VAN_HANH.md). Ý nghĩa trường, ID và rủi ro quyền theo dòng/ô: [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
+
+
+
 ## Pages 0.7.0 — bản local chưa phát hành
 
 Mọi người tiếp tục nhập/sửa dữ liệu trên Google Sheets. Pages đọc A–P trực tiếp qua GViz, tự đọc lại mỗi 60 giây khi tab hiển thị hoặc qua **Đọc lại dữ liệu Sheets và cấu hình**. Khi có nháp, app chờ bạn giữ để đối chiếu hoặc bỏ phần sửa trước khi đọc lại. Lỗi đọc giữ bản trước; đăng nhập Firebase lỗi không ngăn Sheets hiển thị.
