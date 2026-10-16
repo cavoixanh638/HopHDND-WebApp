@@ -36,10 +36,11 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
     login(true);emit('hdnd/control',{revision:2,editingLocked:true});
     const admin=render();expect(admin.editingLocked).toBe(true);
-    h.transaction.mockResolvedValue({committed:true});
+    h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>({revision:3,editingLocked:false})}});
     await admin.saveEditingLock(false);
     const [path,update]=h.transaction.mock.calls[0];
     expect(path).toBe('hdnd/control');
+    expect(update(null)).toBeNull();
     expect(update({revision:3,editingLocked:true})).toBeUndefined();
     expect(update({revision:2,editingLocked:true})).toMatchObject({revision:3,editingLocked:false});
     expect(render().editingLocked).toBe(false);
@@ -55,8 +56,11 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('saves with server revision checking and blocks overlapping writes before a rerender',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});const state=render();
     let resolve!:(v:any)=>void;h.transaction.mockReturnValue(new Promise(done=>resolve=done));const pending=state.common.save('all',profile(),1);
-    const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});expect(update(stored(2))).toBeUndefined();expect(update(stored()).revision).toBe(2);
-    await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');resolve({committed:true});await pending;
+    const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});
+    expect(update(null)).toBeNull();expect(update(stored(2))).toBeUndefined();
+    const confirmed=update(stored());expect(confirmed.revision).toBe(2);
+    await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');
+    resolve({committed:true,snapshot:{val:()=>confirmed}});await pending;
   });
   it('actually rereads Firebase config and permissions, and revokes privileges after logout',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});
@@ -65,8 +69,10 @@ describe('Firebase config controller remains independent of business data',()=>{
     h.auth.currentUser=null;h.authChanged(null);state=render();expect(state.isAdmin).toBe(false);expect(state.canEdit('sheet:42:row:3','note')).toBe(false);expect(state.profile).toBeNull();
   });
   it('saves normalized row and cell permissions against their original baseline',async()=>{
-    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();h.transaction.mockResolvedValue({committed:true});
-    await state.savePermissions({columns:{note:true},rows:{'sheet:42:row:3':false}});
+    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
+    const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
+    h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
+    await state.savePermissions(next);
     const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
   });
 });
