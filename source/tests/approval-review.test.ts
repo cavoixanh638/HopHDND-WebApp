@@ -16,6 +16,8 @@ describe('approval baselines',()=>{
     const moved=snapshotFromItems([items[1],items[0]],'sheet:42');
     expect(compareApprovedSnapshot(base,moved)).toEqual([]);
     expect(compareApprovedSnapshot(base,snapshotFromItems([items[0]],'sheet:42')).map(c=>c.kind)).toEqual(['removed']);
+    const recoded=snapshotFromItems([{...items[0],displayCode:'NQ99'},items[1]],'sheet:42');
+    expect(compareApprovedSnapshot(base,recoded).some(d=>d.changes.some(c=>c.field==='displayCode'))).toBe(true);
     expect(()=>validateReviewSnapshot(base,'another')).toThrow();
   });
 });
