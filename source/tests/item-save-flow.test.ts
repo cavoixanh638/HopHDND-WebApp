@@ -26,6 +26,16 @@ describe('item data save and layout save boundary (component with fake hooks)',(
   it('does not save layout or leave the editor when data save remains unconfirmed',async()=>{
     mock.dirty=true;const test=list();test.props.onSaveData.mockResolvedValue(false);test.button.props.onClick();await vi.waitFor(()=>expect(test.props.onSaveData).toHaveBeenCalledOnce());await Promise.resolve();expect(test.props.onPersistLayout).not.toHaveBeenCalled();expect(test.props.onClose).not.toHaveBeenCalled();
   });
+  it('saves layout alone on a Sheets read-only page while keeping trial cell edits local',async()=>{
+    mock.dirty=true;const test=list(true);
+    expect(text(test.button)).toContain('Lưu bố trí');
+    expect(test.button.props.disabled).toBe(false);
+    test.button.props.onClick();
+    await vi.waitFor(()=>expect(test.props.onClose).toHaveBeenCalledOnce());
+    expect(test.props.onPersistLayout).toHaveBeenCalledOnce();
+    expect(test.props.onSaveData).not.toHaveBeenCalled();
+    expect(test.props.onLayoutSaved).toHaveBeenCalledWith(expect.stringContaining('vẫn chỉ ở trên máy'));
+  });
   it('keeps the source-save action disabled when no authenticated writer is connected',()=>{
     const test=list(true);expect(text(test.button)).toBe('Chưa thể lưu vào Excel');expect(test.button.props.disabled).toBe(true);expect(test.props.onSaveData).not.toHaveBeenCalled();
   });
