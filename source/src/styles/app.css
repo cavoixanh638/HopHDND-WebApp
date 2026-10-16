@@ -338,6 +338,8 @@ body:not(.is-printing) #print-target {  display:none!important}
 .item-data-table thead th:has(.column-filter[open]) { z-index:25; }
 .column-filter-menu { max-height:min(50vh,340px); overflow-y:auto; }
 
+/* Leave room for a 1500px table on typical 1600px screens without overflow. */
+.app-shell.wide-table-page { padding-inline: clamp(12px, 1.1vw, 18px); }
 /* Keep controls readable even when a saved list table is very narrow.
    The adjustable table is centered *inside* the page; never resize site chrome,
    navigation or the entire customization form to 0-500px. */
