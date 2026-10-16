@@ -8,6 +8,7 @@ import type { ConfigSection } from '../data/shared-config';
 import { validateCatalog, type CatalogConfig } from '../data/catalogs';
 import { validateReportLayout, type ReportLayout } from '../data/report-preferences';
 import { validateItemLayout, type ItemLayout } from '../data/item-preferences';
+import {mergeItemLayout} from '../data/item-layout-merge';
 import type {SheetConfig} from '../data/sheet-config';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
@@ -72,28 +73,61 @@ export function useFirebase(){
   const admin=firebaseAdmin(user);
   const login=async()=>{setError('');await signInWithPopup(auth,new GoogleAuthProvider());};
   const logout=async()=>{await signOut(auth);};
-  const saveProfile=async(section:ConfigSection,value:unknown,expectedRevision=profile?.revision??0)=>{
+  const saveProfile=async(section:ConfigSection,value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown)=>{
     if(!firebaseAdmin(auth.currentUser))throw new Error('Chỉ tài khoản Google quản trị được lưu bố trí và danh mục.');
     if(!profileReady)throw new Error('Chưa đọc được cấu hình gốc; không khởi tạo hoặc ghi đè. Đọc lại danh mục và bố trí trước.');
     if(!connected)throw new Error('Đang mất kết nối. Giữ phần sửa và thử lưu khi có mạng.');
     if(saving.current)throw new Error('Đang lưu thiết lập.');
-    const base=profile;
-    if((base?.revision??0)!==expectedRevision)throw new Error('Danh mục/bố trí đã đổi trong lúc bạn chỉnh. Đóng rồi mở lại để đối chiếu; phần sửa vẫn được giữ.');
-    const candidate=section==='all'?{...(value as object),revision:(base?.revision??0)+1}:{...base,[section]:value,revision:(base?.revision??0)+1};
-    const valid=profileFrom(candidate);if(!valid)throw new Error('Thiếu bộ cấu hình.');
+    const base=profile,expected=base?.revision??0;
+    // Only the list editor supplies its original baseline. Other profile writers
+    // remain strict CAS and may not overwrite a newer version.
+    const canMerge=section==='items'&&originalSection!==undefined;
+    const original=canMerge?validateItemLayout(originalSection):null;
+    const edited=canMerge?validateItemLayout(value):null;
+    if(!canMerge&&expected!==expectedRevision)
+      throw new Error('Danh mục/bố trí đã đổi trong lúc bạn chỉnh. Đóng rồi mở lại để đối chiếu; phần sửa vẫn được giữ.');
+    if(canMerge&&!base)throw new Error('Chưa có cấu hình Firebase để đối chiếu; không ghi đè cấu hình mới.');
+    const candidate=section==='all'?{...(value as object),revision:expected+1}:{...base,[section]:value,revision:expected+1};
+    if(!profileFrom(candidate))throw new Error('Thiếu bộ cấu hình.');
     saving.current=true;setBusy(true);
-    try{
-      const expected=base?.revision??0;
+    try {
+      let conflict:Error|null=null;
+      let submitted:string|undefined;
       const result=await runTransaction(ref(database,'hdnd/profile'),current=>{
-        // RTDB transactions may first see null even when the server has a profile.
-        // Return null to fetch/retry against the server rather than aborting.
+        // A cold RTDB transaction may see null before fetching the server value.
         if(current===null&&expected>0)return current;
-        if(Number(current?.revision??0)!==expected)return undefined;
-        return {revision:valid.revision,payload:JSON.stringify(valid)};
+        if(!current&&canMerge)return undefined;
+        const serverRevision=Number(current?.revision??0);
+        let proposed:FirebaseProfile|null=null;
+        try {
+          if(canMerge&&original&&edited) {
+            const live=profileFrom({...JSON.parse(String(current.payload)),revision:serverRevision});
+            if(!live)throw new Error('Không đọc được cấu hình Firebase hiện tại.');
+            const merged=mergeItemLayout(original,edited,live.items);
+            proposed=profileFrom({...live,items:merged,revision:serverRevision+1});
+          } else {
+            if(serverRevision!==expected)return undefined;
+            proposed=profileFrom(section==='all'
+              ?{...(value as object),revision:expected+1}
+              :{...base,[section]:value,revision:expected+1});
+          }
+          if(!proposed)return undefined;
+          submitted=JSON.stringify(proposed);
+          conflict=null;
+          return {revision:proposed.revision,payload:submitted};
+        }catch(cause) {
+          conflict=cause instanceof Error?cause:new Error('Không thể đối chiếu bố trí Firebase.');
+          return undefined;
+        }
       },{applyLocally:false});
-      if(!result.committed||result.snapshot.val()?.revision!==valid.revision||
-         result.snapshot.val()?.payload!==JSON.stringify(valid))
+      const confirmed=result.snapshot.val();
+      if(!result.committed||!submitted||
+        confirmed?.revision!==JSON.parse(submitted).revision||confirmed?.payload!==submitted) {
+        if(conflict)throw conflict;
         throw new Error('Bố trí đã được sửa ở cửa sổ khác hoặc Firebase chưa xác nhận lưu. Đọc lại và đối chiếu.');
+      }
+      const valid=profileFrom({...JSON.parse(submitted),revision:confirmed.revision});
+      if(!valid)throw new Error('Không xác nhận được cấu hình Firebase đã lưu.');
       setProfile(valid);
       return valid;
     }finally{saving.current=false;setBusy(false);}
