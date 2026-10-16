@@ -28,11 +28,11 @@ describe('Bố trí cột danh sách', () => {
 
   it('kiểm tra giới hạn độ rộng bảng và cột', () => {
     const layout = defaultItemLayout();
-    expect(validateItemLayout({ ...layout, tableWidth: 600 }).tableWidth).toBe(600);
+    expect(validateItemLayout({ ...layout, tableWidth: 500 }).tableWidth).toBe(500);
     expect(validateItemLayout({ ...layout, tableWidth: 6000 }).tableWidth).toBe(6000);
-    expect(() => validateItemLayout({ ...layout, tableWidth: 599 })).toThrow();
+    expect(() => validateItemLayout({ ...layout, tableWidth: 499 })).toThrow();
     expect(() => validateItemLayout({ ...layout, tableWidth: 6001 })).toThrow();
-    expect(() => validateItemLayout({ ...layout, tableWidth: 600.5 })).toThrow();
+    expect(() => validateItemLayout({ ...layout, tableWidth: 500.5 })).toThrow();
     for (const width of [60, 1600]) {
       const columns = layout.columns.map((column, index) => index === 0 ? { ...column, width } : column);
       expect(validateItemLayout({ ...layout, columns }).columns[0].width).toBe(width);
