@@ -173,7 +173,7 @@ try{
     });
   })()`);
   const originalGeometry=await sharedGeometry();
-  for(const [tab,ready] of [['Hướng dẫn','Sử dụng HopHDND'],['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
+  for(const [tab,ready] of [['Hướng dẫn','Hướng dẫn sử dụng'],['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
     const clicked=await evaluate(`(()=>{
       const button=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent===${JSON.stringify(tab)});
       button?.click();return !!button;
