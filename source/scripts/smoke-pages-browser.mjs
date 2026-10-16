@@ -232,13 +232,8 @@ try{
   await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='320'",'Input 320 not entered');
   await evaluate('document.activeElement.blur()');
   await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-320)<3",'320px table width not applied');
-  const narrowMeasured=await evaluate(`(()=>{
-    const selectors=['.settings-mode-bar','.item-list-card','.item-data-region','.item-column-panel'];
-    return selectors.map(sel=>[sel,document.querySelector(sel)?.getBoundingClientRect().width]);
-  })()`);
-  console.log('NARROW_DEBUG',JSON.stringify(narrowMeasured));
-  if(!(await evaluate("document.querySelector('.settings-mode-bar').getBoundingClientRect().width>=890")))
-    throw Error('Narrow 320px table collapsed editing controls');
+  await eventually("document.querySelector('.settings-mode-bar').getBoundingClientRect().width>=890",
+    'Narrow 320px table collapsed editing controls');
   // Anonymous browser must never save shared Firebase configuration. Ensure a
   // rejected save visibly explains the reason beside the action, not far below.
   const clickedSave=await evaluate(`(()=>{
