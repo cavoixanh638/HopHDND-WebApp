@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 85f2cab8da3557967e847c98d068eb6947941013
+          ref: 18cbc5aeda840c1e33c7f974891fccdf79fd26be
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -71,6 +71,9 @@ jobs:
           if(!html.includes('Giải quyết xung đột bố trí')||!html.includes('Xác nhận lựa chọn và lưu'))throw Error('Explicit Firebase conflict resolution UI absent');
           if(!html.includes('item-column-filter-row')||!html.includes('item-sticky-search-controls'))throw Error('Sticky filter row and global search missing');
           if(!html.includes('preview:'))throw Error('Preview draft isolation missing');
+          if(!html.includes('item-filter-status-slot')||!html.includes('scrollbar-gutter:stable'))throw Error('Stable filtering layout absent');
+          if(!html.includes('guest-signin')||!html.includes('Sửa thử nội dung'))throw Error('Guest role-specific controls absent');
+          if(!html.includes('Tìm kiếm cột'))throw Error('Subtle direct column search absent');
           const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — GRID STICKY (16/10/2026) · Lọc dưới cột, tiêu đề cố định, lựa chọn khi Firebase xung đột. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
