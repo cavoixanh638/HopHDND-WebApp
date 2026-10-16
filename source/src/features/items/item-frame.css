@@ -194,3 +194,19 @@
 .item-data-table .item-column-filter-row select {text-overflow:ellipsis;}
 .item-data-table thead th:focus-within {z-index:7;}
 @media(max-width:700px){.item-data-region .item-table-scroll {max-height:min(63vh,630px);}}
+
+/* Explicit, safe resolution when the same layout field changed on Firebase and in a local draft. */
+.layout-conflict-resolver {border:1px solid #e7b58b;border-left:4px solid #b77b35;border-radius:9px;background:#fff9ed;padding:14px;margin:12px 0;display:grid;gap:10px;}
+.layout-conflict-resolver > p {font-size:13px;line-height:1.5;margin:0;color:#654a32;}
+.layout-conflict-field {margin:0;border:1px solid #e5d8c9;border-radius:8px;background:#fff;padding:10px 12px;min-width:0;}
+.layout-conflict-field legend {font-weight:700;color:#344c3f;padding:0 4px;}
+.layout-conflict-field > small {display:block;margin-bottom:8px;color:#5b6f63;}
+.layout-conflict-options {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+.layout-conflict-options label {display:flex;align-items:flex-start;gap:9px;min-width:0;border:1px solid #dae6dd;border-radius:7px;padding:9px;cursor:pointer;background:#fafcfb;}
+.layout-conflict-options label:has(input:checked) {border-color:#1c6c50;background:#e9f7ee;}
+.layout-conflict-options input {width:auto;flex:none;margin-top:4px;}
+.layout-conflict-options span {display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;}
+.layout-conflict-options span span {font-size:12px;font-weight:400;}
+.layout-conflict-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;}
+.layout-conflict-actions > span {font-size:12px;margin-right:auto;}
+@media(max-width:700px){.layout-conflict-options{grid-template-columns:1fr;}}
