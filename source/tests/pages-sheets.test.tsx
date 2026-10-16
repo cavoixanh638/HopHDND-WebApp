@@ -85,7 +85,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.isAdmin=true;render();respond();await settle();
     let tree=open('Vào chế độ tùy chỉnh bảng báo cáo');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Danh mục và quan hệ chuyên viên – phòng');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
-    tree=open('Vào chế độ tùy chỉnh danh sách');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);
+    tree=open('Vào chế độ tùy chỉnh danh sách');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0);
   });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
     firebase.isAdmin=true;render();respond();await settle();const tree=open('Nhập / Xuất Excel'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
