@@ -23,37 +23,12 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
 
   return (
     <details className="card item-column-panel">
-      <summary>Cột và khung bảng</summary>
+      <summary>Cột và độ rộng bảng</summary>
       <div className="settings-grid">
-        <div className="item-frame-controls">
-          <label className="field">
-            Độ rộng khung bảng
-            <select
-              value={layout.frameWidth === 'auto' || layout.frameWidth === undefined ? 'auto' : 'fixed'}
-              onChange={event => onChange({ ...layout, frameWidth: event.target.value === 'auto' ? 'auto' : 1500 })}
-            >
-              <option value="auto">Tự động</option>
-              <option value="fixed">Theo số px</option>
-            </select>
-          </label>
-          {layout.frameWidth !== 'auto' && layout.frameWidth !== undefined && (
-            <label className="field">
-              Độ rộng khung bảng (px)
-              <input
-                type="number"
-                min={320}
-                max={6000}
-                value={layout.frameWidth}
-                onChange={event => onChange({ ...layout, frameWidth: Number(event.target.value) })}
-              />
-            </label>
-          )}
-          <p className="muted">Khung trắng bị giới hạn tối đa bằng màn hình; bảng rộng hơn sẽ cuộn bên trong khung.</p>
-        </div>
         <details className="item-layout-advanced">
-          <summary>Cấu hình nâng cao</summary>
+          <summary>Độ rộng nội dung bảng</summary>
           <label className="field">
-            Độ rộng nội dung bảng (px)
+            Độ rộng tối thiểu của bảng (px)
             <input
               type="number"
               min={600}
@@ -62,7 +37,7 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
               onChange={event => onChange({ ...layout, tableWidth: Number(event.target.value) })}
             />
           </label>
-          <p className="muted">Chiều rộng tối thiểu của nội dung bảng, từ 600–6000 px. Nếu tổng độ rộng cột lớn hơn, bảng dùng tổng đó; nếu nhỏ hơn, các cột chia phần rộng còn lại.</p>
+          <p className="muted">Khung và thanh công cụ luôn rộng bằng vùng làm việc. Bảng tự lấp đầy khung; nếu nhiều cột hoặc đặt độ rộng tối thiểu lớn hơn, phần bảng sẽ cuộn ngang bên trong.</p>
         </details>
         <div className="column-config-grid">
           {layout.columns.map((column, index) => (
