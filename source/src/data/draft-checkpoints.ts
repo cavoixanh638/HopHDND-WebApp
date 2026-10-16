@@ -1,5 +1,12 @@
 export const AUTOSAVE_MS = 10000;
 export interface Checkpoint<T> { schemaVersion: 1; base: T; draft: T; savedAt: string }
+/** Production and independent Pages previews may share one browser origin.
+ * Isolate layout recovery keys in previews so a stale test draft cannot replace
+ * the Firebase canonical layout on the production website. */
+export function layoutRecoveryScope(scope:string,pathname:string=typeof location==='undefined'?'/':location.pathname):string{
+  const match=pathname.match(/\\/preview\\/([A-Za-z0-9_-]+)(?:\\/|$)/);
+  return match?`preview:${match[1]}:${scope}`:scope;
+}
 const key = (scope: string) => `hdnd.draft.v1:${scope}`;
 export function readCheckpoint<T>(scope: string, validate: (value: unknown) => T): Checkpoint<T> | null {
   try {
