@@ -62,3 +62,18 @@ HTML độc lập hoặc bản HTML tải về không có `google.script.run` n�
 - Nếu thiếu quyền Drive/registry hoặc kho sao lưu không hợp lệ, dừng ở thông báo lỗi; việc truy cập nguồn đọc được không chứng minh quyền ghi đã có.
 
 Tham khảo [hợp đồng API](API.md), [bản đồ mã](REPO_MAP.md), [CURRENT_STATE](CURRENT_STATE.md) và [đồng bộ cấu hình](DONG_BO_CAU_HINH.md) để xem giới hạn và trạng thái triển khai. Candidate local hoặc test trên bản sao không xác nhận đã ghi thành công trong app đang mở.
+
+## Tính năng bổ sung 0.7.1 — đang kiểm thử trên PR #3
+
+**Lưu nhiều mẫu giao diện cá nhân.** Trong Danh sách, nhập tên mẫu rồi bấm **Lưu mẫu mới**. Một mẫu gồm cách bố trí cột đang hiển thị, tìm kiếm, bộ lọc, lọc riêng từng cột và quy tắc màu. Chọn mẫu bằng hộp **Mẫu giao diện** để nạp lại. Các nút Cập nhật mẫu/Xóa mẫu áp dụng cho mẫu đang chọn. Tối đa 20 mẫu **trên chính trình duyệt**; không tự xuất hiện trên thiết bị khác, không thay đổi bố trí chung.
+
+**Lọc từng cột.** Nhấn biểu tượng lọc nhỏ trên tiêu đề cột; nhập một phần giá trị cần tìm (hỗ trợ tiếng Việt không dấu). Các lọc kết hợp với nhau và với bộ lọc hiện có. Dải **Đang lọc theo cột** cho biết cột/giá trị nào đang lọc; nhấn × để bỏ từng lọc hoặc Bỏ tất cả lọc cột. Không sửa dữ liệu gốc.
+
+**Đổi màu theo điều kiện.** Trong Tùy chỉnh danh sách, mở phần Màu theo điều kiện; chọn cột, nhập giá trị chính xác cần so sánh và màu. Có tối đa 30 quy tắc; dòng được tô bằng quy tắc đầu tiên phù hợp. Chỉ là màu hiển thị trong trình duyệt, không định dạng trực tiếp Excel/Sheets.
+
+**Dành cho quản trị:** sau khi đăng nhập Google bằng tài khoản quản trị, trong ⚙ Tùy chọn chọn **Thay đổi và phê duyệt (quản trị)**. Trang này liệt kê nội dung mới, không còn và các ô đổi giá trị so với mốc đã duyệt. Bấm **Phê duyệt** và xác nhận để lưu snapshot hiện tại thành mốc mới (có revision, thời gian và lịch sử tối đa 20 metadata). Từ lần đọc dữ liệu tiếp theo, so sánh bắt đầu từ mốc mới. Không phê duyệt nếu chưa đọc thành công dữ liệu, có 0 dòng hoặc còn nháp.
+
+**Khóa sửa trong WebApp.** Ngay trên trang phê duyệt, quản trị chọn **Khóa sửa trên WebApp** hoặc **Mở sửa trên WebApp**. Khi khóa, khách không được sửa thử trong ứng dụng, nhưng vẫn xem/lọc. Đây **không** phải cài đặt bảo vệ phạm vi hoặc quyền chỉnh sửa trực tiếp trong file Google Sheets; quyền sửa nguồn phải quản lý tại Google.
+
+**Điều kiện kích hoạt:** PR #3 chưa phải production; các chức năng phê duyệt và khóa sửa yêu cầu Rules RTDB mới được kiểm tra và triển khai riêng. Mốc GitHub để hoàn nguyên phần mềm: `backup/pre-features-2026-10-16`; không dùng code rollback để khôi phục dữ liệu.
+
