@@ -62,12 +62,12 @@ describe('inline admin rights',()=>{
     expect(JSON.stringify(tree)).toContain('Được sửa');
     expect(save).not.toHaveBeenCalled();
   });
-  it('explains NQ/BC classification permission inline rather than hidden-fields accordion',()=>{
+  it('shows only permissions for editable cells actually present as list columns',()=>{
     const tree=render(vi.fn());
     const printed=JSON.stringify(tree);
     expect(printed).not.toContain('Các trường không hiển thị thành cột trong bảng');
-    expect(printed).toContain('Quyền sửa loại nội dung (NQ/BC)');
-    expect(nodes(tree).find(n=>n.type==='select'&&n.props?.['aria-label']==='Quyền cột loại nội dung')).toBeDefined();
+    expect(printed).not.toContain('Quyền sửa loại nội dung (NQ/BC)');
+    expect(nodes(tree).find(n=>n.type==='select'&&n.props?.['aria-label']==='Quyền cột loại nội dung')).toBeUndefined();
   });
   it('does not allow saving unchanged rules',()=>{
     const tree=render(vi.fn());
