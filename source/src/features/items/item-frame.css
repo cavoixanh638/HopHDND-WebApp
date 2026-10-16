@@ -127,3 +127,24 @@
 }
 .layout-save-alert > .muted { width: 100%; color: #845c59; }
 .layout-save-feedback { margin: 8px 0 12px; font-size: 13px; }
+
+/* The adjustable list/table viewport must never shrink the editing controls. */
+.item-list-card > .item-data-region {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-inline: auto;
+  min-width: 0;
+}
+.item-data-region .toolbar { flex-wrap: wrap; align-items: flex-end; }
+.item-data-region .toolbar > .field { min-width: min(150px,100%); }
+.item-data-region .search-field { flex: 1 1 260px; min-width: 0; }
+.item-data-region .search-field input { min-width: 0; }
+.item-data-region .card-header { flex-wrap: wrap; }
+.item-data-region .table-wrap { width: 100%; min-width: 0; overflow-x: auto; }
+.item-data-region .pagination { flex-wrap: wrap; }
+.layout-inline-error {
+  border: 1px solid #e9bdb8; border-left: 4px solid #b8463b;
+  padding: 10px 12px; border-radius: 8px; background: #fff1ef; color: #852f29;
+  line-height: 1.5; font-size: 13px;
+}
+.layout-inline-error span { display: block; margin-top: 4px; }
