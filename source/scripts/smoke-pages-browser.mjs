@@ -174,6 +174,16 @@ try{
       Math.abs(title?.width-card?.width)<3&&
       !!wrap&&wrap.scrollWidth>wrap.clientWidth;
   })()`,'Typing 500 did not resize and center page headers, controls and scrollable list');
+  // Anonymous browser must never save shared Firebase configuration. Ensure a
+  // rejected save visibly explains the reason beside the action, not far below.
+  const clickedSave=await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('.settings-mode-bar button')].find(b=>b.textContent?.includes('Lưu bố trí'));
+    if(!button||button.disabled)return false;
+    button.click();return true;
+  })()`);
+  if(!clickedSave)throw Error('Cannot press the layout save button after editing width');
+  await eventually(`document.querySelector('.layout-save-alert[role="alert"]')?.textContent?.includes('Chỉ quản trị')===true`,
+    'Rejected layout save has no immediately visible error near Save button');
   const backToAuto=await evaluate(`(()=>{
     const checkbox=[...document.querySelectorAll('.item-frame-controls input[type="checkbox"]')][0];
     if(!checkbox)return false;checkbox.click();return checkbox.checked;
@@ -187,7 +197,7 @@ try{
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
   const visual=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
-  console.log('BROWSER_SMOKE_PASS: 500px editable centered list+headers, auto reset, mock GViz blank cells, filters, presets and colors.');
+  console.log('BROWSER_SMOKE_PASS: 500px layout, visible rejected save feedback, auto reset, mock GViz blanks and list features.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
