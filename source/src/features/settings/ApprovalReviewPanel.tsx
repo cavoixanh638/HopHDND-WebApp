@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from 'react';
 import type {Item} from '../../../shared/types';
 import type {SheetConfig} from '../../data/sheet-config';
 import type {FirebaseController,ReviewBaseline} from '../../state/use-firebase';
-import {compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
+import {approvalIdentityWarnings,compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
 import {readSheet} from '../../data/sheets-repository';
 import {Modal} from '../../components/Modal';
 
@@ -17,6 +17,7 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
   const [confirm,setConfirm]=useState(false);
   const snapshot=useMemo(()=>snapshotFromItems(items,source.spreadsheetId+':'+source.gid),[items,source.spreadsheetId,source.gid]);
   const changes=useMemo(()=>baseline?compareApprovedSnapshot(baseline.snapshot,snapshot):[],[baseline,snapshot]);
+  const identityWarnings=useMemo(()=>approvalIdentityWarnings(snapshot),[snapshot]);
   const added=changes.filter(c=>c.kind==='added').length;
   const removed=changes.filter(c=>c.kind==='removed').length;
   const modified=changes.filter(c=>c.kind==='modified').length;
@@ -42,6 +43,8 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
       const fresh=await readSheet(source);
       if(!fresh.items.length)throw new Error('Nguồn vừa đọc trả về 0 nội dung; không phê duyệt.');
       const verified=snapshotFromItems(fresh.items,source.spreadsheetId+':'+source.gid);
+      if(approvalIdentityWarnings(verified).length)
+        throw new Error('Nguồn đang có mã nội dung thiếu hoặc trùng, chưa thể phê duyệt an toàn.');
       if(JSON.stringify(verified.rows)!==JSON.stringify(snapshot.rows))
         throw new Error('Dữ liệu nguồn đã thay đổi kể từ lần đọc trên giao diện. Hãy bấm Đọc lại dữ liệu Sheets, xem các thay đổi mới rồi phê duyệt.');
       const next=await firebase.approveReview(source,verified,baseline?.revision??0,changes.length);
@@ -64,6 +67,9 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
       </button>
     </div>
     {error&&<p className="error-text" role="alert">{error}</p>}
+    {identityWarnings.length>0&&<details className="unknown-note" open><summary>{identityWarnings.length} cảnh báo định danh — tạm khóa phê duyệt</summary>
+      <ul>{identityWarnings.map((message,index)=><li key={index}>{message}</li>)}</ul>
+      <p>Hãy bổ sung mã nội dung duy nhất trong Sheets rồi đọc lại trước khi xác nhận mốc.</p></details>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     <p className="muted">Nguồn: {source.spreadsheetId} · GID {source.gid} · Đọc dữ liệu lần cuối: {loadedAt||'Chưa đọc thành công'}</p>
     {!loaded?<p className="notice">Chưa có kết quả đọc mốc. Hãy xác thực quản trị và bấm Đọc lại mốc đã duyệt.</p>:
@@ -83,7 +89,7 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
       </article>)}</div>}
     </>}
     <div className="top-actions">
-      <button type="button" className="button primary" disabled={!firebase.isAdmin||!firebase.connected||!loaded||busy||!loadedAt||!items.length||hasDrafts} onClick={()=>setConfirm(true)}>
+      <button type="button" className="button primary" disabled={!firebase.isAdmin||!firebase.connected||!loaded||busy||!loadedAt||!items.length||hasDrafts||identityWarnings.length>0} onClick={()=>setConfirm(true)}>
         {baseline?'Phê duyệt dữ liệu hiện tại và đặt mốc mới':'Tạo mốc phê duyệt ban đầu'}
       </button>
       {hasDrafts&&<span className="muted">Cần lưu hoặc bỏ nháp trên trình duyệt trước khi phê duyệt.</span>}
