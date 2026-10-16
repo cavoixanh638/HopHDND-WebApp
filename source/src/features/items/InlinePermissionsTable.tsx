@@ -130,6 +130,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
         <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
         <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button>
       </div>
+    </div>
     <div className="table-wrap permission-table-scroll" tabIndex={0} aria-label="Bảng phân quyền có thể cuộn ngang"><table className="data-table inline-permission-table">
       <thead><tr><th scope="col">Nội dung / Quyền dòng</th>{cols.map(c=>{
         const key=c.key as EditableField;return <th scope="col" key={key}><span className="permission-header-title">{c.label}</span>
@@ -150,6 +151,5 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
         </td>;})}
       </tr>)}{!items.length&&<tr><td colSpan={Math.max(1,cols.length+1)} className="empty">Chưa có nội dung trong bộ lọc này. Bạn vẫn có thể cấp quyền cho cả cột ở phía trên.</td></tr>}</tbody>
     </table></div>
-    </div>
   </section>;
 }
