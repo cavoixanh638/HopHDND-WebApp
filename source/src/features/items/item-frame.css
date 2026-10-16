@@ -17,6 +17,14 @@
   overflow-x: auto;
 }
 
+.item-frame-controls {
+  display: grid; gap: 9px; padding: 12px; margin: 12px 0;
+  background: #f4f8f5; border: 1px solid #d9e8dd; border-radius: 8px;
+}
+.item-frame-controls > input[type="number"] { width: min(100%, 320px); font-size: 14px; }
+.item-frame-controls > label.field { font-size: 13px; font-weight: 700; }
+.item-frame-controls > .layout-visibility { font-size: 12px; }
+.item-frame-controls > .muted { margin: 0; line-height: 1.5; }
 /* Shared customization toolbar: one place to switch between layout and rights. */
 .customize-mode-toolbar {
   display: flex; align-items: center; justify-content: space-between;
