@@ -347,7 +347,8 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell.wide-table-page > main,
 .app-shell.wide-table-page > .app-footer,
 .app-shell.wide-table-page > p.muted {
-  width: min(100%, max(920px, var(--list-frame-width, 100%)));
+  /* 38px compensates for list-card padding so a requested 1500px data viewport can actually fit. */
+  width: min(100%, max(920px, calc(var(--list-frame-width, 100%) + 38px)));
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
