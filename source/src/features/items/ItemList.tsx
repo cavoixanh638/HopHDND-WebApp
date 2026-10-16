@@ -18,17 +18,22 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import {ListViewTools} from './ListViewTools';
+import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout)=>Promise<void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void> }) {
-  const [query, setQuery] = useState('');
-  const [kind, setKind] = useState('all');
-  const [lifecycle, setLifecycle] = useState('active');
-  const [leader, setLeader] = useState('all');
-  const [status, setStatus] = useState('all');
+  const selectedView=loadListViews(sourceKey).find(v=>v.id===loadActiveListView(sourceKey));
+  const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(sourceKey));
+  const [query, setQuery] = useState(selectedView?.filters.query??'');
+  const [kind, setKind] = useState(selectedView?.filters.kind??'all');
+  const [lifecycle, setLifecycle] = useState(selectedView?.filters.lifecycle??'active');
+  const [leader, setLeader] = useState(selectedView?.filters.leader??'all');
+  const [status, setStatus] = useState(selectedView?.filters.status??'all');
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
-  const [applied, setApplied] = useState(() => initialLayout??loadItemLayout(sourceKey));
-  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
+  const [applied, setApplied] = useState(() => selectedView?.layout??initialLayout??loadItemLayout(sourceKey));
+  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(sourceKey))setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(`items:${sourceKey}`,applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
@@ -75,10 +80,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const validateAndSaveLayout=async()=>{if(locked||savingRef.current||!dirty||!allowLayout)return;savingRef.current=true;setSaving(true);try{const valid=validateItemLayout(layout);if(onPersistLayout)await onPersistLayout(valid);else if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí.');setApplied(valid);setLayout(valid);clearCheckpoint();setLayoutError('');}catch(cause){setLayoutError(cause instanceof Error?cause.message:'Không lưu được bố trí.');}finally{savingRef.current=false;setSaving(false);}};
   const index = useMemo(() => createSearchIndex(items), [items]);
   const filtered = useMemo(() => items.filter(item =>
-    matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
+    matchesColumnFilters(item,columnFilters) && matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
     (leader === 'all' || item.vpLeader === leader) && (status === 'all' || item.progressCouncil === status) &&
     (lifecycle === 'all' || (lifecycle === 'archived' ? !!item.archivedAt : !item.archivedAt && (lifecycle === 'active' ? !item.isDropped : item.isDropped)))
-  ), [items, query, index, kind, lifecycle, leader, status]);
+  ), [items, query, index, kind, lifecycle, leader, status, columnFilters]);
   const pages = Math.max(1, Math.ceil(filtered.length / 50));
   const currentPage = Math.min(page, pages - 1);
   const rows = filtered.slice(currentPage * 50, currentPage * 50 + 50);
@@ -92,6 +97,15 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const tableWidth=Math.max(Math.min(6000,Math.max(600,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
   const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
+  const applyView=(view:SavedListView|null):boolean=>{
+    if(dirty||pendingData)return false;
+    const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
+    setQuery(filters.query);setKind(filters.kind);setLifecycle(filters.lifecycle);setLeader(filters.leader);
+    setStatus(filters.status);setColumnFilters({...filters.columns});
+    setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(sourceKey));
+    setPage(0);return true;
+  };
+  const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(sourceKey,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   const frameWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:320))}px`;
   return <section className="card item-list-card" style={{width:frameWidth}}>
     {customizing&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||cannotSaveData||(!dirty&&!pendingData)} onClick={()=>void save()}>{cannotSaveData?blockedSaveLabel:saveActionLabel}</button>}</div></div><p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
