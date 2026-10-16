@@ -1,0 +1,33 @@
+import {describe,it,expect,vi} from 'vitest';
+import {createDemoItems} from '../src/data/demo-items';
+import {ColumnFilterCell,filterChoices,filterValue} from '../src/features/items/ColumnFilterCell';
+import {matchesColumnFilters} from '../src/data/list-views';
+const items=createDemoItems(3);
+describe('always-visible column filter row',()=>{
+  it('uses a search input for long free text columns and a select for concise categories',()=>{
+    const text=ColumnFilterCell({field:'content',label:'Nội dung',items,value:'',onChange:vi.fn()});
+    const search=text.props.children.props.children[0];
+    expect(search.type).toBe('input');
+    expect(search.props['aria-label']).toBe('Lọc cột Nội dung');
+    expect(filterChoices(items,'content')).toBeNull();
+    const drop=ColumnFilterCell({field:'isDropped',label:'Trình / Rút',items,value:'',onChange:vi.fn()});
+    const selector=drop.props.children.props.children[0];
+    expect(selector.type).toBe('select');
+    expect(filterChoices(items,'isDropped')).toEqual(['Đang trình','Đã rút','Lưu trữ']);
+  });
+  it('mirrors readable Trình / Rút cell values instead of filtering raw booleans',()=>{
+    const a=items[0];
+    expect(filterValue({...a,isDropped:false,archivedAt:''},'isDropped')).toBe('Đang trình');
+    expect(filterValue({...a,isDropped:true,archivedAt:''},'isDropped')).toBe('Đã rút');
+    expect(matchesColumnFilters({...a,isDropped:true,archivedAt:''},{isDropped:'Đã rút'})).toBe(true);
+    expect(matchesColumnFilters({...a,isDropped:false,archivedAt:''},{isDropped:'Đã rút'})).toBe(false);
+  });
+  it('reset button removes one column filter without modifying other filter values',()=>{
+    const change=vi.fn();
+    const element=ColumnFilterCell({field:'content',label:'Nội dung',items,value:'test',onChange:change});
+    const clear=element.props.children.props.children[1];
+    expect(clear.props['aria-label']).toBe('Bỏ lọc cột Nội dung');
+    clear.props.onClick();
+    expect(change).toHaveBeenCalledWith('');
+  });
+});
