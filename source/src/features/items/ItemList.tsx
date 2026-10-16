@@ -105,7 +105,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const statuses = orderValues([...new Set(items.map(i => i.progressCouncil))],catalog.options.progressCouncil);
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const tableWidth=Math.max(Math.min(6000,Math.max(600,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
+  const tableWidth=Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
   const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
