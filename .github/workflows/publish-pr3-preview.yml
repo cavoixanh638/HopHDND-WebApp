@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 18cbc5aeda840c1e33c7f974891fccdf79fd26be
+          ref: bd1a14225bf38a8c1714af350900be511ae778c8
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -64,20 +64,22 @@ jobs:
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
           if(!html.includes('Cột và độ rộng bảng'))throw Error('Old layout UI detected');
           if(!html.includes('Độ rộng vùng danh sách (px)'))throw Error('Viewport input absent');
-          if(!html.includes('Không lưu được bố trí.'))throw Error('Save feedback is absent');
+          if(!html.includes('Không lưu được cách hiển thị.'))throw Error('Save feedback is absent');
           if(!html.includes('Enter hoặc rời ô để áp dụng'))throw Error('Deferred width input hint absent');
           if(!html.includes('layout-inline-error'))throw Error('In-panel width warning missing');
           if(!html.includes('item-data-region'))throw Error('Separated table viewport missing');
-          if(!html.includes('Giải quyết xung đột bố trí')||!html.includes('Xác nhận lựa chọn và lưu'))throw Error('Explicit Firebase conflict resolution UI absent');
-          if(!html.includes('item-column-filter-row')||!html.includes('item-sticky-search-controls'))throw Error('Sticky filter row and global search missing');
+          if(!html.includes('Giải quyết xung đột cách hiển thị')||!html.includes('Xác nhận lựa chọn và lưu'))throw Error('Explicit Firebase conflict resolution UI absent');
+          if(!html.includes('item-column-filter-row')||!html.includes('item-sticky-search-controls'))throw Error('Sticky column search filters missing');
           if(!html.includes('preview:'))throw Error('Preview draft isolation missing');
           if(!html.includes('item-filter-status-slot')||!html.includes('scrollbar-gutter:stable'))throw Error('Stable filtering layout absent');
           if(!html.includes('guest-signin')||!html.includes('Sửa thử nội dung'))throw Error('Guest role-specific controls absent');
           if(!html.includes('Tìm kiếm cột'))throw Error('Subtle direct column search absent');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — GRID STICKY (16/10/2026) · Lọc dưới cột, tiêu đề cố định, lựa chọn khi Firebase xung đột. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          if(!html.includes('permission-action-bar')||!html.includes('permission-switch-confirm'))throw Error('Top save controls or safe switch missing');
+          if(!html.includes('Hiển thị bảng'))throw Error('New Vietnamese layout label missing');
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — UX (17/10/2026) · Tìm kiếm dưới cột, không giới hạn 50 dòng, lưu quyền ngay trên bảng và chuyển trang ổn định. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — GRID STICKY'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — UX'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
