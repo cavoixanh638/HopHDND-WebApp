@@ -148,3 +148,34 @@
   line-height: 1.5; font-size: 13px;
 }
 .layout-inline-error span { display: block; margin-top: 4px; }
+
+/* Editing controls retain usable width when the data preview is 320–500px. */
+.item-list-card > .settings-mode-bar {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+.item-list-card > .settings-mode-bar > div:first-child {
+  flex: 1 1 320px;
+  min-width: min(100%,320px);
+}
+.item-list-card > .settings-mode-bar > .top-actions {
+  display: flex;
+  flex: 1 1 460px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.item-list-card > .settings-mode-bar > .top-actions > .button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  max-width: 100%;
+}
+@media (max-width: 800px) {
+  .item-list-card > .settings-mode-bar > div:first-child,
+  .item-list-card > .settings-mode-bar > .top-actions {
+    flex: 1 1 100%;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}
