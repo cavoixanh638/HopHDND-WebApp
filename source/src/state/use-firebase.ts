@@ -8,7 +8,7 @@ import type { ConfigSection } from '../data/shared-config';
 import { validateCatalog, type CatalogConfig } from '../data/catalogs';
 import { validateReportLayout, type ReportLayout } from '../data/report-preferences';
 import { validateItemLayout, type ItemLayout } from '../data/item-preferences';
-import {mergeItemLayout} from '../data/item-layout-merge';
+import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-merge';
 import type {SheetConfig} from '../data/sheet-config';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
@@ -73,7 +73,7 @@ export function useFirebase(){
   const admin=firebaseAdmin(user);
   const login=async()=>{setError('');await signInWithPopup(auth,new GoogleAuthProvider());};
   const logout=async()=>{await signOut(auth);};
-  const saveProfile=async(section:ConfigSection,value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown)=>{
+  const saveProfile=async(section:ConfigSection,value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown,resolutions:LayoutConflictChoices={})=>{
     if(!firebaseAdmin(auth.currentUser))throw new Error('Chỉ tài khoản Google quản trị được lưu bố trí và danh mục.');
     if(!profileReady)throw new Error('Chưa đọc được cấu hình gốc; không khởi tạo hoặc ghi đè. Đọc lại danh mục và bố trí trước.');
     if(!connected)throw new Error('Đang mất kết nối. Giữ phần sửa và thử lưu khi có mạng.');
@@ -103,7 +103,7 @@ export function useFirebase(){
           if(canMerge&&original&&edited) {
             const live=profileFrom({...JSON.parse(String(current.payload)),revision:serverRevision});
             if(!live)throw new Error('Không đọc được cấu hình Firebase hiện tại.');
-            const merged=mergeItemLayout(original,edited,live.items);
+            const merged=mergeItemLayout(original,edited,live.items,resolutions);
             proposed=profileFrom({...live,items:merged,revision:serverRevision+1});
           } else {
             if(serverRevision!==expected)return undefined;
