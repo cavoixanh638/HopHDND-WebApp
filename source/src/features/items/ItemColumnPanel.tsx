@@ -22,10 +22,23 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
     onChange({ ...layout, columns });
   };
 
+  const invalidTable=!Number.isInteger(layout.tableWidth)||layout.tableWidth<500||layout.tableWidth>6000;
+  const invalidColumns=layout.columns.filter(c=>!Number.isInteger(c.width)||c.width<60||c.width>1600);
+  const repairOldWidths=()=>onChange({
+    ...layout,
+    tableWidth:invalidTable?1500:layout.tableWidth,
+    columns:layout.columns.map(c=>invalidColumns.some(b=>b.key===c.key)?{...c,width:c.key==='content'?440:c.key==='note'?240:170}:c),
+  });
   return (
     <details className="card item-column-panel">
       <summary>Cột và độ rộng bảng</summary>
       <div className="settings-grid">
+        {(invalidTable||invalidColumns.length>0)&&<div className="layout-invalid-recovery" role="alert">
+          <strong>Có độ rộng cũ chưa hợp lệ:</strong>
+          {invalidTable&&<span>Phần cột bên trong = {layout.tableWidth} px (hợp lệ 500–6000 px).</span>}
+          {invalidColumns.length>0&&<span>{invalidColumns.length} cột có độ rộng ngoài giới hạn 60–1600 px.</span>}
+          <button type="button" className="button ghost" onClick={repairOldWidths}>Sửa các độ rộng cũ chưa hợp lệ</button>
+        </div>}
         <div className="item-frame-controls">
           <label className="field" htmlFor="item-visible-frame-width">
             Độ rộng vùng danh sách (px) — Enter hoặc rời ô để áp dụng
@@ -41,7 +54,7 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
           </label>
           <p className="muted">{layout.frameWidth==='auto'||layout.frameWidth===undefined
             ?'Đang tự động lấp đầy vùng làm việc. Nhập một số rồi nhấn Enter hoặc rời ô để áp dụng.'
-            :`Vùng danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Tiêu đề, bộ lọc và các khung sẽ căn giữa theo cùng độ rộng; bảng cuộn ngang nếu cột rộng hơn.`}</p>
+            :`Vùng danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Nhấn Enter hoặc rời ô để áp dụng độ rộng mới; các cột sẽ cuộn ngang nếu rộng hơn.`}</p>
         </div>
         <details className="item-layout-advanced">
           <summary>Độ rộng tối thiểu phần cột bên trong (nâng cao)</summary>
