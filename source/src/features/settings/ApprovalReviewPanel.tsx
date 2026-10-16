@@ -1,0 +1,94 @@
+import {useEffect,useMemo,useState} from 'react';
+import type {Item} from '../../../shared/types';
+import type {SheetConfig} from '../../data/sheet-config';
+import type {FirebaseController,ReviewBaseline} from '../../state/use-firebase';
+import {compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
+import {Modal} from '../../components/Modal';
+
+export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,onClose}:{
+  source:SheetConfig;items:Item[];loadedAt:string;hasDrafts:boolean;firebase:FirebaseController;onClose:()=>void;
+}){
+  const [baseline,setBaseline]=useState<ReviewBaseline|null>(null);
+  const [loaded,setLoaded]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const [notice,setNotice]=useState('');
+  const [confirm,setConfirm]=useState(false);
+  const snapshot=useMemo(()=>snapshotFromItems(items,source.spreadsheetId+':'+source.gid),[items,source.spreadsheetId,source.gid]);
+  const changes=useMemo(()=>baseline?compareApprovedSnapshot(baseline.snapshot,snapshot):[],[baseline,snapshot]);
+  const added=changes.filter(c=>c.kind==='added').length;
+  const removed=changes.filter(c=>c.kind==='removed').length;
+  const modified=changes.filter(c=>c.kind==='modified').length;
+  const read=async()=>{
+    if(!firebase.isAdmin)return;
+    setBusy(true);setError('');
+    try{const found=await firebase.readReview(source);setBaseline(found);setLoaded(true);}
+    catch(cause){setLoaded(false);setError(cause instanceof Error?cause.message:'Không đọc được mốc đã duyệt.');}
+    finally{setBusy(false);}
+  };
+  useEffect(()=>{void read();},[source.url,firebase.isAdmin]);
+  const lock=async()=>{
+    setBusy(true);setError('');setNotice('');
+    try{await firebase.saveEditingLock(!firebase.editingLocked);
+      setNotice(firebase.editingLocked?'Đã mở quyền sửa thử trong WebApp cho người được cấp quyền.':'Đã khóa chế độ sửa thử trên WebApp với các tài khoản không phải quản trị.');}
+    catch(cause){setError(cause instanceof Error?cause.message:'Không đổi được trạng thái khóa.');}
+    finally{setBusy(false);}
+  };
+  const approve=async()=>{
+    setBusy(true);setError('');setNotice('');
+    try{
+      const next=await firebase.approveReview(source,snapshot,baseline?.revision??0,changes.length);
+      setBaseline(next);setLoaded(true);setConfirm(false);
+      setNotice('Mốc phê duyệt '+next.revision+' đã được lưu. Hệ thống bắt đầu theo dõi từ mốc vừa phê duyệt.');
+    }catch(cause){setConfirm(false);setError(cause instanceof Error?cause.message:'Không thể phê duyệt. Bản mốc cũ được giữ.');}
+    finally{setBusy(false);}
+  };
+  return <section className="card" aria-label="Thay đổi từ lần phê duyệt">
+    <div className="card-header"><div><h3>Kiểm soát thay đổi và phê duyệt</h3>
+      <p className="muted">Chỉ tài khoản quản trị. So sánh dữ liệu Google Sheets đang hiển thị với mốc đã duyệt gần nhất.</p></div>
+      <div className="top-actions"><button type="button" className="button ghost" onClick={()=>void read()} disabled={busy}>Đọc lại mốc đã duyệt</button><button type="button" className="button ghost" onClick={onClose}>Về tổng quan</button></div>
+    </div>
+    <div className="approval-control">
+      <div><strong>Quyền chỉnh sửa của người khác trong WebApp</strong>
+        <p className="muted">{firebase.editingLocked?'Đang khóa: người khác chỉ xem, lọc và tra cứu.':'Đang mở: người được cấp quyền có thể sửa thử trên trình duyệt.'}</p>
+        <p className="muted">Không khóa quyền chỉnh sửa trực tiếp trong file Google Sheets; muốn khóa file nguồn phải thiết lập quyền tại Google.</p></div>
+      <button type="button" className={'button '+(firebase.editingLocked?'primary':'danger')} disabled={busy||!firebase.controlReady||!firebase.connected} onClick={()=>void lock()}>
+        {firebase.editingLocked?'Mở sửa trên WebApp':'Khóa sửa trên WebApp'}
+      </button>
+    </div>
+    {error&&<p className="error-text" role="alert">{error}</p>}
+    {notice&&<p className="notice" role="status">{notice}</p>}
+    <p className="muted">Nguồn: {source.spreadsheetId} · GID {source.gid} · Đọc dữ liệu lần cuối: {loadedAt||'Chưa đọc thành công'}</p>
+    {!loaded?<p className="notice">Chưa có kết quả đọc mốc. Hãy xác thực quản trị và bấm Đọc lại mốc đã duyệt.</p>:
+      !baseline?<p className="notice">Chưa có lần phê duyệt đầu tiên cho nguồn này. Tạo mốc ban đầu để bắt đầu so sánh các lần đọc tiếp theo.</p>:
+      <p className="notice"><strong>Mốc phê duyệt #{baseline.revision}</strong> · {new Date(baseline.approvedAt).toLocaleString('vi-VN')} · {baseline.approvedBy}</p>}
+    {loaded&&baseline&&<><div className="approval-summary">
+      <span><strong>{changes.length}</strong> nội dung có thay đổi</span><span>{added} mới</span><span>{modified} chỉnh sửa</span><span>{removed} không còn trong nguồn</span>
+    </div>
+    {changes.length===0?<p className="muted">Không có thay đổi so với mốc đã phê duyệt.</p>:
+      <div className="approval-differences">{changes.map(row=><article className="approval-row" key={row.key}>
+        <strong>{row.code}</strong> <span className="status-pill">{row.kind==='added'?'Mới':row.kind==='removed'?'Không còn':'Đã chỉnh sửa'}</span>
+        {row.kind!=='modified'&&<p className="muted">{row.kind==='removed'?'Nội dung không còn xuất hiện trong bản Google Sheets mới.':'Nội dung mới so với mốc đã duyệt.'}</p>}
+        {row.changes.map(change=><div className="approval-change" key={change.field}>
+          <strong>{change.label}</strong><div><span className="muted">Trước:</span> {change.before||'—'}</div>
+          <div><span className="muted">Hiện tại:</span> {change.after||'—'}</div>
+        </div>)}
+      </article>)}</div>}
+    </>}
+    <div className="top-actions">
+      <button type="button" className="button primary" disabled={!firebase.isAdmin||!firebase.connected||!loaded||busy||!loadedAt||!items.length||hasDrafts} onClick={()=>setConfirm(true)}>
+        {baseline?'Phê duyệt dữ liệu hiện tại và đặt mốc mới':'Tạo mốc phê duyệt ban đầu'}
+      </button>
+      {hasDrafts&&<span className="muted">Cần lưu hoặc bỏ nháp trên trình duyệt trước khi phê duyệt.</span>}
+    </div>
+    {baseline?.history.length>0&&<details><summary>Lịch sử các lần phê duyệt ({baseline.history.length} mốc gần nhất)</summary>
+      <ul>{baseline.history.map(entry=><li key={entry.revision}>Mốc #{entry.revision}: {new Date(entry.at).toLocaleString('vi-VN')} · {entry.changedCount} nội dung thay đổi trước khi duyệt</li>)}</ul>
+    </details>}
+    {confirm&&<Modal title="Xác nhận phê duyệt mốc dữ liệu" onClose={()=>{if(!busy)setConfirm(false);}}>
+      <div className="modal-body"><p>Bạn sắp xác nhận bản dữ liệu đã đọc lúc <strong>{loadedAt}</strong> là mốc mới.</p>
+        <p>{baseline?'Có '+changes.length+' nội dung thay đổi kể từ mốc trước.':'Đây là lần phê duyệt đầu tiên.'} Sau khi lưu thành công, thống kê thay đổi sẽ bắt đầu lại từ bản này.</p>
+        <p className="muted">Thao tác chỉ lưu mốc trên Firebase; không sửa Google Sheets. Những thay đổi phát sinh sau thời điểm đọc dữ liệu có thể chưa được tính.</p></div>
+      <div className="modal-footer"><button type="button" className="button ghost" disabled={busy} onClick={()=>setConfirm(false)}>Chưa phê duyệt</button><button type="button" className="button primary" disabled={busy} onClick={()=>void approve()}>Xác nhận phê duyệt</button></div>
+    </Modal>}
+  </section>;
+}
