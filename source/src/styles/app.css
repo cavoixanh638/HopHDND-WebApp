@@ -322,3 +322,15 @@ body:not(.is-printing) #print-target {  display:none!important}
 .color-rose, .color-rose td { background:#fae5e5; }
 .color-blue, .color-blue td { background:#e5effb; }
 .item-data-table tr.color-row td { transition: background .12s ease; }
+
+/* Admin approval review: compact comparisons without changing the source sheet */
+.approval-control { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px; margin:12px 0; border:1px solid #bad2c4; border-radius:9px; background:#f5faf6; }
+.approval-control p { margin:6px 0; font-size:12px; }
+.approval-summary { display:flex; flex-wrap:wrap; gap:12px; padding:12px; margin-bottom:12px; background:#f1f5f2; border-radius:8px; font-size:13px; }
+.approval-summary strong { font-size:19px; color:var(--green); }
+.approval-differences { max-height:60vh; overflow-y:auto; display:grid; gap:8px; margin:12px 0; }
+.approval-row { padding:12px; border:1px solid var(--line); border-radius:9px; }
+.approval-row > strong { margin-right:10px; }
+.approval-change { display:grid; grid-template-columns:minmax(100px,150px) 1fr 1fr; gap:10px; padding:8px 0; border-bottom:1px solid #ecf1ed; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.approval-change:last-child { border-bottom:0; }
+@media(max-width:700px){.approval-change{grid-template-columns:1fr}.approval-control{align-items:flex-start;}}
