@@ -51,10 +51,10 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     items.push({
       recordId: `${source}:row:${rowNumber}`, displayCode: code || `Dòng ${rowNumber} (thiếu mã)`,
       stt: Number(ordinal) || rowNumber - headerIndex - 1, documentKind: kind,
-      content: content || '(Chưa có nội dung)', department: values[3] || 'Chưa phân công', type: values[4],
+      content, department: values[3], type: values[4],
       partyLevel: values[5], progressParty: values[6], progressBuild: values[7], progressCouncil: values[8],
-      specialist: values[9] || 'Chưa phân công', room: values[10] || 'Chưa phân công',
-      vpLeader: values[11] || 'Chưa phân công', ubndLeader: values[12] || 'Chưa phân công',
+      specialist: values[9], room: values[10],
+      vpLeader: values[11], ubndLeader: values[12],
       specificProgress: values[13], note: values[14],
       isDropped: ['rut', 'x', 'true', '1', 'khong trinh nua'].includes(drop), archivedAt: null, revision: 0,
     });
