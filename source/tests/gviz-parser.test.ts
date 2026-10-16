@@ -80,6 +80,16 @@ describe('parseGvizPayload', () => {
     expect(result.items[0].isDropped).toBe(false);
   });
 
+  it('preserves truly blank Sheet cells without inventing assignment or content text', () => {
+    const input=values('', 9, '', '', 'QPPL');
+    input[9]='';input[10]='';input[11]='';input[12]='';input[14]='';
+    const result=parseGvizPayload(payload([header(),row(input)]),'blank-sheet');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({content:'',department:'',specialist:'',room:'',vpLeader:'',ubndLeader:'',note:''});
+    expect(result.items[0].displayCode).toContain('thiếu mã');
+    expect(result.warnings.join(' ')).toContain('thiếu mã');
+  });
+
   it('returns no items when the sheet contains a header and no data rows', () => {
     expect(parseGvizPayload(payload([header()]), 'empty-sheet').items).toEqual([]);
   });
