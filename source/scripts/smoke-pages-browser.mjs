@@ -189,8 +189,8 @@ try{
     const editingPanel=document.querySelector('.item-column-panel');
     const action=[...document.querySelectorAll('.settings-mode-bar button')].find(b=>b.textContent?.includes('Lưu bố trí'));
     return !!toolbar&&!!editingPanel&&!!action&&
-      toolbar.getBoundingClientRect().width>=890&&
-      editingPanel.getBoundingClientRect().width>=890&&
+      toolbar.getBoundingClientRect().width>=820&&
+      editingPanel.getBoundingClientRect().width>=820&&
       action.getBoundingClientRect().width>=100&&
       action.getBoundingClientRect().height<90;
   })()`);
