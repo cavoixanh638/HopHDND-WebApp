@@ -110,3 +110,13 @@
   .permission-stats { margin-top: 10px; }
   .permission-action-bar .top-actions { justify-content: flex-start; }
 }
+
+.layout-save-alert {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;
+  padding: 12px 14px; margin: 8px 0 12px;
+  color: #7a2622; background: #fff0ee; border: 1px solid #e9bdb8;
+  border-left: 4px solid #b8463b; border-radius: 8px;
+  font-size: 13px; line-height: 1.55;
+}
+.layout-save-alert > .muted { width: 100%; color: #845c59; }
+.layout-save-feedback { margin: 8px 0 12px; font-size: 13px; }
