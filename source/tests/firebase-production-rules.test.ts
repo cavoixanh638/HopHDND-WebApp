@@ -1,7 +1,10 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update} from 'firebase/database';
+import {get,ref,set,update,runTransaction} from 'firebase/database';
+import {defaultItemLayout} from '../src/data/item-preferences';
+import {defaultReportLayout} from '../src/data/report-preferences';
+import {catalogFromItems} from '../src/data/catalogs';
 import type {User} from 'firebase/auth';
 import {FirebaseRepository,type CellPermissions} from '../src/data/firebase-repository';
 import {createDemoItems} from '../src/data/demo-items';
@@ -73,6 +76,27 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
       approvedAt:new Date().toISOString(),approvedBy:adminClaims.email,changedCount:0,payload:'{}',historyJson:'[]'};
     await assertSucceeds(set(ref(a as never,path),baseline));
     await assertFails(set(ref(a as never,path),baseline));
+  });
+
+  it('saves exactly the 1800px list layout as admin and keeps catalog and report settings intact',async()=>{
+    const a=admin();
+    const baseline={revision:1,items:defaultItemLayout(),reports:defaultReportLayout(),catalogs:catalogFromItems(createDemoItems(2))};
+    await assertSucceeds(set(ref(a as never,'hdnd/profile'),{revision:1,payload:JSON.stringify(baseline)}));
+    const draft={...defaultItemLayout(),frameWidth:1800};
+    const result=await assertSucceeds(runTransaction(ref(a as never,'hdnd/profile'),current=>{
+      if(!current||current.revision!==1)return;
+      const previous=JSON.parse(current.payload);
+      const updated={...previous,items:draft,revision:2};
+      return {revision:2,payload:JSON.stringify(updated)};
+    },{applyLocally:false}));
+    expect(result.committed).toBe(true);
+    const saved=(await get(ref(a as never,'hdnd/profile'))).val();
+    const payload=JSON.parse(saved.payload);
+    expect(payload.items.frameWidth).toBe(1800);
+    expect(payload.catalogs).toEqual(baseline.catalogs);
+    expect(payload.reports).toEqual(baseline.reports);
+    expect(saved.revision).toBe(2);
+    await assertFails(runTransaction(ref(guest('editor') as never,'hdnd/profile'),current=>({...current,revision:3})));
   });
 
   it('preserves cell priority and permits new Sheets-only row/cell permission entries for admin',async()=>{
