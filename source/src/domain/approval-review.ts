@@ -64,7 +64,7 @@ export function approvalIdentityWarnings(snapshot:ReviewSnapshot):string[]{
   const codes=new Set<string>(),warnings:string[]=[];
   for(const row of snapshot.rows){
     const code=row.displayCode.trim();
-    if(!code||/^Dòng\\s+\\d+\\s*\\(thiếu mã\\)$/i.test(code))
+    if(!code||(code.startsWith('Dòng ')&&code.includes('(thiếu mã)')))
       warnings.push('Có dòng thiếu mã: '+row.recordId);
     else if(codes.has(code))warnings.push('Mã trùng trong nguồn: '+code);
     codes.add(code);
