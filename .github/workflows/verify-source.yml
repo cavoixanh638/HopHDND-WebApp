@@ -42,6 +42,18 @@ jobs:
         run: npm run build:pages
       - name: Verify build exists
         run: test -s dist-pages/index.html
+      - name: Build Pages test artifact (isolated Firebase emulator configuration)
+        run: npm run build:pages:test
+      - name: Browser smoke with mock Sheets and headless Chrome
+        run: node scripts/smoke-pages-browser.mjs
+      - name: Preserve browser smoke screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-browser-smoke-failure
+          path: source/hophdnd-ui-smoke-failure.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Preserve Pages HTML for inspection
         uses: actions/upload-artifact@v4
         with:
