@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 3ff24b1c2f65821ee020c2607862f6d6bcd83ced
+          ref: 920a3f494810cb73cfe890395cf34ea2713dd16d
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -58,31 +58,33 @@ jobs:
           node --input-type=module <<'NODE'
           import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
           const src='candidate/source/dist-pages/index.html';
-          const dest='site/preview/pr-3/index.html';
+          const dest='site/preview/pr-3-ui-v2/index.html';
           const html=readFileSync(src,'utf8');
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 · Chỉ thử giao diện. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
-          mkdirSync('site/preview/pr-3',{recursive:true});
+          if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
+          if(!html.includes('Cột và độ rộng bảng'))throw Error('UI V2 column label absent');
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — UI V2 (16/10/2026) · Sửa khung bảng và ô trống · Chỉ thử giao diện. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          mkdirSync('site/preview/pr-3-ui-v2',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('BẢN XEM TRƯỚC PR #3'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — UI V2'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
-          test -s site/preview/pr-3/index.html
-      - name: Commit only preview/pr-3/index.html to main (never alter live index.html)
+          test -s site/preview/pr-3-ui-v2/index.html
+      - name: Commit only preview/pr-3-ui-v2/index.html to main (never alter live index.html)
         shell: bash
         run: |
           set -euo pipefail
           git -C site config user.name "github-actions[bot]"
           git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C site add -- preview/pr-3/index.html
+          git -C site add -- preview/pr-3-ui-v2/index.html
           changed="$(git -C site diff --cached --name-only)"
-          if [ "$changed" != "preview/pr-3/index.html" ]; then
+          if [ "$changed" != "preview/pr-3-ui-v2/index.html" ]; then
             echo "::error::Unexpected staged paths: $changed"
             exit 1
           fi
           if git -C site diff --cached --quiet; then
-            echo "Preview already up-to-date."
+            echo "V2 preview already up-to-date."
             exit 0
           fi
           git -C site commit -m "preview(pages): isolated PR3 test page from verified feature source"
