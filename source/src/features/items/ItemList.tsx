@@ -95,7 +95,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   };
   const savingRef=useRef(false);
   const resizing=useRef<{key:string;x:number;width:number}|null>(null);
-  const [page, setPage] = useState(0);
   const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"} | null>(null);
   const canEdit = customizing && canEditDraft && !permissionMode;
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
@@ -141,9 +140,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   };
   // Column filters are the single visible source of truth; old saved global filters must not silently hide results.
   const filtered = useMemo(() => items.filter(item => matchesColumnFilters(item,columnFilters)),[items,columnFilters]);
-  const pages = Math.max(1, Math.ceil(filtered.length / 50));
-  const currentPage = Math.min(page, pages - 1);
-  const rows = filtered.slice(currentPage * 50, currentPage * 50 + 50);
+  const rows = filtered;
   const options = (field: TextField,item:Item) => {
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
     return orderValues([...new Set([...list,item[field]])].filter(Boolean),list).filter(value=>field!=='specialist'||allSpecialists||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
@@ -157,7 +154,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
     setColumnFilters({...filters.columns});
     setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
-    setPage(0);return true;
+    return true;
   };
   const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
@@ -198,11 +195,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <div className="item-sticky-search-controls">
     <div className="item-filter-status-slot" role="status" aria-label="Các điều kiện tìm kiếm đang áp dụng">
     <div className="active-filter-bar" aria-hidden={!Object.entries(columnFilters).some(([,term])=>term.trim())}>
-      {Object.entries(columnFilters).some(([,term])=>term.trim())&&<><strong>Đang tìm trong cột:</strong>{Object.entries(columnFilters).filter(([,term])=>term.trim()).map(([key,term])=><span className="filter-chip" key={key}>{columns.find(c=>c.key===key)?.label??key}: {term}<button type="button" className="chip-remove" aria-label={'Bỏ lọc '+key} onClick={()=>{setColumnFilters(old=>{const next={...old};delete next[key];return next;});setPage(0);}}>×</button></span>)}<button type="button" className="button ghost" onClick={()=>{setColumnFilters({});setPage(0);}}>Xóa tìm kiếm theo cột</button></>}</div></div>
+      {Object.entries(columnFilters).some(([,term])=>term.trim())&&<><strong>Đang tìm trong cột:</strong>{Object.entries(columnFilters).filter(([,term])=>term.trim()).map(([key,term])=><span className="filter-chip" key={key}>{columns.find(c=>c.key===key)?.label??key}: {term}<button type="button" className="chip-remove" aria-label={'Bỏ lọc '+key} onClick={()=>{setColumnFilters(old=>{const next={...old};delete next[key];return next;});}}>×</button></span>)}<button type="button" className="button ghost" onClick={()=>{setColumnFilters({});}}>Xóa tìm kiếm theo cột</button></>}</div></div>
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
     {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onDirtyChange={setPermissionDirty} onBack={()=>{setPermissionMode(false);setPermissionDirty(false);setLayoutError("");}} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key} disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<span draggable={false} className="column-resizer" role="separator" aria-label={`Kéo độ rộng cột ${column.label}`} aria-orientation="vertical" tabIndex={0} onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===column.key?{...entry,width:Math.min(1600,Math.max(60,entry.width+(event.key==='ArrowRight'?10:-10)))}:entry)}));}}} onPointerDown={event=>{resizing.current={key:column.key,x:event.clientX,width:column.width};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const drag=resizing.current;if(drag&&drag.key===column.key)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===drag.key?{...entry,width:Math.min(1600,Math.max(60,Math.round(drag.width+event.clientX-drag.x)))}:entry)}));}} onPointerUp={()=>{resizing.current=null;}} onPointerCancel={()=>{resizing.current=null;}}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items} value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});setPage(0);}} />)}
+  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items} value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
         if(column.key==='displayCode')return <td key={column.key}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
@@ -214,7 +211,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,columns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
-    <div className="pagination"><span className="muted">Trang {currentPage + 1}/{pages} · tối đa 50 dòng/trang</span><button className="button ghost" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Trước</button><button className="button ghost" disabled={currentPage >= pages - 1} onClick={() => setPage(currentPage + 1)}>Sau</button></div>
     </div>
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={() => setContentItem(null)} />}
     {customizing&&unmatchedCheckpoint&&<Modal title="Có phần sửa trên bố trí cũ" onClose={onClose}><div className="modal-body"><p>Bố trí đang giữ trên máy không khớp bố trí dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa bố trí cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}
