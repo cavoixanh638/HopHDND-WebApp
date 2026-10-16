@@ -287,3 +287,24 @@
 @media(max-width:700px){
   .item-data-region .item-table-scroll {height:clamp(300px,59vh,620px);max-height:none;}
 }
+
+/* Anonymous reader: show only actions they can use. Keep the table and search
+   first; technical status and administrator configurators are never shown. */
+.app-shell.guest-view .nav-tabs {margin:12px 0 16px;}
+.app-shell.guest-view .page-heading {margin:6px 0 14px;align-items:center;}
+.app-shell.guest-view .demo-banner {margin-bottom:12px;padding-block:9px;}
+.app-shell.guest-view .item-list-card {padding:14px;}
+.app-shell.guest-view .item-data-region .card-header {min-height:42px;}
+.app-shell.guest-view .item-data-region .card-header h3 {font-size:15px;}
+.app-shell.guest-view .item-sticky-search-controls {padding:4px 0;}
+.guest-edit-bar {
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;padding:11px 13px;margin-bottom:12px;
+  border:1px solid #d6e5db;border-radius:8px;background:#eef6f1;
+}
+.guest-edit-bar strong {font-size:13px;}
+.guest-edit-bar .top-actions {display:flex;flex-wrap:wrap;gap:8px;}
+@media (max-width:700px) {
+ .app-shell.guest-view .item-list-card {padding:10px;}
+ .app-shell.guest-view .page-heading {align-items:flex-start;}
+}
