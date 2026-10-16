@@ -50,9 +50,15 @@
 .permission-explainer summary { color: var(--green); cursor: pointer; width: max-content; max-width: 100%; font-weight: 600; }
 .permission-explainer p { margin: 4px 0 0; }
 .permission-risk { border-left: 3px solid #ad8b48; background: #fcfaf5; padding: 8px 12px; color: #6f5a2f; font-size: 12px; line-height: 1.6; }
-.permission-extra-fields { padding: 10px 12px; background: #fafbfa; border: 1px solid var(--line); border-radius: 8px; }
-.permission-extra-fields summary { cursor: pointer; font-size: 12px; font-weight: 650; color: var(--green); }
-.permission-extra-fields .field { margin-top: 10px; max-width: 330px; }
+.permission-document-kind {
+  display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px 18px;
+  padding: 10px 12px; background: #fafbfa; border: 1px solid var(--line); border-radius: 8px;
+}
+.permission-document-kind .field { flex: 0 1 300px; }
+.permission-document-kind .muted { flex: 1 1 260px; line-height: 1.5; padding-bottom: 6px; }
+.item-list-card { width: 100%; max-width: 100%; }
+.item-list-card .item-data-table { min-width: 100%; }
+
 .permission-table-scroll { max-height: min(670px, 72vh); border-radius: 10px; }
 .inline-permission-table { min-width: 850px; width: max-content; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .inline-permission-table th, .inline-permission-table td {
