@@ -100,6 +100,8 @@ try{
   await send('Input.insertText',{text:'Đã trình HĐND'});
   await evaluate("([...document.querySelectorAll('button')].find(b=>b.textContent==='Thêm quy tắc'))?.click()");
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
+  const visual=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
   console.log('BROWSER_SMOKE_PASS: mock GViz, list, column filter + active chips, remove filter, save view, conditional color.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
