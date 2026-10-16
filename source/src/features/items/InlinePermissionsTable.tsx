@@ -19,12 +19,13 @@ const labelFor=(item:Item,key:EditableField):string=>{
 };
 
 /** Inline table mode: all permission changes remain drafts until the admin saves with Firebase CAS. */
-export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,disabled=false}:{
+export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,onDirtyChange,disabled=false}:{
   items:Item[];
   columns:ReadonlyArray<PermissionColumn>;
   permissions:CellPermissions;
   onSave:(next:CellPermissions,baseline:CellPermissions)=>Promise<void>;
   onBack:()=>void;
+  onDirtyChange?:(dirty:boolean)=>void;
   disabled?:boolean;
 }){
   const baseline=useRef(clone(permissions));
@@ -35,6 +36,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
   const [acknowledgeRows,setAcknowledgeRows]=useState(false);
   const locked=disabled||saving;
   const dirty=hasDiff(draft,baseline.current);
+  useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
   const rowScopeChanged=JSON.stringify(draft.rows??{})!==JSON.stringify(baseline.current.rows??{})||
     JSON.stringify(draft.cells??{})!==JSON.stringify(baseline.current.cells??{});
   const cols=useMemo(()=>columns.filter(c=>editable.has(c.key as EditableField)),[columns]);
