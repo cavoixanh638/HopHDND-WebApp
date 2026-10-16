@@ -107,6 +107,9 @@ try{
       !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
   })()`);
   if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
+  const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
+  if(visibleRows!==54)throw Error('All 54 Sheets records should render without 50-row pagination, got '+visibleRows);
+  if(await evaluate("!!document.querySelector('.pagination')"))throw Error('Legacy pagination controls should be removed');
   const sticky=await evaluate(`(()=>{
     const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
       filter=scroll?.querySelector('.item-column-filter-row th');
