@@ -1,6 +1,7 @@
 import type { Item } from '../../shared/types';
 import { defaultItemLayout, validateItemLayout, type ItemLayout } from './item-preferences';
 import { normalizeSearch } from '../domain/search';
+import {filterValue} from '../features/items/ColumnFilterCell';
 
 export interface ListFilters {
   query: string; kind: string; lifecycle: string; leader: string; status: string;
@@ -69,8 +70,7 @@ export function saveColorRules(source:string,rules:ColorRule[]):boolean{
 export function matchesColumnFilters(item:Item,columns:Record<string,string>):boolean{
   return Object.entries(columns).every(([field,term])=>{
     if(!layoutKeys.has(field)||!term.trim())return true;
-    const value=(item as unknown as Record<string,unknown>)[field];
-    return normalizeSearch(String(value??'')).includes(normalizeSearch(term));
+    return normalizeSearch(filterValue(item,field)).includes(normalizeSearch(term));
   });
 }
 export function itemColor(item:Item,rules:ColorRule[]):ColorRule['color']|undefined{
