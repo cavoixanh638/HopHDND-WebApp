@@ -24,7 +24,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange,anonymousViewer=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange,anonymousViewer=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean }) {
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
@@ -60,10 +60,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const cannotSaveData=readOnly&&pendingData;
   const blockedSaveLabel=draftOnly?'Chỉ giữ thay đổi thử trên máy':'Chưa thể lưu vào Excel';
   const sourceSaveLabel=effectiveSourceKind==='firebase'?'Lưu vào Firebase':effectiveSourceKind==='google'?'Lưu dữ liệu vào Excel':'Lưu dữ liệu mẫu';
-  const saveActionLabel=dirty?(saving?'Đang lưu bố trí…':pendingData&&readOnly?'Lưu bố trí; giữ phần sửa dữ liệu trên máy':'Lưu bố trí và về xem'):pendingData?(readOnly?blockedSaveLabel:sourceSaveLabel):'Không có thay đổi';
+  const saveActionLabel=dirty?(saving?'Đang lưu cách hiển thị…':pendingData&&readOnly?'Lưu cách hiển thị; giữ phần sửa dữ liệu trên máy':'Lưu cách hiển thị và về xem'):pendingData?(readOnly?blockedSaveLabel:sourceSaveLabel):'Không có thay đổi';
   const saveIssue=(cause:unknown)=>{
-    const message=cause instanceof Error?cause.message:'Chưa lưu được bố trí.';
-    if(/permission[_ -]?denied/i.test(message))return 'Firebase từ chối quyền ghi bố trí (permission_denied). Kiểm tra Rules của hdnd/profile và đăng nhập Google quản trị; phần sửa vẫn ở trên máy.';
+    const message=cause instanceof Error?cause.message:'Chưa lưu được cách hiển thị.';
+    if(/permission[_ -]?denied/i.test(message))return 'Firebase từ chối quyền ghi cách hiển thị (permission_denied). Kiểm tra Rules của hdnd/profile và đăng nhập Google quản trị; phần sửa vẫn ở trên máy.';
     if(/network|offline|disconnected/i.test(message))return 'Không kết nối được Firebase để lưu. Vui lòng thử lại khi có mạng; phần sửa vẫn được giữ trên máy.';
     return message;
   };
@@ -79,14 +79,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     }
   };
   const persistSavedLayout=async(valid:ItemLayout,choices?:LayoutConflictChoices)=>{
-    if(!allowLayout)throw new Error('Chỉ quản trị được lưu bố trí chung.');
+    if(!allowLayout)throw new Error('Chỉ quản trị được lưu cách hiển thị chung.');
     let merged:ItemLayout=valid;
     if(onPersistLayout){
       const confirmed=await onPersistLayout(valid,saveBaseline,choices);
       if(confirmed)merged=validateItemLayout(confirmed);
     }else{
-      if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí. Nháp được giữ.');
-      onLayoutSaved('Đã lưu bố trí danh sách trên trình duyệt.');
+      if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được cách hiển thị. Nháp được giữ.');
+      onLayoutSaved('Đã lưu cách hiển thị danh sách trên trình duyệt.');
     }
     sharedBase.current=merged;
     setApplied(merged);setLayout(merged);setRestoredBase(null);clearCheckpoint();
@@ -103,7 +103,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');}else if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
   const save = async () => {
     if(locked||savingRef.current||permissionMode)return;
-    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu cách hiển thị…');
     try {
       const layoutToSave=dirty?validateItemLayout(layout):null;
       const issue=items.filter(item=>{const changes=drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item=>assignmentIssue(item,catalog)).find(Boolean);
@@ -113,18 +113,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       if(layoutToSave){
         await persistSavedLayout(layoutToSave);
       }
-      if(readOnly&&pendingData)onLayoutSaved('Đã lưu bố trí dùng chung; các ô nội dung sửa thử vẫn chỉ ở trên máy, chưa ghi Google Sheets.');
-      setSaveFeedback('Đã lưu bố trí thành công.');
+      if(readOnly&&pendingData)onLayoutSaved('Đã lưu cách hiển thị dùng chung; các ô nội dung sửa thử vẫn chỉ ở trên máy, chưa ghi Google Sheets.');
+      setSaveFeedback('Đã lưu cách hiển thị thành công.');
       setConfirmExit(false);onClose();
     } catch(cause){handleLayoutFailure(cause);}
     finally{savingRef.current=false;setSaving(false);}
   };
   const validateAndSaveLayout=async()=>{
     if(locked||savingRef.current||!dirty||!allowLayout)return;
-    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu cách hiển thị…');
     try{
       await persistSavedLayout(validateItemLayout(layout));
-      setSaveFeedback('Đã lưu bố trí thành công vào nơi lưu cấu hình.');
+      setSaveFeedback('Đã lưu cách hiển thị thành công vào nơi lưu cấu hình.');
     }catch(cause){handleLayoutFailure(cause);}
     finally{savingRef.current=false;setSaving(false);}
   };
@@ -168,7 +168,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         <button className="button ghost" onClick={exit}>Về danh sách</button>
       </div>
     </div>}
-    {customizing&&!anonymousViewer&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||(!dirty&&(!pendingData||readOnly))} title={cannotSaveData&&dirty?'Chỉ lưu bố trí. Phần sửa nội dung vẫn giữ trên máy.':undefined} onClick={()=>void save()}>{saveActionLabel}</button>}</div></div>{layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Không lưu được bố trí.</strong><span>{layoutError}</span><span className="muted">Phần tùy chỉnh chưa được xác nhận lưu; vẫn giữ trên máy để thử lại.</span></div>}
+    {customizing&&!anonymousViewer&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu cách hiển thị chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu cách hiển thị chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục cách hiển thị</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Cách hiển thị bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||(!dirty&&(!pendingData||readOnly))} title={cannotSaveData&&dirty?'Chỉ lưu cách hiển thị. Phần sửa nội dung vẫn giữ trên máy.':undefined} onClick={()=>void save()}>{saveActionLabel}</button>}</div></div>{layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Không lưu được cách hiển thị.</strong><span>{layoutError}</span><span className="muted">Phần tùy chỉnh chưa được xác nhận lưu; vẫn giữ trên máy để thử lại.</span></div>}
     {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
     {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
       conflicts={layoutConflicts} choices={conflictChoices}
@@ -181,7 +181,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
       if(permissionMode){setPermissionSwitchRequest(current=>current+1);return;}
       setPermissionMode(false);setLayoutError('');
-    }}>Bố trí bảng và cột</button>
+    }}>Hiển thị bảng</button>
     {allowLayout&&permissions&&onSavePermissions&&<button type="button" className={permissionMode?'mode-tab active':'mode-tab'} aria-pressed={permissionMode} disabled={locked} onClick={()=>{setPermissionMode(true);setLayoutError('');}}>Quyền chỉnh sửa</button>}
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
@@ -213,8 +213,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     </tbody></table></div></>}
     </div>
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={() => setContentItem(null)} />}
-    {customizing&&unmatchedCheckpoint&&<Modal title="Có phần sửa trên bố trí cũ" onClose={onClose}><div className="modal-body"><p>Bố trí đang giữ trên máy không khớp bố trí dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa bố trí cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}
-    {confirmExit&&<Modal title="Xử lý thay đổi trước khi về xem?" onClose={()=>{if(!locked)setConfirmExit(false);}}><div className="modal-body"><p>Phần bạn đang sửa chưa lưu. Giữ trên máy không ghi dữ liệu vào nguồn và không lưu bố trí dùng chung.</p>{layoutError&&<p className="error-text">{layoutError}</p>}</div><div className="modal-footer"><button className="button ghost" disabled={locked} onClick={()=>setConfirmExit(false)}>Tiếp tục sửa</button><button className="button danger" disabled={locked||dataSaving} onClick={()=>{setLayout(applied);clearCheckpoint();onDiscardData();setConfirmExit(false);onClose();}}>Bỏ phần đang sửa và về xem</button>{cannotSaveData&&onKeepDraft?<button className="button primary" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>:<button className="button primary" disabled={locked||dataSaving} onClick={()=>void save()}>{saveActionLabel}</button>}</div></Modal>}
+    {customizing&&unmatchedCheckpoint&&<Modal title="Có thay đổi hiển thị cũ" onClose={onClose}><div className="modal-body"><p>Cách hiển thị đang giữ trên máy không khớp cách hiển thị dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cách hiển thị cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}
+    {confirmExit&&<Modal title="Xử lý thay đổi trước khi về xem?" onClose={()=>{if(!locked)setConfirmExit(false);}}><div className="modal-body"><p>Phần bạn đang sửa chưa lưu. Giữ trên máy không ghi dữ liệu vào nguồn và không lưu cách hiển thị dùng chung.</p>{layoutError&&<p className="error-text">{layoutError}</p>}</div><div className="modal-footer"><button className="button ghost" disabled={locked} onClick={()=>setConfirmExit(false)}>Tiếp tục sửa</button><button className="button danger" disabled={locked||dataSaving} onClick={()=>{setLayout(applied);clearCheckpoint();onDiscardData();setConfirmExit(false);onClose();}}>Bỏ phần đang sửa và về xem</button>{cannotSaveData&&onKeepDraft?<button className="button primary" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>:<button className="button primary" disabled={locked||dataSaving} onClick={()=>void save()}>{saveActionLabel}</button>}</div></Modal>}
 
   </section>;
 }
