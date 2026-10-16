@@ -8,6 +8,7 @@ import { defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout }
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
+import {layoutRecoveryScope} from '../../data/draft-checkpoints';
 import { ItemColumnPanel } from './ItemColumnPanel';
 import { Modal } from '../../components/Modal';
 import { orderValues } from '../../domain/catalog-order';
@@ -33,14 +34,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const [status, setStatus] = useState(selectedView?.filters.status??'all');
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
-  const [applied, setApplied] = useState(() => selectedView?.layout??initialLayout??loadItemLayout(sourceKey));
+  // Admin customizations always start from the one Firebase shared layout.
+  // Personal saved views are viewing presets, never an alternative shared baseline.
+  const [applied, setApplied] = useState(() => customizing
+    ?initialLayout??loadItemLayout(sourceKey)
+    :selectedView?.layout??initialLayout??loadItemLayout(sourceKey));
   // The Firebase baseline must be the original *shared* layout when editing began,
   // not a local saved view nor the profile revision emitted after another write.
   const [sharedBase]=useState<ItemLayout>(()=>initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase;
   useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(sourceKey))setApplied(initialLayout);},[initialLayout,customizing]);
-  const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(`items:${sourceKey}`,applied,validateItemDraft,undefined,customizing);
+  const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
   const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
