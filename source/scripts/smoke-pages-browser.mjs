@@ -144,6 +144,17 @@ try{
   })()`);
   if(!widthControl)throw Error('The live viewport-width control is absent');
   await send('Input.insertText',{text:'500'});
+  await sleep(550);
+  console.log('WIDTH_DEBUG',JSON.stringify(await evaluate(`(()=>{
+    const rect=q=>{const e=document.querySelector(q);if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,width:r.width,scroll:e.scrollWidth,client:e.clientWidth};};
+    return {input:document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]')?.value,
+      rootStyle:document.querySelector('.app-shell')?.getAttribute('style'),
+      root:rect('.app-shell'),main:rect('.wide-table-page main'),card:rect('.item-list-card'),
+      title:rect('.wide-table-page .page-heading'),topbar:rect('.wide-table-page > .topbar'),
+      banner:rect('.wide-table-page > .demo-banner'),nav:rect('.wide-table-page > .nav-tabs'),
+      wrap:rect('.item-list-card .table-wrap'),table:rect('.item-data-table'),
+      status:document.querySelector('.item-frame-controls .muted')?.textContent};
+  })()`)));
   await eventually(`(()=>{
     const select=q=>document.querySelector(q)?.getBoundingClientRect();
     const width=q=>select(q)?.width??0;
