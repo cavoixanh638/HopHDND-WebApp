@@ -38,7 +38,8 @@ function send(method,params={}){
 const sourcePayload={status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[
   {c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','Ghi chú',false].map(v=>({v}))}
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','Ghi chú',false].map(v=>({v}))},
+  {c:['',2,'','','QPPL','','','','','','','','','','',false].map(v=>({v}))}
 ]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
@@ -90,6 +91,20 @@ try{
   const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách nội dung'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
+  const layoutAndBlanks=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),card=document.querySelector('.item-list-card'),
+      viewport=document.querySelector('.item-list-card .table-wrap'),table=document.querySelector('.item-data-table');
+    if(!shell||!card||!viewport||!table)return false;
+    const shellStyle=getComputedStyle(shell),usable=shell.clientWidth-parseFloat(shellStyle.paddingLeft)-parseFloat(shellStyle.paddingRight);
+    const listRows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    const blank=listRows.find(row=>row.querySelector('td:first-child')?.textContent?.trim()==='—');
+    return Math.abs(card.getBoundingClientRect().width-usable)<=3&&
+      table.getBoundingClientRect().width>=viewport.clientWidth-3&&
+      !!blank&&blank.querySelectorAll('td').length>=5&&
+      [...blank.querySelectorAll('td')].some(cell=>cell.textContent?.trim()==='—')&&
+      !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
+  })()`);
+  if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
   const started=await evaluate(`(()=>{const b=document.querySelector('.column-filter summary[aria-label="Lọc cột Sở/đơn vị"]');if(!b)return false;b.click();const input=document.querySelector('input[aria-label="Tìm trong cột Sở/đơn vị"]');input?.focus();return !!input})()`);
   if(!started)throw Error('Column filter UI is missing');
   await send('Input.insertText',{text:'Không khớp'});
@@ -111,7 +126,7 @@ try{
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
   const visual=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
-  console.log('BROWSER_SMOKE_PASS: mock GViz, list, column filter + active chips, remove filter, save view, conditional color.');
+  console.log('BROWSER_SMOKE_PASS: mock GViz, aligned responsive frame, dash blanks, filters, presets and colors.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
