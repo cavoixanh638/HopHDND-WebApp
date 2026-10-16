@@ -3,6 +3,7 @@ import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
 import {get,ref,set,update,runTransaction} from 'firebase/database';
 import {defaultItemLayout} from '../src/data/item-preferences';
+import {mergeItemLayout} from '../src/data/item-layout-merge';
 import {defaultReportLayout} from '../src/data/report-preferences';
 import {catalogFromItems} from '../src/data/catalogs';
 import type {User} from 'firebase/auth';
@@ -98,6 +99,30 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     expect(payload.reports).toEqual(baseline.reports);
     expect(saved.revision).toBe(2);
     await assertFails(runTransaction(ref(guest('editor') as never,'hdnd/profile'),current=>({...current,revision:3})));
+  });
+
+  it('commits a stale layout against a newer server revision without discarding report settings',async()=>{
+    const a=admin();
+    const original=defaultItemLayout();
+    const base={revision:1,items:original,reports:defaultReportLayout(),catalogs:catalogFromItems(createDemoItems(2))};
+    await assertSucceeds(set(ref(a as never,'hdnd/profile'),{revision:1,payload:JSON.stringify(base)}));
+    const changed={...base,reports:[...base.reports].reverse(),revision:2};
+    await assertSucceeds(set(ref(a as never,'hdnd/profile'),{revision:2,payload:JSON.stringify(changed)}));
+    const local={...original,frameWidth:1500};
+    const result=await assertSucceeds(runTransaction(ref(a as never,'hdnd/profile'),current=>{
+      if(current===null)return current;
+      const server=JSON.parse(current.payload);
+      const merged=mergeItemLayout(original,local,server.items);
+      const updated={...server,items:merged,revision:current.revision+1};
+      return {revision:updated.revision,payload:JSON.stringify(updated)};
+    },{applyLocally:false}));
+    expect(result.committed).toBe(true);
+    const saved=(await get(ref(a as never,'hdnd/profile'))).val();
+    const body=JSON.parse(saved.payload);
+    expect(saved.revision).toBe(3);
+    expect(body.items.frameWidth).toBe(1500);
+    expect(body.reports).toEqual(changed.reports);
+    expect(body.catalogs).toEqual(base.catalogs);
   });
 
   it('preserves cell priority and permits new Sheets-only row/cell permission entries for admin',async()=>{
