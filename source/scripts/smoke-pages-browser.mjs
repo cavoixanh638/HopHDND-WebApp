@@ -164,6 +164,30 @@ try{
   await assertStable('clearing column search');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
+  // Switching Overview / List / Help must never resize or horizontally relocate the shared page header.
+  const sharedGeometry=()=>evaluate(`(()=>{
+    const selectors=['.topbar','.nav-tabs','.page-heading','.demo-banner'];
+    return selectors.map(selector=>{
+      const bounds=document.querySelector(selector)?.getBoundingClientRect();
+      return bounds?{left:bounds.left,width:bounds.width}:null;
+    });
+  })()`);
+  const originalGeometry=await sharedGeometry();
+  for(const [tab,ready] of [['Hướng dẫn','Sử dụng HopHDND'],['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
+    const clicked=await evaluate(`(()=>{
+      const button=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent===${JSON.stringify(tab)});
+      button?.click();return !!button;
+    })()`);
+    if(!clicked)throw Error('Missing navigation tab '+tab);
+    await eventually("document.querySelector('.page-heading h1')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
+    const geometry=await sharedGeometry();
+    for(let i=0;i<originalGeometry.length;i++){
+      if(!geometry[i]||!originalGeometry[i])throw Error('Missing shared nav geometry');
+      if(Math.abs(geometry[i].left-originalGeometry[i].left)>2||
+        Math.abs(geometry[i].width-originalGeometry[i].width)>2)
+        throw Error('Page chrome shifted when switching '+tab+': '+JSON.stringify({geometry,originalGeometry}));
+    }
+  }
   const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
   if(!guestOptions)throw Error('Guest must have login entry');
   await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
