@@ -159,19 +159,8 @@ try{
   await evaluate("([...document.querySelectorAll('button')].find(b=>b.textContent==='Xóa tìm kiếm theo cột'))?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
   await assertStable('clearing column search');
-  const search=await evaluate(`(()=>{
-    const input=document.querySelector('.search-field input[type="search"]');
-    input.focus();return !!input;
-  })()`);
-  if(!search)throw Error('Global search field missing');
-  await send('Input.insertText',{text:'Không có dữ liệu phù hợp'});
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
-    'Global search did not restrict rows');
-  await assertStable('global search yields zero rows');
-  await evaluate("(()=>{const e=document.querySelector('.search-field input');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(e,'');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
-    'Clearing global search did not restore records');
-  await assertStable('clearing global search');
+  // The duplicate top search toolbar is intentionally removed; every column has its own filter.
+  if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
   if(!guestOptions)throw Error('Guest must have login entry');
   await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
