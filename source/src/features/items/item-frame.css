@@ -210,3 +210,13 @@
 .layout-conflict-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px;}
 .layout-conflict-actions > span {font-size:12px;margin-right:auto;}
 @media(max-width:700px){.layout-conflict-options{grid-template-columns:1fr;}}
+
+/* Guard against a transient narrow frame propagating to editing controls during
+   rapid table-width edits. On desktop, only the data viewport may become 320px. */
+@media(min-width:980px) {
+  .app-shell.wide-table-page > main {min-width:920px;}
+  .app-shell.wide-table-page .item-list-card > .settings-mode-bar {
+    min-width: min(840px, calc(100vw - 80px));
+    box-sizing:border-box;
+  }
+}
