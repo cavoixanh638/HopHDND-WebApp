@@ -23,6 +23,14 @@ describe('deferred, validated list widths',()=>{
     checkbox.props.onChange({currentTarget:{checked:true}});
     expect(onChange).toHaveBeenCalledWith({...layout,frameWidth:'auto'});
   });
+  it('renders dimension validation next to the width controls, not under the data table',()=>{
+    const issue='Độ rộng tối thiểu phần cột bên trong cần từ 500 đến 6000 px.';
+    const tree=ItemColumnPanel({layout:defaultItemLayout(),onChange:vi.fn(),validationMessage:issue});
+    const alert=all(tree).find(n=>n.type==='div'&&n.props.className==='layout-inline-error');
+    expect(alert?.props.role).toBe('alert');
+    expect(JSON.stringify(alert)).toContain(issue);
+    expect(all(tree).some(n=>n.type==='details'&&n.props.className==='item-layout-advanced')).toBe(true);
+  });
   it('does not propagate 0, empty or partial numeric inputs to a saved layout',()=>{
     expect(parseCommittedWidth('',320,6000)).toBeNull();
     expect(parseCommittedWidth('0',320,6000)).toBeNull();
