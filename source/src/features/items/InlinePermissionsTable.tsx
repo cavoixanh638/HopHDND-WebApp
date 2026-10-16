@@ -101,14 +101,14 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
     </div>
     <div className="permission-risk" role="note"><strong>Lưu ý:</strong> Quyền theo dòng hoặc ô đang phụ thuộc vị trí hàng Excel. Nếu chèn hoặc sắp xếp hàng, nên kiểm tra lại quyền; ưu tiên quyền cột trong thời gian chưa có ID ổn định.</div>
     {error&&<p role="alert" className="error-text">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
-    <details className="permission-extra-fields">
-      <summary>Các trường không hiển thị thành cột trong bảng</summary>
-      <label className="field">Quyền sửa trường phân loại nội dung
+    <div className="permission-document-kind" role="group" aria-label="Quyền sửa phân loại nội dung">
+      <label className="field">Quyền sửa loại nội dung (NQ/BC)
         <select aria-label="Quyền cột loại nội dung" disabled={locked} value={draft.columns.documentKind===true?'allow':'deny'} onChange={event=>setColumn('documentKind',event.target.value==='allow')}>
           <option value="deny">Không cho sửa</option><option value="allow">Cho phép sửa</option>
         </select>
       </label>
-    </details>
+      <span className="muted">Loại NQ/BC dùng cho bộ lọc, không có cột Excel riêng trong danh sách đang xem.</span>
+    </div>
     <div className="table-wrap permission-table-scroll" tabIndex={0} aria-label="Bảng phân quyền có thể cuộn ngang"><table className="data-table inline-permission-table">
       <thead><tr><th scope="col">Nội dung / Quyền dòng</th>{cols.map(c=>{
         const key=c.key as EditableField;return <th scope="col" key={key}><span className="permission-header-title">{c.label}</span>
