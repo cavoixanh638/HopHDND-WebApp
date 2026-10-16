@@ -38,6 +38,11 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
   const rowScopeChanged=JSON.stringify(draft.rows??{})!==JSON.stringify(baseline.current.rows??{})||
     JSON.stringify(draft.cells??{})!==JSON.stringify(baseline.current.cells??{});
   const cols=useMemo(()=>columns.filter(c=>editable.has(c.key as EditableField)),[columns]);
+  const effective=(id:string,key:EditableField)=>(draft.cells?.[id]?.[key]??draft.rows?.[id]??draft.columns[key])===true;
+  const totalVisibleCells=items.length*cols.length;
+  const allowedVisibleCells=items.reduce((count,item)=>count+cols.filter(column=>effective(item.recordId,column.key as EditableField)).length,0);
+  const overrideCount=Object.values(draft.cells??{}).reduce((count,row)=>count+Object.keys(row).length,0);
+
 
   useEffect(()=>{
     if(!dirty&&!saving){
@@ -74,38 +79,63 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
     }catch(cause){setError(cause instanceof Error?cause.message:'Không lưu được quyền. Phần sửa vẫn còn.');}
     finally{setSaving(false);}
   };
-  const back=()=>{if(dirty){setError('Quyền đang chỉnh chưa được lưu. Hãy Lưu quyền hoặc Bỏ phần quyền đang sửa trước khi về bảng.');return;}onBack();};
+  const back=()=>{if(dirty){setError('Bạn có thay đổi quyền chưa lưu. Chọn “Lưu quyền chỉnh sửa” hoặc “Bỏ quyền chưa lưu” trước khi chuyển chế độ.');return;}onBack();};
   const revert=()=>{setDraft(clone(baseline.current));setAcknowledgeRows(false);setNotice('Đã bỏ phần quyền chưa lưu.');setError('');};
   return <section aria-label="Phân quyền ngay trên danh sách" className="inline-permissions">
-    <div className="card-header"><div><h3>Phân quyền chỉnh sửa trực tiếp trên danh sách</h3>
-      <p className="muted">Đánh dấu quyền cho cột ở tiêu đề; chọn quyền của từng dòng và từng ô ngay trên bảng. Ô ưu tiên hơn dòng, rồi cột. Các thay đổi chỉ có hiệu lực sau khi Lưu quyền.</p></div></div>
-    <p className="notice">Quyền theo dòng/ô hiện dùng mã dòng gắn với vị trí trong Excel. Chèn hoặc sắp xếp hàng có thể khiến quyền áp vào dòng khác; ưu tiên quyền theo cột cho đến khi có ID ổn định.</p>
+    <div className="permission-panel-header">
+      <div>
+        <h3>Thiết lập quyền chỉnh sửa</h3>
+        <p className="muted">Chọn quyền chung trên tiêu đề cột, hoặc đặt quyền riêng tại từng dòng / ô. Mọi thay đổi được xem trước trước khi lưu.</p>
+      </div>
+      <div className="permission-stats" aria-label="Tổng quan quyền trên trang hiện tại">
+        <span><strong>{allowedVisibleCells}</strong> ô được sửa</span>
+        <span><strong>{totalVisibleCells-allowedVisibleCells}</strong> ô chỉ xem</span>
+        <span><strong>{overrideCount}</strong> ô có quyền riêng</span>
+      </div>
+    </div>
+    <div className="permission-explainer" role="note">
+      <strong>Cách áp dụng:</strong> Quyền riêng của ô được ưu tiên; nếu chưa đặt quyền ô, hệ thống xét quyền dòng rồi đến quyền cột.
+      <details><summary>Xem ví dụ</summary><p>Khi cột “Nội dung” được cho sửa nhưng dòng NQ01 đặt “Không cho sửa dòng”, ô Nội dung của NQ01 sẽ chỉ xem. Bạn vẫn có thể chọn “Cho phép sửa” riêng cho ô này.</p></details>
+    </div>
+    <div className="permission-risk" role="note"><strong>Lưu ý:</strong> Quyền theo dòng hoặc ô đang phụ thuộc vị trí hàng Excel. Nếu chèn hoặc sắp xếp hàng, nên kiểm tra lại quyền; ưu tiên quyền cột trong thời gian chưa có ID ổn định.</div>
     {error&&<p role="alert" className="error-text">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
-    <div className="toolbar"><label className="field">Quyền trường loại nội dung (không có cột riêng)
-      <select aria-label="Quyền cột loại nội dung" disabled={locked} value={draft.columns.documentKind===true?'allow':'deny'} onChange={event=>setColumn('documentKind',event.target.value==='allow')}>
-        <option value="deny">Khóa</option><option value="allow">Cho phép</option>
-      </select></label></div>
-    <div className="table-wrap"><table className="data-table inline-permission-table">
-      <thead><tr><th>Mã nội dung / Quyền dòng</th>{cols.map(c=>{
-        const key=c.key as EditableField;return <th key={key}><span>{c.label}</span>
-        <label className="permission-column-rule"><input type="checkbox" checked={draft.columns[key]===true} disabled={locked} onChange={event=>setColumn(key,event.currentTarget.checked)}/>Cho phép cột</label></th>;
+    <details className="permission-extra-fields">
+      <summary>Các trường không hiển thị thành cột trong bảng</summary>
+      <label className="field">Quyền sửa trường phân loại nội dung
+        <select aria-label="Quyền cột loại nội dung" disabled={locked} value={draft.columns.documentKind===true?'allow':'deny'} onChange={event=>setColumn('documentKind',event.target.value==='allow')}>
+          <option value="deny">Không cho sửa</option><option value="allow">Cho phép sửa</option>
+        </select>
+      </label>
+    </details>
+    <div className="table-wrap permission-table-scroll" tabIndex={0} aria-label="Bảng phân quyền có thể cuộn ngang"><table className="data-table inline-permission-table">
+      <thead><tr><th scope="col">Nội dung / Quyền dòng</th>{cols.map(c=>{
+        const key=c.key as EditableField;return <th scope="col" key={key}><span className="permission-header-title">{c.label}</span>
+        <label className="permission-column-rule"><input type="checkbox" checked={draft.columns[key]===true} disabled={locked} onChange={event=>setColumn(key,event.currentTarget.checked)}/>Cho phép sửa cả cột</label></th>;
       })}</tr></thead>
-      <tbody>{items.map(item=><tr key={item.recordId}><td><strong className="code">{displayId(item)}</strong><br/>
+      <tbody>{items.map(item=><tr key={item.recordId}><th scope="row" className="permission-row-head"><strong className="code">{displayId(item)}</strong>
         <select aria-label={`Quyền dòng ${displayId(item)}`} disabled={locked} value={draft.rows?.[item.recordId]===undefined?'inherit':draft.rows[item.recordId]?'allow':'deny'} onChange={event=>setRow(item.recordId,event.target.value as Rule)}>
-          <option value="inherit">Theo quyền cột</option><option value="allow">Cho phép dòng</option><option value="deny">Khóa dòng</option>
-        </select></td>
-      {cols.map(c=>{const key=c.key as EditableField;return <td key={key}><select
-        aria-label={`Quyền ô ${displayId(item)} – ${c.label}`}
-        disabled={locked} value={valueFor(item.recordId,key)}
-        onChange={event=>setCell(item.recordId,key,event.target.value as Rule)}>
-        <option value="inherit">Kế thừa</option><option value="allow">Cho phép ô</option><option value="deny">Khóa ô</option>
-      </select><small className="permission-cell-preview">{labelFor(item,key)}</small></td>;})}
-      </tr>)}{!items.length&&<tr><td colSpan={Math.max(1,cols.length+1)} className="empty">Chưa có dữ liệu nguồn. Vẫn có thể phân quyền theo cột ở tiêu đề.</td></tr>}</tbody>
+          <option value="inherit">Theo quyền cột</option><option value="allow">Cho phép sửa cả dòng</option><option value="deny">Không cho sửa dòng</option>
+        </select></th>
+      {cols.map(c=>{const key=c.key as EditableField;const allowed=effective(item.recordId,key);const specific=valueFor(item.recordId,key)!=='inherit';
+        return <td key={key} className={allowed?'permission-effective-allow':'permission-effective-deny'}>
+          <div className="permission-cell-header"><span className="permission-effective-label">{allowed?'Được sửa':'Chỉ xem'}</span>{specific&&<span className="permission-specific-label" title="Đang có quy định riêng cho ô này">Riêng</span>}</div>
+          <select aria-label={`Quyền ô ${displayId(item)} – ${c.label}`}
+            disabled={locked} value={valueFor(item.recordId,key)}
+            onChange={event=>setCell(item.recordId,key,event.target.value as Rule)}>
+            <option value="inherit">Theo quyền dòng/cột</option><option value="allow">Cho phép sửa</option><option value="deny">Không cho sửa</option>
+          </select><small className="permission-cell-preview" title={labelFor(item,key)}>{labelFor(item,key)}</small>
+        </td>;})}
+      </tr>)}{!items.length&&<tr><td colSpan={Math.max(1,cols.length+1)} className="empty">Chưa có nội dung trong bộ lọc này. Bạn vẫn có thể cấp quyền cho cả cột ở phía trên.</td></tr>}</tbody>
     </table></div>
-    {rowScopeChanged&&<label className="layout-visibility"><input type="checkbox" aria-label="Xác nhận rủi ro quyền theo dòng/ô" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
-      Tôi hiểu quyền theo dòng/ô có thể áp nhầm sau khi sắp xếp hoặc chèn dòng trong nguồn Excel.</label>}
-    <div className="top-actions"><button type="button" className="button ghost" disabled={locked} onClick={back}>Về bảng Danh sách</button>
-      <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
-      <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button></div>
+    {rowScopeChanged&&<label className="permission-risk-confirm"><input type="checkbox" aria-label="Xác nhận rủi ro quyền theo dòng/ô" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
+      Tôi đã kiểm tra và hiểu quyền dòng/ô có thể thay đổi đối tượng khi Excel chèn hoặc sắp xếp hàng.</label>}
+    <div className="permission-action-bar">
+      <span className="permission-save-status" role="status">{dirty?'Có thay đổi quyền chưa lưu':'Quyền đang hiển thị đã được lưu'}</span>
+      <div className="top-actions">
+        <button type="button" className="button ghost" disabled={locked} onClick={back}>Về bố trí bảng</button>
+        <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
+        <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button>
+      </div>
+    </div>
   </section>;
 }
