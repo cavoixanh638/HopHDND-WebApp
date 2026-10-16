@@ -92,3 +92,12 @@ Khi chưa xác định nguyên nhân, chỉ thu thập bằng chứng không ghi
 - [CURRENT_STATE](CURRENT_STATE.md): kết quả đang xác nhận và các tồn tại; [WORKBOARD](WORKBOARD.md): người phụ trách và tiến độ; [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md): bằng chứng thử cụ thể.
 
 Không tự coi hướng dẫn này là giấy phép triển khai production, thay Rules hoặc phục hồi dữ liệu thực.
+
+## 9. Mốc hồi phục trước tính năng mới (16/10/2026)
+
+- **Rollback code chuẩn:** commit `6d2226467d83e518f793d5c5e97eb11b29ba2def`; nhánh dự phòng `backup/pre-features-2026-10-16` giữ nguyên trạng thái trước khi bổ sung lọc cột, mẫu giao diện, màu điều kiện, phê duyệt và khóa sửa. Không force push; nếu cần quay lại, tạo commit phục hồi từ mốc này rồi chạy CI và xác minh Pages.
+- **Code phát triển:** nhánh `feat/saved-views-approval-lock-filters-2026-10-16`, PR #3 (draft khi tạo), không phát hành tự động lên main. GitHub branch/commit không chứa bản sao nội dung Excel hay Firebase.
+- **Các mẫu giao diện cá nhân/màu:** trước rollback trình duyệt hoặc xóa dữ liệu browser, cần xuất/sao chép cấu hình nếu muốn giữ; lưu trong localStorage theo URL nguồn, không phải backend chung.
+- **Mốc duyệt/khóa sửa:** sử dụng Firebase `hdndReviews` (admin-only) và `hdnd/control`. Khi đưa Rules mới vào production, lưu snapshot Rules đang chạy và thử emulator trước; không ghi đè toàn bộ Rules của project dùng chung. Rollback code **không tự xóa** mốc duyệt, trạng thái khóa hoặc khôi phục Google Sheets.
+- **Phạm vi khóa:** nút khóa trong WebApp chỉ chặn người không phải admin sửa thử trong ứng dụng. Muốn ngừng sửa trực tiếp file nguồn, cần quản lý quyền Google Sheets/Drive tại nguồn theo chính sách riêng.
+
