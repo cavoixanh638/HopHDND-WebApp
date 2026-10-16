@@ -8,7 +8,13 @@ describe('always-visible column filter row',()=>{
     const text=ColumnFilterCell({field:'content',label:'Nội dung',items,value:'',onChange:vi.fn()});
     const search=text.props.children.props.children[0];
     expect(search.type).toBe('input');
-    expect(search.props['aria-label']).toBe('Lọc cột Nội dung');
+    expect(search.props['aria-label']).toBe('Tìm kiếm cột Nội dung');
+    expect(search.props.placeholder).toBe('Tìm kiếm');
+    const compact=ColumnFilterCell({field:'displayCode',label:'ID',items,value:'',onChange:vi.fn()});
+    expect(compact.props.className).toContain('compact-filter');
+    expect(compact.props.children.props.children[0].props.placeholder).toBe('');
+    const ordinal=ColumnFilterCell({field:'stt',label:'STT',items,value:'',onChange:vi.fn()});
+    expect(ordinal.props.children.props.children[0].props.placeholder).toBe('');
     expect(filterChoices(items,'content')).toBeNull();
     const drop=ColumnFilterCell({field:'isDropped',label:'Trình / Rút',items,value:'',onChange:vi.fn()});
     const selector=drop.props.children.props.children[0];
@@ -26,7 +32,7 @@ describe('always-visible column filter row',()=>{
     const change=vi.fn();
     const element=ColumnFilterCell({field:'content',label:'Nội dung',items,value:'test',onChange:change});
     const clear=element.props.children.props.children[1];
-    expect(clear.props['aria-label']).toBe('Bỏ lọc cột Nội dung');
+    expect(clear.props['aria-label']).toBe('Xóa tìm kiếm cột Nội dung');
     clear.props.onClick();
     expect(change).toHaveBeenCalledWith('');
   });
