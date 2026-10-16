@@ -135,12 +135,16 @@ try{
   })()`);
   if(!frameOk)throw Error('Customizing view still uses a narrow fixed frame or stale column title');
   const widthControl=await evaluate(`(()=>{
+    // The Pages smoke uses anonymous emulator auth; allow layout inputs here
+    // strictly to exercise admin-only width geometry, without saving any data.
+    const group=document.querySelector('fieldset.settings-saving');
+    if(group?.disabled)group.disabled=false;
     const summary=document.querySelector('.item-column-panel > summary');
     summary?.click();
     const input=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');
     if(!input)return false;
     input.focus();input.select();
-    return true;
+    return document.activeElement===input&&!input.matches(':disabled');
   })()`);
   if(!widthControl)throw Error('The live viewport-width control is absent');
   await send('Input.insertText',{text:'500'});
