@@ -81,7 +81,7 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
       </button>
       {hasDrafts&&<span className="muted">Cần lưu hoặc bỏ nháp trên trình duyệt trước khi phê duyệt.</span>}
     </div>
-    {baseline?.history.length>0&&<details><summary>Lịch sử các lần phê duyệt ({baseline.history.length} mốc gần nhất)</summary>
+    {baseline&&baseline.history.length>0&&<details><summary>Lịch sử các lần phê duyệt ({baseline.history.length} mốc gần nhất)</summary>
       <ul>{baseline.history.map(entry=><li key={entry.revision}>Mốc #{entry.revision}: {new Date(entry.at).toLocaleString('vi-VN')} · {entry.changedCount} nội dung thay đổi trước khi duyệt</li>)}</ul>
     </details>}
     {confirm&&<Modal title="Xác nhận phê duyệt mốc dữ liệu" onClose={()=>{if(!busy)setConfirm(false);}}>
