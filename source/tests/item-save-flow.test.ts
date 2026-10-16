@@ -28,7 +28,7 @@ describe('item data save and layout save boundary (component with fake hooks)',(
   });
   it('saves layout alone on a Sheets read-only page while keeping trial cell edits local',async()=>{
     mock.dirty=true;const test=list(true);
-    expect(text(test.button)).toContain('Lưu bố trí');
+    expect(text(test.button)).toContain('Lưu cách hiển thị');
     expect(test.button.props.disabled).toBe(false);
     test.button.props.onClick();
     await vi.waitFor(()=>expect(test.props.onClose).toHaveBeenCalledOnce());
