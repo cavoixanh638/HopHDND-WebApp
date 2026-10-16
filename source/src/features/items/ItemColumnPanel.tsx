@@ -1,4 +1,5 @@
 import type { ItemLayout } from '../../data/item-preferences';
+import { DeferredWidthInput } from './DeferredWidthInput';
 
 type ItemColumnPanelProps = {
   layout: ItemLayout;
@@ -27,36 +28,28 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
       <div className="settings-grid">
         <div className="item-frame-controls">
           <label className="field" htmlFor="item-visible-frame-width">
-            Độ rộng vùng danh sách (px) — thay đổi ngay
+            Độ rộng vùng danh sách (px) — Enter hoặc rời ô để áp dụng
           </label>
-          <input id="item-visible-frame-width" aria-label="Độ rộng vùng danh sách (px)"
-            type="number" min={320} max={6000} step={1}
-            placeholder="Tự động theo màn hình"
-            value={layout.frameWidth==='auto'||layout.frameWidth===undefined?'':layout.frameWidth}
-            onChange={event=>{
-              const raw=event.currentTarget.value;
-              onChange({...layout,frameWidth:raw===''?'auto':Number(raw)});
-            }}/>
+          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng vùng danh sách (px)"
+            value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1500:layout.frameWidth}
+            min={320} max={6000}
+            onCommit={frameWidth=>onChange({...layout,frameWidth})}/>
           <label className="layout-visibility">
             <input type="checkbox" checked={layout.frameWidth==='auto'||layout.frameWidth===undefined}
               onChange={event=>onChange({...layout,frameWidth:event.currentTarget.checked?'auto':1500})}/>
             Tự động theo độ rộng màn hình
           </label>
           <p className="muted">{layout.frameWidth==='auto'||layout.frameWidth===undefined
-            ?'Đang tự động lấp đầy vùng làm việc. Nhập một số để đặt độ rộng cố định và xem thay đổi ngay.'
+            ?'Đang tự động lấp đầy vùng làm việc. Nhập một số rồi nhấn Enter hoặc rời ô để áp dụng.'
             :`Vùng danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Tiêu đề, bộ lọc và các khung sẽ căn giữa theo cùng độ rộng; bảng cuộn ngang nếu cột rộng hơn.`}</p>
         </div>
         <details className="item-layout-advanced">
           <summary>Độ rộng tối thiểu phần cột bên trong (nâng cao)</summary>
           <label className="field">
             Độ rộng tối thiểu của các cột (px)
-            <input
-              type="number"
-              min={600}
-              max={6000}
-              value={layout.tableWidth}
-              onChange={event => onChange({ ...layout, tableWidth: Number(event.target.value) })}
-            />
+            <DeferredWidthInput label="Độ rộng tối thiểu các cột (px)"
+              value={layout.tableWidth} min={500} max={6000}
+              onCommit={tableWidth=>onChange({...layout,tableWidth})}/>
           </label>
           <p className="muted">Giá trị này không đổi độ rộng vùng danh sách phía ngoài. Tổng độ rộng các cột có thể lớn hơn; khi đó dùng thanh cuộn ngang bên trong bảng.</p>
         </details>
@@ -74,14 +67,9 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
               </label>
               <label className="field">
                 Độ rộng cột {column.label} (px)
-                <input
-                  type="number"
-                  min={60}
-                  max={1600}
-                  value={column.width}
-                  aria-label={`Độ rộng cột ${column.label} (px)`}
-                  onChange={event => updateColumn(index, { width: Number(event.target.value) })}
-                />
+                <DeferredWidthInput label={`Độ rộng cột ${column.label} (px)`}
+                  value={column.width} min={60} max={1600}
+                  onCommit={width=>updateColumn(index,{width})}/>
               </label>
               <div className="top-actions" aria-label={`Sắp xếp cột ${column.label}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa cột ${column.label} lên`} onClick={() => moveColumn(index, -1)} disabled={index === 0}>Lên</button>
