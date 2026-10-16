@@ -156,7 +156,7 @@ try{
   await eventually("document.querySelector('.active-filter-bar')?.textContent?.includes('Không khớp')===true",'Active filter chip not shown');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",'Column filtering does not restrict the list');
   await assertStable('no matching rows');
-  await evaluate("([...document.querySelectorAll('button')].find(b=>b.textContent==='Bỏ tất cả lọc cột'))?.click()");
+  await evaluate("([...document.querySelectorAll('button')].find(b=>b.textContent==='Xóa tìm kiếm theo cột'))?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
   await assertStable('clearing column search');
   const search=await evaluate(`(()=>{
