@@ -40,14 +40,14 @@ export function ListViewTools({sourceKey,filters,layout,colors,onLoad,onColors,d
     <div className="list-view-toolbar">
       <label className="field">Mẫu hiển thị cá nhân
         <select aria-label="Mẫu giao diện đã lưu" disabled={disabled} value={selected} onChange={e=>choose(e.target.value)}>
-          <option value="">Bố trí dùng chung (bản chính)</option>
+          <option value="">Hiển thị chung (mặc định)</option>
           {views.map(v=><option value={v.id} key={v.id}>{v.name}</option>)}
         </select>
       </label>
       <label className="field">Tên mẫu mới<input aria-label="Tên mẫu giao diện" maxLength={60} value={name} placeholder="Ví dụ: Phòng tôi" onChange={e=>setName(e.target.value)}/></label>
       <button type="button" className="button" onClick={save} disabled={disabled||views.length>=20}>Lưu mẫu mới</button>
       {selected&&<><button type="button" className="button ghost" onClick={update} disabled={disabled}>Cập nhật mẫu</button><button type="button" className="button ghost" onClick={remove} disabled={disabled}>Xóa mẫu</button></>}
-      <span className="muted">Firebase/nguồn cấu hình chỉ có một bố trí dùng chung. Các mẫu cá nhân và bộ lọc lưu riêng trên trình duyệt, không phải các bản cấu hình chính.</span>
+      <span className="muted">Firebase/nguồn cấu hình chỉ có một cách hiển thị dùng chung. Các mẫu cá nhân và bộ lọc lưu riêng trên trình duyệt, không phải các bản cấu hình chính.</span>
     </div>
     {message&&<p className="muted" role="status">{message}</p>}
     {customizing&&<details className="list-color-editor"><summary>Màu theo điều kiện ({colors.length} quy tắc)</summary>
