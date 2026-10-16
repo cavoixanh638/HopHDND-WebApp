@@ -1,5 +1,14 @@
 # Trạng thái hiện tại
 
+## Firebase Rules production — người quản trị xác nhận Publish (16/10/2026)
+
+- Người quản trị **đã báo hoàn thành thao tác Publish** trên Firebase Console sau khi nhận file `source/firebase/database.production-candidate.rules.json` và hướng dẫn `FIREBASE_PRODUCTION_RULES_MIGRATION.md`.
+- Đây là **xác nhận từ người quản trị**, không phải kết quả kiểm tra trực tiếp Firebase server: GitHub connector chỉ đọc mã/CI, không có kết nối xác thực Firebase để đối chiếu Rules version hoặc kiểm tra bằng tài khoản Google thật.
+- [GitHub Actions PASS SHA 4cc657b6474de22bff932d94bdc02bc386eb2114](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/38844347387), trong đó production-candidate Firebase emulator xác nhận admin vẫn được sửa, guest không ghi được khi khóa, mở khóa trở lại có thể sửa, mốc duyệt chỉ admin đọc/ghi.
+- **PR #3 vẫn DRAFT; `main` và GitHub Pages chưa phát hành mã mới**, nên các nút Phê duyệt và Khóa sửa chưa xuất hiện trên website hiện tại. Không có bằng chứng đã xác minh 51 dòng, luồng admin login, phê duyệt trực tiếp và phân quyền khách trên bản phát hành.
+- Trước khi công bố chức năng mới: xác minh Firebase Rules hiện có đúng file đã Publish, giữ bản sao Rules cũ; thử bằng tài khoản thật và trình duyệt để nghiệm thu; chỉ merge khi đạt. Nếu cần triển khai để thử trên Pages, xem xét preview tách khỏi URL production hoặc rollout có kế hoạch rollback.
+
+
 ## PR #3 — mở rộng tùy chỉnh và kiểm soát phê duyệt (16/10/2026)
 
 - Yêu cầu đã chốt: lưu nhiều mẫu giao diện cá nhân; màu theo điều kiện; bộ lọc riêng từng cột kèm dấu hiệu lọc đang áp dụng; admin so sánh thay đổi kể từ mốc phê duyệt và phê duyệt mốc mới; admin khóa chế độ sửa thử của tài khoản khác trên WebApp. **Không tạo thêm bộ thống kê theo phòng/chuyên viên/lãnh đạo**, vì các bảng ban đầu đã hỗ trợ phân nhóm và thống kê này.
