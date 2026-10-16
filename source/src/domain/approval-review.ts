@@ -59,6 +59,18 @@ export function compareApprovedSnapshot(previous:ReviewSnapshot,current:ReviewSn
   for(const [id,row] of oldRows)if(!newRows.has(id))result.push({key:id,code:row.displayCode,kind:'removed',changes:[]});
   return result.sort((a,b)=>a.code.localeCompare(b.code,'vi'));
 }
+/** Require stable, unique record codes before publishing an approval baseline. */
+export function approvalIdentityWarnings(snapshot:ReviewSnapshot):string[]{
+  const codes=new Set<string>(),warnings:string[]=[];
+  for(const row of snapshot.rows){
+    const code=row.displayCode.trim();
+    if(!code||/^Dòng\\s+\\d+\\s*\\(thiếu mã\\)$/i.test(code))
+      warnings.push('Có dòng thiếu mã: '+row.recordId);
+    else if(codes.has(code))warnings.push('Mã trùng trong nguồn: '+code);
+    codes.add(code);
+  }
+  return warnings;
+}
 export function serializeReviewSnapshot(snapshot:ReviewSnapshot):string{
   const payload=JSON.stringify(snapshot);
   if(payload.length>850000)throw new Error('Mốc phê duyệt quá lớn; cần phương án lưu riêng trước khi duyệt.');
