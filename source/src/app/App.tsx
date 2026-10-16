@@ -82,7 +82,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(isFirebase){
       if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');
       const beforeRevision=firebaseEditRevision.current;
-      const confirmed=await firebase!.common.save('items',next,beforeRevision,original,resolutions);
+      const confirmed=resolutions?await firebase!.common.save('items',next,beforeRevision,original,resolutions):await firebase!.common.save('items',next,beforeRevision,original);
       firebaseEditRevision.current=confirmed.revision;
       setLayoutMessage(confirmed.revision>beforeRevision+1
         ?'Đã hợp nhất các thay đổi không xung đột với bố trí Firebase mới. Dữ liệu Google Sheets không bị sửa.'
