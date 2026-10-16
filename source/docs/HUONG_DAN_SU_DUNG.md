@@ -4,7 +4,11 @@
 
 Tài khoản quản trị phải đăng nhập Google qua Firebase Authentication (email đã xác minh, nhà cung cấp `google.com`), không dùng mật khẩu nhúng trong HTML. Quyền cập nhật danh mục, báo cáo, bố trí danh sách, cột và quyền sửa thuộc **cùng cơ chế quản trị Firebase**; xem [FIREBASE_PAGES](FIREBASE_PAGES.md). Quyền theo ô ưu tiên trước dòng, rồi cột, mặc định không cho sửa. Các nút sửa nháp nghiệp vụ **không** ghi vào Google Sheets/Firebase.
 
-**Lưu ý nghiệm thu:** Người dùng đã phản ánh bản Pages hiển thị 0 dòng, chưa vào được chế độ tùy chỉnh Danh sách và quyền ô vẫn cấu hình ở panel riêng. Đây là **lỗi đang chờ sửa**, không hướng dẫn như thể quản trị đã cấp quyền trực tiếp bằng biểu tượng trên bảng. Khi có bản UI tích hợp trực quan và đã nghiệm thu, bổ sung quy trình click cụ thể tại đây thay vì tạo `HUONG_DAN_QUAN_TRI.md` trùng lặp.
+**Giao diện đã cập nhật (16/10/2026):** Mở **⚙ → Vào chế độ tùy chỉnh danh sách**. Trong cùng màn hình có hai mục **Bố trí bảng và cột** và **Quyền chỉnh sửa**. Ở Bố trí bảng và cột, điều chỉnh hiển thị, độ rộng, thứ tự và lưu bố trí riêng. Ở Quyền chỉnh sửa (chỉ quản trị viên), cho phép sửa cả cột bằng ô chọn ở tiêu đề; đặt quyền riêng cho dòng hoặc từng ô ngay trên bảng. Bảng hiện trạng thái **Được sửa / Chỉ xem** cho từng ô theo quyền đang chọn. Nút **Lưu quyền chỉnh sửa** mới ghi cấu hình vào Firebase; nếu có thay đổi chưa lưu, phải Lưu hoặc Bỏ thay đổi trước khi rời mục Quyền chỉnh sửa.
+
+**Cách hiểu quyền:** Ở từng ô, **Theo quyền dòng/cột** nghĩa là dùng quyền của dòng; nếu dòng chưa đặt quyền thì theo cột. **Cho phép sửa** mở riêng ô đó; **Không cho sửa** khóa riêng ô đó. Ở từng dòng, **Theo quyền cột**, **Cho phép sửa cả dòng**, **Không cho sửa dòng** có ý nghĩa tương ứng. Thứ tự ưu tiên: **ô → dòng → cột → mặc định khóa**. Vì ID dòng hiện theo vị trí Excel, thao tác cấp quyền riêng cho dòng/ô cần xác nhận cảnh báo; sau khi thêm/sắp xếp hàng Excel phải rà lại quyền.
+
+**Giới hạn nghiệm thu:** Mã UI đã qua CI và được phát hành nhưng vẫn cần người dùng kiểm tra đăng nhập và lưu quyền thật với Firebase Rules đang chạy; không ghi dữ liệu nguồn khi sửa thử.
 
 Quy trình vận hành/quay lại, sao lưu, khôi phục và xử lý lỗi: [VAN_HANH](VAN_HANH.md). Ý nghĩa trường, ID và rủi ro quyền theo dòng/ô: [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
 
