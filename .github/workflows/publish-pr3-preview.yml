@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 8b8eb6cb1dc2fb58a39f557f6c330e20a8119cd3
+          ref: 85f2cab8da3557967e847c98d068eb6947941013
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -68,10 +68,10 @@ jobs:
           if(!html.includes('Enter hoặc rời ô để áp dụng'))throw Error('Deferred width input hint absent');
           if(!html.includes('layout-inline-error'))throw Error('In-panel width warning missing');
           if(!html.includes('item-data-region'))throw Error('Separated table viewport missing');
-          if(!html.includes('Bố trí danh sách đã thay đổi ở nơi khác'))throw Error('Safe Firebase rebase/conflict logic absent');
+          if(!html.includes('Giải quyết xung đột bố trí')||!html.includes('Xác nhận lựa chọn và lưu'))throw Error('Explicit Firebase conflict resolution UI absent');
           if(!html.includes('item-column-filter-row')||!html.includes('item-sticky-search-controls'))throw Error('Sticky filter row and global search missing');
           if(!html.includes('preview:'))throw Error('Preview draft isolation missing');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — GRID STICKY (16/10/2026) · Một đường dẫn thử ổn định · Hàng tìm kiếm và tiêu đề cố định · Chỉ thử giao diện. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — GRID STICKY (16/10/2026) · Lọc dưới cột, tiêu đề cố định, lựa chọn khi Firebase xung đột. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
           if(!readFileSync(dest,'utf8').includes('PR #3 — GRID STICKY'))throw Error('Preview banner missing');
