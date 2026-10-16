@@ -20,6 +20,7 @@ import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig } from '../data/catalogs';
 import {loadItemLayout,saveItemLayout,type ItemLayout} from '../data/item-preferences';
+import type {LayoutConflictChoices} from '../data/item-layout-merge';
 import {useSharedConfig} from '../state/use-shared-config';
 import {googleCall,isGoogleHost} from '../data/google-bridge';
 import {CONFIG_EDITOR_URL} from '../data/shared-store';
@@ -77,7 +78,27 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const storedItems=useMemo(()=>loadItemLayout(sourceKey),[sourceKey]);
   const [itemState,setItemState]=useState<{source:string;layout:ItemLayout}|null>(null);
   const itemLayout=common.config&&!isDemo?common.config.items:itemState?.source===sourceKey?itemState.layout:storedItems;
-  const saveItemLayoutConfig=async(next:ItemLayout,original:ItemLayout=itemLayout)=>{if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const beforeRevision=firebaseEditRevision.current;const confirmed=await firebase!.common.save('items',next,beforeRevision,original);firebaseEditRevision.current=confirmed.revision;setLayoutMessage(confirmed.revision>beforeRevision+1?'Đã lưu bố trí danh sách và hợp nhất an toàn với cấu hình Firebase mới hơn. Danh mục, báo cáo và dữ liệu Google Sheets vẫn giữ nguyên.':'Đã lưu bố trí danh sách dùng chung vào Firebase (không sửa Google Sheets).');return;}if(!isDemo&&!privateTest&&isGoogleHost()){await common.save('items',next);setLayoutMessage('Đã lưu khung, thứ tự và độ rộng cột vào Google Sheets riêng. Nội dung Excel chưa thay đổi.');}else{if(!saveItemLayout(sourceKey,next))throw new Error('Không lưu được bố trí trên máy. Nháp được giữ.');setItemState({source:sourceKey,layout:next});setLayoutMessage('Đã lưu bố trí trên máy này; chưa đồng bộ bố trí lên kho chung.');}};
+  const saveItemLayoutConfig=async(next:ItemLayout,original:ItemLayout=itemLayout,resolutions?:LayoutConflictChoices):Promise<ItemLayout>=>{
+    if(isFirebase){
+      if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');
+      const beforeRevision=firebaseEditRevision.current;
+      const confirmed=await firebase!.common.save('items',next,beforeRevision,original,resolutions);
+      firebaseEditRevision.current=confirmed.revision;
+      setLayoutMessage(confirmed.revision>beforeRevision+1
+        ?'Đã hợp nhất các thay đổi không xung đột với bố trí Firebase mới. Dữ liệu Google Sheets không bị sửa.'
+        :'Đã lưu bố trí dùng chung vào Firebase. Dữ liệu Google Sheets không bị sửa.');
+      return confirmed.items;
+    }
+    if(!isDemo&&!privateTest&&isGoogleHost()){
+      await common.save('items',next);
+      setLayoutMessage('Đã lưu khung, thứ tự và độ rộng cột vào Google Sheets riêng. Nội dung Excel chưa thay đổi.');
+      return next;
+    }
+    if(!saveItemLayout(sourceKey,next))throw new Error('Không lưu được bố trí trên máy. Nháp được giữ.');
+    setItemState({source:sourceKey,layout:next});
+    setLayoutMessage('Đã lưu bố trí trên máy này; chưa đồng bộ bố trí lên kho chung.');
+    return next;
+  };
   const reports = useMemo(() => configuredReports(layout), [layout]);
   const [layoutMessage, setLayoutMessage] = useState('');
   const saveLayout = async(next: ReportLayout[]) => {
