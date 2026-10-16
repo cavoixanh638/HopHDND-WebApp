@@ -32,7 +32,10 @@ export function ListViewTools({sourceKey,filters,layout,colors,onLoad,onColors,d
   const update=()=>{
     if(persist(views.map(v=>v.id===selected?{...v,layout,filters,colors}:v)))setMessage('Đã cập nhật mẫu cá nhân.');
   };
-  const remove=()=>{if(persist(views.filter(v=>v.id!==selected)))choose('');};
+  const remove=()=>{
+    if(!onLoad(null)){setMessage('Hãy lưu hoặc bỏ các thay đổi đang sửa trước khi xóa mẫu.');return;}
+    if(persist(views.filter(v=>v.id!==selected))){setSelected('');saveActiveListView(sourceKey,'');setMessage('Đã xóa mẫu cá nhân.');}
+  };
   return <div className="list-view-box">
     <div className="list-view-toolbar">
       <label className="field">Mẫu giao diện
