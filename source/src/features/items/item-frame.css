@@ -220,3 +220,70 @@
     box-sizing:border-box;
   }
 }
+
+/* Search stability: the header and the entire list viewport retain their geometry
+   as a query changes between 55 rows, 1 row and no matching rows. */
+.item-data-region .item-table-scroll {
+  height:clamp(360px,64vh,720px);
+  min-height:0;
+  max-height:none;
+  overflow:auto;
+  scrollbar-gutter:stable;
+  overflow-anchor:none;
+}
+.item-data-region .item-sticky-search-controls {
+  min-height:0;
+  box-sizing:border-box;
+}
+.item-filter-status-slot {
+  height:36px;
+  box-sizing:border-box;
+  margin:4px 0 3px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+}
+.item-filter-status-slot .active-filter-bar {
+  display:flex;
+  flex-flow:row nowrap;
+  gap:6px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  max-width:100%;
+  align-items:center;
+  min-width:0;
+  height:34px;
+  padding:2px 0;
+  margin:0;
+  box-sizing:border-box;
+  scrollbar-width:thin;
+  white-space:nowrap;
+}
+.item-filter-status-slot .active-filter-bar strong,
+.item-filter-status-slot .active-filter-bar .filter-chip,
+.item-filter-status-slot .active-filter-bar .button {flex:none;}
+.item-filter-status-slot .active-filter-bar[aria-hidden="true"] {visibility:hidden;pointer-events:none;}
+.item-data-region .card-header {min-height:52px;align-items:center;}
+.item-data-region .item-result-count {font-variant-numeric:tabular-nums;display:inline-block;min-width:5ch;text-align:right;}
+.item-data-table .item-column-filter-row input::placeholder {color:#9aa9a0;opacity:1;}
+.item-data-table .item-column-filter-row input[type="search"] {
+  background-image:none;
+  padding-left:8px;
+  font-size:12px;
+}
+.item-data-table .item-column-filter-row .compact-filter input {
+  padding-left:5px;
+  text-align:center;
+}
+.item-data-table .item-column-filter-row input:focus,
+.item-data-table .item-column-filter-row select:focus {
+  outline:2px solid #89bba6;
+  outline-offset:0;
+  border-color:#4f8f74;
+}
+.item-data-table .item-column-filter-row input::placeholder {font-style:normal;font-weight:400;}
+.item-data-table thead .item-column-filter-row th {box-shadow:0 1px 0 #c9dbd0;}
+.item-data-table .item-column-filter-row select {cursor:pointer;}
+@media(max-width:700px){
+  .item-data-region .item-table-scroll {height:clamp(300px,59vh,620px);max-height:none;}
+}
