@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 092bdea6b32ea6817f0418de3f6ae04a4962950e
+          ref: 3ff24b1c2f65821ee020c2607862f6d6bcd83ced
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
