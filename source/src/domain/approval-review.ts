@@ -1,13 +1,13 @@
 import type {Item} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 
-export const REVIEW_FIELDS=['stt','documentKind',...TEXT_FIELDS.map(f=>f.key),'isDropped','archivedAt'] as const;
+export const REVIEW_FIELDS=['displayCode','stt','documentKind',...TEXT_FIELDS.map(f=>f.key),'isDropped','archivedAt'] as const;
 export type ReviewValues=Record<string,string>;
 export interface ReviewRow {recordId:string;displayCode:string;values:ReviewValues}
 export interface ReviewSnapshot {schemaVersion:1;source:string;rows:ReviewRow[]}
 export interface ReviewChange {field:string;label:string;before:string;after:string}
 export interface ReviewDifference {key:string;code:string;kind:'added'|'removed'|'modified';changes:ReviewChange[]}
-const labels:Record<string,string>={stt:'STT',documentKind:'Nhóm nội dung',isDropped:'Trình / Rút',archivedAt:'Lưu trữ'};
+const labels:Record<string,string>={displayCode:'Mã nội dung',stt:'STT',documentKind:'Nhóm nội dung',isDropped:'Trình / Rút',archivedAt:'Lưu trữ'};
 for(const field of TEXT_FIELDS)labels[field.key]=field.label;
 export function snapshotFromItems(items:Item[],source:string):ReviewSnapshot{
   if(!source||items.length>10000)throw new Error('Nguồn hoặc số dòng vượt giới hạn mốc phê duyệt.');
