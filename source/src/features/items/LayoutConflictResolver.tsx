@@ -9,9 +9,9 @@ export function LayoutConflictResolver({conflicts,choices,onChoose,onConfirm,onC
   busy:boolean;
 }){
   const remaining=conflicts.filter(c=>!choices[c.id]).length;
-  return <section className="layout-conflict-resolver" role="region" aria-label="Giải quyết xung đột bố trí">
-    <strong>Chọn bố trí cần giữ ({conflicts.length} thông số)</strong>
-    <p>Firebase chỉ có một bản bố trí chung. Các thông số dưới đây khác nhau giữa bản bạn đang chỉnh và bản dùng chung mới nhất. Những thông số khác sẽ tự hợp nhất. Chưa có gì bị ghi đè.</p>
+  return <section className="layout-conflict-resolver" role="region" aria-label="Giải quyết xung đột cách hiển thị">
+    <strong>Chọn cách hiển thị cần giữ ({conflicts.length} thông số)</strong>
+    <p>Firebase chỉ có một bản cách hiển thị chung. Các thông số dưới đây khác nhau giữa bản bạn đang chỉnh và bản dùng chung mới nhất. Những thông số khác sẽ tự hợp nhất. Chưa có gì bị ghi đè.</p>
     {conflicts.map(c=><fieldset key={c.id} className="layout-conflict-field">
       <legend>{c.label}</legend>
       <small>Trước khi chỉnh: {c.original}</small>
@@ -19,7 +19,7 @@ export function LayoutConflictResolver({conflicts,choices,onChoose,onConfirm,onC
         <label><input type="radio" name={'conflict-'+c.id} value="remote"
           checked={choices[c.id]==='remote'} disabled={busy}
           onChange={()=>onChoose(c.id,'remote')}/>
-          <span><strong>Dùng bố trí chung (Firebase)</strong><span>{c.remote}</span></span>
+          <span><strong>Dùng cách hiển thị chung (Firebase)</strong><span>{c.remote}</span></span>
         </label>
         <label><input type="radio" name={'conflict-'+c.id} value="local"
           checked={choices[c.id]==='local'} disabled={busy}
