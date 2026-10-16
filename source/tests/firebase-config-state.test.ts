@@ -27,10 +27,22 @@ function emit(path:string,value:any){h.listeners.get(path).next({val:()=>value})
 beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.get.mockReset();h.transaction.mockReset();});
 afterEach(()=>h.dispose());
 describe('Firebase config controller remains independent of business data',()=>{
-  it('subscribes only to permissions/profile and fails closed until permissions arrive',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-    emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+  it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/control',{revision:1,editingLocked:false});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+  });
+  it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
+    login(true);emit('hdnd/control',{revision:2,editingLocked:true});
+    const admin=render();expect(admin.editingLocked).toBe(true);
+    h.transaction.mockResolvedValue({committed:true});
+    await admin.saveEditingLock(false);
+    const [path,update]=h.transaction.mock.calls[0];
+    expect(path).toBe('hdnd/control');
+    expect(update({revision:3,editingLocked:true})).toBeUndefined();
+    expect(update({revision:2,editingLocked:true})).toMatchObject({revision:3,editingLocked:false});
+    expect(render().editingLocked).toBe(false);
   });
   it('denies guest config writes, even with direct handler calls',async()=>{
     login();emit('hdnd/profile',null);emit('hdnd/permissions',{columns:{note:true}});const state=render();
