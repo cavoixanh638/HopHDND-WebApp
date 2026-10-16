@@ -62,6 +62,13 @@ describe('inline admin rights',()=>{
     expect(JSON.stringify(tree)).toContain('Được sửa');
     expect(save).not.toHaveBeenCalled();
   });
+  it('explains NQ/BC classification permission inline rather than hidden-fields accordion',()=>{
+    const tree=render(vi.fn());
+    const printed=JSON.stringify(tree);
+    expect(printed).not.toContain('Các trường không hiển thị thành cột trong bảng');
+    expect(printed).toContain('Quyền sửa loại nội dung (NQ/BC)');
+    expect(nodes(tree).find(n=>n.type==='select'&&n.props?.['aria-label']==='Quyền cột loại nội dung')).toBeDefined();
+  });
   it('does not allow saving unchanged rules',()=>{
     const tree=render(vi.fn());
     const button=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Lưu quyền chỉnh sửa');
