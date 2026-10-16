@@ -19,13 +19,14 @@ const labelFor=(item:Item,key:EditableField):string=>{
 };
 
 /** Inline table mode: all permission changes remain drafts until the admin saves with Firebase CAS. */
-export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,onDirtyChange,disabled=false}:{
+export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,onDirtyChange,switchRequest=0,disabled=false}:{
   items:Item[];
   columns:ReadonlyArray<PermissionColumn>;
   permissions:CellPermissions;
   onSave:(next:CellPermissions,baseline:CellPermissions)=>Promise<void>;
   onBack:()=>void;
   onDirtyChange?:(dirty:boolean)=>void;
+  switchRequest?:number;
   disabled?:boolean;
 }){
   const baseline=useRef(clone(permissions));
@@ -34,6 +35,8 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
   const [notice,setNotice]=useState('');
   const [error,setError]=useState('');
   const [acknowledgeRows,setAcknowledgeRows]=useState(false);
+  const [confirmSwitch,setConfirmSwitch]=useState(false);
+  const handledSwitch=useRef(switchRequest);
   const locked=disabled||saving;
   const dirty=hasDiff(draft,baseline.current);
   useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
@@ -70,7 +73,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
     const value=draft.cells?.[id]?.[key];
     return value===undefined?'inherit':value?'allow':'deny';
   };
-  const save=async()=>{
+  const save=async(switchAfter=false)=>{
     if(locked||!dirty||(rowScopeChanged&&!acknowledgeRows))return;
     setError('');setNotice('');setSaving(true);
     try{
@@ -78,10 +81,17 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
       baseline.current=clone(draft);
       setAcknowledgeRows(false);
       setNotice('Đã lưu quyền vào Firebase. Thao tác sửa nghiệp vụ vẫn chỉ tạo nháp trên trình duyệt.');
+      setConfirmSwitch(false);
+      if(switchAfter)onBack();
     }catch(cause){setError(cause instanceof Error?cause.message:'Không lưu được quyền. Phần sửa vẫn còn.');}
     finally{setSaving(false);}
   };
-  const back=()=>{if(dirty){setError('Bạn có thay đổi quyền chưa lưu. Chọn “Lưu quyền chỉnh sửa” hoặc “Bỏ quyền chưa lưu” trước khi chuyển chế độ.');return;}onBack();};
+  const back=()=>{if(dirty){setConfirmSwitch(true);return;}setConfirmSwitch(false);onBack();};
+  useEffect(()=>{
+    if(switchRequest===handledSwitch.current)return;
+    handledSwitch.current=switchRequest;
+    back();
+  },[switchRequest]);
   const revert=()=>{setDraft(clone(baseline.current));setAcknowledgeRows(false);setNotice('Đã bỏ phần quyền chưa lưu.');setError('');};
   return <section aria-label="Phân quyền ngay trên danh sách" className="inline-permissions">
     <div className="permission-panel-header">
@@ -101,6 +111,25 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
     </div>
     <div className="permission-risk" role="note"><strong>Lưu ý:</strong> Quyền theo dòng hoặc ô đang phụ thuộc vị trí hàng Excel. Nếu chèn hoặc sắp xếp hàng, nên kiểm tra lại quyền; ưu tiên quyền cột trong thời gian chưa có ID ổn định.</div>
     {error&&<p role="alert" className="error-text">{error}</p>}{notice&&<p role="status" className="notice">{notice}</p>}
+
+    {confirmSwitch&&<div className="permission-switch-confirm" role="alertdialog" aria-label="Có quyền chỉnh sửa chưa lưu">
+      <strong>Quyền chỉnh sửa chưa được lưu.</strong>
+      <span>Chọn lưu quyền hoặc bỏ thay đổi trước khi chuyển sang Giao diện bảng. Không tự động ghi đè quyền.</span>
+      <div className="top-actions">
+        <button type="button" className="button ghost" onClick={()=>setConfirmSwitch(false)}>Tiếp tục chỉnh quyền</button>
+        <button type="button" className="button ghost" disabled={locked} onClick={()=>{revert();setConfirmSwitch(false);onBack();}}>Bỏ quyền chưa lưu và chuyển</button>
+        <button type="button" className="button primary" disabled={locked||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save(true)}>Lưu quyền và chuyển</button>
+      </div>
+    </div>}
+    {rowScopeChanged&&<label className="permission-risk-confirm"><input type="checkbox" aria-label="Xác nhận rủi ro quyền theo dòng/ô" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
+      Tôi đã kiểm tra và hiểu quyền dòng/ô có thể thay đổi đối tượng khi Excel chèn hoặc sắp xếp hàng.</label>}
+    <div className="permission-action-bar">
+      <span className="permission-save-status" role="status">{dirty?'Có thay đổi quyền chưa lưu':'Quyền đang hiển thị đã được lưu'}</span>
+      <div className="top-actions">
+        <button type="button" className="button ghost" disabled={locked} onClick={back}>Về giao diện bảng</button>
+        <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
+        <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button>
+      </div>
     <div className="table-wrap permission-table-scroll" tabIndex={0} aria-label="Bảng phân quyền có thể cuộn ngang"><table className="data-table inline-permission-table">
       <thead><tr><th scope="col">Nội dung / Quyền dòng</th>{cols.map(c=>{
         const key=c.key as EditableField;return <th scope="col" key={key}><span className="permission-header-title">{c.label}</span>
@@ -121,15 +150,6 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
         </td>;})}
       </tr>)}{!items.length&&<tr><td colSpan={Math.max(1,cols.length+1)} className="empty">Chưa có nội dung trong bộ lọc này. Bạn vẫn có thể cấp quyền cho cả cột ở phía trên.</td></tr>}</tbody>
     </table></div>
-    {rowScopeChanged&&<label className="permission-risk-confirm"><input type="checkbox" aria-label="Xác nhận rủi ro quyền theo dòng/ô" checked={acknowledgeRows} disabled={locked} onChange={e=>setAcknowledgeRows(e.currentTarget.checked)}/>
-      Tôi đã kiểm tra và hiểu quyền dòng/ô có thể thay đổi đối tượng khi Excel chèn hoặc sắp xếp hàng.</label>}
-    <div className="permission-action-bar">
-      <span className="permission-save-status" role="status">{dirty?'Có thay đổi quyền chưa lưu':'Quyền đang hiển thị đã được lưu'}</span>
-      <div className="top-actions">
-        <button type="button" className="button ghost" disabled={locked} onClick={back}>Về bố trí bảng</button>
-        <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
-        <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button>
-      </div>
     </div>
   </section>;
 }
