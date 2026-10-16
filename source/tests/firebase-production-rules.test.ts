@@ -84,7 +84,8 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     await assertSucceeds(set(ref(a as never,'hdnd/profile'),{revision:1,payload:JSON.stringify(baseline)}));
     const draft={...defaultItemLayout(),frameWidth:1800};
     const result=await assertSucceeds(runTransaction(ref(a as never,'hdnd/profile'),current=>{
-      if(!current||current.revision!==1)return;
+      if(current===null)return current; // cold RTDB cache must reach the server
+      if(current.revision!==1)return;
       const previous=JSON.parse(current.payload);
       const updated={...previous,items:draft,revision:2};
       return {revision:2,payload:JSON.stringify(updated)};
