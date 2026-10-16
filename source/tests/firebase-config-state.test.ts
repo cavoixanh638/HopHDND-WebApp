@@ -62,6 +62,43 @@ describe('Firebase config controller remains independent of business data',()=>{
     await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');
     resolve({committed:true,snapshot:{val:()=>confirmed}});await pending;
   });
+  it('rebases a stale list layout onto a new global profile revision without overwriting other sections',async()=>{
+    login(true);
+    const baseline=profile(1),server=profile(3);
+    server.reports=[...server.reports].reverse();
+    server.items={...server.items,columns:server.items.columns.map(c=>c.key==='room'?{...c,width:290}:c)};
+    emit('hdnd/profile',stored(2));
+    const state=render();
+    let confirmed:any;
+    h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
+      expect(path).toBe('hdnd/profile');
+      expect(apply(null)).toBeNull();
+      confirmed=apply({revision:3,payload:JSON.stringify(server)});
+      return {committed:true,snapshot:{val:()=>confirmed}};
+    });
+    const draft={...baseline.items,frameWidth:1500 as const};
+    const saved=await state.common.save('items',draft,1,baseline.items);
+    expect(saved.revision).toBe(4);
+    expect(saved.items.frameWidth).toBe(1500);
+    expect(saved.items.columns.find(c=>c.key==='room')?.width).toBe(290);
+    expect(saved.reports).toEqual(server.reports);
+    expect(render().profile?.revision).toBe(4);
+  });
+  it('rejects saving stale layout when the same dimension changed elsewhere',async()=>{
+    login(true);
+    emit('hdnd/profile',stored(2));
+    const state=render();
+    const old=profile(1).items;
+    const current={...profile(3),items:{...old,frameWidth:600}};
+    h.transaction.mockImplementation(async(_path:string,apply:(v:any)=>any)=>{
+      apply(null);
+      const result=apply({revision:3,payload:JSON.stringify(current)});
+      expect(result).toBeUndefined();
+      return {committed:false,snapshot:{val:()=>({revision:3,payload:JSON.stringify(current)})}};
+    });
+    await expect(state.common.save('items',{...old,frameWidth:1500},1,old)).rejects.toThrow('độ rộng vùng danh sách');
+    expect(render().profile?.revision).toBe(2);
+  });
   it('actually rereads Firebase config and permissions, and revokes privileges after logout',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});
     h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?stored(3):{columns:{content:false},rows:{'sheet:42:row:3':true},cells:{'sheet:42:row:3':{note:false}}}}));
