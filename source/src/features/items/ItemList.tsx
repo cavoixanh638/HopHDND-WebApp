@@ -24,9 +24,10 @@ import {ListViewTools} from './ListViewTools';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout)=>Promise<void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void }) {
-  const selectedView=loadListViews(sourceKey).find(v=>v.id===loadActiveListView(sourceKey));
+  const personalScope=layoutRecoveryScope(sourceKey);
+  const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
-  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(sourceKey));
+  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const [query, setQuery] = useState(selectedView?.filters.query??'');
   const [kind, setKind] = useState(selectedView?.filters.kind??'all');
   const [lifecycle, setLifecycle] = useState(selectedView?.filters.lifecycle??'active');
@@ -44,7 +45,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const [sharedBase]=useState<ItemLayout>(()=>initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase;
-  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(sourceKey))setApplied(initialLayout);},[initialLayout,customizing]);
+  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
@@ -123,10 +124,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
     setQuery(filters.query);setKind(filters.kind);setLifecycle(filters.lifecycle);setLeader(filters.leader);
     setStatus(filters.status);setColumnFilters({...filters.columns});
-    setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(sourceKey));
+    setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
     setPage(0);return true;
   };
-  const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(sourceKey,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
+  const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
@@ -148,7 +149,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted">{filtered.length} / {items.length} nội dung · Tìm kiếm hỗ trợ tiếng Việt không dấu</p></div><div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div></div>
     {customizing&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
-     <ListViewTools sourceKey={sourceKey} filters={{query,kind,lifecycle,leader,status,columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>
+     <ListViewTools sourceKey={personalScope} filters={{query,kind,lifecycle,leader,status,columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>
     <div className="item-sticky-search-controls">
     <div className="toolbar"><label className="field search-field">Tìm kiếm<input type="search" placeholder="Nội dung, mã, sở, chuyên viên…" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} /></label>
       <label className="field">Loại nội dung<select value={kind} onChange={e => { setKind(e.target.value); setPage(0); }}><option value="all">Tất cả loại</option><option value="NQ">Nghị quyết</option><option value="BC">Báo cáo</option><option value="UNCLASSIFIED">Chưa phân loại</option></select></label>
