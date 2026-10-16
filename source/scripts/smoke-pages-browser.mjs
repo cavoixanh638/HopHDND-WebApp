@@ -147,15 +147,15 @@ try{
     return document.activeElement===input&&!input.matches(':disabled');
   })()`);
   if(!widthControl)throw Error('The live viewport-width control is absent');
-  const originalWidth=await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width");
+  const originalWidth=await evaluate("document.querySelector('.item-data-region').getBoundingClientRect().width");
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8,nativeVirtualKeyCode:8});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8,nativeVirtualKeyCode:8});
   await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value===''","Width must allow an empty intermediate edit");
-  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-originalWidth)>3)
+  if(Math.abs((await evaluate("document.querySelector('.item-data-region').getBoundingClientRect().width"))-originalWidth)>3)
     throw Error('Deleting a width while typing resized the live table');
   await send('Input.insertText',{text:'500'});
   await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='500'","Width must allow typing a valid replacement");
-  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-originalWidth)>3)
+  if(Math.abs((await evaluate("document.querySelector('.item-data-region').getBoundingClientRect().width"))-originalWidth)>3)
     throw Error('Table resized before the user committed the width');
   await evaluate("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]').blur()");
   await sleep(250);
@@ -163,7 +163,7 @@ try{
     const rect=q=>{const e=document.querySelector(q);if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,width:r.width,scroll:e.scrollWidth,client:e.clientWidth};};
     return {input:document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]')?.value,
       rootStyle:document.querySelector('.app-shell')?.getAttribute('style'),
-      root:rect('.app-shell'),main:rect('.wide-table-page main'),card:rect('.item-list-card'),
+      root:rect('.app-shell'),main:rect('.wide-table-page main'),card:rect('.item-list-card'),dataRegion:rect('.item-data-region'),
       title:rect('.wide-table-page .page-heading'),topbar:rect('.wide-table-page > .topbar'),
       banner:rect('.wide-table-page > .demo-banner'),nav:rect('.wide-table-page > .nav-tabs'),
       wrap:rect('.item-list-card .table-wrap'),table:rect('.item-data-table'),
@@ -173,26 +173,47 @@ try{
     const select=q=>document.querySelector(q)?.getBoundingClientRect();
     const width=q=>select(q)?.width??0;
     const main=select('.wide-table-page main'),card=select('.item-list-card'),
-      title=select('.wide-table-page .page-heading');
-    const wrap=document.querySelector('.item-list-card .table-wrap');
-    return Math.abs(width('.wide-table-page main')-500)<3&&
-      Math.abs(width('.item-list-card')-500)<3&&
-      Math.abs(width('.wide-table-page > .topbar')-500)<3&&
-      Math.abs(width('.wide-table-page > .demo-banner')-500)<3&&
-      Math.abs(width('.wide-table-page > .nav-tabs')-500)<3&&
+      data=select('.item-data-region'),title=select('.wide-table-page .page-heading');
+    const wrap=document.querySelector('.item-data-region .table-wrap');
+    return width('.wide-table-page main')>=920&&
+      width('.item-list-card')>=900&&
+      width('.wide-table-page > .topbar')>=920&&
+      width('.wide-table-page > .nav-tabs')>=920&&
+      Math.abs(width('.item-data-region')-500)<3&&
+      Math.abs(data?.left-(card?.left+(card?.width-data?.width)/2))<3&&
       Math.abs(title?.left-card?.left)<3&&
-      Math.abs(title?.width-card?.width)<3&&
       !!wrap&&wrap.scrollWidth>wrap.clientWidth;
   })()`,'Typing 500 did not resize and center page headers, controls and scrollable list');
+  const controlsReadable=await evaluate(`(()=>{
+    const toolbar=document.querySelector('.settings-mode-bar');
+    const editingPanel=document.querySelector('.item-column-panel');
+    const action=[...document.querySelectorAll('.settings-mode-bar button')].find(b=>b.textContent?.includes('Lưu bố trí'));
+    return !!toolbar&&!!editingPanel&&!!action&&
+      toolbar.getBoundingClientRect().width>=890&&
+      editingPanel.getBoundingClientRect().width>=890&&
+      action.getBoundingClientRect().width>=100&&
+      action.getBoundingClientRect().height<90;
+  })()`);
+  if(!controlsReadable)throw Error('The customization controls collapsed when the data frame shrank to 500px');
   // Retyping 1500 should keep the 500px card until Enter or blur.
   await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');input.focus();input.select();})()`);
   await send('Input.insertText',{text:'1500'});
   await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='1500'","Retyping 1500 failed");
-  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-500)>3)
+  if(Math.abs((await evaluate("document.querySelector('.item-data-region').getBoundingClientRect().width"))-500)>3)
     throw Error('Typing 1500 resized before Enter');
   await evaluate("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]').blur()");
-  await eventually("Math.abs(document.querySelector('.item-list-card').getBoundingClientRect().width-1500)<3",
+  await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-1500)<3",
     'Committing 1500 did not update the centered list');
+  await evaluate(`(()=>{const e=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');e.focus();e.select()})()`);
+  await send('Input.insertText',{text:'320'});
+  await evaluate('document.activeElement.blur()');
+  await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-320)<3",'320px table width not applied');
+  if(!(await evaluate("document.querySelector('.settings-mode-bar').getBoundingClientRect().width>=890")))
+    throw Error('Narrow 320px table collapsed editing controls');
+  await evaluate(`(()=>{const e=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');e.focus();e.select()})()`);
+  await send('Input.insertText',{text:'1500'});
+  await evaluate('document.activeElement.blur()');
+  await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-1500)<3",'1500px restore after narrow table failed');
   // Anonymous browser must never save shared Firebase configuration. Ensure a
   // rejected save visibly explains the reason beside the action, not far below.
   const clickedSave=await evaluate(`(()=>{
@@ -208,7 +229,7 @@ try{
     if(!checkbox)return false;checkbox.click();return checkbox.checked;
   })()`);
   if(!backToAuto)throw Error('Automatic list width toggle not available');
-  await eventually("document.querySelector('.item-list-card')?.getBoundingClientRect().width>1000",'Auto width did not restore full viewport');
+  await eventually("document.querySelector('.item-data-region')?.getBoundingClientRect().width>1000",'Auto width did not restore full viewport');
   await eventually("document.querySelector('.list-color-editor summary')!==null",'Conditional color settings unavailable');
   await evaluate(`document.querySelector('.list-color-editor summary').click();document.querySelector('input[aria-label="Giá trị kích hoạt màu"]').focus()`);
   await send('Input.insertText',{text:'Đã trình HĐND'});
