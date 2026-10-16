@@ -124,4 +124,25 @@ describe.skipIf(!emulator)('Firebase emulator: rules, transactions and realtime'
     }
     const entries=await repo.history('r1');expect(entries).toHaveLength(50);expect(entries[0].changes.note).toBe('lần 3');expect(entries.at(-1)?.changes.note).toBe('lần 52');
   },20000);
+  it('only admin can lock editing or inspect/advance approval baselines, and revisions cannot be reused',async()=>{
+    const admin=env.authenticatedContext('verified-review-admin',adminClaims).database();
+    const other=guest('reader');
+    const control='hdnd/control';
+    const first={revision:1,editingLocked:true,changedAt:new Date().toISOString()};
+    await assertFails(set(ref(other as never,control),first));
+    await assertSucceeds(set(ref(admin as never,control),first));
+    await assertFails(set(ref(admin as never,control),{...first,editingLocked:false}));
+    await assertSucceeds(set(ref(admin as never,control),{...first,revision:2,editingLocked:false}));
+    const path='hdndReviews/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344';
+    const baseline={revision:1,source:'1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp:60961344',
+      approvedAt:new Date().toISOString(),approvedBy:adminClaims.email,
+      changedCount:2,payload:'{}',historyJson:'[]'};
+    await assertFails(get(ref(other as never,path)));
+    await assertFails(set(ref(other as never,path),baseline));
+    await assertSucceeds(set(ref(admin as never,path),baseline));
+    await assertFails(set(ref(admin as never,path),baseline));
+    await assertSucceeds(set(ref(admin as never,path),{...baseline,revision:2}));
+    await assertFails(set(ref(admin as never,path),{...baseline,revision:3,source:'other:gid'}));
+  });
+
 });
