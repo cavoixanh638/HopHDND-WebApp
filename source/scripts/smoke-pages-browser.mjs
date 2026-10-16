@@ -20,7 +20,7 @@ if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
 const chrome=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
   '--disable-extensions','--no-first-run','--no-default-browser-check','--remote-debugging-port=0',
-  '--user-data-dir='+userDir,'about:blank'],{stdio:['ignore','ignore','pipe']});
+  '--window-size=1600,1000','--user-data-dir='+userDir,'about:blank'],{stdio:['ignore','ignore','pipe']});
 let chromeErrors='';
 chrome.stderr?.on('data',chunk=>{chromeErrors+=String(chunk).slice(0,2000);});
 chrome.on('error',error=>{chromeErrors+=' SPAWN: '+error.message;});
@@ -85,6 +85,7 @@ try{
   });
   await send('Page.enable');
   await send('Runtime.enable');
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
   await send('Fetch.enable',{patterns:[{urlPattern:'*docs.google.com/spreadsheets/*/gviz/tq*',requestStage:'Request'}]});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
@@ -119,6 +120,20 @@ try{
   const options=await evaluate("(()=>{const s=document.querySelector('.options-menu summary');s?.click();return !!s})()");
   if(!options)throw Error('Options menu missing');
   await evaluate("([...document.querySelectorAll('.options-popover button')].find(b=>b.textContent?.includes('Vào chế độ tùy chỉnh danh sách')))?.click()");
+  const frameOk=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),card=document.querySelector('.item-list-card');
+    if(!shell||!card)return false;
+    const shellStyle=getComputedStyle(shell);
+    const usable=shell.clientWidth-parseFloat(shellStyle.paddingLeft)-parseFloat(shellStyle.paddingRight);
+    const table=card.querySelector('.item-data-table'),wrap=card.querySelector('.table-wrap');
+    return shell.classList.contains('wide-table-page') &&
+      Math.abs(card.getBoundingClientRect().width-usable)<=3 &&
+      !card.hasAttribute('style') &&
+      table?.getBoundingClientRect().width>=wrap?.clientWidth-3 &&
+      !![...card.querySelectorAll('summary')].find(x=>x.textContent?.includes('Cột và độ rộng bảng')) &&
+      !card.textContent.includes('Cột và khung bảng');
+  })()`);
+  if(!frameOk)throw Error('Customizing view still uses a narrow fixed frame or stale column title');
   await eventually("document.querySelector('.list-color-editor summary')!==null",'Conditional color settings unavailable');
   await evaluate(`document.querySelector('.list-color-editor summary').click();document.querySelector('input[aria-label="Giá trị kích hoạt màu"]').focus()`);
   await send('Input.insertText',{text:'Đã trình HĐND'});
