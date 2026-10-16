@@ -10,6 +10,8 @@ import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import {layoutRecoveryScope} from '../../data/draft-checkpoints';
 import { ItemColumnPanel } from './ItemColumnPanel';
+import {LayoutConflictResolver} from './LayoutConflictResolver';
+import {LayoutConflictError,type LayoutFieldConflict,type LayoutConflictChoices,type LayoutConflictChoice} from '../../data/item-layout-merge';
 import { Modal } from '../../components/Modal';
 import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
@@ -23,7 +25,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout)=>Promise<void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void }) {
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
@@ -42,9 +44,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     :selectedView?.layout??initialLayout??loadItemLayout(sourceKey));
   // The Firebase baseline must be the original *shared* layout when editing began,
   // not a local saved view nor the profile revision emitted after another write.
-  const [sharedBase]=useState<ItemLayout>(()=>initialLayout??applied);
+  const sharedBase=useRef<ItemLayout>(initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
-  const saveBaseline=restoredBase??sharedBase;
+  const saveBaseline=restoredBase??sharedBase.current;
   useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
@@ -52,6 +54,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
+  const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
+  const [conflictChoices,setConflictChoices] = useState<LayoutConflictChoices>({});
   const [saveFeedback,setSaveFeedback] = useState('');
   const [allSpecialists,setAllSpecialists] = useState(false);
   const [saving,setSaving] = useState(false);
@@ -68,6 +72,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     if(/permission[_ -]?denied/i.test(message))return 'Firebase từ chối quyền ghi bố trí (permission_denied). Kiểm tra Rules của hdnd/profile và đăng nhập Google quản trị; phần sửa vẫn ở trên máy.';
     if(/network|offline|disconnected/i.test(message))return 'Không kết nối được Firebase để lưu. Vui lòng thử lại khi có mạng; phần sửa vẫn được giữ trên máy.';
     return message;
+  };
+  const handleLayoutFailure=(cause:unknown)=>{
+    setSaveFeedback('');
+    if(cause instanceof LayoutConflictError){
+      setLayoutConflicts(cause.conflicts);
+      setConflictChoices({});
+      setLayoutError('');
+    }else{
+      setLayoutConflicts([]);
+      setLayoutError(saveIssue(cause));
+    }
+  };
+  const persistSavedLayout=async(valid:ItemLayout,choices?:LayoutConflictChoices)=>{
+    if(!allowLayout)throw new Error('Chỉ quản trị được lưu bố trí chung.');
+    let merged:ItemLayout=valid;
+    if(onPersistLayout){
+      const confirmed=await onPersistLayout(valid,saveBaseline,choices);
+      if(confirmed)merged=validateItemLayout(confirmed);
+    }else{
+      if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí. Nháp được giữ.');
+      onLayoutSaved('Đã lưu bố trí danh sách trên trình duyệt.');
+    }
+    sharedBase.current=merged;
+    setApplied(merged);setLayout(merged);setRestoredBase(null);clearCheckpoint();
+    setLayoutConflicts([]);setConflictChoices({});
+    return merged;
   };
   const savingRef=useRef(false);
   const resizing=useRef<{key:string;x:number;width:number}|null>(null);
@@ -88,18 +118,33 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       if(cannotSaveData&&!layoutToSave)throw new Error('Nội dung sửa thử chưa thể ghi lên Google Sheets. Hãy giữ thay đổi trên máy hoặc bỏ phần sửa.');
       if(!readOnly&&Object.keys(drafts).length && !await onSaveData()) throw new Error('Chưa xác nhận lưu dữ liệu. Phần sửa vẫn được giữ; xem thông báo lỗi phía trên để xử lý.');
       if(layoutToSave){
-        if(!allowLayout)throw new Error('Chỉ quản trị được lưu bố trí chung.');
-        if(onPersistLayout)await onPersistLayout(layoutToSave,saveBaseline);
-        else {const persisted=saveItemLayout(sourceKey,layoutToSave);if(!persisted)throw new Error('Không lưu được bố trí. Nháp được giữ.');onLayoutSaved('Đã lưu bố trí danh sách trên trình duyệt.');}
-        setApplied(layoutToSave);setLayout(layoutToSave);setRestoredBase(null);clearCheckpoint();
+        await persistSavedLayout(layoutToSave);
       }
       if(readOnly&&pendingData)onLayoutSaved('Đã lưu bố trí dùng chung; các ô nội dung sửa thử vẫn chỉ ở trên máy, chưa ghi Google Sheets.');
       setSaveFeedback('Đã lưu bố trí thành công.');
       setConfirmExit(false);onClose();
-    } catch(cause){setSaveFeedback('');setLayoutError(saveIssue(cause));}
+    } catch(cause){handleLayoutFailure(cause);}
     finally{savingRef.current=false;setSaving(false);}
   };
-  const validateAndSaveLayout=async()=>{if(locked||savingRef.current||!dirty||!allowLayout)return;savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');try{const valid=validateItemLayout(layout);if(onPersistLayout)await onPersistLayout(valid,saveBaseline);else if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí.');setApplied(valid);setLayout(valid);setRestoredBase(null);clearCheckpoint();setSaveFeedback('Đã lưu bố trí thành công vào nơi lưu cấu hình.');}catch(cause){setSaveFeedback('');setLayoutError(saveIssue(cause));}finally{savingRef.current=false;setSaving(false);}};
+  const validateAndSaveLayout=async()=>{
+    if(locked||savingRef.current||!dirty||!allowLayout)return;
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');
+    try{
+      await persistSavedLayout(validateItemLayout(layout));
+      setSaveFeedback('Đã lưu bố trí thành công vào nơi lưu cấu hình.');
+    }catch(cause){handleLayoutFailure(cause);}
+    finally{savingRef.current=false;setSaving(false);}
+  };
+  const resolveAndSaveLayout=async()=>{
+    if(locked||savingRef.current||!dirty||!onPersistLayout||layoutConflicts.some(c=>!conflictChoices[c.id]))return;
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang đối chiếu bản Firebase mới nhất…');
+    try{
+      await persistSavedLayout(validateItemLayout(layout),conflictChoices);
+      setSaveFeedback('Đã lưu lựa chọn vào Firebase. Những thông số khác được giữ nguyên.');
+      onClose();
+    }catch(cause){handleLayoutFailure(cause);}
+    finally{savingRef.current=false;setSaving(false);}
+  };
   const index = useMemo(() => createSearchIndex(items), [items]);
   const filtered = useMemo(() => items.filter(item =>
     matchesColumnFilters(item,columnFilters) && matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
@@ -134,6 +179,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   return <section className="card item-list-card">
     {customizing&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||(!dirty&&(!pendingData||readOnly))} title={cannotSaveData&&dirty?'Chỉ lưu bố trí. Phần sửa nội dung vẫn giữ trên máy.':undefined} onClick={()=>void save()}>{saveActionLabel}</button>}</div></div>{layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Không lưu được bố trí.</strong><span>{layoutError}</span><span className="muted">Phần tùy chỉnh chưa được xác nhận lưu; vẫn giữ trên máy để thử lại.</span></div>}
     {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
+    {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
+      conflicts={layoutConflicts} choices={conflictChoices}
+      busy={locked||dataSaving}
+      onChoose={(field:string,choice:LayoutConflictChoice)=>setConflictChoices(current=>({...current,[field]:choice}))}
+      onConfirm={()=>void resolveAndSaveLayout()}
+      onCancel={()=>{setLayoutConflicts([]);setConflictChoices({});}}/>}
     <p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
   <div className="customize-mode-tabs">
     <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
@@ -144,7 +195,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
 </div>
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayout(value);}}/><button className="button ghost" disabled={!dirty} onClick={()=>void validateAndSaveLayout()}>{layoutSaveLabel}</button></fieldset>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/><button className="button ghost" disabled={!dirty} onClick={()=>void validateAndSaveLayout()}>{layoutSaveLabel}</button></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted">{filtered.length} / {items.length} nội dung · Tìm kiếm hỗ trợ tiếng Việt không dấu</p></div><div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div></div>
