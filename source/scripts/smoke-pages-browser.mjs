@@ -134,6 +134,37 @@ try{
       !card.textContent.includes('Cột và khung bảng');
   })()`);
   if(!frameOk)throw Error('Customizing view still uses a narrow fixed frame or stale column title');
+  const widthControl=await evaluate(`(()=>{
+    const summary=document.querySelector('.item-column-panel > summary');
+    summary?.click();
+    const input=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');
+    if(!input)return false;
+    input.focus();input.select();
+    return true;
+  })()`);
+  if(!widthControl)throw Error('The live viewport-width control is absent');
+  await send('Input.insertText',{text:'500'});
+  await eventually(`(()=>{
+    const select=q=>document.querySelector(q)?.getBoundingClientRect();
+    const width=q=>select(q)?.width??0;
+    const main=select('.wide-table-page main'),card=select('.item-list-card'),
+      title=select('.wide-table-page .page-heading');
+    const wrap=document.querySelector('.item-list-card .table-wrap');
+    return Math.abs(width('.wide-table-page main')-500)<3&&
+      Math.abs(width('.item-list-card')-500)<3&&
+      Math.abs(width('.wide-table-page > .topbar')-500)<3&&
+      Math.abs(width('.wide-table-page > .demo-banner')-500)<3&&
+      Math.abs(width('.wide-table-page > .nav-tabs')-500)<3&&
+      Math.abs(title?.left-card?.left)<3&&
+      Math.abs(title?.width-card?.width)<3&&
+      !!wrap&&wrap.scrollWidth>wrap.clientWidth;
+  })()`,'Typing 500 did not resize and center page headers, controls and scrollable list');
+  const backToAuto=await evaluate(`(()=>{
+    const checkbox=[...document.querySelectorAll('.item-frame-controls input[type="checkbox"]')][0];
+    if(!checkbox)return false;checkbox.click();return checkbox.checked;
+  })()`);
+  if(!backToAuto)throw Error('Automatic list width toggle not available');
+  await eventually("document.querySelector('.item-list-card')?.getBoundingClientRect().width>1000",'Auto width did not restore full viewport');
   await eventually("document.querySelector('.list-color-editor summary')!==null",'Conditional color settings unavailable');
   await evaluate(`document.querySelector('.list-color-editor summary').click();document.querySelector('input[aria-label="Giá trị kích hoạt màu"]').focus()`);
   await send('Input.insertText',{text:'Đã trình HĐND'});
@@ -141,7 +172,7 @@ try{
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
   const visual=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
-  console.log('BROWSER_SMOKE_PASS: mock GViz, aligned responsive frame, dash blanks, filters, presets and colors.');
+  console.log('BROWSER_SMOKE_PASS: 500px editable centered list+headers, auto reset, mock GViz blank cells, filters, presets and colors.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
