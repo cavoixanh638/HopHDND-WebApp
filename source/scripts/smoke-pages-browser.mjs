@@ -18,8 +18,12 @@ const candidates=['google-chrome','google-chrome-stable','chromium','chromium-br
 const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
 if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
-const chrome=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--no-first-run',
-  '--remote-debugging-port=0','--user-data-dir='+userDir,'about:blank'],{stdio:'ignore'});
+const chrome=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+  '--disable-extensions','--no-first-run','--no-default-browser-check','--remote-debugging-port=0',
+  '--user-data-dir='+userDir,'about:blank'],{stdio:['ignore','ignore','pipe']});
+let chromeErrors='';
+chrome.stderr?.on('data',chunk=>{chromeErrors+=String(chunk).slice(0,2000);});
+chrome.on('error',error=>{chromeErrors+=' SPAWN: '+error.message;});
 let ws;
 let seq=0;
 const pending=new Map();
@@ -52,8 +56,13 @@ async function eventually(expression,why,tries=75){
 try{
   let chromePort=0;
   const debugFile=join(userDir,'DevToolsActivePort');
-  for(let i=0;i<90;i++){if(existsSync(debugFile)){chromePort=Number(readFileSync(debugFile,'utf8').split('\n')[0]);break;}await sleep(100);}
-  if(!chromePort)throw Error('Chrome debugging port unavailable');
+  for(let i=0;i<250;i++){
+    if(existsSync(debugFile)){chromePort=Number(readFileSync(debugFile,'utf8').split('\n')[0]);break;}
+    if(chrome.exitCode!==null)break;
+    await sleep(100);
+  }
+  if(!chromePort)throw Error('Chrome debugging port unavailable; exit='+chrome.exitCode+
+    ' binary='+binary+' stderr='+chromeErrors.slice(-2000));
   const tabs=await (await fetch('http://127.0.0.1:'+chromePort+'/json/list')).json();
   const tab=tabs.find(t=>t.type==='page');
   if(!tab)throw Error('Chrome did not open a page');
