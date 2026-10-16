@@ -40,6 +40,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
+  const [saveFeedback,setSaveFeedback] = useState('');
   const [allSpecialists,setAllSpecialists] = useState(false);
   const [saving,setSaving] = useState(false);
   const [permissionMode,setPermissionMode] = useState(false);
@@ -49,7 +50,13 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const cannotSaveData=readOnly&&pendingData;
   const blockedSaveLabel=draftOnly?'Chỉ giữ thay đổi thử trên máy':'Chưa thể lưu vào Excel';
   const sourceSaveLabel=effectiveSourceKind==='firebase'?'Lưu vào Firebase':effectiveSourceKind==='google'?'Lưu dữ liệu vào Excel':'Lưu dữ liệu mẫu';
-  const saveActionLabel=pendingData?`${sourceSaveLabel}${dirty?' và bố trí':''}`:dirty?'Lưu bố trí và về xem':'Không có thay đổi';
+  const saveActionLabel=dirty?(saving?'Đang lưu bố trí…':pendingData&&readOnly?'Lưu bố trí; giữ phần sửa dữ liệu trên máy':'Lưu bố trí và về xem'):pendingData?blockedSaveLabel:'Không có thay đổi';
+  const saveIssue=(cause:unknown)=>{
+    const message=cause instanceof Error?cause.message:'Chưa lưu được bố trí.';
+    if(/permission[_ -]?denied/i.test(message))return 'Firebase từ chối quyền ghi bố trí (permission_denied). Kiểm tra Rules của hdnd/profile và đăng nhập Google quản trị; phần sửa vẫn ở trên máy.';
+    if(/network|offline|disconnected/i.test(message))return 'Không kết nối được Firebase để lưu. Vui lòng thử lại khi có mạng; phần sửa vẫn được giữ trên máy.';
+    return message;
+  };
   const savingRef=useRef(false);
   const resizing=useRef<{key:string;x:number;width:number}|null>(null);
   const [page, setPage] = useState(0);
@@ -61,24 +68,26 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');}else if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
   const save = async () => {
     if(locked||savingRef.current||permissionMode)return;
-    savingRef.current=true;setSaving(true);
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');
     try {
       const layoutToSave=dirty?validateItemLayout(layout):null;
       const issue=items.filter(item=>{const changes=drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item=>assignmentIssue(item,catalog)).find(Boolean);
       if(issue) throw new Error(issue);
-      if(cannotSaveData)throw new Error('Chưa bật lưu vào file Excel. Giữ thay đổi trên máy hoặc quay lại để lưu riêng bố trí.');
-      if(Object.keys(drafts).length && !await onSaveData()) throw new Error('Chưa xác nhận lưu dữ liệu. Phần sửa vẫn được giữ; xem thông báo lỗi phía trên để xử lý.');
+      if(cannotSaveData&&!layoutToSave)throw new Error('Nội dung sửa thử chưa thể ghi lên Google Sheets. Hãy giữ thay đổi trên máy hoặc bỏ phần sửa.');
+      if(!readOnly&&Object.keys(drafts).length && !await onSaveData()) throw new Error('Chưa xác nhận lưu dữ liệu. Phần sửa vẫn được giữ; xem thông báo lỗi phía trên để xử lý.');
       if(layoutToSave){
         if(!allowLayout)throw new Error('Chỉ quản trị được lưu bố trí chung.');
         if(onPersistLayout)await onPersistLayout(layoutToSave);
         else {const persisted=saveItemLayout(sourceKey,layoutToSave);if(!persisted)throw new Error('Không lưu được bố trí. Nháp được giữ.');onLayoutSaved('Đã lưu bố trí danh sách trên trình duyệt.');}
         setApplied(layoutToSave);setLayout(layoutToSave);clearCheckpoint();
       }
+      if(readOnly&&pendingData)onLayoutSaved('Đã lưu bố trí dùng chung; các ô nội dung sửa thử vẫn chỉ ở trên máy, chưa ghi Google Sheets.');
+      setSaveFeedback('Đã lưu bố trí thành công.');
       setConfirmExit(false);onClose();
-    } catch(cause){setLayoutError(cause instanceof Error?cause.message:'Chưa lưu được bố trí.');}
+    } catch(cause){setSaveFeedback('');setLayoutError(saveIssue(cause));}
     finally{savingRef.current=false;setSaving(false);}
   };
-  const validateAndSaveLayout=async()=>{if(locked||savingRef.current||!dirty||!allowLayout)return;savingRef.current=true;setSaving(true);try{const valid=validateItemLayout(layout);if(onPersistLayout)await onPersistLayout(valid);else if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí.');setApplied(valid);setLayout(valid);clearCheckpoint();setLayoutError('');}catch(cause){setLayoutError(cause instanceof Error?cause.message:'Không lưu được bố trí.');}finally{savingRef.current=false;setSaving(false);}};
+  const validateAndSaveLayout=async()=>{if(locked||savingRef.current||!dirty||!allowLayout)return;savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu bố trí…');try{const valid=validateItemLayout(layout);if(onPersistLayout)await onPersistLayout(valid);else if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí.');setApplied(valid);setLayout(valid);clearCheckpoint();setSaveFeedback('Đã lưu bố trí thành công vào nơi lưu cấu hình.');}catch(cause){setSaveFeedback('');setLayoutError(saveIssue(cause));}finally{savingRef.current=false;setSaving(false);}};
   const index = useMemo(() => createSearchIndex(items), [items]);
   const filtered = useMemo(() => items.filter(item =>
     matchesColumnFilters(item,columnFilters) && matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
@@ -109,7 +118,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(sourceKey,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   // The parent centers both page headings and list controls according to the preview width.
   return <section className="card item-list-card">
-    {customizing&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||cannotSaveData||(!dirty&&!pendingData)} onClick={()=>void save()}>{cannotSaveData?blockedSaveLabel:saveActionLabel}</button>}</div></div><p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
+    {customizing&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||(!dirty&&(!pendingData||readOnly))} title={cannotSaveData&&dirty?'Chỉ lưu bố trí. Phần sửa nội dung vẫn giữ trên máy.':undefined} onClick={()=>void save()}>{saveActionLabel}</button>}</div></div>{layoutError&&<div className="layout-save-alert" role="alert"><strong>Không lưu được bố trí.</strong><span>{layoutError}</span><span className="muted">Phần tùy chỉnh chưa được xác nhận lưu; vẫn giữ trên máy để thử lại.</span></div>}
+    {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
+    <p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
   <div className="customize-mode-tabs">
     <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
       if(permissionMode&&permissionDirty){setLayoutError('Quyền chưa lưu. Hãy Lưu hoặc Bỏ thay đổi quyền trước khi chuyển sang Bố trí bảng.');return;}
@@ -119,8 +130,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
 </div>
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel layout={layout} onChange={setLayout}/><button className="button ghost" disabled={!dirty} onClick={()=>void validateAndSaveLayout()}>{layoutSaveLabel}</button></fieldset>}
-{layoutError&&<p className="error-text" role="alert">{layoutError}</p>}</>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel layout={layout} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayout(value);}}/><button className="button ghost" disabled={!dirty} onClick={()=>void validateAndSaveLayout()}>{layoutSaveLabel}</button></fieldset>}
+</>}
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted">{filtered.length} / {items.length} nội dung · Tìm kiếm hỗ trợ tiếng Việt không dấu</p></div><div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div></div>
     {customizing&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
      <ListViewTools sourceKey={sourceKey} filters={{query,kind,lifecycle,leader,status,columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>
