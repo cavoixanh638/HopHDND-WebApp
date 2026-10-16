@@ -82,15 +82,36 @@ export function useFirebase(){
     const candidate=section==='all'?{...(value as object),revision:(base?.revision??0)+1}:{...base,[section]:value,revision:(base?.revision??0)+1};
     const valid=profileFrom(candidate);if(!valid)throw new Error('Thiếu bộ cấu hình.');
     saving.current=true;setBusy(true);
-    try{const result=await runTransaction(ref(database,'hdnd/profile'),current=>((current?.revision??0)!==(base?.revision??0)?undefined:{revision:valid.revision,payload:JSON.stringify(valid)}),{applyLocally:false});if(!result.committed)throw new Error('Bố trí đã được sửa ở cửa sổ khác. Đọc lại và đối chiếu.');setProfile(valid);}finally{saving.current=false;setBusy(false);}
+    try{
+      const expected=base?.revision??0;
+      const result=await runTransaction(ref(database,'hdnd/profile'),current=>{
+        // RTDB transactions may first see null even when the server has a profile.
+        // Return null to fetch/retry against the server rather than aborting.
+        if(current===null&&expected>0)return current;
+        if(Number(current?.revision??0)!==expected)return undefined;
+        return {revision:valid.revision,payload:JSON.stringify(valid)};
+      },{applyLocally:false});
+      if(!result.committed||result.snapshot.val()?.revision!==valid.revision||
+         result.snapshot.val()?.payload!==JSON.stringify(valid))
+        throw new Error('Bố trí đã được sửa ở cửa sổ khác hoặc Firebase chưa xác nhận lưu. Đọc lại và đối chiếu.');
+      setProfile(valid);
+      return valid;
+    }finally{saving.current=false;setBusy(false);}
   };
   const savePermissions=async(next:CellPermissions,expected=permissions)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady)throw new Error('Cần quản trị Google, kết nối mạng và quyền gốc để lưu quyền sửa.');
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     const base=JSON.stringify(expected);
     saving.current=true;setBusy(true);
-    try{const result=await runTransaction(ref(database,'hdnd/permissions'),current=>JSON.stringify({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}})!==base?undefined:next,{applyLocally:false});
-    if(!result.committed)throw new Error('Quyền sửa đã đổi ở cửa sổ khác. Đóng và mở lại để đối chiếu.');}finally{saving.current=false;setBusy(false);}
+    try{const empty=JSON.stringify({columns:{},rows:{},cells:{}});
+    const result=await runTransaction(ref(database,'hdnd/permissions'),current=>{
+      if(current===null&&base!==empty)return current;
+      return JSON.stringify({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}})!==base?undefined:next;
+    },{applyLocally:false});
+    const confirmed=result.snapshot.val();
+    if(!result.committed||JSON.stringify({columns:confirmed?.columns??{},rows:confirmed?.rows??{},cells:confirmed?.cells??{}})!==JSON.stringify({columns:next.columns??{},rows:next.rows??{},cells:next.cells??{}}))
+      throw new Error('Quyền sửa đã đổi ở cửa sổ khác hoặc Firebase chưa xác nhận lưu. Đọc lại và đối chiếu.');
+    }finally{saving.current=false;setBusy(false);}
   };
   const saveEditingLock=async(nextLocked:boolean)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!editControl.ready)throw new Error('Chỉ quản trị đã kết nối mới được khóa hoặc mở sửa.');
@@ -98,10 +119,13 @@ export function useFirebase(){
     const expected=editControl.revision;
     saving.current=true;setBusy(true);
     try{
-      const result=await runTransaction(ref(database,'hdnd/control'),current=>
-        Number(current?.revision??0)!==expected?undefined:
-          {revision:expected+1,editingLocked:nextLocked,changedAt:new Date().toISOString()},{applyLocally:false});
-      if(!result.committed)throw new Error('Trạng thái khóa đã đổi ở tab khác. Đọc lại trước khi thao tác.');
+      const result=await runTransaction(ref(database,'hdnd/control'),current=>{
+        if(current===null&&expected>0)return current;
+        return Number(current?.revision??0)!==expected?undefined:
+          {revision:expected+1,editingLocked:nextLocked,changedAt:new Date().toISOString()};
+      },{applyLocally:false});
+      if(!result.committed||result.snapshot.val()?.revision!==expected+1||result.snapshot.val()?.editingLocked!==nextLocked)
+        throw new Error('Trạng thái khóa đã đổi hoặc chưa được Firebase xác nhận. Đọc lại trước khi thao tác.');
       setEditControl({ready:true,revision:expected+1,editingLocked:nextLocked});
     }finally{saving.current=false;setBusy(false);}
   };
@@ -119,6 +143,7 @@ export function useFirebase(){
     saving.current=true;setBusy(true);
     try{
       const result=await runTransaction(ref(database,path),current=>{
+        if(current===null&&expectedRevision>0)return current;
         if(Number(current?.revision??0)!==expectedRevision)return undefined;
         let previous:ReviewBaseline['history']=[];
         try{previous=current?.historyJson?JSON.parse(current.historyJson):[];}catch{return undefined;}
@@ -127,7 +152,9 @@ export function useFirebase(){
         const history=[...previous,{revision,at:now,changedCount}].slice(-20);
         return {revision,source:snapshot.source,approvedAt:now,approvedBy:actor,changedCount,payload,historyJson:JSON.stringify(history)};
       },{applyLocally:false});
-      if(!result.committed)throw new Error('Mốc phê duyệt đã được cập nhật ở nơi khác. Hãy đọc lại để đối chiếu.');
+      if(!result.committed||result.snapshot.val()?.revision!==expectedRevision+1||
+         result.snapshot.val()?.payload!==payload)
+        throw new Error('Mốc phê duyệt đã được cập nhật ở nơi khác hoặc chưa được Firebase xác nhận. Hãy đọc lại để đối chiếu.');
       const baseline=baselineFrom(result.snapshot.val(),snapshot.source);
       if(!baseline)throw new Error('Không đọc được xác nhận mốc phê duyệt.');
       return baseline;
