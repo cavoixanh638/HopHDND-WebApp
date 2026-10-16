@@ -53,7 +53,7 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     const client=repo('editor');
     expect((await client.save([patch((await client.list())[0],{note:'lách khóa'})]))[0].ok).toBe(false);
     await assertFails(update(ref(guest('editor') as never,'hdnd/items/r1'),{note:'ghi thẳng'}));
-    expect((await repo('admin',true).save([patch((await repo('admin',true).list())[0],{note:'admin vẫn sửa được'})]))[0].ok).toBe(true);
+    expect((await repo('verified-admin',true).save([patch((await repo('verified-admin',true).list())[0],{note:'admin vẫn sửa được'})]))[0].ok).toBe(true);
     await assertFails(set(ref(guest('editor') as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     await assertSucceeds(set(ref(a as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     const current=(await client.list())[0];
