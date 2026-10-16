@@ -194,7 +194,15 @@ try{
       action.getBoundingClientRect().width>=100&&
       action.getBoundingClientRect().height<90;
   })()`);
-  if(!controlsReadable)throw Error('The customization controls collapsed when the data frame shrank to 500px');
+  if(!controlsReadable){
+    console.log('CONTROLS_DEBUG',JSON.stringify(await evaluate(`(()=>{
+      const selectors=['.settings-mode-bar','.item-column-panel','.item-list-card .settings-mode-bar > div:first-child','.settings-mode-bar .top-actions'];
+      const rect=s=>{const e=document.querySelector(s);const r=e?.getBoundingClientRect();return r?{w:r.width,h:r.height,x:r.x}:null};
+      return {controls:selectors.map(s=>[s,rect(s)]),
+        buttons:[...document.querySelectorAll('.settings-mode-bar button')].map(e=>({text:e.textContent?.trim(),w:e.getBoundingClientRect().width,h:e.getBoundingClientRect().height}))};
+    })()`)));
+    throw Error('The customization controls collapsed when the data frame shrank to 500px');
+  }
   // Retyping 1500 should keep the 500px card until Enter or blur.
   await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');input.focus();input.select();})()`);
   await send('Input.insertText',{text:'1500'});
