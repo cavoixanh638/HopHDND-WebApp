@@ -1,0 +1,53 @@
+import {describe,it,expect} from 'vitest';
+import {defaultItemLayout} from '../src/data/item-preferences';
+import {mergeItemLayout,LayoutConflictError} from '../src/data/item-layout-merge';
+
+describe('concurrent Firebase list-layout safety',()=>{
+  it('preserves remotely changed columns and reports when the user only adjusts frameWidth',()=>{
+    const base=defaultItemLayout();
+    const draft={...base,frameWidth:1500 as const};
+    const current={...base,tableWidth:2000,columns:base.columns.map(c=>c.key==='room'?{...c,width:230}:c)};
+    const merged=mergeItemLayout(base,draft,current);
+    expect(merged.frameWidth).toBe(1500);
+    expect(merged.tableWidth).toBe(2000);
+    expect(merged.columns.find(c=>c.key==='room')?.width).toBe(230);
+  });
+  it('merges disjoint edits in the same list section without losing either',()=>{
+    const base=defaultItemLayout();
+    const local={...base,columns:base.columns.map(c=>c.key==='room'?{...c,width:300}:c)};
+    const remote={...base,columns:base.columns.map(c=>c.key==='content'?{...c,width:570}:c)};
+    const merged=mergeItemLayout(base,local,remote);
+    expect(merged.columns.find(c=>c.key==='room')?.width).toBe(300);
+    expect(merged.columns.find(c=>c.key==='content')?.width).toBe(570);
+  });
+  it('refuses simultaneous different edits to the same field',()=>{
+    const base=defaultItemLayout(),local={...base,frameWidth:1500 as const},remote={...base,frameWidth:500 as const};
+    expect(()=>mergeItemLayout(base,local,remote)).toThrow(LayoutConflictError);
+    expect(()=>mergeItemLayout(base,local,remote)).toThrow('độ rộng vùng danh sách');
+  });
+  it('recognizes identical concurrent edits as safe and conserves remote order',()=>{
+    const base=defaultItemLayout();
+    const reordered={...base,columns:[...base.columns].reverse()};
+    const local={...base,tableWidth:1800,frameWidth:1500 as const};
+    const remote={...reordered,tableWidth:1800};
+    const merged=mergeItemLayout(base,local,remote);
+    expect(merged.columns.map(c=>c.key)).toEqual(reordered.columns.map(c=>c.key));
+    expect(merged.tableWidth).toBe(1800);
+    expect(merged.frameWidth).toBe(1500);
+  });
+  it('refuses competing reorders of visible columns',()=>{
+    const base=defaultItemLayout();
+    const a={...base,columns:[base.columns[1],base.columns[0],...base.columns.slice(2)]};
+    const b={...base,columns:[...base.columns.slice(1),base.columns[0]]};
+    expect(()=>mergeItemLayout(base,a,b)).toThrow('thứ tự cột');
+  });
+  it('does not overwrite new source configuration when restored draft leaves fields untouched',()=>{
+    const base=defaultItemLayout();
+    const draft={...base,frameWidth:1500 as const};
+    const live={...base,tableWidth:500,columns:base.columns.map(c=>({...c,visible:c.key==='content'||c.key==='displayCode'}))};
+    const merged=mergeItemLayout(base,draft,live);
+    expect(merged.tableWidth).toBe(500);
+    expect(merged.columns.find(c=>c.key==='room')?.visible).toBe(false);
+    expect(merged.frameWidth).toBe(1500);
+  });
+});
