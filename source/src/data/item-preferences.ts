@@ -11,9 +11,9 @@ export const defaultItemLayout = (): ItemLayout => ({ tableWidth: 1500, frameWid
 export function validateItemLayout(value: unknown): ItemLayout {
   if (!value || typeof value !== 'object') throw new Error('Bố trí danh sách không hợp lệ.');
   const input = value as ItemLayout, defaults = defaultItemLayout();
-  if (!Number.isInteger(input.tableWidth) || input.tableWidth < 600 || input.tableWidth > 6000) throw new Error('Độ rộng bảng cần từ 600 đến 6000 px.');
+  if (!Number.isInteger(input.tableWidth) || input.tableWidth < 500 || input.tableWidth > 6000) throw new Error('Độ rộng tối thiểu phần cột bên trong cần từ 500 đến 6000 px (khác với độ rộng vùng danh sách).');
   const frameWidth=input.frameWidth??'auto';
-  if(frameWidth!=='auto'&&(!Number.isInteger(frameWidth)||frameWidth<320||frameWidth>6000))throw new Error('Độ rộng khung cần từ 320 đến 6000 px hoặc Tự động.');
+  if(frameWidth!=='auto'&&(!Number.isInteger(frameWidth)||frameWidth<320||frameWidth>6000))throw new Error('Độ rộng vùng danh sách cần từ 320 đến 6000 px hoặc Tự động.');
   if (!Array.isArray(input.columns) || input.columns.length !== defaults.columns.length || new Set(input.columns.map(column => column.key)).size !== defaults.columns.length) throw new Error('Danh sách cột cần đủ và không trùng.');
   const columns = input.columns.map(column => {
     const base = defaults.columns.find(entry => entry.key === column.key);
