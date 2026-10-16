@@ -39,7 +39,8 @@ const sourcePayload={status:'ok',table:{cols:Array.from({length:16},()=>({})),ro
   {c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
     'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','Ghi chú',false].map(v=>({v}))},
-  {c:['',2,'','','QPPL','','','','','','','','','','',false].map(v=>({v}))}
+  {c:['',2,'','','QPPL','','','','','','','','','','',false].map(v=>({v}))},
+  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','','',false].map(v=>({v}))}))
 ]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
@@ -106,7 +107,21 @@ try{
       !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
   })()`);
   if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
-  const started=await evaluate(`(()=>{const b=document.querySelector('.column-filter summary[aria-label="Lọc cột Sở/đơn vị"]');if(!b)return false;b.click();const input=document.querySelector('input[aria-label="Tìm trong cột Sở/đơn vị"]');input?.focus();return !!input})()`);
+  const sticky=await evaluate(`(()=>{
+    const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
+      filter=scroll?.querySelector('.item-column-filter-row th');
+    if(!scroll||!title||!filter)return false;
+    if(getComputedStyle(title).position!=='sticky'||getComputedStyle(filter).position!=='sticky')return false;
+    if(getComputedStyle(document.querySelector('.item-sticky-search-controls')).position!=='sticky')return false;
+    const before=title.getBoundingClientRect().top;
+    if(scroll.scrollHeight<=scroll.clientHeight+30)return false;
+    scroll.scrollTop=180;
+    const after=title.getBoundingClientRect().top;
+    return scroll.scrollTop>=100&&Math.abs(before-after)<3&&
+      document.querySelectorAll('.item-column-filter-row input,.item-column-filter-row select').length>2;
+  })()`);
+  if(!sticky)throw Error('Sticky table header/filter/search and vertical scroll must work together');
+  const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Lọc cột Nội dung"]');input?.focus();return !!input})()`);
   if(!started)throw Error('Column filter UI is missing');
   await send('Input.insertText',{text:'Không khớp'});
   await eventually("document.querySelector('.active-filter-bar')?.textContent?.includes('Không khớp')===true",'Active filter chip not shown');
@@ -248,7 +263,7 @@ try{
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
   const visual=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
-  console.log('BROWSER_SMOKE_PASS: clearing width never collapses table; blur commits 500 and 1500; rejected Save visible; auto reset, mock GViz blanks.');
+  console.log('BROWSER_SMOKE_PASS: sticky search/header/filter with 50+ rows, inline column filters, safe widths, no Firebase writes.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
