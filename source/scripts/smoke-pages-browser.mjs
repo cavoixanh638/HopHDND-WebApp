@@ -147,8 +147,18 @@ try{
     return document.activeElement===input&&!input.matches(':disabled');
   })()`);
   if(!widthControl)throw Error('The live viewport-width control is absent');
+  const originalWidth=await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width");
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8,nativeVirtualKeyCode:8});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8,nativeVirtualKeyCode:8});
+  await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value===''","Width must allow an empty intermediate edit");
+  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-originalWidth)>3)
+    throw Error('Deleting a width while typing resized the live table');
   await send('Input.insertText',{text:'500'});
-  await sleep(550);
+  await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='500'","Width must allow typing a valid replacement");
+  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-originalWidth)>3)
+    throw Error('Table resized before the user committed the width');
+  await evaluate("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]').blur()");
+  await sleep(250);
   console.log('WIDTH_DEBUG',JSON.stringify(await evaluate(`(()=>{
     const rect=q=>{const e=document.querySelector(q);if(!e)return null;const r=e.getBoundingClientRect();return {left:r.left,width:r.width,scroll:e.scrollWidth,client:e.clientWidth};};
     return {input:document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]')?.value,
@@ -174,6 +184,15 @@ try{
       Math.abs(title?.width-card?.width)<3&&
       !!wrap&&wrap.scrollWidth>wrap.clientWidth;
   })()`,'Typing 500 did not resize and center page headers, controls and scrollable list');
+  // Retyping 1500 should keep the 500px card until Enter or blur.
+  await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');input.focus();input.select();})()`);
+  await send('Input.insertText',{text:'1500'});
+  await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='1500'","Retyping 1500 failed");
+  if(Math.abs((await evaluate("document.querySelector('.item-list-card').getBoundingClientRect().width"))-500)>3)
+    throw Error('Typing 1500 resized before Enter');
+  await evaluate("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]').blur()");
+  await eventually("Math.abs(document.querySelector('.item-list-card').getBoundingClientRect().width-1500)<3",
+    'Committing 1500 did not update the centered list');
   // Anonymous browser must never save shared Firebase configuration. Ensure a
   // rejected save visibly explains the reason beside the action, not far below.
   const clickedSave=await evaluate(`(()=>{
@@ -197,7 +216,7 @@ try{
   await eventually("document.querySelector('.item-data-table tr.color-amber')!==null",'Conditional color not applied to matching row');
   const visual=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(visual.data,'base64'));
-  console.log('BROWSER_SMOKE_PASS: 500px layout, visible rejected save feedback, auto reset, mock GViz blanks and list features.');
+  console.log('BROWSER_SMOKE_PASS: clearing width never collapses table; blur commits 500 and 1500; rejected Save visible; auto reset, mock GViz blanks.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
