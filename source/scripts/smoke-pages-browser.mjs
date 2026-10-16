@@ -214,12 +214,14 @@ try{
     'Committing 1500 did not update the centered list');
   await evaluate(`(()=>{const e=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');e.focus();e.select()})()`);
   await send('Input.insertText',{text:'320'});
+  await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='320'",'Input 320 not entered');
   await evaluate('document.activeElement.blur()');
   await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-320)<3",'320px table width not applied');
   if(!(await evaluate("document.querySelector('.settings-mode-bar').getBoundingClientRect().width>=890")))
     throw Error('Narrow 320px table collapsed editing controls');
   await evaluate(`(()=>{const e=document.querySelector('input[aria-label="Độ rộng vùng danh sách (px)"]');e.focus();e.select()})()`);
   await send('Input.insertText',{text:'1500'});
+  await eventually("document.querySelector('input[aria-label=\"Độ rộng vùng danh sách (px)\"]')?.value==='1500'",'Input 1500 not entered after 320');
   await evaluate('document.activeElement.blur()');
   await eventually("Math.abs(document.querySelector('.item-data-region').getBoundingClientRect().width-1500)<3",'1500px restore after narrow table failed');
   // Anonymous browser must never save shared Firebase configuration. Ensure a
