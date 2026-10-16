@@ -50,6 +50,18 @@ describe('inline admin rights',()=>{
     expect(save.mock.calls[0][0].cells['sheet:60961344:row:3'].content).toBe(true);
     expect(save.mock.calls[0][1]).toEqual({columns:{content:false},rows:{},cells:{}});
   });
+  it('explains inherited rights in everyday language and previews effective edit rights',()=>{
+    const save=vi.fn().mockResolvedValue(undefined);
+    let tree=render(save);
+    const cell=nodes(tree).find(n=>n.type==='select'&&String(n.props?.['aria-label']??'').includes('Quyền ô'));
+    expect(cell.props.children.map((x:any)=>x.props.children)).toEqual(['Theo quyền dòng/cột','Cho phép sửa','Không cho sửa']);
+    expect(JSON.stringify(tree)).toContain('Chỉ xem');
+    const column=nodes(tree).find(n=>n.type==='input'&&n.props?.type==='checkbox'&&n.props?.checked===false);
+    column.props.onChange({currentTarget:{checked:true}});
+    tree=render(save);
+    expect(JSON.stringify(tree)).toContain('Được sửa');
+    expect(save).not.toHaveBeenCalled();
+  });
   it('does not allow saving unchanged rules',()=>{
     const tree=render(vi.fn());
     const button=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Lưu quyền chỉnh sửa');
