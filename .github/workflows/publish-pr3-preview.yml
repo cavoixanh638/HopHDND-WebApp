@@ -1,0 +1,99 @@
+name: Publish independent HopHDND PR3 preview
+on:
+  push:
+    branches: [preview/hophdnd-pr3-2026-10-16]
+    paths:
+      - ".github/workflows/publish-pr3-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hophdnd-pr3-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact verified feature commit
+        uses: actions/checkout@v4
+        with:
+          ref: 092bdea6b32ea6817f0418de3f6ae04a4962950e
+          path: candidate
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: candidate/source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        working-directory: candidate/source
+        run: npm ci
+      - name: Run TypeScript, unit and Firebase emulator safety checks
+        working-directory: candidate/source
+        run: |
+          npm run typecheck
+          npm test
+          npm run test:firebase
+          npm run docs:check
+      - name: Build standalone HTML
+        working-directory: candidate/source
+        run: npm run build:pages
+      - name: Checkout main to isolate preview file
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Add visible preview banner and verify production index is untouched
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+          const src='candidate/source/dist-pages/index.html';
+          const dest='site/preview/pr-3/index.html';
+          const html=readFileSync(src,'utf8');
+          if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 · Chỉ thử giao diện. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          mkdirSync('site/preview/pr-3',{recursive:true});
+          writeFileSync(dest,html.replace('<body>','<body>'+banner));
+          if(!readFileSync(dest,'utf8').includes('BẢN XEM TRƯỚC PR #3'))throw Error('Preview banner missing');
+          console.log('Built independently at '+dest+' with original production Pages index untouched');
+          NODE
+          git -C site diff --exit-code -- index.html
+          test -s site/preview/pr-3/index.html
+      - name: Commit only preview/pr-3/index.html to main (never alter live index.html)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C site config user.name "github-actions[bot]"
+          git -C site config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C site add -- preview/pr-3/index.html
+          changed="$(git -C site diff --cached --name-only)"
+          if [ "$changed" != "preview/pr-3/index.html" ]; then
+            echo "::error::Unexpected staged paths: $changed"
+            exit 1
+          fi
+          if git -C site diff --cached --quiet; then
+            echo "Preview already up-to-date."
+            exit 0
+          fi
+          git -C site commit -m "preview(pages): isolated PR3 test page from verified feature source"
+          for attempt in 1 2 3; do
+            git -C site fetch origin main
+            git -C site rebase origin/main
+            if git -C site push origin HEAD:main; then
+              echo "Preview deployed without modifying root index.html."
+              exit 0
+            fi
+            echo "main advanced; retrying ($attempt/3)"
+          done
+          echo "::error::Could not push preview safely"
+          exit 1
