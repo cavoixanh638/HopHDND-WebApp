@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
-import { createSearchIndex, matchesSearch } from '../../domain/search';
 import { ContentEditor } from './ContentEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
@@ -30,11 +29,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
-  const [query, setQuery] = useState(selectedView?.filters.query??'');
-  const [kind, setKind] = useState(selectedView?.filters.kind??'all');
-  const [lifecycle, setLifecycle] = useState(selectedView?.filters.lifecycle??'active');
-  const [leader, setLeader] = useState(selectedView?.filters.leader??'all');
-  const [status, setStatus] = useState(selectedView?.filters.status??'all');
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
   // Admin customizations always start from the one Firebase shared layout.
@@ -145,12 +139,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     }catch(cause){handleLayoutFailure(cause);}
     finally{savingRef.current=false;setSaving(false);}
   };
-  const index = useMemo(() => createSearchIndex(items), [items]);
-  const filtered = useMemo(() => items.filter(item =>
-    matchesColumnFilters(item,columnFilters) && matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
-    (leader === 'all' || item.vpLeader === leader) && (status === 'all' || item.progressCouncil === status) &&
-    (lifecycle === 'all' || (lifecycle === 'archived' ? !!item.archivedAt : !item.archivedAt && (lifecycle === 'active' ? !item.isDropped : item.isDropped)))
-  ), [items, query, index, kind, lifecycle, leader, status, columnFilters]);
+  // Column filters are the single visible source of truth; old saved global filters must not silently hide results.
+  const filtered = useMemo(() => items.filter(item => matchesColumnFilters(item,columnFilters)),[items,columnFilters]);
   const pages = Math.max(1, Math.ceil(filtered.length / 50));
   const currentPage = Math.min(page, pages - 1);
   const rows = filtered.slice(currentPage * 50, currentPage * 50 + 50);
@@ -158,8 +148,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
     return orderValues([...new Set([...list,item[field]])].filter(Boolean),list).filter(value=>field!=='specialist'||allSpecialists||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
   };
-  const leaders = orderValues([...new Set(items.map(i => i.vpLeader))],catalog.options.vpLeader);
-  const statuses = orderValues([...new Set(items.map(i => i.progressCouncil))],catalog.options.progressCouncil);
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const tableWidth=Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
@@ -167,8 +155,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
-    setQuery(filters.query);setKind(filters.kind);setLifecycle(filters.lifecycle);setLeader(filters.leader);
-    setStatus(filters.status);setColumnFilters({...filters.columns});
+    setColumnFilters({...filters.columns});
     setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
     setPage(0);return true;
   };
@@ -207,14 +194,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
     {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
-     {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{query,kind,lifecycle,leader,status,columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
+     {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
-    <div className="toolbar"><label className="field search-field">Tìm kiếm<input type="search" placeholder="Nội dung, mã, sở, chuyên viên…" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} /></label>
-      <label className="field">Loại nội dung<select value={kind} onChange={e => { setKind(e.target.value); setPage(0); }}><option value="all">Tất cả loại</option><option value="NQ">Nghị quyết</option><option value="BC">Báo cáo</option><option value="UNCLASSIFIED">Chưa phân loại</option></select></label>
-      <label className="field">Phạm vi<select value={lifecycle} onChange={e => { setLifecycle(e.target.value); setPage(0); }}><option value="active">Đang trình</option><option value="dropped">Đã rút</option><option value="archived">Đã lưu trữ</option><option value="all">Tất cả</option></select></label>
-      <label className="field">Lãnh đạo VP<select value={leader} onChange={e => { setLeader(e.target.value); setPage(0); }}><option value="all">Tất cả lãnh đạo</option>{leaders.map(value => <option key={value}>{value}</option>)}</select></label>
-      <label className="field">Tiến độ<select value={status} onChange={e => { setStatus(e.target.value); setPage(0); }}><option value="all">Tất cả tiến độ</option>{statuses.map(value => <option key={value}>{value}</option>)}</select></label>
-    </div>
     <div className="item-filter-status-slot" role="status" aria-label="Các điều kiện tìm kiếm đang áp dụng">
     <div className="active-filter-bar" aria-hidden={!Object.entries(columnFilters).some(([,term])=>term.trim())}>
       {Object.entries(columnFilters).some(([,term])=>term.trim())&&<><strong>Đang tìm trong cột:</strong>{Object.entries(columnFilters).filter(([,term])=>term.trim()).map(([key,term])=><span className="filter-chip" key={key}>{columns.find(c=>c.key===key)?.label??key}: {term}<button type="button" className="chip-remove" aria-label={'Bỏ lọc '+key} onClick={()=>{setColumnFilters(old=>{const next={...old};delete next[key];return next;});setPage(0);}}>×</button></span>)}<button type="button" className="button ghost" onClick={()=>{setColumnFilters({});setPage(0);}}>Xóa tìm kiếm theo cột</button></>}</div></div>
