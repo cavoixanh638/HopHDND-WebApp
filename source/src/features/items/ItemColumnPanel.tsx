@@ -41,7 +41,7 @@ export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemCol
           <button type="button" className="button ghost" onClick={repairOldWidths}>Sửa các độ rộng cũ chưa hợp lệ</button>
         </div>}
         {validationMessage&&<div className="layout-inline-error" role="alert">
-          <strong>Chưa lưu được bố trí: </strong>{validationMessage}
+          <strong>Chưa lưu được cách hiển thị: </strong>{validationMessage}
           <span>Kiểm tra ô độ rộng tương ứng ngay tại đây rồi bấm Lưu lại. Kích thước đang hiển thị vẫn được giữ nguyên.</span>
         </div>}
         <div className="item-frame-controls">
