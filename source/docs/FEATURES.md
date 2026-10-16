@@ -66,3 +66,14 @@ Giữ F01–F36 làm mã ổn định, bổ sung tiểu mục trong Fxx khi phá
 - CSV parser đang được tải ở bản hiện tại nhưng chưa có luồng CSV rõ ràng: không coi thư viện đang tải là yêu cầu phải giữ.
 - `sync_all` chưa có hàm thực hiện trong bộ server đã khảo sát: chức năng nhập/khôi phục mới phải có hợp đồng triển khai đầy đủ, không kế thừa endpoint thiếu.
 
+
+## Bổ sung đang phát triển trên nhánh 0.7.1 (không thay F01–F36)
+
+- **F21 — nhiều mẫu giao diện cá nhân:** tạo, đổi, xóa tối đa 20 mẫu; mỗi mẫu ghi lại bố trí cột, tìm kiếm, bộ lọc chung, lọc từng cột và màu theo điều kiện. Giai đoạn đầu lưu **trên trình duyệt theo nguồn**; không đồng bộ qua tài khoản hay sửa cấu hình Firebase chung. Các mẫu chưa phải phiên bản dữ liệu nguồn.
+- **F13 — lọc trực tiếp tại tiêu đề từng cột:** biểu tượng lọc trên mỗi cột, nhập điều kiện chứa chuỗi hỗ trợ tiếng Việt không dấu, hiển thị chip “đang lọc” có nút bỏ từng điều kiện và bỏ toàn bộ. Lọc cột kết hợp với các bộ lọc hiện có; không làm thay đổi tổng báo cáo.
+- **F21 — màu theo điều kiện:** quản lý tối đa 30 quy tắc; một quy tắc gồm cột, giá trị bằng và màu an toàn trong bốn màu. Quy tắc đầu tiên khớp tô cả dòng; chỉ tác động trình bày, không đổi dữ liệu nguồn.
+- **F30/F36 — theo dõi sau phê duyệt:** admin lưu snapshot A–P theo spreadsheetId/gid vào nhánh Firebase riêng, có revision CAS và lịch sử metadata tối đa 20 mốc. Mỗi lần đọc Sheets được so với **mốc phê duyệt gần nhất**, thể hiện nội dung mới, không còn và các ô đổi giá trị trước/sau. Duyệt thành công tạo mốc mới; không ghi sang Google Sheets. Dòng có mã duy nhất được đối chiếu theo mã; trùng mã/thiếu mã phải rà lại do ID hàng phụ thuộc vị trí.
+- **F36 — khóa sửa từ admin:** admin bật/tắt cờ khóa sửa thử trên WebApp bằng giao dịch Firebase có revision; guest bị chặn mặc định cho tới khi trạng thái khóa đọc được. Quyền thao tác trực tiếp trên Google Sheets vẫn do Google Drive/Sheets quản lý riêng; khóa WebApp **không phải** khóa file Google.
+- Cần triển khai/kiểm chứng Rules mới của `hdnd/control` và `hdndReviews` trên môi trường tương ứng trước khi sử dụng tính năng admin. Không tự thay Rules production chỉ vì code đã merge.
+- Mốc rollback mã nguồn: `backup/pre-features-2026-10-16` tại `6d2226467d83e518f793d5c5e97eb11b29ba2def`. Triển khai tại PR #3 trên nhánh `feat/saved-views-approval-lock-filters-2026-10-16`; **không ghi đã nghiệm thu khi chưa có kết quả test/Pages thực tế**.
+
