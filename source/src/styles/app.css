@@ -5,6 +5,8 @@
   html,body {  min-width:320px; min-height:100%; margin:0;
     background:#f5f6f2}
 body {  min-height:100vh}
+/* Keep the browser scrollbar and page chrome in the same horizontal position across tabs. */
+html {scrollbar-gutter:stable; overflow-y:scroll;}
 button,input,select,textarea {  font:inherit}
 button {  cursor:pointer}
   input,select,textarea {  width:100%; min-height:36px; padding:8px 10px; color:var(--ink); background:var(--surface); border:1px solid #cbd6cf;
@@ -17,8 +19,8 @@ button {  cursor:pointer}
   input:focus,select:focus,textarea:focus {  border-color:#54877a;
    box-shadow:0 0 0 3px #154d441f}
 input::placeholder,textarea::placeholder {  color:#8a9891}
-  .app-shell {  width:min(1500px,100%); min-height:100vh; margin:auto;
-    padding:0 28px 30px}
+  .app-shell {  width:100%; max-width:1600px; min-height:100vh; margin:auto;
+    padding:0 clamp(12px,1.15vw,20px) 30px}
   .topbar {  display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:78px;
    border-bottom:1px solid var(--line)}
   .brand,.top-actions,.nav-tabs,.toolbar,.card-header,.pagination,.draft-bar,.modal-header,.modal-footer {  display:flex;
@@ -50,7 +52,7 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
   border-radius:3px 3px 0 0;
    content:""}
   .page-heading {  display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
-   margin-bottom:22px}
+   margin-bottom:22px; min-height:62px}
   .page-heading h1 {  margin:3px 0 0; color:#18382f; font-size:clamp(22px,3vw,30px);
     letter-spacing:-.035em}
   .eyebrow {  margin:0; color:#638176; font-size:11px; font-weight:750;
@@ -349,8 +351,8 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell.wide-table-page > main,
 .app-shell.wide-table-page > .app-footer,
 .app-shell.wide-table-page > p.muted {
-  /* 38px compensates for list-card padding so a requested 1500px data viewport can actually fit. */
-  width: min(100%, max(920px, calc(var(--list-frame-width, 100%) + 38px)));
+  /* Width is no longer coupled to the list's adjustable table frame. */
+  width: 100%;
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
@@ -358,3 +360,8 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell.wide-table-page > .topbar { flex-wrap: wrap; }
 .app-shell.wide-table-page .page-heading { flex-wrap: wrap; }
 .app-shell.wide-table-page > main { min-width: 0; }
+
+/* Stable screen-to-screen navigation without resizing the shared chrome. */
+.app-shell > main {min-height:calc(100vh - 270px);}
+.app-shell > .nav-tabs {min-height:43px;}
+@media (max-width:700px) {.page-heading {min-height:60px;}}
