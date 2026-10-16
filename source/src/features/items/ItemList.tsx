@@ -49,7 +49,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;
   const blockedSaveLabel=draftOnly?'Chỉ giữ thay đổi thử trên máy':'Chưa thể lưu vào Excel';
-  const sourceSaveLabel=effectiveSourceKind==='firebase'?'Lưu vào Firebase':effectiveSourceKind==='google'?'Lưu dữ liệu vào Excel':'Lưu dữ liệu mẫu';
   const saveActionLabel=dirty?(saving?'Đang lưu bố trí…':pendingData&&readOnly?'Lưu bố trí; giữ phần sửa dữ liệu trên máy':'Lưu bố trí và về xem'):pendingData?blockedSaveLabel:'Không có thay đổi';
   const saveIssue=(cause:unknown)=>{
     const message=cause instanceof Error?cause.message:'Chưa lưu được bố trí.';
