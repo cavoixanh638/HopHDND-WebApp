@@ -4,9 +4,10 @@ import { DeferredWidthInput } from './DeferredWidthInput';
 type ItemColumnPanelProps = {
   layout: ItemLayout;
   onChange: (next: ItemLayout) => void;
+  validationMessage?: string;
 };
 
-export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
+export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemColumnPanelProps) {
   const updateColumn = (index: number, change: Partial<ItemLayout['columns'][number]>) => {
     onChange({
       ...layout,
@@ -39,9 +40,13 @@ export function ItemColumnPanel({ layout, onChange }: ItemColumnPanelProps) {
           {invalidColumns.length>0&&<span>{invalidColumns.length} cột có độ rộng ngoài giới hạn 60–1600 px.</span>}
           <button type="button" className="button ghost" onClick={repairOldWidths}>Sửa các độ rộng cũ chưa hợp lệ</button>
         </div>}
+        {validationMessage&&<div className="layout-inline-error" role="alert">
+          <strong>Chưa lưu được bố trí: </strong>{validationMessage}
+          <span>Kiểm tra ô độ rộng tương ứng ngay tại đây rồi bấm Lưu lại. Kích thước đang hiển thị vẫn được giữ nguyên.</span>
+        </div>}
         <div className="item-frame-controls">
           <label className="field" htmlFor="item-visible-frame-width">
-            Độ rộng vùng danh sách (px) — Enter hoặc rời ô để áp dụng
+            Độ rộng vùng danh sách (px) — chỉ áp dụng khi nhấn Enter hoặc rời ô
           </label>
           <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng vùng danh sách (px)"
             value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1500:layout.frameWidth}
