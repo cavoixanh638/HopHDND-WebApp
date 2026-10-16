@@ -334,3 +334,6 @@ body:not(.is-printing) #print-target {  display:none!important}
 .approval-change { display:grid; grid-template-columns:minmax(100px,150px) 1fr 1fr; gap:10px; padding:8px 0; border-bottom:1px solid #ecf1ed; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
 .approval-change:last-child { border-bottom:0; }
 @media(max-width:700px){.approval-change{grid-template-columns:1fr}.approval-control{align-items:flex-start;}}
+
+.item-data-table thead th:has(.column-filter[open]) { z-index:25; }
+.column-filter-menu { max-height:min(50vh,340px); overflow-y:auto; }
