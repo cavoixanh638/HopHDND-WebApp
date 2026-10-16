@@ -3,6 +3,7 @@ import type {Item} from '../../../shared/types';
 import type {SheetConfig} from '../../data/sheet-config';
 import type {FirebaseController,ReviewBaseline} from '../../state/use-firebase';
 import {compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
+import {readSheet} from '../../data/sheets-repository';
 import {Modal} from '../../components/Modal';
 
 export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,onClose}:{
@@ -37,7 +38,13 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
   const approve=async()=>{
     setBusy(true);setError('');setNotice('');
     try{
-      const next=await firebase.approveReview(source,snapshot,baseline?.revision??0,changes.length);
+      // Re-read the actual source immediately before a new approval. Never approve stale UI state.
+      const fresh=await readSheet(source);
+      if(!fresh.items.length)throw new Error('Nguồn vừa đọc trả về 0 nội dung; không phê duyệt.');
+      const verified=snapshotFromItems(fresh.items,source.spreadsheetId+':'+source.gid);
+      if(JSON.stringify(verified.rows)!==JSON.stringify(snapshot.rows))
+        throw new Error('Dữ liệu nguồn đã thay đổi kể từ lần đọc trên giao diện. Hãy bấm Đọc lại dữ liệu Sheets, xem các thay đổi mới rồi phê duyệt.');
+      const next=await firebase.approveReview(source,verified,baseline?.revision??0,changes.length);
       setBaseline(next);setLoaded(true);setConfirm(false);
       setNotice('Mốc phê duyệt '+next.revision+' đã được lưu. Hệ thống bắt đầu theo dõi từ mốc vừa phê duyệt.');
     }catch(cause){setConfirm(false);setError(cause instanceof Error?cause.message:'Không thể phê duyệt. Bản mốc cũ được giữ.');}
@@ -87,7 +94,7 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
     {confirm&&<Modal title="Xác nhận phê duyệt mốc dữ liệu" onClose={()=>{if(!busy)setConfirm(false);}}>
       <div className="modal-body"><p>Bạn sắp xác nhận bản dữ liệu đã đọc lúc <strong>{loadedAt}</strong> là mốc mới.</p>
         <p>{baseline?'Có '+changes.length+' nội dung thay đổi kể từ mốc trước.':'Đây là lần phê duyệt đầu tiên.'} Sau khi lưu thành công, thống kê thay đổi sẽ bắt đầu lại từ bản này.</p>
-        <p className="muted">Thao tác chỉ lưu mốc trên Firebase; không sửa Google Sheets. Những thay đổi phát sinh sau thời điểm đọc dữ liệu có thể chưa được tính.</p></div>
+        <p className="muted">Hệ thống đọc lại Google Sheets trước khi lưu mốc, từ chối nếu bản đang xem đã cũ. Thao tác không sửa Google Sheets. Thay đổi phát sinh đồng thời ngay sau lần kiểm tra vẫn có thể cần đối chiếu lại.</p></div>
       <div className="modal-footer"><button type="button" className="button ghost" disabled={busy} onClick={()=>setConfirm(false)}>Chưa phê duyệt</button><button type="button" className="button primary" disabled={busy} onClick={()=>void approve()}>Xác nhận phê duyệt</button></div>
     </Modal>}
   </section>;
