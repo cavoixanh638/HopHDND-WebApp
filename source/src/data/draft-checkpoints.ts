@@ -4,7 +4,7 @@ export interface Checkpoint<T> { schemaVersion: 1; base: T; draft: T; savedAt: s
  * Isolate layout recovery keys in previews so a stale test draft cannot replace
  * the Firebase canonical layout on the production website. */
 export function layoutRecoveryScope(scope:string,pathname:string=typeof location==='undefined'?'/':location.pathname):string{
-  const match=pathname.match(/\\/preview\\/([A-Za-z0-9_-]+)(?:\\/|$)/);
+  const match=pathname.match(new RegExp('/preview/([A-Za-z0-9_-]+)(?:/|$)'));
   return match?`preview:${match[1]}:${scope}`:scope;
 }
 const key = (scope: string) => `hdnd.draft.v1:${scope}`;
