@@ -144,9 +144,18 @@ describe('Firebase config controller remains independent of business data',()=>{
     await render().common.refresh();let state=render();expect(state.profile?.revision).toBe(3);expect(h.get).toHaveBeenCalledTimes(2);
     h.auth.currentUser=null;h.authChanged(null);state=render();expect(state.isAdmin).toBe(false);expect(state.canEdit('sheet:42:row:3','note')).toBe(false);expect(state.profile).toBeNull();
   });
+  it('refuses stale permissions without invoking a transaction or overwriting Firebase',async()=>{
+    login(true);emit('hdnd/permissions',{columns:{note:true}});
+    const state=render(),draft={columns:{note:false}};
+    h.get.mockResolvedValue({val:()=>({columns:{note:false}})});
+    await expect(state.savePermissions(draft)).rejects.toThrow('đã thay đổi');
+    expect(h.transaction).not.toHaveBeenCalled();
+    expect(h.get).toHaveBeenCalledWith('hdnd/permissions');
+  });
   it('saves normalized row and cell permissions against their original baseline',async()=>{
     login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
     const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
+    h.get.mockResolvedValue({val:()=>({columns:{note:true}})});
     h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
     await state.savePermissions(next);
     const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
