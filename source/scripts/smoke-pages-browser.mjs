@@ -199,6 +199,25 @@ try{
         throw Error('Page chrome shifted when switching '+tab+': '+JSON.stringify({geometry,originalGeometry}));
     }
   }
+  // Regression: a tab with custom width centers *all* top menus, source banner,
+  // and page content on the same vertical edges, rather than keeping nav at x=0.
+  const alignedCustomWidth=async(width)=>evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell');
+    shell.style.setProperty('--page-content-width',${JSON.stringify(width+'px')});
+    const all=['.topbar','.demo-banner','.nav-tabs','main']
+      .map(selector=>document.querySelector(selector)?.getBoundingClientRect());
+    const expected=Math.min(window.innerWidth-40,${width});
+    const reference=all[3];
+    return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
+      all.every(r=>Math.abs(r.left-reference.left)<=2&&Math.abs(r.width-reference.width)<=2)&&
+      reference.left>=0&&reference.right<=window.innerWidth+1,
+      boxes:all.map(r=>r?{left:r.left,width:r.width}:null)};
+  })()`);
+  for(const customWidth of [850,1280]){
+    const aligned=await alignedCustomWidth(customWidth);
+    if(!aligned.ok)throw Error('Top navigation not centered with '+customWidth+'px content: '+JSON.stringify(aligned));
+  }
+  await evaluate("document.querySelector('.app-shell')?.style.removeProperty('--page-content-width')");
   // Exercise the exact settings menu markup with the production CSS even in the guest-only
   // mock session. No login or Firebase mutation is required to catch cramped nested-summary CSS.
   const settingsMenuLayout=async()=>evaluate(`(()=>{
