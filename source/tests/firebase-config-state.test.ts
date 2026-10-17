@@ -122,19 +122,19 @@ describe('Firebase config controller remains independent of business data',()=>{
     login(true);
     emit('hdnd/profile',stored(2));
     const current=render(),base=profile(1).items;
-    const local={...base,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:210}:c)};
+    const local={...base,columns:base.columns.map(c=>c.key==='note'?{...c,width:210}:c)};
     const server=profile(3);
-    server.items={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:117}:c)};
+    server.items={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='note'?{...c,width:117}:c)};
     let confirmed:any;
     h.transaction.mockImplementation(async(_path:string,apply:(value:any)=>any)=>{
       expect(apply(null)).toBeNull();
       confirmed=apply({revision:3,payload:JSON.stringify(server)});
       return {committed:true,snapshot:{val:()=>confirmed}};
     });
-    const saved=await current.common.save('items',local,1,base,{'columns.isDropped.width':'local'});
+    const saved=await current.common.save('items',local,1,base,{'columns.note.width':'local'});
     expect(saved.revision).toBe(4);
     expect(saved.items.tableWidth).toBe(1900);
-    expect(saved.items.columns.find(c=>c.key==='isDropped')?.width).toBe(210);
+    expect(saved.items.columns.find(c=>c.key==='note')?.width).toBe(210);
     expect(saved.catalogs).toEqual(server.catalogs);
     expect(saved.reports).toEqual(server.reports);
   });
