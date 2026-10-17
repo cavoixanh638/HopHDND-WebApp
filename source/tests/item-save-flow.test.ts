@@ -57,7 +57,7 @@ describe('separate item layout save and data draft',()=>{
     expect(t.props.onSaveData).not.toHaveBeenCalled();
     expect(t.props.onClose).not.toHaveBeenCalled();
   });
-  it('shows every Excel source column A–O on the ordinary list even when the saved layout hides G/H/I',()=>{
+  it('respects hidden Excel columns from saved settings on first viewer paint',()=>{
     const items=createDemoItems(1);
     const layout=defaultItemLayout();
     for(const col of layout.columns)
@@ -70,13 +70,13 @@ describe('separate item layout save and data draft',()=>{
       initialLayout:layout});
     const headers=nodes(tree).filter(node=>node.props?.columnKey).map(node=>node.props.columnKey);
     for(const key of ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note'])
-      expect(headers).toContain(key);
+      expect(headers).not.toContain(key);
     expect(headers).not.toContain('history');
-    const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===true);
+    const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===false);
     expect(control).toBeDefined();
-    expect(text(control)).toContain('Theo cột đã chọn');
+    expect(text(control)).toContain('Hiện đủ cột Excel');
   });
-  it('enforces source A–O order in full view even when the old saved layout was reordered',()=>{
+  it('preserves saved column order and removes obsolete phantom history',()=>{
     const items=createDemoItems(1);
     const old=defaultItemLayout();
     old.columns.reverse();
@@ -86,9 +86,9 @@ describe('separate item layout save and data draft',()=>{
       catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
-    expect(keys).toEqual(EXCEL_COLUMN_KEYS);
+    expect(keys).toEqual([...EXCEL_COLUMN_KEYS].reverse());
     expect(keys).not.toContain('history');
-    expect(nodes(tree).filter(n=>n.type?.name==='ColumnFilterCell').map(n=>n.props.field)).toEqual(EXCEL_COLUMN_KEYS);
+    expect(nodes(tree).filter(n=>n.type?.name==='ColumnFilterCell').map(n=>n.props.field)).toEqual([...EXCEL_COLUMN_KEYS].reverse());
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
     const items=createDemoItems(1);
