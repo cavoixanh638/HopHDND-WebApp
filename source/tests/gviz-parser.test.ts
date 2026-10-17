@@ -42,6 +42,37 @@ describe('parseGvizPayload', () => {
     });
   });
 
+  it('reads the live 18-column Excel layout without confusing Rút, Họp TU, Thẩm tra and Ghi chú',()=>{
+    const cols18=Array.from({length:18},(_,index)=>({id:String.fromCharCode(65+index),label:''}));
+    const heading=Array<Cell>(18).fill(null);
+    heading[2]={v:'NỘI DUNG TRÌNH'};heading[3]={v:'SỞ, NGÀNH CHỦ TRÌ'};
+    heading[14]={v:'Rút'};heading[15]={v:'Họp Thành ủy/ xin ý kiến'};
+    heading[16]={v:'Đã thẩm tra chưa'};heading[17]={v:'Ghi chú'};
+    const first=values('NQ-100',1,'MẪU: Nghị quyết','Sở giả','QPPL');
+    first[14]='X';first[15]='Đã xin ý kiến';first[16]='Đã thẩm tra';first[17]='MẪU: ghi chú cột R';
+    const second=values('NQ-101',2,'MẪU: Nghị quyết thứ hai','Sở giả','QPPL');
+    second[14]='';second[15]='Chưa họp';second[16]='Chưa thẩm tra';second[17]='MẪU: không rút';
+    const result=parseGvizPayload(payload([{c:heading},row(first),row(second)],'ok',cols18),'modern-xlsx');
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({
+      isDropped:true,note:'MẪU: ghi chú cột R',partyMeeting:'Đã xin ý kiến',examined:'Đã thẩm tra',
+    });
+    expect(result.items[1]).toMatchObject({
+      isDropped:false,note:'MẪU: không rút',partyMeeting:'Chưa họp',examined:'Chưa thẩm tra',
+    });
+  });
+
+  it('preserves old 16-column files O=Ghi chú and P=Rút during migration',()=>{
+    const headings=header();
+    headings.c[14]={v:'Ghi chú'};headings.c[15]={v:'Trình/Rút'};
+    const old=values('NQ-200',3,'MẪU: cũ','Sở giả','QPPL','X');
+    old[14]='MẪU: ghi chú cũ';
+    const result=parseGvizPayload(payload([headings,row(old)]),'legacy-xlsx');
+    expect(result.items[0]).toMatchObject({
+      note:'MẪU: ghi chú cũ',isDropped:true,partyMeeting:'',examined:'',
+    });
+  });
+
   it('keeps missing and duplicate codes with unique source row IDs and warns', () => {
     const result = parseGvizPayload(payload([
       header(),
