@@ -19,7 +19,7 @@ button {  cursor:pointer}
   input:focus,select:focus,textarea:focus {  border-color:#54877a;
    box-shadow:0 0 0 3px #154d441f}
 input::placeholder,textarea::placeholder {  color:#8a9891}
-  .app-shell {  width:100%; max-width:1600px; min-height:100vh; margin:auto;
+  .app-shell {  width:100%; max-width:none; min-height:100vh; margin:auto;
     padding:0 clamp(12px,1.15vw,20px) 30px}
   .topbar {  display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:78px;
    border-bottom:1px solid var(--line)}
@@ -382,13 +382,43 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell > .nav-tabs {min-height:43px;}
 @media (max-width:700px) {.page-heading {min-height:60px;}}
 
-/* One page-width preference governs Overview / List / Help, not only the data grid.
-   Editor pages keep a readable configuration surface even when the preview width is 320px. */
-.app-shell {width:min(100%, var(--list-frame-width, 100%));max-width:1600px;}
-.app-shell.wide-table-page {width:min(100%, var(--list-frame-width, 100%));}
+/* Page chrome stays stable while each tab chooses its own content width.
+   No 1600px shell cap: a 2560px monitor may use the entire viewport. */
+.app-shell, .app-shell.wide-table-page, .app-shell.settings-page {
+  width:100%;
+  max-width:none;
+}
+.app-shell > main, .app-shell.wide-table-page > main {
+  width:min(100%,var(--page-content-width,100%));
+  max-width:none;
+  min-width:0;
+  margin-left:auto;
+  margin-right:auto;
+}
 @media(min-width:980px) {
-  .app-shell.settings-page {width:min(100%, max(920px, var(--list-frame-width, 100%)));}
+  .app-shell.settings-page > main {
+    width:min(100%,max(920px,var(--page-content-width,100%)));
+  }
   .app-shell.settings-page .settings-mode-bar {min-width:0;}
+}
+.report-page-width-controls {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px 18px;
+  padding:13px 16px;
+  margin:10px 0 18px;
+  background:#f4f8f5;
+  border:1px solid var(--line);
+  border-radius:9px;
+}
+.report-page-width-controls > strong {width:100%;}
+.report-page-width-controls > p {flex-basis:100%;margin:0;}
+.report-page-width-controls > .field {flex:none;}
+.report-page-width-controls > .layout-visibility {min-width:min(340px,100%);}
+@media(max-width:600px) {
+  .report-page-width-controls {align-items:stretch;flex-direction:column;}
+  .report-page-width-controls > .field {width:100%;}
 }
 
 /* Compact two-group settings menu and persistent top-right control. */
