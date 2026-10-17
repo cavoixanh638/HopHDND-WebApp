@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { configuredReports, defaultReportLayout, loadReportLayout, saveReportLayout, validateReportLayout } from '../src/data/report-preferences';
+import { configuredReports, defaultReportLayout, loadReportLayout, reportPageWidth, saveReportLayout, validateReportLayout, withReportPageWidth } from '../src/data/report-preferences';
 import { DEFAULT_REPORTS, aggregateReport, getKpis } from '../src/domain/reporting';
 import { createDemoItems } from '../src/data/demo-items';
 
@@ -38,6 +38,29 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     }
     expect(() => validateReportLayout([])).toThrow();
     expect(validateReportLayout(defaultReportLayout().map(row => ({ ...row, title: `  ${row.title}  ` })))[0].title).toBe(DEFAULT_REPORTS[0].title);
+  });
+});
+describe('Độ rộng trang báo cáo độc lập, tương thích cấu hình cũ',()=>{
+  it('keeps report width when reordering or hiding and rejects invalid widths',()=>{
+    const original=defaultReportLayout();
+    const wide=withReportPageWidth(original,3200);
+    expect(reportPageWidth(wide)).toBe(3200);
+    expect(original).toEqual(defaultReportLayout());
+    expect(reportPageWidth([wide[2],wide[1],wide[0]])).toBe(3200);
+    expect(reportPageWidth(validateReportLayout([wide[2],wide[1],wide[0]]))).toBe(3200);
+    for(const bad of [0,319,6001,3.2,-2,NaN]){
+      expect(()=>validateReportLayout(withReportPageWidth(original,bad))).toThrow('Độ rộng trang báo cáo');
+    }
+  });
+  it('reads legacy report profiles without pageWidth as auto, and saves 3600px',()=>{
+    const store=storage();vi.stubGlobal('localStorage',store);
+    const legacy=defaultReportLayout().map(({pageWidth:_width,...rest})=>rest);
+    store.setItem('hdnd.report-layout.v1:legacy',JSON.stringify({schemaVersion:1,source:'legacy',reports:legacy}));
+    const loaded=loadReportLayout('legacy');
+    expect(reportPageWidth(loaded)).toBe('auto');
+    const wide=withReportPageWidth(loaded,3600);
+    expect(saveReportLayout('legacy',wide)).toBe(true);
+    expect(reportPageWidth(loadReportLayout('legacy'))).toBe(3600);
   });
 });
 describe('Lưu cấu hình theo nguồn', () => {
