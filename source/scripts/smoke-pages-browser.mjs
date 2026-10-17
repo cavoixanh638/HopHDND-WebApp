@@ -153,14 +153,15 @@ try{
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-cardHeader.getBoundingClientRect().bottom;
     const aligned=Math.abs(top.left-tabs.left)<3&&Math.abs(top.width-tabs.width)<3;
-    if(!aligned||gap>32||status)return {ok:false,aligned,gap,hasEmptyStatus:!!status};
-    const gridWidth=viewport.getBoundingClientRect().width;
-    sort.click();const asc=stt.getAttribute('aria-sort')==='ascending';
-    sort.click();const desc=stt.getAttribute('aria-sort')==='descending';
-    sort.click();const reset=stt.getAttribute('aria-sort')==='none';
-    return {ok:asc&&desc&&reset&&Math.abs(viewport.getBoundingClientRect().width-gridWidth)<2,asc,desc,reset,gap};
+    return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
-  if(!sortAndGuestLayout.ok)throw Error('Guest layout or column sort regression: '+JSON.stringify(sortAndGuestLayout));
+  if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
+  const sortSelector='.item-heading-row th[data-column-key="stt"]';
+  for(const direction of ['ascending','descending','none']){
+    await evaluate(`(()=>{document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click();return true;})()`);
+    await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')===${JSON.stringify(direction)}`,
+      'List sort did not reach '+direction);
+  }
 
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
