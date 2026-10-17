@@ -459,6 +459,21 @@ body:not(.is-printing) #print-target {  display:none!important}
 .settings-hub-tabs button.active {background:#fff;border-color:#d1dfd5;color:#154d44;font-weight:750;box-shadow:0 1px 3px #15302710;}
 .settings-hub-tabs button:hover:not(.active):not(:disabled) {background:#e3eee7;}
 .settings-hub-tabs button:disabled {opacity:.5;cursor:not-allowed;}
+/* One exit action belongs to the shared editing navigation, not each editor.
+   Keep it in the same position while moving between report/list/catalog tabs. */
+.settings-hub-tabs .shared-view-exit {
+  margin-left:auto;
+  border:1px solid #d1dfd5;
+  background:#fff;
+  color:var(--green);
+  font-weight:650;
+  white-space:nowrap;
+}
+.settings-hub-tabs .shared-view-exit:hover:not(:disabled) {background:#e4eee7;}
+@media(max-width:520px) {
+  .settings-hub-tabs .shared-view-exit {margin-left:0;width:100%;text-align:center;}
+}
+
 .guest-rights-hint {padding:9px 12px;margin:6px 0 12px;border:1px solid #dce9df;border-radius:8px;background:#f5f9f6;color:#466356;font-size:12px;}
 
 /* All top-level controls follow the current page content's centered width, instead
