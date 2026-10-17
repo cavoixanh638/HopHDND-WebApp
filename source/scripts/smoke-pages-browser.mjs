@@ -96,6 +96,9 @@ try{
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
   const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách nội dung'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
+  // This test intentionally blocks real Firebase. Keep normal first paint gated,
+  // then explicitly opt in to temporary source viewing for isolated Sheets checks.
+  await evaluate("(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('Xem dữ liệu tạm'));button?.click();return true;})()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
   const layoutAndBlanks=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell'),card=document.querySelector('.item-list-card'),
