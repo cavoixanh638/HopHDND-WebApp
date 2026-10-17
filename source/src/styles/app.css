@@ -381,3 +381,12 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell > main {min-height:calc(100vh - 270px);}
 .app-shell > .nav-tabs {min-height:43px;}
 @media (max-width:700px) {.page-heading {min-height:60px;}}
+
+/* One page-width preference governs Overview / List / Help, not only the data grid.
+   Editor pages keep a readable configuration surface even when the preview width is 320px. */
+.app-shell {width:min(100%, var(--list-frame-width, 100%));max-width:1600px;}
+.app-shell.wide-table-page {width:min(100%, var(--list-frame-width, 100%));}
+@media(min-width:980px) {
+  .app-shell.settings-page {width:min(100%, max(920px, var(--list-frame-width, 100%)));}
+  .app-shell.settings-page .settings-mode-bar {min-width:0;}
+}
