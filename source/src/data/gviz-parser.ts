@@ -13,14 +13,14 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
   if (response.status !== 'ok') throw new Error(`Không đọc được Sheets: ${response.errors?.[0]?.message ?? response.errors?.[0]?.reason ?? 'kiểm tra quyền đọc và gid.'}`);
   const rows = response.table?.rows;
   if (!Array.isArray(rows) || !Array.isArray(response.table?.cols) || response.table.cols.length < 15) {
-    throw new Error('Trang tính cần có ít nhất 15 cột theo cấu trúc A–O của Dashboard.');
+    throw new Error('Trang tính cần ít nhất 15 cột; nguồn hiện tại có 18 cột A–R.');
   }
   const headerIndex = rows.slice(0, 10).findIndex(row => {
     const cells = row.c;
     return Array.isArray(cells) && normalizeSearch(text(cells[2])).includes('noi dung') && normalizeSearch(text(cells[3])).includes('so');
   });
-  if (headerIndex < 0) throw new Error('Không nhận diện được tiêu đề Nội dung trình / Sở, ngành ở cột C/D. Hãy kiểm tra đúng trang tính và cấu trúc A–O.');
-  // The live spreadsheet changed on 17/10/2026: A–O only, O=Ghi chú.
+  if (headerIndex < 0) throw new Error('Không nhận diện được tiêu đề Nội dung trình / Sở, ngành ở cột C/D. Hãy kiểm tra đúng trang tính và tiêu đề nguồn.');
+  // Current linked workbook has 18 columns A–R (O=Rút, R=Ghi chú).
   // Older snapshots had A–R (O=Rút, P=Họp TU, Q=Thẩm tra, R=Ghi chú)
   // or a 16-column O=Ghi chú/P=Trình-Rút legacy export.
   // Detect the version by header values, not by range width alone.
@@ -30,7 +30,7 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     (header(17).includes('ghi chu') && header(15).includes('hop'));
   const current15=header(14).includes('ghi chu')&&!header(15);
   // Legacy 16-column fixtures / exports sometimes omitted all optional headers.
-  // The canonical live A–O tab uses 15 returned columns and therefore never
+  // The previous shortened A–O tab uses 15 returned columns and therefore never
   // enters this compatibility path.
   const unlabelledLegacy=response.table.cols.length===16&&
     !header(14)&&!header(15)&&!header(17);
@@ -38,13 +38,13 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     (header(14).includes('ghi chu')&&!!header(15)) ||
     (header(15).includes('rut')&&!header(17).includes('ghi chu'));
   if(!modernSource&&!legacySource&&!current15)
-    throw new Error('Chưa xác định được cột Ghi chú của Excel. Trang hiện tại phải có cột O = Ghi chú.');
+    throw new Error('Chưa xác định được cột Ghi chú của Excel. Kiểm tra O–R trong trang nguồn.');
   // Prevent a wrong gid / shifted Excel sheet from silently producing blank
   // E, F, G or N while showing a seemingly successful data load.
   if(modernSource||current15){
     const mandatory:[number,string,string][]=[
       [4,'Loại văn bản','loai vb'],
-      [5,'Cấp Thành ủy cho ý kiến','cap'],
+      [5,'Cấp cho ý kiến','cap'],
       [6,'Tiến độ xin ý kiến Thành ủy','tien do xin y kien'],
       [7,'Tiến độ trình HĐND xây dựng NQ','trinh hdnd'],
       [8,'Tiến độ trình HĐND ban hành NQ','trinh hdnd'],
