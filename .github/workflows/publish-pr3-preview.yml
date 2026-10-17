@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: cf4031d5c8aed7147ea16b0184537e46b7e9320e
+          ref: 26a9e2b44edfdbf9c781934d697c5ca16da312a5
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -103,7 +103,7 @@ jobs:
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
           if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu danh sách chọn')||!html.includes('Lưu quyền cột'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
-          if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('Các lựa chọn (mỗi dòng một giá trị)'))throw Error('Independent custom field manager missing');
+          if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('column-choice-add')||!html.includes('column-specialist-relations'))throw Error('Unified dropdown and advanced field manager missing');
           if(!html.includes('column-manager-detail')||!html.includes('column-manager-grid'))throw Error('Compact column manager absent');
           if(!html.includes('Hiện đủ 15 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
