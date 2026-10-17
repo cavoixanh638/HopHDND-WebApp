@@ -29,7 +29,13 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
   const modernSource=(header(14).includes('rut') && header(17).includes('ghi chu')) ||
     (header(17).includes('ghi chu') && header(15).includes('hop'));
   const current15=header(14).includes('ghi chu')&&!header(15);
-  const legacySource=(header(14).includes('ghi chu')&&!!header(15)) ||
+  // Legacy 16-column fixtures / exports sometimes omitted all optional headers.
+  // The canonical live A–O tab uses 15 returned columns and therefore never
+  // enters this compatibility path.
+  const unlabelledLegacy=response.table.cols.length===16&&
+    !header(14)&&!header(15)&&!header(17);
+  const legacySource=unlabelledLegacy ||
+    (header(14).includes('ghi chu')&&!!header(15)) ||
     (header(15).includes('rut')&&!header(17).includes('ghi chu'));
   if(!modernSource&&!legacySource&&!current15)
     throw new Error('Chưa xác định được cột Ghi chú của Excel. Trang hiện tại phải có cột O = Ghi chú.');
