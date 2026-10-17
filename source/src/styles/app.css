@@ -521,3 +521,15 @@ body:not(.is-printing) #print-target {  display:none!important}
 .catalog-relationship>summary {cursor:pointer;font-weight:700;color:#315b48;font-size:13px;}
 .catalog-relationship[open]>summary {margin-bottom:12px;}
 .catalog-relationship .advanced-settings {background:#fff;margin:0;}
+
+/* Sorting lives inside the heading; pointer dragging/resizing remains independent. */
+.item-heading-row .column-heading-content{display:flex;align-items:center;gap:5px;min-width:0;width:100%;line-height:1.35}
+.item-heading-row .column-heading-label{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere}
+.item-heading-row .column-sort-button{display:inline-grid;place-items:center;flex:none;width:23px;height:24px;min-height:24px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#607b6c;font-size:16px;font-weight:650;cursor:pointer;touch-action:manipulation}
+.item-heading-row .column-sort-button:hover,.item-heading-row .column-sort-button:focus-visible{background:#e1eee6;border-color:#bad4c5;outline:none;color:#18543c}
+.item-heading-row .column-sort-button.active{color:#155d42;background:#dfede3;border-color:#accfbb}
+.item-heading-row th[aria-sort="ascending"],.item-heading-row th[aria-sort="descending"]{background:#e4f1e8}
+
+/* The guest tabs used to override the centered auto margins and stick to the left of the browser. */
+.app-shell.guest-view > .nav-tabs{margin:12px auto 16px!important}
+.layout-loading-placeholder{width:min(100%,var(--page-content-width,100%));margin:0 auto;padding:22px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#587065;font-size:13px}
