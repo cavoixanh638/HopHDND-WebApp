@@ -131,6 +131,18 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
   });
+  it('blocks switching editing sections while a report draft is unsaved',async()=>{
+    firebase.isAdmin=true;render();respond();await settle();
+    let tree=open('Bảng thống kê');
+    const panel=nodes(tree).find(n=>n.type===ReportSettings);
+    panel.props.onDirtyChange(true);
+    tree=open('Danh sách và nội dung');
+    expect(nodes(tree).some(n=>n.type===ReportSettings)).toBe(true);
+    expect(text(tree)).toContain('Có thay đổi chưa lưu');
+    panel.props.onDirtyChange(false);
+    tree=open('Danh sách và nội dung');
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+  });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
     firebase.isAdmin=true;render();respond();await settle();const tree=open('Nhập / Xuất Excel'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
     const source=nodes(open('Nguồn Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
