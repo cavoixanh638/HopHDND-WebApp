@@ -1,9 +1,9 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,serverTimestamp,goOffline,goOnline} from 'firebase/database';
+import {get,ref,set,update,serverTimestamp,runTransaction,goOffline,goOnline} from 'firebase/database';
 import type {User} from 'firebase/auth';
-import {FirebaseRepository,type CellPermissions} from '../src/data/firebase-repository';
+import {FirebaseRepository,samePermissions,type CellPermissions} from '../src/data/firebase-repository';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import type {Changes,Item} from '../shared/types';
@@ -105,6 +105,19 @@ describe.skipIf(!emulator)('Firebase emulator: rules, transactions and realtime'
       }
       await assertFails(update(ref(db as never),{'hdnd/profile':{revision:1,payload:'{}'},'hdnd/permissions/columns/content':true}));
     }
+  });
+  it('admin can atomically save actual permission maps with reordered keys and absent empty nodes',async()=>{
+    const db=env.authenticatedContext('admin-cas',adminClaims).database(),where=ref(db as never,'hdnd/permissions');
+    await assertSucceeds(set(where,{columns:{note:true,room:false},rows:{'sheet:42:row:3':true}}));
+    const original={rows:{'sheet:42:row:3':true},columns:{room:false,note:true},cells:{}};
+    const updated={columns:{note:false,room:false},rows:{'sheet:42:row:3':true},cells:{}};
+    const result=await assertSucceeds(runTransaction(where,current=>
+      samePermissions(current,original)?updated:undefined,{applyLocally:false}));
+    expect(result.committed).toBe(true);
+    expect(samePermissions(result.snapshot.val(),updated)).toBe(true);
+    const stale=await runTransaction(where,current=>samePermissions(current,original)?original:undefined,{applyLocally:false});
+    expect(stale.committed).toBe(false);
+    expect(samePermissions((await get(where)).val(),updated)).toBe(true);
   });
   it('admin saves Sheets row/cell permissions without importing any business row',async()=>{
     const db=env.authenticatedContext('admin',adminClaims).database();
