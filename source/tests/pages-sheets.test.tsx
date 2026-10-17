@@ -86,7 +86,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(render()).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
     expect(nodes(render()).some(n=>n.type==='button'&&text(n)==='Đăng nhập')).toBe(true);
     firebase.isAdmin=true;
-    let list=nodes(open('Danh sách và nội dung')).find(n=>n.type===ItemList);
+    let list=nodes(open('Chỉnh sửa')).find(n=>n.type===ItemList);
     expect(list.props.items).toHaveLength(0);
     expect(list.props.permissions).toEqual(firebase.permissions);
     expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
@@ -97,9 +97,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
-    let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
-    tree=open('Danh mục và phân công');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
-    tree=open('Danh sách và nội dung');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
+    open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
+    open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
+    tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
   it('uses the saved list frame width for the whole page on overview and list rather than resizing only the grid',async()=>{
     firebase.isAdmin=true;
@@ -119,21 +119,31 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=open('Hướng dẫn');
     expect(tree.props.style['--list-frame-width']).toBe('640px');
   });
-  it('keeps the settings gear available during editing and switches between grouped sections',async()=>{
+  it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
-    let tree=open('Bảng thống kê');
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-group')).toBe(true);
-    tree=open('Danh sách và nội dung');
+    let tree=render();
+    const menu=nodes(tree).find(n=>n.type==='details'&&n.props.className==='options-menu');
+    expect(menu).toBeDefined();
+    const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
+    expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual(['Chỉnh sửa','Tài khoản và dữ liệu']);
+    expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(1);
+    tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
-    tree=open('Tài khoản và đăng nhập');
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
+    tree=open('Bảng thống kê');
+    expect(nodes(tree).some(n=>n.type===ReportSettings)).toBe(true);
+    tree=open('Tài khoản và dữ liệu');
+    expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='div'&&n.props?.className==='options-popover')).toBe(true);
+    tree=open('Excel · Trích xuất');
+    expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
   });
   it('blocks switching editing sections while a report draft is unsaved',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
-    let tree=open('Bảng thống kê');
+    open('Chỉnh sửa');let tree=open('Bảng thống kê');
     const panel=nodes(tree).find(n=>n.type===ReportSettings);
     panel.props.onDirtyChange(true);
     tree=open('Danh sách và nội dung');
@@ -144,8 +154,8 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();const tree=open('Nhập / Xuất Excel'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
-    const source=nodes(open('Nguồn Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
+    firebase.isAdmin=true;render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
+    open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
     const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
   });
 });
