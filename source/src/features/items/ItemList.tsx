@@ -108,9 +108,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const savingRef=useRef(false);
   const resizing=useRef<{key:string;x:number;width:number}|null>(null);
   const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"} | null>(null);
-  // Anonymous visitors may edit their explicitly allowed cells directly in the ordinary list;
-  // UI permission is not authorization: each cell still checks Firebase mayEdit before creating a local draft.
-  const canEdit = (customizing || anonymousViewer) && canEditDraft && !permissionMode;
+  // Any Firebase viewer (including the signed-in admin) may draft explicitly
+  // granted cells in the ordinary list. Non-Firebase views stay read-only;
+  // the per-cell checker still enforces the live permission and lock state.
+  const canEdit = canEditDraft && !permissionMode && (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
   const latestExit=useRef({dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
   const exit = () => {
