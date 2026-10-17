@@ -62,7 +62,7 @@ export function validateItemLayout(value:unknown):ItemLayout{
   // Source fields have stable keys. The current schema has 15 columns,
   // while old snapshots may have 18. Only missing columns from an older
   // configuration are restored; no old removed field is reintroduced.
-  if(missing.some(col=>col.key!=='note'))
+  if(missing.length)
     throw new Error('Thiếu cột bắt buộc trong cấu hình A–O.');
   const withMissing=[...validSourceColumns,...missing];
   if(withMissing.length!==EXCEL_SOURCE_COLUMNS.length+customKeys.length)
