@@ -166,7 +166,7 @@ try{
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List / Help must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
-    const selectors=['.topbar','.nav-tabs','.page-heading','.demo-banner'];
+    const selectors=['.topbar','.nav-tabs','.demo-banner'];
     return selectors.map(selector=>{
       const bounds=document.querySelector(selector)?.getBoundingClientRect();
       return bounds?{left:bounds.left,width:bounds.width}:null;
@@ -232,6 +232,18 @@ try{
   if(!mobileMenu.ok)throw Error('Two-item settings menu geometry broken on 390px screen: '+JSON.stringify(mobileMenu));
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
   await evaluate("document.getElementById('smoke-two-entry-settings')?.remove()");
+  // The full-width site chrome must use wide displays instead of a legacy 1600px cap;
+  // report/list page contents can have independent, narrower widths.
+  await send('Emulation.setDeviceMetricsOverride',{width:2200,height:1000,deviceScaleFactor:1,mobile:false});
+  const wideShell=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),top=document.querySelector('.topbar');
+    const main=document.querySelector('main');
+    const sr=shell?.getBoundingClientRect(),tr=top?.getBoundingClientRect(),mr=main?.getBoundingClientRect();
+    return !!sr&&!!tr&&!!mr&&sr.width>2000&&tr.width>2000&&
+      getComputedStyle(shell).maxWidth==='none'&&mr.width<=sr.width;
+  })()`);
+  if(!wideShell)throw Error('Site shell still capped on 2200px desktop display');
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
   const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
   if(!guestOptions)throw Error('Guest must have login entry');
   await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
