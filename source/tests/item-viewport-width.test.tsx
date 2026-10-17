@@ -83,6 +83,40 @@ describe('drag-only widths and compact column manager',()=>{
     await vi.waitFor(()=>expect(onSaveCatalog).toHaveBeenCalledOnce());
     expect(onSaveCatalog.mock.calls[0][0].options.progressParty).toContain('Thêm lựa chọn thử');
   });
+  it('exposes the source dropdown choices even when a legacy layout still says text',()=>{
+    const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
+    layout.columns=layout.columns.map(c=>c.key==='progressParty'?{...c,kind:'text' as const}:c);
+    hook.begin();
+    let tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items});
+    all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột Tiến độ xin ý kiến Thành ủy').props.onClick();
+    hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items});
+    const editor=all(tree).find(n=>n.type===ColumnChoiceEditor);
+    expect(editor).toBeDefined();
+    expect(editor.props.options).toEqual(catalog.options.progressParty);
+  });
+  it('saves layout, source dropdown and column rights with one Save action',async()=>{
+    const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
+    const onSaveCatalog=vi.fn().mockResolvedValue(undefined);
+    const onSavePermissions=vi.fn().mockResolvedValue(undefined);
+    const onSaveLayout=vi.fn().mockResolvedValue(undefined);
+    const base={layout,catalog,items,onChange:vi.fn(),layoutDirty:true,onSaveLayout,
+      onSaveCatalog,onSavePermissions,permissions:{columns:{progressParty:false}}};
+    hook.begin();let tree=ItemColumnPanel(base);
+    const grant=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
+    grant.props.onChange({currentTarget:{checked:true}});
+    const open=all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột Tiến độ xin ý kiến Thành ủy');
+    open.props.onClick();
+    hook.begin();tree=ItemColumnPanel(base);
+    const choice=all(tree).find(n=>n.type===ColumnChoiceEditor);
+    choice.props.onChange([...choice.props.options,'Mục riêng']);
+    hook.begin();tree=ItemColumnPanel(base);
+    button(tree,'Lưu thay đổi').props.onClick();
+    await vi.waitFor(()=>expect(onSaveLayout).toHaveBeenCalledOnce());
+    expect(onSaveCatalog).toHaveBeenCalledOnce();
+    expect(onSavePermissions).toHaveBeenCalledOnce();
+    expect(onSaveCatalog.mock.invocationCallOrder[0]).toBeLessThan(onSavePermissions.mock.invocationCallOrder[0]);
+    expect(onSavePermissions.mock.invocationCallOrder[0]).toBeLessThan(onSaveLayout.mock.invocationCallOrder[0]);
+  });
   it('checks permission per Excel column and requires explicit legacy row/cell reset on save',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
     const permissions={columns:{progressParty:false},rows:{legacy:true},cells:{}};
