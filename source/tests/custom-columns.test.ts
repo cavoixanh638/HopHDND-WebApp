@@ -9,13 +9,13 @@ const custom=(id='custom_workflow2026')=>({
 });
 
 describe('independent table fields and values',()=>{
-  it('keeps 18 original mapped source fields and adds an independent editable dropdown field',()=>{
+  it('keeps 15 original mapped source fields and adds an independent editable dropdown field',()=>{
     const base=defaultItemLayout();
     const valid=validateItemLayout({...base,columns:[...base.columns,custom()]});
-    expect(valid.columns).toHaveLength(19);
+    expect(valid.columns).toHaveLength(16);
     const extra=valid.columns.at(-1)!;
     expect(extra).toMatchObject(custom());
-    expect(valid.columns.slice(0,18).map(c=>c.key)).toEqual(base.columns.map(c=>c.key));
+    expect(valid.columns.slice(0,15).map(c=>c.key)).toEqual(base.columns.map(c=>c.key));
     expect(JSON.parse(JSON.stringify(valid)).columns.at(-1).values).toEqual({'sheet:42:row:3':'Đang làm'});
   });
   it('allows rename and logical removal of Excel columns without changing their source mapping',()=>{
