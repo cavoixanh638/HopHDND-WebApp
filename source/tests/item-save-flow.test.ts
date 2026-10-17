@@ -65,7 +65,7 @@ describe('separate item layout save and data draft',()=>{
       onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
       initialLayout:layout});
     const headers=nodes(tree).filter(node=>node.props?.columnKey).map(node=>node.props.columnKey);
-    for(const key of ['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note'])
+    for(const key of ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note'])
       expect(headers).toContain(key);
     expect(headers).not.toContain('history');
     const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===true);
