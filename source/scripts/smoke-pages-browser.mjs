@@ -199,6 +199,39 @@ try{
         throw Error('Page chrome shifted when switching '+tab+': '+JSON.stringify({geometry,originalGeometry}));
     }
   }
+  // Exercise the exact settings menu markup with the production CSS even in the guest-only
+  // mock session. No login or Firebase mutation is required to catch cramped nested-summary CSS.
+  const settingsMenuLayout=async()=>evaluate(`(()=>{
+    const host=document.querySelector('.topbar .top-actions');
+    if(!host)return {ok:false,reason:'No topbar actions'};
+    let menu=document.getElementById('smoke-two-entry-settings');
+    if(!menu){
+      menu=document.createElement('details');menu.id='smoke-two-entry-settings';
+      menu.className='options-menu';
+      menu.innerHTML='<summary aria-label="Cài đặt">⚙</summary><div class="options-popover"><button type="button">Chỉnh sửa</button><button type="button">Tài khoản và dữ liệu</button></div>';
+      host.append(menu);
+    }
+    menu.open=true;
+    const pop=menu.querySelector('.options-popover');
+    const buttons=[...pop.querySelectorAll(':scope > button')];
+    const rect=pop.getBoundingClientRect();
+    const buttonRects=buttons.map(button=>button.getBoundingClientRect());
+    const ok=buttons.length===2 &&
+      buttons.map(button=>button.textContent.trim()).join('|')==='Chỉnh sửa|Tài khoản và dữ liệu' &&
+      pop.querySelectorAll('summary, details').length===0 &&
+      rect.width>200&&rect.width<=280 &&
+      rect.left>=-1&&rect.right<=window.innerWidth+1 &&
+      buttonRects.every(bounds=>bounds.width>=200 && bounds.height>=36 && bounds.height<=52) &&
+      buttons.every(button=>getComputedStyle(button).wordBreak==='normal');
+    return {ok,viewport:window.innerWidth,rect:{left:rect.left,right:rect.right,width:rect.width},buttons:buttonRects.map(b=>({width:b.width,height:b.height}))};
+  })()`);
+  const desktopMenu=await settingsMenuLayout();
+  if(!desktopMenu.ok)throw Error('Two-item settings menu geometry broken on desktop: '+JSON.stringify(desktopMenu));
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  const mobileMenu=await settingsMenuLayout();
+  if(!mobileMenu.ok)throw Error('Two-item settings menu geometry broken on 390px screen: '+JSON.stringify(mobileMenu));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await evaluate("document.getElementById('smoke-two-entry-settings')?.remove()");
   const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
   if(!guestOptions)throw Error('Guest must have login entry');
   await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
