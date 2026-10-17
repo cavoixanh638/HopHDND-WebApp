@@ -221,7 +221,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       {Object.entries(columnFilters).some(([,term])=>term.trim())&&<><strong>Đang tìm trong cột:</strong>{Object.entries(columnFilters).filter(([,term])=>term.trim()).map(([key,term])=><span className="filter-chip" key={key}>{columns.find(c=>c.key===key)?.label??key}: {term}<button type="button" className="chip-remove" aria-label={'Bỏ lọc '+key} onClick={()=>{setColumnFilters(old=>{const next={...old};delete next[key];return next;});}}>×</button></span>)}<button type="button" className="button ghost" onClick={()=>{setColumnFilters({});}}>Xóa tìm kiếm theo cột</button></>}</div></div>
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
-    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
+    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
       if(exitAfterPermissions.current){
         exitAfterPermissions.current=false;
