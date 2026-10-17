@@ -393,3 +393,14 @@
 .item-data-table thead .item-column-filter-row th {position:static;top:auto;}
 .item-data-region .item-table-scroll {scroll-padding-top:125px;}
 .item-data-table .item-heading-row th .column-resizer {right:0;}
+
+/* Make the column manager an unmistakable expandable subsection. */
+.column-manager>summary {position:relative;background:#f5f9f6;border-radius:10px;list-style:none;}
+.column-manager>summary::-webkit-details-marker {display:none;}
+.column-manager>summary::before {content:"▸";color:#3b6e51;display:inline-block;transition:transform .15s ease;font-size:17px;}
+.column-manager[open]>summary::before {transform:rotate(90deg);}
+.column-manager[open]>summary {border-radius:10px 10px 0 0;border-bottom:1px solid #d6e5da;background:#ebf4ed;}
+.column-manager>summary:focus-visible {outline:2px solid #34795b;outline-offset:2px;}
+.column-manager-catalog {grid-column:1/-1;display:grid;gap:7px;padding:10px 12px;border-radius:8px;border:1px solid #cddfd1;background:#f2f8f4;font-size:12px;color:#405e4c;}
+.column-manager-catalog strong {font-size:13px;color:#285d41;}
+.column-manager-catalog .button {justify-self:start;}
