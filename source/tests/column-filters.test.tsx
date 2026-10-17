@@ -16,14 +16,14 @@ describe('always-visible column filter row',()=>{
     const ordinal=ColumnFilterCell({field:'stt',label:'STT',items,value:'',onChange:vi.fn()});
     expect(ordinal.props.children.props.children[0].props.placeholder).toBe('');
     expect(filterChoices(items,'content')).toBeNull();
-    const drop=ColumnFilterCell({field:'isDropped',label:'Trình / Rút',items,value:'',onChange:vi.fn()});
+    const drop=ColumnFilterCell({field:'isDropped',label:'Rút',items,value:'',onChange:vi.fn()});
     const selector=drop.props.children.props.children[0];
     expect(selector.type).toBe('select');
-    expect(filterChoices(items,'isDropped')).toEqual(['Đang trình','Đã rút','Lưu trữ']);
+    expect(filterChoices(items,'isDropped')).toEqual(['Đã rút']);
   });
-  it('mirrors readable Trình / Rút cell values instead of filtering raw booleans',()=>{
+  it('filters the Excel Rút column only for explicit withdrawals rather than app lifecycle states',()=>{
     const a=items[0];
-    expect(filterValue({...a,isDropped:false,archivedAt:''},'isDropped')).toBe('Đang trình');
+    expect(filterValue({...a,isDropped:false,archivedAt:''},'isDropped')).toBe('');
     expect(filterValue({...a,isDropped:true,archivedAt:''},'isDropped')).toBe('Đã rút');
     expect(matchesColumnFilters({...a,isDropped:true,archivedAt:''},{isDropped:'Đã rút'})).toBe(true);
     expect(matchesColumnFilters({...a,isDropped:false,archivedAt:''},{isDropped:'Đã rút'})).toBe(false);
