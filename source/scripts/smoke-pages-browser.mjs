@@ -181,7 +181,7 @@ try{
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
       document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Tìm kiếm cột Nội dung"]')?.placeholder==='Tìm kiếm';
+      document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]')?.placeholder==='Tìm kiếm';
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   const tablePosition=await evaluate(`(()=>{
