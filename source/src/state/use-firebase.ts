@@ -91,11 +91,19 @@ export function useFirebase(){
     if(!profileFrom(candidate))throw new Error('Thiếu bộ cấu hình.');
     saving.current=true;setBusy(true);
     try {
+      // Warm the authoritative cache first. Returning null from a cold
+      // RTDB transaction could otherwise commit a deletion or false success.
+      const profileRef=ref(database,'hdnd/profile');
+      const liveSnapshot=await get(profileRef);
+      const liveRaw=liveSnapshot.val();
+      if(expected>0&&!liveRaw)throw new Error('Cấu hình Firebase đã mất khỏi nguồn. Dừng lưu để tránh ghi đè.');
+      if(!canMerge&&Number(liveRaw?.revision??0)!==expected)
+        throw new Error('Cấu hình Firebase đã thay đổi. Hãy đọc lại trước khi lưu phần này; dữ liệu bạn đang chỉnh vẫn được giữ.');
       let conflict:Error|null=null;
       let submitted:string|undefined;
-      const result=await runTransaction(ref(database,'hdnd/profile'),current=>{
-        // A cold RTDB transaction may see null before fetching the server value.
-        if(current===null&&expected>0)return current;
+      const result=await runTransaction(profileRef,current=>{
+        // Never submit a null value when the transaction sees an empty cache.
+        if(current===null&&expected>0)return undefined;
         if(!current&&canMerge)return undefined;
         const serverRevision=Number(current?.revision??0);
         let proposed:FirebaseProfile|null=null;
