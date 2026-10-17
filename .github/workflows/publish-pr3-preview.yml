@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: acb345db55b0fa2b178f3d6607990a10ba12ad8f
+          ref: ab0d8d49dd640477164a947a4d5563354f4412fa
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -85,6 +85,9 @@ jobs:
           if(!html.includes('report-page-width-controls'))throw Error('Dedicated report tab sizing CSS missing');
           if(!html.includes('Hiện tất cả cột Excel'))throw Error('One-click show all source columns missing');
           if(!html.includes('source-column-visibility')||!html.includes('Theo cột đã chọn')||!html.includes('Hiện đủ cột Excel'))throw Error('Complete A-R viewer or saved column toggle missing');
+          if(!html.includes('EXCEL_SOURCE_COLUMNS')&&!html.includes('Loại VB (HC/QPPL/BC)'))throw Error('Canonical 18-field Excel A-R schema missing');
+          if(!html.includes('Xem lịch sử chỉnh sửa'))throw Error('Audit action no longer accessible from ID cell');
+          if(!html.includes('Cấp cho ý kiến')||!html.includes('Họp Thành ủy / xin ý kiến'))throw Error('Excel F/P fields missing');
           if(!html.includes('Tiến độ xin ý kiến Thành ủy')||!html.includes('Tiến độ trình HĐND xây dựng NQ')||!html.includes('Tiến độ trình HĐND ban hành NQ/BC'))throw Error('Excel G/H/I header labels are missing');
           if(!html.includes('partyMeeting')||!html.includes('examined')||!html.includes('Họp Thành ủy / xin ý kiến'))throw Error('Excel P/Q mapping absent');
           if(!html.includes('A:R'))throw Error('Live Sheet query must request all 18 columns');
@@ -94,10 +97,10 @@ jobs:
           if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu Danh mục'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — HIỆN ĐỦ 18 CỘT EXCEL (17/10/2026) · Danh sách hiện toàn bộ A–R, bao gồm tiến độ Thành ủy (G), xây dựng NQ (H) và ban hành NQ/BC (I); có nút trở về cột đã chọn. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — KHỚP 18 CỘT A–R (17/10/2026) · Bỏ cột Lịch sử khỏi cấu hình bảng, cột O là Rút, đặt đúng tên/thứ tự cột Excel. Lịch sử là thao tác tại ô ID. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — HIỆN ĐỦ 18 CỘT EXCEL'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — KHỚP 18 CỘT A–R'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
