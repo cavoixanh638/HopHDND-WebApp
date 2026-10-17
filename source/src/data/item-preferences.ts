@@ -51,10 +51,12 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Danh sách cột không hợp lệ hoặc bị trùng.');
   // P/Q were introduced later; append any newly supported Excel columns without
   // discarding the user's prior order, visibility, widths, and separate permissions.
-  const withMissing=[
-    ...validSourceColumns,
-    ...defaults.columns.filter(col=>!keys.includes(col.key)),
-  ];
+  const missing=defaults.columns.filter(col=>!keys.includes(col.key));
+  // Only P/Q are approved implicit migrations; every other missing source
+  // column means the saved layout is incomplete and must not be silently guessed.
+  if(missing.some(col=>col.key!=='partyMeeting'&&col.key!=='examined'))
+    throw new Error('Thiếu cột bắt buộc trong cấu hình A–R.');
+  const withMissing=[...validSourceColumns,...missing];
   if(withMissing.length!==EXCEL_SOURCE_COLUMNS.length)
     throw new Error('Danh sách cột cần đủ các cột A–R của nguồn Excel.');
   const columns=withMissing.map(column=>{
