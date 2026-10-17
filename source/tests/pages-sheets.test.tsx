@@ -114,7 +114,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     config.catalogs.options.department.push('Sở giả');
     firebase.common.config=config;
     const dirtySource={...payload()};
-    dirtySource.table.rows[1].c[3].v='Sở giả ';
+    const sourceCell=dirtySource.table.rows[1].c[3];
+    if(!sourceCell)throw new Error('Missing synthetic department field');
+    sourceCell.v='Sở giả ';
     render();
     const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];
     (window as any)[name](dirtySource);await settle();
@@ -123,7 +125,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const next=withReportPageWidth(panel.props.initial,2450);
     await panel.props.onSave(next);
     expect(firebase.common.save).toHaveBeenLastCalledWith('reports',next,0);
-    expect(firebase.common.save.mock.calls.at(-1)?.[1]).not.toHaveProperty('catalogs');
+    expect(vi.mocked(firebase.common.save).mock.calls.at(-1)?.[1]).not.toHaveProperty('catalogs');
     expect(firebase.common.config.catalogs).toEqual(config.catalogs);
   });
   it('previews unsaved report width immediately and restores persisted value on exit',async()=>{
