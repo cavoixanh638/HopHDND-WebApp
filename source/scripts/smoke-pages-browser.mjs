@@ -180,6 +180,17 @@ try{
     })()`);
     if(!clicked)throw Error('Missing navigation tab '+tab);
     await eventually("document.querySelector('.page-heading h1')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
+    if(tab==='Tổng quan'){
+      const reports=await evaluate(`(()=>{
+        const tables=[...document.querySelectorAll('table.report-table')];
+        if(tables.length<2)return {ok:false,reason:'Missing report tables'};
+        const headers=tables.map(table=>table.querySelector('thead th:first-child')?.textContent?.trim());
+        const widths=tables.map(table=>table.querySelector('thead th:first-child')?.getBoundingClientRect().width);
+        return {ok:headers.every(text=>text==='Lãnh đạo Văn phòng')&&
+          widths.every(width=>Math.abs(width-widths[0])<2),headers,widths};
+      })()`);
+      if(!reports.ok)throw Error('Report first-column heading/width mismatch: '+JSON.stringify(reports));
+    }
     const geometry=await sharedGeometry();
     for(let i=0;i<originalGeometry.length;i++){
       if(!geometry[i]||!originalGeometry[i])throw Error('Missing shared nav geometry');
