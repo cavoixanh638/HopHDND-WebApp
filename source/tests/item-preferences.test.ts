@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../src/data/item-preferences';
+import { EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../src/data/item-preferences';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -12,6 +12,35 @@ const storage = () => {
 };
 
 describe('Bố trí cột danh sách', () => {
+  it('matches exactly 18 Excel A–R columns in the source order and labels, excluding app-only History',()=>{
+    const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
+      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
+      'specificProgress','isDropped','partyMeeting','examined','note'];
+    const layout=defaultItemLayout();
+    expect(EXCEL_COLUMN_KEYS).toEqual(expected);
+    expect(EXCEL_SOURCE_COLUMNS).toHaveLength(18);
+    expect(layout.columns.map(column=>column.key)).toEqual(expected);
+    expect(layout.columns.map(column=>column.label)).toEqual([
+      'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB (HC/QPPL/BC)',
+      'Cấp cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
+      'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
+      'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ cụ thể','Rút',
+      'Họp Thành ủy / xin ý kiến','Đã thẩm tra chưa','Ghi chú']);
+    expect(layout.columns.find(column=>column.key==='history')).toBeUndefined();
+  });
+  it('drops the obsolete History column from previous Firebase/shared or personal layouts safely',()=>{
+    const old=defaultItemLayout();
+    old.columns.splice(3,0,{key:'history',label:'Lịch sử',width:100,visible:true});
+    old.columns[0].width=199;
+    old.columns[3].visible=true;
+    const migrated=validateItemLayout(old);
+    expect(migrated.columns).toHaveLength(18);
+    expect(migrated.columns.find(c=>c.key==='history')).toBeUndefined();
+    expect(migrated.columns.find(c=>c.key==='displayCode')?.width).toBe(199);
+    expect(migrated.columns.map(c=>c.key)).toEqual(EXCEL_COLUMN_KEYS);
+    expect(()=>validateItemLayout({...old,columns:old.columns.filter(c=>c.key!=='note')}))
+      .toThrow('Thiếu cột bắt buộc');
+  });
   it('giữ thứ tự, trạng thái ẩn và độ rộng hợp lệ', () => {
     const layout = defaultItemLayout();
     layout.tableWidth = 2400;
