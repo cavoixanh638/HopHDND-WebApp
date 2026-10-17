@@ -123,7 +123,13 @@ try{
     const headings=[...document.querySelectorAll('.item-heading-row th')]
       .map(el=>el.textContent??'');
     const button=document.querySelector('.source-column-visibility button');
-    return keys.length===18&&
+    const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
+      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
+      'specificProgress','isDropped','partyMeeting','examined','note'];
+    return keys.length===18&&JSON.stringify(keys)===JSON.stringify(expected)&&
+      !keys.includes('history')&&
+      headings.some(x=>x.trim()==='Rút')&&
+      !headings.some(x=>x.includes('Trình / Rút'))&&
       ['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note']
         .every(key=>keys.includes(key))&&
       headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
