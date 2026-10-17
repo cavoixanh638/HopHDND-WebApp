@@ -201,11 +201,11 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
               {selectedSpecialist&&<div className="column-specialist-room-list">
                 {choiceDraft.options.room.map(room=><label key={room}>
                   <input type="checkbox" checked={(choiceDraft.specialistRooms[selectedSpecialist]??[]).includes(room)}
-                    onChange={event=>setChoiceDraft(previous=>{
+                    onChange={event=>{const checked=event.currentTarget.checked;setChoiceDraft(previous=>{
                       const old=previous.specialistRooms[selectedSpecialist]??[];
-                      const rooms=event.currentTarget.checked?[...new Set([...old,room])]:old.filter(value=>value!==room);
+                      const rooms=checked?[...new Set([...old,room])]:old.filter(value=>value!==room);
                       return {...previous,specialistRooms:{...previous.specialistRooms,[selectedSpecialist]:rooms}};
-                    })}/>
+                    });}}/>
                   {room}
                 </label>)}
               </div>}
