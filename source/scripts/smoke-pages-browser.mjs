@@ -112,7 +112,7 @@ try{
   })()`);
   if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
   const fullExcelColumns=await evaluate(`(()=>{
-    const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.textContent?.trim()??'');
+    const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.querySelector('.column-heading-label')?.textContent?.trim()??'');
     const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
     return header.includes('Cấp Thành ủy cho ý kiến')&&
       header.includes('Tiến độ hiện tại')&&header.includes('Ghi chú')&&
@@ -124,7 +124,7 @@ try{
     const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
       .map(el=>el.getAttribute('data-filter-key'));
     const headings=[...document.querySelectorAll('.item-heading-row th')]
-      .map(el=>el.textContent??'');
+      .map(el=>el.querySelector('.column-heading-label')?.textContent??'');
     const button=document.querySelector('.source-column-visibility button');
     const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
       'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
@@ -141,6 +141,27 @@ try{
       button?.getAttribute('aria-pressed')==='true';
   })()`);
   if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
+
+  const sortAndGuestLayout=await evaluate(`(()=>{
+    const topbar=document.querySelector('.topbar'),nav=document.querySelector('.nav-tabs');
+    const cardHeader=document.querySelector('.item-data-region .card-header');
+    const viewport=document.querySelector('.item-table-scroll');
+    const status=document.querySelector('.item-filter-status-slot');
+    const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
+    const sort=stt?.querySelector('.column-sort-button');
+    if(!topbar||!nav||!cardHeader||!viewport||!sort)return {ok:false,reason:'Missing guest chrome or sort control'};
+    const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
+    const gap=viewport.getBoundingClientRect().top-cardHeader.getBoundingClientRect().bottom;
+    const aligned=Math.abs(top.left-tabs.left)<3&&Math.abs(top.width-tabs.width)<3;
+    if(!aligned||gap>32||status)return {ok:false,aligned,gap,hasEmptyStatus:!!status};
+    const gridWidth=viewport.getBoundingClientRect().width;
+    sort.click();const asc=stt.getAttribute('aria-sort')==='ascending';
+    sort.click();const desc=stt.getAttribute('aria-sort')==='descending';
+    sort.click();const reset=stt.getAttribute('aria-sort')==='none';
+    return {ok:asc&&desc&&reset&&Math.abs(viewport.getBoundingClientRect().width-gridWidth)<2,asc,desc,reset,gap};
+  })()`);
+  if(!sortAndGuestLayout.ok)throw Error('Guest layout or column sort regression: '+JSON.stringify(sortAndGuestLayout));
+
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
     if(!button)return false;
