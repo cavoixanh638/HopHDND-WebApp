@@ -8,7 +8,7 @@ describe('deferred, validated list widths',()=>{
   it('keeps 500px frame independent from the width of the inner columns',()=>{
     const layout=defaultItemLayout(),onChange=vi.fn();
     const tree=ItemColumnPanel({layout,onChange});
-    const input=numeric(tree,'Độ rộng vùng danh sách (px)');
+    const input=numeric(tree,'Độ rộng trang và vùng danh sách (px)');
     expect(input).toBeDefined();expect(input.props.value).toBe(1500);
     expect(onChange).not.toHaveBeenCalled();
     input.props.onCommit(500);
