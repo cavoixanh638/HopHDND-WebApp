@@ -137,11 +137,15 @@ export function useFirebase(){
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     saving.current=true;setBusy(true);
     try{
-    const result=await runTransaction(ref(database,'hdnd/permissions'),current=>{
-      // A cold RTDB transaction first sees null in the local cache even when
-      // server permissions exist. Return null (not undefined) so Firebase
-      // fetches the server value and retries with the authoritative baseline.
-      if(current===null&&!samePermissions(expected,{columns:{}}))return current;
+    const rightsRef=ref(database,'hdnd/permissions');
+    // Read authoritative rights before CAS: RTDB transactions can first run
+    // against an empty local cache, causing misleading conflict errors.
+    const live=(await get(rightsRef)).val() as CellPermissions|null;
+    if(!samePermissions(live,expected))
+      throw new Error('Quyền trên Firebase đã thay đổi so với bản đang chỉnh. Hãy đọc lại quyền trước khi lưu; bản nháp vẫn được giữ.');
+    const result=await runTransaction(rightsRef,current=>{
+      // Retry is safe: an unrelated admin's update invalidates this CAS.
+      if(current===null&&!samePermissions(expected,{columns:{}}))return undefined;
       if(!samePermissions({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}},expected))return undefined;
       return next;
     },{applyLocally:false});
