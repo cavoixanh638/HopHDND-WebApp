@@ -5,12 +5,12 @@ import {displayId} from '../../domain/display-id';
  * The whole table owns scrolling so the heading and input remain aligned. */
 export const filterValue=(item:Item,key:string):string=>{
   if(key==='displayCode')return displayId(item);
-  if(key==='isDropped')return item.archivedAt?'Lưu trữ':item.isDropped?'Đã rút':'Đang trình';
+  if(key==='isDropped')return item.isDropped?'Đã rút':'';
   const value=(item as unknown as Record<string,unknown>)[key];
   return value==null?'':String(value);
 };
 export function filterChoices(items:Item[],field:string):string[]|null{
-  if(field==='isDropped')return ['Đang trình','Đã rút','Lưu trữ'];
+  if(field==='isDropped')return ['Đã rút'];
   if(field==='content'||field==='note'||field==='displayCode'||field==='stt'||field==='history')return null;
   const options=[...new Set(items.map(item=>filterValue(item,field)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
   return options.length>0&&options.length<=12?options:null;
