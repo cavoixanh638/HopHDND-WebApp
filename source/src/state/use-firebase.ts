@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { connectDatabaseEmulator, get, getDatabase, onValue, ref, runTransaction } from 'firebase/database';
 import { firebaseConfig } from '../data/firebase-config';
-import { firebaseAdmin, mayEdit, type CellPermissions } from '../data/firebase-repository';
+import { firebaseAdmin, mayEdit, samePermissions, type CellPermissions } from '../data/firebase-repository';
 import type { ConfigSection } from '../data/shared-config';
 import { validateCatalog, type CatalogConfig } from '../data/catalogs';
 import { validateReportLayout, type ReportLayout } from '../data/report-preferences';
@@ -135,16 +135,17 @@ export function useFirebase(){
   const savePermissions=async(next:CellPermissions,expected=permissions)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady)throw new Error('Cần quản trị Google, kết nối mạng và quyền gốc để lưu quyền sửa.');
     if(saving.current)throw new Error('Đang lưu thiết lập.');
-    const base=JSON.stringify(expected);
     saving.current=true;setBusy(true);
-    try{const empty=JSON.stringify({columns:{},rows:{},cells:{}});
+    try{
     const result=await runTransaction(ref(database,'hdnd/permissions'),current=>{
-      if(current===null&&base!==empty)return current;
-      return JSON.stringify({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}})!==base?undefined:next;
+      if(!samePermissions({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}},expected))return undefined;
+      return next;
     },{applyLocally:false});
-    const confirmed=result.snapshot.val();
-    if(!result.committed||JSON.stringify({columns:confirmed?.columns??{},rows:confirmed?.rows??{},cells:confirmed?.cells??{}})!==JSON.stringify({columns:next.columns??{},rows:next.rows??{},cells:next.cells??{}}))
-      throw new Error('Quyền sửa đã đổi ở cửa sổ khác hoặc Firebase chưa xác nhận lưu. Đọc lại và đối chiếu.');
+    const confirmed=result.snapshot.val() as CellPermissions|null;
+    if(!result.committed)
+      throw new Error('Quyền đã được thay đổi ở phiên khác. Hãy đọc lại quyền và kiểm tra trước khi lưu tiếp.');
+    if(!samePermissions(confirmed,next))
+      throw new Error('Firebase chưa xác nhận đúng quyền đã lưu. Hãy đọc lại và đối chiếu; bản nháp vẫn được giữ.');
     }finally{saving.current=false;setBusy(false);}
   };
   const saveEditingLock=async(nextLocked:boolean)=>{
