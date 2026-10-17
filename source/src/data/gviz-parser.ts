@@ -54,7 +54,7 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     if (!content) warnings.push(`Dòng ${rowNumber}: chưa có nội dung trình.`);
     const rawType = normalizeSearch(values[4]);
     const bcType = rawType === 'bc' || rawType.includes('bao cao');
-    const nqType = rawType === 'hc' || rawType === 'qppl' || rawType === 'nq';
+    const nqType = rawType === 'hc' || rawType === 'hanh chinh' || rawType === 'qppl' || rawType === 'nq';
     const codeBc = /^BC/i.test(code), codeNq = /^(ID|NQ)/i.test(code);
     let kind: Item['documentKind'] = 'UNCLASSIFIED';
     if ((bcType && codeNq) || (nqType && codeBc)) warnings.push(`Dòng ${rowNumber}: mã và loại văn bản mâu thuẫn; chưa phân loại NQ/BC.`);
