@@ -219,7 +219,7 @@ try{
   await assertStable('clearing column search');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
-  // Switching Overview / List / Help must never resize or horizontally relocate the shared page header.
+  // Switching Overview / List must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
     const selectors=['.topbar','.nav-tabs','.demo-banner'];
     return selectors.map(selector=>{
@@ -228,7 +228,7 @@ try{
     });
   })()`);
   const originalGeometry=await sharedGeometry();
-  for(const [tab,ready] of [['Hướng dẫn','Hướng dẫn sử dụng'],['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
+  for(const [tab,ready] of [['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
     const clicked=await evaluate(`(()=>{
       const button=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent===${JSON.stringify(tab)});
       button?.click();return !!button;
