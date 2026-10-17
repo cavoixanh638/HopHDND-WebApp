@@ -458,3 +458,6 @@
 .app-shell.guest-view .item-data-region .card-header{margin-bottom:8px;min-height:0}
 .app-shell.guest-view .item-data-region .item-sticky-search-controls{padding:0}
 @media(max-width:620px){.item-header-actions{justify-content:flex-start}.item-data-region .card-header{align-items:flex-start;flex-direction:column}}
+
+/* Keep active column filters entirely inside the fixed header search row. */
+.item-data-region .item-sticky-search-controls:has(.layout-visibility){height:auto;min-height:30px;overflow:visible;padding:4px 0}
