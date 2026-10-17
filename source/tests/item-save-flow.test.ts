@@ -84,7 +84,7 @@ describe('separate item layout save and data draft',()=>{
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
     expect(keys).toEqual(EXCEL_COLUMN_KEYS);
     expect(keys).not.toContain('history');
-    expect(nodes(tree).filter(n=>n.type==='th'&&n.props?.['data-filter-key']).map(n=>n.props['data-filter-key'])).toEqual(EXCEL_COLUMN_KEYS);
+    expect(nodes(tree).filter(n=>n.type?.name==='ColumnFilterCell').map(n=>n.props.field)).toEqual(EXCEL_COLUMN_KEYS);
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
     const items=createDemoItems(1);
