@@ -13,6 +13,7 @@ vi.mock('../src/state/use-recoverable-draft',()=>({
     unmatchedCheckpoint:null,restoreOldDraft:vi.fn(),discardOldDraft:vi.fn()})
 }));
 import {ItemList} from '../src/features/items/ItemList';
+import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
 function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
@@ -23,14 +24,16 @@ function list(readOnly=false) {
     customizing:true,sourceKey:'fake',catalog:catalogFromItems(items),onClose:vi.fn(),
     onSaveData:vi.fn().mockResolvedValue(true),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
     initialLayout:defaultItemLayout(),onPersistLayout:vi.fn().mockResolvedValue(undefined)};
-  const tree=ItemList(props),button=nodes(tree).find(node=>node.type==='button'&&node.props?.className==='button primary');
+  const tree=ItemList(props),editor=nodes(tree).find(node=>node.type===ItemColumnPanel);
+  const editorTree=ItemColumnPanel(editor.props);
+  const button=nodes(editorTree).find(node=>node.type==='button'&&text(node)==='Lưu thay đổi');
   return{props,tree,button};
 }
 beforeEach(()=>{mock.dirty=false;mock.markSaved.mockReset();});
 describe('separate item layout save and data draft',()=>{
   it('does not save layout or data if no layout change is pending',()=>{
     const t=list();
-    expect(text(t.button)).toContain('Lưu cách hiển thị');
+    expect(text(t.button)).toContain('Lưu thay đổi');
     expect(t.button.props.disabled).toBe(true);
     t.button.props.onClick();
     expect(t.props.onPersistLayout).not.toHaveBeenCalled();
