@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: e5b5f67f9fe31f02d4c40ac9bf8556eebaebb95f
+          ref: a59cdc4af6197057f8874636357ffb3d1e752171
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -105,10 +105,10 @@ jobs:
           if(!html.includes('Hiện đủ 15 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — CỘT A–O & ĐỌC LẠI QUYỀN FIREBASE (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — SỬA Ô ĐƯỢC CẤP QUYỀN TRONG CHẾ ĐỘ XEM (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — CỘT A–O & ĐỌC LẠI QUYỀN FIREBASE'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — SỬA Ô ĐƯỢC CẤP QUYỀN TRONG CHẾ ĐỘ XEM'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
