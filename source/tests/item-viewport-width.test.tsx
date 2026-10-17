@@ -31,7 +31,8 @@ describe('drag-only widths and compact column manager',()=>{
     expect(input?.props.value).toBe(500);
     input.props.onCommit(600);
     expect(onChange).toHaveBeenCalledWith({...layout,frameWidth:600});
-    const checkbox=all(tree).find(n=>n.type==='input'&&n.props?.type==='checkbox'&&n.props?.checked===false);
+    const widthLabel=all(tree).find(n=>n.type==='label'&&n.props?.className==='layout-visibility');
+    const checkbox=all(widthLabel).find(n=>n.type==='input'&&n.props?.type==='checkbox');
     checkbox.props.onChange({currentTarget:{checked:true}});
     expect(onChange).toHaveBeenLastCalledWith({...layout,frameWidth:'auto'});
   });
