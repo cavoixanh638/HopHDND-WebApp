@@ -20,6 +20,20 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     return Array.isArray(cells) && normalizeSearch(text(cells[2])).includes('noi dung') && normalizeSearch(text(cells[3])).includes('so');
   });
   if (headerIndex < 0) throw new Error('Không nhận diện được tiêu đề Nội dung trình / Sở, ngành ở cột C/D. Hãy kiểm tra đúng trang tính và cấu trúc A–P.');
+  // The live Excel source has 18 columns: O=Rút, P=Họp Thành ủy/xin ý kiến,
+  // Q=Đã thẩm tra chưa, R=Ghi chú. Older 16-column exports used
+  // O=Ghi chú and P=Trình/Rút. Detect from header labels, never from
+  // the mere number of columns returned by the A:R GViz query.
+  const headerCells=rows[headerIndex].c ?? [];
+  const header=(index:number)=>normalizeSearch(text(headerCells[index]));
+  const modernSource=(header(14).includes('rut') && header(17).includes('ghi chu')) ||
+    (header(17).includes('ghi chu') && header(15).includes('hop'));
+  const legacySource=header(14).includes('ghi chu') ||
+    (header(15).includes('rut')&&!header(17).includes('ghi chu'));
+  if(!modernSource&&!legacySource && response.table.cols.length>=18 &&
+     (header(14)||header(15)||header(16)||header(17)))
+    throw new Error('Chưa xác định được cột Rút/Ghi chú của Excel. Kiểm tra tiêu đề O–R để tránh đọc nhầm dữ liệu.');
+  const sourceColumns=modernSource?18:16;
   const items: Item[] = [], warnings: string[] = [];
   const usedCodes = new Set<string>();
   let ignoredRows = headerIndex + 1;
@@ -27,7 +41,7 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     if (!Array.isArray(row.c)) throw new Error('Có dòng dữ liệu không hợp lệ; giữ nguyên bản đọc trước.');
     const rowNumber = headerIndex + offset + 2;
     const cells = row.c;
-    const values = Array.from({ length: 16 }, (_, index) => text(cells[index]));
+    const values = Array.from({ length: sourceColumns }, (_, index) => text(cells[index]));
     const [code, ordinal, content] = values;
     const subheader = !code && !ordinal && !content && values.slice(5, 9).some(v => /cap cho y kien|tien do xin y kien|trinh xay dung|trinh ban hanh/.test(normalizeSearch(v)));
     const blank = values.every(value => !value);
@@ -47,7 +61,9 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
     else if (bcType || codeBc) kind = 'BC';
     else if (nqType || codeNq) kind = 'NQ';
     else warnings.push(`Dòng ${rowNumber}: chưa nhận diện loại nội dung NQ/BC.`);
-    const drop = normalizeSearch(values[15]);
+    const drop = normalizeSearch(values[modernSource?14:15]);
+    const note = values[modernSource?17:14];
+    const isDropped=['rut', 'da rut', 'x', 'true', '1', 'co', 'khong trinh nua'].includes(drop);
     items.push({
       recordId: `${source}:row:${rowNumber}`, displayCode: code || `Dòng ${rowNumber} (thiếu mã)`,
       stt: Number(ordinal) || rowNumber - headerIndex - 1, documentKind: kind,
@@ -55,8 +71,10 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
       partyLevel: values[5], progressParty: values[6], progressBuild: values[7], progressCouncil: values[8],
       specialist: values[9], room: values[10],
       vpLeader: values[11], ubndLeader: values[12],
-      specificProgress: values[13], note: values[14],
-      isDropped: ['rut', 'x', 'true', '1', 'khong trinh nua'].includes(drop), archivedAt: null, revision: 0,
+      specificProgress: values[13], note,
+      partyMeeting: modernSource?values[15]:'',
+      examined: modernSource?values[16]:'',
+      isDropped, archivedAt: null, revision: 0,
     });
   });
   return { items, warnings, ignoredRows };
