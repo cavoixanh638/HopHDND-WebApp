@@ -1,6 +1,10 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {DEFAULT_SHEET_URL,parseSheetConfig,saveSheetConfig} from '../src/data/sheet-config';
 import {mayEdit} from '../src/data/firebase-repository';
+import {defaultItemLayout} from '../src/data/item-preferences';
+import {defaultReportLayout} from '../src/data/report-preferences';
+import {catalogFromItems} from '../src/data/catalogs';
+import {createDemoItems} from '../src/data/demo-items';
 import type {FirebaseController} from '../src/state/use-firebase';
 const h=vi.hoisted(()=>{
   const slots:any[]=[];let cursor=0;let effects:(()=>void)[]=[];
@@ -96,6 +100,24 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Danh mục và phân công');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Danh sách và nội dung');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
+  });
+  it('uses the saved list frame width for the whole page on overview and list rather than resizing only the grid',async()=>{
+    firebase.isAdmin=true;
+    firebase.common.config={
+      revision:1,
+      items:{...defaultItemLayout(),frameWidth:640},
+      reports:defaultReportLayout(),
+      catalogs:catalogFromItems(createDemoItems(2))
+    };
+    let tree=render();
+    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    respond();await settle();
+    tree=open('Danh sách nội dung');
+    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    tree=open('Tổng quan');
+    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    tree=open('Hướng dẫn');
+    expect(tree.props.style['--list-frame-width']).toBe('640px');
   });
   it('keeps the settings gear available during editing and switches between grouped sections',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
