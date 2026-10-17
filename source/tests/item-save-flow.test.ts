@@ -13,6 +13,7 @@ vi.mock('../src/state/use-recoverable-draft',()=>({
     unmatchedCheckpoint:null,restoreOldDraft:vi.fn(),discardOldDraft:vi.fn()})
 }));
 import {ItemList} from '../src/features/items/ItemList';
+import {CellPicker} from '../src/features/items/CellPicker';
 function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
 function list(readOnly=false) {
@@ -121,6 +122,25 @@ describe('separate item layout save and data draft',()=>{
     expect(nodes(permitted).some(n=>n.props?.className==='cell-value-button')).toBe(false);
     const withoutFirebase=ItemList(props);
     expect(nodes(withoutFirebase).some(n=>n.props?.className==='content-button')).toBe(false);
+  });
+
+  it('uses one source of truth for Excel dropdowns: the shared catalog, not legacy column options',()=>{
+    const items=createDemoItems(1),id=items[0].recordId;
+    const catalog=catalogFromItems(items);
+    catalog.options.progressParty.push('Giá trị từ danh mục chung');
+    const layout=defaultItemLayout();
+    layout.columns=layout.columns.map(column=>column.key==='progressParty'
+      ?{...column,kind:'select' as const,options:['Lựa chọn cũ không còn sử dụng']}
+      :column);
+    const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:false,anonymousViewer:true,
+      sourceKey:'single-dropdown-authority',catalog,onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
+      initialLayout:layout,canEditCell:(_id:string,field:string)=>_id===id&&field==='progressParty'});
+    const picker=nodes(tree).find(node=>node.type===CellPicker&&String(node.props?.label).includes('Tiến độ xin ý kiến Thành ủy'));
+    expect(picker).toBeDefined();
+    expect(picker.props.options).toContain('Giá trị từ danh mục chung');
+    expect(picker.props.options).not.toContain('Lựa chọn cũ không còn sử dụng');
   });
 
 });
