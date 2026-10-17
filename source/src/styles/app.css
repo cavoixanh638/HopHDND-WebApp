@@ -460,3 +460,32 @@ body:not(.is-printing) #print-target {  display:none!important}
 .settings-hub-tabs button:hover:not(.active):not(:disabled) {background:#e3eee7;}
 .settings-hub-tabs button:disabled {opacity:.5;cursor:not-allowed;}
 .guest-rights-hint {padding:9px 12px;margin:6px 0 12px;border:1px solid #dce9df;border-radius:8px;background:#f5f9f6;color:#466356;font-size:12px;}
+
+/* All top-level controls follow the current page content's centered width, instead
+   of remaining attached to the monitor edge while the table is centered. */
+.app-shell > .topbar,
+.app-shell > .demo-banner,
+.app-shell > .nav-tabs,
+.app-shell > .app-footer,
+.app-shell > p.muted,
+.app-shell.wide-table-page > .topbar,
+.app-shell.wide-table-page > .demo-banner,
+.app-shell.wide-table-page > .nav-tabs,
+.app-shell.wide-table-page > .app-footer,
+.app-shell.wide-table-page > p.muted {
+  width:min(100%,var(--page-content-width,100%));
+  max-width:none;
+  margin-left:auto;
+  margin-right:auto;
+}
+.app-shell > .topbar {flex-wrap:wrap;}
+@media(min-width:980px) {
+  /* Match the editing form's 920px minimum when a user previews 320–900px. */
+  .app-shell.settings-page > .topbar,
+  .app-shell.settings-page > .demo-banner,
+  .app-shell.settings-page > .nav-tabs,
+  .app-shell.settings-page > .app-footer,
+  .app-shell.settings-page > p.muted {
+    width:min(100%,max(920px,var(--page-content-width,100%)));
+  }
+}
