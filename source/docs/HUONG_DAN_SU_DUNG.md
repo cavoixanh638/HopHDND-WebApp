@@ -10,6 +10,8 @@ Tài khoản quản trị phải đăng nhập Google qua Firebase Authenticatio
 
 **Cách hiểu quyền:** Ở từng ô, **Theo quyền dòng/cột** nghĩa là dùng quyền của dòng; nếu dòng chưa đặt quyền thì theo cột. **Cho phép sửa** mở riêng ô đó; **Không cho sửa** khóa riêng ô đó. Ở từng dòng, **Theo quyền cột**, **Cho phép sửa cả dòng**, **Không cho sửa dòng** có ý nghĩa tương ứng. Thứ tự ưu tiên: **ô → dòng → cột → mặc định khóa**. Vì ID dòng hiện theo vị trí Excel, thao tác cấp quyền riêng cho dòng/ô cần xác nhận cảnh báo; sau khi thêm/sắp xếp hàng Excel phải rà lại quyền.
 
+**Bản xem trước 18/10/2026 — chế độ xem và sắp xếp:** Hai tab chính là **Tổng quan** và **Danh sách nội dung**; tab Hướng dẫn đã bỏ. Thanh tab khách luôn căn cùng mép với tiêu đề/nguồn; Danh sách đưa công tắc hiện cột lên cùng dòng tiêu đề và chỉ hiển thị thanh điều kiện khi có tìm kiếm thực sự. Khi mới vào WebApp, các bảng chờ cấu hình hiển thị Firebase rồi mới vẽ để tránh nhảy độ rộng. Bấm biểu tượng **↕** trên tiêu đề cột để sắp xếp tăng dần, bấm lần nữa giảm dần, lần ba về thứ tự dữ liệu nguồn; có hỗ trợ STT dạng số, ID số/chữ và tiếng Việt, dòng trống cuối. Sắp xếp chỉ thay đổi trên màn hình, không ghi vào Google Sheets/Firebase và không thay đổi cấu hình chung.
+
 **Giới hạn nghiệm thu:** Mã UI đã qua CI và được phát hành nhưng vẫn cần người dùng kiểm tra đăng nhập và lưu quyền thật với Firebase Rules đang chạy; không ghi dữ liệu nguồn khi sửa thử.
 
 Quy trình vận hành/quay lại, sao lưu, khôi phục và xử lý lỗi: [VAN_HANH](VAN_HANH.md). Ý nghĩa trường, ID và rủi ro quyền theo dòng/ô: [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md).
