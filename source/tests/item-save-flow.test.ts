@@ -1,7 +1,7 @@
 import {describe,it,expect,vi,beforeEach} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
 import {catalogFromItems} from '../src/data/catalogs';
-import {defaultItemLayout} from '../src/data/item-preferences';
+import {defaultItemLayout,EXCEL_COLUMN_KEYS} from '../src/data/item-preferences';
 const mock=vi.hoisted(()=>({dirty:false,markSaved:vi.fn()}));
 vi.mock('react',()=>({
   useState:(initial:any)=>[typeof initial==='function'?initial():initial,vi.fn()],
@@ -71,6 +71,20 @@ describe('separate item layout save and data draft',()=>{
     const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===true);
     expect(control).toBeDefined();
     expect(text(control)).toContain('Theo cột đã chọn');
+  });
+  it('enforces source A–R order in full view even when the old saved layout was reordered',()=>{
+    const items=createDemoItems(1);
+    const old=defaultItemLayout();
+    old.columns.reverse();
+    old.columns.splice(4,0,{key:'history',label:'Lịch sử',width:100,visible:true});
+    const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:false,sourceKey:'old-layout-excel-order',
+      catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
+      onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
+    const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
+    expect(keys).toEqual(EXCEL_COLUMN_KEYS);
+    expect(keys).not.toContain('history');
+    expect(nodes(tree).filter(n=>n.type==='th'&&n.props?.['data-filter-key']).map(n=>n.props['data-filter-key'])).toEqual(EXCEL_COLUMN_KEYS);
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
     const items=createDemoItems(1);
