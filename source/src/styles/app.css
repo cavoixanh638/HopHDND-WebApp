@@ -533,3 +533,10 @@ body:not(.is-printing) #print-target {  display:none!important}
 /* The guest tabs used to override the centered auto margins and stick to the left of the browser. */
 .app-shell.guest-view > .nav-tabs{margin:12px auto 16px!important}
 .layout-loading-placeholder{width:min(100%,var(--page-content-width,100%));margin:0 auto;padding:22px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#587065;font-size:13px}
+
+/* Trim double spacing between editor heading, mode selection and live list. */
+.app-shell.settings-page .page-heading {min-height:0;margin-bottom:9px;}
+.app-shell.settings-page .settings-hub-tabs {margin-bottom:7px;padding:5px;}
+.app-shell.settings-page .item-list-card {margin-bottom:10px;}
+/* Bootstrap keeps the saved-layout placeholder stable until Firebase confirms. */
+.layout-loading-placeholder {min-height:88px;box-sizing:border-box;}
