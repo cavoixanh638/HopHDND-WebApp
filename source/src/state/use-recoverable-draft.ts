@@ -5,7 +5,7 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
   const [start] = useState(() => {
     const saved = readCheckpoint(key, validate);
     const matches = saved && JSON.stringify(saved.base) === JSON.stringify(initial);
-    return { draft: matches ? saved.draft : structuredClone(initial), unmatched: saved&&!matches?saved:null, message: matches ? 'Đã khôi phục phần bạn sửa trên trình duyệt. Kiểm tra trước khi áp dụng hoặc lưu.' : saved ? 'Phần sửa đang giữ trên máy không khớp bản gốc hiện tại; chưa tự áp dụng.' : '' };
+    return { draft: matches ? saved.draft : structuredClone(initial), unmatched: saved&&!matches?saved:null, message: saved&&!matches ? 'Phần sửa đang giữ trên máy không khớp bản gốc hiện tại; chưa tự áp dụng.' : '' };
   });
   const [draft, update] = useState<T>(start.draft);
   // After a successful save, compare against the committed value, not the value
@@ -13,7 +13,7 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
   const [committedBase,setCommittedBase] = useState<T>(()=>structuredClone(initial));
   const [unmatchedCheckpoint,setUnmatchedCheckpoint]=useState(start.unmatched);
   const protectedCheckpoint=useRef(!!start.unmatched);protectedCheckpoint.current=!!unmatchedCheckpoint;
-  const [checkpointMessage, setCheckpointMessage] = useState('Tự động giữ phần đang sửa trên trình duyệt mỗi 10 giây.');
+  const [checkpointMessage, setCheckpointMessage] = useState('');
   const dirty = isDirty ? isDirty(draft,committedBase) : JSON.stringify(draft) !== JSON.stringify(committedBase);
   const latest = useRef({ draft, initial:committedBase, dirty }); latest.current = { draft, initial:committedBase, dirty };
   const cleared = useRef(false);
@@ -21,11 +21,11 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
     if (!active||cleared.current||protectedCheckpoint.current) return;
     if (!latest.current.dirty) { removeCheckpoint(key); return; }
     const saved = writeCheckpoint(key, latest.current.initial, latest.current.draft);
-    setCheckpointMessage(saved ? `Đã giữ phần đang sửa trên máy: ${new Date().toLocaleTimeString('vi-VN')}. Chưa bấm Áp dụng hoặc Lưu.` : 'Không giữ được phần đang sửa trên trình duyệt. Đừng đóng trang; hãy sao chép nội dung để tránh mất.');
+    setCheckpointMessage(saved ? '' : 'Không giữ được phần đang sửa trên trình duyệt. Đừng đóng trang; hãy sao chép nội dung để tránh mất.');
   };
   const flushRef = useRef(flush); flushRef.current = flush;
   const setDraft = (next: SetStateAction<T>) => { cleared.current = false; update(next); };
-  const clearCheckpoint = () => { cleared.current = true; removeCheckpoint(key); setCheckpointMessage('Không còn thay đổi chưa xử lý trong phần này.'); };
+  const clearCheckpoint = () => { cleared.current = true; removeCheckpoint(key); setCheckpointMessage(''); };
   const markSaved=(committed:T)=>{
     const saved=structuredClone(committed);
     setCommittedBase(saved);
