@@ -14,6 +14,7 @@ import {DeferredWidthInput} from './DeferredWidthInput';
 type Props={
   layout:ItemLayout;catalog?:CatalogConfig;items?:Item[];permissions?:CellPermissions;
   onChange:(next:ItemLayout)=>void;
+  layoutDirty?:boolean;onSaveLayout?:()=>Promise<void>;
   onSaveCatalog?:(next:CatalogConfig)=>Promise<void>;
   onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;
   onDirtyChange?:(dirty:boolean)=>void;
@@ -24,7 +25,7 @@ type Props={
  * one row per field, advanced properties only for the selected field.
  * Width changes are made exclusively by dragging the column border in-table.
  */
-export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage}:Props){
+export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage}:Props){
   const [selected,setSelected]=useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
@@ -49,33 +50,46 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
     (clearExceptions&&exceptions>0)
   );
   const [saveError,setSaveError]=useState('');
-  const [savingChoices,setSavingChoices]=useState(false);
-  const [savingRights,setSavingRights]=useState(false);
+  const [saveSuccess,setSaveSuccess]=useState('');
+  const [saving,setSaving]=useState(false);
   useEffect(()=>{onDirtyChange?.(catalogDirty||rightsDirty);},[catalogDirty,rightsDirty,onDirtyChange]);
-  const saveChoices=async()=>{
-    if(!onSaveCatalog||!catalogDirty||savingChoices)return;
-    setSavingChoices(true);setSaveError('');
-    try{
-      const valid=validateCatalog(choiceDraft);
-      await onSaveCatalog(valid);
-      savedCatalog.current=copyCatalog(valid);
-      setChoiceDraft(copyCatalog(valid));
-    }catch(cause){setSaveError(cause instanceof Error?cause.message:'Chưa lưu được danh sách lựa chọn.');}
-    finally{setSavingChoices(false);}
-  };
-  const saveRights=async()=>{
-    if(!onSavePermissions||!rightsDirty||savingRights)return;
-    if(exceptions&&!clearExceptions){
-      setSaveError('Đang có quyền riêng theo dòng/ô. Xác nhận bỏ các ngoại lệ cũ để chỉ dùng quyền theo cột trước khi lưu.');
+  const canSave=layoutDirty||catalogDirty||rightsDirty;
+  const saveAll=async()=>{
+    if(!canSave||saving)return;
+    if(rightsDirty&&exceptions&&!clearExceptions){
+      setSaveError('Quyền riêng theo dòng/ô còn tồn tại. Tick xác nhận bỏ các ngoại lệ cũ rồi lưu lại.');
       return;
     }
-    setSavingRights(true);setSaveError('');
+    setSaving(true);setSaveError('');setSaveSuccess('');
+    const completed:string[]=[];
     try{
-      await onSavePermissions(rightsDraft,savedPermissions.current);
-      savedPermissions.current={columns:{...columnRights},rows:{},cells:{}};
-      setClearExceptions(false);
-    }catch(cause){setSaveError(cause instanceof Error?cause.message:'Chưa lưu được quyền chỉnh sửa.');}
-    finally{setSavingRights(false);}
+      // Each part remains an independent authenticated Firebase transaction.
+      // A partial failure must stay visible and leave other drafts intact.
+      if(catalogDirty){
+        if(!onSaveCatalog)throw new Error('Chưa kết nối nơi lưu danh sách chọn.');
+        const next=validateCatalog(choiceDraft);
+        await onSaveCatalog(next);
+        savedCatalog.current=copyCatalog(next);
+        setChoiceDraft(copyCatalog(next));
+        completed.push('danh sách chọn');
+      }
+      if(rightsDirty){
+        if(!onSavePermissions)throw new Error('Chưa kết nối nơi lưu quyền cột.');
+        await onSavePermissions(rightsDraft,savedPermissions.current);
+        savedPermissions.current={columns:{...columnRights},rows:{},cells:{}};
+        setClearExceptions(false);
+        completed.push('quyền cột');
+      }
+      if(layoutDirty){
+        if(!onSaveLayout)throw new Error('Chưa kết nối nơi lưu bố cục.');
+        await onSaveLayout();
+        completed.push('cột và cách hiển thị');
+      }
+      if(completed.length)setSaveSuccess('Đã lưu thay đổi.');
+    }catch(cause){
+      const reason=cause instanceof Error?cause.message:'Không lưu được. Vui lòng thử lại.';
+      setSaveError((completed.length?'Đã lưu '+completed.join(', ')+'. ':'')+'Chưa lưu hết thay đổi: '+reason);
+    }finally{setSaving(false);}
   };
   const updateChoices=(key:CatalogKey,next:string[])=>{
     setChoiceDraft(current=>{
@@ -117,21 +131,23 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
       :layout.columns.map(c=>c.key===key?{...c,removed:true,visible:false}:c)});
     setSelected(null);setConfirmDelete(null);
   };
-  return <details className="card item-column-panel column-manager">
-    <summary>Quản lý cột <span className="column-count">{active.length} cột · tên, kiểu dữ liệu, dropdown, quyền sửa</span></summary>
+  return <section className="card item-column-panel column-manager">
+    <div className="column-manager-heading"><h3>Quản lý cột</h3><span className="column-count">{active.length} cột · tên, kiểu nhập, danh sách chọn và quyền sửa</span></div>
     <div className="column-manager-body">
       {validationMessage&&<div className="layout-inline-error" role="alert">
         <strong>Chưa lưu được:</strong> {validationMessage}
       </div>}
       {saveError&&<p className="error-text" role="alert">{saveError}</p>}
-      <div className="column-manager-savebar">
-        <strong>Thiết lập ngay tại từng cột</strong>
-        <span className="muted">Bố cục, danh sách chọn và quyền được lưu riêng; nội dung Excel không thay đổi.</span>
-        {onSaveCatalog&&<button type="button" className="button primary" disabled={!catalogDirty||savingChoices}
-          onClick={()=>void saveChoices()}>{savingChoices?'Đang lưu…':'Lưu danh sách chọn'}</button>}
-        {onSavePermissions&&<button type="button" className="button primary" disabled={!rightsDirty||savingRights}
-          onClick={()=>void saveRights()}>{savingRights?'Đang lưu…':'Lưu quyền cột'}</button>}
+      <div className="column-manager-savebar" role="group" aria-label="Lưu thiết lập danh sách">
+        <div className="column-manager-save-summary"><strong>Thiết lập cột</strong>
+          <span className="muted">{canSave?'Có thay đổi chưa lưu':'Không có thay đổi chưa lưu'}</span>
+        </div>
+        <button type="button" className="button primary column-save-button"
+          disabled={!canSave||saving} onClick={()=>void saveAll()}>
+          {saving?'Đang lưu…':'Lưu thay đổi'}
+        </button>
       </div>
+      {saveSuccess&&<p className="column-save-success" role="status">{saveSuccess}</p>}
       {onSavePermissions&&exceptions>0&&<label className="column-rights-warning">
         <input type="checkbox" checked={clearExceptions} onChange={e=>setClearExceptions(e.currentTarget.checked)}/>
         Bỏ {exceptions} quyền riêng theo dòng/ô đã lưu trước đây khi lưu quyền cột. Nếu chưa xác nhận, các quyền riêng cũ vẫn được giữ.
@@ -172,8 +188,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
               </select>
             </label>
-            {(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'&&
-              (column.origin==='custom'||CATALOG_KEYS.includes(column.key as CatalogKey))&&
+            {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey))&&
               <div className="column-manager-options">
                 <ColumnChoiceEditor key={column.key} label={column.label}
                   options={column.origin==='custom'?column.options??[]:choiceDraft.options[column.key as CatalogKey]??[]}
@@ -187,7 +202,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
                       update(column.key,{kind:'select',options:next,values:newValues});
                     }else updateChoices(column.key as CatalogKey,next);
                   }}/>
-                {column.origin!=='custom'&&<p className="muted">Giá trị cột Excel được lưu ở danh mục chung; bấm “Lưu danh sách chọn” phía trên để áp dụng.</p>}
+                {column.origin!=='custom'&&<p className="muted">Danh sách chọn của cột này dùng chung cho bảng. Nếu đang để kiểu nhập tự do, chọn “Danh sách chọn” phía trên để áp dụng các lựa chọn.</p>}
               </div>}
             {column.key==='specialist'&&<details className="column-specialist-relations">
               <summary>Liên kết chuyên viên – phòng (nâng cao)</summary>
@@ -213,7 +228,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
             <p className="column-manager-rights-hint">
               {editableSourceKeys.has(column.key as never)&&column.origin!=='custom'
                 ?'Tick “Cho sửa” ở hàng cột này để cấp quyền chỉnh sửa cho toàn bộ cột.'
-                :'Cột này không hỗ trợ cấp quyền nhập liệu cho khách. Cột tự tạo hiện do quản trị chỉnh và lưu trong cấu hình.'}
+                :'ID/STT là mã và vị trí dòng nguồn, không thể cấp quyền sửa cho khách khi chưa có cơ chế ghi Excel có kiểm tra ID trùng và thứ tự. Cột tự tạo do quản trị chỉnh trong cấu hình.'}
             </p>
             <div className="column-manager-detail-actions">
               <button type="button" className="button ghost" disabled={index===0} onClick={()=>move(column.key,-1)}>↑ Lên</button>
@@ -250,5 +265,5 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
             onCommit={width=>onChange({...layout,frameWidth:width})}/>}
       </details>
     </div>
-  </details>;
+  </section>;
 }
