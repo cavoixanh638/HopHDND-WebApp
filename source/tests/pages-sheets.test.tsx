@@ -97,6 +97,18 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=open('Danh mục và phân công');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Danh sách và nội dung');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
+  it('keeps the settings gear available during editing and switches between grouped sections',async()=>{
+    firebase.isAdmin=true;render();respond();await settle();
+    let tree=open('Bảng thống kê');
+    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-group')).toBe(true);
+    tree=open('Danh sách và nội dung');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    tree=open('Tài khoản và đăng nhập');
+    expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+  });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
     firebase.isAdmin=true;render();respond();await settle();const tree=open('Nhập / Xuất Excel'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
     const source=nodes(open('Nguồn Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
