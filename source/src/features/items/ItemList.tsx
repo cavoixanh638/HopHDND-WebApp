@@ -4,6 +4,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { EXCEL_COLUMN_KEYS, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import {normalizeSearch} from '../../domain/search';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
@@ -49,10 +50,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
   const columns = activeLayout.columns
-    .filter(column=>EXCEL_COLUMN_KEYS.includes(column.key) &&
-      (column.visible||(!customizing&&showAllSourceColumns)))
+    .filter(column=>!column.removed&&
+      (column.visible||(!customizing&&showAllSourceColumns&&EXCEL_COLUMN_KEYS.includes(column.key))))
     .sort((a,b)=>!customizing&&showAllSourceColumns
-      ?EXCEL_COLUMN_KEYS.indexOf(a.key)-EXCEL_COLUMN_KEYS.indexOf(b.key):0);
+      ?(EXCEL_COLUMN_KEYS.includes(a.key)?EXCEL_COLUMN_KEYS.indexOf(a.key):1000+activeLayout.columns.indexOf(a))-
+       (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
+      :0);
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
   const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
@@ -136,7 +139,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     finally{savingRef.current=false;setSaving(false);}
   };
   // Column filters are the single visible source of truth; old saved global filters must not silently hide results.
-  const filtered = useMemo(() => items.filter(item => matchesColumnFilters(item,columnFilters)),[items,columnFilters]);
+  const filtered = useMemo(() => items.filter(item =>
+    matchesColumnFilters(item,Object.fromEntries(Object.entries(columnFilters).filter(([key])=>EXCEL_COLUMN_KEYS.includes(key)))) &&
+    Object.entries(columnFilters).every(([key,term])=>{
+      const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
+      return !column||!term.trim()||normalizeSearch(column.values?.[item.recordId]??'').includes(normalizeSearch(term));
+    }),[items,columnFilters,activeLayout]);
   const rows = filtered;
   const options = (field: TextField,item:Item) => {
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
@@ -190,7 +198,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
     {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
      {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
-       <span>{columns.filter(column=>column.key!=='history').length} / {activeLayout.columns.filter(column=>column.key!=='history').length} cột dữ liệu</span>
+       <span>{columns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
          onClick={()=>setShowAllSourceColumns(current=>!current)}>
          {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
@@ -210,9 +218,25 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         if(dirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key} disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<span draggable={false} className="column-resizer" role="separator" aria-label={`Kéo độ rộng cột ${column.label}`} aria-orientation="vertical" tabIndex={0} onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===column.key?{...entry,width:Math.min(1600,Math.max(60,entry.width+(event.key==='ArrowRight'?10:-10)))}:entry)}));}}} onPointerDown={event=>{resizing.current={key:column.key,x:event.clientX,width:column.width};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const drag=resizing.current;if(drag&&drag.key===column.key)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===drag.key?{...entry,width:Math.min(1600,Math.max(60,Math.round(drag.width+event.clientX-drag.x)))}:entry)}));}} onPointerUp={()=>{resizing.current=null;}} onPointerCancel={()=>{resizing.current=null;}}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items} value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
+  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
+    getValue={column.origin==='custom'?(item)=>column.values?.[item.recordId]??'':undefined}
+    choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
+    value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
+        if(column.origin==='custom'){
+          const value=column.values?.[item.recordId]??'';
+          const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
+            ...c,values:{...(c.values??{}),[item.recordId]:next}
+          })}));
+          return <td key={column.key}>{customizing&&allowLayout&&!locked
+            ?column.kind==='select'
+              ?<CellPicker label={`${displayId(item)}: ${column.label}`} value={value}
+                options={column.options??[]} onChange={updateCustom}/>
+              :<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`}
+                type="text" maxLength={1000} value={value} onChange={e=>updateCustom(e.currentTarget.value)}/>
+            :value||'—'}</td>;
+        }
         if(column.key==='displayCode')return <td key={column.key}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
