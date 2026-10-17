@@ -18,7 +18,6 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
   const [error, setError] = useState('');
   const [saving,setSaving]=useState(false);
   const [confirm, setConfirm] = useState<'close' | 'reset' | null>(null);
-  const [savedNotice,setSavedNotice]=useState('');
   useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
   const dataLabel = storageLabel === 'Google Sheets' ? 'dữ liệu Excel' : 'dữ liệu nội dung';
   const latest = useRef({ dirty, onClose,saving });
@@ -40,7 +39,7 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
   const change = (next: ReportLayout[]) => {
     setDraft(next);
     onPreviewWidthChange?.(reportPageWidth(next));
-    setError('');setSavedNotice('');
+    setError('');
   };
   const save = async (exit = false) => {
     if(saving||unmatchedCheckpoint)return;
@@ -50,7 +49,6 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
       await onSave(valid);
       markSaved(valid);
       onDirtyChange?.(false);
-      setSavedNotice(`Đã lưu Bảng báo cáo vào ${storageLabel}. Bạn có thể tiếp tục chỉnh sửa.`);
       setError('');
       setConfirm(null);
       if (exit) onClose();
@@ -63,9 +61,8 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
   <fieldset className="settings-saving" disabled={saving||!!unmatchedCheckpoint}>
     <div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh bảng báo cáo</strong><p>Phần đang sửa được giữ trên máy, chưa lưu. Khi lưu, bố trí báo cáo được lưu riêng lên {storageLabel}; {dataLabel} không đổi.</p></div><div className="top-actions"><button className="button ghost" onClick={() => setConfirm('reset')}>Khôi phục mặc định</button><button className="button primary" onClick={() => void save() } disabled={!dirty||saving}>Lưu Bảng báo cáo</button></div></div>
     {recoveryMessage && <p className="status-pill" role="status">{recoveryMessage}</p>}
-    {checkpointMessage && <p className="muted" role="status">{checkpointMessage}</p>}
+    {checkpointMessage && <p className="error-text" role="alert">{checkpointMessage}</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
-    {savedNotice&&<p className="notice" role="status">{savedNotice}</p>}
     {saving&&<p role="status">Đang lưu bố trí báo cáo lên {storageLabel}…</p>}
     <ReportLayoutPanel draft={draft} onChange={change} items={items} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} />
     {confirm && <Modal title={confirm === 'close' ? `Lưu bố trí lên ${storageLabel} trước khi thoát?` : 'Khôi phục bố trí mặc định?'} onClose={() => setConfirm(null)}><div className="modal-body"><p>{confirm === 'close' ? `Có phần đang sửa trên máy, chưa lưu. Bố trí chỉ được lưu lên ${storageLabel} khi bạn bấm Lưu; ${dataLabel} không đổi.` : `Ba bảng trở về tên, thứ tự và các cột hiển thị mặc định trong phần đang sửa trên máy. Bấm Lưu bố trí để lưu riêng lên ${storageLabel}; ${dataLabel} không đổi.`}</p></div>{confirm === 'close' ? <div className="modal-footer"><button className="button ghost" onClick={() => save(true)}>Lưu bố trí và thoát</button><button className="button danger" onClick={() => { clearCheckpoint(); setConfirm(null); onClose(); }}>Bỏ phần đang sửa trên máy và về xem</button><button className="button primary" onClick={() => setConfirm(null)}>Tiếp tục sửa</button></div> : <div className="modal-footer"><button className="button ghost" onClick={() => setConfirm(null)}>Tiếp tục tùy chỉnh</button><button className="button danger" onClick={() => { change(defaultReportLayout()); setConfirm(null); }}>Khôi phục trong phần đang sửa</button></div>}</Modal>}
