@@ -11,6 +11,13 @@ describe('Mã ID hiển thị', () => {
     expect(displayId({ displayCode, documentKind: documentKind as 'NQ' | 'BC' })).toBe(expected);
   });
 
+  it('uses a visible dash for missing Sheet codes without changing internal row identity', () => {
+    const missing={recordId:'sheet:row:9',displayCode:'Dòng 9 (thiếu mã)',documentKind:'NQ' as const};
+    expect(displayId(missing)).toBe('—');
+    expect(displayId({displayCode:'',documentKind:'BC'})).toBe('—');
+    expect(missing.displayCode).toContain('thiếu mã');
+  });
+
   it('giữ nguyên mã không nhận diện được', () => {
     expect(displayId({ displayCode: 'Ký hiệu hồ sơ', documentKind: 'NQ' })).toBe('Ký hiệu hồ sơ');
     expect(displayId({ displayCode: 'ID1', documentKind: 'UNCLASSIFIED' })).toBe('ID1');

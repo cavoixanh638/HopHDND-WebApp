@@ -1,8 +1,52 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})}));
+import {ReportTable} from '../src/features/reports/ReportTable';
+import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
+import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
+import {defaultReportLayout,reportPageWidth} from '../src/data/report-preferences';
+import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
 
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
+  it('commits report page width through the dedicated editor, leaving other layout properties intact',()=>{
+    const draft=defaultReportLayout(),onChange=vi.fn();
+    const root=ReportLayoutPanel({draft,onChange,items:createDemoItems(2),group:'vpLeader',
+      groupOrder:[],sourceLabel:'Google Sheets'});
+    const nodes=(node:any):any[]=>Array.isArray(node)?node.flatMap(nodes):node&&typeof node==='object'?[node,...nodes(node.props?.children)]:[];
+    const width=nodes(root).find(node=>node.type===DeferredWidthInput&&node.props?.label==='Độ rộng trang Bảng báo cáo (px)');
+    expect(width).toBeDefined();
+    width.props.onCommit(2800);
+    expect(reportPageWidth(onChange.mock.calls[0][0])).toBe(2800);
+    expect(onChange.mock.calls[0][0][1]).toEqual(draft[1]);
+    const auto=nodes(root).find(node=>node.type==='input'&&node.props?.type==='checkbox'&&node.props?.checked===true);
+    expect(auto).toBeDefined();
+  });
+  it('labels the first column according to selected grouping on all report tables',()=>{
+    const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
+    for(const choice of GROUP_OPTIONS){
+      for(const config of DEFAULT_REPORTS){
+        const tree=ReportTable({items:createDemoItems(5),config,group:choice.key,groupOrder:[],onSelect:()=>{}});
+        const table=nodes(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
+        expect(table).toBeDefined();
+        const columns=nodes(table).find(n=>n.type==='colgroup');
+        expect(nodes(columns).filter(n=>n.type==='col')[0].props.className).toBe('report-group-col');
+        const header=nodes(table).find(n=>n.type==='th'&&n.props?.scope==='col');
+        expect(header.props.children).toBe(choice.label);
+      }
+    }
+  });
+  it('excludes rows marked Không in Excel party-level F or Không phải xin ý kiến in G',()=>{
+    const seed=createDemoItems(4).map(x=>({...x,isDropped:false,archivedAt:null}));
+    seed[0].partyLevel='Không';
+    seed[1].partyLevel='Không phải xin ý kiến';
+    seed[2].partyLevel='BTV TU';seed[2].progressParty='Không phải xin ý kiến';
+    seed[3].partyLevel='BTV TU';seed[3].progressParty='Sở chưa trình';
+    const report=aggregateReport(seed,DEFAULT_REPORTS[0],'department');
+    expect(report.total).toBe(1);
+    expect(report.items[0].recordId).toBe(seed[3].recordId);
+    expect(report.rows.size).toBe(1);
+  });
   it('fixture không đặt Không phải xin ý kiến cho nội dung cần xin ý kiến', () => {
     for (const item of createDemoItems(100)) {
       if (item.partyLevel !== 'Không phải xin ý kiến') expect(item.progressParty).not.toBe('Không phải xin ý kiến');
@@ -33,3 +77,4 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(aggregateReport([item], DEFAULT_REPORTS[2], 'department').rows.has('__proto__')).toBe(true);
   });
 });
+

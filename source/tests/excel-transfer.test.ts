@@ -21,6 +21,30 @@ describe('Excel transfer', () => {
     expect(result.items[0].note).toBe('=SUM(A1:A2)');
   });
 
+  it('preserves the newly imported P/Q values through a full XLSX export and re-import',()=>{
+    const source=item('row_4','NQ04');
+    source.partyMeeting='Đã xin ý kiến Thành ủy';
+    source.examined='Đã thẩm tra';
+    const output=readExcel(createExcel([source]));
+    expect(output.items[0]).toMatchObject({
+      partyMeeting:'Đã xin ý kiến Thành ủy',examined:'Đã thẩm tra',note:'=SUM(A1:A2)',
+    });
+    const book=XLSX.read(createExcel([source]),{type:'array'});
+    const heads=(XLSX.utils.sheet_to_json<unknown[]>(book.Sheets.Data,{header:1})[0]??[]);
+    expect(heads).toContain('partyMeeting');
+    expect(heads).toContain('examined');
+  });
+
+  it('still reads the prior 16-field app export without P/Q and defaults those to empty',()=>{
+    const headers=['recordId','displayCode','stt','documentKind','content','department','type',
+      'partyLevel','progressParty','progressBuild','progressCouncil','specialist','room',
+      'vpLeader','ubndLeader','specificProgress','note','isDropped','archivedAt'];
+    const row=['row_old','NQ09',1,'NQ','MẪU: Nghị quyết','','','','','','','','','','','','Ghi chú cũ',false,null];
+    const book=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([headers,row]),'Data');
+    const bytes=XLSX.write(book,{type:'array',bookType:'xlsx'}) as Uint8Array;
+    expect(readExcel(bytes).items[0]).toMatchObject({partyMeeting:'',examined:'',note:'Ghi chú cũ'});
+  });
   it('rejects duplicate record IDs', () => {
     expect(() => createExcel([item('same', 'NQ01'), item('same', 'NQ02')])).toThrow(/recordId bị trùng/);
   });

@@ -26,7 +26,7 @@ export function CellPicker({ label, value, options, searchable = false, disabled
   }, [options, query]);
   const selectedIsFilteredOut = value !== '' && !filteredOptions.includes(value);
   const visibleOptions = [
-    { value: '', label: 'Chưa chọn' },
+    { value: '', label: '—' },
     ...(selectedIsFilteredOut ? [{ value, label: `${value} (giá trị hiện tại)` }] : []),
     ...filteredOptions.filter(option => option !== '' && !(selectedIsFilteredOut && option === value)).map(option => ({ value: option, label: option })),
   ];
@@ -118,7 +118,7 @@ export function CellPicker({ label, value, options, searchable = false, disabled
       aria-expanded={open}
       onClick={() => { setQuery(''); setOpen(value => !value); }}
     >
-      {value || 'Chưa chọn'}
+      {value || '—'}
     </button>
     <div
       ref={popoverRef}

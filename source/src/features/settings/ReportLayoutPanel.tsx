@@ -1,5 +1,6 @@
 import type { GroupField, Item } from '../../../shared/types';
-import { configuredReports, type ReportLayout } from '../../data/report-preferences';
+import { configuredReports, reportPageWidth, withReportPageWidth, type ReportLayout } from '../../data/report-preferences';
+import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
 
 type ReportLayoutPanelProps = {
@@ -34,6 +35,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
   };
 
   const previews = configuredReports(draft, true);
+  const pageWidth=reportPageWidth(draft);
 
   return (
     <section className="card" aria-labelledby="report-layout-heading">
@@ -42,6 +44,18 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           <h3 id="report-layout-heading">Bố trí bảng báo cáo</h3>
           <p className="muted">Thay đổi bố trí được áp dụng sau khi bấm Lưu.</p>
         </div>
+      </div>
+      <div className="report-page-width-controls">
+        <strong>Độ rộng trang Bảng báo cáo</strong>
+        <label className="field" htmlFor="report-page-width">Độ rộng trang (px)</label>
+        <DeferredWidthInput id="report-page-width" label="Độ rộng trang Bảng báo cáo (px)"
+          value={pageWidth==='auto'?1920:pageWidth} min={320} max={6000}
+          onCommit={width=>onChange(withReportPageWidth(draft,width))}/>
+        <label className="layout-visibility">
+          <input type="checkbox" checked={pageWidth==='auto'}
+            onChange={event=>onChange(withReportPageWidth(draft,event.currentTarget.checked?'auto':1920))}/>
+          Tự động sử dụng toàn bộ chiều rộng màn hình
+        </label>
       </div>
       <div className="settings-grid">
         {draft.map((report, index) => {

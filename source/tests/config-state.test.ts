@@ -77,7 +77,7 @@ describe('checkpoint preservation at the table view/editor boundary',()=>{
   it('discards the old checkpoint only after the user chooses to discard',()=>{
     writeCheckpoint(scope,{width:1400},{width:2000});draft().discardOldDraft();expect(draft().unmatchedCheckpoint).toBeNull();expect(readCheckpoint(scope,validate)).toBeNull();
   });
-  it('clears the pending autosave label after a confirmed layout save',()=>{draft().setDraft({width:800});draft();vi.advanceTimersByTime(11000);expect(draft().checkpointMessage).toContain('Chưa bấm Áp dụng hoặc Lưu');draft().clearCheckpoint();expect(draft().checkpointMessage).not.toContain('Chưa bấm Áp dụng hoặc Lưu');expect(readCheckpoint(scope,validate)).toBeNull();});
+  it('clears the pending autosave label after a confirmed layout save',()=>{draft().setDraft({width:800});draft();vi.advanceTimersByTime(11000);expect(draft().checkpointMessage).toBe('');draft().clearCheckpoint();expect(draft().checkpointMessage).not.toContain('Chưa bấm Áp dụng hoặc Lưu');expect(readCheckpoint(scope,validate)).toBeNull();});
 });
 
 describe('real-source drafts and honest synchronization',()=>{

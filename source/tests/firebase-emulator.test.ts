@@ -1,9 +1,9 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,serverTimestamp,goOffline,goOnline} from 'firebase/database';
+import {get,ref,set,update,serverTimestamp,runTransaction,goOffline,goOnline} from 'firebase/database';
 import type {User} from 'firebase/auth';
-import {FirebaseRepository,type CellPermissions} from '../src/data/firebase-repository';
+import {FirebaseRepository,samePermissions,type CellPermissions} from '../src/data/firebase-repository';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import type {Changes,Item} from '../shared/types';
@@ -106,6 +106,21 @@ describe.skipIf(!emulator)('Firebase emulator: rules, transactions and realtime'
       await assertFails(update(ref(db as never),{'hdnd/profile':{revision:1,payload:'{}'},'hdnd/permissions/columns/content':true}));
     }
   });
+  it('admin can atomically save actual permission maps with reordered keys and absent empty nodes',async()=>{
+    const db=env.authenticatedContext('admin-cas',adminClaims).database(),where=ref(db as never,'hdnd/permissions');
+    await assertSucceeds(set(where,{columns:{note:true,room:false},rows:{'sheet:42:row:3':true}}));
+    const original={rows:{'sheet:42:row:3':true},columns:{room:false,note:true},cells:{}};
+    const updated={columns:{note:false,room:false},rows:{'sheet:42:row:3':true},cells:{}};
+    const result=await assertSucceeds(runTransaction(where,current=>{
+      if(current===null)return current; // cold cache: request authoritative server value
+      return samePermissions(current,original)?updated:undefined;
+    },{applyLocally:false}));
+    expect(result.committed).toBe(true);
+    expect(samePermissions(result.snapshot.val(),updated)).toBe(true);
+    const stale=await runTransaction(where,current=>samePermissions(current,original)?original:undefined,{applyLocally:false});
+    expect(stale.committed).toBe(false);
+    expect(samePermissions((await get(where)).val(),updated)).toBe(true);
+  });
   it('admin saves Sheets row/cell permissions without importing any business row',async()=>{
     const db=env.authenticatedContext('admin',adminClaims).database();
     await assertSucceeds(set(ref(db as never,'hdnd/permissions/rows/sheet:42:row:3'),true));
@@ -124,4 +139,25 @@ describe.skipIf(!emulator)('Firebase emulator: rules, transactions and realtime'
     }
     const entries=await repo.history('r1');expect(entries).toHaveLength(50);expect(entries[0].changes.note).toBe('lần 3');expect(entries.at(-1)?.changes.note).toBe('lần 52');
   },20000);
+  it('only admin can lock editing or inspect/advance approval baselines, and revisions cannot be reused',async()=>{
+    const admin=env.authenticatedContext('verified-review-admin',adminClaims).database();
+    const other=guest('reader');
+    const control='hdnd/control';
+    const first={revision:1,editingLocked:true,changedAt:new Date().toISOString()};
+    await assertFails(set(ref(other as never,control),first));
+    await assertSucceeds(set(ref(admin as never,control),first));
+    await assertFails(set(ref(admin as never,control),{...first,editingLocked:false}));
+    await assertSucceeds(set(ref(admin as never,control),{...first,revision:2,editingLocked:false}));
+    const path='hdndReviews/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344';
+    const baseline={revision:1,source:'1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp:60961344',
+      approvedAt:new Date().toISOString(),approvedBy:adminClaims.email,
+      changedCount:2,payload:'{}',historyJson:'[]'};
+    await assertFails(get(ref(other as never,path)));
+    await assertFails(set(ref(other as never,path),baseline));
+    await assertSucceeds(set(ref(admin as never,path),baseline));
+    await assertFails(set(ref(admin as never,path),baseline));
+    await assertSucceeds(set(ref(admin as never,path),{...baseline,revision:2}));
+    await assertFails(set(ref(admin as never,path),{...baseline,revision:3,source:'other:gid'}));
+  });
+
 });

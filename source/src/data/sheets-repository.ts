@@ -23,7 +23,7 @@ export function readSheet(config: SheetConfig, timeoutMs = 15000): Promise<Sheet
       try { finish(undefined, parseGvizPayload(payload, `${validated.spreadsheetId}:${validated.gid}`)); }
       catch (error) { finish(error instanceof Error ? error : new Error('Dữ liệu không hợp lệ.')); }
     };
-    const params = new URLSearchParams({ tqx: `out:json;responseHandler:${callback}`, gid: validated.gid, headers: '0', range: 'A:P', cb: String(Date.now()) });
+    const params = new URLSearchParams({ tqx: `out:json;responseHandler:${callback}`, gid: validated.gid, headers: '0', range: 'A:O', cb: String(Date.now()) });
     script.src = `https://docs.google.com/spreadsheets/d/${validated.spreadsheetId}/gviz/tq?${params}`;
     script.referrerPolicy = 'no-referrer';
     script.onerror = () => finish(new Error('Không tải được Sheets. Link chia sẻ HTML và quyền đọc bảng là hai quyền riêng; app chưa hỗ trợ OAuth cho bảng riêng tư.'));

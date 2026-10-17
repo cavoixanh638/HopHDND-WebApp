@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clearCheckpoint, readCheckpoint, writeCheckpoint } from '../src/data/draft-checkpoints';
+import { clearCheckpoint, readCheckpoint, writeCheckpoint, layoutRecoveryScope } from '../src/data/draft-checkpoints';
 import { defaultItemLayout, validateItemLayout } from '../src/data/item-preferences';
 import { validateItemDraft } from '../src/data/item-draft';
 import { defaultReportLayout, validateReportLayout } from '../src/data/report-preferences';
@@ -17,6 +17,14 @@ function memoryStorage() {
 }
 
 describe('draft checkpoints', () => {
+  it('isolates preview recovery keys from production and from older previews', () => {
+    const base='items:source';
+    expect(layoutRecoveryScope(base,'/HopHDND-WebApp/')).toBe(base);
+    expect(layoutRecoveryScope(base,'/HopHDND-WebApp/preview/pr-3-ui-v7/')).toBe('preview:pr-3-ui-v7:'+base);
+    expect(layoutRecoveryScope(base,'/HopHDND-WebApp/preview/current/')).toBe('preview:current:'+base);
+    expect(layoutRecoveryScope(base,'/HopHDND-WebApp/preview/current/')).not.toBe(layoutRecoveryScope(base,'/HopHDND-WebApp/preview/pr-3-ui-v7/'));
+  });
+
   it('round trips base and draft separately, then clears the stored checkpoint', () => {
     vi.stubGlobal('localStorage', memoryStorage());
     const base = { value: 'saved' };

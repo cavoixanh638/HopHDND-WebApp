@@ -5,6 +5,8 @@
   html,body {  min-width:320px; min-height:100%; margin:0;
     background:#f5f6f2}
 body {  min-height:100vh}
+/* Keep the browser scrollbar and page chrome in the same horizontal position across tabs. */
+html {scrollbar-gutter:stable; overflow-y:scroll;}
 button,input,select,textarea {  font:inherit}
 button {  cursor:pointer}
   input,select,textarea {  width:100%; min-height:36px; padding:8px 10px; color:var(--ink); background:var(--surface); border:1px solid #cbd6cf;
@@ -17,8 +19,8 @@ button {  cursor:pointer}
   input:focus,select:focus,textarea:focus {  border-color:#54877a;
    box-shadow:0 0 0 3px #154d441f}
 input::placeholder,textarea::placeholder {  color:#8a9891}
-  .app-shell {  width:min(1500px,100%); min-height:100vh; margin:auto;
-    padding:0 28px 30px}
+  .app-shell {  width:100%; max-width:none; min-height:100vh; margin:auto;
+    padding:0 clamp(12px,1.15vw,20px) 30px}
   .topbar {  display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:78px;
    border-bottom:1px solid var(--line)}
   .brand,.top-actions,.nav-tabs,.toolbar,.card-header,.pagination,.draft-bar,.modal-header,.modal-footer {  display:flex;
@@ -50,7 +52,7 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
   border-radius:3px 3px 0 0;
    content:""}
   .page-heading {  display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
-   margin-bottom:22px}
+   margin-bottom:22px; min-height:62px}
   .page-heading h1 {  margin:3px 0 0; color:#18382f; font-size:clamp(22px,3vw,30px);
     letter-spacing:-.035em}
   .eyebrow {  margin:0; color:#638176; font-size:11px; font-weight:750;
@@ -126,7 +128,23 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
   .data-table {  width:100%; min-width:950px; border-collapse:separate; border-spacing:0; color:#293b34; font-size:13px;
   line-height:1.45;
    text-align:left}
-.report-table {  min-width:700px}
+.report-table { min-width:700px; table-layout:fixed; }
+.report-table .report-group-col {width:230px;}
+.report-table thead tr > th:first-child,
+.report-table tbody tr > th:first-child,
+.report-table tfoot tr > th:first-child {
+  width:230px;
+  min-width:230px;
+  max-width:230px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+@media(max-width:700px) {
+  .report-table .report-group-col {width:200px;}
+  .report-table thead tr > th:first-child,
+  .report-table tbody tr > th:first-child,
+  .report-table tfoot tr > th:first-child {width:200px;min-width:200px;max-width:200px;}
+}
   .data-table th,.report-table th {  position:sticky; z-index:1; top:0; padding:10px 11px; color:#456057; background:#f1f5f2;
   border-bottom:1px solid #d6e0d9; font-size:12px; font-weight:700;
     white-space:nowrap}
@@ -249,9 +267,9 @@ body.is-printing #print-target .button,body.is-printing #print-target .toolbar,b
 body:not(.is-printing) #print-target {  display:none!important}
 }
 .options-menu { position:relative; flex:none; }
-.options-menu summary { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--line); border-radius:8px; color:var(--muted); cursor:pointer; list-style:none; font-size:18px; }
-.options-menu summary::-webkit-details-marker { display:none; }
-.options-menu summary:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+.options-menu > summary { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--line); border-radius:8px; color:var(--muted); cursor:pointer; list-style:none; font-size:18px; }
+.options-menu > summary::-webkit-details-marker { display:none; }
+.options-menu > summary:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
 .options-popover { position:absolute; right:0; top:40px; width:min(290px,calc(100vw - 30px)); padding:6px; z-index:10; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow); }
 .options-popover button { display:block; width:100%; padding:11px; border:0; background:transparent; border-radius:6px; text-align:left; color:var(--ink); font-size:13px; }
 .options-popover button:hover { background:var(--soft); }
@@ -297,3 +315,231 @@ body:not(.is-printing) #print-target {  display:none!important}
 .catalog-row { display:flex; align-items:center; flex-wrap:wrap; justify-content:space-between; gap:8px; padding:10px; border-bottom:1px solid var(--line); }
 @media(max-width:900px) { .settings-grid > .layout-row { flex-direction:column; } .settings-grid > .layout-row > .layout-row-main { flex:auto; width:100%; } .report-layout-preview { width:100%; } }
 
+
+/* Saved view templates, compact per-column filtering and conditional colors */
+.list-view-box { margin:10px 0 14px; border:1px solid var(--line); border-radius:9px; padding:10px 12px; background:#f8faf8; }
+.list-view-toolbar { display:flex; align-items:flex-end; flex-wrap:wrap; gap:9px; margin:6px 0; }
+.list-view-toolbar .field { min-width:145px; max-width:220px; }
+.list-view-toolbar > .muted { font-size:11px; max-width:300px; }
+.list-color-editor { margin-top:8px; padding:6px; }
+.list-color-editor summary { cursor:pointer; font-weight:650; color:var(--green); }
+.list-color-editor > .filter-chip { margin:4px; }
+.column-filter { display:inline-block; position:relative; vertical-align:middle; margin-left:5px; }
+.column-filter summary { display:inline-flex; align-items:center; justify-content:center; width:25px; height:24px; border:1px solid #cadad1; border-radius:5px; background:#fff; color:#4b655c; list-style:none; font-size:14px; cursor:pointer; }
+.column-filter summary::-webkit-details-marker { display:none; }
+.column-filter-active summary { background:#dcefe6; border-color:var(--green); font-weight:700; color:var(--green); }
+.column-filter-menu { position:absolute; top:28px; left:0; z-index:30; padding:10px; width:230px; background:#fff; border:1px solid #b8cbbf; border-radius:8px; box-shadow:var(--shadow); text-align:left; }
+.column-filter-menu label { display:grid; gap:5px; color:#405d50; font-size:12px; }
+.column-filter-menu input { width:100%; min-width:0!important; }
+.active-filter-bar { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:7px 0 12px; font-size:12px; }
+.filter-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 7px; border:1px solid #c5d7cd; border-radius:15px; background:#eef7f1; font-size:12px; }
+.chip-remove { display:inline-grid; place-items:center; width:20px; height:20px; margin:0; border:0; border-radius:50%; background:#dae9de; cursor:pointer; font-weight:bold; }
+.color-dot { display:inline-block; width:12px; height:12px; border-radius:3px; border:1px solid #bac8c0; }
+.color-mint, .color-mint td { background:#e5f5e9; }
+.color-amber, .color-amber td { background:#fff1cc; }
+.color-rose, .color-rose td { background:#fae5e5; }
+.color-blue, .color-blue td { background:#e5effb; }
+.item-data-table tr.color-row td { transition: background .12s ease; }
+
+/* Admin approval review: compact comparisons without changing the source sheet */
+.approval-control { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:14px; margin:12px 0; border:1px solid #bad2c4; border-radius:9px; background:#f5faf6; }
+.approval-control p { margin:6px 0; font-size:12px; }
+.approval-summary { display:flex; flex-wrap:wrap; gap:12px; padding:12px; margin-bottom:12px; background:#f1f5f2; border-radius:8px; font-size:13px; }
+.approval-summary strong { font-size:19px; color:var(--green); }
+.approval-differences { max-height:60vh; overflow-y:auto; display:grid; gap:8px; margin:12px 0; }
+.approval-row { padding:12px; border:1px solid var(--line); border-radius:9px; }
+.approval-row > strong { margin-right:10px; }
+.approval-change { display:grid; grid-template-columns:minmax(100px,150px) 1fr 1fr; gap:10px; padding:8px 0; border-bottom:1px solid #ecf1ed; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.approval-change:last-child { border-bottom:0; }
+@media(max-width:700px){.approval-change{grid-template-columns:1fr}.approval-control{align-items:flex-start;}}
+
+.item-data-table thead th:has(.column-filter[open]) { z-index:25; }
+.column-filter-menu { max-height:min(50vh,340px); overflow-y:auto; }
+
+/* Leave room for a 1500px table on typical 1600px screens without overflow. */
+.app-shell.wide-table-page { padding-inline: clamp(12px, 1.1vw, 18px); }
+/* Keep controls readable even when a saved list table is very narrow.
+   The adjustable table is centered *inside* the page; never resize site chrome,
+   navigation or the entire customization form to 0-500px. */
+.app-shell.wide-table-page > .topbar,
+.app-shell.wide-table-page > .demo-banner,
+.app-shell.wide-table-page > .nav-tabs,
+.app-shell.wide-table-page > main,
+.app-shell.wide-table-page > .app-footer,
+.app-shell.wide-table-page > p.muted {
+  /* Width is no longer coupled to the list's adjustable table frame. */
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.app-shell.wide-table-page > .topbar { flex-wrap: wrap; }
+.app-shell.wide-table-page .page-heading { flex-wrap: wrap; }
+.app-shell.wide-table-page > main { min-width: 0; }
+
+/* Stable screen-to-screen navigation without resizing the shared chrome. */
+.app-shell > main {min-height:calc(100vh - 270px);}
+.app-shell > .nav-tabs {min-height:43px;}
+@media (max-width:700px) {.page-heading {min-height:60px;}}
+
+/* Page chrome stays stable while each tab chooses its own content width.
+   No 1600px shell cap: a 2560px monitor may use the entire viewport. */
+.app-shell, .app-shell.wide-table-page, .app-shell.settings-page {
+  width:100%;
+  max-width:none;
+}
+.app-shell > main, .app-shell.wide-table-page > main {
+  width:min(100%,var(--page-content-width,100%));
+  max-width:none;
+  min-width:0;
+  margin-left:auto;
+  margin-right:auto;
+}
+@media(min-width:980px) {
+  .app-shell.settings-page > main {
+    width:min(100%,max(920px,var(--page-content-width,100%)));
+  }
+  .app-shell.settings-page .settings-mode-bar {min-width:0;}
+}
+.report-page-width-controls {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px 18px;
+  padding:13px 16px;
+  margin:10px 0 18px;
+  background:#f4f8f5;
+  border:1px solid var(--line);
+  border-radius:9px;
+}
+.report-page-width-controls > strong {width:100%;}
+.report-page-width-controls > p {flex-basis:100%;margin:0;}
+.report-page-width-controls > .field {flex:none;}
+.report-page-width-controls > .layout-visibility {min-width:min(340px,100%);}
+@media(max-width:600px) {
+  .report-page-width-controls {align-items:stretch;flex-direction:column;}
+  .report-page-width-controls > .field {width:100%;}
+}
+
+/* Compact two-group settings menu and persistent top-right control. */
+.options-menu > summary {width:38px;height:38px;min-width:38px;background:#fff;}
+/* Settings popup is a two-choice menu, never an accordion of nested summaries.
+   Scope the gear style to its direct summary only. */
+.options-popover {
+  width:min(270px,calc(100vw - 24px));
+  min-width:0;
+  max-width:calc(100vw - 24px);
+  padding:6px;
+  top:calc(100% + 8px);
+  right:0;
+  z-index:30;
+}
+.options-popover > button {
+  display:block;
+  width:100%;
+  min-height:42px;
+  padding:10px 12px;
+  border:0;
+  border-radius:7px;
+  background:transparent;
+  text-align:left;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.4;
+  color:var(--ink);
+  white-space:normal;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.options-popover > button + button {border-top:1px solid #edf0ed;}
+.options-popover > button:hover {background:var(--soft);}
+.options-popover > button:focus-visible {outline:2px solid var(--green);outline-offset:-2px;}
+.settings-hub-tabs {display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;padding:6px;background:#f0f5f1;border:1px solid #dce8df;border-radius:9px;}
+.settings-hub-tabs button {padding:9px 12px;border:1px solid transparent;border-radius:7px;background:transparent;font-size:13px;color:#425d50;}
+.settings-hub-tabs button.active {background:#fff;border-color:#d1dfd5;color:#154d44;font-weight:750;box-shadow:0 1px 3px #15302710;}
+.settings-hub-tabs button:hover:not(.active):not(:disabled) {background:#e3eee7;}
+.settings-hub-tabs button:disabled {opacity:.5;cursor:not-allowed;}
+/* One exit action belongs to the shared editing navigation, not each editor.
+   Keep it in the same position while moving between report/list/catalog tabs. */
+.settings-hub-tabs .shared-view-exit {
+  margin-left:auto;
+  border:1px solid #d1dfd5;
+  background:#fff;
+  color:var(--green);
+  font-weight:650;
+  white-space:nowrap;
+}
+.settings-hub-tabs .shared-view-exit:hover:not(:disabled) {background:#e4eee7;}
+@media(max-width:520px) {
+  .settings-hub-tabs .shared-view-exit {margin-left:0;width:100%;text-align:center;}
+}
+
+.guest-rights-hint {padding:9px 12px;margin:6px 0 12px;border:1px solid #dce9df;border-radius:8px;background:#f5f9f6;color:#466356;font-size:12px;}
+
+/* All top-level controls follow the current page content's centered width, instead
+   of remaining attached to the monitor edge while the table is centered. */
+.app-shell > .topbar,
+.app-shell > .demo-banner,
+.app-shell > .nav-tabs,
+.app-shell > .app-footer,
+.app-shell > p.muted,
+.app-shell.wide-table-page > .topbar,
+.app-shell.wide-table-page > .demo-banner,
+.app-shell.wide-table-page > .nav-tabs,
+.app-shell.wide-table-page > .app-footer,
+.app-shell.wide-table-page > p.muted {
+  width:min(100%,var(--page-content-width,100%));
+  max-width:none;
+  margin-left:auto;
+  margin-right:auto;
+}
+.app-shell > .topbar {flex-wrap:wrap;}
+@media(min-width:980px) {
+  /* Match the editing form's 920px minimum when a user previews 320–900px. */
+  .app-shell.settings-page > .topbar,
+  .app-shell.settings-page > .demo-banner,
+  .app-shell.settings-page > .nav-tabs,
+  .app-shell.settings-page > .app-footer,
+  .app-shell.settings-page > p.muted {
+    width:min(100%,max(920px,var(--page-content-width,100%)));
+  }
+}
+
+/* Three-level settings hierarchy: main section, focused list subtab, then field panel. */
+.settings-hub-tabs {margin-bottom:8px;}
+.settings-section {margin:0 0 15px;padding:12px 14px 10px;background:#fff;border:1px solid #d6e3da;border-radius:11px;box-shadow:0 2px 9px #1530270a;}
+.settings-section-path {font-size:11px;font-weight:700;color:#608071;margin:0 0 9px;}
+.settings-section-path span {padding:0 5px;color:#97a99d;}
+.settings-sub-tabs {display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #e2ebe5;padding-bottom:7px;}
+.settings-sub-tabs button {border:1px solid transparent;border-radius:7px;padding:9px 12px;background:transparent;color:#536c5e;font-size:13px;font-weight:600;}
+.settings-sub-tabs button:hover:not(:disabled) {background:#f2f7f3;}
+.settings-sub-tabs button.active {background:#e8f2eb;border-color:#bad7c5;color:#184f3d;font-weight:750;box-shadow:inset 0 -2px #44866b;}
+.settings-sub-tabs button:focus-visible {outline:2px solid #357a5a;outline-offset:2px;}
+.settings-sub-tabs button:disabled {opacity:.5;cursor:not-allowed;}
+.settings-section-description {font-size:12px;color:#5b7365;margin:9px 0 0;line-height:1.5;}
+.catalog-relationship {margin-top:12px;padding:9px 12px;border:1px solid #d7e5db;border-radius:8px;background:#f9fbf9;}
+.catalog-relationship>summary {cursor:pointer;font-weight:700;color:#315b48;font-size:13px;}
+.catalog-relationship[open]>summary {margin-bottom:12px;}
+.catalog-relationship .advanced-settings {background:#fff;margin:0;}
+
+/* Sorting lives inside the heading; pointer dragging/resizing remains independent. */
+.item-heading-row .column-heading-content{display:flex;align-items:center;gap:5px;min-width:0;width:100%;line-height:1.35}
+.item-heading-row .column-heading-label{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere}
+.item-heading-row .column-sort-button{display:inline-grid;place-items:center;flex:none;width:23px;height:24px;min-height:24px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#607b6c;font-size:16px;font-weight:650;cursor:pointer;touch-action:manipulation}
+.item-heading-row .column-sort-button:hover,.item-heading-row .column-sort-button:focus-visible{background:#e1eee6;border-color:#bad4c5;outline:none;color:#18543c}
+.item-heading-row .column-sort-button.active{color:#155d42;background:#dfede3;border-color:#accfbb}
+.item-heading-row th[aria-sort="ascending"],.item-heading-row th[aria-sort="descending"]{background:#e4f1e8}
+
+/* The guest tabs used to override the centered auto margins and stick to the left of the browser. */
+.app-shell.guest-view > .nav-tabs{margin:12px auto 16px!important}
+.layout-loading-placeholder{width:min(100%,var(--page-content-width,100%));margin:0 auto;padding:22px 18px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#587065;font-size:13px}
+
+/* Trim double spacing between editor heading, mode selection and live list. */
+.app-shell.settings-page .page-heading {min-height:0;margin-bottom:9px;}
+.app-shell.settings-page .settings-hub-tabs {margin-bottom:7px;padding:5px;}
+.app-shell.settings-page .item-list-card {margin-bottom:10px;}
+/* Bootstrap keeps the saved-layout placeholder stable until Firebase confirms. */
+.layout-loading-placeholder {min-height:88px;box-sizing:border-box;}
+
+.layout-loading-placeholder {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 18px;}
+.layout-loading-placeholder .button {width:auto;white-space:normal;text-align:left;}

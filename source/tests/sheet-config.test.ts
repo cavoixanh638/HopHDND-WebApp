@@ -37,6 +37,19 @@ describe('parseSheetConfig', () => {
     expect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-file/edit').gid).toBe('0');
   });
 
+  it('uses the correct workbook tab when the shared Excel link has no gid',()=>{
+    const link='https://docs.google.com/spreadsheets/d/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/edit?usp=sharing&ouid=115619545224951449850&rtpof=true&sd=true';
+    expect(parseSheetConfig(link)).toEqual(parseSheetConfig(DEFAULT_SHEET_URL));
+  });
+  it('repairs an old saved gid=0 on the known workbook without losing other files settings',()=>{
+    const storage=memoryStorage();vi.stubGlobal('localStorage',storage);
+    const id='1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp';
+    storage.setItem('hdnd.sheet-config.v1',JSON.stringify({
+      spreadsheetId:id,gid:'0',url:`https://docs.google.com/spreadsheets/d/${id}/edit?gid=0`
+    }));
+    expect(loadSheetConfig()?.gid).toBe('60961344');
+    expect(parseSheetConfig('https://docs.google.com/spreadsheets/d/other/edit?gid=0').gid).toBe('0');
+  });
   it('accepts a suffixless /d/ID link and the configured default URL', () => {
     expect(parseSheetConfig('https://docs.google.com/spreadsheets/d/abc').url)
       .toBe('https://docs.google.com/spreadsheets/d/abc/edit?gid=0');

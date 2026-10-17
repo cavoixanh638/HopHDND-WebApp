@@ -1,24 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GroupField, Item } from '../../../shared/types';
-import { defaultReportLayout, validateReportLayout, type ReportLayout } from '../../data/report-preferences';
+import { defaultReportLayout, reportPageWidth, validateReportLayout, type ReportLayout } from '../../data/report-preferences';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import { ReportLayoutPanel } from './ReportLayoutPanel';
 import { Modal } from '../../components/Modal';
 import { validateReportDraft } from '../../data/report-draft';
 
-export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets' }: {
+export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets',onDirtyChange,onPreviewWidthChange,exitRequest=0 }: {
   initial: ReportLayout[]; onSave: (layout: ReportLayout[]) => Promise<void>; onClose: () => void;
   items: Item[]; group: GroupField; sourceLabel: string; sourceKey: string; groupOrder:string[];
   storageLabel?: string;
+  onDirtyChange?:(dirty:boolean)=>void;
+  onPreviewWidthChange?:(width:'auto'|number)=>void;
+  exitRequest?:number;
 }) {
-  const { draft, setDraft, dirty, recoveryMessage, checkpointMessage, clearCheckpoint, unmatchedCheckpoint, restoreOldDraft, discardOldDraft } = useRecoverableDraft<ReportLayout[]>(`report:${sourceKey}`, initial, validateReportDraft);
+  const { draft, setDraft, dirty, markSaved, recoveryMessage, checkpointMessage, clearCheckpoint, unmatchedCheckpoint, restoreOldDraft, discardOldDraft } = useRecoverableDraft<ReportLayout[]>(`report:${sourceKey}`, initial, validateReportDraft);
   const [error, setError] = useState('');
   const [saving,setSaving]=useState(false);
   const [confirm, setConfirm] = useState<'close' | 'reset' | null>(null);
+  useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
   const dataLabel = storageLabel === 'Google Sheets' ? 'dữ liệu Excel' : 'dữ liệu nội dung';
   const latest = useRef({ dirty, onClose,saving });
   latest.current = { dirty, onClose,saving };
   const close = () => { if(saving)return;if (dirty) setConfirm('close'); else onClose(); };
+  const handledExit=useRef(exitRequest);
+  useEffect(()=>{if(exitRequest===handledExit.current)return;handledExit.current=exitRequest;close();},[exitRequest]);
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || document.querySelector('dialog[open]')) return;
@@ -30,14 +36,19 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
     return () => window.removeEventListener('keydown', escape);
   }, []);
 
-  const change = (next: ReportLayout[]) => { setDraft(next); setError(''); };
+  const change = (next: ReportLayout[]) => {
+    setDraft(next);
+    onPreviewWidthChange?.(reportPageWidth(next));
+    setError('');
+  };
   const save = async (exit = false) => {
     if(saving||unmatchedCheckpoint)return;
     setSaving(true);
     try {
       const valid = validateReportLayout(draft);
       await onSave(valid);
-      clearCheckpoint();
+      markSaved(valid);
+      onDirtyChange?.(false);
       setError('');
       setConfirm(null);
       if (exit) onClose();
@@ -48,9 +59,9 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
 
   return <>
   <fieldset className="settings-saving" disabled={saving||!!unmatchedCheckpoint}>
-    <div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh bảng báo cáo</strong><p>Phần đang sửa được giữ trên máy, chưa lưu. Khi lưu, bố trí báo cáo được lưu riêng lên {storageLabel}; {dataLabel} không đổi.</p></div><div className="top-actions"><button className="button ghost" onClick={() => setConfirm('reset')}>Khôi phục mặc định</button><button className="button ghost" onClick={close}>Hủy / Về chế độ xem</button><button className="button primary" onClick={() => save(true)}>Lưu bố trí và về chế độ xem</button></div></div>
+    <div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh bảng báo cáo</strong><p>Phần đang sửa được giữ trên máy, chưa lưu. Khi lưu, bố trí báo cáo được lưu riêng lên {storageLabel}; {dataLabel} không đổi.</p></div><div className="top-actions"><button className="button ghost" onClick={() => setConfirm('reset')}>Khôi phục mặc định</button><button className="button primary" onClick={() => void save() } disabled={!dirty||saving}>Lưu Bảng báo cáo</button></div></div>
     {recoveryMessage && <p className="status-pill" role="status">{recoveryMessage}</p>}
-    {checkpointMessage && <p className="muted" role="status">{checkpointMessage}</p>}
+    {checkpointMessage && <p className="error-text" role="alert">{checkpointMessage}</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {saving&&<p role="status">Đang lưu bố trí báo cáo lên {storageLabel}…</p>}
     <ReportLayoutPanel draft={draft} onChange={change} items={items} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} />
