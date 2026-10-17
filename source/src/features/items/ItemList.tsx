@@ -3,7 +3,7 @@ import type { Changes, Item, Patch, TextField, EditableField } from '../../../sh
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { EXCEL_COLUMN_KEYS, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
@@ -48,9 +48,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
-  const columns = activeLayout.columns.filter(column=>
-    (column.visible || (!customizing && showAllSourceColumns && column.key!=='history'))
-      && (!readOnly || column.key !== 'history'));
+  const columns = activeLayout.columns
+    .filter(column=>column.visible||(!customizing&&showAllSourceColumns))
+    .sort((a,b)=>!customizing&&showAllSourceColumns
+      ?EXCEL_COLUMN_KEYS.indexOf(a.key)-EXCEL_COLUMN_KEYS.indexOf(b.key):0);
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
   const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
@@ -211,10 +212,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items} value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
-        if(column.key==='displayCode')return <td key={column.key}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+        if(column.key==='displayCode')return <td key={column.key}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key}>{item.stt}</td>;
-        if(column.key==='history')return <td key={column.key}><button className="button ghost" onClick={()=>onHistory(item)}>Xem</button></td>;
-        if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Trình / Rút`} value={item.isDropped?"Đã rút":"Đang trình"} options={["Đang trình","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={`status-pill ${item.isDropped?'warning':'success'}`}>{item.archivedAt?'Lưu trữ':item.isDropped?'Đã rút':'Đang trình'}</span>}</td>;
+        if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
         // Excel columns P and Q are displayed and searchable but not editable.
         // They must not be offered as writable fields until a source writer and
         // server-side permission rules explicitly support these new columns.
