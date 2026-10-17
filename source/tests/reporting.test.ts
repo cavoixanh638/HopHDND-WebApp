@@ -1,11 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})}));
 import {ReportTable} from '../src/features/reports/ReportTable';
+import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
+import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
+import {defaultReportLayout,reportPageWidth} from '../src/data/report-preferences';
 import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
 
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
+  it('commits report page width through the dedicated editor, leaving other layout properties intact',()=>{
+    const draft=defaultReportLayout(),onChange=vi.fn();
+    const root=ReportLayoutPanel({draft,onChange,items:createDemoItems(2),group:'vpLeader',
+      groupOrder:[],sourceLabel:'Google Sheets'});
+    const nodes=(node:any):any[]=>Array.isArray(node)?node.flatMap(nodes):node&&typeof node==='object'?[node,...nodes(node.props?.children)]:[];
+    const width=nodes(root).find(node=>node.type===DeferredWidthInput&&node.props?.label==='Độ rộng trang Bảng báo cáo (px)');
+    expect(width).toBeDefined();
+    width.props.onCommit(2800);
+    expect(reportPageWidth(onChange.mock.calls[0][0])).toBe(2800);
+    expect(onChange.mock.calls[0][0][1]).toEqual(draft[1]);
+    const auto=nodes(root).find(node=>node.type==='input'&&node.props?.type==='checkbox'&&node.props?.checked===true);
+    expect(auto).toBeDefined();
+  });
   it('labels the first column according to selected grouping on all report tables',()=>{
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
     for(const choice of GROUP_OPTIONS){
