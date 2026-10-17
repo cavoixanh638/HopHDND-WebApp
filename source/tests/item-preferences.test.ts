@@ -12,20 +12,19 @@ const storage = () => {
 };
 
 describe('Bố trí cột danh sách', () => {
-  it('matches exactly 18 Excel A–R columns in the source order and labels, excluding app-only History',()=>{
+  it('matches exactly 15 Excel A–O columns in the source order and labels, excluding app-only History',()=>{
     const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
       'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
-      'specificProgress','isDropped','partyMeeting','examined','note'];
+      'specificProgress','note'];
     const layout=defaultItemLayout();
     expect(EXCEL_COLUMN_KEYS).toEqual(expected);
-    expect(EXCEL_SOURCE_COLUMNS).toHaveLength(18);
+    expect(EXCEL_SOURCE_COLUMNS).toHaveLength(15);
     expect(layout.columns.map(column=>column.key)).toEqual(expected);
     expect(layout.columns.map(column=>column.label)).toEqual([
       'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB (HC/QPPL/BC)',
-      'Cấp cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
+      'Cấp Thành ủy cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
       'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
-      'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Rút',
-      'Họp Thành ủy / xin ý kiến','Đã thẩm tra chưa','Ghi chú']);
+      'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Ghi chú']);
     expect(layout.columns.find(column=>column.key==='history')).toBeUndefined();
     expect(layout.columns).toHaveLength(18);
     expect(layout.columns.filter(c=>c.visible)).toHaveLength(18);
@@ -59,16 +58,19 @@ describe('Bố trí cột danh sách', () => {
     expect(validated.columns[2].visible).toBe(false);
   });
 
-  it('migrates saved legacy Firebase layouts to include P/Q without losing column order, widths or visibility',()=>{
+  it('migrates old 18-column Firebase layouts by removing obsolete Rút/Họp/Thẩm tra, preserving widths',()=>{
     const old=defaultItemLayout();
-    old.columns=old.columns.filter(c=>c.key!=='partyMeeting'&&c.key!=='examined');
+    old.columns.splice(14,0,
+      {key:'isDropped',label:'Rút',width:120,visible:true},
+      {key:'partyMeeting',label:'Họp Thành ủy',width:200,visible:true},
+      {key:'examined',label:'Đã thẩm tra chưa',width:170,visible:true});
     old.columns.reverse();
     old.columns[0].width=399;
     old.columns[0].visible=false;
     const result=validateItemLayout(old);
-    expect(result.columns.slice(0,old.columns.length)).toEqual(old.columns);
-    expect(result.columns.slice(-2).map(c=>c.key)).toEqual(['partyMeeting','examined']);
-    expect(result.columns.slice(-2).every(c=>c.visible)).toBe(true);
+    expect(result.columns).toHaveLength(15);
+    expect(result.columns.some(c=>['isDropped','partyMeeting','examined'].includes(c.key))).toBe(false);
+    expect(result.columns[0].width).toBe(399);
     expect(result.columns.length).toBe(defaultItemLayout().columns.length);
   });
   it('kiểm tra giới hạn độ rộng bảng và cột', () => {
