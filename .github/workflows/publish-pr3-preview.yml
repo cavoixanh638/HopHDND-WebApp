@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 26a9e2b44edfdbf9c781934d697c5ca16da312a5
+          ref: ec760fa61321a307a88c6d57a993a97322b0b1c8
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -86,13 +86,13 @@ jobs:
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
           if(!html.includes('--page-content-width'))throw Error('Independent page content width missing');
           if(!html.includes('report-page-width-controls'))throw Error('Dedicated report tab sizing CSS missing');
-          if(!html.includes('Hiện đủ 15 cột Excel'))throw Error('One-click show all source columns missing');
+          if(!html.includes('Hiện tất cả'))throw Error('One-click show all source columns missing');
           if(!html.includes('source-column-visibility')||!html.includes('Theo cột đã chọn')||!html.includes('Hiện đủ cột Excel'))throw Error('Complete A-R viewer or saved column toggle missing');
           if(!html.includes('EXCEL_SOURCE_COLUMNS')&&!html.includes('Loại VB (HC/QPPL/BC)'))throw Error('Canonical 18-field Excel A-R schema missing');
           if(!html.includes('Xem lịch sử chỉnh sửa'))throw Error('Audit action no longer accessible from ID cell');
           if(!html.includes('Cấp Thành ủy cho ý kiến')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel F/N fields missing');
           if(!html.includes('Tiến độ hiện tại'))throw Error('Correct N column name missing');
-          if(!html.includes('Hiện đủ 15 cột Excel'))throw Error('Immediate editor show-all-columns action missing');
+          if(!html.includes('Hiện tất cả'))throw Error('Immediate editor show-all-columns action missing');
           if(!html.includes('60961344'))throw Error('Correct workbook tab gid absent');
           if(!html.includes('Trang Excel không khớp: cột'))throw Error('Wrong-sheet and missing-source-header guard absent');
           if(!html.includes('Tiến độ xin ý kiến Thành ủy')||!html.includes('Tiến độ trình HĐND xây dựng NQ')||!html.includes('Tiến độ trình HĐND ban hành NQ/BC'))throw Error('Excel G/H/I header labels are missing');
@@ -101,17 +101,17 @@ jobs:
           if(html.includes('Đã lưu Bảng báo cáo vào Firebase. Bạn có thể tiếp tục chỉnh sửa.'))throw Error('Redundant success banner still present');
           if(!html.includes('onPreviewWidthChange'))throw Error('Live width preview handler missing');
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
-          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu danh sách chọn')||!html.includes('Lưu quyền cột'))throw Error('Separate save actions are missing');
-          if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
+          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu thay đổi')||!html.includes('column-manager-savebar'))throw Error('Single column save or separate reports save is missing');
+          if(!html.includes('Cho phép sửa cột')||!html.includes('Quyền riêng theo dòng/ô'))throw Error('Column grants or legacy rights safety missing');
           if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('column-choice-add')||!html.includes('column-specialist-relations'))throw Error('Unified dropdown and advanced field manager missing');
           if(!html.includes('column-manager-detail')||!html.includes('column-manager-grid'))throw Error('Compact column manager absent');
-          if(!html.includes('Hiện đủ 15 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
+          if(!html.includes('Hiện tất cả')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — DROPDOWN VÀ QUYỀN SỬA NGAY TRONG QUẢN LÝ CỘT (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Cấu trúc gọn: Chỉnh sửa → Danh sách dữ liệu → Quản lý cột. Ngay từng cột có kiểu nhập, danh sách chọn có thêm/sửa/xóa/sắp xếp và ô tick cấp quyền sửa theo cột; không mở bảng quyền riêng từng ô. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — MỘT NÚT LƯU & DROPDOWN TRỰC TIẾP TRONG QUẢN LÝ CỘT (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Gộp Chỉnh sửa → Danh sách dữ liệu → Quản lý cột luôn mở, một nút Lưu thay đổi duy nhất; cột dropdown có đầy đủ danh sách chọn kể cả cấu hình cũ kiểu text. ID/STT giữ chỉ đọc do Sheets chưa hỗ trợ ghi có kiểm tra khóa. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — DROPDOWN VÀ QUYỀN SỬA NGAY TRONG QUẢN LÝ CỘT'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — MỘT NÚT LƯU & DROPDOWN TRỰC TIẾP TRONG QUẢN LÝ CỘT'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
