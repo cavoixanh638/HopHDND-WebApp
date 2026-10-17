@@ -1,4 +1,3 @@
-import { TEXT_FIELDS } from '../../shared/field-definitions';
 export interface ItemColumn { key: string; label: string; width: number; visible: boolean }
 export interface ItemLayout { columns: ItemColumn[]; tableWidth: number; frameWidth?: 'auto'|number }
 
