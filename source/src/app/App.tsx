@@ -19,7 +19,9 @@ import { configuredReports, loadReportLayout, reportPageWidth, saveReportLayout,
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
-import {loadItemLayout,saveItemLayout,type ItemLayout} from '../data/item-preferences';
+import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
+import {loadActiveListView,loadListViews} from '../data/list-views';
+import {layoutRecoveryScope} from '../data/draft-checkpoints';
 import type {LayoutConflictChoices} from '../data/item-layout-merge';
 import {useSharedConfig} from '../state/use-shared-config';
 import {googleCall,isGoogleHost} from '../data/google-bridge';
@@ -118,6 +120,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(['customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage(isFirebase?'Cần đăng nhập Google quản trị và đọc được cấu hình chung.':'Chờ cấu hình chung tải xong hoặc mở trình chỉnh chung trên Google.');return;}
     if(next==='review'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị mới xem và phê duyệt mốc dữ liệu.');return;}if(isFirebase){firebaseEditRevision.current=firebase!.profile?.revision??0;}
     setReportWidthPreview(null);
+    setListFramePreview(null);
     setPage(next); setLayoutMessage('');
   };
   const kpis = useMemo(() => getKpis(workspace.items), [workspace.items]);
@@ -143,10 +146,22 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       firebase!.canEdit(item.recordId,'isDropped'));
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
-  const layoutPending=common.status==='loading';
-  const frameChoice=layoutPending?'auto':page==='overview'||page==='customize'
+  // Calculate the exact first-frame width synchronously from the saved shared
+  // profile AND any selected personal view. Never wait for the child effect.
+  const viewFrameWidth=useMemo(()=>{
+    if(!listPage)return itemLayout.frameWidth??'auto';
+    const scope=layoutRecoveryScope(sourceKey);
+    const activeId=loadActiveListView(scope);
+    const preset=activeId?loadListViews(scope).find(view=>view.id===activeId):undefined;
+    if(!preset)return itemLayout.frameWidth??'auto';
+    try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
+    catch{return itemLayout.frameWidth??'auto';}
+  },[itemLayout,sourceKey,listPage]);
+  const layoutPending=common.status==='loading'||(isFirebase&&!firebase!.ready);
+  const layoutUnavailable=isFirebase&&common.status==='error';
+  const frameChoice=layoutPending||layoutUnavailable?'auto':page==='overview'||page==='customize'
     ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
-    :listPage?(listFramePreview??(itemLayout.frameWidth??'auto')):'auto';
+    :listPage?(listFramePreview??viewFrameWidth):'auto';
   const pageContentWidth=frameChoice==='auto'?'100%':`${Math.min(6000,Math.max(320,frameChoice))}px`;
   const frameStyle={'--page-content-width':pageContentWidth} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
@@ -155,9 +170,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
     </div></details>}</div></header>
     <div className="demo-banner"><strong>{sourceLabel}</strong>{anonymousVisitor?' · Tự cập nhật mỗi 60 giây.':isDemo ? ' · Lưu chỉ giữ trong phiên thử; mở lại app sẽ dùng nguồn Sheets đã chọn.' : <> · Làm mới mỗi 60 giây khi trang đang hoạt động. Cập nhật nội dung trong <a href={configured.url} target="_blank" rel="noopener noreferrer">{isFirebase?'Google Sheets nguồn':'file Excel nguồn'}</a>.</>} {isFirebase&&!anonymousVisitor && <> · GID <code>{configured.gid}</code> · <button type="button" className="button ghost" disabled={workspace.busy || dirtyCount > 0} onClick={() => {const original=parseSheetConfig(DEFAULT_SHEET_URL);clearSheetConfig();setConfigured(original);setRepository(new SheetsRepository(original));setLayoutMessage('Đã chọn lại nguồn mặc định của ứng dụng; đang tải lại dữ liệu.');}}>Dùng lại nguồn mặc định</button></>}</div>
-    {isFirebase&&!anonymousVisitor&&<p className="muted">{firebase!.user?.isAnonymous?'Khách ẩn danh':firebase!.user?.email}{firebase!.isAdmin?' · Quản trị':''}{firebase!.editingLocked?' · Đang khóa sửa trên WebApp':''}{firebase!.emulator?' · KIỂM THỬ LOCAL, KHÔNG DÙNG FIREBASE THẬT':''}</p>}{viewerLabel&&<p className="muted">Đang dùng tài khoản Google: {viewerLabel}</p>}<nav className="nav-tabs" aria-label="Điều hướng">{([['overview', 'Tổng quan'], ['items', 'Danh sách nội dung']] as const).map(([key, title]) => <button disabled={editingPage} className={page === key ? 'active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => setPage(key)}>{title}</button>)}</nav>
+    {isFirebase&&!anonymousVisitor&&<p className="muted">{firebase!.user?.isAnonymous?'Khách ẩn danh':firebase!.user?.email}{firebase!.isAdmin?' · Quản trị':''}{firebase!.editingLocked?' · Đang khóa sửa trên WebApp':''}{firebase!.emulator?' · KIỂM THỬ LOCAL, KHÔNG DÙNG FIREBASE THẬT':''}</p>}{viewerLabel&&<p className="muted">Đang dùng tài khoản Google: {viewerLabel}</p>}<nav className="nav-tabs" aria-label="Điều hướng">{([['overview', 'Tổng quan'], ['items', 'Danh sách nội dung']] as const).map(([key, title]) => <button disabled={editingPage} className={page === key ? 'active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => {setListFramePreview(null);setPage(key);}}>{title}</button>)}</nav>
     <main>
-      {layoutPending?<div className="layout-loading-placeholder" role="status">Đang tải cấu hình cách hiển thị…</div>:<>
+      {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">Đang tải cấu hình cách hiển thị…</div>:
+      layoutUnavailable?<div className="layout-loading-placeholder" role="alert">Chưa đọc được bố cục đã lưu từ Firebase. Hãy kiểm tra kết nối hoặc tải lại; chưa hiển thị bố cục mặc định để tránh ghi đè nhầm.</div>:<>
       <div className="page-heading"><div><p className="eyebrow">TỔNG HỢP NỘI DUNG TRÌNH</p><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page === 'overview' ? 'Theo dõi tiến độ' : page === 'items' ? 'Danh sách làm việc' : page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page === 'connection' ? (isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu') : page==='transfer'?'Nhập / Xuất Excel' : page === 'customize' ? 'Tùy chỉnh bảng báo cáo' : (page === 'items-customize'||page==='items-permissions'||page==='catalogs') ? 'Quản lý cột' : 'Theo dõi tiến độ'}</h1></div><span className="muted">{workspace.busy ? 'Đang đọc dữ liệu…' : workspace.loadedAt ? `Đọc thành công: ${workspace.loadedAt}` : 'Chưa đọc được dữ liệu'}</span></div>
       {!anonymousVisitor&&(['customize','items-customize','items-permissions','catalogs'].includes(page))&&<><nav className="settings-hub-tabs" aria-label="Nhóm chỉnh sửa chính">
         <button type="button" className={page==='customize'?'active':''} aria-current={page==='customize'?'page':undefined} onClick={event=>openOptions('customize',event)} disabled={!canCustomize}>Bảng thống kê</button>
@@ -188,7 +204,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
       {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&!isDemo} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>firebase!.canEdit(id,field) &&
-        (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} onHistory={setHistory} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
+        (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} onHistory={setHistory} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
