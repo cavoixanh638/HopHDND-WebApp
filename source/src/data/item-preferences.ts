@@ -17,7 +17,7 @@ export const EXCEL_SOURCE_COLUMNS = [
   {key:'content',label:'Nội dung trình',width:440},
   {key:'department',label:'Sở, ngành chủ trì',width:170},
   {key:'type',label:'Loại VB (HC/QPPL/BC)',width:170},
-  {key:'partyLevel',label:'Cấp Thành ủy cho ý kiến',width:190},
+  {key:'partyLevel',label:'Cấp cho ý kiến',width:190},
   {key:'progressParty',label:'Tiến độ xin ý kiến Thành ủy',width:210},
   {key:'progressBuild',label:'Tiến độ trình HĐND xây dựng NQ',width:210},
   {key:'progressCouncil',label:'Tiến độ trình HĐND ban hành NQ/BC',width:210},
