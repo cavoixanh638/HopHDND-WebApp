@@ -1,110 +1,120 @@
-import type { ItemLayout } from '../../data/item-preferences';
-import { DeferredWidthInput } from './DeferredWidthInput';
+import {useState} from 'react';
+import type {ItemColumn,ItemLayout} from '../../data/item-preferences';
+import {EXCEL_COLUMN_KEYS} from '../../data/item-preferences';
+import {DeferredWidthInput} from './DeferredWidthInput';
 
-type ItemColumnPanelProps = {
-  layout: ItemLayout;
-  onChange: (next: ItemLayout) => void;
-  validationMessage?: string;
-};
+type Props={layout:ItemLayout;onChange:(next:ItemLayout)=>void;validationMessage?:string};
 
-export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemColumnPanelProps) {
-  const updateColumn = (index: number, change: Partial<ItemLayout['columns'][number]>) => {
-    onChange({
-      ...layout,
-      columns: layout.columns.map((column, current) => current === index ? { ...column, ...change } : column),
-    });
-  };
-
-  const moveColumn = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= layout.columns.length) return;
-    const columns = [...layout.columns];
-    [columns[index], columns[target]] = [columns[target], columns[index]];
-    onChange({ ...layout, columns });
-  };
-
-  const invalidTable=!Number.isInteger(layout.tableWidth)||layout.tableWidth<500||layout.tableWidth>6000;
-  const invalidColumns=layout.columns.filter(c=>!Number.isInteger(c.width)||c.width<60||c.width>1600);
-  const repairOldWidths=()=>onChange({
-    ...layout,
-    tableWidth:invalidTable?1500:layout.tableWidth,
-    columns:layout.columns.map(c=>invalidColumns.some(b=>b.key===c.key)?{...c,width:c.key==='content'?440:c.key==='note'?240:170}:c),
+/** Compact column manager inspired by database-table field panels:
+ * one row per field, advanced properties only for the selected field.
+ * Width changes are made exclusively by dragging the column border in-table.
+ */
+export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
+  const [selected,setSelected]=useState<string|null>(null);
+  const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
+  const active=layout.columns.filter(c=>!c.removed);
+  const customCount=layout.columns.filter(c=>c.origin==='custom').length;
+  const update=(key:string,change:Partial<ItemColumn>)=>onChange({
+    ...layout,columns:layout.columns.map(c=>c.key===key?{...c,...change}:c),
   });
-  return (
-    <details className="card item-column-panel">
-      <summary>Cột và độ rộng bảng</summary>
-      <div className="settings-grid">
-        {(invalidTable||invalidColumns.length>0)&&<div className="layout-invalid-recovery" role="alert">
-          <strong>Có độ rộng cũ chưa hợp lệ:</strong>
-          {invalidTable&&<span>Phần cột bên trong = {layout.tableWidth} px (hợp lệ 500–6000 px).</span>}
-          {invalidColumns.length>0&&<span>{invalidColumns.length} cột có độ rộng ngoài giới hạn 60–1600 px.</span>}
-          <button type="button" className="button ghost" onClick={repairOldWidths}>Sửa các độ rộng cũ chưa hợp lệ</button>
-        </div>}
-        {validationMessage&&<div className="layout-inline-error" role="alert">
-          <strong>Chưa lưu được cách hiển thị: </strong>{validationMessage}
-          <span>Kiểm tra ô độ rộng tương ứng ngay tại đây rồi bấm Lưu lại. Kích thước đang hiển thị vẫn được giữ nguyên.</span>
-        </div>}
-        <div className="item-frame-controls">
-          <label className="field" htmlFor="item-visible-frame-width">
-            Độ rộng trang Danh sách dữ liệu (px) — nhấn Enter hoặc rời ô để áp dụng
-          </label>
-          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng trang Danh sách dữ liệu (px)"
-            value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1920:layout.frameWidth}
-            min={320} max={6000}
-            onCommit={frameWidth=>onChange({...layout,frameWidth})}/>
-          <label className="layout-visibility">
-            <input type="checkbox" checked={layout.frameWidth==='auto'||layout.frameWidth===undefined}
-              onChange={event=>onChange({...layout,frameWidth:event.currentTarget.checked?'auto':1920})}/>
-            Tự động theo độ rộng màn hình
-          </label>
-          <p className="muted">{layout.frameWidth==='auto'||layout.frameWidth===undefined
-            ?'Danh sách tự động dùng toàn bộ chiều rộng màn hình. Nhập số rồi nhấn Enter hoặc rời ô để đổi kích thước.'
-            :`Trang Danh sách dữ liệu rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Khi đang thiết lập, phần điều khiển vẫn đủ rộng để dễ sử dụng. Các cột rộng hơn sẽ cuộn ngang.`}</p>
-        </div>
-        <details className="item-layout-advanced">
-          <summary>Độ rộng tối thiểu phần cột bên trong (nâng cao)</summary>
-          <label className="field">
-            Độ rộng tối thiểu của các cột (px)
-            <DeferredWidthInput label="Độ rộng tối thiểu các cột (px)"
-              value={layout.tableWidth} min={500} max={6000}
-              onCommit={tableWidth=>onChange({...layout,tableWidth})}/>
-          </label>
-          <p className="muted">Giá trị này không đổi độ rộng vùng danh sách phía ngoài. Tổng độ rộng các cột có thể lớn hơn; khi đó dùng thanh cuộn ngang bên trong bảng.</p>
-        </details>
-        <div className="top-actions item-column-visibility-actions">
-          <span className="muted">{layout.columns.filter(c=>c.visible).length} / {layout.columns.length} cột dữ liệu đang hiển thị</span>
-          <button type="button" className="button ghost"
-            disabled={layout.columns.every(c=>c.visible)}
-            onClick={()=>onChange({...layout,columns:layout.columns.map(c=>({...c,visible:true}))})}>
-            Hiện tất cả cột Excel
-          </button>
-        </div>
-        <div className="column-config-grid">
-          {layout.columns.map((column, index) => (
-            <div className="column-config-row" key={column.key}>
-              <label className="field">
-                <input
-                  type="checkbox"
-                  checked={column.visible}
-                  aria-label={`Hiện cột ${column.label}`}
-                  onChange={event => updateColumn(index, { visible: event.target.checked })}
-                />
-                Hiện cột {column.label}
-              </label>
-              <label className="field">
-                Độ rộng cột {column.label} (px)
-                <DeferredWidthInput label={`Độ rộng cột ${column.label} (px)`}
-                  value={column.width} min={60} max={1600}
-                  onCommit={width=>updateColumn(index,{width})}/>
-              </label>
-              <div className="top-actions" aria-label={`Sắp xếp cột ${column.label}`}>
-                <button className="button ghost" type="button" aria-label={`Đưa cột ${column.label} lên`} onClick={() => moveColumn(index, -1)} disabled={index === 0}>Lên</button>
-                <button className="button ghost" type="button" aria-label={`Đưa cột ${column.label} xuống`} onClick={() => moveColumn(index, 1)} disabled={index === layout.columns.length - 1}>Xuống</button>
-              </div>
-            </div>
-          ))}
-        </div>
+  const move=(key:string,delta:number)=>{
+    const from=layout.columns.findIndex(c=>c.key===key),to=from+delta;
+    if(from<0||to<0||to>=layout.columns.length)return;
+    const next=[...layout.columns];
+    [next[from],next[to]]=[next[to],next[from]];
+    onChange({...layout,columns:next});
+  };
+  const add=()=>{
+    if(customCount>=20)return;
+    const key='custom_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
+    onChange({...layout,columns:[...layout.columns,{
+      key,label:'Cột mới',width:180,visible:true,origin:'custom',
+      kind:'text',values:{}
+    }]});
+    setSelected(key);
+  };
+  const remove=(key:string)=>{
+    const col=layout.columns.find(c=>c.key===key);
+    if(!col)return;
+    if(confirmDelete!==key){setConfirmDelete(key);return;}
+    onChange({...layout,columns:col.origin==='custom'
+      ?layout.columns.filter(c=>c.key!==key)
+      :layout.columns.map(c=>c.key===key?{...c,removed:true,visible:false}:c)});
+    setSelected(null);setConfirmDelete(null);
+  };
+  return <details className="card item-column-panel column-manager">
+    <summary>Quản lý cột <span className="column-count">{active.length} cột · tùy chỉnh tên, kiểu nhập và thứ tự</span></summary>
+    <div className="column-manager-body">
+      {validationMessage&&<div className="layout-inline-error" role="alert">
+        <strong>Chưa lưu được:</strong> {validationMessage}
+      </div>}
+      <div className="column-manager-toolbar">
+        <span className="muted">{active.filter(c=>c.visible).length}/{active.length} cột đang hiển thị. Kéo cạnh tiêu đề trên bảng để đổi độ rộng.</span>
+        <button type="button" className="button ghost" disabled={active.every(c=>c.visible)}
+          onClick={()=>onChange({...layout,columns:layout.columns.map(c=>c.removed?c:{...c,visible:true})})}>Hiện tất cả</button>
+        <button type="button" className="button" disabled={customCount>=20} onClick={add}>+ Thêm cột</button>
       </div>
-    </details>
-  );
+      <div className="column-manager-grid" aria-label="Danh sách cột và kiểu dữ liệu">
+        {active.map((column,index)=><div key={column.key} className={'column-manager-row'+(selected===column.key?' selected':'')}>
+          <label className="column-manager-check"><input type="checkbox" checked={column.visible}
+            aria-label={`Hiện cột ${column.label}`} onChange={e=>update(column.key,{visible:e.currentTarget.checked})}/></label>
+          <span className="column-manager-label" title={column.label}>{column.label}</span>
+          <span className="column-manager-type">{column.kind==='select'?'Danh sách chọn':'Nhập tự do'}</span>
+          <span className="column-manager-origin">{column.origin==='custom'?'Tự tạo':EXCEL_COLUMN_KEYS.includes(column.key)?'Excel':''}</span>
+          <button type="button" className="button ghost" aria-expanded={selected===column.key}
+            aria-label={`Thiết lập cột ${column.label}`}
+            onClick={()=>{setSelected(selected===column.key?null:column.key);setConfirmDelete(null);}}>
+            {selected===column.key?'Đóng':'Sửa'}
+          </button>
+          {selected===column.key&&<div className="column-manager-detail">
+            <label className="field">Tên cột<input aria-label={`Tên cột ${column.key}`}
+              value={column.label} maxLength={100}
+              onChange={e=>update(column.key,{label:e.currentTarget.value,renamed:true})}/></label>
+            <label className="field">Kiểu dữ liệu
+              <select aria-label={`Kiểu dữ liệu ${column.key}`} value={column.kind??'text'}
+                onChange={e=>update(column.key,{kind:e.currentTarget.value as 'text'|'select'})}>
+                <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
+              </select>
+            </label>
+            {column.kind==='select'&&<label className="field column-manager-options">Các lựa chọn (mỗi dòng một giá trị)
+              <textarea aria-label={`Các lựa chọn cột ${column.key}`} key={column.key+column.kind}
+                rows={4} defaultValue={(column.options??[]).join('\n')}
+                onBlur={e=>update(column.key,{options:[...new Set(e.currentTarget.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))].slice(0,50)})}/>
+            </label>}
+            <div className="column-manager-detail-actions">
+              <button type="button" className="button ghost" disabled={index===0} onClick={()=>move(column.key,-1)}>↑ Lên</button>
+              <button type="button" className="button ghost" disabled={index===active.length-1} onClick={()=>move(column.key,1)}>↓ Xuống</button>
+              <button type="button" className="button danger" onClick={()=>remove(column.key)}>
+                {confirmDelete===column.key?'Xác nhận xóa':'Xóa cột'}
+              </button>
+              {confirmDelete===column.key&&<span className="muted" role="alert">
+                {column.origin==='custom'?'Xóa cột tự tạo sẽ xóa cả giá trị đã lưu trong cột.':'Cột Excel sẽ bị gỡ khỏi bảng, không xóa dữ liệu nguồn.'}
+                <button className="button ghost" type="button" onClick={()=>setConfirmDelete(null)}>Hủy</button>
+              </span>}
+            </div>
+            {column.origin!=='custom'&&<p className="muted">Cột nguồn Excel: đổi tên chỉ ảnh hưởng cách hiển thị. Giá trị gốc vẫn đọc từ Excel.</p>}
+            {column.origin==='custom'&&<p className="muted">Cột độc lập: giá trị được lưu cùng bố cục ứng dụng, không ghi vào Excel. Chỉ quản trị được chỉnh và lưu giá trị ở chế độ sửa.</p>}
+          </div>}
+        </div>)}
+      </div>
+      {layout.columns.some(c=>c.removed)&&<details className="column-manager-removed">
+        <summary>Cột đã gỡ khỏi bảng ({layout.columns.filter(c=>c.removed).length})</summary>
+        {layout.columns.filter(c=>c.removed).map(c=><div key={c.key} className="column-manager-restore">
+          <span>{c.label}</span>
+          <button type="button" className="button ghost" onClick={()=>update(c.key,{removed:false,visible:true})}>Khôi phục</button>
+        </div>)}
+      </details>}
+      <details className="column-manager-page-width">
+        <summary>Chiều rộng trang Danh sách (tùy chọn)</summary>
+        <label className="layout-visibility">
+          <input type="checkbox" checked={layout.frameWidth==='auto'||layout.frameWidth===undefined}
+            onChange={e=>onChange({...layout,frameWidth:e.currentTarget.checked?'auto':1920})}/>
+          Tự động theo màn hình
+        </label>
+        {layout.frameWidth!=='auto'&&layout.frameWidth!==undefined&&
+          <DeferredWidthInput label="Chiều rộng trang (px)" value={layout.frameWidth} min={320} max={6000}
+            onCommit={width=>onChange({...layout,frameWidth:width})}/>}
+      </details>
+    </div>
+  </details>;
 }
