@@ -30,7 +30,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
-  const [showAllSourceColumns,setShowAllSourceColumns]=useState(!customizing&&!selectedView);
+  const [showAllSourceColumns,setShowAllSourceColumns]=useState(!customizing);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
