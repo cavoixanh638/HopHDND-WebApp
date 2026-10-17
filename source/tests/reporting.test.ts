@@ -1,8 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})}));
+import {ReportTable} from '../src/features/reports/ReportTable';
+import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
 
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
+  it('labels the first column according to selected grouping on all report tables',()=>{
+    const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
+    for(const choice of GROUP_OPTIONS){
+      for(const config of DEFAULT_REPORTS){
+        const tree=ReportTable({items:createDemoItems(5),config,group:choice.key,groupOrder:[],onSelect:()=>{}});
+        const table=nodes(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
+        expect(table).toBeDefined();
+        const columns=nodes(table).find(n=>n.type==='colgroup');
+        expect(nodes(columns).filter(n=>n.type==='col')[0].props.className).toBe('report-group-col');
+        const header=nodes(table).find(n=>n.type==='th'&&n.props?.scope==='col');
+        expect(header.props.children).toBe(choice.label);
+      }
+    }
+  });
   it('fixture không đặt Không phải xin ý kiến cho nội dung cần xin ý kiến', () => {
     for (const item of createDemoItems(100)) {
       if (item.partyLevel !== 'Không phải xin ý kiến') expect(item.progressParty).not.toBe('Không phải xin ý kiến');
