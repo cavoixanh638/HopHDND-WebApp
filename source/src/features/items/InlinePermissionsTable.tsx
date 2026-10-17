@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import type {EditableField, Item} from '../../../shared/types';
-import type {CellPermissions} from '../../data/firebase-repository';
+import {samePermissions,type CellPermissions} from '../../data/firebase-repository';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import {displayId} from '../../domain/display-id';
 
@@ -12,7 +12,7 @@ const clone = (p:CellPermissions):CellPermissions=>({
   rows:{...(p.rows??{})},
   cells:Object.fromEntries(Object.entries(p.cells??{}).map(([id,fields])=>[id,{...fields}]))
 });
-const hasDiff=(a:CellPermissions,b:CellPermissions)=>JSON.stringify(a)!==JSON.stringify(b);
+const hasDiff=(a:CellPermissions,b:CellPermissions)=>!samePermissions(a,b);
 const labelFor=(item:Item,key:EditableField):string=>{
   const value=item[key];
   return typeof value==='boolean'?(value?'Đã rút':'Đang trình'):String(value??'').slice(0,90)||'—';
@@ -40,8 +40,9 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
   const locked=disabled||saving;
   const dirty=hasDiff(draft,baseline.current);
   useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
-  const rowScopeChanged=JSON.stringify(draft.rows??{})!==JSON.stringify(baseline.current.rows??{})||
-    JSON.stringify(draft.cells??{})!==JSON.stringify(baseline.current.cells??{});
+  const rowScopeChanged=!samePermissions(
+    {columns:{},rows:draft.rows,cells:draft.cells},
+    {columns:{},rows:baseline.current.rows,cells:baseline.current.cells});
   const cols=useMemo(()=>columns.filter(c=>editable.has(c.key as EditableField)),[columns]);
   const effective=(id:string,key:EditableField)=>(draft.cells?.[id]?.[key]??draft.rows?.[id]??draft.columns[key])===true;
   const totalVisibleCells=items.length*cols.length;
@@ -83,7 +84,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onBack,
       setNotice('Đã lưu quyền vào Firebase. Thao tác sửa nghiệp vụ vẫn chỉ tạo nháp trên trình duyệt.');
       setConfirmSwitch(false);
       if(switchAfter)onBack();
-    }catch(cause){setError(cause instanceof Error?cause.message:'Không lưu được quyền. Phần sửa vẫn còn.');}
+    }catch(cause){setError((cause instanceof Error?cause.message:'Không lưu được quyền.')+' Nếu quyền không khớp, hãy Đọc lại dữ liệu và đối chiếu; bản nháp chưa bị xóa.');}
     finally{setSaving(false);}
   };
   const back=()=>{if(dirty){setConfirmSwitch(true);return;}setConfirmSwitch(false);onBack();};
