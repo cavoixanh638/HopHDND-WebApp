@@ -117,6 +117,21 @@ describe('drag-only widths and compact column manager',()=>{
     expect(onSaveCatalog.mock.invocationCallOrder[0]).toBeLessThan(onSavePermissions.mock.invocationCallOrder[0]);
     expect(onSavePermissions.mock.invocationCallOrder[0]).toBeLessThan(onSaveLayout.mock.invocationCallOrder[0]);
   });
+  it('reports the exact failed save section without claiming all changes were saved',async()=>{
+    const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
+    const onSaveLayout=vi.fn().mockRejectedValue(new Error('Firebase permission_denied'));
+    const props={layout,catalog,items,layoutDirty:true,onChange:vi.fn(),onSaveLayout};
+    hook.begin();
+    let tree=ItemColumnPanel(props);
+    button(tree,'Lưu thay đổi').props.onClick();
+    await vi.waitFor(()=>expect(onSaveLayout).toHaveBeenCalledOnce());
+    await vi.waitFor(()=>{
+      hook.begin();tree=ItemColumnPanel(props);
+      expect(all(tree).some(n=>n.props?.role==='alert'&&
+        String(n.props.children).includes('Chưa lưu được bố cục và độ rộng cột'))).toBe(true);
+    });
+    expect(button(tree,'Lưu thay đổi').props.disabled).toBe(false);
+  });
   it('checks permission per Excel column and requires explicit legacy row/cell reset on save',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
     const permissions={columns:{progressParty:false},rows:{legacy:true},cells:{}};
