@@ -75,7 +75,7 @@ export function ItemColumnPanel({layout,catalog,onChange,onOpenCatalog,validatio
               onChange={e=>update(column.key,{label:e.currentTarget.value,renamed:true})}/></label>
             <label className="field">Kiểu dữ liệu
               <select aria-label={`Kiểu dữ liệu ${column.key}`}
-                disabled={column.origin!=='custom'&&!editableSourceKeys.has(column.key as never)}
+                disabled={column.origin!=='custom'&&!CATALOG_KEYS.includes(column.key as CatalogKey)}
                 value={column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text')}
                 onChange={e=>update(column.key,{kind:e.currentTarget.value as 'text'|'select'})}>
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
