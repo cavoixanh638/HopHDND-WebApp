@@ -186,7 +186,7 @@ try{
         if(tables.length<2)return {ok:false,reason:'Missing report tables'};
         const headers=tables.map(table=>table.querySelector('thead th:first-child')?.textContent?.trim());
         const widths=tables.map(table=>table.querySelector('thead th:first-child')?.getBoundingClientRect().width);
-        return {ok:headers.every(text=>text==='Lãnh đạo Văn phòng')&&
+        return {ok:headers.every(text=>text==='Lãnh đạo VP')&&
           widths.every(width=>Math.abs(width-widths[0])<2),headers,widths};
       })()`);
       if(!reports.ok)throw Error('Report first-column heading/width mismatch: '+JSON.stringify(reports));
