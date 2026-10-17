@@ -192,6 +192,8 @@
 
 /* Sticky search controls and two table header rows on the grid's own scroll viewport. */
 .item-data-region .item-sticky-search-controls {position:sticky;top:0;z-index:8;padding:6px 0;background:#fff;box-shadow:0 2px 0 #e4eee8;}
+.source-column-visibility {display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:2px 0 5px;color:#5a7568;font-size:11px;}
+.source-column-visibility .button {min-height:28px;padding:4px 9px;font-size:11px;}
 .item-data-region .item-table-scroll {max-height:min(68vh,760px);overflow:auto;overscroll-behavior:contain;scroll-padding-top:88px;}
 .item-data-table thead .item-heading-row th {position:sticky;top:0;z-index:5;height:44px;max-height:44px;box-sizing:border-box;white-space:nowrap;background:#e5eee9;}
 .item-data-table thead .item-column-filter-row th {position:sticky;top:44px;z-index:5;height:43px;box-sizing:border-box;padding:4px 5px;background:#f7faf8;border-bottom:2px solid #bfd5c7;}
