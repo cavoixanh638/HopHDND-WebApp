@@ -47,9 +47,9 @@ describe('drag-only widths and compact column manager',()=>{
     const {tree}=panel(layout,onChange);
     button(tree,'+ Thêm cột').props.onClick();
     const created=onChange.mock.calls[0][0];
-    expect(created.columns).toHaveLength(19);
-    expect(created.columns[18]).toMatchObject({origin:'custom',kind:'text',visible:true,label:'Cột mới',values:{}});
-    expect(created.columns[18].key).toMatch(/^custom_/);
+    expect(created.columns).toHaveLength(16);
+    expect(created.columns[15]).toMatchObject({origin:'custom',kind:'text',visible:true,label:'Cột mới',values:{}});
+    expect(created.columns[15].key).toMatch(/^custom_/);
   });
   it('rejects malformed page dimensions at commit',()=>{
     expect(parseCommittedWidth('',320,6000)).toBeNull();
