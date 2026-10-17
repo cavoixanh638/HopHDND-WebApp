@@ -56,7 +56,6 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
             onChange={event=>onChange(withReportPageWidth(draft,event.currentTarget.checked?'auto':1920))}/>
           Tự động sử dụng toàn bộ chiều rộng màn hình
         </label>
-        <p className="muted">Chỉ áp dụng cho tab Tổng quan/Bảng báo cáo. Tab Danh sách dữ liệu có độ rộng riêng; thanh đầu trang không đổi vị trí. Lưu cấu hình để áp dụng chung.</p>
       </div>
       <div className="settings-grid">
         {draft.map((report, index) => {
