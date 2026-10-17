@@ -219,10 +219,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     </div></div>
     {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
      {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
-    <div className={'item-sticky-search-controls'+(Object.values(columnFilters).some(value=>value.trim())?' has-search':'')}>
-    {Object.values(columnFilters).some(value=>value.trim())&&<div className="item-filter-status-slot" role="status" aria-label="Các điều kiện tìm kiếm đang áp dụng">
-    <div className="active-filter-bar" aria-hidden={!Object.entries(columnFilters).some(([,term])=>term.trim())}>
-      {Object.entries(columnFilters).some(([,term])=>term.trim())&&<><strong>Đang tìm trong cột:</strong>{Object.entries(columnFilters).filter(([,term])=>term.trim()).map(([key,term])=><span className="filter-chip" key={key}>{columns.find(c=>c.key===key)?.label??key}: {term}<button type="button" className="chip-remove" aria-label={'Bỏ lọc '+key} onClick={()=>{setColumnFilters(old=>{const next={...old};delete next[key];return next;});}}>×</button></span>)}<button type="button" className="button ghost" onClick={()=>{setColumnFilters({});}}>Xóa tìm kiếm theo cột</button></>}</div></div>}
+    <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
     {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
