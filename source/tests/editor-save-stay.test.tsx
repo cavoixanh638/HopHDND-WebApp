@@ -36,9 +36,9 @@ describe('editor saves are separate from common View mode navigation',()=>{
   it('saves catalogs in-place, does not navigate, and resets the saved draft baseline',async()=>{
     const items=createDemoItems(2),config=catalogFromItems(items),onSave=vi.fn().mockResolvedValue(undefined),onClose=vi.fn();
     const view=CatalogSettings({sourceKey:'catalog-test',items,config,onSave,onClose,storageLabel:'Firebase'});
-    expect(labels(view)).toContain('Lưu Danh mục');
+    expect(labels(view)).toContain('Lưu giá trị lựa chọn');
     expect(labels(view)).not.toContain('Lưu danh mục và thoát');
-    const save=nodes(view).find(n=>n.type==='button'&&n.props.children==='Lưu Danh mục');
+    const save=nodes(view).find(n=>n.type==='button'&&n.props.children==='Lưu giá trị lựa chọn');
     await save.props.onClick();
     await Promise.resolve();
     expect(onSave).toHaveBeenCalledWith(config);
