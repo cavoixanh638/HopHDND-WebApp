@@ -25,7 +25,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void> }) {
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
@@ -67,9 +67,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
+  const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
   const exitAfterPermissions=useRef(false);
   const handledExitRequest=useRef(exitRequest);
-  useEffect(()=>{onDirtyChange?.(customizing&&(dirty||permissionDirty));},[customizing,dirty,permissionDirty,onDirtyChange]);
+  useEffect(()=>{onDirtyChange?.(customizing&&(dirty||permissionDirty||columnExtrasDirty));},[customizing,dirty,permissionDirty,columnExtrasDirty,onDirtyChange]);
   const locked=busy||saving||!!unmatchedCheckpoint&&customizing;
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;
@@ -113,11 +114,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   // the per-cell checker still enforces the live permission and lock state.
   const canEdit = canEditDraft && !permissionMode && (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
-  const latestExit=useRef({dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
+  const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
   const exit = () => {
     if(locked||dataSaving)return;
     if(permissionMode){exitAfterPermissions.current=true;setPermissionSwitchRequest(current=>current+1);return;}
-    if(dirty||Object.keys(drafts).length)setConfirmExit(true);
+    if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);
     else onClose();
   };
   useEffect(()=>{if(exitRequest===handledExitRequest.current)return;handledExitRequest.current=exitRequest;exit();},[exitRequest]);
@@ -203,7 +204,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
 </div>}
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} onOpenCatalog={onOpenCatalog} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
@@ -226,7 +227,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
       if(exitAfterPermissions.current){
         exitAfterPermissions.current=false;
-        if(dirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
+        if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key} disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<span draggable={false} className="column-resizer" role="separator" aria-label={`Kéo độ rộng cột ${column.label}`} aria-orientation="vertical" tabIndex={0} onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===column.key?{...entry,width:Math.min(1600,Math.max(60,entry.width+(event.key==='ArrowRight'?10:-10)))}:entry)}));}}} onPointerDown={event=>{resizing.current={key:column.key,x:event.clientX,width:column.width};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const drag=resizing.current;if(drag&&drag.key===column.key)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===drag.key?{...entry,width:Math.min(1600,Math.max(60,Math.round(drag.width+event.clientX-drag.x)))}:entry)}));}} onPointerUp={()=>{resizing.current=null;}} onPointerCancel={()=>{resizing.current=null;}}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
