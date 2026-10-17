@@ -77,7 +77,7 @@ describe('drag-only widths and compact column manager',()=>{
     expect(chooser.props.options).toEqual(catalog.options.progressParty);
     chooser.props.onChange([...chooser.props.options,'Thêm lựa chọn thử']);
     hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,onSaveCatalog});
-    const save=button(tree,'Lưu danh sách chọn');
+    const save=button(tree,'Lưu thay đổi');
     expect(save.props.disabled).toBe(false);
     save.props.onClick();
     await vi.waitFor(()=>expect(onSaveCatalog).toHaveBeenCalledOnce());
@@ -92,14 +92,14 @@ describe('drag-only widths and compact column manager',()=>{
     const grant=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
     expect(grant).toBeDefined();grant.props.onChange({currentTarget:{checked:true}});
     hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions});
-    let save=button(tree,'Lưu quyền cột');expect(save.props.disabled).toBe(false);
+    let save=button(tree,'Lưu thay đổi');expect(save.props.disabled).toBe(false);
     save.props.onClick();
     expect(onSavePermissions).not.toHaveBeenCalled();
     const legacy=all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning');
     expect(legacy).toBeDefined();
     all(legacy).find(n=>n.type==='input').props.onChange({currentTarget:{checked:true}});
     hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions});
-    save=button(tree,'Lưu quyền cột');save.props.onClick();
+    save=button(tree,'Lưu thay đổi');save.props.onClick();
     await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledOnce());
     expect(onSavePermissions.mock.calls[0][0]).toEqual({columns:{progressParty:true},rows:{},cells:{}});
     expect(onSavePermissions.mock.calls[0][1]).toEqual(permissions);
