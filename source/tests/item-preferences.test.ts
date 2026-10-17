@@ -26,6 +26,18 @@ describe('Bố trí cột danh sách', () => {
     expect(validated.columns[2].visible).toBe(false);
   });
 
+  it('migrates saved legacy Firebase layouts to include P/Q without losing column order, widths or visibility',()=>{
+    const old=defaultItemLayout();
+    old.columns=old.columns.filter(c=>c.key!=='partyMeeting'&&c.key!=='examined');
+    old.columns.reverse();
+    old.columns[0].width=399;
+    old.columns[0].visible=false;
+    const result=validateItemLayout(old);
+    expect(result.columns.slice(0,old.columns.length)).toEqual(old.columns);
+    expect(result.columns.slice(-2).map(c=>c.key)).toEqual(['partyMeeting','examined']);
+    expect(result.columns.slice(-2).every(c=>c.visible)).toBe(true);
+    expect(result.columns.length).toBe(defaultItemLayout().columns.length);
+  });
   it('kiểm tra giới hạn độ rộng bảng và cột', () => {
     const layout = defaultItemLayout();
     expect(validateItemLayout({ ...layout, tableWidth: 500 }).tableWidth).toBe(500);
