@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 79786c2633a76712f1bc56b1fabf68f08782cc94
+          ref: 8b1afd4b52e516144f75b99cdc2d918e1dd2f178
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -77,7 +77,7 @@ jobs:
           if(!html.includes('permission-action-bar')||!html.includes('permission-switch-confirm'))throw Error('Top save controls or safe switch missing');
           if(!html.includes('Hiển thị bảng'))throw Error('New Vietnamese layout label missing');
           if(!html.includes('guest-rights-hint'))throw Error('Guest permission explanation missing');
-          if(!html.includes('report-group-col'))throw Error('Fixed first reporting column missing');
+          if(!html.includes('report-group-col')||!html.includes('Lãnh đạo VP'))throw Error('Fixed grouping column or its new title missing');
           if(!html.includes('settings-hub-tabs')||!html.includes('options-group'))throw Error('Grouped persistent settings navigation missing');
           const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — UX (17/10/2026) · Khách sửa thử các ô được cấp quyền, bảng thống kê đồng nhất, chỉnh độ rộng toàn trang và gộp Cài đặt. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
