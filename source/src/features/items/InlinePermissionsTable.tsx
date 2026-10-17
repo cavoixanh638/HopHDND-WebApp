@@ -19,7 +19,7 @@ const labelFor=(item:Item,key:EditableField):string=>{
 };
 
 /** Inline table mode: all permission changes remain drafts until the admin saves with Firebase CAS. */
-export function InlinePermissionsTable({items,columns,permissions,onSave,onReload,onBack,onDirtyChange,switchRequest=0,disabled=false}:{
+export function InlinePermissionsTable({items,columns,permissions,onSave,onReload,onBack,onDirtyChange,switchRequest=0,disabled=false,showBackButton=true}:{
   items:Item[];
   columns:ReadonlyArray<PermissionColumn>;
   permissions:CellPermissions;
@@ -29,6 +29,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onReloa
   onDirtyChange?:(dirty:boolean)=>void;
   switchRequest?:number;
   disabled?:boolean;
+  showBackButton?:boolean;
 }){
   const baseline=useRef(clone(permissions));
   const [draft,setDraft]=useState<CellPermissions>(()=>clone(permissions));
@@ -149,7 +150,7 @@ export function InlinePermissionsTable({items,columns,permissions,onSave,onReloa
       <span className="permission-save-status" role="status">{dirty?'Có thay đổi quyền chưa lưu':'Quyền đang hiển thị đã được lưu'}</span>
       <div className="top-actions">
         {onReload&&<button type="button" className="button ghost" disabled={locked} onClick={()=>void reload()}>Đọc lại quyền Firebase</button>}
-        <button type="button" className="button ghost" disabled={locked} onClick={back}>Về giao diện bảng</button>
+        {showBackButton&&<button type="button" className="button ghost" disabled={locked} onClick={back}>Về giao diện bảng</button>}
         <button type="button" className="button ghost" disabled={locked||!dirty} onClick={revert}>Bỏ quyền chưa lưu</button>
         <button type="button" className="button primary" disabled={locked||!dirty||(rowScopeChanged&&!acknowledgeRows)} onClick={()=>void save()}>{saving?'Đang lưu quyền…':'Lưu quyền chỉnh sửa'}</button>
       </div>
