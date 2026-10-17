@@ -17,6 +17,9 @@ export interface Item {
   ubndLeader: string;
   specificProgress: string;
   note: string;
+  /** Optional source columns P/Q on the current A–R Excel file; read-only in WebApp. */
+  partyMeeting?: string;
+  examined?: string;
   isDropped: boolean;
   archivedAt: string | null;
   revision: number;
