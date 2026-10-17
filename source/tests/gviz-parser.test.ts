@@ -171,7 +171,7 @@ describe('parseGvizPayload', () => {
 
   it('rejects a bad header, too few columns, or an error status', () => {
     expect(() => parseGvizPayload(payload([row(['', '', 'Tên nội dung', 'Cơ quan'])]), 'bad-header')).toThrow(/không nhận diện/i);
-    expect(() => parseGvizPayload(payload([header()], 'ok', cols.slice(0, 15)), 'short-sheet')).toThrow(/15 cột/i);
+    expect(() => parseGvizPayload(payload([header()], 'ok', cols.slice(0, 15)), 'short-sheet')).toThrow(/cột Ghi chú|15 cột/i);
     expect(() => parseGvizPayload(payload([], 'error'), 'denied')).toThrow(/Không đọc được Sheets/i);
   });
 });
