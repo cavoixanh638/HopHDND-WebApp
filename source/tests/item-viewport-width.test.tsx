@@ -9,7 +9,7 @@ const hook=vi.hoisted(()=>({
     return [this.slots[id],(next:any)=>{this.slots[id]=typeof next==='function'?next(this.slots[id]):next;}];
   },
 }));
-vi.mock('react',()=>({useState:(value:any)=>hook.useState(value)}));
+vi.mock('react',()=>({useState:(value:any)=>hook.useState(value),useRef:(value:any)=>({current:value}),useEffect:vi.fn()}));
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {DeferredWidthInput,parseCommittedWidth} from '../src/features/items/DeferredWidthInput';
 import {defaultItemLayout} from '../src/data/item-preferences';
