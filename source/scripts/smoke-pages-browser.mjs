@@ -35,12 +35,15 @@ function send(method,params={}){
     setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(Error('CDP timeout: '+method));}},16000);
   });
 }
-const sourcePayload={status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[
-  {c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]},
+const sourcePayload={status:'ok',table:{cols:Array.from({length:18},()=>({})),rows:[
+  {c:Array.from({length:18},(_,i)=>({v:({
+    2:'Nội dung trình',3:'Sở, ngành',14:'Rút',15:'Họp Thành ủy/ xin ý kiến',
+    16:'Đã thẩm tra chưa',17:'Ghi chú'
+  })[i]??''}))},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','Ghi chú',false].map(v=>({v}))},
-  {c:['',2,'','','QPPL','','','','','','','','','','',false].map(v=>({v}))},
-  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','','',false].map(v=>({v}))}))
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','','Đã xin ý kiến','Đã thẩm tra','Ghi chú nguồn R'].map(v=>({v}))},
+  {c:['',2,'','','QPPL','','','','','','','','','','','','',''].map(v=>({v}))},
+  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','','','','',''].map(v=>({v}))}))
 ]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
@@ -107,6 +110,14 @@ try{
       !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
   })()`);
   if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
+  const fullExcelColumns=await evaluate(`(()=>{
+    const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.textContent?.trim()??'');
+    const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
+    return header.some(text=>text.includes('Họp Thành ủy'))&&header.includes('Đã thẩm tra chưa')&&
+      values.includes('Đã xin ý kiến')&&values.includes('Đã thẩm tra');
+  })()`);
+  if(!fullExcelColumns)throw Error('18-column Excel P/Q values absent from visible searchable list');
+
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
   if(visibleRows!==54)throw Error('All 54 Sheets records should render without 50-row pagination, got '+visibleRows);
   if(await evaluate("!!document.querySelector('.pagination')"))throw Error('Legacy pagination controls should be removed');
