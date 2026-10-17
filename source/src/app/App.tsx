@@ -157,8 +157,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
     catch{return itemLayout.frameWidth??'auto';}
   },[itemLayout,sourceKey,listPage]);
-  const layoutPending=common.status==='loading'||(isFirebase&&!firebase!.ready);
-  const layoutUnavailable=isFirebase&&common.status==='error';
+  const layoutPending=common.status==='loading'&&!(isFirebase&&!!firebase!.error) ||
+    (isFirebase&&!firebase!.ready&&!firebase!.error);
+  const layoutUnavailable=isFirebase&&(common.status==='error'||!!firebase!.error);
   const frameChoice=layoutPending||layoutUnavailable?'auto':page==='overview'||page==='customize'
     ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
     :listPage?(listFramePreview??viewFrameWidth):'auto';
