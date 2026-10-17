@@ -36,6 +36,17 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       }
     }
   });
+  it('excludes rows marked Không in Excel party-level F or Không phải xin ý kiến in G',()=>{
+    const seed=createDemoItems(4).map(x=>({...x,isDropped:false,archivedAt:null}));
+    seed[0].partyLevel='Không';
+    seed[1].partyLevel='Không phải xin ý kiến';
+    seed[2].partyLevel='BTV TU';seed[2].progressParty='Không phải xin ý kiến';
+    seed[3].partyLevel='BTV TU';seed[3].progressParty='Sở chưa trình';
+    const report=aggregateReport(seed,DEFAULT_REPORTS[0],'department');
+    expect(report.total).toBe(1);
+    expect(report.items[0].recordId).toBe(seed[3].recordId);
+    expect(report.rows.size).toBe(1);
+  });
   it('fixture không đặt Không phải xin ý kiến cho nội dung cần xin ý kiến', () => {
     for (const item of createDemoItems(100)) {
       if (item.partyLevel !== 'Không phải xin ý kiến') expect(item.progressParty).not.toBe('Không phải xin ý kiến');
