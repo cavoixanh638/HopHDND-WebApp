@@ -445,3 +445,16 @@
 .column-save-button{font-size:14px!important;font-weight:750!important;min-height:42px;padding:10px 24px!important;white-space:nowrap}
 .column-save-success{margin:0;color:#286142;font-size:12px;font-weight:650}
 .column-manager-options{grid-column:1/-1}
+
+/* Compact list heading for guests and administrators: no unused filter-chip reserve. */
+.item-data-region .card-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 16px;margin-bottom:8px}
+.item-header-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 12px}
+.item-header-actions .source-column-visibility{padding:0;margin:0;justify-content:flex-end}
+.item-header-actions .status-pill{white-space:nowrap}
+.item-data-region .item-sticky-search-controls{padding:0;background:transparent;box-shadow:none}
+.item-data-region .item-sticky-search-controls:not(.has-search){min-height:0;height:0;overflow:visible;padding:0;margin:0}
+.item-data-region .item-filter-status-slot{height:auto;min-height:31px;margin:0 0 5px}
+.app-shell.guest-view .item-list-card{padding:12px 14px}
+.app-shell.guest-view .item-data-region .card-header{margin-bottom:8px;min-height:0}
+.app-shell.guest-view .item-data-region .item-sticky-search-controls{padding:0}
+@media(max-width:620px){.item-header-actions{justify-content:flex-start}.item-data-region .card-header{align-items:flex-start;flex-direction:column}}
