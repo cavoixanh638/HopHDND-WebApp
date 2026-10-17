@@ -1,4 +1,11 @@
-export interface ItemColumn { key: string; label: string; width: number; visible: boolean }
+export interface ItemColumn {
+  key:string; label:string; width:number; visible:boolean;
+  /** Excel source columns retain their mapping, even when hidden or removed from the table. */
+  origin?:'custom'; removed?:boolean; renamed?:boolean;
+  kind?:'text'|'select'; options?:string[];
+  /** Independent column values keyed by stable app row ID; never written to Excel. */
+  values?:Record<string,string>;
+}
 export interface ItemLayout { columns: ItemColumn[]; tableWidth: number; frameWidth?: 'auto'|number }
 
 /** Exact A–R structure of the source tab "Các nội dung trình HĐND".
@@ -47,8 +54,10 @@ export function validateItemLayout(value:unknown):ItemLayout{
   // Remove it rather than rejecting the entire saved profile. Do not touch audit data.
   const validSourceColumns=input.columns.filter(c=>!oldUiOnly.has(c.key));
   const keys=validSourceColumns.map(c=>c.key);
-  if(new Set(keys).size!==keys.length||keys.some(key=>!expected.has(key)))
-    throw new Error('Danh sách cột không hợp lệ hoặc bị trùng.');
+  if(new Set(keys).size!==keys.length)throw new Error('Danh sách cột không hợp lệ hoặc bị trùng.');
+  const customKeys=keys.filter(key=>!expected.has(key));
+  if(customKeys.length>20||customKeys.some(key=>!/^custom_[a-zA-Z0-9_-]{8,36}$/.test(key)))
+    throw new Error('Tối đa 20 cột tự tạo, mã cột phải hợp lệ.');
   // P/Q were introduced later; append any newly supported Excel columns without
   // discarding the user's prior order, visibility, widths, and separate permissions.
   const missing=defaults.columns.filter(col=>!keys.includes(col.key));
@@ -57,16 +66,46 @@ export function validateItemLayout(value:unknown):ItemLayout{
   if(missing.some(col=>col.key!=='partyMeeting'&&col.key!=='examined'))
     throw new Error('Thiếu cột bắt buộc trong cấu hình A–R.');
   const withMissing=[...validSourceColumns,...missing];
-  if(withMissing.length!==EXCEL_SOURCE_COLUMNS.length)
+  if(withMissing.length!==EXCEL_SOURCE_COLUMNS.length+customKeys.length)
     throw new Error('Danh sách cột cần đủ các cột A–R của nguồn Excel.');
   const columns=withMissing.map(column=>{
     const base=defaults.columns.find(entry=>entry.key===column.key);
-    if(!base||typeof column.visible!=='boolean'||!Number.isInteger(column.width)||
-      column.width<60||column.width>1600)
+    if(typeof column.visible!=='boolean'||!Number.isInteger(column.width)||
+       column.width<60||column.width>1600)
       throw new Error('Độ rộng cột cần từ 60 đến 1600 px.');
-    return {...base,width:column.width,visible:column.visible};
+    const isCustom=!base;
+    if(isCustom&&column.origin!=='custom')
+      throw new Error('Cột tự tạo phải có nguồn độc lập với Excel.');
+    if(typeof column.label!=='string'||!column.label.trim()||column.label.length>100)
+      throw new Error('Tên cột cần từ 1 đến 100 ký tự.');
+    const kind=column.kind??'text';
+    if(kind!=='text'&&kind!=='select')throw new Error('Kiểu giá trị của cột không hợp lệ.');
+    const options=column.options??[];
+    if(!Array.isArray(options)||options.length>50||
+       options.some(v=>typeof v!=='string'||!v.trim()||v.length>100)||
+       new Set(options).size!==options.length)
+      throw new Error('Danh sách lựa chọn trùng hoặc không hợp lệ (tối đa 50).');
+    const values:Record<string,string>={};
+    if(isCustom){
+      if(column.values!==undefined&&(!column.values||typeof column.values!=='object'||Array.isArray(column.values)))
+        throw new Error('Dữ liệu cột tự tạo không hợp lệ.');
+      for(const [id,value] of Object.entries(column.values??{})){
+        if(!/^[a-zA-Z0-9_:-]{1,200}$/.test(id)||typeof value!=='string'||value.length>1000)
+          throw new Error('Dữ liệu cột tự tạo có hàng hoặc giá trị không hợp lệ.');
+        if(value)values[id]=value;
+      }
+      if(Object.keys(values).length>1000)throw new Error('Cột tự tạo vượt quá 1.000 dòng.');
+    }
+    return {...(base??{key:column.key,label:column.label,width:170,visible:true}),
+      width:column.width,visible:column.visible,
+      ...(isCustom?{origin:'custom' as const,values}:{ }),
+      ...(column.removed?{removed:true}:{}),
+      ...(column.renamed?{renamed:true,label:column.label.trim()}:isCustom?{label:column.label.trim()}:{}),
+      ...(column.kind?{kind}:{ }),
+      ...(kind==='select'?{options}:{}),
+    };
   });
-  if(!columns.some(column=>column.visible))
+  if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
   return {columns,tableWidth:input.tableWidth,frameWidth};
 }
