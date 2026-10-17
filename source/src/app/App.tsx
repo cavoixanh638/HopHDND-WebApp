@@ -51,6 +51,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const workspace = useWorkspace(repository, sourceKey);
   const [page, setPage] = useState<Page>('overview');
   const [editorUnsaved,setEditorUnsaved]=useState(false);
+  const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   const [editorExitRequest,setEditorExitRequest]=useState(0);
   const [catalogField,setCatalogField]=useState<CatalogKey|undefined>(undefined);
   // null means the list has not reported its own active width yet; 'auto' is an explicit setting.
@@ -157,9 +158,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
     catch{return itemLayout.frameWidth??'auto';}
   },[itemLayout,sourceKey,listPage]);
-  const layoutPending=common.status==='loading'&&!(isFirebase&&!!firebase!.error) ||
-    (isFirebase&&!firebase!.ready&&!firebase!.error);
-  const layoutUnavailable=isFirebase&&(common.status==='error'||!!firebase!.error);
+  const layoutPending=!allowTemporaryLayout&&(common.status==='loading'||(isFirebase&&!firebase!.ready&&!firebase!.error));
+  const layoutUnavailable=!allowTemporaryLayout&&isFirebase&&(common.status==='error'||!!firebase!.error);
   const frameChoice=layoutPending||layoutUnavailable?'auto':page==='overview'||page==='customize'
     ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
     :listPage?(listFramePreview??viewFrameWidth):'auto';
@@ -173,8 +173,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     <div className="demo-banner"><strong>{sourceLabel}</strong>{anonymousVisitor?' · Tự cập nhật mỗi 60 giây.':isDemo ? ' · Lưu chỉ giữ trong phiên thử; mở lại app sẽ dùng nguồn Sheets đã chọn.' : <> · Làm mới mỗi 60 giây khi trang đang hoạt động. Cập nhật nội dung trong <a href={configured.url} target="_blank" rel="noopener noreferrer">{isFirebase?'Google Sheets nguồn':'file Excel nguồn'}</a>.</>} {isFirebase&&!anonymousVisitor && <> · GID <code>{configured.gid}</code> · <button type="button" className="button ghost" disabled={workspace.busy || dirtyCount > 0} onClick={() => {const original=parseSheetConfig(DEFAULT_SHEET_URL);clearSheetConfig();setConfigured(original);setRepository(new SheetsRepository(original));setLayoutMessage('Đã chọn lại nguồn mặc định của ứng dụng; đang tải lại dữ liệu.');}}>Dùng lại nguồn mặc định</button></>}</div>
     {isFirebase&&!anonymousVisitor&&<p className="muted">{firebase!.user?.isAnonymous?'Khách ẩn danh':firebase!.user?.email}{firebase!.isAdmin?' · Quản trị':''}{firebase!.editingLocked?' · Đang khóa sửa trên WebApp':''}{firebase!.emulator?' · KIỂM THỬ LOCAL, KHÔNG DÙNG FIREBASE THẬT':''}</p>}{viewerLabel&&<p className="muted">Đang dùng tài khoản Google: {viewerLabel}</p>}<nav className="nav-tabs" aria-label="Điều hướng">{([['overview', 'Tổng quan'], ['items', 'Danh sách nội dung']] as const).map(([key, title]) => <button disabled={editingPage} className={page === key ? 'active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => {setListFramePreview(null);setPage(key);}}>{title}</button>)}</nav>
     <main>
-      {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">Đang tải cấu hình cách hiển thị…</div>:
-      layoutUnavailable?<div className="layout-loading-placeholder" role="alert">Chưa đọc được bố cục đã lưu từ Firebase. Hãy kiểm tra kết nối hoặc tải lại; chưa hiển thị bố cục mặc định để tránh ghi đè nhầm.</div>:<>
+      {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">
+        <span>Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.</span>
+        <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
+      </div>:
+      layoutUnavailable?<div className="layout-loading-placeholder" role="alert">
+        <span>Chưa đọc được bố cục đã lưu từ Firebase. Không tự áp dụng cấu hình mặc định.</span>
+        <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
+      </div>:<>
       <div className="page-heading"><div><p className="eyebrow">TỔNG HỢP NỘI DUNG TRÌNH</p><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page === 'overview' ? 'Theo dõi tiến độ' : page === 'items' ? 'Danh sách làm việc' : page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page === 'connection' ? (isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu') : page==='transfer'?'Nhập / Xuất Excel' : page === 'customize' ? 'Tùy chỉnh bảng báo cáo' : (page === 'items-customize'||page==='items-permissions'||page==='catalogs') ? 'Quản lý cột' : 'Theo dõi tiến độ'}</h1></div><span className="muted">{workspace.busy ? 'Đang đọc dữ liệu…' : workspace.loadedAt ? `Đọc thành công: ${workspace.loadedAt}` : 'Chưa đọc được dữ liệu'}</span></div>
       {!anonymousVisitor&&(['customize','items-customize','items-permissions','catalogs'].includes(page))&&<><nav className="settings-hub-tabs" aria-label="Nhóm chỉnh sửa chính">
         <button type="button" className={page==='customize'?'active':''} aria-current={page==='customize'?'page':undefined} onClick={event=>openOptions('customize',event)} disabled={!canCustomize}>Bảng thống kê</button>
