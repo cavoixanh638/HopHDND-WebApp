@@ -128,7 +128,23 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
   .data-table {  width:100%; min-width:950px; border-collapse:separate; border-spacing:0; color:#293b34; font-size:13px;
   line-height:1.45;
    text-align:left}
-.report-table {  min-width:700px}
+.report-table { min-width:700px; table-layout:fixed; }
+.report-table .report-group-col {width:230px;}
+.report-table thead tr > th:first-child,
+.report-table tbody tr > th:first-child,
+.report-table tfoot tr > th:first-child {
+  width:230px;
+  min-width:230px;
+  max-width:230px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+@media(max-width:700px) {
+  .report-table .report-group-col {width:200px;}
+  .report-table thead tr > th:first-child,
+  .report-table tbody tr > th:first-child,
+  .report-table tfoot tr > th:first-child {width:200px;min-width:200px;max-width:200px;}
+}
   .data-table th,.report-table th {  position:sticky; z-index:1; top:0; padding:10px 11px; color:#456057; background:#f1f5f2;
   border-bottom:1px solid #d6e0d9; font-size:12px; font-weight:700;
     white-space:nowrap}
