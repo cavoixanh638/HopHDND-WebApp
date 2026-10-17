@@ -117,6 +117,32 @@ try{
       values.includes('Đã xin ý kiến')&&values.includes('Đã thẩm tra');
   })()`);
   if(!fullExcelColumns)throw Error('18-column Excel P/Q values absent from visible searchable list');
+  const all18=await evaluate(`(()=>{
+    const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
+      .map(el=>el.getAttribute('data-filter-key'));
+    const headings=[...document.querySelectorAll('.item-heading-row th')]
+      .map(el=>el.textContent??'');
+    const button=document.querySelector('.source-column-visibility button');
+    return keys.length===18&&
+      ['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note']
+        .every(key=>keys.includes(key))&&
+      headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
+      headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
+      headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&
+      button?.getAttribute('aria-pressed')==='true';
+  })()`);
+  if(!all18)throw Error('Default Excel viewer must show all 18 source columns including G/H/I');
+  const customVisibility=await evaluate(`(()=>{
+    const button=document.querySelector('.source-column-visibility button');
+    if(!button)return false;
+    button.click();
+    const reduced=document.querySelectorAll('.item-column-filter-row [data-filter-key]').length;
+    button.click();
+    const restored=document.querySelectorAll('.item-column-filter-row [data-filter-key]').length;
+    return reduced<18&&restored===18;
+  })()`);
+  if(!customVisibility)throw Error('Viewer cannot switch between complete Excel and saved custom column layouts');
+
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
   if(visibleRows!==54)throw Error('All 54 Sheets records should render without 50-row pagination, got '+visibleRows);
