@@ -33,3 +33,4 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(aggregateReport([item], DEFAULT_REPORTS[2], 'department').rows.has('__proto__')).toBe(true);
   });
 });
+
