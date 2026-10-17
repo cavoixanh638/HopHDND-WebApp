@@ -49,7 +49,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
   const columns = activeLayout.columns
-    .filter(column=>column.visible||(!customizing&&showAllSourceColumns))
+    .filter(column=>EXCEL_COLUMN_KEYS.includes(column.key) &&
+      (column.visible||(!customizing&&showAllSourceColumns)))
     .sort((a,b)=>!customizing&&showAllSourceColumns
       ?EXCEL_COLUMN_KEYS.indexOf(a.key)-EXCEL_COLUMN_KEYS.indexOf(b.key):0);
   const [confirmExit,setConfirmExit] = useState(false);
