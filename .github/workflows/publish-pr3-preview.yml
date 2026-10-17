@@ -62,10 +62,10 @@ jobs:
           const html=readFileSync(src,'utf8');
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
-          if(!html.includes('Cột và độ rộng bảng'))throw Error('Old layout UI detected');
-          if(!html.includes('Độ rộng trang Danh sách dữ liệu (px)'))throw Error('Viewport input absent');
+          if(!html.includes('Quản lý cột'))throw Error('Field manager UI absent');
+          if(!html.includes('Chiều rộng trang Danh sách'))throw Error('Independent list page width control absent');
           if(!html.includes('Không lưu được cách hiển thị.'))throw Error('Save feedback is absent');
-          if(!html.includes('Enter hoặc rời ô để áp dụng'))throw Error('Deferred width input hint absent');
+          if(!html.includes('Kéo cạnh tiêu đề trên bảng'))throw Error('Drag-to-resize hint absent');
           if(!html.includes('layout-inline-error'))throw Error('In-panel width warning missing');
           if(!html.includes('item-data-region'))throw Error('Separated table viewport missing');
           if(!html.includes('Giải quyết xung đột cách hiển thị')||!html.includes('Xác nhận lựa chọn và lưu'))throw Error('Explicit Firebase conflict resolution UI absent');
@@ -83,7 +83,7 @@ jobs:
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
           if(!html.includes('--page-content-width'))throw Error('Independent page content width missing');
           if(!html.includes('report-page-width-controls'))throw Error('Dedicated report tab sizing CSS missing');
-          if(!html.includes('Hiện tất cả cột Excel'))throw Error('One-click show all source columns missing');
+          if(!html.includes('Hiện đủ 18 cột Excel'))throw Error('One-click show all source columns missing');
           if(!html.includes('source-column-visibility')||!html.includes('Theo cột đã chọn')||!html.includes('Hiện đủ cột Excel'))throw Error('Complete A-R viewer or saved column toggle missing');
           if(!html.includes('EXCEL_SOURCE_COLUMNS')&&!html.includes('Loại VB (HC/QPPL/BC)'))throw Error('Canonical 18-field Excel A-R schema missing');
           if(!html.includes('Xem lịch sử chỉnh sửa'))throw Error('Audit action no longer accessible from ID cell');
