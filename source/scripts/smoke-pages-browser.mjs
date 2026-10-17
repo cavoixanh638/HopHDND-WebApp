@@ -233,10 +233,10 @@ try{
   const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]');input?.focus();return !!input})()`);
   if(!started)throw Error('Column filter UI is missing');
   await send('Input.insertText',{text:'Không khớp'});
-  await eventually("document.querySelector('.active-filter-bar')?.textContent?.includes('Không khớp')===true",'Active filter chip not shown');
+  await eventually("document.querySelector('input[aria-label=\"Tìm kiếm cột Nội dung trình\"]')?.value==='Không khớp'",'Direct column filter value not shown');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",'Column filtering does not restrict the list');
   await assertStable('no matching rows');
-  await evaluate("([...document.querySelectorAll('button')].find(b=>b.textContent==='Xóa tìm kiếm theo cột'))?.click()");
+  await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
   await assertStable('clearing column search');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
