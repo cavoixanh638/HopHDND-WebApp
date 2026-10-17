@@ -11,7 +11,7 @@ const canonical = (value: string) => value.trim().toLocaleLowerCase('vi');
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
   return items.filter(item => isActive(item) && (
     config.source === 'all' ||
-    (config.source === 'party' && item.partyLevel !== 'Không phải xin ý kiến') ||
+    (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
     (config.source === 'nq' && item.documentKind === 'NQ') ||
     (config.source === 'bc' && item.documentKind === 'BC')
   ));
