@@ -220,7 +220,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.isAdmin=true;render();respond();await settle();
     const tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.props?.className==='settings-sub-tabs')).toBe(false);
-    expect(nodes(tree).some(n=>n.props?.className==='settings-section')).toBe(true);
+    expect(nodes(tree).some(n=>n.props?.className==='settings-section')).toBe(false);
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.permissionModeOnly).toBe(false);
     expect(list.props.onPersistCatalog).toBeInstanceOf(Function);
