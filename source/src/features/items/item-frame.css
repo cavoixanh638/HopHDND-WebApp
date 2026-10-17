@@ -461,3 +461,23 @@
 
 /* Keep active column filters entirely inside the fixed header search row. */
 .item-data-region .item-sticky-search-controls:has(.layout-visibility){height:auto;min-height:30px;overflow:visible;padding:4px 0}
+
+/* Editor: keep source content adjacent to the column options without
+   forcing a long 15-column configuration roster above the data grid. */
+.app-shell.settings-page .item-list-card > .settings-saving {display:block;margin:0 0 7px;padding:0;}
+.app-shell.settings-page .item-list-card .column-manager {margin-bottom:7px;box-shadow:none;}
+.app-shell.settings-page .column-manager-heading {padding:9px 12px 5px;}
+.app-shell.settings-page .column-manager-body {padding:4px 10px 9px;gap:7px;}
+.app-shell.settings-page .column-manager-grid {
+  max-height:clamp(260px,42vh,420px);
+  overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;
+  align-content:start;padding:2px 4px 2px 0;
+}
+.app-shell.settings-page .column-manager-row {padding:5px 8px;gap:6px;}
+.app-shell.settings-page .item-data-region {margin-top:0;}
+.app-shell.settings-page .item-data-region .card-header {min-height:0;margin-bottom:5px;}
+.app-shell.settings-page .item-list-card {padding-top:10px;padding-bottom:10px;}
+.app-shell.settings-page .column-manager-savebar {padding:8px 12px;}
+@media (max-width:700px) {
+  .app-shell.settings-page .column-manager-grid {max-height:clamp(240px,42vh,370px);}
+}
