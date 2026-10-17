@@ -26,6 +26,14 @@ describe('independent table fields and values',()=>{
       key:'progressParty',label:'Tình hình trình TU',renamed:true,removed:true,visible:false,
     });
   });
+
+  it('removes duplicate saved options for source fields but preserves options for custom columns',()=>{
+    const base=defaultItemLayout();
+    base.columns[6]={...base.columns[6],kind:'select',options:['Bộ lựa chọn cũ']};
+    const normalized=validateItemLayout({...base,columns:[...base.columns,custom()]});
+    expect(normalized.columns[6].options).toBeUndefined();
+    expect(normalized.columns.at(-1)?.options).toEqual(['Chưa làm','Đang làm','Hoàn thành']);
+  });
   it('preserves source data after a previously renamed label when no rename flag exists',()=>{
     const base=defaultItemLayout();
     base.columns[13].label='Tiến độ cụ thể'; // previous client label
