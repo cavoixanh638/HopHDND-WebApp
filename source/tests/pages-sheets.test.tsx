@@ -60,7 +60,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.common.status='loading';
     let tree=render();
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
-    expect(text(tree)).toContain('Đang tải cấu hình cách hiển thị');
+    expect(text(tree)).toContain('Đang tải bố cục đã lưu');
     firebase.common.status='ready';
     respond();await settle();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
