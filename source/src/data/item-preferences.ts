@@ -101,7 +101,9 @@ export function validateItemLayout(value:unknown):ItemLayout{
       ...(column.removed?{removed:true}:{}),
       ...(column.renamed?{renamed:true,label:column.label.trim()}:isCustom?{label:column.label.trim()}:{}),
       ...(column.kind?{kind}:{ }),
-      ...(kind==='select'?{options}:{}),
+      // Excel fields take their dropdown options from catalog.options only.
+      // Discard legacy per-column copies to avoid two competing value lists.
+      ...(kind==='select'&&isCustom?{options}:{}),
     };
   });
   if(!columns.some(column=>column.visible&&!column.removed))
