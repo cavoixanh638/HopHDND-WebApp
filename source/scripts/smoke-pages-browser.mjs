@@ -35,18 +35,16 @@ function send(method,params={}){
     setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(Error('CDP timeout: '+method));}},16000);
   });
 }
-const sourcePayload={status:'ok',table:{cols:Array.from({length:18},()=>({})),rows:[
-  {c:Array.from({length:18},(_,i)=>({v:({
-    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB (HC/QPPL/BC',5:'Cấp cho ý kiến',
+const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),rows:[
+  {c:Array.from({length:15},(_,i)=>({v:({
+    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB (HC/QPPL/BC',5:'Cấp Thành ủy cho ý kiến',
     6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
-    8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',
-    14:'Rút',15:'Họp Thành ủy/ xin ý kiến',
-    16:'Đã thẩm tra chưa',17:'Ghi chú'
+    8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
   })[i]??''}))},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','Sở đang thực hiện','','Đã xin ý kiến','Đã thẩm tra','Ghi chú nguồn R'].map(v=>({v}))},
-  {c:['',2,'','','QPPL','','','','','','','','','','','','',''].map(v=>({v}))},
-  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','','','','',''].map(v=>({v}))}))
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
+  {c:['',2,'','','QPPL','','','','','','','','','',''].map(v=>({v}))},
+  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','',''].map(v=>({v}))}))
 ]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
@@ -116,11 +114,13 @@ try{
   const fullExcelColumns=await evaluate(`(()=>{
     const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.textContent?.trim()??'');
     const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
-    return header.some(text=>text.includes('Họp Thành ủy'))&&header.includes('Đã thẩm tra chưa')&&
-      values.includes('Đã xin ý kiến')&&values.includes('Đã thẩm tra');
+    return header.includes('Cấp Thành ủy cho ý kiến')&&
+      header.includes('Tiến độ hiện tại')&&header.includes('Ghi chú')&&
+      !header.includes('Đã thẩm tra chưa')&&
+      values.includes('Sở đang thực hiện')&&values.includes('Ghi chú nguồn O');
   })()`);
-  if(!fullExcelColumns)throw Error('18-column Excel P/Q values absent from visible searchable list');
-  const all18=await evaluate(`(()=>{
+  if(!fullExcelColumns)throw Error('Current 15-column E/F/G/N/O source values missing from viewer');
+  const all15=await evaluate(`(()=>{
     const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
       .map(el=>el.getAttribute('data-filter-key'));
     const headings=[...document.querySelectorAll('.item-heading-row th')]
@@ -128,25 +128,25 @@ try{
     const button=document.querySelector('.source-column-visibility button');
     const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
       'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
-      'specificProgress','isDropped','partyMeeting','examined','note'];
-    return keys.length===18&&JSON.stringify(keys)===JSON.stringify(expected)&&
+      'specificProgress','note'];
+    return keys.length===15&&JSON.stringify(keys)===JSON.stringify(expected)&&
       !keys.includes('history')&&
-      headings.some(x=>x.trim()==='Rút')&&
+      !headings.some(x=>x.trim()==='Rút')&&headings.includes('Cấp Thành ủy cho ý kiến')&&headings.includes('Tiến độ hiện tại')&&
       !headings.some(x=>x.includes('Trình / Rút'))&&
-      ['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note']
+      ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note']
         .every(key=>keys.includes(key))&&
       headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&
       button?.getAttribute('aria-pressed')==='true';
   })()`);
-  if(!all18)throw Error('Default Excel viewer must show all 18 source columns including G/H/I');
+  if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
     if(!button)return false;
     button.click();return true;
   })()`))throw Error('Missing viewer column switch button');
-  // New source layouts display all A–R by default, even in saved mode.
+  // New source layouts display all A–O by default, even in saved mode.
   // The control must switch state, not manufacture missing columns in a fresh layout.
   await eventually("document.querySelector('.source-column-visibility button')?.getAttribute('aria-pressed')==='false'",
     'Saved column selection toggle did not switch state');
@@ -155,8 +155,8 @@ try{
     if(!button)return false;
     button.click();return true;
   })()`))throw Error('Cannot restore full column view');
-  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length===18",
-    'Returning to full A–R columns did not restore the source view');
+  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length===15",
+    'Returning to full A–O columns did not restore the source view');
 
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
