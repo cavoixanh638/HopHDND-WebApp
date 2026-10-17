@@ -2,7 +2,8 @@ import * as XLSX from 'xlsx';
 import { TEXT_FIELDS } from '../../shared/field-definitions';
 import type { Item } from '../../shared/types';
 
-const HEADERS = ['recordId', 'displayCode', 'stt', 'documentKind', ...TEXT_FIELDS.map(field => field.key), 'isDropped', 'archivedAt'] as const;
+const OLD_HEADERS = ['recordId', 'displayCode', 'stt', 'documentKind', ...TEXT_FIELDS.map(field => field.key), 'isDropped', 'archivedAt'] as const;
+const HEADERS = ['recordId', 'displayCode', 'stt', 'documentKind', ...TEXT_FIELDS.map(field => field.key), 'partyMeeting', 'examined', 'isDropped', 'archivedAt'] as const;
 const REQUIRED = new Set(['recordId', 'displayCode', 'stt', 'documentKind', 'content']);
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 1000;
@@ -18,7 +19,7 @@ export function createExcel(items: Item[]): Uint8Array {
     if (codes.has(item.displayCode)) throw new Error(`displayCode bị trùng: ${item.displayCode}`);
     ids.add(item.recordId);
     codes.add(item.displayCode);
-    return HEADERS.map(key => item[key as keyof Item]);
+    return HEADERS.map(key => item[key as keyof Item]??(key==='partyMeeting'||key==='examined'?'':null));
   });
   const sheet = XLSX.utils.aoa_to_sheet([HEADERS as unknown as string[], ...rows]);
   // Explicit string cell types keep user text such as "=SUM(...)" from becoming formulas.
@@ -56,19 +57,22 @@ export function readExcel(input: ArrayBuffer | Uint8Array): { items: Item[]; war
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null, blankrows: false });
   if (!rows.length) throw new Error('Trang tính Excel đang trống.');
   const headers = rows[0].map(value => typeof value === 'string' ? value : String(value ?? ''));
-  if (headers.length !== HEADERS.length || HEADERS.some((header, index) => headers[index] !== header)) {
+  const currentFormat=headers.length===HEADERS.length&&HEADERS.every((header,index)=>headers[index]===header);
+  const legacyFormat=headers.length===OLD_HEADERS.length&&OLD_HEADERS.every((header,index)=>headers[index]===header);
+  if(!currentFormat&&!legacyFormat){
     const known = new Set(HEADERS as readonly string[]);
     if (!headers.includes('recordId') || headers.some(header => !known.has(header))) {
       throw new Error('Định dạng Excel cũ hoặc không được hỗ trợ. Hãy tải mẫu Excel hiện tại rồi nhập dữ liệu vào mẫu đó.');
     }
     throw new Error('Tiêu đề cột không khớp mẫu Excel hiện tại. Hãy dùng tệp được tải từ ứng dụng.');
   }
+  const activeHeaders=currentFormat?HEADERS:OLD_HEADERS;
   const dataRows = rows.slice(1).filter(row => row.some(value => value !== null && value !== ''));
   if (dataRows.length > MAX_ROWS) throw new Error('Tệp Excel không được vượt quá 1.000 dòng.');
   const ids = new Set<string>();
   const codes = new Set<string>();
   const items = dataRows.map((row, rowIndex) => {
-    const values = Object.fromEntries(HEADERS.map((key, index) => [key, row[index]])) as Record<string, unknown>;
+    const values = Object.fromEntries(activeHeaders.map((key, index) => [key, row[index]])) as Record<string, unknown>;
     for (const key of REQUIRED) if (values[key] === null || values[key] === '') throw rowError(rowIndex, `${key} không được để trống.`);
     const recordId = values.recordId;
     const displayCode = values.displayCode;
@@ -92,7 +96,15 @@ export function readExcel(input: ArrayBuffer | Uint8Array): { items: Item[]; war
     if (!(text.content ?? '').trim()) throw rowError(rowIndex, 'content không được để trống.');
     ids.add(recordId);
     codes.add(displayCode);
-    return { recordId, displayCode, stt, documentKind, ...text, isDropped: values.isDropped, archivedAt: archivedAt === null || archivedAt === '' ? null : archivedAt, revision: 1 } as Item;
+    const extra=(key:'partyMeeting'|'examined')=>{
+      const value=values[key];
+      if(value==null||value==='')return '';
+      if(typeof value!=='string')throw rowError(rowIndex,`${key} phải là văn bản.`);
+      return value;
+    };
+    return {recordId,displayCode,stt,documentKind,...text,partyMeeting:extra('partyMeeting'),
+      examined:extra('examined'),isDropped:values.isDropped,
+      archivedAt:archivedAt===null||archivedAt===''?null:archivedAt,revision:1} as Item;
   });
   return { items, warnings: [] };
 }
@@ -104,6 +116,8 @@ function validateItem(item: Item): void {
   if (!['NQ', 'BC', 'UNCLASSIFIED'].includes(item.documentKind)) throw new Error('documentKind không hợp lệ.');
   if (typeof item.isDropped !== 'boolean' || (item.archivedAt !== null && typeof item.archivedAt !== 'string')) throw new Error('Trạng thái Excel không hợp lệ.');
   for (const field of TEXT_FIELDS) if (typeof item[field.key] !== 'string') throw new Error(`${field.key} phải là văn bản.`);
+  for (const key of ['partyMeeting','examined'] as const)
+    if(item[key]!==undefined && typeof item[key]!=='string')throw new Error(`${key} phải là văn bản.`);
   if (!item.content.trim()) throw new Error('content không được để trống.');
 }
 
