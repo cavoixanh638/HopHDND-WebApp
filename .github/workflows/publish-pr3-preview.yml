@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: e884498e36b97e0ad3b05a8479a1631aafae5b7e
+          ref: 440ea96ec7da501b76d4a4691445ce10ab17b74e
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -83,16 +83,19 @@ jobs:
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
           if(!html.includes('--page-content-width'))throw Error('Independent page content width missing');
           if(!html.includes('report-page-width-controls'))throw Error('Dedicated report tab sizing CSS missing');
-          if(!html.includes('Đã lưu riêng cách hiển thị Bảng báo cáo'))throw Error('Report-section-only save feedback missing');
+          if(!html.includes('Hiện tất cả cột Excel'))throw Error('One-click show all source columns missing');
+          if(!html.includes('partyMeeting')||!html.includes('examined')||!html.includes('Họp Thành ủy / xin ý kiến'))throw Error('Excel P/Q mapping absent');
+          if(!html.includes('A:R'))throw Error('Live Sheet query must request all 18 columns');
+          if(html.includes('Đã lưu Bảng báo cáo vào Firebase. Bạn có thể tiếp tục chỉnh sửa.'))throw Error('Redundant success banner still present');
           if(!html.includes('onPreviewWidthChange'))throw Error('Live width preview handler missing');
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
           if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu Danh mục'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — LƯU RIÊNG, SỬA TIẾP (17/10/2026) · Mỗi mục có Lưu riêng để sửa tiếp; nút Về chế độ xem dùng chung cho cả ba mục Chỉnh sửa. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — ĐỦ CỘT EXCEL A–R (17/10/2026) · Đã sửa đọc 18 cột, đúng Rút/Ghi chú, thêm hai cột Họp TU/Thẩm tra và lược bỏ thông báo thừa. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — LƯU RIÊNG, SỬA TIẾP'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — ĐỦ CỘT EXCEL A–R'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
