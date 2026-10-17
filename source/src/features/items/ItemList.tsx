@@ -194,7 +194,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       onChoose={(field:string,choice:LayoutConflictChoice)=>setConflictChoices(current=>({...current,[field]:choice}))}
       onConfirm={()=>void resolveAndSaveLayout()}
       onCancel={()=>{setLayoutConflicts([]);setConflictChoices({});}}/>}
-    <p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}{!externalSectionTabs&&<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
+    {checkpointMessage&&<p className="muted" role="status">{checkpointMessage}</p>}{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}{!externalSectionTabs&&<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
   <div className="customize-mode-tabs">
     <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
       if(permissionMode){setPermissionSwitchRequest(current=>current+1);return;}
@@ -218,8 +218,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       </div>}
       {!anonymousViewer&&<span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span>}
     </div></div>
-    {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
-     {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
+    {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
+     {!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
