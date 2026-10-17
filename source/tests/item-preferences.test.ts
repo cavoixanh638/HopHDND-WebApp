@@ -24,9 +24,13 @@ describe('Bố trí cột danh sách', () => {
       'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB (HC/QPPL/BC)',
       'Cấp cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
       'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
-      'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ cụ thể','Rút',
+      'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Rút',
       'Họp Thành ủy / xin ý kiến','Đã thẩm tra chưa','Ghi chú']);
     expect(layout.columns.find(column=>column.key==='history')).toBeUndefined();
+    expect(layout.columns).toHaveLength(18);
+    expect(layout.columns.filter(c=>c.visible)).toHaveLength(18);
+    for(const key of ['type','partyLevel','progressParty','specificProgress'])
+      expect(layout.columns.find(c=>c.key===key)?.visible).toBe(true);
   });
   it('drops the obsolete History column from previous Firebase/shared or personal layouts safely',()=>{
     const old=defaultItemLayout();
