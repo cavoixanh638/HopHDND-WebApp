@@ -6,15 +6,17 @@ import { ReportLayoutPanel } from './ReportLayoutPanel';
 import { Modal } from '../../components/Modal';
 import { validateReportDraft } from '../../data/report-draft';
 
-export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets' }: {
+export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets',onDirtyChange }: {
   initial: ReportLayout[]; onSave: (layout: ReportLayout[]) => Promise<void>; onClose: () => void;
   items: Item[]; group: GroupField; sourceLabel: string; sourceKey: string; groupOrder:string[];
   storageLabel?: string;
+  onDirtyChange?:(dirty:boolean)=>void;
 }) {
   const { draft, setDraft, dirty, recoveryMessage, checkpointMessage, clearCheckpoint, unmatchedCheckpoint, restoreOldDraft, discardOldDraft } = useRecoverableDraft<ReportLayout[]>(`report:${sourceKey}`, initial, validateReportDraft);
   const [error, setError] = useState('');
   const [saving,setSaving]=useState(false);
   const [confirm, setConfirm] = useState<'close' | 'reset' | null>(null);
+  useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
   const dataLabel = storageLabel === 'Google Sheets' ? 'dữ liệu Excel' : 'dữ liệu nội dung';
   const latest = useRef({ dirty, onClose,saving });
   latest.current = { dirty, onClose,saving };
