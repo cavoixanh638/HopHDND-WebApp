@@ -126,7 +126,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
     open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('reports',panel.props.initial,0);panel.props.onClose();
-    open('Chỉnh sửa');tree=open('Giá trị lựa chọn');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('catalogs',panel.props.config,0);panel.props.onClose();
+    tree=open('Danh sách dữ liệu');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistCatalog(catalogFromItems(createDemoItems(2)));expect(firebase.common.save.mock.calls.at(-1)?.[0]).toBe('catalogs');
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
   it('saves only reports even if the displayed Sheets-augmented catalog contains invalid duplicate labels',async()=>{
@@ -209,34 +209,25 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     button(tree,'Về chế độ xem').props.onClick();
     tree=render();
     expect(nodes(tree).find(n=>n.type===ReportSettings).props.exitRequest).toBe(before+1);
-    open('Danh sách dữ liệu');tree=open('Giá trị lựa chọn');
-    const catalog=nodes(tree).find(n=>n.type===CatalogSettings);
-    expect(typeof catalog.props.exitRequest).toBe('number');
-    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
     tree=open('Danh sách dữ liệu');
+    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
+    expect(typeof nodes(tree).find(n=>n.type===ItemList).props.onPersistCatalog).toBe('function');
     list=nodes(tree).find(n=>n.type===ItemList);
     expect(typeof list.props.exitRequest).toBe('number');
   });
 
-  it('uses clear nested list settings tabs and opens rights separately from column configuration',async()=>{
+  it('keeps all column choices and permission controls inside one manager instead of separate tabs',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
-    let tree=open('Chỉnh sửa');
-    expect(nodes(tree).filter(n=>n.props?.className==='settings-hub-tabs')).toHaveLength(1);
-    let subtabs=nodes(tree).find(n=>n.props?.className==='settings-sub-tabs');
-    expect(nodes(subtabs).filter(n=>n.type==='button').map(n=>text(n))).toEqual(['Cột và hiển thị','Giá trị lựa chọn','Quyền chỉnh sửa']);
-    expect(nodes(subtabs).filter(n=>n.props?.['aria-current']==='page').map(n=>text(n))).toEqual(['Cột và hiển thị']);
-    tree=open('Giá trị lựa chọn');
-    const catalog=nodes(tree).find(n=>n.type===CatalogSettings);
-    expect(catalog).toBeDefined();
-    expect(catalog.props.columnLabels.specificProgress).toBe('Tiến độ hiện tại');
-    subtabs=nodes(tree).find(n=>n.props?.className==='settings-sub-tabs');
-    expect(nodes(subtabs).filter(n=>n.props?.['aria-current']==='page').map(n=>text(n))).toEqual(['Giá trị lựa chọn']);
-    tree=open('Quyền chỉnh sửa');
-    const rights=nodes(tree).find(n=>n.type===ItemList);
-    expect(rights.props.permissionModeOnly).toBe(true);
-    expect(rights.props.externalSectionTabs).toBe(true);
-    subtabs=nodes(tree).find(n=>n.props?.className==='settings-sub-tabs');
-    expect(nodes(subtabs).filter(n=>n.props?.['aria-current']==='page').map(n=>text(n))).toEqual(['Quyền chỉnh sửa']);
+    const tree=open('Chỉnh sửa');
+    expect(nodes(tree).some(n=>n.props?.className==='settings-sub-tabs')).toBe(false);
+    expect(nodes(tree).some(n=>n.props?.className==='settings-section')).toBe(true);
+    const list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.permissionModeOnly).toBe(false);
+    expect(list.props.onPersistCatalog).toBeInstanceOf(Function);
+    expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
+    expect(text(tree)).toContain('Quản lý cột');
+    expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Giá trị lựa chọn')).toBe(false);
+    expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Quyền chỉnh sửa')).toBe(false);
   });
   it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
