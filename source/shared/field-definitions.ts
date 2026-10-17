@@ -19,7 +19,7 @@ export const TEXT_FIELDS: readonly { key: TextField; label: string; editor: 'tex
 export const GROUP_OPTIONS: readonly { key: GroupField; label: string }[] = [
   { key: 'department', label: 'Sở/đơn vị' },
   { key: 'room', label: 'Phòng' },
-  { key: 'vpLeader', label: 'Lãnh đạo Văn phòng' },
+  { key: 'vpLeader', label: 'Lãnh đạo VP' },
   { key: 'ubndLeader', label: 'Lãnh đạo UBND' },
 ];
 
