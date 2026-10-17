@@ -52,6 +52,22 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(text(tree)).toContain('Chưa đọc được bố cục đã lưu từ Firebase');
     expect(h.common.mock.calls.at(-1)?.[1]).toBe(false);
   });
+  it('uses the saved Firebase page widths on the first visible frame, not a post-paint child effect',async()=>{
+    const columns=defaultItemLayout();
+    columns.frameWidth=1090;
+    firebase.common.config={revision:3,catalogs:catalogFromItems(createDemoItems(1)),
+      reports:withReportPageWidth(defaultReportLayout(),1240),items:columns};
+    firebase.common.status='loading';
+    let tree=render();
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
+    expect(text(tree)).toContain('Đang tải cấu hình cách hiển thị');
+    firebase.common.status='ready';
+    respond();await settle();
+    tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
+    tree=open('Danh sách nội dung');
+    expect(tree.props.style['--page-content-width']).toBe('1090px');
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+  });
   it('honors stored Sheets URL/gid and refreshes manually and every 60 seconds, only while visible',async()=>{
     saveSheetConfig(parseSheetConfig('https://docs.google.com/spreadsheets/d/fake-sheet/edit?gid=42'));
     render();expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('42');respond();await settle();render();
