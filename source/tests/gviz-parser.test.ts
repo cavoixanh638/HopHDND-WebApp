@@ -73,6 +73,11 @@ describe('parseGvizPayload', () => {
     });
   });
 
+  it('recognizes Hành chính in the real Excel Loại VB source as an administrative NQ',()=>{
+    const data=values('',1,'MẪU: hành chính', 'Sở giả', 'Hành chính');
+    const result=parseGvizPayload(payload([header(),row(data)]),'current-xlsx');
+    expect(result.items[0].documentKind).toBe('NQ');
+  });
   it('keeps missing and duplicate codes with unique source row IDs and warns', () => {
     const result = parseGvizPayload(payload([
       header(),
