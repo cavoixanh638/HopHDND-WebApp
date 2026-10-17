@@ -2,16 +2,17 @@ import {useState} from 'react';
 import type {ItemColumn,ItemLayout} from '../../data/item-preferences';
 import {EXCEL_COLUMN_KEYS} from '../../data/item-preferences';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
+import {CATALOG_KEYS,type CatalogConfig,type CatalogKey} from '../../data/catalogs';
 const editableSourceKeys=new Set(TEXT_FIELDS.map(f=>f.key));
 import {DeferredWidthInput} from './DeferredWidthInput';
 
-type Props={layout:ItemLayout;onChange:(next:ItemLayout)=>void;validationMessage?:string};
+type Props={layout:ItemLayout;catalog?:CatalogConfig;onChange:(next:ItemLayout)=>void;onOpenCatalog?:(key:string)=>void;validationMessage?:string};
 
 /** Compact column manager inspired by database-table field panels:
  * one row per field, advanced properties only for the selected field.
  * Width changes are made exclusively by dragging the column border in-table.
  */
-export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
+export function ItemColumnPanel({layout,catalog,onChange,onOpenCatalog,validationMessage}:Props){
   const [selected,setSelected]=useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const active=layout.columns.filter(c=>!c.removed);
@@ -80,11 +81,16 @@ export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
               </select>
             </label>
-            {(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'&&<label className="field column-manager-options">Các lựa chọn (mỗi dòng một giá trị)
+            {(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'&&column.origin==='custom'&&<label className="field column-manager-options">Các lựa chọn (mỗi dòng một giá trị)
               <textarea aria-label={`Các lựa chọn cột ${column.key}`} key={column.key+column.kind}
                 rows={4} defaultValue={(column.options??[]).join('\n')}
                 onBlur={e=>update(column.key,{kind:'select',options:[...new Set(e.currentTarget.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))].slice(0,50)})}/>
             </label>}
+            {(column.kind??(editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'&&column.origin!=='custom'&&CATALOG_KEYS.includes(column.key as CatalogKey)&&<div className="column-manager-catalog" role="note">
+              <strong>Danh sách lựa chọn dùng chung · {catalog?.options[column.key as CatalogKey]?.length??0} giá trị</strong>
+              <span>Giá trị cột Excel được quản lý tập trung trong “Giá trị lựa chọn”, không tạo thêm một bộ tùy chọn riêng.</span>
+              {onOpenCatalog&&<button type="button" className="button ghost" onClick={()=>onOpenCatalog(column.key)}>Mở giá trị lựa chọn của cột này →</button>}
+            </div>}
             <div className="column-manager-detail-actions">
               <button type="button" className="button ghost" disabled={index===0} onClick={()=>move(column.key,-1)}>↑ Lên</button>
               <button type="button" className="button ghost" disabled={index===active.length-1} onClick={()=>move(column.key,1)}>↓ Xuống</button>
@@ -96,7 +102,7 @@ export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
                 <button className="button ghost" type="button" onClick={()=>setConfirmDelete(null)}>Hủy</button>
               </span>}
             </div>
-            {column.origin!=='custom'&&<p className="muted">Cột nguồn Excel: đổi tên chỉ ảnh hưởng cách hiển thị. Giá trị gốc vẫn đọc từ Excel.</p>}
+            {column.origin!=='custom'&&<p className="muted">Cột nguồn Excel: đổi tên chỉ ảnh hưởng cách hiển thị; giá trị gốc không đổi. Với kiểu danh sách chọn, chỉnh các giá trị trong mục “Giá trị lựa chọn”.</p>}
             {column.origin==='custom'&&<p className="muted">Cột độc lập: giá trị được lưu cùng bố cục ứng dụng, không ghi vào Excel. Chỉ quản trị được chỉnh và lưu giá trị ở chế độ sửa.</p>}
           </div>}
         </div>)}
