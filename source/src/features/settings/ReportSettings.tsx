@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GroupField, Item } from '../../../shared/types';
-import { defaultReportLayout, validateReportLayout, type ReportLayout } from '../../data/report-preferences';
+import { defaultReportLayout, reportPageWidth, validateReportLayout, type ReportLayout } from '../../data/report-preferences';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import { ReportLayoutPanel } from './ReportLayoutPanel';
 import { Modal } from '../../components/Modal';
 import { validateReportDraft } from '../../data/report-draft';
 
-export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets',onDirtyChange }: {
+export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, storageLabel = 'Google Sheets',onDirtyChange,onPreviewWidthChange }: {
   initial: ReportLayout[]; onSave: (layout: ReportLayout[]) => Promise<void>; onClose: () => void;
   items: Item[]; group: GroupField; sourceLabel: string; sourceKey: string; groupOrder:string[];
   storageLabel?: string;
   onDirtyChange?:(dirty:boolean)=>void;
+  onPreviewWidthChange?:(width:'auto'|number)=>void;
 }) {
   const { draft, setDraft, dirty, recoveryMessage, checkpointMessage, clearCheckpoint, unmatchedCheckpoint, restoreOldDraft, discardOldDraft } = useRecoverableDraft<ReportLayout[]>(`report:${sourceKey}`, initial, validateReportDraft);
   const [error, setError] = useState('');
@@ -32,7 +33,11 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
     return () => window.removeEventListener('keydown', escape);
   }, []);
 
-  const change = (next: ReportLayout[]) => { setDraft(next); setError(''); };
+  const change = (next: ReportLayout[]) => {
+    setDraft(next);
+    onPreviewWidthChange?.(reportPageWidth(next));
+    setError('');
+  };
   const save = async (exit = false) => {
     if(saving||unmatchedCheckpoint)return;
     setSaving(true);
