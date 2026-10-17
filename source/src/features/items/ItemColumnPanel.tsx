@@ -46,20 +46,20 @@ export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemCol
         </div>}
         <div className="item-frame-controls">
           <label className="field" htmlFor="item-visible-frame-width">
-            Độ rộng trang và vùng danh sách (px) — nhấn Enter hoặc rời ô để áp dụng
+            Độ rộng trang Danh sách dữ liệu (px) — nhấn Enter hoặc rời ô để áp dụng
           </label>
-          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng trang và vùng danh sách (px)"
-            value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1500:layout.frameWidth}
+          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng trang Danh sách dữ liệu (px)"
+            value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1920:layout.frameWidth}
             min={320} max={6000}
             onCommit={frameWidth=>onChange({...layout,frameWidth})}/>
           <label className="layout-visibility">
             <input type="checkbox" checked={layout.frameWidth==='auto'||layout.frameWidth===undefined}
-              onChange={event=>onChange({...layout,frameWidth:event.currentTarget.checked?'auto':1500})}/>
+              onChange={event=>onChange({...layout,frameWidth:event.currentTarget.checked?'auto':1920})}/>
             Tự động theo độ rộng màn hình
           </label>
           <p className="muted">{layout.frameWidth==='auto'||layout.frameWidth===undefined
-            ?'Trang và danh sách tự động theo màn hình. Nhập số rồi nhấn Enter hoặc rời ô để đổi kích thước.'
-            :`Trang và danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Khi đang thiết lập, phần điều khiển vẫn đủ rộng để dễ sử dụng. Các cột rộng hơn sẽ cuộn ngang.`}</p>
+            ?'Danh sách tự động dùng toàn bộ chiều rộng màn hình. Nhập số rồi nhấn Enter hoặc rời ô để đổi kích thước.'
+            :`Trang Danh sách dữ liệu rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Khi đang thiết lập, phần điều khiển vẫn đủ rộng để dễ sử dụng. Các cột rộng hơn sẽ cuộn ngang.`}</p>
         </div>
         <details className="item-layout-advanced">
           <summary>Độ rộng tối thiểu phần cột bên trong (nâng cao)</summary>
