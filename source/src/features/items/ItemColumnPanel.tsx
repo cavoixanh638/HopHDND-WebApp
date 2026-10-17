@@ -62,33 +62,39 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
     }
     setSaving(true);setSaveError('');setSaveSuccess('');
     const completed:string[]=[];
+    let currentPart='danh sách chọn';
     try{
-      // Each part remains an independent authenticated Firebase transaction.
-      // A partial failure must stay visible and leave other drafts intact.
+      // Only changed parts are written. Each successful Firebase section is
+      // acknowledged independently; the remaining local drafts are retained.
       if(catalogDirty){
+        currentPart='danh sách chọn';
         if(!onSaveCatalog)throw new Error('Chưa kết nối nơi lưu danh sách chọn.');
         const next=validateCatalog(choiceDraft);
         await onSaveCatalog(next);
         savedCatalog.current=copyCatalog(next);
         setChoiceDraft(copyCatalog(next));
-        completed.push('danh sách chọn');
+        completed.push(currentPart);
       }
       if(rightsDirty){
+        currentPart='quyền chỉnh sửa cột';
         if(!onSavePermissions)throw new Error('Chưa kết nối nơi lưu quyền cột.');
         await onSavePermissions(rightsDraft,savedPermissions.current);
         savedPermissions.current={columns:{...columnRights},rows:{},cells:{}};
         setClearExceptions(false);
-        completed.push('quyền cột');
+        completed.push(currentPart);
       }
       if(layoutDirty){
+        currentPart='bố cục và độ rộng cột';
         if(!onSaveLayout)throw new Error('Chưa kết nối nơi lưu bố cục.');
         await onSaveLayout();
-        completed.push('cột và cách hiển thị');
+        completed.push(currentPart);
       }
-      if(completed.length)setSaveSuccess('Đã lưu thay đổi.');
+      if(completed.length)setSaveSuccess('Đã lưu '+completed.join(', ')+'.');
     }catch(cause){
       const reason=cause instanceof Error?cause.message:'Không lưu được. Vui lòng thử lại.';
-      setSaveError((completed.length?'Đã lưu '+completed.join(', ')+'. ':'')+'Chưa lưu hết thay đổi: '+reason);
+      setSaveError('Chưa lưu được '+currentPart+': '+reason+
+        (completed.length?' Đã lưu thành công: '+completed.join(', ')+'.':'')+
+        ' Phần chưa lưu vẫn được giữ để thử lại.');
     }finally{setSaving(false);}
   };
   const updateChoices=(key:CatalogKey,next:string[])=>{
