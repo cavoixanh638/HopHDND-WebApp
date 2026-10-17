@@ -1,4 +1,5 @@
 import type { GroupField, Item, ReportConfig } from '../../shared/types';
+import {normalizeSearch} from './search';
 
 export const DEFAULT_REPORTS: ReportConfig[] = [
   { id: 'party', title: 'Nội dung cần xin ý kiến Thành ủy', source: 'party', statusField: 'progressParty', columns: ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU chưa họp', 'Đã họp chưa có TBKL', 'Đã báo cáo TU', 'Sở xin rút'], hiddenColumns: [], completed: ['Đã báo cáo TU'] },
