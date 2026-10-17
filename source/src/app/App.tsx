@@ -48,7 +48,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const workspace = useWorkspace(repository, sourceKey);
   const [page, setPage] = useState<Page>('overview');
   const [editorUnsaved,setEditorUnsaved]=useState(false);
-  const [listFramePreview,setListFramePreview]=useState<'auto'|number>('auto');
+  // null means the list has not reported its own active width yet; 'auto' is an explicit setting.
+  const [listFramePreview,setListFramePreview]=useState<'auto'|number|null>(null);
   const [group, setGroup] = useState<GroupField>('vpLeader');
   const [selection, setSelection] = useState<{ title: string; items: Item[] } | null>(null);
   const [history, setHistory] = useState<Item | null>(null);
@@ -137,7 +138,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       firebase!.canEdit(item.recordId,'isDropped'));
   // The shared page width survives navigation. When saved width is 'auto', use a normal
   // max-width page; while editing keep controls readable independently of a narrow table.
-  const effectiveFrame=listFramePreview==='auto'?(itemLayout.frameWidth??'auto'):listFramePreview;
+  const effectiveFrame=listFramePreview??(itemLayout.frameWidth??'auto');
   const previewWidth=effectiveFrame==='auto'||!Number.isFinite(effectiveFrame)?'100%':`${Math.min(6000,Math.max(320,effectiveFrame as number))}px`;
   const frameStyle={'--list-frame-width':previewWidth} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
