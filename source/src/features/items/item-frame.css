@@ -426,3 +426,10 @@
 .column-choice-values li input{min-width:110px;flex:1}
 .column-choice-values li .button{flex:none;padding:6px 8px;font-size:11px}
 @media(max-width:720px){.column-manager-legend{grid-template-columns:24px minmax(110px,1fr) 52px}.column-manager-legend span:nth-child(3){display:none}.column-choice-values li{flex-wrap:wrap}.column-manager-savebar .muted{flex-basis:100%}}
+
+.column-specialist-relations{grid-column:1/-1;border:1px solid #d5e5da;padding:10px 12px;border-radius:8px;background:#f9fcfa;font-size:12px}
+.column-specialist-relations summary{font-weight:700;color:#325c46;cursor:pointer}
+.column-specialist-relations[open] summary{margin-bottom:8px}
+.column-specialist-room-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:9px}
+.column-specialist-room-list label{display:flex;gap:7px;align-items:center}
+.column-specialist-room-list input{margin:0}
