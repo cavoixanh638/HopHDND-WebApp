@@ -26,8 +26,8 @@ describe('Bố trí cột danh sách', () => {
       'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
       'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Ghi chú']);
     expect(layout.columns.find(column=>column.key==='history')).toBeUndefined();
-    expect(layout.columns).toHaveLength(18);
-    expect(layout.columns.filter(c=>c.visible)).toHaveLength(18);
+    expect(layout.columns).toHaveLength(15);
+    expect(layout.columns.filter(c=>c.visible)).toHaveLength(15);
     for(const key of ['type','partyLevel','progressParty','specificProgress'])
       expect(layout.columns.find(c=>c.key===key)?.visible).toBe(true);
   });
@@ -37,7 +37,7 @@ describe('Bố trí cột danh sách', () => {
     old.columns[0].width=199;
     old.columns[3].visible=true;
     const migrated=validateItemLayout(old);
-    expect(migrated.columns).toHaveLength(18);
+    expect(migrated.columns).toHaveLength(15);
     expect(migrated.columns.find(c=>c.key==='history')).toBeUndefined();
     expect(migrated.columns.find(c=>c.key==='displayCode')?.width).toBe(199);
     expect(migrated.columns.map(c=>c.key)).toEqual(EXCEL_COLUMN_KEYS);
