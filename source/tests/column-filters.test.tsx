@@ -21,12 +21,12 @@ describe('always-visible column filter row',()=>{
     expect(selector.type).toBe('select');
     expect(filterChoices(items,'isDropped')).toEqual(['Đã rút']);
   });
-  it('ignores an obsolete Rút saved filter since the current A–O source no longer includes it',()=>{
+  it('filters the actual Excel Rút column without treating blank as a withdrawal',()=>{
     const a=items[0];
     expect(filterValue({...a,isDropped:false,archivedAt:''},'isDropped')).toBe('');
     expect(filterValue({...a,isDropped:true,archivedAt:''},'isDropped')).toBe('Đã rút');
     expect(matchesColumnFilters({...a,isDropped:true,archivedAt:''},{isDropped:'Đã rút'})).toBe(true);
-    expect(matchesColumnFilters({...a,isDropped:false,archivedAt:''},{isDropped:'Đã rút'})).toBe(true);
+    expect(matchesColumnFilters({...a,isDropped:false,archivedAt:''},{isDropped:'Đã rút'})).toBe(false);
   });
   it('reset button removes one column filter without modifying other filter values',()=>{
     const change=vi.fn();
