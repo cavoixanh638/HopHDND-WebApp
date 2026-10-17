@@ -37,29 +37,29 @@ describe('concurrent Firebase list-layout safety',()=>{
   });
   it('shows exact original, browser and Firebase values then allows explicit per-field decisions',()=>{
     const base=defaultItemLayout();
-    const local={...base,frameWidth:1500 as const,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:240}:c)};
-    const remote={...base,frameWidth:500 as const,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:117}:c)};
+    const local={...base,frameWidth:1500 as const,columns:base.columns.map(c=>c.key==='note'?{...c,width:240}:c)};
+    const remote={...base,frameWidth:500 as const,columns:base.columns.map(c=>c.key==='note'?{...c,width:117}:c)};
     let found:unknown;
     try{mergeItemLayout(base,local,remote);}catch(error){found=error;}
     expect(found).toBeInstanceOf(LayoutConflictError);
     const conflicts=(found as LayoutConflictError).conflicts;
     expect(conflicts).toEqual(expect.arrayContaining([
       expect.objectContaining({id:'frameWidth',original:'Tự động',local:'1500 px',remote:'500 px'}),
-      expect.objectContaining({id:'columns.isDropped.width',local:'240 px',remote:'117 px'}),
+      expect.objectContaining({id:'columns.note.width',local:'240 px',remote:'117 px'}),
     ]));
     expect(conflicts).toHaveLength(2);
     expect(()=>mergeItemLayout(base,local,remote,{'frameWidth':'remote'})).toThrow(LayoutConflictError);
-    const merged=mergeItemLayout(base,local,remote,{'frameWidth':'remote','columns.isDropped.width':'local'});
+    const merged=mergeItemLayout(base,local,remote,{'frameWidth':'remote','columns.note.width':'local'});
     expect(merged.frameWidth).toBe(500);
-    expect(merged.columns.find(c=>c.key==='isDropped')?.width).toBe(240);
+    expect(merged.columns.find(c=>c.key==='note')?.width).toBe(240);
   });
   it('preserves an unrelated server edit while the admin explicitly keeps their own conflicted width',()=>{
     const base=defaultItemLayout();
-    const local={...base,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:210}:c)};
-    const remote={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='isDropped'?{...c,width:117}:c)};
-    const merged=mergeItemLayout(base,local,remote,{'columns.isDropped.width':'local'});
+    const local={...base,columns:base.columns.map(c=>c.key==='note'?{...c,width:210}:c)};
+    const remote={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='note'?{...c,width:117}:c)};
+    const merged=mergeItemLayout(base,local,remote,{'columns.note.width':'local'});
     expect(merged.tableWidth).toBe(1900);
-    expect(merged.columns.find(c=>c.key==='isDropped')?.width).toBe(210);
+    expect(merged.columns.find(c=>c.key==='note')?.width).toBe(210);
   });
   it('refuses competing reorders of visible columns',()=>{
     const base=defaultItemLayout();
