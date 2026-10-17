@@ -146,8 +146,10 @@ try{
     if(!button)return false;
     button.click();return true;
   })()`))throw Error('Missing viewer column switch button');
-  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length<18",
-    'Switching to the saved subset did not hide columns after React updated');
+  // New source layouts display all A–R by default, even in saved mode.
+  // The control must switch state, not manufacture missing columns in a fresh layout.
+  await eventually("document.querySelector('.source-column-visibility button')?.getAttribute('aria-pressed')==='false'",
+    'Saved column selection toggle did not switch state');
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
     if(!button)return false;
