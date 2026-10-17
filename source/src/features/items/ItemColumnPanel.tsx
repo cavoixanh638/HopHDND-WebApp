@@ -27,6 +27,7 @@ type Props={
 export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage}:Props){
   const [selected,setSelected]=useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
+  const [selectedSpecialist,setSelectedSpecialist]=useState('');
   const copyCatalog=(value:CatalogConfig):CatalogConfig=>({
     options:Object.fromEntries(Object.entries(value.options).map(([key,options])=>[key,[...options]])) as CatalogConfig['options'],
     specialistRooms:Object.fromEntries(Object.entries(value.specialistRooms).map(([key,rooms])=>[key,[...rooms]]))
@@ -188,6 +189,27 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,on
                   }}/>
                 {column.origin!=='custom'&&<p className="muted">Giá trị cột Excel được lưu ở danh mục chung; bấm “Lưu danh sách chọn” phía trên để áp dụng.</p>}
               </div>}
+            {column.key==='specialist'&&<details className="column-specialist-relations">
+              <summary>Liên kết chuyên viên – phòng (nâng cao)</summary>
+              <p className="muted">Giữ quan hệ phân công để lọc chuyên viên theo phòng. Thay đổi lưu cùng danh sách chọn.</p>
+              <label className="field">Chuyên viên
+                <select value={selectedSpecialist} onChange={event=>setSelectedSpecialist(event.currentTarget.value)}>
+                  <option value="">Chọn chuyên viên</option>
+                  {choiceDraft.options.specialist.map(name=><option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
+              {selectedSpecialist&&<div className="column-specialist-room-list">
+                {choiceDraft.options.room.map(room=><label key={room}>
+                  <input type="checkbox" checked={(choiceDraft.specialistRooms[selectedSpecialist]??[]).includes(room)}
+                    onChange={event=>setChoiceDraft(previous=>{
+                      const old=previous.specialistRooms[selectedSpecialist]??[];
+                      const rooms=event.currentTarget.checked?[...new Set([...old,room])]:old.filter(value=>value!==room);
+                      return {...previous,specialistRooms:{...previous.specialistRooms,[selectedSpecialist]:rooms}};
+                    })}/>
+                  {room}
+                </label>)}
+              </div>}
+            </details>}
             <p className="column-manager-rights-hint">
               {editableSourceKeys.has(column.key as never)&&column.origin!=='custom'
                 ?'Tick “Cho sửa” ở hàng cột này để cấp quyền chỉnh sửa cho toàn bộ cột.'
