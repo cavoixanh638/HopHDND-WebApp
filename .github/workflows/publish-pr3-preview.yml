@@ -101,7 +101,7 @@ jobs:
           if(html.includes('Đã lưu Bảng báo cáo vào Firebase. Bạn có thể tiếp tục chỉnh sửa.'))throw Error('Redundant success banner still present');
           if(!html.includes('onPreviewWidthChange'))throw Error('Live width preview handler missing');
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
-          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu Danh mục'))throw Error('Separate save actions are missing');
+          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu giá trị lựa chọn'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
           if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('Các lựa chọn (mỗi dòng một giá trị)'))throw Error('Independent custom field manager missing');
           if(!html.includes('column-manager-detail')||!html.includes('column-manager-grid'))throw Error('Compact column manager absent');
