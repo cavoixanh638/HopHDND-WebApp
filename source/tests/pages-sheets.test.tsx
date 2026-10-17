@@ -209,7 +209,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     button(tree,'Về chế độ xem').props.onClick();
     tree=render();
     expect(nodes(tree).find(n=>n.type===ReportSettings).props.exitRequest).toBe(before+1);
-    tree=open('Giá trị lựa chọn');
+    open('Danh sách dữ liệu');tree=open('Giá trị lựa chọn');
     const catalog=nodes(tree).find(n=>n.type===CatalogSettings);
     expect(typeof catalog.props.exitRequest).toBe('number');
     expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
