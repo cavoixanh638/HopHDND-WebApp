@@ -49,12 +49,14 @@ describe('parseGvizPayload', () => {
     heading[14]={v:'Rút'};heading[15]={v:'Họp Thành ủy/ xin ý kiến'};
     heading[16]={v:'Đã thẩm tra chưa'};heading[17]={v:'Ghi chú'};
     const first=values('NQ-100',1,'MẪU: Nghị quyết','Sở giả','QPPL');
+    first[6]='TU đã cho ý kiến';first[7]='Đã có QĐ chấp thuận';first[8]='Hoàn thành';
     first[14]='X';first[15]='Đã xin ý kiến';first[16]='Đã thẩm tra';first[17]='MẪU: ghi chú cột R';
     const second=values('NQ-101',2,'MẪU: Nghị quyết thứ hai','Sở giả','QPPL');
     second[14]='';second[15]='Chưa họp';second[16]='Chưa thẩm tra';second[17]='MẪU: không rút';
     const result=parseGvizPayload(payload([{c:heading},row(first),row(second)],'ok',cols18),'modern-xlsx');
     expect(result.items).toHaveLength(2);
     expect(result.items[0]).toMatchObject({
+      progressParty:'TU đã cho ý kiến',progressBuild:'Đã có QĐ chấp thuận',progressCouncil:'Hoàn thành',
       isDropped:true,note:'MẪU: ghi chú cột R',partyMeeting:'Đã xin ý kiến',examined:'Đã thẩm tra',
     });
     expect(result.items[1]).toMatchObject({
