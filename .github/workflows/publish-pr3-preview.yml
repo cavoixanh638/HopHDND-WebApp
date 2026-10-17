@@ -63,7 +63,7 @@ jobs:
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
           if(!html.includes('Quản lý cột'))throw Error('Field manager UI absent');
-          if(!html.includes('Quản lý cột')||!html.includes('Thiết lập ngay tại từng cột'))throw Error('Unified column settings absent');
+          if(!html.includes('Quản lý cột')||!html.includes('column-manager-heading'))throw Error('Unified column settings absent');
           if(!html.includes('column-choice-editor')||!html.includes('Lưu danh sách chọn')||!html.includes('Cho phép sửa cột'))throw Error('Inline dropdown editing or column grants absent');
           if(!html.includes('Liên kết chuyên viên – phòng'))throw Error('Advanced assignment section missing');
           if(!html.includes('Chiều rộng trang Danh sách'))throw Error('Independent list page width control absent');
