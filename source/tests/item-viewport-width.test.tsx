@@ -8,12 +8,12 @@ describe('deferred, validated list widths',()=>{
   it('keeps 500px frame independent from the width of the inner columns',()=>{
     const layout=defaultItemLayout(),onChange=vi.fn();
     const tree=ItemColumnPanel({layout,onChange});
-    const input=numeric(tree,'Độ rộng trang và vùng danh sách (px)');
-    expect(input).toBeDefined();expect(input.props.value).toBe(1500);
+    const input=numeric(tree,'Độ rộng trang Danh sách dữ liệu (px)');
+    expect(input).toBeDefined();expect(input.props.value).toBe(1920);
     expect(onChange).not.toHaveBeenCalled();
     input.props.onCommit(500);
     expect(onChange).toHaveBeenCalledWith({...layout,frameWidth:500});
-    expect(onChange.mock.calls[0][0].tableWidth).toBe(1500);
+    expect(onChange.mock.calls[0][0].tableWidth).toBe(1920);
   });
   it('restores auto width with the checkbox without overwriting internal column widths',()=>{
     const layout={...defaultItemLayout(),frameWidth:500},onChange=vi.fn();
@@ -39,7 +39,7 @@ describe('deferred, validated list widths',()=>{
     expect(parseCommittedWidth('319',320,6000)).toBeNull();
     expect(parseCommittedWidth('6001',320,6000)).toBeNull();
     expect(parseCommittedWidth('500',320,6000)).toBe(500);
-    expect(parseCommittedWidth('1500',320,6000)).toBe(1500);
+    expect(parseCommittedWidth('1500',320,6000)).toBe(1920);
     expect(parseCommittedWidth('500',500,6000)).toBe(500);
     expect(parseCommittedWidth('60',60,1600)).toBe(60);
   });
