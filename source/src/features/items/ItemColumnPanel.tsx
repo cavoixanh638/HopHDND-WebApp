@@ -72,7 +72,7 @@ export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemCol
           <p className="muted">Giá trị này không đổi độ rộng vùng danh sách phía ngoài. Tổng độ rộng các cột có thể lớn hơn; khi đó dùng thanh cuộn ngang bên trong bảng.</p>
         </details>
         <div className="top-actions item-column-visibility-actions">
-          <span className="muted">{layout.columns.filter(c=>c.visible).length} / {layout.columns.filter(c=>true).length} cột dữ liệu đang hiển thị</span>
+          <span className="muted">{layout.columns.filter(c=>c.visible).length} / {layout.columns.length} cột dữ liệu đang hiển thị</span>
           <button type="button" className="button ghost"
             disabled={layout.columns.every(c=>c.visible)}
             onClick={()=>onChange({...layout,columns:layout.columns.map(c=>({...c,visible:true}))})}>
