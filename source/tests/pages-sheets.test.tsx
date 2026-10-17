@@ -98,7 +98,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
     open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('reports',panel.props.initial,0);panel.props.onClose();
-    open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
+    open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('catalogs',panel.props.config,1);panel.props.onClose();
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
   it('saves only reports even if the displayed Sheets-augmented catalog contains invalid duplicate labels',async()=>{
@@ -166,6 +166,28 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const panel=nodes(tree).find(n=>n.type===ReportSettings);
     expect(reportPageWidth(panel.props.initial)).toBe(2400);
     expect(tree.props.style['--page-content-width']).toBe('2400px');
+  });
+  it('provides one global View mode exit to every editor, while local saves remain in their own tabs',async()=>{
+    firebase.isAdmin=true;render();respond();await settle();
+    let tree=open('Chỉnh sửa');
+    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
+    let list=nodes(tree).find(n=>n.type===ItemList);
+    expect(typeof list.props.exitRequest).toBe('number');
+    tree=open('Bảng thống kê');
+    const report=nodes(tree).find(n=>n.type===ReportSettings);
+    expect(typeof report.props.exitRequest).toBe('number');
+    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
+    const before=report.props.exitRequest;
+    button(tree,'Về chế độ xem').props.onClick();
+    tree=render();
+    expect(nodes(tree).find(n=>n.type===ReportSettings).props.exitRequest).toBe(before+1);
+    tree=open('Danh mục');
+    const catalog=nodes(tree).find(n=>n.type===CatalogSettings);
+    expect(typeof catalog.props.exitRequest).toBe('number');
+    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
+    tree=open('Danh sách và nội dung');
+    list=nodes(tree).find(n=>n.type===ItemList);
+    expect(typeof list.props.exitRequest).toBe('number');
   });
   it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
