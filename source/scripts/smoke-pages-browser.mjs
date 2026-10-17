@@ -138,7 +138,7 @@ try{
       headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&
-      button?.getAttribute('aria-pressed')==='true';
+      button?.getAttribute('aria-pressed')==='false';
   })()`);
   if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
 
@@ -170,8 +170,8 @@ try{
   })()`))throw Error('Missing viewer column switch button');
   // New source layouts display all A–O by default, even in saved mode.
   // The control must switch state, not manufacture missing columns in a fresh layout.
-  await eventually("document.querySelector('.source-column-visibility button')?.getAttribute('aria-pressed')==='false'",
-    'Saved column selection toggle did not switch state');
+  await eventually("document.querySelector('.source-column-visibility button')?.getAttribute('aria-pressed')==='true'",
+    'Show-all column selection toggle did not switch state');
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
     if(!button)return false;
