@@ -1,26 +1,26 @@
 import type { GroupField, StatusField, TextField } from './types';
 
 export const TEXT_FIELDS: readonly { key: TextField; label: string; editor: 'text' | 'textarea' | 'select' }[] = [
-  { key: 'content', label: 'Nội dung', editor: 'textarea' },
-  { key: 'department', label: 'Sở/đơn vị', editor: 'select' },
-  { key: 'type', label: 'Loại văn bản', editor: 'select' },
-  { key: 'partyLevel', label: 'Cấp xin ý kiến', editor: 'select' },
+  { key: 'content', label: 'Nội dung trình', editor: 'textarea' },
+  { key: 'department', label: 'Sở, ngành chủ trì', editor: 'select' },
+  { key: 'type', label: 'Loại VB (HC/QPPL/BC)', editor: 'select' },
+  { key: 'partyLevel', label: 'Cấp Thành ủy cho ý kiến', editor: 'select' },
   { key: 'progressParty', label: 'Tiến độ xin ý kiến Thành ủy', editor: 'select' },
   { key: 'progressBuild', label: 'Tiến độ trình HĐND xây dựng NQ', editor: 'select' },
   { key: 'progressCouncil', label: 'Tiến độ trình HĐND ban hành NQ/BC', editor: 'select' },
-  { key: 'specialist', label: 'Chuyên viên', editor: 'select' },
-  { key: 'room', label: 'Phòng', editor: 'select' },
-  { key: 'vpLeader', label: 'Lãnh đạo Văn phòng', editor: 'select' },
-  { key: 'ubndLeader', label: 'Lãnh đạo UBND', editor: 'select' },
-  { key: 'specificProgress', label: 'Tiến độ cụ thể', editor: 'select' },
+  { key: 'specialist', label: 'Chuyên viên VPUB', editor: 'select' },
+  { key: 'room', label: 'Phòng chuyên môn', editor: 'select' },
+  { key: 'vpLeader', label: 'Lãnh đạo VP', editor: 'select' },
+  { key: 'ubndLeader', label: 'Lãnh đạo UBND TP', editor: 'select' },
+  { key: 'specificProgress', label: 'Tiến độ hiện tại', editor: 'select' },
   { key: 'note', label: 'Ghi chú', editor: 'textarea' },
 ];
 
 export const GROUP_OPTIONS: readonly { key: GroupField; label: string }[] = [
-  { key: 'department', label: 'Sở/đơn vị' },
-  { key: 'room', label: 'Phòng' },
+  { key: 'department', label: 'Sở, ngành chủ trì' },
+  { key: 'room', label: 'Phòng chuyên môn' },
   { key: 'vpLeader', label: 'Lãnh đạo VP' },
-  { key: 'ubndLeader', label: 'Lãnh đạo UBND' },
+  { key: 'ubndLeader', label: 'Lãnh đạo UBND TP' },
 ];
 
 export const STATUS_OPTIONS: Record<StatusField, string[]> = {
