@@ -97,9 +97,50 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
-    open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
+    open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('reports',panel.props.initial,0);panel.props.onClose();
     open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
+  });
+  it('saves only reports even if the displayed Sheets-augmented catalog contains invalid duplicate labels',async()=>{
+    firebase.isAdmin=true;
+    const config={
+      revision:3,
+      items:defaultItemLayout(),
+      reports:defaultReportLayout(),
+      catalogs:catalogFromItems(createDemoItems(2))
+    };
+    // A valid persisted catalog plus a source-derived label with extra whitespace
+    // can make the transient merged catalog fail validation on an unrelated save.
+    config.catalogs.options.department.push('Sở giả');
+    firebase.common.config=config;
+    const dirtySource={...payload()};
+    dirtySource.table.rows[1].c[3].v='Sở giả ';
+    render();
+    const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];
+    (window as any)[name](dirtySource);await settle();
+    open('Chỉnh sửa');
+    const panel=nodes(open('Bảng thống kê')).find(n=>n.type===ReportSettings);
+    const next=withReportPageWidth(panel.props.initial,2450);
+    await panel.props.onSave(next);
+    expect(firebase.common.save).toHaveBeenLastCalledWith('reports',next,0);
+    expect(firebase.common.save.mock.calls.at(-1)?.[1]).not.toHaveProperty('catalogs');
+    expect(firebase.common.config.catalogs).toEqual(config.catalogs);
+  });
+  it('previews unsaved report width immediately and restores persisted value on exit',async()=>{
+    firebase.isAdmin=true;
+    firebase.common.config={revision:1,items:{...defaultItemLayout(),frameWidth:900},
+      reports:withReportPageWidth(defaultReportLayout(),1500),
+      catalogs:catalogFromItems(createDemoItems(2))};
+    render();respond();await settle();
+    open('Chỉnh sửa');
+    let tree=open('Bảng thống kê');
+    expect(tree.props.style['--page-content-width']).toBe('1500px');
+    const editor=nodes(tree).find(n=>n.type===ReportSettings);
+    editor.props.onPreviewWidthChange(2700);
+    tree=render();expect(tree.props.style['--page-content-width']).toBe('2700px');
+    editor.props.onClose();
+    tree=render();expect(tree.props.style['--page-content-width']).toBe('1500px');
+    tree=open('Danh sách nội dung');expect(tree.props.style['--page-content-width']).toBe('900px');
   });
   it('keeps independent 2400px report and 640px list content widths without moving the header',async()=>{
     firebase.isAdmin=true;
