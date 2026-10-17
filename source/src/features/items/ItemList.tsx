@@ -206,15 +206,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
+    <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>
+    <div className="item-header-actions">
+      {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+        <span>{columns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
+        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
+          onClick={()=>setShowAllSourceColumns(current=>!current)}>
+          {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
+        </button>
+      </div>}
+      {!anonymousViewer&&<span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span>}
+    </div></div>
     {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
-     {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
-       <span>{columns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
-       <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
-         onClick={()=>setShowAllSourceColumns(current=>!current)}>
-         {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
-       </button>
-     </div>}
      {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className={'item-sticky-search-controls'+(Object.values(columnFilters).some(value=>value.trim())?' has-search':'')}>
     {Object.values(columnFilters).some(value=>value.trim())&&<div className="item-filter-status-slot" role="status" aria-label="Các điều kiện tìm kiếm đang áp dụng">
