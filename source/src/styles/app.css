@@ -504,3 +504,20 @@ body:not(.is-printing) #print-target {  display:none!important}
     width:min(100%,max(920px,var(--page-content-width,100%)));
   }
 }
+
+/* Three-level settings hierarchy: main section, focused list subtab, then field panel. */
+.settings-hub-tabs {margin-bottom:8px;}
+.settings-section {margin:0 0 15px;padding:12px 14px 10px;background:#fff;border:1px solid #d6e3da;border-radius:11px;box-shadow:0 2px 9px #1530270a;}
+.settings-section-path {font-size:11px;font-weight:700;color:#608071;margin:0 0 9px;}
+.settings-section-path span {padding:0 5px;color:#97a99d;}
+.settings-sub-tabs {display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #e2ebe5;padding-bottom:7px;}
+.settings-sub-tabs button {border:1px solid transparent;border-radius:7px;padding:9px 12px;background:transparent;color:#536c5e;font-size:13px;font-weight:600;}
+.settings-sub-tabs button:hover:not(:disabled) {background:#f2f7f3;}
+.settings-sub-tabs button.active {background:#e8f2eb;border-color:#bad7c5;color:#184f3d;font-weight:750;box-shadow:inset 0 -2px #44866b;}
+.settings-sub-tabs button:focus-visible {outline:2px solid #357a5a;outline-offset:2px;}
+.settings-sub-tabs button:disabled {opacity:.5;cursor:not-allowed;}
+.settings-section-description {font-size:12px;color:#5b7365;margin:9px 0 0;line-height:1.5;}
+.catalog-relationship {margin-top:12px;padding:9px 12px;border:1px solid #d7e5db;border-radius:8px;background:#f9fbf9;}
+.catalog-relationship>summary {cursor:pointer;font-weight:700;color:#315b48;font-size:13px;}
+.catalog-relationship[open]>summary {margin-bottom:12px;}
+.catalog-relationship .advanced-settings {background:#fff;margin:0;}
