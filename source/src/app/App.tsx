@@ -104,7 +104,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const reports = useMemo(() => configuredReports(layout), [layout]);
   const [layoutMessage, setLayoutMessage] = useState('');
   const saveLayout = async(next: ReportLayout[]) => {
-    if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');await firebase!.common.save('all',{catalogs:catalog,reports:next,items:itemLayout},firebaseEditRevision.current);firebaseEditRevision.current=firebaseEditRevision.current+1;setLayoutMessage('Đã lưu cách hiển thị báo cáo vào Firebase.');return;}
+    if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('reports',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('Đã lưu riêng cách hiển thị Bảng báo cáo vào Firebase; Danh mục và Danh sách không thay đổi.');return;}
     if(!isDemo&&!privateTest){await common.save('reports',next);setLayoutMessage('Đã lưu cách hiển thị báo cáo vào Google Sheets riêng. Nội dung Excel chưa thay đổi.');}
     else{if(!saveReportLayout(sourceKey,next))throw new Error('Không lưu được cách hiển thị trên máy. Nháp được giữ.');setLayoutState({source:sourceKey,layout:next});setLayoutMessage('Đã lưu cách hiển thị mẫu trên máy.');}
   };
