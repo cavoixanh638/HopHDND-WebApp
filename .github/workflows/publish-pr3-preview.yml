@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: bd1a14225bf38a8c1714af350900be511ae778c8
+          ref: 79786c2633a76712f1bc56b1fabf68f08782cc94
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -63,7 +63,7 @@ jobs:
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
           if(!html.includes('Cột và độ rộng bảng'))throw Error('Old layout UI detected');
-          if(!html.includes('Độ rộng vùng danh sách (px)'))throw Error('Viewport input absent');
+          if(!html.includes('Độ rộng trang và vùng danh sách (px)'))throw Error('Viewport input absent');
           if(!html.includes('Không lưu được cách hiển thị.'))throw Error('Save feedback is absent');
           if(!html.includes('Enter hoặc rời ô để áp dụng'))throw Error('Deferred width input hint absent');
           if(!html.includes('layout-inline-error'))throw Error('In-panel width warning missing');
@@ -76,7 +76,10 @@ jobs:
           if(!html.includes('Tìm kiếm cột'))throw Error('Subtle direct column search absent');
           if(!html.includes('permission-action-bar')||!html.includes('permission-switch-confirm'))throw Error('Top save controls or safe switch missing');
           if(!html.includes('Hiển thị bảng'))throw Error('New Vietnamese layout label missing');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — UX (17/10/2026) · Tìm kiếm dưới cột, không giới hạn 50 dòng, lưu quyền ngay trên bảng và chuyển trang ổn định. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          if(!html.includes('guest-rights-hint'))throw Error('Guest permission explanation missing');
+          if(!html.includes('report-group-col'))throw Error('Fixed first reporting column missing');
+          if(!html.includes('settings-hub-tabs')||!html.includes('options-group'))throw Error('Grouped persistent settings navigation missing');
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — UX (17/10/2026) · Khách sửa thử các ô được cấp quyền, bảng thống kê đồng nhất, chỉnh độ rộng toàn trang và gộp Cài đặt. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
           if(!readFileSync(dest,'utf8').includes('PR #3 — UX'))throw Error('Preview banner missing');
