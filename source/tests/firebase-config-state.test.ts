@@ -62,6 +62,25 @@ describe('Firebase config controller remains independent of business data',()=>{
     await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');
     resolve({committed:true,snapshot:{val:()=>confirmed}});await pending;
   });
+  it('report-only transaction preserves canonical Firebase catalog and item widths',async()=>{
+    login(true);
+    const existing=profile(4),statePayload={revision:4,payload:JSON.stringify(existing)};
+    emit('hdnd/profile',statePayload);
+    const state=render(),next=existing.reports.map((row,index)=>index===0?{...row,pageWidth:2750}:row);
+    h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
+      expect(path).toBe('hdnd/profile');
+      expect(apply(null)).toBeNull();
+      const proposed=apply(statePayload);
+      expect(proposed.revision).toBe(5);
+      return {committed:true,snapshot:{val:()=>proposed}};
+    });
+    const saved=await state.common.save('reports',next,4);
+    expect(saved.revision).toBe(5);
+    expect(saved.reports[0].pageWidth).toBe(2750);
+    expect(saved.catalogs).toEqual(existing.catalogs);
+    expect(saved.items).toEqual(existing.items);
+    expect(render().profile?.reports[0].pageWidth).toBe(2750);
+  });
   it('rebases a stale list layout onto a new global profile revision without overwriting other sections',async()=>{
     login(true);
     const baseline=profile(1),server=profile(3);
