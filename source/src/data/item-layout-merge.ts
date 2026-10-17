@@ -53,7 +53,7 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   // Preserve unrelated server edits, and make any same-field conflict explicit.
   const columns=order.flatMap(key=>{
     const old=oldByKey.get(key),local=localByKey.get(key),server=remoteByKey.get(key);
-    const chosen=merge(old,local,server,`columns.${key}.definition`,`định nghĩa cột ${key}`);
+    const chosen=old&&local&&server?server:merge(old,local,server,`columns.${key}.definition`,`định nghĩa cột ${key}`);
     if(!chosen)return [];
     if(!local||!server||!old)return [chosen];
     const label=server.label;
