@@ -15,7 +15,7 @@ import { SheetsRepository, readSheet } from '../data/sheets-repository';
 import { ExcelRepository } from '../data/excel-repository';
 import { DEFAULT_SHEET_URL, clearSheetConfig, loadSheetConfig, parseSheetConfig, saveSheetConfig, type SheetConfig } from '../data/sheet-config';
 import { ConnectionPanel } from '../features/settings/ConnectionPanel';
-import { configuredReports, loadReportLayout, saveReportLayout, type ReportLayout } from '../data/report-preferences';
+import { configuredReports, loadReportLayout, reportPageWidth, saveReportLayout, type ReportLayout } from '../data/report-preferences';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig } from '../data/catalogs';
@@ -136,11 +136,13 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const guestMayEdit=anonymousVisitor&&!firebase!.editingLocked&&!workspace.protectedRecovery&&
     workspace.items.some(item=>TEXT_FIELDS.some(field=>firebase!.canEdit(item.recordId,field.key))||
       firebase!.canEdit(item.recordId,'isDropped'));
-  // The shared page width survives navigation. When saved width is 'auto', use a normal
-  // max-width page; while editing keep controls readable independently of a narrow table.
-  const effectiveFrame=listFramePreview??(itemLayout.frameWidth??'auto');
-  const previewWidth=effectiveFrame==='auto'||!Number.isFinite(effectiveFrame)?'100%':`${Math.min(6000,Math.max(320,effectiveFrame as number))}px`;
-  const frameStyle={'--list-frame-width':previewWidth} as CSSProperties;
+  // Width is independent per tab. The outer page header/navigation always uses the
+  // viewport, while only the inner content region follows the selected tab width.
+  const frameChoice=page==='overview'||page==='customize'
+    ?reportPageWidth(layout)
+    :listPage?(listFramePreview??(itemLayout.frameWidth??'auto')):'auto';
+  const pageContentWidth=frameChoice==='auto'?'100%':`${Math.min(6000,Math.max(320,frameChoice))}px`;
+  const frameStyle={'--page-content-width':pageContentWidth} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar"><div className="brand"><div className="brand-mark">HĐ</div><div className="brand-text"><strong>Nội dung trình HĐND</strong><span>Danh mục · Phân công · Tiến độ</span></div></div><div className="top-actions">{!anonymousVisitor&&<span className="version">Bản {isFirebase?'0.7.1 · Thử tính năng':'0.6.2'}</span>}<button className="button ghost" disabled={workspace.busy||common.busy} onClick={() => { void workspace.refresh(); void common.refresh(); }}>{anonymousVisitor?'Làm mới dữ liệu':isFirebase?'Đọc lại dữ liệu Sheets và cấu hình':'Đọc lại dữ liệu và danh mục từ Google'}</button>{anonymousVisitor?<>{guestMayEdit&&<button type="button" className="button ghost guest-edit" onClick={()=>setPage('items-customize')}>Sửa thử nội dung</button>}<button type="button" className="button ghost guest-signin" onClick={()=>setPage('connection')}>Đăng nhập</button></>:<details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary><div className="options-popover" aria-label="Các nhóm cài đặt">
       <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
