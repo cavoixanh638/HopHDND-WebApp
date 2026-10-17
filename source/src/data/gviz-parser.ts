@@ -33,6 +33,22 @@ export function parseGvizPayload(payload: unknown, source: string): SheetSnapsho
   if(!modernSource&&!legacySource && response.table.cols.length>=18 &&
      (header(14)||header(15)||header(16)||header(17)))
     throw new Error('Chưa xác định được cột Rút/Ghi chú của Excel. Kiểm tra tiêu đề O–R để tránh đọc nhầm dữ liệu.');
+  // Prevent a wrong gid / shifted Excel sheet from silently producing blank
+  // E, F, G or N while showing a seemingly successful data load.
+  if(modernSource){
+    const mandatory:[number,string,string][]=[
+      [4,'Loại văn bản','loai vb'],
+      [5,'Cấp cho ý kiến','cap cho y kien'],
+      [6,'Tiến độ xin ý kiến Thành ủy','tien do xin y kien'],
+      [7,'Tiến độ trình HĐND xây dựng NQ','trinh hdnd'],
+      [8,'Tiến độ trình HĐND ban hành NQ','trinh hdnd'],
+      [13,'Tiến độ hiện tại','tien do hien tai'],
+    ];
+    for(const [index,label,keyword] of mandatory){
+      if(!header(index).includes(keyword))
+        throw new Error(`Trang Excel không khớp: cột ${String.fromCharCode(65+index)} phải là "${label}". Hãy kiểm tra đúng trang tính (gid) và hàng tiêu đề.`);
+    }
+  }
   const sourceColumns=modernSource?18:16;
   const items: Item[] = [], warnings: string[] = [];
   const usedCodes = new Set<string>();
