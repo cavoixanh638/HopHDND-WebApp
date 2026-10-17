@@ -46,9 +46,9 @@ export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemCol
         </div>}
         <div className="item-frame-controls">
           <label className="field" htmlFor="item-visible-frame-width">
-            Độ rộng vùng danh sách (px) — chỉ áp dụng khi nhấn Enter hoặc rời ô
+            Độ rộng trang và vùng danh sách (px) — nhấn Enter hoặc rời ô để áp dụng
           </label>
-          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng vùng danh sách (px)"
+          <DeferredWidthInput id="item-visible-frame-width" label="Độ rộng trang và vùng danh sách (px)"
             value={layout.frameWidth==='auto'||layout.frameWidth===undefined?1500:layout.frameWidth}
             min={320} max={6000}
             onCommit={frameWidth=>onChange({...layout,frameWidth})}/>
@@ -58,8 +58,8 @@ export function ItemColumnPanel({ layout, onChange, validationMessage }: ItemCol
             Tự động theo độ rộng màn hình
           </label>
           <p className="muted">{layout.frameWidth==='auto'||layout.frameWidth===undefined
-            ?'Đang tự động lấp đầy vùng làm việc. Nhập một số rồi nhấn Enter hoặc rời ô để áp dụng.'
-            :`Vùng danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Nhấn Enter hoặc rời ô để áp dụng độ rộng mới; các cột sẽ cuộn ngang nếu rộng hơn.`}</p>
+            ?'Trang và danh sách tự động theo màn hình. Nhập số rồi nhấn Enter hoặc rời ô để đổi kích thước.'
+            :`Trang và danh sách rộng ${layout.frameWidth} px (tối đa bằng cửa sổ). Khi đang thiết lập, phần điều khiển vẫn đủ rộng để dễ sử dụng. Các cột rộng hơn sẽ cuộn ngang.`}</p>
         </div>
         <details className="item-layout-advanced">
           <summary>Độ rộng tối thiểu phần cột bên trong (nâng cao)</summary>
