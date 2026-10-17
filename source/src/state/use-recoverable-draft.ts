@@ -8,11 +8,14 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
     return { draft: matches ? saved.draft : structuredClone(initial), unmatched: saved&&!matches?saved:null, message: matches ? 'Đã khôi phục phần bạn sửa trên trình duyệt. Kiểm tra trước khi áp dụng hoặc lưu.' : saved ? 'Phần sửa đang giữ trên máy không khớp bản gốc hiện tại; chưa tự áp dụng.' : '' };
   });
   const [draft, update] = useState<T>(start.draft);
+  // After a successful save, compare against the committed value, not the value
+  // captured when the editor first opened. This enables repeated saves in-place.
+  const [committedBase,setCommittedBase] = useState<T>(()=>structuredClone(initial));
   const [unmatchedCheckpoint,setUnmatchedCheckpoint]=useState(start.unmatched);
   const protectedCheckpoint=useRef(!!start.unmatched);protectedCheckpoint.current=!!unmatchedCheckpoint;
   const [checkpointMessage, setCheckpointMessage] = useState('Tự động giữ phần đang sửa trên trình duyệt mỗi 10 giây.');
-  const dirty = isDirty ? isDirty(draft,initial) : JSON.stringify(draft) !== JSON.stringify(initial);
-  const latest = useRef({ draft, initial, dirty }); latest.current = { draft, initial, dirty };
+  const dirty = isDirty ? isDirty(draft,committedBase) : JSON.stringify(draft) !== JSON.stringify(committedBase);
+  const latest = useRef({ draft, initial:committedBase, dirty }); latest.current = { draft, initial:committedBase, dirty };
   const cleared = useRef(false);
   const flush = () => {
     if (!active||cleared.current||protectedCheckpoint.current) return;
@@ -23,6 +26,12 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
   const flushRef = useRef(flush); flushRef.current = flush;
   const setDraft = (next: SetStateAction<T>) => { cleared.current = false; update(next); };
   const clearCheckpoint = () => { cleared.current = true; removeCheckpoint(key); setCheckpointMessage('Không còn thay đổi chưa xử lý trong phần này.'); };
+  const markSaved=(committed:T)=>{
+    const saved=structuredClone(committed);
+    setCommittedBase(saved);
+    update(saved);
+    clearCheckpoint();
+  };
   const restoreOldDraft=()=>{if(!unmatchedCheckpoint)return;protectedCheckpoint.current=false;setUnmatchedCheckpoint(null);setDraft(structuredClone(unmatchedCheckpoint.draft));};
   const discardOldDraft=()=>{protectedCheckpoint.current=false;setUnmatchedCheckpoint(null);removeCheckpoint(key);};
   useEffect(() => {
@@ -35,5 +44,5 @@ export function useRecoverableDraft<T>(key: string, initial: T, validate: (value
     return () => { clearInterval(interval); window.removeEventListener('pagehide', pagehide); window.removeEventListener('beforeunload', unload); document.removeEventListener('visibilitychange', visibility); if(protectedCheckpoint.current)return;if (!cleared.current && latest.current.dirty) writeCheckpoint(key, latest.current.initial, latest.current.draft); else removeCheckpoint(key); };
   }, [key,active]);
   useEffect(() => { if(!active)return;const timer = window.setTimeout(() => flushRef.current(), 800); return () => clearTimeout(timer); }, [draft,active]);
-  return { draft, setDraft, dirty, recoveryMessage: start.message, checkpointMessage, clearCheckpoint,unmatchedCheckpoint,restoreOldDraft,discardOldDraft };
+  return { draft, setDraft, dirty, markSaved, recoveryMessage: start.message, checkpointMessage, clearCheckpoint,unmatchedCheckpoint,restoreOldDraft,discardOldDraft };
 }
