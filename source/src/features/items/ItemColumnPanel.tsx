@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import type {ItemColumn,ItemLayout} from '../../data/item-preferences';
 import {EXCEL_COLUMN_KEYS} from '../../data/item-preferences';
+import {TEXT_FIELDS} from '../../../shared/field-definitions';
+const editableSourceKeys=new Set(TEXT_FIELDS.map(f=>f.key));
 import {DeferredWidthInput} from './DeferredWidthInput';
 
 type Props={layout:ItemLayout;onChange:(next:ItemLayout)=>void;validationMessage?:string};
@@ -59,7 +61,7 @@ export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
           <label className="column-manager-check"><input type="checkbox" checked={column.visible}
             aria-label={`Hiện cột ${column.label}`} onChange={e=>update(column.key,{visible:e.currentTarget.checked})}/></label>
           <span className="column-manager-label" title={column.label}>{column.label}</span>
-          <span className="column-manager-type">{column.kind==='select'?'Danh sách chọn':'Nhập tự do'}</span>
+          <span className="column-manager-type">{(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'?'Danh sách chọn':'Nhập tự do'}</span>
           <span className="column-manager-origin">{column.origin==='custom'?'Tự tạo':EXCEL_COLUMN_KEYS.includes(column.key)?'Excel':''}</span>
           <button type="button" className="button ghost" aria-expanded={selected===column.key}
             aria-label={`Thiết lập cột ${column.label}`}
@@ -71,15 +73,17 @@ export function ItemColumnPanel({layout,onChange,validationMessage}:Props){
               value={column.label} maxLength={100}
               onChange={e=>update(column.key,{label:e.currentTarget.value,renamed:true})}/></label>
             <label className="field">Kiểu dữ liệu
-              <select aria-label={`Kiểu dữ liệu ${column.key}`} value={column.kind??'text'}
+              <select aria-label={`Kiểu dữ liệu ${column.key}`}
+                disabled={column.origin!=='custom'&&!editableSourceKeys.has(column.key as never)}
+                value={column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text')}
                 onChange={e=>update(column.key,{kind:e.currentTarget.value as 'text'|'select'})}>
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
               </select>
             </label>
-            {column.kind==='select'&&<label className="field column-manager-options">Các lựa chọn (mỗi dòng một giá trị)
+            {(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'&&<label className="field column-manager-options">Các lựa chọn (mỗi dòng một giá trị)
               <textarea aria-label={`Các lựa chọn cột ${column.key}`} key={column.key+column.kind}
                 rows={4} defaultValue={(column.options??[]).join('\n')}
-                onBlur={e=>update(column.key,{options:[...new Set(e.currentTarget.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))].slice(0,50)})}/>
+                onBlur={e=>update(column.key,{kind:'select',options:[...new Set(e.currentTarget.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))].slice(0,50)})}/>
             </label>}
             <div className="column-manager-detail-actions">
               <button type="button" className="button ghost" disabled={index===0} onClick={()=>move(column.key,-1)}>↑ Lên</button>
