@@ -8,7 +8,7 @@ export interface ItemColumn {
 }
 export interface ItemLayout { columns: ItemColumn[]; tableWidth: number; frameWidth?: 'auto'|number }
 
-/** Exact A–R structure of the source tab "Các nội dung trình HĐND".
+/** Exact A–O structure of the current Excel source tab. Older A–R layouts are migrated. 
  * UI-only actions, derived metadata and audit history must not become Excel columns.
  */
 export const EXCEL_SOURCE_COLUMNS = [
@@ -17,7 +17,7 @@ export const EXCEL_SOURCE_COLUMNS = [
   {key:'content',label:'Nội dung trình',width:440},
   {key:'department',label:'Sở, ngành chủ trì',width:170},
   {key:'type',label:'Loại VB (HC/QPPL/BC)',width:170},
-  {key:'partyLevel',label:'Cấp cho ý kiến',width:170},
+  {key:'partyLevel',label:'Cấp Thành ủy cho ý kiến',width:190},
   {key:'progressParty',label:'Tiến độ xin ý kiến Thành ủy',width:210},
   {key:'progressBuild',label:'Tiến độ trình HĐND xây dựng NQ',width:210},
   {key:'progressCouncil',label:'Tiến độ trình HĐND ban hành NQ/BC',width:210},
@@ -26,14 +26,11 @@ export const EXCEL_SOURCE_COLUMNS = [
   {key:'vpLeader',label:'Lãnh đạo VP',width:170},
   {key:'ubndLeader',label:'Lãnh đạo UBND TP',width:170},
   {key:'specificProgress',label:'Tiến độ hiện tại',width:200},
-  {key:'isDropped',label:'Rút',width:120},
-  {key:'partyMeeting',label:'Họp Thành ủy / xin ý kiến',width:200},
-  {key:'examined',label:'Đã thẩm tra chưa',width:170},
   {key:'note',label:'Ghi chú',width:240},
 ] as const;
 export const EXCEL_COLUMN_KEYS: readonly string[] = EXCEL_SOURCE_COLUMNS.map(column=>column.key);
 const expected=new Set<string>(EXCEL_COLUMN_KEYS);
-const oldUiOnly=new Set(['history']);
+const oldUiOnly=new Set(['history','isDropped','partyMeeting','examined']);
 
 export const defaultItemLayout=():ItemLayout=>({
   tableWidth:1500,frameWidth:'auto',
@@ -50,8 +47,9 @@ export function validateItemLayout(value:unknown):ItemLayout{
   if(frameWidth!=='auto'&&(!Number.isInteger(frameWidth)||frameWidth<320||frameWidth>6000))
     throw new Error('Độ rộng vùng danh sách cần từ 320 đến 6000 px hoặc Tự động.');
   if(!Array.isArray(input.columns))throw new Error('Danh sách cột không hợp lệ.');
-  // Old shared/personal layouts may contain the historical "history" UI column.
-  // Remove it rather than rejecting the entire saved profile. Do not touch audit data.
+  // Preserve historical source data but remove obsolete O/P/Q table columns
+  // from layouts saved when the source had 18 fields. O is now Ghi chú.
+  // Never erase backend permission or audit records here.
   const validSourceColumns=input.columns.filter(c=>!oldUiOnly.has(c.key));
   const keys=validSourceColumns.map(c=>c.key);
   if(new Set(keys).size!==keys.length)throw new Error('Danh sách cột không hợp lệ hoặc bị trùng.');
@@ -61,13 +59,14 @@ export function validateItemLayout(value:unknown):ItemLayout{
   // P/Q were introduced later; append any newly supported Excel columns without
   // discarding the user's prior order, visibility, widths, and separate permissions.
   const missing=defaults.columns.filter(col=>!keys.includes(col.key));
-  // Only P/Q are approved implicit migrations; every other missing source
-  // column means the saved layout is incomplete and must not be silently guessed.
-  if(missing.some(col=>col.key!=='partyMeeting'&&col.key!=='examined'))
-    throw new Error('Thiếu cột bắt buộc trong cấu hình A–R.');
+  // Source fields have stable keys. The current schema has 15 columns,
+  // while old snapshots may have 18. Only missing columns from an older
+  // configuration are restored; no old removed field is reintroduced.
+  if(missing.some(col=>col.key!=='note'))
+    throw new Error('Thiếu cột bắt buộc trong cấu hình A–O.');
   const withMissing=[...validSourceColumns,...missing];
   if(withMissing.length!==EXCEL_SOURCE_COLUMNS.length+customKeys.length)
-    throw new Error('Danh sách cột cần đủ các cột A–R của nguồn Excel.');
+    throw new Error('Danh sách cột cần đủ các cột A–O của nguồn Excel.');
   const columns=withMissing.map(column=>{
     const base=defaults.columns.find(entry=>entry.key===column.key);
     if(typeof column.visible!=='boolean'||!Number.isInteger(column.width)||
