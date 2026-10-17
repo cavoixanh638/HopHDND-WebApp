@@ -35,12 +35,16 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   });
   const savedCatalog=useRef<CatalogConfig>(copyCatalog(catalog??catalogFromItems(items)));
   const [choiceDraft,setChoiceDraft]=useState<CatalogConfig>(()=>copyCatalog(savedCatalog.current));
+  // Do not overwrite a successful local save with an older profile prop while
+  // its Firebase listener notification is still in flight.
+  const awaitingCatalogEcho=useRef<string|null>(null);
   const catalogDirty=JSON.stringify(choiceDraft)!==JSON.stringify(savedCatalog.current);
   const savedPermissions=useRef<CellPermissions>({
     columns:{...(permissions?.columns??{})},
     rows:{...(permissions?.rows??{})},cells:{...(permissions?.cells??{})}
   });
   const [columnRights,setColumnRights]=useState({...savedPermissions.current.columns});
+  const awaitingPermissionsEcho=useRef<string|null>(null);
   const [clearExceptions,setClearExceptions]=useState(false);
   const exceptions=Object.keys(savedPermissions.current.rows??{}).length+
     Object.values(savedPermissions.current.cells??{}).reduce((sum,cells)=>sum+Object.keys(cells).length,0);
@@ -50,6 +54,35 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
     (clearExceptions&&exceptions>0)
   );
   const [saveError,setSaveError]=useState('');
+  useEffect(()=>{
+    if(!catalog||saving)return;
+    const incoming=JSON.stringify(catalog);
+    const confirmed=JSON.stringify(savedCatalog.current);
+    if(awaitingCatalogEcho.current){
+      if(incoming===awaitingCatalogEcho.current)awaitingCatalogEcho.current=null;
+      return;
+    }
+    if(incoming!==confirmed&&!catalogDirty){
+      savedCatalog.current=copyCatalog(catalog);
+      setChoiceDraft(copyCatalog(catalog));
+    }
+  },[catalog]);
+  useEffect(()=>{
+    if(!permissions||saving)return;
+    const incoming=JSON.stringify(permissions);
+    const confirmed=JSON.stringify(savedPermissions.current);
+    if(awaitingPermissionsEcho.current){
+      if(incoming===awaitingPermissionsEcho.current)awaitingPermissionsEcho.current=null;
+      return;
+    }
+    if(incoming!==confirmed&&
+      samePermissions({columns:columnRights},{columns:savedPermissions.current.columns})){
+      savedPermissions.current={columns:{...permissions.columns},
+        rows:{...(permissions.rows??{})},cells:{...(permissions.cells??{})}};
+      setColumnRights({...permissions.columns});
+    }
+  },[permissions]);
+
   const [saveSuccess,setSaveSuccess]=useState('');
   const [saving,setSaving]=useState(false);
   useEffect(()=>{onDirtyChange?.(catalogDirty||rightsDirty);},[catalogDirty,rightsDirty,onDirtyChange]);
@@ -72,6 +105,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         const next=validateCatalog(choiceDraft);
         await onSaveCatalog(next);
         savedCatalog.current=copyCatalog(next);
+        awaitingCatalogEcho.current=JSON.stringify(next);
         setChoiceDraft(copyCatalog(next));
         completed.push(currentPart);
       }
@@ -80,6 +114,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         if(!onSavePermissions)throw new Error('Chưa kết nối nơi lưu quyền cột.');
         await onSavePermissions(rightsDraft,savedPermissions.current);
         savedPermissions.current={columns:{...columnRights},rows:{},cells:{}};
+        awaitingPermissionsEcho.current=JSON.stringify(savedPermissions.current);
         setClearExceptions(false);
         completed.push(currentPart);
       }
