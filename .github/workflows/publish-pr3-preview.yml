@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 7207dcd851552b97de6a88e5bbeb254469c483ac
+          ref: cf4031d5c8aed7147ea16b0184537e46b7e9320e
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -63,8 +63,8 @@ jobs:
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
           if(!html.includes('Quản lý cột'))throw Error('Field manager UI absent');
-          if(!html.includes('settings-sub-tabs')||!html.includes('Cột và hiển thị')||!html.includes('Giá trị lựa chọn'))throw Error('Nested settings tabs absent');
-          if(!html.includes('column-manager-catalog')||!html.includes('Mở giá trị lựa chọn của cột này'))throw Error('Central dropdown choices handoff absent');
+          if(!html.includes('Quản lý cột')||!html.includes('Thiết lập ngay tại từng cột'))throw Error('Unified column settings absent');
+          if(!html.includes('column-choice-editor')||!html.includes('Lưu danh sách chọn')||!html.includes('Cho phép sửa cột'))throw Error('Inline dropdown editing or column grants absent');
           if(!html.includes('Liên kết chuyên viên – phòng'))throw Error('Advanced assignment section missing');
           if(!html.includes('Chiều rộng trang Danh sách'))throw Error('Independent list page width control absent');
           if(!html.includes('Không lưu được cách hiển thị.'))throw Error('Save feedback is absent');
@@ -101,17 +101,17 @@ jobs:
           if(html.includes('Đã lưu Bảng báo cáo vào Firebase. Bạn có thể tiếp tục chỉnh sửa.'))throw Error('Redundant success banner still present');
           if(!html.includes('onPreviewWidthChange'))throw Error('Live width preview handler missing');
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
-          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu giá trị lựa chọn'))throw Error('Separate save actions are missing');
+          if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu danh sách chọn')||!html.includes('Lưu quyền cột'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
           if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('Các lựa chọn (mỗi dòng một giá trị)'))throw Error('Independent custom field manager missing');
           if(!html.includes('column-manager-detail')||!html.includes('column-manager-grid'))throw Error('Compact column manager absent');
           if(!html.includes('Hiện đủ 15 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — CẤU TRÚC THIẾT LẬP MỚI & DANH MỤC CHUNG (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Cấu trúc chỉnh sửa rõ ba cấp: Chỉnh sửa → Danh sách dữ liệu → Cột và hiển thị / Giá trị lựa chọn / Quyền chỉnh sửa. Các cột nguồn dùng chung một bộ giá trị chọn; cột tự tạo có danh sách riêng. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — DROPDOWN VÀ QUYỀN SỬA NGAY TRONG QUẢN LÝ CỘT (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Cấu trúc gọn: Chỉnh sửa → Danh sách dữ liệu → Quản lý cột. Ngay từng cột có kiểu nhập, danh sách chọn có thêm/sửa/xóa/sắp xếp và ô tick cấp quyền sửa theo cột; không mở bảng quyền riêng từng ô. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — CẤU TRÚC THIẾT LẬP MỚI & DANH MỤC CHUNG'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — DROPDOWN VÀ QUYỀN SỬA NGAY TRONG QUẢN LÝ CỘT'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
