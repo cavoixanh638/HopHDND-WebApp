@@ -145,7 +145,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     Object.entries(columnFilters).every(([key,term])=>{
       const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
       return !column||!term.trim()||normalizeSearch(column.values?.[item.recordId]??'').includes(normalizeSearch(term));
-    }),[items,columnFilters,activeLayout]);
+    })),[items,columnFilters,activeLayout]);
   const rows = filtered;
   const options = (field: TextField,item:Item) => {
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
