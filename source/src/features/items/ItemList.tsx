@@ -28,6 +28,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  // An ordinary viewer should immediately see every A–R source field. Saved
+  // column settings remain available without a Firebase write.
+  const [showAllSourceColumns,setShowAllSourceColumns]=useState(!customizing&&!selectedView);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -45,7 +48,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   useEffect(()=>{onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[activeLayout.frameWidth,onFrameWidthChange]);
-  const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
+  const columns = activeLayout.columns.filter(column=>
+    (column.visible || (!customizing && showAllSourceColumns && column.key!=='history'))
+      && (!readOnly || column.key !== 'history'));
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
   const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
@@ -143,6 +148,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
     setColumnFilters({...filters.columns});
+    setShowAllSourceColumns(view===null);
     setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
     return true;
   };
@@ -181,6 +187,13 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
     {customizing&&!anonymousViewer&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
+     {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+       <span>{columns.filter(column=>column.key!=='history').length} / {activeLayout.columns.filter(column=>column.key!=='history').length} cột dữ liệu</span>
+       <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
+         onClick={()=>setShowAllSourceColumns(current=>!current)}>
+         {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
+       </button>
+     </div>}
      {!anonymousViewer&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
     <div className="item-filter-status-slot" role="status" aria-label="Các điều kiện tìm kiếm đang áp dụng">
