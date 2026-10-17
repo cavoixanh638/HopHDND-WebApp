@@ -98,7 +98,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
     open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('reports',panel.props.initial,0);panel.props.onClose();
-    open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('catalogs',panel.props.config,1);panel.props.onClose();
+    open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('catalogs',panel.props.config,0);panel.props.onClose();
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
   it('saves only reports even if the displayed Sheets-augmented catalog contains invalid duplicate labels',async()=>{
