@@ -37,11 +37,14 @@ function send(method,params={}){
 }
 const sourcePayload={status:'ok',table:{cols:Array.from({length:18},()=>({})),rows:[
   {c:Array.from({length:18},(_,i)=>({v:({
-    2:'Nội dung trình',3:'Sở, ngành',14:'Rút',15:'Họp Thành ủy/ xin ý kiến',
+    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB (HC/QPPL/BC',5:'Cấp cho ý kiến',
+    6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
+    8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',
+    14:'Rút',15:'Họp Thành ủy/ xin ý kiến',
     16:'Đã thẩm tra chưa',17:'Ghi chú'
   })[i]??''}))},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','','','Đã xin ý kiến','Đã thẩm tra','Ghi chú nguồn R'].map(v=>({v}))},
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','Sở đang thực hiện','','Đã xin ý kiến','Đã thẩm tra','Ghi chú nguồn R'].map(v=>({v}))},
   {c:['',2,'','','QPPL','','','','','','','','','','','','',''].map(v=>({v}))},
   ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','','','','',''].map(v=>({v}))}))
 ]}};
