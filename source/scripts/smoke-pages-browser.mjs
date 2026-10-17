@@ -132,16 +132,20 @@ try{
       button?.getAttribute('aria-pressed')==='true';
   })()`);
   if(!all18)throw Error('Default Excel viewer must show all 18 source columns including G/H/I');
-  const customVisibility=await evaluate(`(()=>{
+  if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
     if(!button)return false;
-    button.click();
-    const reduced=document.querySelectorAll('.item-column-filter-row [data-filter-key]').length;
-    button.click();
-    const restored=document.querySelectorAll('.item-column-filter-row [data-filter-key]').length;
-    return reduced<18&&restored===18;
-  })()`);
-  if(!customVisibility)throw Error('Viewer cannot switch between complete Excel and saved custom column layouts');
+    button.click();return true;
+  })()`))throw Error('Missing viewer column switch button');
+  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length<18",
+    'Switching to the saved subset did not hide columns after React updated');
+  if(!await evaluate(`(()=>{
+    const button=document.querySelector('.source-column-visibility button');
+    if(!button)return false;
+    button.click();return true;
+  })()`))throw Error('Cannot restore full column view');
+  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length===18",
+    'Returning to full A–R columns did not restore the source view');
 
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
