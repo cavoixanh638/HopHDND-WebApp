@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 35a22d33785e07d3e664814f200a85884649fe20
+          ref: c58ebde53854b089d2927119f69bae9865f7b56b
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -100,11 +100,15 @@ jobs:
           if(!html.includes('shared-view-exit'))throw Error('One global view-mode exit is missing');
           if(!html.includes('Lưu Bảng báo cáo')||!html.includes('Lưu Danh mục'))throw Error('Separate save actions are missing');
           if(!html.includes('Lưu quyền chỉnh sửa'))throw Error('Independent permissions save action missing');
+          if(!html.includes('Quản lý cột')||!html.includes('+ Thêm cột')||!html.includes('Các lựa chọn (mỗi dòng một giá trị)'))throw Error('Independent custom field manager missing');
+          if(!html.includes('column-manager-detail')||!html.includes('column-manager-grid'))throw Error('Compact column manager absent');
+          if(!html.includes('Hiện đủ 18 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–R schema missing');
+          if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — KIỂM TRA NGUỒN & CỘT E/F/G/N (17/10/2026) · Link Excel không có gid tự về trang nguồn 60961344; E/F/G/N được nhận diện theo hàng tiêu đề; N là Tiến độ hiện tại. Bảng nguồn mới hiện đủ 18 cột. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — QUẢN LÝ CỘT ĐỘC LẬP & QUYỀN FIREBASE (17/10/2026) · Nguồn A–R đã đối chiếu; quản lý cột gọn, kéo độ rộng, wrap tiêu đề, thêm/xóa/đổi tên, dropdown/nhập tự do. Quyền Firebase đọc dữ liệu hiện hành trước khi lưu. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — KIỂM TRA NGUỒN & CỘT E/F/G/N'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — QUẢN LÝ CỘT ĐỘC LẬP & QUYỀN FIREBASE'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
