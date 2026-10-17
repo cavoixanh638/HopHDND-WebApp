@@ -111,8 +111,10 @@ describe.skipIf(!emulator)('Firebase emulator: rules, transactions and realtime'
     await assertSucceeds(set(where,{columns:{note:true,room:false},rows:{'sheet:42:row:3':true}}));
     const original={rows:{'sheet:42:row:3':true},columns:{room:false,note:true},cells:{}};
     const updated={columns:{note:false,room:false},rows:{'sheet:42:row:3':true},cells:{}};
-    const result=await assertSucceeds(runTransaction(where,current=>
-      samePermissions(current,original)?updated:undefined,{applyLocally:false}));
+    const result=await assertSucceeds(runTransaction(where,current=>{
+      if(current===null)return current; // cold cache: request authoritative server value
+      return samePermissions(current,original)?updated:undefined;
+    },{applyLocally:false}));
     expect(result.committed).toBe(true);
     expect(samePermissions(result.snapshot.val(),updated)).toBe(true);
     const stale=await runTransaction(where,current=>samePermissions(current,original)?original:undefined,{applyLocally:false});
