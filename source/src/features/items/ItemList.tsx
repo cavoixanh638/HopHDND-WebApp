@@ -140,12 +140,21 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     finally{savingRef.current=false;setSaving(false);}
   };
   // Column filters are the single visible source of truth; old saved global filters must not silently hide results.
+  // A unique Excel ID survives row insertions/reordering; missing or repeated
+  // IDs intentionally fall back to their original source-row identity.
+  const codeCounts=useMemo(()=>{
+    const result=new Map<string,number>();
+    for(const item of items)result.set(item.displayCode,(result.get(item.displayCode)??0)+1);
+    return result;
+  },[items]);
+  const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
+    codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
   const filtered = useMemo(() => items.filter(item =>
     matchesColumnFilters(item,Object.fromEntries(Object.entries(columnFilters).filter(([key])=>EXCEL_COLUMN_KEYS.includes(key)))) &&
     Object.entries(columnFilters).every(([key,term])=>{
       const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
-      return !column||!term.trim()||normalizeSearch(column.values?.[item.recordId]??'').includes(normalizeSearch(term));
-    })),[items,columnFilters,activeLayout]);
+      return !column||!term.trim()||normalizeSearch(column.values?.[customRowKey(item)]??'').includes(normalizeSearch(term));
+    })),[items,columnFilters,activeLayout,codeCounts]);
   const rows = filtered;
   const options = (field: TextField,item:Item) => {
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
@@ -220,15 +229,15 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
       }
     }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key} disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<span draggable={false} className="column-resizer" role="separator" aria-label={`Kéo độ rộng cột ${column.label}`} aria-orientation="vertical" tabIndex={0} onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===column.key?{...entry,width:Math.min(1600,Math.max(60,entry.width+(event.key==='ArrowRight'?10:-10)))}:entry)}));}}} onPointerDown={event=>{resizing.current={key:column.key,x:event.clientX,width:column.width};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const drag=resizing.current;if(drag&&drag.key===column.key)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===drag.key?{...entry,width:Math.min(1600,Math.max(60,Math.round(drag.width+event.clientX-drag.x)))}:entry)}));}} onPointerUp={()=>{resizing.current=null;}} onPointerCancel={()=>{resizing.current=null;}}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
-    getValue={column.origin==='custom'?(item)=>column.values?.[item.recordId]??'':undefined}
+    getValue={column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
         if(column.origin==='custom'){
-          const value=column.values?.[item.recordId]??'';
+          const rowKey=customRowKey(item),value=column.values?.[rowKey]??'';
           const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
-            ...c,values:{...(c.values??{}),[item.recordId]:next}
+            ...c,values:{...(c.values??{}),[rowKey]:next}
           })}));
           return <td key={column.key}>{customizing&&allowLayout&&!locked
             ?column.kind==='select'
