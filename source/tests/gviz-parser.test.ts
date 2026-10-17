@@ -42,7 +42,28 @@ describe('parseGvizPayload', () => {
     });
   });
 
-  it('reads the live 18-column Excel layout without confusing Rút, Họp TU, Thẩm tra and Ghi chú',()=>{
+  it('reads the actual current A–O Excel headings without inventing removed Q/R fields',()=>{
+    const headings=Array.from({length:15},(_,index)=>({v:({
+      0:'ID',1:'STT',2:'NỘI DUNG TRÌNH',3:'SỞ, NGÀNH CHỦ TRÌ',
+      4:'Loại VB (HC/QPPL/BC',5:'Cấp Thành ủy cho ý kiến',
+      6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
+      8:'Tiến độ trình HĐND ban hành NQ/ BC',9:'Chuyên viên VPUB',
+      10:'Phòng chuyên môn',11:'Lãnh đạo VP',12:'Lãnh đạo UBND TP',
+      13:'Tiến độ hiện tại',14:'Ghi chú'
+    } as Record<number,string>)[index]??''}));
+    const example=['NQ1',1,'MẪU: kế hoạch','Sở Tài chính','Hành chính',
+      'BTV TU','Sở chưa trình','Không phải trình xây dựng NQ','Sở chưa trình',
+      'Nguyễn Văn A','Tài chính','PCVP A','PCT A','Sở đang thực hiện','Ghi chú cột O'];
+    const result=parseGvizPayload(payload([{c:headings},row(example)],'ok',
+      Array.from({length:15},()=>({}))), 'current-a-o');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type:'Hành chính',partyLevel:'BTV TU',progressParty:'Sở chưa trình',
+      specificProgress:'Sở đang thực hiện',note:'Ghi chú cột O',
+      isDropped:false,partyMeeting:'',examined:''
+    });
+  });
+  it('retains support for historical 18-column snapshots without confusing source mappings',()=>{
     const cols18=Array.from({length:18},(_,index)=>({id:String.fromCharCode(65+index),label:''}));
     const heading=Array<Cell>(18).fill(null);
     heading[2]={v:'NỘI DUNG TRÌNH'};heading[3]={v:'SỞ, NGÀNH CHỦ TRÌ'};
