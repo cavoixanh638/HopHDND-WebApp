@@ -18,7 +18,7 @@ export const EXCEL_SOURCE_COLUMNS = [
   {key:'room',label:'Phòng chuyên môn',width:170},
   {key:'vpLeader',label:'Lãnh đạo VP',width:170},
   {key:'ubndLeader',label:'Lãnh đạo UBND TP',width:170},
-  {key:'specificProgress',label:'Tiến độ cụ thể',width:200},
+  {key:'specificProgress',label:'Tiến độ hiện tại',width:200},
   {key:'isDropped',label:'Rút',width:120},
   {key:'partyMeeting',label:'Họp Thành ủy / xin ý kiến',width:200},
   {key:'examined',label:'Đã thẩm tra chưa',width:170},
@@ -31,7 +31,7 @@ const oldUiOnly=new Set(['history']);
 export const defaultItemLayout=():ItemLayout=>({
   tableWidth:1500,frameWidth:'auto',
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
-    visible:['displayCode','content','department','progressCouncil','specialist','room','partyMeeting','examined','isDropped'].includes(column.key)
+    visible:true
   })),
 });
 export function validateItemLayout(value:unknown):ItemLayout{
