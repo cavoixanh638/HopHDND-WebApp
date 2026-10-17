@@ -49,11 +49,32 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const oldByKey=new Map(base.columns.map(c=>[c.key,c]));
   const localByKey=new Map(edited.columns.map(c=>[c.key,c]));
   const remoteByKey=new Map(remote.columns.map(c=>[c.key,c]));
-  const columns=order.map(key=>{
-    const old=oldByKey.get(key)!,local=localByKey.get(key)!,server=remoteByKey.get(key)!;
-    return {...server,
-      visible:merge(old.visible,local.visible,server.visible,`columns.${key}.visible`,`hiển thị cột ${server.label}`),
-      width:merge(old.width,local.width,server.width,`columns.${key}.width`,`độ rộng cột ${server.label}`)};
+  // Custom columns may be added or deleted after the initial base revision.
+  // Preserve unrelated server edits, and make any same-field conflict explicit.
+  const columns=order.flatMap(key=>{
+    const old=oldByKey.get(key),local=localByKey.get(key),server=remoteByKey.get(key);
+    const chosen=merge(old,local,server,`columns.${key}.definition`,`định nghĩa cột ${key}`);
+    if(!chosen)return [];
+    if(!local||!server||!old)return [chosen];
+    const label=server.label;
+    const next={...server};
+    for(const field of ['visible','width','label','renamed','removed','kind','options'] as const){
+      // Optional fields may be absent in old saved layouts.
+      (next as unknown as Record<string,unknown>)[field]=merge(
+        old[field],local[field],server[field],
+        `columns.${key}.${field}`,`${String(field)} · ${label}`);
+    }
+    if(server.origin==='custom'){
+      const ids=new Set([...Object.keys(old.values??{}),...Object.keys(local.values??{}),...Object.keys(server.values??{})]);
+      const values:Record<string,string>={};
+      for(const id of ids){
+        const value=merge(old.values?.[id],local.values?.[id],server.values?.[id],
+          `columns.${key}.values.${id}`,`giá trị ${label} / ${id}`);
+        if(value)values[id]=value;
+      }
+      next.values=values;
+    }
+    return [next];
   });
   const tableWidth=merge(base.tableWidth,edited.tableWidth,remote.tableWidth,'tableWidth','độ rộng tối thiểu các cột');
   const frameWidth=merge(base.frameWidth??'auto',edited.frameWidth??'auto',remote.frameWidth??'auto','frameWidth','độ rộng vùng danh sách');
