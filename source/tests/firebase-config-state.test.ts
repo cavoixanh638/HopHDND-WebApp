@@ -6,7 +6,7 @@ import {defaultReportLayout} from '../src/data/report-preferences';
 import {firebaseAdmin,mayEdit} from '../src/data/firebase-repository';
 const h=vi.hoisted(()=>{
   const slots:any[]=[];let cursor=0;let effects:(()=>void)[]=[];
-  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),
+  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),
     state:(initial:any)=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     ref:(v:any)=>{const i=cursor++;return slots[i]??(slots[i]={current:v});},
     effect:(fn:any,deps:any[])=>{const i=cursor++,old=slots[i];if(!old||deps.some((d,j)=>!Object.is(d,old.deps[j])))effects.push(()=>{old?.cleanup?.();slots[i]={deps,cleanup:fn()};});},
@@ -23,8 +23,8 @@ const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
 function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});}
-function emit(path:string,value:any){h.listeners.get(path).next({val:()=>value});}
-beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.get.mockReset();h.transaction.mockReset();});
+function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
+beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();});
 afterEach(()=>h.dispose());
 describe('Firebase config controller remains independent of business data',()=>{
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
@@ -56,8 +56,8 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('saves with server revision checking and blocks overlapping writes before a rerender',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});const state=render();
     let resolve!:(v:any)=>void;h.transaction.mockReturnValue(new Promise(done=>resolve=done));const pending=state.common.save('all',profile(),1);
-    const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});
-    expect(update(null)).toBeNull();expect(update(stored(2))).toBeUndefined();
+    await vi.waitFor(()=>expect(h.transaction).toHaveBeenCalledOnce());const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});
+    expect(update(null)).toBeUndefined();expect(update(stored(2))).toBeUndefined();
     const confirmed=update(stored());expect(confirmed.revision).toBe(2);
     await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');
     resolve({committed:true,snapshot:{val:()=>confirmed}});await pending;
@@ -69,7 +69,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     const state=render(),next=existing.reports.map((row,index)=>index===0?{...row,pageWidth:2750}:row);
     h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
       expect(path).toBe('hdnd/profile');
-      expect(apply(null)).toBeNull();
+      expect(apply(null)).toBeUndefined();
       const proposed=apply(statePayload);
       expect(proposed.revision).toBe(5);
       return {committed:true,snapshot:{val:()=>proposed}};
@@ -91,7 +91,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     let confirmed:any;
     h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
       expect(path).toBe('hdnd/profile');
-      expect(apply(null)).toBeNull();
+      expect(apply(null)).toBeUndefined();
       confirmed=apply({revision:3,payload:JSON.stringify(server)});
       return {committed:true,snapshot:{val:()=>confirmed}};
     });
@@ -127,7 +127,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     server.items={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='note'?{...c,width:117}:c)};
     let confirmed:any;
     h.transaction.mockImplementation(async(_path:string,apply:(value:any)=>any)=>{
-      expect(apply(null)).toBeNull();
+      expect(apply(null)).toBeUndefined();
       confirmed=apply({revision:3,payload:JSON.stringify(server)});
       return {committed:true,snapshot:{val:()=>confirmed}};
     });
