@@ -540,3 +540,6 @@ body:not(.is-printing) #print-target {  display:none!important}
 .app-shell.settings-page .item-list-card {margin-bottom:10px;}
 /* Bootstrap keeps the saved-layout placeholder stable until Firebase confirms. */
 .layout-loading-placeholder {min-height:88px;box-sizing:border-box;}
+
+.layout-loading-placeholder {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 18px;}
+.layout-loading-placeholder .button {width:auto;white-space:normal;text-align:left;}
