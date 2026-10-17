@@ -33,7 +33,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
-  const [showAllSourceColumns,setShowAllSourceColumns]=useState(!customizing);
+  // A previously saved visible/hidden column selection wins on the first paint.
+  const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -168,7 +169,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
     setColumnFilters({...filters.columns});
-    setShowAllSourceColumns(view===null);
+    setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
     return true;
   };
