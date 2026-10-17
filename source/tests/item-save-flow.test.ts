@@ -53,6 +53,36 @@ describe('separate item layout save and data draft',()=>{
     expect(t.props.onSaveData).not.toHaveBeenCalled();
     expect(t.props.onClose).not.toHaveBeenCalled();
   });
+  it('shows every Excel source column A–R on the ordinary list even when the saved layout hides G/H/I',()=>{
+    const items=createDemoItems(1);
+    const layout=defaultItemLayout();
+    for(const col of layout.columns)
+      if(['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note'].includes(col.key))
+        col.visible=false;
+    const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:false,anonymousViewer:true,
+      sourceKey:'columns-full-view',catalog:catalogFromItems(items),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
+      initialLayout:layout});
+    const headers=nodes(tree).filter(node=>node.props?.columnKey).map(node=>node.props.columnKey);
+    for(const key of ['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note'])
+      expect(headers).toContain(key);
+    expect(headers).not.toContain('history');
+    const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===true);
+    expect(control).toBeDefined();
+    expect(text(control)).toContain('Theo cột đã chọn');
+  });
+  it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
+    const items=createDemoItems(1);
+    const layout=defaultItemLayout();
+    layout.columns=layout.columns.map(column=>column.key==='progressParty'?{...column,visible:false}:column);
+    const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:true,sourceKey:'columns-editor',
+      catalog:catalogFromItems(items),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
+      initialLayout:layout});
+    expect(nodes(tree).filter(node=>node.props?.columnKey).map(node=>node.props.columnKey)).not.toContain('progressParty');
+  });
   it('lets anonymous visitors edit only explicitly granted cells directly on the normal list',()=>{
     const items=createDemoItems(1),id=items[0].recordId;
     const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
