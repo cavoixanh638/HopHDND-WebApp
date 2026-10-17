@@ -69,6 +69,34 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.anonymousViewer).toBe(true);
   });
+  it('permits only granted columns in admin view while retaining full admin editing controls in customize mode',async()=>{
+    firebase.isAdmin=true;
+    firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
+    firebase.permissions={columns:{content:false,note:true,progressParty:true}};
+    render();respond();await settle();
+    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);
+    const id=list.props.items[0].recordId;
+    expect(list.props.anonymousViewer).toBe(false);
+    expect(list.props.customizing).toBe(false);
+    expect(list.props.canEditCell(id,'note')).toBe(true);
+    expect(list.props.canEditCell(id,'progressParty')).toBe(true);
+    expect(list.props.canEditCell(id,'content')).toBe(false);
+    const editList=nodes(open('Chỉnh sửa')).find(n=>n.type===ItemList);
+    expect(editList.props.customizing).toBe(true);
+    expect(editList.props.canEditCell(id,'content')).toBe(true);
+  });
+  it('uses the same granted-cell checks for signed-in non-admin viewers',async()=>{
+    firebase.isAdmin=false;
+    firebase.user={isAnonymous:false,uid:'member',email:'member@example.com'} as FirebaseController['user'];
+    firebase.permissions={columns:{content:false,note:true}};
+    render();respond();await settle();
+    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);
+    const id=list.props.items[0].recordId;
+    expect(list.props.anonymousViewer).toBe(false);
+    expect(list.props.customizing).toBe(false);
+    expect(list.props.canEditCell(id,'note')).toBe(true);
+    expect(list.props.canEditCell(id,'content')).toBe(false);
+  });
   it('allows guest drafts only in granted cells, retains them and never saves content or common configuration',async()=>{
     render();respond();await settle();let list=nodes(open('Sửa thử nội dung')).find(n=>n.type===ItemList);const id=list.props.items[0].recordId;
     expect(list.props.allowLayout).toBe(false);expect(list.props.canEditCell(id,'note')).toBe(true);expect(list.props.canEditCell(id,'content')).toBe(false);
