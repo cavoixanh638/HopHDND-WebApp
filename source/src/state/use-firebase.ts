@@ -138,6 +138,10 @@ export function useFirebase(){
     saving.current=true;setBusy(true);
     try{
     const result=await runTransaction(ref(database,'hdnd/permissions'),current=>{
+      // A cold RTDB transaction first sees null in the local cache even when
+      // server permissions exist. Return null (not undefined) so Firebase
+      // fetches the server value and retries with the authoritative baseline.
+      if(current===null&&!samePermissions(expected,{columns:{}}))return current;
       if(!samePermissions({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}},expected))return undefined;
       return next;
     },{applyLocally:false});
