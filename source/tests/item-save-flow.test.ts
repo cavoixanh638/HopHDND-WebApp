@@ -36,6 +36,17 @@ describe('item data save and layout save boundary (component with fake hooks)',(
     expect(test.props.onSaveData).not.toHaveBeenCalled();
     expect(test.props.onLayoutSaved).toHaveBeenCalledWith(expect.stringContaining('vẫn chỉ ở trên máy'));
   });
+  it('lets an anonymous visitor edit only explicitly granted cells directly in the normal list',()=>{
+    const items=createDemoItems(1),id=items[0].recordId;
+    const props={items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google' as const,customizing:false,anonymousViewer:true,
+      sourceKey:'guest',catalog:catalogFromItems(items),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),
+      initialLayout:defaultItemLayout(),canEditCell:(_id:string,field:string)=>_id===id&&field==='content'};
+    const tree=ItemList(props);
+    expect(nodes(tree).some(n=>n.type==='button'&&n.props?.className==='content-button')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='select'&&String(n.props?.['aria-label']??'').includes('Chuyên viên'))).toBe(false);
+  });
   it('keeps the source-save action disabled when no authenticated writer is connected',()=>{
     const test=list(true);expect(text(test.button)).toBe('Chưa thể lưu vào Excel');expect(test.button.props.disabled).toBe(true);expect(test.props.onSaveData).not.toHaveBeenCalled();
   });
