@@ -123,15 +123,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   };
   useEffect(()=>{if(exitRequest===handledExitRequest.current)return;handledExitRequest.current=exitRequest;exit();},[exitRequest]);
   useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');}else if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
-  const validateAndSaveLayout=async()=>{
-    if(locked||savingRef.current||!dirty||!allowLayout)return;
-    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang lưu cách hiển thị…');
-    try{
-      await persistSavedLayout(validateItemLayout(layout));
-      setSaveFeedback('Đã lưu cách hiển thị thành công vào nơi lưu cấu hình.');
-    }catch(cause){handleLayoutFailure(cause);}
-    finally{savingRef.current=false;setSaving(false);}
-  };
   const resolveAndSaveLayout=async()=>{
     if(locked||savingRef.current||!dirty||!onPersistLayout||layoutConflicts.some(c=>!conflictChoices[c.id]))return;
     savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang đối chiếu bản Firebase mới nhất…');
@@ -186,7 +177,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         <button className="button ghost" onClick={exit}>Về danh sách</button>
       </div>
     </div>}
-    {customizing&&!anonymousViewer&&!permissionMode&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu cách hiển thị chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu cách hiển thị chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout||layout.columns.every(c=>c.visible)} onClick={()=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>({...c,visible:true}))}))}>Hiện đủ 15 cột Excel</button>}{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục cách hiển thị</button>}{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||!dirty||!allowLayout} onClick={()=>void validateAndSaveLayout()}>{saving?'Đang lưu…':layout.columns.some(c=>c.origin==='custom'&&!c.removed)?'Lưu cột và dữ liệu tùy chỉnh':layoutSaveLabel}</button>}</div></div>{layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Không lưu được cách hiển thị.</strong><span>{layoutError}</span><span className="muted">Phần tùy chỉnh chưa được xác nhận lưu; vẫn giữ trên máy để thử lại.</span></div>}
+    {customizing&&!anonymousViewer&&!permissionMode&&<>
+    {layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Chưa lưu được.</strong><span>{layoutError}</span></div>}
     {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
     {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
       conflicts={layoutConflicts} choices={conflictChoices}
@@ -204,7 +196,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
 </div>}
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={()=>persistSavedLayout(validateItemLayout(layout)).then(()=>{setLayoutError('');setSaveFeedback('');})} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>{!anonymousViewer&&<div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div>}</div>
