@@ -83,7 +83,7 @@ jobs:
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
           if(!html.includes('--page-content-width'))throw Error('Independent page content width missing');
           if(!html.includes('report-page-width-controls'))throw Error('Dedicated report tab sizing CSS missing');
-          if(!html.includes('Hiện đủ 18 cột Excel'))throw Error('One-click show all source columns missing');
+          if(!html.includes('Hiện đủ 15 cột Excel'))throw Error('One-click show all source columns missing');
           if(!html.includes('source-column-visibility')||!html.includes('Theo cột đã chọn')||!html.includes('Hiện đủ cột Excel'))throw Error('Complete A-R viewer or saved column toggle missing');
           if(!html.includes('EXCEL_SOURCE_COLUMNS')&&!html.includes('Loại VB (HC/QPPL/BC)'))throw Error('Canonical 18-field Excel A-R schema missing');
           if(!html.includes('Xem lịch sử chỉnh sửa'))throw Error('Audit action no longer accessible from ID cell');
