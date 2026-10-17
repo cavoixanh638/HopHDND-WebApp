@@ -107,4 +107,20 @@ describe('separate item layout save and data draft',()=>{
     expect(nodes(tree).some(n=>n.type==='button'&&n.props?.className==='content-button')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='select'&&String(n.props?.['aria-label']??'').includes('Chuyên viên'))).toBe(false);
   });
+  it('enables granted cells on the signed-in ordinary view but not ungranted cells or unauthenticated Sheets-only views',()=>{
+    const items=createDemoItems(1),id=items[0].recordId;
+    const props={
+      items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google' as const,customizing:false,anonymousViewer:false,
+      sourceKey:'signed-in-view-grants',catalog:catalogFromItems(items),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),
+      onLayoutSaved:vi.fn(),initialLayout:defaultItemLayout()
+    };
+    const permitted=ItemList({...props,canEditCell:(_id:string,field:string)=>_id===id&&field==='content'});
+    expect(nodes(permitted).some(n=>n.props?.className==='content-button')).toBe(true);
+    expect(nodes(permitted).some(n=>n.props?.className==='cell-value-button')).toBe(false);
+    const withoutFirebase=ItemList(props);
+    expect(nodes(withoutFirebase).some(n=>n.props?.className==='content-button')).toBe(false);
+  });
+
 });
