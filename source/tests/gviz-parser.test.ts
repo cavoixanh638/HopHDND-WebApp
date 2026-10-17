@@ -46,16 +46,23 @@ describe('parseGvizPayload', () => {
     const cols18=Array.from({length:18},(_,index)=>({id:String.fromCharCode(65+index),label:''}));
     const heading=Array<Cell>(18).fill(null);
     heading[2]={v:'NỘI DUNG TRÌNH'};heading[3]={v:'SỞ, NGÀNH CHỦ TRÌ'};
+    heading[4]={v:'Loại VB (HC/QPPL/BC'};heading[5]={v:'Cấp cho ý kiến'};
+    heading[6]={v:'Tiến độ xin ý kiến Thành ủy'};
+    heading[7]={v:'Tiến độ trình HĐND xây dựng NQ'};
+    heading[8]={v:'Tiến độ trình HĐND ban hành NQ/BC'};
+    heading[13]={v:'Tiến độ hiện tại'};
     heading[14]={v:'Rút'};heading[15]={v:'Họp Thành ủy/ xin ý kiến'};
     heading[16]={v:'Đã thẩm tra chưa'};heading[17]={v:'Ghi chú'};
     const first=values('NQ-100',1,'MẪU: Nghị quyết','Sở giả','QPPL');
-    first[6]='TU đã cho ý kiến';first[7]='Đã có QĐ chấp thuận';first[8]='Hoàn thành';
+    first[5]='BTV TU';first[6]='TU đã cho ý kiến';first[7]='Đã có QĐ chấp thuận';first[8]='Hoàn thành';
+    first[13]='Sở đang thực hiện';
     first[14]='X';first[15]='Đã xin ý kiến';first[16]='Đã thẩm tra';first[17]='MẪU: ghi chú cột R';
     const second=values('NQ-101',2,'MẪU: Nghị quyết thứ hai','Sở giả','QPPL');
     second[14]='';second[15]='Chưa họp';second[16]='Chưa thẩm tra';second[17]='MẪU: không rút';
     const result=parseGvizPayload(payload([{c:heading},row(first),row(second)],'ok',cols18),'modern-xlsx');
     expect(result.items).toHaveLength(2);
     expect(result.items[0]).toMatchObject({
+      type:'QPPL',partyLevel:'BTV TU',specificProgress:'Sở đang thực hiện',
       progressParty:'TU đã cho ý kiến',progressBuild:'Đã có QĐ chấp thuận',progressCouncil:'Hoàn thành',
       isDropped:true,note:'MẪU: ghi chú cột R',partyMeeting:'Đã xin ý kiến',examined:'Đã thẩm tra',
     });
