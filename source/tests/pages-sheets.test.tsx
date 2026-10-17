@@ -2,7 +2,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {DEFAULT_SHEET_URL,parseSheetConfig,saveSheetConfig} from '../src/data/sheet-config';
 import {mayEdit} from '../src/data/firebase-repository';
 import {defaultItemLayout} from '../src/data/item-preferences';
-import {defaultReportLayout} from '../src/data/report-preferences';
+import {defaultReportLayout,withReportPageWidth,reportPageWidth} from '../src/data/report-preferences';
 import {catalogFromItems} from '../src/data/catalogs';
 import {createDemoItems} from '../src/data/demo-items';
 import type {FirebaseController} from '../src/state/use-firebase';
@@ -101,23 +101,28 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     open('Chỉnh sửa');tree=open('Danh mục');panel=nodes(tree).find(n=>n.type===CatalogSettings);await panel.props.onSave(panel.props.config);expect(firebase.common.save).toHaveBeenLastCalledWith('all',expect.any(Object),0);panel.props.onClose();
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
-  it('uses the saved list frame width for the whole page on overview and list rather than resizing only the grid',async()=>{
+  it('keeps independent 2400px report and 640px list content widths without moving the header',async()=>{
     firebase.isAdmin=true;
     firebase.common.config={
       revision:1,
       items:{...defaultItemLayout(),frameWidth:640},
-      reports:defaultReportLayout(),
+      reports:withReportPageWidth(defaultReportLayout(),2400),
       catalogs:catalogFromItems(createDemoItems(2))
     };
+    expect(reportPageWidth(firebase.common.config.reports)).toBe(2400);
     let tree=render();
-    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    expect(tree.props.style['--page-content-width']).toBe('2400px');
     respond();await settle();
     tree=open('Danh sách nội dung');
-    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    expect(tree.props.style['--page-content-width']).toBe('640px');
     tree=open('Tổng quan');
-    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    expect(tree.props.style['--page-content-width']).toBe('2400px');
     tree=open('Hướng dẫn');
-    expect(tree.props.style['--list-frame-width']).toBe('640px');
+    expect(tree.props.style['--page-content-width']).toBe('100%');
+    open('Chỉnh sửa');tree=open('Bảng thống kê');
+    const panel=nodes(tree).find(n=>n.type===ReportSettings);
+    expect(reportPageWidth(panel.props.initial)).toBe(2400);
+    expect(tree.props.style['--page-content-width']).toBe('2400px');
   });
   it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
