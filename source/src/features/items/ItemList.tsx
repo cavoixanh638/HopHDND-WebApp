@@ -3,7 +3,7 @@ import type { Changes, Item, Patch, TextField, EditableField } from '../../../sh
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { EXCEL_COLUMN_KEYS, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
@@ -37,9 +37,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
 
   // Admin customizations always start from the one Firebase shared layout.
   // Personal saved views are viewing presets, never an alternative shared baseline.
-  const [applied, setApplied] = useState(() => customizing
-    ?initialLayout??loadItemLayout(sourceKey)
-    :selectedView?.layout??initialLayout??loadItemLayout(sourceKey));
+  const [applied, setApplied] = useState(() => {
+    const authoritative=initialLayout??loadItemLayout(sourceKey);
+    return !customizing&&selectedView?overlayPersonalLayout(authoritative,selectedView.layout):authoritative;
+  });
   // The Firebase baseline must be the original *shared* layout when editing began,
   // not a local saved view nor the profile revision emitted after another write.
   const sharedBase=useRef<ItemLayout>(initialLayout??applied);
@@ -156,7 +157,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
-    const filters=view?.filters??emptyListFilters(),nextLayout=view?.layout??initialLayout??loadItemLayout(sourceKey);
+    const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
     setColumnFilters({...filters.columns});
     setShowAllSourceColumns(view===null);
     setApplied(nextLayout);setLayout(nextLayout);setColorRules(view?.colors??loadColorRules(personalScope));
