@@ -46,7 +46,7 @@ afterEach(()=>{h.dispose();vi.useRealTimers();vi.unstubAllGlobals();});
 describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('reads real GViz parser output with default URL/gid even while Firebase auth/config is unavailable',async()=>{
     firebase.ready=false;firebase.connected=false;firebase.error='Auth unavailable';
-    render();expect(scripts).toHaveLength(1);const url=new URL(scripts[0].src);expect(url.pathname).toContain(parseSheetConfig(DEFAULT_SHEET_URL).spreadsheetId);expect(url.searchParams.get('gid')).toBe('60961344');expect(url.searchParams.get('range')).toBe('A:O');
+    render();expect(scripts).toHaveLength(1);const url=new URL(scripts[0].src);expect(url.pathname).toContain(parseSheetConfig(DEFAULT_SHEET_URL).spreadsheetId);expect(url.searchParams.get('gid')).toBe('60961344');expect(url.searchParams.get('range')).toBe('A:R');
     respond();await settle();const tree=open('Danh sách nội dung'),list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.items).toHaveLength(1);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(list.props.readOnly).toBe(true);expect(list.props.sourceKind).toBe('google');expect(h.common.mock.calls.at(-1)?.[1]).toBe(false);
   });
