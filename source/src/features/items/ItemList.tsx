@@ -96,7 +96,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
   const savingRef=useRef(false);
   const resizing=useRef<{key:string;x:number;width:number}|null>(null);
   const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"} | null>(null);
-  const canEdit = customizing && canEditDraft && !permissionMode;
+  // Anonymous visitors may edit their explicitly allowed cells directly in the ordinary list;
+  // UI permission is not authorization: each cell still checks Firebase mayEdit before creating a local draft.
+  const canEdit = (customizing || anonymousViewer) && canEditDraft && !permissionMode;
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
   const latestExit=useRef({dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
   const exit = () => { if(permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');return;}if(locked||dataSaving)return;if(dirty || Object.keys(drafts).length) setConfirmExit(true); else onClose(); };
