@@ -53,11 +53,11 @@ describe('separate item layout save and data draft',()=>{
     expect(t.props.onSaveData).not.toHaveBeenCalled();
     expect(t.props.onClose).not.toHaveBeenCalled();
   });
-  it('shows every Excel source column A–R on the ordinary list even when the saved layout hides G/H/I',()=>{
+  it('shows every Excel source column A–O on the ordinary list even when the saved layout hides G/H/I',()=>{
     const items=createDemoItems(1);
     const layout=defaultItemLayout();
     for(const col of layout.columns)
-      if(['progressParty','progressBuild','progressCouncil','partyMeeting','examined','note'].includes(col.key))
+      if(['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note'].includes(col.key))
         col.visible=false;
     const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
       readOnly:true,sourceKind:'google',customizing:false,anonymousViewer:true,
@@ -72,7 +72,7 @@ describe('separate item layout save and data draft',()=>{
     expect(control).toBeDefined();
     expect(text(control)).toContain('Theo cột đã chọn');
   });
-  it('enforces source A–R order in full view even when the old saved layout was reordered',()=>{
+  it('enforces source A–O order in full view even when the old saved layout was reordered',()=>{
     const items=createDemoItems(1);
     const old=defaultItemLayout();
     old.columns.reverse();
