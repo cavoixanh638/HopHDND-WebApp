@@ -109,6 +109,23 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
   return {columns,tableWidth:input.tableWidth,frameWidth};
 }
+/** A personal view controls width, visibility and order only. Live shared schema
+ * and independent values always come from the latest authoritative profile. */
+export function overlayPersonalLayout(sharedInput:ItemLayout,presetInput:ItemLayout):ItemLayout{
+  const shared=validateItemLayout(sharedInput),preset=validateItemLayout(presetInput);
+  const byKey=new Map(shared.columns.map(c=>[c.key,c]));
+  const used=new Set<string>();
+  const columns=preset.columns.flatMap(old=>{
+    const current=byKey.get(old.key);
+    if(!current)return [];
+    used.add(current.key);
+    return [{...current,width:old.width,visible:old.visible}];
+  });
+  for(const column of shared.columns)if(!used.has(column.key))columns.push(column);
+  return validateItemLayout({
+    ...shared,columns,tableWidth:preset.tableWidth,frameWidth:preset.frameWidth
+  });
+}
 const key=(source:string)=>`hdnd.item-layout.v1:${source}`;
 export function loadItemLayout(source:string):ItemLayout{
   try{const raw=globalThis.localStorage?.getItem(key(source));return raw?validateItemLayout(JSON.parse(raw)):defaultItemLayout();}
