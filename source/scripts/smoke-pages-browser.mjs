@@ -166,7 +166,10 @@ try{
     const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
       filter=scroll?.querySelector('.item-column-filter-row th');
     if(!scroll||!title||!filter)return false;
-    if(getComputedStyle(title).position!=='sticky'||getComputedStyle(filter).position!=='sticky')return false;
+    if(getComputedStyle(scroll.querySelector('thead')).position!=='sticky')return false;
+    if(getComputedStyle(title).whiteSpace!=='normal')return false;
+    const titleBottom=title.getBoundingClientRect().bottom,filterTop=filter.getBoundingClientRect().top;
+    if(filterTop<titleBottom-3)return false;
     if(getComputedStyle(document.querySelector('.item-sticky-search-controls')).position!=='sticky')return false;
     const before=title.getBoundingClientRect().top;
     if(scroll.scrollHeight<=scroll.clientHeight+30)return false;
