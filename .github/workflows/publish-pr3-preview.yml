@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: a59cdc4af6197057f8874636357ffb3d1e752171
+          ref: 7207dcd851552b97de6a88e5bbeb254469c483ac
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -63,6 +63,9 @@ jobs:
           if(!html.includes('<body>') || !html.includes('id="root"'))throw Error('Not the expected standalone Pages artifact');
           if(html.includes('Cột và khung bảng'))throw Error('Stale build: old column-frame label');
           if(!html.includes('Quản lý cột'))throw Error('Field manager UI absent');
+          if(!html.includes('settings-sub-tabs')||!html.includes('Cột và hiển thị')||!html.includes('Giá trị lựa chọn'))throw Error('Nested settings tabs absent');
+          if(!html.includes('column-manager-catalog')||!html.includes('Mở giá trị lựa chọn của cột này'))throw Error('Central dropdown choices handoff absent');
+          if(!html.includes('Liên kết chuyên viên – phòng'))throw Error('Advanced assignment section missing');
           if(!html.includes('Chiều rộng trang Danh sách'))throw Error('Independent list page width control absent');
           if(!html.includes('Không lưu được cách hiển thị.'))throw Error('Save feedback is absent');
           if(!html.includes('Kéo cạnh tiêu đề trên bảng'))throw Error('Drag-to-resize hint absent');
@@ -105,10 +108,10 @@ jobs:
           if(!html.includes('Hiện đủ 15 cột Excel')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — SỬA Ô ĐƯỢC CẤP QUYỀN TRONG CHẾ ĐỘ XEM (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — CẤU TRÚC THIẾT LẬP MỚI & DANH MỤC CHUNG (17/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Cấu trúc chỉnh sửa rõ ba cấp: Chỉnh sửa → Danh sách dữ liệu → Cột và hiển thị / Giá trị lựa chọn / Quyền chỉnh sửa. Các cột nguồn dùng chung một bộ giá trị chọn; cột tự tạo có danh sách riêng. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — SỬA Ô ĐƯỢC CẤP QUYỀN TRONG CHẾ ĐỘ XEM'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — CẤU TRÚC THIẾT LẬP MỚI & DANH MỤC CHUNG'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
