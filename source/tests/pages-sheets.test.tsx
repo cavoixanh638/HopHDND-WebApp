@@ -188,8 +188,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('640px');
     tree=open('Tổng quan');
     expect(tree.props.style['--page-content-width']).toBe('2400px');
-    tree=open('Hướng dẫn');
-    expect(tree.props.style['--page-content-width']).toBe('100%');
+    expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Hướng dẫn')).toHaveLength(0);
     open('Chỉnh sửa');tree=open('Bảng thống kê');
     const panel=nodes(tree).find(n=>n.type===ReportSettings);
     expect(reportPageWidth(panel.props.initial)).toBe(2400);
