@@ -9,17 +9,18 @@ export const filterValue=(item:Item,key:string):string=>{
   const value=(item as unknown as Record<string,unknown>)[key];
   return value==null?'':String(value);
 };
-export function filterChoices(items:Item[],field:string):string[]|null{
+export function filterChoices(items:Item[],field:string,getValue?:(item:Item)=>string):string[]|null{
   if(field==='isDropped')return ['Đã rút'];
   if(field==='content'||field==='note'||field==='displayCode'||field==='stt'||field==='history')return null;
-  const options=[...new Set(items.map(item=>filterValue(item,field)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const options=[...new Set(items.map(item=>getValue?.(item)??filterValue(item,field)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
   return options.length>0&&options.length<=12?options:null;
 }
 
-export function ColumnFilterCell({field,label,items,value,onChange}:{
+export function ColumnFilterCell({field,label,items,value,onChange,getValue,choices:configuredChoices}:{
   field:string;label:string;items:Item[];value:string;onChange:(next:string)=>void;
+  getValue?:(item:Item)=>string;choices?:string[];
 }){
-  const choices=filterChoices(items,field);
+  const choices=configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue);
   const compact=field==='displayCode'||field==='stt';
   return <th className={'item-column-filter-cell '+(value?'has-filter':'')+(compact?' compact-filter':'')} scope="col" data-filter-key={field}>
     <div className="item-filter-input-wrap">
