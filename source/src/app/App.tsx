@@ -50,6 +50,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [editorUnsaved,setEditorUnsaved]=useState(false);
   // null means the list has not reported its own active width yet; 'auto' is an explicit setting.
   const [listFramePreview,setListFramePreview]=useState<'auto'|number|null>(null);
+  const [reportWidthPreview,setReportWidthPreview]=useState<'auto'|number|null>(null);
   const [group, setGroup] = useState<GroupField>('vpLeader');
   const [selection, setSelection] = useState<{ title: string; items: Item[] } | null>(null);
   const [history, setHistory] = useState<Item | null>(null);
@@ -113,6 +114,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(editorUnsaved&&next!==page){setLayoutMessage('Có thay đổi chưa lưu. Hãy lưu hoặc bỏ phần đang chỉnh trước khi chuyển mục.');return;}
     if(['customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage(isFirebase?'Cần đăng nhập Google quản trị và đọc được cấu hình chung.':'Chờ cấu hình chung tải xong hoặc mở trình chỉnh chung trên Google.');return;}
     if(next==='review'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị mới xem và phê duyệt mốc dữ liệu.');return;}if(isFirebase){firebaseEditRevision.current=firebase!.profile?.revision??0;}
+    setReportWidthPreview(null);
     setPage(next); setLayoutMessage('');
   };
   const kpis = useMemo(() => getKpis(workspace.items), [workspace.items]);
@@ -139,7 +141,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
   const frameChoice=page==='overview'||page==='customize'
-    ?reportPageWidth(layout)
+    ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
     :listPage?(listFramePreview??(itemLayout.frameWidth??'auto')):'auto';
   const pageContentWidth=frameChoice==='auto'?'100%':`${Math.min(6000,Math.max(320,frameChoice))}px`;
   const frameStyle={'--page-content-width':pageContentWidth} as CSSProperties;
@@ -177,7 +179,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         {reports.map(config => <ReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={(title, items) => setSelection({ title, items })} />)}
         {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.</p>}
       </>}
-      {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onClose={() => {setEditorUnsaved(false);setPage('overview');}} />}
+      {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
       {(page === 'items' || page === 'items-customize') && <ItemList key={`${sourceKey}:${page}`} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&!isDemo} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} canEditCell={isFirebase?firebase!.canEdit:undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} onHistory={setHistory} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'} onClose={()=>{setEditorUnsaved(false);setPage('items');}} onDirtyChange={setEditorUnsaved} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
