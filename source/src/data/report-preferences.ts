@@ -85,9 +85,21 @@ export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(rep
 
 /** Chỉ điều chỉnh trình bày; không nhận thay đổi bộ lọc hoặc quy tắc nghiệp vụ. */
 export function validateReportLayout(value: unknown): ReportLayout[] {
-  if (!Array.isArray(value) || value.length !== DEFAULT_REPORTS.length) throw new Error('Cấu hình cần đủ ba bảng báo cáo.');
+  if(!Array.isArray(value))throw new Error('Cấu hình cần đủ bốn bảng báo cáo.');
+  // Existing Firebase/Sheets/local users have three saved reports. Insert the
+  // new construction-NQ report before the issuance-NQ report WITHOUT losing
+  // visibility, custom titles, column order, widths or any unsaved profile IDs.
+  const legacyIds=value.map(entry=>entry&&typeof entry==='object'?(entry as Partial<ReportLayout>).id:null);
+  const isLegacy=value.length===3&&
+    new Set(legacyIds).size===3&&['party','nq','bc'].every(id=>legacyIds.includes(id));
+  const rows:unknown[]=isLegacy?[...value]:value;
+  if(isLegacy){
+    const nqIndex=legacyIds.indexOf('nq');
+    rows.splice(nqIndex,0,defaultReportLayout().find(row=>row.id==='build')!);
+  }
+  if(rows.length!==DEFAULT_REPORTS.length)throw new Error('Cấu hình cần đủ bốn bảng báo cáo.');
   const used = new Set<string>();
-  return value.map(entry => {
+  return rows.map(entry => {
     if (!entry || typeof entry !== 'object') throw new Error('Cấu hình bảng không hợp lệ.');
     const row = entry as Partial<ReportLayout>;
     const base = DEFAULT_REPORTS.find(report => report.id === row.id);
