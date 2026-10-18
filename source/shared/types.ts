@@ -63,5 +63,5 @@ export interface ReportConfig {
   emphasizeProgress?:boolean;
   tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter'|'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
   tableFontSize?:number;
-  reportVariant?:'signal'|'classic'|'compact';
+  reportVariant?:'signal'|'classic'|'compact'|'bars'|'band';
 }
