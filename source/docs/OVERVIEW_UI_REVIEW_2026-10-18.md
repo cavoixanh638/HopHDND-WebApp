@@ -60,3 +60,20 @@ Nguồn giao diện:
 - https://developer.apple.com/design/human-interface-guidelines/color
 - https://developer.apple.com/fonts/
 - https://atlassian.design/components/lozenge
+
+## Điều chỉnh 18/10 — làm lại toàn bộ màu và 10 font/cỡ chữ
+
+- Đã **gỡ quy tắc màu cũ chồng chéo** ở bảng tiến độ và thay bằng một hệ token trạng thái dùng chung `--source-bg`, `--office-bg`, `--next-bg`, `--completed-bg`, màu chữ và viền tương ứng. Cùng một trạng thái luôn cho nền/chữ giống hệt ở ô tiêu đề, ô dữ liệu, chú giải và ô chân tổng cộng. Tránh ô dữ liệu nền trắng trong khi tiêu đề màu khác.
+- Ba phương án mới **chỉ khác bảng màu**, dùng chung toàn bộ bố cục, chiều cao hàng, font, độ rộng, thống kê:
+  1. Dịu – rõ ràng (pastel): đỏ hồng / hổ phách / xanh lam / xanh lá.
+  2. Nổi bật – ưu tiên (sắc tươi hơn của cùng hệ).
+  3. Tương phản cao (nền đậm, chữ trắng); không còn kiểu thay đổi mật độ dòng.
+- Độ tương phản chữ/nền tính theo công thức WCAG cho 4 giai đoạn lần lượt:
+  - Dịu: 8.03 / 6.88 / 7.14 / 6.74.
+  - Nổi bật: 7.20 / 6.77 / 7.14 / 5.68.
+  - Cao: 8.20 / 6.64 / 8.42 / 7.17.
+  Tất cả trên chuẩn 4.5:1 cho chữ thường. Màu vẫn chỉ biểu thị thứ tự ưu tiên theo dõi, KHÔNG suy ra quá hạn.
+- 10 lựa chọn font có hệ thống fallback trên thiết bị: Apple/System UI, Segoe UI, Inter, Roboto, Helvetica Neue, Arial, Open Sans, Lato, Noto Sans, IBM Plex Sans. Apple SF Pro chỉ dùng qua `system-ui` khi thiết bị Apple có sẵn; không đóng gói font Apple hoặc tải font vào repository. Một số họ chữ ngoài Windows có thể fallback nếu không được cài đặt.
+- Thêm cỡ chữ chung **11–20 px**, mặc định 13 px. Áp dụng ở bảng tổng quan và bảng danh sách, bao gồm bộ lọc và nút trong ô. Lưu cùng cấu hình Bảng thống kê vào Firebase khi quản trị bấm lưu.
+- Đặt ảnh mẫu bảng màu thu nhỏ ngay dưới từng lựa chọn để dễ so sánh. Giữ khả năng xem trước mà chưa thay đổi Firebase.
+- Kiểm thử unit: đúng 10 font, ràng buộc 11–20 px, 3 phương án cùng một cấu trúc bảng, status class ở header/body/footer; smoke browser: computed colors của từng ô cùng trạng thái khớp tuyệt đối.
