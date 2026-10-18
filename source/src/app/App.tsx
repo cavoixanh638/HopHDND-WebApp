@@ -22,6 +22,7 @@ import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type Catal
 import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
 import {loadActiveListView,loadListViews} from '../data/list-views';
 import {layoutRecoveryScope} from '../data/draft-checkpoints';
+import {readConfirmedPageWidths,rememberConfirmedPageWidths} from '../data/confirmed-page-widths';
 import type {LayoutConflictChoices} from '../data/item-layout-merge';
 import {useSharedConfig} from '../state/use-shared-config';
 import {googleCall,isGoogleHost} from '../data/google-bridge';
@@ -158,11 +159,33 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
     catch{return itemLayout.frameWidth??'auto';}
   },[itemLayout,sourceKey,listPage]);
-  const layoutPending=!allowTemporaryLayout&&(common.status==='loading'||(isFirebase&&!firebase!.ready&&!firebase!.error));
-  const layoutUnavailable=!allowTemporaryLayout&&isFirebase&&(common.status==='error'||!!firebase!.error);
-  const frameChoice=layoutPending||layoutUnavailable?'auto':page==='overview'||page==='customize'
-    ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
-    :listPage?(listFramePreview??viewFrameWidth):'auto';
+  // Cache only widths from an actually confirmed profile. This keeps the
+  // header, tabs and loading placeholder at their last saved width on reload.
+  // Without a prior profile, use a compact neutral loading shell rather than
+  // making the entire screen flash at 100% width.
+  const confirmedWidths=useMemo(()=>isFirebase?readConfirmedPageWidths(sourceKey):null,[isFirebase,sourceKey]);
+  useEffect(()=>{
+    if(!isFirebase||common.status!=='ready'||!common.config)return;
+    rememberConfirmedPageWidths(sourceKey,{
+      report:reportPageWidth(common.config.reports),
+      list:common.config.items.frameWidth??'auto'
+    });
+  },[isFirebase,sourceKey,common.config,common.status]);
+  const accountPage=page==='connection'||page==='source'||page==='review'||page==='transfer'||page==='sync';
+  // Account/settings must be available even if auth is still establishing its
+  // profile. These panels never require drawing a table with fallback widths.
+  const layoutPending=!accountPage&&!allowTemporaryLayout&&
+    (common.status==='loading'||(isFirebase&&!firebase!.ready&&!firebase!.error));
+  const layoutUnavailable=!accountPage&&!allowTemporaryLayout&&isFirebase&&
+    (common.status==='error'||!!firebase!.error);
+  const loadingWidth=page==='overview'||page==='customize'
+    ?confirmedWidths?.report??1120
+    :confirmedWidths?.list??1120;
+  const frameChoice=accountPage?1100
+    :layoutPending||layoutUnavailable?loadingWidth
+    :page==='overview'||page==='customize'
+      ?(page==='customize'?(reportWidthPreview??reportPageWidth(layout)):reportPageWidth(layout))
+      :listPage?(listFramePreview??viewFrameWidth):'auto';
   const pageContentWidth=frameChoice==='auto'?'100%':`${Math.min(6000,Math.max(320,frameChoice))}px`;
   const frameStyle={'--page-content-width':pageContentWidth} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
