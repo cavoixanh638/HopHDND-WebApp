@@ -1,0 +1,67 @@
+name: Publish verified PR3 five-style preview
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-pr3-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: hophdnd-five-style-preview
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      # The artifact came from a passing verify-source run at an EXACT source SHA.
+      # Do not build unverified PR code from a moving branch tip.
+      - uses: actions/download-artifact@v4
+        with:
+          name: hophdnd-pages-candidate
+          run-id: 39136084100
+          repository: cavoixanh638/HopHDND-WebApp
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: _verified_preview
+      - name: Verify exact tested HTML and five color styles
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s _verified_preview/index.html
+          echo "28f87d43bc6e2580a83ba3dae4073bd5ea8ae97576f24e3c771c788465bd44a6  _verified_preview/index.html" | sha256sum -c -
+          for needle in "5 phong cách tô màu báo cáo" "Nhãn màu nổi" "Viền màu phân cột" "Thanh dữ liệu" "Dải tiêu đề màu"; do
+            grep -Fq "$needle" _verified_preview/index.html
+          done
+      - name: Publish only isolated preview/current/index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p preview/current
+          cp _verified_preview/index.html preview/current/index.html
+          if git diff --quiet -- preview/current/index.html; then
+            echo "Verified preview already matches published HTML."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/current/index.html
+          git commit -m "preview(pages): publish five report styles from verified PR3 build"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              echo "Updated only preview/current/index.html. Production root index.html untouched."
+              exit 0
+            fi
+          done
+          echo "::error::Preview publish push failed"
+          exit 1
