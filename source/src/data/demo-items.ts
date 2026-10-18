@@ -6,8 +6,8 @@ const assignments = [
   { department: 'Sở mẫu C', room: 'Phòng mẫu 3', specialist: 'Chuyên viên mẫu C' },
   { department: 'Đơn vị mẫu D', room: 'Phòng mẫu 1', specialist: 'Chuyên viên mẫu D' },
 ];
-const councilStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND', 'Hoàn thành', 'Cần bổ sung hồ sơ'];
-const partyStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL', 'TU đã cho ý kiến', 'Sở xin rút'];
+const councilStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Hoàn thành'];
+const partyStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL'];
 const contents = {
   nq: [
   'MẪU: Quy định chính sách hỗ trợ phát triển sản xuất nông nghiệp tại địa phương.',
