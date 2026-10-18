@@ -221,25 +221,28 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('matches the new Excel Party milestone spelling and counts TU đã cho ý kiến as completed',()=>{
     expect(DEFAULT_REPORTS[0].columns).toContain('ĐU đã gửi TU, chưa họp');
-    expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp, chưa có TBKL');
+    expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã họp, chưa có TBKL');
     expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp/xin phiếu, chưa có TBKL');
     expect(DEFAULT_REPORTS[0].columns).toContain('Đã có TBKL');
     expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã báo cáo TU');
     expect(DEFAULT_REPORTS[0].completed).toEqual(['TU đã cho ý kiến']);
-    const base=createDemoItems(4).map(item=>({...item,partyLevel:'BTV TU',
+    const base=createDemoItems(5).map(item=>({...item,partyLevel:'BTV TU',
       progressParty:'Sở chưa trình',isDropped:false,archivedAt:null}));
     base[0].progressParty='TU đã cho ý kiến';
     base[1].progressParty='Đã báo cáo TU'; // legacy value, still counted as completed
     base[2].progressParty='ĐU đã gửi TU chưa họp'; // legacy missing comma
     base[3].progressParty='Đã có TBKL';
+    base[4].progressParty='Đã họp, chưa có TBKL'; // legacy comma spelling
     const report=aggregateReport(base,DEFAULT_REPORTS[0],'room');
-    expect(report.total).toBe(4);
+    expect(report.total).toBe(5);
     expect(report.completedCount).toBe(2);
-    expect(report.percent).toBe(50);
+    expect(report.percent).toBe(40);
     expect(report.unknown).toEqual([]);
     const statuses=[...report.rows.values()].flatMap(cells=>[...cells.keys()]);
     expect(statuses).toContain('TU đã cho ý kiến');
     expect(statuses).toContain('ĐU đã gửi TU, chưa họp');
+    expect(statuses).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(statuses).not.toContain('Đã họp, chưa có TBKL');
   });
   it('excludes rows marked Không in Excel party-level F or Không phải xin ý kiến in G',()=>{
     const seed=createDemoItems(4).map(x=>({...x,isDropped:false,archivedAt:null}));
