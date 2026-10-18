@@ -1,5 +1,18 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Excel gốc đã sửa, CHỐT 5 báo cáo và quy tắc kết thúc
+
+**Ghi chú có giá trị thay thế** các phần trước trong tài liệu này còn mô tả 3/4 bảng hoặc cột `TU đã cho ý kiến`.
+
+- Đã đọc trực tiếp Google Drive XLSX `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx`, ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, modified `2026-10-18T17:41:48.954Z` (= 00:41:48 ngày 19/10 giờ VN). Tại phiên bản này, **0 ô G** còn `TU đã cho ý kiến`; **3 ô G** đã là `Đã có TBKL`. Danh mục Sheet2 cũng dùng `Đã có TBKL`.
+- **5 báo cáo mặc định**, theo thứ tự: `party` (G: kết thúc = `Đã có TBKL`, KHÔNG có cột `TU đã cho ý kiến`), `build` (H: cuối = `Đã có QĐ chấp thuận`, cột `Đã trình HĐND, chưa có QĐ` được tô nhạt), `council` (tổng hợp NQ+BC từ I), `nq` (NQ từ I), `bc` (BC từ I).
+- **Hai bảng NQ/BC và bảng tổng hợp** chỉ có 3 cột nguồn được hiển thị: `Sở chưa trình`, `VP đang thực hiện`, `Đã trình HĐND thành phố`. Tại file Excel hiện hành, giá trị hoàn thành cột I là `Hoàn thành`; trình đọc báo cáo chuyển thành **nhãn HIỂN THỊ** `Đã trình HĐND thành phố` theo yêu cầu người dùng. Không tạo cột `Hoàn thành` hay `Đã trình HĐND`; không sửa dữ liệu nguồn hoặc dropdown Excel.
+- **Chống cột ảo**: một trạng thái nguồn bất thường được gom duy nhất vào cột kiểm tra `Chưa chuẩn hóa` (chỉ hiện khi thật sự có giá trị lạ), có ghi chú chỉ rõ giá trị gốc, KHÔNG được tính hoàn thành; không tự sinh tên cột theo từng giá trị khác ngoài danh mục. `TU đã cho ý kiến` phiên bản cũ nếu còn trong bộ nhớ tạm/nguồn chưa cập nhật cũng KHÔNG tự được hiểu là `Đã có TBKL`. Riêng tên cột/danh mục **cấu hình đã lưu** được di trú sang tên mới, không chạm ô nguồn.
+- Cấu hình 3, 4, 5 báo cáo đời trước được nâng cấp thành 5 báo cáo, thêm ID còn thiếu vào vị trí chuẩn trong thứ tự đã lưu; bỏ cột `Sở xin rút` không thuộc các báo cáo hiện tại, gộp `Đã trình HĐND` + `Hoàn thành` của cấu hình thành một cột hiển thị `Đã trình HĐND thành phố`, và thay `TU đã cho ý kiến` thành `Đã có TBKL` ở **cấu hình**, giữ font, kích thước, ẩn/hiện và báo cáo tùy chỉnh.
+- **Tập trung thị giác**: Bảng 1 giữ màu rõ tại `Sở chưa trình`, `VP đang thực hiện`, `Đã có TBKL`; tô nhạt 3 cột giữa; bảng xây dựng NQ tô nhạt `Đã trình HĐND, chưa có QĐ`; kích cỡ/font áp dụng cả tên bảng. Bảo toàn cả 5 cách tô màu và chế độ in.
+- Bản khôi phục trước đợt sửa `backup/before-excel-grounded-five-reports-2026-10-19` tại `a7aab02982b1d8f226f0549cc5e3b7916210657b`. Chỉ thay mã trên PR #3 Draft; **không merge**, không ghi Sheets/Firebase production, không đổi `main:index.html`. Phát hành preview chỉ sau khi kiểm thử CI đúng commit, đối chiếu hash artifact, triển khai Pages thành công.
+
+
 
 ## 18/10/2026 — Bốn bảng báo cáo, bỏ nhãn phụ, cột giữa nhẹ hơn
 
