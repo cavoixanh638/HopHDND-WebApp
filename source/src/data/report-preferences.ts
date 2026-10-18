@@ -99,20 +99,34 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     const hiddenColumns=[...new Set(row.hiddenColumns.map(rename))];
     const rawOrder = row.columnOrder ?? base.columns;
     if (!Array.isArray(rawOrder) || rawOrder.some(column=>typeof column!=='string')) throw new Error('Thứ tự cột không hợp lệ.');
-    const order=rawOrder.map(rename);
-    if(new Set(order).size!==order.length||order.some(column=>!base.columns.includes(column)))
-      throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
-    if(order.length!==base.columns.length){
-      // Only migrate the exact seven known pre-update Party milestones. Never
-      // silently replace arbitrary missing columns or discard reordered choices.
-      const prior=['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp',
-        'Đã họp, chưa có TBKL','TU đã cho ý kiến','Sở xin rút'];
-      if(base.id!=='party'||order.length!==prior.length||!prior.every(col=>order.includes(col)))
-        throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
-      for(const missing of base.columns.filter(col=>!order.includes(col))){
-        const next=base.columns.slice(base.columns.indexOf(missing)+1).find(col=>order.includes(col));
-        order.splice(next?order.indexOf(next):order.length,0,missing);
+    // Migrate the previous nine-column Party profile (old + replacement
+    // meeting milestones were both stored) into one canonical column.
+    // Only a legacy name COLLIDING with its exact replacement may be deduped;
+    // repeated identical names and other invalid profiles remain errors.
+    const order:string[]=[];
+    const originalOf=new Map<string,string>();
+    for(const rawColumn of rawOrder){
+      const column=rename(rawColumn);
+      if(!base.columns.includes(column))throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
+      const seen=originalOf.get(column);
+      if(seen!==undefined){
+        const legacyPair=base.id==='party'&&column==='Đã họp/xin phiếu, chưa có TBKL'
+          &&seen!==rawColumn
+          &&[seen,rawColumn].some(name=>name==='Đã họp, chưa có TBKL'||name==='Đã họp chưa có TBKL');
+        if(!legacyPair)throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
+        continue;
       }
+      originalOf.set(column,rawColumn);
+      order.push(column);
+    }
+    if(order.length!==base.columns.length){
+      // Older saved profiles had no 'Đã có TBKL' column. Add only that
+      // explicitly introduced milestone; preserve every other user ordering.
+      const missing=base.columns.filter(column=>!order.includes(column));
+      if(base.id!=='party'||missing.length!==1||missing[0]!=='Đã có TBKL')
+        throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
+      const next=base.columns.slice(base.columns.indexOf(missing[0])+1).find(col=>order.includes(col));
+      order.splice(next?order.indexOf(next):order.length,0,missing[0]);
     }
     const title=base.id==='party'&&row.title==='Nội dung cần xin ý kiến Thành ủy'?base.title
       :base.id==='nq'&&row.title==='Nội dung trình ban hành nghị quyết'?base.title
