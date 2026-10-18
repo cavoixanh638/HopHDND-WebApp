@@ -146,6 +146,23 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(schemas[3]).toEqual(schemas[0]);
     expect(schemas[4]).toEqual(schemas[0]);
   });
+  it('draws bars relative to the maximum count IN THE SAME status column, not the completion percent',()=>{
+    const items=createDemoItems(4).map((item,i)=>({...item,documentKind:'NQ' as const,
+      isDropped:false,archivedAt:null,vpLeader:i===0?'A':'B',
+      progressCouncil:'Sở chưa trình'}));
+    const config={...DEFAULT_REPORTS[1],reportVariant:'bars' as const};
+    const tree=ReportTable({items,config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+    const all=(node:any):any[]=>Array.isArray(node)?node.flatMap(all):
+      node&&typeof node==='object'?[node,...all(node.props?.children)]:[];
+    const body=all(tree).find(node=>node.type==='tbody');
+    const rows=all(body).filter(node=>node.type==='tr');
+    const widths=rows.map(row=>all(row).find(node=>node.type==='td'&&
+      node.props.className?.includes('report-stage-source'))?.props.style?.['--bar-fill']);
+    expect(widths).toEqual(['33%','100%']);
+    expect(all(body).filter(node=>node.type==='td'&&
+      node.props.className?.includes('report-stage-office')).every(node=>node.props.style===undefined)).toBe(true);
+    expect(aggregateReport(items,config,'vpLeader').percent).toBe(0);
+  });
   it('marks body AND footer with the same semantic class as header',()=>{
     const cfg={...DEFAULT_REPORTS[1],emphasizeProgress:true};
     const root=ReportTable({items:createDemoItems(6),config:cfg,group:'vpLeader',
