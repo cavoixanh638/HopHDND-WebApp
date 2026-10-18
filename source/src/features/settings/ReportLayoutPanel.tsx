@@ -1,6 +1,6 @@
 import type { GroupField, Item } from '../../../shared/types';
-import {configuredReports,getReportFont,getReportVariant,withReportVisuals,
-  TABLE_FONT_OPTIONS,REPORT_VARIANTS,reportPageWidth,withReportPageWidth,
+import {configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,
+  TABLE_FONT_OPTIONS,REPORT_VARIANTS,MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,reportPageWidth,withReportPageWidth,
   type ReportLayout,type TableFont,type ReportVariant} from '../../data/report-preferences';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
@@ -38,8 +38,8 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
 
   const previews = configuredReports(draft, true);
   const pageWidth=reportPageWidth(draft);
-  const font=getReportFont(draft),variant=getReportVariant(draft);
-  const updateVisual=(next:{tableFont?:TableFont;reportVariant?:ReportVariant})=>
+  const font=getReportFont(draft),fontSize=getReportFontSize(draft),variant=getReportVariant(draft);
+  const updateVisual=(next:{tableFont?:TableFont;tableFontSize?:number;reportVariant?:ReportVariant})=>
     onChange(withReportVisuals(draft,next));
 
   return (
@@ -63,13 +63,18 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
         </label>
       </div>
       <div className="report-visual-config" aria-label="Kiểu bảng và phông chữ thống kê">
-        <h4>Chọn giao diện báo cáo</h4>
-        <div className="report-visual-options" role="radiogroup" aria-label="Kiểu trình bày bảng">
-          {REPORT_VARIANTS.map(option=><label className="report-visual-option" key={option.value}>
+        <h4>Chọn bảng màu cho báo cáo</h4>
+        <p className="report-font-hint">Ba phương án chỉ khác màu sắc. Bố cục, kích thước ô và số liệu giữ nguyên.</p>
+        <div className="report-visual-options" role="radiogroup" aria-label="Bảng màu báo cáo">
+          {REPORT_VARIANTS.map(option=><label className={'report-visual-option report-style-'+option.value} key={option.value}>
             <span><input type="radio" name="report-visual-variant"
               checked={variant===option.value}
               onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
             <small>{option.description}</small>
+            <span className="report-visual-swatches" aria-hidden="true">
+              <i className="swatch-source"/><i className="swatch-office"/>
+              <i className="swatch-next"/><i className="swatch-completed"/>
+            </span>
           </label>)}
         </div>
         <div className="report-font-control">
@@ -79,8 +84,18 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
             {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
+        <div className="report-font-size-control">
+          <label htmlFor="report-font-size"><strong>Cỡ chữ tất cả các bảng</strong></label>
+          <input id="report-font-size" aria-label="Cỡ chữ tất cả các bảng" type="range"
+            min={MIN_TABLE_FONT_SIZE} max={MAX_TABLE_FONT_SIZE} step={1}
+            value={fontSize} onChange={event=>updateVisual({tableFontSize:Number(event.currentTarget.value)})}/>
+          <output htmlFor="report-font-size">{fontSize} px</output>
+          <button type="button" className="button ghost" disabled={fontSize===13}
+            onClick={()=>updateVisual({tableFontSize:13})}>Cỡ mặc định</button>
+        </div>
         <p className="report-font-hint">{TABLE_FONT_OPTIONS.find(option=>option.value===font)?.description}.
-          Xem trước được cập nhật ngay; chỉ áp dụng cho tất cả người xem sau khi bấm Lưu Bảng báo cáo.</p>
+          Font không có trên máy sẽ tự dùng font dự phòng; không tải hay phân phối font Apple.
+          Xem trước ngay, chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
       </div>
       <div className="settings-grid">
         {draft.map((report, index) => {
