@@ -21,6 +21,14 @@ function declaration(source: string, property: string): string {
 }
 
 describe('Năm phong cách tô màu báo cáo', () => {
+  it('loads the six open-license font families from the web instead of requiring local installation', () => {
+    expect(css).toMatch(/^\/\* Six open-license web-font choices[\s\S]*?@import url\('https:\/\/fonts\.googleapis\.com\/css2\?/);
+    for(const font of ['IBM+Plex+Sans','Inter','Lato','Noto+Sans','Open+Sans','Roboto']){
+      expect(css).toContain('family='+font);
+    }
+    // System fonts are still local-only; CSS has no embedded proprietary font assets.
+    expect(css).not.toContain('@font-face');
+  });
   it('applies the chosen font size to table header, group cells and numeric cells', () => {
     expect(css).toMatch(/table\.data-table,table\.report-table\s*\{font-size:var\(--table-font-size,13px\);\}/);
     expect(css).toMatch(/table\.data-table th,table\.report-table th\s*\{font-size:inherit;\}/);
