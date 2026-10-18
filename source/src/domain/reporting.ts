@@ -26,16 +26,12 @@ export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
   'Đã họp chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
   'Đã họp, chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
   'Đã họp/xin phiếu chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
-  'Đã báo cáo TU':'TU đã cho ý kiến',
   'VP đang xử lý':'VP đang thực hiện',
 };
-const legacyMap=new Map(Object.entries(PARTY_STATUS_ALIASES).map(([old,modern])=>[normalizeSearch(old),modern]));
-/** Rendering aliases, NOT changes to the source Excel/status-edit dropdown.
- * The removed TU-approved column rolls up to the remaining terminal report
- * bucket; an explicit note in the table discloses this roll-up. */
-export const PARTY_REPORT_COLUMN_ALIASES:Readonly<Record<string,string>>={
-  ...PARTY_STATUS_ALIASES,'TU đã cho ý kiến':'Đã có TBKL',
-};
+const partyAliasMap=new Map(Object.entries(PARTY_STATUS_ALIASES)
+  .map(([old,modern])=>[normalizeSearch(old),modern]));
+// Historic TU labels are no longer official. If they survive in a stale source,
+// flag as "Chưa chuẩn hóa" rather than silently declare TBKL issued.
 const councilAliases=new Map(Object.entries({
   'Hoàn thành':'Đã trình HĐND thành phố',
   'Đã trình HĐND':'Đã trình HĐND thành phố',
@@ -44,11 +40,8 @@ const councilAliases=new Map(Object.entries({
 }).map(([old,modern])=>[normalizeSearch(old),modern]));
 export function normalizeReportStatus(raw:string,config:ReportConfig):string{
   const value=raw.trim()||'Sở chưa trình';
-  if(config.id==='party'){
-    const partyReportAliases=new Map(Object.entries(PARTY_REPORT_COLUMN_ALIASES)
-      .map(([old,modern])=>[normalizeSearch(old),modern]));
-    return partyReportAliases.get(normalizeSearch(value))??value;
-  }
+  if(config.id==='party')
+    return partyAliasMap.get(normalizeSearch(value))??value;
   if(['council','nq','bc'].includes(config.id))
     return councilAliases.get(normalizeSearch(value))??value;
   return value;
@@ -74,8 +67,7 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
   for (const item of scoped) {
     const raw = normalizeReportStatus(item[config.statusField],config);
     // Unknown Party source labels are NOT extra official milestones.
-    // In particular "Đã xin ý kiến TU" means requested, not approved: never
-    // merge it into "TU đã cho ý kiến" or the completed KPI.
+    // Unknown TU labels do NOT imply an issued TBKL or completion.
     const recognized=known.get(canonical(raw));
     const status=recognized??'Chưa chuẩn hóa';
     if (!recognized) unknown.add(raw);
