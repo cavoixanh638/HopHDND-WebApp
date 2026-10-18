@@ -175,7 +175,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         !['__group','__total','__percent',...base.columns].includes(key)||
         !Number.isSafeInteger(width)||width<80||width>1200))
       throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
-    const columnWidths={...rawWidths};
+    const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
     const title=base.id==='party'&&row.title==='Nội dung cần xin ý kiến Thành ủy'?base.title
       :base.id==='nq'&&row.title==='Nội dung trình ban hành nghị quyết'?base.title
       :base.id==='bc'&&row.title==='Báo cáo trình Hội đồng nhân dân'?base.title:row.title.trim();
@@ -195,10 +195,10 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
       return { id:base.id,title,visible:row.visible,
-        hiddenColumns,columnOrder:[...order],columnWidths,
+        hiddenColumns,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
         pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
-    return { id: base.id, title, visible: row.visible, hiddenColumns, columnOrder: [...order],columnWidths, emphasizeProgress:row.emphasizeProgress!==false };
+    return { id: base.id, title, visible: row.visible, hiddenColumns, columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
@@ -225,6 +225,7 @@ export function configuredReports(layout: ReportLayout[], includeHidden = false)
   const tableFont=getReportFont(layout),tableFontSize=getReportFontSize(layout),reportVariant=getReportVariant(layout);
   return layout.filter(row => includeHidden || row.visible).map(row => ({
     ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title, hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
-    tableFont,tableFontSize,reportVariant,columnWidths:{...(row.columnWidths??{})},
+    tableFont,tableFontSize,reportVariant,
+    ...(row.columnWidths&&Object.keys(row.columnWidths).length?{columnWidths:{...row.columnWidths}}:{}),
   }));
 }
