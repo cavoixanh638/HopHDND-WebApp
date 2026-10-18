@@ -35,7 +35,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     try { window.print(); } finally { document.body.classList.remove('is-printing'); element.remove(); }
   };
   return <section className="card" ref={ref}>
-    <div className="card-header"><div><h3>{config.title}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
+    <div className="card-header"><div><p className="report-section-kicker">{config.id==='party'?'XIN Ý KIẾN THÀNH ỦY':config.id==='nq'?'TRÌNH NGHỊ QUYẾT':config.id==='bc'?'TRÌNH BÁO CÁO':'TỔNG HỢP TIẾN ĐỘ'}</p><h3>{config.title}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
     {report.unknown.length > 0 && <p className="unknown-note">Chưa chuẩn hóa: {report.unknown.join(', ')}. Các nội dung này vẫn được tính trong tổng.</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
