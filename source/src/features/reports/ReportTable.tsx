@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
 import {GROUP_OPTIONS} from '../../../shared/field-definitions';
-import { aggregateReport } from '../../domain/reporting';
+import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
 import { compareCatalogValues } from '../../domain/catalog-order';
 import { reportStage,reportStageLabels,type ReportStage } from '../../domain/report-workflow';
 import {tableFontStack} from '../../data/report-preferences';
@@ -12,7 +12,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
   const [focusWaiting,setFocusWaiting]=useState(false);
-  const status=(item:Item)=>item[config.statusField].trim()||'Sở chưa trình';
+  const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
   const stages=useMemo(()=>{
     const counts:Record<ReportStage,number>={source:0,office:0,next:0,completed:0,withdrawn:0,other:0};
     for(const item of report.items)counts[reportStage(status(item),config)]++;
@@ -81,20 +81,22 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       style={{minWidth:`${230+(report.columns.length+2)*150}px`}}>
       <colgroup>
         <col className="report-group-col"/>
+        <col className="report-total-width"/>
         {report.columns.map(col=><col key={col}/>)}
-        <col className="report-total-width"/><col className="report-percent-width"/>
+        <col className="report-percent-width"/>
       </colgroup>
       <thead><tr>
         <th scope="col" className="report-group-heading">{groupLabel}</th>
+        <th scope="col" className="report-number-header report-total-col">Tổng số nội dung</th>
         {report.columns.map(column=><th key={column} scope="col"
           className={'report-number-header'+emphasis(column)}><span className="report-heading-label">{column}</span></th>)}
-        <th scope="col" className="report-number-header report-total-col">Tổng số</th>
         <th scope="col" className="report-number-header report-percent-col">% hoàn thành</th>
       </tr></thead>
       <tbody>
         {shownRows.map(([label,cells])=>{
           const metrics=rowMetrics(cells);
           return <tr key={label}><th scope="row" className="report-group-heading">{label}</th>
+            <td className="report-number report-total-col"><strong>{metrics.total}</strong></td>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
               return <td key={column} className={'report-number'+emphasis(column)}
@@ -107,7 +109,6 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
                 </span>:'—'}
               </td>;
             })}
-            <td className="report-number report-total-col"><strong>{metrics.total}</strong></td>
             <td className="report-number report-percent-col">
               {percentCell(metrics.percent,`${label}: đã hoàn thành ${metrics.completed} trên ${metrics.total} nội dung`)}
             </td>
@@ -119,10 +120,10 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </tbody>
       <tfoot><tr>
         <th scope="row">{focusWaiting?'Tổng toàn bảng':'Tổng cộng'}</th>
+        <td className="report-number report-total-col">{report.total}</td>
         {report.columns.map(column=><td className={'report-number'+emphasis(column)} key={column}>
           {[...report.rows.values()].reduce((sum,cells)=>sum+(cells.get(column)?.length??0),0)}
         </td>)}
-        <td className="report-number report-total-col">{report.total}</td>
         <td className="report-number report-percent-col">
           {percentCell(report.percent??0,`Toàn báo cáo: đã hoàn thành ${report.completedCount} trên ${report.total} nội dung`)}
         </td>
