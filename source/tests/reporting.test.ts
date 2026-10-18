@@ -88,7 +88,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(seed[0].tableFont).toBe('segoe');
     expect(()=>validateReportLayout(withReportVisuals(seed,{tableFont:'bad' as any}))).toThrow();
   });
-  it('wires the ten-font menu, live size slider and three palette radios to the same save draft',()=>{
+  it('wires the ten-font menu, live size slider and five style radios to the same save draft',()=>{
     const draft=defaultReportLayout(),onChange=vi.fn();
     const tree=ReportLayoutPanel({draft,onChange,items:createDemoItems(1),
       group:'vpLeader',groupOrder:[],sourceLabel:'Google Sheets'});
@@ -104,9 +104,9 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     slider.props.onChange({currentTarget:{value:'18'}});
     expect(getReportFontSize(onChange.mock.lastCall![0])).toBe(18);
     const radios=all(tree).filter(n=>n.type==='input'&&n.props.name==='report-visual-variant');
-    expect(radios).toHaveLength(3);
-    radios[2].props.onChange();
-    expect(getReportVariant(onChange.mock.lastCall![0])).toBe('compact');
+    expect(radios).toHaveLength(5);
+    radios[4].props.onChange();
+    expect(getReportVariant(onChange.mock.lastCall![0])).toBe('band');
   });
   it('provides exactly ten safe font selections with independent font sizing',()=>{
     expect(TABLE_FONT_OPTIONS).toHaveLength(10);
@@ -126,9 +126,9 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       expect(()=>validateReportLayout(withReportVisuals(layout,{tableFontSize:value}))).toThrow();
     }
   });
-  it('uses three color-only appearance options with identical table structure',()=>{
+  it('uses five coloring techniques without changing table structure or counts',()=>{
     const original=defaultReportLayout();
-    expect(REPORT_VARIANTS.map(option=>option.value)).toEqual(['classic','signal','compact']);
+    expect(REPORT_VARIANTS.map(option=>option.value)).toEqual(['classic','signal','compact','bars','band']);
     const flatten=(node:any):any[]=>Array.isArray(node)?node.flatMap(flatten):
       node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
     const schemas=REPORT_VARIANTS.map(option=>{
@@ -143,6 +143,8 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     });
     expect(schemas[1]).toEqual(schemas[0]);
     expect(schemas[2]).toEqual(schemas[0]);
+    expect(schemas[3]).toEqual(schemas[0]);
+    expect(schemas[4]).toEqual(schemas[0]);
   });
   it('marks body AND footer with the same semantic class as header',()=>{
     const cfg={...DEFAULT_REPORTS[1],emphasizeProgress:true};
