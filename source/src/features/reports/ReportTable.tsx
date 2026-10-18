@@ -7,6 +7,12 @@ import { reportStage,reportStageLabels,type ReportStage } from '../../domain/rep
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 
+/** Only THESE Party middle milestones are visually subdued. Office and the
+ * final TU decision stay prominent; other reports retain their own hierarchy. */
+const quietPartyMilestones=new Set([
+  'Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL',
+].map(normalizeSearch));
+
 export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [] }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[] }) {
   const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
@@ -34,7 +40,10 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     const completed=[...cells.entries()].reduce((sum,[status,rows])=>sum+(isComplete(status)?rows.length:0),0);
     return {total,completed,percent:total?Math.round(completed/total*100):0};
   };
-  const emphasis=(status:string)=>emphasize?' report-stage-'+reportStage(status,config):'';
+  const emphasis=(status:string)=>emphasize
+    ?' report-stage-'+reportStage(status,config)
+      +(config.id==='party'&&quietPartyMilestones.has(normalizeSearch(status))?' report-stage-intermediate':'')
+    :'';
   const percentCell=(percent:number,description:string)=><div className="report-percent-value">
     <strong>{percent}%</strong>
     <progress aria-label={description} value={percent} max={100}/>
@@ -58,7 +67,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
       '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
     <div className="card-header"><div><h3>{config.title}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
-    {report.unknown.length > 0 && <p className="unknown-note">Chưa chuẩn hóa: {report.unknown.join(', ')}. Các nội dung này vẫn được tính trong tổng.</p>}
+    {report.unknown.length > 0 && <p className="unknown-note">Trạng thái nguồn chưa chuẩn hóa: {report.unknown.join(', ')}. {config.id==='party'
+      ?'Các nội dung được gom tại cột Chưa chuẩn hóa, vẫn tính vào tổng nhưng không được tự tính hoàn thành.'
+      :'Các nội dung này vẫn được tính trong tổng.'}</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
       <div className="report-flow-summary" aria-label="Số nội dung theo giai đoạn">
