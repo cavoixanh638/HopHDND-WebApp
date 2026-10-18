@@ -30,10 +30,10 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(css).not.toContain('@font-face');
   });
   it('makes only three Party middle columns extremely pale and keeps VP/source/completed prominent',()=>{
-    const palette=[...css.matchAll(/\\.report-surface\\s*\\{([^}]*)\\}/g)]
+    const palette=[...css.matchAll(/\.report-surface\s*\{([^}]*)\}/g)]
       .map(match=>match[1]).find(block=>block.includes('--office-bg'));
     expect(palette).toBeDefined();
-    const quietBlock=css.match(/\\.report-surface \\.report-stage-intermediate\\s*\\{([^}]*)\\}/)?.[1];
+    const quietBlock=css.match(/\.report-surface \.report-stage-intermediate\s*\{([^}]*)\}/)?.[1];
     expect(quietBlock).toBeDefined();
     const softBg=declaration(quietBlock!,'stage-bg');
     expect(luminance(softBg)).toBeGreaterThan(0.96);
@@ -51,8 +51,8 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(css).toMatch(/table\.data-table,table\.report-table\s*\{font-size:var\(--table-font-size,13px\);\}/);
     expect(css).toMatch(/table\.data-table th,table\.report-table th\s*\{font-size:inherit;\}/);
     expect(css).toMatch(/table\.data-table.*table\.report-table.*font-family:var\(--table-font-family/s);
-    expect(css).toMatch(/\\.report-surface > \\.card-header h3\\s*\\{[\\s\\S]*?font-family:var\\(--table-font-family/);
-    expect(css).toMatch(/\\.report-surface > \\.card-header h3\\s*\\{[\\s\\S]*?font-size:calc\\(var\\(--table-font-size,13px\\) \\* 1\\.30\\)/);
+    expect(css).toMatch(/\.report-surface > \.card-header h3\s*\{[\s\S]*?font-family:var\(--table-font-family/);
+    expect(css).toMatch(/\.report-surface > \.card-header h3\s*\{[\s\S]*?font-size:calc\(var\(--table-font-size,13px\) \* 1\.30\)/);
   });
 
   it('uses a single stable semantic palette for all styles with readable stage text', () => {
