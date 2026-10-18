@@ -86,6 +86,46 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(validateReportLayout(defaultReportLayout().map(row => ({ ...row, title: `  ${row.title}  ` })))[0].title).toBe(DEFAULT_REPORTS[0].title);
   });
 });
+describe('Nâng cấp cấu hình 3 bảng sang 4 bảng',()=>{
+  it('inserts construction NQ before issuance NQ while preserving all old settings',()=>{
+    const old=defaultReportLayout().filter(row=>row.id!=='build');
+    old[0].tableFont='inter';old[0].tableFontSize=18;old[0].reportVariant='bars';old[0].pageWidth=2500;
+    old[1].title='Bảng NQ tôi đã đổi tên';
+    old[1].visible=false;
+    old[1].hiddenColumns=['Hoàn thành'];
+    old[1].columnOrder.reverse();
+    const before=JSON.stringify(old);
+    const migrated=validateReportLayout(old);
+    expect(migrated.map(row=>row.id)).toEqual(['party','build','nq','bc']);
+    expect(migrated[0].tableFont).toBe('inter');
+    expect(migrated[0].tableFontSize).toBe(18);
+    expect(migrated[0].reportVariant).toBe('bars');
+    expect(migrated[0].pageWidth).toBe(2500);
+    expect(migrated[1].visible).toBe(true);
+    expect(migrated[1].columnOrder).toEqual(DEFAULT_REPORTS[1].columns);
+    expect(migrated[2].title).toBe('Bảng NQ tôi đã đổi tên');
+    expect(migrated[2].visible).toBe(false);
+    expect(migrated[2].hiddenColumns).toEqual(['Hoàn thành']);
+    expect(migrated[2].columnOrder).toEqual(old[1].columnOrder);
+    expect(JSON.stringify(old)).toBe(before);
+  });
+  it('loads a stored three-report profile without silently resetting the users other settings',()=>{
+    const store=storage();vi.stubGlobal('localStorage',store);
+    const old=defaultReportLayout().filter(row=>row.id!=='build');
+    old[2].title='Báo cáo đã sửa';old[0].tableFontSize=17;
+    store.setItem('hdnd.report-layout.v1:from-firebase',JSON.stringify({
+      schemaVersion:1,source:'from-firebase',reports:old
+    }));
+    const upgraded=loadReportLayout('from-firebase');
+    expect(upgraded.map(row=>row.id)).toEqual(['party','build','nq','bc']);
+    expect(upgraded[3].title).toBe('Báo cáo đã sửa');
+    expect(upgraded[0].tableFontSize).toBe(17);
+    expect(saveReportLayout('from-firebase',upgraded)).toBe(true);
+    expect(loadReportLayout('from-firebase')).toEqual(upgraded);
+    expect(()=>validateReportLayout(old.slice(1))).toThrow(/Cấu hình cần đủ bốn/);
+  });
+});
+
 describe('Độ rộng trang báo cáo độc lập, tương thích cấu hình cũ',()=>{
   it('keeps report width when reordering or hiding and rejects invalid widths',()=>{
     const original=defaultReportLayout();
