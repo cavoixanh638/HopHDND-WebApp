@@ -578,6 +578,9 @@ table.data-table,table.report-table,
 table.data-table input,table.data-table select,table.data-table textarea,
 table.data-table button {font-family:var(--table-font-family,"Segoe UI",system-ui,sans-serif);}
 table.data-table,table.report-table {font-size:var(--table-font-size,13px);}
+ /* Respect the chosen size in every table cell, including <th> headings.
+  * The base .data-table th declaration above otherwise keeps them at 12px. */
+table.data-table th,table.report-table th {font-size:inherit;}
 table.data-table input:not([type=checkbox]),table.data-table select,table.data-table textarea,
 table.data-table button:not(.column-sort-button),table.report-table button,
 .report-percent-value strong {font-size:inherit;}
