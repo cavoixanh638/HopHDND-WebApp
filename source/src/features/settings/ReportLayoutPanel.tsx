@@ -144,8 +144,9 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </fieldset>
             </div>
             <div className="report-layout-preview">
-              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'}</p>
-              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} onSelect={() => {}} preview />
+              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'} · Kéo đường phân cách ở tiêu đề để thay đổi độ rộng cột.</p>
+              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} onSelect={() => {}} preview
+                 onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
             </div>
           </article>;
         })}
