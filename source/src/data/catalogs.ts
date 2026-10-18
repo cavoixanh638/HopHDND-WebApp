@@ -1,5 +1,6 @@
 import type { Item, TextField } from '../../shared/types';
 import { STATUS_OPTIONS } from '../../shared/field-definitions';
+import { PARTY_STATUS_ALIASES } from '../domain/reporting';
 export type CatalogKey = Exclude<TextField, 'content' | 'note'>;
 export const CATALOG_KEYS: CatalogKey[] = ['department','type','partyLevel','progressParty','progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress'];
 export interface CatalogConfig { options: Record<CatalogKey, string[]>; specialistRooms: Record<string, string[]> }
@@ -76,6 +77,16 @@ export function validateCatalog(value: unknown): CatalogConfig {
 const key = (source:string) => `hdnd.catalogs.v1:${source}`;
 export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfig {
   const saved=validateCatalog(value),observed=catalogFromItems(items);
+  // Migrate only recognizably old Party lists. The newly supported BTV/TU
+  // milestones come from the Excel Sheet2 legend, including its punctuation.
+  // Do not re-add manually removed presets to an already migrated profile.
+  const partyOptions=saved.options.progressParty;
+  if(partyOptions.some(value=>Object.hasOwn(PARTY_STATUS_ALIASES,value))){
+    saved.options.progressParty=uniqueChoices([
+      ...partyOptions.map(value=>PARTY_STATUS_ALIASES[value]??value),
+      'Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL',
+    ]);
+  }
   // Include valid source values, but never reintroduce deleted status presets.
   // Comparing trimmed values avoids duplicate dropdowns after a Sheets refresh.
   for(const key of CATALOG_KEYS)
