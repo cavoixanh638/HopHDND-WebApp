@@ -1,6 +1,17 @@
 # Trạng thái hiện tại
 
 
+## 18/10/2026 — 5 phong cách tô màu bảng (theo ảnh tham khảo người dùng)
+
+- Nghiên cứu mẫu nhãn/badge, full-cell fills, edge rails, in-cell data bars và solid header bands; tham chiếu Carbon (status indicators, data tables) cùng nguyên tắc không chỉ dùng màu để diễn tả trạng thái.
+- **Đã code trên PR #3**: 5 tùy chọn độc lập gồm `classic` = Phủ màu toàn ô (giữ hướng hiện tại), `signal` = Nhãn màu nổi (giống ảnh), `compact` = Viền màu phân cột, `bars` = Thanh dữ liệu theo số lớn nhất *trong từng cột trạng thái*, `band` = Dải tiêu đề màu. Đây là 5 **cách thể hiện** khác nhau, không phải chỉ 5 mức độ đậm nhạt; màu đỏ/cam/xanh dương/xanh lá/tím/xám giữ nghĩa nhất quán. Ô trống không vẽ thanh dữ liệu. Lưu kiểu `signal/classic/compact` cũ vẫn hợp lệ, nay ánh xạ vào ba phong cách đầu (không xóa profile cũ).
+- `ReportLayoutPanel` có mini-preview minh họa từng phong cách; các bảng báo cáo trong phần chỉnh sửa đổi trực tiếp theo nháp, chỉ cập nhật cấu hình dùng chung sau Lưu. Cỡ chữ/font 10 lựa chọn và logic tính % vẫn tách biệt, không thay đổi nguồn Google Sheets/Firebase.
+- `ReportTable` dùng đúng class trạng thái cho tiêu đề/ô dữ liệu/tổng, số liệu trong badge hoặc data bar tùy phong cách. In PDF giữ class phong cách, CSS variables font, và màu tiêu đề riêng. Các chỉ số vẫn là số đếm từng trạng thái và tỷ lệ hoàn thành giai đoạn cuối; màu không khẳng định quá hạn.
+- Kiểm thử mở rộng `reporting.test.ts`, `report-style-css.test.ts`: 5 radio, tính nhất quán số liệu/kích thước bảng, tỷ lệ thanh theo max trong *cùng cột*, ô 0 không có thanh, 6 trạng thái có tương phản chữ/nền ít nhất 4,5:1 và dải tiêu đề chữ trắng trên màu đậm. Chỉ ghi PASS khi có workflow verify-source exact commit; chưa nghiệm thu màu bằng ảnh người dùng trên browser thật.
+- Trước mọi sửa đã tạo mốc `backup/before-five-report-color-styles-2026-10-18` từ `68b82fff581709ee8a7e521bc3cb345c41771b4d`. Không merge PR #3, không tự ghi dữ liệu/Rules Firebase production hay Excel. Phải phát hành lại `preview/current` riêng và kiểm chứng browser trước khi báo đã hiển thị trên trang dùng thử.
+
+
+
 ## 18/10/2026 — Rà soát còn dang dở: màu và cỡ chữ Bảng báo cáo
 
 - Trên PR #3 (Draft), mã đã có ba phương án **chỉ khác màu** (`classic`, `signal`, `compact`), một nhóm trạng thái dùng chung màu cho tiêu đề/ô dữ liệu/tổng/nhãn thống kê, cột phần trăm, 10 lựa chọn font hệ thống/hiện đại và cỡ chữ 11–20 px. Các nhóm trạng thái chỉ diễn tả mức cần chú ý, không tự suy hồ sơ quá hạn.
