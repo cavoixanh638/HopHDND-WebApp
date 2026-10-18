@@ -95,7 +95,8 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
             onClick={()=>updateVisual({tableFontSize:13})}>Cỡ mặc định</button>
         </div>
         <p className="report-font-hint">{TABLE_FONT_OPTIONS.find(option=>option.value===font)?.description}.
-          Font không có trên máy sẽ tự dùng font dự phòng; không tải hay phân phối font Apple.
+          6 font mở (Inter, Roboto, Open Sans, Lato, Noto Sans, IBM Plex Sans) được tải qua Google Fonts khi có Internet.
+          Font Apple/Microsoft/Helvetica/Arial phụ thuộc font có sẵn trên máy; khi không tải được font web, trình duyệt dùng font dự phòng.
           Xem trước ngay, chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
       </div>
       <div className="settings-grid">
