@@ -53,6 +53,30 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     unknown[0].columnOrder=['Sở chưa trình'];
     expect(()=>validateReportLayout(unknown)).toThrow('Thứ tự cột cần đủ');
   });
+  it('merges both previous Party meeting columns in a saved 9-column profile',()=>{
+    const old=defaultReportLayout();
+    const index=old[0].columnOrder.indexOf('Đã họp/xin phiếu, chưa có TBKL');
+    old[0].columnOrder.splice(index,0,'Đã họp, chưa có TBKL');
+    old[0].hiddenColumns=['Đã họp, chưa có TBKL'];
+    const migrated=validateReportLayout(old);
+    const correct=DEFAULT_REPORTS[0].columns;
+    expect(migrated[0].columnOrder).toHaveLength(correct.length);
+    expect(migrated[0].columnOrder.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(migrated[0].columnOrder).not.toContain('Đã họp, chưa có TBKL');
+    expect(migrated[0].hiddenColumns).toEqual(['Đã họp/xin phiếu, chưa có TBKL']);
+    expect(migrated[0].columnOrder).toEqual(correct);
+    expect(old[0].columnOrder).toContain('Đã họp, chưa có TBKL'); // draft not mutated
+    const invalid=structuredClone(old);
+    invalid[0].columnOrder[index]='Đã họp/xin phiếu, chưa có TBKL'; // duplicate identical names
+    expect(()=>validateReportLayout(invalid)).toThrow(/bị trùng/);
+  });
+  it('migrates saved 8-column Party layout with only old name to the replacement',()=>{
+    const old=defaultReportLayout();
+    old[0].columnOrder=old[0].columnOrder.map(value=>
+      value==='Đã họp/xin phiếu, chưa có TBKL'?'Đã họp, chưa có TBKL':value);
+    const next=validateReportLayout(old);
+    expect(next[0].columnOrder).toEqual(DEFAULT_REPORTS[0].columns);
+  });
   it('từ chối tên trống/dài, mã lạ-trùng và cột lạ trước khi lưu', () => {
     for (const change of [{ title: '' }, { title: 'x'.repeat(161) }, { id: 'other' }, { id: 'nq' }, { visible: 'yes' }, { hiddenColumns: ['Không có trong bảng'] }]) {
       const layout = defaultReportLayout();
