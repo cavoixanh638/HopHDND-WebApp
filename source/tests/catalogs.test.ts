@@ -70,6 +70,26 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     expect(updates[0].specialist).toMatch(/^  /);
   });
 
+  it('updates stale specialist-room mappings using observed Excel J/K pairs without discarding unobserved manual links',()=>{
+    const template=createDemoItems(1)[0];
+    const rows=[
+      {...template,specialist:'Nguyễn Ngọc Hùng',room:'Phòng TC'},
+      {...template,recordId:'test-2',specialist:'Lê Quang Trường',room:'Phòng XD&CT'},
+    ];
+    const saved=catalogFromItems(rows);
+    saved.options.room.push('Phòng NC','Phòng khác');
+    saved.options.specialist.push('Chuyên viên lưu riêng');
+    saved.specialistRooms['Nguyễn Ngọc Hùng']=['Phòng NC'];
+    saved.specialistRooms['Lê Quang Trường']=['Phòng khác'];
+    saved.specialistRooms['Chuyên viên lưu riêng']=['Phòng NC'];
+    const merged=mergeCatalogItems(saved,rows);
+    expect(merged.specialistRooms['Nguyễn Ngọc Hùng']).toEqual(['Phòng TC']);
+    expect(merged.specialistRooms['Lê Quang Trường']).toEqual(['Phòng XD&CT']);
+    expect(merged.specialistRooms['Chuyên viên lưu riêng']).toEqual(['Phòng NC']);
+    expect(assignmentIssue(rows[0],merged)).toBe('');
+    expect(assignmentIssue({...rows[0],room:'Phòng NC'},merged)).toContain('chưa được gán');
+    expect(saved.specialistRooms['Nguyễn Ngọc Hùng']).toEqual(['Phòng NC']);
+  });
   it('nêu rõ cột và giá trị không hợp lệ do quản trị nhập',()=>{
     const config=catalogFromItems([]);
     config.options.department.push('   ');
