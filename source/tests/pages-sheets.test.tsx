@@ -24,6 +24,7 @@ import {ItemList} from '../src/features/items/ItemList';
 import {ReportSettings} from '../src/features/settings/ReportSettings';
 import {CatalogSettings} from '../src/features/catalogs/CatalogSettings';
 import {ConnectionPanel} from '../src/features/settings/ConnectionPanel';
+import {FirebasePanel} from '../src/features/settings/FirebasePanel';
 import {ExcelTransferPanel} from '../src/features/settings/ExcelTransferPanel';
 function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
@@ -102,7 +103,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     let tree=open('Tài khoản và dữ liệu');
     expect(tree.props.className).toContain('settings-page');
     expect(tree.props.style['--page-content-width']).toBe('1100px');
-    expect(nodes(tree).some(n=>n.props?.['aria-label']==='Tài khoản Firebase')).toBe(true);
+    expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(true);
     expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
     firebase.common.status='ready';
     tree=render();
