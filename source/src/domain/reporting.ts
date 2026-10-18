@@ -7,7 +7,7 @@ export const DEFAULT_REPORTS: ReportConfig[] = [
     columns: ['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL'],
     hiddenColumns:[],completed:['Đã có TBKL'] },
   { id: 'build', title: 'Tiến độ trình HĐND xây dựng NQ', source: 'build', statusField: 'progressBuild',
-    columns: ['Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'],
+    columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'],
     hiddenColumns:[],completed:['Đã có QĐ chấp thuận'] },
   { id: 'council', title: 'Tiến độ các Nghị quyết và Báo cáo trình HĐND', source: 'council',
     statusField: 'progressCouncil', columns:[...COUNCIL_STAGE_COLUMNS],
@@ -40,6 +40,7 @@ const councilAliases=new Map(Object.entries({
 }).map(([old,modern])=>[normalizeSearch(old),modern]));
 export function normalizeReportStatus(raw:string,config:ReportConfig):string{
   const value=raw.trim()||'Sở chưa trình';
+  if(config.id==='build' && normalizeSearch(value)===normalizeSearch('Không phải trình xây dựng NQ'))return 'Không phải trình';
   if(config.id==='party')
     return partyAliasMap.get(normalizeSearch(value))??value;
   if(['council','nq','bc'].includes(config.id))
@@ -51,7 +52,7 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
     config.source === 'all' ||
     (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
     (config.source === 'build' && item.documentKind === 'NQ' &&
-      !['', 'khong phai trinh xay dung nq'].includes(normalizeSearch(item.progressBuild))) ||
+      !!normalizeSearch(item.progressBuild)) ||
     (config.source === 'council' && (item.documentKind === 'NQ'||item.documentKind === 'BC')) ||
     (config.source === 'nq' && item.documentKind === 'NQ') ||
     (config.source === 'bc' && item.documentKind === 'BC')
