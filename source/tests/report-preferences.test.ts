@@ -37,7 +37,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     const upgraded=validateReportLayout(previous);
     expect(upgraded[1].columnOrder[0]).toBe('Không phải trình');
     expect(upgraded[1].columnOrder).toEqual(DEFAULT_REPORTS[1].columns);
-    expect(upgraded[1].columnWidths).toEqual({});
+    expect(upgraded[1].columnWidths).toBeUndefined();
   });
   it('saves independent column widths per report and rejects unknown sizes',()=>{
     const source=defaultReportLayout();
