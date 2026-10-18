@@ -43,3 +43,20 @@
 - Tuỳ chỉnh tiêu đề nhiều định dạng, thêm bảng, màu từng cột và
   đổi nhãn từ danh mục; phân biệt tính năng mới so với tính năng
   đã có ở bản HTML cũ.
+
+## Thử nghiệm font, tỷ lệ hoàn thành và bố cục 18/10/2026
+
+- Mặc định cũ: trên Windows giao diện dùng **Segoe UI** bởi khai báo `"Segoe UI",system-ui,-apple-system,sans-serif`. Ảnh Gemini không có metadata font, vì vậy không thể xác quyết chỉ từ screenshot; hình dáng gần các font sans như Arial/Roboto.
+- Tham khảo Apple Human Interface Guidelines: hệ San Francisco/SF Pro là font hệ thống trên Apple; dùng `system-ui` trên web để tự chọn font hệ điều hành. Không đóng gói hoặc xuất file font Apple.
+- Font của **toàn bộ bảng dữ liệu và bảng thống kê** được chọn chung tại **Chỉnh sửa → Bảng thống kê → Font chữ chung cho mọi bảng**. Font options: Segoe UI, System UI, Arial, Roboto (nếu máy có), Inter (nếu máy có). Chỉ thay đổi văn bản bên trong bảng, không làm vỡ định vị thanh đầu trang.
+- Ba phương án chọn & xem trước: **Báo cáo chuẩn** (mặc định, ít màu), **Nhấn mạnh nhóm cần theo dõi**, **Bảng cô đọng**. Tất cả dùng cùng một hàm báo cáo và dữ liệu; đổi bố cục không làm thay đổi số.
+- Cột **% hoàn thành** tính riêng từng nhóm lãnh đạo/đơn vị = số mục khớp chính xác với danh sách `completed` của cấu hình / tổng mục của nhóm (làm tròn đến %). Phần tổng dùng cùng công thức với dashboard hiện có, bao gồm cả cột ẩn.
+- Cột đầu tiên (tên nhóm phụ trách) và hàng tiêu đề được dùng nền xám lam nhạt, chữ đậm; tất cả số khác được căn giữa. Trên ô phần trăm có vạch tiến trình.
+- Màu chỉ là **phương án minh họa để người quản trị chọn**, không phải quyết định cuối: đỏ gạch sáng nhẹ cho Sở chưa trình cần chú ý trước, vàng hổ phách nhạt cho Văn phòng đang thực hiện, xanh lam/trung tính cho các bước trung gian và xanh lá dịu cho kết thúc; phân biệt bằng tên trạng thái ngay cả khi xem đen trắng. Tránh tô cả hàng đỏ và tránh coi màu là kết luận quá hạn.
+- Tham khảo thiết kế: Apple HIG Color (màu phải nhất quán, không dùng màu làm thông tin duy nhất), Atlassian Lozenge (danger/warning/information/success theo ngữ nghĩa); không bê nguyên style/dấu hiệu lỗi nguy hiểm vào một trạng thái nghiệp vụ chỉ là đang xử lý.
+- Các lựa chọn font/variant chỉ áp dụng chung sau thao tác **Lưu Bảng báo cáo** vào kho cấu hình. Bản preview có thể xem thử mà chưa thay đổi dữ liệu nguồn.
+
+Nguồn giao diện:
+- https://developer.apple.com/design/human-interface-guidelines/color
+- https://developer.apple.com/fonts/
+- https://atlassian.design/components/lozenge
