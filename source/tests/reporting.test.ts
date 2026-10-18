@@ -11,8 +11,8 @@ import {reportStage} from '../src/domain/report-workflow';
 
 
 describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
-  it('has exactly four default reports and construction stage before issuance NQ',()=>{
-    expect(DEFAULT_REPORTS.map(report=>report.id)).toEqual(['party','build','nq','bc']);
+  it('has exactly five default reports and construction stage before issuance NQ',()=>{
+    expect(DEFAULT_REPORTS.map(report=>report.id)).toEqual(['party','build','council','nq','bc']);
     expect(DEFAULT_REPORTS[1].title).toBe('Tiến độ trình HĐND xây dựng NQ');
     expect(DEFAULT_REPORTS[1].statusField).toBe('progressBuild');
     expect(DEFAULT_REPORTS[1].columns).toEqual([
@@ -36,6 +36,33 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     expect(report.unknown).toEqual([]);
     expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns);
     expect(JSON.stringify(items)).toBe(before);
+  });
+  it('combines NQ+BC exactly as the sum of both issuance tables, including final completion',()=>{
+    const raw=createDemoItems(9).map((item,i)=>({...item,isDropped:false,archivedAt:null,
+      documentKind:i<6?'NQ' as const:'BC' as const,room:'Phòng minh họa',
+      progressCouncil:['Sở chưa trình','VP đang thực hiện','Hoàn thành'][i%3]}));
+    const summary=aggregateReport(raw,DEFAULT_REPORTS[2],'room');
+    const nq=aggregateReport(raw,DEFAULT_REPORTS[3],'room');
+    const bc=aggregateReport(raw,DEFAULT_REPORTS[4],'room');
+    expect(summary.total).toBe(nq.total+bc.total);
+    expect(summary.total).toBe(9);
+    expect(summary.completedCount).toBe(nq.completedCount+bc.completedCount);
+    expect(summary.completedCount).toBe(3);
+    expect(summary.columns).toEqual(['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']);
+    expect(summary.unknown).toEqual([]);
+    expect(DEFAULT_REPORTS[3].columns).not.toContain('Hoàn thành');
+    expect(DEFAULT_REPORTS[4].columns).not.toContain('Hoàn thành');
+    expect(DEFAULT_REPORTS[2].completed).toEqual(['Đã trình HĐND thành phố']);
+  });
+  it('marks the Excel H pending-decision column as quiet but final approval as prominent',()=>{
+    const root=ReportTable({items:createDemoItems(5),config:DEFAULT_REPORTS[1],
+      group:'room',groupOrder:[],onSelect:()=>{}});
+    const flatten=(v:any):any[]=>Array.isArray(v)?v.flatMap(flatten):
+      v&&typeof v==='object'?[v,...flatten(v.props?.children)]:[];
+    const headers=flatten(flatten(root).find(x=>x.type==='thead')).filter(x=>x.type==='th');
+    const find=(name:string)=>headers.find(x=>x.props.children?.props?.children===name);
+    expect(find('Đã trình HĐND, chưa có QĐ')?.props.className).toContain('report-stage-intermediate');
+    expect(find('Đã có QĐ chấp thuận')?.props.className).not.toContain('report-stage-intermediate');
   });
   it('does not render an extra all-caps section kicker above the report name',()=>{
     const root=ReportTable({items:createDemoItems(5),config:DEFAULT_REPORTS[1],group:'room',
@@ -90,10 +117,10 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(report.total).toBe(8);
     expect(report.completedCount).toBe(1);
     expect(report.percent).toBe(13);
-    expect(report.unknown).toEqual(['Đã xin ý kiến TU']);
+    expect(report.unknown).toEqual(['TU đã cho ý kiến','Đã xin ý kiến TU']);
     expect(report.columns).toContain('Chưa chuẩn hóa');
     expect(report.columns).not.toContain('Đã xin ý kiến TU');
-    expect(report.rows.get('Phòng thử nghiệm')?.get('Chưa chuẩn hóa')).toHaveLength(1);
+    expect(report.rows.get('Phòng thử nghiệm')?.get('Chưa chuẩn hóa')).toHaveLength(2);
     expect(JSON.stringify(items)).toBe(before);
     const root=ReportTable({items,config,group:'room',groupOrder:[],onSelect:()=>{}});
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
@@ -104,9 +131,9 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       n.props.children===name||n.props.children?.props?.children===name);
     for(const name of ['Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL'])
       expect(byName(name)?.props.className).toContain('report-stage-intermediate');
-    for(const name of ['Sở chưa trình','VP đang thực hiện','Đã có TBKL','TU đã cho ý kiến'])
+    for(const name of ['Sở chưa trình','VP đang thực hiện','Đã có TBKL'])
       expect(byName(name)?.props.className).not.toContain('report-stage-intermediate');
-    expect(byName('TU đã cho ý kiến')?.props.className).toContain('report-stage-completed');
+    expect(byName('Đã có TBKL')?.props.className).toContain('report-stage-completed');
     expect(byName('VP đang thực hiện')?.props.className).toContain('report-stage-office');
     const cells=nodes(table).filter(n=>n.type==='td'&&n.props.className?.includes('report-stage-intermediate'));
     expect(cells.length).toBeGreaterThan(0);
@@ -114,22 +141,22 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   it('classifies stages only by known values without inventing lateness',()=>{
     expect(reportStage(' Sở chưa trình ',DEFAULT_REPORTS[2])).toBe('source');
     expect(reportStage('VP đang thực hiện',DEFAULT_REPORTS[2])).toBe('office');
-    expect(reportStage('Đã trình HĐND',DEFAULT_REPORTS[2])).toBe('next');
-    expect(reportStage('Hoàn thành',DEFAULT_REPORTS[2])).toBe('completed');
+    expect(reportStage('Đã trình HĐND, chưa có QĐ',DEFAULT_REPORTS[1])).toBe('next');
+    expect(reportStage('Đã trình HĐND thành phố',DEFAULT_REPORTS[2])).toBe('completed');
     expect(reportStage('Sở xin rút',DEFAULT_REPORTS[2])).toBe('withdrawn');
     expect(reportStage('Trạng thái tự tạo',DEFAULT_REPORTS[2])).toBe('other');
   });
   it('persists visual emphasis on each report without changing grouping',()=>{
     const layout=defaultReportLayout().map((x,i)=>({...x,emphasizeProgress:i===0}));
     const saved=validateReportLayout(layout);
-    expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false,false]);
+    expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false,false,false]);
     expect(saved.map(x=>x.columnOrder)).toEqual(layout.map(x=>x.columnOrder));
   });
   it('calculates per-leader and overall completion from only the final configured status',()=>{
     const rows=createDemoItems(5).map((item,i)=>({...item,documentKind:'NQ' as const,
       isDropped:false,archivedAt:null,vpLeader:i<4?'Lãnh đạo A':'Lãnh đạo B',
-      progressCouncil:['Hoàn thành','Sở chưa trình','VP đang thực hiện','Đã trình HĐND','Hoàn thành'][i]}));
-    const config=DEFAULT_REPORTS[2];
+      progressCouncil:['Hoàn thành','Sở chưa trình','VP đang thực hiện','Đang chờ tổng hợp','Hoàn thành'][i]}));
+    const config=DEFAULT_REPORTS[3];
     const report=aggregateReport(rows,config,'vpLeader');
     expect(report.total).toBe(5);
     expect(report.completedCount).toBe(2);
@@ -151,7 +178,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(getReportFont(next)).toBe('system');
     expect(getReportVariant(next)).toBe('compact');
     const reports=configuredReports(next);
-    expect(reports).toHaveLength(4);
+    expect(reports).toHaveLength(5);
     for(const config of reports){
       const tree=ReportTable({items:createDemoItems(2),config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
       expect(tree.props.className).toContain('report-style-compact');
@@ -291,13 +318,13 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       expect(all(foot).filter(n=>n.type==='td')[0].props.className).toContain('report-total-col');
     }
   });
-  it('matches the new Excel Party milestone spelling and counts TU đã cho ý kiến as completed',()=>{
+  it('matches latest Excel Party milestone spelling, with TBKL as the sole completed state',()=>{
     expect(DEFAULT_REPORTS[0].columns).toContain('ĐU đã gửi TU, chưa họp');
     expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã họp, chưa có TBKL');
     expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp/xin phiếu, chưa có TBKL');
     expect(DEFAULT_REPORTS[0].columns).toContain('Đã có TBKL');
     expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã báo cáo TU');
-    expect(DEFAULT_REPORTS[0].completed).toEqual(['TU đã cho ý kiến']);
+    expect(DEFAULT_REPORTS[0].completed).toEqual(['Đã có TBKL']);
     const base=createDemoItems(5).map(item=>({...item,partyLevel:'BTV TU',
       progressParty:'Sở chưa trình',isDropped:false,archivedAt:null}));
     base[0].progressParty='TU đã cho ý kiến';
@@ -307,11 +334,12 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     base[4].progressParty='Đã họp, chưa có TBKL'; // legacy comma spelling
     const report=aggregateReport(base,DEFAULT_REPORTS[0],'room');
     expect(report.total).toBe(5);
-    expect(report.completedCount).toBe(2);
-    expect(report.percent).toBe(40);
-    expect(report.unknown).toEqual([]);
+    expect(report.completedCount).toBe(1);
+    expect(report.percent).toBe(20);
+    expect(report.unknown).toEqual(['TU đã cho ý kiến','Đã báo cáo TU']);
     const statuses=[...report.rows.values()].flatMap(cells=>[...cells.keys()]);
-    expect(statuses).toContain('TU đã cho ý kiến');
+    expect(statuses).toContain('Đã có TBKL');
+    expect(statuses).not.toContain('TU đã cho ý kiến');
     expect(statuses).toContain('ĐU đã gửi TU, chưa họp');
     expect(statuses).toContain('Đã họp/xin phiếu, chưa có TBKL');
     expect(statuses).not.toContain('Đã họp, chưa có TBKL');
@@ -341,20 +369,20 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('ẩn một cột không đổi tổng/tỷ lệ; giá trị lạ còn chi tiết', () => {
     const items = createDemoItems(3).map((item, i) => ({ ...item, documentKind: 'NQ' as const, progressCouncil: ['Hoàn thành', 'Sở chưa trình', 'Trạng thái mới'][i] }));
-    const config = { ...DEFAULT_REPORTS[2], hiddenColumns: ['Hoàn thành'] };
+    const config = { ...DEFAULT_REPORTS[3], hiddenColumns: ['Đã trình HĐND thành phố'] };
     const report = aggregateReport(items, config, 'department');
     expect(report.total).toBe(3);
     expect(report.percent).toBe(33);
     expect(report.hiddenCount).toBe(1);
-    expect(report.columns).not.toContain('Hoàn thành');
+    expect(report.columns).not.toContain('Đã trình HĐND thành phố');
     expect(report.unknown).toEqual(['Trạng thái mới']);
     expect([...report.rows.values()].flatMap(cells => [...cells.values()].flat()).length).toBe(3);
     expect(getKpis(items).completed).toBe(report.completedCount);
   });
   it('loại BC rõ ràng bất kể mã có tiền tố NQ; nhóm __proto__ an toàn', () => {
     const item = { ...createDemoItems(1)[0], displayCode: 'NQ-0001', documentKind: 'BC' as const, department: '__proto__' };
-    expect(aggregateReport([item], DEFAULT_REPORTS[2], 'department').total).toBe(0);
-    expect(aggregateReport([item], DEFAULT_REPORTS[3], 'department').rows.has('__proto__')).toBe(true);
+    expect(aggregateReport([item], DEFAULT_REPORTS[3], 'department').total).toBe(0);
+    expect(aggregateReport([item], DEFAULT_REPORTS[4], 'department').rows.has('__proto__')).toBe(true);
   });
 });
 
