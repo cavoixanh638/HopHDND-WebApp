@@ -97,16 +97,16 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const font=all(tree).find(n=>n.type==='select'&&n.props.id==='report-font-family');
     expect(all(font).filter(n=>n.type==='option')).toHaveLength(10);
     font.props.onChange({currentTarget:{value:'plex'}});
-    expect(getReportFont(onChange.mock.lastCall[0])).toBe('plex');
+    expect(getReportFont(onChange.mock.lastCall![0])).toBe('plex');
     const slider=all(tree).find(n=>n.type==='input'&&n.props.id==='report-font-size');
     expect(slider.props.min).toBe(11);
     expect(slider.props.max).toBe(20);
     slider.props.onChange({currentTarget:{value:'18'}});
-    expect(getReportFontSize(onChange.mock.lastCall[0])).toBe(18);
+    expect(getReportFontSize(onChange.mock.lastCall![0])).toBe(18);
     const radios=all(tree).filter(n=>n.type==='input'&&n.props.name==='report-visual-variant');
     expect(radios).toHaveLength(3);
     radios[2].props.onChange();
-    expect(getReportVariant(onChange.mock.lastCall[0])).toBe('compact');
+    expect(getReportVariant(onChange.mock.lastCall![0])).toBe('compact');
   });
   it('provides exactly ten safe font selections with independent font sizing',()=>{
     expect(TABLE_FONT_OPTIONS).toHaveLength(10);
