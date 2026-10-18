@@ -97,7 +97,7 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     const merged=mergeCatalogItems(old,items);
     expect(merged.options.progressParty).toContain('ĐU đã gửi TU, chưa họp');
     expect(merged.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
-    expect(merged.options.progressParty).toContain('TU đã cho ý kiến');
+    expect(merged.options.progressParty).not.toContain('TU đã cho ý kiến');
     expect(merged.options.progressParty).toContain('Đã họp/xin phiếu, chưa có TBKL');
     expect(merged.options.progressParty).toContain('Đã có TBKL');
     expect(merged.options.progressParty).not.toContain('Đã báo cáo TU');
