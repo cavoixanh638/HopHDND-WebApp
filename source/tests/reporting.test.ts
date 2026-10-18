@@ -31,7 +31,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
     const table=nodes(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
     const th=nodes(table).filter(n=>n.type==='th'&&n.props?.className?.includes('report-number-header'));
-    expect(th).toHaveLength(aggregateReport(items,config,'vpLeader').columns.length+1);
+    expect(th).toHaveLength(aggregateReport(items,config,'vpLeader').columns.length+2);
     expect(th.map(n=>n.props.scope)).toEqual(Array(th.length).fill('col'));
     const numeric=nodes(table).filter(n=>n.type==='td'&&n.props?.className?.includes('report-number'));
     expect(numeric.length).toBeGreaterThan(0);
