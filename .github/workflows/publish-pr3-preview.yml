@@ -39,7 +39,7 @@ jobs:
           test -s _verified_preview/index.html
           echo "a6a7e7855b5790a82ee3462939d8a11a98a6473a8ccc6e979fa4ac95adcff3cd  _verified_preview/index.html" | sha256sum -c -
           for needle in "5 phong cách tô màu báo cáo" "Nhãn màu nổi" "Viền màu phân cột" "Thanh dữ liệu" "Dải tiêu đề màu" "Tổng số nội dung" "TU đã cho ý kiến" "ĐU đã gửi TU, chưa họp" "fonts.googleapis.com" "Tiến độ trình HĐND xây dựng NQ" "Cấu hình cần đủ bốn bảng báo cáo" "--office-bg:#fff5e8" "--next-bg:#f3f8fe"; do
-            grep -Fq "$needle" _verified_preview/index.html
+            grep -Fq -- "$needle" _verified_preview/index.html
           done
       - name: Publish only isolated preview/current/index.html
         shell: bash
