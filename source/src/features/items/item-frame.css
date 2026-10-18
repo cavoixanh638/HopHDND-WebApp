@@ -481,3 +481,52 @@
 @media (max-width:700px) {
   .app-shell.settings-page .column-manager-grid {max-height:clamp(240px,42vh,370px);}
 }
+
+/* Compact field-control cluster: names, data type, edit rights and action
+   stay adjacent instead of spreading across the whole page width. */
+.column-manager .column-manager-legend,
+.column-manager .column-manager-grid {
+  width:min(100%,760px);
+  max-width:760px;
+  justify-self:start;
+}
+.column-manager .column-manager-legend,
+.column-manager .column-manager-row {
+  grid-template-columns:24px minmax(0,1fr) 138px 76px 64px;
+  column-gap:10px;
+}
+.column-manager .column-manager-legend {
+  padding-inline:9px;
+  align-items:center;
+}
+.column-manager .column-manager-row {width:100%;}
+.column-manager .column-manager-label {min-width:0;}
+.column-manager .column-manager-type {min-width:0;overflow-wrap:anywhere;}
+.column-manager .column-manager-row > button {
+  min-width:0;
+  padding-inline:5px;
+  white-space:nowrap;
+}
+.column-manager .column-manager-legend > span:nth-child(4),
+.column-manager .column-manager-legend > span:nth-child(5) {text-align:center;}
+
+/* Preserve all controls on phones without horizontal scrolling: type under
+   the name, edit-rights and action beside it. */
+@media (max-width:620px) {
+  .column-manager .column-manager-legend,
+  .column-manager .column-manager-row {
+    grid-template-columns:22px minmax(0,1fr) 58px 56px;
+    column-gap:6px;
+  }
+  .column-manager .column-manager-legend > span:nth-child(3) {display:none;}
+  .column-manager .column-manager-legend > span:nth-child(4) {grid-column:3;}
+  .column-manager .column-manager-legend > span:nth-child(5) {grid-column:4;}
+  .column-manager .column-manager-row > .column-manager-check {grid-column:1;grid-row:1 / 3;}
+  .column-manager .column-manager-row > .column-manager-label {grid-column:2;grid-row:1;}
+  .column-manager .column-manager-row > .column-manager-type {
+    display:block;grid-column:2;grid-row:2;font-size:11px;
+  }
+  .column-manager .column-manager-row > .column-manager-right {grid-column:3;grid-row:1 / 3;}
+  .column-manager .column-manager-row > button {grid-column:4;grid-row:1 / 3;}
+  .column-manager .column-manager-row > .column-manager-detail {grid-column:1/-1;grid-row:3;}
+}
