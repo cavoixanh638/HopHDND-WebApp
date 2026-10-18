@@ -25,9 +25,9 @@ describe('cấu hình dùng chung', () => {
     expect(validateSharedConfig(profile(), source)).toEqual(profile());
   });
 
-  it('reads old 3-report Google Sheets shared configuration as 4 reports without losing old fields',()=>{
+  it('reads old 3-report Google Sheets shared configuration as 5 reports without losing old fields',()=>{
     const older=profile();
-    older.reports=older.reports.filter(report=>report.id!=='build');
+    older.reports=older.reports.filter(report=>!['build','council'].includes(report.id));
     older.reports[0].tableFontSize=18;
     older.reports[1].visible=false;
     // Simulate a previously committed raw JSON cell, BEFORE current validation
@@ -37,9 +37,9 @@ describe('cấu hình dùng chung', () => {
       'j:'+JSON.stringify(older),older.updatedAt,'legacy-operation-123',true
     ]];
     const validated=configFromRows(rows,source);
-    expect(validated?.reports.map(report=>report.id)).toEqual(['party','build','nq','bc']);
+    expect(validated?.reports.map(report=>report.id)).toEqual(['party','build','council','nq','bc']);
     expect(validated?.reports[0].tableFontSize).toBe(18);
-    expect(validated?.reports[2].visible).toBe(false);
+    expect(validated?.reports[3].visible).toBe(false);
     expect(validated?.items).toEqual(older.items);
     expect(validated?.catalogs).toEqual(older.catalogs);
     expect(older.reports).toHaveLength(3);
