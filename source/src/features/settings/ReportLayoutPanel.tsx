@@ -80,6 +80,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                 Hiển thị bảng {index + 1}
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
+              <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Nhấn mạnh Sở chưa trình và Văn phòng đang thực hiện</label>
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
