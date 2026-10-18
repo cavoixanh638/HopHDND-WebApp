@@ -270,6 +270,21 @@ try{
           widths.every(width=>Math.abs(width-widths[0])<2),headers,widths};
       })()`);
       if(!reports.ok)throw Error('Report first-column heading/width mismatch: '+JSON.stringify(reports));
+      const cells=await evaluate(`(()=>{
+        const tables=[...document.querySelectorAll('table.report-table')];
+        const samples=tables.flatMap(table=>[
+          table.querySelector('thead th.report-number-header'),
+          table.querySelector('tbody td.report-number'),
+          table.querySelector('tfoot td.report-number')
+        ]).filter(Boolean);
+        const focus=[...document.querySelectorAll('.report-focus-button')];
+        const summaries=[...document.querySelectorAll('.report-stage-summary')];
+        return {ok:samples.length>=6&&samples.every(cell=>getComputedStyle(cell).textAlign==='center')&&
+          focus.length>=2&&summaries.length>=8,
+          samples:samples.map(cell=>getComputedStyle(cell).textAlign),focus:focus.length,summaries:summaries.length};
+      })()`);
+      if(!cells.ok)throw Error('Report numeric alignment or focus UI missing: '+JSON.stringify(cells));
+
     }
     const geometry=await sharedGeometry();
     for(let i=0;i<originalGeometry.length;i++){
