@@ -279,9 +279,15 @@ try{
         ]).filter(Boolean);
         const focus=[...document.querySelectorAll('.report-focus-button')];
         const summaries=[...document.querySelectorAll('.report-stage-summary')];
+        const percents=tables.flatMap(table=>[...table.querySelectorAll('th.report-percent-col')]);
+        const progress=tables.flatMap(table=>[...table.querySelectorAll('td.report-percent-col progress')]);
+        const coloredHeaders=tables.flatMap(table=>[...table.querySelectorAll('thead th.report-stage-source')]);
         return {ok:samples.length>=6&&samples.every(cell=>getComputedStyle(cell).textAlign==='center')&&
-          focus.length>=2&&summaries.length>=8,
-          samples:samples.map(cell=>getComputedStyle(cell).textAlign),focus:focus.length,summaries:summaries.length};
+          focus.length>=2&&summaries.length>=8&&percents.length===tables.length&&
+          progress.length>=tables.length&&progress.every(el=>el.value>=0&&el.value<=100)&&
+          coloredHeaders.length>=1&&tables.every(t=>!!getComputedStyle(t).fontFamily),
+          samples:samples.map(cell=>getComputedStyle(cell).textAlign),focus:focus.length,
+          summaries:summaries.length,percents:percents.length,progress:progress.length,headers:coloredHeaders.length};
       })()`);
       if(!cells.ok)throw Error('Report numeric alignment or focus UI missing: '+JSON.stringify(cells));
 
