@@ -1,6 +1,18 @@
 # Trạng thái hiện tại
 
 
+## 18/10/2026 — Chuẩn hóa nguồn Excel và font của bảng báo cáo
+
+- Đã đọc **trực tiếp** file Google Drive `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx` (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`; metadata phiên bản kiểm tra modified `2026-10-18T15:05:49.510Z`). Tab `Các nội dung trình HĐND`: 15 cột A–O, 53 dòng nội dung; J=Chuyên viên VPUB, K=Phòng chuyên môn, G=Tiến độ xin ý kiến Thành ủy. Tab `Sheet2` là danh mục trạng thái hiển thị dấu phẩy chuẩn.
+- Bảng 1 dùng `TU đã cho ý kiến` làm mốc hoàn thành (thay `Đã báo cáo TU`), giữ đúng `ĐU đã gửi TU, chưa họp`, `Đã họp, chưa có TBKL`, `Đã họp/xin phiếu, chưa có TBKL`, `Đã có TBKL`; alias dữ liệu và cấu hình cũ được chuẩn hóa khi hiển thị/đọc, không đổi Google Sheets. Bảng nghị quyết/báo cáo đổi tên theo nhánh `Tiến độ trình HĐND ban hành NQ/BC`. Cấu hình cá nhân có tên tùy chỉnh không bị ghi đè; bản tên mặc định cũ được nâng cấp khi hợp lệ.
+- Trên **cả ba bảng**, cột `Tổng số nội dung` nằm ngay sau cột nhóm, trước `Sở chưa trình`, áp dụng đồng thời cho tiêu đề, từng dòng, tổng cuối, `colgroup` và xem trước, không đổi dữ liệu tính toán.
+- Đối chiếu J/K: 29 chuyên viên / 7 phòng trong 53 dòng nguồn. `mergeCatalogItems` ưu tiên quan hệ đã quan sát trực tiếp từ dữ liệu đang đọc đối với đúng chuyên viên đó; giữ các quan hệ thủ công không có bằng chứng Excel mới, không tự ghi cấu hình production. `Nạp lại từ dữ liệu` trong màn danh mục vẫn có thể tái tạo quan hệ bằng nguồn hiện hành khi quản trị chủ động lưu.
+- **Font:** Trước sửa 10 lựa chọn chỉ là CSS font stack, KHÔNG nhúng font. Giờ 6 font mở Inter, Roboto, Open Sans, Lato, Noto Sans, IBM Plex Sans tải từ Google Fonts nếu có Internet; 4 lựa chọn hệ thống Apple/System UI, Segoe UI, Helvetica Neue, Arial dùng font OS hoặc fallback, không copy/font license thương mại. Khi offline/chặn Google Fonts, những font mở cũng fallback; **không** gọi đây là font nhúng nội tuyến/offline. Trạng thái font cần thử browser người dùng thực tế.
+- Đã tạo backup code trước sửa `backup/before-excel-report-totals-relationships-fonts-2026-10-18` tại `9a9ca94ae3788bf719e1286decfe7e1d355702cf`. Regression tests cho thứ tự cột, % hoàn thành, migration profile, đúng dấu phẩy, quan hệ chuyên viên–phòng, yêu cầu web font. Kết quả CI phải đối chiếu exact SHA trước khi phát hành bản preview.
+- **Phạm vi:** PR #3 vẫn Draft; không merge, không sửa `main:index.html` production, không thay đổi Sheets/Firebase thật. Phát hành chỉ `preview/current` qua artifact CI đã xác minh, rồi người dùng nghiệm thu.
+
+
+
 ## 18/10/2026 — 5 phong cách tô màu bảng (theo ảnh tham khảo người dùng)
 
 - Nghiên cứu mẫu nhãn/badge, full-cell fills, edge rails, in-cell data bars và solid header bands; tham chiếu Carbon (status indicators, data tables) cùng nguyên tắc không chỉ dùng màu để diễn tả trạng thái.
