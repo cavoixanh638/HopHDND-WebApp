@@ -172,7 +172,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     const rawWidths=row.columnWidths??{};
     if(!rawWidths||typeof rawWidths!=='object'||Array.isArray(rawWidths)||
       Object.entries(rawWidths).some(([key,width])=>
-        !['__group','__total','__percent',...base.columns].includes(key)||
+        !['__group','__total','__percent','Chưa chuẩn hóa',...base.columns].includes(key)||
         !Number.isSafeInteger(width)||width<80||width>1200))
       throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
     const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
