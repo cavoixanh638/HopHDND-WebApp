@@ -30,10 +30,13 @@ export function catalogFromItems(items: Item[]): CatalogConfig {
     ...items.map(item=>item[key])
   ])])) as CatalogConfig['options'];
   const specialistRooms:Record<string,string[]>=Object.create(null);
+  const findCanonical=(choices:string[],value:string)=>choices.find(choice=>
+    choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   for(const item of items){
-    const person=observedChoice(item.specialist),room=observedChoice(item.room);
-    if(!person||!room||person==='Chưa phân công'||room==='Chưa phân công')continue;
-    if(!options.specialist.includes(person)||!options.room.includes(room))continue;
+    const rawPerson=observedChoice(item.specialist),rawRoom=observedChoice(item.room);
+    if(!rawPerson||!rawRoom||rawPerson==='Chưa phân công'||rawRoom==='Chưa phân công')continue;
+    const person=findCanonical(options.specialist,rawPerson),room=findCanonical(options.room,rawRoom);
+    if(!person||!room)continue;
     specialistRooms[person]=uniqueChoices([...(specialistRooms[person]??[]),room]);
   }
   return {options,specialistRooms};
@@ -77,7 +80,14 @@ export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfi
   // Comparing trimmed values avoids duplicate dropdowns after a Sheets refresh.
   for(const key of CATALOG_KEYS)
     saved.options[key]=uniqueChoices([...saved.options[key],...items.map(item=>item[key])]);
-  for(const [person,rooms] of Object.entries(observed.specialistRooms))if(!(person in saved.specialistRooms))saved.specialistRooms[person]=rooms;
+  const canonical=(choices:string[],value:string)=>choices.find(choice=>
+    choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
+  for(const [observedPerson,observedRooms] of Object.entries(observed.specialistRooms)){
+    const person=canonical(saved.options.specialist,observedPerson);
+    if(!person||person in saved.specialistRooms)continue;
+    saved.specialistRooms[person]=uniqueChoices(observedRooms
+      .map(room=>canonical(saved.options.room,room))).filter(room=>saved.options.room.includes(room));
+  }
   return saved;
 }
 export function loadCatalog(source: string, items: Item[]): CatalogConfig {
