@@ -583,3 +583,86 @@ body:not(.is-printing) #print-target {  display:none!important}
 
 .report-table ~ .report-section-kicker{display:none}
 .card-header .report-section-kicker{margin:0 0 4px;font-size:10px;letter-spacing:.095em;font-weight:750;color:#557b68}
+
+/* Entire report/data table typography is shared through a validated setting.
+ * Do not embed/download Apple system fonts; system-ui selects them on Apple. */
+table.data-table,table.report-table,
+table.data-table input,table.data-table select,table.data-table textarea,
+table.data-table button {font-family:var(--table-font-family,"Segoe UI",system-ui,sans-serif);}
+.report-surface {min-width:0;}
+.report-table th.report-group-heading,
+.report-table thead th:first-child,
+.report-table tbody th:first-child,
+.report-table tfoot th:first-child {
+  background:#f3f5f8;color:#293b4b;
+  text-align:left;vertical-align:middle;
+  border-right:1px solid #dbe1e8;
+}
+.report-table thead th {background:#edf1f6;color:#34465a;white-space:normal;line-height:1.35;}
+.report-table .report-number-header {text-align:center;vertical-align:middle;white-space:normal;}
+.report-table .report-number,.report-table .report-total-col,
+.report-table .report-percent-col {text-align:center;vertical-align:middle;font-variant-numeric:tabular-nums;}
+.report-table .report-total-col {background:#eef4fc;color:#1c426f;font-weight:750;}
+.report-table .report-percent-col {background:#f0faf4;color:#276447;}
+.report-table .report-total-width {width:102px;}
+.report-table .report-percent-width {width:150px;}
+.report-percent-value {display:flex;align-items:center;justify-content:center;gap:9px;min-width:110px;}
+.report-percent-value strong {width:38px;text-align:right;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;}
+.report-percent-value progress {width:72px;max-width:calc(100% - 48px);height:7px;flex:0 1 72px;accent-color:#28865c;border:0;border-radius:20px;overflow:hidden;}
+.report-percent-value progress::-webkit-progress-bar {background:#dce4df;border-radius:20px;}
+.report-percent-value progress::-webkit-progress-value {background:#31a06b;border-radius:20px;}
+.report-percent-value progress::-moz-progress-bar {background:#31a06b;border-radius:20px;}
+.report-table tfoot th,.report-table tfoot td {font-weight:750;border-top:2px solid #cbd7df;}
+/* Semantic stage: red means urgent stage to follow, NOT overdue. Amber is in-office. */
+.report-table thead th.report-stage-source {background:#fde6e6;color:#982928;}
+.report-table thead th.report-stage-office {background:#fff0d4;color:#85600d;}
+.report-table thead th.report-stage-next {background:#eaf1fa;color:#365b8d;}
+.report-table thead th.report-stage-completed {background:#def4e6;color:#236a46;}
+.report-stage-summary.report-stage-source {background:#fff0ef;color:#a72828;}
+.report-stage-summary.report-stage-office {background:#fff3d9;color:#906017;}
+.report-stage-summary.report-stage-next {background:#edf3fc;color:#375f8f;}
+.report-stage-summary.report-stage-completed {background:#e8f7ed;color:#227746;}
+/* Variant A: clear prioritisation without painting entire rows bright red. */
+.report-style-signal .report-number.report-stage-source:has(.count-button) {background:#fff3f2;}
+.report-style-signal .report-number.report-stage-office:has(.count-button) {background:#fffaee;}
+.report-style-signal .report-number.report-stage-source .count-button {background:#ffe5e3;color:#ae2323;border-color:#ffbcb6;}
+.report-style-signal .report-number.report-stage-office .count-button {background:#fff1c8;color:#86590a;border-color:#f0d38a;}
+.report-style-signal .report-number.report-stage-next .count-button {background:#e9f1fc;color:#2b5f93;border-color:#c8dcf5;}
+.report-style-signal .report-number.report-stage-completed .count-button {background:#e7f7eb;color:#1c7547;border-color:#bee8c9;}
+.report-style-signal .report-number.report-stage-source .count-button,
+.report-style-signal .report-number.report-stage-office .count-button {font-weight:800;}
+/* Variant B: traditional, low-noise administrative report. */
+.report-style-classic .report-number:not(.report-total-col):not(.report-percent-col) {background:#fff;}
+.report-style-classic .report-stage-source .count-button {color:#ae2929;background:#fff0ef;border-color:#f6ceca;}
+.report-style-classic .report-stage-office .count-button {color:#905e16;background:#fffaef;border-color:#efdfb9;}
+.report-style-classic .report-group-heading {background:#f0f3f7!important;}
+.report-style-classic .report-number-header.report-stage-source {background:#f7eded;}
+.report-style-classic .report-number-header.report-stage-office {background:#f9f3e6;}
+/* Variant C: dense management matrix for many leaders and statuses. */
+.report-style-compact .report-table th,.report-style-compact .report-table td {padding:6px 8px;font-size:12px;}
+.report-style-compact .report-number-header {max-width:150px;min-width:95px;}
+.report-style-compact .count-button {min-height:23px;padding:2px 8px;font-size:12px;}
+.report-style-compact .report-percent-value progress {width:56px;}
+.report-style-compact .report-flow-summary {gap:4px;}
+.report-style-compact .report-stage-summary {padding:3px 6px;}
+.report-style-compact .report-group-heading {background:#edf0f4!important;}
+.report-style-compact .report-number.report-stage-source .count-button {background:#ffeded;color:#b82828;}
+.report-style-compact .report-number.report-stage-office .count-button {background:#fff4d9;color:#875f14;}
+/* Report preview is a true visual preview using the unsaved font and style. */
+.report-visual-config {display:grid;gap:12px;padding:13px;border:1px solid #d5e4db;border-radius:10px;background:#f9fcfa;margin-bottom:14px;}
+.report-visual-config h4 {margin:0;font-size:14px;}
+.report-visual-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.report-visual-option {display:grid;gap:5px;border:1px solid #d5e0d9;padding:11px 12px;background:#fff;border-radius:9px;cursor:pointer;min-width:0;}
+.report-visual-option:has(input:checked) {border-color:#37775b;box-shadow:inset 0 0 0 1px #37775b;background:#f0f8f3;}
+.report-visual-option > span {display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px;}
+.report-visual-option small {font-size:11px;color:#5d7568;line-height:1.4;}
+.report-font-control {display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;}
+.report-font-control select {min-width:240px;}
+.report-font-hint {font-size:11px;color:#5a7165;margin:0;}
+@media(max-width:700px) {.report-visual-options {grid-template-columns:1fr;}.report-visual-option{padding:9px;}}
+@media print{
+  .report-table tbody td.report-number,.report-table tfoot td.report-number,
+  .report-table th.report-number-header {text-align:center!important;}
+  .report-table .report-group-heading {background:#f3f5f8!important;}
+  .report-percent-value progress {print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+}
