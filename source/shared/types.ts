@@ -60,4 +60,5 @@ export interface ReportConfig {
   columns: string[];
   hiddenColumns: string[];
   completed: string[];
+  emphasizeProgress?:boolean;
 }
