@@ -24,6 +24,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       entries.length>0&&(['source','office'] as ReportStage[]).includes(reportStage(status,config))));
   const emphasize=config.emphasizeProgress!==false;
   const visualStyle=config.reportVariant??'classic';
+  // Bar lengths compare counts between groups in the SAME status column, never completion rates.
+  const maxByColumn=new Map(report.columns.map(column=>[column,
+    Math.max(1,...[...report.rows.values()].map(cells=>cells.get(column)?.length??0))]));
   const completedSet=new Set(config.completed.map(normalizeSearch));
   const isComplete=(status:string)=>completedSet.has(normalizeSearch(status));
   const rowMetrics=(cells:Map<string,Item[]>)=>{
@@ -40,6 +43,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     if (!ref.current) return;
     const element = document.createElement('section');
     element.id = 'print-target';
+    element.className = ref.current.className;
+    element.style.cssText = ref.current.style.cssText;
     element.innerHTML = ref.current.innerHTML;
     element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(button.textContent ?? '')));
     const note = document.createElement('p');
@@ -82,7 +87,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       <thead><tr>
         <th scope="col" className="report-group-heading">{groupLabel}</th>
         {report.columns.map(column=><th key={column} scope="col"
-          className={'report-number-header'+emphasis(column)}>{column}</th>)}
+          className={'report-number-header'+emphasis(column)}><span className="report-heading-label">{column}</span></th>)}
         <th scope="col" className="report-number-header report-total-col">Tổng số</th>
         <th scope="col" className="report-number-header report-percent-col">% hoàn thành</th>
       </tr></thead>
@@ -92,10 +97,14 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
           return <tr key={label}><th scope="row" className="report-group-heading">{label}</th>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
-              return <td key={column} className={'report-number'+emphasis(column)}>
-                {entries.length?preview?<strong>{entries.length}</strong>:
-                  <button className="count-button" aria-label={`${label}: ${column}, ${entries.length} nội dung`}
-                    onClick={()=>onSelect(`${label} · ${column}`,entries)}>{entries.length}</button>:'—'}
+              return <td key={column} className={'report-number'+emphasis(column)}
+                style={entries.length&&emphasize&&visualStyle==='bars'
+                  ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
+                {entries.length?<span className="report-count-mark">
+                  {preview?<strong>{entries.length}</strong>:
+                    <button className="count-button" aria-label={`${label}: ${column}, ${entries.length} nội dung`}
+                      onClick={()=>onSelect(`${label} · ${column}`,entries)}>{entries.length}</button>}
+                </span>:'—'}
               </td>;
             })}
             <td className="report-number report-total-col"><strong>{metrics.total}</strong></td>
