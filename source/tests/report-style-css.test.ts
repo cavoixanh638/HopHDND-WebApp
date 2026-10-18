@@ -29,6 +29,21 @@ describe('Năm phong cách tô màu báo cáo', () => {
     // System fonts are still local-only; CSS has no embedded proprietary font assets.
     expect(css).not.toContain('@font-face');
   });
+  it('keeps intermediate office/next fills very light while retaining legible text',()=>{
+    const palette=[...css.matchAll(/\.report-surface\s*\{([^}]*)\}/g)]
+      .map(match=>match[1]).find(block=>block.includes('--office-bg'));
+    expect(palette).toBeDefined();
+    for(const stage of ['office','next']){
+      const background=declaration(palette!,stage+'-bg');
+      const ink=declaration(palette!,stage+'-ink');
+      expect(luminance(background),stage+' is intentionally pale').toBeGreaterThan(0.9);
+      expect(contrast(background,ink)).toBeGreaterThanOrEqual(4.5);
+    }
+    // The prominent source/total/completed columns retain their own palette.
+    expect(css).toContain('--source-bg:#FFE0E4');
+    expect(css).toContain('--completed-bg:#D5F0DE');
+    expect(css).toContain('.report-table :is(td,th).report-total-col');
+  });
   it('applies the chosen font size to table header, group cells and numeric cells', () => {
     expect(css).toMatch(/table\.data-table,table\.report-table\s*\{font-size:var\(--table-font-size,13px\);\}/);
     expect(css).toMatch(/table\.data-table th,table\.report-table th\s*\{font-size:inherit;\}/);
