@@ -43,8 +43,12 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
   let completedCount = 0;
   for (const item of scoped) {
     const raw = normalizeReportStatus(item[config.statusField],config);
-    const status = known.get(canonical(raw)) ?? raw;
-    if (!known.has(canonical(raw))) unknown.add(status);
+    // Unknown Party source labels are NOT extra official milestones.
+    // In particular "Đã xin ý kiến TU" means requested, not approved: never
+    // merge it into "TU đã cho ý kiến" or the completed KPI.
+    const recognized=known.get(canonical(raw));
+    const status=recognized??(config.id==='party'?'Chưa chuẩn hóa':raw);
+    if (!recognized) unknown.add(raw);
     const label = item[group].trim() || 'Chưa phân công';
     if (!rows.has(label)) rows.set(label, new Map());
     const cells = rows.get(label)!;
@@ -52,7 +56,8 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
     cells.get(status)!.push(item);
     if (completed.has(canonical(raw))) completedCount++;
   }
-  const columns = [...config.columns, ...unknown].filter(c => !config.hiddenColumns.includes(c));
+  const extra=config.id==='party'&&unknown.size?['Chưa chuẩn hóa']:[...unknown];
+  const columns = [...config.columns, ...extra].filter(c => !config.hiddenColumns.includes(c));
   const hiddenCount = scoped.filter(item => config.hiddenColumns.some(c => canonical(c) === canonical(normalizeReportStatus(item[config.statusField],config)))).length;
   return {
     items: scoped, rows, columns, unknown: [...unknown], hiddenCount,
