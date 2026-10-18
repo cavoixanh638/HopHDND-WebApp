@@ -77,6 +77,40 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const actual=aggregateReport(items,config,'vpLeader');
     expect(actual.total).toBe(actual.items.length);
   });
+  it('does not invent a completed TU milestone from an unrecognized source status',()=>{
+    const states=['Sở chưa trình','VP đang thực hiện','TU đã cho ý kiến',
+      'Đã xin ý kiến TU','Đã gửi ĐU','ĐU đã gửi TU, chưa họp',
+      'Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL'];
+    const items=createDemoItems(states.length).map((item,index)=>({...item,
+      partyLevel:'BTV TU',progressParty:states[index],
+      isDropped:false,archivedAt:null,room:'Phòng thử nghiệm'}));
+    const before=JSON.stringify(items);
+    const config=DEFAULT_REPORTS[0];
+    const report=aggregateReport(items,config,'room');
+    expect(report.total).toBe(8);
+    expect(report.completedCount).toBe(1);
+    expect(report.percent).toBe(13);
+    expect(report.unknown).toEqual(['Đã xin ý kiến TU']);
+    expect(report.columns).toContain('Chưa chuẩn hóa');
+    expect(report.columns).not.toContain('Đã xin ý kiến TU');
+    expect(report.rows.get('Phòng thử nghiệm')?.get('Chưa chuẩn hóa')).toHaveLength(1);
+    expect(JSON.stringify(items)).toBe(before);
+    const root=ReportTable({items,config,group:'room',groupOrder:[],onSelect:()=>{}});
+    const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
+    const table=nodes(root).find(n=>n.type==='table'&&n.props.className==='data-table report-table');
+    const header=nodes(table).find(n=>n.type==='thead');
+    const heads=nodes(header).filter(n=>n.type==='th');
+    const byName=(name:string)=>heads.find(n=>
+      n.props.children===name||n.props.children?.props?.children===name);
+    for(const name of ['Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL'])
+      expect(byName(name)?.props.className).toContain('report-stage-intermediate');
+    for(const name of ['Sở chưa trình','VP đang thực hiện','Đã có TBKL','TU đã cho ý kiến'])
+      expect(byName(name)?.props.className).not.toContain('report-stage-intermediate');
+    expect(byName('TU đã cho ý kiến')?.props.className).toContain('report-stage-completed');
+    expect(byName('VP đang thực hiện')?.props.className).toContain('report-stage-office');
+    const cells=nodes(table).filter(n=>n.type==='td'&&n.props.className?.includes('report-stage-intermediate'));
+    expect(cells.length).toBeGreaterThan(0);
+  });
   it('classifies stages only by known values without inventing lateness',()=>{
     expect(reportStage(' Sở chưa trình ',DEFAULT_REPORTS[2])).toBe('source');
     expect(reportStage('VP đang thực hiện',DEFAULT_REPORTS[2])).toBe('office');
