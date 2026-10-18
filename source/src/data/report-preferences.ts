@@ -5,8 +5,8 @@ import { DEFAULT_REPORTS } from '../domain/reporting';
 export type TableFont =
   'segoe'|'system'|'arial'|'roboto'|'inter'|
   'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
-/** Backward compatible values: each value now controls colors ONLY. */
-export type ReportVariant = 'signal'|'classic'|'compact';
+/** Keep the three existing stored IDs valid; they now select different visual techniques. */
+export type ReportVariant = 'signal'|'classic'|'compact'|'bars'|'band';
 export const TABLE_FONT_OPTIONS:ReadonlyArray<{value:TableFont;label:string;description:string}> = [
   {value:'system',label:'Apple / System UI (SF Pro trên Apple)',description:'Tự chọn font hệ điều hành'},
   {value:'segoe',label:'Segoe UI (Microsoft)',description:'Font Windows, giao diện hiện tại'},
@@ -20,9 +20,11 @@ export const TABLE_FONT_OPTIONS:ReadonlyArray<{value:TableFont;label:string;desc
   {value:'plex',label:'IBM Plex Sans',description:'Phong cách dữ liệu chuyên nghiệp'}
 ];
 export const REPORT_VARIANTS:ReadonlyArray<{value:ReportVariant;label:string;description:string}> = [
-  {value:'classic',label:'Dịu – rõ ràng',description:'Pastel phân biệt các giai đoạn; đọc lâu dễ chịu'},
-  {value:'signal',label:'Nổi bật – ưu tiên',description:'Nền đậm màu hơn, dễ phát hiện nội dung cần chú ý'},
-  {value:'compact',label:'Tương phản cao',description:'Nền đậm nhất, chữ nổi rõ; cùng bố cục với hai mẫu trên'}
+  {value:'classic',label:'1. Phủ màu toàn ô',description:'Cả tiêu đề và ô số cùng nền màu trạng thái; nhìn rõ từng cột.'},
+  {value:'signal',label:'2. Nhãn màu nổi',description:'Giống ảnh tham khảo: nền trắng, tiêu đề dạng nhãn, số nằm trong huy hiệu.'},
+  {value:'compact',label:'3. Viền màu phân cột',description:'Giữ ô trắng, dùng viền cạnh và gạch chân màu để nhận biết cột.'},
+  {value:'bars',label:'4. Thanh dữ liệu',description:'Thanh ngang thể hiện số lượng tương đối trong từng cột trạng thái.'},
+  {value:'band',label:'5. Dải tiêu đề màu',description:'Tô đậm cả hàng tiêu đề theo trạng thái, thân bảng trung tính.'}
 ];
 export const DEFAULT_TABLE_FONT_SIZE=13;
 export const MIN_TABLE_FONT_SIZE=11;
