@@ -28,6 +28,8 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
   return items.filter(item => isActive(item) && (
     config.source === 'all' ||
     (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
+    (config.source === 'build' && item.documentKind === 'NQ' &&
+      !['', 'khong phai trinh xay dung nq'].includes(normalizeSearch(item.progressBuild))) ||
     (config.source === 'nq' && item.documentKind === 'NQ') ||
     (config.source === 'bc' && item.documentKind === 'BC')
   ));
