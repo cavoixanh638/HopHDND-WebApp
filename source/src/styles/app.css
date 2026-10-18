@@ -527,9 +527,9 @@ body:not(.is-printing) #print-target {  display:none!important}
 /* Sorting lives inside the heading; pointer dragging/resizing remains independent. */
 .item-heading-row .column-heading-content{display:flex;align-items:center;gap:5px;min-width:0;width:100%;line-height:1.35}
 .item-heading-row .column-heading-label{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere}
-.item-heading-row .column-sort-button{display:inline-grid;place-items:center;flex:none;width:23px;height:24px;min-height:24px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#607b6c;font-size:16px;font-weight:650;cursor:pointer;touch-action:manipulation}
+.item-heading-row .column-sort-button{display:inline-grid;place-items:center;flex:none;width:19px;height:24px;min-height:24px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#496a58;font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;opacity:.36;transition:opacity .12s ease,background .12s ease}
 .item-heading-row .column-sort-button:hover,.item-heading-row .column-sort-button:focus-visible{background:#e1eee6;border-color:#bad4c5;outline:none;color:#18543c}
-.item-heading-row .column-sort-button.active{color:#155d42;background:#dfede3;border-color:#accfbb}
+.item-heading-row .column-sort-button.active{color:#155d42;background:#dfede3;border-color:#accfbb;opacity:1}
 .item-heading-row th[aria-sort="ascending"],.item-heading-row th[aria-sort="descending"]{background:#e4f1e8}
 
 /* The guest tabs used to override the centered auto margins and stick to the left of the browser. */
@@ -790,4 +790,44 @@ table.data-table button:not(.column-sort-button),table.report-table button,
    background:var(--stage-bg)!important;color:var(--stage-ink)!important;
    border-color:var(--stage-stroke)!important;
  }
+}
+
+/* Quiet sort affordance: on header hover the arrow appears, while the active
+   sort direction remains visible. The edge resize handle stays independent. */
+.item-heading-row th:hover .column-sort-button,
+.item-heading-row th:focus-within .column-sort-button,
+.item-heading-row .column-sort-button:focus-visible {opacity:1;}
+.item-heading-row .column-heading-content {padding-right:5px;}
+
+/* Data grid and report previews use the exact border between adjacent columns. */
+.item-data-table thead .item-heading-row th {position:relative;}
+.item-data-table .column-resizer,
+.report-table .column-resizer {right:-3px;width:10px;border-right:2px solid #9ab7a9;z-index:6;}
+.item-data-table .column-resizer:hover,.item-data-table .column-resizer:focus-visible,
+.report-table .column-resizer:hover,.report-table .column-resizer:focus-visible {background:rgba(38,117,82,.16);border-right-color:#227451;}
+.report-table thead th.report-resizable-heading {position:sticky;padding-right:15px;}
+.report-table thead th.report-resizable-heading .column-resizer {position:absolute;top:0;bottom:0;}
+
+/* Non-applicable construction NQ is an explicit neutral category, not a missed deadline. */
+.report-surface .report-stage-excluded {
+  --stage-bg:#f0f3f6;--stage-ink:#4b6170;--stage-stroke:#d5dde4;--stage-solid:#667d8c;
+}
+
+/* Every positive quantity is visibly actionable, including group/grand totals. */
+.report-surface .report-table .count-drill {
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  width:auto;min-width:44px;min-height:30px;padding:3px 8px;
+  border-radius:7px;border:1px solid currentColor;font-variant-numeric:tabular-nums;
+  text-decoration:none;cursor:pointer;transition:background .12s ease,box-shadow .12s ease,transform .12s ease;
+}
+.report-surface .report-table .count-drill-icon {font-size:.76em;opacity:.6;transition:opacity .12s ease;}
+.report-surface .report-table .count-drill:hover,
+.report-surface .report-table .count-drill:focus-visible {
+  background:rgba(73,124,98,.13);box-shadow:0 1px 4px rgba(22,61,44,.15);
+}
+.report-surface .report-table .count-drill:hover .count-drill-icon,
+.report-surface .report-table .count-drill:focus-visible .count-drill-icon {opacity:1;}
+.report-detail-modal::backdrop {backdrop-filter:none;}
+@media (prefers-reduced-motion:reduce) {
+  .report-surface .report-table .count-drill,.item-heading-row .column-sort-button {transition:none;}
 }
