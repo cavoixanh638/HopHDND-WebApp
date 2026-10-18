@@ -115,11 +115,11 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         <col className="report-percent-width" style={{width:`${allColumnWidths[allColumnWidths.length-1]}px`}}/>
       </colgroup>
       <thead><tr>
-        <th scope="col" className="report-group-heading report-resizable-heading">{groupLabel}{grip('__group',0,groupLabel)}</th>
-        <th scope="col" className="report-number-header report-total-col report-resizable-heading">Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</th>
+        <th scope="col" className="report-group-heading report-resizable-heading">{onColumnResize?<>{groupLabel}{grip('__group',0,groupLabel)}</>:groupLabel}</th>
+        <th scope="col" className="report-number-header report-total-col report-resizable-heading">{onColumnResize?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
         {report.columns.map((column,index)=><th key={column} scope="col"
-          className={'report-number-header report-resizable-heading'+emphasis(column)}><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</th>)}
-        <th scope="col" className="report-number-header report-percent-col report-resizable-heading">% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</th>
+          className={'report-number-header report-resizable-heading'+emphasis(column)}>{onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:<span className="report-heading-label">{column}</span>}</th>)}
+        <th scope="col" className="report-number-header report-percent-col report-resizable-heading">{onColumnResize?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>
         {shownRows.map(([label,cells])=>{
