@@ -98,7 +98,11 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
   const rows:unknown[]=[...value];
   for(const missingId of ['build','council']){
     if(uniqueIds.has(missingId))continue;
-    const before=rows.findIndex(entry=>(entry as Partial<ReportLayout>).id==='nq');
+    const desired=DEFAULT_REPORTS.map(report=>report.id);
+    const following=desired.slice(desired.indexOf(missingId)+1)
+      .find(id=>rows.some(entry=>(entry as Partial<ReportLayout>).id===id));
+    const before=following===undefined?rows.length
+      :rows.findIndex(entry=>(entry as Partial<ReportLayout>).id===following);
     rows.splice(before,0,defaultReportLayout().find(row=>row.id===missingId)!);
   }
   if(rows.length!==DEFAULT_REPORTS.length)throw new Error('Cấu hình cần đủ năm bảng báo cáo.');
