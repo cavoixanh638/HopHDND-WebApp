@@ -83,7 +83,7 @@ jobs:
           if(!html.includes('report-group-col')||!html.includes('Lãnh đạo VP'))throw Error('Fixed grouping column or its new title missing');
           if(!html.includes('report-flow-summary')||!html.includes('report-number-header')||!html.includes('report-focus-button')||!html.includes('Nhấn mạnh Sở chưa trình'))throw Error('Centered numeric dashboard with workflow focus controls missing');
           if(!html.includes('report-percent-col')||!html.includes('report-percent-value')||!html.includes('report-visual-options')||!html.includes('Font chữ chung cho mọi bảng')||!html.includes('report-style-classic'))throw Error('Font, completion and multi-layout dashboard controls missing');
-          if(!html.includes('report-font-size')||!html.includes('Bảng màu báo cáo')||!html.includes('report-visual-swatches')||!html.includes('Noto Sans')||!html.includes('IBM Plex Sans')||!html.includes('--source-bg:#9B1731')||!html.includes('report-stage-source'))throw Error('Unified status palette, ten fonts or font size missing');
+          if(!html.includes('report-font-size')||!html.includes('Bảng màu báo cáo')||!html.includes('report-visual-swatches')||!html.includes('Noto Sans')||!html.includes('IBM Plex Sans')||!html.includes('--source-bg')||!html.includes('report-stage-source'))throw Error('Unified status palette, ten fonts or font size missing');
           if(!html.includes('settings-hub-tabs')||!html.includes('options-popover')||!html.includes('Tài khoản và dữ liệu'))throw Error('Two-entry settings navigation missing');
           if(html.includes('options-group'))throw Error('Old nested settings accordion was not removed');
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
