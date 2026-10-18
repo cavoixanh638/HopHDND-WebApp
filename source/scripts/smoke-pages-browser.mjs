@@ -290,6 +290,29 @@ try{
           summaries:summaries.length,percents:percents.length,progress:progress.length,headers:coloredHeaders.length};
       })()`);
       if(!cells.ok)throw Error('Report numeric alignment or focus UI missing: '+JSON.stringify(cells));
+      const colorConsistency=await evaluate(`(()=>{
+        const table=[...document.querySelectorAll('table.report-table')]
+          .find(t=>t.querySelector('thead th.report-stage-source'));
+        if(!table)return {ok:false,reason:'No source-stage report'};
+        const results=['source','office','next','completed'].map(stage=>{
+          const css='.report-stage-'+stage;
+          const cells=[
+            table.querySelector('thead th'+css),
+            table.querySelector('tbody td'+css),
+            table.querySelector('tfoot td'+css)
+          ];
+          if(cells.some(cell=>!cell))return {stage,ok:true,skipped:true};
+          const backgrounds=cells.map(cell=>getComputedStyle(cell).backgroundColor);
+          const foregrounds=cells.map(cell=>getComputedStyle(cell).color);
+          const same=backgrounds.every(c=>c===backgrounds[0])&&foregrounds.every(c=>c===foregrounds[0]);
+          return {stage,ok:same&&backgrounds[0]!=='rgba(0, 0, 0, 0)'&&
+            backgrounds[0]!=='rgb(255, 255, 255)',backgrounds,foregrounds};
+        });
+        return {ok:results.every(result=>result.ok)&&results.some(result=>result.stage==='source'&&!result.skipped),
+          results};
+      })()`);
+      if(!colorConsistency.ok)throw Error('Report status header/body/footer palette mismatch: '+
+        JSON.stringify(colorConsistency));
 
     }
     const geometry=await sharedGeometry();
