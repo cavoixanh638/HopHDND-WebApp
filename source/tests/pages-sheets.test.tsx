@@ -68,6 +68,46 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('1090px');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
+  it('keeps last confirmed report width on the very first loading render, before Firebase has responded',async()=>{
+    const source='pages:sheets:'+parseSheetConfig(DEFAULT_SHEET_URL).url;
+    localStorage.setItem('hdnd.confirmed-widths.v1:'+source,
+      JSON.stringify({schema:1,source,report:1380,list:970}));
+    firebase.common.status='loading';firebase.common.config=null;
+    let tree=render();
+    expect(tree.props.style['--page-content-width']).toBe('1380px');
+    expect(text(tree)).toContain('Đang tải bố cục đã lưu');
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
+    tree=open('Danh sách nội dung');
+    expect(tree.props.style['--page-content-width']).toBe('970px');
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
+  });
+  it('uses a compact loading shell without cache, then stores only confirmed Firebase widths',async()=>{
+    firebase.common.status='loading';
+    let tree=render();
+    expect(tree.props.style['--page-content-width']).toBe('1120px');
+    const cols=defaultItemLayout();cols.frameWidth=960;
+    firebase.common.config={revision:7,reports:withReportPageWidth(defaultReportLayout(),1320),
+      items:cols,catalogs:catalogFromItems(createDemoItems(1))};
+    firebase.common.status='ready';
+    tree=render();
+    expect(tree.props.style['--page-content-width']).toBe('1320px');
+    const source='pages:sheets:'+parseSheetConfig(DEFAULT_SHEET_URL).url;
+    expect(JSON.parse(localStorage.getItem('hdnd.confirmed-widths.v1:'+source)??'null'))
+      .toMatchObject({report:1320,list:960,schema:1});
+  });
+  it('keeps Account settings on the same compact frame even before profile loading finishes',async()=>{
+    firebase.user={isAnonymous:false,uid:'admin',email:'admin@example.com'} as FirebaseController['user'];
+    firebase.isAdmin=true;
+    firebase.common.status='loading';
+    let tree=open('Tài khoản và dữ liệu');
+    expect(tree.props.className).toContain('settings-page');
+    expect(tree.props.style['--page-content-width']).toBe('1100px');
+    expect(nodes(tree).some(n=>n.props?.['aria-label']==='Tài khoản Firebase')).toBe(true);
+    expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
+    firebase.common.status='ready';
+    tree=render();
+    expect(tree.props.style['--page-content-width']).toBe('1100px');
+  });
   it('honors stored Sheets URL/gid and refreshes manually and every 60 seconds, only while visible',async()=>{
     saveSheetConfig(parseSheetConfig('https://docs.google.com/spreadsheets/d/fake-sheet/edit?gid=42'));
     render();expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('42');respond();await settle();render();
