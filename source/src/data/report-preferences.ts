@@ -1,7 +1,7 @@
 import type { ReportConfig } from '../../shared/types';
-import { DEFAULT_REPORTS } from '../domain/reporting';
+import { DEFAULT_REPORTS, PARTY_STATUS_ALIASES } from '../domain/reporting';
 
-/** Font choices use local/system fonts only; unavailable families fall back. */
+/** Open-source families are loaded as web fonts; OS-proprietary families remain local-only. */
 export type TableFont =
   'segoe'|'system'|'arial'|'roboto'|'inter'|
   'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
@@ -10,14 +10,14 @@ export type ReportVariant = 'signal'|'classic'|'compact'|'bars'|'band';
 export const TABLE_FONT_OPTIONS:ReadonlyArray<{value:TableFont;label:string;description:string}> = [
   {value:'system',label:'Apple / System UI (SF Pro trên Apple)',description:'Tự chọn font hệ điều hành'},
   {value:'segoe',label:'Segoe UI (Microsoft)',description:'Font Windows, giao diện hiện tại'},
-  {value:'inter',label:'Inter',description:'Thiết kế UI hiện đại, ưu tiên số liệu'},
-  {value:'roboto',label:'Roboto (Google)',description:'Dễ đọc trên màn hình'},
+  {value:'inter',label:'Inter (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'},
+  {value:'roboto',label:'Roboto (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'},
   {value:'helvetica',label:'Helvetica Neue',description:'Phong cách tối giản'},
   {value:'arial',label:'Arial',description:'Phổ biến trong văn bản'},
-  {value:'openSans',label:'Open Sans',description:'Dễ đọc nhiều dòng'},
-  {value:'lato',label:'Lato',description:'Mềm mại, rõ nét'},
-  {value:'notoSans',label:'Noto Sans',description:'Hỗ trợ chữ có dấu tốt'},
-  {value:'plex',label:'IBM Plex Sans',description:'Phong cách dữ liệu chuyên nghiệp'}
+  {value:'openSans',label:'Open Sans (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'},
+  {value:'lato',label:'Lato (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'},
+  {value:'notoSans',label:'Noto Sans (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'},
+  {value:'plex',label:'IBM Plex Sans (Web font)',description:'Tải tự động từ Google Fonts khi có Internet'}
 ];
 export const REPORT_VARIANTS:ReadonlyArray<{value:ReportVariant;label:string;description:string}> = [
   {value:'classic',label:'1. Phủ màu toàn ô',description:'Cả tiêu đề và ô số cùng nền màu trạng thái; nhìn rõ từng cột.'},
@@ -94,9 +94,29 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     if (!base || used.has(base.id)) throw new Error('Mã bảng không hợp lệ hoặc bị trùng.');
     used.add(base.id);
     if (typeof row.title !== 'string' || !row.title.trim() || row.title.trim().length > 160) throw new Error('Tên bảng cần từ 1 đến 160 ký tự.');
-    if (typeof row.visible !== 'boolean' || !Array.isArray(row.hiddenColumns) || row.hiddenColumns.some(column => typeof column !== 'string' || !base.columns.includes(column))) throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
-    const order = row.columnOrder ?? base.columns;
-    if (!Array.isArray(order) || order.length !== base.columns.length || new Set(order).size !== order.length || order.some(column => !base.columns.includes(column))) throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
+    const rename=(column:string)=>base.id==='party'?PARTY_STATUS_ALIASES[column]??column:column;
+    if (typeof row.visible !== 'boolean' || !Array.isArray(row.hiddenColumns) || row.hiddenColumns.some(column => typeof column !== 'string' || !base.columns.includes(rename(column)))) throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
+    const hiddenColumns=[...new Set(row.hiddenColumns.map(rename))];
+    const rawOrder = row.columnOrder ?? base.columns;
+    if (!Array.isArray(rawOrder) || rawOrder.some(column=>typeof column!=='string')) throw new Error('Thứ tự cột không hợp lệ.');
+    const order=rawOrder.map(rename);
+    if(new Set(order).size!==order.length||order.some(column=>!base.columns.includes(column)))
+      throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
+    if(order.length!==base.columns.length){
+      // Only migrate the exact seven known pre-update Party milestones. Never
+      // silently replace arbitrary missing columns or discard reordered choices.
+      const prior=['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp',
+        'Đã họp, chưa có TBKL','TU đã cho ý kiến','Sở xin rút'];
+      if(base.id!=='party'||order.length!==prior.length||!prior.every(col=>order.includes(col)))
+        throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
+      for(const missing of base.columns.filter(col=>!order.includes(col))){
+        const next=base.columns.slice(base.columns.indexOf(missing)+1).find(col=>order.includes(col));
+        order.splice(next?order.indexOf(next):order.length,0,missing);
+      }
+    }
+    const title=base.id==='party'&&row.title==='Nội dung cần xin ý kiến Thành ủy'?base.title
+      :base.id==='nq'&&row.title==='Nội dung trình ban hành nghị quyết'?base.title
+      :base.id==='bc'&&row.title==='Báo cáo trình Hội đồng nhân dân'?base.title:row.title.trim();
     // Old report profiles have no pageWidth. A single, stable report ID carries
     // the tab width so reordering or hiding reports does not alter this setting.
     if(base.id===widthOwnerId){
@@ -112,11 +132,11 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         throw new Error('Cỡ chữ bảng phải từ 11 đến 20 px.');
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
-      return { id:base.id,title:row.title.trim(),visible:row.visible,
-        hiddenColumns:[...new Set(row.hiddenColumns)],columnOrder:[...order],
+      return { id:base.id,title,visible:row.visible,
+        hiddenColumns,columnOrder:[...order],
         pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
-    return { id: base.id, title: row.title.trim(), visible: row.visible, hiddenColumns: [...new Set(row.hiddenColumns)], columnOrder: [...order], emphasizeProgress:row.emphasizeProgress!==false };
+    return { id: base.id, title, visible: row.visible, hiddenColumns, columnOrder: [...order], emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
