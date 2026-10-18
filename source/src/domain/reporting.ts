@@ -3,6 +3,7 @@ import {normalizeSearch} from './search';
 
 export const DEFAULT_REPORTS: ReportConfig[] = [
   { id: 'party', title: 'Tiến độ xin ý kiến Thành ủy', source: 'party', statusField: 'progressParty', columns: ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL', 'TU đã cho ý kiến', 'Sở xin rút'], hiddenColumns: [], completed: ['TU đã cho ý kiến'] },
+  { id: 'build', title: 'Tiến độ trình HĐND xây dựng NQ', source: 'build', statusField: 'progressBuild', columns: ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND, chưa có QĐ', 'Đã có QĐ chấp thuận'], hiddenColumns: [], completed: ['Đã có QĐ chấp thuận'] },
   { id: 'nq', title: 'Tiến độ trình HĐND ban hành NQ', source: 'nq', statusField: 'progressCouncil', columns: ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND', 'Hoàn thành', 'Sở xin rút'], hiddenColumns: [], completed: ['Hoàn thành'] },
   { id: 'bc', title: 'Tiến độ trình HĐND ban hành BC', source: 'bc', statusField: 'progressCouncil', columns: ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND', 'Hoàn thành', 'Sở xin rút'], hiddenColumns: [], completed: ['Hoàn thành'] },
 ];
