@@ -633,7 +633,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
    Each semantic stage carries readable foreground/background, border and a strong header ink. */
 .report-surface {
  --source-bg:#FFE0E4;--source-ink:#7F1D30;--source-stroke:#E7A1AD;--source-solid:#9B1731;
- --office-bg:#FFE8B8;--office-ink:#704500;--office-stroke:#DCB76A;--office-solid:#865000;
+ --office-bg:#FFF5E8;--office-ink:#704500;--office-stroke:#EAD7BC;--office-solid:#865000;
  --next-bg:#DCEBFD;--next-ink:#164C89;--next-stroke:#A1C6EF;--next-solid:#124E8C;
  --completed-bg:#D5F0DE;--completed-ink:#125B35;--completed-stroke:#91CFA8;--completed-solid:#126442;
  --withdrawn-bg:#ECE8F5;--withdrawn-ink:#5B3B78;--withdrawn-stroke:#CEC0DB;--withdrawn-solid:#563583;
