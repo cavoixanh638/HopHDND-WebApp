@@ -30,7 +30,12 @@ describe('cấu hình dùng chung', () => {
     older.reports=older.reports.filter(report=>report.id!=='build');
     older.reports[0].tableFontSize=18;
     older.reports[1].visible=false;
-    const rows=committedRows(older);
+    // Simulate a previously committed raw JSON cell, BEFORE current validation
+    // would upgrade it. configRows(older) would itself migrate on write.
+    const rows:unknown[][]=[[
+      source.spreadsheetId+':'+source.gid,older.revision,0,1,
+      'j:'+JSON.stringify(older),older.updatedAt,'legacy-operation-123',true
+    ]];
     const validated=configFromRows(rows,source);
     expect(validated?.reports.map(report=>report.id)).toEqual(['party','build','nq','bc']);
     expect(validated?.reports[0].tableFontSize).toBe(18);
