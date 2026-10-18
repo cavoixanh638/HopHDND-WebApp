@@ -85,19 +85,23 @@ export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(rep
 
 /** Chỉ điều chỉnh trình bày; không nhận thay đổi bộ lọc hoặc quy tắc nghiệp vụ. */
 export function validateReportLayout(value: unknown): ReportLayout[] {
-  if(!Array.isArray(value))throw new Error('Cấu hình cần đủ bốn bảng báo cáo.');
-  // Existing Firebase/Sheets/local users have three saved reports. Insert the
-  // new construction-NQ report before the issuance-NQ report WITHOUT losing
-  // visibility, custom titles, column order, widths or any unsaved profile IDs.
-  const legacyIds=value.map(entry=>entry&&typeof entry==='object'?(entry as Partial<ReportLayout>).id:null);
-  const isLegacy=value.length===3&&
-    new Set(legacyIds).size===3&&['party','nq','bc'].every(id=>legacyIds.includes(id));
-  const rows:unknown[]=isLegacy?[...value]:value;
-  if(isLegacy){
-    const nqIndex=legacyIds.indexOf('nq');
-    rows.splice(nqIndex,0,defaultReportLayout().find(row=>row.id==='build')!);
+  if(!Array.isArray(value))throw new Error('Cấu hình cần đủ năm bảng báo cáo.');
+  // Backward compatible: saved profiles may contain three, four or five
+  // reports. Insert new official reports without resetting custom settings.
+  const savedIds=value.map(entry=>entry&&typeof entry==='object'?(entry as Partial<ReportLayout>).id:null);
+  const uniqueIds=new Set(savedIds);
+  if(savedIds.length<3||savedIds.length>5||
+     uniqueIds.size!==savedIds.length||
+     !['party','nq','bc'].every(id=>uniqueIds.has(id))||
+     savedIds.some(id=>!DEFAULT_REPORTS.some(base=>base.id===id)))
+    throw new Error('Cấu hình cần đủ năm bảng báo cáo.');
+  const rows:unknown[]=[...value];
+  for(const missingId of ['build','council']){
+    if(uniqueIds.has(missingId))continue;
+    const before=rows.findIndex(entry=>(entry as Partial<ReportLayout>).id==='nq');
+    rows.splice(before,0,defaultReportLayout().find(row=>row.id===missingId)!);
   }
-  if(rows.length!==DEFAULT_REPORTS.length)throw new Error('Cấu hình cần đủ bốn bảng báo cáo.');
+  if(rows.length!==DEFAULT_REPORTS.length)throw new Error('Cấu hình cần đủ năm bảng báo cáo.');
   const used = new Set<string>();
   return rows.map(entry => {
     if (!entry || typeof entry !== 'object') throw new Error('Cấu hình bảng không hợp lệ.');
@@ -106,39 +110,57 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     if (!base || used.has(base.id)) throw new Error('Mã bảng không hợp lệ hoặc bị trùng.');
     used.add(base.id);
     if (typeof row.title !== 'string' || !row.title.trim() || row.title.trim().length > 160) throw new Error('Tên bảng cần từ 1 đến 160 ký tự.');
-    const rename=(column:string)=>base.id==='party'?PARTY_STATUS_ALIASES[column]??column:column;
-    if (typeof row.visible !== 'boolean' || !Array.isArray(row.hiddenColumns) || row.hiddenColumns.some(column => typeof column !== 'string' || !base.columns.includes(rename(column)))) throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
-    const hiddenColumns=[...new Set(row.hiddenColumns.map(rename))];
-    const rawOrder = row.columnOrder ?? base.columns;
-    if (!Array.isArray(rawOrder) || rawOrder.some(column=>typeof column!=='string')) throw new Error('Thứ tự cột không hợp lệ.');
-    // Migrate the previous nine-column Party profile (old + replacement
-    // meeting milestones were both stored) into one canonical column.
-    // Only a legacy name COLLIDING with its exact replacement may be deduped;
-    // repeated identical names and other invalid profiles remain errors.
+    // Only presentation labels are migrated; source Excel cells are untouched.
+    // Saved profiles from previous builds may include both superseded and new
+    // columns. Collapse only recognized predecessor/successor pairs.
+    const PARTY_OLD:Readonly<Record<string,string>>={
+      ...PARTY_STATUS_ALIASES,
+      'TU đã cho ý kiến':'Đã có TBKL',
+      'Đã báo cáo TU':'Đã có TBKL',
+    };
+    const COUNCIL_OLD:Readonly<Record<string,string>>={
+      'Đã trình HĐND':'Đã trình HĐND thành phố',
+      'Hoàn thành':'Đã trình HĐND thành phố',
+      'Đã trình HĐND TP':'Đã trình HĐND thành phố',
+    };
+    const legacy=base.id==='party'?PARTY_OLD:['nq','bc','council'].includes(base.id)?COUNCIL_OLD:{};
+    const obsolete=base.id==='party'||['nq','bc','council'].includes(base.id)
+      ?new Set(['Sở xin rút']):new Set<string>();
+    const rename=(col:string)=>legacy[col]??col;
+    const hiddenValues=row.hiddenColumns;
+    if(typeof row.visible!=='boolean'||!Array.isArray(hiddenValues)||
+      hiddenValues.some(col=>typeof col!=='string'||(!base.columns.includes(rename(col))&&!obsolete.has(col))))
+      throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
+    const hiddenColumns=[...new Set(hiddenValues.filter(col=>!obsolete.has(col)).map(rename))];
+    const rawOrder=row.columnOrder??base.columns;
+    if(!Array.isArray(rawOrder)||rawOrder.some(col=>typeof col!=='string'))
+      throw new Error('Thứ tự cột không hợp lệ.');
+    const hasOld=rawOrder.some(col=>Object.hasOwn(legacy,col)||obsolete.has(col));
     const order:string[]=[];
-    const originalOf=new Map<string,string>();
-    for(const rawColumn of rawOrder){
-      const column=rename(rawColumn);
-      if(!base.columns.includes(column))throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
-      const seen=originalOf.get(column);
-      if(seen!==undefined){
-        const legacyPair=base.id==='party'&&column==='Đã họp/xin phiếu, chưa có TBKL'
-          &&seen!==rawColumn
-          &&[seen,rawColumn].some(name=>name==='Đã họp, chưa có TBKL'||name==='Đã họp chưa có TBKL');
-        if(!legacyPair)throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
+    const originals=new Map<string,string>();
+    for(const original of rawOrder){
+      if(obsolete.has(original))continue;
+      const col=rename(original);
+      if(!base.columns.includes(col))
+        throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
+      const previous=originals.get(col);
+      if(previous!==undefined){
+        const recognizedPair=previous!==original
+          &&(Object.hasOwn(legacy,previous)||Object.hasOwn(legacy,original));
+        if(!recognizedPair)throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
         continue;
       }
-      originalOf.set(column,rawColumn);
-      order.push(column);
+      originals.set(col,original);order.push(col);
     }
     if(order.length!==base.columns.length){
-      // Older saved profiles had no 'Đã có TBKL' column. Add only that
-      // explicitly introduced milestone; preserve every other user ordering.
-      const missing=base.columns.filter(column=>!order.includes(column));
-      if(base.id!=='party'||missing.length!==1||missing[0]!=='Đã có TBKL')
+      const missing=base.columns.filter(col=>!order.includes(col));
+      if(!hasOld||(!['party','nq','bc','council'].includes(base.id)&&
+        !(base.id==='build'&&missing.length===0)))
         throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
-      const next=base.columns.slice(base.columns.indexOf(missing[0])+1).find(col=>order.includes(col));
-      order.splice(next?order.indexOf(next):order.length,0,missing[0]);
+      for(const add of missing){
+        const next=base.columns.slice(base.columns.indexOf(add)+1).find(col=>order.includes(col));
+        order.splice(next?order.indexOf(next):order.length,0,add);
+      }
     }
     const title=base.id==='party'&&row.title==='Nội dung cần xin ý kiến Thành ủy'?base.title
       :base.id==='nq'&&row.title==='Nội dung trình ban hành nghị quyết'?base.title
