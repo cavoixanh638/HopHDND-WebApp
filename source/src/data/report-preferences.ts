@@ -44,7 +44,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         throw new Error('Độ rộng trang báo cáo cần từ 320 đến 6000 px hoặc Tự động.');
       return { id:base.id,title:row.title.trim(),visible:row.visible,hiddenColumns:[...new Set(row.hiddenColumns)],columnOrder:[...order],pageWidth,emphasizeProgress:row.emphasizeProgress!==false };
     }
-    return { id: base.id, title: row.title.trim(), visible: row.visible, hiddenColumns: [...new Set(row.hiddenColumns)], columnOrder: [...order] };
+    return { id: base.id, title: row.title.trim(), visible: row.visible, hiddenColumns: [...new Set(row.hiddenColumns)], columnOrder: [...order], emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
