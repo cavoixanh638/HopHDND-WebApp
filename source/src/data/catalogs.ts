@@ -84,7 +84,9 @@ export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfi
     choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   for(const [observedPerson,observedRooms] of Object.entries(observed.specialistRooms)){
     const person=canonical(saved.options.specialist,observedPerson);
-    if(!person||person in saved.specialistRooms)continue;
+    if(!person)continue;
+    // A real specialist/room pairing from the latest Excel wins over stale
+    // saved mappings for THAT specialist. Entries without source evidence stay.
     saved.specialistRooms[person]=uniqueChoices(observedRooms
       .map(room=>canonical(saved.options.room,room))).filter(room=>saved.options.room.includes(room));
   }
