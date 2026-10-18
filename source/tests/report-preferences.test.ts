@@ -133,7 +133,7 @@ describe('Độ rộng trang báo cáo độc lập, tương thích cấu hình 
     expect(reportPageWidth(wide)).toBe(3200);
     expect(original).toEqual(defaultReportLayout());
     expect(reportPageWidth([wide[3],wide[2],wide[1],wide[0]])).toBe(3200);
-    expect(reportPageWidth(validateReportLayout([wide[2],wide[1],wide[0]]))).toBe(3200);
+    expect(reportPageWidth(validateReportLayout([wide[3],wide[2],wide[1],wide[0]]))).toBe(3200);
     for(const bad of [0,319,6001,3.2,-2,NaN]){
       expect(()=>validateReportLayout(withReportPageWidth(original,bad))).toThrow('Độ rộng trang báo cáo');
     }
