@@ -29,25 +29,30 @@ describe('Năm phong cách tô màu báo cáo', () => {
     // System fonts are still local-only; CSS has no embedded proprietary font assets.
     expect(css).not.toContain('@font-face');
   });
-  it('keeps intermediate office/next fills very light while retaining legible text',()=>{
-    const palette=[...css.matchAll(/\.report-surface\s*\{([^}]*)\}/g)]
+  it('makes only three Party middle columns extremely pale and keeps VP/source/completed prominent',()=>{
+    const palette=[...css.matchAll(/\\.report-surface\\s*\\{([^}]*)\\}/g)]
       .map(match=>match[1]).find(block=>block.includes('--office-bg'));
     expect(palette).toBeDefined();
-    for(const stage of ['office','next']){
-      const background=declaration(palette!,stage+'-bg');
-      const ink=declaration(palette!,stage+'-ink');
-      expect(luminance(background),stage+' is intentionally pale').toBeGreaterThan(0.9);
-      expect(contrast(background,ink)).toBeGreaterThanOrEqual(4.5);
+    const quietBlock=css.match(/\\.report-surface \\.report-stage-intermediate\\s*\\{([^}]*)\\}/)?.[1];
+    expect(quietBlock).toBeDefined();
+    const softBg=declaration(quietBlock!,'stage-bg');
+    expect(luminance(softBg)).toBeGreaterThan(0.96);
+    expect(contrast(softBg,declaration(quietBlock!,'stage-ink'))).toBeGreaterThanOrEqual(4.5);
+    for(const stage of ['source','office','completed']){
+      const vividBg=declaration(palette!,stage+'-bg');
+      expect(luminance(vividBg),stage+' must stand out against Party middle columns')
+        .toBeLessThan(luminance(softBg)-0.10);
     }
-    // The prominent source/total/completed columns retain their own palette.
-    expect(css).toContain('--source-bg:#FFE0E4');
-    expect(css).toContain('--completed-bg:#D5F0DE');
-    expect(css).toContain('.report-table :is(td,th).report-total-col');
+    expect(css).toContain('report-style-band .report-table thead th.report-stage-intermediate');
+    expect(css).toContain('report-style-compact .report-table :is(tbody,tfoot) td.report-stage-intermediate');
+    expect(css).toContain('body.is-printing #print-target.report-surface.report-style-band .report-table thead th.report-stage-intermediate');
   });
   it('applies the chosen font size to table header, group cells and numeric cells', () => {
     expect(css).toMatch(/table\.data-table,table\.report-table\s*\{font-size:var\(--table-font-size,13px\);\}/);
     expect(css).toMatch(/table\.data-table th,table\.report-table th\s*\{font-size:inherit;\}/);
     expect(css).toMatch(/table\.data-table.*table\.report-table.*font-family:var\(--table-font-family/s);
+    expect(css).toMatch(/\\.report-surface > \\.card-header h3\\s*\\{[\\s\\S]*?font-family:var\\(--table-font-family/);
+    expect(css).toMatch(/\\.report-surface > \\.card-header h3\\s*\\{[\\s\\S]*?font-size:calc\\(var\\(--table-font-size,13px\\) \\* 1\\.30\\)/);
   });
 
   it('uses a single stable semantic palette for all styles with readable stage text', () => {
