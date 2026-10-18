@@ -10,6 +10,44 @@ import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporti
 import {reportStage} from '../src/domain/report-workflow';
 
 
+describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
+  it('has exactly four default reports and construction stage before issuance NQ',()=>{
+    expect(DEFAULT_REPORTS.map(report=>report.id)).toEqual(['party','build','nq','bc']);
+    expect(DEFAULT_REPORTS[1].title).toBe('Tiến độ trình HĐND xây dựng NQ');
+    expect(DEFAULT_REPORTS[1].statusField).toBe('progressBuild');
+    expect(DEFAULT_REPORTS[1].columns).toEqual([
+      'Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'
+    ]);
+    expect(DEFAULT_REPORTS[1].completed).toEqual(['Đã có QĐ chấp thuận']);
+  });
+  it('excludes non-applicable construction rows and BC, never duplicates source records',()=>{
+    const states=['Không phải trình xây dựng NQ','Sở chưa trình','VP đang thực hiện',
+      'Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','','Đã có QĐ chấp thuận'];
+    const items=createDemoItems(7).map((item,index)=>({...item,
+      isDropped:false,archivedAt:null,documentKind:index===6?'BC' as const:'NQ' as const,
+      progressBuild:states[index],
+    }));
+    const before=JSON.stringify(items);
+    const report=aggregateReport(items,DEFAULT_REPORTS[1],'room');
+    expect(report.total).toBe(4);
+    expect(report.items).toHaveLength(4);
+    expect(report.completedCount).toBe(1);
+    expect(report.percent).toBe(25);
+    expect(report.unknown).toEqual([]);
+    expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns);
+    expect(JSON.stringify(items)).toBe(before);
+  });
+  it('does not render an extra all-caps section kicker above the report name',()=>{
+    const root=ReportTable({items:createDemoItems(5),config:DEFAULT_REPORTS[1],group:'room',
+      groupOrder:[],onSelect:()=>{}});
+    const flatten=(node:any):any[]=>Array.isArray(node)?node.flatMap(flatten):
+      node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
+    const header=flatten(root).find(node=>node.type==='div'&&node.props?.className==='card-header');
+    expect(flatten(header).some(node=>node.type==='p'&&node.props?.className==='report-section-kicker')).toBe(false);
+    expect(flatten(header).find(node=>node.type==='h3')?.props.children).toBe(DEFAULT_REPORTS[1].title);
+  });
+});
+
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
   it('commits report page width through the dedicated editor, leaving other layout properties intact',()=>{
     const draft=defaultReportLayout(),onChange=vi.fn();
@@ -26,7 +64,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('renders all numeric cells centered with wrapped headings and preserves counts',()=>{
     const items=createDemoItems(7);
-    const config=DEFAULT_REPORTS[1];
+    const config=DEFAULT_REPORTS[2];
     const tree=ReportTable({items,config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
     const table=nodes(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
@@ -40,24 +78,24 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(actual.total).toBe(actual.items.length);
   });
   it('classifies stages only by known values without inventing lateness',()=>{
-    expect(reportStage(' Sở chưa trình ',DEFAULT_REPORTS[1])).toBe('source');
-    expect(reportStage('VP đang thực hiện',DEFAULT_REPORTS[1])).toBe('office');
-    expect(reportStage('Đã trình HĐND',DEFAULT_REPORTS[1])).toBe('next');
-    expect(reportStage('Hoàn thành',DEFAULT_REPORTS[1])).toBe('completed');
-    expect(reportStage('Sở xin rút',DEFAULT_REPORTS[1])).toBe('withdrawn');
-    expect(reportStage('Trạng thái tự tạo',DEFAULT_REPORTS[1])).toBe('other');
+    expect(reportStage(' Sở chưa trình ',DEFAULT_REPORTS[2])).toBe('source');
+    expect(reportStage('VP đang thực hiện',DEFAULT_REPORTS[2])).toBe('office');
+    expect(reportStage('Đã trình HĐND',DEFAULT_REPORTS[2])).toBe('next');
+    expect(reportStage('Hoàn thành',DEFAULT_REPORTS[2])).toBe('completed');
+    expect(reportStage('Sở xin rút',DEFAULT_REPORTS[2])).toBe('withdrawn');
+    expect(reportStage('Trạng thái tự tạo',DEFAULT_REPORTS[2])).toBe('other');
   });
   it('persists visual emphasis on each report without changing grouping',()=>{
     const layout=defaultReportLayout().map((x,i)=>({...x,emphasizeProgress:i===0}));
     const saved=validateReportLayout(layout);
-    expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false]);
+    expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false,false]);
     expect(saved.map(x=>x.columnOrder)).toEqual(layout.map(x=>x.columnOrder));
   });
   it('calculates per-leader and overall completion from only the final configured status',()=>{
     const rows=createDemoItems(5).map((item,i)=>({...item,documentKind:'NQ' as const,
       isDropped:false,archivedAt:null,vpLeader:i<4?'Lãnh đạo A':'Lãnh đạo B',
       progressCouncil:['Hoàn thành','Sở chưa trình','VP đang thực hiện','Đã trình HĐND','Hoàn thành'][i]}));
-    const config=DEFAULT_REPORTS[1];
+    const config=DEFAULT_REPORTS[2];
     const report=aggregateReport(rows,config,'vpLeader');
     expect(report.total).toBe(5);
     expect(report.completedCount).toBe(2);
@@ -79,7 +117,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(getReportFont(next)).toBe('system');
     expect(getReportVariant(next)).toBe('compact');
     const reports=configuredReports(next);
-    expect(reports).toHaveLength(3);
+    expect(reports).toHaveLength(4);
     for(const config of reports){
       const tree=ReportTable({items:createDemoItems(2),config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
       expect(tree.props.className).toContain('report-style-compact');
@@ -150,7 +188,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const items=createDemoItems(4).map((item,i)=>({...item,documentKind:'NQ' as const,
       isDropped:false,archivedAt:null,vpLeader:i===0?'A':'B',
       progressCouncil:'Sở chưa trình'}));
-    const config={...DEFAULT_REPORTS[1],reportVariant:'bars' as const};
+    const config={...DEFAULT_REPORTS[2],reportVariant:'bars' as const};
     const tree=ReportTable({items,config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
     const all=(node:any):any[]=>Array.isArray(node)?node.flatMap(all):
       node&&typeof node==='object'?[node,...all(node.props?.children)]:[];
@@ -164,7 +202,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(aggregateReport(items,config,'vpLeader').percent).toBe(0);
   });
   it('marks body AND footer with the same semantic class as header',()=>{
-    const cfg={...DEFAULT_REPORTS[1],emphasizeProgress:true};
+    const cfg={...DEFAULT_REPORTS[2],emphasizeProgress:true};
     const root=ReportTable({items:createDemoItems(6),config:cfg,group:'vpLeader',
       groupOrder:[],onSelect:()=>{}});
     const all=(node:any):any[]=>Array.isArray(node)?node.flatMap(all):
@@ -269,7 +307,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('ẩn một cột không đổi tổng/tỷ lệ; giá trị lạ còn chi tiết', () => {
     const items = createDemoItems(3).map((item, i) => ({ ...item, documentKind: 'NQ' as const, progressCouncil: ['Hoàn thành', 'Sở chưa trình', 'Trạng thái mới'][i] }));
-    const config = { ...DEFAULT_REPORTS[1], hiddenColumns: ['Hoàn thành'] };
+    const config = { ...DEFAULT_REPORTS[2], hiddenColumns: ['Hoàn thành'] };
     const report = aggregateReport(items, config, 'department');
     expect(report.total).toBe(3);
     expect(report.percent).toBe(33);
@@ -281,8 +319,8 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('loại BC rõ ràng bất kể mã có tiền tố NQ; nhóm __proto__ an toàn', () => {
     const item = { ...createDemoItems(1)[0], displayCode: 'NQ-0001', documentKind: 'BC' as const, department: '__proto__' };
-    expect(aggregateReport([item], DEFAULT_REPORTS[1], 'department').total).toBe(0);
-    expect(aggregateReport([item], DEFAULT_REPORTS[2], 'department').rows.has('__proto__')).toBe(true);
+    expect(aggregateReport([item], DEFAULT_REPORTS[2], 'department').total).toBe(0);
+    expect(aggregateReport([item], DEFAULT_REPORTS[3], 'department').rows.has('__proto__')).toBe(true);
   });
 });
 
