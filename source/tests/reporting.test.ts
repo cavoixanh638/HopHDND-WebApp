@@ -7,6 +7,8 @@ import {defaultReportLayout,reportPageWidth} from '../src/data/report-preference
 import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
+import {reportStage} from '../src/domain/report-workflow';
+import {validateReportLayout} from '../src/data/report-preferences';
 
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
   it('commits report page width through the dedicated editor, leaving other layout properties intact',()=>{
@@ -21,6 +23,35 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(onChange.mock.calls[0][0][1]).toEqual(draft[1]);
     const auto=nodes(root).find(node=>node.type==='input'&&node.props?.type==='checkbox'&&node.props?.checked===true);
     expect(auto).toBeDefined();
+  });
+  it('renders all numeric cells centered with wrapped headings and preserves counts',()=>{
+    const items=createDemoItems(7);
+    const config=DEFAULT_REPORTS[1];
+    const tree=ReportTable({items,config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+    const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
+    const table=nodes(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
+    const th=nodes(table).filter(n=>n.type==='th'&&n.props?.className?.includes('report-number-header'));
+    expect(th).toHaveLength(config.columns.length+1);
+    expect(th.map(n=>n.props.scope)).toEqual(Array(config.columns.length+1).fill('col'));
+    const numeric=nodes(table).filter(n=>n.type==='td'&&n.props?.className?.includes('report-number'));
+    expect(numeric.length).toBeGreaterThan(0);
+    expect(nodes(table).some(n=>n.type==='tfoot')).toBe(true);
+    const actual=aggregateReport(items,config,'vpLeader');
+    expect(actual.total).toBe(actual.items.length);
+  });
+  it('classifies stages only by known values without inventing lateness',()=>{
+    expect(reportStage(' Sở chưa trình ',DEFAULT_REPORTS[1])).toBe('source');
+    expect(reportStage('VP đang thực hiện',DEFAULT_REPORTS[1])).toBe('office');
+    expect(reportStage('Đã trình HĐND',DEFAULT_REPORTS[1])).toBe('next');
+    expect(reportStage('Hoàn thành',DEFAULT_REPORTS[1])).toBe('completed');
+    expect(reportStage('Sở xin rút',DEFAULT_REPORTS[1])).toBe('withdrawn');
+    expect(reportStage('Trạng thái tự tạo',DEFAULT_REPORTS[1])).toBe('other');
+  });
+  it('persists visual emphasis on each report without changing grouping',()=>{
+    const layout=defaultReportLayout().map((x,i)=>({...x,emphasizeProgress:i===0}));
+    const saved=validateReportLayout(layout);
+    expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false]);
+    expect(saved.map(x=>x.columnOrder)).toEqual(layout.map(x=>x.columnOrder));
   });
   it('labels the first column according to selected grouping on all report tables',()=>{
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
