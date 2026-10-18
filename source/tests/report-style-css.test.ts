@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('../src/styles/app.css', import.meta.url), 'utf8');
-const variants = ['classic', 'signal', 'compact'] as const;
+const variants = ['classic', 'signal', 'compact', 'bars', 'band'] as const;
 const stages = ['source', 'office', 'next', 'completed', 'withdrawn', 'other'] as const;
 
 function luminance(hex: string): number {
@@ -20,34 +20,44 @@ function declaration(source: string, property: string): string {
   return match[1];
 }
 
-describe('Bảng màu và cỡ chữ bảng báo cáo', () => {
-  it('font size adjusts heading, group column and numbers consistently', () => {
-    // Inherited table font size alone is insufficient: the older rule pins
-    // every <th> to 12px, ignoring the selected 11-20px size.
+describe('Năm phong cách tô màu báo cáo', () => {
+  it('applies the chosen font size to table header, group cells and numeric cells', () => {
     expect(css).toMatch(/table\.data-table,table\.report-table\s*\{font-size:var\(--table-font-size,13px\);\}/);
     expect(css).toMatch(/table\.data-table th,table\.report-table th\s*\{font-size:inherit;\}/);
     expect(css).toMatch(/table\.data-table.*table\.report-table.*font-family:var\(--table-font-family/s);
   });
 
-  it('uses a single stage palette on header, body, footer and summary', () => {
-    expect(css).toMatch(/\.report-surface \.report-table :is\(th,td\)\[class\*="report-stage-"\]/);
-    expect(css).toMatch(/\.report-surface \.report-flow-summary \.report-stage-summary\[class\*="report-stage-"\]/);
-    expect(css).toMatch(/background:var\(--stage-bg\);color:var\(--stage-ink\);border-color:var\(--stage-stroke\)/);
+  it('uses a single stable semantic palette for all styles with readable stage text', () => {
+    const palette = [...css.matchAll(/\.report-surface\s*\{([^}]*)\}/g)]
+      .map(match => match[1]).find(block => block.includes('--source-bg'));
+    expect(palette).toBeDefined();
+    for (const stage of stages) {
+      expect(contrast(declaration(palette!, stage + '-bg'), declaration(palette!, stage + '-ink')),
+        'nền/chữ ' + stage).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(declaration(palette!, stage + '-solid'), 'FFFFFF'),
+        'dải tiêu đề ' + stage).toBeGreaterThanOrEqual(4.5);
+      expect(css).toContain('.report-surface .report-stage-' + stage);
+    }
+    expect(css).toContain('print-color-adjust:exact');
   });
 
-  it('keeps all three variants color-only and readable at AA normal-text contrast', () => {
-    const stagePalettes = variants.map(variant => {
-      const escaped = new RegExp('\\.report-surface\\.report-style-' + variant + '\\s*\\{([^}]+)\\}');
-      const block = css.match(escaped)?.[1];
-      expect(block, 'Thiếu phương án màu ' + variant).toBeDefined();
-      expect(block).not.toMatch(/(?:^|;)\s*(?:font-size|padding|margin|width|height|display|gap|border-radius|line-height)\s*:/);
-      for (const stage of stages) {
-        const background = declaration(block!, stage + '-bg');
-        const foreground = declaration(block!, stage + '-ink');
-        expect(contrast(background, foreground), variant + ' / ' + stage).toBeGreaterThanOrEqual(4.5);
-      }
-      return stages.map(stage => declaration(block!, stage + '-bg')).join('|');
-    });
-    expect(new Set(stagePalettes).size).toBe(3);
+  it('implements five different COLOR APPLICATION techniques, not five shades', () => {
+    for (const id of variants) {
+      expect(css).toContain('.report-surface.report-style-' + id + ' .report-table');
+      expect(css).toContain('.report-visual-option.report-style-' + id + ' .report-example-cell');
+    }
+    expect(css).toMatch(/report-style-classic .report-table :is\(th,td\)[\s\S]*?background:var\(--stage-bg\)/);
+    expect(css).toMatch(/report-style-signal .report-table tbody[\s\S]*?report-count-mark/);
+    expect(css).toMatch(/report-style-compact .report-table :is\(tbody,tfoot\)[\s\S]*?box-shadow:inset 4px 0/);
+    expect(css).toMatch(/report-style-bars .report-table tbody[\s\S]*?background:linear-gradient\(to right/);
+    expect(css).toMatch(/report-style-band .report-table thead[\s\S]*?background:var\(--stage-solid\)/);
+    expect(new Set(variants).size).toBe(5);
+  });
+
+  it('keeps all five styles in print including stage classes and inline font variables', () => {
+    const component = readFileSync(new URL('../src/features/reports/ReportTable.tsx', import.meta.url), 'utf8');
+    expect(component).toContain('element.className = ref.current.className;');
+    expect(component).toContain('element.style.cssText = ref.current.style.cssText;');
+    expect(css).toMatch(/\.report-surface \.report-table \[class\*="report-stage-"\]/);
   });
 });
