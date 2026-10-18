@@ -1,5 +1,14 @@
 # Trạng thái hiện tại
 
+
+## 18/10/2026 — Rà soát còn dang dở: màu và cỡ chữ Bảng báo cáo
+
+- Trên PR #3 (Draft), mã đã có ba phương án **chỉ khác màu** (`classic`, `signal`, `compact`), một nhóm trạng thái dùng chung màu cho tiêu đề/ô dữ liệu/tổng/nhãn thống kê, cột phần trăm, 10 lựa chọn font hệ thống/hiện đại và cỡ chữ 11–20 px. Các nhóm trạng thái chỉ diễn tả mức cần chú ý, không tự suy hồ sơ quá hạn.
+- Rà soát tiếp phát hiện CSS cũ cố định `th` = 12px, khiến thay đổi cỡ chữ chưa ảnh hưởng hàng tiêu đề và cột đầu dù ô số đã đổi. Sửa `source/src/styles/app.css` để mọi `th` kế thừa cỡ chữ đã chọn. Tạo `source/tests/report-style-css.test.ts` để kiểm tra font toàn bảng, thống nhất màu cùng trạng thái, mức tương phản chữ/nền tối thiểu 4.5:1 và ba palette không đổi bố cục.
+- Mốc khôi phục code trước sửa: `backup/before-report-font-complete-2026-10-18` tại `5546f1955cf5ee9cbf4acbdf13a567d257b129c1`. Hai commit: `f2cb870bb3b432d6801fa0187f2451642846fa8e` (CSS) và `45c870d8e30e56902fe898a0aaa99c43974d33be` (tests). Kết quả CI cho commit mới cần xác minh bằng GitHub Actions; chưa tuyên bố chạy trình duyệt thực tế.
+- **Chỉ thay mã trên nhánh PR #3**: không merge, không ghi Google Sheets/Firebase production, không chỉnh `main:index.html`. Vẫn cần nghiệm thu bản preview bằng Chrome, kiểm tra quyền admin lưu bố cục thực (nếu chủ tài khoản chủ động thử) và xác nhận font thiếu trên máy dùng fallback thích hợp.
+
+
 ## Firebase Rules production — người quản trị xác nhận Publish (16/10/2026)
 
 - Người quản trị **đã báo hoàn thành thao tác Publish** trên Firebase Console sau khi nhận file `source/firebase/database.production-candidate.rules.json` và hướng dẫn `FIREBASE_PRODUCTION_RULES_MIGRATION.md`.
