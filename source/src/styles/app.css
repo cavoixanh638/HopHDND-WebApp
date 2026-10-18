@@ -734,7 +734,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-example-cell b {width:100%;font-size:9px;text-align:center;padding:4px 1px;line-height:1.15;}
 .report-example-cell i {display:grid;place-items:center;min-width:23px;min-height:22px;font-style:normal;font-weight:750;font-size:12px;margin:3px;}
 .report-example-source {--mini-bg:#FFE0E4;--mini-ink:#7F1D30;--mini-stroke:#E7A1AD;--mini-solid:#9B1731;--mini-bar:90%;}
-.report-example-office {--mini-bg:#FFE8B8;--mini-ink:#704500;--mini-stroke:#DCB76A;--mini-solid:#865000;--mini-bar:55%;}
+.report-example-office {--mini-bg:#FFF5E8;--mini-ink:#704500;--mini-stroke:#EAD7BC;--mini-solid:#865000;--mini-bar:55%;}
 .report-example-next {--mini-bg:#DCEBFD;--mini-ink:#164C89;--mini-stroke:#A1C6EF;--mini-solid:#124E8C;--mini-bar:35%;}
 .report-example-completed {--mini-bg:#D5F0DE;--mini-ink:#125B35;--mini-stroke:#91CFA8;--mini-solid:#126442;--mini-bar:22%;}
 .report-visual-option.report-style-classic .report-example-cell {background:var(--mini-bg);color:var(--mini-ink);border-color:var(--mini-stroke);}
