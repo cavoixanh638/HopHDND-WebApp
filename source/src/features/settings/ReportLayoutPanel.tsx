@@ -63,17 +63,18 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
         </label>
       </div>
       <div className="report-visual-config" aria-label="Kiểu bảng và phông chữ thống kê">
-        <h4>Chọn bảng màu cho báo cáo</h4>
-        <p className="report-font-hint">Ba phương án chỉ khác màu sắc. Bố cục, kích thước ô và số liệu giữ nguyên.</p>
-        <div className="report-visual-options" role="radiogroup" aria-label="Bảng màu báo cáo">
+        <h4>5 phong cách tô màu báo cáo</h4>
+        <p className="report-font-hint">Mỗi phong cách có cách thể hiện khác nhau, không chỉ đổi độ đậm. Dữ liệu, cách tính và ý nghĩa trạng thái vẫn giữ nguyên. Gợi ý: Nhãn màu nổi để xem hằng ngày; Thanh dữ liệu để so sánh khối lượng.</p>
+        <div className="report-visual-options" role="radiogroup" aria-label="Phong cách tô màu báo cáo">
           {REPORT_VARIANTS.map(option=><label className={'report-visual-option report-style-'+option.value} key={option.value}>
             <span><input type="radio" name="report-visual-variant"
               checked={variant===option.value}
               onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
             <small>{option.description}</small>
-            <span className="report-visual-swatches" aria-hidden="true">
-              <i className="swatch-source"/><i className="swatch-office"/>
-              <i className="swatch-next"/><i className="swatch-completed"/>
+            <span className="report-visual-example" aria-hidden="true">
+              {([["source","Sở",19],["office","VP",4],["next","Tiếp",2],["completed","Xong",1]] as const).map(([stage,label,count])=><span key={stage} className={"report-example-cell report-example-"+stage}>
+                <b>{label}</b><i>{count}</i>
+              </span>)}
             </span>
           </label>)}
         </div>
@@ -120,7 +121,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                 Hiển thị bảng {index + 1}
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
-              <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Nhấn mạnh Sở chưa trình và Văn phòng đang thực hiện</label>
+              <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Tô màu các cột trạng thái trong bảng này</label>
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
