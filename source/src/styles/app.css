@@ -580,3 +580,6 @@ body:not(.is-printing) #print-target {  display:none!important}
   .report-flow-tools .report-focus-button {display:none!important;}
   .report-table td.report-number,.report-table th.report-number-header{text-align:center!important;}
 }
+
+.report-table ~ .report-section-kicker{display:none}
+.card-header .report-section-kicker{margin:0 0 4px;font-size:10px;letter-spacing:.095em;font-weight:750;color:#557b68}
