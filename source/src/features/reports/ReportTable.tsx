@@ -50,7 +50,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     try { window.print(); } finally { document.body.classList.remove('is-printing'); element.remove(); }
   };
   return <section className={'card report-surface report-style-'+visualStyle} ref={ref}
-    style={{'--table-font-family':tableFontStack(config.tableFont??'segoe')} as CSSProperties}>
+    style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
+      '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
     <div className="card-header"><div><p className="report-section-kicker">{config.id==='party'?'XIN Ý KIẾN THÀNH ỦY':config.id==='nq'?'TRÌNH NGHỊ QUYẾT':config.id==='bc'?'TRÌNH BÁO CÁO':'TỔNG HỢP TIẾN ĐỘ'}</p><h3>{config.title}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
     {report.unknown.length > 0 && <p className="unknown-note">Chưa chuẩn hóa: {report.unknown.join(', ')}. Các nội dung này vẫn được tính trong tổng.</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
@@ -67,7 +68,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         {focusWaiting?'Xem toàn bộ đơn vị':'Chỉ xem đơn vị còn ở Sở/VP'}
       </button>}
     </div>
-    <p className="report-flow-note">Đỏ: Sở chưa trình — cần ưu tiên theo dõi; vàng: VP đang thực hiện — cần lưu ý. Các bước tiếp theo chưa được tính hoàn thành. Không suy ra quá hạn nếu chưa có thời hạn xử lý.
+    <p className="report-flow-note">Màu sắc là gợi ý mức độ ưu tiên theo từng bước xử lý, không khẳng định hồ sơ quá hạn. Chỉ trạng thái hoàn thành cuối cùng mới tính tỷ lệ hoàn thành.
       {stages.withdrawn>0?' Đề nghị rút: '+stages.withdrawn+'.':''}
       {stages.other>0?' Trạng thái chưa khớp: '+stages.other+'.':''}
     </p>
@@ -109,7 +110,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </tbody>
       <tfoot><tr>
         <th scope="row">{focusWaiting?'Tổng toàn bảng':'Tổng cộng'}</th>
-        {report.columns.map(column=><td className="report-number" key={column}>
+        {report.columns.map(column=><td className={'report-number'+emphasis(column)} key={column}>
           {[...report.rows.values()].reduce((sum,cells)=>sum+(cells.get(column)?.length??0),0)}
         </td>)}
         <td className="report-number report-total-col">{report.total}</td>
