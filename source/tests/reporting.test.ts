@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})}));
+vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
