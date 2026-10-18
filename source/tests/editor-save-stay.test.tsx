@@ -1,6 +1,6 @@
 import {beforeEach,describe,expect,it,vi} from 'vitest';
 const hook=vi.hoisted(()=>({markSaved:vi.fn()}));
-vi.mock('react',()=>({
+vi.mock('react',()=>({memo:(component:any)=>component,
   useState:(initial:any)=>[typeof initial==='function'?initial():initial,vi.fn()],
   useRef:(initial:any)=>({current:initial}),useEffect:vi.fn(),
 }));
