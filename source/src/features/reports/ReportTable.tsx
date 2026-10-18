@@ -23,7 +23,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dá»
     .filter(([,cells])=>!focusWaiting||[...cells.entries()].some(([status,entries])=>
       entries.length>0&&(['source','office'] as ReportStage[]).includes(reportStage(status,config))));
   const emphasize=config.emphasizeProgress!==false;
-  const visualStyle=config.reportVariant??'signal';
+  const visualStyle=config.reportVariant??'classic';
   const completedSet=new Set(config.completed.map(normalizeSearch));
   const isComplete=(status:string)=>completedSet.has(normalizeSearch(status));
   const rowMetrics=(cells:Map<string,Item[]>)=>{
