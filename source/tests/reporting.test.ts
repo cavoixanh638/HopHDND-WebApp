@@ -3,7 +3,7 @@ vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
-import {defaultReportLayout,reportPageWidth,configuredReports,getReportFont,getReportVariant,withReportVisuals,validateReportLayout} from '../src/data/report-preferences';
+import {defaultReportLayout,reportPageWidth,configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,validateReportLayout,TABLE_FONT_OPTIONS,REPORT_VARIANTS} from '../src/data/report-preferences';
 import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
@@ -87,6 +87,59 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     }
     expect(seed[0].tableFont).toBe('segoe');
     expect(()=>validateReportLayout(withReportVisuals(seed,{tableFont:'bad' as any}))).toThrow();
+  });
+  it('provides exactly ten safe font selections with independent font sizing',()=>{
+    expect(TABLE_FONT_OPTIONS).toHaveLength(10);
+    expect(new Set(TABLE_FONT_OPTIONS.map(option=>option.value)).size).toBe(10);
+    const layout=defaultReportLayout();
+    expect(getReportFontSize(layout)).toBe(13);
+    for(const size of [11,13,16,20]){
+      const saved=validateReportLayout(withReportVisuals(layout,{tableFont:'notoSans',tableFontSize:size}));
+      expect(getReportFont(saved)).toBe('notoSans');
+      expect(getReportFontSize(saved)).toBe(size);
+      const reports=configuredReports(saved);
+      expect(reports.every(report=>report.tableFontSize===size)).toBe(true);
+      expect(ReportTable({items:[],config:reports[0],group:'vpLeader',
+        groupOrder:[],onSelect:()=>{}}).props.style['--table-font-size']).toBe(size+'px');
+    }
+    for(const value of [9,10,21,99,12.5,Number.NaN]){
+      expect(()=>validateReportLayout(withReportVisuals(layout,{tableFontSize:value}))).toThrow();
+    }
+  });
+  it('uses three color-only appearance options with identical table structure',()=>{
+    const original=defaultReportLayout();
+    expect(REPORT_VARIANTS.map(option=>option.value)).toEqual(['classic','signal','compact']);
+    const flatten=(node:any):any[]=>Array.isArray(node)?node.flatMap(flatten):
+      node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
+    const schemas=REPORT_VARIANTS.map(option=>{
+      const layout=validateReportLayout(withReportVisuals(original,{reportVariant:option.value}));
+      const report=configuredReports(layout)[1];
+      const tree=ReportTable({items:createDemoItems(5),config:report,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+      expect(tree.props.className).toContain('report-style-'+option.value);
+      const table=flatten(tree).find(node=>node.type==='table'&&node.props.className==='data-table report-table');
+      const header=flatten(table).filter(node=>node.type==='th').length;
+      const cells=flatten(table).filter(node=>node.type==='td').length;
+      return {header,cells,minWidth:table.props.style.minWidth,font:tree.props.style['--table-font-size']};
+    });
+    expect(schemas[1]).toEqual(schemas[0]);
+    expect(schemas[2]).toEqual(schemas[0]);
+  });
+  it('marks body AND footer with the same semantic class as header',()=>{
+    const cfg={...DEFAULT_REPORTS[1],emphasizeProgress:true};
+    const root=ReportTable({items:createDemoItems(6),config:cfg,group:'vpLeader',
+      groupOrder:[],onSelect:()=>{}});
+    const all=(node:any):any[]=>Array.isArray(node)?node.flatMap(all):
+      node&&typeof node==='object'?[node,...all(node.props?.children)]:[];
+    const table=all(root).find(n=>n.type==='table'&&n.props.className==='data-table report-table');
+    const head=all(table).find(n=>n.type==='thead');
+    const body=all(table).find(n=>n.type==='tbody');
+    const foot=all(table).find(n=>n.type==='tfoot');
+    for(const stage of ['source','office','next','completed']){
+      const key='report-stage-'+stage;
+      if(!all(head).some(n=>n.props.className?.includes(key)))continue;
+      expect(all(body).some(n=>n.type==='td'&&n.props.className?.includes(key))).toBe(true);
+      expect(all(foot).some(n=>n.type==='td'&&n.props.className?.includes(key))).toBe(true);
+    }
   });
   it('labels the first column according to selected grouping on all report tables',()=>{
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
