@@ -386,7 +386,7 @@
    overlapped wrapped headings, because row heights depend on column width. */
 .item-data-table thead {position:sticky;top:0;z-index:5;}
 .item-data-table thead .item-heading-row th {
-  position:static;top:auto;height:auto;max-height:none;
+  position:relative;top:auto;height:auto;max-height:none;
   white-space:normal;overflow-wrap:anywhere;word-break:normal;
   line-height:1.35;vertical-align:middle;padding-top:10px;padding-bottom:10px;
 }
