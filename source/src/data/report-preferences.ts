@@ -69,6 +69,6 @@ export function saveReportLayout(source: string, layout: ReportLayout[]): boolea
 
 export function configuredReports(layout: ReportLayout[], includeHidden = false): ReportConfig[] {
   return layout.filter(row => includeHidden || row.visible).map(row => ({
-    ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title, hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder],
+    ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title, hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
   }));
 }
