@@ -1,5 +1,7 @@
 import type { GroupField, Item } from '../../../shared/types';
-import { configuredReports, reportPageWidth, withReportPageWidth, type ReportLayout } from '../../data/report-preferences';
+import {configuredReports,getReportFont,getReportVariant,withReportVisuals,
+  TABLE_FONT_OPTIONS,REPORT_VARIANTS,reportPageWidth,withReportPageWidth,
+  type ReportLayout,type TableFont,type ReportVariant} from '../../data/report-preferences';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
 
@@ -36,6 +38,9 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
 
   const previews = configuredReports(draft, true);
   const pageWidth=reportPageWidth(draft);
+  const font=getReportFont(draft),variant=getReportVariant(draft);
+  const updateVisual=(next:{tableFont?:TableFont;reportVariant?:ReportVariant})=>
+    onChange(withReportVisuals(draft,next));
 
   return (
     <section className="card" aria-labelledby="report-layout-heading">
@@ -56,6 +61,26 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
             onChange={event=>onChange(withReportPageWidth(draft,event.currentTarget.checked?'auto':1920))}/>
           Tự động sử dụng toàn bộ chiều rộng màn hình
         </label>
+      </div>
+      <div className="report-visual-config" aria-label="Kiểu bảng và phông chữ thống kê">
+        <h4>Chọn giao diện báo cáo</h4>
+        <div className="report-visual-options" role="radiogroup" aria-label="Kiểu trình bày bảng">
+          {REPORT_VARIANTS.map(option=><label className="report-visual-option" key={option.value}>
+            <span><input type="radio" name="report-visual-variant"
+              checked={variant===option.value}
+              onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
+            <small>{option.description}</small>
+          </label>)}
+        </div>
+        <div className="report-font-control">
+          <label htmlFor="report-font-family"><strong>Font chữ chung cho mọi bảng</strong></label>
+          <select id="report-font-family" aria-label="Font chữ chung cho mọi bảng"
+            value={font} onChange={event=>updateVisual({tableFont:event.currentTarget.value as TableFont})}>
+            {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <p className="report-font-hint">{TABLE_FONT_OPTIONS.find(option=>option.value===font)?.description}.
+          Xem trước được cập nhật ngay; chỉ áp dụng cho tất cả người xem sau khi bấm Lưu Bảng báo cáo.</p>
       </div>
       <div className="settings-grid">
         {draft.map((report, index) => {
