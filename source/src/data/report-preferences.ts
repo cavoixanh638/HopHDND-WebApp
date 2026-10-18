@@ -11,8 +11,8 @@ export const TABLE_FONT_OPTIONS:ReadonlyArray<{value:TableFont;label:string;desc
   {value:'inter',label:'Inter',description:'Ưu tiên Inter nếu đã cài trên máy'}
 ];
 export const REPORT_VARIANTS:ReadonlyArray<{value:ReportVariant;label:string;description:string}> = [
-  {value:'signal',label:'Ưu tiên cảnh báo',description:'Đỏ – Sở chưa trình; vàng – Văn phòng; xanh – hoàn thành'},
-  {value:'classic',label:'Báo cáo chuẩn',description:'Nền hàng và cột rõ nét, nhấn màu vừa phải'},
+  {value:'signal',label:'Nhấn mạnh nhóm cần theo dõi',description:'Nhấn sắc đỏ gạch ở Sở; vàng hổ phách ở Văn phòng; xanh ở trạng thái hoàn thành'},
+  {value:'classic',label:'Báo cáo chuẩn · mặc định',description:'Nền cột đầu và tiêu đề rõ ràng; màu ưu tiên nhẹ, dễ đọc lâu'},
   {value:'compact',label:'Bảng cô đọng',description:'Nhiều dòng hơn trên màn hình, màu chỉ tập trung vào số'}
 ];
 export function tableFontStack(font:TableFont):string {
@@ -28,7 +28,7 @@ export function getReportFont(layout:readonly ReportLayout[]):TableFont {
   return layout.find(row=>row.id===widthOwnerId)?.tableFont??'segoe';
 }
 export function getReportVariant(layout:readonly ReportLayout[]):ReportVariant {
-  return layout.find(row=>row.id===widthOwnerId)?.reportVariant??'signal';
+  return layout.find(row=>row.id===widthOwnerId)?.reportVariant??'classic';
 }
 export function withReportVisuals(layout:ReportLayout[],change:{tableFont?:TableFont;reportVariant?:ReportVariant}):ReportLayout[] {
   return layout.map(row=>row.id===widthOwnerId?{...row,...change}:row);
@@ -55,7 +55,7 @@ export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number)
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
   id: report.id, title: report.title, visible: true, hiddenColumns: [], columnOrder: [...report.columns],emphasizeProgress:true,
-  ...(report.id===widthOwnerId?{tableFont:'segoe' as const,reportVariant:'signal' as const}:{}),
+  ...(report.id===widthOwnerId?{tableFont:'segoe' as const,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
 
@@ -80,7 +80,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       if(pageWidth!=='auto'&&(!Number.isSafeInteger(pageWidth)||pageWidth<320||pageWidth>6000))
         throw new Error('Độ rộng trang báo cáo cần từ 320 đến 6000 px hoặc Tự động.');
       const tableFont=row.tableFont??'segoe';
-      const reportVariant=row.reportVariant??'signal';
+      const reportVariant=row.reportVariant??'classic';
       if(!TABLE_FONT_OPTIONS.some(option=>option.value===tableFont))
         throw new Error('Phông chữ của bảng không nằm trong danh sách cho phép.');
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
