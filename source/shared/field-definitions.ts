@@ -24,7 +24,7 @@ export const GROUP_OPTIONS: readonly { key: GroupField; label: string }[] = [
 ];
 
 export const STATUS_OPTIONS: Record<StatusField, string[]> = {
-  progressParty: ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU chưa họp', 'Đã họp chưa có TBKL', 'Đã báo cáo TU', 'Không phải xin ý kiến', 'Sở xin rút'],
+  progressParty: ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp, chưa có TBKL', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL', 'TU đã cho ý kiến', 'Không phải xin ý kiến', 'Sở xin rút'],
   progressBuild: ['Không phải trình xây dựng NQ', 'Trình xây dựng NQ', 'Đã trình HĐND chưa có QĐ', 'Đã có QĐ chấp thuận'],
   progressCouncil: ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND', 'Hoàn thành', 'Sở xin rút'],
 };
