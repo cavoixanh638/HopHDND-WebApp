@@ -194,6 +194,53 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       }
     }
   });
+  it('puts Tổng số nội dung between the grouping column and Sở chưa trình in every report',()=>{
+    const all=(node:any):any[]=>Array.isArray(node)?node.flatMap(all):
+      node&&typeof node==='object'?[node,...all(node.props?.children)]:[];
+    for(const config of DEFAULT_REPORTS){
+      const root=ReportTable({items:createDemoItems(8),config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+      const table=all(root).find(n=>n.type==='table'&&n.props.className==='data-table report-table');
+      const header=all(table).find(n=>n.type==='thead');
+      const ths=all(header).filter(n=>n.type==='th');
+      expect(ths[0].props.children).toBe('Lãnh đạo VP');
+      expect(ths[1].props.children).toBe('Tổng số nội dung');
+      expect(ths[2].props.className).toContain('report-stage-source');
+      const group=all(table).find(n=>n.type==='colgroup');
+      expect(all(group).filter(n=>n.type==='col').slice(0,2).map(n=>n.props.className))
+        .toEqual(['report-group-col','report-total-width']);
+      const body=all(table).find(n=>n.type==='tbody');
+      for(const tr of all(body).filter(n=>n.type==='tr')){
+        const cells=all(tr).filter(n=>n.type==='td');
+        if(cells.length===1)continue;
+        expect(cells[0].props.className).toContain('report-total-col');
+        expect(cells[1].props.className).toContain('report-stage-source');
+      }
+      const foot=all(table).find(n=>n.type==='tfoot');
+      expect(all(foot).filter(n=>n.type==='td')[0].props.className).toContain('report-total-col');
+    }
+  });
+  it('matches the new Excel Party milestone spelling and counts TU đã cho ý kiến as completed',()=>{
+    expect(DEFAULT_REPORTS[0].columns).toContain('ĐU đã gửi TU, chưa họp');
+    expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp, chưa có TBKL');
+    expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(DEFAULT_REPORTS[0].columns).toContain('Đã có TBKL');
+    expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã báo cáo TU');
+    expect(DEFAULT_REPORTS[0].completed).toEqual(['TU đã cho ý kiến']);
+    const base=createDemoItems(4).map(item=>({...item,partyLevel:'BTV TU',
+      progressParty:'Sở chưa trình',isDropped:false,archivedAt:null}));
+    base[0].progressParty='TU đã cho ý kiến';
+    base[1].progressParty='Đã báo cáo TU'; // legacy value, still counted as completed
+    base[2].progressParty='ĐU đã gửi TU chưa họp'; // legacy missing comma
+    base[3].progressParty='Đã có TBKL';
+    const report=aggregateReport(base,DEFAULT_REPORTS[0],'room');
+    expect(report.total).toBe(4);
+    expect(report.completedCount).toBe(2);
+    expect(report.percent).toBe(50);
+    expect(report.unknown).toEqual([]);
+    const statuses=[...report.rows.values()].flatMap(cells=>[...cells.keys()]);
+    expect(statuses).toContain('TU đã cho ý kiến');
+    expect(statuses).toContain('ĐU đã gửi TU, chưa họp');
+  });
   it('excludes rows marked Không in Excel party-level F or Không phải xin ý kiến in G',()=>{
     const seed=createDemoItems(4).map(x=>({...x,isDropped:false,archivedAt:null}));
     seed[0].partyLevel='Không';
