@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
 import {GROUP_OPTIONS} from '../../../shared/field-definitions';
 import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
@@ -14,14 +15,14 @@ const quietPartyMilestones=new Set([
 ].map(normalizeSearch));
 const quietBuildMilestone=normalizeSearch('Đã trình HĐND, chưa có QĐ');
 
-export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [] }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[] }) {
+export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; onColumnResize?:(column:string,width:number)=>void }) {
   const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
   const [focusWaiting,setFocusWaiting]=useState(false);
   const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
   const stages=useMemo(()=>{
-    const counts:Record<ReportStage,number>={source:0,office:0,next:0,completed:0,withdrawn:0,other:0};
+    const counts:Record<ReportStage,number>={source:0,office:0,next:0,completed:0,withdrawn:0,excluded:0,other:0};
     for(const item of report.items)counts[reportStage(status(item),config)]++;
     return counts;
   },[report.items,config]);
@@ -47,6 +48,21 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
           (config.id==='build'&&normalizeSearch(status)===quietBuildMilestone)
         ?' report-stage-intermediate':'')
     :'';
+  const widths=config.columnWidths??{};
+  const columnWidth=(key:string,fallback:number)=>Math.min(1200,Math.max(80,widths[key]??fallback));
+  const allColumnWidths=[columnWidth('__group',230),columnWidth('__total',146),
+    ...report.columns.map(column=>columnWidth(column,150)),columnWidth('__percent',150)];
+  const gridWidth=allColumnWidths.reduce((sum,width)=>sum+width,0);
+  const grip=(key:string,index:number,label:string)=>(onColumnResize
+    ?<ColumnResizeHandle columnIndex={index} width={allColumnWidths[index]} label={label}
+      onCommit={width=>onColumnResize(key,width)}/>:null);
+  const drill=(title:string,entries:Item[])=>(preview||entries.length===0
+    ?<strong>{entries.length}</strong>
+    :<button type="button" className="count-button count-drill"
+      aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
+      title="Bấm để xem danh sách nội dung" onClick={()=>onSelect(title,entries)}>
+      <span>{entries.length}</span><span className="count-drill-icon" aria-hidden="true">↗</span>
+    </button>);
   const percentCell=(percent:number,description:string)=><div className="report-percent-value">
     <strong>{percent}%</strong>
     <progress aria-label={description} value={percent} max={100}/>
@@ -87,37 +103,36 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     </div>
     <p className="report-flow-note">Màu sắc là gợi ý mức độ ưu tiên theo từng bước xử lý, không khẳng định hồ sơ quá hạn. Chỉ trạng thái hoàn thành cuối cùng mới tính tỷ lệ hoàn thành.
       {stages.withdrawn>0?' Đề nghị rút: '+stages.withdrawn+'.':''}
-      {stages.other>0?' Trạng thái chưa khớp: '+stages.other+'.':''}
+      {stages.excluded>0?' Không phải trình: '+stages.excluded+'.':''}
+       {stages.other>0?' Trạng thái chưa khớp: '+stages.other+'.':''}
     </p>
     <div className="table-wrap"><table className="data-table report-table"
-      style={{minWidth:`${230+(report.columns.length+2)*150}px`}}>
+      style={{minWidth:`${gridWidth}px`,width:`${gridWidth}px`}}>
       <colgroup>
-        <col className="report-group-col"/>
-        <col className="report-total-width"/>
-        {report.columns.map(col=><col key={col}/>)}
-        <col className="report-percent-width"/>
+        <col className="report-group-col" style={{width:`${allColumnWidths[0]}px`}}/>
+        <col className="report-total-width" style={{width:`${allColumnWidths[1]}px`}}/>
+        {report.columns.map((col,index)=><col key={col} style={{width:`${allColumnWidths[index+2]}px`}}/>)}
+        <col className="report-percent-width" style={{width:`${allColumnWidths[allColumnWidths.length-1]}px`}}/>
       </colgroup>
       <thead><tr>
-        <th scope="col" className="report-group-heading">{groupLabel}</th>
-        <th scope="col" className="report-number-header report-total-col">Tổng số nội dung</th>
-        {report.columns.map(column=><th key={column} scope="col"
-          className={'report-number-header'+emphasis(column)}><span className="report-heading-label">{column}</span></th>)}
-        <th scope="col" className="report-number-header report-percent-col">% hoàn thành</th>
+        <th scope="col" className="report-group-heading report-resizable-heading">{groupLabel}{grip('__group',0,groupLabel)}</th>
+        <th scope="col" className="report-number-header report-total-col report-resizable-heading">Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</th>
+        {report.columns.map((column,index)=><th key={column} scope="col"
+          className={'report-number-header report-resizable-heading'+emphasis(column)}><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</th>)}
+        <th scope="col" className="report-number-header report-percent-col report-resizable-heading">% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</th>
       </tr></thead>
       <tbody>
         {shownRows.map(([label,cells])=>{
           const metrics=rowMetrics(cells);
           return <tr key={label}><th scope="row" className="report-group-heading">{label}</th>
-            <td className="report-number report-total-col"><strong>{metrics.total}</strong></td>
+            <td className="report-number report-total-col">{drill(`${label} · Tổng số nội dung`,[...cells.values()].flat())}</td>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
               return <td key={column} className={'report-number'+emphasis(column)}
                 style={entries.length&&emphasize&&visualStyle==='bars'
                   ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
                 {entries.length?<span className="report-count-mark">
-                  {preview?<strong>{entries.length}</strong>:
-                    <button className="count-button" aria-label={`${label}: ${column}, ${entries.length} nội dung`}
-                      onClick={()=>onSelect(`${label} · ${column}`,entries)}>{entries.length}</button>}
+                  {drill(`${label} · ${column}`,entries)}
                 </span>:'—'}
               </td>;
             })}
@@ -132,9 +147,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </tbody>
       <tfoot><tr>
         <th scope="row">{focusWaiting?'Tổng toàn bảng':'Tổng cộng'}</th>
-        <td className="report-number report-total-col">{report.total}</td>
+        <td className="report-number report-total-col">{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
         {report.columns.map(column=><td className={'report-number'+emphasis(column)} key={column}>
-          {[...report.rows.values()].reduce((sum,cells)=>sum+(cells.get(column)?.length??0),0)}
+          {drill(`Tổng cộng · ${column}`,[...report.rows.values()].flatMap(cells=>cells.get(column)??[]))}
         </td>)}
         <td className="report-number report-percent-col">
           {percentCell(report.percent??0,`Toàn báo cáo: đã hoàn thành ${report.completedCount} trên ${report.total} nội dung`)}
@@ -143,3 +158,6 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     </table></div>
   </section>;
 }
+
+/** Stable callbacks plus memo avoid rerendering reports behind a detail dialog. */
+export const MemoReportTable=memo(ReportTable);
