@@ -1,4 +1,4 @@
-import { useEffect,useMemo, useRef, useState } from 'react';
+import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
 import type {CSSProperties} from 'react';
 import type { Changes, EditableField, GroupField, Item } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -6,7 +6,7 @@ import { MockRepository } from '../data/mock-repository';
 import { createDemoItems } from '../data/demo-items';
 import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
-import { ReportTable } from '../features/reports/ReportTable';
+import { MemoReportTable } from '../features/reports/ReportTable';
 import { ItemList } from '../features/items/ItemList';
 import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
@@ -110,6 +110,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     return next;
   };
   const reports = useMemo(() => configuredReports(layout), [layout]);
+  const showReportDetails=useCallback((title:string,items:Item[])=>setSelection({title,items}),[]);
   const [layoutMessage, setLayoutMessage] = useState('');
   const saveLayout = async(next: ReportLayout[]) => {
     if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('reports',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('');return;}
@@ -230,7 +231,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang thực hiện', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
         {kpis.unclassified > 0 && <p className="unknown-note">Có {kpis.unclassified} nội dung chưa phân loại NQ/BC. Vẫn có trong tổng và danh sách; chưa đưa vào hai bảng theo loại.</p>}
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span></div>
-        {reports.map(config => <ReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={(title, items) => setSelection({ title, items })} />)}
+        {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}
         {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.</p>}
       </>}
       {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
@@ -244,7 +245,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
-    {selection && <Modal title={selection.title} onClose={() => setSelection(null)}><div className="modal-body"><p className="muted">{selection.items.length} nội dung</p>{selection.items.map(item => <article className="detail-item" key={item.recordId}><strong className="code">{displayId(item)}</strong><p>{item.content}</p><small>{item.department} · {item.room} · {item.specialist}</small></article>)}</div></Modal>}
+    {selection && <Modal className="report-detail-modal" title={selection.title} onClose={() => setSelection(null)}><div className="modal-body"><p className="muted">{selection.items.length} nội dung</p>{selection.items.map(item => <article className="detail-item" key={item.recordId}><strong className="code">{displayId(item)}</strong><p>{item.content}</p><small>{item.department} · {item.room} · {item.specialist}</small></article>)}</div></Modal>}
     {history && <HistoryDialog item={history} repository={repository} onClose={() => setHistory(null)} />}
     {confirmDiscard && <Modal title="Bỏ các thay đổi chưa lưu vào file nguồn?" onClose={() => setConfirmDiscard(false)}><div className="modal-body"><p>Phần chưa lưu của {workspace.protectedRecovery?'phần sửa cũ trên máy':`${dirtyCount} nội dung`} sẽ được bỏ. Dữ liệu trong file nguồn không bị thay đổi.</p></div><div className="modal-footer"><button className="button ghost" onClick={() => setConfirmDiscard(false)}>Tiếp tục sửa</button><button className="button danger" onClick={() => { workspace.discard(); setConfirmDiscard(false); }}>Bỏ các thay đổi</button></div></Modal>}
     <footer className="app-footer">{anonymousVisitor?'Nội dung trình HĐND · Dữ liệu tự cập nhật':'Dashboard HĐND · Một file HTML · '+sourceLabel}</footer>
