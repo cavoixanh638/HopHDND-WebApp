@@ -90,6 +90,22 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     expect(assignmentIssue({...rows[0],room:'Phòng NC'},merged)).toContain('chưa được gán');
     expect(saved.specialistRooms['Nguyễn Ngọc Hùng']).toEqual(['Phòng NC']);
   });
+  it('migrates only legacy Party catalog labels to exact Excel names and commas',()=>{
+    const items=createDemoItems(1);
+    const old=catalogFromItems(items);
+    old.options.progressParty=['Sở chưa trình','ĐU đã gửi TU chưa họp','Đã họp chưa có TBKL','Đã báo cáo TU'];
+    const merged=mergeCatalogItems(old,items);
+    expect(merged.options.progressParty).toContain('ĐU đã gửi TU, chưa họp');
+    expect(merged.options.progressParty).toContain('Đã họp, chưa có TBKL');
+    expect(merged.options.progressParty).toContain('TU đã cho ý kiến');
+    expect(merged.options.progressParty).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(merged.options.progressParty).toContain('Đã có TBKL');
+    expect(merged.options.progressParty).not.toContain('Đã báo cáo TU');
+    expect(old.options.progressParty).toContain('Đã báo cáo TU');
+    const edited=catalogFromItems(items);
+    edited.options.progressParty=['Sở chưa trình'];
+    expect(mergeCatalogItems(edited,items).options.progressParty).not.toContain('Đã có TBKL');
+  });
   it('nêu rõ cột và giá trị không hợp lệ do quản trị nhập',()=>{
     const config=catalogFromItems([]);
     config.options.department.push('   ');
