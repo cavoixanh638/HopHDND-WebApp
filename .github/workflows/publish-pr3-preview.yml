@@ -28,7 +28,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39136084100
+          run-id: 39140098749
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
@@ -37,8 +37,8 @@ jobs:
         run: |
           set -euo pipefail
           test -s _verified_preview/index.html
-          echo "28f87d43bc6e2580a83ba3dae4073bd5ea8ae97576f24e3c771c788465bd44a6  _verified_preview/index.html" | sha256sum -c -
-          for needle in "5 phong cách tô màu báo cáo" "Nhãn màu nổi" "Viền màu phân cột" "Thanh dữ liệu" "Dải tiêu đề màu"; do
+          echo "136a0ffb061fef8cf3dedaa193ccca9536750a1874fa6ea346d5423e13e4957f  _verified_preview/index.html" | sha256sum -c -
+          for needle in "5 phong cách tô màu báo cáo" "Nhãn màu nổi" "Viền màu phân cột" "Thanh dữ liệu" "Dải tiêu đề màu" "Tổng số nội dung" "TU đã cho ý kiến" "ĐU đã gửi TU, chưa họp" "fonts.googleapis.com"; do
             grep -Fq "$needle" _verified_preview/index.html
           done
       - name: Publish only isolated preview/current/index.html
@@ -54,7 +54,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add preview/current/index.html
-          git commit -m "preview(pages): publish five report styles from verified PR3 build"
+          git commit -m "preview(pages): publish latest Excel-aligned report and fonts from verified PR3 build"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
