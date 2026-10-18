@@ -1,36 +1,57 @@
 import type { ReportConfig } from '../../shared/types';
 import { DEFAULT_REPORTS } from '../domain/reporting';
 
-export type TableFont = 'segoe'|'system'|'arial'|'roboto'|'inter';
+/** Font choices use local/system fonts only; unavailable families fall back. */
+export type TableFont =
+  'segoe'|'system'|'arial'|'roboto'|'inter'|
+  'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
+/** Backward compatible values: each value now controls colors ONLY. */
 export type ReportVariant = 'signal'|'classic'|'compact';
 export const TABLE_FONT_OPTIONS:ReadonlyArray<{value:TableFont;label:string;description:string}> = [
-  {value:'segoe',label:'Segoe UI',description:'Font hiện tại trên Windows'},
-  {value:'system',label:'System UI · phong cách Apple',description:'SF Pro trên thiết bị Apple; Segoe UI trên Windows'},
-  {value:'arial',label:'Arial',description:'Gọn, quen thuộc với bảng văn bản'},
-  {value:'roboto',label:'Roboto',description:'Ưu tiên Roboto nếu đã cài trên máy'},
-  {value:'inter',label:'Inter',description:'Ưu tiên Inter nếu đã cài trên máy'}
+  {value:'system',label:'Apple / System UI (SF Pro trên Apple)',description:'Tự chọn font hệ điều hành'},
+  {value:'segoe',label:'Segoe UI (Microsoft)',description:'Font Windows, giao diện hiện tại'},
+  {value:'inter',label:'Inter',description:'Thiết kế UI hiện đại, ưu tiên số liệu'},
+  {value:'roboto',label:'Roboto (Google)',description:'Dễ đọc trên màn hình'},
+  {value:'helvetica',label:'Helvetica Neue',description:'Phong cách tối giản'},
+  {value:'arial',label:'Arial',description:'Phổ biến trong văn bản'},
+  {value:'openSans',label:'Open Sans',description:'Dễ đọc nhiều dòng'},
+  {value:'lato',label:'Lato',description:'Mềm mại, rõ nét'},
+  {value:'notoSans',label:'Noto Sans',description:'Hỗ trợ chữ có dấu tốt'},
+  {value:'plex',label:'IBM Plex Sans',description:'Phong cách dữ liệu chuyên nghiệp'}
 ];
 export const REPORT_VARIANTS:ReadonlyArray<{value:ReportVariant;label:string;description:string}> = [
-  {value:'signal',label:'Nhấn mạnh nhóm cần theo dõi',description:'Nhấn sắc đỏ gạch ở Sở; vàng hổ phách ở Văn phòng; xanh ở trạng thái hoàn thành'},
-  {value:'classic',label:'Báo cáo chuẩn · mặc định',description:'Nền cột đầu và tiêu đề rõ ràng; màu ưu tiên nhẹ, dễ đọc lâu'},
-  {value:'compact',label:'Bảng cô đọng',description:'Nhiều dòng hơn trên màn hình, màu chỉ tập trung vào số'}
+  {value:'classic',label:'Dịu – rõ ràng',description:'Pastel phân biệt các giai đoạn; đọc lâu dễ chịu'},
+  {value:'signal',label:'Nổi bật – ưu tiên',description:'Nền đậm màu hơn, dễ phát hiện nội dung cần chú ý'},
+  {value:'compact',label:'Tương phản cao',description:'Nền đậm nhất, chữ nổi rõ; cùng bố cục với hai mẫu trên'}
 ];
+export const DEFAULT_TABLE_FONT_SIZE=13;
+export const MIN_TABLE_FONT_SIZE=11;
+export const MAX_TABLE_FONT_SIZE=20;
 export function tableFontStack(font:TableFont):string {
   switch(font){
     case 'system': return 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     case 'arial': return 'Arial, "Helvetica Neue", sans-serif';
     case 'roboto': return 'Roboto, "Segoe UI", system-ui, sans-serif';
     case 'inter': return 'Inter, "Segoe UI", system-ui, sans-serif';
+    case 'helvetica': return '"Helvetica Neue", Helvetica, Arial, sans-serif';
+    case 'openSans': return '"Open Sans", "Segoe UI", system-ui, sans-serif';
+    case 'lato': return 'Lato, "Segoe UI", system-ui, sans-serif';
+    case 'notoSans': return '"Noto Sans", "Segoe UI", system-ui, sans-serif';
+    case 'plex': return '"IBM Plex Sans", "Segoe UI", system-ui, sans-serif';
     default: return '"Segoe UI", system-ui, -apple-system, sans-serif';
   }
 }
 export function getReportFont(layout:readonly ReportLayout[]):TableFont {
   return layout.find(row=>row.id===widthOwnerId)?.tableFont??'segoe';
 }
+export function getReportFontSize(layout:readonly ReportLayout[]):number {
+  return layout.find(row=>row.id===widthOwnerId)?.tableFontSize??DEFAULT_TABLE_FONT_SIZE;
+}
 export function getReportVariant(layout:readonly ReportLayout[]):ReportVariant {
   return layout.find(row=>row.id===widthOwnerId)?.reportVariant??'classic';
 }
-export function withReportVisuals(layout:ReportLayout[],change:{tableFont?:TableFont;reportVariant?:ReportVariant}):ReportLayout[] {
+export function withReportVisuals(layout:ReportLayout[],
+  change:{tableFont?:TableFont;tableFontSize?:number;reportVariant?:ReportVariant}):ReportLayout[] {
   return layout.map(row=>row.id===widthOwnerId?{...row,...change}:row);
 }
 
@@ -44,6 +65,7 @@ export interface ReportLayout {
   emphasizeProgress?:boolean;
   /** Shared presentation settings, owned by the first canonical report. */
   tableFont?:TableFont;
+  tableFontSize?:number;
   reportVariant?:ReportVariant;
   /** Shared page width, stored only on the fixed canonical report ID for backwards compatibility. */
   pageWidth?: 'auto'|number;
@@ -55,7 +77,7 @@ export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number)
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
   id: report.id, title: report.title, visible: true, hiddenColumns: [], columnOrder: [...report.columns],emphasizeProgress:true,
-  ...(report.id===widthOwnerId?{tableFont:'segoe' as const,reportVariant:'classic' as const}:{}),
+  ...(report.id===widthOwnerId?{tableFont:'segoe' as const,tableFontSize:DEFAULT_TABLE_FONT_SIZE,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
 
@@ -80,14 +102,17 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       if(pageWidth!=='auto'&&(!Number.isSafeInteger(pageWidth)||pageWidth<320||pageWidth>6000))
         throw new Error('Độ rộng trang báo cáo cần từ 320 đến 6000 px hoặc Tự động.');
       const tableFont=row.tableFont??'segoe';
+      const tableFontSize=row.tableFontSize??DEFAULT_TABLE_FONT_SIZE;
       const reportVariant=row.reportVariant??'classic';
       if(!TABLE_FONT_OPTIONS.some(option=>option.value===tableFont))
         throw new Error('Phông chữ của bảng không nằm trong danh sách cho phép.');
+      if(!Number.isSafeInteger(tableFontSize)||tableFontSize<MIN_TABLE_FONT_SIZE||tableFontSize>MAX_TABLE_FONT_SIZE)
+        throw new Error('Cỡ chữ bảng phải từ 11 đến 20 px.');
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
       return { id:base.id,title:row.title.trim(),visible:row.visible,
         hiddenColumns:[...new Set(row.hiddenColumns)],columnOrder:[...order],
-        pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,reportVariant };
+        pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
     return { id: base.id, title: row.title.trim(), visible: row.visible, hiddenColumns: [...new Set(row.hiddenColumns)], columnOrder: [...order], emphasizeProgress:row.emphasizeProgress!==false };
   });
@@ -113,9 +138,9 @@ export function saveReportLayout(source: string, layout: ReportLayout[]): boolea
 }
 
 export function configuredReports(layout: ReportLayout[], includeHidden = false): ReportConfig[] {
-  const tableFont=getReportFont(layout),reportVariant=getReportVariant(layout);
+  const tableFont=getReportFont(layout),tableFontSize=getReportFontSize(layout),reportVariant=getReportVariant(layout);
   return layout.filter(row => includeHidden || row.visible).map(row => ({
     ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title, hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
-    tableFont,reportVariant,
+    tableFont,tableFontSize,reportVariant,
   }));
 }
