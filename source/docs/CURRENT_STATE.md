@@ -1,6 +1,16 @@
 # Trạng thái hiện tại
 
 
+## 18/10/2026 — Bốn bảng báo cáo, bỏ nhãn phụ, cột giữa nhẹ hơn
+
+- Đã đối chiếu `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx`, tab `Các nội dung trình HĐND`, cột H `Tiến độ trình HĐND xây dựng NQ`. Dữ liệu 53 nội dung: 15 ô `Không phải trình xây dựng NQ` và 38 hồ sơ xây dựng NQ (22 Sở chưa trình, 5 VP đang thực hiện, 1 Đã trình HĐND, chưa có QĐ, 10 Đã có QĐ chấp thuận). Chỉ trạng thái cuối là hoàn thành. Đây là phạm vi thống kê tham khảo từ bản Excel đọc 18/10, không phải số cứng trong ứng dụng.
+- Chèn cấu hình `id: build` trước `nq`. Bốn bảng mặc định: `party` (G), `build` (H), `nq` (I), `bc` (I). Bảng mới lọc `documentKind==='NQ'` và H có trạng thái áp dụng, không tính `Không phải trình xây dựng NQ` hoặc H trống. Báo cáo cũ không đổi phạm vi, nguồn và tỷ lệ.
+- `validateReportLayout` nâng cấp chỉ bộ ba ID cũ `party,nq,bc` thành bốn, chèn trước `nq` trong thứ tự đã lưu; bảo toàn tiêu đề tùy chỉnh, ẩn/hiện, thứ tự và ẩn cột, font/cỡ chữ, độ rộng. Shared-config/Firebase đọc qua bộ kiểm tra này. Cấu hình lạ, thiếu hoặc trùng vẫn bị từ chối.
+- Xóa dòng nhãn viết hoa `report-section-kicker` ở đầu **mọi** bảng; chỉ tên bảng cùng dòng thống kê số lượng/% và nút In/PDF. Giảm màu nền trung gian `office-bg` từ `#FFE8B8` xuống `#FFF5E8`, `next-bg` từ `#DCEBFD` xuống `#F3F8FE`, viền nhạt đi cùng; giữ chữ đủ tương phản WCAG AA. Màu nhấn Sở chưa trình, Tổng số, trạng thái hoàn thành và % không bị đổi.
+- Mốc trước sửa: `backup/before-four-report-build-table-and-lighter-stages-2026-10-18` tại `0f6f158938d7d9cd87ac0b74949a819cdcfcaf98`. Test hồi quy cho 4 bảng, điều kiện lọc H, đọc profile 3 bảng cũ từ local/shared-config, bỏ nhãn phụ và màu nhạt. Chỉ phát hành preview từ artifact CI exact SHA đã PASS; không merge PR, không ghi dữ liệu Google Sheets/Firebase thật, không thay `main:index.html`.
+
+
+
 ## 18/10/2026 — Chuẩn hóa nguồn Excel và font của bảng báo cáo
 
 - Đã đọc **trực tiếp** file Google Drive `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx` (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`; metadata phiên bản kiểm tra modified `2026-10-18T15:05:49.510Z`). Tab `Các nội dung trình HĐND`: 15 cột A–O, 53 dòng nội dung; J=Chuyên viên VPUB, K=Phòng chuyên môn, G=Tiến độ xin ý kiến Thành ủy. Tab `Sheet2` là danh mục trạng thái hiển thị dấu phẩy chuẩn.
