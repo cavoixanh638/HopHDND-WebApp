@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 vi.mock('react',()=>({memo:(fn:unknown)=>fn,useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
 import {ReportTable} from '../src/features/reports/ReportTable';
+import {ColumnResizeHandle} from '../src/components/ColumnResizeHandle';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
 import {defaultReportLayout,reportPageWidth,configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,validateReportLayout,TABLE_FONT_OPTIONS,REPORT_VARIANTS} from '../src/data/report-preferences';
@@ -9,6 +10,46 @@ import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
 import {reportStage} from '../src/domain/report-workflow';
 
+
+
+describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
+  const flatten=(node:any):any[]=>Array.isArray(node)?node.flatMap(flatten):
+    node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
+  it('displays independent resize grips on each report header only in editing mode',()=>{
+    const onColumnResize=vi.fn();
+    const config={...DEFAULT_REPORTS[1],columnWidths:{'Không phải trình':178}};
+    const rendered=ReportTable({items:createDemoItems(5),config,group:'room',
+      sourceLabel:'Nguồn thử',groupOrder:[],onSelect:()=>{},onColumnResize,preview:true});
+    const handles=flatten(rendered).filter(element=>element.type===ColumnResizeHandle);
+    expect(handles).toHaveLength(config.columns.length+3);
+    const grip=handles.find(element=>element.props.label==='Không phải trình');
+    expect(grip.props.width).toBe(178);
+    grip.props.onCommit(210);
+    expect(onColumnResize).toHaveBeenCalledWith('Không phải trình',210);
+    const viewer=ReportTable({items:createDemoItems(5),config,group:'room',
+      sourceLabel:'Nguồn thử',groupOrder:[],onSelect:()=>{}});
+    expect(flatten(viewer).some(element=>element.type===ColumnResizeHandle)).toBe(false);
+  });
+  it('opens matching detail records from positive counts including group totals',()=>{
+    const items=createDemoItems(5).map((item,i)=>({
+      ...item,isDropped:false,archivedAt:null,documentKind:'NQ' as const,
+      room:'Một phòng',progressBuild:i===0?'Không phải trình xây dựng NQ':'Sở chưa trình',
+    }));
+    const onSelect=vi.fn();
+    const rendered=ReportTable({items,config:DEFAULT_REPORTS[1],group:'room',
+      sourceLabel:'Nguồn thử',groupOrder:[],onSelect});
+    const buttons=flatten(rendered).filter(node=>
+      node.type==='button'&&node.props?.className==='count-button count-drill');
+    const total=buttons.find(node=>node.props['aria-label']?.includes('Tổng số nội dung'));
+    expect(total).toBeDefined();
+    total.props.onClick();
+    expect(onSelect).toHaveBeenCalledWith('Một phòng · Tổng số nội dung',items);
+    const exempt=buttons.find(node=>node.props['aria-label']?.includes('Không phải trình'));
+    expect(exempt).toBeDefined();
+    exempt.props.onClick();
+    expect(onSelect).toHaveBeenCalledWith('Một phòng · Không phải trình',[items[0]]);
+  });
+});
 
 describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
   it('has exactly five default reports and construction stage before issuance NQ',()=>{
