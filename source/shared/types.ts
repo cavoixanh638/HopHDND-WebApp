@@ -55,7 +55,7 @@ export type StatusField = 'progressParty' | 'progressBuild' | 'progressCouncil';
 export interface ReportConfig {
   id: string;
   title: string;
-  source: 'all' | 'party' | 'build' | 'nq' | 'bc';
+  source: 'all' | 'party' | 'build' | 'council' | 'nq' | 'bc';
   statusField: StatusField;
   columns: string[];
   hiddenColumns: string[];
