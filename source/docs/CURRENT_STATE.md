@@ -1,5 +1,16 @@
 # Trạng thái hiện tại
 
+## Đang kiểm thử trên PR #3 — chỉnh độ rộng, sort và drill-down, 19/10/2026
+
+- Điểm khôi phục trước khi sửa: commit `6bd9d5315f2c82f5fed14973fd74b0fd3fb682ae` trên nhánh tính năng và nhánh sao lưu `backup/before-resize-sort-drilldown-2026-10-19`. Chưa merge/phát hành lên Pages.
+- Tại Danh sách dữ liệu, tay nắm ở mép phải tiêu đề cột hoạt động trong chế độ tùy chỉnh; có thể kéo chuột hoặc dùng phím mũi tên. Khi kéo, trình duyệt thay đổi chiều rộng trực tiếp; React chỉ nhận thay đổi cuối khi thả chuột, tránh cập nhật cả bảng trên từng pixel.
+- Tại màn hình tùy chỉnh 5 bảng báo cáo, bổ sung tay nắm kéo cho cột phân nhóm, Tổng số nội dung, trạng thái và % hoàn thành. Độ rộng `columnWidths` thuộc riêng từng ID báo cáo, được kiểm tra 80–1200px và lưu cùng bố cục; cấu hình cũ không bị ép thêm thuộc tính rỗng.
+- Nút sắp xếp bảng dữ liệu nằm trong header, mờ khi chưa áp dụng và luôn rõ khi đang sort; cho phép thao tác độc lập với tay nắm kéo.
+- Click số đếm ở các cột trạng thái, tổng của từng đơn vị và tổng cuối bảng mở danh sách đúng tập nội dung; có biểu tượng ↗, con trỏ và trạng thái hover/focus. `MemoReportTable` với callback cố định tránh render lại năm bảng khi mở hộp chi tiết; hộp chi tiết tắt blur toàn màn hình. Chưa có benchmark FPS trực tiếp trên máy người dùng.
+- Bảng Tiến độ trình HĐND xây dựng NQ hiển thị cột “Không phải trình” ngay sau Tổng số nội dung. Giá trị Excel “Không phải trình xây dựng NQ” được ánh xạ vào cột này và được tính trong mẫu số tỷ lệ hoàn thành; không tự đánh dấu hoàn thành. Dòng trống và báo cáo BC vẫn không thuộc phạm vi bảng này.
+- Kiểm thử cần xác nhận toàn bộ CI của commit cuối (typecheck, unit, emulator, build Pages và browser smoke), trải nghiệm kéo chuột trên trình duyệt thật và thao tác lưu cấu hình Firebase quản trị trước nghiệm thu phát hành.
+
+
 ## 19/10/2026 — Excel gốc đã sửa, CHỐT 5 báo cáo và quy tắc kết thúc
 
 **Ghi chú có giá trị thay thế** các phần trước trong tài liệu này còn mô tả 3/4 bảng hoặc cột `TU đã cho ý kiến`.
