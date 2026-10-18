@@ -31,6 +31,28 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(report.total).toBe(aggregateReport(createDemoItems(), DEFAULT_REPORTS[1], 'department').total);
     expect(report.columns).not.toContain('Hoàn thành');
   });
+  it('migrates saved 2026-10-17 Party headings without losing hidden columns or custom column order',()=>{
+    const layout=defaultReportLayout();
+    layout[0].title='Nội dung cần xin ý kiến Thành ủy';
+    layout[1].title='Nội dung trình ban hành nghị quyết';
+    layout[2].title='Báo cáo trình Hội đồng nhân dân';
+    layout[0].columnOrder=['Sở xin rút','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU',
+      'ĐU đã gửi TU chưa họp','Đã họp chưa có TBKL','Đã báo cáo TU'];
+    layout[0].hiddenColumns=['ĐU đã gửi TU chưa họp'];
+    const migrated=validateReportLayout(layout);
+    expect(migrated[0].title).toBe('Tiến độ xin ý kiến Thành ủy');
+    expect(migrated[1].title).toBe(DEFAULT_REPORTS[1].title);
+    expect(migrated[2].title).toBe(DEFAULT_REPORTS[2].title);
+    expect(migrated[0].columnOrder).toHaveLength(DEFAULT_REPORTS[0].columns.length);
+    expect(migrated[0].columnOrder.slice(0,4)).toEqual(['Sở xin rút','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU']);
+    expect(migrated[0].columnOrder).toContain('TU đã cho ý kiến');
+    expect(migrated[0].columnOrder).not.toContain('Đã báo cáo TU');
+    expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp']);
+    expect(configuredReports(migrated)[0].columns).not.toContain('ĐU đã gửi TU, chưa họp');
+    const unknown=structuredClone(layout);
+    unknown[0].columnOrder=['Sở chưa trình'];
+    expect(()=>validateReportLayout(unknown)).toThrow('Thứ tự cột cần đủ');
+  });
   it('từ chối tên trống/dài, mã lạ-trùng và cột lạ trước khi lưu', () => {
     for (const change of [{ title: '' }, { title: 'x'.repeat(161) }, { id: 'other' }, { id: 'nq' }, { visible: 'yes' }, { hiddenColumns: ['Không có trong bảng'] }]) {
       const layout = defaultReportLayout();
