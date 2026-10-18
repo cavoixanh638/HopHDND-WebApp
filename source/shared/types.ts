@@ -61,6 +61,7 @@ export interface ReportConfig {
   hiddenColumns: string[];
   completed: string[];
   emphasizeProgress?:boolean;
-  tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter';
+  tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter'|'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
+  tableFontSize?:number;
   reportVariant?:'signal'|'classic'|'compact';
 }
