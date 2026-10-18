@@ -64,4 +64,5 @@ export interface ReportConfig {
   tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter'|'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
   tableFontSize?:number;
   reportVariant?:'signal'|'classic'|'compact'|'bars'|'band';
+  columnWidths?:Record<string,number>;
 }
