@@ -1,3 +1,5 @@
+/* Six open-license web-font choices load on demand. Offline/system fonts fall back gracefully. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Lato:wght@400;700&family=Noto+Sans:wght@400;500;600;700&family=Open+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;600;700&display=swap');
   :root {  font-family:"Segoe UI",system-ui,-apple-system,sans-serif; color:#20332e; background:#f5f6f2; font-synthesis:none; text-rendering:optimizeLegibility; --green:#154d44;
   --ink:#20332e; --muted:#687a73; --line:#dce3de; --surface:#fff; --soft:#e5efeb; --danger:#a53c35;
     --shadow:0 10px 32px #15302717}
@@ -599,7 +601,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-table .report-percent-col {text-align:center;vertical-align:middle;font-variant-numeric:tabular-nums;}
 .report-table .report-total-col {background:#eef4fc;color:#1c426f;font-weight:750;}
 .report-table .report-percent-col {background:#f0faf4;color:#276447;}
-.report-table .report-total-width {width:102px;}
+.report-table .report-total-width {width:146px;}
 .report-table .report-percent-width {width:150px;}
 .report-percent-value {display:flex;align-items:center;justify-content:center;gap:9px;min-width:110px;}
 .report-percent-value strong {width:38px;text-align:right;white-space:nowrap;font-size:12px;font-variant-numeric:tabular-nums;}
