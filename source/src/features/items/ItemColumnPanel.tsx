@@ -199,7 +199,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
           onClick={()=>onChange({...layout,columns:layout.columns.map(c=>c.removed?c:{...c,visible:true})})}>Hiện tất cả</button>
         <button type="button" className="button" disabled={customCount>=20} onClick={add}>+ Thêm cột</button>
       </div>
-      <div className="column-manager-legend"><span>Hiện</span><span>Tên cột</span><span>Kiểu nhập</span><span>Cho sửa</span></div>
+      <div className="column-manager-legend"><span>Hiện</span><span>Tên cột</span><span>Kiểu nhập</span><span>Cho sửa</span><span>Thao tác</span></div>
       <div className="column-manager-grid" aria-label="Danh sách cột và kiểu dữ liệu">
         {active.map((column,index)=><div key={column.key} className={'column-manager-row'+(selected===column.key?' selected':'')}>
           <label className="column-manager-check"><input type="checkbox" checked={column.visible}
