@@ -3,12 +3,12 @@ vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null})
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
-import {defaultReportLayout,reportPageWidth} from '../src/data/report-preferences';
+import {defaultReportLayout,reportPageWidth,configuredReports,getReportFont,getReportVariant,withReportVisuals,validateReportLayout} from '../src/data/report-preferences';
 import {GROUP_OPTIONS} from '../shared/field-definitions';
 import { createDemoItems } from '../src/data/demo-items';
 import { aggregateReport, DEFAULT_REPORTS, getKpis } from '../src/domain/reporting';
 import {reportStage} from '../src/domain/report-workflow';
-import {validateReportLayout} from '../src/data/report-preferences';
+
 
 describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => {
   it('commits report page width through the dedicated editor, leaving other layout properties intact',()=>{
@@ -52,6 +52,41 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const saved=validateReportLayout(layout);
     expect(saved.map(x=>x.emphasizeProgress)).toEqual([true,false,false]);
     expect(saved.map(x=>x.columnOrder)).toEqual(layout.map(x=>x.columnOrder));
+  });
+  it('calculates per-leader and overall completion from only the final configured status',()=>{
+    const rows=createDemoItems(5).map((item,i)=>({...item,documentKind:'NQ' as const,
+      isDropped:false,archivedAt:null,vpLeader:i<4?'Lãnh đạo A':'Lãnh đạo B',
+      progressCouncil:['Hoàn thành','Sở chưa trình','VP đang thực hiện','Đã trình HĐND','Hoàn thành'][i]}));
+    const config=DEFAULT_REPORTS[1];
+    const report=aggregateReport(rows,config,'vpLeader');
+    expect(report.total).toBe(5);
+    expect(report.completedCount).toBe(2);
+    expect(report.percent).toBe(40);
+    const tree=ReportTable({items:rows,config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+    const all=(v:any):any[]=>Array.isArray(v)?v.flatMap(all):v&&typeof v==='object'?[v,...all(v.props?.children)]:[];
+    const table=all(tree).find(n=>n.type==='table'&&n.props?.className==='data-table report-table');
+    const tbody=all(table).find(n=>n.type==='tbody');
+    const bodyRows=all(tbody).filter(n=>n.type==='tr');
+    const rates=bodyRows.map(row=>all(row).find(n=>n.type==='progress')?.props?.value);
+    expect(rates).toEqual([25,100]);
+    const foot=all(table).find(n=>n.type==='tfoot');
+    expect(all(foot).find(n=>n.type==='progress')?.props?.value).toBe(40);
+    expect(all(table).filter(n=>n.type==='th'&&n.props?.className?.includes('report-percent-col'))).toHaveLength(1);
+  });
+  it('shares saved font and variant between all reports without mutating source data',()=>{
+    const seed=defaultReportLayout();
+    const next=validateReportLayout(withReportVisuals(seed,{tableFont:'system',reportVariant:'compact'}));
+    expect(getReportFont(next)).toBe('system');
+    expect(getReportVariant(next)).toBe('compact');
+    const reports=configuredReports(next);
+    expect(reports).toHaveLength(3);
+    for(const config of reports){
+      const tree=ReportTable({items:createDemoItems(2),config,group:'vpLeader',groupOrder:[],onSelect:()=>{}});
+      expect(tree.props.className).toContain('report-style-compact');
+      expect(tree.props.style['--table-font-family']).toContain('system-ui');
+    }
+    expect(seed[0].tableFont).toBe('segoe');
+    expect(()=>validateReportLayout(withReportVisuals(seed,{tableFont:'bad' as any}))).toThrow();
   });
   it('labels the first column according to selected grouping on all report tables',()=>{
     const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];
