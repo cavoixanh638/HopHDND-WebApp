@@ -61,4 +61,6 @@ export interface ReportConfig {
   hiddenColumns: string[];
   completed: string[];
   emphasizeProgress?:boolean;
+  tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter';
+  reportVariant?:'signal'|'classic'|'compact';
 }
