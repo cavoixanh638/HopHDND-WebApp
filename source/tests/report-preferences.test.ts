@@ -31,6 +31,22 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(report.total).toBe(aggregateReport(createDemoItems(), DEFAULT_REPORTS[3], 'department').total);
     expect(report.columns).not.toContain('Hoàn thành');
   });
+  it('migrates saved four-stage building NQ layout to the new explicit not-required column',()=>{
+    const previous=defaultReportLayout();
+    previous[1].columnOrder=previous[1].columnOrder.filter(col=>col!=='Không phải trình');
+    const upgraded=validateReportLayout(previous);
+    expect(upgraded[1].columnOrder[0]).toBe('Không phải trình');
+    expect(upgraded[1].columnOrder).toEqual(DEFAULT_REPORTS[1].columns);
+    expect(upgraded[1].columnWidths).toEqual({});
+  });
+  it('saves independent column widths per report and rejects unknown sizes',()=>{
+    const source=defaultReportLayout();
+    source[1].columnWidths={'__total':120,'Không phải trình':175};
+    const saved=validateReportLayout(source);
+    expect(configuredReports(saved)[1].columnWidths).toEqual(source[1].columnWidths);
+    const corrupted=structuredClone(source);corrupted[1].columnWidths={'__invalid':500};
+    expect(()=>validateReportLayout(corrupted)).toThrow('Độ rộng cột');
+  });
   it('migrates saved 2026-10-17 Party headings without losing hidden columns or custom column order',()=>{
     const layout=defaultReportLayout();
     layout[0].title='Nội dung cần xin ý kiến Thành ủy';
