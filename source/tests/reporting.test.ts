@@ -303,7 +303,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       const ths=all(header).filter(n=>n.type==='th');
       expect(ths[0].props.children).toBe('Lãnh đạo VP');
       expect(ths[1].props.children).toBe('Tổng số nội dung');
-      expect(ths[2].props.className).toContain('report-stage-source');
+      expect(ths[2].props.className).toContain(config.id==='build'?'report-stage-excluded':'report-stage-source');
       const group=all(table).find(n=>n.type==='colgroup');
       expect(all(group).filter(n=>n.type==='col').slice(0,2).map(n=>n.props.className))
         .toEqual(['report-group-col','report-total-width']);
@@ -312,7 +312,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
         const cells=all(tr).filter(n=>n.type==='td');
         if(cells.length===1)continue;
         expect(cells[0].props.className).toContain('report-total-col');
-        expect(cells[1].props.className).toContain('report-stage-source');
+        expect(cells[1].props.className).toContain(config.id==='build'?'report-stage-excluded':'report-stage-source');
       }
       const foot=all(table).find(n=>n.type==='tfoot');
       expect(all(foot).filter(n=>n.type==='td')[0].props.className).toContain('report-total-col');
