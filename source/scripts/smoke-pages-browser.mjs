@@ -347,6 +347,19 @@ try{
   if(!guestOptions)throw Error('Guest must have login entry');
   await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
     'Guest login did not open account page');
+  const accountWidth=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell');
+    const main=document.querySelector('main');
+    const top=document.querySelector('.topbar');
+    const tabs=document.querySelector('.nav-tabs');
+    if(!shell?.classList.contains('settings-page')||!main||!top||!tabs)
+      return {ok:false,reason:'Account settings frame missing'};
+    const m=main.getBoundingClientRect(),t=top.getBoundingClientRect(),n=tabs.getBoundingClientRect();
+    return {ok:Math.abs(m.width-1100)<3&&Math.abs(m.left-t.left)<3&&
+      Math.abs(m.width-t.width)<3&&Math.abs(n.width-m.width)<3,
+      main:m.width,top:t.width,tabs:n.width};
+  })()`);
+  if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
