@@ -28,7 +28,7 @@ const uniqueChoices=(values:Iterable<unknown>):string[]=>{
 export function catalogFromItems(items: Item[]): CatalogConfig {
   const options=Object.fromEntries(CATALOG_KEYS.map(key=>[key,uniqueChoices([
     ...(key in STATUS_OPTIONS ? STATUS_OPTIONS[key as keyof typeof STATUS_OPTIONS]:[]),
-    ...items.map(item=>item[key])
+    ...items.map(item=>key==='progressParty'?PARTY_STATUS_ALIASES[item[key]]??item[key]:item[key])
   ])])) as CatalogConfig['options'];
   const specialistRooms:Record<string,string[]>=Object.create(null);
   const findCanonical=(choices:string[],value:string)=>choices.find(choice=>
@@ -81,16 +81,16 @@ export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfi
   // milestones come from the Excel Sheet2 legend, including its punctuation.
   // Do not re-add manually removed presets to an already migrated profile.
   const partyOptions=saved.options.progressParty;
-  if(partyOptions.some(value=>Object.hasOwn(PARTY_STATUS_ALIASES,value))){
-    saved.options.progressParty=uniqueChoices([
-      ...partyOptions.map(value=>PARTY_STATUS_ALIASES[value]??value),
-      'Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL',
-    ]);
-  }
+  const isLegacy=partyOptions.some(value=>Object.hasOwn(PARTY_STATUS_ALIASES,value));
+  saved.options.progressParty=uniqueChoices([
+    ...partyOptions.map(value=>PARTY_STATUS_ALIASES[value]??value),
+    ...(isLegacy?['Đã có TBKL']:[]),
+  ]);
   // Include valid source values, but never reintroduce deleted status presets.
   // Comparing trimmed values avoids duplicate dropdowns after a Sheets refresh.
   for(const key of CATALOG_KEYS)
-    saved.options[key]=uniqueChoices([...saved.options[key],...items.map(item=>item[key])]);
+    saved.options[key]=uniqueChoices([...saved.options[key],
+      ...items.map(item=>key==='progressParty'?PARTY_STATUS_ALIASES[item[key]]??item[key]:item[key])]);
   const canonical=(choices:string[],value:string)=>choices.find(choice=>
     choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   for(const [observedPerson,observedRooms] of Object.entries(observed.specialistRooms)){
