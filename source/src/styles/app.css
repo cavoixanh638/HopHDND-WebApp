@@ -614,7 +614,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-visual-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 .report-visual-option {display:grid;gap:5px;border:1px solid #d5e0d9;padding:11px 12px;background:#fff;border-radius:9px;cursor:pointer;min-width:0;}
 .report-visual-option:has(input:checked) {border-color:#37775b;box-shadow:inset 0 0 0 1px #37775b;background:#f0f8f3;}
-.report-visual-option > span {display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px;}
+.report-visual-option > span:first-child {display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px;}
 .report-visual-option small {font-size:11px;color:#5d7568;line-height:1.4;}
 .report-font-control {display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;}
 .report-font-control select {min-width:240px;}
@@ -754,5 +754,12 @@ table.data-table button:not(.column-sort-button),table.report-table button,
  .report-surface .report-table .report-heading-label,
  .report-surface .report-table .report-count-mark {
    print-color-adjust:exact;-webkit-print-color-adjust:exact;
+ }
+ /* The generic print reset above forces every header grey; restore the selected style. */
+ body.is-printing #print-target.report-surface.report-style-classic .report-table thead th[class*="report-stage-"] {
+   background:var(--stage-bg)!important;color:var(--stage-ink)!important;
+ }
+ body.is-printing #print-target.report-surface.report-style-band .report-table thead th[class*="report-stage-"] {
+   background:var(--stage-solid)!important;color:#fff!important;
  }
 }
