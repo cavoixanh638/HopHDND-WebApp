@@ -48,7 +48,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(migrated[0].columnOrder).toContain('TU đã cho ý kiến');
     expect(migrated[0].columnOrder).not.toContain('Đã báo cáo TU');
     expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp']);
-    expect(configuredReports(migrated)[0].columns).not.toContain('ĐU đã gửi TU, chưa họp');
+    expect(aggregateReport(createDemoItems(9),configuredReports(migrated)[0],'department').columns).not.toContain('ĐU đã gửi TU, chưa họp');
     const unknown=structuredClone(layout);
     unknown[0].columnOrder=['Sở chưa trình'];
     expect(()=>validateReportLayout(unknown)).toThrow('Thứ tự cột cần đủ');
