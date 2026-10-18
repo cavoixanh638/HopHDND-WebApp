@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-vi.mock('react',()=>({useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
+vi.mock('react',()=>({memo:(fn:unknown)=>fn,useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
@@ -16,11 +16,11 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     expect(DEFAULT_REPORTS[1].title).toBe('Tiến độ trình HĐND xây dựng NQ');
     expect(DEFAULT_REPORTS[1].statusField).toBe('progressBuild');
     expect(DEFAULT_REPORTS[1].columns).toEqual([
-      'Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'
+      'Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'
     ]);
     expect(DEFAULT_REPORTS[1].completed).toEqual(['Đã có QĐ chấp thuận']);
   });
-  it('excludes non-applicable construction rows and BC, never duplicates source records',()=>{
+  it('includes explicit non-applicable construction rows but excludes blanks and BC without duplicating records',()=>{
     const states=['Không phải trình xây dựng NQ','Sở chưa trình','VP đang thực hiện',
       'Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','','Đã có QĐ chấp thuận'];
     const items=createDemoItems(7).map((item,index)=>({...item,
@@ -29,10 +29,10 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     }));
     const before=JSON.stringify(items);
     const report=aggregateReport(items,DEFAULT_REPORTS[1],'room');
-    expect(report.total).toBe(4);
-    expect(report.items).toHaveLength(4);
+    expect(report.total).toBe(5);
+    expect(report.items).toHaveLength(5);
     expect(report.completedCount).toBe(1);
-    expect(report.percent).toBe(25);
+    expect(report.percent).toBe(20);
     expect(report.unknown).toEqual([]);
     expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns);
     expect(JSON.stringify(items)).toBe(before);
