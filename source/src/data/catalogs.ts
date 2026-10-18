@@ -3,33 +3,80 @@ import { STATUS_OPTIONS } from '../../shared/field-definitions';
 export type CatalogKey = Exclude<TextField, 'content' | 'note'>;
 export const CATALOG_KEYS: CatalogKey[] = ['department','type','partyLevel','progressParty','progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress'];
 export interface CatalogConfig { options: Record<CatalogKey, string[]>; specialistRooms: Record<string, string[]> }
+/** Source values can contain whitespace-only cells, trailing spaces and very
+ * long free text. These must not make the saved dropdown config invalid.
+ * This normalization changes choices only, never the Sheets source rows. */
+const observedChoice=(raw:unknown):string|null=>{
+  if(typeof raw!=='string')return null;
+  const value=raw.trim();
+  return value&&value.length<=200?value:null;
+};
+const uniqueChoices=(values:Iterable<unknown>):string[]=>{
+  const seen=new Set<string>();
+  const result:string[]=[];
+  for(const raw of values){
+    const value=observedChoice(raw);
+    if(!value)continue;
+    const identity=value.toLocaleLowerCase('vi');
+    if(seen.has(identity))continue;
+    seen.add(identity);result.push(value);
+  }
+  return result;
+};
+
 export function catalogFromItems(items: Item[]): CatalogConfig {
-  const options = Object.fromEntries(CATALOG_KEYS.map(key => [key, [...new Set([...(key in STATUS_OPTIONS ? STATUS_OPTIONS[key as keyof typeof STATUS_OPTIONS] : []), ...items.map(item => item[key]).filter(Boolean)])]])) as CatalogConfig['options'];
-  const specialistRooms: Record<string,string[]> = Object.create(null);
-  for (const item of items) if (item.specialist && item.room && item.specialist !== 'Chưa phân công' && item.room !== 'Chưa phân công') specialistRooms[item.specialist] = [...new Set([...(specialistRooms[item.specialist] ?? []), item.room])];
-  return { options, specialistRooms };
+  const options=Object.fromEntries(CATALOG_KEYS.map(key=>[key,uniqueChoices([
+    ...(key in STATUS_OPTIONS ? STATUS_OPTIONS[key as keyof typeof STATUS_OPTIONS]:[]),
+    ...items.map(item=>item[key])
+  ])])) as CatalogConfig['options'];
+  const specialistRooms:Record<string,string[]>=Object.create(null);
+  for(const item of items){
+    const person=observedChoice(item.specialist),room=observedChoice(item.room);
+    if(!person||!room||person==='Chưa phân công'||room==='Chưa phân công')continue;
+    if(!options.specialist.includes(person)||!options.room.includes(room))continue;
+    specialistRooms[person]=uniqueChoices([...(specialistRooms[person]??[]),room]);
+  }
+  return {options,specialistRooms};
 }
+
 export function validateCatalog(value: unknown): CatalogConfig {
   if (!value || typeof value !== 'object') throw new Error('Danh mục không hợp lệ.');
-  const input = value as CatalogConfig;
-  const options = Object.create(null) as CatalogConfig['options'];
-  for (const key of CATALOG_KEYS) {
-    const list = input.options?.[key];
-    if (!Array.isArray(list) || list.some(text => typeof text !== 'string' || !text.trim() || text.length > 200) || new Set(list.map(text => text.trim())).size !== list.length) throw new Error('Danh mục có giá trị trống, trùng hoặc quá dài.');
-    options[key] = list.map(text => text.trim());
+  const input=value as CatalogConfig;
+  const options=Object.create(null) as CatalogConfig['options'];
+  for(const key of CATALOG_KEYS){
+    const list=input.options?.[key];
+    if(!Array.isArray(list))throw new Error(`Danh mục cột ${key} không phải danh sách lựa chọn.`);
+    const seen=new Set<string>();
+    options[key]=list.map((raw,index)=>{
+      if(typeof raw!=='string'||!raw.trim())
+        throw new Error(`Danh mục cột ${key}: giá trị thứ ${index+1} đang trống.`);
+      const choice=raw.trim();
+      if(choice.length>200)
+        throw new Error(`Danh mục cột ${key}: giá trị thứ ${index+1} quá dài (tối đa 200 ký tự).`);
+      const identity=choice.toLocaleLowerCase('vi');
+      if(seen.has(identity))
+        throw new Error(`Danh mục cột ${key}: giá trị “${choice.slice(0,55)}” bị trùng.`);
+      seen.add(identity);
+      return choice;
+    });
   }
-  const specialistRooms: Record<string,string[]> = Object.create(null);
-  if (!input.specialistRooms || typeof input.specialistRooms !== 'object' || Array.isArray(input.specialistRooms)) throw new Error('Quan hệ chuyên viên – phòng không hợp lệ.');
-  for (const [person, rooms] of Object.entries(input.specialistRooms)) {
-    if (!options.specialist.includes(person) || !Array.isArray(rooms) || rooms.some(room => !options.room.includes(room))) throw new Error('Quan hệ có chuyên viên hoặc phòng ngoài danh mục.');
-    specialistRooms[person] = [...new Set(rooms)];
+  const specialistRooms:Record<string,string[]>=Object.create(null);
+  if(!input.specialistRooms||typeof input.specialistRooms!=='object'||Array.isArray(input.specialistRooms))
+    throw new Error('Quan hệ chuyên viên – phòng không hợp lệ.');
+  for(const [person,rooms] of Object.entries(input.specialistRooms)){
+    if(!options.specialist.includes(person)||!Array.isArray(rooms)||rooms.some(room=>!options.room.includes(room)))
+      throw new Error('Quan hệ có chuyên viên hoặc phòng ngoài danh mục.');
+    specialistRooms[person]=[...new Set(rooms)];
   }
-  return { options, specialistRooms };
+  return {options,specialistRooms};
 }
 const key = (source:string) => `hdnd.catalogs.v1:${source}`;
 export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfig {
   const saved=validateCatalog(value),observed=catalogFromItems(items);
-  for(const key of CATALOG_KEYS)saved.options[key]=[...new Set([...saved.options[key],...items.map(item=>item[key]).filter(Boolean)])];
+  // Include valid source values, but never reintroduce deleted status presets.
+  // Comparing trimmed values avoids duplicate dropdowns after a Sheets refresh.
+  for(const key of CATALOG_KEYS)
+    saved.options[key]=uniqueChoices([...saved.options[key],...items.map(item=>item[key])]);
   for(const [person,rooms] of Object.entries(observed.specialistRooms))if(!(person in saved.specialistRooms))saved.specialistRooms[person]=rooms;
   return saved;
 }
