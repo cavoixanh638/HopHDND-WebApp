@@ -7,6 +7,8 @@ export interface ReportLayout {
   visible: boolean;
   hiddenColumns: string[];
   columnOrder: string[];
+  /** Visual emphasis only; does not affect report totals or source rules. */
+  emphasizeProgress?:boolean;
   /** Shared page width, stored only on the fixed canonical report ID for backwards compatibility. */
   pageWidth?: 'auto'|number;
 }
