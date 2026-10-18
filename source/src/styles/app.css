@@ -627,80 +627,132 @@ table.data-table button:not(.column-sort-button),table.report-table button,
   .report-percent-value progress {print-color-adjust:exact;-webkit-print-color-adjust:exact;}
 }
 
-/* One semantic palette drives HEAD, BODY, TOTAL and LEGEND identically.
-   Variants never change geometry, text sizing or report calculations. */
-.report-surface.report-style-classic {
- --source-bg:#FFE0E4;--source-ink:#7F1D30;--source-stroke:#E7A1AD;
- --office-bg:#FFE8B8;--office-ink:#704500;--office-stroke:#DCB76A;
- --next-bg:#DCEBFD;--next-ink:#164C89;--next-stroke:#A1C6EF;
- --completed-bg:#D5F0DE;--completed-ink:#125B35;--completed-stroke:#91CFA8;
- --withdrawn-bg:#ECE8F5;--withdrawn-ink:#5B3B78;--withdrawn-stroke:#CEC0DB;
- --other-bg:#EBEFF2;--other-ink:#3D5261;--other-stroke:#CBD5DC;
+/* Consistent meanings across ALL five techniques. Do not infer overdue from stage alone.
+   Each semantic stage carries readable foreground/background, border and a strong header ink. */
+.report-surface {
+ --source-bg:#FFE0E4;--source-ink:#7F1D30;--source-stroke:#E7A1AD;--source-solid:#9B1731;
+ --office-bg:#FFE8B8;--office-ink:#704500;--office-stroke:#DCB76A;--office-solid:#865000;
+ --next-bg:#DCEBFD;--next-ink:#164C89;--next-stroke:#A1C6EF;--next-solid:#124E8C;
+ --completed-bg:#D5F0DE;--completed-ink:#125B35;--completed-stroke:#91CFA8;--completed-solid:#126442;
+ --withdrawn-bg:#ECE8F5;--withdrawn-ink:#5B3B78;--withdrawn-stroke:#CEC0DB;--withdrawn-solid:#563583;
+ --other-bg:#EBEFF2;--other-ink:#3D5261;--other-stroke:#CBD5DC;--other-solid:#405460;
 }
-.report-surface.report-style-signal {
- --source-bg:#FFB9C2;--source-ink:#730B24;--source-stroke:#DB7586;
- --office-bg:#FFDB83;--office-ink:#684000;--office-stroke:#CEA03D;
- --next-bg:#B5D8FC;--next-ink:#073E7C;--next-stroke:#79AFE5;
- --completed-bg:#A8E4C0;--completed-ink:#075B35;--completed-stroke:#6ABA8B;
- --withdrawn-bg:#DED0F0;--withdrawn-ink:#4F2777;--withdrawn-stroke:#B6A1D2;
- --other-bg:#DCE2E8;--other-ink:#344756;--other-stroke:#B5C1CD;
-}
-.report-surface.report-style-compact {
- --source-bg:#9B1731;--source-ink:#FFFFFF;--source-stroke:#771127;
- --office-bg:#865000;--office-ink:#FFFFFF;--office-stroke:#623C00;
- --next-bg:#124E8C;--next-ink:#FFFFFF;--next-stroke:#0A3966;
- --completed-bg:#126442;--completed-ink:#FFFFFF;--completed-stroke:#0D4C32;
- --withdrawn-bg:#563583;--withdrawn-ink:#FFFFFF;--withdrawn-stroke:#3E2762;
- --other-bg:#405460;--other-ink:#FFFFFF;--other-stroke:#2D3D48;
-}
-.report-surface .report-stage-source {--stage-bg:var(--source-bg);--stage-ink:var(--source-ink);--stage-stroke:var(--source-stroke);}
-.report-surface .report-stage-office {--stage-bg:var(--office-bg);--stage-ink:var(--office-ink);--stage-stroke:var(--office-stroke);}
-.report-surface .report-stage-next {--stage-bg:var(--next-bg);--stage-ink:var(--next-ink);--stage-stroke:var(--next-stroke);}
-.report-surface .report-stage-completed {--stage-bg:var(--completed-bg);--stage-ink:var(--completed-ink);--stage-stroke:var(--completed-stroke);}
-.report-surface .report-stage-withdrawn {--stage-bg:var(--withdrawn-bg);--stage-ink:var(--withdrawn-ink);--stage-stroke:var(--withdrawn-stroke);}
-.report-surface .report-stage-other {--stage-bg:var(--other-bg);--stage-ink:var(--other-ink);--stage-stroke:var(--other-stroke);}
-.report-surface .report-table :is(th,td)[class*="report-stage-"],
-.report-surface .report-flow-summary .report-stage-summary[class*="report-stage-"] {
- background:var(--stage-bg);color:var(--stage-ink);border-color:var(--stage-stroke);
-}
-.report-surface .report-table .report-number[class*="report-stage-"] :is(strong,button),
-.report-surface .report-flow-summary .report-stage-summary[class*="report-stage-"] strong {color:inherit;}
+.report-surface .report-stage-source {--stage-bg:var(--source-bg);--stage-ink:var(--source-ink);--stage-stroke:var(--source-stroke);--stage-solid:var(--source-solid);}
+.report-surface .report-stage-office {--stage-bg:var(--office-bg);--stage-ink:var(--office-ink);--stage-stroke:var(--office-stroke);--stage-solid:var(--office-solid);}
+.report-surface .report-stage-next {--stage-bg:var(--next-bg);--stage-ink:var(--next-ink);--stage-stroke:var(--next-stroke);--stage-solid:var(--next-solid);}
+.report-surface .report-stage-completed {--stage-bg:var(--completed-bg);--stage-ink:var(--completed-ink);--stage-stroke:var(--completed-stroke);--stage-solid:var(--completed-solid);}
+.report-surface .report-stage-withdrawn {--stage-bg:var(--withdrawn-bg);--stage-ink:var(--withdrawn-ink);--stage-stroke:var(--withdrawn-stroke);--stage-solid:var(--withdrawn-solid);}
+.report-surface .report-stage-other {--stage-bg:var(--other-bg);--stage-ink:var(--other-ink);--stage-stroke:var(--other-stroke);--stage-solid:var(--other-solid);}
+.report-surface .report-table thead th.report-number-header {white-space:normal;overflow-wrap:anywhere;text-align:center;vertical-align:middle;}
+.report-surface .report-table .report-number,
+.report-surface .report-table .report-percent-col {text-align:center;vertical-align:middle;}
+.report-surface .report-table thead th.report-group-heading,
+.report-surface .report-table tbody th.report-group-heading,
+.report-surface .report-table tfoot th:first-child {background:#E8EEF3;color:#283746;}
+.report-surface .report-table .report-number-header.report-total-col,
+.report-surface .report-table :is(td,th).report-total-col {background:#E9F0FA;color:#163C68;}
+.report-surface .report-table :is(th,td).report-percent-col {background:#E7F3EA;color:#205C39;}
+.report-surface .report-percent-value strong {font-size:.94em;}
+.report-surface .report-table .report-count-mark {display:inline-flex;align-items:center;justify-content:center;min-width:30px;color:inherit;}
 .report-surface .report-table .report-number .count-button {
- color:inherit;background:transparent;border-color:currentColor;border-width:1px;font-weight:750;
+ color:inherit;background:transparent;border:1px solid currentColor;font-weight:750;
 }
 .report-surface .report-table .report-number .count-button:hover,
 .report-surface .report-table .report-number .count-button:focus-visible {
  color:inherit;background:rgba(127,127,127,.12);outline:2px solid currentColor;outline-offset:1px;
 }
-.report-surface .report-table thead th.report-group-heading,
-.report-surface .report-table tbody th.report-group-heading,
-.report-surface .report-table tfoot th:first-child {background:#E8EEF3;color:#283746;}
-.report-surface .report-table thead th.report-number-header {
- white-space:normal;overflow-wrap:anywhere;text-align:center;vertical-align:middle;
+/* Stage summary retains consistent color legend whichever table treatment is chosen. */
+.report-surface .report-flow-summary .report-stage-summary[class*="report-stage-"] {
+ background:var(--stage-bg);color:var(--stage-ink);border:1px solid var(--stage-stroke);
 }
-.report-surface .report-table .report-number,
-.report-surface .report-table .report-percent-col {text-align:center;vertical-align:middle;}
-.report-surface .report-table .report-number-header.report-total-col,
-.report-surface .report-table :is(td,th).report-total-col {background:#E9F0FA;color:#163C68;}
-.report-surface .report-table :is(th,td).report-percent-col {background:#E7F3EA;color:#205C39;}
-.report-surface .report-percent-value strong {font-size:.94em;}
-.report-surface .report-table :is(th,td) {transition:background-color .15s,color .15s;}
-/* Live color swatches: three PALETTES, not three different layouts. */
-.report-visual-swatches {display:flex;width:100%;gap:4px;margin-top:4px;}
-.report-visual-swatches i {display:block;flex:1;height:19px;border:1px solid rgba(0,0,0,.15);border-radius:3px;}
-.report-visual-swatches .swatch-source {background:var(--source-bg);}
-.report-visual-swatches .swatch-office {background:var(--office-bg);}
-.report-visual-swatches .swatch-next {background:var(--next-bg);}
-.report-visual-swatches .swatch-completed {background:var(--completed-bg);}
-.report-visual-option.report-style-classic {--source-bg:#FFE0E4;--office-bg:#FFE8B8;--next-bg:#DCEBFD;--completed-bg:#D5F0DE;}
-.report-visual-option.report-style-signal {--source-bg:#FFB9C2;--office-bg:#FFDB83;--next-bg:#B5D8FC;--completed-bg:#A8E4C0;}
-.report-visual-option.report-style-compact {--source-bg:#9B1731;--office-bg:#865000;--next-bg:#124E8C;--completed-bg:#126442;}
+.report-surface .report-flow-summary .report-stage-summary[class*="report-stage-"] strong {color:inherit;}
+/* 1 — Filled cells: entire column tinted, including header/body/totals. */
+.report-surface.report-style-classic .report-table :is(th,td)[class*="report-stage-"] {
+ background:var(--stage-bg);color:var(--stage-ink);border-color:var(--stage-stroke);
+}
+/* 2 — Screenshot-inspired badges: quiet white table, small heading pills and count circles. */
+.report-surface.report-style-signal .report-table thead th[class*="report-stage-"] {background:#F8FAFC;color:var(--stage-ink);}
+.report-surface.report-style-signal .report-table thead th[class*="report-stage-"] .report-heading-label {
+ display:inline-block;padding:5px 7px;border-radius:5px;
+ border:1px solid var(--stage-stroke);background:var(--stage-bg);color:var(--stage-ink);
+}
+.report-surface.report-style-signal .report-table tbody td[class*="report-stage-"] {background:#fff;color:var(--stage-ink);}
+.report-surface.report-style-signal .report-table tbody td[class*="report-stage-"] .report-count-mark {
+ min-width:34px;min-height:34px;padding:0 3px;border-radius:999px;
+ background:var(--stage-bg);border:1px solid var(--stage-stroke);
+}
+.report-surface.report-style-signal .report-table .count-button {
+ border:0;width:auto;height:auto;min-height:0;padding:4px 8px;background:transparent;
+}
+.report-surface.report-style-signal .report-table tfoot td[class*="report-stage-"] {background:#F8FAFC;color:var(--stage-ink);}
+/* 3 — Edge rails: a stripe is the primary separation, no tinted cell backgrounds. */
+.report-surface.report-style-compact .report-table thead th[class*="report-stage-"] {
+ background:#F8FAFC;color:var(--stage-ink);border-bottom:4px solid var(--stage-solid);
+}
+.report-surface.report-style-compact .report-table :is(tbody,tfoot) td[class*="report-stage-"] {
+ background:#fff;color:var(--stage-ink);box-shadow:inset 4px 0 var(--stage-solid);
+}
+.report-surface.report-style-compact .report-table .count-button {border-color:transparent;}
+/* 4 — Inline data bars: variable width is max-normalized per status column.
+   A zero cell has no bar, and these bars are never completion percentages. */
+.report-surface.report-style-bars .report-table thead th[class*="report-stage-"] {
+ background:#F8FAFC;color:var(--stage-ink);border-bottom:3px solid var(--stage-solid);
+}
+.report-surface.report-style-bars .report-table tbody td[class*="report-stage-"] {
+ background:#fff;color:var(--stage-ink);
+}
+.report-surface.report-style-bars .report-table tbody td[class*="report-stage-"][style*="--bar-fill"] {
+ background:linear-gradient(to right,var(--stage-bg) 0%,var(--stage-bg) var(--bar-fill),#fff var(--bar-fill),#fff 100%);
+}
+.report-surface.report-style-bars .report-table tfoot td[class*="report-stage-"] {
+ color:var(--stage-ink);background:#F8FAFC;border-top:3px solid var(--stage-solid);
+}
+.report-surface.report-style-bars .report-table .count-button {border-color:transparent;}
+/* 5 — Strong header band: saturated status headers, neutral body and understated figures. */
+.report-surface.report-style-band .report-table thead th[class*="report-stage-"] {
+ background:var(--stage-solid);color:#fff;border-color:var(--stage-solid);
+}
+.report-surface.report-style-band .report-table tbody td[class*="report-stage-"] {
+ background:#fff;color:var(--stage-ink);
+}
+.report-surface.report-style-band .report-table tbody tr:nth-child(even) td[class*="report-stage-"] {background:#F8FAFC;}
+.report-surface.report-style-band .report-table tbody .report-count-mark {
+ padding:1px 8px;border-bottom:2px solid var(--stage-stroke);
+}
+.report-surface.report-style-band .report-table tfoot td[class*="report-stage-"] {background:var(--stage-bg);color:var(--stage-ink);}
+.report-surface.report-style-band .report-table .count-button {border-color:transparent;}
+
+/* Live mini-previews show five ways of APPLYING color, not five different hues.
+   The actual table below updates immediately with the unsaved draft setting. */
+.report-visual-options {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;}
+.report-visual-option {min-width:0;}
+.report-visual-example {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:7px;}
+.report-example-cell {display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+ min-height:51px;border:1px solid #E3E8ED;border-radius:5px;background:#fff;overflow:hidden;}
+.report-example-cell b {width:100%;font-size:9px;text-align:center;padding:4px 1px;line-height:1.15;}
+.report-example-cell i {display:grid;place-items:center;min-width:23px;min-height:22px;font-style:normal;font-weight:750;font-size:12px;margin:3px;}
+.report-example-source {--mini-bg:#FFE0E4;--mini-ink:#7F1D30;--mini-stroke:#E7A1AD;--mini-solid:#9B1731;--mini-bar:90%;}
+.report-example-office {--mini-bg:#FFE8B8;--mini-ink:#704500;--mini-stroke:#DCB76A;--mini-solid:#865000;--mini-bar:55%;}
+.report-example-next {--mini-bg:#DCEBFD;--mini-ink:#164C89;--mini-stroke:#A1C6EF;--mini-solid:#124E8C;--mini-bar:35%;}
+.report-example-completed {--mini-bg:#D5F0DE;--mini-ink:#125B35;--mini-stroke:#91CFA8;--mini-solid:#126442;--mini-bar:22%;}
+.report-visual-option.report-style-classic .report-example-cell {background:var(--mini-bg);color:var(--mini-ink);border-color:var(--mini-stroke);}
+.report-visual-option.report-style-signal .report-example-cell b {background:var(--mini-bg);color:var(--mini-ink);border-bottom:1px solid var(--mini-stroke);}
+.report-visual-option.report-style-signal .report-example-cell i {background:var(--mini-bg);color:var(--mini-ink);border:1px solid var(--mini-stroke);border-radius:99px;}
+.report-visual-option.report-style-compact .report-example-cell {border-left:4px solid var(--mini-solid);color:var(--mini-ink);}
+.report-visual-option.report-style-compact .report-example-cell b {border-bottom:2px solid var(--mini-solid);}
+.report-visual-option.report-style-bars .report-example-cell {color:var(--mini-ink);}
+.report-visual-option.report-style-bars .report-example-cell b {border-bottom:2px solid var(--mini-solid);}
+.report-visual-option.report-style-bars .report-example-cell i {width:90%;background:linear-gradient(to right,var(--mini-bg) var(--mini-bar),#fff var(--mini-bar));}
+.report-visual-option.report-style-band .report-example-cell b {background:var(--mini-solid);color:#fff;}
+.report-visual-option.report-style-band .report-example-cell i {color:var(--mini-ink);}
 .report-font-size-control {display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
 .report-font-size-control input[type="range"] {width:180px;accent-color:#205e44;cursor:pointer;}
 .report-font-size-control output {min-width:51px;text-align:center;font-weight:750;font-variant-numeric:tabular-nums;}
 @media print {
  .report-surface .report-table [class*="report-stage-"],
- .report-surface .report-table .report-group-heading {
+ .report-surface .report-table .report-group-heading,
+ .report-surface .report-table .report-heading-label,
+ .report-surface .report-table .report-count-mark {
    print-color-adjust:exact;-webkit-print-color-adjust:exact;
  }
 }
