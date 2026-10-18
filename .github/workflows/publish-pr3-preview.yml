@@ -20,7 +20,7 @@ jobs:
       - name: Checkout exact verified feature commit
         uses: actions/checkout@v4
         with:
-          ref: 4f24e7bb9db78749c01ce86ffb5fb579937412e5
+          ref: 9f9ba803cc6d60c0101644d79ea8613d9d20a38b
           path: candidate
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -82,6 +82,7 @@ jobs:
           if(!html.includes('guest-rights-hint'))throw Error('Guest permission explanation missing');
           if(!html.includes('report-group-col')||!html.includes('Lãnh đạo VP'))throw Error('Fixed grouping column or its new title missing');
           if(!html.includes('report-flow-summary')||!html.includes('report-number-header')||!html.includes('report-focus-button')||!html.includes('Nhấn mạnh Sở chưa trình'))throw Error('Centered numeric dashboard with workflow focus controls missing');
+          if(!html.includes('report-percent-col')||!html.includes('report-percent-value')||!html.includes('report-visual-options')||!html.includes('Font chữ chung cho mọi bảng')||!html.includes('report-style-classic'))throw Error('Font, completion and multi-layout dashboard controls missing');
           if(!html.includes('settings-hub-tabs')||!html.includes('options-popover')||!html.includes('Tài khoản và dữ liệu'))throw Error('Two-entry settings navigation missing');
           if(html.includes('options-group'))throw Error('Old nested settings accordion was not removed');
           if(!html.includes('Độ rộng trang Bảng báo cáo (px)'))throw Error('Separate report width control absent');
@@ -110,10 +111,10 @@ jobs:
           if(!html.includes('Hiện tất cả')||!html.includes('Tiến độ hiện tại'))throw Error('Latest Excel A–O schema missing');
           if(!html.includes('Quyền trên Firebase đã thay đổi so với bản đang chỉnh'))throw Error('Permission CAS authoritative read fix absent');
           if(html.includes('Lưu bố trí và về chế độ xem')||html.includes('Lưu danh mục và thoát'))throw Error('Old combined save-and-exit action still exists');
-          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — TỔNG QUAN RÕ TRẠNG THÁI VÀ CĂN GIỮA SỐ LIỆU (18/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Giữ Quản lý cột và một nút Lưu thay đổi; Kiểu nhập, Cho sửa, Sửa nằm sát tên cột trong nhóm 760px, không dàn trải toàn trang. Chờ bố cục đã lưu từ Firebase trước lần dựng bảng, giữ nguyên cột ẩn/thứ tự và độ rộng cá nhân; chỉ xem mặc định khi chủ động chọn. Hiện rõ phần lưu Firebase thất bại, thu gọn Quản lý cột và để bảng nội dung gần tùy chỉnh. Giữ sort và tìm kiếm ổn định; bảng Tổng quan căn giữa số liệu, tiêu đề xuống dòng, phân biệt Sở chưa trình / Văn phòng đang thực hiện / bước tiếp theo / hoàn thành; lọc nhanh đơn vị đang ở Sở/VP và tùy chỉnh nhấn mạnh màu. Chuẩn hóa giá trị dropdown có khoảng trắng, trùng hoặc quá dài từ Sheets mà không thay đổi Sheets gốc; thông báo rõ cột/mục nếu người dùng nhập lựa chọn sai. ID/STT vẫn chỉ đọc do Sheets chưa hỗ trợ ghi có kiểm tra khóa. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
+          const banner='<div id="hophdnd-pr3-preview-banner" role="note" style="position:sticky;top:0;z-index:2147483646;background:#623905;color:#fff;padding:10px 16px;font:600 13px/1.5 system-ui,sans-serif;border-bottom:3px solid #f5c15a">BẢN XEM TRƯỚC PR #3 — FONT & 3 KIỂU BẢNG TỔNG QUAN CÓ TỶ LỆ HOÀN THÀNH (18/10/2026) · Theo file nguồn sửa lúc 19:07: 15 cột A–O, N=Tiến độ hiện tại, O=Ghi chú; tùy chỉnh kéo cột, xuống dòng, thêm/xóa/đổi tên, danh sách chọn và nhập tự do. Giữ Quản lý cột và một nút Lưu thay đổi; Kiểu nhập, Cho sửa, Sửa nằm sát tên cột trong nhóm 760px, không dàn trải toàn trang. Chờ bố cục đã lưu từ Firebase trước lần dựng bảng, giữ nguyên cột ẩn/thứ tự và độ rộng cá nhân; chỉ xem mặc định khi chủ động chọn. Hiện rõ phần lưu Firebase thất bại, thu gọn Quản lý cột và để bảng nội dung gần tùy chỉnh. Giữ sort và tìm kiếm ổn định; Tổng quan có font chung cho các bảng, nền cột đầu/hàng tiêu đề, % hoàn thành từng dòng và tổng, 3 mẫu báo cáo chuẩn / nhấn mạnh giai đoạn / cô đọng. Màu chỉ minh họa mức ưu tiên, không kết luận quá hạn. Chuẩn hóa giá trị dropdown có khoảng trắng, trùng hoặc quá dài từ Sheets mà không thay đổi Sheets gốc; thông báo rõ cột/mục nếu người dùng nhập lựa chọn sai. ID/STT vẫn chỉ đọc do Sheets chưa hỗ trợ ghi có kiểm tra khóa. Đường dẫn thử ổn định. Các nút Phê duyệt, Khóa sửa và Lưu cấu hình có thể ghi vào FIREBASE THẬT — chưa bấm khi chưa thống nhất kiểm thử. <a href="../../" style="color:#fff;text-decoration:underline">Về website chính</a></div>';
           mkdirSync('site/preview/current',{recursive:true});
           writeFileSync(dest,html.replace('<body>','<body>'+banner));
-          if(!readFileSync(dest,'utf8').includes('PR #3 — TỔNG QUAN RÕ TRẠNG THÁI VÀ CĂN GIỮA SỐ LIỆU'))throw Error('Preview banner missing');
+          if(!readFileSync(dest,'utf8').includes('PR #3 — FONT & 3 KIỂU BẢNG TỔNG QUAN CÓ TỶ LỆ HOÀN THÀNH'))throw Error('Preview banner missing');
           console.log('Built independently at '+dest+' with original production Pages index untouched');
           NODE
           git -C site diff --exit-code -- index.html
