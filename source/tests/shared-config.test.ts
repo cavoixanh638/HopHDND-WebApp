@@ -25,6 +25,20 @@ describe('cấu hình dùng chung', () => {
     expect(validateSharedConfig(profile(), source)).toEqual(profile());
   });
 
+  it('reads old 3-report Google Sheets shared configuration as 4 reports without losing old fields',()=>{
+    const older=profile();
+    older.reports=older.reports.filter(report=>report.id!=='build');
+    older.reports[0].tableFontSize=18;
+    older.reports[1].visible=false;
+    const rows=committedRows(older);
+    const validated=configFromRows(rows,source);
+    expect(validated?.reports.map(report=>report.id)).toEqual(['party','build','nq','bc']);
+    expect(validated?.reports[0].tableFontSize).toBe(18);
+    expect(validated?.reports[2].visible).toBe(false);
+    expect(validated?.items).toEqual(older.items);
+    expect(validated?.catalogs).toEqual(older.catalogs);
+    expect(older.reports).toHaveLength(3);
+  });
   it('ghi và đọc đủ các phần khi JSON vượt 4.000 ký tự', () => {
     const config = profile();
     config.catalogs.options.department = Array.from({ length: 60 }, (_, i) => `${i.toString().padStart(2, '0')} ${'Đơn vị '.repeat(10)}${i}`);
