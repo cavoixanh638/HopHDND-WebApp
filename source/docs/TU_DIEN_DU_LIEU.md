@@ -1,79 +1,73 @@
 # Từ điển dữ liệu HopHDND
 
-**Nguồn chuẩn:** các kiểu dữ liệu thực tế trong [shared/types.ts](../shared/types.ts), ánh xạ trong [gviz-parser.ts](../src/data/gviz-parser.ts), nhãn/danh mục trong [field-definitions.ts](../shared/field-definitions.ts). Tài liệu này mô tả **mã đang có**, không tự tạo schema mới hoặc tuyên bố dữ liệu đã được chuyển sang Firebase. Bản ứng dụng liên quan: Pages 0.7.0; khi code thay đổi phải cập nhật cả bảng này.
+**Nguồn chuẩn thực thi:** [shared/types.ts](../shared/types.ts), [item-preferences.ts](../src/data/item-preferences.ts), [gviz-parser.ts](../src/data/gviz-parser.ts), [sheets-repository.ts](../src/data/sheets-repository.ts), [field-definitions.ts](../shared/field-definitions.ts), [reporting.ts](../src/domain/reporting.ts). Trang này mô tả **mã trên PR #3 tính đến 19/10/2026**; không khẳng định trang Pages gốc đã nhận mã mới. Mốc phát hành, bằng chứng và giới hạn xem [CURRENT_STATE](CURRENT_STATE.md).
 
-## 1. Nguồn nghiệp vụ và quy tắc đọc
+## 1. File nguồn và cách đọc hiện hành
 
-- Tệp hiện dùng: `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, `gid=60961344`. Trên Google Drive, tệp là **Excel .xlsx** được mở qua URL Google Sheets; GViz được gọi từ trình duyệt qua `docs.google.com/spreadsheets/d/.../gviz/tq`.
-- Trình đọc chỉ yêu cầu dải `A:P` (16 cột), tìm hàng tiêu đề trong 10 hàng đầu bằng cột C chứa “Nội dung”, cột D chứa “Sở”. Các hàng trống, tiêu đề phụ và tiêu đề nhóm được bỏ qua theo parser.
-- Mã dòng, STT và loại NQ/BC có thể không nhất quán. Parser giữ các dòng trùng mã, sinh cảnh báo chứ không tự gộp. Danh sách 51 dòng chỉ là **kết quả từng được kiểm local**; Pages đang có phản ánh hiển thị 0 dòng, chưa nghiệm thu tải nguồn trên production.
-- Nguồn dữ liệu chính hiện vẫn là file trên Drive, không phải `hdnd/items`. Xuất Excel/KPI dùng snapshot đã đọc. Chỉnh nghiệp vụ trên Pages hiện chỉ là nháp trong trình duyệt.
+- Excel gốc: `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx`, spreadsheet ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, tab `gid=60961344`. **Phiên bản nguồn được đối chiếu ngày 17–19/10/2026 có 15 cột A–O; O là Ghi chú.**
+- `SheetsRepository` yêu cầu GViz `range=A:O`, phát hiện hàng tiêu đề ở 10 hàng đầu theo C = Nội dung trình và D = Sở; kiểm tên các header E/F/G/H/I/N. Chọn nhầm tab/đổi schema phải báo lỗi, không im lặng làm rỗng dữ liệu.
+- `gviz-parser.ts` còn nhánh *tương thích dữ liệu cũ* A–R (O = Rút, P = Họp TU, Q = Đã thẩm tra chưa, R = Ghi chú) và A–P (O = Ghi chú, P = Trình/Rút). **Không** được tái thêm P/Q/R hoặc cột nghiệp vụ giả vào danh sách nguồn A–O hiện tại. Khi thay đổi file thực tế phải đối chiếu lại trước khi đổi parser.
+- Loại bỏ dòng trống, tiêu đề phụ và dòng nhóm La Mã; dòng thiếu/trùng mã được giữ theo chính sách parser và cảnh báo. Ô Excel rỗng được giữ là chuỗi rỗng trong dữ liệu; UI hiển thị dấu `—` khi thích hợp, **không** âm thầm thay thành “Chưa phân công” hay “(Chưa có nội dung)” trong dữ liệu gốc.
+- Nguồn dữ liệu nghiệp vụ vẫn là Excel/Sheets, không phải `hdnd/items`. WebApp Pages đọc GViz; mọi sửa thử Sheets ở WebApp chưa phải ghi Excel và không được coi là giao dịch thành công. Số dòng thống kê theo từng lần đọc; các con số cũ 51/53 không phải hằng số.
 
-## 2. Ánh xạ cột A–P sang Item
+## 2. Ánh xạ đúng 15 cột A–O của bản nguồn
 
-| Cột | Trường trong `Item` | Ý nghĩa / cách parser xử lý |
+| Excel | Khóa `Item` / cột UI | Nhãn nguồn hiện hành |
 |---|---|---|
-| A | `displayCode` | Mã nội dung gốc; thiếu mã hiển thị nhãn “Dòng N (thiếu mã)” và cảnh báo |
-| B | `stt` | STT: `Number(B)` nếu có giá trị số hợp lệ khác 0, nếu không dùng thứ tự tính từ hàng tiêu đề |
-| C | `content` | Nội dung trình; nếu rỗng dùng “(Chưa có nội dung)” kèm cảnh báo |
-| D | `department` | Sở/đơn vị; rỗng dùng “Chưa phân công” |
-| E | `type` | Loại văn bản dạng chữ gốc; được dùng cùng mã A để suy ra `documentKind` |
-| F | `partyLevel` | Cấp xin ý kiến |
-| G | `progressParty` | Tiến độ xin ý kiến |
-| H | `progressBuild` | Tiến độ xây dựng |
-| I | `progressCouncil` | Tiến độ trình HĐND |
-| J | `specialist` | Chuyên viên; rỗng dùng “Chưa phân công” |
-| K | `room` | Phòng; rỗng dùng “Chưa phân công” |
-| L | `vpLeader` | Lãnh đạo Văn phòng; rỗng dùng “Chưa phân công” |
-| M | `ubndLeader` | Lãnh đạo UBND; rỗng dùng “Chưa phân công” |
-| N | `specificProgress` | Tiến độ cụ thể |
+| A | `displayCode` | ID |
+| B | `stt` | STT |
+| C | `content` | Nội dung trình |
+| D | `department` | Sở, ngành chủ trì |
+| E | `type` | Loại VB (HC/QPPL/BC) |
+| F | `partyLevel` | Cấp Thành ủy cho ý kiến |
+| G | `progressParty` | Tiến độ xin ý kiến Thành ủy |
+| H | `progressBuild` | Tiến độ trình HĐND xây dựng NQ |
+| I | `progressCouncil` | Tiến độ trình HĐND ban hành NQ/BC |
+| J | `specialist` | Chuyên viên VPUB |
+| K | `room` | Phòng chuyên môn |
+| L | `vpLeader` | Lãnh đạo VP |
+| M | `ubndLeader` | Lãnh đạo UBND TP |
+| N | `specificProgress` | Tiến độ hiện tại |
 | O | `note` | Ghi chú |
-| P | `isDropped` | Boolean: parser nhận `rut`, `x`, `true`, `1`, `khong trinh nua` sau chuẩn hóa; không nhận thì false |
 
-Giá trị ô được `String(cell.v ?? cell.f ?? '')` và `trim()`. Một số cột sẽ được làm sạch/hiển thị mặc định; vì vậy **không thể giả định xuất snapshot luôn giữ nguyên bytes Excel gốc**. Đây là ánh xạ để hiển thị, không phải hợp đồng ghi ngược Excel.
+Các cột `history`, `partyMeeting`, `examined`, `isDropped` **không phải cột nguồn hiện hành**. Lịch sử hiển thị bằng thao tác riêng. `partyMeeting`/`examined` chỉ phục vụ đọc tương thích nguồn cũ, không có dữ liệu ở A–O. `isDropped` ở parser A–O mặc định `false`, không được suy ra từ ghi chú O.
 
-## 3. Các trường không nằm trực tiếp ở A–P
+## 3. Trường suy ra và giới hạn danh tính
 
-| Trường | Kiểu | Giá trị khi đọc GViz / lưu ý |
-|---|---|---|
-| `recordId` | string | `<spreadsheetId>:<gid>:row:<số-hàng-vật-lý>`; **legacy theo vị trí** |
-| `documentKind` | `NQ \| BC \| UNCLASSIFIED` | Suy từ E và tiền tố mã A; nếu mâu thuẫn thì UNCLASSIFIED + cảnh báo |
-| `archivedAt` | `string \| null` | `null` đối với dữ liệu đọc từ GViz hiện tại |
-| `revision` | number | `0` cho snapshot GViz; không phải revision máy chủ của Excel |
-| `sourceCode` trong `Patch` | string tùy chọn | Mã gốc đóng băng của bản nháp; khác mã hiển thị sau định dạng |
-| `baseRevision`, `baseValues`, `changes`, `operationId` | số/object/UUID | Thông tin đối chiếu và chống lẫn bản nháp; **không có nghĩa Pages đã ghi nghiệp vụ thành công** |
+| Trường | Mô tả |
+|---|---|
+| `recordId` | `<spreadsheetId>:<gid>:row:<số dòng vật lý>` — ID theo vị trí, có thể đổi khi Excel thêm/xóa/sắp lại hàng |
+| `documentKind` | `NQ` / `BC` / `UNCLASSIFIED` suy từ cột E và mã A; nếu mâu thuẫn thì cảnh báo, không cưỡng ép |
+| `isDropped` | A–O mặc định `false`; các bản nguồn legacy có cột Rút riêng mới xét chuyển đổi |
+| `archivedAt`, `revision` | Ảnh chụp GViz đọc vào có `null` và `0`; không phải version/ETag thực của file Excel |
+| `partyMeeting`, `examined` | Trường đọc dành cho định dạng A–R cũ; không thuộc 15 cột đang hiển thị |
 
-**Rủi ro hiện hữu:** chèn, xóa hoặc sắp xếp lại hàng sẽ thay đổi `recordId` theo số hàng. Vì `hdnd/permissions/rows` và `hdnd/permissions/cells` đang tham chiếu `recordId`, cấu hình theo dòng/ô có thể áp nhầm hàng sau thao tác Excel. **Chưa có cơ chế tự dịch chuyển ID ổn định**. Chỉ dùng quyền theo cột như phương án an toàn tạm thời cho đến khi có thiết kế identity, migration và test đối chiếu.
+**Rủi ro quyền theo hàng/ô:** `recordId` phụ thuộc số dòng vật lý, nên thêm/xóa/sắp xếp Excel có nguy cơ khiến quyền cũ trỏ nhầm. UI mới chủ trương quản lý quyền theo **cột**; cấu trúc Firebase `permissions.rows/cells` legacy vẫn có thể còn tồn tại, phải xử lý xác nhận khi thay thế — không tự xóa dữ liệu quyền khi mở trang. ID/STT chỉ đọc, chưa cho sửa nguồn.
 
-## 4. Trường được phép chỉnh sửa và trường chỉ đọc
+## 4. Bố trí danh sách và cột do ứng dụng tạo
 
-- `TextField` (13 trường): `content`, `department`, `type`, `partyLevel`, `progressParty`, `progressBuild`, `progressCouncil`, `specialist`, `room`, `vpLeader`, `ubndLeader`, `specificProgress`, `note`.
-- `EditableField` = 13 `TextField` ở trên cộng `documentKind` và `isDropped`. Đây là danh sách **các trường code hỗ trợ xét quyền**, không phải mặc nhiên cấp phép sửa.
-- `recordId`, `displayCode`, `stt`, `archivedAt`, `revision` và metadata thao tác không có trong danh sách trường chỉnh sửa. Cập nhật trực tiếp tại Pages đang chỉ tạo nháp, không commit nghiệp vụ.
-- Validation: `content` phải là chuỗi không rỗng sau trim; các `TextField` là chuỗi tối đa 20.000 ký tự; `isDropped` là boolean; `documentKind` thuộc ba giá trị quy định. Chi tiết máy chủ/Rules xem [FIREBASE_PAGES](FIREBASE_PAGES.md).
+- `EXCEL_SOURCE_COLUMNS` luôn giữ 15 khóa nguồn. Người quản trị có thể đổi nhãn, thứ tự, ẩn/hiện/gỡ khỏi giao diện và khôi phục, **không xóa cột thực trong Excel**. Kéo tiêu đề để đổi vị trí; kéo ranh giới tiêu đề để đổi độ rộng trong chế độ chỉnh.
+- Độ rộng cột danh sách hợp lệ 60–1600 px; `frameWidth` = auto hoặc 320–6000 px; `tableWidth` = 500–6000 px theo validator hiện hành. Độ rộng hiển thị thực còn phụ thuộc bố cục/các cột đang hiện. Độ rộng từng cột báo cáo được lưu trong `ReportConfig.columnWidths` (80–1200 px), khóa `__group`, `__total`, từng trạng thái, `__percent`.
+- Tối đa 20 **cột tự tạo** `custom_...` có `origin=custom`, kiểu nhập text hoặc select (tối đa 50 lựa chọn). Giá trị cột tự tạo nằm riêng trong cấu hình ứng dụng theo ID dòng; **không ghi vào Excel**. Không đồng nhất giá trị cột tự tạo với ô nguồn và không tự xóa khi đổi mẫu cá nhân.
+- Cột nguồn dùng danh mục lựa chọn dùng chung; danh sách chọn của cột tự tạo lưu trong cấu hình cột. Quyền sửa dữ liệu nghiệp vụ và quyền cấu hình là các luồng khác nhau.
 
-## 5. Quy tắc trạng thái và danh mục
+## 5. Từ vựng thống kê và quy tắc hoàn thành
 
-Ba trường trạng thái chính có tập gợi ý trong `shared/field-definitions.ts`; danh mục dùng chung và giá trị nguồn có thể không trùng tập gợi ý. Không được âm thầm ép trạng thái lạ vào nhóm gần giống. Quy tắc báo cáo/KPI và phân biệt “Sở xin rút” với “Đã rút” xem [SYSTEM](SYSTEM.md), [reporting.ts](../src/domain/reporting.ts).
+Theo [DEFAULT_REPORTS](../src/domain/reporting.ts) có **5 báo cáo mặc định** theo thứ tự:
+1. `party` — Tiến độ xin ý kiến Thành ủy, cột kết thúc **Đã có TBKL**. Không có cột `TU đã cho ý kiến`; nhãn cũ nếu xuất hiện trong **giá trị nguồn** phải đưa ra kiểm tra `Chưa chuẩn hóa`, không tự coi là TBKL.
+2. `build` — Tiến độ trình HĐND xây dựng NQ: **Không phải trình** → Sở chưa trình → VP đang thực hiện → Đã trình HĐND, chưa có QĐ → **Đã có QĐ chấp thuận**. Cột Không phải trình đứng sau Tổng số nội dung. Giá trị H `Không phải trình xây dựng NQ` ánh xạ **chỉ để hiển thị** thành `Không phải trình`, có trong tổng và mẫu số, nhưng không phải hồ sơ hoàn thành.
+3. `council` — Tiến độ các Nghị quyết và Báo cáo trình HĐND, nguồn I, loại NQ+BC.
+4. `nq` — Tiến độ trình HĐND ban hành NQ, nguồn I, chỉ NQ.
+5. `bc` — Tiến độ trình HĐND ban hành BC, nguồn I, chỉ BC.
 
-- `progressParty`: Sở chưa trình; VP đang thực hiện; Đã gửi ĐU; ĐU đã gửi TU chưa họp; Đã họp chưa có TBKL; Đã báo cáo TU; Không phải xin ý kiến; Sở xin rút.
-- `progressBuild`: Không phải trình xây dựng NQ; Trình xây dựng NQ; Đã trình HĐND chưa có QĐ; Đã có QĐ chấp thuận.
-- `progressCouncil`: Sở chưa trình; VP đang thực hiện; Đã trình HĐND; Hoàn thành; Sở xin rút.
+Ba bảng `council/nq/bc` cùng 3 cột **Sở chưa trình**, **VP đang thực hiện**, **Đã trình HĐND thành phố** (cột cuối được tính hoàn thành). Giá trị legacy `Hoàn thành`/ `Đã trình HĐND` trong nguồn có thể được chuẩn hóa **trong báo cáo hiển thị**; không tự thêm cột tên `Hoàn thành` và không sửa giá trị Excel. Trạng thái nguồn chưa khớp gom vào **Chưa chuẩn hóa** có cảnh báo, không tự phát minh cột nghiệp vụ; cột ẩn không làm giảm tổng.
 
-## 6. Cấu hình Firebase khác dữ liệu nghiệp vụ
+**Lỗi còn phải đối chiếu:** hàm `getKpis` hiện vẫn đếm KPI hoàn thành theo chuỗi `Hoàn thành`, trong khi 3 báo cáo hội đồng chuẩn hóa sang `Đã trình HĐND thành phố`. Phải kiểm thử KPI so với thống kê và quy tắc nguồn trước khi tuyên bố hai bộ số nhất quán; đây **chưa phải đã sửa**.
 
-```text
-hdnd/
-  profile/               {revision, payload}
-  permissions/
-    columns/             fieldKey: boolean
-    rows/                recordId: boolean
-    cells/               recordId/fieldKey: boolean
-  items/                 Adapter tương lai; Rules bản local hiện khóa ghi
-```
+## 6. Quyền, nguồn ghi và phiên bản
 
-`profile.payload` là JSON string chứa `{catalogs, reports, items}`; nó **không phải** hàng nghiệp vụ Google Sheets. Quyền tra theo thứ tự **ô → dòng → cột → mặc định từ chối**; thiếu quyền không đồng nghĩa có quyền. Chỉ Google admin được xác minh mới lưu thay đổi cấu hình chung. Cần đối chiếu Rules chạy thực tế trước khi xác nhận; trạng thái xem [CURRENT_STATE](CURRENT_STATE.md).
+`hdnd/profile` là cấu hình chung với revision CAS: báo cáo, danh mục và bố trí/giá trị cột độc lập; không chứa bản sao đồng bộ của Excel. `hdnd/permissions` chứa quyền theo cột và có thể còn phần quyền legacy dòng/ô. Giao diện quản trị đã bỏ biên tập quyền từng ô, không có nghĩa backend tự hủy dữ liệu đó. `hdnd/control` dành cho khóa sửa trên WebApp, `hdndReviews` dành cho mốc phê duyệt; cần kiểm tra Rules production riêng.
 
-## 7. Khi thay đổi schema
+Không dùng code rollback để khôi phục dữ liệu Firebase/Excel. Không cấp quyền lưu bằng cách chỉ ẩn/hiện một nút ở UI. Bố trí cá nhân trong browser khác bố trí chung Firebase; bản nháp khác dữ liệu đã được chấp thuận.
 
-Nếu thêm/đổi vị trí cột nguồn hoặc định nghĩa trường: cập nhật parser, `shared/types.ts`, `field-definitions.ts`, code quyền và báo cáo liên quan, unit test theo fixture, rồi **mới** sửa từ điển. Không sửa file nguồn nghiệp vụ để “phù hợp” với giả định của từ điển. Các vấn đề chưa có thiết kế (ID ổn định, migration, danh mục ID) phải được ghi vào [WORKBOARD](WORKBOARD.md) và chỉ triển khai sau quyết định riêng.
+**Khi Excel đổi schema:** xác minh đúng workbook/gid, header, dải đọc, parser và fixture, rà các báo cáo/danh mục/quyền theo ID, chạy CI trước khi cập nhật bảng này. Tài liệu lưu các quyết định, không thay bằng chứng thử trên tài khoản quản trị thật.
