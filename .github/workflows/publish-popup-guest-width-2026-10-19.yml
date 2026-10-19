@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.id == 39280344363 && github.event.workflow_run.head_sha == '0e47675bb7071289561e63e1fcd04e2905ceb3d3' && github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.id == 39284797297 && github.event.workflow_run.head_sha == 'e012e6c60956cda4ca92164ff3b1388444cf6693' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,13 +36,13 @@ jobs:
           def get(path):
               with urllib.request.urlopen(urllib.request.Request(repo+path,headers=headers)) as response:
                   return json.load(response)
-          run=get('/actions/runs/39280344363')
-          expected='0e47675bb7071289561e63e1fcd04e2905ceb3d3'
+          run=get('/actions/runs/39284797297')
+          expected='e012e6c60956cda4ca92164ff3b1388444cf6693'
           assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified source commit'
           assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
-          jobs=get('/actions/runs/39280344363/jobs')['jobs']
+          jobs=get('/actions/runs/39284797297/jobs')['jobs']
           assert any(j['name']=='verify' and j['conclusion']=='success' for j in jobs), 'Missing successful verify job'
-          arts=get('/actions/runs/39280344363/artifacts')['artifacts']
+          arts=get('/actions/runs/39284797297/artifacts')['artifacts']
           art=next(a for a in arts if a['name']=='hophdnd-pages-candidate')
           assert not art['expired'] and art['size_in_bytes']>50000, 'Missing valid Pages artifact'
           assert art['workflow_run']['head_sha']==expected, 'Artifact source SHA mismatch'
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39280344363
+          run-id: 39284797297
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _popup_guest_width_artifact
