@@ -1,6 +1,6 @@
-import { memo, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
-import {hideInstantCountTooltip,showInstantCountTooltip} from '../../components/InstantCountTooltip';
+import {hideInstantCountTooltip,prewarmInstantCountTooltip,showInstantCountTooltip} from '../../components/InstantCountTooltip';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
 import {GROUP_OPTIONS} from '../../../shared/field-definitions';
 import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
@@ -20,6 +20,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
+  // Preallocate the only tooltip when a report first mounts, before pointer hover.
+  useEffect(()=>{if(!preview)prewarmInstantCountTooltip();},[preview]);
   const [focusWaiting,setFocusWaiting]=useState(false);
   const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
   const stages=useMemo(()=>{
@@ -64,7 +66,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     ?<strong>{entries.length}</strong>
     :<><span className="report-cell-sizer" aria-hidden="true">{entries.length}</span><button type="button" className="count-button count-drill"
       aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
-      onPointerOver={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
+      onPointerOver={event=>showInstantCountTooltip(event.currentTarget,entries.length,event)}
       onPointerOut={event=>{
         // Crossing the count label/arrow stays within the same button.
         if(event.relatedTarget instanceof Node&&event.currentTarget.contains(event.relatedTarget))return;
