@@ -1,3 +1,11 @@
+## 19/10/2026 — Popup: chiều rộng chung và quyền sửa theo ô
+
+- **Quyền:** ReportDetailGrid mặc định ở chế độ xem; chỉ cho bật "Chỉnh sửa nháp" khi có ít nhất một ô được cấp quyền; editor từng ô kiểm tra canEditCell(recordId, field), allowDraft và khóa sửa của Firebase. Người xem được cấp quyền chỉ sửa đúng nội dung/trường cho phép, không tự có quyền ghi nguồn.
+- **Thiếu sót và sửa:** Trước đây cửa sổ popup có chiều rộng tối đa cố định 1480 px, chưa có điều khiển độ rộng chung. Nay có DetailGridPreferences.dialogWidth 640–2400 px (mặc định 1480), chỉnh trong "Cấu hình cột riêng", xem trước, lưu trên trình duyệt theo nguồn/đường preview. Độ rộng cửa sổ riêng với tổng chiều rộng bảng và từng cột; giới hạn bởi viewport trên màn hình nhỏ. Cấu hình v1 cũ không có dialogWidth được tự điền mặc định, giữ thứ tự/ẩn/độ rộng các cột.
+- **Quyền thay đổi khi đang soạn:** nếu bị thu hồi quyền hoặc khóa sửa thì ContentEditor từ chối Áp dụng nhưng giữ nội dung đang gõ và thông báo, không âm thầm xóa. Bản nháp chung với Danh sách, không ghi Excel/Firebase thật từ popup.
+- **Bằng chứng CI:** [Verify #39270344125](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39270344125) SUCCESS với commit nguồn 355ec81fb274da44c19eb1e277409547a6a2d3b8: typecheck, unit tests, Firebase emulator, build và Chrome smoke đều PASS. Unit test có kiểm 640–2400, cấu hình cũ và nguồn độc lập. **Chưa có kiểm thử tương tác trực tiếp kích thước cửa sổ trên Chrome Windows người dùng**.
+- **Phát hành:** code ở PR #3 Draft, chưa đưa bản mới vào preview/current hoặc production main/index.html. Đường preview popup-grid-parity ngày 19/10 đang phát hành trước sửa này; chưa chứa điều khiển chiều rộng chung.
+
 ## 19/10/2026 — Bảng chi tiết popup: kéo độ rộng thật và đối chiếu chức năng Danh sách
 
 - **Nguyên nhân lỗi:** popup phiên bản đầu có số px trong Cấu hình cột nhưng **không có tay nắm kéo trực tiếp**; `width:max-content/min-width:100%` có thể làm Chrome phân phối lại độ rộng cột. Đã dùng lại `ColumnResizeHandle`, `ColumnHeader`, `ColumnFilterCell`, `CellPicker`, `ContentEditor` từ bảng Danh sách; `colgroup` gắn width từng cột và `table.style.width` đúng tổng số px, chỉ commit khi thả.
