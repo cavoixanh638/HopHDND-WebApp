@@ -833,14 +833,21 @@ table.data-table button:not(.column-sort-button),table.report-table button,
   border:0;border-radius:0;box-shadow:none;outline:none;
   background:transparent;color:inherit;cursor:pointer;transition:none;
 }
+/* Stronger target indication, but only paint the hovered CELL, never its row.
+   Outline (unlike border) cannot resize the table; no new DOM, JS, timer,
+   expensive box-shadow blur, animated transition, or global :has selector.
+   Teal affordance is distinct from the semantic red/amber/green status colors. */
 .report-surface .report-table td.report-clickable-cell .count-drill:hover,
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
-  /* Lightweight cell hover; floating tooltip is a single independent layer. */
-  color:inherit;background:rgba(73,124,98,.035);
-  box-shadow:none;outline:0;
+  color:inherit;
+  background:rgba(9,106,113,.14);
+  outline:2px solid #08777B;
+  outline-offset:-2px;
+  box-shadow:none;
 }
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
-  box-shadow:inset 0 0 0 3px currentColor;
+  outline-width:3px;
+  outline-color:#07595B;
 }
 body.is-printing #print-target .report-cell-sizer {display:none!important;}
 /* One fixed-size shared tooltip for all five reports. No body:has() or
