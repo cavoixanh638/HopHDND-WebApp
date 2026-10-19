@@ -7,7 +7,8 @@
 - `ReportDetailGrid` là bản thử UI trên PR #3, không được bật writer Excel/Firebase. Dùng `SheetsRepository` đọc, `workspace.update` giữ nháp, `workspace.keepDraft` lưu checkpoint cục bộ; bộ phận quản trị vẫn áp dụng phân quyền và khóa sửa hiện hành. Không coi nháp cập nhật nguồn.
 - Cấu hình cột riêng lưu `localStorage` theo nguồn dữ liệu/preview; **không** sao lưu lên Firebase và **không** tự đồng bộ giữa máy. Rollback code/preview không tự phục hồi preferences cục bộ; khi cần có thể bấm Khôi phục mặc định trong modal.
 - Mốc mã nguồn có bằng chứng [Verify #39256157291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256157291), SHA `c2d13b56dd675e230c39d7364d9a9054397159e6`, chỉ dùng artifact PASS để publish preview. Khi bật ghi Excel thực trong tương lai phải có quyết định riêng về writer, quyền, ETag/recordId, chống xung đột và read-back confirmation.
-- Các hướng dẫn preview hover cũ phía dưới thuộc lịch sử; đường xem trước bản Bảng chi tiết nhanh cần được xác minh riêng trước khi coi triển khai thành công.
+- **Preview bảng chi tiết nhanh đã triển khai:** [Publisher #39256870483](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256870483) PASS; [Pages #39256898732](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256898732) SUCCESS. Mở [preview/detail-grid-columns-2026-10-19](https://cavoixanh638.github.io/HopHDND-WebApp/preview/detail-grid-columns-2026-10-19/) hoặc `preview/current/`. Có thể quay lại bản hover trước bằng preview dated `clear-cell-hover-2026-10-19/`. **Production root giữ nguyên**, PR #3 OPEN. Backup main trước xuất preview: `backup/before-detail-grid-preview-2026-10-19` tại `0020f88253c6857b1d081f0de637aa41665643c1`.
+- Các hướng dẫn preview hover cũ phía dưới thuộc lịch sử; không dùng chúng làm mốc chức năng Bảng chi tiết nhanh.
 
 ## 0. Trạng thái hiện hành — commit và preview hover đã chốt 19/10/2026
 
