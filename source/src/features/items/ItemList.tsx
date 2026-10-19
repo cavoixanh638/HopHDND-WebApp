@@ -250,7 +250,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
             ...c,values:{...(c.values??{}),[rowKey]:next}
           })}));
           const writable=customizing&&allowLayout&&!locked;
-          return <td key={column.key} className={writable?'editable-cell':undefined}
+          return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined}
             title={writable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
             ?column.kind==='select'
@@ -260,17 +260,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
                 type="text" maxLength={1000} value={value} onChange={e=>updateCustom(e.currentTarget.value)}/>
             :value||'—'}</td>;
         }
-        if(column.key==='displayCode')return <td key={column.key} style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
-        if(column.key==='stt')return <td key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
-        if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
+        if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+        if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
+        if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
         // Excel columns P and Q are displayed and searchable but not editable.
         // They must not be offered as writable fields until a source writer and
         // server-side permission rules explicitly support these new columns.
         if(column.key==='partyMeeting'||column.key==='examined')
-          return <td key={column.key}>{item[column.key]||'—'}</td>;
+          return <td key={column.key} data-col-key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
-        return <td key={column.key} className={writable?'editable-cell':undefined}
+        return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined}
           title={writable?'Bấm để sửa':undefined}
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}

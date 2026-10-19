@@ -103,3 +103,12 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(css).toMatch(/\.report-surface \.report-table \[class\*="report-stage-"\]/);
   });
 });
+
+
+describe('Data list and detail popup alignment',()=>{
+  it('styles by column key and preserves top-left layout of content and notes',()=>{
+    expect(css).toContain('td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"])');
+    expect(css).toContain('vertical-align:middle');
+    expect(css).toContain('td:is([data-col-key="content"],[data-col-key="note"])');
+  });
+});

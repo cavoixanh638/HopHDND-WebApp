@@ -353,7 +353,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               canEditCell(item.recordId,c.key as TextField);
-              return <td key={c.key} className={writable?'editable-cell':undefined}
+              return <td key={c.key} data-col-key={c.key} className={writable?'editable-cell':undefined}
                 title={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
               <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;})}

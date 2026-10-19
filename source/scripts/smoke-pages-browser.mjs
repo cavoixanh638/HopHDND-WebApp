@@ -212,6 +212,16 @@ try{
   if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
+  const cellAlignment=await evaluate(`(()=>{
+    const regular=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const long=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
+    return !!regular&&!!long&&
+      getComputedStyle(regular).textAlign==='center'&&
+      getComputedStyle(regular).verticalAlign==='middle'&&
+      getComputedStyle(long).textAlign==='left'&&
+      getComputedStyle(long).verticalAlign==='top';
+  })()`);
+  if(!cellAlignment)throw Error('Column-key cell alignment regression');
 
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
