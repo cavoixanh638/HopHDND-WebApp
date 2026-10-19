@@ -238,7 +238,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
-          onClick={()=>setEditing(v=>!v)}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>
+          onClick={()=>setEditing(v=>!v)}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
         {onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>
