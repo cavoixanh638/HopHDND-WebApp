@@ -89,7 +89,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   };
   const options=(field:TextField,current:string)=>{
     const optionsFromCatalog=(catalog.options as Partial<Record<TextField,string[]>>)[field]??[];
-    const standard=(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
+    // Council completion is labelled exactly as the current Excel/HĐND report,
+    // not the obsolete generic "Hoàn thành" option in the older list editor.
+    const standard=field==='progressCouncil'
+      ?['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']
+      :(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
     return [...new Set(['',...optionsFromCatalog,...standard,current])];
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
