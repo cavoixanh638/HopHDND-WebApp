@@ -1,3 +1,11 @@
+## Bổ sung F06/F14/F21 — Đồng bộ tính năng bảng popup với Danh sách (19/10/2026)
+
+- Bảng popup phải **kéo trực tiếp ranh giới cột** để đổi độ rộng thực, không chỉ nhập con số px; `colgroup` và chiều rộng table cùng thay đổi chính xác; lưu riêng, phục hồi sau đóng/mở, không làm xê dịch bảng báo cáo phía sau. Tay nắm dùng được bàn phím ←/→ với bước 10px.
+- Khi cấu hình popup: hiện/ẩn, đổi thứ tự **bằng kéo tiêu đề, Alt+←/→ hoặc nút ↑/↓**, chỉnh px 70–800, preview ngay, cảnh báo có thay đổi chưa lưu; có nút hiện đủ 15 cột tạm thời.
+- Tính năng giống bảng Danh sách ở lớp xem: **cùng `ColumnHeader`, `ColumnFilterCell`, `ColumnResizeHandle`**, sắp xếp tăng/giảm/gốc, dropdown/lọc không dấu, nút xóa từng bộ lọc và xóa tất cả. Cho lưu/chọn/cập nhật/xóa **mẫu hiển thị popup cá nhân**, màu điều kiện độc lập; dùng nhãn và loại editor từ cấu hình dữ liệu nguồn nhưng tuyệt đối không thay layout Danh sách.
+- Chỉnh sửa dùng `CellPicker`, `ContentEditor`, kiểm tra quan hệ phân công, mở lịch sử và link Danh sách nguồn; vẫn là **bản nháp theo quyền**. Không nhân đôi quản trị cột custom/permissions/schema/Excel writer trong popup. Xem [ma trận đầy đủ](REPORT_DETAIL_PARITY_2026-10-19.md).
+- Nghiệm thu bắt buộc có CDP kéo chuột thật từ 100 lên ~165px, kiểm table tăng cùng mức, lưu localStorage riêng, đóng/mở lại giữ kết quả. Browser proof [#39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680) PASS trên mock, chưa chứng minh tốc độ hoặc phân quyền người dùng thật.
+
 ## Bổ sung 19/10/2026 — Bảng chi tiết nhanh từ ô số, cấu hình cột riêng
 
 **F06 mở rộng đã triển khai ở nhánh PR #3, chưa đưa lên trang chính:** bấm một ô số dương của bất kỳ 5 báo cáo sẽ mở **Bảng chi tiết nhanh** dạng lưới (không còn là danh sách thẻ nội dung). Dữ liệu lấy trực tiếp từ tập recordId của chính ô đó và nguồn `workspace.workingItems`, không gọi Google Sheets/Firebase trên mỗi lần bấm. Chỉ mở **một modal** với vùng cuộn dọc/ngang, header cố định, lọc nhanh tất cả 15 trường, lọc ngay dưới từng cột và sắp xếp từng cột. Khi sửa nháp, giữ các hồ sơ thuộc **tập lúc bấm** để thay đổi trạng thái không làm dòng biến mất trước khi nguồn ghi nhận; báo cáo vẫn dùng snapshot nguồn đã xác nhận, không giả cập nhật số đếm.
