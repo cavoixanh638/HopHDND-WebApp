@@ -182,17 +182,24 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
-    if(key==='displayCode')return <strong className="code">{displayId(item)}</strong>;
+    if(key==='displayCode')return <div className="report-grid-id">
+      <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
+      {onHistory&&<button type="button" className="item-history-action"
+        aria-label={'Xem lịch sử '+displayId(item)} onClick={()=>onHistory(item)}>↺</button>}
+      {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
+      {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
+    </div>;
     if(!editing||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
     const field=key as TextField;
     if(field==='content'||field==='note')
-      return <DetailTextEditor key={item.recordId+':'+field} value={raw}
-        label={labelByKey.get(key)+' · '+displayId(item)} large required={field==='content'}
-        onApply={value=>onUpdate(item.recordId,{[field]:value})}/>;
-    return <select className="report-detail-select" aria-label={labelByKey.get(key)+' · '+displayId(item)}
-      value={raw} onChange={event=>onUpdate(item.recordId,{[field]:event.target.value})}>
-      {options(field,raw).map(value=><option key={value} value={value}>{value||'—'}</option>)}
-    </select>;
+      return <button type="button" className="cell-value-button"
+        aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
+        onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
+    return <CellPicker label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
+      searchable={field==='specialist'} options={options(field,raw).filter(value=>
+        field!=='specialist'||value===item.specialist||!item.room||
+        !value||catalog.specialistRooms[value]?.includes(item.room))}
+      onChange={value=>onUpdate(item.recordId,{[field]:value})}/>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
   const canClose=()=>{
@@ -211,19 +218,36 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
           placeholder="Tìm mã, nội dung, tiến độ, sở…"/>
       </label>
       <div className="report-grid-actions">
+        <button type="button" className="button ghost" aria-pressed={showAll}
+          onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
+        <button type="button" className="button ghost" onClick={clearFilters}
+          disabled={!query&&Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
         <button type="button" className="button ghost" aria-expanded={settings}
-          onClick={()=>{setSettings(v=>!v);setPending(applied);setNotice('');}}>
-          Cấu hình cột riêng
-        </button>
+          onClick={toggleSettings}>Cấu hình cột riêng</button>
         <button type="button" className="button ghost" aria-pressed={editing} disabled={!editable}
           title={!editable?'Chưa có quyền sửa nháp với những hồ sơ thuộc ô này':undefined}
           onClick={()=>setEditing(v=>!v)}>{editing?'Kết thúc sửa nháp':'Chỉnh sửa nháp'}</button>
+        {onOpenFullList&&<button type="button" className="button ghost"
+          onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>
+    </div>
+    <div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
+      <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
+        onChange={e=>loadPreset(e.target.value)}>
+        <option value="">Mặc định</option>
+        {presets.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+      </select></label>
+      <label>Tên mẫu mới <input type="text" maxLength={60} value={presetName} onChange={e=>setPresetName(e.target.value)} placeholder="Ví dụ: Tiến độ nghị quyết"/></label>
+      <button type="button" className="button ghost" disabled={!presetName.trim()||presets.length>=12}
+        onClick={createPreset}>Lưu mẫu mới</button>
+      {selectedPreset&&<><button type="button" className="button ghost"
+        onClick={updatePreset}>Cập nhật mẫu</button>
+        <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
     </div>
     {settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
-        <p>Chọn hiện/ẩn, đổi thứ tự và độ rộng. Chỉ lưu ở trình duyệt này theo nguồn dữ liệu; không thay đổi bảng Danh sách nội dung hoặc các bảng báo cáo.</p>
+        <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
       </div>
       <div className="report-grid-settings-list">
         {pending.columns.map((c,index)=><div className="report-grid-settings-row" key={c.key}>
@@ -239,31 +263,73 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
       </div>
       <div className="report-grid-settings-footer">
         <button type="button" className="button ghost" onClick={()=>{setPending(defaultDetailGridPreferences());setNotice('');}}>Khôi phục mặc định</button>
-        <button type="button" className="button ghost" onClick={()=>setSettings(false)}>Đóng tùy chỉnh</button>
+        <button type="button" className="button ghost" onClick={closeSettings}>Đóng tùy chỉnh</button>
         <button type="button" className="button primary" onClick={saveSettings} disabled={!pending.columns.some(c=>c.visible)}>Lưu cấu hình cột</button>
       </div>
+      <details className="report-grid-color-config">
+        <summary>Màu theo điều kiện (chỉ trong bảng popup · {colors.length} quy tắc)</summary>
+        <div className="report-grid-color-editor">
+          <label>Cột <select value={colorField} onChange={e=>setColorField(e.target.value)}>
+            {EXCEL_SOURCE_COLUMNS.map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+          </select></label>
+          <label>Giá trị bằng <input maxLength={200} value={colorValue} onChange={e=>setColorValue(e.target.value)} placeholder="Giá trị đúng"/></label>
+          <label>Màu <select value={color} onChange={e=>setColor(e.target.value as ColorRule['color'])}>
+            <option value="mint">Xanh lá</option><option value="amber">Vàng</option>
+            <option value="rose">Đỏ nhạt</option><option value="blue">Xanh dương</option>
+          </select></label>
+          <button type="button" className="button ghost" disabled={!colorValue.trim()||colors.length>=30}
+            onClick={()=>{const next=validateColorRules([...colors,{
+              id:crypto.randomUUID(),field:colorField,value:colorValue.trim(),color
+            }]);setColors(next);setColorValue('');}}>Thêm quy tắc</button>
+        </div>
+        {colors.map(rule=><span className="report-grid-color-chip" key={rule.id}>
+          {labelByKey.get(rule.field)} = {rule.value} · {rule.color}
+          <button type="button" aria-label={'Xóa màu '+rule.value}
+            onClick={()=>setColors(old=>old.filter(v=>v.id!==rule.id))}>×</button>
+        </span>)}
+        <p className="muted">Quy tắc màu của popup sẽ được lưu khi chọn Lưu mẫu mới hoặc Cập nhật mẫu; không ảnh hưởng màu của bảng Danh sách hoặc báo cáo.</p>
+      </details>
     </section>}
+    {confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
+      <strong>Cột của popup có thay đổi chưa lưu.</strong>
+      <button type="button" className="button ghost" onClick={()=>setConfirmSettingsExit(false)}>Tiếp tục tùy chỉnh</button>
+      <button type="button" className="button ghost" onClick={()=>{
+        setPending(applied);setSettings(false);setConfirmSettingsExit(false);
+      }}>Bỏ thay đổi cột</button>
+      <button type="button" className="button primary" onClick={()=>{
+        saveSettings();setConfirmSettingsExit(false);
+      }}>Lưu cấu hình cột</button>
+    </div>}
     <div className="report-grid-notices">
       <p className="muted">{editing?'Thay đổi sử dụng bản nháp chung với Danh sách nội dung. Chỉnh sửa một ô không ghi Excel/Firebase.':'Bảng hiển thị từ cùng dữ liệu nguồn với Danh sách nội dung; bộ lọc chỉ áp dụng trong cửa sổ.'} Cấu hình cột được lưu riêng.</p>
       {!editable&&<p className="muted">Chế độ xem: không có quyền sửa nháp đối với các nội dung đang chọn.</p>}
       {notice&&<p className="notice" role="status">{notice}</p>}
     </div>
     <div className="report-grid-scroll" role="region" tabIndex={0} aria-label="Bảng chi tiết các nội dung trong ô báo cáo">
-      <table className="data-table report-detail-grid">
+      <table className="data-table report-detail-grid"
+        style={{width:gridWidth+'px',minWidth:gridWidth+'px',tableLayout:'fixed'}}>
         <colgroup>{shownColumns.map(c=><col key={c.key} style={{width:c.width+'px'}}/>)}</colgroup>
         <thead>
-          <tr>{shownColumns.map(c=><th key={c.key} scope="col">
-            <button type="button" className="report-grid-sort" onClick={()=>setSort(v=>v?.key!==c.key?{key:c.key,direction:'asc'}:v.direction==='asc'?{key:c.key,direction:'desc'}:null)}>
-              {labelByKey.get(c.key)} <small aria-hidden="true">{sort?.key===c.key?(sort.direction==='asc'?'↑':'↓'):'↕'}</small>
-            </button></th>)}</tr>
-          <tr className="report-grid-filter-row">{shownColumns.map(c=><th key={c.key}>
-            <input type="search" aria-label={'Lọc cột '+labelByKey.get(c.key)} placeholder="Lọc cột"
-              value={filters[c.key]??''} onChange={event=>setFilters(v=>({...v,[c.key]:event.target.value}))}/>
-          </th>)}</tr>
+          <tr className="report-grid-heading-row">{shownColumns.map((c,index)=>
+            <ColumnHeader key={c.key} columnKey={c.key} sortLabel={labelByKey.get(c.key)}
+              sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
+              disabled={!settings} previousKey={shownColumns[index-1]?.key}
+              nextKey={shownColumns[index+1]?.key} onMove={moveHeader}>
+              {labelByKey.get(c.key)}
+              <ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
+                width={c.width} min={70} max={800} onCommit={width=>commitWidth(c.key,width)}/>
+            </ColumnHeader>)}</tr>
+          <tr className="report-grid-filter-row">{shownColumns.map(c=>
+            <ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
+              items={subset} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
+                const next={...old};if(value)next[c.key]=value;else delete next[c.key];return next;
+              })}/>)}</tr>
         </thead>
         <tbody>
-          {visible.map(item=><tr key={item.recordId} className={dirtyIds.has(item.recordId)?'report-grid-row-dirty':''}>
-            {shownColumns.map(c=><td key={c.key}>{cell(item,c.key)}{errors[item.recordId]&&c.key==='content'&&<small role="alert" className="error-text">{errors[item.recordId]}</small>}</td>)}
+          {visible.map(item=><tr key={item.recordId} className={[dirtyIds.has(item.recordId)?'report-grid-row-dirty':'',
+            itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
+            {shownColumns.map(c=><td key={c.key}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
+              <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>)}
           </tr>)}
           {!visible.length&&<tr><td colSpan={shownColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}
         </tbody>
@@ -271,10 +337,15 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
     </div>
     <div className="modal-footer report-grid-footer">
       <span className="muted">Nháp ở đây và tại Danh sách nội dung dùng chung. Báo cáo chỉ tính theo dữ liệu nguồn đã xác nhận.</span>
-      <button type="button" className="button ghost" onClick={onClose}>Đóng</button>
+      <button type="button" className="button ghost" onClick={canClose}>Đóng</button>
       {inGroupDirty>0&&<button type="button" className="button primary" onClick={()=>{
         setNotice(onKeepDraft()?'Đã giữ nháp trên trình duyệt, chưa ghi Excel/Firebase.':'Chưa lưu được nháp trên trình duyệt. Không đóng trang để tránh mất thay đổi.');
       }}>Giữ nháp trên máy</button>}
     </div>
+    {contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
+      sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
+      draftOnly sourceKind="google" onSave={value=>
+        onUpdate(contentItem.item.recordId,{[contentItem.field]:value})}
+      onClose={()=>setContentItem(null)}/>}
   </Modal>;
 }
