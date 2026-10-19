@@ -549,6 +549,55 @@ try{
         await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
           'Full-cell corner click failed: '+selector);
+        // The quick grid is a data table (not legacy plain text articles);
+        // it includes a separate persistent 15-column manager, filters and
+        // permission-safe draft affordance, without changing the main list.
+        const reportGrid=await evaluate(`(()=>{
+          const modal=document.querySelector('dialog.report-detail-modal[open]');
+          const grid=modal?.querySelector('.report-detail-grid');
+          const columns=[...(grid?.querySelectorAll('thead tr:first-child th')??[])];
+          const rows=[...(grid?.querySelectorAll('tbody tr')??[])];
+          const text=modal?.textContent??'';
+          const settings=[...(modal?.querySelectorAll('button')??[])]
+            .find(b=>b.textContent?.includes('Cấu hình cột riêng'));
+          const edit=[...(modal?.querySelectorAll('button')??[])]
+            .find(b=>b.textContent?.includes('Chỉnh sửa nháp'));
+          return {ok:!!modal&&!!grid&&columns.length>=6&&columns.length<16&&
+              rows.length>=1&&!!settings&&!!edit&&edit.disabled&&
+              !!modal.querySelector('input[placeholder="Tìm mã, nội dung, tiến độ, sở…"]')&&
+              text.includes('nội dung trong ô báo cáo')&&!text.includes('Thử lưu lại vào Firebase'),
+            columns:columns.length,rows:rows.length,editDisabled:edit?.disabled};
+        })()`);
+        if(!reportGrid.ok)throw Error('Quick report detail grid missing or bypasses guest permissions: '+JSON.stringify(reportGrid));
+        if(selector==='.report-surface tbody td.report-clickable-cell:not(.report-total-col)'){
+          await evaluate(`[...document.querySelectorAll('dialog.report-detail-modal[open] button')]
+            .find(b=>b.textContent?.includes('Cấu hình cột riêng'))?.click()`);
+          await eventually("document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-settings-row').length===15",
+            'Independent A–O detail-column settings missing');
+          const settingsOK=await evaluate(`(()=>{
+            const dialog=document.querySelector('dialog.report-detail-modal[open]');
+            const settings=[...dialog.querySelectorAll('.report-grid-settings-row')];
+            if(settings.length!==15)return {ok:false,reason:'column count'};
+            const checkbox=settings.find(el=>el.textContent?.includes('Ghi chú'))?.querySelector('input[type="checkbox"]');
+            if(!checkbox)return {ok:false,reason:'missing note toggle'};
+            const before=dialog.querySelectorAll('.report-detail-grid thead tr:first-child th').length;
+            checkbox.click();
+            const apply=[...dialog.querySelectorAll('button')].find(b=>b.textContent?.includes('Lưu cấu hình cột'));
+            apply?.click();
+            return {ok:!!apply,before};
+          })()`);
+          if(!settingsOK.ok)throw Error('Cannot edit distinct report-detail columns '+JSON.stringify(settingsOK));
+          await eventually("!document.querySelector('dialog.report-detail-modal[open] .report-grid-settings')",
+            'Column preferences save did not close settings');
+          const persistence=await evaluate(`(()=>{
+            const dialog=document.querySelector('dialog.report-detail-modal[open]');
+            const newCount=dialog.querySelectorAll('.report-detail-grid thead tr:first-child th').length;
+            const keys=Object.keys(localStorage).filter(k=>k.includes('hdnd.report-detail-grid.v1:'));
+            return {ok:newCount!==${settingsOK.before}&&keys.length>=1,newCount,keys};
+          })()`);
+          if(!persistence.ok)throw Error('Independent detail-grid columns were not persisted '+JSON.stringify(persistence));
+          console.log('REPORT_DETAIL_COLUMNS_PASS',JSON.stringify({initial:settingsOK.before,now:persistence.newCount}));
+        }
         if(selector!=='.report-surface tfoot td.report-total-col.report-clickable-cell'){
           await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
           await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
