@@ -2,6 +2,13 @@
 
 **Phạm vi:** bản GitHub Pages 0.7.0 đọc dữ liệu qua Google Sheets/GViz, Firebase Authentication và cấu hình dùng chung qua Realtime Database. App Google Apps Script 0.6.2 là nhánh vận hành độc lập. Tài liệu này là **quy trình tham chiếu**, không phải xác nhận các phép kiểm sản xuất đã thành công. Trạng thái thực tế duy nhất xem [CURRENT_STATE](CURRENT_STATE.md).
 
+## 0. Trạng thái phát hành preview từ CI bất biến — 19/10/2026
+
+- Nguồn GitHub Pages chính vẫn là `main:index.html`, **không** sửa artifact minified trực tiếp. PR #3 chưa merge; preview nằm dưới `preview/current/` và `preview/ux-fixes-2026-10-19/` (không là production root).
+- Lượt này ghim artifact từ **exact source SHA** `7a3a409e16b1b6621d121b09a57e9e7960c20568`: [CI #39184896725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39184896725) → [publish preview #39185030924](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185030924) → [Pages #39185044694](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185044694), tất cả SUCCESS. Mốc sao lưu `backup/before-preview-ux-fixes-publish-2026-10-19` từ main cũ.
+- Quy trình nghiệm thu: xác định rõ URL preview/production; thử chức năng không ghi trước; dùng tài khoản quản trị kiểm lưu Firebase **có kiểm soát và rollback cấu hình riêng**. Preview và site chính **cùng Firebase production**; ở preview **không thử ngẫu nhiên các nút Phê duyệt / Khóa sửa / Lưu quyền / Lưu Bảng báo cáo**, vì chúng có thể ghi thật. Test emulator không chứng minh Rules production hoặc tốc độ browser thật.
+- Khi đóng PR hoặc phát hành site chính phải xác nhận mã/CI mới, quyền thực tế và thống nhất `getKpis`/bảng báo cáo; không tự merge PR để sửa 4 lỗi UI nếu chưa nghiệm thu phần quản trị đi kèm.
+
 ## 1. Phân biệt những thao tác dễ nhầm
 
 | Thao tác | Tác động | Không tác động |
@@ -75,7 +82,7 @@ Quy trình an toàn: xác định phạm vi → lấy snapshot có thời điể
 
 | Triệu chứng | Kiểm tra theo thứ tự | Giới hạn / hành động an toàn |
 |---|---|---|
-| GitHub Pages hiển thị **0 dòng** | Xem URL/gid đang chọn, `localStorage` khóa `hdnd.sheet-config.v1`, phản hồi GViz A:P, quyền truy cập từ trình duyệt, lỗi console/network | Bản local từng đọc 51 dòng **không chứng minh** Pages cũng đọc được; không nhập sang Firebase để che lỗi |
+| GitHub Pages hiển thị **0 dòng** | Xem URL/gid đang chọn, `localStorage` khóa `hdnd.sheet-config.v1`, phản hồi GViz A:O hiện hành (các snapshot legacy A:P/A:R chỉ để đọc tương thích), quyền truy cập từ trình duyệt, lỗi console/network | Bản local từng đọc 51 dòng **không chứng minh** Pages cũng đọc được; không nhập sang Firebase để che lỗi |
 | Không vào được tùy chỉnh danh sách | Kiểm Firebase Auth Google admin, trạng thái load cấu hình và điều kiện disable ở UI | Đã có phản ánh nút bị khóa khi 0 dòng; **chưa xác nhận đã sửa** |
 | Không sửa được quyền ô/cột/dòng | Kiểm Auth `google.com`, email verified, `hdnd/permissions`, Rules production, baseline/revision | Không cấp quyền bằng cách mở Rules công khai |
 | Sửa nháp nhưng dữ liệu nguồn không đổi | Đây là thiết kế hiện tại của Pages | Nháp trình duyệt không ghi Sheets/Firebase; cần phân biệt thao tác `Áp dụng` và `Lưu cấu hình` |
