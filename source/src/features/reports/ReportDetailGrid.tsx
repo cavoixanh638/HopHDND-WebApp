@@ -9,6 +9,15 @@ import {normalizeSearch} from '../../domain/search';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {displayId} from '../../domain/display-id';
 import {Modal} from '../../components/Modal';
+import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
+import {ColumnHeader} from '../items/ColumnHeader';
+import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
+import {CellPicker} from '../items/CellPicker';
+import {ContentEditor} from '../items/ContentEditor';
+import {reorderByKey} from '../../domain/reorder-columns';
+import {assignmentIssue} from '../../data/catalogs';
+import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
+import {loadDetailPresets,saveDetailPresets,type ReportDetailPreset} from '../../data/report-detail-presets';
 
 type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
@@ -17,6 +26,8 @@ type Props={
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   onKeepDraft:()=>boolean;
+  onHistory?:(item:Item)=>void;
+  onOpenFullList?:()=>void;
   dirtyIds:Set<string>;
   errors:Record<string,string>;
   onClose:()=>void;
@@ -45,7 +56,7 @@ function DetailTextEditor({value,label,large,required,onApply}:{
 }
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allowDraft,canEditCell,
-  onUpdate,onKeepDraft,dirtyIds,errors,onClose}:Props){
+  onUpdate,onKeepDraft,onHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
   const [pending,setPending]=useState<DetailGridPreferences>(applied);
@@ -55,16 +66,31 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   const [query,setQuery]=useState('');
   const [filters,setFilters]=useState<Record<string,string>>({});
   const [sort,setSort]=useState<ColumnSort>(null);
+  const [showAll,setShowAll]=useState(false);
+  const [contentItem,setContentItem]=useState<{item:Item;field:'content'|'note'}|null>(null);
+  const [presets,setPresets]=useState(()=>loadDetailPresets(sourceKey));
+  const [selectedPreset,setSelectedPreset]=useState('');
+  const [presetName,setPresetName]=useState('');
+  const [colors,setColors]=useState<ColorRule[]>([]);
+  const [colorField,setColorField]=useState('progressCouncil');
+  const [colorValue,setColorValue]=useState('');
+  const [color,setColor]=useState<ColorRule['color']>('amber');
   const labelByKey=useMemo(()=>new Map<string,string>(EXCEL_SOURCE_COLUMNS.map(c=>[c.key,c.label])),[]);
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
-  const shownColumns=useMemo(()=>applied.columns.filter(c=>c.visible),[applied]);
+  // Preview pending column changes while the settings panel is open.
+  const displayedLayout=settings?pending:applied;
+  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>c.visible||showAll),
+    [displayedLayout,showAll]);
+  const gridWidth=shownColumns.reduce((sum,c)=>sum+c.width,0);
+  const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
+  const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
   const visible=useMemo(()=>{
     const q=normalizeSearch(query);
     return sortItems(subset.filter(item=>{
-      if(q&&!EXCEL_SOURCE_COLUMNS.some(col=>normalizeSearch(String(item[col.key]??'')).includes(q)))return false;
+      if(q&&!EXCEL_SOURCE_COLUMNS.some(col=>normalizeSearch(filterValue(item,col.key)).includes(q)))return false;
       return Object.entries(filters).every(([key,value])=>!value.trim()||
-        normalizeSearch(String(item[key as keyof Item]??'')).includes(normalizeSearch(value)));
+        normalizeSearch(filterValue(item,key)).includes(normalizeSearch(value)));
     }),sort);
   },[subset,query,filters,sort]);
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
@@ -80,6 +106,63 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   };
   const patch=(key:DetailColumnKey,changes:Partial<{visible:boolean;width:number}>)=>{
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
+  };
+  const commitWidth=(key:DetailColumnKey,width:number)=>{
+    if(settings){patch(key,{width});return;}
+    const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
+    if(!saveDetailGridPreferences(sourceKey,next)){
+      setNotice('Không lưu được độ rộng mới trên trình duyệt. Cột chưa thay đổi.');return;
+    }
+    setApplied(next);setPending(next);
+    setNotice('Đã giữ độ rộng cột của bảng popup trên trình duyệt.');
+  };
+  const moveHeader=(from:string,to:string)=>{
+    if(!settings)return;
+    setPending(old=>({...old,columns:reorderByKey(old.columns,c=>c.key,from,to)}));
+  };
+  const closeSettings=()=>{
+    if(settingsDirty){setConfirmSettingsExit(true);return;}
+    setSettings(false);
+  };
+  const toggleSettings=()=>{
+    if(settings){closeSettings();return;}
+    setPending(applied);setSettings(true);setNotice('');
+  };
+  const cycleSort=(key:string)=>setSort(old=>old?.key!==key
+    ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
+  const clearFilters=()=>{setFilters({});setQuery('');setSort(null);};
+  const loadPreset=(id:string)=>{
+    const next=presets.find(v=>v.id===id);
+    if(next){
+      setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
+      setColors(next.colors);setSelectedPreset(id);setShowAll(false);
+      setSettings(false);setNotice('Đã áp dụng mẫu hiển thị cá nhân. Bấm Lưu cấu hình cột để đặt làm mặc định.');
+    }else{
+      const original=loadDetailGridPreferences(sourceKey);
+      setApplied(original);setPending(original);setFilters({});setColors([]);
+      setSelectedPreset('');setShowAll(false);setNotice('Đã trở về cách hiển thị mặc định của popup.');
+    }
+  };
+  const createPreset=()=>{
+    if(!presetName.trim()){setNotice('Nhập tên mẫu trước khi lưu.');return;}
+    if(presets.length>=12){setNotice('Đã đạt tối đa 12 mẫu của bảng popup.');return;}
+    const next:ReportDetailPreset={id:crypto.randomUUID(),name:presetName.trim().slice(0,60),
+      layout:applied,filters,colors};
+    const list=[...presets,next];
+    if(!saveDetailPresets(sourceKey,list)){setNotice('Không lưu được mẫu trên trình duyệt.');return;}
+    setPresets(list);setSelectedPreset(next.id);setPresetName('');setNotice('Đã lưu mẫu popup cá nhân.');
+  };
+  const updatePreset=()=>{
+    if(!selectedPreset)return;
+    const list=presets.map(v=>v.id===selectedPreset?{...v,layout:applied,filters,colors}:v);
+    if(!saveDetailPresets(sourceKey,list)){setNotice('Không cập nhật được mẫu.');return;}
+    setPresets(list);setNotice('Đã cập nhật mẫu cá nhân.');
+  };
+  const removePreset=()=>{
+    if(!selectedPreset)return;
+    const list=presets.filter(v=>v.id!==selectedPreset);
+    if(!saveDetailPresets(sourceKey,list)){setNotice('Không xóa được mẫu.');return;}
+    setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
@@ -112,7 +195,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
     </select>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
-  return <Modal title={title} onClose={onClose} className="report-detail-modal report-grid-modal">
+  const canClose=()=>{
+    if(settingsDirty){setConfirmSettingsExit(true);return;}
+    onClose();
+  };
+  return <Modal title={title} onClose={canClose} className="report-detail-modal report-grid-modal">
     <div className="report-grid-toolbar">
       <div className="report-grid-summary">
         <strong>{selectedIds.length} nội dung trong ô báo cáo</strong>
