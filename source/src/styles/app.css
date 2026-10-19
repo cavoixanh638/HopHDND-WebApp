@@ -843,9 +843,8 @@ table.data-table button:not(.column-sort-button),table.report-table button,
   box-shadow:inset 0 0 0 3px currentColor;
 }
 body.is-printing #print-target .report-cell-sizer {display:none!important;}
-/* One fixed-size tooltip host for ALL numeric cells in ALL five reports.
-   Static text and a constant box size mean zero content/layout reads on hover.
-   No mouse-tracking, delay or animation; location changes once per entered cell. */
+/* One fixed-size shared tooltip for all five reports. No body:has() or
+   CSS Anchor Positioning: browser A/B shows these added major style/layout cost. */
 .report-shared-tooltip {
   position:fixed;left:0;top:0;z-index:10050;pointer-events:none;
   display:flex;align-items:center;justify-content:center;
@@ -861,24 +860,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-shared-tooltip[data-visible="true"] {
   visibility:visible;opacity:1;
 }
-/* Native CSS Anchor Positioning (Baseline 2026). The ONE tooltip follows
-   the hovered cell without pointer listeners, layout reads, transforms or
-   timers. The :has selector is restricted to one root visibility rule. */
-@supports (anchor-name:--report-hover-anchor) and (position-anchor:--report-hover-anchor) and (position-area:bottom center) {
-  .report-surface .report-table button.count-drill:is(:hover,:focus-visible) {
-    anchor-name:--report-hover-anchor;
-  }
-  .report-shared-tooltip[data-mode="native"] {
-    position-anchor:--report-hover-anchor;
-    position-area:bottom center;
-    position-try-fallbacks:flip-block,flip-inline;
-    inset:auto;margin:6px 0 0;
-    transform:none;will-change:auto;
-  }
-  body:has(.report-surface .report-table button.count-drill:is(:hover,:focus-visible)) > .report-shared-tooltip[data-mode="native"] {
-    visibility:visible;opacity:1;
-  }
-}
+/* Browser A/B confirmed that global body:has() + CSS Anchor Positioning
+   forces repeated layout. The singleton tooltip is positioned by a compact
+   delegated pointer-enter handler instead. No global hover selector. */
 .report-detail-modal::backdrop {backdrop-filter:none;}
 @media (prefers-reduced-motion:reduce) {
   .report-surface .report-table .count-drill,.item-heading-row .column-sort-button {transition:none;}
