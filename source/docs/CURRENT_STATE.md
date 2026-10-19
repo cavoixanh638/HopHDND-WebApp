@@ -1,14 +1,41 @@
 # Trạng thái hiện tại
 
+## Kiểm toán yêu cầu ↔ tài liệu ↔ mã nguồn — 19/10/2026 (cập nhật sau phát hành preview)
+
+**Phạm vi bằng chứng:** phiên chat hiện tại, các đoạn lịch sử trong project và một số trao đổi cũ truy xuất được; mã và docs trên PR #3; trạng thái GitHub Actions/Pages trực tiếp. **Không có khả năng xác nhận đã đọc toàn bộ văn bản của mọi phiên chat đã archived**, vì vậy đây là đối soát theo nguồn khả dụng, chưa là kiểm toán tuyệt đối 100%. Không lấy suy luận từ tệp đã viết làm bằng chứng rằng mọi chỉ đạo người dùng đều được ghi nhận.
+
+**Kết quả kiểm toán:** trước lượt này **chưa đồng bộ đầy đủ**. `TU_DIEN_DU_LIEU.md` còn ghi Excel A–P, O = Ghi chú/P = Rút và tự thay ô trống bằng “Chưa phân công”; `FEATURES.md` còn nêu F14 đọc A–P, quy trình sort/kéo báo cáo/chi tiết chưa có tiêu chí nghiệm thu đầy đủ; `HUONG_DAN_SU_DUNG.md` còn mô tả lọc bằng icon, 50 dòng/trang và nhầm trạng thái preview. Các file trên phải được chỉnh theo **source đang chạy trên nhánh** thay vì kế thừa lời mô tả cũ. `SYSTEM.md` cần ghi 5 báo cáo và cách tính chính thức. Chỉ mục tại `docs/README.md` cần chỉ đúng A–O và nơi tra theo yêu cầu. Chi tiết kiểm thử thuộc `KIEM_THU_VA_NGHIEM_THU.md`. Bản ghi cũ trước 19/10 trong tài liệu này được giữ là **lịch sử**, không phải quy tắc hiện hành.
+
+**Bằng chứng đã xác nhận ngày 19/10:**
+- PR #3 mã nguồn kiểm thử tại commit `7a3a409e16b1b6621d121b09a57e9e7960c20568`; [CI run 39184896725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39184896725) kết luận **success**, 43 test files/350 unit tests PASS (2 files/20 test bỏ qua), 20 Firebase emulator tests PASS; TypeScript, build HTML và browser smoke PASS. Browser smoke có kiểm bấm tiêu đề sort, cột `Không phải trình` và mở/đóng dialog; **chưa đo FPS hoặc thời gian mở dialog trên dữ liệu/tài khoản/browser thật**.
+- [Preview publish run 39185030924](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185030924) PASS, ghim đúng artifact từ CI nêu trên và xuất HTML đồng nhất tại `preview/current/index.html` và `preview/ux-fixes-2026-10-19/index.html`. [Pages deployment run 39185044694](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185044694) PASS. HTML root `main:index.html` **không đổi** (blob `48aff33fdac08477e38c8f4d49837eb68eee0584`); PR #3 vẫn **chưa merge**, site chính giữ bản cũ.
+- Các địa chỉ nghiệm thu: https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/ và https://cavoixanh638.github.io/HopHDND-WebApp/preview/ux-fixes-2026-10-19/ . Cùng chung backend Firebase production; **không** dùng thao tác lưu cấu hình/quyền, phê duyệt, khóa trên preview như một phép thử vô hại.
+- Bản sao `main` trước phát hành: `backup/before-preview-ux-fixes-publish-2026-10-19` từ commit `7b96b23df929f6dacaa71a9e9d1d4e2b450f615b`; mã nguồn tính năng có checkpoint `backup/before-resize-sort-drilldown-2026-10-19`. Chỉ bản preview trên main được thay, không ghi Excel hay Firebase production bằng CI.
+
+**Bốn phản hồi mới nhất — trạng thái thực tế:**
+- F21: tay nắm kéo cột nguồn trong chế độ sửa, `ColumnResizeHandle` cập nhật DOM trực tiếp khi kéo; ghi layout khi thả chuột; CSS header đã trở lại `position:relative`. **Cần người dùng thử kéo thật và lưu Firebase**.
+- F07/F09: cả năm bảng báo cáo có tay nắm cho cột nhóm/tổng/trạng thái/% trong chế độ chỉnh; `ReportConfig.columnWidths` lưu riêng; đã loại quy tắc CSS ép cột đầu cố định 230px. **Cần kiểm kích thước và persistence thật**.
+- F13/F21: bấm tiêu đề cột hoặc icon gọn để sort ba trạng thái tăng/giảm/về nguồn; thao tác kéo tiêu đề đổi thứ tự và kéo ranh giới không đồng nghĩa click sort. Có regression Chrome mock. **Chưa nghiệm thu với browser của người dùng**.
+- F06: bấm số đếm dương mở modal chi tiết, nút có ↗/hover/focus; `MemoReportTable`+`useCallback` tránh render lại bảng nền khi props giữ nguyên; tắt `backdrop-filter` của modal chi tiết. **Chưa có benchmark định lượng; chưa virtualize danh sách lớn**, không tuyên bố đã loại bỏ hoàn toàn lag.
+- F02/F03/F04/F10: `build` có cột **Không phải trình** ngay sau Tổng số nội dung, H `Không phải trình xây dựng NQ` được tính trong mẫu số, không tính hoàn thành; 5 báo cáo mặc định và từ vựng trạng thái theo [từ điển](TU_DIEN_DU_LIEU.md).
+
+**Sai khác còn tồn tại cần sửa/kiểm độc lập, không được đánh dấu PASS:**
+1. `getKpis` trong `src/domain/reporting.ts` vẫn đếm KPI hoàn thành theo raw `Hoàn thành` trong khi báo cáo HĐND chuẩn hóa trạng thái `Đã trình HĐND thành phố`; có rủi ro KPI/báo cáo không nhất quán khi Excel thay giá trị. Chưa sửa mã ở lượt kiểm toán tài liệu.
+2. Trải nghiệm danh sách chi tiết chưa đo trên Chrome thật với nhiều dòng; chưa có virtualization hoặc so sánh before/after ms/FPS.
+3. Chưa đăng nhập admin thật và xác nhận lưu quyền/lưu bố cục trong Firebase production; Rules runtime và giao dịch từng phần phải nghiệm thu, không lấy Firebase emulator làm bằng chứng production.
+4. Lịch sử chat archived không được cung cấp nguyên vẹn qua giao diện tìm kiếm hiện tại. Chỉ dẫn lịch sử truy xuất được gồm Excel A–O, trạng thái TBKL, 5 báo cáo, quản lý cột, tắt UI quyền ô, sort, layout 500/1500, font/màu, lưu tại chỗ, và lỗi mở chi tiết. **Không thể khẳng định đã bao phủ mọi phiên archived**.
+
+**Phân vai file chuẩn:** [FEATURES](FEATURES.md) = đặc tả/tiêu chí, [SYSTEM](SYSTEM.md) = quy tắc nghiệp vụ, [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md) = Excel/schema, [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md) = thao tác, [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md) = chứng cứ/điều kiện chưa đạt, [VAN_HANH](VAN_HANH.md) = phát hành/rollback. Không tạo bản đặc tả thứ hai.
+
 ## Đang kiểm thử trên PR #3 — chỉnh độ rộng, sort và drill-down, 19/10/2026
 
-- Điểm khôi phục trước khi sửa: commit `6bd9d5315f2c82f5fed14973fd74b0fd3fb682ae` trên nhánh tính năng và nhánh sao lưu `backup/before-resize-sort-drilldown-2026-10-19`. Chưa merge/phát hành lên Pages.
+- Điểm khôi phục trước khi sửa: commit `6bd9d5315f2c82f5fed14973fd74b0fd3fb682ae` trên nhánh tính năng và nhánh sao lưu `backup/before-resize-sort-drilldown-2026-10-19`. Chưa merge vào main hoặc phát hành ở URL root; bản preview đã phát hành sau đó, xem mục kiểm toán ở đầu tài liệu.
 - Tại Danh sách dữ liệu, tay nắm ở mép phải tiêu đề cột hoạt động trong chế độ tùy chỉnh; có thể kéo chuột hoặc dùng phím mũi tên. Khi kéo, trình duyệt thay đổi chiều rộng trực tiếp; React chỉ nhận thay đổi cuối khi thả chuột, tránh cập nhật cả bảng trên từng pixel.
 - Tại màn hình tùy chỉnh 5 bảng báo cáo, bổ sung tay nắm kéo cho cột phân nhóm, Tổng số nội dung, trạng thái và % hoàn thành. Độ rộng `columnWidths` thuộc riêng từng ID báo cáo, được kiểm tra 80–1200px và lưu cùng bố cục; cấu hình cũ không bị ép thêm thuộc tính rỗng.
 - Nút sắp xếp bảng dữ liệu nằm trong header, mờ khi chưa áp dụng và luôn rõ khi đang sort; cho phép thao tác độc lập với tay nắm kéo.
 - Click số đếm ở các cột trạng thái, tổng của từng đơn vị và tổng cuối bảng mở danh sách đúng tập nội dung; có biểu tượng ↗, con trỏ và trạng thái hover/focus. `MemoReportTable` với callback cố định tránh render lại năm bảng khi mở hộp chi tiết; hộp chi tiết tắt blur toàn màn hình. Chưa có benchmark FPS trực tiếp trên máy người dùng.
 - Bảng Tiến độ trình HĐND xây dựng NQ hiển thị cột “Không phải trình” ngay sau Tổng số nội dung. Giá trị Excel “Không phải trình xây dựng NQ” được ánh xạ vào cột này và được tính trong mẫu số tỷ lệ hoàn thành; không tự đánh dấu hoàn thành. Dòng trống và báo cáo BC vẫn không thuộc phạm vi bảng này.
-- Kiểm thử cần xác nhận toàn bộ CI của commit cuối (typecheck, unit, emulator, build Pages và browser smoke), trải nghiệm kéo chuột trên trình duyệt thật và thao tác lưu cấu hình Firebase quản trị trước nghiệm thu phát hành.
+- CI đã PASS trên commit sau cùng (xem mục kiểm toán ở đầu tài liệu); vẫn cần kiểm trải nghiệm kéo chuột trên trình duyệt thật và lưu bố cục/quyền Firebase bằng tài khoản quản trị trước nghiệm thu.
 
 
 ## 19/10/2026 — Excel gốc đã sửa, CHỐT 5 báo cáo và quy tắc kết thúc
