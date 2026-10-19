@@ -43,7 +43,12 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
         const button=children.find(node=>node.type==='button'&&node.props.className==='count-button count-drill');
         expect(button.props['aria-label']).toContain('Bấm để xem chi tiết');
         expect(button.props.onClick).toBeTypeOf('function');
-        expect(button.props.onPointerOver).toBeTypeOf('function');
+        expect(button.props.onPointerOver).toBeUndefined();
+        expect(button.props.onPointerOut).toBeUndefined();
+        expect(button.props.onFocus).toBeUndefined();
+        expect(button.props.onBlur).toBeUndefined();
+        expect(children.some(node=>node.type==='span'&&node.props.className==='count-drill-cue-hover'
+          &&node.props.children==='Xem'),config.id).toBe(true);
       }
       expect(nodes.filter(node=>node.type==='td'&&node.props.className?.includes('report-percent-col'))
         .every(node=>!node.props.className.includes('report-clickable-cell'))).toBe(true);
