@@ -1,5 +1,13 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Đồng bộ màu nhạt và tooltip tức thì khi rê qua số báo cáo
+
+- Yêu cầu mới: cột **Không phải trình** trong báo cáo xây dựng NQ phải **nhạt hệt** `Đã trình HĐND, chưa có QĐ`; hover số lượng **chỉ lướt qua cũng phải thấy chữ**, không đợi trình duyệt vài trăm mili giây/một nhịp dừng.
+- Trong `ReportTable.tsx`, gắn `report-stage-intermediate` cho cả hai cột xây dựng NQ. CSS dùng chung **cùng 4 màu nền/chữ/viền/nhấn** cho `report-stage-excluded` và `report-stage-intermediate`, bỏ quy tắc màu `excluded` mạnh riêng từng có; năm kiểu trình bày và chế độ in có cùng kết quả nhạt. Giữ `excluded` như nhóm nghiệp vụ riêng, **không** thay đổi số đếm, mẫu số/tử số hoặc file Excel.
+- Tooltip cũ đến từ thuộc tính HTML `title` bị browser trì hoãn. Thay bằng `InstantCountTooltip.ts`: hiện **đồng bộ ngay ở sự kiện pointer-enter/focus**, ẩn khi rời/blur/click/scroll/resize; một DOM node nằm ngoài overflow của bảng, không qua React state hay tạo render lại cả 5 bảng; nút vẫn có `aria-label` và mở chi tiết bằng click. Không có timer/delay trong code.
+- Regression: `report-style-css.test.ts` bảo vệ màu và độ tương phản; `smoke-pages-browser.mjs` kiểm màu header/thân/chân hai cột bằng computed CSS và dispatch pointerover/pointerout xác minh tooltip hiện/ẩn ngay trong cùng thao tác JavaScript. **Bộ CI và preview cho sửa đổi này chưa được xác nhận ở thời điểm soạn mục**, phải đối chiếu commit/run cuối khi phát hành.
+- Điểm sao lưu trước sửa: `backup/before-instant-tooltips-muted-build-2026-10-19` tại `46aa3611c99117bb9dc376f979bbefc7093dcb89`. Chỉ phát triển trên PR #3; không merge và không ghi Excel/Firebase. Tooltip tức thì **khác** tốc độ mở danh sách chi tiết sau click; việc đo hiệu năng modal dữ liệu thật vẫn còn mở.
+
 ## Kiểm toán yêu cầu ↔ tài liệu ↔ mã nguồn — 19/10/2026 (cập nhật sau phát hành preview)
 
 **Phạm vi bằng chứng:** phiên chat hiện tại, các đoạn lịch sử trong project và một số trao đổi cũ truy xuất được; mã và docs trên PR #3; trạng thái GitHub Actions/Pages trực tiếp. **Không có khả năng xác nhận đã đọc toàn bộ văn bản của mọi phiên chat đã archived**, vì vậy đây là đối soát theo nguồn khả dụng, chưa là kiểm toán tuyệt đối 100%. Không lấy suy luận từ tệp đã viết làm bằng chứng rằng mọi chỉ đạo người dùng đều được ghi nhận.
