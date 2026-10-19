@@ -247,7 +247,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     </main>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
       selectedIds={selection.items.map(item=>item.recordId)}
-      items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog}
+      items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
       canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
       onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
