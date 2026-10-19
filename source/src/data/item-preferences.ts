@@ -6,7 +6,24 @@ export interface ItemColumn {
   /** Independent column values keyed by stable app row ID; never written to Excel. */
   values?:Record<string,string>;
 }
-export interface ItemLayout { columns: ItemColumn[]; tableWidth: number; frameWidth?: 'auto'|number }
+export interface CellHighlightRule {
+  id:string;word:string;field:string;textColor:string;backgroundColor:string;
+}
+export interface ItemLayout {
+  columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
+  cellHighlights?:CellHighlightRule[];
+}
+const hexColor=/^#[0-9a-fA-F]{6}$/;
+export function cellHighlightStyle(value:unknown,field:string,rules:readonly CellHighlightRule[]|undefined):
+  {color:string;backgroundColor:string}|undefined {
+  if(!rules?.length)return undefined;
+  const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase();
+  const text=fold(String(value??''));
+  const matched=rules.find(r=>(r.field==='*'||r.field===field)&&
+    r.word.trim()&&text.includes(fold(r.word.trim())));
+  return matched?{color:matched.textColor,backgroundColor:matched.backgroundColor}:undefined;
+}
 
 /** Exact A–O structure of the current Excel source tab. Older A–R layouts are migrated. 
  * UI-only actions, derived metadata and audit history must not become Excel columns.
@@ -33,7 +50,7 @@ const expected=new Set<string>(EXCEL_COLUMN_KEYS);
 const oldUiOnly=new Set(['history','isDropped','partyMeeting','examined']);
 
 export const defaultItemLayout=():ItemLayout=>({
-  tableWidth:1500,frameWidth:'auto',
+  tableWidth:1500,frameWidth:'auto',cellHighlights:[],
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
   })),
@@ -106,9 +123,24 @@ export function validateItemLayout(value:unknown):ItemLayout{
       ...(kind==='select'&&isCustom?{options}:{}),
     };
   });
+  const rawRules=input.cellHighlights??[];
+  if(!Array.isArray(rawRules)||rawRules.length>30)throw new Error('Tối đa 30 quy tắc tô màu ô.');
+  const ids=new Set<string>();
+  const cellHighlights=rawRules.map(rule=>{
+    if(!rule||typeof rule!=='object'||typeof rule.id!=='string'||
+      !/^[a-zA-Z0-9_-]{8,100}$/.test(rule.id)||ids.has(rule.id)||
+      typeof rule.word!=='string'||!rule.word.trim()||rule.word.length>100||
+      typeof rule.field!=='string'||(rule.field!=='*'&&!keys.includes(rule.field))||
+      typeof rule.textColor!=='string'||!hexColor.test(rule.textColor)||
+      typeof rule.backgroundColor!=='string'||!hexColor.test(rule.backgroundColor))
+      throw new Error('Từ khóa, tên cột hoặc mã màu trong quy tắc tô ô không hợp lệ.');
+    ids.add(rule.id);
+    return {id:rule.id,word:rule.word.trim(),field:rule.field,
+      textColor:rule.textColor,backgroundColor:rule.backgroundColor};
+  });
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */

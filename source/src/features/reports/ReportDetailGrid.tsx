@@ -2,7 +2,7 @@ import {useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
-import {EXCEL_SOURCE_COLUMNS,type ItemLayout} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
@@ -351,7 +351,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <tbody>
           {visible.map(item=><tr key={item.recordId} className={[dirtyIds.has(item.recordId)?'report-grid-row-dirty':'',
             itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
-            {shownColumns.map(c=><td key={c.key}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
+            {shownColumns.map(c=><td key={c.key} style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
               <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>)}
           </tr>)}
           {!visible.length&&<tr><td colSpan={shownColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}

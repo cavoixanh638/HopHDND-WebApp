@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../src/data/item-preferences';
+import { EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, cellHighlightStyle, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../src/data/item-preferences';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -132,3 +132,18 @@ describe('Lưu bố trí theo nguồn', () => {
 });
 
 describe('frame width migration',()=>{it('defaults old profiles to auto without reinterpreting the existing table width',()=>{const old=defaultItemLayout();delete old.frameWidth;const result=validateItemLayout({...old,tableWidth:2400});expect(result.frameWidth).toBe('auto');expect(result.tableWidth).toBe(2400);});it('stores frame width independently and rejects invalid committed dimensions',()=>{expect(validateItemLayout({...defaultItemLayout(),frameWidth:900}).frameWidth).toBe(900);for(const value of [0,319,6001,900.5,'wide'])expect(()=>validateItemLayout({...defaultItemLayout(),frameWidth:value})).toThrow(/vùng danh sách/);});});
+
+
+describe('Quy tắc tô ô theo từ khóa',()=>{
+  it('khớp chứa từ không dấu đúng cột, kiểm mã màu',()=>{
+    const layout=defaultItemLayout();
+    layout.cellHighlights=[{id:'keyword_001',word:'Chưa trình',field:'progressCouncil',
+      textColor:'#781111',backgroundColor:'#fff1d6'}];
+    const valid=validateItemLayout(layout);
+    expect(cellHighlightStyle('SỞ CHƯA TRÌNH','progressCouncil',valid.cellHighlights)).toEqual({
+      color:'#781111',backgroundColor:'#fff1d6'});
+    expect(cellHighlightStyle('Sở chưa trình','department',valid.cellHighlights)).toBeUndefined();
+    const bad={...layout,cellHighlights:[{...layout.cellHighlights[0],backgroundColor:'javascript:0'}]};
+    expect(()=>validateItemLayout(bad)).toThrow(/quy tắc/);
+  });
+});

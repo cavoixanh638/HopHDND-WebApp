@@ -78,6 +78,8 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   });
   const tableWidth=merge(base.tableWidth,edited.tableWidth,remote.tableWidth,'tableWidth','độ rộng tối thiểu các cột');
   const frameWidth=merge(base.frameWidth??'auto',edited.frameWidth??'auto',remote.frameWidth??'auto','frameWidth','độ rộng vùng danh sách');
+  const cellHighlights=merge(base.cellHighlights??[],edited.cellHighlights??[],
+    remote.cellHighlights??[],'cellHighlights','màu ô theo từ khóa');
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights});
 }

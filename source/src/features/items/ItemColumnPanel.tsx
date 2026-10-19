@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Item} from '../../../shared/types';
 import type {CellPermissions} from '../../data/firebase-repository';
+import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
 import {samePermissions} from '../../data/firebase-repository';
 import {validateCatalog,catalogFromItems} from '../../data/catalogs';
 import {ColumnChoiceEditor} from './ColumnChoiceEditor';
@@ -142,6 +143,10 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
       return {...current,options:{...current.options,[key]:next},specialistRooms};
     });
   };
+  const [highlightWord,setHighlightWord]=useState('');
+  const [highlightField,setHighlightField]=useState('*');
+  const [highlightTextColor,setHighlightTextColor]=useState('#8a241c');
+  const [highlightBgColor,setHighlightBgColor]=useState('#fff1d6');
   const active=layout.columns.filter(c=>!c.removed);
   const customCount=layout.columns.filter(c=>c.origin==='custom').length;
   const update=(key:string,change:Partial<ItemColumn>)=>onChange({
@@ -193,6 +198,35 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         <input type="checkbox" checked={clearExceptions} onChange={e=>setClearExceptions(e.currentTarget.checked)}/>
         Bỏ {exceptions} quyền riêng theo dòng/ô đã lưu trước đây khi lưu quyền cột. Nếu chưa xác nhận, các quyền riêng cũ vẫn được giữ.
       </label>}
+      <details className="cell-highlights-editor">
+        <summary>Tô màu chữ/nền ô theo từ khóa ({layout.cellHighlights?.length??0})</summary>
+        <p className="muted">Quy tắc chỉ tô ô có chứa từ khóa (không phân biệt hoa/thường và dấu); sử dụng chung trong Bảng dữ liệu và popup. Bấm Lưu thay đổi để áp dụng.</p>
+        <div className="cell-highlights-controls">
+          <label className="field">Từ khóa<input maxLength={100} value={highlightWord}
+            onChange={e=>setHighlightWord(e.currentTarget.value)} placeholder="Ví dụ: Sở chưa trình"/></label>
+          <label className="field">Cột<select value={highlightField} onChange={e=>setHighlightField(e.currentTarget.value)}>
+            <option value="*">Tất cả cột</option>
+            {EXCEL_SOURCE_COLUMNS.map(col=><option key={col.key} value={col.key}>{col.label}</option>)}
+          </select></label>
+          <label className="field">Màu chữ<input type="color" aria-label="Màu chữ ô khớp từ khóa"
+            value={highlightTextColor} onChange={e=>setHighlightTextColor(e.currentTarget.value)}/></label>
+          <label className="field">Màu nền ô<input type="color" aria-label="Màu nền ô khớp từ khóa"
+            value={highlightBgColor} onChange={e=>setHighlightBgColor(e.currentTarget.value)}/></label>
+          <button className="button" type="button" disabled={!highlightWord.trim()||(layout.cellHighlights?.length??0)>=30}
+            onClick={()=>{onChange({...layout,cellHighlights:[...(layout.cellHighlights??[]),{
+              id:crypto.randomUUID(),word:highlightWord.trim(),field:highlightField,
+              textColor:highlightTextColor,backgroundColor:highlightBgColor}]});setHighlightWord('');}}>
+            + Thêm quy tắc
+          </button>
+        </div>
+        {(layout.cellHighlights??[]).map(rule=><div className="cell-highlight-rule" key={rule.id}>
+          <span style={{color:rule.textColor,backgroundColor:rule.backgroundColor,padding:'4px 8px',borderRadius:5}}>
+            {rule.word}</span>
+          <small>{rule.field==='*'?'Tất cả cột':layout.columns.find(col=>col.key===rule.field)?.label??rule.field}</small>
+          <button type="button" className="button ghost" aria-label={'Xóa quy tắc '+rule.word}
+            onClick={()=>onChange({...layout,cellHighlights:layout.cellHighlights?.filter(x=>x.id!==rule.id)})}>Xóa</button>
+        </div>)}
+      </details>
       <div className="column-manager-toolbar">
         <span className="muted">{active.filter(c=>c.visible).length}/{active.length} cột đang hiển thị. Kéo cạnh tiêu đề trên bảng để đổi độ rộng.</span>
         <button type="button" className="button ghost" disabled={active.every(c=>c.visible)}

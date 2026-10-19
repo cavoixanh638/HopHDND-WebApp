@@ -3,7 +3,7 @@ import type { Changes, Item, Patch, TextField, EditableField } from '../../../sh
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
@@ -249,7 +249,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
           const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
             ...c,values:{...(c.values??{}),[rowKey]:next}
           })}));
-          return <td key={column.key}>{customizing&&allowLayout&&!locked
+          return <td key={column.key} style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
             ?column.kind==='select'
               ?<CellPicker label={`${displayId(item)}: ${column.label}`} value={value}
                 options={column.options??[]} onChange={updateCustom}/>
@@ -257,8 +257,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
                 type="text" maxLength={1000} value={value} onChange={e=>updateCustom(e.currentTarget.value)}/>
             :value||'—'}</td>;
         }
-        if(column.key==='displayCode')return <td key={column.key}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
-        if(column.key==='stt')return <td key={column.key}>{item.stt}</td>;
+        if(column.key==='displayCode')return <td key={column.key} style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<button type="button" className="item-history-action" title="Xem lịch sử chỉnh sửa" aria-label={`Xem lịch sử ${displayId(item)}`} onClick={()=>onHistory(item)}>↺</button>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+        if(column.key==='stt')return <td key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
         // Excel columns P and Q are displayed and searchable but not editable.
         // They must not be offered as writable fields until a source writer and
@@ -266,7 +266,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         if(column.key==='partyMeeting'||column.key==='examined')
           return <td key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
+        return <td key={column.key} style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
   :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]} options={options(key,item)} searchable={key==="specialist"} disabled={locked} onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;
