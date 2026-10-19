@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-vi.mock('react',()=>({memo:(fn:unknown)=>fn,useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
+vi.mock('react',()=>({memo:(fn:unknown)=>fn,useEffect:()=>{},useMemo:(fn:()=>unknown)=>fn(),useRef:()=>({current:null}),useState:(value:unknown)=>[value,()=>{}]}));
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {ColumnResizeHandle} from '../src/components/ColumnResizeHandle';
 import {ReportLayoutPanel} from '../src/features/settings/ReportLayoutPanel';
