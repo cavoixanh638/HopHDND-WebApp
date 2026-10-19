@@ -27,7 +27,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39263671680
+          run-id: 39270344125
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
@@ -45,18 +45,18 @@ jobs:
           def get(path):
               with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers)) as response:
                   return json.load(response)
-          run=get('/actions/runs/39263671680')
-          expected='37774e6d32d843f37337f5cb8936db2617e42d0d'
+          run=get('/actions/runs/39270344125')
+          expected='355ec81fb274da44c19eb1e277409547a6a2d3b8'
           assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified PR commit'
           assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
-          artifacts=get('/actions/runs/39263671680/artifacts')['artifacts']
+          artifacts=get('/actions/runs/39270344125/artifacts')['artifacts']
           html=next(a for a in artifacts if a['name']=='hophdnd-pages-candidate')
-          assert not html['expired'] and html['digest']=='sha256:d3aed0aa167577320ac297edec488992c1ab982ab755d020e26648fa3f5a5c51', 'Unexpected artifact'
+          assert not html['expired'] and html['digest']=='sha256:bd4bacec9f87a14a50736486c031abda4e3fa154e68822a4f3e6ea990b955aea', 'Unexpected artifact'
           assert html['workflow_run']['head_sha']==expected, 'Artifact provenance mismatch'
           print('Verified immutable source SHA',expected,'artifact ID',html['id'])
           PY
           test -s _verified_preview/index.html
-          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill" "Bấm để xem" "report-clickable-cell" "report-cell-sizer" "report-shared-tooltip" "Click để xem chi tiết" "pointerover" "translate3d" "report-detail-grid" "Cấu hình cột riêng" "hdnd.report-detail-grid.v1" "Chỉnh sửa nháp" "Hiện đủ cột Excel" "Mẫu hiển thị popup" "hdnd.report-detail-presets.v1"; do
+          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill" "Bấm để xem" "report-clickable-cell" "report-cell-sizer" "report-shared-tooltip" "Click để xem chi tiết" "pointerover" "translate3d" "report-detail-grid" "Cấu hình cột riêng" "hdnd.report-detail-grid.v1" "Chỉnh sửa nháp" "Hiện đủ cột Excel" "Mẫu hiển thị popup" "hdnd.report-detail-presets.v1" "report-grid-dialog-width" "Độ rộng toàn cửa sổ popup" "Chế độ chỉnh sửa nháp"; do
             grep -Fq -- "$needle" _verified_preview/index.html
           done
           for forbidden in "report-instant-count-tooltip" "count-drill-cue-hover" "body:has(.report-surface .report-table button.count-drill" "position-anchor:--report-hover-anchor"; do
@@ -69,22 +69,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p preview/current preview/popup-grid-parity-2026-10-19
+          mkdir -p preview/current preview/popup-width-permissions-2026-10-19
           cp _verified_preview/index.html preview/current/index.html
-          cp _verified_preview/index.html preview/popup-grid-parity-2026-10-19/index.html
-          if git diff --quiet -- preview/current/index.html preview/popup-grid-parity-2026-10-19/index.html; then
+          cp _verified_preview/index.html preview/popup-width-permissions-2026-10-19/index.html
+          if git diff --quiet -- preview/current/index.html preview/popup-width-permissions-2026-10-19/index.html; then
             echo "Verified previews already match"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/current/index.html preview/popup-grid-parity-2026-10-19/index.html
-          git commit -m "preview(pages): publish verified draggable detail columns and main-list feature parity"
+          git add preview/current/index.html preview/popup-width-permissions-2026-10-19/index.html
+          git commit -m "preview(pages): publish gated popup edit mode and separate dialog width"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
             if git push origin HEAD:main; then
-              echo "Published only preview/current and popup-grid-parity preview. Root index.html untouched."
+              echo "Published only preview/current and popup-width-permissions preview. Root index.html untouched."
               exit 0
             fi
           done
