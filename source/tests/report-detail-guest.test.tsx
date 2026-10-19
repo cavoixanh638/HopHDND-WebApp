@@ -6,6 +6,7 @@ import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
 import {ColumnResizeHandle} from '../src/components/ColumnResizeHandle';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {ContentEditor} from '../src/features/items/ContentEditor';
+import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
 
 const hooks=vi.hoisted(()=>{
   let slots:any[]=[];let index=0;
@@ -14,7 +15,7 @@ const hooks=vi.hoisted(()=>{
       return [slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     memo:(fn:any)=>fn()};
 });
-vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo}));
+vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo,useEffect:()=>{}}));
 type Node={type:any;props:Record<string,any>};
 function nodes(v:any):Node[]{return Array.isArray(v)?v.flatMap(nodes):
   v&&typeof v==='object'&&'type' in v?[v,...nodes(v.props?.children)]:[];}
@@ -51,7 +52,8 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(text(tree)).not.toContain('Giữ nháp trên máy');
     expect(all.some(n=>n.type===ContentEditor||n.type===CellPicker||n.type===ColumnResizeHandle)).toBe(false);
     // A guest may change only their own window size, not columns, presets or data.
-    expect(all.some(n=>n.type==='input'&&n.props.type==='range')).toBe(true);
+    expect(all.some(n=>n.type===DeferredWidthInput)).toBe(true);
+    expect(all.some(n=>n.type==='input'&&n.props.type==='range')).toBe(false);
     expect(all.some(n=>n.type==='input'&&n.props.type==='search')).toBe(true);
     expect(all.some(n=>n.type==='button'&&text(n)==='Mở Danh sách dữ liệu')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
@@ -80,9 +82,10 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
   it('changes and persists the width of the whole dialog independently from column widths',()=>{
     const props={...testProps(),readOnlyViewer:false};
     hooks.begin();let tree=ReportDetailGrid(props);
-    const range=nodes(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Độ rộng toàn popup');
-    expect(range).toBeDefined();
-    range!.props.onChange({currentTarget:{value:'960'}});
+    const widthField=nodes(tree).find(n=>n.type===DeferredWidthInput&&n.props.label==='Độ rộng toàn popup (px)');
+    expect(widthField).toBeDefined();
+    // Only explicit field commit updates layout, not typing individual digits.
+    widthField!.props.onCommit(960);
     hooks.begin();tree=ReportDetailGrid(props);
     expect(tree.props.style['--report-grid-window-width']).toBe('960px');
     const key=[...storage.values.keys()].find(k=>k.startsWith('hdnd.report-detail-grid.v1:'));
