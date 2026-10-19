@@ -5,11 +5,12 @@ import {layoutRecoveryScope} from './draft-checkpoints';
  * the main ItemList layout, report layout, Firebase or Excel workbook. */
 export type DetailColumnKey=(typeof EXCEL_SOURCE_COLUMNS)[number]['key'];
 export type DetailColumn={key:DetailColumnKey;visible:boolean;width:number};
-export interface DetailGridPreferences {version:1;columns:DetailColumn[]}
+export interface DetailGridPreferences {version:1;columns:DetailColumn[];dialogWidth:number}
 const keys=new Set<string>(EXCEL_SOURCE_COLUMNS.map(c=>c.key));
 const keyFor=(source:string)=>'hdnd.report-detail-grid.v1:'+layoutRecoveryScope(source);
 export const defaultDetailGridPreferences=():DetailGridPreferences=>({
   version:1,
+  dialogWidth:1480,
   columns:EXCEL_SOURCE_COLUMNS.map(c=>({
     key:c.key,visible:['displayCode','content','department','progressParty','progressBuild',
       'progressCouncil','specialist','room','specificProgress','note'].includes(c.key),width:c.width
@@ -31,7 +32,11 @@ export function validateDetailGridPreferences(value:unknown):DetailGridPreferenc
     return {key:c.key,visible:c.visible,width:c.width} as DetailColumn;
   });
   if(!columns.some(c=>c.visible))throw Error('Phải hiển thị ít nhất một cột.');
-  return {version:1,columns};
+  // Existing v1 settings contain columns only; migrate without discarding widths/order.
+  const dialogWidth=v.dialogWidth===undefined?1480:v.dialogWidth;
+  if(!Number.isInteger(dialogWidth)||dialogWidth<640||dialogWidth>2400)
+    throw Error('Độ rộng toàn cửa sổ popup phải từ 640 đến 2400 px.');
+  return {version:1,columns,dialogWidth};
 }
 export function loadDetailGridPreferences(source:string):DetailGridPreferences{
   try{const raw=globalThis.localStorage?.getItem(keyFor(source));
