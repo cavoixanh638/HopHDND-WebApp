@@ -251,6 +251,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
       canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
       onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
+      onHistory={anonymousVisitor?undefined:setHistory}
+      onOpenFullList={()=>{setSelection(null);setPage('items');}}
       dirtyIds={new Set(Object.keys(workspace.drafts))} errors={workspace.errors}
       onClose={()=>setSelection(null)}/>}
     {history && <HistoryDialog item={history} repository={repository} onClose={() => setHistory(null)} />}
