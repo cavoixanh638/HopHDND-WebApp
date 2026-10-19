@@ -339,10 +339,15 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         setNotice(onKeepDraft()?'Đã giữ nháp trên trình duyệt, chưa ghi Excel/Firebase.':'Chưa lưu được nháp trên trình duyệt. Không đóng trang để tránh mất thay đổi.');
       }}>Giữ nháp trên máy</button>}
     </div>
-    {contentItem&&allowDraft&&canEditCell(contentItem.item.recordId,contentItem.field)&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
+    {contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
       sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
-      draftOnly sourceKind="google" onSave={value=>
-        onUpdate(contentItem.item.recordId,{[contentItem.field]:value})}
+      draftOnly sourceKind="google" onSave={value=>{
+        if(!allowDraft||!canEditCell(contentItem.item.recordId,contentItem.field)){
+          setNotice('Ô này hiện không được cấp quyền sửa; nội dung chưa áp dụng.');
+          return false;
+        }
+        onUpdate(contentItem.item.recordId,{[contentItem.field]:value});return true;
+      }}
       onClose={()=>setContentItem(null)}/>}
   </Modal>;
 }
