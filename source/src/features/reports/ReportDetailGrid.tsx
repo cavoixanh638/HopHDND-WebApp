@@ -78,11 +78,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
   const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>canEditCell(item.recordId,field.key)));
-  const availableWidth=Math.min(2400,Math.max(360,
+  const availableWidth=Math.min(2400,Math.max(640,
     (typeof window==='undefined'?1480:window.innerWidth||1480)-20));
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
-    if(readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    // Window sizing is a viewing preference, not permission to edit data.
+    if(!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -227,13 +228,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
         <button type="button" className="button ghost" onClick={clearFilters}
           disabled={!query&&Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
-        {!readOnlyViewer&&<label className="report-grid-quick-width">Rộng popup
+        <label className="report-grid-quick-width">Rộng popup
           <input type="range" aria-label="Độ rộng toàn popup" min={minDialogWidth}
             max={availableWidth} step={1}
             value={Math.min(displayedLayout.dialogWidth,availableWidth)}
             onChange={event=>changeDialogWidth(Number(event.currentTarget.value))}/>
           <output aria-label="Độ rộng popup hiện tại">{Math.min(displayedLayout.dialogWidth,availableWidth)} px</output>
-        </label>}
+        </label>
         {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
