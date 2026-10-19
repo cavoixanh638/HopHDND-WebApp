@@ -4,6 +4,13 @@
 
 
 
+## Sửa kiến trúc resize/feature parity của popup — 19/10/2026
+
+- **Không dùng lại `width:max-content;min-width:100%` của popup cũ.** `ReportDetailGrid` tính `gridWidth=Σ shownColumns.width` rồi gán rõ `table.style.width/minWidth` và `colgroup > col`; `table-layout:fixed`, vùng cuộn riêng. Tránh phân phối thừa chiều rộng làm nhập px không thể nhận biết. CSS `.report-grid-modal .column-resizer` đặt đúng ranh giới th sticky, không phủ nút sắp xếp.
+- **Tái sử dụng** `ColumnHeader` (sort, drag reorder, Alt-arrow khi mở cấu hình), `ColumnResizeHandle` (preview mutate col/table DOM và commit khi thả), `ColumnFilterCell` (short-list dropdown + clear), `CellPicker` (chọn tiến độ), `ContentEditor` (popup sửa nội dung/note và xác nhận hủy), `sortItems`, `assignmentIssue`. `ColumnResizeHandle.windowDragFallback` mặc định false cho Danh sách chính; **true chỉ ở modal**; khi pointer capture trong dialog mất, global window pointermove/up trong một phiên kéo vẫn kết thúc an toàn, AbortController cleanup.
+- **Độc lập dữ liệu lưu:** `report-detail-preferences` kiểm 15 khóa A–O, 70–800px, cột không trùng; `report-detail-presets` lưu tối đa 12 mẫu cá nhân và màu theo điều kiện riêng, các khóa nguồn/preview cô lập. Nhãn/loại editor lấy từ `itemLayout` nhưng thứ tự, width, hidden, filters, presets, colors không ghi `ItemLayout`/Firebase.
+- **Quyền:** chỉ App được biết `firebase.canEdit`, `mayEdit`, `editingLocked`; modal không gọi writer, chỉ `updateDataDraft` và `keepDraft`. Quản trị tạo cột custom, phân quyền và nhập/xuất vẫn ở các màn hình nghiệp vụ chính. [So sánh đầy đủ](REPORT_DETAIL_PARITY_2026-10-19.md); Chrome drag test run [#39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680) xác nhận cột 100→165px/table +65px/đóng mở giữ.
+
 ## Kiến trúc Bảng chi tiết nhanh và cấu hình cột độc lập — 19/10/2026
 
 - `src/features/reports/ReportTable.tsx` giữ `onSelect(title,entries)`; `App.tsx` giữ `selection={title,items}` và gọi `ReportDetailGrid` khi bấm, truyền `selectedIds` và `workspace.workingItems`. Modal chỉ lọc tập recordId đã chọn, tránh query lại source và tránh nhân đôi 5 bảng thống kê. Không đổi định nghĩa tập đếm ở `aggregateReport`.
