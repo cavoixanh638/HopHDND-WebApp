@@ -27,7 +27,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39214467685
+          run-id: 39216137650
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
@@ -45,41 +45,44 @@ jobs:
           def get(path):
               with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers)) as response:
                   return json.load(response)
-          run=get('/actions/runs/39214467685')
-          expected='eb288e210575a7c5e273565508cd494e13f7f2a7'
+          run=get('/actions/runs/39216137650')
+          expected='6185cffbfacfb30843e0e3415e40b648b9c0fdfe'
           assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified PR commit'
           assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
-          artifacts=get('/actions/runs/39214467685/artifacts')['artifacts']
+          artifacts=get('/actions/runs/39216137650/artifacts')['artifacts']
           html=next(a for a in artifacts if a['name']=='hophdnd-pages-candidate')
-          assert not html['expired'] and html['digest']=='sha256:aa372ef7970dd47aff3c3358d610570b37610b05a42539af660a9412d346d300', 'Unexpected artifact'
+          assert not html['expired'] and html['digest']=='sha256:f7dee22a137749e15e22b7d5d0cf0b01d872a6963e5e0686607834f2c7951a5d', 'Unexpected artifact'
           assert html['workflow_run']['head_sha']==expected, 'Artifact provenance mismatch'
           print('Verified immutable source SHA',expected,'artifact ID',html['id'])
           PY
           test -s _verified_preview/index.html
-          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill" "report-instant-count-tooltip" "Bấm để xem" "report-clickable-cell" "report-cell-sizer" "translate3d" "data-visible"; do
+          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill" "Bấm để xem" "report-clickable-cell" "report-cell-sizer" "count-drill-cue-hover" "Xem"; do
             grep -Fq -- "$needle" _verified_preview/index.html
           done
+          if grep -Fq -- "report-instant-count-tooltip" _verified_preview/index.html; then
+            echo "::error::Floating tooltip engine is still present"; exit 1
+          fi
           sha256sum _verified_preview/index.html
       - name: Publish only isolated preview URLs (leave production root unchanged)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p preview/current preview/hover-fast-2026-10-19
+          mkdir -p preview/current preview/css-only-hover-2026-10-19
           cp _verified_preview/index.html preview/current/index.html
-          cp _verified_preview/index.html preview/hover-fast-2026-10-19/index.html
-          if git diff --quiet -- preview/current/index.html preview/hover-fast-2026-10-19/index.html; then
+          cp _verified_preview/index.html preview/css-only-hover-2026-10-19/index.html
+          if git diff --quiet -- preview/current/index.html preview/css-only-hover-2026-10-19/index.html; then
             echo "Verified previews already match"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/current/index.html preview/hover-fast-2026-10-19/index.html
-          git commit -m "preview(pages): publish verified prewarmed compositor tooltip"
+          git add preview/current/index.html preview/css-only-hover-2026-10-19/index.html
+          git commit -m "preview(pages): publish zero-JS CSS-only in-cell hover"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
             if git push origin HEAD:main; then
-              echo "Published only preview/current and optimized hover preview. Root index.html untouched."
+              echo "Published only preview/current and CSS-only hover preview. Root index.html untouched."
               exit 0
             fi
           done
