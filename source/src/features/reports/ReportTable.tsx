@@ -57,9 +57,12 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const grip=(key:string,index:number,label:string)=>(onColumnResize
     ?<ColumnResizeHandle columnIndex={index} width={allColumnWidths[index]} label={label}
       onCommit={width=>onColumnResize(key,width)}/>:null);
+  // Keep a real button for keyboard/screen readers. CSS expands it over the
+  // entire containing td; the invisible spacer preserves the row's dimensions.
+  const clickable=(entries:Item[])=>!preview&&entries.length>0?' report-clickable-cell':'';
   const drill=(title:string,entries:Item[])=>(preview||entries.length===0
     ?<strong>{entries.length}</strong>
-    :<button type="button" className="count-button count-drill"
+    :<><span className="report-cell-sizer" aria-hidden="true">{entries.length}</span><button type="button" className="count-button count-drill"
       aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
       onPointerOver={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
       onPointerOut={event=>{
@@ -71,7 +74,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       onBlur={hideInstantCountTooltip}
       onClick={()=>{hideInstantCountTooltip();onSelect(title,entries);}}>
       <span>{entries.length}</span><span className="count-drill-icon" aria-hidden="true">↗</span>
-    </button>);
+    </button></>);
   const percentCell=(percent:number,description:string)=><div className="report-percent-value">
     <strong>{percent}%</strong>
     <progress aria-label={description} value={percent} max={100}/>
@@ -83,7 +86,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     element.className = ref.current.className;
     element.style.cssText = ref.current.style.cssText;
     element.innerHTML = ref.current.innerHTML;
-    element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(button.textContent ?? '')));
+    element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(button.querySelector('span')?.textContent ?? button.textContent ?? '')));
     const note = document.createElement('p');
     note.textContent = `${sourceLabel} · In lúc ${new Date().toLocaleString('vi-VN')} · Tổng ${report.total}`;
     element.prepend(note);
@@ -133,11 +136,12 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       <tbody>
         {shownRows.map(([label,cells])=>{
           const metrics=rowMetrics(cells);
+          const groupEntries=[...cells.values()].flat();
           return <tr key={label}><th scope="row" className="report-group-heading">{label}</th>
-            <td className="report-number report-total-col">{drill(`${label} · Tổng số nội dung`,[...cells.values()].flat())}</td>
+            <td className={'report-number report-total-col'+clickable(groupEntries)}>{drill(`${label} · Tổng số nội dung`,groupEntries)}</td>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
-              return <td key={column} className={'report-number'+emphasis(column)}
+              return <td key={column} className={'report-number'+emphasis(column)+clickable(entries)}
                 style={entries.length&&emphasize&&visualStyle==='bars'
                   ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
                 {entries.length?<span className="report-count-mark">
@@ -156,10 +160,13 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </tbody>
       <tfoot><tr>
         <th scope="row">{focusWaiting?'Tổng toàn bảng':'Tổng cộng'}</th>
-        <td className="report-number report-total-col">{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
-        {report.columns.map(column=><td className={'report-number'+emphasis(column)} key={column}>
-          {drill(`Tổng cộng · ${column}`,[...report.rows.values()].flatMap(cells=>cells.get(column)??[]))}
-        </td>)}
+        <td className={'report-number report-total-col'+clickable(report.items)}>{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
+        {report.columns.map(column=>{
+          const entries=[...report.rows.values()].flatMap(cells=>cells.get(column)??[]);
+          return <td className={'report-number'+emphasis(column)+clickable(entries)} key={column}>
+            {drill(`Tổng cộng · ${column}`,entries)}
+          </td>;
+        })}
         <td className="report-number report-percent-col">
           {percentCell(report.percent??0,`Toàn báo cáo: đã hoàn thành ${report.completedCount} trên ${report.total} nội dung`)}
         </td>
