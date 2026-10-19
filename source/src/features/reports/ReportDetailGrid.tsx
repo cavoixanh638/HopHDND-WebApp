@@ -351,8 +351,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <tbody>
           {visible.map(item=><tr key={item.recordId} className={[dirtyIds.has(item.recordId)?'report-grid-row-dirty':'',
             itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
-            {shownColumns.map(c=><td key={c.key} style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
-              <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>)}
+            {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
+              canEditCell(item.recordId,c.key as TextField);
+              return <td key={c.key} className={writable?'editable-cell':undefined}
+                title={writable?'Bấm để sửa':undefined}
+                style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
+              <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;})}
           </tr>)}
           {!visible.length&&<tr><td colSpan={shownColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}
         </tbody>

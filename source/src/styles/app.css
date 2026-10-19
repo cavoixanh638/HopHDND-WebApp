@@ -1008,3 +1008,23 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 
 
+
+/* Edit-only affordance: no observers, per-cell listeners, layout shifts or
+   changes to semantic row/status background colors. Native title is the tooltip. */
+.item-data-table tbody td.editable-cell,
+.report-detail-grid tbody td.editable-cell {
+  box-shadow:inset 2px 0 0 #91c5ae;
+  cursor:pointer;
+}
+.item-data-table tbody td.editable-cell:hover,
+.report-detail-grid tbody td.editable-cell:hover,
+.item-data-table tbody td.editable-cell:focus-within,
+.report-detail-grid tbody td.editable-cell:focus-within {
+  box-shadow:inset 3px 0 0 #238061;
+}
+.item-data-table tbody td.editable-cell input,
+.report-detail-grid tbody td.editable-cell input {cursor:text;}
+.item-data-table tbody td .cell-value-button,
+.report-detail-grid tbody td .cell-value-button,
+.item-data-table tbody td .content-button,
+.report-detail-grid tbody td .content-button {color:inherit;}

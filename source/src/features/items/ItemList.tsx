@@ -249,7 +249,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
           const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
             ...c,values:{...(c.values??{}),[rowKey]:next}
           })}));
-          return <td key={column.key} style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
+          const writable=customizing&&allowLayout&&!locked;
+          return <td key={column.key} className={writable?'editable-cell':undefined}
+            title={writable?'Bấm để sửa':undefined}
+            style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
             ?column.kind==='select'
               ?<CellPicker label={`${displayId(item)}: ${column.label}`} value={value}
                 options={column.options??[]} onChange={updateCustom}/>
@@ -266,7 +269,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         if(column.key==='partyMeeting'||column.key==='examined')
           return <td key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        return <td key={column.key} style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
+        const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
+        return <td key={column.key} className={writable?'editable-cell':undefined}
+          title={writable?'Bấm để sửa':undefined}
+          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
   :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]} options={options(key,item)} searchable={key==="specialist"} disabled={locked} onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;

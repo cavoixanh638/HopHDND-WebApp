@@ -210,6 +210,8 @@ try{
       !header.querySelector('.column-sort-button');
   })()`);
   if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
+  const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
+  if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
 
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
