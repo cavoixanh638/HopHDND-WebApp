@@ -27,7 +27,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39184896725
+          run-id: 39194775971
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
@@ -45,18 +45,18 @@ jobs:
           def get(path):
               with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers)) as response:
                   return json.load(response)
-          run=get('/actions/runs/39184896725')
-          expected='7a3a409e16b1b6621d121b09a57e9e7960c20568'
+          run=get('/actions/runs/39194775971')
+          expected='8e3e78fdd1eb0b4060cc1e4091d820e4d46b5970'
           assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified PR commit'
           assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
-          artifacts=get('/actions/runs/39184896725/artifacts')['artifacts']
+          artifacts=get('/actions/runs/39194775971/artifacts')['artifacts']
           html=next(a for a in artifacts if a['name']=='hophdnd-pages-candidate')
-          assert not html['expired'] and html['digest']=='sha256:fa6868898a364939a4c16fb4cf0bcc020e24713e5a8ee334e8450a036af39f02', 'Unexpected artifact'
+          assert not html['expired'] and html['digest']=='sha256:6782ddfd16f4fe95dd83bf622ebc4a7d1ede5d1ff68ffeb53df90dea88040174', 'Unexpected artifact'
           assert html['workflow_run']['head_sha']==expected, 'Artifact provenance mismatch'
           print('Verified immutable source SHA',expected,'artifact ID',html['id'])
           PY
           test -s _verified_preview/index.html
-          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill"; do
+          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill" "report-instant-count-tooltip" "Bấm để xem"; do
             grep -Fq -- "$needle" _verified_preview/index.html
           done
           sha256sum _verified_preview/index.html
@@ -64,17 +64,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p preview/current preview/ux-fixes-2026-10-19
+          mkdir -p preview/current preview/ux-fixes-2026-10-19 preview/instant-hover-2026-10-19
           cp _verified_preview/index.html preview/current/index.html
           cp _verified_preview/index.html preview/ux-fixes-2026-10-19/index.html
-          if git diff --quiet -- preview/current/index.html preview/ux-fixes-2026-10-19/index.html; then
+          cp _verified_preview/index.html preview/instant-hover-2026-10-19/index.html
+          if git diff --quiet -- preview/current/index.html preview/ux-fixes-2026-10-19/index.html preview/instant-hover-2026-10-19/index.html; then
             echo "Verified previews already match"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/current/index.html preview/ux-fixes-2026-10-19/index.html
-          git commit -m "preview(pages): publish verified resize, sort and report-detail UX fixes"
+          git add preview/current/index.html preview/ux-fixes-2026-10-19/index.html preview/instant-hover-2026-10-19/index.html
+          git commit -m "preview(pages): publish verified muted NQ and immediate count hover"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
