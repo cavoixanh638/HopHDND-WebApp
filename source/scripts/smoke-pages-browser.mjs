@@ -451,6 +451,9 @@ try{
           return {x,y,covered:hit===button||button.contains(hit),width:rect.width,height:rect.height};
         })()`);
         if(!pos?.covered)throw Error('Cell corner is not clickable: '+selector+' '+JSON.stringify(pos));
+        // Reset the pointer outside the scrolling table first. CDP otherwise
+        // may keep the same hover target after scrollIntoView/modal close.
+        await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
         await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:pos.x,y:pos.y});
         const tooltipHovered=await evaluate(`(()=>{
           const button=document.elementFromPoint(${pos.x},${pos.y})?.closest('.count-drill');
