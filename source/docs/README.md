@@ -8,6 +8,7 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x
 |---|---|
 | AI/người phát triển phải làm việc theo quy tắc gì? | [AGENTS](../AGENTS.md) |
 | Hệ thống phục vụ nghiệp vụ gì, điều gì không được vi phạm? | [SYSTEM](SYSTEM.md) |
+| **Bảng chi tiết mở từ ô báo cáo; cấu hình cột hiển thị riêng** | [FEATURES — phần Bảng chi tiết nhanh](FEATURES.md), [ARCHITECTURE — ReportDetailGrid](ARCHITECTURE.md), [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md) |
 | Chức năng/tiêu chí nghiệm thu F01–F36 | [FEATURES](FEATURES.md) |
 | Kiến trúc, thành phần và ranh giới nguồn dữ liệu | [ARCHITECTURE](ARCHITECTURE.md) |
 | Tìm code cần sửa, bố trí module và đường dẫn `source/` trên GitHub | [REPO_MAP](REPO_MAP.md) |
