@@ -47,8 +47,9 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
         expect(button.props.onPointerOut).toBeUndefined();
         expect(button.props.onFocus).toBeUndefined();
         expect(button.props.onBlur).toBeUndefined();
-        expect(children.some(node=>node.type==='span'&&node.props.className==='count-drill-cue-hover'
-          &&node.props.children==='Xem'),config.id).toBe(true);
+        expect(children.some(node=>node.props?.className?.includes('count-drill-cue')),config.id).toBe(false);
+        expect(flatten(button).filter(node=>node.type==='span').map(node=>node.props.children))
+          .toEqual([expect.any(Number)]);
       }
       expect(nodes.filter(node=>node.type==='td'&&node.props.className?.includes('report-percent-col'))
         .every(node=>!node.props.className.includes('report-clickable-cell'))).toBe(true);
