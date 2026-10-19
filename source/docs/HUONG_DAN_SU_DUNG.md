@@ -1,5 +1,15 @@
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
+## Thao tác popup chi tiết nâng cao — so với bảng Danh sách (19/10/2026)
+
+**Kéo cột:** Bấm ô số báo cáo để mở popup, đưa chuột lên **đường biên bên phải tiêu đề cột** (vùng đổi kích thước có đường viền dọc), giữ chuột và kéo sang trái/phải, thả để lưu độ rộng **riêng của popup**. Có thể Tab đến tay nắm và dùng phím ←/→ mỗi lần 10px. Không cần mở Cấu hình cột để kéo.
+
+**Tùy chỉnh cột:** Bấm **Cấu hình cột riêng**, tích hiện/ẩn, dùng ↑/↓ hoặc giữ-kéo tiêu đề trực tiếp (Alt+←/→ nếu điều khiển bàn phím), nhập px khi cần, xem trước ngay, bấm **Lưu cấu hình cột**. Nếu đóng chế độ tùy chỉnh khi còn thay đổi, chọn Lưu/Bỏ/tiếp tục. Bấm **Hiện đủ cột Excel** để xem tạm cả 15 cột, bấm lại để về lựa chọn riêng. Đóng rồi mở popup lại, độ rộng/ẩn/thứ tự đã lưu được phục hồi.
+
+**Tìm và lưu giao diện:** Tìm toàn bảng, lọc ngay dưới cột (chọn danh mục khi ít giá trị hoặc gõ từ khóa), bấm X để bỏ lọc một cột, **Xóa bộ lọc** để bỏ hết và trở lại thứ tự gốc. `Mẫu bảng popup` + `Tên mẫu mới` cho phép lưu, chọn lại, cập nhật, xóa mẫu cá nhân (tối đa 12) cùng cột/bộ lọc/màu. Mở Cấu hình cột riêng → **Màu theo điều kiện** để tạo quy tắc màu riêng (không thay màu 5 báo cáo và Danh sách).
+
+**Chỉnh sửa / lịch sử:** Nếu có quyền thì bấm **Chỉnh sửa nháp**, sửa trường nguồn đúng theo loại editor ở Danh sách, Nội dung/Ghi chú dùng popup soạn thảo với cảnh báo khi chưa áp dụng. Nếu được phép xem lịch sử, bấm ↺ bên cạnh ID; nút **Mở Danh sách dữ liệu** dẫn đến bảng gốc có quyền/schema, quản trị nâng cao. **Giữ nháp trên máy** không ghi Excel/Firebase. Bảng popup không có chức năng phân quyền hoặc tạo 20 cột tùy chỉnh nguồn riêng; xem [ma trận tính năng](REPORT_DETAIL_PARITY_2026-10-19.md).
+
 ## Bảng chi tiết nhanh từ ô báo cáo — tùy chỉnh cột riêng (bản thử 19/10/2026)
 
 **Đường dẫn bản thử hiện hành:** [Bảng chi tiết nhanh + cấu hình cột độc lập](https://cavoixanh638.github.io/HopHDND-WebApp/preview/detail-grid-columns-2026-10-19/); [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hiện cùng mã. Bản `clear-cell-hover-2026-10-19/` là bản trước khi có bảng chi tiết, để đối chiếu. Không dùng site chính để đánh giá chức năng mới vì PR #3 chưa merge.
