@@ -36,3 +36,13 @@ export function saveDetailPresets(source:string,views:ReportDetailPreset[]):bool
   const clean=views.map(validateDetailPreset);
   try{globalThis.localStorage?.setItem(key(source),JSON.stringify(clean));return !!globalThis.localStorage;}catch{return false;}
 }
+
+const colorKey=(source:string)=>'hdnd.report-detail-colors.v1:'+layoutRecoveryScope(source);
+export function loadDetailColors(source:string):ColorRule[]{
+  try{return validateColorRules(JSON.parse(globalThis.localStorage?.getItem(colorKey(source))??'[]'));}
+  catch{return [];}
+}
+export function saveDetailColors(source:string,rules:ColorRule[]):boolean{
+  try{globalThis.localStorage?.setItem(colorKey(source),JSON.stringify(validateColorRules(rules)));
+    return !!globalThis.localStorage;}catch{return false;}
+}
