@@ -932,6 +932,64 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .report-grid-footer .muted {display:none;}
   .report-grid-toolbar {align-items:stretch;}
 }
+/* Popup uses the exact resize/drag/filter primitives of the main ItemList.
+   Fixed table width equals the sum of colgroup widths: an HTML table with
+   width:max-content/min-width:100% can redistribute column widths and hide
+   the apparent effect of numeric width controls. */
+.report-grid-modal .report-detail-grid {table-layout:fixed;min-width:0!important;max-width:none;}
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th {
+  position:sticky;top:0;z-index:4;box-sizing:border-box;padding-right:18px;
+  height:46px;max-height:46px;white-space:normal;
+}
+.report-grid-modal .report-detail-grid .column-resizer {position:absolute;right:-3px;
+  top:0;bottom:0;width:10px;z-index:12;touch-action:none;cursor:col-resize;
+  border-right:2px solid #528b79;}
+.report-grid-modal .report-detail-grid .column-resizer:hover,
+.report-grid-modal .report-detail-grid .column-resizer:focus-visible {
+  background:rgba(17,120,102,.14);border-right-color:#08777b;}
+.report-grid-modal .report-detail-grid .column-movable {cursor:grab;user-select:none;touch-action:none;}
+.report-grid-modal .report-detail-grid .column-dragging {cursor:grabbing;background:#c4e7d9;}
+.report-grid-modal .report-detail-grid .column-movable:focus-visible {outline:2px solid #08777b;outline-offset:-2px;}
+.report-grid-modal .report-detail-grid .column-heading-content {display:flex;align-items:center;gap:4px;padding-right:4px;}
+.report-grid-modal .report-detail-grid .column-heading-label {flex:1;min-width:0;overflow-wrap:anywhere;}
+.report-grid-modal .report-detail-grid .column-sort-button {flex:none;min-height:25px;min-width:25px;
+  padding:2px 5px;border:0;border-radius:5px;background:transparent;color:#406d5b;cursor:pointer;}
+.report-grid-modal .report-detail-grid .column-sort-button:hover,
+.report-grid-modal .report-detail-grid .column-sort-button:focus-visible {background:#d0e5d9;}
+.report-grid-modal .report-grid-filter-row .item-column-filter-cell {top:46px;height:43px;padding:4px 5px;
+  background:#f5faf7;z-index:3;}
+.report-grid-modal .report-grid-filter-row .item-filter-input-wrap {display:flex;align-items:center;position:relative;min-width:0;}
+.report-grid-modal .report-grid-filter-row input,
+.report-grid-modal .report-grid-filter-row select {width:100%;box-sizing:border-box;min-width:0;
+  height:29px;padding:3px 18px 3px 5px;border:1px solid #b9cfc3;border-radius:5px;background:#fff;font-size:11px;}
+.report-grid-modal .report-grid-filter-row .item-filter-clear {position:absolute;right:2px;top:50%;transform:translateY(-50%);
+  min-width:19px;width:19px;height:21px;padding:0;cursor:pointer;border:0;border-radius:3px;background:#dfede5;}
+.report-grid-modal .report-grid-presets {display:flex;gap:7px;align-items:center;flex-wrap:wrap;
+  padding:7px 16px;border-bottom:1px solid #e0e9e2;background:#fbfcfb;}
+.report-grid-modal .report-grid-presets label {display:flex;align-items:center;gap:5px;font-size:11px;}
+.report-grid-modal .report-grid-presets select,
+.report-grid-modal .report-grid-presets input {max-width:190px;min-width:85px;height:29px;box-sizing:border-box;
+  border:1px solid #bfd0c6;border-radius:5px;background:#fff;padding:3px 7px;font-size:12px;}
+.report-grid-modal .report-grid-presets .button {font-size:11px;padding:5px 8px;min-height:28px;}
+.report-grid-modal .report-grid-settings-confirm {display:flex;flex-wrap:wrap;gap:9px;align-items:center;
+  border:1px solid #bd9557;background:#fff8e9;padding:9px 15px;font-size:12px;}
+.report-grid-modal .report-grid-color-config {margin:10px 0 3px;padding:8px;
+  border:1px solid #c7dfd3;border-radius:7px;background:#fff;}
+.report-grid-modal .report-grid-color-config summary {cursor:pointer;color:#375c48;font-weight:650;font-size:12px;}
+.report-grid-modal .report-grid-color-editor {display:flex;flex-wrap:wrap;align-items:end;gap:8px;margin:10px 0;}
+.report-grid-modal .report-grid-color-editor label {display:flex;flex-direction:column;gap:3px;font-size:11px;}
+.report-grid-modal .report-grid-color-editor input,
+.report-grid-modal .report-grid-color-editor select {max-width:210px;height:30px;box-sizing:border-box;}
+.report-grid-modal .report-grid-color-chip {display:inline-flex;gap:5px;align-items:center;
+  font-size:11px;background:#eef6ef;border:1px solid #c7dfd1;border-radius:5px;padding:4px 7px;margin:3px;}
+.report-grid-modal .report-grid-color-chip button {border:none;background:transparent;cursor:pointer;font-size:15px;}
+.report-grid-modal .report-detail-grid .report-grid-id {display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.report-grid-modal .report-detail-grid .report-grid-id small {font-size:10px;}
+.report-grid-modal .report-detail-grid tbody tr.report-grid-color-mint td {background:#e4f5ea;}
+.report-grid-modal .report-detail-grid tbody tr.report-grid-color-amber td {background:#fff3d8;}
+.report-grid-modal .report-detail-grid tbody tr.report-grid-color-rose td {background:#fce8e6;}
+.report-grid-modal .report-detail-grid tbody tr.report-grid-color-blue td {background:#e7f0fa;}
+@media (max-width:780px){.report-grid-modal .report-grid-presets{align-items:stretch;}}
 @media print {.report-grid-modal {display:none!important;}}
 .report-detail-modal::backdrop {backdrop-filter:none;}
 @media (prefers-reduced-motion:reduce) {
