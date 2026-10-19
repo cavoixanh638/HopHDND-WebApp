@@ -585,6 +585,16 @@ try{
           })()`);
           if(!resizeBefore||resizeBefore.x<5||resizeBefore.y<5||
             resizeBefore.x>1590||resizeBefore.y>990)throw Error('No visible popup column resize grip '+JSON.stringify(resizeBefore));
+          await evaluate(`(()=>{
+            const grip=document.querySelector('dialog.report-detail-modal[open] .report-detail-grid .column-resizer');
+            window.__resizeTrace=[];
+            for(const kind of ['pointerdown','gotpointercapture','pointermove','pointerup','lostpointercapture']){
+              grip.addEventListener(kind,e=>window.__resizeTrace.push({
+                kind,id:e.pointerId,x:e.clientX,buttons:e.buttons,button:e.button,
+                width:document.querySelector('.report-detail-grid colgroup col')?.style.width
+              }),{capture:true});
+            }
+          })()`);
           await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:resizeBefore.x,y:resizeBefore.y});
           await send('Input.dispatchMouseEvent',{type:'mousePressed',x:resizeBefore.x,y:resizeBefore.y,
             button:'left',buttons:1,clickCount:1});
@@ -602,7 +612,8 @@ try{
             return {colWidth:c?.style.width,tableWidth:grid?.getBoundingClientRect().width,
               computedWidth:c?getComputedStyle(c).width:null,
               grip:g?.getBoundingClientRect().toJSON(),hit:tip?.outerHTML?.slice(0,180),
-              persistedFirst:prefs?.columns?.[0]?.width,prior:${JSON.stringify(resizeBefore)}};
+              persistedFirst:prefs?.columns?.[0]?.width,prior:${JSON.stringify(resizeBefore)},
+              trace:window.__resizeTrace};
           })()`);
           console.log('REPORT_DETAIL_DRAG_DIAGNOSTIC',JSON.stringify(dragDiag));
           await eventually(`(()=>{
