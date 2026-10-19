@@ -1,6 +1,6 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
 import type {CSSProperties} from 'react';
-import type { Changes, EditableField, GroupField, Item } from '../../shared/types';
+import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
 import { MockRepository } from '../data/mock-repository';
 import { createDemoItems } from '../data/demo-items';
