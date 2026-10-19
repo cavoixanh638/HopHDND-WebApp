@@ -62,6 +62,7 @@ Ngày cập nhật: 15/10/2026. Chỉ liệt kê file đã có; phần chưa có
 | Nguồn giả giữ trong bộ nhớ, replay/conflict/lịch sử | [src/data/mock-repository.ts](../src/data/mock-repository.ts) |
 | 24 nội dung giả và tạo bộ dữ liệu lớn | [src/data/demo-items.ts](../src/data/demo-items.ts) |
 | Bảng tổng hợp, mở chi tiết, resize report và tạo bản in | [src/features/reports/ReportTable.tsx](../src/features/reports/ReportTable.tsx), [src/components/ColumnResizeHandle.tsx](../src/components/ColumnResizeHandle.tsx) |
+| **Tooltip chung và đánh dấu ô số** | [src/components/SharedReportTooltip.ts](../src/components/SharedReportTooltip.ts) (một tooltip, delegated hover), [src/styles/app.css](../src/styles/app.css) (viền ô màu teal, không global `body:has`), [src/features/reports/ReportTable.tsx](../src/features/reports/ReportTable.tsx) (nút phủ ô, focus, chi tiết); A/B tại [báo cáo hiệu năng](TOOLTIP_PERFORMANCE_AB_2026-10-19.md) |
 | Resize cột Danh sách và báo cáo (cập nhật DOM trong lúc kéo) | [src/components/ColumnResizeHandle.tsx](../src/components/ColumnResizeHandle.tsx), [src/features/items/ItemList.tsx](../src/features/items/ItemList.tsx) |
 | Sort bảng dữ liệu (bấm tiêu đề/nút) | [src/features/items/ColumnHeader.tsx](../src/features/items/ColumnHeader.tsx), [src/domain/sort-items.ts](../src/domain/sort-items.ts) |
 | Năm báo cáo mặc định và KPI | [src/domain/reporting.ts](../src/domain/reporting.ts), [src/domain/report-workflow.ts](../src/domain/report-workflow.ts) |
