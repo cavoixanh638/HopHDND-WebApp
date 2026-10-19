@@ -1,5 +1,6 @@
 import { memo, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
+import {hideInstantCountTooltip,showInstantCountTooltip} from '../../components/InstantCountTooltip';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
 import {GROUP_OPTIONS} from '../../../shared/field-definitions';
 import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
@@ -8,8 +9,8 @@ import { reportStage,reportStageLabels,type ReportStage } from '../../domain/rep
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 
-/** The three Party middle milestones and the pending-build-decision step
- * are quiet. Office, source and final decision remain visually prominent. */
+/** Party middle milestones, pending build decision and non-applicable build NQ
+ * share the same muted colors. Office, source and final states remain prominent. */
 const quietPartyMilestones=new Set([
   'Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL',
 ].map(normalizeSearch));
@@ -45,7 +46,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const emphasis=(status:string)=>emphasize
     ?' report-stage-'+reportStage(status,config)
       +((config.id==='party'&&quietPartyMilestones.has(normalizeSearch(status)))||
-          (config.id==='build'&&normalizeSearch(status)===quietBuildMilestone)
+          (config.id==='build'&&[quietBuildMilestone,normalizeSearch('Không phải trình')].includes(normalizeSearch(status)))
         ?' report-stage-intermediate':'')
     :'';
   const widths=config.columnWidths??{};
@@ -60,7 +61,11 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     ?<strong>{entries.length}</strong>
     :<button type="button" className="count-button count-drill"
       aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
-      title="Bấm để xem danh sách nội dung" onClick={()=>onSelect(title,entries)}>
+      onPointerEnter={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
+      onPointerLeave={hideInstantCountTooltip}
+      onFocus={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
+      onBlur={hideInstantCountTooltip}
+      onClick={()=>{hideInstantCountTooltip();onSelect(title,entries);}}>
       <span>{entries.length}</span><span className="count-drill-icon" aria-hidden="true">↗</span>
     </button>);
   const percentCell=(percent:number,description:string)=><div className="report-percent-value">
