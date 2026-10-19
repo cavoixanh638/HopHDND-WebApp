@@ -885,7 +885,13 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   max-width:420px;font-size:12px;font-weight:600;color:#405b50;}
 .report-grid-search input {width:100%;height:36px;box-sizing:border-box;
   border:1px solid #b8cfc1;border-radius:7px;padding:6px 10px;background:#fff;}
-.report-grid-actions {display:flex;gap:8px;flex-wrap:wrap;}
+.report-grid-actions {display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.report-grid-quick-width {display:inline-flex;align-items:center;gap:7px;padding:4px 7px;
+  border:1px solid #ccded3;border-radius:7px;background:#fff;font-size:12px;
+  font-weight:650;color:#335748;white-space:nowrap;}
+.report-grid-quick-width input[type="range"] {width:114px;min-width:75px;accent-color:#28735c;cursor:ew-resize;}
+.report-grid-quick-width output {font-variant-numeric:tabular-nums;font-size:11px;min-width:45px;text-align:right;}
+@media(max-width:780px){.report-grid-quick-width input[type="range"] {width:72px;}}
 .report-grid-notices {padding:7px 16px;flex:none;}
 .report-grid-notices p {margin:2px 0;font-size:12px;line-height:1.5;}
 .report-grid-settings {flex:none;padding:12px 16px;background:#f5faf6;
