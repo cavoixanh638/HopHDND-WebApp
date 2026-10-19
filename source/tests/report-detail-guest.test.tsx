@@ -56,6 +56,7 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(all.some(n=>n.type==='input'&&n.props.type==='range')).toBe(false);
     expect(all.some(n=>n.type==='input'&&n.props.type==='search')).toBe(true);
     expect(all.some(n=>n.type==='button'&&text(n)==='Mở Danh sách dữ liệu')).toBe(false);
+    expect(all.some(n=>n.props?.className==='cell-history-action')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
   });
   it('keeps a separate edit mode for a signed-in user and refuses save after permission is revoked',()=>{

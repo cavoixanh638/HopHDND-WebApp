@@ -1046,3 +1046,43 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .custom-cell-input {
   text-align:center;
 }
+
+/* Small on-demand audit control. The cell reserves its space; source values do
+   not shift or become hidden under the icon when hovering. */
+.item-data-table tbody td.has-history-action,
+.report-detail-grid tbody td.has-history-action {
+  position:relative;
+  padding-right:27px;
+}
+.item-data-table tbody td .cell-history-action,
+.report-detail-grid tbody td .cell-history-action {
+  position:absolute;
+  right:5px;
+  top:50%;
+  transform:translateY(-50%);
+  display:inline-grid;
+  place-items:center;
+  width:18px;
+  height:18px;
+  min-width:18px;
+  min-height:18px;
+  padding:0;
+  margin:0;
+  border:1px solid transparent;
+  border-radius:5px;
+  color:#57786e;
+  background:transparent;
+  opacity:.42;
+  cursor:pointer;
+  z-index:1;
+}
+.item-data-table tbody td .cell-history-action:hover,
+.report-detail-grid tbody td .cell-history-action:hover,
+.item-data-table tbody td .cell-history-action:focus-visible,
+.report-detail-grid tbody td .cell-history-action:focus-visible {
+  opacity:1;
+  background:#e5f0e9;
+  border-color:#a9cbbc;
+  outline:2px solid #6d9e87;
+  outline-offset:1px;
+}

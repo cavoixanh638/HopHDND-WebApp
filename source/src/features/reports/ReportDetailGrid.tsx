@@ -10,6 +10,7 @@ import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {displayId} from '../../domain/display-id';
 import {Modal} from '../../components/Modal';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
+import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CellPicker} from '../items/CellPicker';
@@ -30,6 +31,7 @@ type Props={
   onUpdate:(id:string,changes:Changes)=>void;
   onKeepDraft:()=>boolean;
   onHistory?:(item:Item)=>void;
+  onCellHistory?:(item:Item,field:TextField)=>void;
   onOpenFullList?:()=>void;
   dirtyIds:Set<string>;
   errors:Record<string,string>;
@@ -37,7 +39,7 @@ type Props={
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
-  onUpdate,onKeepDraft,onHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
+  onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
   const [pending,setPending]=useState<DetailGridPreferences>(applied);
@@ -186,8 +188,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     const raw=String(item[key]??'');
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
-      {onHistory&&<button type="button" className="item-history-action"
-        aria-label={'Xem lịch sử '+displayId(item)} onClick={()=>onHistory(item)}>↺</button>}
+      {!readOnlyViewer&&onHistory&&<CellHistoryAction label={displayId(item)}
+        tooltip="Xem lịch sử nội dung" onClick={()=>onHistory(item)}/>}
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
@@ -353,9 +355,15 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               canEditCell(item.recordId,c.key as TextField);
-              return <td key={c.key} data-col-key={c.key} className={writable?'editable-cell':undefined}
+              const showCellHistory=!readOnlyViewer&&!!onCellHistory&&editableFields.has(c.key);
+              const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
+              return <td key={c.key} data-col-key={c.key}
+                className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 title={writable?'Bấm để sửa':undefined}
-                style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}{c.key==='specialist'&&assignmentIssue(item,catalog)&&
+                style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}
+                {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
+                  onClick={()=>onCellHistory!(item,c.key as TextField)}/>}
+                {c.key==='specialist'&&assignmentIssue(item,catalog)&&
               <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;})}
           </tr>)}
           {!visible.length&&<tr><td colSpan={shownColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}
