@@ -391,8 +391,18 @@ try{
         const bodyTotals=document.querySelectorAll('.report-surface tbody td.report-total-col.report-clickable-cell').length,
           footerTotals=document.querySelectorAll('.report-surface tfoot td.report-total-col.report-clickable-cell').length,
           statusCells=document.querySelectorAll('.report-surface tbody td.report-clickable-cell:not(.report-total-col)').length;
+        const bad=buttons.flatMap(button=>{
+          const td=button.closest('td'),r=td.getBoundingClientRect(),h=button.getBoundingClientRect();
+          const widthDiff=h.width-r.width,heightDiff=h.height-r.height;
+          if(Math.abs(widthDiff)<=2&&Math.abs(heightDiff)<=2&&
+            Math.abs(r.left-h.left)<=2&&Math.abs(r.top-h.top)<=2&&
+            getComputedStyle(button).position==='absolute'&&td.querySelector('.report-cell-sizer'))return [];
+          return [{td:td.className,button:button.className,rect:[r.x,r.y,r.width,r.height],
+            hit:[h.x,h.y,h.width,h.height],position:getComputedStyle(button).position,
+            style:getComputedStyle(td).position,hasSizer:!!td.querySelector('.report-cell-sizer')}];
+        }).slice(0,3);
         return {ok:allFull&&noEmptyActions&&bodyTotals>0&&footerTotals>0&&statusCells>0,
-          buttons:buttons.length,bodyTotals,footerTotals,statusCells,allFull,noEmptyActions};
+          buttons:buttons.length,bodyTotals,footerTotals,statusCells,allFull,noEmptyActions,bad};
       })()`);
       if(!fullCellGeometry.ok)throw Error('Report full-cell hit targets are incomplete: '+JSON.stringify(fullCellGeometry));
       // Real CDP pointer events at the lower-right INSIDE each data cell, not
