@@ -60,6 +60,8 @@ export function withReportVisuals(layout:ReportLayout[],
 export interface ReportLayout {
   id: string;
   title: string;
+  titleAccentText?:string;
+  titleAccentColor?:string;
   visible: boolean;
   hiddenColumns: string[];
   columnOrder: string[];
@@ -176,6 +178,12 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         !Number.isSafeInteger(width)||width<80||width>1200))
       throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
     const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
+    const accentText=row.titleAccentText??'';
+    const accentColor=row.titleAccentColor??'#b42318';
+    if(typeof accentText!=='string'||accentText.length>80||
+      typeof accentColor!=='string'||!/^#[0-9a-fA-F]{6}$/.test(accentColor))
+      throw new Error('Từ tô màu tên bảng hoặc mã màu không hợp lệ.');
+    const accentSettings=accentText.trim()?{titleAccentText:accentText.trim(),titleAccentColor:accentColor}:{};
     const title=base.id==='party'&&row.title==='Nội dung cần xin ý kiến Thành ủy'?base.title
       :base.id==='nq'&&row.title==='Nội dung trình ban hành nghị quyết'?base.title
       :base.id==='bc'&&row.title==='Báo cáo trình Hội đồng nhân dân'?base.title:row.title.trim();
@@ -194,11 +202,11 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         throw new Error('Cỡ chữ bảng phải từ 11 đến 20 px.');
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
-      return { id:base.id,title,visible:row.visible,
+      return { id:base.id,title,...accentSettings,visible:row.visible,
         hiddenColumns,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
         pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
-    return { id: base.id, title, visible: row.visible, hiddenColumns, columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
+    return { id: base.id, title, ...accentSettings, visible: row.visible, hiddenColumns, columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
@@ -224,7 +232,8 @@ export function saveReportLayout(source: string, layout: ReportLayout[]): boolea
 export function configuredReports(layout: ReportLayout[], includeHidden = false): ReportConfig[] {
   const tableFont=getReportFont(layout),tableFontSize=getReportFontSize(layout),reportVariant=getReportVariant(layout);
   return layout.filter(row => includeHidden || row.visible).map(row => ({
-    ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title, hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
+    ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title,
+    ...(row.titleAccentText?{titleAccentText:row.titleAccentText,titleAccentColor:row.titleAccentColor}:{}), hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
     tableFont,tableFontSize,reportVariant,
     ...(row.columnWidths&&Object.keys(row.columnWidths).length?{columnWidths:{...row.columnWidths}}:{}),
   }));

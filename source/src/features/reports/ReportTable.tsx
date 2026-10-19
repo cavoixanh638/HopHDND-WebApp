@@ -17,6 +17,23 @@ const quietPartyMilestones=new Set([
 const quietBuildMilestone=normalizeSearch('Đã trình HĐND, chưa có QĐ');
 
 export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; onColumnResize?:(column:string,width:number)=>void }) {
+  const heading=()=>{
+    const target=config.titleAccentText?.trim();
+    if(!target)return config.title;
+    const source=config.title, folded=source.toLocaleLowerCase('vi'),needle=target.toLocaleLowerCase('vi');
+    const parts:React.ReactNode[]=[];
+    let offset=0, found=folded.indexOf(needle);
+    if(found<0)return source;
+    while(found>=0){
+      if(found>offset)parts.push(source.slice(offset,found));
+      parts.push(<span key={found} className="report-title-accent"
+        style={{color:config.titleAccentColor??'#b42318'}}>{source.slice(found,found+target.length)}</span>);
+      offset=found+target.length;
+      found=folded.indexOf(needle,offset);
+    }
+    if(offset<source.length)parts.push(source.slice(offset));
+    return parts;
+  };
   const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
@@ -91,7 +108,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   return <section className={'card report-surface report-style-'+visualStyle} ref={ref}
     style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
       '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
-    <div className="card-header"><div><h3>{config.title}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
+    <div className="card-header"><div><h3>{heading()}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
     {report.unknown.length > 0 && <p className="unknown-note">Trạng thái nguồn chưa chuẩn hóa: {report.unknown.join(', ')}. {'Các nội dung được gom tại cột Chưa chuẩn hóa, vẫn tính vào tổng nhưng không tự tính hoàn thành.'}</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">

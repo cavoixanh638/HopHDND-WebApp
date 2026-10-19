@@ -55,6 +55,9 @@ export type StatusField = 'progressParty' | 'progressBuild' | 'progressCouncil';
 export interface ReportConfig {
   id: string;
   title: string;
+  /** Optional text fragment in the report heading to emphasize visually. */
+  titleAccentText?:string;
+  titleAccentColor?:string;
   source: 'all' | 'party' | 'build' | 'council' | 'nq' | 'bc';
   statusField: StatusField;
   columns: string[];

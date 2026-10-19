@@ -9,6 +9,19 @@ const storage = () => {
   return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
 };
 describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
+  it('tô màu riêng từ trong tên bảng, giữ được qua validate và chuyển thành ReportConfig',()=>{
+    const layouts=defaultReportLayout();
+    layouts[2].titleAccentText='Nghị quyết';
+    layouts[2].titleAccentColor='#B42318';
+    const saved=validateReportLayout(layouts);
+    expect(saved[2].titleAccentText).toBe('Nghị quyết');
+    expect(configuredReports(saved)[2].titleAccentColor).toBe('#B42318');
+    const bad=structuredClone(layouts);
+    bad[2].titleAccentColor='red';
+    expect(()=>validateReportLayout(bad)).toThrow(/mã màu/);
+    const legacy=validateReportLayout(defaultReportLayout());
+    expect(legacy[2].titleAccentText).toBeUndefined();
+  });
   it('đổi tên/thứ tự/ẩn bảng giữ ID, phạm vi và KPI; khôi phục không đụng mẫu gốc', () => {
     const original = JSON.stringify(DEFAULT_REPORTS);
     const items = createDemoItems();

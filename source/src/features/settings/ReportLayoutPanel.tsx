@@ -113,6 +113,22 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   onChange={event => update(index, { title: event.target.value })}
                 />
               </label>
+              <div className="report-title-accent-config">
+                <label className="field">Từ/cụm từ trong tên bảng cần tô màu
+                  <input type="text" maxLength={80} placeholder="Ví dụ: Nghị quyết"
+                    aria-label={`Từ tô màu tên bảng ${index+1}`}
+                    value={report.titleAccentText??''}
+                    onChange={event=>update(index,{titleAccentText:event.currentTarget.value})}/>
+                </label>
+                <label className="field">Màu chữ
+                  <input type="color" aria-label={`Màu chữ tên bảng ${index+1}`}
+                    value={report.titleAccentColor??'#b42318'}
+                    onChange={event=>update(index,{titleAccentColor:event.currentTarget.value})}/>
+                </label>
+                <button className="button ghost" type="button"
+                  onClick={()=>update(index,{titleAccentText:''})}
+                  disabled={!report.titleAccentText}>Bỏ tô màu</button>
+              </div>
               <label className="field layout-visibility">
                 <input
                   type="checkbox"
