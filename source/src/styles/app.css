@@ -826,7 +826,9 @@ table.data-table button:not(.column-sort-button),table.report-table button,
   width:44px;height:30px;visibility:hidden;font-weight:750;
 }
 .report-surface .report-table td.report-clickable-cell .count-drill {
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  /* Table-cell containing blocks exclude a small top/bottom border offset in Chrome;
+     cover those pixels so the entire visible td is actionable. */
+  position:absolute;inset:-2px 0 -1px;display:flex;align-items:center;justify-content:center;
   width:auto;height:auto;min-width:0;min-height:0;margin:0;padding:0;
   border:0;border-radius:0;box-shadow:none;outline:none;
   background:transparent;color:inherit;cursor:pointer;transition:none;
