@@ -1,3 +1,9 @@
+## Popup sau phản hồi ảnh 19/10/2026 22:32 — đang ở PR #3, chưa phát hành preview
+
+Với **khách ẩn danh**, khi bấm số lượng trong báo cáo, popup chỉ có thao tác xem/lọc/tìm/sắp xếp, Hiện đủ cột Excel, **Rộng popup** (thanh kéo ngay trên đầu) và Mở Danh sách dữ liệu; không còn nút chỉnh sửa dữ liệu/cấu hình/mẫu. Quyền sửa thử của khách trong **Danh sách nội dung** nếu được quản trị cấp **không** tự mở quyền sửa trong popup. Thanh Rộng popup chỉ điều chỉnh khung và tự lưu trên trình duyệt, không thay đổi Excel/Firebase.
+
+Với **tài khoản không ẩn danh**, popup vẫn mặc định xem; chỉ có Chỉnh sửa nháp khi được cấp ít nhất một ô, và từng ô tiếp tục kiểm quyền. Nút **Cấu hình popup / cột** cung cấp nhập độ rộng px (640–2400) và độ rộng từng cột. Ở cả hai vai trò, khung bị giới hạn bởi chiều rộng màn hình. Chức năng mới **chưa có trên các URL preview phát hành trước 22:32** cho đến khi CI Verify #39279720743 thành công và người vận hành publish đúng artifact. Không được nhầm mã mới đã commit với bản chạy trên website.
+
 ## Cập nhật popup 19/10/2026 — quyền sửa và độ rộng toàn cửa sổ
 
 Khi bấm số trong báo cáo, bảng popup **mở ở chế độ xem**. Nút "Chỉnh sửa nháp" chỉ bật khi người dùng có quyền sửa ít nhất một ô thuộc tập nội dung đã chọn. Trong chế độ này, từng ô vẫn kiểm quyền riêng; ô khác chỉ xem. Bấm "Về chế độ xem" để kết thúc chế độ sửa mà không đóng cửa sổ. "Giữ nháp trên máy" không ghi Excel hoặc Firebase.
