@@ -520,8 +520,9 @@ try{
           for(let i=0;i<rules.length;i++){
             const rule=rules[i];
             if(rule.selectorText?.includes('body:has(.report-surface .report-table button.count-drill'))groups.push({parent,i,text:rule.cssText,kind:'has'});
-            else if(rule.selectorText?.includes('button.count-drill:is(:hover,:focus-visible)')&&
-              rule.cssText.includes('anchor-name:'))groups.push({parent,i,text:rule.cssText,kind:'anchor'});
+            else if(rule.selectorText?.includes('count-drill')&&
+              rule.cssText.includes('anchor-name')&&rule.cssText.includes('report-hover-anchor'))
+              groups.push({parent,i,text:rule.cssText,kind:'anchor'});
             if(rule.cssRules)inspect(rule);
           }
         };
