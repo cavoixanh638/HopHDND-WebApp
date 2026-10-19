@@ -352,26 +352,50 @@ try{
           });
       })()`);
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
-      // Static in-cell cue: NO floating tooltips, no DOM changes or pointer
-      // callbacks. This is more robust than timing synthetic PointerEvents.
-      const cssOnlyHover=await evaluate(`(()=>{
+      // One fixed-size, pre-mounted tooltip with static text and zero arrows.
+      // Validate event delegation, instant entry, consistent text, and reuse.
+      const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
-        const hidden=document.querySelector('.report-instant-count-tooltip');
-        if(hidden||buttons.length<3)return {ok:false,reason:'stale floating tooltip or no buttons'};
-        const result=buttons.every(button=>{
-          const cue=button.querySelector('.count-drill-cue'),
-            action=button.querySelector('.count-drill-cue-hover'),
-            arrow=button.querySelector('.count-drill-cue-default');
-          return cue&&action&&arrow&&action.textContent.trim()==='Xem'&&
-            getComputedStyle(action).opacity==='0'&&
-            getComputedStyle(button).transitionDuration==='0s'&&
-            !button.hasAttribute('title')&&
-            !button.hasAttribute('aria-describedby');
-        });
-        return {ok:result,cells:buttons.length};
+        const tooltip=document.querySelector('#report-shared-tooltip');
+        if(!tooltip||buttons.length<3)return {ok:false,reason:'shared tooltip missing'};
+        const style=getComputedStyle(tooltip);
+        if(tooltip.textContent!=='Click để xem chi tiết'||style.width!=='190px'||
+          style.height!=='32px'||style.position!=='fixed'||tooltip.dataset.visible!=='false')
+          return {ok:false,reason:'static tooltip geometry/text changed'};
+        if(buttons.some(btn=>btn.textContent.includes('↗')||btn.textContent.includes('Xem')||
+           btn.hasAttribute('title')||btn.hasAttribute('aria-describedby')))
+          return {ok:false,reason:'count still has arrow, cue, or native tooltip'};
+        const evt=(type,button,x,y,relatedTarget=null)=>button.dispatchEvent(new PointerEvent(type,{
+          bubbles:true,pointerType:'mouse',clientX:x,clientY:y,relatedTarget
+        }));
+        const first=buttons[0],second=buttons[1];
+        evt('pointerover',first,540,380);
+        const opened=tooltip.dataset.visible==='true'&&tooltip.textContent==='Click để xem chi tiết'&&
+          first.getAttribute('aria-describedby')==='report-shared-tooltip'&&
+          getComputedStyle(tooltip).visibility==='visible';
+        evt('pointerout',first,540,380,second);
+        evt('pointerover',second,580,380);
+        const reused=tooltip===document.querySelector('#report-shared-tooltip')&&
+          second.getAttribute('aria-describedby')==='report-shared-tooltip'&&
+          !first.hasAttribute('aria-describedby')&&tooltip.dataset.visible==='true';
+        evt('pointerout',second,580,380);
+        const hidden=tooltip.dataset.visible==='false'&&tooltip.isConnected;
+        if(!opened||!reused||!hidden)return {ok:false,opened,reused,hidden};
+        const t0=performance.now();
+        for(let i=0;i<300;i++){
+          const btn=buttons[i%buttons.length];
+          evt('pointerover',btn,500+i%20,360+i%12);
+          if(tooltip.dataset.visible!=='true')return {ok:false,reason:'no immediate display',i};
+          evt('pointerout',btn,500+i%20,360+i%12);
+        }
+        const elapsed=performance.now()-t0;
+        return {ok:tooltip.isConnected&&tooltip.dataset.visible==='false'&&
+          tooltip.textContent==='Click để xem chi tiết'&&
+          document.querySelectorAll('#report-shared-tooltip').length===1&&elapsed<2500,
+          cycles:300,elapsedMs:Math.round(elapsed),buttons:buttons.length};
       })()`);
-      if(!cssOnlyHover.ok)throw Error('CSS-only hover cue regression: '+JSON.stringify(cssOnlyHover));
-      console.log('CSS_ONLY_HOVER',JSON.stringify(cssOnlyHover));
+      if(!sharedTooltip.ok)throw Error('Shared tooltip regression: '+JSON.stringify(sharedTooltip));
+      console.log('SHARED_TOOLTIP_STRESS',JSON.stringify(sharedTooltip));
       const fullCellGeometry=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('.report-surface .report-table')];
         if(tables.length!==5)return {ok:false,reason:'missing report tables: '+tables.length};
@@ -428,13 +452,15 @@ try{
         })()`);
         if(!pos?.covered)throw Error('Cell corner is not clickable: '+selector+' '+JSON.stringify(pos));
         await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:pos.x,y:pos.y});
-        const cssHovered=await evaluate(`(()=>{
+        const tooltipHovered=await evaluate(`(()=>{
           const button=document.elementFromPoint(${pos.x},${pos.y})?.closest('.count-drill');
-          const label=button?.querySelector('.count-drill-cue-hover');
-          return !!label&&getComputedStyle(label).opacity==='1'&&
-            document.querySelector('.report-instant-count-tooltip')===null;
+          const tooltip=document.querySelector('#report-shared-tooltip');
+          return !!button&&!!tooltip&&tooltip.dataset.visible==='true'&&
+            tooltip.textContent==='Click để xem chi tiết'&&
+            button.getAttribute('aria-describedby')===tooltip.id&&
+            !button.textContent.includes('↗');
         })()`);
-        if(!cssHovered)throw Error('Real pointer did not reveal zero-JS cue: '+selector);
+        if(!tooltipHovered)throw Error('Real pointer did not reveal shared tooltip: '+selector);
         await send('Input.dispatchMouseEvent',{type:'mousePressed',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
