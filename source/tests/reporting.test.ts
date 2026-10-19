@@ -30,6 +30,30 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
       sourceLabel:'Nguồn thử',groupOrder:[],onSelect:()=>{}});
     expect(flatten(viewer).some(element=>element.type===ColumnResizeHandle)).toBe(false);
   });
+  it('expands only nonzero count cells into full-size accessible button targets',()=>{
+    for(const config of DEFAULT_REPORTS){
+      const items=createDemoItems(8).map(item=>({...item,isDropped:false,archivedAt:null}));
+      const nodes=flatten(ReportTable({items,config,group:'room',groupOrder:[],onSelect:()=>{}}));
+      const clickCells=nodes.filter(node=>node.type==='td'&&node.props.className?.includes('report-clickable-cell'));
+      const buttons=nodes.filter(node=>node.type==='button'&&node.props.className==='count-button count-drill');
+      expect(clickCells.length,config.id).toBe(buttons.length);
+      for(const td of clickCells){
+        const children=flatten(td);
+        expect(children.some(node=>node.type==='span'&&node.props.className==='report-cell-sizer'),config.id).toBe(true);
+        const button=children.find(node=>node.type==='button'&&node.props.className==='count-button count-drill');
+        expect(button.props['aria-label']).toContain('Bấm để xem chi tiết');
+        expect(button.props.onClick).toBeTypeOf('function');
+        expect(button.props.onPointerOver).toBeTypeOf('function');
+      }
+      expect(nodes.filter(node=>node.type==='td'&&node.props.className?.includes('report-percent-col'))
+        .every(node=>!node.props.className.includes('report-clickable-cell'))).toBe(true);
+      expect(nodes.filter(node=>node.type==='td'&&node.props.children==='—')
+        .every(node=>!node.props.className.includes('report-clickable-cell'))).toBe(true);
+      const preview=flatten(ReportTable({items,config,group:'room',groupOrder:[],onSelect:()=>{},preview:true}));
+      expect(preview.some(node=>node.type==='td'&&node.props.className?.includes('report-clickable-cell'))).toBe(false);
+      expect(preview.some(node=>node.type==='button'&&node.props.className==='count-button count-drill')).toBe(false);
+    }
+  });
   it('opens matching detail records from positive counts including group totals',()=>{
     const items=createDemoItems(5).map((item,i)=>({
       ...item,isDropped:false,archivedAt:null,documentKind:'NQ' as const,
