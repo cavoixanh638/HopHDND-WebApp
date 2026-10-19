@@ -1,3 +1,11 @@
+## Cập nhật popup 19/10/2026 — quyền sửa và độ rộng toàn cửa sổ
+
+Khi bấm số trong báo cáo, bảng popup **mở ở chế độ xem**. Nút "Chỉnh sửa nháp" chỉ bật khi người dùng có quyền sửa ít nhất một ô thuộc tập nội dung đã chọn. Trong chế độ này, từng ô vẫn kiểm quyền riêng; ô khác chỉ xem. Bấm "Về chế độ xem" để kết thúc chế độ sửa mà không đóng cửa sổ. "Giữ nháp trên máy" không ghi Excel hoặc Firebase.
+
+Trên mã PR #3 mới, bấm **Cấu hình cột riêng → Độ rộng toàn cửa sổ popup**, nhập 640–2400 px (mặc định 1480), rồi **Lưu cấu hình cột**. Độ rộng cửa sổ **khác** tổng độ rộng bảng (có thể cuộn ngang) và độ rộng từng cột. Cửa sổ tự giới hạn theo màn hình, lưu riêng ở trình duyệt, không đổi bố cục Danh sách hay quyền.
+
+**Trạng thái:** [Verify #39270344125](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39270344125) đã PASS trên nhánh PR #3. **Bản preview đang phát hành và trang chính chưa chứa chức năng độ rộng chung mới**, nên không tìm mục này trên các URL cũ. Chỉ kiểm nghiệm khi đã publish artifact từ mã nguồn mới và nghiệm thu trên thiết bị thực.
+
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
 **Bản kiểm thử đã phát hành:** [Popup bảng dữ liệu đủ thao tác và kéo độ rộng](https://cavoixanh638.github.io/HopHDND-WebApp/preview/popup-grid-parity-2026-10-19/). [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hiện tương ứng. Bản `preview/detail-grid-columns-2026-10-19/` là phiên bản **trước khi sửa lỗi kéo cột**, chỉ dùng để đối chiếu, không làm theo hướng dẫn mới.
