@@ -1,5 +1,14 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Native CSS Anchor Positioning: tooltip chung, không JavaScript trong hover
+
+- **Lý do thay cách làm:** người dùng phản hồi tooltip chung fixed 190×32 vẫn lag, dù synthetic 300 sự kiện chỉ ~5ms. Con số này **không đo** thời gian render/compositing hoặc tốc độ chuột vật lý. Mã fallback cũ vẫn thay `aria-describedby`, `data-visible`, `transform` mỗi lần đổi ô, có thể phát sinh style/paint. CSS chung còn quy tắc `tr:hover` làm đổi màu cả hàng ở bảng dữ liệu.
+- **Giải pháp hiện đại:** tận dụng [CSS Anchor Positioning](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/anchor-name) (Baseline 2026), `position-anchor`, `position-area` và pseudo-class `:has(:hover)`: ô được rê chuột tự trở thành anchor, tooltip chung (được mount đúng 1 lần) được trình duyệt căn ngay cạnh ô, CSS trực tiếp quyết định hiển thị. **Chế độ modern không đăng ký pointer/focus/scroll listeners**, không đọc layout, không set tọa độ/attribute/timer khi hover, không thay text và không React render. Giữ tooltip cố định `Click để xem chi tiết`, nút chỉ hiện con số và toàn ô bấm được; focus-visible bàn phím cũng được hỗ trợ theo CSS. Chỉ trình duyệt chưa hỗ trợ mới gắn delegated fallback cũ, giữ giao diện không bị mất tooltip.
+- **Giảm diện tích repaint:** bỏ `tr:hover` đổi nền toàn dòng trên bảng báo cáo; danh sách thông thường vẫn giữ màu hover; giảm mức màu hover của riêng nút trong ô. Không thay ngữ nghĩa trạng thái/nền theo từng cột, tỷ lệ, dữ liệu Excel, hay tính năng kéo cột.
+- **Kiểm thử mới:** Chrome smoke xác minh chế độ native, một tooltip duy nhất, số liệu không mũi tên, 300 sự kiện pointer tổng hợp không chạm JS hay đọc rect, và quan trọng nhất dùng Chrome CDP di chuyển chuột **thật** vào góc 3 loại ô để kiểm tooltip hiển thị và vị trí so với ô, sau đó click mở detail. Fallback vẫn có smoke riêng nếu trình duyệt runner chưa hỗ trợ.
+- **Nguồn so sánh:** Chrome CSS Anchor Positioning API và MDN, Chrome DevTools selector performance; `position-anchor` mới Baseline 2026 (tháng 9/2026), vì vậy có fallback. Cần người dùng nghiệm thu mức mượt trên trình duyệt Windows thật, chưa thể kết luận chỉ từ synthetic.
+- **Sao lưu:** `backup/before-native-css-anchor-hover-2026-10-19` tại commit `4a63203c474585c387bcb5fb21a6c2921828bf3a`. Chỉ sửa nhánh PR #3 và preview tách biệt, không merge/ghi Excel/Firebase. **CI và preview PASS cần chờ exact SHA của code/test.**
+
 ## 19/10/2026 — Tooltip chung cố định, bỏ ký hiệu cạnh số
 
 - Người dùng muốn quay lại tooltip nhưng giảm khựng và giản lược số: **mỗi ô chỉ giữ số lượng**, bỏ dấu ↗ và cue "Xem" trong ô; khi rê chuột hoặc focus qua Tab hiện tooltip `Click để xem chi tiết`. Click bất kỳ vị trí nào trong ô có số vẫn mở danh sách, ô trống/%/header giữ nguyên.
