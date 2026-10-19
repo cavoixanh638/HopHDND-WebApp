@@ -1,5 +1,26 @@
-# Kiểm tra theo mốc — đến candidate 0.6.2
+# Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
 
+
+## Bản PR #3 / preview sửa lỗi 19/10/2026 — bằng chứng và giới hạn
+
+**Commit mã nguồn được kiểm:** `7a3a409e16b1b6621d121b09a57e9e7960c20568` · [Verify source run #39184896725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39184896725): **SUCCESS**. Trong job: TypeScript PASS, **43 unit test files đạt/2 bỏ qua, 350 unit tests đạt/20 bỏ qua**; **20 Firebase Emulator tests đạt**, `docs:check`, `build:pages`, `build:pages:test` và **Chrome smoke với Google Sheets giả lập PASS**. Các warning `permission_denied` trong emulator là kết quả kiểm luật từ chối ghi, không phải đã kết nối Firebase production.
+
+**Kiểm tra Chrome smoke đã có:** sort bằng nút và bằng tiêu đề, đủ các cột nguồn A–O trong Danh sách; chuyển tab, bảng không nhảy khi lọc, trạng thái hiện tại; bảng xây dựng NQ có header `Tổng số nội dung` tiếp theo là `Không phải trình`; số đếm có thể bấm mở `dialog.report-detail-modal`, modal tắt blur, đóng được. Build HTML là artifact của exact SHA. Unit test bảo vệ schema report `columnWidths`, đúng năm bảng và nội dung cột.
+
+**Phát hành riêng bản xem trước:** [publish preview #39185030924](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185030924) PASS, xác minh digest artifact SHA `fa6868898a364939a4c16fb4cf0bcc020e24713e5a8ee334e8450a036af39f02` từ run source. [Pages deployment #39185044694](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185044694) SUCCESS; `preview/current` và `preview/ux-fixes-2026-10-19` xuất cùng nội dung. **Không merge PR #3, không đổi `main:index.html`**, không đo tốc độ bằng dữ liệu/Chrome của người dùng.
+
+**Bảng điều kiện nghiệm thu trên trình duyệt thật (CHƯA PASS):**
+
+| Mục cần thử | Điều kiện đạt | Tình trạng |
+|---|---|---|
+| Kéo cột nguồn F21 | Trong chế độ chỉnh, kéo ranh giới từng cột sang trái/phải; lưu bố cục; tải lại vẫn đúng kích thước; không vô tình sort/đổi thứ tự | Chưa thử browser/admin thật |
+| Kéo cột 5 báo cáo F07/F09 | Kéo cột tên nhóm, tổng, trạng thái, %; độ rộng cột đầu không bị CSS 230px khóa; lưu từng báo cáo và đọc lại cấu hình trên thiết bị khác | Chưa thử browser/admin thật |
+| Sort F13/F21 | Cả click tiêu đề và icon đều chuyển tăng → giảm → về gốc, header thể hiện trạng thái, không giật bảng hoặc cản thao tác kéo | Browser mock PASS; thao tác thật chưa nghiệm thu |
+| Xem nội dung F06 | Bấm số lượng từ ô, tổng nhóm, tổng bảng phải hiện đủ đúng hồ sơ; mở/đóng tương đương độ mượt khi mở danh sách riêng | Logic/mock PASS; chưa benchmark Chrome Performance/React Profiler với dữ liệu thật |
+| Năm báo cáo, tỷ lệ F01–F10 | Đủ 5 bảng, TBKL đúng, build có `Không phải trình` ngay sau tổng, trạng thái HĐND kết thúc đúng, KPI/tỷ lệ/chi tiết cùng phạm vi | Bảng mock PASS; `getKpis` vẫn có chỗ đếm `Hoàn thành` chưa đối chiếu, **CHƯA PASS toàn bộ** |
+| Admin Firebase F23/F36 | Giao dịch lưu bố cục, danh mục, quyền ghi đúng phần và hiển thị thất bại/xung đột; không mất nháp, không tự sửa Excel | Emulator PASS, production chưa thử; **CHƯA PASS** |
+
+Từ khóa `CHƯA PASS` ở trên phản ánh phần nghiệm thu chưa làm, **không có nghĩa CI thất bại**. Không lấy số lượng mock hoặc số liệu Excel kiểm ở thời điểm cũ làm kết quả sản xuất. Theo dõi lỗi và trạng thái ở [CURRENT_STATE](CURRENT_STATE.md).
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.
 
 ## Pages 0.7.0 — Sheets và Firebase quản trị, 15/10/2026
