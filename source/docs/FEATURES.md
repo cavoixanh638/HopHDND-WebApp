@@ -1,3 +1,13 @@
+## Bổ sung 19/10/2026 — Bảng chi tiết nhanh từ ô số, cấu hình cột riêng
+
+**F06 mở rộng đã triển khai ở nhánh PR #3, chưa đưa lên trang chính:** bấm một ô số dương của bất kỳ 5 báo cáo sẽ mở **Bảng chi tiết nhanh** dạng lưới (không còn là danh sách thẻ nội dung). Dữ liệu lấy trực tiếp từ tập recordId của chính ô đó và nguồn `workspace.workingItems`, không gọi Google Sheets/Firebase trên mỗi lần bấm. Chỉ mở **một modal** với vùng cuộn dọc/ngang, header cố định, lọc nhanh tất cả 15 trường, lọc ngay dưới từng cột và sắp xếp từng cột. Khi sửa nháp, giữ các hồ sơ thuộc **tập lúc bấm** để thay đổi trạng thái không làm dòng biến mất trước khi nguồn ghi nhận; báo cáo vẫn dùng snapshot nguồn đã xác nhận, không giả cập nhật số đếm.
+
+**Cấu hình cột riêng:** nút `Cấu hình cột riêng` trong modal. Chọn hiện/ẩn, chuyển cột lên/xuống, đặt độ rộng 70–800px, `Lưu cấu hình cột` và `Khôi phục mặc định`. Tập cột chỉ gồm **15 cột Excel A–O đã đối chiếu**, không cho tạo “Hoàn thành”/“TU đã cho ý kiến” hoặc cột nguồn giả. Mặc định xem 10 cột dùng nhiều nhất; có thể bật đủ 15. Lưu cục bộ theo nguồn dữ liệu và preview ở `hdnd.report-detail-grid.v1`; **không phụ thuộc hay ghi đè** cấu hình Danh sách nội dung, Bảng thống kê, cấu hình quản trị Firebase hoặc tệp Excel. Lưu thất bại phải báo và giữ phần đang chọn; chặn ẩn hết cột. Cấu hình cá nhân, không phải cấu hình dùng chung cho mọi máy; muốn chia sẻ trên Firebase sau này phải có schema/permission/revision riêng được duyệt.
+
+**Sửa nháp có giới hạn:** `Chỉnh sửa nháp` chỉ khả dụng nếu có quyền với ít nhất một trường trong các hồ sơ của ô. Mỗi ô chỉ cho sửa khi `canEditCell` hiện hành cho phép và WebApp không bị khóa. Ghi qua `updateDataDraft`/`useWorkspace.update` (dùng chung với Danh sách nội dung), không có repository thứ hai, không gửi request ghi nguồn từ modal. `Giữ nháp trên máy` gọi checkpoint hiện có, không có nhãn “Đã cập nhật Excel”; nút cập nhật **dữ liệu thật** chỉ thuộc giai đoạn sau khi writer được phép, có rollback, xác nhận thực tế và chống ghi đè xung đột. Ô STT/ID chỉ xem; chỉnh `content` và `note` qua editor nháp, các trường tiến độ/danh mục qua lựa chọn. Nếu người dùng không được cấp quyền, bảng là chỉ xem.
+
+**Phạm vi chưa nghiệm thu:** tốc độ trên máy Windows với dữ liệu thực, UX khi quyền được cấp, xử lý hàng trăm–nghìn kết quả, chỉnh sửa đồng thời; việc ghi Excel thật **không được bật** chỉ từ yêu cầu cấu hình cột.
+
 # FEATURES — Ma trận chức năng
 
 ## Phạm vi bản Firebase Pages 0.7.0
