@@ -1,5 +1,13 @@
 # SYSTEM — Quy tắc nghiệp vụ
 
+## Quy tắc thao tác xem chi tiết trên bảng báo cáo — chốt 19/10/2026
+
+- Ở **cả 5 bảng**, mọi ô số đếm **dương** gồm ô trạng thái, tổng nhóm và tổng cuối bảng là một vùng bấm phủ **toàn bộ ô**, kể cả mép/góc. Dùng `button` thật để giữ Tab/Enter/Space và tên truy cập; bấm mở **đúng tập hồ sơ của ô**. Ô `—`, ô tỷ lệ %, tiêu đề không mở chi tiết.
+- Trong ô chỉ hiện **con số**, không hiện dấu ↗ hoặc chữ “Xem” phụ. Khi con trỏ đặt trên ô, chỉ **ô đó** được đánh dấu nền xanh ngọc mờ `rgba(9,106,113,.14)` và viền `outline:2px solid #08777B`, `outline-offset:-2px`; điều hướng bằng phím Tab dùng viền 3px `#07595B`. Đây là **dấu hiệu tương tác**, **không** biểu diễn mức độ hoàn thành hoặc mức độ nguy hiểm; phải giữ nguyên bảng màu trạng thái nghiệp vụ.
+- Tooltip dùng chung **một phần tử** cho toàn bộ báo cáo, kích thước 190×32px và text cố định **“Click để xem chi tiết”**. Không delay, không tạo tooltip theo ô, không tính layout khi pointer di chuyển, không chạy theo từng pixel; thay vị trí khi **chuyển ô** bằng delegated `pointerover/out` + `translate3d`. Không dùng `body:has(...:hover)` kết hợp CSS Anchor Positioning cho đường hover của báo cáo; đã có phép đo A/B cho thấy chi phí style/layout cao. Không thêm hover highlight **cả hàng**.
+- Hover/focus **không được đổi độ rộng, cao hoặc thứ tự bảng**; ưu tiên `outline` thay `border`, không animation/blur/filter/box-shadow bóng mờ trên đường hover. Chỉ diễn giải “mượt” sau khi đối chiếu cả Chrome style/layout/paint và thử trực tiếp dữ liệu thật, không suy từ thời gian chạy 300 sự kiện JS.
+- Nguồn chuẩn thiết kế: [FEATURES F06](FEATURES.md), [ARCHITECTURE](ARCHITECTURE.md), [phép đo A/B](TOOLTIP_PERFORMANCE_AB_2026-10-19.md). Các thay đổi chỉ thuộc preview nhánh PR #3, **không** có quyền sửa Excel, Firebase hoặc phát hành root khi chưa được yêu cầu.
+
 ## Quy tắc hiện hành đã đối chiếu đến 19/10/2026 — ưu tiên hơn mô tả legacy bên dưới
 
 - File nghiệp vụ duy nhất đang đọc trên Pages là Excel `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx`, tab `60961344`, **15 cột A–O**, O = Ghi chú. Trường dữ liệu không có trong Excel mới **không được tự đặt thành cột nguồn**. Giá trị thiếu phải giữ trống khi đọc; ngữ cảnh UI có thể hiển thị dấu “—”. ID/STT và khóa dòng không cho người dùng sửa nguồn khi chưa có hợp đồng ghi bảo toàn danh tính.
