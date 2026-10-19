@@ -1,3 +1,10 @@
+
+
+## Preview popup chiều rộng/quyền sửa — 19/10/2026
+
+Preview source PASS #39270344125, exact SHA 355ec81fb274da44c19eb1e277409547a6a2d3b8; publisher commit b67cddf56b6b70471ea931faec0c7f02d61cf9b3 (19/10/2026 21:39:50 VN). Hai file preview/current/index.html và preview/popup-width-permissions-2026-10-19/index.html cùng blob 0f4656ac5d351ef4865a782d652403fdcba0bf2d; main:index.html vẫn blob 48aff33fdac08477e38c8f4d49837eb68eee0584. PR #3 Draft/chưa merge, Excel và Firebase business data không ghi. CI cuối cùng của docs #39270758690 PASS. Chưa có nghiệm thu Chrome Windows trực tiếp và chưa xác nhận website cache trên máy người dùng.
+
+Chỉ publish các file preview trên nhánh main từ artifact CI bất biến #39270344125 (digest sha256:bd4bacec9f87a14a50736486c031abda4e3fa154e68822a4f3e6ea990b955aea); workflow ghim chính xác SHA, run, digest, kiểm marker UI trước copy. Sao lưu workflow và preview cũ tại backup/before-popup-width-permissions-preview-2026-10-19. Không sửa root hoặc merge PR #3. Nếu cần quay lại, phải phân biệt hoàn nguyên preview với dữ liệu/cấu hình người dùng; không tự động đụng Firebase/Excel.
 # Vận hành HopHDND — triển khai, sao lưu, phục hồi và xử lý sự cố
 
 **Phạm vi:** bản GitHub Pages 0.7.0 đọc dữ liệu qua Google Sheets/GViz, Firebase Authentication và cấu hình dùng chung qua Realtime Database. App Google Apps Script 0.6.2 là nhánh vận hành độc lập. Tài liệu này là **quy trình tham chiếu**, không phải xác nhận các phép kiểm sản xuất đã thành công. Trạng thái thực tế duy nhất xem [CURRENT_STATE](CURRENT_STATE.md).
