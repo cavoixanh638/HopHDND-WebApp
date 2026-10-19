@@ -1,5 +1,12 @@
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
+## Bảng chi tiết nhanh từ ô báo cáo — tùy chỉnh cột riêng (bản thử 19/10/2026)
+
+1. Từ **Theo dõi tiến độ**, bấm bất kỳ ô có số dương nào (trạng thái, tổng nhóm hoặc tổng bảng). Cửa sổ **Bảng chi tiết nhanh** hiện đúng các hồ sơ của ô. Có thể tìm mọi nội dung, lọc dưới đầu mỗi cột, bấm tiêu đề để sắp xếp và cuộn ngang xem những cột bên phải. Bảng báo cáo phía sau không đổi số liệu do các thao tác xem/lọc.
+2. Bấm **Cấu hình cột riêng** để chọn cột hiện/ẩn, dùng **↑/↓** để thay đổi thứ tự hoặc nhập độ rộng 70–800px. Bấm **Lưu cấu hình cột** để dùng cho các lần mở sau; **Khôi phục mặc định** rồi Lưu để quay lại cấu hình ban đầu. Thiết lập này **chỉ áp dụng cho bảng chi tiết**, lưu ở trình duyệt hiện tại theo nguồn Excel và môi trường preview; **không thay** bảng Danh sách nội dung hoặc bảng thống kê. Nếu đổi máy/trình duyệt, phải cấu hình lại.
+3. Nếu được cấp quyền, bấm **Chỉnh sửa nháp** để thay giá trị tiến độ/đơn vị hoặc sửa Nội dung trình/Ghi chú ngay trong bảng. Chỉ trường được cấp quyền mới có editor. Các thay đổi hiện trong nháp chung với Danh sách nội dung; bấm **Giữ nháp trên máy** để lưu checkpoint cục bộ. **Đây chưa phải cập nhật Excel thật**, kể cả khi đã bấm giữ nháp; nếu không có quyền thì nút sửa không khả dụng.
+4. Khi muốn cập nhật Excel thật, phải sử dụng đúng chức năng writer đã được chủ quản cho phép và kiểm tra phản hồi ghi/đọc lại. **Bảng chi tiết nhanh phiên bản này chưa có nút ghi Excel.** Không bấm thao tác quản trị trên preview nếu chưa có kế hoạch và quyền ghi production được phê duyệt.
+
 ## Bản kiểm thử giao diện mới 19/10/2026 — chỉ dùng đường dẫn preview
 
 Mở [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hoặc **[bản chốt hover viền rõ 19/10](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/)**. Các preview `ux-fixes`, `native-anchor-hover` và `ab-optimized-hover` là **mốc lịch sử** để so sánh, không phải thiết kế hover đã chốt. **Không dùng URL gốc** để đánh giá các sửa lỗi ngày 19/10: PR #3 chưa merge, `main:index.html` chính vẫn là HTML cũ. Preview cùng kết nối Firebase production; khi bấm lưu cấu hình/quyền hoặc phê duyệt có thể tạo **thay đổi thật**.
