@@ -249,6 +249,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       selectedIds={selection.items.map(item=>item.recordId)}
       items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
+      readOnlyViewer={anonymousVisitor}
       canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
       onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
       onHistory={anonymousVisitor?undefined:setHistory}
