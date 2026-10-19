@@ -7,6 +7,12 @@
 - Không đánh dấu chức năng hoàn tất nếu chưa có bằng chứng; CURRENT_STATE là nơi ghi kết quả đã kiểm chứng, FEATURES là đặc tả. Cập nhật đúng tài liệu và kiểm tra phù hợp với thay đổi.
 - Tránh nhân bản tài liệu: `docs/README.md` là chỉ mục và nơi chốt nguồn chuẩn; `docs/VAN_HANH.md` quản lý phát hành/rollback/backup/sự cố; `docs/TU_DIEN_DU_LIEU.md` ánh xạ A–P/ID/kiểu; `docs/CAI_DAT_VA_CHAY.md` chỉ hướng dẫn môi trường build local. Chỉ tách tài liệu mới khi trách nhiệm thật sự khác và sửa đồng thời chỉ mục, liên kết. Không sửa cấu hình Firebase production hoặc nội dung Excel trong nhiệm vụ tài liệu.
 
+## Quy tắc popup Bảng chi tiết và so sánh chức năng với Danh sách — 19/10/2026
+
+- Khi sửa popup từ ô số, đọc [`docs/REPORT_DETAIL_PARITY_2026-10-19.md`](docs/REPORT_DETAIL_PARITY_2026-10-19.md), [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) và [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). **Không xóa tay nắm kéo cột, không trở lại `width:max-content/min-width:100%`, không giả định nhập px bằng việc gán `<col>` là đủ.** `table.width` phải bằng tổng cột và phải có Chrome CDP kéo chuột thật, đóng/mở còn width.
+- Chỉ popup bật `ColumnResizeHandle.windowDragFallback`, không làm global window pointermove thường trực. Dùng lại ColumnHeader/ColumnFilterCell/CellPicker/ContentEditor của bảng Danh sách, không xây lại đường kiểm quyền. Giữ layout/mẫu/màu popup riêng theo source/preview; các cột giả Excel, 20 custom columns/permissions/Excel writer là hạng mục quản trị riêng, không lẫn dữ liệu nguồn.
+- Code/Tài liệu commit chỉ đưa vào preview sau exact CI success + artifact hash kiểm, không đụng production root/Excel/Firebase hoặc merge PR #3.
+
 ## Quy tắc giữ hiệu năng bảng báo cáo — quyết định đã đo 19/10/2026
 
 - Khi sửa `ReportTable`/hover F06 phải đọc [`docs/SYSTEM.md`](docs/SYSTEM.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/FEATURES.md`](docs/FEATURES.md) và [A/B Chrome](docs/TOOLTIP_PERFORMANCE_AB_2026-10-19.md). **Không tự đưa lại `body:has(...:hover)` kết hợp CSS Anchor Positioning** cho tooltip báo cáo, không tạo tooltip/handler riêng cho mỗi ô. Việc thay kiến trúc chỉ được quyết định sau khi có phép đo Chrome phù hợp và kiểm đủ click/focus/in/5 báo cáo.
