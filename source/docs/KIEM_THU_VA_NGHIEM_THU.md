@@ -1,5 +1,22 @@
 # Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
 
+## CHỐT HIỆN HÀNH — hover ô số đậm hơn, tooltip chung nhanh hơn (19/10/2026)
+
+**Mã đã commit và kiểm thử trên PR #3:** [CSS commit `b22b877`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/b22b877c8f81d840059abd738dde5d7c9a24d0a9), [test commit `cb4c276`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/cb4c276b2f649a178993ab0bb3abd192f4faca83). [Verify #39249428414](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249428414) **SUCCESS**, exact tested SHA `cb4c276b2f649a178993ab0bb3abd192f4faca83`; 352 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs check/Chrome smoke PASS. Đây là mốc hiện hành, các đoạn kiểm thử CSS Anchor và tooltip cũ phía dưới **chỉ là lịch sử**, không còn là phương án sản phẩm hiện tại.
+
+**Bằng chứng Chrome về hover ở đúng ô:** `CELL_HOVER_VISUAL_PASS` xác nhận viền **rgb(8,119,123) solid 2px**, nền **rgba(9,106,113,.14)**, outline-offset -2px, một ô duy nhất bị viền, vùng button phủ đầy td không đổi kích thước. CDP dùng chuột thật rê tới góc ô trạng thái/tổng nhóm/tổng cuối, tooltip vẫn hiện, click mở đúng dialog và đóng; `DELEGATED_TOOLTIP_STRESS` 300 sự kiện synthetic PASS, **0 `getBoundingClientRect` trên mouse path**, duy nhất một panel có `Click để xem chi tiết`. Ô rỗng/`—`/header/% không bấm mở danh sách.
+
+**A/B đánh dấu ô: Chrome headless, cùng dữ liệu mô phỏng, 36 lần chuyển chuột × 2 vòng, thứ tự đảo chiều:**
+
+| Biến thể | Style vòng 1 / 2 (ms) | Layout vòng 1 / 2 (ms) | Task vòng 1 / 2 (ms) | Task trung bình (ms/36 lượt) |
+| --- | ---: | ---: | ---: | ---: |
+| Nền cũ `rgba(73,124,98,.035)`, không outline | 9,43 / 8,05 | 0 / 0 | 86,22 / 79,30 | **82,76** |
+| Nền mới `rgba(9,106,113,.14)` + viền 2px | 8,39 / 8,24 | 0 / 0 | 85,18 / 82,55 | **83,87** |
+
+Khác biệt trung bình **+1,11ms tích lũy trên 36 lượt** (khoảng 0,031ms/lượt nếu chia đều) **không đủ để kết luận có thay đổi hiệu năng thực tế**. Đây là `Performance.getMetrics` trên runner, **không** phải đo P95 người dùng, tốc độ GPU hay input-to-photon. Đặc biệt, **0ms Layout** ở cả hai phương án. Kết quả trước đó xác nhận `body:has()` + CSS Anchor tốn ~31,92ms Layout/36 lượt, vì vậy đã loại bỏ trong phương án hiện hành. Nguồn chi tiết [TOOLTIP_PERFORMANCE_AB_2026-10-19](TOOLTIP_PERFORMANCE_AB_2026-10-19.md).
+
+**Phát hành bản xem trước độc lập:** [Publisher #39249797389](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249797389) **SUCCESS**, artifact digest `sha256:2d2f23ab40e21229556998de0bba0e649d15dd7e46a7ed77b370218463d21271`; [Pages deployment #39249822864](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249822864) **SUCCESS**. URL đúng: [preview/clear-cell-hover-2026-10-19](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/) và `preview/current/` (cùng blob HTML `835f1310a821fd1b106cbbf0f069e264b855a613`). Production `main:index.html` blob `48aff33fdac08477e38c8f4d49837eb68eee0584` **giữ nguyên**, PR #3 open/unmerged, không chạm Excel/Firebase. CI/mock **không đồng nghĩa** người dùng đã nghiệm thu cảm giác mượt trên máy thật.
+
 ## Native CSS Anchor tooltip — trình duyệt tự xử lý hover, không có JavaScript pointer path
 
 - **Nguồn kiểm:** `9491f58495040ca01fba149831efc2f58f62f538`, [Verify #39229760364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39229760364) **PASS**. 352 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/Chrome mock browser smoke PASS.
