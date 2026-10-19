@@ -1,5 +1,15 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Phương án hover không tooltip nổi (CSS-only, đang nghiệm thu)
+
+- Người dùng tiếp tục phản ánh giao diện hover còn "nặng" sau khi đã dùng tooltip singleton prewarm/transform; số đo 300 sự kiện tổng 3ms **chỉ kiểm JavaScript synthetic trong runner**, không chứng minh hiệu ứng thật mượt: có thể còn paint/composite, nhiều vùng giao diện thay đổi, hoặc chính hộp nổi liên tục xuất hiện gây cảm giác rối.
+- Đối chiếu nguồn công khai (GitHub Primer, Nielsen Norman Group, AG Grid, web.dev, TanStack Table) cho thấy tooltip không nên được dùng để lặp lại chữ đã rõ; AG Grid mặc định 2s tooltipShowDelay và có tooltipSwitchShowDelay, Primer coi tooltip là lựa chọn cuối khi cần thông tin bổ trợ; Chrome khuyến nghị đo INP/paint và tránh DOM phức tạp. **Không khẳng định Linear/Airtable trực tiếp dùng kỹ thuật này** khi chưa có bằng chứng.
+- **Thay đổi:** bỏ hẳn tooltip nổi "Bấm để xem N nội dung" trên ô thống kê. Nút chiếm trọn ô vẫn tồn tại, số lượng hiển thị cố định, biểu tượng ↗ tự đổi thành chữ **Xem** khi hover hoặc Tab focus bằng **CSS thuần (opacity, không delay)**. Không listener onPointerOver/Out, không DOM tooltip dùng chung, không React state/JS hover, không di chuyển hộp nổi. Vẫn giữ `aria-label` đầy đủ để đọc màn hình, click toàn bộ ô, không bấm được ô `—`/%/header, 5 bảng không đổi thống kê/dữ liệu.
+- Tiết giảm CSS hộp nổi có shadow/transform/contain/will-change và thay kiểu hover ô bằng tô nền nhẹ (tránh animated shadow); giữ viền focus keyboard riêng. Không phụ thuộc CSS anchor positioning mới (Baseline 2026 nhưng có thể không chạy trên trình duyệt cũ) hay nâng cấp thư viện lưới lớn khi chưa có đo thực tế.
+- Regression: `tests/reporting.test.ts` kiểm không có callback pointer/focus trên nút, có cue **Xem**, đúng ô có/không click; `scripts/smoke-pages-browser.mjs` kiểm không có tooltip nổi, kiểm cue bằng `getComputedStyle` sau di chuyển chuột thật trong Chrome và bấm góc ô mở chi tiết.
+- Nếu còn cảm giác chậm: thu Chrome Performance trace thật với dữ liệu lớn để tách input delay/style/layout/paint; chỉ triển khai virtualization theo quy mô và bằng chứng, vì năm báo cáo có tiêu đề sticky/drag-width/in và cấu trúc native table.
+- Sao lưu nhánh: `backup/before-css-only-report-hover-2026-10-19` tại `82a3a157a2d4d73d1b722bcde04a13c5d5930a90`. Chỉ PR #3, chưa merge, không ghi Excel/Firebase. **CI/preview mới cần xác nhận exact SHA trước khi công bố PASS.**
+
 ## 19/10/2026 — Tối ưu độ trễ tooltip khi rê nhanh qua nhiều ô số
 
 - **Phản hồi thực tế từ người dùng:** tooltip tức thì về logic vẫn có cảm giác giật/lag khi rê chuột nhanh. Đọc mã xác định đường hover cũ có `document.createElement`/`appendChild`/`remove`, đọc `offsetWidth/offsetHeight`, gọi `getBoundingClientRect` và đăng ký/hủy scroll/resize listener cho mỗi ô. Việc DOM write rồi layout read cùng lượt khiến Chrome có thể thực hiện forced synchronous layout; **đây là nguyên nhân khả dĩ từ mã**, chưa thể khẳng định là duy nhất trên mọi thiết bị.
