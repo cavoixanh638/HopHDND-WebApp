@@ -7,6 +7,7 @@ import { createDemoItems } from '../data/demo-items';
 import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
 import { MemoReportTable } from '../features/reports/ReportTable';
+import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import { ItemList } from '../features/items/ItemList';
 import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
@@ -245,7 +246,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
-    {selection && <Modal className="report-detail-modal" title={selection.title} onClose={() => setSelection(null)}><div className="modal-body"><p className="muted">{selection.items.length} nội dung</p>{selection.items.map(item => <article className="detail-item" key={item.recordId}><strong className="code">{displayId(item)}</strong><p>{item.content}</p><small>{item.department} · {item.room} · {item.specialist}</small></article>)}</div></Modal>}
+    {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
+      selectedIds={selection.items.map(item=>item.recordId)}
+      items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog}
+      allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
+      canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
+      onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
+      dirtyIds={new Set(Object.keys(workspace.drafts))} errors={workspace.errors}
+      onClose={()=>setSelection(null)}/>}
     {history && <HistoryDialog item={history} repository={repository} onClose={() => setHistory(null)} />}
     {confirmDiscard && <Modal title="Bỏ các thay đổi chưa lưu vào file nguồn?" onClose={() => setConfirmDiscard(false)}><div className="modal-body"><p>Phần chưa lưu của {workspace.protectedRecovery?'phần sửa cũ trên máy':`${dirtyCount} nội dung`} sẽ được bỏ. Dữ liệu trong file nguồn không bị thay đổi.</p></div><div className="modal-footer"><button className="button ghost" onClick={() => setConfirmDiscard(false)}>Tiếp tục sửa</button><button className="button danger" onClick={() => { workspace.discard(); setConfirmDiscard(false); }}>Bỏ các thay đổi</button></div></Modal>}
     <footer className="app-footer">{anonymousVisitor?'Nội dung trình HĐND · Dữ liệu tự cập nhật':'Dashboard HĐND · Một file HTML · '+sourceLabel}</footer>
