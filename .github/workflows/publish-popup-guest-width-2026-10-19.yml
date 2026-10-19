@@ -81,7 +81,20 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add preview/current/index.html preview/guest-readonly-width-2026-10-19/index.html
           git diff --cached --name-only
-          git diff --cached --name-only | grep -Ev '^preview/(current|guest-readonly-width-2026-10-19)/index.html$' | (! grep .)
+          unexpected=$(git diff --cached --name-only | grep -Ev '^preview/(current|guest-readonly-width-2026-10-19)/index.html
+          git commit -m "preview(popup): verified guest read-only and whole-dialog width"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              echo "Published isolated popup preview; production root index.html unchanged."
+              exit 0
+            fi
+          done
+          echo "::error::Unable to publish verified popup preview"
+          exit 1
+ || true)
+          test -z "$unexpected"
           git commit -m "preview(popup): verified guest read-only and whole-dialog width"
           for attempt in 1 2 3; do
             git fetch origin main
