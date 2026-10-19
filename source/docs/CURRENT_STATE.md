@@ -1,5 +1,13 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Tối ưu độ trễ tooltip khi rê nhanh qua nhiều ô số
+
+- **Phản hồi thực tế từ người dùng:** tooltip tức thì về logic vẫn có cảm giác giật/lag khi rê chuột nhanh. Đọc mã xác định đường hover cũ có `document.createElement`/`appendChild`/`remove`, đọc `offsetWidth/offsetHeight`, gọi `getBoundingClientRect` và đăng ký/hủy scroll/resize listener cho mỗi ô. Việc DOM write rồi layout read cùng lượt khiến Chrome có thể thực hiện forced synchronous layout; **đây là nguyên nhân khả dĩ từ mã**, chưa thể khẳng định là duy nhất trên mọi thiết bị.
+- Thay `src/components/InstantCountTooltip.ts` bằng singleton **prewarm trước hover**, luôn gắn sẵn vào `document.body`, chỉ thay chữ nếu số lượng khác, di chuyển bằng `translate3d` dựa trên `event.clientX/clientY`, bật/tắt `data-visible`, không tháo/tạo tooltip và không đọc layout trên **pointer path**. Gọi `useEffect` prewarm ở `ReportTable.tsx`; một cặp listener scroll/resize dùng chung toàn WebApp. **Riêng Tab/focus bàn phím** có thể đọc `getBoundingClientRect` một lần để đặt tooltip vì không có tọa độ chuột. CSS `contain:layout style paint`, `will-change:transform`, `transition:none` để giới hạn repaint và không có animation delay.
+- Tooltip chỉ hiển thị text `Bấm để xem N nội dung`, `N` đã được `aggregateReport` tính sẵn. Không cần/chưa triển khai tải lại Sheets, Firebase hay prefetch toàn bộ hồ sơ khi hover; các tập `entries` cho click cũng đã nằm trong RAM. Đừng đánh đồng cải thiện tooltip với render cửa sổ danh sách sau click (vẫn cần đo dữ liệu thật).
+- `scripts/smoke-pages-browser.mjs` đã bổ sung kiểm 1 tooltip prewarm, tái sử dụng cùng DOM node qua 300 lượt pointerover/out, ẩn bằng `visibility` mà không hủy node, ghi thời gian thao tác trong Chrome giả lập và ngưỡng bảo vệ CI 2500ms (đây **không phải** cam kết latency tối đa/benchmark đại diện cho máy người dùng). Tiếp tục thử nghiệm thực tế trình duyệt của người dùng.
+- Điểm sao lưu nhánh code trước sửa: `backup/before-compositor-tooltip-2026-10-19` tại `5256f75d8317bc66f1aed2af7b732a231ef5aed0`; thay đổi code trong PR #3, không đụng Excel/Firebase. **Kết quả CI/preview sẽ chỉ ghi PASS khi run SHA cuối được xác minh**.
+
 ## 19/10/2026 — Click/hover toàn bộ ô số lượng báo cáo (PR #3, nghiệm thu browser đang kiểm tra)
 
 - **Yêu cầu mới đã xác định:** không cần click hoặc rê đúng lên số/nút nhỏ, toàn bộ ô đếm **có số dương** phải nhận hover + click, gồm trạng thái, tổng từng đơn vị và dòng Tổng cộng ở **cả năm** bảng mặc định. Ô rỗng (ký hiệu `—`), ô % hoàn thành và tiêu đề cột không được mở danh sách.
