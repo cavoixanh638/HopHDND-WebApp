@@ -352,59 +352,52 @@ try{
           });
       })()`);
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
-      // A single tooltip, positioned by the browser's CSS Anchor Positioning
-      // on modern Chrome. Synthetic pointerover never triggers :hover; verify
-      // actual CDP mouse movement below, not just a fast JS event benchmark.
+      // The A/B-winning path uses a static, fixed-size singleton with one
+      // delegated handler; pointer entry never reads geometry or updates ARIA.
       const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
-        const tooltip=document.querySelector('#report-shared-tooltip');
-        if(!tooltip||buttons.length<3)return {ok:false,reason:'shared tooltip missing'};
-        const css=getComputedStyle(tooltip),mode=tooltip.dataset.mode;
-        if(tooltip.textContent!=='Click để xem chi tiết'||css.width!=='190px'||
-          css.height!=='32px'||css.position!=='fixed'||tooltip.dataset.visible!=='false')
-          return {ok:false,reason:'static tooltip geometry/text changed'};
-        if(buttons.some(btn=>btn.textContent.includes('↗')||btn.textContent.includes('Xem')||
-           btn.hasAttribute('title')||btn.hasAttribute('aria-describedby')))
-          return {ok:false,reason:'count still has arrow, cue, or native title'};
-        if(mode==='native'){
-          if(!CSS.supports('position-anchor','--report-hover-anchor')||
-            getComputedStyle(tooltip).positionAnchor!=='--report-hover-anchor')
-            return {ok:false,reason:'CSS anchor missing on native host'};
-          let measured=0;
-          const original=Element.prototype.getBoundingClientRect;
-          Element.prototype.getBoundingClientRect=function(){
-            measured++;return original.call(this);
-          };
-          try {
-            for(let i=0;i<300;i++){
-              const btn=buttons[i%buttons.length];
-              btn.dispatchEvent(new PointerEvent('pointerover',{
-                bubbles:true,pointerType:'mouse',clientX:550,clientY:400}));
-              btn.dispatchEvent(new PointerEvent('pointerout',{
-                bubbles:true,pointerType:'mouse',clientX:550,clientY:400}));
-            }
-          } finally {Element.prototype.getBoundingClientRect=original;}
-          return {ok:measured===0&&tooltip.dataset.visible==='false'&&
-            tooltip===document.querySelector('#report-shared-tooltip'),
-            mode,cycles:300,layoutReads:measured,cells:buttons.length};
-        }
-        if(mode!=='fallback')return {ok:false,reason:'unknown tooltip mode'};
-        const evt=(type,button,x,y,relatedTarget=null)=>button.dispatchEvent(new PointerEvent(type,
-          {bubbles:true,pointerType:'mouse',clientX:x,clientY:y,relatedTarget}));
-        const first=buttons[0],second=buttons[1];
-        evt('pointerover',first,540,380);
-        const opened=tooltip.dataset.visible==='true'&&
-          first.getAttribute('aria-describedby')==='report-shared-tooltip';
-        evt('pointerout',first,540,380,second);
-        evt('pointerover',second,580,380);
-        const reused=tooltip===document.querySelector('#report-shared-tooltip')&&
-          second.getAttribute('aria-describedby')==='report-shared-tooltip'&&
-          !first.hasAttribute('aria-describedby')&&tooltip.dataset.visible==='true';
-        evt('pointerout',second,580,380);
-        return {ok:opened&&reused&&tooltip.dataset.visible==='false',mode,cells:buttons.length};
+        const tip=document.getElementById('report-shared-tooltip');
+        if(!tip||buttons.length<3||tip.dataset.mode!=='delegated')
+          return {ok:false,reason:'delegated tooltip host missing'};
+        const css=getComputedStyle(tip);
+        if(tip.textContent!=='Click để xem chi tiết'||css.width!=='190px'||
+          css.height!=='32px'||css.position!=='fixed'||tip.dataset.visible!=='false')
+          return {ok:false,reason:'shared fixed panel changed'};
+        const styles=[...document.styleSheets];
+        const bad=styles.some(sheet=>{
+          try{return [...sheet.cssRules].some(rule=>rule.cssText?.includes('body:has(.report-surface .report-table button.count-drill')); }
+          catch{return false;}
+        });
+        if(bad||buttons.some(b=>b.textContent.includes('↗')||b.textContent.includes('Xem')||b.hasAttribute('title')))
+          return {ok:false,reason:'global :has or arrows remain'};
+        const evt=(type,b,x,y,next=null)=>b.dispatchEvent(new PointerEvent(type,{
+          bubbles:true,pointerType:'mouse',clientX:x,clientY:y,relatedTarget:next
+        }));
+        const a=buttons[0],b=buttons[1];
+        evt('pointerover',a,540,380);
+        const opened=tip.dataset.visible==='true'&&!a.hasAttribute('aria-describedby');
+        evt('pointerout',a,540,380,b);
+        evt('pointerover',b,580,380);
+        const shared=tip.dataset.visible==='true'&&tip===document.getElementById('report-shared-tooltip')&&
+          !b.hasAttribute('aria-describedby');
+        evt('pointerout',b,580,380);
+        const hidden=tip.dataset.visible==='false';
+        let reads=0;const orig=Element.prototype.getBoundingClientRect;
+        Element.prototype.getBoundingClientRect=function(){reads++;return orig.call(this);};
+        try {
+          for(let i=0;i<300;i++){
+            const button=buttons[i%buttons.length];
+            evt('pointerover',button,540+i%10,380+i%8);
+            evt('pointerout',button,540+i%10,380+i%8);
+          }
+        } finally{Element.prototype.getBoundingClientRect=orig;}
+        return {ok:opened&&shared&&hidden&&reads===0&&
+          tip.dataset.visible==='false'&&
+          document.querySelectorAll('#report-shared-tooltip').length===1,
+          opened,shared,hidden,reads,cycles:300,buttons:buttons.length};
       })()`);
-      if(!sharedTooltip.ok)throw Error('Shared native-anchor tooltip regression: '+JSON.stringify(sharedTooltip));
-      console.log('SHARED_NATIVE_TOOLTIP',JSON.stringify(sharedTooltip));
+      if(!sharedTooltip.ok)throw Error('Delegated tooltip regression: '+JSON.stringify(sharedTooltip));
+      console.log('DELEGATED_TOOLTIP_STRESS',JSON.stringify(sharedTooltip));
       const fullCellGeometry=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('.report-surface .report-table')];
         if(tables.length!==5)return {ok:false,reason:'missing report tables: '+tables.length};
@@ -471,13 +464,13 @@ try{
           const mode=tooltip.dataset.mode;
           const css=getComputedStyle(tooltip);
           const cell=button.getBoundingClientRect(),bubble=tooltip.getBoundingClientRect();
-          const anchored=Math.abs((bubble.left+bubble.width/2)-(cell.left+cell.width/2))<50&&
+          const near=Math.abs((bubble.left+bubble.width/2)-(cell.left+cell.width/2))<240&&
             Math.min(Math.abs(bubble.top-cell.bottom),Math.abs(bubble.bottom-cell.top))<100;
-          const visible=css.visibility==='visible'&&
-            (mode==='native'?anchored:tooltip.dataset.visible==='true'&&
-              button.getAttribute('aria-describedby')===tooltip.id);
+          const visible=mode==='delegated'&&css.visibility==='visible'&&
+            tooltip.dataset.visible==='true'&&near;
           return {ok:visible&&tooltip.textContent==='Click để xem chi tiết'&&
-              !button.textContent.includes('↗'),mode,visibility:css.visibility,anchored,
+              !button.textContent.includes('↗')&&
+              !button.hasAttribute('aria-describedby'),mode,visibility:css.visibility,near,
               cell:[Math.round(cell.left),Math.round(cell.top)],
               tooltip:[Math.round(bubble.left),Math.round(bubble.top)]};
         })()`);
@@ -500,125 +493,6 @@ try{
       await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
       await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
         'Report detail did not close promptly');
-    }
-    if(tab==='Tổng quan'){
-      // Isolated browser A/B: real CDP mouse movement + Chrome main-thread
-      // Performance metrics (style/layout/script/task), not JS dispatch timing.
-      // Clone report body rows temporarily to stress a realistic large DOM.
-      const setup=await evaluate(`(()=>{
-        const tables=[...document.querySelectorAll('.report-table')];
-        const copies=[];
-        for(const table of tables){
-          const body=table.tBodies[0],base=body?.querySelector('tr');
-          if(!base)continue;
-          for(let i=0;i<16;i++){const clone=base.cloneNode(true);clone.dataset.benchClone='true';body.append(clone);copies.push(clone);}
-        }
-        const groups=[];
-        const inspect=(parent)=>{
-          const rules=parent.cssRules;
-          if(!rules)return;
-          for(let i=0;i<rules.length;i++){
-            const rule=rules[i];
-            if(rule.selectorText?.includes('body:has(.report-surface .report-table button.count-drill'))groups.push({parent,i,text:rule.cssText,kind:'has'});
-            else if(rule.selectorText?.includes('count-drill')&&
-              rule.cssText.includes('anchor-name')&&rule.cssText.includes('report-hover-anchor'))
-              groups.push({parent,i,text:rule.cssText,kind:'anchor'});
-            if(rule.cssRules)inspect(rule);
-          }
-        };
-        for(const sheet of document.styleSheets)try{inspect(sheet);}catch{}
-        if(groups.length!==2)return {ok:false,reason:'expected CSS anchor and :has rule',found:groups.map(g=>g.kind)};
-        const tooltip=document.getElementById('report-shared-tooltip');
-        if(!tooltip)return {ok:false,reason:'no tooltip'};
-        let benchStyle=document.createElement('style');
-        benchStyle.id='bench-static-tooltip';
-        benchStyle.textContent='.report-shared-tooltip[data-bench-visible="true"]{visibility:visible;opacity:1}';
-        document.head.append(benchStyle);
-        let disabled=false;
-        const handler=e=>{
-          if(window.__hdndBench.variant!=='static'&&window.__hdndBench.variant!=='follow')return;
-          const button=e.target.closest?.('.report-table .count-drill');
-          if(!button)return;
-          if(e.type==='pointerout'){
-            if(e.relatedTarget?.closest?.('.report-table .count-drill'))return;
-            tooltip.dataset.benchVisible='false';
-          } else {
-            if(window.__hdndBench.variant==='follow'){
-              const x=e.clientX+202>innerWidth?e.clientX-200:e.clientX+12;
-              const y=e.clientY+52>innerHeight?e.clientY-43:e.clientY+15;
-              tooltip.style.transform='translate3d('+Math.max(6,x)+'px,'+Math.max(6,y)+'px,0)';
-            }
-            tooltip.dataset.benchVisible='true';
-          }
-        };
-        document.addEventListener('pointerover',handler,true);
-        document.addEventListener('pointerout',handler,true);
-        window.__hdndBench={
-          variant:'baseline',groups,copies,benchStyle,handler,
-          switchMode(mode){
-            if(disabled){for(const g of [...groups].sort((a,b)=>a.i-b.i))g.parent.insertRule(g.text,g.i);disabled=false;}
-            if(mode!=='baseline'){
-              for(const g of [...groups].sort((a,b)=>b.i-a.i))g.parent.deleteRule(g.i);
-              disabled=true;
-            }
-            this.variant=mode;
-            tooltip.dataset.mode=mode==='baseline'?'native':'benchmark';
-            tooltip.dataset.benchVisible='false';
-            tooltip.style.transform=mode==='static'?'translate3d(750px,80px,0)':'translate3d(-400px,-400px,0)';
-          },
-          cleanup(){
-            this.switchMode('baseline');
-            document.removeEventListener('pointerover',handler,true);
-            document.removeEventListener('pointerout',handler,true);
-            copies.forEach(x=>x.remove());benchStyle.remove();
-            delete window.__hdndBench;
-          }
-        };
-        return {ok:true,rules:groups.map(g=>g.kind),nodes:document.querySelectorAll('*').length,cloneRows:copies.length};
-      })()`);
-      if(!setup.ok)throw Error('Tooltip A/B setup failed '+JSON.stringify(setup));
-      await send('Performance.enable');
-      const metrics=async()=>{
-        const r=await send('Performance.getMetrics');
-        return Object.fromEntries(r.metrics.map(m=>[m.name,m.value]));
-      };
-      const points=await evaluate(`(()=>{
-        const first=document.querySelector('.report-table tbody tr:not([data-bench-clone])');
-        const buttons=[...(first?.querySelectorAll('.count-drill')??[])];
-        const a=buttons[0],b=buttons[1];
-        if(!a||!b)return null;
-        a.scrollIntoView({block:'center',inline:'center'});
-        const rects=[a,b].map(el=>el.getBoundingClientRect());
-        return rects.map(r=>({x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)}));
-      })()`);
-      if(!points||points.some(p=>p.x<10||p.x>1590||p.y<10||p.y>990))
-        throw Error('A/B pointer positions invalid '+JSON.stringify(points));
-      const sampleResults=[];
-      const orders=[['baseline','no_has','no_tooltip','static','follow'],
-        ['follow','static','no_tooltip','no_has','baseline']];
-      for(let round=0;round<orders.length;round++){
-        for(const mode of orders[round]){
-          await evaluate(`window.__hdndBench.switchMode(${JSON.stringify(mode)})`);
-          await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
-          await evaluate('new Promise(r=>requestAnimationFrame(()=>r(true)))');
-          const before=await metrics();
-          const t0=performance.now();
-          for(let i=0;i<36;i++){
-            const p=points[i%2];
-            await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});
-            await evaluate('new Promise(r=>requestAnimationFrame(()=>r(true)))');
-          }
-          const elapsedMs=Math.round(performance.now()-t0);
-          const after=await metrics();
-          const diff=name=>Math.round(((after[name]??0)-(before[name]??0))*1000*100)/100;
-          sampleResults.push({round,mode,elapsedMs,recalcMs:diff('RecalcStyleDuration'),
-            layoutMs:diff('LayoutDuration'),scriptMs:diff('ScriptDuration'),
-            taskMs:diff('TaskDuration'),nodes:Math.round(after.Nodes??0)});
-        }
-      }
-      await evaluate('window.__hdndBench.cleanup()');
-      await send('Performance.disable');
-      console.log('HOVER_AB_METRICS',JSON.stringify({setup,points,measurements:sampleResults}));
     }
     const geometry=await sharedGeometry();
     for(let i=0;i<originalGeometry.length;i++){
@@ -720,5 +594,5 @@ try{
   if(ws)ws.close();
   chrome.kill('SIGKILL');
   server.close();
-  rmSync(userDir,{recursive:true,force:true});
+  rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
