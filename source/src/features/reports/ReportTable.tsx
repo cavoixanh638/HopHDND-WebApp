@@ -61,8 +61,12 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     ?<strong>{entries.length}</strong>
     :<button type="button" className="count-button count-drill"
       aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
-      onPointerEnter={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
-      onPointerLeave={hideInstantCountTooltip}
+      onPointerOver={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
+      onPointerOut={event=>{
+        // Crossing the count label/arrow stays within the same button.
+        if(event.relatedTarget instanceof Node&&event.currentTarget.contains(event.relatedTarget))return;
+        hideInstantCountTooltip();
+      }}
       onFocus={event=>showInstantCountTooltip(event.currentTarget,entries.length)}
       onBlur={hideInstantCountTooltip}
       onClick={()=>{hideInstantCountTooltip();onSelect(title,entries);}}>
