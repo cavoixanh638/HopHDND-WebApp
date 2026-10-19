@@ -194,29 +194,22 @@ try{
     const status=document.querySelector('.item-filter-status-slot');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=stt?.querySelector('.column-sort-button');
-    if(!topbar||!nav||!cardHeader||!viewport||!sort)return {ok:false,reason:'Missing guest chrome or sort control'};
+    if(!topbar||!nav||!cardHeader||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-cardHeader.getBoundingClientRect().bottom;
     const aligned=Math.abs(top.left-tabs.left)<3&&Math.abs(top.width-tabs.width)<3;
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
-  const sortSelector='.item-heading-row th[data-column-key="stt"]';
-  for(const direction of ['ascending','descending','none']){
-    await evaluate(`(()=>{document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click();return true;})()`);
-    await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')===${JSON.stringify(direction)}`,
-      'List sort did not reach '+direction);
-  }
-  // Follow MUI/AG Grid conventions: the whole header label is sortable.
-  await evaluate(`document.querySelector(${JSON.stringify(sortSelector)})?.click()`);
-  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='ascending'`,
-    'Clicking the header title should sort ascending');
-  await evaluate(`document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click()`);
-  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='descending'`,
-    'Sort icon should change direction after clicking header title');
-  await evaluate(`document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click()`);
-  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='none'`,
-    'Sort icon should reset source order');
+  // Sorting is now edit-mode only. The viewer/anonymous guest must not
+  // expose a sorting button or activate sort via the header itself.
+  const viewerSortBlocked=await evaluate(`(()=>{
+    const header=document.querySelector('.item-heading-row th[data-column-key="stt"]');
+    header?.click();
+    return !!header&&header.getAttribute('aria-sort')==='none'&&
+      !header.querySelector('.column-sort-button');
+  })()`);
+  if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
 
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
