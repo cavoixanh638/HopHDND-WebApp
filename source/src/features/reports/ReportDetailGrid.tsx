@@ -1,4 +1,4 @@
-import {useMemo,useState,type ReactNode} from 'react';
+import {useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
@@ -169,7 +169,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
-    if(!editing||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
+    if(!editing||!allowDraft||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
     const field=key as TextField;
     if(field==='content'||field==='note')
       return <button type="button" className="cell-value-button"
@@ -190,7 +190,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(settingsDirty){setConfirmSettingsExit(true);return;}
     onClose();
   };
-  return <Modal title={title} onClose={canClose} className="report-detail-modal report-grid-modal">
+  return <Modal title={title} onClose={canClose} className="report-detail-modal report-grid-modal"
+    style={{'--report-grid-window-width':`${displayedLayout.dialogWidth}px`} as CSSProperties}>
     <div className="report-grid-toolbar">
       <div className="report-grid-summary">
         <strong>{selectedIds.length} nội dung trong ô báo cáo</strong>
@@ -210,7 +211,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={toggleSettings}>Cấu hình cột riêng</button>
         <button type="button" className="button ghost" aria-pressed={editing} disabled={!editable}
           title={!editable?'Chưa có quyền sửa nháp với những hồ sơ thuộc ô này':undefined}
-          onClick={()=>setEditing(v=>!v)}>{editing?'Kết thúc sửa nháp':'Chỉnh sửa nháp'}</button>
+          onClick={()=>setEditing(v=>!v)}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>
         {onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>
@@ -232,6 +233,17 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
         <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
+      </div>
+      <div className="report-grid-window-width-control">
+        <label htmlFor="report-grid-dialog-width">Độ rộng toàn cửa sổ popup</label>
+        <input id="report-grid-dialog-width" type="number" min={640} max={2400} step={20}
+          value={pending.dialogWidth} onChange={event=>{
+            const width=Number(event.currentTarget.value);
+            if(Number.isInteger(width)&&width>=640&&width<=2400)
+              setPending(previous=>({...previous,dialogWidth:width}));
+          }}/>
+        <span>px</span>
+        <span className="muted">Khác độ rộng từng cột; cửa sổ không vượt quá màn hình. Lưu riêng cho popup.</span>
       </div>
       <div className="report-grid-settings-list">
         {pending.columns.map((c,index)=><div className="report-grid-settings-row" key={c.key}>
@@ -285,7 +297,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       }}>Lưu cấu hình cột</button>
     </div>}
     <div className="report-grid-notices">
-      <p className="muted">{editing?'Thay đổi sử dụng bản nháp chung với Danh sách nội dung. Chỉnh sửa một ô không ghi Excel/Firebase.':'Bảng hiển thị từ cùng dữ liệu nguồn với Danh sách nội dung; bộ lọc chỉ áp dụng trong cửa sổ.'} Cấu hình cột được lưu riêng.</p>
+      <p className="muted" role="status">{editing&&editable?'Chế độ chỉnh sửa nháp: chỉ những ô được cấp quyền mới mở công cụ sửa. Mọi thay đổi cùng bản nháp với Danh sách; chưa ghi Excel/Firebase.':'Chế độ xem: người xem chỉ có thể chuyển sang sửa nháp khi có quyền sửa ít nhất một ô. Không cấp thêm quyền qua cấu hình popup.'} Cấu hình cột được lưu riêng.</p>
       {!editable&&<p className="muted">Chế độ xem: không có quyền sửa nháp đối với các nội dung đang chọn.</p>}
       {notice&&<p className="notice" role="status">{notice}</p>}
     </div>
@@ -327,7 +339,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         setNotice(onKeepDraft()?'Đã giữ nháp trên trình duyệt, chưa ghi Excel/Firebase.':'Chưa lưu được nháp trên trình duyệt. Không đóng trang để tránh mất thay đổi.');
       }}>Giữ nháp trên máy</button>}
     </div>
-    {contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
+    {contentItem&&allowDraft&&canEditCell(contentItem.item.recordId,contentItem.field)&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
       sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
       draftOnly sourceKind="google" onSave={value=>
         onUpdate(contentItem.item.recordId,{[contentItem.field]:value})}
