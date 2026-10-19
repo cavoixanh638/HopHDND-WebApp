@@ -1,5 +1,14 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Click/hover toàn bộ ô số lượng báo cáo (PR #3, nghiệm thu browser đang kiểm tra)
+
+- **Yêu cầu mới đã xác định:** không cần click hoặc rê đúng lên số/nút nhỏ, toàn bộ ô đếm **có số dương** phải nhận hover + click, gồm trạng thái, tổng từng đơn vị và dòng Tổng cộng ở **cả năm** bảng mặc định. Ô rỗng (ký hiệu `—`), ô % hoàn thành và tiêu đề cột không được mở danh sách.
+- Mã nguồn `src/features/reports/ReportTable.tsx`: nhãn `report-clickable-cell` chỉ có khi `!preview && entries.length>0`; nút HTML `count-drill` vẫn có `aria-label`, `onPointerOver/Out`, `onFocus/Blur`, `onClick`; thay vùng bấm bằng overlay CSS toàn ô. `report-cell-sizer` vô hình giữ nguyên chiều cao tự nhiên của dòng; render/in không nhân đôi số. Tooltip phản hồi ngay, không qua React state; nút Enter/Space mở danh sách theo ngữ nghĩa native.
+- `src/styles/app.css`: td có `position:relative`, nút `position:absolute`, trải qua toàn ô; hover/focus đổi nền nhẹ + viền focus dễ nhận, không thay màu trạng thái cơ bản. Chrome smoke từng phát hiện chênh lệch tọa độ phía trên 2px, phía dưới 1px; đã thêm bù trừ phần viền và bắt buộc kiểm lại. Không sửa `columnWidths`, quy tắc thống kê/Excel, Firebase, hay API.
+- Kiểm thử: `tests/reporting.test.ts` đối chiếu nút thật, tính ngữ nghĩa, preview không có vùng click, ô trống/%. `scripts/smoke-pages-browser.mjs` so kích thước nút với từng ô trong Chrome và gửi **sự kiện chuột thật tới góc ô**, kiểm mở/đóng danh sách với ô trạng thái/tổng dòng/tổng bảng. Không được coi thử `.click()` vào tâm nút là đủ.
+- Bản sao mã nguồn trước sửa: `backup/before-full-report-cell-click-2026-10-19` tại commit `ce6a309b2123f1c3f93b4355504e399eb7ac4440`; bản sao main trước phát hành mới: `backup/before-full-cell-preview-publish-2026-10-19` tại `580e055fdb9827c107419100e78425cb37794d3b`. Mới sửa nhánh PR #3, **chưa merge**, không đổi trang root hay dữ liệu nghiệp vụ.
+- **Trạng thái khi lập mục:** unit tests đã đạt ở bản mã trước; Chrome smoke mở rộng đang sửa lỗi hình học và chạy lại CI. **Không tự tuyên bố bản mới đã phát hành/đạt nghiệm thu** cho tới khi có CI exact SHA SUCCESS + Pages SUCCESS. Thời gian dựng modal sau click vẫn chưa benchmark trên dữ liệu thật; cải tiến lần này là vùng bấm, không phải virtualization.
+
 ## 19/10/2026 — Đồng bộ màu nhạt và tooltip tức thì khi rê qua số báo cáo
 
 - Yêu cầu mới: cột **Không phải trình** trong báo cáo xây dựng NQ phải **nhạt hệt** `Đã trình HĐND, chưa có QĐ`; hover số lượng **chỉ lướt qua cũng phải thấy chữ**, không đợi trình duyệt vài trăm mili giây/một nhịp dừng.
