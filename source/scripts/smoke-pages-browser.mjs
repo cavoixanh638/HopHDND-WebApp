@@ -436,6 +436,76 @@ try{
           buttons:buttons.length,bodyTotals,footerTotals,statusCells,allFull,noEmptyActions,bad};
       })()`);
       if(!fullCellGeometry.ok)throw Error('Report full-cell hit targets are incomplete: '+JSON.stringify(fullCellGeometry));
+      // Compare new cell-only focus against the previous very faint .035
+      // fill using the SAME Chrome, DOM, positions and 36 actual mouse moves.
+      // CDP CPU counters are diagnostics, not a perceived-latency guarantee.
+      const abPoints=await evaluate(`(()=>{
+        const first=document.querySelector('.report-surface .report-table tbody tr');
+        const buttons=[...(first?.querySelectorAll('.count-drill')??[])];
+        if(buttons.length<2)return null;
+        buttons[0].scrollIntoView({block:'center',inline:'center'});
+        return buttons.slice(0,2).map(button=>{
+          const r=button.getBoundingClientRect();
+          return {x:Math.round(r.left+r.width/2),y:Math.round(r.top+r.height/2)};
+        });
+      })()`);
+      if(!abPoints||abPoints.some(p=>p.x<10||p.x>=1600||p.y<10||p.y>=1000))
+        throw Error('Cell-hover A/B positions invalid: '+JSON.stringify(abPoints));
+      await send('Performance.enable');
+      const abMetric=async()=>{
+        const result=await send('Performance.getMetrics');
+        return Object.fromEntries(result.metrics.map(m=>[m.name,m.value]));
+      };
+      const abResults=[];
+      for(let round=0;round<2;round++){
+        for(const mode of (round===0?['old','new']:['new','old'])){
+          await evaluate(`(()=>{
+            document.querySelector('#hover-ab-previous')?.remove();
+            if(${JSON.stringify(mode)}==='old'){
+              const style=document.createElement('style');
+              style.id='hover-ab-previous';
+              style.textContent='.report-surface .report-table td.report-clickable-cell .count-drill:hover{background:rgba(73,124,98,.035)!important;outline:0!important;}';
+              document.head.append(style);
+            }
+          })()`);
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
+          await evaluate('new Promise(r=>requestAnimationFrame(()=>r(true)))');
+          const before=await abMetric();
+          for(let i=0;i<36;i++){
+            const p=abPoints[i%2];
+            await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});
+            await evaluate('new Promise(r=>requestAnimationFrame(()=>r(true)))');
+          }
+          const after=await abMetric();
+          const delta=n=>Math.round(((after[n]??0)-(before[n]??0))*1000*100)/100;
+          abResults.push({round,mode,styleMs:delta('RecalcStyleDuration'),
+            layoutMs:delta('LayoutDuration'),scriptMs:delta('ScriptDuration'),
+            taskMs:delta('TaskDuration')});
+        }
+      }
+      await evaluate("document.querySelector('#hover-ab-previous')?.remove()");
+      await send('Performance.disable');
+      console.log('CELL_HOVER_VISUAL_AB',JSON.stringify(abResults));
+      // Real pointer at a populated count: readable contrasting border, cell-
+      // scoped fill, no box layout/row movement. Do not highlight empty cells.
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:abPoints[0].x,y:abPoints[0].y});
+      const hoverVisual=await evaluate(`(()=>{
+        const button=document.elementFromPoint(${abPoints[0].x},${abPoints[0].y})?.closest('.count-drill');
+        if(!button)return {ok:false,reason:'mouse missed the count'};
+        const s=getComputedStyle(button),r=button.getBoundingClientRect(),td=button.closest('td').getBoundingClientRect();
+        const others=[...document.querySelectorAll('.report-surface .count-drill')].filter(b=>b!==button);
+        const onlyOne=others.every(b=>getComputedStyle(b).outlineStyle==='none'||
+          getComputedStyle(b).outlineWidth==='0px');
+        const oneCell=Math.abs(r.width-td.width)<3&&Math.abs(r.height-td.height)<3;
+        const colored=s.backgroundColor==='rgba(9, 106, 113, 0.14)';
+        return {ok:s.outlineStyle==='solid'&&s.outlineWidth==='2px'&&
+          s.outlineColor==='rgb(8, 119, 123)'&&s.outlineOffset==='-2px'&&
+          colored&&oneCell&&onlyOne,outline:s.outline,fill:s.backgroundColor,
+          oneCell,onlyOne};
+      })()`);
+      if(!hoverVisual.ok)throw Error('Hovered count cell has no clear isolated outline: '+JSON.stringify(hoverVisual));
+      console.log('CELL_HOVER_VISUAL_PASS',JSON.stringify(hoverVisual));
       // Real CDP pointer events at the lower-right INSIDE each data cell, not
       // .click() on the number. These corners used to miss the tiny count button.
       for(const selector of [
