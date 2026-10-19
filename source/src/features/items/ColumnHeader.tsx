@@ -15,7 +15,9 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
   const cleanup=()=>{start.current=null;setDragging(false);};
   return <th scope="col" aria-sort={sortDirection?(sortDirection==='asc'?'ascending':'descending'):'none'} data-column-key={columnKey} tabIndex={onSort||!disabled?0:undefined}
     className={disabled?undefined:`column-movable ${dragging?'column-dragging':''}`}
-    title={disabled?'Bấm tiêu đề để sắp xếp': 'Bấm để sắp xếp; giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.'}
+    title={onSort
+      ?(disabled?'Bấm tiêu đề để sắp xếp':'Bấm để sắp xếp; giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.')
+      :disabled?undefined:'Giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.'}
     onClick={event=>{
       if(!onSort)return;
       if(justDragged.current){justDragged.current=false;return;}

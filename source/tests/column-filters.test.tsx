@@ -1,3 +1,4 @@
+import {ColumnHeader} from '../src/features/items/ColumnHeader';
 import {describe,it,expect,vi} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
 import {ColumnFilterCell,filterChoices,filterValue} from '../src/features/items/ColumnFilterCell';
@@ -35,5 +36,17 @@ describe('always-visible column filter row',()=>{
     expect(clear.props['aria-label']).toBe('Xóa tìm kiếm cột Nội dung');
     clear.props.onClick();
     expect(change).toHaveBeenCalledWith('');
+  });
+});
+
+
+describe('sort icon only for edit-mode columns',()=>{
+  it('suppresses sort indicator when disabled by the caller',()=>{
+    const read=ColumnHeader({columnKey:'room',disabled:true,onMove:()=>{},children:'Phòng'});
+    expect(read.props.children.props.children[1]).toBeFalsy();
+    expect(read.props.title).toBeUndefined();
+    const edit=ColumnHeader({columnKey:'room',disabled:false,onSort:()=>{},
+      onMove:()=>{},children:'Phòng'});
+    expect(edit.props.children.props.children[1]).toBeTruthy();
   });
 });

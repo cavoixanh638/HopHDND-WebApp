@@ -233,7 +233,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, rea
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
-  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={cycleSort}
+  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<ColumnResizeHandle
   columnIndex={index} width={visualWidth(column.width)} min={60} max={1600} label={column.label}
   onCommit={width=>setLayout(previous=>({...previous,columns:previous.columns.map(entry=>

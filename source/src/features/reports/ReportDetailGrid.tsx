@@ -239,7 +239,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
-          onClick={()=>setEditing(v=>!v)}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
+          onClick={()=>{if(editing)setSort(null);setEditing(!editing);}}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
         {onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>
@@ -334,7 +334,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <thead>
           <tr className="report-grid-heading-row">{shownColumns.map((c,index)=>
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={labelByKey.get(c.key)}
-              sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
+              sortDirection={sort?.key===c.key?sort.direction:null} onSort={editing?cycleSort:undefined}
               disabled={!settings} previousKey={shownColumns[index-1]?.key}
               nextKey={shownColumns[index+1]?.key} onMove={moveHeader}>
               {labelByKey.get(c.key)}
