@@ -641,10 +641,11 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-surface .report-stage-source {--stage-bg:var(--source-bg);--stage-ink:var(--source-ink);--stage-stroke:var(--source-stroke);--stage-solid:var(--source-solid);}
 .report-surface .report-stage-office {--stage-bg:var(--office-bg);--stage-ink:var(--office-ink);--stage-stroke:var(--office-stroke);--stage-solid:var(--office-solid);}
 .report-surface .report-stage-next {--stage-bg:var(--next-bg);--stage-ink:var(--next-ink);--stage-stroke:var(--next-stroke);--stage-solid:var(--next-solid);}
-/* Subdue ONLY the three middle Party milestones, NOT the VP or final TU column. */
-.report-surface .report-stage-intermediate {
- --stage-bg:#F8FBFE;--stage-ink:#315A7A;
- --stage-stroke:#E2EDF8;--stage-solid:#315A7A;
+/* Muted middle milestones and non-applicable build NQ share identical colors. */
+.report-surface .report-stage-intermediate,
+.report-surface .report-stage-excluded {
+  --stage-bg:#F8FBFE;--stage-ink:#315A7A;
+  --stage-stroke:#E2EDF8;--stage-solid:#315A7A;
 }
 .report-surface .report-stage-completed {--stage-bg:var(--completed-bg);--stage-ink:var(--completed-ink);--stage-stroke:var(--completed-stroke);--stage-solid:var(--completed-solid);}
 .report-surface .report-stage-withdrawn {--stage-bg:var(--withdrawn-bg);--stage-ink:var(--withdrawn-ink);--stage-stroke:var(--withdrawn-stroke);--stage-solid:var(--withdrawn-solid);}
@@ -801,10 +802,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-table thead th.report-resizable-heading {position:sticky;padding-right:15px;}
 .report-table thead th.report-resizable-heading .column-resizer {position:absolute;top:0;bottom:0;}
 
-/* Non-applicable construction NQ is an explicit neutral category, not a missed deadline. */
-.report-surface .report-stage-excluded {
-  --stage-bg:#f0f3f6;--stage-ink:#4b6170;--stage-stroke:#d5dde4;--stage-solid:#667d8c;
-}
+/* The excluded stage inherits the same subdued styling as pending decision. */
 
 /* Every positive quantity is visibly actionable, including group/grand totals. */
 .report-surface .report-table .count-drill {
@@ -823,4 +821,16 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-detail-modal::backdrop {backdrop-filter:none;}
 @media (prefers-reduced-motion:reduce) {
   .report-surface .report-table .count-drill,.item-heading-row .column-sort-button {transition:none;}
+}
+
+/* Immediate mouse/keyboard guidance without the browser's native title delay.
+   Fixed coordinates keep this text out of overflow:auto table clipping. */
+.report-instant-count-tooltip {
+  position:fixed;z-index:10050;pointer-events:none;
+  max-width:min(300px,calc(100vw - 16px));
+  padding:7px 10px;border-radius:7px;
+  background:#193a2e;color:#fff;
+  font:600 12px/1.35 "Segoe UI",system-ui,sans-serif;
+  box-shadow:0 3px 12px rgba(13,32,24,.23);
+  white-space:normal;text-align:center;
 }
