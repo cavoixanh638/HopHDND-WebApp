@@ -1,6 +1,6 @@
 # Chỉ mục tài liệu dự án HopHDND
 
-Tài liệu trong `source/docs/` (trên máy tính: `docs/`). [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.
+Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x–0.7.0 mô tả mốc quá khứ có thể còn ví dụ A–P/16 cột; mọi việc đang sửa phải ưu tiên Excel A–O mới và các đoạn 19/10/2026 trong tài liệu nguồn chuẩn. Lịch sử chat đã archived chỉ truy xuất được một phần, không được coi là đã đối soát 100%.** [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.
 
 ## Nguồn chuẩn — mỗi loại thông tin một nơi
 
@@ -11,7 +11,7 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). [README mã nguồ
 | Chức năng/tiêu chí nghiệm thu F01–F36 | [FEATURES](FEATURES.md) |
 | Kiến trúc, thành phần và ranh giới nguồn dữ liệu | [ARCHITECTURE](ARCHITECTURE.md) |
 | Tìm code cần sửa, bố trí module và đường dẫn `source/` trên GitHub | [REPO_MAP](REPO_MAP.md) |
-| Các trường dữ liệu, cột A–P, ID, kiểu, giá trị, quyền | [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md) |
+| Các trường dữ liệu, 15 cột A–O hiện hành, ID, kiểu, giá trị, quyền | [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md) |
 | Hiện đã làm gì, còn lỗi gì, cái gì chưa nghiệm thu? | [CURRENT_STATE](CURRENT_STATE.md) |
 | Ai được giao việc gì, vướng phụ thuộc gì? | [WORKBOARD](WORKBOARD.md) |
 | Kế hoạch/lộ trình và lịch sử đề xuất | [KE_HOACH_VIET_LAI](KE_HOACH_VIET_LAI.md) |
@@ -23,6 +23,7 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). [README mã nguồ
 | Hợp đồng API/RPC | [API](API.md) |
 | Bằng chứng test, nghiệm thu từng mốc | [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md) |
 | Các quyết định và lý do | [ADR 001](decisions/001-single-html-prototype.md) |
+| Đối chiếu yêu cầu trao đổi 17–19/10, phát hành preview, lỗi còn mở | [FEATURES — phần nghiệm thu bổ sung](FEATURES.md), [CURRENT_STATE — kiểm toán 19/10](CURRENT_STATE.md), [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md) |
 
 ## Quy ước tránh chồng chéo
 
