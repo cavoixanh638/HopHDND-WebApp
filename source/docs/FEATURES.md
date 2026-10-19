@@ -1,3 +1,12 @@
+## 20/10/2026 — Tô màu theo từ, chỉ sort khi sửa, căn ô và lịch sử gần nhất
+
+- **Bảng báo cáo:** chọn từ/cụm từ trong tên bảng để tô màu chữ HEX tùy chọn; xem trước trong Tùy chỉnh Bảng báo cáo, lưu vào report layout. Không đổi nghiệp vụ.
+- **Bảng dữ liệu và popup:** cấu hình tối đa 30 quy tắc tô **từng ô** chứa từ khóa (màu chữ + nền, cột cụ thể hoặc mọi cột), cùng một `ItemLayout.cellHighlights` đã lưu. Không ảnh hưởng màu trạng thái báo cáo hay tô hàng theo mẫu riêng.
+- **Sort:** chỉ hiển thị ở chế độ chỉnh sửa. **Nhận biết ô có quyền sửa:** viền trái xanh mảnh + tooltip `Bấm để sửa`, không đánh dấu ô không quyền. **Căn:** các cột trừ Nội dung/Ghi chú căn chính giữa ngang/dọc, không phụ thuộc thứ tự.
+- **Lịch sử:** nút đồng hồ nhỏ trong mỗi ô thuộc trường dữ liệu nguồn, tooltip `Xem lần sửa gần nhất`; chỉ đọc `Repository.history` khi bấm, hiển thị bản đã lưu mới nhất của đúng trường và giá trị trước/sau. Không tạo lịch sử giả cho cột tùy chỉnh/chưa có audit; không hiện cho khách ẩn danh. Khách popup chỉ xem.
+- **Kiểm thử:** Verify [#39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797) PASS tại mã nguồn `bb398c0d4acc3a828eb1d7f4cf75a06745b28c05`. Chưa publish lên preview/site chính; không ghi dữ liệu Excel/Firebase.
+
+
 ## Bổ sung F06/F14/F21 — Đồng bộ tính năng bảng popup với Danh sách (19/10/2026)
 
 - Bảng popup phải **kéo trực tiếp ranh giới cột** để đổi độ rộng thực, không chỉ nhập con số px; `colgroup` và chiều rộng table cùng thay đổi chính xác; lưu riêng, phục hồi sau đóng/mở, không làm xê dịch bảng báo cáo phía sau. Tay nắm dùng được bàn phím ←/→ với bước 10px.

@@ -1,3 +1,19 @@
+## 20/10/2026 — Sáu cải tiến bảng và popup, PR #3 (mã đã kiểm, chưa phát hành)
+
+**Trạng thái có bằng chứng:** mã trên nhánh `feat/saved-views-approval-lock-filters-2026-10-16`; exact SHA `bb398c0d4acc3a828eb1d7f4cf75a06745b28c05` đã PASS Verify [#39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797), gồm TypeScript, unit, Firebase emulator, build trang độc lập, Chrome smoke dùng mock Sheets. Các bước trước đã PASS tại #39293831656, #39294418834, #39295256801, #39295618460, #39296061634. **Chưa phát hành exact SHA mới ra preview/current hay site chính, chưa nghiệm thu Chrome/Windows của người dùng, chưa ghi Excel/Firebase production.**
+
+1. Tên từng bảng báo cáo có tùy chọn tô màu chữ của từ/cụm từ, dùng `titleAccentText/titleAccentColor` trong report layout; mã màu HEX6 được kiểm tra khi lưu. Không thay cách tính báo cáo.
+2. Quy tắc `ItemLayout.cellHighlights` tô **từng ô** chứa từ khóa, có màu chữ và nền riêng, tùy chọn cột/tất cả cột, không phân biệt chữ hoa và dấu; tối đa 30 quy tắc. Danh sách/Popup dùng **chung quy tắc đã lưu**; màu hàng của mẫu xem cá nhân vẫn độc lập.
+3. Sort chỉ xuất hiện/hoạt động khi vào chế độ sửa Danh sách hoặc `Chỉnh sửa nháp` popup; viewer/guest không có sort trên tiêu đề. Khi ra chế độ sửa popup, sort tạm được xóa.
+4. Ô được phép sửa có viền trái xanh nhẹ và tooltip ngắn **“Bấm để sửa”**; quyền ô được xét trước khi đánh dấu, khách popup không được đánh dấu. Không gắn hover listener từng ô.
+5. Mỗi ô ngoài `content` và `note` được căn giữa hai chiều theo mã cột ổn định; Nội dung/Ghi chú căn trái và trên trong cả hai bảng, không phụ thuộc đổi thứ tự cột.
+6. Biểu tượng đồng hồ lịch sử `CellHistoryAction` 18px nằm trong ô trường nguồn, tooltip **“Xem lần sửa gần nhất”**; click mới đọc `Repository.history`, lọc chính xác field và lấy thay đổi đã lưu mới nhất (trước → sau, thời gian). Biểu tượng **không khẳng định có bản ghi lịch sử**; nếu nguồn không cung cấp sẽ thông báo chưa có. ID vẫn mở lịch sử cả hồ sơ. Không hiển thị hành động lịch sử cho khách ẩn danh. Nguồn Firebase có giới hạn giữ lịch sử gần đây; nháp không được tính là thay đổi nguồn.
+
+**Phạm vi kiểm thử:** CI mock/emulator đã PASS; quyền thực tế Firebase, thời gian phản hồi trên máy người dùng và nghiệm thu sau deploy chưa xác minh. Không nâng phiên bản production, không merge PR #3.
+
+---
+
+
 ## 19/10/2026 22:32 VN — Khắc phục quyền khách và thanh chỉnh độ rộng toàn popup
 
 - **Phản hồi ảnh người dùng:** popup Q.CVP Nguyễn Hoàng Long / Sở chưa trình vẫn để khách thấy nút Chỉnh sửa nháp, Cấu hình cột riêng, Mẫu bảng popup. Việc áp dụng lại quyền sửa ở Danh sách cho popup là sai yêu cầu tách chế độ khách.

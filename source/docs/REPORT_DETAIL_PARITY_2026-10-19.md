@@ -1,3 +1,8 @@
+### Cập nhật 20/10/2026 — thống nhất các quy tắc ở lớp ô
+
+Sau [Verify #39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797), các ô trong cả hai bảng dùng cùng `cellHighlightStyle`, marker quyền sửa `editable-cell`, phân biệt `data-col-key` để căn giữa trừ `content/note`, và `CellHistoryAction` để xem audit của trường đã lưu. Không fetch audit cho mỗi cell khi dựng lưới, không hover listeners, không sửa quyền theo dòng/ô. Guest popup không có sort, đánh dấu sửa hoặc action lịch sử. Preview hiện hành có thể **chưa** chứa các sửa này vì chưa publish exact SHA mới.
+
+
 # Đối chiếu toàn bộ chức năng bảng Danh sách nội dung và Bảng chi tiết nhanh từ ô báo cáo
 
 Mốc: 19/10/2026 · Nhánh: `feat/saved-views-approval-lock-filters-2026-10-16` · **Preview/PR #3**, không phải production.
@@ -20,17 +25,17 @@ Người dùng thấy cửa sổ popup không thể kéo độ rộng cột, dù
 | Kéo thả để đổi thứ tự cột | Chỉ ↑/↓ trong panel | **Đã thêm** `ColumnHeader` kéo tiêu đề trong chế độ cấu hình + Alt+←/→; vẫn giữ ↑/↓ | Có xác nhận khi rời settings mà chưa lưu |
 | Ẩn/hiện cột | Có | Giữ, có preview ngay khi tick; ẩn hết bị chặn | Riêng popup/nguồn/preview |
 | Khôi phục mặc định | Có | Giữ | 10 cột hay dùng, 15 cột khả dụng |
-| Bấm tiêu đề sắp xếp 3 trạng thái | Có nút sort riêng | **Dùng `ColumnHeader` như danh sách**; tăng → giảm → gốc | Không thay tập recordId của ô gốc |
+| Bấm tiêu đề sắp xếp 3 trạng thái | Có nút sort riêng | **Chỉ ở Chỉnh sửa nháp**; tăng → giảm → gốc; chế độ xem/khách ẩn hoàn toàn | Không thay tập recordId của ô gốc |
 | Hàng lọc ngay dưới tiêu đề | Chỉ input text | **Dùng `ColumnFilterCell` như danh sách**; lựa chọn nhanh khi số giá trị ít, input khi nhiều, nút X xóa từng bộ lọc | Search tiếng Việt không dấu |
 | Tìm kiếm tổng, xóa toàn bộ bộ lọc | Có ô tìm | Thêm nút **Xóa bộ lọc** (bao gồm sort), vẫn có ô tìm tổng | Popup chỉ lọc trong tập đã bấm |
 | Cuộn ngang/dọc, sticky 2 hàng tiêu đề | Có | Giữ, tối ưu width và overflow | Không thay giao diện báo cáo phía sau |
 | Mẫu hiển thị cá nhân | Không | **Đã thêm** lưu tên, chọn, cập nhật, xóa mẫu với bố cục, filters, colors; tối đa 12 mẫu | LocalStorage riêng popup; không ghi mẫu Danh sách |
-| Màu theo quy tắc | Không | **Đã thêm** nền dòng mint/amber/rose/blue theo điều kiện bằng giá trị nguồn | Cấu hình màu riêng popup; không thay semantic colors báo cáo |
+| Màu theo quy tắc | Không | Giữ màu dòng theo mẫu popup; thêm **cùng quy tắc tô chữ và nền từng ô theo từ khóa** với Bảng dữ liệu | Màu dòng popup riêng, màu ô từ ItemLayout chung; không đổi màu nghiệp vụ |
 | Nhãn cột đổi tên của Danh sách | Không, dùng nhãn mặc định A–O | **Đã đồng bộ nhãn** từ `itemLayout.columns`, nhưng thứ tự/ẩn/rộng của popup vẫn độc lập | Không đồng bộ giữa nhiều trình duyệt |
 | Loại editor `text` / dropdown | Dropdown mặc định | **Theo cấu hình cột nguồn** từ Danh sách, dùng `CellPicker` tìm chuyên viên và editor text khi loại = text | Chỉ sửa `TEXT_FIELDS` có quyền |
 | Sửa Nội dung / Ghi chú | Ô nhập trực tiếp đơn giản | **Dùng `ContentEditor` hiện có** (cảnh báo bỏ sửa chưa áp dụng, nháp và kiểm rỗng) | Không ghi Excel từ popup |
 | Cảnh báo sai liên hệ chuyên viên–phòng | Không | **Đã thêm** `assignmentIssue` dưới ô chuyên viên | Chưa thay validation lưu backend |
-| Lịch sử từng hồ sơ | Không | **Đã thêm** nút ↺ trên ID khi được phép dùng chức năng lịch sử | Nguồn Sheets read-only có thể không có lịch sử |
+| Lịch sử từng hồ sơ và từng trường | Chỉ ID | Đồng hồ nhỏ ở ID (xem cả hồ sơ) và ô của từng trường nguồn (xem lần sửa đã lưu gần nhất); tooltip đầy đủ | Chỉ đọc audit khi bấm; nguồn Sheets có thể không có lịch sử, khách ẩn không thấy |
 | Quyền theo ô và khóa sửa | Có chặn sửa cơ bản | **Giữ chung** `canEditCell` / `mayEdit` / khóa từ App, không tạo hệ phân quyền thứ hai | Quản trị quyền chính vẫn ở Danh sách |
 | Bản nháp, giữ trên máy | Có nháp chung | Giữ chung `workspace.update` / `workspace.keepDraft` với Danh sách | Không khẳng định đã ghi Excel/Firebase |
 | Điều hướng đến bảng Danh sách đầy đủ | Không | **Thêm** nút `Mở Danh sách dữ liệu` | Có thể thao tác chức năng quản trị nâng cao tại bảng gốc |

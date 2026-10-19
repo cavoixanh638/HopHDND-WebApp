@@ -1,3 +1,10 @@
+## 20/10/2026 — Mốc source PASS, đang chờ phát hành preview
+
+- Exact source `bb398c0d4acc3a828eb1d7f4cf75a06745b28c05` đã PASS Verify [#39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797). Các cải tiến tên bảng, màu ô theo từ, sort chỉ khi sửa, tooltip quyền sửa, căn giữa và lịch sử theo ô đã commit trên PR #3.
+- **Không coi CI PASS là preview đã cập nhật.** Muốn kiểm bằng link Pages phải phát hành artifact đã kiểm đúng SHA/digest vào `preview/current/index.html` theo workflow được phép, sao lưu bản preview trước; không thay `main:index.html` hoặc merge PR #3. Preview có thể kết nối Firebase đang vận hành: tránh nhấn nút ghi cấu hình/dữ liệu thật khi chỉ xem thử.
+- Trong nghiệm thu riêng, kiểm ở chế độ xem/khách và admin: sort chỉ khi sửa, ô không quyền không có dấu sửa, hai bảng cùng màu từ khóa và căn ô; biểu tượng lịch sử không hiện ở khách; nguồn không có audit phải có thông báo, không phỏng đoán. Chưa đo độ trễ trên Windows/số dòng thật hoặc thử thay đổi quyền ngay lúc đang mở popup.
+
+
 
 
 ## Preview popup chiều rộng/quyền sửa — 19/10/2026
