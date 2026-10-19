@@ -1,5 +1,7 @@
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
+**Bản kiểm thử đã phát hành:** [Popup bảng dữ liệu đủ thao tác và kéo độ rộng](https://cavoixanh638.github.io/HopHDND-WebApp/preview/popup-grid-parity-2026-10-19/). [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hiện tương ứng. Bản `preview/detail-grid-columns-2026-10-19/` là phiên bản **trước khi sửa lỗi kéo cột**, chỉ dùng để đối chiếu, không làm theo hướng dẫn mới.
+
 ## Thao tác popup chi tiết nâng cao — so với bảng Danh sách (19/10/2026)
 
 **Kéo cột:** Bấm ô số báo cáo để mở popup, đưa chuột lên **đường biên bên phải tiêu đề cột** (vùng đổi kích thước có đường viền dọc), giữ chuột và kéo sang trái/phải, thả để lưu độ rộng **riêng của popup**. Có thể Tab đến tay nắm và dùng phím ←/→ mỗi lần 10px. Không cần mở Cấu hình cột để kéo.
