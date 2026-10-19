@@ -165,6 +165,16 @@ try{
     await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')===${JSON.stringify(direction)}`,
       'List sort did not reach '+direction);
   }
+  // Follow MUI/AG Grid conventions: the whole header label is sortable.
+  await evaluate(`document.querySelector(${JSON.stringify(sortSelector)})?.click()`);
+  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='ascending'`,
+    'Clicking the header title should sort ascending');
+  await evaluate(`document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click()`);
+  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='descending'`,
+    'Sort icon should change direction after clicking header title');
+  await evaluate(`document.querySelector(${JSON.stringify(sortSelector+' .column-sort-button')})?.click()`);
+  await eventually(`document.querySelector(${JSON.stringify(sortSelector)})?.getAttribute('aria-sort')==='none'`,
+    'Sort icon should reset source order');
 
   if(!await evaluate(`(()=>{
     const button=document.querySelector('.source-column-visibility button');
@@ -313,7 +323,31 @@ try{
       })()`);
       if(!colorConsistency.ok)throw Error('Report status header/body/footer palette mismatch: '+
         JSON.stringify(colorConsistency));
-
+      const buildHeading=await evaluate(`(()=>{
+        const title=[...document.querySelectorAll('.report-surface h3')]
+          .find(node=>node.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
+        const heads=[...(title?.closest('.report-surface')?.querySelectorAll('thead th')??[])]
+          .map(cell=>cell.textContent?.trim());
+        return heads[1]==='Tổng số nội dung'&&heads[2]==='Không phải trình';
+      })()`);
+      if(!buildHeading)throw Error('Building NQ must show Không phải trình immediately after total');
+      const clickableCount=await evaluate(`(()=>{
+        const cell=[...document.querySelectorAll('.report-surface .count-drill')]
+          .find(button=>button.textContent?.trim()&&!button.closest('tfoot'));
+        if(!cell)return false;
+        cell.click();return true;
+      })()`);
+      if(!clickableCount)throw Error('Report counts have no clickable detail action');
+      await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
+        'Report detail did not open from count button');
+      const detailBackdrop=await evaluate(`(()=>{
+        const dialog=document.querySelector('dialog.report-detail-modal[open]');
+        return !!dialog&&getComputedStyle(dialog,'::backdrop').backdropFilter==='none';
+      })()`);
+      if(!detailBackdrop)throw Error('Report detail modal backdrop blur was not disabled');
+      await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
+      await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
+        'Report detail did not close promptly');
     }
     const geometry=await sharedGeometry();
     for(let i=0;i<originalGeometry.length;i++){
