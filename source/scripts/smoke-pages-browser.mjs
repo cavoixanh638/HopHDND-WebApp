@@ -592,6 +592,19 @@ try{
             buttons:1});
           await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:resizeBefore.x+65,y:resizeBefore.y,
             button:'left',buttons:0,clickCount:1});
+          const dragDiag=await evaluate(`(()=>{
+            const grid=document.querySelector('dialog.report-detail-modal[open] .report-detail-grid');
+            const c=grid?.querySelector('colgroup col');
+            const g=grid?.querySelector('thead tr:first-child th .column-resizer');
+            const tip=document.elementFromPoint(${resizeBefore.x},${resizeBefore.y});
+            const key=Object.keys(localStorage).find(k=>k.includes('hdnd.report-detail-grid.v1:'));
+            const prefs=key?JSON.parse(localStorage.getItem(key)):null;
+            return {colWidth:c?.style.width,tableWidth:grid?.getBoundingClientRect().width,
+              computedWidth:c?getComputedStyle(c).width:null,
+              grip:g?.getBoundingClientRect().toJSON(),hit:tip?.outerHTML?.slice(0,180),
+              persistedFirst:prefs?.columns?.[0]?.width,prior:${JSON.stringify(resizeBefore)}};
+          })()`);
+          console.log('REPORT_DETAIL_DRAG_DIAGNOSTIC',JSON.stringify(dragDiag));
           await eventually(`(()=>{
             const grid=document.querySelector('dialog.report-detail-modal[open] .report-detail-grid');
             const first=parseFloat(grid?.querySelector('colgroup col')?.style.width||'0');
