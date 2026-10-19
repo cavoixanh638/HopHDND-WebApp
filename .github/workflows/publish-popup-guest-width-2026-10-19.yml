@@ -4,6 +4,12 @@ on:
     workflows: ["Verify HopHDND source"]
     types: [completed]
   workflow_dispatch:
+  # Allow a guarded one-time publisher replay after CI success, without
+  # rerunning any source tests or modifying production root index.html.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-popup-guest-width-2026-10-19.yml"
 
 permissions:
   actions: read
@@ -15,7 +21,7 @@ concurrency:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.id == 39288741299 && github.event.workflow_run.head_sha == 'f0547bbf9137d6849c163fcef28c3448ada0a63a' && github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || (github.event.workflow_run.id == 39288741299 && github.event.workflow_run.head_sha == 'f0547bbf9137d6849c163fcef28c3448ada0a63a' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
