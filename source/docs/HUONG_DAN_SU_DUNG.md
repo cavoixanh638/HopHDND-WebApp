@@ -4,7 +4,7 @@ Khi bấm số trong báo cáo, bảng popup **mở ở chế độ xem**. Nút 
 
 Trên mã PR #3 mới, bấm **Cấu hình cột riêng → Độ rộng toàn cửa sổ popup**, nhập 640–2400 px (mặc định 1480), rồi **Lưu cấu hình cột**. Độ rộng cửa sổ **khác** tổng độ rộng bảng (có thể cuộn ngang) và độ rộng từng cột. Cửa sổ tự giới hạn theo màn hình, lưu riêng ở trình duyệt, không đổi bố cục Danh sách hay quyền.
 
-**Trạng thái:** [Verify #39270344125](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39270344125) đã PASS trên nhánh PR #3. **Bản preview đang phát hành và trang chính chưa chứa chức năng độ rộng chung mới**, nên không tìm mục này trên các URL cũ. Chỉ kiểm nghiệm khi đã publish artifact từ mã nguồn mới và nghiệm thu trên thiết bị thực.
+**Trạng thái:** [Verify #39270344125](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39270344125) đã PASS trên nhánh PR #3. **Preview mới đã có mã sửa** tại https://cavoixanh638.github.io/HopHDND-WebApp/preview/popup-width-permissions-2026-10-19/ . Trang chính chưa cập nhật; hãy dùng Ctrl+F5 nếu vẫn nhìn thấy bản cũ và thử trên thiết bị thực trước khi nghiệm thu.
 
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
