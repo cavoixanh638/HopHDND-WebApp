@@ -1,5 +1,12 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Làm nổi ô hover nhưng không tăng việc xử lý
+
+- Theo yêu cầu mới của người dùng, giữ nguyên singleton tooltip và cơ chế delegated pointer đã được A/B chọn, **chỉ sửa CSS của ô `report-clickable-cell`**: trước đây lớp phủ nền `rgba(73,124,98,.035)` rất nhạt, hầu như không phân biệt. Mới: `background:rgba(9,106,113,.14)` và `outline:2px solid #08777B`, `outline-offset:-2px` không thay box geometry; focus bàn phím có viền **3px** màu #07595B.
+- Viền teal chỉ đánh dấu tương tác, không đổi dữ liệu hoặc màu semantic red/yellow/green. Không thêm DOM/React state, JS/animation, shadow blur, `body:has`, repaint toàn hàng; không ảnh hưởng các ô số `—`, ô % hoặc tiêu đề, hoặc thao tác bấm toàn ô. CSS `outline` không thay đổi kích thước layout, khác với `border`. Có paint cục bộ trên ô, mức GPU/browser thực tế cần kiểm bằng Chrome.
+- Chrome smoke được mở rộng: đo `CELL_HOVER_VISUAL_AB` 2 × 36 chuột thật (bản trước .035 và bản mới .14 + outline, luân phiên thứ tự), đếm RecalcStyle/Layout/Script/Task; kiểm hình học ô, chỉ đúng một ô có viền và tooltip vẫn mở khi con trỏ ở góc. **Không kết luận PASS hoặc số đo khi CI chưa hoàn tất.**
+- Sao lưu nhánh code trước sửa `backup/before-high-contrast-cell-hover-2026-10-19` tại `68893b4ac094b991cb19b82d515da1f124ae2fa3`. Chỉ PR #3 / preview, không merge, không sửa Excel/Firebase hoặc root production.
+
 ## 19/10/2026 — Quyết định tối ưu tooltip dựa trên A/B Chrome thật
 
 - **Bằng chứng A/B trước khi sửa:** [run #39242280607](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39242280607) tại `f228257792974f8cd245167aff2cab4bda07a40f`, ghi log `HOVER_AB_METRICS` với 5 phương án, 36 lần chuột thật × 2 lượt, khoảng 7.976 nodes từ 5 bảng + 80 dòng nhân bản. **Workflow tổng FAIL sau phép đo** vì xóa thư mục Chrome gặp ENOTEMPTY; các số đo đã ghi thành công trước đó, không gọi run PASS. Xem phương pháp, số liệu và giới hạn trong [TOOLTIP_PERFORMANCE_AB_2026-10-19.md](TOOLTIP_PERFORMANCE_AB_2026-10-19.md).
