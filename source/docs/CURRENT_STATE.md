@@ -1,5 +1,13 @@
 # Trạng thái hiện tại
 
+## 19/10/2026 — Tooltip chung cố định, bỏ ký hiệu cạnh số
+
+- Người dùng muốn quay lại tooltip nhưng giảm khựng và giản lược số: **mỗi ô chỉ giữ số lượng**, bỏ dấu ↗ và cue "Xem" trong ô; khi rê chuột hoặc focus qua Tab hiện tooltip `Click để xem chi tiết`. Click bất kỳ vị trí nào trong ô có số vẫn mở danh sách, ô trống/%/header giữ nguyên.
+- Tham khảo trực tiếp docs: [Radix Tooltip Provider](https://www.radix-ui.com/primitives/docs/components/tooltip) dùng provider chung, điều chỉnh delay/skip delay; [AG Grid tooltip](https://www.ag-grid.com/javascript-data-grid/tooltips/) có switch delay và tùy chọn browser/tooltips tùy biến; [Floating UI autoUpdate](https://floating-ui.com/docs/autoupdate) cảnh báo chỉ bật theo vòng đời tooltip để tránh overhead; [Primer guidelines](https://primer.style/product/components/tooltip/guidelines/) yêu cầu text ngắn, gắn vào tương tác thực sự. Đây là nguyên lý tham khảo, **không khẳng định app cụ thể nào áp dụng y hệt hiện thực HopHDND**.
+- Mã mới `src/components/SharedReportTooltip.ts`: **một** host HTML `role=tooltip` được mount khi báo cáo hiện và tháo khi không còn report, fixed 190x32px, text không đổi; delegated `pointerover/pointerout/focusin/focusout` toàn document; vị trí tính từ tọa độ pointer khi **đổi ô**, không đọc DOM geometry trên pointer path, không chạy request hay React state; hover xuyên ô giữ popup để giảm chớp, scroll/resize/click/Escape ẩn. Keyboard focus có phép đọc rect một lần. Không dùng `title` delay hoặc thư viện thêm. Có thể cần đo frame rendering thực tế nếu máy người dùng vẫn lag.
+- `ReportTable.tsx` mount shared tooltip bằng effect, không còn handler hover per cell; `app.css` tạo khung tooltip cố định/nhẹ và không có số/biểu tượng khác cạnh count. `tests/reporting.test.ts` bảo vệ number-only nút, `smoke-pages-browser.mjs` kiểm singleton 300 lượt vào/ra cùng text/geometry và click tại góc bằng Chrome mock.
+- Sao lưu trước sửa: nhánh `backup/before-single-fixed-tooltip-without-arrow-2026-10-19` tại `b0c7448354d7667eaac631ef28130bae1c0e1d67`. Thay đổi nằm trên PR #3 chưa merge; không đụng nguồn Excel, Firebase và bản production root. **Chỉ xác nhận nghiệm thu sau khi có exact SHA CI/PAGES SUCCESS**, Chrome mock không phản ánh được hiệu năng máy thật.
+
 ## 19/10/2026 — Phương án hover không tooltip nổi (CSS-only, đang nghiệm thu)
 
 - Người dùng tiếp tục phản ánh giao diện hover còn "nặng" sau khi đã dùng tooltip singleton prewarm/transform; số đo 300 sự kiện tổng 3ms **chỉ kiểm JavaScript synthetic trong runner**, không chứng minh hiệu ứng thật mượt: có thể còn paint/composite, nhiều vùng giao diện thay đổi, hoặc chính hộp nổi liên tục xuất hiện gây cảm giác rối.
