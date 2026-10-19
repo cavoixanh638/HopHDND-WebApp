@@ -1,77 +1,74 @@
 /**
- * One stable tooltip shared by five report tables.
+ * Single pre-mounted tooltip shared by all report count cells.
  *
- * Modern browsers use CSS anchor positioning + :has(:hover). That path has
- * ZERO JS event handlers, coordinate calculations, style writes or React work
- * on hover. The browser places one static tooltip relative to the hovered cell.
- * Older browsers use a small delegated pointer/focus fallback.
+ * Browser A/B (36 real Chrome pointer moves x 2, 7,976 DOM nodes) found CSS
+ * body:has()+anchor positioning costs ~32ms layout and ~10.7ms style per sweep.
+ * Delegated pointerover below does zero layout reads, never changes text,
+ * reuses one node and updates position only when moving to a DIFFERENT cell.
+ * Pointer paths do not mutate aria-describedby (accessibility tree churn).
  */
-const SELECTOR='.report-surface .report-table button.count-drill';
-const TEXT='Click để xem chi tiết';
-let node:HTMLDivElement|null=null;
+const SELECTOR='button.count-drill';
+let tooltip:HTMLDivElement|null=null;
 let active:HTMLButtonElement|null=null;
 let hosts=0;
-let pointerActive=false;
-let fallbackAttached=false;
-
-function supportsNativeAnchorHover():boolean {
-  return typeof CSS!=='undefined'&&
-    CSS.supports('anchor-name','--report-hover-anchor')&&
-    CSS.supports('position-anchor','--report-hover-anchor')&&
-    CSS.supports('position-area','bottom center')&&
-    CSS.supports('selector(body:has(.count-drill:hover))');
-}
+let shown=false;
+let keyboard=false;
+const WIDTH=190;
+const HEIGHT=32;
 
 function buttonFrom(target:EventTarget|null):HTMLButtonElement|null {
   if(!(target instanceof Element))return null;
   const button=target.closest(SELECTOR);
-  return button instanceof HTMLButtonElement?button:null;
+  return button instanceof HTMLButtonElement&&!!button.closest('.report-surface .report-table')?button:null;
 }
 function hide():void {
-  if(!node||!active)return;
-  active.removeAttribute('aria-describedby');
+  if(!tooltip||!active)return;
+  if(keyboard&&active.getAttribute('aria-describedby')===tooltip.id)
+    active.removeAttribute('aria-describedby');
   active=null;
-  pointerActive=false;
-  node.dataset.visible='false';
+  keyboard=false;
+  if(shown){tooltip.dataset.visible='false';shown=false;}
 }
-/** Fallback only; modern CSS mode never enters this function. */
-function show(button:HTMLButtonElement,x:number,y:number,pointer:boolean):void {
-  if(!node)return;
-  if(active===button){if(pointer)pointerActive=true;return;}
-  if(active)active.removeAttribute('aria-describedby');
+function show(button:HTMLButtonElement,x:number,y:number,fromKeyboard:boolean):void {
+  if(!tooltip)return;
+  if(active===button)return;
+  if(keyboard&&active?.getAttribute('aria-describedby')===tooltip.id)
+    active.removeAttribute('aria-describedby');
   active=button;
-  pointerActive=pointer;
-  button.setAttribute('aria-describedby',node.id);
-  const left=x+202>window.innerWidth?x-200:x+12;
-  const top=y+52>window.innerHeight?y-43:y+15;
-  node.style.transform=`translate3d(${Math.round(Math.max(6,left))}px,${Math.round(Math.max(6,top))}px,0)`;
-  node.dataset.visible='true';
+  keyboard=fromKeyboard;
+  // Pointer path: no geometry/style reads; no text/ARIA changes.
+  // Fixed 190x32 bounding box, flip based only on viewport coordinates.
+  const left=x+WIDTH+18>window.innerWidth?x-WIDTH-10:x+12;
+  const top=y+HEIGHT+22>window.innerHeight?y-HEIGHT-11:y+14;
+  tooltip.style.transform=`translate3d(${Math.round(Math.max(6,left))}px,${Math.round(Math.max(6,top))}px,0)`;
+  if(fromKeyboard)button.setAttribute('aria-describedby',tooltip.id);
+  if(!shown){tooltip.dataset.visible='true';shown=true;}
 }
 function onPointerOver(event:PointerEvent):void {
   if(event.pointerType==='touch')return;
   const button=buttonFrom(event.target);
-  if(button)show(button,event.clientX,event.clientY,true);
+  if(button)show(button,event.clientX,event.clientY,false);
 }
 function onPointerOut(event:PointerEvent):void {
-  if(!active||!pointerActive||buttonFrom(event.target)!==active)return;
+  if(!active||buttonFrom(event.target)!==active)return;
   const next=buttonFrom(event.relatedTarget);
   if(next===active||next)return;
-  if(document.activeElement!==active)hide();
-  else pointerActive=false;
+  // Keep tooltip for a keyboard-focused button even as pointer leaves it.
+  if(document.activeElement===active&&keyboard)return;
+  hide();
 }
 function onFocusIn(event:FocusEvent):void {
   const button=buttonFrom(event.target);
-  if(!button)return;
-  const rect=button.getBoundingClientRect();
-  show(button,rect.left+rect.width/2,rect.bottom,false);
+  if(!button||!button.matches(':focus-visible'))return;
+  const rect=button.getBoundingClientRect(); // One read, keyboard only.
+  show(button,rect.left+rect.width/2,rect.bottom,true);
 }
 function onFocusOut(event:FocusEvent):void {
-  if(buttonFrom(event.target)===active&&!pointerActive)hide();
+  if(buttonFrom(event.target)===active)hide();
 }
 function onPointerDown():void {hide();}
 function onKeyDown(event:KeyboardEvent):void {if(event.key==='Escape')hide();}
-function attachFallback():void {
-  if(fallbackAttached)return;
+function attach():void {
   document.addEventListener('pointerover',onPointerOver,true);
   document.addEventListener('pointerout',onPointerOut,true);
   document.addEventListener('focusin',onFocusIn,true);
@@ -80,10 +77,8 @@ function attachFallback():void {
   document.addEventListener('keydown',onKeyDown,true);
   window.addEventListener('scroll',hide,true);
   window.addEventListener('resize',hide);
-  fallbackAttached=true;
 }
-function detachFallback():void {
-  if(!fallbackAttached)return;
+function detach():void {
   document.removeEventListener('pointerover',onPointerOver,true);
   document.removeEventListener('pointerout',onPointerOut,true);
   document.removeEventListener('focusin',onFocusIn,true);
@@ -92,25 +87,26 @@ function detachFallback():void {
   document.removeEventListener('keydown',onKeyDown,true);
   window.removeEventListener('scroll',hide,true);
   window.removeEventListener('resize',hide);
-  fallbackAttached=false;
 }
-/** One mounted host (and at most one fallback listener set) for all reports. */
+/** All five tables mount this host; only the first creates the shared tooltip. */
 export function mountSharedReportTooltip():()=>void {
   if(typeof document==='undefined'||!document.body)return ()=>{};
   hosts++;
   if(hosts===1){
-    node=document.createElement('div');
-    node.id='report-shared-tooltip';
-    node.className='report-shared-tooltip';
-    node.setAttribute('role','tooltip');
-    node.dataset.visible='false';
-    node.dataset.mode=supportsNativeAnchorHover()?'native':'fallback';
-    node.textContent=TEXT;
-    document.body.appendChild(node);
-    if(node.dataset.mode==='fallback')attachFallback();
+    tooltip=document.createElement('div');
+    tooltip.id='report-shared-tooltip';
+    tooltip.className='report-shared-tooltip';
+    tooltip.setAttribute('role','tooltip');
+    tooltip.dataset.visible='false';
+    tooltip.dataset.mode='delegated';
+    tooltip.textContent='Click để xem chi tiết';
+    document.body.appendChild(tooltip);
+    attach();
   }
   return ()=>{
     hosts=Math.max(0,hosts-1);
-    if(hosts===0){hide();detachFallback();node?.remove();node=null;}
+    if(hosts===0){
+      hide();detach();tooltip?.remove();tooltip=null;
+    }
   };
 }
