@@ -29,11 +29,11 @@ describe('Năm phong cách tô màu báo cáo', () => {
     // System fonts are still local-only; CSS has no embedded proprietary font assets.
     expect(css).not.toContain('@font-face');
   });
-  it('makes only three Party middle columns extremely pale and keeps VP/source/completed prominent',()=>{
+  it('keeps Party middle and excluded build columns pale but VP/source/completed prominent',()=>{
     const palette=[...css.matchAll(/\.report-surface\s*\{([^}]*)\}/g)]
       .map(match=>match[1]).find(block=>block.includes('--office-bg'));
     expect(palette).toBeDefined();
-    const quietBlock=css.match(/\.report-surface \.report-stage-intermediate\s*\{([^}]*)\}/)?.[1];
+    const quietBlock=css.match(/\.report-surface \.report-stage-intermediate,\s*\.report-surface \.report-stage-excluded\s*\{([^}]*)\}/)?.[1];
     expect(quietBlock).toBeDefined();
     const softBg=declaration(quietBlock!,'stage-bg');
     expect(luminance(softBg)).toBeGreaterThan(0.96);
