@@ -37,7 +37,7 @@ jobs:
           base='https://api.github.com/repos/cavoixanh638/HopHDND-WebApp'
           headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'}
           def get(path):
-              with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers,timeout=30)) as r:
+              with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers),timeout=30) as r:
                   return json.load(r)
           run=get('/actions/runs/39288741299')
           sha='f0547bbf9137d6849c163fcef28c3448ada0a63a'
