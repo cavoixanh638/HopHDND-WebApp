@@ -1,5 +1,19 @@
 # SYSTEM — Quy tắc nghiệp vụ
 
+## Quy tắc hiện hành đã đối chiếu đến 19/10/2026 — ưu tiên hơn mô tả legacy bên dưới
+
+- File nghiệp vụ duy nhất đang đọc trên Pages là Excel `Tổng hợp các ND kỳ thường lệ cuối năm 2026.xlsx`, tab `60961344`, **15 cột A–O**, O = Ghi chú. Trường dữ liệu không có trong Excel mới **không được tự đặt thành cột nguồn**. Giá trị thiếu phải giữ trống khi đọc; ngữ cảnh UI có thể hiển thị dấu “—”. ID/STT và khóa dòng không cho người dùng sửa nguồn khi chưa có hợp đồng ghi bảo toàn danh tính.
+- Năm báo cáo mặc định, đúng thứ tự và phạm vi: `party` = tiến độ xin ý kiến Thành ủy; `build` = trình HĐND xây dựng NQ; `council` = tổng tiến độ NQ+BC trình HĐND; `nq` = nghị quyết trình HĐND; `bc` = báo cáo trình HĐND. Phân nhóm theo lãnh đạo VP, sở, phòng và các khóa được hỗ trợ không được làm thay đổi tổng phạm vi.
+- Báo cáo Thành ủy **không có** cột `TU đã cho ý kiến`; chỉ `Đã có TBKL` là trạng thái hoàn tất sau khi xác nhận nguồn. Các cột trung gian `Đã gửi ĐU`, `ĐU đã gửi TU, chưa họp`, `Đã họp/xin phiếu, chưa có TBKL` phải phân biệt rõ bằng chữ và màu trung tính, **không** là hoàn thành.
+- Báo cáo xây dựng NQ có cột **Không phải trình** ngay sau `Tổng số nội dung`. Giá trị H `Không phải trình xây dựng NQ` được giữ trong tổng và mẫu số của phạm vi xây dựng NQ đang được tính trên phiên bản nguồn hiện hành; **không** được đưa vào tử số hoàn thành. `Đã trình HĐND, chưa có QĐ` chỉ là bước trung gian; **Đã có QĐ chấp thuận** mới hoàn thành.
+- Ba bảng HĐND `council/nq/bc` có 3 cột trạng thái **Sở chưa trình**, **VP đang thực hiện**, **Đã trình HĐND thành phố**; cột cuối là kết thúc/hoàn thành nghiệp vụ báo cáo. Không tạo cột `Hoàn thành` độc lập dù Excel cũ có chuỗi đó. Chuẩn hóa alias `Hoàn thành` sang tên hiển thị `Đã trình HĐND thành phố` ở **lớp báo cáo**, không âm thầm sửa một ô Excel.
+- Trạng thái nguồn chưa khớp không được đoán thành cột mới hoặc áp vào trạng thái hoàn tất. Gom vào **Chưa chuẩn hóa** có cảnh báo giá trị gốc, vẫn trong tổng nếu thuộc phạm vi. Ẩn/đổi rộng/sắp cột chỉ đổi trình bày, không xóa dữ liệu và không đổi tổng.
+- Màu báo cáo chỉ phân biệt mức độ ưu tiên xử lý/tiến trình, **không khẳng định đã quá hạn** khi thiếu chứng cứ về hạn. Font, cỡ chữ và màu ở tiêu đề/thân/chân phải nhất quán trong phương án hiển thị. Nút số lượng mở đúng danh sách hồ sơ tương ứng, bao gồm số tổng nhóm/tổng bảng.
+- Bất biến kiểm toán: KPI, tỷ lệ và bảng báo cáo phải thống nhất định nghĩa “đã hoàn thành”. Tại commit đã kiểm, `getKpis` vẫn dùng chuỗi `Hoàn thành` cũ để đếm KPI, chưa được chứng minh đồng nhất với báo cáo hội đồng. **Đây là sai khác đang mở**; không được gắn trạng thái hoàn tất nghiệm thu F01/F10 trước khi sửa và thử.
+- **Không xóa/sửa Excel production hoặc Firebase production trong công việc tài liệu.** Các thao tác lưu bố cục báo cáo/danh sách, danh mục và quyền là những giao dịch Firebase tách biệt; phải báo thành công/thất bại từng phần và giữ nháp khi có lỗi. Phê duyệt/khóa sửa trên WebApp không làm thay đổi quyền chỉnh trực tiếp Excel.
+
+Xem [từ điển A–O](TU_DIEN_DU_LIEU.md), [ma trận yêu cầu](FEATURES.md) và [trạng thái phát hành](CURRENT_STATE.md). Các phần 0.5.x/0.6.x/0.7.0 bên dưới là **đích kiến trúc hoặc mốc lịch sử**, không tự được áp lên nguồn Excel mới.
+
 ## Nguồn và quản trị Pages 0.7.0 — 15/10/2026
 
 Google Sheets vẫn là nguồn nhập/sửa chính; Pages đọc Sheets/GViz, không yêu cầu nhập dữ liệu vào Firebase. Sửa trên Pages hiện chỉ là thử nghiệm cục bộ theo quyền ô/cột/dòng; không ghi dữ liệu nghiệp vụ vào Sheets hoặc Firebase. Báo cáo, KPI và xuất Excel dùng bản đọc Sheets. Không triển khai đồng bộ Sheets → Firebase định kỳ. Nhập Excel ghi dữ liệu đang khóa, chỉ mở khi có quyết định chuyển đổi chính thức.
