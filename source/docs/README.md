@@ -22,8 +22,11 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x
 | Cấu hình của app Google/HTML legacy | [DONG_BO_CAU_HINH](DONG_BO_CAU_HINH.md) |
 | Hợp đồng API/RPC | [API](API.md) |
 | Bằng chứng test, nghiệm thu từng mốc | [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md) |
+| **Phương án tooltip đã chốt, số đo A/B và ràng buộc hiệu năng hover** | [TOOLTIP_PERFORMANCE_AB_2026-10-19](TOOLTIP_PERFORMANCE_AB_2026-10-19.md), [FEATURES — F06](FEATURES.md), [ARCHITECTURE — hover báo cáo](ARCHITECTURE.md) |
 | Các quyết định và lý do | [ADR 001](decisions/001-single-html-prototype.md) |
 | Đối chiếu yêu cầu trao đổi 17–19/10, phát hành preview, lỗi còn mở | [FEATURES — phần nghiệm thu bổ sung](FEATURES.md), [CURRENT_STATE — kiểm toán 19/10](CURRENT_STATE.md), [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md) |
+
+**Mốc hiện hành 19/10/2026:** kiểu tương tác ô thống kê được chốt ở [bản preview viền rõ](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/) — ô đếm dương bấm toàn ô, viền xanh ngọc 2px, tooltip dùng chung và không dùng CSS Anchor/`body:has()`. [CURRENT_STATE](CURRENT_STATE.md) chứa tình trạng và SHA triển khai, [VAN_HANH](VAN_HANH.md) chứa rollback. Các mô tả CSS Anchor trong bản kiểm thử cũ là **lịch sử, không là chuẩn hiện tại**. PR #3 chưa merge; production root chưa đổi.
 
 ## Quy ước tránh chồng chéo
 
