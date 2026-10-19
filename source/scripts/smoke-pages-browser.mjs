@@ -2,7 +2,7 @@
 // GViz is intercepted with synthetic records; Firebase production is never contacted.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,existsSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -18,12 +18,63 @@ const candidates=['google-chrome','google-chrome-stable','chromium','chromium-br
 const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
 if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
-const chrome=spawn(binary,['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
-  '--disable-extensions','--no-first-run','--no-default-browser-check','--remote-debugging-port=0',
-  '--window-size=1600,1000','--user-data-dir='+userDir,'about:blank'],{stdio:['ignore','ignore','pipe']});
+let chrome;
 let chromeErrors='';
-chrome.stderr?.on('data',chunk=>{chromeErrors+=String(chunk).slice(0,2000);});
-chrome.on('error',error=>{chromeErrors+=' SPAWN: '+error.message;});
+// GitHub hosted runners intermittently hang before creating DevToolsActivePort
+// with --remote-debugging-port=0. Reserve an isolated loopback port and probe
+// CDP directly; retry with a fresh profile and alternate headless flags only
+// when launch fails. Browser assertions must still run and pass.
+async function reservePort(){
+  const probe=createServer();
+  await new Promise((resolve,reject)=>{
+    probe.once('error',reject);
+    probe.listen(0,'127.0.0.1',resolve);
+  });
+  const result=probe.address().port;
+  await new Promise((resolve,reject)=>probe.close(err=>err?reject(err):resolve()));
+  return result;
+}
+async function launchChrome(){
+  const strategies=[
+    {mode:'new',flags:['--headless=new','--no-zygote']},
+    {mode:'fallback',flags:['--headless','--disable-software-rasterizer']}
+  ];
+  for(let attempt=0;attempt<strategies.length;attempt++){
+    const mode=strategies[attempt];
+    const debugPort=await reservePort();
+    const profile=join(userDir,'profile-'+attempt);
+    chromeErrors='';
+    chrome=spawn(binary,[...mode.flags,'--no-sandbox','--disable-dev-shm-usage',
+      '--disable-gpu','--disable-extensions','--disable-background-networking',
+      '--no-first-run','--no-default-browser-check',
+      '--remote-debugging-address=127.0.0.1','--remote-debugging-port='+debugPort,
+      '--window-size=1600,1000','--user-data-dir='+profile,'about:blank'],
+      {stdio:['ignore','ignore','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
+    chrome.stderr?.on('data',chunk=>{chromeErrors=(chromeErrors+String(chunk)).slice(-5000);});
+    chrome.on('error',error=>{chromeErrors+=' SPAWN: '+error.message;});
+    for(let i=0;i<140;i++){
+      if(chrome.exitCode!==null)break;
+      try{
+        const response=await fetch('http://127.0.0.1:'+debugPort+'/json/list',
+          {signal:AbortSignal.timeout(900)});
+        if(response.ok){
+          const tabs=await response.json();
+          if(tabs.some(t=>t.type==='page')){
+            console.log('CHROME_DEBUG_READY',JSON.stringify({mode:mode.mode,attempt:attempt+1}));
+            return tabs;
+          }
+        }
+      }catch{}
+      await sleep(150);
+    }
+    const reason='Attempt '+(attempt+1)+' ('+mode.mode+') Chrome CDP unavailable; exit='+
+      chrome.exitCode+' binary='+binary+' stderr='+chromeErrors.slice(-1300);
+    console.warn('CHROME_START_RETRY',reason);
+    chrome.kill('SIGKILL');
+    if(attempt===strategies.length-1)throw Error(reason);
+  }
+  throw Error('Chrome launch strategies exhausted');
+}
 let ws;
 let seq=0;
 const pending=new Map();
@@ -60,16 +111,7 @@ async function eventually(expression,why,tries=75){
   throw Error('Browser smoke failed: '+why);
 }
 try{
-  let chromePort=0;
-  const debugFile=join(userDir,'DevToolsActivePort');
-  for(let i=0;i<250;i++){
-    if(existsSync(debugFile)){chromePort=Number(readFileSync(debugFile,'utf8').split('\n')[0]);break;}
-    if(chrome.exitCode!==null)break;
-    await sleep(100);
-  }
-  if(!chromePort)throw Error('Chrome debugging port unavailable; exit='+chrome.exitCode+
-    ' binary='+binary+' stderr='+chromeErrors.slice(-2000));
-  const tabs=await (await fetch('http://127.0.0.1:'+chromePort+'/json/list')).json();
+  const tabs=await launchChrome();
   const tab=tabs.find(t=>t.type==='page');
   if(!tab)throw Error('Chrome did not open a page');
   ws=new WebSocket(tab.webSocketDebuggerUrl);
@@ -730,7 +772,7 @@ try{
 }finally{
   for(const p of pending.values())p.reject?.(Error('closing browser'));
   if(ws)ws.close();
-  chrome.kill('SIGKILL');
+  if(chrome)chrome.kill('SIGKILL');
   server.close();
   rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
