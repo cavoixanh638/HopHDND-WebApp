@@ -889,9 +889,10 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-grid-quick-width {display:inline-flex;align-items:center;gap:7px;padding:4px 7px;
   border:1px solid #ccded3;border-radius:7px;background:#fff;font-size:12px;
   font-weight:650;color:#335748;white-space:nowrap;}
-.report-grid-quick-width input[type="range"] {width:114px;min-width:75px;accent-color:#28735c;cursor:ew-resize;}
-.report-grid-quick-width output {font-variant-numeric:tabular-nums;font-size:11px;min-width:45px;text-align:right;}
-@media(max-width:780px){.report-grid-quick-width input[type="range"] {width:72px;}}
+.report-grid-quick-width .deferred-width-field input[type="number"] {width:86px;min-width:76px;
+  box-sizing:border-box;height:30px;padding:4px 7px;border:1px solid #b4cbbf;
+  border-radius:5px;background:#fff;font-variant-numeric:tabular-nums;color:#193f31;}
+.report-grid-quick-width .deferred-width-error {max-width:240px;white-space:normal;}
 .report-grid-notices {padding:7px 16px;flex:none;}
 .report-grid-notices p {margin:2px 0;font-size:12px;line-height:1.5;}
 .report-grid-settings {flex:none;padding:12px 16px;background:#f5faf6;
