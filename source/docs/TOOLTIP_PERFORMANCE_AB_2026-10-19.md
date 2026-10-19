@@ -29,6 +29,23 @@
 3. Giữ nguyên đánh dấu `report-clickable-cell`, button native phủ toàn diện tích, click tổng và mở modal, màu trạng thái và tương tác in. `tr:hover` tô cả dòng report đã bỏ từ bản trước.
 4. Kiểm chứng bằng Chrome smoke, 300 pointer events không đọc layout và CDP click vật lý vào mép/góc. Sau khi có nguồn thực, đo thêm Chrome DevTools Performance trên Windows: P50/P95 frame time, Style/Layout/Paint và cảm nhận khi quét nhanh.
 
+## Bổ sung nghiệm thu 19/10 — nền/viền hover rõ nét ở đúng ô
+
+Người dùng chọn giữ singleton tooltip (phương án `follow` đã đo tốt hơn CSS Anchor) và **đánh dấu rõ ô đang rê chuột**, không mở rộng highlight toàn hàng. Thực hiện sau khi [CSS `b22b877c8f81d840059abd738dde5d7c9a24d0a9`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/b22b877c8f81d840059abd738dde5d7c9a24d0a9) và [test `cb4c276b2f649a178993ab0bb3abd192f4faca83`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/cb4c276b2f649a178993ab0bb3abd192f4faca83):
+
+- Cũ: chỉ nền `rgba(73,124,98,.035)`. Mới: nền `rgba(9,106,113,.14)`, `outline:2px solid #08777B;outline-offset:-2px`, `focus-visible` viền 3px `#07595B`. CSS chỉ áp dụng cho **button của ô số dương** đang `:hover`; không thêm DOM, JavaScript, border làm thay đổi box, transition hay box shadow, vẫn giữ semantic palette.
+- Run [Verify #39249428414](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249428414) **SUCCESS**, nguồn kiểm `cb4c276b2f649a178993ab0bb3abd192f4faca83`, Chrome `CELL_HOVER_VISUAL_PASS` = `outline:rgb(8,119,123) solid 2px`, fill `rgba(9,106,113,.14)`, `oneCell:true`, `onlyOne:true`; `DELEGATED_TOOLTIP_STRESS`: 300 lượt, 0 read geometry; 352 unit PASS, 20 Firebase emulator PASS.
+- Chrome A/B **2 vòng × 36 lần** di chuyển chuột thật với thứ tự đảo chiều, hai lượt dùng cùng app/browser; `Performance.getMetrics` đo tổng thời gian xử lý **không phải cảm giác nhìn thấy tooltip**:
+
+| Phương án | RecalcStyle vòng 1/2 (ms) | Layout vòng 1/2 (ms) | Script vòng 1/2 (ms) | Task vòng 1/2 (ms) | Task TB mỗi 36 lượt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Cũ (nền .035, không viền) | 9,43 / 8,05 | 0 / 0 | 2,45 / 2,17 | 86,22 / 79,30 | **82,76 ms** |
+| Mới (nền .14, viền 2px) | 8,39 / 8,24 | 0 / 0 | 2,32 / 2,32 | 85,18 / 82,55 | **83,87 ms** |
+
+**Chênh 1,11 ms tích lũy/36 lượt** rất nhỏ; không khẳng định cải thiện hay suy giảm tốc độ trên máy thật. **Cả hai Layout 0ms** trong runner. Nghiệm thu Chrome thật với dữ liệu hiện hành vẫn phải đo Paint, khung hình bị mất (P95) và cảm nhận trực quan. Nếu thấy lag trở lại, chạy lại A/B và kiểm tra không có `body:has()`, CSS Anchor, hover cả hàng hoặc thay đổi size ô.
+
+**Preview đã publish:** [preview/clear-cell-hover-2026-10-19](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/), [Publisher #39249797389](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249797389) **PASS**, [Pages deploy #39249822864](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249822864) **SUCCESS**; artifact SHA256 `2d2f23ab40e21229556998de0bba0e649d15dd7e46a7ed77b370218463d21271`. **Không sửa `main:index.html`, nguồn Excel/Firebase, không merge PR #3.** Bằng chứng phát hành và rollback tham chiếu [VAN_HANH](VAN_HANH.md).
+
 ## Nguồn tài liệu
 
 - [Chrome: CSS selector performance](https://developer.chrome.com/docs/devtools/performance/selector-stats)
