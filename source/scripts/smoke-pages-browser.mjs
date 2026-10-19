@@ -331,6 +331,42 @@ try{
         return heads[1]==='Tổng số nội dung'&&heads[2]==='Không phải trình';
       })()`);
       if(!buildHeading)throw Error('Building NQ must show Không phải trình immediately after total');
+      // The excluded build stage uses exactly the quiet pending-decision colors.
+      const mutedBuild=await evaluate(`(()=>{
+        const section=[...document.querySelectorAll('.report-surface')]
+          .find(node=>node.querySelector('h3')?.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
+        const table=section?.querySelector('table.report-table');
+        const excluded=table?.querySelector('thead th.report-stage-excluded');
+        const pending=[...(table?.querySelectorAll('thead th')??[])]
+          .find(th=>th.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
+        if(!excluded||!pending)return false;
+        const visual=node=>{
+          const style=getComputedStyle(node);
+          return [style.backgroundColor,style.color,style.borderBottomColor].join('|');
+        };
+        return excluded.classList.contains('report-stage-intermediate')&&visual(excluded)===visual(pending)&&
+          ['tbody','tfoot'].every(group=>{
+            const a=table.querySelector(group+' td.report-stage-excluded');
+            const b=table.querySelector(group+' td.report-stage-next.report-stage-intermediate');
+            return !!a&&!!b&&visual(a)===visual(b);
+          });
+      })()`);
+      if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
+      // Test synchronously, without waiting for a native browser title tooltip.
+      const fastHover=await evaluate(`(()=>{
+        const button=[...document.querySelectorAll('.report-surface .count-drill')]
+          .find(node=>node.textContent?.trim()&&!node.closest('tfoot'));
+        if(!button||button.hasAttribute('title'))return {ok:false,reason:'native title still present'};
+        button.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+        const tooltip=document.querySelector('.report-instant-count-tooltip');
+        const shown=!!tooltip&&tooltip.textContent?.includes('Bấm để xem')&&
+          getComputedStyle(tooltip).position==='fixed'&&
+          getComputedStyle(tooltip).pointerEvents==='none';
+        button.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
+        return {ok:shown&&document.querySelector('.report-instant-count-tooltip')===null,
+          reason:shown?'tooltip does not disappear on exit':'tooltip not synchronous'};
+      })()`);
+      if(!fastHover.ok)throw Error('Fast count tooltip failure: '+JSON.stringify(fastHover));
       const clickableCount=await evaluate(`(()=>{
         const cell=[...document.querySelectorAll('.report-surface .count-drill')]
           .find(button=>button.textContent?.trim()&&!button.closest('tfoot'));
