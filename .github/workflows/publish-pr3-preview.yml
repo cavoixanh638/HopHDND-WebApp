@@ -1,4 +1,4 @@
-name: Publish verified PR3 five-style preview
+name: Publish verified HopHDND UX preview
 on:
   push:
     branches: [main]
@@ -23,43 +23,63 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: true
-      # The artifact came from a passing verify-source run at an EXACT source SHA.
-      # Do not build unverified PR code from a moving branch tip.
+      # Immutable passing PR run. Never build or deploy a moving PR tip.
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39151383753
+          run-id: 39184896725
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
-      - name: Verify exact tested HTML and five color styles
+      - name: Verify exact CI provenance and all requested UI behaviors
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          import json,os,urllib.request
+          base='https://api.github.com/repos/cavoixanh638/HopHDND-WebApp'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                   'Accept':'application/vnd.github+json'}
+          def get(path):
+              with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers)) as response:
+                  return json.load(response)
+          run=get('/actions/runs/39184896725')
+          expected='7a3a409e16b1b6621d121b09a57e9e7960c20568'
+          assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified PR commit'
+          assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
+          artifacts=get('/actions/runs/39184896725/artifacts')['artifacts']
+          html=next(a for a in artifacts if a['name']=='hophdnd-pages-candidate')
+          assert not html['expired'] and html['digest']=='sha256:fa6868898a364939a4c16fb4cf0bcc020e24713e5a8ee334e8450a036af39f02', 'Unexpected artifact'
+          assert html['workflow_run']['head_sha']==expected, 'Artifact provenance mismatch'
+          print('Verified immutable source SHA',expected,'artifact ID',html['id'])
+          PY
           test -s _verified_preview/index.html
-          echo "e3a21999ba8a2d772239cebb5e48195c23cd0d2c35a1a25b9a6f08ade7ee7dd8  _verified_preview/index.html" | sha256sum -c -
-          for needle in "5 phong cách tô màu báo cáo" "Nhãn màu nổi" "Viền màu phân cột" "Thanh dữ liệu" "Dải tiêu đề màu" "Tổng số nội dung" "Đã có TBKL" "Đã trình HĐND thành phố" "ĐU đã gửi TU, chưa họp" "fonts.googleapis.com" "Tiến độ trình HĐND xây dựng NQ" "Cấu hình cần đủ năm bảng báo cáo" "Tiến độ các Nghị quyết và Báo cáo trình HĐND" "--office-bg:#ffe8b8" "--next-bg:#dcebfd" "report-stage-intermediate" "Chưa chuẩn hóa" ".report-surface>.card-header h3"; do
+          for needle in "Không phải trình" "Tổng số nội dung" "Tiến độ trình HĐND xây dựng NQ" "column-resizer" "column-sort-button" "report-detail-modal" "count-drill"; do
             grep -Fq -- "$needle" _verified_preview/index.html
           done
-      - name: Publish only isolated preview/current/index.html
+          sha256sum _verified_preview/index.html
+      - name: Publish only isolated preview URLs (leave production root unchanged)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p preview/current
+          mkdir -p preview/current preview/ux-fixes-2026-10-19
           cp _verified_preview/index.html preview/current/index.html
-          if git diff --quiet -- preview/current/index.html; then
-            echo "Verified preview already matches published HTML."
+          cp _verified_preview/index.html preview/ux-fixes-2026-10-19/index.html
+          if git diff --quiet -- preview/current/index.html preview/ux-fixes-2026-10-19/index.html; then
+            echo "Verified previews already match"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/current/index.html
-          git commit -m "preview(pages): publish verified Excel-amended TBKL and five-report dashboard"
+          git add preview/current/index.html preview/ux-fixes-2026-10-19/index.html
+          git commit -m "preview(pages): publish verified resize, sort and report-detail UX fixes"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
             if git push origin HEAD:main; then
-              echo "Updated only preview/current/index.html. Production root index.html untouched."
+              echo "Published only preview/current and immutable UX preview. Root index.html untouched."
               exit 0
             fi
           done
