@@ -2,6 +2,8 @@
 
 ## Bảng chi tiết nhanh từ ô báo cáo — tùy chỉnh cột riêng (bản thử 19/10/2026)
 
+**Đường dẫn bản thử hiện hành:** [Bảng chi tiết nhanh + cấu hình cột độc lập](https://cavoixanh638.github.io/HopHDND-WebApp/preview/detail-grid-columns-2026-10-19/); [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hiện cùng mã. Bản `clear-cell-hover-2026-10-19/` là bản trước khi có bảng chi tiết, để đối chiếu. Không dùng site chính để đánh giá chức năng mới vì PR #3 chưa merge.
+
 1. Từ **Theo dõi tiến độ**, bấm bất kỳ ô có số dương nào (trạng thái, tổng nhóm hoặc tổng bảng). Cửa sổ **Bảng chi tiết nhanh** hiện đúng các hồ sơ của ô. Có thể tìm mọi nội dung, lọc dưới đầu mỗi cột, bấm tiêu đề để sắp xếp và cuộn ngang xem những cột bên phải. Bảng báo cáo phía sau không đổi số liệu do các thao tác xem/lọc.
 2. Bấm **Cấu hình cột riêng** để chọn cột hiện/ẩn, dùng **↑/↓** để thay đổi thứ tự hoặc nhập độ rộng 70–800px. Bấm **Lưu cấu hình cột** để dùng cho các lần mở sau; **Khôi phục mặc định** rồi Lưu để quay lại cấu hình ban đầu. Thiết lập này **chỉ áp dụng cho bảng chi tiết**, lưu ở trình duyệt hiện tại theo nguồn Excel và môi trường preview; **không thay** bảng Danh sách nội dung hoặc bảng thống kê. Nếu đổi máy/trình duyệt, phải cấu hình lại.
 3. Nếu được cấp quyền, bấm **Chỉnh sửa nháp** để thay giá trị tiến độ/đơn vị hoặc sửa Nội dung trình/Ghi chú ngay trong bảng. Chỉ trường được cấp quyền mới có editor. Các thay đổi hiện trong nháp chung với Danh sách nội dung; bấm **Giữ nháp trên máy** để lưu checkpoint cục bộ. **Đây chưa phải cập nhật Excel thật**, kể cả khi đã bấm giữ nháp; nếu không có quyền thì nút sửa không khả dụng.
