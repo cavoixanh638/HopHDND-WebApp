@@ -4,9 +4,9 @@
 
 
 
-## Pages 0.7.0 — Sheets là nguồn chính, Firebase quản trị
+## Pages 0.7.0+ — Sheets A–O là nguồn chính, Firebase quản trị
 
-Pages dùng lại App và `SheetsRepository/readSheet` để đọc GViz A–P từ Google Sheets. `useWorkspace` giữ đọc lại thủ công, polling 60 giây khi tab hiển thị, bảo toàn bản đọc trước khi lỗi và chờ xử lý nháp trước khi refresh. Không nhập dòng sang RTDB, không có tác vụ đồng bộ Sheets → Firebase. Entry Pages không chờ Auth để mount App; lỗi Firebase không chặn dữ liệu Sheets.
+Pages dùng lại App và `SheetsRepository/readSheet` để đọc GViz **A–O** từ Excel trên Google Sheets hiện hành (O = Ghi chú); nhánh parser legacy vẫn nhận snapshot A–P/A–R có header tương thích. Quy tắc schema mới xem [từ điển](TU_DIEN_DU_LIEU.md). `useWorkspace` giữ đọc lại thủ công, polling 60 giây khi tab hiển thị, bảo toàn bản đọc trước khi lỗi và chờ xử lý nháp trước khi refresh. Không nhập dòng sang RTDB, không có tác vụ đồng bộ Sheets → Firebase. Entry Pages không chờ Auth để mount App; lỗi Firebase không chặn dữ liệu Sheets.
 
 `useFirebase` chỉ quản lý Auth Anonymous/Google và listener `hdnd/profile`, `hdnd/permissions`. App quyết định quyền quản trị từ controller, độc lập `repository.sourceKind`. Tất cả bố trí báo cáo/danh sách/danh mục/JSON profile dùng cùng save profile có baseline revision; quyền ô/cột/dòng dùng cùng Google admin. Ghi chỉ sau thao tác lưu tường minh và xác nhận máy chủ; không fallback ghi cấu hình chung bằng Google bridge hoặc local legacy trên Pages. Chưa đọc được baseline thì chặn khởi tạo; lỗi giữ nháp; khóa lưu bằng ref để chặn hai lượt trước rerender.
 
