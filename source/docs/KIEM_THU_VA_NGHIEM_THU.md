@@ -1,3 +1,11 @@
+## Browser nghiệm thu mới: popup kéo độ rộng cột trực tiếp — 19/10/2026
+
+**PASS** [Verify #39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680), exact SHA `37774e6d32d843f37337f5cb8936db2617e42d0d`, 357 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs/Chrome smoke PASS. `REPORT_DETAIL_DRAG_RESIZE_PASS`: Chrome CDP đặt pointer lên ranh giới cột ID trong popup, `mousePressed`/di chuyển **65px**/`mouseReleased`, assert cột **100→165px**, table width **2120→2185px**, preference `hdnd.report-detail-grid.v1` cập nhật; **không cần form nhập px**. `REPORT_DETAIL_COLUMNS_PASS`: ẩn một cột **10→9**. `REPORT_DETAIL_REOPEN_PERSISTENCE_PASS`: đóng/mở popup rồi vẫn **9 cột**, ID **165px**, thứ tự/độ rộng lấy từ cùng localStorage riêng. `BROWSER_SMOKE_PASS` giữ cả trạng thái guest không được chỉnh sửa và tooltip không lag.
+
+**Nguyên nhân và cách sửa:** `ColumnResizeHandle` trong popup cần `windowDragFallback` theo dõi `pointermove/up` ở window chỉ trong một phiên kéo, do Chrome nested dialog có thể mất pointer capture. Không mở global listener cho toàn bộ 5 bảng theo hover và không sửa hành vi main ItemList (prop mặc định false). Cấu hình bảng popup có colgroup và table width tính từ tổng cột, không còn `width:max-content` gây phân bổ lại.
+
+**Phạm vi so sánh** tại [REPORT_DETAIL_PARITY](REPORT_DETAIL_PARITY_2026-10-19.md): còn có lọc dạng dropdown và clear, sort 3 trạng thái, mẫu popup, màu điều kiện, mở lịch sử, ContentEditor, relabel cột chung; không thay phép kiểm nghiệp vụ/source. Kết quả mock không thay thế nghiệm thu chuột Windows, dữ liệu lớn, quyền thật; không bật writer Excel trên Pages. Code SHA và artifact từ run mới nhất được ghi trong vận hành khi publish thành công.
+
 # Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
 
 ## Bảng chi tiết nhanh từ ô số — bản thử 19/10/2026
