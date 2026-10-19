@@ -24,6 +24,7 @@ type Props={
   catalog:CatalogConfig;
   listLayout?:ItemLayout;
   allowDraft:boolean;
+  readOnlyViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   onKeepDraft:()=>boolean;
@@ -34,7 +35,7 @@ type Props={
   onClose:()=>void;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
   onUpdate,onKeepDraft,onHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
@@ -73,8 +74,20 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         normalizeSearch(filterValue(item,key)).includes(normalizeSearch(value)));
     }),sort);
   },[subset,query,filters,sort]);
+  // Explicitly separate guest read-only report viewing from list edit grants.
+  const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
-  const editable=allowDraft&&subset.some(item=>TEXT_FIELDS.some(field=>canEditCell(item.recordId,field.key)));
+  const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>canEditCell(item.recordId,field.key)));
+  const availableWidth=Math.min(2400,Math.max(360,
+    (typeof window==='undefined'?1480:window.innerWidth||1480)-20));
+  const minDialogWidth=Math.min(640,availableWidth);
+  const changeDialogWidth=(width:number)=>{
+    if(readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
+    const next={...applied,dialogWidth:width};
+    if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
+    setApplied(next);setPending(next);
+  };
   const move=(index:number,offset:number)=>{
     const next=index+offset;
     if(next<0||next>=pending.columns.length)return;
@@ -88,6 +101,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
   };
   const commitWidth=(key:DetailColumnKey,width:number)=>{
+    if(readOnlyViewer)return;
     if(settings){patch(key,{width});return;}
     const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
     if(!saveDetailGridPreferences(sourceKey,next)){
@@ -105,6 +119,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setSettings(false);
   };
   const toggleSettings=()=>{
+    if(readOnlyViewer)return;
     if(settings){closeSettings();return;}
     setPending(applied);setSettings(true);setNotice('');
   };
@@ -112,6 +127,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
   const clearFilters=()=>{setFilters({});setQuery('');setSort(null);};
   const loadPreset=(id:string)=>{
+    if(readOnlyViewer)return;
     const next=presets.find(v=>v.id===id);
     if(next){
       setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
@@ -124,6 +140,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     }
   };
   const createPreset=()=>{
+    if(readOnlyViewer)return;
     if(!presetName.trim()){setNotice('Nhập tên mẫu trước khi lưu.');return;}
     if(presets.length>=12){setNotice('Đã đạt tối đa 12 mẫu của bảng popup.');return;}
     const next:ReportDetailPreset={id:crypto.randomUUID(),name:presetName.trim().slice(0,60),
@@ -133,18 +150,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPresets(list);setSelectedPreset(next.id);setPresetName('');setNotice('Đã lưu mẫu popup cá nhân.');
   };
   const updatePreset=()=>{
+    if(readOnlyViewer)return;
     if(!selectedPreset)return;
     const list=presets.map(v=>v.id===selectedPreset?{...v,layout:applied,filters,colors}:v);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không cập nhật được mẫu.');return;}
     setPresets(list);setNotice('Đã cập nhật mẫu cá nhân.');
   };
   const removePreset=()=>{
+    if(readOnlyViewer)return;
     if(!selectedPreset)return;
     const list=presets.filter(v=>v.id!==selectedPreset);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không xóa được mẫu.');return;}
     setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
+    if(readOnlyViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
     if(!saveDetailGridPreferences(sourceKey,pending)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
     setApplied(pending);setSettings(false);
@@ -169,7 +189,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
-    if(!editing||!allowDraft||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
+    if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
     const field=key as TextField;
     if(field==='content'||field==='note')
       return <button type="button" className="cell-value-button"
@@ -178,12 +198,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <input type="text" className="custom-cell-input" maxLength={1000}
         aria-label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-        onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>;
+        onChange={e=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:e.currentTarget.value});}}/>;
     return <CellPicker label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
       searchable={field==='specialist'} options={options(field,raw).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
         !value||catalog.specialistRooms[value]?.includes(item.room))}
-      onChange={value=>onUpdate(item.recordId,{[field]:value})}/>;
+      onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
   const canClose=()=>{
@@ -207,16 +227,22 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
         <button type="button" className="button ghost" onClick={clearFilters}
           disabled={!query&&Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
-        <button type="button" className="button ghost" aria-expanded={settings}
-          onClick={toggleSettings}>Cấu hình cột riêng</button>
-        <button type="button" className="button ghost" aria-pressed={editing} disabled={!editable}
-          title={!editable?'Chưa có quyền sửa nháp với những hồ sơ thuộc ô này':undefined}
+        {!readOnlyViewer&&<label className="report-grid-quick-width">Rộng popup
+          <input type="range" aria-label="Độ rộng toàn popup" min={minDialogWidth}
+            max={availableWidth} step={1}
+            value={Math.min(displayedLayout.dialogWidth,availableWidth)}
+            onChange={event=>changeDialogWidth(Number(event.currentTarget.value))}/>
+          <output aria-label="Độ rộng popup hiện tại">{Math.min(displayedLayout.dialogWidth,availableWidth)} px</output>
+        </label>}
+        {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
+          onClick={toggleSettings}>Cấu hình popup / cột</button>}
+        {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
           onClick={()=>setEditing(v=>!v)}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>
         {onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>
     </div>
-    <div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
+    {!readOnlyViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
       <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
         onChange={e=>loadPreset(e.target.value)}>
         <option value="">Mặc định</option>
@@ -228,8 +254,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {selectedPreset&&<><button type="button" className="button ghost"
         onClick={updatePreset}>Cập nhật mẫu</button>
         <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
-    </div>
-    {settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
+    </div>}
+    {!readOnlyViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
         <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
@@ -286,7 +312,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <p className="muted">Màu của popup được tự lưu riêng trên trình duyệt khi thêm/xóa; cũng được lưu trong mẫu cá nhân. Không ảnh hưởng màu của Danh sách hoặc báo cáo.</p>
       </details>
     </section>}
-    {confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
+    {!readOnlyViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
       <strong>Cột của popup có thay đổi chưa lưu.</strong>
       <button type="button" className="button ghost" onClick={()=>setConfirmSettingsExit(false)}>Tiếp tục tùy chỉnh</button>
       <button type="button" className="button ghost" onClick={()=>{
@@ -296,11 +322,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         saveSettings();setConfirmSettingsExit(false);
       }}>Lưu cấu hình cột</button>
     </div>}
-    <div className="report-grid-notices">
-      <p className="muted" role="status">{editing&&editable?'Chế độ chỉnh sửa nháp: chỉ những ô được cấp quyền mới mở công cụ sửa. Mọi thay đổi cùng bản nháp với Danh sách; chưa ghi Excel/Firebase.':'Chế độ xem: người xem chỉ có thể chuyển sang sửa nháp khi có quyền sửa ít nhất một ô. Không cấp thêm quyền qua cấu hình popup.'} Cấu hình cột được lưu riêng.</p>
-      {!editable&&<p className="muted">Chế độ xem: không có quyền sửa nháp đối với các nội dung đang chọn.</p>}
+    {(!readOnlyViewer||notice)&&<div className="report-grid-notices">
+      {!readOnlyViewer&&<p className="muted" role="status">{editing&&editable
+        ?'Đang sửa nháp: chỉ những ô được cấp quyền mới có thể sửa. Chưa ghi Excel/Firebase.'
+        :'Chế độ xem: chỉ ô được cấp quyền mới có thể bật sửa nháp.'}</p>}
       {notice&&<p className="notice" role="status">{notice}</p>}
-    </div>
+    </div>}
     <div className="report-grid-scroll" role="region" tabIndex={0} aria-label="Bảng chi tiết các nội dung trong ô báo cáo">
       <table className="data-table report-detail-grid"
         style={{width:gridWidth+'px',minWidth:gridWidth+'px',tableLayout:'fixed'}}>
@@ -312,9 +339,9 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               disabled={!settings} previousKey={shownColumns[index-1]?.key}
               nextKey={shownColumns[index+1]?.key} onMove={moveHeader}>
               {labelByKey.get(c.key)}
-              <ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
+              {!readOnlyViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
                 width={c.width} min={70} max={800} windowDragFallback
-                onCommit={width=>commitWidth(c.key,width)}/>
+                onCommit={width=>commitWidth(c.key,width)}/>}
             </ColumnHeader>)}</tr>
           <tr className="report-grid-filter-row">{shownColumns.map(c=>
             <ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
@@ -333,16 +360,16 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       </table>
     </div>
     <div className="modal-footer report-grid-footer">
-      <span className="muted">Nháp ở đây và tại Danh sách nội dung dùng chung. Báo cáo chỉ tính theo dữ liệu nguồn đã xác nhận.</span>
+      {!readOnlyViewer&&<span className="muted">Nháp ở đây và tại Danh sách nội dung dùng chung. Báo cáo chỉ tính theo dữ liệu nguồn đã xác nhận.</span>}
       <button type="button" className="button ghost" onClick={canClose}>Đóng</button>
-      {inGroupDirty>0&&<button type="button" className="button primary" onClick={()=>{
+      {!readOnlyViewer&&inGroupDirty>0&&<button type="button" className="button primary" onClick={()=>{
         setNotice(onKeepDraft()?'Đã giữ nháp trên trình duyệt, chưa ghi Excel/Firebase.':'Chưa lưu được nháp trên trình duyệt. Không đóng trang để tránh mất thay đổi.');
       }}>Giữ nháp trên máy</button>}
     </div>
-    {contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
+    {!readOnlyViewer&&contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
       sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
       draftOnly sourceKind="google" onSave={value=>{
-        if(!allowDraft||!canEditCell(contentItem.item.recordId,contentItem.field)){
+        if(!editing||!popupMayEdit||!canEditCell(contentItem.item.recordId,contentItem.field)){
           setNotice('Ô này hiện không được cấp quyền sửa; nội dung chưa áp dụng.');
           return false;
         }
