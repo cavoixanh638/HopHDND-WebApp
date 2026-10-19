@@ -145,7 +145,7 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
     white-space:nowrap}
   .data-table td,.report-table td {  padding:9px 11px; border-bottom:1px solid #edf0ed;
    vertical-align:top}
-.data-table tr:hover,.report-table tr:hover {  background:#f8faf8}
+.data-table:not(.report-table) tr:hover {background:#f8faf8}
 .data-table tr.dirty-row {  background:#fff9e9}
   .data-table input:not([type=checkbox]),.data-table select,.data-table textarea {  min-width:140px; min-height:36px; padding:8px;
     font-size:13px}
@@ -836,7 +836,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-surface .report-table td.report-clickable-cell .count-drill:hover,
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
   /* Lightweight cell hover; floating tooltip is a single independent layer. */
-  color:inherit;background:rgba(73,124,98,.09);
+  color:inherit;background:rgba(73,124,98,.035);
   box-shadow:none;outline:0;
 }
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
@@ -860,6 +860,24 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .report-shared-tooltip[data-visible="true"] {
   visibility:visible;opacity:1;
+}
+/* Native CSS Anchor Positioning (Baseline 2026). The ONE tooltip follows
+   the hovered cell without pointer listeners, layout reads, transforms or
+   timers. The :has selector is restricted to one root visibility rule. */
+@supports (anchor-name:--report-hover-anchor) and (position-anchor:--report-hover-anchor) and (position-area:bottom center) {
+  .report-surface .report-table button.count-drill:is(:hover,:focus-visible) {
+    anchor-name:--report-hover-anchor;
+  }
+  .report-shared-tooltip[data-mode="native"] {
+    position-anchor:--report-hover-anchor;
+    position-area:bottom center;
+    position-try-fallbacks:flip-block,flip-inline;
+    inset:auto;margin:6px 0 0;
+    transform:none;will-change:auto;
+  }
+  body:has(.report-surface .report-table button.count-drill:is(:hover,:focus-visible)) > .report-shared-tooltip[data-mode="native"] {
+    visibility:visible;opacity:1;
+  }
 }
 .report-detail-modal::backdrop {backdrop-filter:none;}
 @media (prefers-reduced-motion:reduce) {
