@@ -570,6 +570,56 @@ try{
         })()`);
         if(!reportGrid.ok)throw Error('Quick report detail grid missing or bypasses guest permissions: '+JSON.stringify(reportGrid));
         if(selector==='.report-surface tbody td.report-clickable-cell:not(.report-total-col)'){
+          // Actual Chrome mouse drag, on the exact column border, not only
+          // editing a numeric width field. Verify colgroup and table geometry.
+          const resizeBefore=await evaluate(`(()=>{
+            const dialog=document.querySelector('dialog.report-detail-modal[open]');
+            const grid=dialog?.querySelector('table.report-detail-grid');
+            const grip=grid?.querySelector('thead tr:first-child th .column-resizer');
+            const col=grid?.querySelector('colgroup col');
+            if(!grip||!col)return null;
+            const b=grip.getBoundingClientRect();
+            return {x:Math.round(b.left+b.width/2),y:Math.round(b.top+b.height/2),
+              firstWidth:parseFloat(col.style.width),tableWidth:grid.getBoundingClientRect().width,
+              count:grid.querySelectorAll('thead tr:first-child th').length};
+          })()`);
+          if(!resizeBefore||resizeBefore.x<5||resizeBefore.y<5||
+            resizeBefore.x>1590||resizeBefore.y>990)throw Error('No visible popup column resize grip '+JSON.stringify(resizeBefore));
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:resizeBefore.x,y:resizeBefore.y});
+          await send('Input.dispatchMouseEvent',{type:'mousePressed',x:resizeBefore.x,y:resizeBefore.y,
+            button:'left',buttons:1,clickCount:1});
+          await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:resizeBefore.x+65,y:resizeBefore.y,
+            buttons:1});
+          await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:resizeBefore.x+65,y:resizeBefore.y,
+            button:'left',buttons:0,clickCount:1});
+          await eventually(`(()=>{
+            const grid=document.querySelector('dialog.report-detail-modal[open] .report-detail-grid');
+            const first=parseFloat(grid?.querySelector('colgroup col')?.style.width||'0');
+            return first>=${resizeBefore.firstWidth+50}&&
+              grid.getBoundingClientRect().width>=${resizeBefore.tableWidth+45};
+          })()`, 'Popup drag resize did not resize real table and first column');
+          const resizeDone=await evaluate(`(()=>{
+            const grid=document.querySelector('dialog.report-detail-modal[open] .report-detail-grid');
+            const first=parseFloat(grid.querySelector('colgroup col').style.width);
+            const total=grid.getBoundingClientRect().width;
+            const preferences=Object.keys(localStorage).find(k=>k.includes('hdnd.report-detail-grid.v1:'));
+            const config=preferences?JSON.parse(localStorage.getItem(preferences)):null;
+            return {ok:!!config&&config.columns[0].width===first&&
+              total>${resizeBefore.tableWidth+45},first,total,preferences};
+          })()`);
+          if(!resizeDone.ok)throw Error('Popup drag width not retained separately '+JSON.stringify(resizeDone));
+          console.log('REPORT_DETAIL_DRAG_RESIZE_PASS',JSON.stringify(resizeDone));
+          // Distinct admin-free column preset UI, independent of ItemList.
+          const headerFilters=await evaluate(`(()=>{
+            const d=document.querySelector('dialog.report-detail-modal[open]');
+            const grid=d.querySelector('.report-detail-grid');
+            return {ok:grid.querySelectorAll('.column-resizer').length>=6&&
+              grid.querySelectorAll('.item-column-filter-cell').length>=6&&
+              !!d.querySelector('select[aria-label="Mẫu hiển thị popup"]')&&
+              !![...d.querySelectorAll('button')].find(b=>b.textContent?.includes('Hiện đủ cột Excel'))};
+          })()`);
+          if(!headerFilters.ok)throw Error('Popup missing list-equivalent filter/resize/saved-view tools '+JSON.stringify(headerFilters));
+
           await evaluate(`[...document.querySelectorAll('dialog.report-detail-modal[open] button')]
             .find(b=>b.textContent?.includes('Cấu hình cột riêng'))?.click()`);
           await eventually("document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-settings-row').length===15",
