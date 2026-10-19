@@ -1,5 +1,6 @@
-import { memo, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
+import {mountSharedReportTooltip} from '../../components/SharedReportTooltip';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
 import {GROUP_OPTIONS} from '../../../shared/field-definitions';
 import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
@@ -19,6 +20,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
+  // One tooltip instance serves all mounted reports, not one per cell.
+  useEffect(()=>preview?undefined:mountSharedReportTooltip(),[preview]);
   const [focusWaiting,setFocusWaiting]=useState(false);
   const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
   const stages=useMemo(()=>{
@@ -65,9 +68,6 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       aria-label={`${title}, ${entries.length} nội dung. Bấm để xem chi tiết`}
       onClick={()=>onSelect(title,entries)}>
       <span>{entries.length}</span>
-      <span className="count-drill-cue" aria-hidden="true">
-        <span className="count-drill-cue-default">↗</span><span className="count-drill-cue-hover">Xem</span>
-      </span>
     </button></>);
   const percentCell=(percent:number,description:string)=><div className="report-percent-value">
     <strong>{percent}%</strong>
