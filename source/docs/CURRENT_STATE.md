@@ -1,3 +1,9 @@
+## 19/10/2026 — Đã xuất bản bản xem thử chiều rộng popup / phân quyền
+
+Preview source PASS #39270344125, exact SHA 355ec81fb274da44c19eb1e277409547a6a2d3b8; publisher commit b67cddf56b6b70471ea931faec0c7f02d61cf9b3 (19/10/2026 21:39:50 VN). Hai file preview/current/index.html và preview/popup-width-permissions-2026-10-19/index.html cùng blob 0f4656ac5d351ef4865a782d652403fdcba0bf2d; main:index.html vẫn blob 48aff33fdac08477e38c8f4d49837eb68eee0584. PR #3 Draft/chưa merge, Excel và Firebase business data không ghi. CI cuối cùng của docs #39270758690 PASS. Chưa có nghiệm thu Chrome Windows trực tiếp và chưa xác nhận website cache trên máy người dùng.
+
+Đường xem thử: https://cavoixanh638.github.io/HopHDND-WebApp/preview/popup-width-permissions-2026-10-19/ . Đường preview/current cùng artifact; đường preview/popup-grid-parity-2026-10-19 vẫn giữ bản trước (blob 687d1ae59962b20540c440857c6ff87719e2d88e). Không suy việc có HTML trên GitHub thành xác nhận thao tác người dùng hoặc ghi dữ liệu.
+
 ## 19/10/2026 — Popup: chiều rộng chung và quyền sửa theo ô
 
 - **Quyền:** ReportDetailGrid mặc định ở chế độ xem; chỉ cho bật "Chỉnh sửa nháp" khi có ít nhất một ô được cấp quyền; editor từng ô kiểm tra canEditCell(recordId, field), allowDraft và khóa sửa của Firebase. Người xem được cấp quyền chỉ sửa đúng nội dung/trường cho phép, không tự có quyền ghi nguồn.
