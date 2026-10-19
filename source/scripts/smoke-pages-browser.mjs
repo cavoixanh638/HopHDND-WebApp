@@ -352,21 +352,45 @@ try{
           });
       })()`);
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
-      // Test synchronously, without waiting for a native browser title tooltip.
+      // The single tooltip is prewarmed BEFORE the first hover. A rapid sweep
+      // between many populated cells must not allocate DOM or read layout anew.
       const fastHover=await evaluate(`(()=>{
-        const button=[...document.querySelectorAll('.report-surface .count-drill')]
-          .find(node=>node.textContent?.trim()&&!node.closest('tfoot'));
-        if(!button||button.hasAttribute('title'))return {ok:false,reason:'native title still present'};
-        button.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
-        const tooltip=document.querySelector('.report-instant-count-tooltip');
-        const shown=!!tooltip&&tooltip.textContent?.includes('Bấm để xem')&&
-          getComputedStyle(tooltip).position==='fixed'&&
-          getComputedStyle(tooltip).pointerEvents==='none';
-        button.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
-        return {ok:shown&&document.querySelector('.report-instant-count-tooltip')===null,
-          reason:shown?'tooltip does not disappear on exit':'tooltip not synchronous'};
+        const buttons=[...document.querySelectorAll('.report-surface .count-drill')]
+          .filter(node=>node.textContent?.trim()&&!node.closest('tfoot'));
+        const node=document.querySelector('.report-instant-count-tooltip');
+        if(buttons.length<3||!node)return {ok:false,reason:'tooltip not prewarmed'};
+        if(document.querySelectorAll('.report-instant-count-tooltip').length!==1||
+          node.dataset.visible!=='false')return {ok:false,reason:'unexpected initial tooltip state'};
+        if(buttons.some(button=>button.hasAttribute('title')))
+          return {ok:false,reason:'native delayed title tooltip still exists'};
+        const evt=(type,button,x,y)=>button.dispatchEvent(new PointerEvent(type,
+          {bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
+        const first=buttons[0];
+        evt('pointerover',first,540,380);
+        const visible=node.dataset.visible==='true'&&
+          getComputedStyle(node).visibility==='visible'&&
+          node.textContent?.includes('Bấm để xem')&&
+          node.style.transform.includes('translate3d(')&&
+          node===document.querySelector('.report-instant-count-tooltip');
+        evt('pointerout',first,540,380);
+        const hidden=node.dataset.visible==='false'&&
+          getComputedStyle(node).visibility==='hidden'&&node.isConnected;
+        if(!visible||!hidden)return {ok:false,reason:'not instant or not reusable',visible,hidden};
+        const t0=performance.now();
+        for(let i=0;i<300;i++){
+          const button=buttons[i%buttons.length];
+          evt('pointerover',button,540+(i%13),380+(i%11));
+          if(node.dataset.visible!=='true'||node!==document.querySelector('.report-instant-count-tooltip'))
+            return {ok:false,reason:'hover did not reuse live singleton at '+i};
+          evt('pointerout',button,540+(i%13),380+(i%11));
+        }
+        const elapsed=performance.now()-t0;
+        return {ok:node.isConnected&&node.dataset.visible==='false'&&
+          document.querySelectorAll('.report-instant-count-tooltip').length===1&&elapsed<2500,
+          elapsedMs:Math.round(elapsed),cycles:300,reason:'pointer hover stress or cache'};
       })()`);
-      if(!fastHover.ok)throw Error('Fast count tooltip failure: '+JSON.stringify(fastHover));
+      if(!fastHover.ok)throw Error('Cached tooltip performance regression: '+JSON.stringify(fastHover));
+      console.log('INSTANT_TOOLTIP_STRESS',JSON.stringify(fastHover));
       const fullCellGeometry=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('.report-surface .report-table')];
         if(tables.length!==5)return {ok:false,reason:'missing report tables: '+tables.length};
