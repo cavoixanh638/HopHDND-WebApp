@@ -14,6 +14,7 @@ describe('Bảng chi tiết báo cáo — cấu hình cột riêng',()=>{
  it('defaults to the 15 exact source A–O columns with useful first-view subset',()=>{
    const v=defaultDetailGridPreferences();
    expect(v.version).toBe(1);
+   expect(v.dialogWidth).toBe(1480);
    expect(v.columns.map(c=>c.key)).toEqual(EXCEL_SOURCE_COLUMNS.map(c=>c.key));
    expect(v.columns.filter(c=>c.visible).map(c=>c.key)).toContain('content');
    expect(v.columns.filter(c=>c.visible).map(c=>c.key)).toContain('progressCouncil');
@@ -27,7 +28,7 @@ describe('Bảng chi tiết báo cáo — cấu hình cột riêng',()=>{
    const columns=[original.columns[2],...original.columns.slice(0,2),...original.columns.slice(3)];
    columns[0]={...columns[0],width:520};
    columns[1]={...columns[1],visible:false};
-   const selected={...original,columns};
+   const selected={...original,columns,dialogWidth:1640};
    expect(saveDetailGridPreferences('source-a',selected)).toBe(true);
    expect(loadDetailGridPreferences('source-a')).toEqual(selected);
    expect(loadDetailGridPreferences('source-b')).toEqual(original);
@@ -41,6 +42,9 @@ describe('Bảng chi tiết báo cáo — cấu hình cột riêng',()=>{
    expect(()=>validateDetailGridPreferences({...base,columns:base.columns.map((c,i)=>i===1?{...c,key:base.columns[0].key}:c)})).toThrow();
    expect(()=>validateDetailGridPreferences({...base,columns:base.columns.map((c,i)=>i===1?{...c,key:'TU đã cho ý kiến'}:c)})).toThrow();
    expect(()=>validateDetailGridPreferences({...base,columns:base.columns.map((c,i)=>i===0?{...c,width:10000}:c)})).toThrow();
+   expect(()=>validateDetailGridPreferences({...base,dialogWidth:639})).toThrow('640');
+   expect(()=>validateDetailGridPreferences({...base,dialogWidth:2401})).toThrow('640');
+   expect(validateDetailGridPreferences({version:1,columns:base.columns})).toEqual(base);
    const storage=mockStorage();vi.stubGlobal('localStorage',storage);
    storage.setItem('hdnd.report-detail-grid.v1:source-x','{"version":1,"columns":[]}');
    expect(loadDetailGridPreferences('source-x')).toEqual(base);
