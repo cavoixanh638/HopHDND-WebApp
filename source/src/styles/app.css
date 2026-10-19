@@ -872,7 +872,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    delegated pointer-enter handler instead. No global hover selector. */
 /* Drill-down grid: independent from the main ItemList column layout.
    Scroll only the wide data viewport, never build five more report tables. */
-.report-grid-modal {width:min(1480px,calc(100vw - 20px));max-width:calc(100vw - 20px);
+.report-grid-modal {width:min(var(--report-grid-window-width,1480px),calc(100vw - 20px));max-width:calc(100vw - 20px);
   height:min(92vh,960px);max-height:92vh;overflow:hidden;}
 .report-grid-modal .modal-header {flex:none;}
 .report-grid-modal .report-grid-toolbar {padding:12px 16px;display:flex;flex-wrap:wrap;
@@ -891,6 +891,10 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-grid-settings {flex:none;padding:12px 16px;background:#f5faf6;
   border-bottom:1px solid #cdded4;max-height:min(36vh,340px);overflow:auto;}
 .report-grid-settings-intro p {margin:4px 0 9px;color:#5e7067;font-size:12px;}
+.report-grid-window-width-control {display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:5px 0 12px;font-size:12px;}
+.report-grid-window-width-control label {font-weight:650;}
+.report-grid-window-width-control input {width:90px;padding:6px 7px;border:1px solid #a9c8b9;border-radius:6px;}
+.report-grid-window-width-control .muted {max-width:540px;}
 .report-grid-settings-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;}
 .report-grid-settings-row {display:flex;justify-content:space-between;gap:8px;align-items:center;
   min-width:0;background:#fff;padding:5px 7px;border:1px solid #dce7df;border-radius:7px;font-size:12px;}
