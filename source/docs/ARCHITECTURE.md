@@ -4,6 +4,18 @@
 
 
 
+## Quyết định kỹ thuật hiện hành — hover báo cáo hiệu năng cao (19/10/2026)
+
+**Áp dụng trên PR #3/preview, không phải production root.** `src/features/reports/ReportTable.tsx` dựng 5 bảng, trong mỗi ô đếm dương có `button.count-drill` phủ toàn bộ `td.report-clickable-cell`, giữ `report-cell-sizer` vô hình để bảo toàn kích thước. Button native xử lý bấm và bàn phím; `onSelect(title,entries)` mở modal, không chạy tổng hợp lại bảng do hover. Ô không có hồ sơ, ô % và header không gắn button.
+
+**Tooltip một phần tử, không theo từng ô:** `src/components/SharedReportTooltip.ts` được mount từ `ReportTable`; số lần mount của các báo cáo được đếm, chỉ tạo **một** host `#report-shared-tooltip`/role=tooltip ở `document.body`. Nội dung cố định `Click để xem chi tiết`, 190×32px. Một bộ `pointerover/pointerout` delegated trên document xác định `button.count-drill`, không gắn handler cho mỗi ô; trên hover chỉ xử lý lúc chuyển sang ô mới, dùng tọa độ pointer + kích thước tooltip đã biết để đặt `transform:translate3d`, không gọi `getBoundingClientRect`/không thay ARIA/text và không dùng React state/timer trong pointer path. `focusin` bằng bàn phím được phép đọc rect một lần, kèm `aria-describedby`; Esc, scroll và đóng bảng ẩn tooltip. Không cần thư viện floating UI.
+
+**Trình bày tại `src/styles/app.css`:** chỉ phủ nền `rgba(9,106,113,.14)` và `outline:2px solid #08777B;outline-offset:-2px` cho **đúng button của ô đang :hover**; `:focus-visible` dùng viền 3px `#07595B`. `outline` không làm thay đổi kích thước ô; các màu nghiệp vụ của ô/từng cột giữ nguyên. Không thay `border`, không transition, không paint cả hàng, không blur/shadow, không dùng `body:has(...:hover)` hay CSS `anchor-name/position-anchor` trong chế độ hover. Không tô mọi ô của hàng.
+
+**Căn cứ quyết định:** phép thử Chrome CDP chuột thật 36 lượt × 2 với 5 chế độ và khoảng 7.976 nodes cho thấy bản `body:has()` + CSS Anchor có chi phí layout ~31,92ms và tổng Task ~176,53ms/36 lần; bản delegated tooltip có Layout 0ms, Task ~109,69ms/36 lần **trong chính môi trường thử**. Thử thêm nền/viền mới với CSS cũ cho 2 × 36 lượt cho thấy Layout đều 0ms, Task trung bình 83,87 so với 82,76ms; không được coi là khác biệt có ý nghĩa thống kê hay SLA trên máy thật. Đọc số đầy đủ, môi trường và giới hạn tại [báo cáo A/B](TOOLTIP_PERFORMANCE_AB_2026-10-19.md) và [nghiệm thu](KIEM_THU_VA_NGHIEM_THU.md).
+
+**Ranh giới:** Không thay schema, status, tỷ lệ, 5 kiểu màu, kéo cột, in/PDF hoặc hành vi click tổng. Những cải tiến phân trang/virtualization chỉ xét sau khi đo DOM/paint trên tập dữ liệu thật và kiểm tương thích bảng có sticky header/tổng cuối/in. Tuyệt đối không kết luận dữ liệu Excel/Firebase hay production đã được sửa do phát hành preview.
+
 ## Pages 0.7.0+ — Sheets A–O là nguồn chính, Firebase quản trị
 
 Pages dùng lại App và `SheetsRepository/readSheet` để đọc GViz **A–O** từ Excel trên Google Sheets hiện hành (O = Ghi chú); nhánh parser legacy vẫn nhận snapshot A–P/A–R có header tương thích. Quy tắc schema mới xem [từ điển](TU_DIEN_DU_LIEU.md). `useWorkspace` giữ đọc lại thủ công, polling 60 giây khi tab hiển thị, bảo toàn bản đọc trước khi lỗi và chờ xử lý nháp trước khi refresh. Không nhập dòng sang RTDB, không có tác vụ đồng bộ Sheets → Firebase. Về kiến trúc, dữ liệu nguồn Sheets và xác thực Firebase là hai hệ riêng; nhưng **giao diện trang chính hiện chờ xác nhận baseline cấu hình Firebase trước khi vẽ bố cục đã lưu**, tránh hiện layout mặc định rồi nhảy. Khi Firebase lỗi, phải báo rõ, không im lặng coi fallback layout là bản đã lưu.
