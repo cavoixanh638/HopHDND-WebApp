@@ -31,7 +31,11 @@ function hide():void {
 }
 function show(button:HTMLButtonElement,x:number,y:number,fromKeyboard:boolean):void {
   if(!tooltip)return;
-  if(active===button)return;
+  if(active===button){
+    // Keyboard may focus the same cell that was already hovered.
+    if(fromKeyboard&&!keyboard){button.setAttribute('aria-describedby',tooltip.id);keyboard=true;}
+    return;
+  }
   if(keyboard&&active?.getAttribute('aria-describedby')===tooltip.id)
     active.removeAttribute('aria-describedby');
   active=button;
