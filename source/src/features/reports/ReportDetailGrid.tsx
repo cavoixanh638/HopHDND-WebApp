@@ -295,7 +295,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
               nextKey={shownColumns[index+1]?.key} onMove={moveHeader}>
               {labelByKey.get(c.key)}
               <ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
-                width={c.width} min={70} max={800} onCommit={width=>commitWidth(c.key,width)}/>
+                width={c.width} min={70} max={800} windowDragFallback
+                onCommit={width=>commitWidth(c.key,width)}/>
             </ColumnHeader>)}</tr>
           <tr className="report-grid-filter-row">{shownColumns.map(c=>
             <ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
