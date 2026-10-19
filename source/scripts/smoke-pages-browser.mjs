@@ -352,45 +352,26 @@ try{
           });
       })()`);
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
-      // The single tooltip is prewarmed BEFORE the first hover. A rapid sweep
-      // between many populated cells must not allocate DOM or read layout anew.
-      const fastHover=await evaluate(`(()=>{
-        const buttons=[...document.querySelectorAll('.report-surface .count-drill')]
-          .filter(node=>node.textContent?.trim()&&!node.closest('tfoot'));
-        const node=document.querySelector('.report-instant-count-tooltip');
-        if(buttons.length<3||!node)return {ok:false,reason:'tooltip not prewarmed'};
-        if(document.querySelectorAll('.report-instant-count-tooltip').length!==1||
-          node.dataset.visible!=='false')return {ok:false,reason:'unexpected initial tooltip state'};
-        if(buttons.some(button=>button.hasAttribute('title')))
-          return {ok:false,reason:'native delayed title tooltip still exists'};
-        const evt=(type,button,x,y)=>button.dispatchEvent(new PointerEvent(type,
-          {bubbles:true,pointerType:'mouse',clientX:x,clientY:y}));
-        const first=buttons[0];
-        evt('pointerover',first,540,380);
-        const visible=node.dataset.visible==='true'&&
-          getComputedStyle(node).visibility==='visible'&&
-          node.textContent?.includes('Bấm để xem')&&
-          node.style.transform.includes('translate3d(')&&
-          node===document.querySelector('.report-instant-count-tooltip');
-        evt('pointerout',first,540,380);
-        const hidden=node.dataset.visible==='false'&&
-          getComputedStyle(node).visibility==='hidden'&&node.isConnected;
-        if(!visible||!hidden)return {ok:false,reason:'not instant or not reusable',visible,hidden};
-        const t0=performance.now();
-        for(let i=0;i<300;i++){
-          const button=buttons[i%buttons.length];
-          evt('pointerover',button,540+(i%13),380+(i%11));
-          if(node.dataset.visible!=='true'||node!==document.querySelector('.report-instant-count-tooltip'))
-            return {ok:false,reason:'hover did not reuse live singleton at '+i};
-          evt('pointerout',button,540+(i%13),380+(i%11));
-        }
-        const elapsed=performance.now()-t0;
-        return {ok:node.isConnected&&node.dataset.visible==='false'&&
-          document.querySelectorAll('.report-instant-count-tooltip').length===1&&elapsed<2500,
-          elapsedMs:Math.round(elapsed),cycles:300,reason:'pointer hover stress or cache'};
+      // Static in-cell cue: NO floating tooltips, no DOM changes or pointer
+      // callbacks. This is more robust than timing synthetic PointerEvents.
+      const cssOnlyHover=await evaluate(`(()=>{
+        const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
+        const hidden=document.querySelector('.report-instant-count-tooltip');
+        if(hidden||buttons.length<3)return {ok:false,reason:'stale floating tooltip or no buttons'};
+        const result=buttons.every(button=>{
+          const cue=button.querySelector('.count-drill-cue'),
+            action=button.querySelector('.count-drill-cue-hover'),
+            arrow=button.querySelector('.count-drill-cue-default');
+          return cue&&action&&arrow&&action.textContent.trim()==='Xem'&&
+            getComputedStyle(action).opacity==='0'&&
+            getComputedStyle(button).transitionDuration==='0s'&&
+            !button.hasAttribute('title')&&
+            !button.hasAttribute('aria-describedby');
+        });
+        return {ok:result,cells:buttons.length};
       })()`);
-      if(!fastHover.ok)throw Error('Cached tooltip performance regression: '+JSON.stringify(fastHover));
-      console.log('INSTANT_TOOLTIP_STRESS',JSON.stringify(fastHover));
+      if(!cssOnlyHover.ok)throw Error('CSS-only hover cue regression: '+JSON.stringify(cssOnlyHover));
+      console.log('CSS_ONLY_HOVER',JSON.stringify(cssOnlyHover));
       const fullCellGeometry=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('.report-surface .report-table')];
         if(tables.length!==5)return {ok:false,reason:'missing report tables: '+tables.length};
@@ -447,6 +428,13 @@ try{
         })()`);
         if(!pos?.covered)throw Error('Cell corner is not clickable: '+selector+' '+JSON.stringify(pos));
         await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:pos.x,y:pos.y});
+        const cssHovered=await evaluate(`(()=>{
+          const button=document.elementFromPoint(${pos.x},${pos.y})?.closest('.count-drill');
+          const label=button?.querySelector('.count-drill-cue-hover');
+          return !!label&&getComputedStyle(label).opacity==='1'&&
+            document.querySelector('.report-instant-count-tooltip')===null;
+        })()`);
+        if(!cssHovered)throw Error('Real pointer did not reveal zero-JS cue: '+selector);
         await send('Input.dispatchMouseEvent',{type:'mousePressed',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
