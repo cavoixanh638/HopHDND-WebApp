@@ -50,7 +50,8 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(text(tree)).not.toContain('Mẫu bảng popup');
     expect(text(tree)).not.toContain('Giữ nháp trên máy');
     expect(all.some(n=>n.type===ContentEditor||n.type===CellPicker||n.type===ColumnResizeHandle)).toBe(false);
-    expect(all.some(n=>n.type==='input'&&n.props.type==='range')).toBe(false);
+    // A guest may change only their own window size, not columns, presets or data.
+    expect(all.some(n=>n.type==='input'&&n.props.type==='range')).toBe(true);
     expect(all.some(n=>n.type==='input'&&n.props.type==='search')).toBe(true);
     expect(all.some(n=>n.type==='button'&&text(n)==='Mở Danh sách dữ liệu')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
