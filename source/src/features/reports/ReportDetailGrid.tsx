@@ -1,7 +1,7 @@
 import {useMemo,useState,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
-import type {CatalogConfig,CatalogKey} from '../../data/catalogs';
+import type {CatalogConfig} from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
@@ -94,7 +94,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
     const standard=field==='progressCouncil'
       ?['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']
       :(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
-    return [...new Set(['',...optionsFromCatalog,...standard,current])];
+    const safeCatalog=field==='progressCouncil'?optionsFromCatalog.filter(v=>v!=='Hoàn thành'||v===current):optionsFromCatalog;
+    return [...new Set(['',...safeCatalog,...standard,current])];
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
