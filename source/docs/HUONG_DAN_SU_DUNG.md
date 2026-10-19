@@ -1,5 +1,21 @@
 # Hướng dẫn sử dụng — Pages 0.7.0 và Main 0.6.2
 
+## Bản kiểm thử giao diện mới 19/10/2026 — chỉ dùng đường dẫn preview
+
+Mở [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) hoặc [preview cố định 19/10](https://cavoixanh638.github.io/HopHDND-WebApp/preview/ux-fixes-2026-10-19/). **Không dùng URL gốc** để đánh giá các sửa lỗi ngày 19/10: PR #3 chưa merge, `main:index.html` chính vẫn là HTML cũ. Preview cùng kết nối Firebase production; khi bấm lưu cấu hình/quyền hoặc phê duyệt có thể tạo **thay đổi thật**.
+
+**Danh sách nội dung (xem):** cột A–O đúng nguồn Excel, lọc nhập trực tiếp **ngay dưới mỗi tiêu đề**, không phải mở một cửa sổ lọc riêng. Bấm vào **tên cột hoặc biểu tượng ↕/↑/↓**: lần 1 tăng dần, lần 2 giảm dần, lần 3 về thứ tự nguồn. Mũi tên hiện rõ khi đã sort, hơi mờ khi chưa sort và rõ hơn khi rê chuột; sort không ghi Excel. Lưới dữ liệu cuộn, tiêu đề và hàng lọc đi kèm; không còn cơ chế phân trang 50 dòng kiểu cũ (danh sách cuộn trong vùng có chiều cao ổn định).
+
+**Kéo độ rộng danh sách (chỉnh sửa):** vào `⚙ → Chỉnh sửa → Danh sách và nội dung`; đặt chuột ở **mép phải ô tiêu đề**, con trỏ thành biểu tượng kéo ngang, giữ và kéo để thay đổi độ rộng. Kéo vùng giữa tiêu đề để **đổi thứ tự cột** là chức năng khác; bấm tiêu đề để **sắp xếp**. Tay nắm có thể focus để chỉnh bằng mũi tên; khi thả chuột mới cập nhật thay đổi vào nháp. Quản trị bấm **Lưu cách hiển thị** để lưu bố cục dùng chung, vẫn ở màn chỉnh sửa; nếu có xung đột/lỗi sẽ phải xử lý theo cảnh báo, không coi đã lưu.
+
+**Kéo độ rộng bảng thống kê (chỉnh sửa):** vào `⚙ → Chỉnh sửa → Bảng thống kê`; tại **bảng xem trước của từng báo cáo**, kéo mép phải tiêu đề cột nhóm, `Tổng số nội dung`, các cột trạng thái hoặc `% hoàn thành`. Độ rộng riêng cho từng báo cáo, không làm thay đổi dữ liệu; bấm **Lưu Bảng báo cáo** khi muốn áp dụng cho tất cả người xem. CSS cũ từng khóa cột đầu tiên, đã bỏ trong bản sửa 19/10; vẫn cần thử trên browser thật.
+
+**Bấm số lượng để xem hồ sơ:** trong bảng thống kê, số đếm dương có dạng nút nhỏ kèm **↗**. Bấm số ở trạng thái, tổng từng dòng, hoặc tổng cuối bảng để mở hộp chi tiết; đóng bằng **×** hoặc phím Esc. Ứng dụng hạn chế render lại bảng phía sau và bỏ blur nền; nếu vẫn chậm khi một ô có nhiều hồ sơ, đây là vấn đề chưa đo và cần ghi số dòng/thiết bị/trình duyệt để benchmark; chưa áp dụng virtual scrolling.
+
+**Năm bảng mặc định:** `Tiến độ xin ý kiến Thành ủy`, `Tiến độ trình HĐND xây dựng NQ`, `Tiến độ các Nghị quyết và Báo cáo trình HĐND`, `Tiến độ trình HĐND ban hành NQ`, `Tiến độ trình HĐND ban hành BC`. Bảng xây dựng NQ có cột **Không phải trình** ngay sau `Tổng số nội dung`; phần này **không tính hoàn thành**. Các bảng ban hành/tổng hợp chỉ coi **Đã trình HĐND thành phố** là cột kết thúc; không hiển thị cột `Hoàn thành` phát sinh. Trạng thái Party cuối là **Đã có TBKL**.
+
+**Giới hạn:** CI Chrome với dữ liệu giả đã pass, **chưa chứng minh mượt tương đương ở dữ liệu thực**; kiểm thử admin lưu layout/quyền trên Firebase production, KPI đối chiếu và dữ liệu đợt sau vẫn cần làm. Chỉ coi một giao dịch thành công khi UI nhận xác nhận từ Firebase. Các đoạn 0.6.x/0.7.0 bên dưới mô tả tính năng/vận hành **lịch sử** và không thay thế hướng dẫn preview mới.
+
 ## Dành cho quản trị viên Pages 0.7.0 (quy tắc và giới hạn hiện tại)
 
 Tài khoản quản trị phải đăng nhập Google qua Firebase Authentication (email đã xác minh, nhà cung cấp `google.com`), không dùng mật khẩu nhúng trong HTML. Quyền cập nhật danh mục, báo cáo, bố trí danh sách, cột và quyền sửa thuộc **cùng cơ chế quản trị Firebase**; xem [FIREBASE_PAGES](FIREBASE_PAGES.md). Quyền theo ô ưu tiên trước dòng, rồi cột, mặc định không cho sửa. Các nút sửa nháp nghiệp vụ **không** ghi vào Google Sheets/Firebase.
@@ -12,7 +28,7 @@ Tài khoản quản trị phải đăng nhập Google qua Firebase Authenticatio
 
 **Ổn định bố cục và lưu thiết lập (18/10/2026):** Khi mở trang, chưa hiển thị bảng theo độ rộng mặc định nếu Firebase chưa xác nhận hồ sơ. Sau khi cấu hình tải xong, trang tính ngay độ rộng từ cấu hình chung và mẫu xem cá nhân trước lần hiển thị bảng đầu tiên; các cột ẩn và thứ tự đã lưu được giữ nguyên, “Hiện đủ cột Excel” là thao tác tạm thời do người xem chủ động chọn. Nếu Firebase báo lỗi, trang hiện cảnh báo, không tự vẽ bảng với cấu hình thay thế. Khi quản trị bấm **Lưu thay đổi**, nếu Firebase từ chối một trong ba phần (danh sách chọn, quyền cột, bố cục), thông báo ghi rõ phần bị từ chối và phần nào đã lưu thành công; các bản nháp chưa lưu được giữ. Giao diện Quản lý cột có vùng danh sách cuộn giới hạn chiều cao để bảng nội dung nằm gần công cụ chỉnh sửa. Chưa thể coi thao tác lưu trên production là đã nghiệm thu nếu chưa thử bằng tài khoản thực tế.
 
-**Bản xem trước 18/10/2026 — chế độ xem và sắp xếp:** Hai tab chính là **Tổng quan** và **Danh sách nội dung**; tab Hướng dẫn đã bỏ. Thanh tab khách luôn căn cùng mép với tiêu đề/nguồn; Danh sách đưa công tắc hiện cột lên cùng dòng tiêu đề và chỉ hiển thị thanh điều kiện khi có tìm kiếm thực sự. Khi mới vào WebApp, các bảng chờ cấu hình hiển thị Firebase rồi mới vẽ để tránh nhảy độ rộng. Bấm biểu tượng **↕** trên tiêu đề cột để sắp xếp tăng dần, bấm lần nữa giảm dần, lần ba về thứ tự dữ liệu nguồn; có hỗ trợ STT dạng số, ID số/chữ và tiếng Việt, dòng trống cuối. Sắp xếp chỉ thay đổi trên màn hình, không ghi vào Google Sheets/Firebase và không thay đổi cấu hình chung.
+**Bản xem trước 18/10/2026 — chế độ xem và sắp xếp:** Hai tab chính là **Tổng quan** và **Danh sách nội dung**; tab Hướng dẫn đã bỏ. Thanh tab khách luôn căn cùng mép với tiêu đề/nguồn; Danh sách đưa công tắc hiện cột lên cùng dòng tiêu đề và chỉ hiển thị thanh điều kiện khi có tìm kiếm thực sự. Khi mới vào WebApp, các bảng chờ cấu hình hiển thị Firebase rồi mới vẽ để tránh nhảy độ rộng. Bấm **tên cột hoặc biểu tượng ↕** trên tiêu đề để sắp xếp tăng dần, bấm lần nữa giảm dần, lần ba về thứ tự dữ liệu nguồn; có hỗ trợ STT dạng số, ID số/chữ và tiếng Việt, dòng trống cuối. Sắp xếp chỉ thay đổi trên màn hình, không ghi vào Google Sheets/Firebase và không thay đổi cấu hình chung.
 
 **Giới hạn nghiệm thu:** Mã UI đã qua CI và được phát hành nhưng vẫn cần người dùng kiểm tra đăng nhập và lưu quyền thật với Firebase Rules đang chạy; không ghi dữ liệu nguồn khi sửa thử.
 
@@ -42,7 +58,7 @@ Main v6 dùng nguồn đã đăng ký sẵn; không đổi link/`gid` trong lúc
 
 ## Xem và cập nhật dữ liệu
 
-Ở tab **Tổng quan**, xem KPI/báo cáo, đổi cách phân nhóm và bấm số để mở danh sách chi tiết. Có thể tùy chỉnh cột hiển thị; ẩn cột không đổi tổng. Tab **Danh sách nội dung** hỗ trợ tìm kiếm tiếng Việt có/không dấu, lọc theo loại, phạm vi, lãnh đạo VP và tiến độ; tối đa 50 dòng mỗi trang. Dòng chưa chuẩn hóa vẫn được báo để rà soát.
+Ở tab **Tổng quan**, xem KPI/báo cáo, đổi cách phân nhóm và bấm số để mở danh sách chi tiết. Có thể tùy chỉnh cột hiển thị; ẩn cột không đổi tổng. Tab **Danh sách nội dung** hỗ trợ tìm kiếm tiếng Việt có/không dấu, lọc theo loại, phạm vi, lãnh đạo VP và tiến độ; danh sách cuộn theo chiều dọc trong vùng cố định ở bản preview mới (bản Google legacy có thể khác). Dòng chưa chuẩn hóa vẫn được báo để rà soát.
 
 Nguồn Excel được đọc theo cấu trúc hiện tại. Dùng link **Mở file Excel nhập liệu** để xem hoặc sửa file theo quyền của bạn. App tự đọc lại mỗi 60 giây khi tab hiển thị; **Đọc lại dữ liệu và danh mục từ Google** cũng tải dữ liệu Google vào app. Đây là chiều **Google → app**, không ghi nội dung ngược vào file.
 
@@ -73,7 +89,7 @@ Tham khảo [hợp đồng API](API.md), [bản đồ mã](REPO_MAP.md), [CURREN
 
 **Lưu nhiều mẫu giao diện cá nhân.** Trong Danh sách, nhập tên mẫu rồi bấm **Lưu mẫu mới**. Một mẫu gồm cách bố trí cột đang hiển thị, tìm kiếm, bộ lọc, lọc riêng từng cột và quy tắc màu. Chọn mẫu bằng hộp **Mẫu giao diện** để nạp lại. Các nút Cập nhật mẫu/Xóa mẫu áp dụng cho mẫu đang chọn. Tối đa 20 mẫu **trên chính trình duyệt**; không tự xuất hiện trên thiết bị khác, không thay đổi bố trí chung.
 
-**Lọc từng cột.** Nhấn biểu tượng lọc nhỏ trên tiêu đề cột; nhập một phần giá trị cần tìm (hỗ trợ tiếng Việt không dấu). Các lọc kết hợp với nhau và với bộ lọc hiện có. Dải **Đang lọc theo cột** cho biết cột/giá trị nào đang lọc; nhấn × để bỏ từng lọc hoặc Bỏ tất cả lọc cột. Không sửa dữ liệu gốc.
+**Lọc từng cột.** Nhập trực tiếp vào ô lọc luôn hiển thị **dưới tiêu đề cột** (hỗ trợ tiếng Việt không dấu). Các lọc kết hợp với nhau và với bộ lọc hiện có. Dải **Đang lọc theo cột** cho biết cột/giá trị nào đang lọc; nhấn × để bỏ từng lọc hoặc Bỏ tất cả lọc cột. Không sửa dữ liệu gốc.
 
 **Đổi màu theo điều kiện.** Trong Tùy chỉnh danh sách, mở phần Màu theo điều kiện; chọn cột, nhập giá trị chính xác cần so sánh và màu. Có tối đa 30 quy tắc; dòng được tô bằng quy tắc đầu tiên phù hợp. Chỉ là màu hiển thị trong trình duyệt, không định dạng trực tiếp Excel/Sheets.
 
