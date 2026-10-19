@@ -12,6 +12,7 @@ Người dùng thấy cửa sổ popup không thể kéo độ rộng cột, dù
 | --- | --- | --- | --- |
 | Bấm ô số lọc đúng hồ sơ | Có | **Giữ**, dùng recordId + workspace.workingItems | Không query Sheets khi click |
 | Đủ 15 trường nguồn Excel A–O | Có lựa chọn, mặc định 10 | **Giữ**; nút `Hiện đủ cột Excel` bật tạm tất cả | Không tự tạo cột nguồn ngoài Excel |
+| Độ rộng **toàn cửa sổ popup** | Chỉ có giới hạn CSS 1480 px, chưa có công cụ chỉnh | Đã bổ sung trên PR #3: nhập 640–2400 px, xem trước/lưu độc lập từng cột và bảng | Preview đã publish trước bản sửa chưa có tính năng này; cần publish/kiểm trên máy người dùng |
 | Đổi chiều rộng bằng **kéo mép cột** | **Không** | **Đã thêm** dùng `ColumnResizeHandle`, cả chuột/keyboard; hẹn cập nhật React khi thả | Có `windowDragFallback` chỉ cho nested modal |
 | Đổi chiều rộng bằng nhập px | Có nhưng cảm giác không ăn theo bảng | **Sửa** cùng `colgroup`/tableWidth tính từ tổng; preview ngay trong settings | 70–800px, lưu riêng |
 | Kéo thả để đổi thứ tự cột | Chỉ ↑/↓ trong panel | **Đã thêm** `ColumnHeader` kéo tiêu đề trong chế độ cấu hình + Alt+←/→; vẫn giữ ↑/↓ | Có xác nhận khi rời settings mà chưa lưu |
