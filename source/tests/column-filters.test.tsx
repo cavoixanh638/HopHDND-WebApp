@@ -1,3 +1,4 @@
+import {renderToStaticMarkup} from 'react-dom/server';
 import {ColumnHeader} from '../src/features/items/ColumnHeader';
 import {describe,it,expect,vi} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
@@ -42,11 +43,10 @@ describe('always-visible column filter row',()=>{
 
 describe('sort icon only for edit-mode columns',()=>{
   it('suppresses sort indicator when disabled by the caller',()=>{
-    const read=ColumnHeader({columnKey:'room',disabled:true,onMove:()=>{},children:'Phòng'});
-    expect(read.props.children.props.children[1]).toBeFalsy();
-    expect(read.props.title).toBeUndefined();
-    const edit=ColumnHeader({columnKey:'room',disabled:false,onSort:()=>{},
-      onMove:()=>{},children:'Phòng'});
-    expect(edit.props.children.props.children[1]).toBeTruthy();
+    const read=renderToStaticMarkup(<ColumnHeader columnKey="room" disabled onMove={()=>{}}>Phòng</ColumnHeader>);
+    expect(read).not.toContain('column-sort-button');
+    expect(read).not.toContain('Bấm tiêu đề để sắp xếp');
+    const edit=renderToStaticMarkup(<ColumnHeader columnKey="room" onSort={()=>{}} onMove={()=>{}}>Phòng</ColumnHeader>);
+    expect(edit).toContain('column-sort-button');
   });
 });
