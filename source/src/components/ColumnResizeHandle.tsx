@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 type DragSession = {
   pointer: number; startX: number; startWidth: number; currentWidth: number;
@@ -8,10 +8,14 @@ type DragSession = {
 
 /** Drag the actual column edge without rerendering a large table on every pixel.
  * Only commit the new width to React / shared configuration on pointer release. */
-export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=1200}:{
+export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=1200,windowDragFallback=false}:{
   columnIndex:number;width:number;label:string;onCommit:(next:number)=>void;min?:number;max?:number;
+  /** For a nested dialog: keep drag tracking if the native pointer capture is lost. */
+  windowDragFallback?:boolean;
 }) {
   const active=useRef<DragSession|null>(null);
+  const windowListeners=useRef<AbortController|null>(null);
+  useEffect(()=>()=>windowListeners.current?.abort(),[]);
   const clamp=(value:number)=>Math.min(max,Math.max(min,Math.round(value)));
   const preview=(value:number)=>{
     const session=active.current;if(!session)return;
@@ -24,6 +28,7 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
     }
   };
   const finish=(save:boolean)=>{
+    windowListeners.current?.abort();windowListeners.current=null;
     const session=active.current;if(!session)return;
     active.current=null;
     if(session.table){
@@ -47,7 +52,26 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
         col:col??null,table:table??null,originalTableWidth:table?.style.width??'',
         originalMinWidth:table?.style.minWidth??'',tableWidth:table?.getBoundingClientRect().width??width,
       };
-      event.currentTarget.setPointerCapture(event.pointerId);
+      if(windowDragFallback){
+        windowListeners.current?.abort();
+        const controller=new AbortController();windowListeners.current=controller;
+        const move=(e:PointerEvent)=>{
+          const session=active.current;
+          if(session?.pointer===e.pointerId)preview(session.startWidth+e.clientX-session.startX);
+        };
+        const up=(e:PointerEvent)=>{
+          const session=active.current;
+          if(session?.pointer!==e.pointerId)return;
+          preview(session.startWidth+e.clientX-session.startX);
+          finish(true);
+        };
+        window.addEventListener('pointermove',move,{capture:true,signal:controller.signal});
+        window.addEventListener('pointerup',up,{capture:true,signal:controller.signal});
+        window.addEventListener('pointercancel',()=>finish(false),{capture:true,signal:controller.signal});
+        window.addEventListener('blur',()=>finish(false),{signal:controller.signal});
+      }
+      try{event.currentTarget.setPointerCapture(event.pointerId);}
+      catch{ /* Window listeners continue the drag in nested dialogs. */ }
     }}
     onPointerMove={event=>{
       const session=active.current;
@@ -59,7 +83,7 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
       preview(session.startWidth+event.clientX-session.startX);
       finish(true);
     }}
-    onPointerCancel={()=>finish(false)} onLostPointerCapture={()=>finish(false)}
+    onPointerCancel={()=>finish(false)} onLostPointerCapture={()=>{if(!windowDragFallback)finish(false);}}
     onKeyDown={event=>{
       if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
       event.preventDefault();event.stopPropagation();
