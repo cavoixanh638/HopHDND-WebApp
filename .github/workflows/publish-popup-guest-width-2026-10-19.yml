@@ -1,0 +1,95 @@
+name: Publish verified popup guest and width preview
+on:
+  workflow_run:
+    workflows: ["Verify HopHDND source"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: hophdnd-popup-guest-width-preview
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.id == 39280344363 && github.event.workflow_run.head_sha == '0e47675bb7071289561e63e1fcd04e2905ceb3d3' && github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify exact pinned source, completed checks and artifact provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,urllib.request
+          repo='https://api.github.com/repos/cavoixanh638/HopHDND-WebApp'
+          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+                   'Accept':'application/vnd.github+json'}
+          def get(path):
+              with urllib.request.urlopen(urllib.request.Request(repo+path,headers=headers)) as response:
+                  return json.load(response)
+          run=get('/actions/runs/39280344363')
+          expected='0e47675bb7071289561e63e1fcd04e2905ceb3d3'
+          assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified source commit'
+          assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
+          jobs=get('/actions/runs/39280344363/jobs')['jobs']
+          assert any(j['name']=='verify' and j['conclusion']=='success' for j in jobs), 'Missing successful verify job'
+          arts=get('/actions/runs/39280344363/artifacts')['artifacts']
+          art=next(a for a in arts if a['name']=='hophdnd-pages-candidate')
+          assert not art['expired'] and art['size_in_bytes']>50000, 'Missing valid Pages artifact'
+          assert art['workflow_run']['head_sha']==expected, 'Artifact source SHA mismatch'
+          assert (art.get('digest') or '').startswith('sha256:'), 'Artifact has no digest'
+          print('PINNED SOURCE:',expected,'CI RUN:',run['id'],'ARTIFACT:',art['id'],'DIGEST:',art['digest'])
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: hophdnd-pages-candidate
+          run-id: 39280344363
+          repository: cavoixanh638/HopHDND-WebApp
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: _popup_guest_width_artifact
+      - name: Verify new UI markers before publishing (no data write)
+        run: |
+          set -euo pipefail
+          file=_popup_guest_width_artifact/index.html
+          test -s "$file"
+          for needle in "report-grid-modal" "report-grid-quick-width" "Rộng popup" "Độ rộng toàn popup" "readOnlyViewer" "Chỉnh sửa nháp" "Cấu hình popup / cột" "Mẫu bảng popup" "report-detail-grid" "Hiện đủ cột Excel"; do
+            grep -Fq -- "$needle" "$file" || { echo "::error::Required UI marker missing: $needle"; exit 1; }
+          done
+          sha256sum "$file"
+      - name: Publish isolated preview only; never edit production index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p preview/current preview/guest-readonly-width-2026-10-19
+          cp _popup_guest_width_artifact/index.html preview/current/index.html
+          cp _popup_guest_width_artifact/index.html preview/guest-readonly-width-2026-10-19/index.html
+          # Never stage any build inputs, root page or working files.
+          if git diff --quiet -- preview/current/index.html preview/guest-readonly-width-2026-10-19/index.html; then
+            echo "Verified preview already published"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add preview/current/index.html preview/guest-readonly-width-2026-10-19/index.html
+          git diff --cached --name-only
+          git diff --cached --name-only | grep -Ev '^preview/(current|guest-readonly-width-2026-10-19)/index.html$' | (! grep .)
+          git commit -m "preview(popup): verified guest read-only and whole-dialog width"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              echo "Published isolated popup preview; production root index.html unchanged."
+              exit 0
+            fi
+          done
+          echo "::error::Unable to publish verified popup preview"
+          exit 1
