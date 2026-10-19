@@ -581,12 +581,20 @@ try{
             const checkbox=settings.find(el=>el.textContent?.includes('Ghi chú'))?.querySelector('input[type="checkbox"]');
             if(!checkbox)return {ok:false,reason:'missing note toggle'};
             const before=dialog.querySelectorAll('.report-detail-grid thead tr:first-child th').length;
+            const prior=checkbox.checked;
             checkbox.click();
-            const apply=[...dialog.querySelectorAll('button')].find(b=>b.textContent?.includes('Lưu cấu hình cột'));
-            apply?.click();
-            return {ok:!!apply,before};
+            return {ok:true,before,prior};
           })()`);
           if(!settingsOK.ok)throw Error('Cannot edit distinct report-detail columns '+JSON.stringify(settingsOK));
+          await eventually(`[...document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-settings-row')]
+            .find(el=>el.textContent?.includes('Ghi chú'))?.querySelector('input[type="checkbox"]')?.checked===${JSON.stringify(!settingsOK.prior)}`,
+            'Report column checkbox did not update React state');
+          const applied=await evaluate(`(()=>{
+            const dialog=document.querySelector('dialog.report-detail-modal[open]');
+            const apply=[...dialog.querySelectorAll('button')].find(b=>b.textContent?.includes('Lưu cấu hình cột'));
+            apply?.click();return !!apply;
+          })()`);
+          if(!applied)throw Error('Report detail column save control missing');
           await eventually("!document.querySelector('dialog.report-detail-modal[open] .report-grid-settings')",
             'Column preferences save did not close settings');
           const persistence=await evaluate(`(()=>{
