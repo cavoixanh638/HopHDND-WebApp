@@ -811,13 +811,22 @@ table.data-table button:not(.column-sort-button),table.report-table button,
   border-radius:7px;border:1px solid currentColor;font-variant-numeric:tabular-nums;
   text-decoration:none;cursor:pointer;transition:background .12s ease,box-shadow .12s ease,transform .12s ease;
 }
-.report-surface .report-table .count-drill-icon {font-size:.76em;opacity:.6;transition:opacity .12s ease;}
+/* Static label is already in the cell. Opacity-only cue is the entire hover
+   response: no floating DOM, pointer JS, layout read, scroll listener or delay. */
+.report-surface .report-table .count-drill-cue {
+  display:inline-grid;grid-template-columns:30px;align-items:center;justify-items:center;
+  flex:none;min-width:30px;min-height:16px;font-size:.8em;line-height:1;
+}
+.report-surface .report-table .count-drill-cue > span {grid-area:1/1;white-space:nowrap;}
+.report-surface .report-table .count-drill-cue-default {opacity:.65;}
+.report-surface .report-table .count-drill-cue-hover {opacity:0;font-weight:750;}
+.report-surface .report-table .count-drill:is(:hover,:focus-visible) .count-drill-cue-default {opacity:0;}
+.report-surface .report-table .count-drill:is(:hover,:focus-visible) .count-drill-cue-hover {opacity:1;}
 .report-surface .report-table .count-drill:hover,
 .report-surface .report-table .count-drill:focus-visible {
   background:rgba(73,124,98,.13);box-shadow:0 1px 4px rgba(22,61,44,.15);
 }
-.report-surface .report-table .count-drill:hover .count-drill-icon,
-.report-surface .report-table .count-drill:focus-visible .count-drill-icon {opacity:1;}
+
 /* The whole data-cell interior is the click target, not a 44px badge.
    Keep table-cell sizing independent of the absolutely positioned real button. */
 .report-surface .report-table td.report-clickable-cell {position:relative;cursor:pointer;}
@@ -835,9 +844,9 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 }
 .report-surface .report-table td.report-clickable-cell .count-drill:hover,
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
-  color:inherit;background:rgba(73,124,98,.12);
-  box-shadow:inset 0 0 0 2px rgba(26,91,66,.28);
-  outline:0;
+  /* Lightweight, local cell feedback. No animated shadows or tooltips. */
+  color:inherit;background:rgba(73,124,98,.09);
+  box-shadow:none;outline:0;
 }
 .report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
   box-shadow:inset 0 0 0 3px currentColor;
@@ -848,22 +857,4 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .report-surface .report-table .count-drill,.item-heading-row .column-sort-button {transition:none;}
 }
 
-/* One already-mounted tooltip, hidden by visibility instead of removing DOM.
-   Transform is compositor-friendly; fixed placement prevents table overflow clipping.
-   No transition/delay, layout measurement or allocation on pointer hover. */
-.report-instant-count-tooltip {
-  position:fixed;left:0;top:0;z-index:10050;pointer-events:none;
-  box-sizing:border-box;width:max-content;min-width:170px;
-  max-width:min(200px,calc(100vw - 16px));
-  padding:7px 10px;border-radius:7px;
-  background:#193a2e;color:#fff;
-  font:600 12px/1.35 "Segoe UI",system-ui,sans-serif;
-  box-shadow:0 3px 12px rgba(13,32,24,.23);
-  white-space:normal;text-align:center;
-  visibility:hidden;opacity:0;transition:none;
-  contain:layout style paint;will-change:transform;
-  transform:translate3d(-1000px,-1000px,0);
-}
-.report-instant-count-tooltip[data-visible="true"] {
-  visibility:visible;opacity:1;
-}
+
