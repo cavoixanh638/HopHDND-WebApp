@@ -2,6 +2,12 @@
 
 **Phạm vi:** bản GitHub Pages 0.7.0 đọc dữ liệu qua Google Sheets/GViz, Firebase Authentication và cấu hình dùng chung qua Realtime Database. App Google Apps Script 0.6.2 là nhánh vận hành độc lập. Tài liệu này là **quy trình tham chiếu**, không phải xác nhận các phép kiểm sản xuất đã thành công. Trạng thái thực tế duy nhất xem [CURRENT_STATE](CURRENT_STATE.md).
 
+## 0.2. Preview popup mới — resize, lọc, mẫu riêng, không ghi nguồn (19/10/2026)
+
+- Mã popup mới: `ColumnResizeHandle.windowDragFallback` bật **chỉ trong modal**, dùng pointer listeners ngắn hạn AbortController, dọn trên thả/hủy/unmount; `ReportDetailGrid` table width bằng tổng `colgroup`, có kéo mép cột và phục hồi. Source-test [#39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680) **PASS**, CDP cột ID 100→165px, table 2120→2185px, đóng mở giữ 165px. `backup/before-popup-grid-parity-resize-2026-10-19` at `c146ee3bbf49edb5cb29a703cddd3cf81177348c`.
+- Các mẫu hiển thị và màu riêng của popup dùng `hdnd.report-detail-presets.v1`/`hdnd.report-detail-colors.v1` và nguồn/preview-scoped localStorage. Không sửa `ItemLayout`, Firebase profile/permissions, Excel/Sheets. Không tự bật cập nhật nguồn từ popup.
+- [Đối chiếu chức năng popup/Danh sách](REPORT_DETAIL_PARITY_2026-10-19.md). **Bảng quản trị schema/20 cột tự tạo, quản trị quyền/khóa/duyệt và ghi Excel thật không nhân đôi** vào popup; chỉ điều hướng về màn hình chính. Preview chỉ được xuất bản sau kiểm exact artifact CI SHA/digest, không đụng `main:index.html`, không merge PR #3.
+
 ## 0.1. Bảng chi tiết từ ô báo cáo — phạm vi triển khai thử (19/10/2026)
 
 - `ReportDetailGrid` là bản thử UI trên PR #3, không được bật writer Excel/Firebase. Dùng `SheetsRepository` đọc, `workspace.update` giữ nháp, `workspace.keepDraft` lưu checkpoint cục bộ; bộ phận quản trị vẫn áp dụng phân quyền và khóa sửa hiện hành. Không coi nháp cập nhật nguồn.
