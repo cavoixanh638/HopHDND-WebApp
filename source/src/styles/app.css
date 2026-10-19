@@ -848,14 +848,22 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .report-surface .report-table .count-drill,.item-heading-row .column-sort-button {transition:none;}
 }
 
-/* Immediate mouse/keyboard guidance without the browser's native title delay.
-   Fixed coordinates keep this text out of overflow:auto table clipping. */
+/* One already-mounted tooltip, hidden by visibility instead of removing DOM.
+   Transform is compositor-friendly; fixed placement prevents table overflow clipping.
+   No transition/delay, layout measurement or allocation on pointer hover. */
 .report-instant-count-tooltip {
-  position:fixed;z-index:10050;pointer-events:none;
-  max-width:min(300px,calc(100vw - 16px));
+  position:fixed;left:0;top:0;z-index:10050;pointer-events:none;
+  box-sizing:border-box;width:max-content;min-width:170px;
+  max-width:min(200px,calc(100vw - 16px));
   padding:7px 10px;border-radius:7px;
   background:#193a2e;color:#fff;
   font:600 12px/1.35 "Segoe UI",system-ui,sans-serif;
   box-shadow:0 3px 12px rgba(13,32,24,.23);
   white-space:normal;text-align:center;
+  visibility:hidden;opacity:0;transition:none;
+  contain:layout style paint;will-change:transform;
+  transform:translate3d(-1000px,-1000px,0);
+}
+.report-instant-count-tooltip[data-visible="true"] {
+  visibility:visible;opacity:1;
 }
