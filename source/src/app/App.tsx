@@ -30,7 +30,6 @@ import {googleCall,isGoogleHost} from '../data/google-bridge';
 import {CONFIG_EDITOR_URL} from '../data/shared-store';
 import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
-import { displayId } from '../domain/display-id';
 import {mayEdit} from '../data/firebase-repository';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
