@@ -1,5 +1,13 @@
 # Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
 
+## Tooltip chung cố định và số không có biểu tượng — mốc xác nhận 19/10/2026
+
+**Exact code:** `f0880c7fc7fa36e3720250fff9d41a4317385fad`, [Verify run #39222179712](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222179712) **PASS**. TypeScript/build, **352 unit tests PASS/20 skipped**, **20 Firebase emulator tests PASS**, Chrome browser smoke trên GViz giả lập PASS. `SHARED_TOOLTIP_STRESS` trong Chrome mock: 300 sự kiện pointerover/out mô phỏng, 5ms tổng, một tooltip duy nhất; đây không phải phép đo tốc độ khung hình/độ trễ thiết bị thật.
+
+**Các hành vi đã khóa bằng test:** vùng bấm phủ toàn bộ ô số dương trong cả 5 báo cáo, tổng nhóm/tổng cộng; bỏ hoàn toàn ký hiệu ↗ và cue "Xem" cạnh số; một panel `role=tooltip` **190×32 px**, đúng text `Click để xem chi tiết`, chỉ bật khi hover/focus có số, nội dung không phụ thuộc số lượng, không có `title` của browser, không có hover handler per button, một DOM node dùng chung. Chrome smoke kiểm liên tục 300 lượt cùng một node, pointer thực mở tooltip tại góc ô và click mở đúng dialog. Ô `—`, header, % không thành nút; bàn phím Tab/Enter/Space giữ nguyên. Việc mở danh sách nhiều hồ sơ vẫn có thể có độ trễ và cần benchmark độc lập.
+
+**Phát hành:** [Publisher #39222487605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222487605) **PASS**, [Pages deploy #39222509495](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222509495) **PASS**. Mở `https://cavoixanh638.github.io/HopHDND-WebApp/preview/shared-fixed-tooltip-2026-10-19/` để nghiệm thu; `preview/current/` được cập nhật, các preview trước còn nguyên. Root vẫn unchanged; PR #3 open/unmerged, không ghi Excel/Firebase.
+
 
 ## Bản PR #3 / preview sửa lỗi 19/10/2026 — bằng chứng và giới hạn
 
