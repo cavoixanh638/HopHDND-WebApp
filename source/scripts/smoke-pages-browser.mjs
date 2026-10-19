@@ -367,15 +367,62 @@ try{
           reason:shown?'tooltip does not disappear on exit':'tooltip not synchronous'};
       })()`);
       if(!fastHover.ok)throw Error('Fast count tooltip failure: '+JSON.stringify(fastHover));
-      const clickableCount=await evaluate(`(()=>{
-        const cell=[...document.querySelectorAll('.report-surface .count-drill')]
-          .find(button=>button.textContent?.trim()&&!button.closest('tfoot'));
-        if(!cell)return false;
-        cell.click();return true;
+      const fullCellGeometry=await evaluate(`(()=>{
+        const tables=[...document.querySelectorAll('.report-surface .report-table')];
+        if(tables.length!==5)return {ok:false,reason:'missing report tables: '+tables.length};
+        const buttons=[...document.querySelectorAll('.report-surface .report-table td .count-drill')];
+        if(buttons.length===0)return {ok:false,reason:'no populated drill-down cells'};
+        const allFull=buttons.every(button=>{
+          const td=button.closest('td'),rect=td.getBoundingClientRect(),
+            hit=button.getBoundingClientRect();
+          return td.classList.contains('report-clickable-cell')&&
+            Math.abs(rect.left-hit.left)<=2&&Math.abs(rect.top-hit.top)<=2&&
+            Math.abs(rect.width-hit.width)<=2&&Math.abs(rect.height-hit.height)<=2&&
+            getComputedStyle(button).position==='absolute'&&
+            !!td.querySelector('.report-cell-sizer')&&button.hasAttribute('aria-label');
+        });
+        const noEmptyActions=[...document.querySelectorAll('.report-surface .report-table td.report-number')]
+          .every(td=>{
+            const button=td.querySelector('.count-drill');
+            return (!!button)===td.classList.contains('report-clickable-cell')&&
+              (!td.classList.contains('report-percent-col')||!button)&&
+              (td.textContent.trim()!=='—'||!button);
+          });
+        const bodyTotals=document.querySelectorAll('.report-surface tbody td.report-total-col.report-clickable-cell').length,
+          footerTotals=document.querySelectorAll('.report-surface tfoot td.report-total-col.report-clickable-cell').length,
+          statusCells=document.querySelectorAll('.report-surface tbody td.report-clickable-cell:not(.report-total-col)').length;
+        return {ok:allFull&&noEmptyActions&&bodyTotals>0&&footerTotals>0&&statusCells>0,
+          buttons:buttons.length,bodyTotals,footerTotals,statusCells,allFull,noEmptyActions};
       })()`);
-      if(!clickableCount)throw Error('Report counts have no clickable detail action');
-      await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
-        'Report detail did not open from count button');
+      if(!fullCellGeometry.ok)throw Error('Report full-cell hit targets are incomplete: '+JSON.stringify(fullCellGeometry));
+      // Real CDP pointer events at the lower-right INSIDE each data cell, not
+      // .click() on the number. These corners used to miss the tiny count button.
+      for(const selector of [
+        '.report-surface tbody td.report-clickable-cell:not(.report-total-col)',
+        '.report-surface tbody td.report-total-col.report-clickable-cell',
+        '.report-surface tfoot td.report-total-col.report-clickable-cell'
+      ]){
+        const pos=await evaluate(`(()=>{
+          const td=document.querySelector(${JSON.stringify(selector)});
+          if(!td)return null;
+          td.scrollIntoView({block:'center',inline:'center'});
+          const rect=td.getBoundingClientRect(),button=td.querySelector('.count-drill');
+          const x=Math.round(rect.right-5),y=Math.round(rect.bottom-5);
+          const hit=document.elementFromPoint(x,y);
+          return {x,y,covered:hit===button||button.contains(hit),width:rect.width,height:rect.height};
+        })()`);
+        if(!pos?.covered)throw Error('Cell corner is not clickable: '+selector+' '+JSON.stringify(pos));
+        await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:pos.x,y:pos.y});
+        await send('Input.dispatchMouseEvent',{type:'mousePressed',x:pos.x,y:pos.y,button:'left',clickCount:1});
+        await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
+        await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
+          'Full-cell corner click failed: '+selector);
+        if(selector!=='.report-surface tfoot td.report-total-col.report-clickable-cell'){
+          await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
+          await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
+            'Intermediate detail dialog failed to close');
+        }
+      }
       const detailBackdrop=await evaluate(`(()=>{
         const dialog=document.querySelector('dialog.report-detail-modal[open]');
         return !!dialog&&getComputedStyle(dialog,'::backdrop').backdropFilter==='none';
