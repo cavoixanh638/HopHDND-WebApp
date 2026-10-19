@@ -46,6 +46,10 @@ Người dùng chọn giữ singleton tooltip (phương án `follow` đã đo t�
 
 **Preview đã publish:** [preview/clear-cell-hover-2026-10-19](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/), [Publisher #39249797389](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249797389) **PASS**, [Pages deploy #39249822864](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249822864) **SUCCESS**; artifact SHA256 `2d2f23ab40e21229556998de0bba0e649d15dd7e46a7ed77b370218463d21271`. **Không sửa `main:index.html`, nguồn Excel/Firebase, không merge PR #3.** Bằng chứng phát hành và rollback tham chiếu [VAN_HANH](VAN_HANH.md).
 
+### Kiểm chứng lặp lại khi đã cập nhật tài liệu — không ngoại suy một lượt chạy
+
+Trong [Verify #39251864679](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39251864679) tại commit tài liệu `951f98c84a00314f132b282dec5bf41a1db3dbc5`, chạy lại cùng browser smoke/A/B sau khi tài liệu thay đổi (không đổi code UI), có **Style old 5,69/6,49ms; new 6,80/6,72ms; Layout cả hai 0ms; Task old 57,71/64,45ms, new 71,52/71,18ms** cho hai vòng 36 lượt. Các trị tuyệt đối và chênh mới/cũ **dao động đáng kể so với lượt #39249428414**, có thể do runner và nhiễu; không dùng số đo hai vòng để chứng minh viền có cùng hiệu năng với nền cũ hay cam kết không tăng Task. **Kết luận chắc chắn ở mức thử hiện có**: viền không làm thay đổi hình học ô, không phát sinh Layout trong Chrome runner, không thêm pointer JS/DOM node; công đoạn paint/compositing và sự mượt thực tế trên Windows vẫn phải được nghiệm thu trên máy người dùng với trace, lặp nhiều lần và nhiều quy mô bảng. Do người dùng đã chọn kiểu viền rõ, tiếp tục giữ kiểu này cho preview nhưng không gọi hiệu năng sản xuất đã nghiệm thu.
+
 ## Nguồn tài liệu
 
 - [Chrome: CSS selector performance](https://developer.chrome.com/docs/devtools/performance/selector-stats)
