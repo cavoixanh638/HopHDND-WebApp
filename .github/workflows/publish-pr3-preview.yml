@@ -27,7 +27,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: hophdnd-pages-candidate
-          run-id: 39243043877
+          run-id: 39249428414
           repository: cavoixanh638/HopHDND-WebApp
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: _verified_preview
@@ -45,13 +45,13 @@ jobs:
           def get(path):
               with urllib.request.urlopen(urllib.request.Request(base+path,headers=headers)) as response:
                   return json.load(response)
-          run=get('/actions/runs/39243043877')
-          expected='8fe7c463dc036f5995cd5ac057caee433ce4aeaa'
+          run=get('/actions/runs/39249428414')
+          expected='cb4c276b2f649a178993ab0bb3abd192f4faca83'
           assert run['head_sha']==expected and run['conclusion']=='success', 'Unverified PR commit'
           assert run['name']=='Verify HopHDND source', 'Unexpected verification workflow'
-          artifacts=get('/actions/runs/39243043877/artifacts')['artifacts']
+          artifacts=get('/actions/runs/39249428414/artifacts')['artifacts']
           html=next(a for a in artifacts if a['name']=='hophdnd-pages-candidate')
-          assert not html['expired'] and html['digest']=='sha256:8a7dd0a10cc2d435980fd8e61af0c6770af77b6e21943846dc4309cc17e55eee', 'Unexpected artifact'
+          assert not html['expired'] and html['digest']=='sha256:2d2f23ab40e21229556998de0bba0e649d15dd7e46a7ed77b370218463d21271', 'Unexpected artifact'
           assert html['workflow_run']['head_sha']==expected, 'Artifact provenance mismatch'
           print('Verified immutable source SHA',expected,'artifact ID',html['id'])
           PY
@@ -69,22 +69,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p preview/current preview/ab-optimized-hover-2026-10-19
+          mkdir -p preview/current preview/clear-cell-hover-2026-10-19
           cp _verified_preview/index.html preview/current/index.html
-          cp _verified_preview/index.html preview/ab-optimized-hover-2026-10-19/index.html
-          if git diff --quiet -- preview/current/index.html preview/ab-optimized-hover-2026-10-19/index.html; then
+          cp _verified_preview/index.html preview/clear-cell-hover-2026-10-19/index.html
+          if git diff --quiet -- preview/current/index.html preview/clear-cell-hover-2026-10-19/index.html; then
             echo "Verified previews already match"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add preview/current/index.html preview/ab-optimized-hover-2026-10-19/index.html
-          git commit -m "preview(pages): publish A/B verified lightweight shared tooltip"
+          git add preview/current/index.html preview/clear-cell-hover-2026-10-19/index.html
+          git commit -m "preview(pages): publish verified high-contrast cell hover without added layout"
           for attempt in 1 2 3; do
             git fetch origin main
             git rebase origin/main
             if git push origin HEAD:main; then
-              echo "Published only preview/current and A/B optimized tooltip preview. Root index.html untouched."
+              echo "Published only preview/current and clear-cell-hover preview. Root index.html untouched."
               exit 0
             fi
           done
