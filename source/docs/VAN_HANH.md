@@ -2,6 +2,13 @@
 
 **Phạm vi:** bản GitHub Pages 0.7.0 đọc dữ liệu qua Google Sheets/GViz, Firebase Authentication và cấu hình dùng chung qua Realtime Database. App Google Apps Script 0.6.2 là nhánh vận hành độc lập. Tài liệu này là **quy trình tham chiếu**, không phải xác nhận các phép kiểm sản xuất đã thành công. Trạng thái thực tế duy nhất xem [CURRENT_STATE](CURRENT_STATE.md).
 
+## 0.1. Bảng chi tiết từ ô báo cáo — phạm vi triển khai thử (19/10/2026)
+
+- `ReportDetailGrid` là bản thử UI trên PR #3, không được bật writer Excel/Firebase. Dùng `SheetsRepository` đọc, `workspace.update` giữ nháp, `workspace.keepDraft` lưu checkpoint cục bộ; bộ phận quản trị vẫn áp dụng phân quyền và khóa sửa hiện hành. Không coi nháp cập nhật nguồn.
+- Cấu hình cột riêng lưu `localStorage` theo nguồn dữ liệu/preview; **không** sao lưu lên Firebase và **không** tự đồng bộ giữa máy. Rollback code/preview không tự phục hồi preferences cục bộ; khi cần có thể bấm Khôi phục mặc định trong modal.
+- Mốc mã nguồn có bằng chứng [Verify #39256157291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256157291), SHA `c2d13b56dd675e230c39d7364d9a9054397159e6`, chỉ dùng artifact PASS để publish preview. Khi bật ghi Excel thực trong tương lai phải có quyết định riêng về writer, quyền, ETag/recordId, chống xung đột và read-back confirmation.
+- Các hướng dẫn preview hover cũ phía dưới thuộc lịch sử; đường xem trước bản Bảng chi tiết nhanh cần được xác minh riêng trước khi coi triển khai thành công.
+
 ## 0. Trạng thái hiện hành — commit và preview hover đã chốt 19/10/2026
 
 - **Đã commit trên nhánh PR #3**: thay đổi CSS ở `b22b877c8f81d840059abd738dde5d7c9a24d0a9` và Chrome A/B test ở `cb4c276b2f649a178993ab0bb3abd192f4faca83`. Mốc kiểm mã: [Verify #39249428414](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249428414) **PASS** tại SHA test `cb4c276b2f649a178993ab0bb3abd192f4faca83`; đơn vị 352 PASS, Firebase emulator 20 PASS, Chrome smoke và đo A/B PASS. Chi tiết ở [KIEM_THU_VA_NGHIEM_THU](KIEM_THU_VA_NGHIEM_THU.md).
