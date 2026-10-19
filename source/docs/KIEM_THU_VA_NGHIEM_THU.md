@@ -1,5 +1,12 @@
 # Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
 
+## Bảng chi tiết nhanh từ ô số — bản thử 19/10/2026
+
+- **Exact mã đã kiểm:** `c2d13b56dd675e230c39d7364d9a9054397159e6`, [Verify #39256157291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256157291) **PASS**, 355 unit PASS/20 skipped, 20 Firebase emulator PASS, typecheck/build/docs/Chrome mock PASS; artifact `hophdnd-pages-candidate` digest `sha256:2ee1bd07e85dbb4c78f0421db86b2a01f4c203833eb7957fa7ffd54726e07a28`.
+- **Bài test:** `tests/report-detail-preferences.test.ts` (3) xác nhận chỉ 15 cột A–O, không có cột giả, validator loại bỏ bộ cột trùng/ẩn hết/rộng sai, persist riêng theo nguồn/preview, không ghi đè `ItemLayout`. Chrome smoke `REPORT_DETAIL_COLUMNS_PASS {\"initial\":10,\"now\":9}`: sau khi bấm **vùng góc của ô số** trên 5 bảng, modal có `table.report-detail-grid`/lọc/các hàng đúng tập chọn; khách không có quyền không thể sửa; mở Cấu hình cột riêng, ẩn “Ghi chú” rồi lưu làm giảm số cột hiện từ 10 xuống 9. Giữ nguyên `DELEGATED_TOOLTIP_STRESS` (300 pointer, 0 layout read), `CELL_HOVER_VISUAL_PASS` và toàn bộ bài click góc/modal cũ.
+- **Bất biến nguồn:** modal đọc hồ sơ đã có trong `workspace.workingItems`, không gọi writer hay ghi Excel/Firebase; trình sửa nháp dùng chung quyền `mayEdit` và `workspace.update`, cột STT/ID chỉ xem, giữ nháp qua `workspace.keepDraft`. Chưa test ghi nguồn thật (không được bật), chưa nghiệm thu người dùng trên dữ liệu thật hoặc quyền được cấp thực tế.
+- **Hạn chế:** không có chia sẻ cấu hình cột giữa các máy/tài khoản; `localStorage` riêng theo source, vùng preview được cách ly. Các cột UI tự tạo ngoài 15 cột Excel chưa đưa vào bảng này. Dữ liệu lớn cần kiểm Chrome Performance trước khi virtual hóa.
+
 ## CHỐT HIỆN HÀNH — hover ô số đậm hơn, tooltip chung nhanh hơn (19/10/2026)
 
 **Mã đã commit và kiểm thử trên PR #3:** [CSS commit `b22b877`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/b22b877c8f81d840059abd738dde5d7c9a24d0a9), [test commit `cb4c276`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/cb4c276b2f649a178993ab0bb3abd192f4faca83). [Verify #39249428414](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249428414) **SUCCESS**, exact tested SHA `cb4c276b2f649a178993ab0bb3abd192f4faca83`; 352 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs check/Chrome smoke PASS. Đây là mốc hiện hành, các đoạn kiểm thử CSS Anchor và tooltip cũ phía dưới **chỉ là lịch sử**, không còn là phương án sản phẩm hiện tại.
