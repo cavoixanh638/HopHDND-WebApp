@@ -2,7 +2,7 @@ import {useMemo,useState,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
-import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,type ItemLayout} from '../../data/item-preferences';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
@@ -22,6 +22,7 @@ import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,ty
 type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
   catalog:CatalogConfig;
+  listLayout?:ItemLayout;
   allowDraft:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
@@ -33,7 +34,7 @@ type Props={
   onClose:()=>void;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allowDraft,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,canEditCell,
   onUpdate,onKeepDraft,onHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
@@ -53,7 +54,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   const [colorField,setColorField]=useState('progressCouncil');
   const [colorValue,setColorValue]=useState('');
   const [color,setColor]=useState<ColorRule['color']>('amber');
-  const labelByKey=useMemo(()=>new Map<string,string>(EXCEL_SOURCE_COLUMNS.map(c=>[c.key,c.label])),[]);
+  const labelByKey=useMemo(()=>new Map<string,string>(EXCEL_SOURCE_COLUMNS.map(c=>[c.key,
+    listLayout?.columns.find(col=>col.key===c.key)?.label??c.label])),[listLayout]);
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
   // Preview pending column changes while the settings panel is open.
@@ -173,6 +175,10 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
+    if(listLayout?.columns.find(c=>c.key===key)?.kind==='text')
+      return <input type="text" className="custom-cell-input" maxLength={1000}
+        aria-label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
+        onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>;
     return <CellPicker label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
       searchable={field==='specialist'} options={options(field,raw).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
