@@ -17,7 +17,7 @@ import {ContentEditor} from '../items/ContentEditor';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
-import {loadDetailPresets,saveDetailPresets,type ReportDetailPreset} from '../../data/report-detail-presets';
+import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
 type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
@@ -32,28 +32,6 @@ type Props={
   errors:Record<string,string>;
   onClose:()=>void;
 };
-
-function DetailTextEditor({value,label,large,required,onApply}:{
-  value:string;label:string;large:boolean;required:boolean;onApply:(value:string)=>void
-}){
-  const [draft,setDraft]=useState(value);
-  const [error,setError]=useState('');
-  const apply=()=>{
-    const next=draft.trim();
-    if(required&&!next){setError('Nội dung không được để trống.');return;}
-    if(next!==value)onApply(next);
-    setError('');
-  };
-  return <div className="detail-inline-editor">
-    {large?<textarea aria-label={label} rows={2} maxLength={20000} value={draft}
-      onChange={event=>setDraft(event.target.value)} onBlur={apply}
-      onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();apply();}}}/>
-    :<input aria-label={label} maxLength={20000} value={draft}
-      onChange={event=>setDraft(event.target.value)} onBlur={apply}
-      onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();apply();}}}/>}
-    {error&&<small className="error-text" role="alert">{error}</small>}
-  </div>;
-}
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allowDraft,canEditCell,
   onUpdate,onKeepDraft,onHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
@@ -71,7 +49,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
   const [presets,setPresets]=useState(()=>loadDetailPresets(sourceKey));
   const [selectedPreset,setSelectedPreset]=useState('');
   const [presetName,setPresetName]=useState('');
-  const [colors,setColors]=useState<ColorRule[]>([]);
+  const [colors,setColors]=useState<ColorRule[]>(()=>loadDetailColors(sourceKey));
   const [colorField,setColorField]=useState('progressCouncil');
   const [colorValue,setColorValue]=useState('');
   const [color,setColor]=useState<ColorRule['color']>('amber');
@@ -135,7 +113,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
     const next=presets.find(v=>v.id===id);
     if(next){
       setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
-      setColors(next.colors);setSelectedPreset(id);setShowAll(false);
+      setColors(next.colors);if(!saveDetailColors(sourceKey,next.colors))setNotice('Không lưu được màu popup trên máy.');setSelectedPreset(id);setShowAll(false);
       setSettings(false);setNotice('Đã áp dụng mẫu hiển thị cá nhân. Bấm Lưu cấu hình cột để đặt làm mặc định.');
     }else{
       const original=loadDetailGridPreferences(sourceKey);
@@ -280,14 +258,14 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,allo
           <button type="button" className="button ghost" disabled={!colorValue.trim()||colors.length>=30}
             onClick={()=>{const next=validateColorRules([...colors,{
               id:crypto.randomUUID(),field:colorField,value:colorValue.trim(),color
-            }]);setColors(next);setColorValue('');}}>Thêm quy tắc</button>
+            }]);if(saveDetailColors(sourceKey,next)){setColors(next);setColorValue('');}else setNotice('Không lưu được màu popup trên trình duyệt.');}}>Thêm quy tắc</button>
         </div>
         {colors.map(rule=><span className="report-grid-color-chip" key={rule.id}>
           {labelByKey.get(rule.field)} = {rule.value} · {rule.color}
           <button type="button" aria-label={'Xóa màu '+rule.value}
-            onClick={()=>setColors(old=>old.filter(v=>v.id!==rule.id))}>×</button>
+            onClick={()=>{const next=colors.filter(v=>v.id!==rule.id);if(saveDetailColors(sourceKey,next))setColors(next);else setNotice('Không lưu được thay đổi màu popup.');}}>×</button>
         </span>)}
-        <p className="muted">Quy tắc màu của popup sẽ được lưu khi chọn Lưu mẫu mới hoặc Cập nhật mẫu; không ảnh hưởng màu của bảng Danh sách hoặc báo cáo.</p>
+        <p className="muted">Màu của popup được tự lưu riêng trên trình duyệt khi thêm/xóa; cũng được lưu trong mẫu cá nhân. Không ảnh hưởng màu của Danh sách hoặc báo cáo.</p>
       </details>
     </section>}
     {confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
