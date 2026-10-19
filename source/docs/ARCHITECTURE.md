@@ -4,6 +4,17 @@
 
 
 
+## Kiến trúc Bảng chi tiết nhanh và cấu hình cột độc lập — 19/10/2026
+
+- `src/features/reports/ReportTable.tsx` giữ `onSelect(title,entries)`; `App.tsx` giữ `selection={title,items}` và gọi `ReportDetailGrid` khi bấm, truyền `selectedIds` và `workspace.workingItems`. Modal chỉ lọc tập recordId đã chọn, tránh query lại source và tránh nhân đôi 5 bảng thống kê. Không đổi định nghĩa tập đếm ở `aggregateReport`.
+- `src/features/reports/ReportDetailGrid.tsx` là bảng con dùng `Modal` hiện có, luồng xem → lọc cột/tìm toàn bảng → sort (`sortItems`) → tùy chọn sửa nháp nếu được cấp quyền. HTML table có `colgroup`, header/filter sticky, scroll riêng và bảng rộng có thể kéo ngang. Dựng bảng **chỉ khi modal mở**; không dùng CSS Anchor/`body:has` hoặc event hover mới.
+- `src/data/report-detail-preferences.ts` chứa cấu hình `DetailGridPreferences` phiên bản 1, độc lập với `ItemLayout` và `ReportLayout`. Kênh lưu là `localStorage` trên máy theo nguồn và `layoutRecoveryScope` cho preview, có validator whitelisted 15 `EXCEL_SOURCE_COLUMNS`, không nhận mã cột khác, không cho ẩn hết, độ rộng 70–800px. **Không đưa dữ liệu tùy chỉnh cột vào Excel hay Firebase profile**. Các cột ngoài A–O và chia sẻ cấu hình là yêu cầu tương lai, chỉ làm sau khi thống nhất hợp đồng mới.
+- Một đường nháp duy nhất: `App.updateDataDraft` kiểm `firebase.editingLocked` / `firebase.canEdit` và quyền thực tế `mayEdit`; `workspace.update` tạo `Patch` hiện có. Grid hiển thị `workspace.workingItems` (nháp chung với Danh sách), báo cáo vẫn dựng từ `workspace.items` là snapshot nguồn. Nút `Giữ nháp trên máy` gọi `workspace.keepDraft`; **không gọi `saveData`/`repository.save` trong modal**, không xác nhận đã ghi nguồn. Bộ ghi Excel bên Google Host/Apps Script vẫn tắt trên Pages.
+- CSS trong `src/styles/app.css` dùng riêng `.report-grid-*`, container modal `min(1480px,100vw-20px)`, sticky th và vùng scroll. Hiệu năng: không tạo bảng khi chưa click, không tính lại báo cáo khi gõ lọc; khi dữ liệu quá lớn cần Performance trace thực tế trước khi thêm virtualization, vẫn phải giữ print và scroll.
+- Test: `tests/report-detail-preferences.test.ts` kiểm 15 cột, dữ liệu không hợp lệ, chia nguồn/preview và không ảnh hưởng ItemList. `scripts/smoke-pages-browser.mjs` dùng chuột Chrome thật bấm mép ô, assert modal bảng dữ liệu, không cho sửa khi không có quyền, mở tùy chỉnh/ẩn cột/lưu riêng.
+
+**Ranh giới phát hành:** nhánh feature PR #3 và preview độc lập; không sửa `main:index.html`, Sheets, Excel hoặc Firebase production. Quy trình tại [VAN_HANH](VAN_HANH.md).
+
 ## Quyết định kỹ thuật hiện hành — hover báo cáo hiệu năng cao (19/10/2026)
 
 **Áp dụng trên PR #3/preview, không phải production root.** `src/features/reports/ReportTable.tsx` dựng 5 bảng, trong mỗi ô đếm dương có `button.count-drill` phủ toàn bộ `td.report-clickable-cell`, giữ `report-cell-sizer` vô hình để bảo toàn kích thước. Button native xử lý bấm và bàn phím; `onSelect(title,entries)` mở modal, không chạy tổng hợp lại bảng do hover. Ô không có hồ sơ, ô % và header không gắn button.
