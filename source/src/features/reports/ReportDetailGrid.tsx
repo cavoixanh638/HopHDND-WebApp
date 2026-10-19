@@ -14,6 +14,7 @@ import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
+import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
@@ -229,11 +230,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <button type="button" className="button ghost" onClick={clearFilters}
           disabled={!query&&Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
         <label className="report-grid-quick-width">Rộng popup
-          <input type="range" aria-label="Độ rộng toàn popup" min={minDialogWidth}
-            max={availableWidth} step={1}
+          <DeferredWidthInput label="Độ rộng toàn popup (px)"
+            min={minDialogWidth} max={availableWidth}
             value={Math.min(displayedLayout.dialogWidth,availableWidth)}
-            onChange={event=>changeDialogWidth(Number(event.currentTarget.value))}/>
-          <output aria-label="Độ rộng popup hiện tại">{Math.min(displayedLayout.dialogWidth,availableWidth)} px</output>
+            onCommit={changeDialogWidth}/>
+          <span>px</span>
         </label>
         {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
@@ -263,14 +264,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       </div>
       <div className="report-grid-window-width-control">
         <label htmlFor="report-grid-dialog-width">Độ rộng toàn cửa sổ popup</label>
-        <input id="report-grid-dialog-width" type="number" min={640} max={2400} step={20}
-          value={pending.dialogWidth} onChange={event=>{
-            const width=Number(event.currentTarget.value);
-            if(Number.isInteger(width)&&width>=640&&width<=2400)
-              setPending(previous=>({...previous,dialogWidth:width}));
-          }}/>
+        <DeferredWidthInput id="report-grid-dialog-width" label="Độ rộng toàn cửa sổ popup (px)"
+          min={640} max={2400} value={pending.dialogWidth}
+          onCommit={width=>setPending(previous=>({...previous,dialogWidth:width}))}/>
         <span>px</span>
-        <span className="muted">Khác độ rộng từng cột; cửa sổ không vượt quá màn hình. Lưu riêng cho popup.</span>
+        <span className="muted">Nhấn Enter hoặc rời ô để xem trước; Lưu cấu hình cột để ghi nhớ. Không thay đổi từng lần gõ.</span>
       </div>
       <div className="report-grid-settings-list">
         {pending.columns.map((c,index)=><div className="report-grid-settings-row" key={c.key}>
