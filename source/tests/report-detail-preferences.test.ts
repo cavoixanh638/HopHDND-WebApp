@@ -17,7 +17,7 @@ describe('Bảng chi tiết báo cáo — cấu hình cột riêng',()=>{
    expect(v.columns.map(c=>c.key)).toEqual(EXCEL_SOURCE_COLUMNS.map(c=>c.key));
    expect(v.columns.filter(c=>c.visible).map(c=>c.key)).toContain('content');
    expect(v.columns.filter(c=>c.visible).map(c=>c.key)).toContain('progressCouncil');
-   expect(v.columns.some(c=>c.key==='history')).toBe(false);
+   expect(v.columns.some(c=>String(c.key)==='history')).toBe(false);
  });
  it('allows reorder, hide and resize without mutating ItemList or report preferences',()=>{
    const storage=mockStorage();
