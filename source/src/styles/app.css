@@ -1124,7 +1124,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .edit-shared-tooltip[popover]:popover-open {
   display:flex;align-items:center;justify-content:center;
   position:fixed;inset:auto;left:0;top:0;margin:0;
-  z-index:11000;pointer-events:none;width:112px;height:26px;
+  z-index:11000;pointer-events:none;width:var(--edit-tooltip-width,112px);height:26px;
   box-sizing:border-box;padding:5px 7px;border:1px solid #305745;
   border-radius:6px;background:#254a3a;color:#fff;
   font:600 11px/1.2 "Segoe UI",system-ui,sans-serif;white-space:nowrap;
