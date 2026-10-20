@@ -1,3 +1,11 @@
+## 20/10/2026 — Danh sách thông thoáng (PR #5)
+
+- Nhãn cột Bảng dữ liệu căn giữa, kể cả nhãn cột tùy chỉnh; phân cách cả header/filter/body mảnh #cbdad1. Không dùng viền trái xanh làm dấu sửa; vẫn sử dụng dropdown có chevron và tooltip tức thì chỉ ở các ô có quyền.
+- Tooltip báo cáo và ô sửa chọn vị trí chếch phải, bên ngoài đối tượng hover. Khi không đủ chỗ phía phải thì lật sang trái; luôn ưu tiên không chồng lên giá trị nguồn. Một singleton cho mỗi loại tooltip.
+- Trên trang Danh sách bỏ `Danh sách nội dung` lặp dưới `Danh sách làm việc`; đếm bản ghi và bộ chọn hiện đủ cột vẫn dùng được. Bỏ thẻ nguồn lặp và thông báo tìm kiếm không dấu khỏi phần đầu bảng. Với tài khoản đăng nhập, giữ chi tiết email/GID/đặt lại nguồn trong khu vực quản trị liên quan, không chiếm chỗ khi xem danh sách; cảnh báo nguồn vẫn mở xem được.
+- Unit/browser CI: [#39423111683](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39423111683) PASS trên mock Sheets/Chrome. Cần nghiệm thu cửa sổ thực tế sau phát hành, không coi CI là phép đo Windows.
+
+
 ## 20/10/2026 — Tinh gọn bảng chi tiết cho khách, tooltip tức thì, dropdown có viền
 
 - Khách popup chỉ có bảng dữ liệu + lọc từng cột + nút Đóng; **không hiện** tìm kiếm chung/hiện đủ cột/xóa lọc chung/chỉnh rộng/mở Danh sách hoặc chức năng sửa/cấu hình/mẫu/lịch sử. Người đã đăng nhập vẫn có công cụ được cấp quyền, trừ ô tìm kiếm chung đã bỏ vì trùng với bộ lọc từng cột.

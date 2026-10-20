@@ -1,3 +1,14 @@
+## 20/10/2026 — Gọn Danh sách, tiêu đề cột, tooltip và phân cách (PR #5)
+
+- Nhánh `fix/list-header-tooltips-visual-2026-10-20`, PR #5. Trong Bảng dữ liệu (`ItemList`) nhãn tiêu đề A–O/cột tùy chỉnh căn giữa ngang với `ColumnHeader` giữ sort/resize hoạt động; nút sort tuyệt đối ở bên phải không làm lệch nhãn. Đường dọc hàng tiêu đề, hàng bộ lọc và ô dữ liệu rõ hơn rất nhẹ (`#cbdad1`, 1px), không tô đặc.
+- Ô được quyền sửa vẫn có class `editable-cell`, tooltip tức thì và `CellPicker` bo viền nhưng **không còn viền trái xanh hay viền xanh khi hover**. Không thay quyền Firebase, màu tiến độ hay dữ liệu nguồn.
+- `SharedReportTooltip` và `SharedEditTooltip` dùng hàm `outsideCellTooltipPosition`: tooltip hiện chếch trên/phải ngoài ô, đổi sang phía trái ở sát mép; nếu hai bên đều thiếu chỗ thì chọn trên/dưới. Mỗi ô mới chỉ đọc `getBoundingClientRect` một lần, không theo `pointermove` và không tạo DOM mỗi ô. Test unit kiểm hình học các mép; Chrome kiểm tooltip thật không che ô.
+- Trang Danh sách của cả admin/người sửa/khách chỉ còn một tên **Danh sách làm việc** ở tiêu đề trang; card bảng chỉ báo số nội dung + nút hiện đủ cột, bỏ tên bảng lặp và nhãn nguồn lần hai. Với trang Tổng quan/Danh sách của người đăng nhập, ẩn riêng dòng email/role và thời gian đọc khi không đang tải; nút tải lại có tooltip thông tin thời điểm. Banner nguồn chỉ gọn `Google Sheets · Tự cập nhật mỗi 60 giây · Mở bảng nguồn`; mã GID và `Dùng lại nguồn mặc định` giữ trong mục Tài khoản/Nguồn, không vứt chức năng. Cảnh báo nguồn vẫn giữ trong details thu gọn để tránh mất dữ liệu kiểm tra.
+- Kiểm thử [#39423111683](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39423111683) PASS sau bộ smoke tăng cường (nguồn giả lập); chưa nhận định phát hành Pages/Chrome trên máy người dùng trước merge. Không thay Firebase Rules hoặc Excel production.
+
+---
+
+
 ## 20/10/2026 — Popup khách gọn, tooltip nhanh và dropdown rõ ràng (PR #4)
 
 - PR #4: `fix/guest-popup-tooltip-dropdown-2026-10-20`. Khách ẩn danh trong `ReportDetailGrid` chỉ có thông tin số nội dung và hàng lọc theo từng cột. Ẩn `Hiện đủ cột Excel`, `Xóa bộ lọc` toàn bảng, `Rộng popup`, `Mở Danh sách dữ liệu` cùng toàn bộ cấu hình/mẫu/sửa/lịch sử. Bỏ cả ô tìm kiếm chung cho mọi tài khoản (đã có lọc từng cột). Các ô lọc dạng chọn ghi `Chọn để lọc` thay cho `Tất cả`.

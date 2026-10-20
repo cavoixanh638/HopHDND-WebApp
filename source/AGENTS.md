@@ -43,3 +43,10 @@
 - Căn bảng theo `data-col-key`, không dùng `:nth-child` do thứ tự cột tùy chỉnh; riêng `content`/`note` vẫn căn trái-trên.
 - `CellHistoryAction` dùng icon nhỏ/tooltip và chỉ truy vấn audit sau thao tác bấm; hiển thị **lần lưu gần nhất của chính field**, không tự xác nhận có lịch sử chỉ vì có biểu tượng; không cấp hành động cho guest ẩn danh.
 - Giữ riêng các mức: source commit/CI PASS/preview deployed/production deployed/khách nghiệm thu. Quy trình preview chỉ dùng artifact bất biến kiểm exact SHA và digest, không tự ghi dữ liệu thật.
+
+## Quy tắc chống lặp giao diện — 20/10/2026, PR #5
+
+- Danh sách nội dung chỉ có một tiêu đề cấp trang (`Danh sách làm việc`); card bảng giữ count và chuyển cột, không lặp tiêu đề và thẻ nguồn. Với admin/người sửa, những thông tin GID/reset/tài khoản đặt tại nhóm Tài khoản/Nguồn; cảnh báo nguồn mở qua details gọn.
+- Tiêu đề **cột** nguồn căn giữa theo mã cột dù đổi thứ tự; cả hàng nhãn/hàng lọc và data phải có vạch dọc mảnh. Sort ở mode sửa không được làm lệch chữ tiêu đề.
+- Không dùng màu viền trái của từng ô để báo sửa; quyền vẫn phải được kiểm backend, và class `editable-cell` chỉ kích hoạt tooltip ở ô được phép. Dropdown có viền/chevron khi có quyền.
+- Tooltip báo cáo và ô sửa dùng chung tính toán vị trí ngoài ô, ưu tiên hơi chếch phía phải, lật nếu sát mép; không che nguồn; không thêm hover-state React cho mỗi ô hoặc pointermove. Phép đo unit + Chrome smoke phải bắt lỗi tái phát.
