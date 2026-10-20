@@ -201,19 +201,6 @@ try{
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
-  const centeredReportTitles=await evaluate(`(()=>{
-    const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
-    const deltas=titles.map(h=>{
-      const header=h.closest('.card-header');
-      const head=header?.getBoundingClientRect(),text=h.getBoundingClientRect();
-      return {name:h.textContent?.slice(0,35),offset:head?Math.round(((text.left+text.right)-(head.left+head.right))/2):null,
-        display:header?getComputedStyle(header).display:null,align:getComputedStyle(h).textAlign,
-        headWidth:Math.round(head?.width??0),textWidth:Math.round(text.width)};
-    });
-    return {ok:titles.length===5&&deltas.every(v=>v.offset!==null&&Math.abs(v.offset)<4),
-      count:titles.length,deltas};
-  })()`);
-  if(!centeredReportTitles.ok)throw Error('Report titles are no longer centered: '+JSON.stringify(centeredReportTitles));
   // Sorting is now edit-mode only. The viewer/anonymous guest must not
   // expose a sorting button or activate sort via the header itself.
   const viewerSortBlocked=await evaluate(`(()=>{
@@ -432,7 +419,20 @@ try{
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
       // Delegated singleton uses one bounded geometry read per newly entered
       // count cell, never a per-frame pointermove read or global style selector.
-      const sharedTooltip=await evaluate(`(()=>{
+      const centeredReportTitles=await evaluate(`(()=>{
+        const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
+        const deltas=titles.map(h=>{
+          const header=h.closest('.card-header');
+          const head=header?.getBoundingClientRect(),text=h.getBoundingClientRect();
+          return {name:h.textContent?.slice(0,35),offset:head?Math.round(((text.left+text.right)-(head.left+head.right))/2):null,
+            display:header?getComputedStyle(header).display:null,align:getComputedStyle(h).textAlign,
+            headWidth:Math.round(head?.width??0),textWidth:Math.round(text.width)};
+        });
+        return {ok:titles.length===5&&deltas.every(v=>v.offset!==null&&Math.abs(v.offset)<4),
+          count:titles.length,deltas};
+      })()`);
+      if(!centeredReportTitles.ok)throw Error('Report titles are no longer centered: '+JSON.stringify(centeredReportTitles));
+          const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
         const tip=document.getElementById('report-shared-tooltip');
         if(!tip||buttons.length<3||tip.dataset.mode!=='delegated')
