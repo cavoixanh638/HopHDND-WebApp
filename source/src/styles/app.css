@@ -1145,3 +1145,8 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .app-shell .source-warnings summary {cursor:pointer;font-weight:550;}
 .app-shell .source-warnings[open] {padding:10px 13px;}
+
+/* Override earlier generic centered header div, without changing report headings. */
+.item-data-region .card-header > div.item-list-summary:first-child {
+  text-align:left;flex:0 1 auto;min-width:0;
+}
