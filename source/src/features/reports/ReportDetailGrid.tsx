@@ -1,4 +1,4 @@
-import {useMemo,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
@@ -11,6 +11,7 @@ import {displayId} from '../../domain/display-id';
 import {Modal} from '../../components/Modal';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
+import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CellPicker} from '../items/CellPicker';
@@ -40,6 +41,7 @@ type Props={
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
   onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
+  useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
   const [pending,setPending]=useState<DetailGridPreferences>(applied);
@@ -352,7 +354,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
               return <td key={c.key} data-col-key={c.key}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
-                title={writable?'Bấm để sửa':undefined}
+                data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}

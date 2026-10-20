@@ -585,7 +585,9 @@ try{
             Math.min(Math.abs(bubble.top-cell.bottom),Math.abs(bubble.bottom-cell.top))<100;
           const visible=mode==='delegated'&&css.visibility==='visible'&&
             tooltip.dataset.visible==='true'&&near;
-          return {ok:visible&&tooltip.textContent==='Click để xem chi tiết'&&
+          const dx=Math.max(0,Math.min(cell.right,bubble.right)-Math.max(cell.left,bubble.left));
+          const dy=Math.max(0,Math.min(cell.bottom,bubble.bottom)-Math.max(cell.top,bubble.top));
+          return {ok:visible&&dx*dy===0&&tooltip.textContent==='Click để xem chi tiết'&&
               !button.textContent.includes('↗')&&
               !button.hasAttribute('aria-describedby'),mode,visibility:css.visibility,near,
               cell:[Math.round(cell.left),Math.round(cell.top)],
