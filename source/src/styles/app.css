@@ -1088,17 +1088,20 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 
 /* Center report/list/popup titles; data column headings retain their existing alignment. */
-.report-surface > .card-header {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr);align-items:center;}
-.report-surface > .card-header > div:first-child {grid-column:2;text-align:center;min-width:0;}
-.report-surface > .card-header > .button {grid-column:3;justify-self:end;}
+.report-surface > .card-header {display:block;position:relative;text-align:center;}
+.report-surface > .card-header > div:first-child {
+  display:block;width:100%;box-sizing:border-box;text-align:center;
+  padding:0 76px;
+}
+.report-surface > .card-header > .button {
+  position:absolute;right:0;top:50%;transform:translateY(-50%);
+}
 .item-data-region .card-header > div:first-child {text-align:center;flex:1 1 100%;}
 .report-grid-modal .modal-header {position:relative;justify-content:center;text-align:center;}
 .report-grid-modal .modal-header h2 {padding:0 36px;}
 .report-grid-modal .modal-header > button {position:absolute;right:16px;top:50%;transform:translateY(-50%);}
 @media (max-width:780px){
-  .report-surface > .card-header {grid-template-columns:minmax(0,1fr);}
-  .report-surface > .card-header > div:first-child {grid-column:1;}
-  .report-surface > .card-header > .button {grid-column:1;justify-self:end;}
+  .report-surface > .card-header > div:first-child {padding:0 58px;}
 }
 
 /* Only dropdown editor buttons receive an outlined input-like affordance. */
