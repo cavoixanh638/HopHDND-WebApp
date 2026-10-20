@@ -559,3 +559,7 @@
 .item-data-region .card-header .item-result-count {
   min-width:0;text-align:inherit;font-weight:700;color:#285c45;
 }
+
+/* Match the native selection placeholder tone to the search placeholder. */
+.item-data-table .item-column-filter-row select.filter-placeholder {color:#9aa9a0;}
+.item-data-table .item-column-filter-row select.selected-filter-value {color:#244d3e;}
