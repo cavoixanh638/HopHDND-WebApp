@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assignmentIssue, CATALOG_KEYS, catalogFromItems, loadCatalog, saveCatalog, validateCatalog, type CatalogConfig } from '../src/data/catalogs';
+import { assignmentIssue, CATALOG_KEYS, catalogFromItems, mergeCatalogItems, loadCatalog, saveCatalog, validateCatalog, type CatalogConfig } from '../src/data/catalogs';
 import { createDemoItems } from '../src/data/demo-items';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -30,6 +30,102 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     expect(() => validateCatalog(duplicate)).toThrow();
     expect(() => validateCatalog({ ...valid, specialistRooms: { Unknown: [] } })).toThrow();
     expect(() => validateCatalog({ ...valid, specialistRooms: { [valid.options.specialist[0]]: ['Phòng không có'] } })).toThrow();
+  });
+
+  it('chuẩn hóa giá trị Sheets bẩn mà không thay đổi dữ liệu nguồn hoặc thứ tự danh mục',()=>{
+    const items=createDemoItems(3);
+    const before=items.map(item=>({...item}));
+    items[0].department='  Sở mới  ';
+    items[1].department='Sở mới';
+    items[2].department='    ';
+    items[0].progressBuild='  Sở chưa trình ';
+    items[1].progressBuild='Sở chưa trình';
+    items[2].progressBuild='x'.repeat(201);
+    const originalItems=JSON.stringify(items);
+    const catalogs=catalogFromItems(items);
+    expect(()=>validateCatalog(catalogs)).not.toThrow();
+    expect(catalogs.options.department.filter(x=>x==='Sở mới')).toHaveLength(1);
+    expect(catalogs.options.department.every(x=>!!x.trim()&&x.length<=200)).toBe(true);
+    expect(catalogs.options.progressBuild.filter(x=>x==='Sở chưa trình')).toHaveLength(1);
+    expect(catalogs.options.progressBuild).not.toContain('x'.repeat(201));
+    const saved=catalogFromItems(before);
+    saved.options.progressBuild.reverse();
+    const merged=mergeCatalogItems(saved,items);
+    expect(()=>validateCatalog(merged)).not.toThrow();
+    expect(merged.options.progressBuild.slice(0,saved.options.progressBuild.length))
+      .toEqual(saved.options.progressBuild);
+    expect(JSON.stringify(items)).toBe(originalItems);
+  });
+
+  it('chuẩn hóa tên chuyên viên/phòng khác chữ hoa, khoảng trắng mà không tạo quan hệ sai',()=>{
+    const rows=createDemoItems(1);
+    const person=rows[0].specialist,room=rows[0].room;
+    const saved=catalogFromItems(rows);
+    const updates=[{...rows[0],specialist:'  '+person.toLocaleUpperCase('vi')+' ',
+      room:' '+room.toLocaleUpperCase('vi')+' '}];
+    const merged=mergeCatalogItems(saved,updates);
+    expect(()=>validateCatalog(merged)).not.toThrow();
+    expect(merged.options.specialist.filter(x=>x.toLocaleLowerCase('vi')===person.toLocaleLowerCase('vi'))).toHaveLength(1);
+    expect(merged.specialistRooms[person]).toContain(room);
+    expect(updates[0].specialist).toMatch(/^  /);
+  });
+
+  it('updates stale specialist-room mappings using observed Excel J/K pairs without discarding unobserved manual links',()=>{
+    const template=createDemoItems(1)[0];
+    const rows=[
+      {...template,specialist:'Nguyễn Ngọc Hùng',room:'Phòng TC'},
+      {...template,recordId:'test-2',specialist:'Lê Quang Trường',room:'Phòng XD&CT'},
+    ];
+    const saved=catalogFromItems(rows);
+    saved.options.room.push('Phòng NC','Phòng khác');
+    saved.options.specialist.push('Chuyên viên lưu riêng');
+    saved.specialistRooms['Nguyễn Ngọc Hùng']=['Phòng NC'];
+    saved.specialistRooms['Lê Quang Trường']=['Phòng khác'];
+    saved.specialistRooms['Chuyên viên lưu riêng']=['Phòng NC'];
+    const merged=mergeCatalogItems(saved,rows);
+    expect(merged.specialistRooms['Nguyễn Ngọc Hùng']).toEqual(['Phòng TC']);
+    expect(merged.specialistRooms['Lê Quang Trường']).toEqual(['Phòng XD&CT']);
+    expect(merged.specialistRooms['Chuyên viên lưu riêng']).toEqual(['Phòng NC']);
+    expect(assignmentIssue(rows[0],merged)).toBe('');
+    expect(assignmentIssue({...rows[0],room:'Phòng NC'},merged)).toContain('chưa được gán');
+    expect(saved.specialistRooms['Nguyễn Ngọc Hùng']).toEqual(['Phòng NC']);
+  });
+  it('migrates only legacy Party catalog labels to exact Excel names and commas',()=>{
+    const items=createDemoItems(1);
+    const old=catalogFromItems(items);
+    old.options.progressParty=['Sở chưa trình','ĐU đã gửi TU chưa họp','Đã họp chưa có TBKL','Đã báo cáo TU'];
+    const merged=mergeCatalogItems(old,items);
+    expect(merged.options.progressParty).toContain('ĐU đã gửi TU, chưa họp');
+    expect(merged.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
+    expect(merged.options.progressParty).not.toContain('TU đã cho ý kiến');
+    expect(merged.options.progressParty).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(merged.options.progressParty).toContain('Đã có TBKL');
+    expect(merged.options.progressParty).not.toContain('Đã báo cáo TU');
+    expect(old.options.progressParty).toContain('Đã báo cáo TU');
+    const edited=catalogFromItems(items);
+    edited.options.progressParty=['Sở chưa trình'];
+    expect(mergeCatalogItems(edited,items).options.progressParty).not.toContain('Đã có TBKL');
+  });
+  it('merges the old and replacement Party milestone into ONE dropdown value',()=>{
+    const items=createDemoItems(2).map((item,index)=>({...item,
+      progressParty:index===0?'Đã họp, chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL'}));
+    const fromExcel=catalogFromItems(items);
+    expect(fromExcel.options.progressParty.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(fromExcel.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
+    const stored=structuredClone(fromExcel);
+    stored.options.progressParty.push('Đã họp, chưa có TBKL');
+    const merged=mergeCatalogItems(stored,items);
+    expect(merged.options.progressParty.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(merged.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
+    expect(items[0].progressParty).toBe('Đã họp, chưa có TBKL'); // Excel source untouched
+  });
+  it('nêu rõ cột và giá trị không hợp lệ do quản trị nhập',()=>{
+    const config=catalogFromItems([]);
+    config.options.department.push('   ');
+    expect(()=>validateCatalog(config)).toThrow(/department.*giá trị thứ/);
+    config.options.department.pop();
+    config.options.department.push('Đơn vị mới',' đơn vị MỚI ');
+    expect(()=>validateCatalog(config)).toThrow(/department.*bị trùng/);
   });
 
   it('xử lý tên đặc biệt và khóa prototype an toàn', () => {

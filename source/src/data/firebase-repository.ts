@@ -6,6 +6,24 @@ import { EDITABLE_FIELDS, validateChanges } from '../domain/items';
 import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
+/** RTDB omits empty dictionaries and may reorder keys during transactions.
+ * Canonicalize the logical grants for CAS without conflating false with absent.
+ */
+export function canonicalPermissions(input:CellPermissions|null|undefined):string {
+  const flat:Record<string,boolean>={};
+  const valid=new Set<string>(EDITABLE_FIELDS);
+  for(const [key,value] of Object.entries(input?.columns??{}))
+    if(valid.has(key)&&typeof value==='boolean')flat[`col:${key}`]=value;
+  for(const [id,value] of Object.entries(input?.rows??{}))
+    if(typeof value==='boolean')flat[`row:${id}`]=value;
+  for(const [id,cells] of Object.entries(input?.cells??{}))
+    for(const [key,value] of Object.entries(cells??{}))
+      if(valid.has(key)&&typeof value==='boolean')flat[`cell:${id}:${key}`]=value;
+  return JSON.stringify(Object.entries(flat).sort(([a],[b])=>a.localeCompare(b)));
+}
+export function samePermissions(a:CellPermissions|null|undefined,b:CellPermissions|null|undefined):boolean {
+  return canonicalPermissions(a)===canonicalPermissions(b);
+}
 interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changesJson:string;oldValuesJson:string}
 type StoredItem=Item & {operationId:string;updatedAt:number;updatedBy:string;history?:Record<string,FirebaseEvent>};
 export const firebaseAdmin=(user:Pick<User,'email'|'emailVerified'|'providerData'>|null)=>!!user&&user.email===FIREBASE_ADMIN_EMAIL&&user.emailVerified&&user.providerData.some(provider=>provider.providerId==='google.com');

@@ -6,7 +6,7 @@ import {defaultReportLayout} from '../src/data/report-preferences';
 import {firebaseAdmin,mayEdit} from '../src/data/firebase-repository';
 const h=vi.hoisted(()=>{
   const slots:any[]=[];let cursor=0;let effects:(()=>void)[]=[];
-  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),
+  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),
     state:(initial:any)=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     ref:(v:any)=>{const i=cursor++;return slots[i]??(slots[i]={current:v});},
     effect:(fn:any,deps:any[])=>{const i=cursor++,old=slots[i];if(!old||deps.some((d,j)=>!Object.is(d,old.deps[j])))effects.push(()=>{old?.cleanup?.();slots[i]={deps,cleanup:fn()};});},
@@ -23,14 +23,27 @@ const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
 function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});}
-function emit(path:string,value:any){h.listeners.get(path).next({val:()=>value});}
-beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.get.mockReset();h.transaction.mockReset();});
+function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
+beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();});
 afterEach(()=>h.dispose());
 describe('Firebase config controller remains independent of business data',()=>{
-  it('subscribes only to permissions/profile and fails closed until permissions arrive',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-    emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+  it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/control',{revision:1,editingLocked:false});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+  });
+  it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
+    login(true);emit('hdnd/control',{revision:2,editingLocked:true});
+    const admin=render();expect(admin.editingLocked).toBe(true);
+    h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>({revision:3,editingLocked:false})}});
+    await admin.saveEditingLock(false);
+    const [path,update]=h.transaction.mock.calls[0];
+    expect(path).toBe('hdnd/control');
+    expect(update(null)).toBeNull();
+    expect(update({revision:3,editingLocked:true})).toBeUndefined();
+    expect(update({revision:2,editingLocked:true})).toMatchObject({revision:3,editingLocked:false});
+    expect(render().editingLocked).toBe(false);
   });
   it('denies guest config writes, even with direct handler calls',async()=>{
     login();emit('hdnd/profile',null);emit('hdnd/permissions',{columns:{note:true}});const state=render();
@@ -43,8 +56,87 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('saves with server revision checking and blocks overlapping writes before a rerender',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});const state=render();
     let resolve!:(v:any)=>void;h.transaction.mockReturnValue(new Promise(done=>resolve=done));const pending=state.common.save('all',profile(),1);
-    const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});expect(update(stored(2))).toBeUndefined();expect(update(stored()).revision).toBe(2);
-    await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');resolve({committed:true});await pending;
+    await vi.waitFor(()=>expect(h.transaction).toHaveBeenCalledOnce());const [path,update,options]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/profile');expect(options).toEqual({applyLocally:false});
+    expect(update(null)).toBeUndefined();expect(update(stored(2))).toBeUndefined();
+    const confirmed=update(stored());expect(confirmed.revision).toBe(2);
+    await expect(state.savePermissions({columns:{note:false}})).rejects.toThrow('Đang lưu');
+    resolve({committed:true,snapshot:{val:()=>confirmed}});await pending;
+  });
+  it('report-only transaction preserves canonical Firebase catalog and item widths',async()=>{
+    login(true);
+    const existing=profile(4),statePayload={revision:4,payload:JSON.stringify(existing)};
+    emit('hdnd/profile',statePayload);
+    const state=render(),next=existing.reports.map((row,index)=>index===0?{...row,pageWidth:2750}:row);
+    h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
+      expect(path).toBe('hdnd/profile');
+      expect(apply(null)).toBeUndefined();
+      const proposed=apply(statePayload);
+      expect(proposed.revision).toBe(5);
+      return {committed:true,snapshot:{val:()=>proposed}};
+    });
+    const saved=await state.common.save('reports',next,4);
+    expect(saved.revision).toBe(5);
+    expect(saved.reports[0].pageWidth).toBe(2750);
+    expect(saved.catalogs).toEqual(existing.catalogs);
+    expect(saved.items).toEqual(existing.items);
+    expect(render().profile?.reports[0].pageWidth).toBe(2750);
+  });
+  it('rebases a stale list layout onto a new global profile revision without overwriting other sections',async()=>{
+    login(true);
+    const baseline=profile(1),server=profile(3);
+    server.reports=[...server.reports].reverse();
+    server.items={...server.items,columns:server.items.columns.map(c=>c.key==='room'?{...c,width:290}:c)};
+    emit('hdnd/profile',stored(2));
+    const state=render();
+    let confirmed:any;
+    h.transaction.mockImplementation(async(path:string,apply:(value:any)=>any)=>{
+      expect(path).toBe('hdnd/profile');
+      expect(apply(null)).toBeUndefined();
+      confirmed=apply({revision:3,payload:JSON.stringify(server)});
+      return {committed:true,snapshot:{val:()=>confirmed}};
+    });
+    const draft={...baseline.items,frameWidth:1500 as const};
+    const saved=await state.common.save('items',draft,1,baseline.items);
+    expect(saved.revision).toBe(4);
+    expect(saved.items.frameWidth).toBe(1500);
+    expect(saved.items.columns.find(c=>c.key==='room')?.width).toBe(290);
+    expect(saved.reports).toEqual(server.reports);
+    expect(render().profile?.revision).toBe(4);
+  });
+  it('rejects saving stale layout when the same dimension changed elsewhere',async()=>{
+    login(true);
+    emit('hdnd/profile',stored(2));
+    const state=render();
+    const old=profile(1).items;
+    const current={...profile(3),items:{...old,frameWidth:600}};
+    h.transaction.mockImplementation(async(_path:string,apply:(v:any)=>any)=>{
+      apply(null);
+      const result=apply({revision:3,payload:JSON.stringify(current)});
+      expect(result).toBeUndefined();
+      return {committed:false,snapshot:{val:()=>({revision:3,payload:JSON.stringify(current)})}};
+    });
+    await expect(state.common.save('items',{...old,frameWidth:1500},1,old)).rejects.toThrow('độ rộng vùng danh sách');
+    expect(render().profile?.revision).toBe(2);
+  });
+  it('enforces explicit per-field admin decisions inside a fresh Firebase CAS transaction',async()=>{
+    login(true);
+    emit('hdnd/profile',stored(2));
+    const current=render(),base=profile(1).items;
+    const local={...base,columns:base.columns.map(c=>c.key==='note'?{...c,width:210}:c)};
+    const server=profile(3);
+    server.items={...base,tableWidth:1900,columns:base.columns.map(c=>c.key==='note'?{...c,width:117}:c)};
+    let confirmed:any;
+    h.transaction.mockImplementation(async(_path:string,apply:(value:any)=>any)=>{
+      expect(apply(null)).toBeUndefined();
+      confirmed=apply({revision:3,payload:JSON.stringify(server)});
+      return {committed:true,snapshot:{val:()=>confirmed}};
+    });
+    const saved=await current.common.save('items',local,1,base,{'columns.note.width':'local'});
+    expect(saved.revision).toBe(4);
+    expect(saved.items.tableWidth).toBe(1900);
+    expect(saved.items.columns.find(c=>c.key==='note')?.width).toBe(210);
+    expect(saved.catalogs).toEqual(server.catalogs);
+    expect(saved.reports).toEqual(server.reports);
   });
   it('actually rereads Firebase config and permissions, and revokes privileges after logout',async()=>{
     login(true);emit('hdnd/profile',stored());emit('hdnd/permissions',{columns:{note:true}});
@@ -52,9 +144,20 @@ describe('Firebase config controller remains independent of business data',()=>{
     await render().common.refresh();let state=render();expect(state.profile?.revision).toBe(3);expect(h.get).toHaveBeenCalledTimes(2);
     h.auth.currentUser=null;h.authChanged(null);state=render();expect(state.isAdmin).toBe(false);expect(state.canEdit('sheet:42:row:3','note')).toBe(false);expect(state.profile).toBeNull();
   });
+  it('refuses stale permissions without invoking a transaction or overwriting Firebase',async()=>{
+    login(true);emit('hdnd/permissions',{columns:{note:true}});
+    const state=render(),draft={columns:{note:false}};
+    h.get.mockResolvedValue({val:()=>({columns:{note:false}})});
+    await expect(state.savePermissions(draft)).rejects.toThrow('đã thay đổi');
+    expect(h.transaction).not.toHaveBeenCalled();
+    expect(h.get).toHaveBeenCalledWith('hdnd/permissions');
+  });
   it('saves normalized row and cell permissions against their original baseline',async()=>{
-    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();h.transaction.mockResolvedValue({committed:true});
-    await state.savePermissions({columns:{note:true},rows:{'sheet:42:row:3':false}});
+    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
+    const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
+    h.get.mockResolvedValue({val:()=>({columns:{note:true}})});
+    h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
+    await state.savePermissions(next);
     const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
   });
 });

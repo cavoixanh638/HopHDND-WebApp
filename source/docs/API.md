@@ -2,9 +2,9 @@
 
 > **Bản mã trên GitHub:** các thư mục `server/dist*` là đầu ra build, hiện không được lưu vào repo; chạy build tương ứng để tạo. Những đường dẫn này được giữ dạng chữ, không phải liên kết tải.
 
-## Hợp đồng Pages 0.7.0 hiện tại (local, chưa áp dụng cloud)
+## Hợp đồng Pages hiện hành trên PR #3 (mã chưa merge vào root Pages)
 
-- Nội dung: `SheetsRepository.list()` → GViz JSONP A–P từ link/gid đã chọn, dùng parser legacy. Đọc lại/polling 60 giây qua useWorkspace; bỏ lượt tab ẩn, giữ snapshot khi lỗi và không áp dữ liệu mới lên nháp. `save()` của adapter Sheets từ chối; không có đường ghi nội dung vào Sheets/Firebase trong Pages.
+- Nội dung: `SheetsRepository.list()` → GViz JSONP **A–O** từ link/gid đã chọn, parser kiểm E/F/G/H/I/N/O theo header hiện hành; A–P/A–R chỉ là đường đọc snapshot legacy khi tương thích. Có lỗi schema hoặc sai gid thì phải báo, không tự sinh dữ liệu/cột. Đọc lại/polling 60 giây qua useWorkspace; bỏ lượt tab ẩn, giữ snapshot khi lỗi và không áp dữ liệu mới lên nháp. `save()` của adapter Sheets từ chối; không có đường ghi nội dung vào Sheets/Firebase trong Pages.
 - Auth/cấu hình: `useFirebase` chỉ subscribe `hdnd/profile` và `hdnd/permissions`; refresh thực sự đọc lại hai nhánh. Save profile bằng transaction `{revision,payload}` có revision lúc mở editor, kiểm schema client; Rules kiểm Google admin và revision ở server. Khởi tạo chỉ sau khi đã đọc xác nhận kho trống.
 - Quyền: `columns[field]`, `rows[recordId]` và `cells[recordId][field]` boolean; ưu tiên cell → row → column → deny. Dòng/ô nhận recordId Sheets có dấu hai chấm, không yêu cầu có dòng RTDB. IDs theo vị trí legacy nên cần rà quyền khi Sheets đổi thứ tự/chèn dòng.
 - Chỉ Google verified email `cavoixanh638@gmail.com`, token `firebase.sign_in_provider=google.com` được lưu profile/permissions. Khách không ghi cấu hình ở bất kỳ độ sâu hoặc multi-location update. Rules hiện khóa mọi ghi `hdnd/items`, kể cả admin. Nhập Excel ghi dữ liệu khóa; xuất dùng snapshot Sheets và JSON profile vẫn giữ.

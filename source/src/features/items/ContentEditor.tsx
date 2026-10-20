@@ -4,13 +4,13 @@ import { Modal } from '../../components/Modal';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import { displayId } from '../../domain/display-id';
 
-export function ContentEditor({ item, onSave, onClose, sourceKey, field = "content",sourceKind,draftOnly=false }: { item: Item; onSave: (content: string) => void; onClose: () => void; sourceKey:string;field?:"content"|"note";sourceKind?:string;draftOnly?:boolean }) {
+export function ContentEditor({ item, onSave, onClose, sourceKey, field = "content",sourceKind,draftOnly=false }: { item: Item; onSave: (content: string) => boolean | void; onClose: () => void; sourceKey:string;field?:"content"|"note";sourceKind?:string;draftOnly?:boolean }) {
   const label=field === "content" ? "Nội dung trình" : "Ghi chú";
   const {draft:content,setDraft:setContent,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(`${field}:${sourceKey}:${item.recordId}`,item[field],value=>{if(typeof value!=='string'||value.length>20000)throw new Error('Nội dung nháp không hợp lệ.');return value;});
   const [error, setError] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const close = () => { if (!dirty) onClose(); else setConfirmDiscard(true); };
-  const save = () => { if (field === "content" && !content.trim()) { setError('Nội dung không được để trống.'); return; } onSave(content.trim()); clearCheckpoint();onClose(); };
+  const save = () => { if (field === "content" && !content.trim()) { setError('Nội dung không được để trống.'); return; } if(onSave(content.trim())===false){setError('Quyền sửa đã thay đổi hoặc chức năng sửa tạm bị khóa. Nội dung vẫn được giữ trong cửa sổ này.');return;} clearCheckpoint();onClose(); };
   if(unmatchedCheckpoint)return <Modal title="Có phần sửa trên dữ liệu gốc cũ" onClose={onClose}><div className="modal-body"><p>Phần sửa cũ vẫn giữ trên trình duyệt. Nạp để đối chiếu không ghi vào file nguồn.</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ phần sửa trên máy và đóng</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cũ</button><button className="button primary" onClick={restoreOldDraft}>Nạp phần sửa để đối chiếu</button></div></Modal>;
   if (confirmDiscard) return <Modal title={`Áp dụng ${label.toLowerCase()} trước khi đóng?`} onClose={() => setConfirmDiscard(false)}><div className="modal-body"><p>Nội dung trong cửa sổ này đã thay đổi.</p>{error&&<p className="error-text">{error}</p>}</div><div className="modal-footer"><button className="button ghost" onClick={() => setConfirmDiscard(false)}>Tiếp tục sửa nội dung</button><button className="button danger" onClick={()=>{clearCheckpoint();onClose();}}>Bỏ sửa trong cửa sổ và đóng</button><button className="button primary" onClick={save}>Áp dụng vào bảng và đóng</button></div></Modal>;
   return <Modal title={`${label} · ${displayId(item)}`} onClose={close}>

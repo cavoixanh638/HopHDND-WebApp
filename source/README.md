@@ -6,7 +6,10 @@ Mục tiêu là xây dựng webapp quản lý danh mục, phân công và tiến
 
 ## Bản GitHub Pages
 
-Pages 0.7.0 đọc nội dung trực tiếp từ Google Sheets; Firebase chỉ Auth/quyền/cấu hình chung. Sửa ô hiện là nháp thử trên browser; chưa chuyển dữ liệu hoặc bật ghi nghiệp vụ Firebase. Tạo HTML tự chứa cho GitHub Pages bằng `npm run build:pages`; đầu ra là `dist-pages/index.html`. Xem [hướng dẫn Firebase Pages](docs/FIREBASE_PAGES.md) để biết thiết lập Auth, domain, quy tắc database và các giới hạn dữ liệu. Build này không tự phát hành hoặc thay đổi Firebase production.
+**Mốc phát hành 19/10/2026:** các sửa lỗi resize cột Danh sách + 5 báo cáo, sort trên header, modal xem số lượng và cột “Không phải trình” đang ở **PR #3**, đã build CI PASS và phát hành **preview** tại [preview/current](https://cavoixanh638.github.io/HopHDND-WebApp/preview/current/) / [preview ngày 19/10](https://cavoixanh638.github.io/HopHDND-WebApp/preview/ux-fixes-2026-10-19/); **chưa merge vào `main`, file `index.html` gốc chưa thay**. Xem [kiểm toán tình trạng](docs/CURRENT_STATE.md) và [điều kiện nghiệm thu](docs/KIEM_THU_VA_NGHIEM_THU.md).
+
+
+Pages 0.7.0 đọc nội dung trực tiếp từ Google Sheets **A–O hiện hành**; Firebase chỉ Auth/quyền/cấu hình chung. Sửa ô hiện là nháp thử trên browser; chưa chuyển dữ liệu hoặc bật ghi nghiệp vụ Firebase. Tạo HTML tự chứa cho GitHub Pages bằng `npm run build:pages`; đầu ra là `dist-pages/index.html`. Xem [hướng dẫn Firebase Pages](docs/FIREBASE_PAGES.md) để biết thiết lập Auth, domain, quy tắc database và các giới hạn dữ liệu. Build này không tự phát hành hoặc thay đổi Firebase production.
 
 ## Bản main hiện tại
 
@@ -20,7 +23,7 @@ Bản mới chưa thay thế đủ F01–F36; F31 chưa hoàn tất. Đề xuấ
 
 ## Đọc tài liệu nào?
 
-Hai nguồn chuẩn vừa thống nhất: [Vận hành — triển khai, rollback, sao lưu, khôi phục, xử lý sự cố](docs/VAN_HANH.md) và [Từ điển dữ liệu — cột A–P, ID, quyền](docs/TU_DIEN_DU_LIEU.md). [Chỉ mục docs](docs/README.md) phân chia trách nhiệm để tránh trùng lặp. Trên GitHub, **dự án nằm ở thư mục `source/`**, còn `index.html` ở **gốc repository** là file phát hành Pages, không phải file nguồn để sửa trực tiếp.
+Hai nguồn chuẩn vừa thống nhất: [Vận hành — triển khai, rollback, sao lưu, khôi phục, xử lý sự cố](docs/VAN_HANH.md) và [Từ điển dữ liệu — cột A–O hiện hành, ID, quyền](docs/TU_DIEN_DU_LIEU.md). [Chỉ mục docs](docs/README.md) phân chia trách nhiệm để tránh trùng lặp. Trên GitHub, **dự án nằm ở thư mục `source/`**, còn `index.html` ở **gốc repository** là file phát hành Pages, không phải file nguồn để sửa trực tiếp.
 
 
 

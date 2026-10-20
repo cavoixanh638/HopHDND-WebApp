@@ -1,5 +1,73 @@
-# Kiểm tra theo mốc — đến candidate 0.6.2
+## Browser nghiệm thu mới: popup kéo độ rộng cột trực tiếp — 19/10/2026
 
+**PASS** [Verify #39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680), exact SHA `37774e6d32d843f37337f5cb8936db2617e42d0d`, 357 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs/Chrome smoke PASS. `REPORT_DETAIL_DRAG_RESIZE_PASS`: Chrome CDP đặt pointer lên ranh giới cột ID trong popup, `mousePressed`/di chuyển **65px**/`mouseReleased`, assert cột **100→165px**, table width **2120→2185px**, preference `hdnd.report-detail-grid.v1` cập nhật; **không cần form nhập px**. `REPORT_DETAIL_COLUMNS_PASS`: ẩn một cột **10→9**. `REPORT_DETAIL_REOPEN_PERSISTENCE_PASS`: đóng/mở popup rồi vẫn **9 cột**, ID **165px**, thứ tự/độ rộng lấy từ cùng localStorage riêng. `BROWSER_SMOKE_PASS` giữ cả trạng thái guest không được chỉnh sửa và tooltip không lag.
+
+**Nguyên nhân và cách sửa:** `ColumnResizeHandle` trong popup cần `windowDragFallback` theo dõi `pointermove/up` ở window chỉ trong một phiên kéo, do Chrome nested dialog có thể mất pointer capture. Không mở global listener cho toàn bộ 5 bảng theo hover và không sửa hành vi main ItemList (prop mặc định false). Cấu hình bảng popup có colgroup và table width tính từ tổng cột, không còn `width:max-content` gây phân bổ lại.
+
+**Phạm vi so sánh** tại [REPORT_DETAIL_PARITY](REPORT_DETAIL_PARITY_2026-10-19.md): còn có lọc dạng dropdown và clear, sort 3 trạng thái, mẫu popup, màu điều kiện, mở lịch sử, ContentEditor, relabel cột chung; không thay phép kiểm nghiệp vụ/source. Kết quả mock không thay thế nghiệm thu chuột Windows, dữ liệu lớn, quyền thật; không bật writer Excel trên Pages. Code SHA và artifact từ run mới nhất được ghi trong vận hành khi publish thành công.
+
+# Kiểm thử và nghiệm thu — lịch sử các mốc, cập nhật 19/10/2026
+
+## Bảng chi tiết nhanh từ ô số — bản thử 19/10/2026
+
+- **Exact mã đã kiểm:** `c2d13b56dd675e230c39d7364d9a9054397159e6`, [Verify #39256157291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39256157291) **PASS**, 355 unit PASS/20 skipped, 20 Firebase emulator PASS, typecheck/build/docs/Chrome mock PASS; artifact `hophdnd-pages-candidate` digest `sha256:2ee1bd07e85dbb4c78f0421db86b2a01f4c203833eb7957fa7ffd54726e07a28`.
+- **Bài test:** `tests/report-detail-preferences.test.ts` (3) xác nhận chỉ 15 cột A–O, không có cột giả, validator loại bỏ bộ cột trùng/ẩn hết/rộng sai, persist riêng theo nguồn/preview, không ghi đè `ItemLayout`. Chrome smoke `REPORT_DETAIL_COLUMNS_PASS {\"initial\":10,\"now\":9}`: sau khi bấm **vùng góc của ô số** trên 5 bảng, modal có `table.report-detail-grid`/lọc/các hàng đúng tập chọn; khách không có quyền không thể sửa; mở Cấu hình cột riêng, ẩn “Ghi chú” rồi lưu làm giảm số cột hiện từ 10 xuống 9. Giữ nguyên `DELEGATED_TOOLTIP_STRESS` (300 pointer, 0 layout read), `CELL_HOVER_VISUAL_PASS` và toàn bộ bài click góc/modal cũ.
+- **Bất biến nguồn:** modal đọc hồ sơ đã có trong `workspace.workingItems`, không gọi writer hay ghi Excel/Firebase; trình sửa nháp dùng chung quyền `mayEdit` và `workspace.update`, cột STT/ID chỉ xem, giữ nháp qua `workspace.keepDraft`. Chưa test ghi nguồn thật (không được bật), chưa nghiệm thu người dùng trên dữ liệu thật hoặc quyền được cấp thực tế.
+- **Hạn chế:** không có chia sẻ cấu hình cột giữa các máy/tài khoản; `localStorage` riêng theo source, vùng preview được cách ly. Các cột UI tự tạo ngoài 15 cột Excel chưa đưa vào bảng này. Dữ liệu lớn cần kiểm Chrome Performance trước khi virtual hóa.
+
+## CHỐT HIỆN HÀNH — hover ô số đậm hơn, tooltip chung nhanh hơn (19/10/2026)
+
+**Mã đã commit và kiểm thử trên PR #3:** [CSS commit `b22b877`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/b22b877c8f81d840059abd738dde5d7c9a24d0a9), [test commit `cb4c276`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/cb4c276b2f649a178993ab0bb3abd192f4faca83). [Verify #39249428414](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249428414) **SUCCESS**, exact tested SHA `cb4c276b2f649a178993ab0bb3abd192f4faca83`; 352 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs check/Chrome smoke PASS. Đây là mốc hiện hành, các đoạn kiểm thử CSS Anchor và tooltip cũ phía dưới **chỉ là lịch sử**, không còn là phương án sản phẩm hiện tại.
+
+**Bằng chứng Chrome về hover ở đúng ô:** `CELL_HOVER_VISUAL_PASS` xác nhận viền **rgb(8,119,123) solid 2px**, nền **rgba(9,106,113,.14)**, outline-offset -2px, một ô duy nhất bị viền, vùng button phủ đầy td không đổi kích thước. CDP dùng chuột thật rê tới góc ô trạng thái/tổng nhóm/tổng cuối, tooltip vẫn hiện, click mở đúng dialog và đóng; `DELEGATED_TOOLTIP_STRESS` 300 sự kiện synthetic PASS, **0 `getBoundingClientRect` trên mouse path**, duy nhất một panel có `Click để xem chi tiết`. Ô rỗng/`—`/header/% không bấm mở danh sách.
+
+**A/B đánh dấu ô: Chrome headless, cùng dữ liệu mô phỏng, 36 lần chuyển chuột × 2 vòng, thứ tự đảo chiều:**
+
+| Biến thể | Style vòng 1 / 2 (ms) | Layout vòng 1 / 2 (ms) | Task vòng 1 / 2 (ms) | Task trung bình (ms/36 lượt) |
+| --- | ---: | ---: | ---: | ---: |
+| Nền cũ `rgba(73,124,98,.035)`, không outline | 9,43 / 8,05 | 0 / 0 | 86,22 / 79,30 | **82,76** |
+| Nền mới `rgba(9,106,113,.14)` + viền 2px | 8,39 / 8,24 | 0 / 0 | 85,18 / 82,55 | **83,87** |
+
+Khác biệt trung bình **+1,11ms tích lũy trên 36 lượt** (khoảng 0,031ms/lượt nếu chia đều) **không đủ để kết luận có thay đổi hiệu năng thực tế**. Đây là `Performance.getMetrics` trên runner, **không** phải đo P95 người dùng, tốc độ GPU hay input-to-photon. Đặc biệt, **0ms Layout** ở cả hai phương án. Kết quả trước đó xác nhận `body:has()` + CSS Anchor tốn ~31,92ms Layout/36 lượt, vì vậy đã loại bỏ trong phương án hiện hành. Nguồn chi tiết [TOOLTIP_PERFORMANCE_AB_2026-10-19](TOOLTIP_PERFORMANCE_AB_2026-10-19.md).
+
+**Phát hành bản xem trước độc lập:** [Publisher #39249797389](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249797389) **SUCCESS**, artifact digest `sha256:2d2f23ab40e21229556998de0bba0e649d15dd7e46a7ed77b370218463d21271`; [Pages deployment #39249822864](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39249822864) **SUCCESS**. URL đúng: [preview/clear-cell-hover-2026-10-19](https://cavoixanh638.github.io/HopHDND-WebApp/preview/clear-cell-hover-2026-10-19/) và `preview/current/` (cùng blob HTML `835f1310a821fd1b106cbbf0f069e264b855a613`). Production `main:index.html` blob `48aff33fdac08477e38c8f4d49837eb68eee0584` **giữ nguyên**, PR #3 open/unmerged, không chạm Excel/Firebase. CI/mock **không đồng nghĩa** người dùng đã nghiệm thu cảm giác mượt trên máy thật.
+
+## Native CSS Anchor tooltip — trình duyệt tự xử lý hover, không có JavaScript pointer path
+
+- **Nguồn kiểm:** `9491f58495040ca01fba149831efc2f58f62f538`, [Verify #39229760364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39229760364) **PASS**. 352 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/Chrome mock browser smoke PASS.
+- **Bài browser bắt buộc:** runner Chrome hỗ trợ CSS anchor dùng `data-mode="native"`; `position-anchor:--report-hover-anchor`, hover vào nút chọn anchor và `position-area:bottom center` đặt panel thật cạnh ô. Thử 300 `PointerEvent` tổng hợp với hook đếm `getBoundingClientRect` trong đường JS xác nhận **0 lần đọc geometry**; kiểm panel vẫn là một DOM node, static text `Click để xem chi tiết` và size 190×32. **CDP di chuyển chuột thật** đến ba vị trí góc ô trạng thái, tổng hàng và tổng cộng kiểm `getComputedStyle().visibility`, vị trí gần ô, sau đó click mở modal; đây là kiểm hiện thực khác với synthetic dispatch. Bỏ hover toàn hàng `tr:hover` chỉ ở bảng report (không thay danh sách), ô rỗng/%/header không click. **Chế độ fallback delegated** nếu feature detection CSS anchor thất bại, không phải kết quả latency của runner hiện tại.
+- **Bằng chứng phát hành tách biệt:** [Publisher #39230010928](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39230010928) PASS, artifact digest `sha256:d2699668aa18642dc131d587d215a8c816939c123b36a7eef9fdcf7fb77036b4`; [Pages deploy #39230034928](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39230034928) PASS; preview `https://cavoixanh638.github.io/HopHDND-WebApp/preview/native-anchor-hover-2026-10-19/`. Trang chính không đổi; PR #3 không merge và không ghi Excel/Firebase.
+- **Giới hạn nghiệm thu:** các kết quả trên **không** đo frame-time/INP/perceived lag trên máy thật với toàn bộ dữ liệu. Nếu còn chậm, ghi Chrome Performance trace với Paint flashing/Selector Stats và audit số dòng bảng trước khi đổi sang virtualization hoặc thêm prefetch.
+
+## Tooltip chung cố định và số không có biểu tượng — mốc xác nhận 19/10/2026
+
+**Exact code:** `f0880c7fc7fa36e3720250fff9d41a4317385fad`, [Verify run #39222179712](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222179712) **PASS**. TypeScript/build, **352 unit tests PASS/20 skipped**, **20 Firebase emulator tests PASS**, Chrome browser smoke trên GViz giả lập PASS. `SHARED_TOOLTIP_STRESS` trong Chrome mock: 300 sự kiện pointerover/out mô phỏng, 5ms tổng, một tooltip duy nhất; đây không phải phép đo tốc độ khung hình/độ trễ thiết bị thật.
+
+**Các hành vi đã khóa bằng test:** vùng bấm phủ toàn bộ ô số dương trong cả 5 báo cáo, tổng nhóm/tổng cộng; bỏ hoàn toàn ký hiệu ↗ và cue "Xem" cạnh số; một panel `role=tooltip` **190×32 px**, đúng text `Click để xem chi tiết`, chỉ bật khi hover/focus có số, nội dung không phụ thuộc số lượng, không có `title` của browser, không có hover handler per button, một DOM node dùng chung. Chrome smoke kiểm liên tục 300 lượt cùng một node, pointer thực mở tooltip tại góc ô và click mở đúng dialog. Ô `—`, header, % không thành nút; bàn phím Tab/Enter/Space giữ nguyên. Việc mở danh sách nhiều hồ sơ vẫn có thể có độ trễ và cần benchmark độc lập.
+
+**Phát hành:** [Publisher #39222487605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222487605) **PASS**, [Pages deploy #39222509495](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39222509495) **PASS**. Mở `https://cavoixanh638.github.io/HopHDND-WebApp/preview/shared-fixed-tooltip-2026-10-19/` để nghiệm thu; `preview/current/` được cập nhật, các preview trước còn nguyên. Root vẫn unchanged; PR #3 open/unmerged, không ghi Excel/Firebase.
+
+
+## Bản PR #3 / preview sửa lỗi 19/10/2026 — bằng chứng và giới hạn
+
+**Commit mã nguồn được kiểm:** `7a3a409e16b1b6621d121b09a57e9e7960c20568` · [Verify source run #39184896725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39184896725): **SUCCESS**. Trong job: TypeScript PASS, **43 unit test files đạt/2 bỏ qua, 350 unit tests đạt/20 bỏ qua**; **20 Firebase Emulator tests đạt**, `docs:check`, `build:pages`, `build:pages:test` và **Chrome smoke với Google Sheets giả lập PASS**. Các warning `permission_denied` trong emulator là kết quả kiểm luật từ chối ghi, không phải đã kết nối Firebase production.
+
+**Kiểm tra Chrome smoke đã có:** sort bằng nút và bằng tiêu đề, đủ các cột nguồn A–O trong Danh sách; chuyển tab, bảng không nhảy khi lọc, trạng thái hiện tại; bảng xây dựng NQ có header `Tổng số nội dung` tiếp theo là `Không phải trình`; số đếm có thể bấm mở `dialog.report-detail-modal`, modal tắt blur, đóng được. Build HTML là artifact của exact SHA. Unit test bảo vệ schema report `columnWidths`, đúng năm bảng và nội dung cột.
+
+**Phát hành riêng bản xem trước:** [publish preview #39185030924](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185030924) PASS, xác minh digest artifact SHA `fa6868898a364939a4c16fb4cf0bcc020e24713e5a8ee334e8450a036af39f02` từ run source. [Pages deployment #39185044694](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39185044694) SUCCESS; `preview/current` và `preview/ux-fixes-2026-10-19` xuất cùng nội dung. **Không merge PR #3, không đổi `main:index.html`**, không đo tốc độ bằng dữ liệu/Chrome của người dùng.
+
+**Bảng điều kiện nghiệm thu trên trình duyệt thật (CHƯA PASS):**
+
+| Mục cần thử | Điều kiện đạt | Tình trạng |
+|---|---|---|
+| Kéo cột nguồn F21 | Trong chế độ chỉnh, kéo ranh giới từng cột sang trái/phải; lưu bố cục; tải lại vẫn đúng kích thước; không vô tình sort/đổi thứ tự | Chưa thử browser/admin thật |
+| Kéo cột 5 báo cáo F07/F09 | Kéo cột tên nhóm, tổng, trạng thái, %; độ rộng cột đầu không bị CSS 230px khóa; lưu từng báo cáo và đọc lại cấu hình trên thiết bị khác | Chưa thử browser/admin thật |
+| Sort F13/F21 | Cả click tiêu đề và icon đều chuyển tăng → giảm → về gốc, header thể hiện trạng thái, không giật bảng hoặc cản thao tác kéo | Browser mock PASS; thao tác thật chưa nghiệm thu |
+| Xem nội dung F06 | Bấm số lượng từ ô, tổng nhóm, tổng bảng phải hiện đủ đúng hồ sơ; mở/đóng tương đương độ mượt khi mở danh sách riêng | Logic/mock PASS; chưa benchmark Chrome Performance/React Profiler với dữ liệu thật |
+| Năm báo cáo, tỷ lệ F01–F10 | Đủ 5 bảng, TBKL đúng, build có `Không phải trình` ngay sau tổng, trạng thái HĐND kết thúc đúng, KPI/tỷ lệ/chi tiết cùng phạm vi | Bảng mock PASS; `getKpis` vẫn có chỗ đếm `Hoàn thành` chưa đối chiếu, **CHƯA PASS toàn bộ** |
+| Admin Firebase F23/F36 | Giao dịch lưu bố cục, danh mục, quyền ghi đúng phần và hiển thị thất bại/xung đột; không mất nháp, không tự sửa Excel | Emulator PASS, production chưa thử; **CHƯA PASS** |
+
+Từ khóa `CHƯA PASS` ở trên phản ánh phần nghiệm thu chưa làm, **không có nghĩa CI thất bại**. Không lấy số lượng mock hoặc số liệu Excel kiểm ở thời điểm cũ làm kết quả sản xuất. Theo dõi lỗi và trạng thái ở [CURRENT_STATE](CURRENT_STATE.md).
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.
 
 ## Pages 0.7.0 — Sheets và Firebase quản trị, 15/10/2026

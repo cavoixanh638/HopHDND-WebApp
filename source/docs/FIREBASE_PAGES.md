@@ -4,7 +4,9 @@
 
 
 
-Ngày cập nhật: 15/10/2026. Bản GitHub Pages dùng Google Sheets qua `SheetsRepository`/GViz làm nguồn nội dung. Firebase chỉ phục vụ Auth, hồ sơ cấu hình `hdnd/profile` và quyền `hdnd/permissions`; không đồng bộ định kỳ dữ liệu Sheets sang Firebase. Tài liệu mô tả đích tích hợp, chưa áp dụng cấu hình, Auth providers, domain, hoặc Realtime Database rules lên Firebase thật; chưa ghi dữ liệu thật hay phát hành Pages.
+**Cập nhật 19/10/2026 — ưu tiên khi đọc:** Quy tắc và các bước “chưa triển khai” trong phần 15/10 dưới đây là lịch sử. Người quản trị đã thông báo **Publish Firebase Rules ngày 16/10**, nhưng chưa có bằng chứng đọc đối chiếu chính xác **Rules đang chạy** hoặc admin nghiệm thu lưu trên production. PR #3 vẫn chưa merge vào Pages root, nhưng **bản preview đã publish** (xem [CURRENT_STATE](CURRENT_STATE.md) và [VAN_HANH](VAN_HANH.md)). UI 17–19/10 chuyển quản trị quyền về **theo cột** trong Quản lý cột, không còn editor quyền chi tiết ô; RTDB vẫn có thể chứa quyền row/cell legacy cần quản trị xác nhận xử lý. Nguồn Excel hiện hành là A–O. Không khẳng định Rules đã đồng bộ chỉ từ việc người quản trị bấm Publish.
+
+**Tài liệu baseline 15/10:** Bản GitHub Pages dùng Google Sheets qua `SheetsRepository`/GViz làm nguồn nội dung. Firebase chỉ phục vụ Auth, hồ sơ cấu hình `hdnd/profile` và quyền `hdnd/permissions`; không đồng bộ định kỳ dữ liệu Sheets sang Firebase. Tài liệu mô tả đích tích hợp, chưa áp dụng cấu hình, Auth providers, domain, hoặc Realtime Database rules lên Firebase thật; chưa ghi dữ liệu thật hay phát hành Pages.
 
 ## Thiết lập dự án thật (thủ công)
 
@@ -50,6 +52,15 @@ Realtime Database rules phải kiểm tra danh tính, quyền quản trị, allo
 
 ## Thành phần giao diện
 
-`src/features/settings/FirebasePanel.tsx` là panel cấu hình quyền: quyền cột, dòng, ngoại lệ ô và thao tác lưu tường minh. Thay đổi quyền là bản nháp cục bộ tới khi admin bấm Lưu. Quyền này chỉ cấu hình ai được phép sửa thử trên giao diện; bản Pages hiện giữ các sửa nội dung tại trình duyệt, không gửi chúng tới Sheets hoặc Firebase. Rules vẫn là ranh giới bảo mật cho các nhánh Firebase.
+**Ghi chú lịch sử 15/10:** `src/features/settings/FirebasePanel.tsx` từng là panel cấu hình quyền cột, dòng, ngoại lệ ô. Trên giao diện phát triển 17–19/10, quản trị quyền cột được chuyển vào Quản lý cột (ItemColumnPanel/InlinePermissionsTable); UI chi tiết ô không còn được dùng, nhưng dữ liệu quyền legacy và chính sách server cần kiểm tra riêng. Thay đổi quyền là bản nháp cục bộ tới khi admin bấm Lưu. Quyền này chỉ cấu hình ai được phép sửa thử trên giao diện; bản Pages hiện giữ các sửa nội dung tại trình duyệt, không gửi chúng tới Sheets hoặc Firebase. Rules vẫn là ranh giới bảo mật cho các nhánh Firebase.
 
 `src/features/settings/FirebaseProfileTransfer.tsx` giữ luồng nhập/xuất JSON profile, gồm xem trước và lưu tường minh dành cho admin; tệp phải khớp schemaVersion/projectId và tối đa 300 KB. Chức năng xuất dữ liệu lấy từ Sheets, còn nhập Excel dữ liệu đang khóa.
+
+## Mở rộng 0.7.1 — kiểm soát duyệt và khóa sửa (PR #3 chưa merge; có bản preview thử nghiệm)
+
+Ngoài `hdnd/profile` và `hdnd/permissions`, đề xuất thêm hai nhánh RTDB với quyền giới hạn:
+- `hdnd/control`: người dùng đã xác thực đọc, **chỉ admin Google đã xác minh** được ghi giao dịch CAS `revision`, `editingLocked`, `changedAt`. Client fail-closed nếu không tải được trạng thái. Chỉ khóa sửa thử trong WebApp, **không** khóa file Sheets.
+- `hdndReviews/<spreadsheetId>/<gid>`: **chỉ admin** được đọc/ghi. Mỗi mốc gồm revision, nguồn, người/giờ duyệt, snapshot dữ liệu, số nội dung thay đổi và historyJson tối đa 20 metadata. Ghi phải qua CAS revision; khi xung đột không ghi đè mốc của tab khác. Snapshot này là bản so sánh, không phải lịch sử chỉnh sửa từng sự kiện. Không chép bản mốc lên public GitHub.
+
+Không sửa `hdnd/items` hay triển khai Rules production trong PR phát triển; trước khi dùng phải thẩm tra Rules mới, kiểm thử emulator, đối chiếu Rules production có thể đang chứa nhánh của ứng dụng khác, sao lưu và áp dụng có phạm vi. Lưu ý mã Sheets thiếu/trùng hoặc chèn/sort hàng có thể làm sai ánh xạ vị trí; màn hình duyệt cần được rà bằng dữ liệu thật trước nghiệm thu.
+

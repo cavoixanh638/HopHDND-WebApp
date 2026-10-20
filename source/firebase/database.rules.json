@@ -230,6 +230,25 @@
         "$other": {
           ".validate": "$other === 'revision' || $other === 'payload'"
         }
+      },
+      "control": {
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".validate": "newData.hasChildren(['revision','editingLocked','changedAt']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('editingLocked').isBoolean() && newData.child('changedAt').isString() && newData.child('changedAt').val().length <= 40",
+        "$other": {
+          ".validate": "$other === 'revision' || $other === 'editingLocked' || $other === 'changedAt'"
+        }
+      }
+    },
+    "hdndReviews": {
+      ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+      ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+      "$sheet": {
+        "$gid": {
+          ".validate": "$sheet.matches(/^[A-Za-z0-9_-]{10,200}$/) && $gid.matches(/^[0-9]{1,20}$/) && newData.hasChildren(['revision','source','approvedAt','approvedBy','changedCount','payload','historyJson']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('source').val() === $sheet + ':' + $gid && newData.child('approvedAt').isString() && newData.child('approvedAt').val().length <= 40 && newData.child('approvedBy').isString() && newData.child('approvedBy').val().length <= 254 && newData.child('changedCount').isNumber() && newData.child('changedCount').val() >= 0 && newData.child('payload').isString() && newData.child('payload').val().length <= 850000 && newData.child('historyJson').isString() && newData.child('historyJson').val().length <= 5000",
+          "$other": {
+            ".validate": "$other === 'revision' || $other === 'source' || $other === 'approvedAt' || $other === 'approvedBy' || $other === 'changedCount' || $other === 'payload' || $other === 'historyJson'"
+          }
+        }
       }
     }
   }

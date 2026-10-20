@@ -41,7 +41,7 @@ Ngày cập nhật: 15/10/2026. Chỉ liệt kê file đã có; phần chưa có
 | Hợp đồng nguồn dữ liệu; `sourceKind` tách loại nguồn khỏi quyền commit `readOnly` | [src/data/repository.ts](../src/data/repository.ts) |
 | Repository Excel qua data RPC, validate snapshot/save/history; `sourceKind=google`, `readOnly` là capability riêng | [src/data/excel-repository.ts](../src/data/excel-repository.ts), [src/data/google-bridge.ts](../src/data/google-bridge.ts) |
 | Link mặc định, kiểm tra URL/gid, lưu lựa chọn nguồn | [src/data/sheet-config.ts](../src/data/sheet-config.ts) |
-| Ánh xạ A–P, tiêu đề, loại nội dung và cảnh báo dữ liệu | [src/data/gviz-parser.ts](../src/data/gviz-parser.ts) |
+| Ánh xạ A–O hiện hành, đọc tương thích A–P/A–R, header/loại nội dung/cảnh báo dữ liệu | [src/data/gviz-parser.ts](../src/data/gviz-parser.ts) |
 | Đọc Sheets JSONP, timeout, cleanup, snapshot chỉ đọc | [src/data/sheets-repository.ts](../src/data/sheets-repository.ts) |
 | Tạo/yêu cầu GViz có timeout và giải phóng callback | [src/data/gviz-request.ts](../src/data/gviz-request.ts) |
 | Cầu nối gọi Apps Script qua Google bridge | [src/data/google-bridge.ts](../src/data/google-bridge.ts) |
@@ -61,8 +61,14 @@ Ngày cập nhật: 15/10/2026. Chỉ liệt kê file đã có; phần chưa có
 | Checkpoint bản nháp trên trình duyệt và phục hồi bản nháp mẫu có đối chiếu bản gốc | [src/data/draft-checkpoints.ts](../src/data/draft-checkpoints.ts), [src/data/workspace-recovery.ts](../src/data/workspace-recovery.ts), [src/state/use-recoverable-draft.ts](../src/state/use-recoverable-draft.ts) |
 | Nguồn giả giữ trong bộ nhớ, replay/conflict/lịch sử | [src/data/mock-repository.ts](../src/data/mock-repository.ts) |
 | 24 nội dung giả và tạo bộ dữ liệu lớn | [src/data/demo-items.ts](../src/data/demo-items.ts) |
-| Bảng tổng hợp, mở chi tiết và tạo bản in | [src/features/reports/ReportTable.tsx](../src/features/reports/ReportTable.tsx) |
-| Tìm/lọc, chọn cột, sửa ô và phân trang | [src/features/items/ItemList.tsx](../src/features/items/ItemList.tsx) |
+| **Kéo độ rộng cột popup và parity Danh sách** | [ReportDetailGrid.tsx](../src/features/reports/ReportDetailGrid.tsx), [ColumnResizeHandle.tsx](../src/components/ColumnResizeHandle.tsx), [ColumnHeader.tsx](../src/features/items/ColumnHeader.tsx), [ColumnFilterCell.tsx](../src/features/items/ColumnFilterCell.tsx), [report-detail-presets.ts](../src/data/report-detail-presets.ts), [REPORT_DETAIL_PARITY](REPORT_DETAIL_PARITY_2026-10-19.md) |
+| **Bảng chi tiết từ ô báo cáo và cấu hình riêng** | [ReportDetailGrid.tsx](../src/features/reports/ReportDetailGrid.tsx), [report-detail-preferences.ts](../src/data/report-detail-preferences.ts), [App.tsx](../src/app/App.tsx) (nháp/quyền), [report-detail-preferences.test.ts](../tests/report-detail-preferences.test.ts) (cấu hình độc lập), [smoke-pages-browser.mjs](../scripts/smoke-pages-browser.mjs) (Chrome) |
+| Bảng tổng hợp, mở chi tiết, resize report và tạo bản in | [src/features/reports/ReportTable.tsx](../src/features/reports/ReportTable.tsx), [src/components/ColumnResizeHandle.tsx](../src/components/ColumnResizeHandle.tsx) |
+| **Tooltip chung và đánh dấu ô số** | [src/components/SharedReportTooltip.ts](../src/components/SharedReportTooltip.ts) (một tooltip, delegated hover), [src/styles/app.css](../src/styles/app.css) (viền ô màu teal, không global `body:has`), [src/features/reports/ReportTable.tsx](../src/features/reports/ReportTable.tsx) (nút phủ ô, focus, chi tiết); A/B tại [báo cáo hiệu năng](TOOLTIP_PERFORMANCE_AB_2026-10-19.md) |
+| Resize cột Danh sách và báo cáo (cập nhật DOM trong lúc kéo) | [src/components/ColumnResizeHandle.tsx](../src/components/ColumnResizeHandle.tsx), [src/features/items/ItemList.tsx](../src/features/items/ItemList.tsx) |
+| Sort bảng dữ liệu (bấm tiêu đề/nút) | [src/features/items/ColumnHeader.tsx](../src/features/items/ColumnHeader.tsx), [src/domain/sort-items.ts](../src/domain/sort-items.ts) |
+| Năm báo cáo mặc định và KPI | [src/domain/reporting.ts](../src/domain/reporting.ts), [src/domain/report-workflow.ts](../src/domain/report-workflow.ts) |
+| Tìm/lọc ngay dưới header, chọn cột, sửa ô và vùng cuộn cố định (không phân trang 50 dòng trong Pages mới) | [src/features/items/ItemList.tsx](../src/features/items/ItemList.tsx) |
 | Cell picker popover tại ô, dropdown và lọc không dấu | [src/features/items/CellPicker.tsx](../src/features/items/CellPicker.tsx), [src/domain/search.ts](../src/domain/search.ts) |
 | Popup nội dung, Ctrl+Enter, bảo vệ phần chưa áp dụng | [src/features/items/ContentEditor.tsx](../src/features/items/ContentEditor.tsx) |
 | Cửa sổ dùng chung | [src/components/Modal.tsx](../src/components/Modal.tsx) |
@@ -89,7 +95,7 @@ Ngày cập nhật: 15/10/2026. Chỉ liệt kê file đã có; phần chưa có
 - Checkpoint/nháp báo cáo, danh sách và phục hồi nháp mẫu: [draft-checkpoints.test.ts](../tests/draft-checkpoints.test.ts), [workspace-recovery.test.ts](../tests/workspace-recovery.test.ts).
 - Tìm kiếm tiếng Việt: [search.test.ts](../tests/search.test.ts).
 - Bản nháp, conflict, chống ghi lặp, lỗi từng mục: [repository.test.ts](../tests/repository.test.ts).
-- Cấu hình link và lưu lựa chọn: [sheet-config.test.ts](../tests/sheet-config.test.ts); ánh xạ A–P: [gviz-parser.test.ts](../tests/gviz-parser.test.ts); timeout/cleanup/read-only: [sheets-repository.test.ts](../tests/sheets-repository.test.ts).
+- Cấu hình link và lưu lựa chọn: [sheet-config.test.ts](../tests/sheet-config.test.ts); ánh xạ A–O/legacy: [gviz-parser.test.ts](../tests/gviz-parser.test.ts); timeout/cleanup/read-only: [sheets-repository.test.ts](../tests/sheets-repository.test.ts).
 - Đổi UI: kiểm tra màn hình liên quan, popup/bàn phím, trường hợp chưa lưu và màn hình nhỏ; ghi giới hạn nếu chưa làm được.
 - Đổi đóng gói: build và kiểm tra cú pháp script inline, số file đầu ra, phụ thuộc JS/CSS còn sót; thử mở theo đúng môi trường chia sẻ trước khi nghiệm thu sản xuất.
 

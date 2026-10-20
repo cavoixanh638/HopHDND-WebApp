@@ -42,6 +42,72 @@ describe('parseGvizPayload', () => {
     });
   });
 
+  it('reads the actual current A–O Excel headings without inventing removed Q/R fields',()=>{
+    const headings=Array.from({length:15},(_,index)=>({v:({
+      0:'ID',1:'STT',2:'NỘI DUNG TRÌNH',3:'SỞ, NGÀNH CHỦ TRÌ',
+      4:'Loại VB (HC/QPPL/BC',5:'Cấp Thành ủy cho ý kiến',
+      6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
+      8:'Tiến độ trình HĐND ban hành NQ/ BC',9:'Chuyên viên VPUB',
+      10:'Phòng chuyên môn',11:'Lãnh đạo VP',12:'Lãnh đạo UBND TP',
+      13:'Tiến độ hiện tại',14:'Ghi chú'
+    } as Record<number,string>)[index]??''}));
+    const example=['NQ1',1,'MẪU: kế hoạch','Sở Tài chính','Hành chính',
+      'BTV TU','Sở chưa trình','Không phải trình xây dựng NQ','Sở chưa trình',
+      'Nguyễn Văn A','Tài chính','PCVP A','PCT A','Sở đang thực hiện','Ghi chú cột O'];
+    const result=parseGvizPayload(payload([{c:headings},row(example)],'ok',
+      Array.from({length:15},()=>({}))), 'current-a-o');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      type:'Hành chính',partyLevel:'BTV TU',progressParty:'Sở chưa trình',
+      specificProgress:'Sở đang thực hiện',note:'Ghi chú cột O',
+      isDropped:false,partyMeeting:'',examined:''
+    });
+  });
+  it('retains support for historical 18-column snapshots without confusing source mappings',()=>{
+    const cols18=Array.from({length:18},(_,index)=>({id:String.fromCharCode(65+index),label:''}));
+    const heading=Array<Cell>(18).fill(null);
+    heading[2]={v:'NỘI DUNG TRÌNH'};heading[3]={v:'SỞ, NGÀNH CHỦ TRÌ'};
+    heading[4]={v:'Loại VB (HC/QPPL/BC'};heading[5]={v:'Cấp cho ý kiến'};
+    heading[6]={v:'Tiến độ xin ý kiến Thành ủy'};
+    heading[7]={v:'Tiến độ trình HĐND xây dựng NQ'};
+    heading[8]={v:'Tiến độ trình HĐND ban hành NQ/BC'};
+    heading[13]={v:'Tiến độ hiện tại'};
+    heading[14]={v:'Rút'};heading[15]={v:'Họp Thành ủy/ xin ý kiến'};
+    heading[16]={v:'Đã thẩm tra chưa'};heading[17]={v:'Ghi chú'};
+    const first=values('NQ-100',1,'MẪU: Nghị quyết','Sở giả','QPPL');
+    first[5]='BTV TU';first[6]='TU đã cho ý kiến';first[7]='Đã có QĐ chấp thuận';first[8]='Hoàn thành';
+    first[13]='Sở đang thực hiện';
+    first[14]='X';first[15]='Đã xin ý kiến';first[16]='Đã thẩm tra';first[17]='MẪU: ghi chú cột R';
+    const second=values('NQ-101',2,'MẪU: Nghị quyết thứ hai','Sở giả','QPPL');
+    second[14]='';second[15]='Chưa họp';second[16]='Chưa thẩm tra';second[17]='MẪU: không rút';
+    const result=parseGvizPayload(payload([{c:heading},row(first),row(second)],'ok',cols18),'modern-xlsx');
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0]).toMatchObject({
+      type:'QPPL',partyLevel:'BTV TU',specificProgress:'Sở đang thực hiện',
+      progressParty:'TU đã cho ý kiến',progressBuild:'Đã có QĐ chấp thuận',progressCouncil:'Hoàn thành',
+      isDropped:true,note:'MẪU: ghi chú cột R',partyMeeting:'Đã xin ý kiến',examined:'Đã thẩm tra',
+    });
+    expect(result.items[1]).toMatchObject({
+      isDropped:false,note:'MẪU: không rút',partyMeeting:'Chưa họp',examined:'Chưa thẩm tra',
+    });
+  });
+
+  it('preserves old 16-column files O=Ghi chú and P=Rút during migration',()=>{
+    const headings=header();
+    headings.c[14]={v:'Ghi chú'};headings.c[15]={v:'Trình/Rút'};
+    const old=values('NQ-200',3,'MẪU: cũ','Sở giả','QPPL','X');
+    old[14]='MẪU: ghi chú cũ';
+    const result=parseGvizPayload(payload([headings,row(old)]),'legacy-xlsx');
+    expect(result.items[0]).toMatchObject({
+      note:'MẪU: ghi chú cũ',isDropped:true,partyMeeting:'',examined:'',
+    });
+  });
+
+  it('recognizes Hành chính in the real Excel Loại VB source as an administrative NQ',()=>{
+    const data=values('',1,'MẪU: hành chính', 'Sở giả', 'Hành chính');
+    const result=parseGvizPayload(payload([header(),row(data)]),'current-xlsx');
+    expect(result.items[0].documentKind).toBe('NQ');
+  });
   it('keeps missing and duplicate codes with unique source row IDs and warns', () => {
     const result = parseGvizPayload(payload([
       header(),
@@ -80,6 +146,16 @@ describe('parseGvizPayload', () => {
     expect(result.items[0].isDropped).toBe(false);
   });
 
+  it('preserves truly blank Sheet cells without inventing assignment or content text', () => {
+    const input=values('', 9, '', '', 'QPPL');
+    input[9]='';input[10]='';input[11]='';input[12]='';input[14]='';
+    const result=parseGvizPayload(payload([header(),row(input)]),'blank-sheet');
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({content:'',department:'',specialist:'',room:'',vpLeader:'',ubndLeader:'',note:''});
+    expect(result.items[0].displayCode).toContain('thiếu mã');
+    expect(result.warnings.join(' ')).toContain('thiếu mã');
+  });
+
   it('returns no items when the sheet contains a header and no data rows', () => {
     expect(parseGvizPayload(payload([header()]), 'empty-sheet').items).toEqual([]);
   });
@@ -95,7 +171,7 @@ describe('parseGvizPayload', () => {
 
   it('rejects a bad header, too few columns, or an error status', () => {
     expect(() => parseGvizPayload(payload([row(['', '', 'Tên nội dung', 'Cơ quan'])]), 'bad-header')).toThrow(/không nhận diện/i);
-    expect(() => parseGvizPayload(payload([header()], 'ok', cols.slice(0, 15)), 'short-sheet')).toThrow(/16 cột/i);
+    expect(() => parseGvizPayload(payload([header()], 'ok', cols.slice(0, 15)), 'short-sheet')).toThrow(/cột Ghi chú|15 cột/i);
     expect(() => parseGvizPayload(payload([], 'error'), 'denied')).toThrow(/Không đọc được Sheets/i);
   });
 });

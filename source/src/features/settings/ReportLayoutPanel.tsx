@@ -1,5 +1,8 @@
 import type { GroupField, Item } from '../../../shared/types';
-import { configuredReports, type ReportLayout } from '../../data/report-preferences';
+import {configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,
+  TABLE_FONT_OPTIONS,REPORT_VARIANTS,MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,reportPageWidth,withReportPageWidth,
+  type ReportLayout,type TableFont,type ReportVariant} from '../../data/report-preferences';
+import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
 
 type ReportLayoutPanelProps = {
@@ -34,6 +37,10 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
   };
 
   const previews = configuredReports(draft, true);
+  const pageWidth=reportPageWidth(draft);
+  const font=getReportFont(draft),fontSize=getReportFontSize(draft),variant=getReportVariant(draft);
+  const updateVisual=(next:{tableFont?:TableFont;tableFontSize?:number;reportVariant?:ReportVariant})=>
+    onChange(withReportVisuals(draft,next));
 
   return (
     <section className="card" aria-labelledby="report-layout-heading">
@@ -42,6 +49,55 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           <h3 id="report-layout-heading">Bố trí bảng báo cáo</h3>
           <p className="muted">Thay đổi bố trí được áp dụng sau khi bấm Lưu.</p>
         </div>
+      </div>
+      <div className="report-page-width-controls">
+        <strong>Độ rộng trang Bảng báo cáo</strong>
+        <label className="field" htmlFor="report-page-width">Độ rộng trang (px)</label>
+        <DeferredWidthInput id="report-page-width" label="Độ rộng trang Bảng báo cáo (px)"
+          value={pageWidth==='auto'?1920:pageWidth} min={320} max={6000}
+          onCommit={width=>onChange(withReportPageWidth(draft,width))}/>
+        <label className="layout-visibility">
+          <input type="checkbox" checked={pageWidth==='auto'}
+            onChange={event=>onChange(withReportPageWidth(draft,event.currentTarget.checked?'auto':1920))}/>
+          Tự động sử dụng toàn bộ chiều rộng màn hình
+        </label>
+      </div>
+      <div className="report-visual-config" aria-label="Kiểu bảng và phông chữ thống kê">
+        <h4>5 phong cách tô màu báo cáo</h4>
+        <p className="report-font-hint">Mỗi phong cách có cách thể hiện khác nhau, không chỉ đổi độ đậm. Dữ liệu, cách tính và ý nghĩa trạng thái vẫn giữ nguyên. Gợi ý: Nhãn màu nổi để xem hằng ngày; Thanh dữ liệu để so sánh khối lượng.</p>
+        <div className="report-visual-options" role="radiogroup" aria-label="Phong cách tô màu báo cáo">
+          {REPORT_VARIANTS.map(option=><label className={'report-visual-option report-style-'+option.value} key={option.value}>
+            <span><input type="radio" name="report-visual-variant"
+              checked={variant===option.value}
+              onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
+            <small>{option.description}</small>
+            <span className="report-visual-example" aria-hidden="true">
+              {([["source","Sở",19],["office","VP",4],["next","Tiếp",2],["completed","Xong",1]] as const).map(([stage,label,count])=><span key={stage} className={"report-example-cell report-example-"+stage}>
+                <b>{label}</b><i>{count}</i>
+              </span>)}
+            </span>
+          </label>)}
+        </div>
+        <div className="report-font-control">
+          <label htmlFor="report-font-family"><strong>Font chữ chung cho mọi bảng</strong></label>
+          <select id="report-font-family" aria-label="Font chữ chung cho mọi bảng"
+            value={font} onChange={event=>updateVisual({tableFont:event.currentTarget.value as TableFont})}>
+            {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+        <div className="report-font-size-control">
+          <label htmlFor="report-font-size"><strong>Cỡ chữ tất cả các bảng</strong></label>
+          <input id="report-font-size" aria-label="Cỡ chữ tất cả các bảng" type="range"
+            min={MIN_TABLE_FONT_SIZE} max={MAX_TABLE_FONT_SIZE} step={1}
+            value={fontSize} onChange={event=>updateVisual({tableFontSize:Number(event.currentTarget.value)})}/>
+          <output htmlFor="report-font-size">{fontSize} px</output>
+          <button type="button" className="button ghost" disabled={fontSize===13}
+            onClick={()=>updateVisual({tableFontSize:13})}>Cỡ mặc định</button>
+        </div>
+        <p className="report-font-hint">{TABLE_FONT_OPTIONS.find(option=>option.value===font)?.description}.
+          6 font mở (Inter, Roboto, Open Sans, Lato, Noto Sans, IBM Plex Sans) được tải qua Google Fonts khi có Internet.
+          Font Apple/Microsoft/Helvetica/Arial phụ thuộc font có sẵn trên máy; khi không tải được font web, trình duyệt dùng font dự phòng.
+          Xem trước ngay, chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
       </div>
       <div className="settings-grid">
         {draft.map((report, index) => {
@@ -57,6 +113,22 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   onChange={event => update(index, { title: event.target.value })}
                 />
               </label>
+              <div className="report-title-accent-config">
+                <label className="field">Từ/cụm từ trong tên bảng cần tô màu
+                  <input type="text" maxLength={80} placeholder="Ví dụ: Nghị quyết"
+                    aria-label={`Từ tô màu tên bảng ${index+1}`}
+                    value={report.titleAccentText??''}
+                    onChange={event=>update(index,{titleAccentText:event.currentTarget.value})}/>
+                </label>
+                <label className="field">Màu chữ
+                  <input type="color" aria-label={`Màu chữ tên bảng ${index+1}`}
+                    value={report.titleAccentColor??'#b42318'}
+                    onChange={event=>update(index,{titleAccentColor:event.currentTarget.value})}/>
+                </label>
+                <button className="button ghost" type="button"
+                  onClick={()=>update(index,{titleAccentText:''})}
+                  disabled={!report.titleAccentText}>Bỏ tô màu</button>
+              </div>
               <label className="field layout-visibility">
                 <input
                   type="checkbox"
@@ -66,6 +138,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                 Hiển thị bảng {index + 1}
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
+              <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Tô màu các cột trạng thái trong bảng này</label>
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
@@ -87,8 +160,9 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </fieldset>
             </div>
             <div className="report-layout-preview">
-              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'}</p>
-              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} onSelect={() => {}} preview />
+              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'} · Kéo đường phân cách ở tiêu đề để thay đổi độ rộng cột.</p>
+              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} onSelect={() => {}} preview
+                 onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
             </div>
           </article>;
         })}

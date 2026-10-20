@@ -14,14 +14,14 @@ import {InlinePermissionsTable} from '../src/features/items/InlinePermissionsTab
 import type {Item} from '../shared/types';
 const nodes=(tree:any):any[]=>Array.isArray(tree)?tree.flatMap(nodes):tree&&typeof tree==='object'?[tree,...nodes(tree.props?.children)]:[];
 const label=(n:any):string=>nodes(n).map(x=>typeof x==='string'?x:'').join('');
-function render(onSave:(next:any,baseline:any)=>Promise<void>){
+function render(onSave:(next:any,baseline:any)=>Promise<void>,onBack=vi.fn()){
   hooks.start();
   return InlinePermissionsTable({
     items:[{recordId:'sheet:60961344:row:3',displayCode:'NQ01',content:'Nội dung kiểm thử',isDropped:false} as Item],
     columns:[{key:'content',label:'Nội dung'},{key:'isDropped',label:'Trình / Rút'}],
     permissions:{columns:{content:false}},
     onSave,
-    onBack:vi.fn()
+    onBack
   });
 }
 beforeEach(()=>hooks.reset());
@@ -60,6 +60,32 @@ describe('inline admin rights',()=>{
     column.props.onChange({currentTarget:{checked:true}});
     tree=render(save);
     expect(JSON.stringify(tree)).toContain('Được sửa');
+    expect(save).not.toHaveBeenCalled();
+  });
+  it('shows only permissions for editable cells actually present as list columns',()=>{
+    const tree=render(vi.fn());
+    const printed=JSON.stringify(tree);
+    expect(printed).not.toContain('Các trường không hiển thị thành cột trong bảng');
+    expect(printed).not.toContain('Quyền sửa loại nội dung (NQ/BC)');
+    expect(nodes(tree).find(n=>n.type==='select'&&n.props?.['aria-label']==='Quyền cột loại nội dung')).toBeUndefined();
+  });
+  it('keeps save controls above the long table and safely confirms switching modes',()=>{
+    const save=vi.fn().mockResolvedValue(undefined),back=vi.fn();
+    let tree=render(save,back);
+    const initial=JSON.stringify(tree);
+    expect(initial.indexOf('permission-action-bar')).toBeGreaterThan(0);
+    expect(initial.indexOf('permission-action-bar')).toBeLessThan(initial.indexOf('permission-table-scroll'));
+    const checkbox=nodes(tree).find(n=>n.type==='input'&&n.props?.type==='checkbox'&&n.props?.checked===false);
+    checkbox.props.onChange({currentTarget:{checked:true}});
+    tree=render(save,back);
+    const goBack=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Về giao diện bảng');
+    goBack.props.onClick();
+    tree=render(save,back);
+    expect(JSON.stringify(tree)).toContain('Lưu quyền và chuyển');
+    expect(back).not.toHaveBeenCalled();
+    const discard=nodes(tree).find(n=>n.type==='button'&&n.props?.children==='Bỏ quyền chưa lưu và chuyển');
+    discard.props.onClick();
+    expect(back).toHaveBeenCalledOnce();
     expect(save).not.toHaveBeenCalled();
   });
   it('does not allow saving unchanged rules',()=>{

@@ -17,6 +17,9 @@ export interface Item {
   ubndLeader: string;
   specificProgress: string;
   note: string;
+  /** Optional source columns P/Q on the current A–R Excel file; read-only in WebApp. */
+  partyMeeting?: string;
+  examined?: string;
   isDropped: boolean;
   archivedAt: string | null;
   revision: number;
@@ -52,9 +55,17 @@ export type StatusField = 'progressParty' | 'progressBuild' | 'progressCouncil';
 export interface ReportConfig {
   id: string;
   title: string;
-  source: 'all' | 'party' | 'nq' | 'bc';
+  /** Optional text fragment in the report heading to emphasize visually. */
+  titleAccentText?:string;
+  titleAccentColor?:string;
+  source: 'all' | 'party' | 'build' | 'council' | 'nq' | 'bc';
   statusField: StatusField;
   columns: string[];
   hiddenColumns: string[];
   completed: string[];
+  emphasizeProgress?:boolean;
+  tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter'|'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
+  tableFontSize?:number;
+  reportVariant?:'signal'|'classic'|'compact'|'bars'|'band';
+  columnWidths?:Record<string,number>;
 }

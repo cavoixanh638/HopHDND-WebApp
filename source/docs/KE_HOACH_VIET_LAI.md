@@ -1,5 +1,7 @@
 # Kế hoạch viết lại Dashboard tổng hợp nội dung trình HĐND
 
+**Lưu ý 19/10/2026:** Đây là **kế hoạch và nhật ký đề xuất lịch sử**, chưa được cập nhật lại toàn bộ mục cũ từ ngày 15/10. Những đoạn nói A–P/16 cột, cấu hình chưa phát hành hoặc 50 dòng/trang **không phải schema/trải nghiệm hiện hành** của PR #3. Tra quyết định đang áp dụng tại [SYSTEM](SYSTEM.md), [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md), [FEATURES](FEATURES.md), và bằng chứng ở [CURRENT_STATE](CURRENT_STATE.md). Không sửa quá khứ trong kế hoạch để giả làm quyết định cũ đã khác.
+
 Phiên bản kế hoạch: 1.19 · Ngày: 15/10/2026 · Mục18.16: Firebase Pages đã được giao triển khai local; chưa được push/deploy/đổi dữ liệu thật. Main Google0.6.2/v6 vẫn như CURRENT_STATE.
 
 ## 1. Định hướng

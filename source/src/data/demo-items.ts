@@ -6,8 +6,8 @@ const assignments = [
   { department: 'Sở mẫu C', room: 'Phòng mẫu 3', specialist: 'Chuyên viên mẫu C' },
   { department: 'Đơn vị mẫu D', room: 'Phòng mẫu 1', specialist: 'Chuyên viên mẫu D' },
 ];
-const councilStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND', 'Hoàn thành', 'Cần bổ sung hồ sơ'];
-const partyStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU chưa họp', 'Đã họp chưa có TBKL', 'Đã báo cáo TU', 'Sở xin rút'];
+const councilStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Hoàn thành'];
+const partyStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL'];
 const contents = {
   nq: [
   'MẪU: Quy định chính sách hỗ trợ phát triển sản xuất nông nghiệp tại địa phương.',
@@ -37,7 +37,7 @@ export function createDemoItems(count = 24): Item[] {
       type: isReport ? 'Báo cáo' : ordinal % 2 ? 'QPPL' : 'HC',
       partyLevel: ordinal % 5 === 0 ? 'Không phải xin ý kiến' : ['Ban Chấp hành', 'BTV', 'TTTU'][(ordinal - 1) % 3],
       progressParty: ordinal % 5 === 0 ? 'Không phải xin ý kiến' : partyStatuses[(ordinal - 1) % partyStatuses.length],
-      progressBuild: ['Không phải trình xây dựng NQ', 'Trình xây dựng NQ', 'Đã trình HĐND chưa có QĐ', 'Đã có QĐ chấp thuận'][(ordinal - 1) % 4],
+      progressBuild: ['Không phải trình xây dựng NQ', 'Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND, chưa có QĐ', 'Đã có QĐ chấp thuận'][(ordinal - 1) % 4],
       progressCouncil: councilStatuses[(ordinal - 1) % councilStatuses.length],
       specialist: assignment.specialist,
       room: assignment.room,

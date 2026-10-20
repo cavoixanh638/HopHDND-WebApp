@@ -1,135 +1,295 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
-import { createSearchIndex, matchesSearch } from '../../domain/search';
 import { ContentEditor } from './ContentEditor';
-import { displayId } from '../../domain/display-id';
-import { defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { displayId, isMissingDisplayCode } from '../../domain/display-id';
+import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import {normalizeSearch} from '../../domain/search';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
+import {layoutRecoveryScope} from '../../data/draft-checkpoints';
 import { ItemColumnPanel } from './ItemColumnPanel';
+import {LayoutConflictResolver} from './LayoutConflictResolver';
+import {LayoutConflictError,type LayoutFieldConflict,type LayoutConflictChoices,type LayoutConflictChoice} from '../../data/item-layout-merge';
 import { Modal } from '../../components/Modal';
 import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
+import {ColumnFilterCell} from './ColumnFilterCell';
 import { CellPicker } from './CellPicker';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import {ListViewTools} from './ListViewTools';
+import {sortItems,type ColumnSort} from '../../domain/sort-items';
+import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
+import {CellHistoryAction} from '../../components/CellHistoryAction';
+import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu bố trí',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout)=>Promise<void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void> }) {
-  const [query, setQuery] = useState('');
-  const [kind, setKind] = useState('all');
-  const [lifecycle, setLifecycle] = useState('active');
-  const [leader, setLeader] = useState('all');
-  const [status, setStatus] = useState('all');
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void> }) {
+  const personalScope=layoutRecoveryScope(sourceKey);
+  const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
+  const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  const [columnSort,setColumnSort]=useState<ColumnSort>(null);
+  // An ordinary viewer should immediately see every A–R source field. Saved
+  // column settings remain available without a Firebase write.
+  // A previously saved visible/hidden column selection wins on the first paint.
+  const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
+  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
-  const [applied, setApplied] = useState(() => initialLayout??loadItemLayout(sourceKey));
-  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
-  const {draft:layout,setDraft:setLayout,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(`items:${sourceKey}`,applied,validateItemDraft,undefined,customizing);
+  // Admin customizations always start from the one Firebase shared layout.
+  // Personal saved views are viewing presets, never an alternative shared baseline.
+  const [applied, setApplied] = useState(() => {
+    const authoritative=initialLayout??loadItemLayout(sourceKey);
+    return !customizing&&selectedView?overlayPersonalLayout(authoritative,selectedView.layout):authoritative;
+  });
+  // The Firebase baseline must be the original *shared* layout when editing began,
+  // not a local saved view nor the profile revision emitted after another write.
+  const sharedBase=useRef<ItemLayout>(initialLayout??applied);
+  const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
+  const saveBaseline=restoredBase??sharedBase.current;
+  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
+  const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
-  const columns = activeLayout.columns.filter(column=>column.visible && (!readOnly || column.key !== 'history'));
+  // The viewer already receives the exact first-frame width from App. Avoid
+  // a post-paint callback that can override the saved CSS with stale values.
+  useEffect(()=>{if(customizing)onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[customizing,activeLayout.frameWidth,onFrameWidthChange]);
+  const columns = activeLayout.columns
+    .filter(column=>!column.removed&&(EXCEL_COLUMN_KEYS.includes(column.key)||column.origin==='custom')&&
+      (column.visible||(!customizing&&showAllSourceColumns&&EXCEL_COLUMN_KEYS.includes(column.key))))
+    .sort((a,b)=>!customizing&&showAllSourceColumns
+      ?(EXCEL_COLUMN_KEYS.includes(a.key)?EXCEL_COLUMN_KEYS.indexOf(a.key):1000+activeLayout.columns.indexOf(a))-
+       (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
+      :0);
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
+  const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
+  const [conflictChoices,setConflictChoices] = useState<LayoutConflictChoices>({});
+  const [saveFeedback,setSaveFeedback] = useState('');
   const [allSpecialists,setAllSpecialists] = useState(false);
   const [saving,setSaving] = useState(false);
-  const [permissionMode,setPermissionMode] = useState(false);
+  const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
+  const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
+  const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
+  const exitAfterPermissions=useRef(false);
+  const handledExitRequest=useRef(exitRequest);
+  useEffect(()=>{onDirtyChange?.(customizing&&(dirty||permissionDirty||columnExtrasDirty));},[customizing,dirty,permissionDirty,columnExtrasDirty,onDirtyChange]);
   const locked=busy||saving||!!unmatchedCheckpoint&&customizing;
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;
-  const blockedSaveLabel=draftOnly?'Chỉ giữ thay đổi thử trên máy':'Chưa thể lưu vào Excel';
-  const sourceSaveLabel=effectiveSourceKind==='firebase'?'Lưu vào Firebase':effectiveSourceKind==='google'?'Lưu dữ liệu vào Excel':'Lưu dữ liệu mẫu';
-  const saveActionLabel=pendingData?`${sourceSaveLabel}${dirty?' và bố trí':''}`:dirty?'Lưu bố trí và về xem':'Không có thay đổi';
+  const saveIssue=(cause:unknown)=>{
+    const message=cause instanceof Error?cause.message:'Chưa lưu được cách hiển thị.';
+    if(/permission[_ -]?denied/i.test(message))return 'Firebase từ chối quyền ghi cách hiển thị (permission_denied). Kiểm tra Rules của hdnd/profile và đăng nhập Google quản trị; phần sửa vẫn ở trên máy.';
+    if(/network|offline|disconnected/i.test(message))return 'Không kết nối được Firebase để lưu. Vui lòng thử lại khi có mạng; phần sửa vẫn được giữ trên máy.';
+    return message;
+  };
+  const handleLayoutFailure=(cause:unknown)=>{
+    setSaveFeedback('');
+    if(cause instanceof LayoutConflictError){
+      setLayoutConflicts(cause.conflicts);
+      setConflictChoices({});
+      setLayoutError('');
+    }else{
+      setLayoutConflicts([]);
+      setLayoutError(saveIssue(cause));
+    }
+  };
+  const persistSavedLayout=async(valid:ItemLayout,choices?:LayoutConflictChoices)=>{
+    if(!allowLayout)throw new Error('Chỉ quản trị được lưu cách hiển thị chung.');
+    let merged:ItemLayout=valid;
+    if(onPersistLayout){
+      const confirmed=await onPersistLayout(valid,saveBaseline,choices);
+      if(confirmed)merged=validateItemLayout(confirmed);
+    }else{
+      if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được cách hiển thị. Nháp được giữ.');
+      onLayoutSaved('Đã lưu cách hiển thị danh sách trên trình duyệt.');
+    }
+    sharedBase.current=merged;
+    setApplied(merged);markSaved(merged);setRestoredBase(null);
+    setLayoutConflicts([]);setConflictChoices({});
+    return merged;
+  };
   const savingRef=useRef(false);
-  const resizing=useRef<{key:string;x:number;width:number}|null>(null);
-  const [page, setPage] = useState(0);
   const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"} | null>(null);
-  const canEdit = customizing && canEditDraft && !permissionMode;
+  // Any Firebase viewer (including the signed-in admin) may draft explicitly
+  // granted cells in the ordinary list. Non-Firebase views stay read-only;
+  // the per-cell checker still enforces the live permission and lock state.
+  const canEdit = canEditDraft && !permissionMode && (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
-  const latestExit=useRef({dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
-  const exit = () => { if(permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');return;}if(locked||dataSaving)return;if(dirty || Object.keys(drafts).length) setConfirmExit(true); else onClose(); };
+  const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
+  const exit = () => {
+    if(locked||dataSaving)return;
+    if(permissionMode){exitAfterPermissions.current=true;setPermissionSwitchRequest(current=>current+1);return;}
+    if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);
+    else onClose();
+  };
+  useEffect(()=>{if(exitRequest===handledExitRequest.current)return;handledExitRequest.current=exitRequest;exit();},[exitRequest]);
   useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');}else if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
-  const save = async () => {
-    if(locked||savingRef.current||permissionMode)return;
-    savingRef.current=true;setSaving(true);
-    try {
-      const layoutToSave=dirty?validateItemLayout(layout):null;
-      const issue=items.filter(item=>{const changes=drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item=>assignmentIssue(item,catalog)).find(Boolean);
-      if(issue) throw new Error(issue);
-      if(cannotSaveData)throw new Error('Chưa bật lưu vào file Excel. Giữ thay đổi trên máy hoặc quay lại để lưu riêng bố trí.');
-      if(Object.keys(drafts).length && !await onSaveData()) throw new Error('Chưa xác nhận lưu dữ liệu. Phần sửa vẫn được giữ; xem thông báo lỗi phía trên để xử lý.');
-      if(layoutToSave){
-        if(!allowLayout)throw new Error('Chỉ quản trị được lưu bố trí chung.');
-        if(onPersistLayout)await onPersistLayout(layoutToSave);
-        else {const persisted=saveItemLayout(sourceKey,layoutToSave);if(!persisted)throw new Error('Không lưu được bố trí. Nháp được giữ.');onLayoutSaved('Đã lưu bố trí danh sách trên trình duyệt.');}
-        setApplied(layoutToSave);setLayout(layoutToSave);clearCheckpoint();
-      }
-      setConfirmExit(false);onClose();
-    } catch(cause){setLayoutError(cause instanceof Error?cause.message:'Chưa lưu được bố trí.');}
+  const resolveAndSaveLayout=async()=>{
+    if(locked||savingRef.current||!dirty||!onPersistLayout||layoutConflicts.some(c=>!conflictChoices[c.id]))return;
+    savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang đối chiếu bản Firebase mới nhất…');
+    try{
+      await persistSavedLayout(validateItemLayout(layout),conflictChoices);
+      setSaveFeedback('Đã lưu lựa chọn vào Firebase. Có thể tiếp tục chỉnh sửa.');
+    }catch(cause){handleLayoutFailure(cause);}
     finally{savingRef.current=false;setSaving(false);}
   };
-  const validateAndSaveLayout=async()=>{if(locked||savingRef.current||!dirty||!allowLayout)return;savingRef.current=true;setSaving(true);try{const valid=validateItemLayout(layout);if(onPersistLayout)await onPersistLayout(valid);else if(!saveItemLayout(sourceKey,valid))throw new Error('Không lưu được bố trí.');setApplied(valid);setLayout(valid);clearCheckpoint();setLayoutError('');}catch(cause){setLayoutError(cause instanceof Error?cause.message:'Không lưu được bố trí.');}finally{savingRef.current=false;setSaving(false);}};
-  const index = useMemo(() => createSearchIndex(items), [items]);
+  // Column filters are the single visible source of truth; old saved global filters must not silently hide results.
+  // A unique Excel ID survives row insertions/reordering; missing or repeated
+  // IDs intentionally fall back to their original source-row identity.
+  const codeCounts=useMemo(()=>{
+    const result=new Map<string,number>();
+    for(const item of items)result.set(item.displayCode,(result.get(item.displayCode)??0)+1);
+    return result;
+  },[items]);
+  const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
+    codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
   const filtered = useMemo(() => items.filter(item =>
-    matchesSearch(item, query, index) && (kind === 'all' || item.documentKind === kind) &&
-    (leader === 'all' || item.vpLeader === leader) && (status === 'all' || item.progressCouncil === status) &&
-    (lifecycle === 'all' || (lifecycle === 'archived' ? !!item.archivedAt : !item.archivedAt && (lifecycle === 'active' ? !item.isDropped : item.isDropped)))
-  ), [items, query, index, kind, lifecycle, leader, status]);
-  const pages = Math.max(1, Math.ceil(filtered.length / 50));
-  const currentPage = Math.min(page, pages - 1);
-  const rows = filtered.slice(currentPage * 50, currentPage * 50 + 50);
+    matchesColumnFilters(item,Object.fromEntries(Object.entries(columnFilters).filter(([key])=>EXCEL_COLUMN_KEYS.includes(key)))) &&
+    Object.entries(columnFilters).every(([key,term])=>{
+      const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
+      return !column||!term.trim()||normalizeSearch(column.values?.[customRowKey(item)]??'').includes(normalizeSearch(term));
+    })),[items,columnFilters,activeLayout,codeCounts]);
+  const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
+    const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
+    return column?.values?.[customRowKey(item)]??'';
+  }),[filtered,columnSort,activeLayout,codeCounts]);
+  const cycleSort=(key:string)=>setColumnSort(current=>
+    current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);
   const options = (field: TextField,item:Item) => {
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
     return orderValues([...new Set([...list,item[field]])].filter(Boolean),list).filter(value=>field!=='specialist'||allSpecialists||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
   };
-  const leaders = orderValues([...new Set(items.map(i => i.vpLeader))],catalog.options.vpLeader);
-  const statuses = orderValues([...new Set(items.map(i => i.progressCouncil))],catalog.options.progressCouncil);
-  const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
+  const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const tableWidth=Math.max(Math.min(6000,Math.max(600,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
+  const tableWidth=Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
   const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
-  const frameWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:320))}px`;
-  return <section className="card item-list-card" style={{width:frameWidth}}>
-    {customizing&&<><div className="settings-mode-bar"><div><strong>Chế độ tùy chỉnh danh sách</strong><p>{draftOnly?'Sửa thử các ô được cấp quyền; phần sửa chỉ giữ trên trình duyệt. Chỉ quản trị được lưu bố trí chung.':effectiveSourceKind==='firebase'?'Bấm ô được cấp quyền để sửa; thay đổi sẽ tự lưu vào Firebase. Nội dung/Ghi chú cần bấm Áp dụng trong popup.':'Kéo tiêu đề để đổi vị trí cột; kéo mép cột để đổi độ rộng. Bấm ô để sửa trên bảng; phần sửa được giữ trên trình duyệt và chưa ghi vào Excel. Nút lưu bố trí chỉ lưu khung, thứ tự và độ rộng cột.'}</p></div><div className="top-actions">{!permissionMode&&<button className="button ghost" disabled={locked||!allowLayout} onClick={()=>setLayout(defaultItemLayout())}>Khôi phục bố trí</button>}<button className="button ghost" disabled={locked||dataSaving||permissionMode} title={permissionMode?"Quay về Bố trí bảng để thoát":undefined} onClick={exit}>Về chế độ xem</button>{readOnly&&onKeepDraft&&!permissionMode&&<button className="button ghost" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>}{!permissionMode&&<button className="button primary" disabled={locked||dataSaving||cannotSaveData||(!dirty&&!pendingData)} onClick={()=>void save()}>{cannotSaveData?blockedSaveLabel:saveActionLabel}</button>}</div></div><p className="muted" role="status">{checkpointMessage}</p>{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
+  const applyView=(view:SavedListView|null):boolean=>{
+    if(dirty||pendingData)return false;
+    const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
+    setColumnFilters({...filters.columns});
+    setShowAllSourceColumns(false);
+    setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
+    setColorRules(view?.colors??loadColorRules(personalScope));
+    return true;
+  };
+  const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
+  const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
+    ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
+  const widthError=layoutError.toLowerCase().includes('độ rộng');
+  return <section className="card item-list-card">
+    {customizing&&anonymousViewer&&<div className="guest-edit-bar">
+      <strong>Sửa thử nội dung được cấp quyền</strong>
+      <div className="top-actions">
+        {pendingData&&onKeepDraft&&<button className="button ghost" onClick={()=>{if(onKeepDraft())onClose();}}>Giữ phần sửa trên máy</button>}
+        <button className="button ghost" onClick={exit}>Về danh sách</button>
+      </div>
+    </div>}
+    {customizing&&!anonymousViewer&&!permissionMode&&<>
+    {layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Chưa lưu được.</strong><span>{layoutError}</span></div>}
+    {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
+    {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
+      conflicts={layoutConflicts} choices={conflictChoices}
+      busy={locked||dataSaving}
+      onChoose={(field:string,choice:LayoutConflictChoice)=>setConflictChoices(current=>({...current,[field]:choice}))}
+      onConfirm={()=>void resolveAndSaveLayout()}
+      onCancel={()=>{setLayoutConflicts([]);setConflictChoices({});}}/>}
+    {checkpointMessage&&<p className="muted" role="status">{checkpointMessage}</p>}{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}{!externalSectionTabs&&<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
   <div className="customize-mode-tabs">
     <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
-      if(permissionMode&&permissionDirty){setLayoutError('Quyền chưa lưu. Hãy Lưu hoặc Bỏ thay đổi quyền trước khi chuyển sang Bố trí bảng.');return;}
+      if(permissionMode){setPermissionSwitchRequest(current=>current+1);return;}
       setPermissionMode(false);setLayoutError('');
-    }}>Bố trí bảng và cột</button>
+    }}>Hiển thị bảng</button>
     {allowLayout&&permissions&&onSavePermissions&&<button type="button" className={permissionMode?'mode-tab active':'mode-tab'} aria-pressed={permissionMode} disabled={locked} onClick={()=>{setPermissionMode(true);setLayoutError('');}}>Quyền chỉnh sửa</button>}
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
-</div>
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel layout={layout} onChange={setLayout}/><button className="button ghost" disabled={!dirty} onClick={()=>void validateAndSaveLayout()}>{layoutSaveLabel}</button></fieldset>}
-{layoutError&&<p className="error-text" role="alert">{layoutError}</p>}</>}
-    <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted">{filtered.length} / {items.length} nội dung · Tìm kiếm hỗ trợ tiếng Việt không dấu</p></div><div className="top-actions"><span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span></div></div>
-    {customizing&&saveDataHint&&<p className="notice">{saveDataHint}</p>}
-    <div className="toolbar"><label className="field search-field">Tìm kiếm<input type="search" placeholder="Nội dung, mã, sở, chuyên viên…" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }} /></label>
-      <label className="field">Loại nội dung<select value={kind} onChange={e => { setKind(e.target.value); setPage(0); }}><option value="all">Tất cả loại</option><option value="NQ">Nghị quyết</option><option value="BC">Báo cáo</option><option value="UNCLASSIFIED">Chưa phân loại</option></select></label>
-      <label className="field">Phạm vi<select value={lifecycle} onChange={e => { setLifecycle(e.target.value); setPage(0); }}><option value="active">Đang trình</option><option value="dropped">Đã rút</option><option value="archived">Đã lưu trữ</option><option value="all">Tất cả</option></select></label>
-      <label className="field">Lãnh đạo VP<select value={leader} onChange={e => { setLeader(e.target.value); setPage(0); }}><option value="all">Tất cả lãnh đạo</option>{leaders.map(value => <option key={value}>{value}</option>)}</select></label>
-      <label className="field">Tiến độ<select value={status} onChange={e => { setStatus(e.target.value); setPage(0); }}><option value="all">Tất cả tiến độ</option>{statuses.map(value => <option key={value}>{value}</option>)}</select></label>
+</div>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
+</>}
+    <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    <div className="card-header"><div><h3>Danh sách nội dung</h3><p className="muted"><span className="item-result-count">{filtered.length} / {items.length}</span> nội dung{!anonymousViewer&&' · Tìm kiếm hỗ trợ tiếng Việt không dấu'}</p></div>
+    <div className="item-header-actions">
+      {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+        <span>{columns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
+        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
+          onClick={()=>setShowAllSourceColumns(current=>!current)}>
+          {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
+        </button>
+      </div>}
+      {!anonymousViewer&&<span className="status-pill">{sourceLabel??(effectiveSourceKind==='firebase'?'Firebase HopHDND':effectiveSourceKind==='google'?'Nguồn Excel':'Dữ liệu mẫu')}</span>}
+    </div></div>
+    {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
+     {!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
+    <div className="item-sticky-search-controls">
+    {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
-    {canEdit&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
-    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onDirtyChange={setPermissionDirty} onBack={()=>{setPermissionMode(false);setPermissionDirty(false);setLayoutError("");}} disabled={locked}/>:<><div className="table-wrap"><table className="data-table item-data-table" style={{width:`${tableWidth}px`}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr>{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key} disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<span draggable={false} className="column-resizer" role="separator" aria-label={`Kéo độ rộng cột ${column.label}`} aria-orientation="vertical" tabIndex={0} onKeyDown={event=>{if(event.key==='ArrowLeft'||event.key==='ArrowRight'){event.preventDefault();setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===column.key?{...entry,width:Math.min(1600,Math.max(60,entry.width+(event.key==='ArrowRight'?10:-10)))}:entry)}));}}} onPointerDown={event=>{resizing.current={key:column.key,x:event.clientX,width:column.width};event.currentTarget.setPointerCapture(event.pointerId);}} onPointerMove={event=>{const drag=resizing.current;if(drag&&drag.key===column.key)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>entry.key===drag.key?{...entry,width:Math.min(1600,Math.max(60,Math.round(drag.width+event.clientX-drag.x)))}:entry)}));}} onPointerUp={()=>{resizing.current=null;}} onPointerCancel={()=>{resizing.current=null;}}/>}</ColumnHeader>)}</tr></thead><tbody>
-      {rows.map(item => <tr key={item.recordId} className={drafts[item.recordId] ? 'dirty-row' : ''}>{columns.map(column=>{const key=column.key as TextField;
-        if(column.key==='displayCode')return <td key={column.key}><span className="code" title={`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
-        if(column.key==='stt')return <td key={column.key}>{item.stt}</td>;
-        if(column.key==='history')return <td key={column.key}><button className="button ghost" onClick={()=>onHistory(item)}>Xem</button></td>;
-        if(column.key==='isDropped')return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Trình / Rút`} value={item.isDropped?"Đã rút":"Đang trình"} options={["Đang trình","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={`status-pill ${item.isDropped?'warning':'success'}`}>{item.archivedAt?'Lưu trữ':item.isDropped?'Đã rút':'Đang trình'}</span>}</td>;
+    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
+      setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
+      if(exitAfterPermissions.current){
+        exitAfterPermissions.current=false;
+        if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
+      }
+    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
+  disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<ColumnResizeHandle
+  columnIndex={index} width={visualWidth(column.width)} min={60} max={1600} label={column.label}
+  onCommit={width=>setLayout(previous=>({...previous,columns:previous.columns.map(entry=>
+    entry.key===column.key?{...entry,width}:entry)}))}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
+  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
+    getValue={column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
+    choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
+    value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
+  </tr></thead><tbody>
+      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
+        if(column.origin==='custom'){
+          const rowKey=customRowKey(item),value=column.values?.[rowKey]??'';
+          const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
+            ...c,values:{...(c.values??{}),[rowKey]:next}
+          })}));
+          const writable=customizing&&allowLayout&&!locked;
+          return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined}
+            title={writable?'Bấm để sửa':undefined}
+            style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
+            ?column.kind==='select'
+              ?<CellPicker label={`${displayId(item)}: ${column.label}`} value={value}
+                options={column.options??[]} onChange={updateCustom}/>
+              :<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`}
+                type="text" maxLength={1000} value={value} onChange={e=>updateCustom(e.currentTarget.value)}/>
+            :value||'—'}</td>;
+        }
+        if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
+          className={customizing&&!anonymousViewer?'has-history-action':undefined}
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<CellHistoryAction label={displayId(item)}
+          tooltip="Xem lịch sử nội dung" onClick={()=>onHistory(item)}/>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+        if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
+        if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
+        // Excel columns P and Q are displayed and searchable but not editable.
+        // They must not be offered as writable fields until a source writer and
+        // server-side permission rules explicitly support these new columns.
+        if(column.key==='partyMeeting'||column.key==='examined')
+          return <td key={column.key} data-col-key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        return <td key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||"Chưa có ghi chú"}</button>:<CellPicker label={`${displayId(item)}: ${metadata.label}`} value={item[key]} options={options(key,item)} searchable={key==="specialist"} disabled={locked} onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;
+        const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
+        return <td key={column.key} data-col-key={column.key}
+          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory?'has-history-action':''].filter(Boolean).join(' ')}
+          title={writable?'Bấm để sửa':undefined}
+          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
+  ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
+    onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
+  :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]} options={options(key,item)} searchable={key==="specialist"} disabled={locked} onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
+          {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
+            onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,columns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
-    <div className="pagination"><span className="muted">Trang {currentPage + 1}/{pages} · tối đa 50 dòng/trang</span><button className="button ghost" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Trước</button><button className="button ghost" disabled={currentPage >= pages - 1} onClick={() => setPage(currentPage + 1)}>Sau</button></div>
+    </div>
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={() => setContentItem(null)} />}
-    {customizing&&unmatchedCheckpoint&&<Modal title="Có phần sửa trên bố trí cũ" onClose={onClose}><div className="modal-body"><p>Bố trí đang giữ trên máy không khớp bố trí dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa bố trí cũ</button><button className="button primary" onClick={restoreOldDraft}>Nạp phần sửa để đối chiếu</button></div></Modal>}
-    {confirmExit&&<Modal title="Xử lý thay đổi trước khi về xem?" onClose={()=>{if(!locked)setConfirmExit(false);}}><div className="modal-body"><p>Phần bạn đang sửa chưa lưu. Giữ trên máy không ghi dữ liệu vào nguồn và không lưu bố trí dùng chung.</p>{layoutError&&<p className="error-text">{layoutError}</p>}</div><div className="modal-footer"><button className="button ghost" disabled={locked} onClick={()=>setConfirmExit(false)}>Tiếp tục sửa</button><button className="button danger" disabled={locked||dataSaving} onClick={()=>{setLayout(applied);clearCheckpoint();onDiscardData();setConfirmExit(false);onClose();}}>Bỏ phần đang sửa và về xem</button>{cannotSaveData&&onKeepDraft?<button className="button primary" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>:<button className="button primary" disabled={locked||dataSaving} onClick={()=>void save()}>{saveActionLabel}</button>}</div></Modal>}
+    {customizing&&unmatchedCheckpoint&&<Modal title="Có thay đổi hiển thị cũ" onClose={onClose}><div className="modal-body"><p>Cách hiển thị đang giữ trên máy không khớp cách hiển thị dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cách hiển thị cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}
+    {confirmExit&&<Modal title="Xử lý thay đổi trước khi về xem?" onClose={()=>{if(!locked)setConfirmExit(false);}}><div className="modal-body"><p>Phần bạn đang sửa chưa lưu. Giữ trên máy không ghi dữ liệu vào nguồn và không lưu cách hiển thị dùng chung.</p>{layoutError&&<p className="error-text">{layoutError}</p>}</div><div className="modal-footer"><button className="button ghost" disabled={locked} onClick={()=>setConfirmExit(false)}>Tiếp tục sửa</button><button className="button danger" disabled={locked||dataSaving} onClick={()=>{setLayout(applied);clearCheckpoint();onDiscardData();setConfirmExit(false);onClose();}}>Bỏ phần đang sửa và về xem</button>{cannotSaveData&&onKeepDraft?<button className="button primary" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>:<button className="button primary" disabled={locked||dataSaving} onClick={()=>{setConfirmExit(false);}} >Lưu riêng phần đang sửa trước khi về xem</button>}</div></Modal>}
 
   </section>;
 }
