@@ -88,7 +88,7 @@ function send(method,params={}){
 }
 const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),rows:[
   {c:Array.from({length:15},(_,i)=>({v:({
-    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB (HC/QPPL/BC',5:'Cấp Thành ủy cho ý kiến',
+    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB',5:'Cấp Thành ủy cho ý kiến',
     6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
     8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
   })[i]??''}))},

@@ -21,7 +21,7 @@ describe('Bố trí cột danh sách', () => {
     expect(EXCEL_SOURCE_COLUMNS).toHaveLength(15);
     expect(layout.columns.map(column=>column.key)).toEqual(expected);
     expect(layout.columns.map(column=>column.label)).toEqual([
-      'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB (HC/QPPL/BC)',
+      'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB',
       'Cấp Thành ủy cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
       'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
       'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Ghi chú']);

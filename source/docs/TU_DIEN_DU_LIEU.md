@@ -18,7 +18,7 @@
 | B | `stt` | STT |
 | C | `content` | Nội dung trình |
 | D | `department` | Sở, ngành chủ trì |
-| E | `type` | Loại VB (HC/QPPL/BC) |
+| E | `type` | Loại VB |
 | F | `partyLevel` | Cấp Thành ủy cho ý kiến |
 | G | `progressParty` | Tiến độ xin ý kiến Thành ủy |
 | H | `progressBuild` | Tiến độ trình HĐND xây dựng NQ |
