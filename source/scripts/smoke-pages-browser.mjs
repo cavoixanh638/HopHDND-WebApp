@@ -197,7 +197,7 @@ try{
     if(!topbar||!nav||!cardHeader||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-cardHeader.getBoundingClientRect().bottom;
-    const aligned=Math.abs(top.left-tabs.left)<3&&Math.abs(top.width-tabs.width)<3;
+    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=820&&tabs.width<top.width;
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
@@ -206,7 +206,10 @@ try{
     const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
     const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
     const boxes=cards.map(el=>el.getBoundingClientRect());
-    return {ok:cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
+    const firstStyle=getComputedStyle(cards[0]),lastStyle=getComputedStyle(cards[1]);
+    return {ok:nav?.getBoundingClientRect().width<=820&&
+      firstStyle.backgroundImage!==lastStyle.backgroundImage&&
+      cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
       boxes.every(box=>box.width>=200&&box.height>=60)&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
@@ -375,6 +378,30 @@ try{
   await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
   await assertStable('clearing column search');
+  const placeholderSelect=await evaluate(`(()=>{
+    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
+    const color=select?getComputedStyle(select).color:'';
+    return {ok:!!select&&select.classList.contains('filter-placeholder')&&
+      color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Chọn để lọc',color};
+  })()`);
+  if(!placeholderSelect.ok)throw Error('Category placeholder styling regression: '+JSON.stringify(placeholderSelect));
+  const selectedType=await evaluate(`(()=>{
+    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
+    if(!select||select.options.length<2)return false;
+    select.value=select.options[1].value;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  })()`);
+  if(!selectedType)throw Error('Type dropdown filter missing');
+  await eventually("document.querySelector('[data-filter-key=type] select')?.classList.contains('selected-filter-value')===true",
+    'Type category filter did not apply');
+  await evaluate(`(()=>{
+    document.querySelector('[data-filter-key=type] select')?.dispatchEvent(
+      new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  })()`);
+  await eventually("document.querySelector('[data-filter-key=type] select')?.value===''",
+    'Escape did not clear selected type');
+
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
@@ -737,9 +764,10 @@ try{
     const all=['.topbar','.nav-tabs','main']
       .map(selector=>document.querySelector(selector)?.getBoundingClientRect());
     const expected=Math.min(window.innerWidth-40,${width});
-    const reference=all[2];
+    const reference=all[2],nav=all[1],top=all[0];
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
-      all.every(r=>Math.abs(r.left-reference.left)<=2&&Math.abs(r.width-reference.width)<=2)&&
+      Math.abs(top.left-reference.left)<=2&&Math.abs(top.width-reference.width)<=2&&
+      nav.width<=820&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
       boxes:all.map(r=>r?{left:r.left,width:r.width}:null)};
   })()`);
@@ -806,7 +834,8 @@ try{
       return {ok:false,reason:'Account settings frame missing'};
     const m=main.getBoundingClientRect(),t=top.getBoundingClientRect(),n=tabs.getBoundingClientRect();
     return {ok:Math.abs(m.width-1100)<3&&Math.abs(m.left-t.left)<3&&
-      Math.abs(m.width-t.width)<3&&Math.abs(n.width-m.width)<3,
+      Math.abs(m.width-t.width)<3&&n.width<=820&&
+      Math.abs((n.left+n.right)/2-(m.left+m.right)/2)<3,
       main:m.width,top:t.width,tabs:n.width};
   })()`);
   if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
