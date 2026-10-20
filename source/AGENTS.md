@@ -57,3 +57,10 @@
 - Ẩn brand/banner Sheets và heading trùng trên cả hai màn chính, chỉ giữ phiên bản và đường vào đăng nhập/cài đặt trên cùng. Nút làm mới dữ liệu ở account/source, GID và khôi phục nguồn trong details. Tuyệt đối không tắt polling 60 giây hoặc bỏ quyền truy cập tài khoản.
 - Bỏ cảnh báo **toàn trang** không phân loại NQ/BC; giữ cảnh báo nghiệp vụ nằm **bên trong bảng** về trạng thái chưa chuẩn hóa. Giữ nguyên tỷ lệ báo cáo, tổng số, màu trạng thái, quyền sửa và dữ liệu nguồn.
 - Trước merge/triển khai phải PASS TypeScript, unit, Firebase emulator, Chrome smoke cho đủ hai trang và có bằng chứng Deploy GitHub Pages. Khi thay test, không thay điều kiện theo cách bỏ kiểm tra cảnh báo có giá trị.
+
+## Quy tắc UX ngày 20/10/2026 — PR #7
+
+- Hai card mục chính tổng max 820px, căn giữa khung; màu chủ đạo riêng từng card và trạng thái active có chữ trắng, focus rõ; không khôi phục kiểu dài hết bề ngang.
+- Không tự đặt thêm chú thích vào tên cột Excel: cột E là **Loại VB** theo file nguồn hiện tại. Giữ logic giá trị HC/QPPL/BC, migration cấu hình nhãn cũ hẹp và giữ nhãn người dùng sửa.
+- Một `ColumnFilterCell` chung: placeholder select `Chọn để lọc` mờ như input, Esc khi đang focus và có giá trị phải xóa lọc của cột đó; ngăn Esc không cần thiết khi bộ lọc trống.
+- Chỉ tô viền/màu nhẹ các thành phần nhập/chọn thực của ô được cấp quyền, tránh tô cả ô hoặc làm mất màu ngữ nghĩa; không làm giả quyền edit. Duy trì popup và danh sách đồng nhất.

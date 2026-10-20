@@ -180,6 +180,8 @@ try{
       !headings.some(x=>x.includes('Trình / Rút'))&&
       ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note']
         .every(key=>keys.includes(key))&&
+      headings.includes('Loại VB')&&
+      !headings.some(x=>x.includes('Loại VB (HC/QPPL/BC)'))&&
       headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&

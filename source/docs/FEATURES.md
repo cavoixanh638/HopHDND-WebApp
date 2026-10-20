@@ -1,3 +1,12 @@
+## 20/10/2026 — Phân biệt 2 thẻ, bộ lọc và ô nhập theo quyền (PR #7)
+
+- Hai section cards có max-width 820px và hai màu phân biệt (Báo cáo tổng hợp xanh lam; Danh sách nội dung xanh ngọc), active đậm và chữ trắng, inactive nền nhạt, focus rõ. Màn hẹp xếp dọc.
+- Cột E của Excel nguồn hiện hành chỉ tên **Loại VB**. Dùng tên này cho trường nguồn, danh sách và popup; khi gặp cấu hình đã lưu với nhãn chuẩn cũ `Loại VB (HC/QPPL/BC)` thì chuyển sang nhãn mới. Nhãn tùy chỉnh người dùng khác tên cũ được giữ nguyên.
+- Chữ `Chọn để lọc` là placeholder xám mờ như `Tìm kiếm`; có chọn sẽ có màu chữ đậm và nền cột đã lọc. Escape khi focus bộ lọc có giá trị sẽ xóa lọc tương ứng (không xóa các cột khác), cùng component trong Bảng dữ liệu và popup.
+- Ô cho sửa dùng riêng nút/input có nền xanh mint rất nhẹ, viền bo vừa đủ, hover/focus rõ. Không có dấu sửa trên ô chỉ xem; không phủ nền trên cả td khiến màu trạng thái nghiệp vụ bị che.
+- CI [#39446224592](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39446224592) PASS trước cập nhật tài liệu.
+
+
 ## 20/10/2026 — Hai phần dữ liệu chính, hiển thị theo hai thẻ
 
 - Navigation cũ được thay bằng hai card bằng nhau (desktop) hoặc xếp dọc (mobile), với nhãn đúng **Báo cáo tổng hợp** và **Danh sách các ND trình HĐND**, có mô tả chức năng và trạng thái đang xem rõ ràng. Tab nguồn vẫn là `overview` và `items`; không làm lại phép tính hay tác động nội dung Sheets.

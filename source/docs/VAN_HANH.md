@@ -1,3 +1,7 @@
+## 20/10/2026 — Đối chiếu tên cột Excel nguồn và nghiệm thu giao diện PR #7
+
+Đã xác nhận từ nội dung file Excel gốc trên Google Drive cập nhật 20/10: cột E là `Loại VB`, không được lấy tên cột mô tả tùy tiện `Loại VB (HC/QPPL/BC)`. Không đổi giá trị `HC/QPPL/BC`. Kiểm ở Danh sách/popup (cùng EXCEL_SOURCE_COLUMNS hoặc ItemLayout) và cấu hình lịch sử. Hai card điều hướng có tổng chiều rộng không vượt 820px; chỉnh màu/hover/focus không làm ảnh hưởng phép tính hay source. Bộ lọc select dùng chữ placeholder mờ, Esc chỉ xóa lọc đúng cột sau chọn. Ô quyền sửa nổi trên điều khiển, guest read-only không xuất hiện editor. CI TypeScript/unit/Firebase emulator/Chrome bắt buộc PASS, sau merge theo dõi cả GitHub Pages build+deploy. Không xuất bản file HTML thử.
+
 ## 20/10/2026 — Quy trình nghiệm thu hai khu vực chính (PR #6)
 
 Khi đổi chrome, giữ nguồn chuẩn ở `source/src/app/App.tsx`, `source/src/styles/app.css`. Hai khu vực nguồn `overview/items` phải có thẻ chuyển rõ, không thể hiện thêm heading trùng và banner tự cập nhật. Phiên bản luôn nhìn thấy cho khách và admin; nút đăng nhập/cài đặt, phân quyền, các thao tác thật trong Tài khoản/Nguồn vẫn phải hoạt động. Không loại nhầm `unknown-note` cục bộ của báo cáo: chỉ dòng cảnh báo toàn trang không phân loại NQ/BC bị ẩn.
