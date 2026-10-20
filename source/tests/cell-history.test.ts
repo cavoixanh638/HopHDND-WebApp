@@ -18,3 +18,14 @@ describe('Latest saved history for exactly one data cell',()=>{
     expect(events[0].changes.note).toBe('Ghi chú cũ');
   });
 });
+
+
+describe('History action uses immediate shared tooltip',()=>{
+  it('provides a delegated quick hint instead of the delayed browser title',async()=>{
+    const {CellHistoryAction}=await import('../src/components/CellHistoryAction');
+    const node=CellHistoryAction({label:'Hồ sơ 01',onClick:()=>{}});
+    expect(node.props['data-quick-tooltip']).toBe('Xem lần sửa gần nhất');
+    expect(node.props.title).toBeUndefined();
+    expect(node.props['aria-label']).toContain('Hồ sơ 01');
+  });
+});

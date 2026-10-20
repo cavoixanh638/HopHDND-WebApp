@@ -1,21 +1,23 @@
+import {outsideCellTooltipPosition} from './TooltipPlacement';
+
 /** One immediate editing hint for all authorized source cells (including popup).
  * Event delegation and a manual popover avoid browser title delay and per-row
  * event handlers. Popover is in the top layer above modal dialogs.
  */
-const WIDTH=112,HEIGHT=26;
+const WIDTH=112,HISTORY_WIDTH=182,HEIGHT=26;
 let tooltip:HTMLDivElement|null=null;
-let active:HTMLTableCellElement|null=null;
+let active:HTMLElement|null=null;
 let refs=0;
 let keyboard=false;
 export function editTooltipPosition(rect:Pick<DOMRect,'left'|'right'|'top'|'bottom'>,
   vw:number,vh:number):{left:number;top:number}{
-  const left=Math.max(6,Math.min((rect.left+rect.right)/2-WIDTH/2,Math.max(6,vw-WIDTH-6)));
-  const above=rect.top-HEIGHT-6;
-  const top=above>=6?above:rect.bottom+6;
-  return {left:Math.round(left),top:Math.round(Math.max(6,Math.min(top,vh-HEIGHT-6)))};
+  return outsideCellTooltipPosition(rect,vw,vh,WIDTH,HEIGHT);
 }
-function fromTarget(target:EventTarget|null):HTMLTableCellElement|null{
+function fromTarget(target:EventTarget|null):HTMLElement|null{
   if(!(target instanceof Element))return null;
+  const history=target.closest('button.cell-history-action[data-quick-tooltip]');
+  if(history instanceof HTMLButtonElement&&
+    history.closest('table.item-data-table,table.report-detail-grid'))return history;
   const td=target.closest('td.editable-cell');
   return td instanceof HTMLTableCellElement&&
     !!td.closest('table.item-data-table,table.report-detail-grid')?td:null;
@@ -26,23 +28,28 @@ function hide():void{
   active=null;keyboard=false;
   if(tooltip?.matches(':popover-open'))tooltip.hidePopover();
 }
-function show(td:HTMLTableCellElement,focus:boolean):void{
+function show(target:HTMLElement,focus:boolean):void{
   if(!tooltip)return;
-  if(active===td){
-    if(focus&&!keyboard){td.setAttribute('aria-describedby',tooltip.id);keyboard=true;}
+  if(active===target){
+    if(focus&&!keyboard){target.setAttribute('aria-describedby',tooltip.id);keyboard=true;}
     return;
   }
   hide();
-  active=td;keyboard=focus;
-  const pos=editTooltipPosition(td.getBoundingClientRect(),window.innerWidth,window.innerHeight);
+  active=target;keyboard=focus;
+  const text=target.getAttribute('data-quick-tooltip')||'Bấm để sửa';
+  const width=target.classList.contains('cell-history-action')?HISTORY_WIDTH:WIDTH;
+  tooltip.textContent=text;
+  tooltip.style.setProperty('--edit-tooltip-width',width+'px');
+  const pos=outsideCellTooltipPosition(target.getBoundingClientRect(),
+    window.innerWidth,window.innerHeight,width,HEIGHT);
   tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
-  if(focus)td.setAttribute('aria-describedby',tooltip.id);
+  if(focus)target.setAttribute('aria-describedby',tooltip.id);
   tooltip.showPopover();
 }
 function over(event:PointerEvent):void{
   if(event.pointerType==='touch')return;
-  const td=fromTarget(event.target);
-  if(td&&!(event.target instanceof Element&&event.target.closest('.cell-history-action')))show(td,false);
+  const element=fromTarget(event.target);
+  if(element)show(element,false);
 }
 function out(event:PointerEvent):void{
   if(fromTarget(event.target)!==active)return;

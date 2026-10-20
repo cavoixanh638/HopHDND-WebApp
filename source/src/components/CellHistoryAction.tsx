@@ -2,7 +2,7 @@
 export function CellHistoryAction({label,onClick,tooltip='Xem lần sửa gần nhất'}:{
   label:string;onClick:()=>void;tooltip?:string;
 }){
-  return <button type="button" className="cell-history-action" title={tooltip}
+  return <button type="button" className="cell-history-action" data-quick-tooltip={tooltip}
     aria-label={tooltip+' · '+label}
     onClick={event=>{event.stopPropagation();onClick();}}>
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none"

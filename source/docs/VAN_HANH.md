@@ -1,3 +1,7 @@
+## 20/10/2026 — Vệ sinh phần đầu Danh sách và định vị tooltip (PR #5)
+
+Giữ tách mã GitHub (nhánh + PR + CI) và phát hành thẳng GitHub Pages chính sau merge, không cấp file HTML thử. Về bố cục: page title chỉ một lần, số nội dung sát lựa chọn cột, cảnh báo nguồn rút gọn nhưng không xóa; GID/reset nằm ở trang tài khoản/nguồn. Tooltips dùng chung helper tính vị trí ngoài ô, đọc rect khi đổi ô, không dùng pointermove hoặc CSS `body:has`. Không bổ sung quyền ghi nguồn. Sau deploy luôn nghiệm thu Chrome cả người sửa/admin và khách. Trạng thái CI [#39423111683](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39423111683) PASS.
+
 ## 20/10/2026 — Điều chỉnh giao diện trực tiếp tại GitHub Pages
 
 Bản sửa PR #4 gom popup khách thành bảng đọc/lọc cột; bỏ công cụ kỹ thuật và tìm kiếm trùng, căn tên bảng giữa. Tooltip báo cáo tránh che số bằng một lần đọc rect khi đổi ô; tooltip sửa dùng singleton manual popover xuất hiện ngay, popup được top-layer hỗ trợ; dropdown có viền+mũi tên, CSS không thêm observer. Kiểm thử đúng workflow Verify PR và Chrome smoke; xuất bản tự động qua `main` sau merge, không phát hành HTML thử riêng. Không ghi Firebase/Excel production. Các bằng chứng CI ghi [CURRENT_STATE](CURRENT_STATE.md).

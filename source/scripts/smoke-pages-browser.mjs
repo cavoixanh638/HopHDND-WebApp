@@ -201,6 +201,25 @@ try{
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
+  const listHeadingAndLines=await evaluate(`(()=>{
+    const card=document.querySelector('.item-data-region .card-header');
+    const title=document.querySelector('.page-heading h1');
+    const headers=[...document.querySelectorAll('.item-heading-row th')];
+    const first=headers[0];
+    const label=first?.querySelector('.column-heading-label');
+    const filter=document.querySelector('.item-column-filter-row th');
+    const td=document.querySelector('.item-data-table tbody td');
+    const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
+    return {ok:!!card&&title?.textContent==='Danh sách làm việc'&&
+      !card.querySelector('h3')&&!!card.querySelector('.item-list-summary')&&
+      !card.querySelector('.status-pill')&&headers.length>=10&&
+      getComputedStyle(label).textAlign==='center'&&
+      thinLine(first)==='1px'&&thinLine(filter)==='1px'&&thinLine(td)==='1px',
+      heading:title?.textContent,headers:headers.length,
+      align:label?getComputedStyle(label).textAlign:null,
+      widths:[thinLine(first),thinLine(filter),thinLine(td)]};
+  })()`);
+  if(!listHeadingAndLines.ok)throw Error('List header or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
   // Sorting is now edit-mode only. The viewer/anonymous guest must not
   // expose a sorting button or activate sort via the header itself.
   const viewerSortBlocked=await evaluate(`(()=>{
@@ -222,14 +241,39 @@ try{
     let shown=false,hidden=false;
     try{
       td.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+      const source=td.getBoundingClientRect(),bubble=hint.getBoundingClientRect();
+      const overlap=Math.max(0,Math.min(source.right,bubble.right)-Math.max(source.left,bubble.left))*
+        Math.max(0,Math.min(source.bottom,bubble.bottom)-Math.max(source.top,bubble.top));
       shown=hint.matches(':popover-open')&&getComputedStyle(hint).display==='flex'&&
-        hint.textContent==='Bấm để sửa'&&!td.hasAttribute('title');
+        hint.textContent==='Bấm để sửa'&&!td.hasAttribute('title')&&overlap===0;
       td.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
       hidden=!hint.matches(':popover-open');
     }finally{td.classList.remove('editable-cell');}
     return {ok:shown&&hidden,shown,hidden};
   })()`);
   if(!instantEditCue.ok)throw Error('Immediate edit tooltip regression: '+JSON.stringify(instantEditCue));
+  // Emulate a visible history action without modifying guest permissions.
+  // The shared hint should immediately switch its label and remain outside.
+  const historyHint=await evaluate(`(()=>{
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const tip=document.getElementById('edit-shared-tooltip');
+    if(!td||!tip)return false;
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='cell-history-action';
+    btn.dataset.quickTooltip='Xem lần sửa gần nhất';
+    td.append(btn);
+    try {
+      btn.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+      const a=tip.getBoundingClientRect(),b=btn.getBoundingClientRect();
+      const overlap=Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*
+        Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+      return tip.matches(':popover-open')&&tip.textContent==='Xem lần sửa gần nhất'&&overlap===0;
+    }finally{
+      btn.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
+      btn.remove();
+    }
+  })()`);
+  if(!historyHint)throw Error('Quick history tooltip must not obscure its action');
   const cellAlignment=await evaluate(`(()=>{
     const regular=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
     const long=document.querySelector('.item-data-table tbody td[data-col-key="content"]');

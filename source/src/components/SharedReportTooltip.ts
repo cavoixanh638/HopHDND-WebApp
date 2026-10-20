@@ -1,10 +1,12 @@
+import {outsideCellTooltipPosition} from './TooltipPlacement';
+
 /**
  * Single pre-mounted tooltip shared by all report count cells.
  *
  * Browser A/B (36 real Chrome pointer moves x 2, 7,976 DOM nodes) found CSS
  * body:has()+anchor positioning costs ~32ms layout and ~10.7ms style per sweep.
  * Delegated pointerover reads one cell rect only when changing target, never changes text,
- * reuses one node and updates position only when moving to a DIFFERENT cell.
+ * places the bubble diagonally to the right, outside the hovered count.
  * Pointer paths do not mutate aria-describedby (accessibility tree churn).
  */
 const SELECTOR='button.count-drill';
@@ -32,11 +34,7 @@ function hide():void {
 /** Position outside the source count: above, or below near the viewport top. */
 export function reportTooltipPosition(rect:Pick<DOMRect,'left'|'right'|'top'|'bottom'>,
   viewportWidth:number,viewportHeight:number):{left:number;top:number} {
-  const center=(rect.left+rect.right)/2;
-  const left=Math.max(6,Math.min(center-WIDTH/2,Math.max(6,viewportWidth-WIDTH-6)));
-  const above=rect.top-HEIGHT-8,below=rect.bottom+8;
-  const top=above>=6?above:below+HEIGHT+6<=viewportHeight?below:above;
-  return {left:Math.round(left),top:Math.round(Math.max(6,Math.min(top,viewportHeight-HEIGHT-6)))};
+  return outsideCellTooltipPosition(rect,viewportWidth,viewportHeight,WIDTH,HEIGHT);
 }
 function show(button:HTMLButtonElement,fromKeyboard:boolean):void {
   if(!tooltip)return;
