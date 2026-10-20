@@ -1,3 +1,11 @@
+## 20/10/2026 — Phát hành GitHub Pages trực tiếp (quy trình thay thế preview cũ)
+
+Sau khi mã nguồn trên branch được kiểm TypeScript, unit, Firebase emulator, Chrome mock và PR merge vào `main`, GitHub tự chạy `.github/workflows/publish-pages.yml`, build Pages từ `source/`, ghi `index.html` của trang chính; Pages triển khai commit tiếp theo. URL duy nhất gửi để nghiệm thu: https://cavoixanh638.github.io/HopHDND-WebApp/ . Không phát hành HTML preview riêng hay gửi người dùng file HTML tải về; các bài kiểm thử nội bộ vẫn bắt buộc.
+
+Lần chuyển đổi đầu tiên: backup `backup/before-direct-pages-publish-2026-10-20`; merge `d6734b1789f8f0494e50213e17a157d7bf96b569`; Build #39349869241 PASS; Pages #39350027217 PASS; commit root phát hành `c7517e0782d95fe82c3ee6b10b12cb18d0ae6876`. Khi muốn rollback, đối chiếu cả source/code/HTML, không tự khôi phục hay ghi dữ liệu nghiệp vụ. Các ghi chú preview trước ngày này giữ lại để tra cứu, không áp dụng cho phát hành mới.
+
+---
+
 ## 20/10/2026 — Mốc source PASS, đang chờ phát hành preview
 
 - Exact source `bb398c0d4acc3a828eb1d7f4cf75a06745b28c05` đã PASS Verify [#39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797). Các cải tiến tên bảng, màu ô theo từ, sort chỉ khi sửa, tooltip quyền sửa, căn giữa và lịch sử theo ô đã commit trên PR #3.

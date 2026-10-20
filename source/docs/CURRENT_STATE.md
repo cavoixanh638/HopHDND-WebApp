@@ -1,3 +1,10 @@
+## 20/10/2026 — Đã chuyển sang phát hành GitHub Pages chính, không dùng HTML preview
+
+- Theo yêu cầu mới, PR #3 đã merge vào `main` tại commit `d6734b1789f8f0494e50213e17a157d7bf96b569` từ PR head `bb82f727eb3a48ea6a2619d3c9aed4d04108d147`. Trước merge, sao lưu `main` thành `backup/before-direct-pages-publish-2026-10-20` từ `8026c7098166d62cb84b0c1981e2be51ec4ca1e1`.
+- GitHub Actions [Build #39349869241](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39349869241) **SUCCESS**; workflow tạo `main:index.html` mới tại `c7517e0782d95fe82c3ee6b10b12cb18d0ae6876`; [Pages Deploy #39350027217](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39350027217) **SUCCESS**. Root HTML được đối chiếu chứa dấu chức năng `cell-history-action`, `report-title-accent`, `cell-highlights-editor`, `Bấm để sửa` và `report-grid-modal`.
+- Đường sử dụng chính: https://cavoixanh638.github.io/HopHDND-WebApp/ . Không tạo HTML preview độc lập cho các yêu cầu tiếp theo. Giữ CI browser smoke, unit/emulator/typecheck ở hậu trường; không tạo artifact HTML downloadable. Không thay Excel/Firebase Rules, không xác nhận quyền đăng nhập thật hoặc UX tại máy Windows của người dùng khi chưa kiểm được.
+- Hai workflow publish preview cũ đã nghỉ sử dụng, lưu được trong Git history/backup. Các mục trạng thái PR #3 “Draft/chưa merge/chưa publish” phía dưới là **lịch sử trước 20/10**, không còn là trạng thái hiện hành.
+
 ## 20/10/2026 — Sáu cải tiến bảng và popup, PR #3 (mã đã kiểm, chưa phát hành)
 
 **Trạng thái có bằng chứng:** mã trên nhánh `feat/saved-views-approval-lock-filters-2026-10-16`; exact SHA `bb398c0d4acc3a828eb1d7f4cf75a06745b28c05` đã PASS Verify [#39296834797](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39296834797), gồm TypeScript, unit, Firebase emulator, build trang độc lập, Chrome smoke dùng mock Sheets. Các bước trước đã PASS tại #39293831656, #39294418834, #39295256801, #39295618460, #39296061634. **Chưa phát hành exact SHA mới ra preview/current hay site chính, chưa nghiệm thu Chrome/Windows của người dùng, chưa ghi Excel/Firebase production.**

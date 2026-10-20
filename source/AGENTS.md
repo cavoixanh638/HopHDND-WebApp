@@ -1,5 +1,14 @@
 # Hướng dẫn làm việc
 
+## Quy trình phát triển và phát hành hiện hành — 20/10/2026
+
+- **Chỉ làm mã nguồn trên GitHub và xem kết quả ở GitHub Pages chính:** https://cavoixanh638.github.io/HopHDND-WebApp/ . Không tạo, gửi hay phát hành các đường dẫn HTML kiểm thử/preview riêng cho người dùng. Những preview cũ chỉ là tài liệu lịch sử, không phải luồng phát hành.
+- Phát triển bằng branch + PR, kiểm thử TypeScript/unit/Firebase emulator/Chrome với dữ liệu giả trước khi merge. Sau khi CI PASS, merge có kiểm tra và để `.github/workflows/publish-pages.yml` tự build từ source và cập nhật `main:index.html`. Bản build HTML trong CI là sản phẩm kỹ thuật bắt buộc cho Pages, **không phải file HTML thử gửi người dùng**.
+- Giữ bản backup trước thay đổi lớn, theo dõi **cả workflow publish source lẫn Pages deploy** PASS, sau đó kiểm mã/marker trong root HTML. Không tự triển khai Firebase Rules hay ghi nguồn Excel/Firebase chỉ vì cập nhật giao diện.
+- PR #3 đã merge vào main trong ngày 20/10/2026; các ghi chú lịch sử “không merge PR #3” bên dưới áp dụng **cho giai đoạn trước ngày này**, không còn là trạng thái hiện tại.
+
+
+
 - Người dùng là chỉ huy; parent agent điều phối tổng thể, Luna xử lý phần việc đơn giản được giao. Không tự mở rộng phạm vi hoặc diễn giải kế hoạch thành quyền ghi dữ liệu sản xuất.
 - Đọc theo nhiệm vụ: bắt đầu với `docs/CURRENT_STATE.md` nếu cần tình trạng; tra `docs/FEATURES.md` theo Fxx; đọc `docs/SYSTEM.md` khi đổi nghiệp vụ; đọc `docs/ARCHITECTURE.md`/`docs/API.md` khi đổi luồng dữ liệu hoặc API; dùng `docs/REPO_MAP.md` để tìm mã. Chỉ đọc sâu phần liên quan.
 - Sửa nguồn chuẩn và tài liệu liên quan; không sửa artifact build thay cho nguồn. Giữ tương thích mã/format legacy khi yêu cầu; không tự ánh xạ giá trị mơ hồ.
