@@ -1130,3 +1130,18 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   font:600 11px/1.2 "Segoe UI",system-ui,sans-serif;white-space:nowrap;
   box-shadow:0 2px 6px rgba(10,33,22,.13);contain:layout style paint;
 }
+
+/* The working list has a single page heading; keep functional warnings and
+   source refresh, but avoid large gaps or repeated technical banner rows. */
+.app-shell.wide-table-page:not(.settings-page) .nav-tabs {
+  margin-top:12px;margin-bottom:14px;
+}
+.app-shell.wide-table-page:not(.settings-page) .page-heading {
+  margin-bottom:11px;min-height:0;
+}
+.app-shell .source-warnings {
+  padding:6px 11px;margin:5px 0 7px;background:#f2f7f3;
+  border-color:#d6e5dc;color:#536b5f;font-size:11px;
+}
+.app-shell .source-warnings summary {cursor:pointer;font-weight:550;}
+.app-shell .source-warnings[open] {padding:10px 13px;}
