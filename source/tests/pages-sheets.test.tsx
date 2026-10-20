@@ -163,7 +163,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.canEditCell(id,'content')).toBe(false);
   });
   it('allows guest drafts only in granted cells, retains them and never saves content or common configuration',async()=>{
-    render();respond();await settle();let list=nodes(open('Sửa thử nội dung')).find(n=>n.type===ItemList);const id=list.props.items[0].recordId;
+    render();respond();await settle();let list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);const id=list.props.items[0].recordId;
     expect(list.props.allowLayout).toBe(false);expect(list.props.canEditCell(id,'note')).toBe(true);expect(list.props.canEditCell(id,'content')).toBe(false);
     list.props.onUpdate(id,{content:'forbidden'});list=nodes(render()).find(n=>n.type===ItemList);expect(list.props.drafts).toEqual({});
     list.props.onUpdate(id,{note:'Nháp thử'});list=nodes(render()).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nháp thử');
@@ -185,7 +185,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
   });
   it('keeps the last Sheets snapshot when a subsequent GViz read fails',async()=>{
-    render();respond();await settle();render();button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
+    render();respond();await settle();render();button(render(),'Đăng nhập').props.onClick();button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
     const tree=open('Danh sách các ND trình HĐND'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
