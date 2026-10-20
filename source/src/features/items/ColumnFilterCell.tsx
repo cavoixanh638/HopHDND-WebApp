@@ -22,15 +22,26 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
 }){
   const choices=configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue);
   const compact=field==='displayCode'||field==='stt';
+  const clearOnEscape=(event:{key:string;preventDefault:()=>void;stopPropagation:()=>void})=>{
+    if(event.key==='Escape'&&value){
+      event.preventDefault();
+      event.stopPropagation();
+      onChange('');
+    }
+  };
   return <th className={'item-column-filter-cell '+(value?'has-filter':'')+(compact?' compact-filter':'')} scope="col" data-filter-key={field}>
     <div className="item-filter-input-wrap">
-      {choices?<select aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`} value={value} onChange={event=>onChange(event.currentTarget.value)}>
+      {choices?<select aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
+        className={value?'selected-filter-value':'filter-placeholder'}
+        value={value} onChange={event=>onChange(event.currentTarget.value)}
+        onKeyDown={clearOnEscape}>
         <option value="">Chọn để lọc</option>
         {choices.map(option=><option value={option} key={option}>{option}</option>)}
         {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
       </select>:<input aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
         type="search" autoComplete="off" spellCheck={false} placeholder={compact?'':'Tìm kiếm'}
-        value={value} onChange={event=>onChange(event.currentTarget.value)}/>}
+        value={value} onChange={event=>onChange(event.currentTarget.value)}
+        onKeyDown={clearOnEscape}/>}
       {value&&<button type="button" className="item-filter-clear" aria-label={`Xóa tìm kiếm cột ${label}`} title="Xóa tìm kiếm" onClick={()=>onChange('')}>×</button>}
     </div>
   </th>;

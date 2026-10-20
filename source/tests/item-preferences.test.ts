@@ -21,7 +21,7 @@ describe('Bố trí cột danh sách', () => {
     expect(EXCEL_SOURCE_COLUMNS).toHaveLength(15);
     expect(layout.columns.map(column=>column.key)).toEqual(expected);
     expect(layout.columns.map(column=>column.label)).toEqual([
-      'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB (HC/QPPL/BC)',
+      'ID','STT','Nội dung trình','Sở, ngành chủ trì','Loại VB',
       'Cấp Thành ủy cho ý kiến','Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
       'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB','Phòng chuyên môn',
       'Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Ghi chú']);
@@ -30,6 +30,15 @@ describe('Bố trí cột danh sách', () => {
     expect(layout.columns.filter(c=>c.visible)).toHaveLength(15);
     for(const key of ['type','partyLevel','progressParty','specificProgress'])
       expect(layout.columns.find(c=>c.key===key)?.visible).toBe(true);
+  });
+  it('migrates old E label but preserves explicit custom labels',()=>{
+    const old=defaultItemLayout();
+    const column=old.columns.find(c=>c.key==='type')!;
+    column.label='Loại VB (HC/QPPL/BC)';
+    column.renamed=true;
+    expect(validateItemLayout(old).columns.find(c=>c.key==='type')?.label).toBe('Loại VB');
+    column.label='Loại văn bản riêng';
+    expect(validateItemLayout(old).columns.find(c=>c.key==='type')?.label).toBe('Loại văn bản riêng');
   });
   it('drops the obsolete History column from previous Firebase/shared or personal layouts safely',()=>{
     const old=defaultItemLayout();

@@ -3,7 +3,7 @@ import type { GroupField, StatusField, TextField } from './types';
 export const TEXT_FIELDS: readonly { key: TextField; label: string; editor: 'text' | 'textarea' | 'select' }[] = [
   { key: 'content', label: 'Nội dung trình', editor: 'textarea' },
   { key: 'department', label: 'Sở, ngành chủ trì', editor: 'select' },
-  { key: 'type', label: 'Loại VB (HC/QPPL/BC)', editor: 'select' },
+  { key: 'type', label: 'Loại VB', editor: 'select' },
   { key: 'partyLevel', label: 'Cấp Thành ủy cho ý kiến', editor: 'select' },
   { key: 'progressParty', label: 'Tiến độ xin ý kiến Thành ủy', editor: 'select' },
   { key: 'progressBuild', label: 'Tiến độ trình HĐND xây dựng NQ', editor: 'select' },

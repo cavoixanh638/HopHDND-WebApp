@@ -1,3 +1,14 @@
+## 20/10/2026 — Thẻ điều hướng nhỏ, nhãn Excel chuẩn, lọc Esc, editor nổi bật (PR #7)
+
+- Nguồn đã kiểm **trực tiếp** qua Google Drive: `Tổng hợp các ND kỳ chuyên đề và kỳ thường lệ cuối năm 2026.xlsx`, ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, cập nhật ngày 20/10. Cột E chính xác **Loại VB**, không kèm `(HC/QPPL/BC)`. Đổi `TEXT_FIELDS`, `EXCEL_SOURCE_COLUMNS`, test và từ điển dữ liệu. `validateItemLayout` chỉ sửa nhãn cũ chính xác khi nạp cấu hình, giữ nhãn do người dùng đặt khác.
+- Hai thẻ Báo cáo tổng hợp / Danh sách các ND trình HĐND rộng tổng tối đa 820px, căn giữa; tông xanh lam/xanh ngọc phân biệt hai khu vực, card active nền đậm tương phản, inactive nền sáng, focus rõ, mobile xếp dọc. Không thay routing `overview/items`.
+- Ô lọc dạng chọn hiển thị `Chọn để lọc` xám nhạt như placeholder input, khi có bộ lọc màu chữ đậm; bấm **Escape** khi select/input còn được focus để xóa đúng lọc của cột. `ColumnFilterCell` dùng chung cho Danh sách và popup. Chỉ xử lý khi có giá trị, không tác động phím Esc của popup nếu không có lọc.
+- Thay dấu hiệu editable: viền 1.5px màu xanh ngọc vừa + nền xanh nhạt **chỉ trên điều khiển thực được cấp quyền sửa** (CellPicker, nút Nội dung/Ghi chú, input), hover tăng phản hồi và focus có outline rõ; dấu bút nhỏ với nút text. Không tô toàn bộ nền ô, không làm mất màu tiến độ hoặc conditional highlight; guest read-only không hiển thị editor. Không gắn thêm listeners khi hover ô.
+- CI xác minh nguồn trước ghi tài liệu [#39446224592](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39446224592) PASS (TS, unit, Firebase emulator, Chrome). Bản sau docs/test cần CI cuối PASS trước merge. Chưa thử dữ liệu người dùng trên Windows, không ghi Firebase/Excel nguồn.
+
+---
+
+
 ## 20/10/2026 — Hai khối điều hướng chính và tối giản giao diện (PR #6)
 
 - Người dùng đã yêu cầu tiếp tục ghi thẳng GitHub thay vì bản HTML thử. Nhánh `fix/two-main-sections-compact-chrome-2026-10-20` / PR #6. Giữ quy trình backup → PR → Verify → merge → Pages.

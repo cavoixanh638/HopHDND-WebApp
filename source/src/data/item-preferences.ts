@@ -33,7 +33,7 @@ export const EXCEL_SOURCE_COLUMNS = [
   {key:'stt',label:'STT',width:70},
   {key:'content',label:'Nội dung trình',width:440},
   {key:'department',label:'Sở, ngành chủ trì',width:170},
-  {key:'type',label:'Loại VB (HC/QPPL/BC)',width:170},
+  {key:'type',label:'Loại VB',width:170},
   {key:'partyLevel',label:'Cấp Thành ủy cho ý kiến',width:190},
   {key:'progressParty',label:'Tiến độ xin ý kiến Thành ủy',width:210},
   {key:'progressBuild',label:'Tiến độ trình HĐND xây dựng NQ',width:210},
@@ -112,11 +112,14 @@ export function validateItemLayout(value:unknown):ItemLayout{
       }
       if(Object.keys(values).length>1000)throw new Error('Cột tự tạo vượt quá 1.000 dòng.');
     }
+    // Correct only the obsolete app-generated E label in older saved layouts.
+    const label=column.key==='type'&&column.label.trim()==='Loại VB (HC/QPPL/BC)'
+      ?'Loại VB':column.label.trim();
     return {...(base??{key:column.key,label:column.label,width:170,visible:true}),
       width:column.width,visible:column.visible,
       ...(isCustom?{origin:'custom' as const,values}:{ }),
       ...(column.removed?{removed:true}:{}),
-      ...(column.renamed?{renamed:true,label:column.label.trim()}:isCustom?{label:column.label.trim()}:{}),
+      ...(column.renamed?{renamed:true,label}:isCustom?{label}:{}),
       ...(column.kind?{kind}:{ }),
       // Excel fields take their dropdown options from catalog.options only.
       // Discard legacy per-column copies to avoid two competing value lists.
