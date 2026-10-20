@@ -216,14 +216,14 @@ try{
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   const listHeadingAndLines=await evaluate(`(()=>{
     const card=document.querySelector('.item-data-region .card-header');
-    const title=document.querySelector('.page-heading h1');
+    const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
     const headers=[...document.querySelectorAll('.item-heading-row th')];
     const first=headers[0];
     const label=first?.querySelector('.column-heading-label');
     const filter=document.querySelector('.item-column-filter-row th');
     const td=document.querySelector('.item-data-table tbody td');
     const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
-    return {ok:!!card&&title?.textContent==='Danh sách làm việc'&&
+    return {ok:!!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
       !card.querySelector('h3')&&!!card.querySelector('.item-list-summary')&&
       !card.querySelector('.status-pill')&&headers.length>=10&&
       getComputedStyle(label).textAlign==='center'&&
