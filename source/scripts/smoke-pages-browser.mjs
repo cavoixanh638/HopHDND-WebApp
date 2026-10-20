@@ -203,14 +203,17 @@ try{
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const centeredReportTitles=await evaluate(`(()=>{
     const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
-    if(titles.length!==5)return false;
-    return titles.every(h=>{
-      const head=h.closest('.card-header')?.getBoundingClientRect();
-      const text=h.getBoundingClientRect();
-      return !!head&&Math.abs((head.left+head.right)/2-(text.left+text.right)/2)<4;
+    const deltas=titles.map(h=>{
+      const header=h.closest('.card-header');
+      const head=header?.getBoundingClientRect(),text=h.getBoundingClientRect();
+      return {name:h.textContent?.slice(0,35),offset:head?Math.round(((text.left+text.right)-(head.left+head.right))/2):null,
+        display:header?getComputedStyle(header).display:null,align:getComputedStyle(h).textAlign,
+        headWidth:Math.round(head?.width??0),textWidth:Math.round(text.width)};
     });
+    return {ok:titles.length===5&&deltas.every(v=>v.offset!==null&&Math.abs(v.offset)<4),
+      count:titles.length,deltas};
   })()`);
-  if(!centeredReportTitles)throw Error('Report titles are no longer centered');
+  if(!centeredReportTitles.ok)throw Error('Report titles are no longer centered: '+JSON.stringify(centeredReportTitles));
   // Sorting is now edit-mode only. The viewer/anonymous guest must not
   // expose a sorting button or activate sort via the header itself.
   const viewerSortBlocked=await evaluate(`(()=>{
