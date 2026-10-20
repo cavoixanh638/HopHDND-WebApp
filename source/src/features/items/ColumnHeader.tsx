@@ -49,7 +49,7 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
       if(disabled||!event.altKey)return;
       const to=event.key==='ArrowLeft'?previousKey:event.key==='ArrowRight'?nextKey:undefined;
       if(to){event.preventDefault();onMove(columnKey,to);}
-    }}><span className="column-heading-content"><span className="column-heading-label">{children}</span>
+    }}><span className={'column-heading-content'+(onSort?' has-sort':'')}><span className="column-heading-label">{children}</span>
       {onSort&&<button type="button" className={'column-sort-button'+(sortDirection?' active':'')}
         aria-label={'Sắp xếp cột '+(sortLabel??columnKey)+(sortDirection?(sortDirection==='asc'?', hiện tăng dần':', hiện giảm dần'):', chưa sắp xếp')}
         title={sortDirection==='asc'?'Đang tăng dần · bấm để giảm dần':sortDirection==='desc'?'Đang giảm dần · bấm để trở về thứ tự nguồn':'Sắp xếp tăng dần'}

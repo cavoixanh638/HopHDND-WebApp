@@ -1009,19 +1009,10 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 
 
 
-/* Edit-only affordance: no observers, per-cell listeners, layout shifts or
-   changes to semantic row/status background colors. Native title is the tooltip. */
+/* Edit permission is signaled by the dropdown control or instant tooltip.
+   Do not outline every editable cell: this crowds dense grids. */
 .item-data-table tbody td.editable-cell,
-.report-detail-grid tbody td.editable-cell {
-  box-shadow:inset 2px 0 0 #91c5ae;
-  cursor:pointer;
-}
-.item-data-table tbody td.editable-cell:hover,
-.report-detail-grid tbody td.editable-cell:hover,
-.item-data-table tbody td.editable-cell:focus-within,
-.report-detail-grid tbody td.editable-cell:focus-within {
-  box-shadow:inset 3px 0 0 #238061;
-}
+.report-detail-grid tbody td.editable-cell {cursor:pointer;}
 .item-data-table tbody td.editable-cell input,
 .report-detail-grid tbody td.editable-cell input {cursor:text;}
 .item-data-table tbody td .cell-value-button,
