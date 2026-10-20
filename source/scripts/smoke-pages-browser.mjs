@@ -136,7 +136,7 @@ try{
   await send('Fetch.enable',{patterns:[{urlPattern:'*docs.google.com/spreadsheets/*/gviz/tq*',requestStage:'Request'}]});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
-  const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách nội dung'));if(!b)return false;b.click();return true})()");
+  const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
   // This test intentionally blocks real Firebase. Keep normal first paint gated,
   // then explicitly opt in to temporary source viewing for isolated Sheets checks.
@@ -201,16 +201,29 @@ try{
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
+  const mainSectionCards=await evaluate(`(()=>{
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
+    const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
+    const boxes=cards.map(el=>el.getBoundingClientRect());
+    return {ok:cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
+      labels[1]==='Danh sách các ND trình HĐND'&&
+      boxes.every(box=>box.width>=200&&box.height>=60)&&
+      cards.filter(el=>el.classList.contains('active')).length===1&&
+      !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
+      labels,widths:boxes.map(box=>Math.round(box.width))};
+  })()`);
+  if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   const listHeadingAndLines=await evaluate(`(()=>{
     const card=document.querySelector('.item-data-region .card-header');
-    const title=document.querySelector('.page-heading h1');
+    const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
     const headers=[...document.querySelectorAll('.item-heading-row th')];
     const first=headers[0];
     const label=first?.querySelector('.column-heading-label');
     const filter=document.querySelector('.item-column-filter-row th');
     const td=document.querySelector('.item-data-table tbody td');
     const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
-    return {ok:!!card&&title?.textContent==='Danh sách làm việc'&&
+    return {ok:!!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
       !card.querySelector('h3')&&!!card.querySelector('.item-list-summary')&&
       !card.querySelector('.status-pill')&&headers.length>=10&&
       getComputedStyle(label).textAlign==='center'&&
@@ -328,7 +341,8 @@ try{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
     return !!document.querySelector('.guest-signin')&&
       !document.querySelector('.options-menu')&&!document.querySelector('.list-view-box')&&
-      !document.querySelector('.version')&&
+      !!document.querySelector('.version')&&
+      !document.querySelector('.brand')&&!document.querySelector('.demo-banner')&&
       !document.querySelector('.settings-mode-bar')&&
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
@@ -365,21 +379,27 @@ try{
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
-    const selectors=['.topbar','.nav-tabs','.demo-banner'];
+    const selectors=['.topbar','.nav-tabs'];
     return selectors.map(selector=>{
       const bounds=document.querySelector(selector)?.getBoundingClientRect();
       return bounds?{left:bounds.left,width:bounds.width}:null;
     });
   })()`);
   const originalGeometry=await sharedGeometry();
-  for(const [tab,ready] of [['Tổng quan','Theo dõi tiến độ'],['Danh sách nội dung','Danh sách làm việc']]){
+  for(const [tab,ready] of [['Báo cáo tổng hợp','Báo cáo tổng hợp'],['Danh sách các ND trình HĐND','Danh sách các ND trình HĐND']]){
     const clicked=await evaluate(`(()=>{
-      const button=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent===${JSON.stringify(tab)});
+      const button=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.querySelector('.section-card-title')?.textContent===${JSON.stringify(tab)});
       button?.click();return !!button;
     })()`);
     if(!clicked)throw Error('Missing navigation tab '+tab);
-    await eventually("document.querySelector('.page-heading h1')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
-    if(tab==='Tổng quan'){
+    await eventually("document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
+    const leftover=await evaluate(`(()=>{
+      const elements=[...document.querySelectorAll('.page-heading,.demo-banner,main > .unknown-note')];
+      return {active:document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent,
+        elements:elements.map(el=>({class:el.className,text:el.textContent?.slice(0,100),parent:el.parentElement?.className}))};
+    })()`);
+    if(leftover.elements.length)throw Error('Redundant report/list title, source banner or unclassified notice visible: '+JSON.stringify(leftover));
+    if(tab==='Báo cáo tổng hợp'){
       const reports=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('table.report-table')];
         if(tables.length<2)return {ok:false,reason:'Missing report tables'};
@@ -709,15 +729,15 @@ try{
         throw Error('Page chrome shifted when switching '+tab+': '+JSON.stringify({geometry,originalGeometry}));
     }
   }
-  // Regression: a tab with custom width centers *all* top menus, source banner,
+  // Regression: a tab with custom width centers top controls, two section cards,
   // and page content on the same vertical edges, rather than keeping nav at x=0.
   const alignedCustomWidth=async(width)=>evaluate(`(()=>{
     const shell=document.querySelector('.app-shell');
     shell.style.setProperty('--page-content-width',${JSON.stringify(width+'px')});
-    const all=['.topbar','.demo-banner','.nav-tabs','main']
+    const all=['.topbar','.nav-tabs','main']
       .map(selector=>document.querySelector(selector)?.getBoundingClientRect());
     const expected=Math.min(window.innerWidth-40,${width});
-    const reference=all[3];
+    const reference=all[2];
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
       all.every(r=>Math.abs(r.left-reference.left)<=2&&Math.abs(r.width-reference.width)<=2)&&
       reference.left>=0&&reference.right<=window.innerWidth+1,

@@ -1,3 +1,11 @@
+## 20/10/2026 — Hai phần dữ liệu chính, hiển thị theo hai thẻ
+
+- Navigation cũ được thay bằng hai card bằng nhau (desktop) hoặc xếp dọc (mobile), với nhãn đúng **Báo cáo tổng hợp** và **Danh sách các ND trình HĐND**, có mô tả chức năng và trạng thái đang xem rõ ràng. Tab nguồn vẫn là `overview` và `items`; không làm lại phép tính hay tác động nội dung Sheets.
+- Người xem chỉ thấy phiên bản và nút Đăng nhập (khách)/Cài đặt (đăng nhập) trong thanh tiện ích tối giản; bỏ logo/brand, toolbar làm mới/sửa thử, banner Google Sheets, tiêu đề trang lặp và cảnh báo toàn trang `Có X nội dung chưa phân loại NQ/BC`. **Không xóa cảnh báo cục bộ trong báo cáo** về dữ liệu nguồn chưa chuẩn hóa, lỗi dữ liệu trong giao diện chỉnh sửa hoặc ngăn chặn thao tác nguy hiểm.
+- Giữ quyền cập nhật dữ liệu và cơ chế tự tải 60 giây; thao tác làm mới thủ công nằm tại Tài khoản/Nguồn, GID/khôi phục nguồn trong details chỉ ở phần quản lý. Thay đổi visual, không sửa Firebase Rules và Excel.
+- Kiểm thử TypeScript/unit/emulator/Chrome dùng mock Sheets ở [CI #39440476395](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39440476395). Không phát hành HTML preview riêng.
+
+
 ## 20/10/2026 — Danh sách thông thoáng (PR #5)
 
 - Nhãn cột Bảng dữ liệu căn giữa, kể cả nhãn cột tùy chỉnh; phân cách cả header/filter/body mảnh #cbdad1. Không dùng viền trái xanh làm dấu sửa; vẫn sử dụng dropdown có chevron và tooltip tức thì chỉ ở các ô có quyền.

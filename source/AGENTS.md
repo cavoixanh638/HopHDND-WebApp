@@ -50,3 +50,10 @@
 - Tiêu đề **cột** nguồn căn giữa theo mã cột dù đổi thứ tự; cả hàng nhãn/hàng lọc và data phải có vạch dọc mảnh. Sort ở mode sửa không được làm lệch chữ tiêu đề.
 - Không dùng màu viền trái của từng ô để báo sửa; quyền vẫn phải được kiểm backend, và class `editable-cell` chỉ kích hoạt tooltip ở ô được phép. Dropdown có viền/chevron khi có quyền.
 - Tooltip báo cáo và ô sửa dùng chung tính toán vị trí ngoài ô, ưu tiên hơi chếch phía phải, lật nếu sát mép; không che nguồn; không thêm hover-state React cho mỗi ô hoặc pointermove. Phép đo unit + Chrome smoke phải bắt lỗi tái phát.
+
+## Navigation chính thống nhất — 20/10/2026, PR #6
+
+- App có đúng 2 card chính `Báo cáo tổng hợp` / `Danh sách các ND trình HĐND`. Nhãn đầy đủ (không dùng nhãn ngắn cũ) cho cả guest/admin, nhấn card đổi page `overview`/`items`; focus/active/disabled rõ.
+- Ẩn brand/banner Sheets và heading trùng trên cả hai màn chính, chỉ giữ phiên bản và đường vào đăng nhập/cài đặt trên cùng. Nút làm mới dữ liệu ở account/source, GID và khôi phục nguồn trong details. Tuyệt đối không tắt polling 60 giây hoặc bỏ quyền truy cập tài khoản.
+- Bỏ cảnh báo **toàn trang** không phân loại NQ/BC; giữ cảnh báo nghiệp vụ nằm **bên trong bảng** về trạng thái chưa chuẩn hóa. Giữ nguyên tỷ lệ báo cáo, tổng số, màu trạng thái, quyền sửa và dữ liệu nguồn.
+- Trước merge/triển khai phải PASS TypeScript, unit, Firebase emulator, Chrome smoke cho đủ hai trang và có bằng chứng Deploy GitHub Pages. Khi thay test, không thay điều kiện theo cách bỏ kiểm tra cảnh báo có giá trị.

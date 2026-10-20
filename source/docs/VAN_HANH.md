@@ -1,3 +1,9 @@
+## 20/10/2026 — Quy trình nghiệm thu hai khu vực chính (PR #6)
+
+Khi đổi chrome, giữ nguồn chuẩn ở `source/src/app/App.tsx`, `source/src/styles/app.css`. Hai khu vực nguồn `overview/items` phải có thẻ chuyển rõ, không thể hiện thêm heading trùng và banner tự cập nhật. Phiên bản luôn nhìn thấy cho khách và admin; nút đăng nhập/cài đặt, phân quyền, các thao tác thật trong Tài khoản/Nguồn vẫn phải hoạt động. Không loại nhầm `unknown-note` cục bộ của báo cáo: chỉ dòng cảnh báo toàn trang không phân loại NQ/BC bị ẩn.
+
+CI bắt buộc xác nhận: hai thẻ có kích thước đầy đủ và chỉ một active, chuyển qua lại không làm dịch chuyển khung, các bảng và popup vẫn có thể dùng; truy cập trang nguồn, bộ kiểm Firebase và bản in không bị lỗi. Sau merge theo dõi **cả** Build and publish Pages và Pages deployment success; phiên bản chính tại https://cavoixanh638.github.io/HopHDND-WebApp/ . Không gửi HTML kiểm thử riêng; không ghi production Firebase/Excel.
+
 ## 20/10/2026 — Vệ sinh phần đầu Danh sách và định vị tooltip (PR #5)
 
 Giữ tách mã GitHub (nhánh + PR + CI) và phát hành thẳng GitHub Pages chính sau merge, không cấp file HTML thử. Về bố cục: page title chỉ một lần, số nội dung sát lựa chọn cột, cảnh báo nguồn rút gọn nhưng không xóa; GID/reset nằm ở trang tài khoản/nguồn. Tooltips dùng chung helper tính vị trí ngoài ô, đọc rect khi đổi ô, không dùng pointermove hoặc CSS `body:has`. Không bổ sung quyền ghi nguồn. Sau deploy luôn nghiệm thu Chrome cả người sửa/admin và khách. Trạng thái CI [#39423111683](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39423111683) PASS.

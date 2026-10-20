@@ -192,12 +192,34 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     '--table-font-family':tableFontStack(getReportFont(layout)),
     '--table-font-size':`${getReportFontSize(layout)}px`} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
-    {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar"><div className="brand"><div className="brand-mark">HĐ</div><div className="brand-text"><strong>Nội dung trình HĐND</strong><span>Danh mục · Phân công · Tiến độ</span></div></div><div className="top-actions">{!anonymousVisitor&&<span className="version">Bản {isFirebase?'0.7.1 · Thử tính năng':'0.6.2'}</span>}<button className="button ghost" title={workspace.loadedAt?`Đọc gần nhất: ${workspace.loadedAt}`:undefined} disabled={workspace.busy||common.busy} onClick={() => { void workspace.refresh(); void common.refresh(); }}>{anonymousVisitor?'Làm mới dữ liệu':isFirebase?'Đọc lại dữ liệu Sheets và cấu hình':'Đọc lại dữ liệu và danh mục từ Google'}</button>{anonymousVisitor?<>{guestMayEdit&&<button type="button" className="button ghost guest-edit" onClick={()=>setPage('items-customize')}>Sửa thử nội dung</button>}<button type="button" className="button ghost guest-signin" onClick={()=>setPage('connection')}>Đăng nhập</button></>:<details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary><div className="options-popover" aria-label="Các nhóm cài đặt">
-      <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
-      <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
-    </div></details>}</div></header>
-    <div className="demo-banner"><strong>{sourceLabel}</strong>{anonymousVisitor?' · Tự cập nhật mỗi 60 giây.':isDemo ? ' · Lưu chỉ giữ trong phiên thử; mở lại app sẽ dùng nguồn Sheets đã chọn.' : <> · Tự cập nhật mỗi 60 giây · <a href={configured.url} target="_blank" rel="noopener noreferrer">Mở bảng nguồn</a></>} {isFirebase&&!anonymousVisitor&&(page==='source'||page==='connection') && <> · GID <code>{configured.gid}</code> · <button type="button" className="button ghost" disabled={workspace.busy || dirtyCount > 0} onClick={() => {const original=parseSheetConfig(DEFAULT_SHEET_URL);clearSheetConfig();setConfigured(original);setRepository(new SheetsRepository(original));setLayoutMessage('Đã chọn lại nguồn mặc định của ứng dụng; đang tải lại dữ liệu.');}}>Dùng lại nguồn mặc định</button></>}</div>
-    {isFirebase&&!anonymousVisitor&&page!=='items'&&page!=='overview'&&<p className="muted">{firebase!.user?.isAnonymous?'Khách ẩn danh':firebase!.user?.email}{firebase!.isAdmin?' · Quản trị':''}{firebase!.editingLocked?' · Đang khóa sửa trên WebApp':''}{firebase!.emulator?' · KIỂM THỬ LOCAL, KHÔNG DÙNG FIREBASE THẬT':''}</p>}{viewerLabel&&<p className="muted">Đang dùng tài khoản Google: {viewerLabel}</p>}<nav className="nav-tabs" aria-label="Điều hướng">{([['overview', 'Tổng quan'], ['items', 'Danh sách nội dung']] as const).map(([key, title]) => <button disabled={editingPage} className={page === key ? 'active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => {setListFramePreview(null);setPage(key);}}>{title}</button>)}</nav>
+    {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
+      <div className="top-actions">
+        <span className="version">Bản {isFirebase?'0.7.1':'0.6.2'}</span>
+        {anonymousVisitor
+          ? <button type="button" className="button ghost guest-signin" onClick={()=>setPage('connection')}>Đăng nhập</button>
+          : <details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
+              <div className="options-popover" aria-label="Các nhóm cài đặt">
+                <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
+                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
+              </div>
+            </details>}
+      </div>
+    </header>
+    <nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
+      {([['overview','Báo cáo tổng hợp','Tổng hợp số liệu, tiến độ và trạng thái'],
+        ['items','Danh sách các ND trình HĐND','Tra cứu và cập nhật từng nội dung']] as const)
+        .map(([key,title,description])=><button type="button" key={key}
+          disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
+          aria-current={page===key?'page':undefined}
+          onClick={()=>{setListFramePreview(null);setPage(key);}}>
+          <span className="section-card-icon" aria-hidden="true">{key==='overview'?'▦':'▤'}</span>
+          <span className="section-card-copy">
+            <strong className="section-card-title">{title}</strong>
+            <small className="section-card-description">{description}</small>
+          </span>
+          <span className="section-card-state" aria-hidden="true">{page===key?'Đang xem':'Xem'}</span>
+        </button>)}
+    </nav>
     <main>
       {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">
         <span>Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.</span>
@@ -207,7 +229,20 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <span>Chưa đọc được bố cục đã lưu từ Firebase. Không tự áp dụng cấu hình mặc định.</span>
         <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
       </div>:<>
-      <div className="page-heading"><div>{page!=='items'&&<p className="eyebrow">TỔNG HỢP NỘI DUNG TRÌNH</p>}<h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page === 'overview' ? 'Theo dõi tiến độ' : page === 'items' ? 'Danh sách làm việc' : page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page === 'connection' ? (isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu') : page==='transfer'?'Nhập / Xuất Excel' : page === 'customize' ? 'Tùy chỉnh bảng báo cáo' : (page === 'items-customize'||page==='items-permissions'||page==='catalogs') ? 'Quản lý cột' : 'Theo dõi tiến độ'}</h1></div>{(workspace.busy||!workspace.loadedAt||page!=='items'&&page!=='overview')&&<span className="muted">{workspace.busy ? 'Đang đọc dữ liệu…' : workspace.loadedAt ? `Đọc thành công: ${workspace.loadedAt}` : 'Chưa đọc được dữ liệu'}</span>}</div>
+      {page!=='overview'&&page!=='items'&&<div className="page-heading"><div><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page==='connection'?(isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu'):page==='transfer'?'Nhập / Xuất Excel':page==='customize'?'Tùy chỉnh bảng báo cáo':'Quản lý cột'}</h1></div><span className="muted">{workspace.busy?'Đang đọc dữ liệu…':workspace.loadedAt?`Đọc thành công: ${workspace.loadedAt}`:'Chưa đọc được dữ liệu'}</span></div>}
+      {(page==='connection'||page==='source')&&<div className="account-source-actions">
+        <button type="button" className="button ghost" disabled={workspace.busy||common.busy}
+          onClick={()=>{void workspace.refresh();void common.refresh();}}>Làm mới dữ liệu</button>
+        {!anonymousVisitor&&isFirebase&&<details className="account-source-details">
+          <summary>Thông tin và khôi phục nguồn</summary>
+          <p>Mã trang tính: <code>{configured.gid}</code></p>
+          <button type="button" className="button ghost" disabled={workspace.busy||dirtyCount>0}
+            onClick={()=>{const original=parseSheetConfig(DEFAULT_SHEET_URL);clearSheetConfig();setConfigured(original);
+              setRepository(new SheetsRepository(original));setLayoutMessage('Đã chọn lại nguồn mặc định của ứng dụng; đang tải lại dữ liệu.');}}>
+            Dùng lại nguồn mặc định
+          </button>
+        </details>}
+      </div>}
       {!anonymousVisitor&&(['customize','items-customize','items-permissions','catalogs'].includes(page))&&<><nav className="settings-hub-tabs" aria-label="Nhóm chỉnh sửa chính">
         <button type="button" className={page==='customize'?'active':''} aria-current={page==='customize'?'page':undefined} onClick={event=>openOptions('customize',event)} disabled={!canCustomize}>Bảng thống kê</button>
         <button type="button" className={page!=='customize'?'active':''} aria-current={page!=='customize'?'page':undefined} onClick={event=>openOptions('items-customize',event)}>Danh sách dữ liệu</button>
@@ -229,7 +264,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đã sửa thử trên máy`: `${dirtyCount} nội dung đã sửa, chưa lưu vào ${isDemo?"dữ liệu mẫu":"file nguồn"}`}</strong><span> Phần sửa đang giữ trên trình duyệt này; báo cáo vẫn dùng dữ liệu từ nguồn.</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ giữ thay đổi thử trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Thử lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
       {page === 'overview' && <>
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang thực hiện', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
-        {kpis.unclassified > 0 && <p className="unknown-note">Có {kpis.unclassified} nội dung chưa phân loại NQ/BC. Vẫn có trong tổng và danh sách; chưa đưa vào hai bảng theo loại.</p>}
+        
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span></div>
         {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}
         {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.</p>}

@@ -1,3 +1,13 @@
+## 20/10/2026 — Hai khối điều hướng chính và tối giản giao diện (PR #6)
+
+- Người dùng đã yêu cầu tiếp tục ghi thẳng GitHub thay vì bản HTML thử. Nhánh `fix/two-main-sections-compact-chrome-2026-10-20` / PR #6. Giữ quy trình backup → PR → Verify → merge → Pages.
+- Hai mục dữ liệu cấp cao trở thành **hai card điều hướng lớn**: `Báo cáo tổng hợp` và `Danh sách các ND trình HĐND`, có biểu tượng, mô tả ngắn, trạng thái active/hover/focus rõ và tự xếp dọc ở điện thoại. Hai card hiển thị đồng nhất cho khách, người sửa, admin; vẫn khóa chuyển trang khi đang ở mode cấu hình như trước. Không thay dữ liệu hoặc phép tính.
+- Giảm chrome: bỏ logo `HĐ`/tên giới thiệu, phụ đề thương hiệu, nút làm mới/sửa thử đầu trang, toàn bộ banner Google Sheets/tự cập nhật, cùng tiêu đề phụ `TỔNG HỢP NỘI DUNG TRÌNH / Theo dõi tiến độ` ở hai màn chính. Bỏ **chỉ** cảnh báo toàn trang `Có X nội dung chưa phân loại NQ/BC` ở báo cáo (không đổi thống kê/giá trị; giữ cảnh báo trong từng bảng về trạng thái chưa chuẩn hóa). **Số phiên bản vẫn hiện cả khi khách**. Giữ nút Đăng nhập hoặc menu Cài đặt trên hàng tiện ích thu gọn.
+- Giữ tự đọc nguồn Sheets mỗi 60 giây khi trang hoạt động; nút `Làm mới dữ liệu` chuyển vào trang Tài khoản/Nguồn, `GID` và khôi phục nguồn được đặt trong phần `Thông tin và khôi phục nguồn` có thể mở; không xóa chức năng thật. Quyền sửa ô/khách không thay, bộ lọc và popup giữ nguyên.
+- Kiểm thử các vòng cho đến lúc đạt: [#39440476395](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39440476395) PASS (TypeScript, unit, Firebase emulator, Chrome smoke). Chrome bỏ kiểm tra nhầm `unknown-note` thuộc một bảng báo cáo, vẫn chặn cảnh báo `main > .unknown-note` mà người dùng muốn ẩn. **Lượt CI cuối sau tài liệu và số phiên bản cần xác minh lại trước merge.** Chưa khẳng định GitHub Pages đã cập nhật trước khi publish.
+
+---
+
 ## 20/10/2026 — Gọn Danh sách, tiêu đề cột, tooltip và phân cách (PR #5)
 
 - Nhánh `fix/list-header-tooltips-visual-2026-10-20`, PR #5. Trong Bảng dữ liệu (`ItemList`) nhãn tiêu đề A–O/cột tùy chỉnh căn giữa ngang với `ColumnHeader` giữ sort/resize hoạt động; nút sort tuyệt đối ở bên phải không làm lệch nhãn. Đường dọc hàng tiêu đề, hàng bộ lọc và ô dữ liệu rõ hơn rất nhẹ (`#cbdad1`, 1px), không tô đặc.
