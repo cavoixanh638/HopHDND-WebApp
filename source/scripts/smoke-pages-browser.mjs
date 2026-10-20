@@ -596,74 +596,19 @@ try{
         await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
           'Full-cell corner click failed: '+selector);
-        // Guests must have data read-only: no edit button (even disabled),
-        // no column configuration, no saved presets or column resize grips.
-        // Window width is a harmless local viewing preference, committed on blur/Enter.
+        // Guest popup is a table with column filters only, no technical toolbar actions.
         const reportGrid=await evaluate(`(()=>{
           const modal=document.querySelector('dialog.report-detail-modal[open]');
           const grid=modal?.querySelector('.report-detail-grid');
-          const columns=[...(grid?.querySelectorAll('thead tr:first-child th')??[])];
-          const rows=[...(grid?.querySelectorAll('tbody tr')??[])];
-          const text=modal?.textContent??'';
-          const buttons=[...(modal?.querySelectorAll('button')??[])];
-          const forbidden=buttons.filter(b=>/Chỉnh sửa nháp|Về chế độ xem|Cấu hình popup \\/ cột|Cấu hình cột riêng|Lưu cấu hình cột|Lưu mẫu mới|Giữ nháp trên máy/.test(b.textContent??''));
-          const width=modal?.querySelector('input[type="number"][aria-label="Độ rộng toàn popup (px)"]');
-          const readOnly=!!modal&&!modal.querySelector('.column-resizer,.report-grid-presets,.report-grid-settings,.cell-value-button,.custom-cell-input');
-          return {ok:!!modal&&!!grid&&columns.length>=6&&columns.length<16&&
-              rows.length>=1&&forbidden.length===0&&readOnly&&!!width&&
-              !modal.querySelector('input[type="range"]')&&
-              !!modal.querySelector('input[placeholder="Tìm mã, nội dung, tiến độ, sở…"]')&&
-              text.includes('nội dung trong ô báo cáo')&&!text.includes('Thử lưu lại vào Firebase'),
-            columns:columns.length,rows:rows.length,forbidden:forbidden.map(b=>b.textContent),
-            readOnly,hasNumericWidth:!!width};
+          const cols=grid?.querySelectorAll('thead tr:first-child th').length??0;
+          const rows=grid?.querySelectorAll('tbody tr').length??0;
+          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-actions,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.cell-value-button,.custom-cell-input');
+          return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!forbidden&&
+            !modal.querySelector('.report-grid-toolbar button,.report-grid-toolbar input')&&
+            !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select'),
+            cols,rows,forbidden:!!forbidden};
         })()`);
-        if(!reportGrid.ok)throw Error('Guest report grid exposes editing or hides numeric width: '+JSON.stringify(reportGrid));
-        if(selector==='.report-surface tbody td.report-total-col.report-clickable-cell'){
-          // Reopening a guest popup keeps the PERSONAL numeric window setting,
-          // without exposing edit/column-layout controls to anonymous viewers.
-          const persisted=await evaluate(`(()=>{
-            const d=document.querySelector('dialog.report-detail-modal[open]');
-            const grid=d?.querySelector('.report-detail-grid');
-            const cols=grid?.querySelectorAll('thead tr:first-child th').length;
-            const key=Object.keys(localStorage).find(k=>k.includes('hdnd.report-detail-grid.v1:'));
-            const prefs=key?JSON.parse(localStorage.getItem(key)):null;
-            const actual=d?.getBoundingClientRect().width;
-            return {ok:cols===10&&prefs?.dialogWidth===960&&Math.abs(actual-960)<3,
-              cols,stored:prefs?.dialogWidth,actual};
-          })()`);
-          if(!persisted.ok)throw Error('Guest popup numeric window width was not restored '+JSON.stringify(persisted));
-          console.log('GUEST_POPUP_WIDTH_REOPEN_PASS',JSON.stringify(persisted));
-        }
-        if(selector==='.report-surface tbody td.report-clickable-cell:not(.report-total-col)'){
-          // Use a real Chromium input operation to prove individual keystrokes
-          // do NOT resize the popup: apply only after Enter/blur.
-          const initial=await evaluate(`(()=>{
-            const d=document.querySelector('dialog.report-detail-modal[open]');
-            const input=d?.querySelector('input[aria-label="Độ rộng toàn popup (px)"]');
-            if(!d||!input)return null;
-            input.focus();input.select();
-            return {width:d.getBoundingClientRect().width,value:input.value};
-          })()`);
-          if(!initial||initial.width<1000)throw Error('Numeric popup width field missing '+JSON.stringify(initial));
-          await send('Input.insertText',{text:'960'});
-          await eventually("document.querySelector('dialog.report-detail-modal[open] input[aria-label=\"Độ rộng toàn popup (px)\"]')?.value==='960'",
-            'Numeric width field did not accept typing');
-          const notYetChanged=await evaluate(`(()=>{
-            const d=document.querySelector('dialog.report-detail-modal[open]');
-            return {width:d?.getBoundingClientRect().width};
-          })()`);
-          if(Math.abs(notYetChanged.width-initial.width)>3)
-            throw Error('Typing immediately resized popup without Enter '+JSON.stringify({initial,notYetChanged}));
-          await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
-          await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
-          await eventually(`(()=>{
-            const d=document.querySelector('dialog.report-detail-modal[open]');
-            const key=Object.keys(localStorage).find(k=>k.includes('hdnd.report-detail-grid.v1:'));
-            const saved=key?JSON.parse(localStorage.getItem(key)):null;
-            return !!d&&Math.abs(d.getBoundingClientRect().width-960)<3&&saved?.dialogWidth===960;
-          })()`, 'Pressing Enter did not commit/persist numeric whole-popup width');
-          console.log('GUEST_POPUP_DEFERRED_NUMERIC_WIDTH_PASS');
-        }
+        if(!reportGrid.ok)throw Error('Anonymous report grid controls regression: '+JSON.stringify(reportGrid));
         if(selector!=='.report-surface tfoot td.report-total-col.report-clickable-cell'){
           await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
           await eventually("!document.querySelector('dialog.report-detail-modal[open]')",

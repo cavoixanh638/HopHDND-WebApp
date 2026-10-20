@@ -25,7 +25,7 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
   return <th className={'item-column-filter-cell '+(value?'has-filter':'')+(compact?' compact-filter':'')} scope="col" data-filter-key={field}>
     <div className="item-filter-input-wrap">
       {choices?<select aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`} value={value} onChange={event=>onChange(event.currentTarget.value)}>
-        <option value="">Tất cả</option>
+        <option value="">Chọn để lọc</option>
         {choices.map(option=><option value={option} key={option}>{option}</option>)}
         {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
       </select>:<input aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
