@@ -194,7 +194,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
       <div className="top-actions">
-        <span className="version">Bản {isFirebase?'0.7.1 · Thử tính năng':'0.6.2'}</span>
+        <span className="version">Bản {isFirebase?'0.7.1':'0.6.2'}</span>
         {anonymousVisitor
           ? <button type="button" className="button ghost guest-signin" onClick={()=>setPage('connection')}>Đăng nhập</button>
           : <details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
