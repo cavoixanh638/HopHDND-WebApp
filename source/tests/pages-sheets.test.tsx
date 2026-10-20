@@ -32,7 +32,9 @@ const payload=(note='Nguồn Sheets')=>({status:'ok',table:{cols:Array.from({len
 const settle=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 let scripts:any[],firebase:FirebaseController;
 function render(){h.begin();const tree=App({firebase,TransferPanel:ExcelTransferPanel});h.flush();return tree;}
-function button(tree:any,label:string){const result=nodes(tree).find(n=>n.type==='button'&&text(n)===label);expect(result,`button ${label}`).toBeDefined();return result;}
+function button(tree:any,label:string){const result=nodes(tree).find(n=>n.type==='button'&&
+  (text(n)===label||nodes(n).some(child=>child.props?.className==='section-card-title'&&text(child)===label)));
+  expect(result,`button ${label}`).toBeDefined();return result;}
 function open(label:string){button(render(),label).props.onClick({currentTarget:{closest:()=>null}});return render();}
 function respond(note?:string){const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];(window as any)[name](payload(note));}
 beforeEach(()=>{
@@ -48,7 +50,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('continues fetching Sheets but never paints an unsaved fallback layout while Firebase is unavailable',async()=>{
     firebase.ready=false;firebase.connected=false;firebase.error='Auth unavailable';
     render();expect(scripts).toHaveLength(1);const url=new URL(scripts[0].src);expect(url.pathname).toContain(parseSheetConfig(DEFAULT_SHEET_URL).spreadsheetId);expect(url.searchParams.get('gid')).toBe('60961344');expect(url.searchParams.get('range')).toBe('A:O');
-    respond();await settle();const tree=open('Danh sách nội dung');
+    respond();await settle();const tree=open('Danh sách các ND trình HĐND');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
     expect(text(tree)).toContain('Chưa đọc được bố cục đã lưu từ Firebase');
     expect(h.common.mock.calls.at(-1)?.[1]).toBe(false);
@@ -65,7 +67,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.common.status='ready';
     respond();await settle();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
-    tree=open('Danh sách nội dung');
+    tree=open('Danh sách các ND trình HĐND');
     expect(tree.props.style['--page-content-width']).toBe('1090px');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
@@ -78,7 +80,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('1380px');
     expect(text(tree)).toContain('Đang tải bố cục đã lưu');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
-    tree=open('Danh sách nội dung');
+    tree=open('Danh sách các ND trình HĐND');
     expect(tree.props.style['--page-content-width']).toBe('970px');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
   });
@@ -112,17 +114,21 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('honors stored Sheets URL/gid and refreshes manually and every 60 seconds, only while visible',async()=>{
     saveSheetConfig(parseSheetConfig('https://docs.google.com/spreadsheets/d/fake-sheet/edit?gid=42'));
     render();expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('42');respond();await settle();render();
+    button(render(),'Đăng nhập').props.onClick();
     button(render(),'Làm mới dữ liệu').props.onClick();expect(scripts).toHaveLength(2);expect(firebase.common.refresh).toHaveBeenCalledOnce();respond('Sau đọc lại');await settle();render();
     await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);respond('Sau polling');await settle();render();
     (document as any).hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);
-    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Sau polling');
+    const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Sau polling');
   });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
-    render();respond();await settle();const tree=open('Danh sách nội dung');
+    render();respond();await settle();const tree=open('Danh sách các ND trình HĐND');
     expect(button(tree,'Đăng nhập')).toBeDefined();
-    expect(button(tree,'Sửa thử nội dung')).toBeDefined();
+    expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(false);
-    expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(false);
+    expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(true);
+    expect(nodes(tree).some(n=>n.props?.className==='demo-banner')).toBe(false);
+    expect(nodes(tree).some(n=>n.props?.className==='brand')).toBe(false);
+    expect(nodes(tree).filter(n=>n.type==='button'&&String(n.props.className).includes('primary-section-card'))).toHaveLength(2);
     expect(text(tree)).not.toContain('GID');
     expect(text(tree)).not.toContain('Danh mục và bố trí:');
     const list=nodes(tree).find(n=>n.type===ItemList);
@@ -133,7 +139,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
     firebase.permissions={columns:{content:false,note:true,progressParty:true}};
     render();respond();await settle();
-    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);
+    const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);
     const id=list.props.items[0].recordId;
     expect(list.props.anonymousViewer).toBe(false);
     expect(list.props.customizing).toBe(false);
@@ -149,7 +155,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.user={isAnonymous:false,uid:'member',email:'member@example.com'} as FirebaseController['user'];
     firebase.permissions={columns:{content:false,note:true}};
     render();respond();await settle();
-    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);
+    const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);
     const id=list.props.items[0].recordId;
     expect(list.props.anonymousViewer).toBe(false);
     expect(list.props.customizing).toBe(false);
@@ -180,7 +186,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
   it('keeps the last Sheets snapshot when a subsequent GViz read fails',async()=>{
     render();respond();await settle();render();button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
-    const tree=open('Danh sách nội dung'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
+    const tree=open('Danh sách các ND trình HĐND'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
     firebase.isAdmin=true;render();respond();await settle();
@@ -229,7 +235,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=render();expect(tree.props.style['--page-content-width']).toBe('2700px');
     editor.props.onClose();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1500px');
-    tree=open('Danh sách nội dung');expect(tree.props.style['--page-content-width']).toBe('900px');
+    tree=open('Danh sách các ND trình HĐND');expect(tree.props.style['--page-content-width']).toBe('900px');
   });
   it('keeps independent 2400px report and 640px list content widths without moving the header',async()=>{
     firebase.isAdmin=true;
@@ -243,9 +249,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     let tree=render();
     expect(tree.props.style['--page-content-width']).toBe('2400px');
     respond();await settle();
-    tree=open('Danh sách nội dung');
+    tree=open('Danh sách các ND trình HĐND');
     expect(tree.props.style['--page-content-width']).toBe('640px');
-    tree=open('Tổng quan');
+    tree=open('Báo cáo tổng hợp');
     expect(tree.props.style['--page-content-width']).toBe('2400px');
     expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Hướng dẫn')).toHaveLength(0);
     open('Chỉnh sửa');tree=open('Bảng thống kê');
@@ -324,6 +330,6 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
     firebase.isAdmin=true;render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
     open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
-    const list=nodes(open('Danh sách nội dung')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
+    const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
   });
 });
