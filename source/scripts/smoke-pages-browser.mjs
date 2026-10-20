@@ -201,6 +201,16 @@ try{
     return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
+  const centeredReportTitles=await evaluate(`(()=>{
+    const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
+    if(titles.length!==5)return false;
+    return titles.every(h=>{
+      const head=h.closest('.card-header')?.getBoundingClientRect();
+      const text=h.getBoundingClientRect();
+      return !!head&&Math.abs((head.left+head.right)/2-(text.left+text.right)/2)<4;
+    });
+  })()`);
+  if(!centeredReportTitles)throw Error('Report titles are no longer centered');
   // Sorting is now edit-mode only. The viewer/anonymous guest must not
   // expose a sorting button or activate sort via the header itself.
   const viewerSortBlocked=await evaluate(`(()=>{

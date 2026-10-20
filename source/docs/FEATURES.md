@@ -1,3 +1,11 @@
+## 20/10/2026 — Tinh gọn bảng chi tiết cho khách, tooltip tức thì, dropdown có viền
+
+- Khách popup chỉ có bảng dữ liệu + lọc từng cột + nút Đóng; **không hiện** tìm kiếm chung/hiện đủ cột/xóa lọc chung/chỉnh rộng/mở Danh sách hoặc chức năng sửa/cấu hình/mẫu/lịch sử. Người đã đăng nhập vẫn có công cụ được cấp quyền, trừ ô tìm kiếm chung đã bỏ vì trùng với bộ lọc từng cột.
+- Các tiêu đề bảng căn giữa; dropdown lọc cột mặc định hiển thị lời hướng dẫn **Chọn để lọc**. Tooltip của số trong báo cáo nằm ngoài số được hover, tooltip sửa **Bấm để sửa** bật tức thì khi pointer vào ô được phép sửa, không dùng trình duyệt title và không tạo một tooltip mỗi ô.
+- Editor chọn `CellPicker`: nút giá trị có viền bo nhẹ và mũi tên ▼ ở cuối, không phải một ô read-only. MUI/AG Grid đã khảo sát cách dùng lớp editable riêng, mũi tên dropdown; tránh chips màu theo giá trị vì có thể va với màu tiến độ nghiệp vụ. Không thay quyền backend, không tự ghi dữ liệu nguồn.
+- Các bước kiểm thử ở [CURRENT_STATE](CURRENT_STATE.md), hiện còn cần nghiệm thu trên máy Windows của người dùng sau phát hành GitHub Pages.
+
+
 ## 20/10/2026 — Tô màu theo từ, chỉ sort khi sửa, căn ô và lịch sử gần nhất
 
 - **Bảng báo cáo:** chọn từ/cụm từ trong tên bảng để tô màu chữ HEX tùy chọn; xem trước trong Tùy chỉnh Bảng báo cáo, lưu vào report layout. Không đổi nghiệp vụ.

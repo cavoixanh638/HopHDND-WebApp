@@ -112,3 +112,12 @@ describe('Data list and detail popup alignment',()=>{
     expect(css).toContain('td:is([data-col-key="content"],[data-col-key="note"])');
   });
 });
+
+
+describe('Editable dropdown and shared immediate tooltip presentation',()=>{
+  it('outlines picker triggers, keeps the arrow, and avoids layout-intensive selectors',()=>{
+    expect(css).toContain('.cell-picker-trigger::after');
+    expect(css).toContain('.edit-shared-tooltip[popover]:popover-open');
+    expect(css).not.toContain('body:has(.report-surface .report-table button.count-drill');
+  });
+});

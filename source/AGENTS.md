@@ -1,5 +1,13 @@
 # Hướng dẫn làm việc
 
+## Quy tắc popup, tooltip và dropdown từ 20/10/2026
+
+- Khách popup chỉ có bộ lọc theo cột, không thêm nút resize, xem đủ cột, tìm kiếm chung hoặc điều hướng Danh sách. Chế độ chỉnh sửa/nút history/permission đều ẩn hoàn toàn; test Chrome và unit phải chặn tái phát.
+- Tooltip số trong báo cáo không được che ô số đang trỏ. Một `getBoundingClientRect` khi pointer enters ô mới là ngoại lệ được kiểm soát đối với benchmark cũ, **không thêm pointermove, body:has hay tooltip mỗi ô**. Tooltip ô sửa chỉ render ở ô thực sự được quyền, dùng singleton không dùng HTML title trì hoãn.
+- Dropdown đã được cấp quyền sửa dùng cùng CellPicker và khung bo nhẹ/mũi tên; không áp dụng UI này cho ô chỉ xem, không ghi đè màu nghiệp vụ. Giữ kiểm thử Chrome tự động, không tạo bản HTML test cho người dùng.
+
+
+
 ## Quy trình phát triển và phát hành hiện hành — 20/10/2026
 
 - **Chỉ làm mã nguồn trên GitHub và xem kết quả ở GitHub Pages chính:** https://cavoixanh638.github.io/HopHDND-WebApp/ . Không tạo, gửi hay phát hành các đường dẫn HTML kiểm thử/preview riêng cho người dùng. Những preview cũ chỉ là tài liệu lịch sử, không phải luồng phát hành.
