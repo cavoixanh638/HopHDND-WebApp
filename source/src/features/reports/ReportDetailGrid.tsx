@@ -1,4 +1,4 @@
-import {useMemo,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
@@ -11,6 +11,7 @@ import {displayId} from '../../domain/display-id';
 import {Modal} from '../../components/Modal';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
+import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CellPicker} from '../items/CellPicker';
@@ -40,13 +41,13 @@ type Props={
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
   onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
+  useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
   const [pending,setPending]=useState<DetailGridPreferences>(applied);
   const [settings,setSettings]=useState(false);
   const [notice,setNotice]=useState('');
   const [editing,setEditing]=useState(false);
-  const [query,setQuery]=useState('');
   const [filters,setFilters]=useState<Record<string,string>>({});
   const [sort,setSort]=useState<ColumnSort>(null);
   const [showAll,setShowAll]=useState(false);
@@ -70,13 +71,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
   const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
   const visible=useMemo(()=>{
-    const q=normalizeSearch(query);
     return sortItems(subset.filter(item=>{
-      if(q&&!EXCEL_SOURCE_COLUMNS.some(col=>normalizeSearch(filterValue(item,col.key)).includes(q)))return false;
       return Object.entries(filters).every(([key,value])=>!value.trim()||
         normalizeSearch(filterValue(item,key)).includes(normalizeSearch(value)));
     }),sort);
-  },[subset,query,filters,sort]);
+  },[subset,filters,sort]);
   // Explicitly separate guest read-only report viewing from list edit grants.
   const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
@@ -129,7 +128,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   };
   const cycleSort=(key:string)=>setSort(old=>old?.key!==key
     ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
-  const clearFilters=()=>{setFilters({});setQuery('');setSort(null);};
+  const clearFilters=()=>{setFilters({});setSort(null);};
   const loadPreset=(id:string)=>{
     if(readOnlyViewer)return;
     const next=presets.find(v=>v.id===id);
@@ -222,15 +221,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <span className="muted">Đang hiển thị {visible.length} nội dung · {shownColumns.length}/15 cột nguồn</span>
         {inGroupDirty>0&&<span className="report-grid-draft">Có {inGroupDirty} nội dung đang sửa nháp</span>}
       </div>
-      <label className="report-grid-search">Tìm trong nội dung của ô
-        <input type="search" value={query} onChange={event=>setQuery(event.target.value)}
-          placeholder="Tìm mã, nội dung, tiến độ, sở…"/>
-      </label>
-      <div className="report-grid-actions">
+      {!readOnlyViewer&&<div className="report-grid-actions">
         <button type="button" className="button ghost" aria-pressed={showAll}
           onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
         <button type="button" className="button ghost" onClick={clearFilters}
-          disabled={!query&&Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
+          disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
         <label className="report-grid-quick-width">Rộng popup
           <DeferredWidthInput label="Độ rộng toàn popup (px)"
             min={minDialogWidth} max={availableWidth}
@@ -242,9 +237,9 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
           onClick={()=>{if(editing)setSort(null);setEditing(!editing);}}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
-        {onOpenFullList&&<button type="button" className="button ghost"
+        {!readOnlyViewer&&onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
-      </div>
+      </div>}
     </div>
     {!readOnlyViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
       <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
@@ -359,7 +354,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
               return <td key={c.key} data-col-key={c.key}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
-                title={writable?'Bấm để sửa':undefined}
+                data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}

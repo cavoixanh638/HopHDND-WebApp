@@ -1086,3 +1086,56 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   outline:2px solid #6d9e87;
   outline-offset:1px;
 }
+
+/* Center report/list/popup titles; data column headings retain their existing alignment. */
+.report-surface > .card-header {display:block;position:relative;text-align:center;}
+.report-surface > .card-header > div:first-child {
+  display:block;width:100%;box-sizing:border-box;text-align:center;
+  padding:0 76px;
+}
+.report-surface > .card-header > .button {
+  position:absolute;right:0;top:50%;transform:translateY(-50%);
+}
+.item-data-region .card-header > div:first-child {text-align:center;flex:1 1 100%;}
+.report-grid-modal .modal-header {position:relative;justify-content:center;text-align:center;}
+.report-grid-modal .modal-header h2 {padding:0 36px;}
+.report-grid-modal .modal-header > button {position:absolute;right:16px;top:50%;transform:translateY(-50%);}
+@media (max-width:780px){
+  .report-surface > .card-header > div:first-child {padding:0 58px;}
+}
+
+/* Only dropdown editor buttons receive an outlined input-like affordance. */
+.item-data-table tbody .cell-picker-trigger,
+.report-detail-grid tbody .cell-picker-trigger {
+  display:flex;justify-content:center;align-items:center;gap:8px;
+  width:100%;min-height:30px;padding:5px 9px;box-sizing:border-box;
+  text-align:center;border:1px solid #accabc;border-radius:6px;
+  background:rgba(247,252,249,.94);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.42);
+  cursor:pointer;line-height:1.35;
+}
+.item-data-table tbody .cell-picker-trigger::after,
+.report-detail-grid tbody .cell-picker-trigger::after {
+  content:'';flex:none;display:block;width:5px;height:5px;
+  border-right:1.6px solid #37745e;border-bottom:1.6px solid #37745e;
+  transform:rotate(45deg) translateY(-2px);
+}
+.item-data-table tbody .cell-picker-trigger:hover,
+.report-detail-grid tbody .cell-picker-trigger:hover {
+  border-color:#35876a;background:#edf7f1;
+}
+.item-data-table tbody .cell-picker-trigger:focus-visible,
+.report-detail-grid tbody .cell-picker-trigger:focus-visible {
+  outline:2px solid #1c8261;outline-offset:1px;
+}
+/* Manual popover enters the top layer above a <dialog>; immediate on pointerover. */
+.edit-shared-tooltip[popover]:not(:popover-open) {display:none;}
+.edit-shared-tooltip[popover]:popover-open {
+  display:flex;align-items:center;justify-content:center;
+  position:fixed;inset:auto;left:0;top:0;margin:0;
+  z-index:11000;pointer-events:none;width:112px;height:26px;
+  box-sizing:border-box;padding:5px 7px;border:1px solid #305745;
+  border-radius:6px;background:#254a3a;color:#fff;
+  font:600 11px/1.2 "Segoe UI",system-ui,sans-serif;white-space:nowrap;
+  box-shadow:0 2px 6px rgba(10,33,22,.13);contain:layout style paint;
+}

@@ -1,3 +1,7 @@
+## 20/10/2026 — Điều chỉnh giao diện trực tiếp tại GitHub Pages
+
+Bản sửa PR #4 gom popup khách thành bảng đọc/lọc cột; bỏ công cụ kỹ thuật và tìm kiếm trùng, căn tên bảng giữa. Tooltip báo cáo tránh che số bằng một lần đọc rect khi đổi ô; tooltip sửa dùng singleton manual popover xuất hiện ngay, popup được top-layer hỗ trợ; dropdown có viền+mũi tên, CSS không thêm observer. Kiểm thử đúng workflow Verify PR và Chrome smoke; xuất bản tự động qua `main` sau merge, không phát hành HTML thử riêng. Không ghi Firebase/Excel production. Các bằng chứng CI ghi [CURRENT_STATE](CURRENT_STATE.md).
+
 ## 20/10/2026 — Phát hành GitHub Pages trực tiếp (quy trình thay thế preview cũ)
 
 Sau khi mã nguồn trên branch được kiểm TypeScript, unit, Firebase emulator, Chrome mock và PR merge vào `main`, GitHub tự chạy `.github/workflows/publish-pages.yml`, build Pages từ `source/`, ghi `index.html` của trang chính; Pages triển khai commit tiếp theo. URL duy nhất gửi để nghiệm thu: https://cavoixanh638.github.io/HopHDND-WebApp/ . Không phát hành HTML preview riêng hay gửi người dùng file HTML tải về; các bài kiểm thử nội bộ vẫn bắt buộc.

@@ -3,7 +3,7 @@
  *
  * Browser A/B (36 real Chrome pointer moves x 2, 7,976 DOM nodes) found CSS
  * body:has()+anchor positioning costs ~32ms layout and ~10.7ms style per sweep.
- * Delegated pointerover below does zero layout reads, never changes text,
+ * Delegated pointerover reads one cell rect only when changing target, never changes text,
  * reuses one node and updates position only when moving to a DIFFERENT cell.
  * Pointer paths do not mutate aria-describedby (accessibility tree churn).
  */
@@ -29,7 +29,16 @@ function hide():void {
   keyboard=false;
   if(shown){tooltip.dataset.visible='false';shown=false;}
 }
-function show(button:HTMLButtonElement,x:number,y:number,fromKeyboard:boolean):void {
+/** Position outside the source count: above, or below near the viewport top. */
+export function reportTooltipPosition(rect:Pick<DOMRect,'left'|'right'|'top'|'bottom'>,
+  viewportWidth:number,viewportHeight:number):{left:number;top:number} {
+  const center=(rect.left+rect.right)/2;
+  const left=Math.max(6,Math.min(center-WIDTH/2,Math.max(6,viewportWidth-WIDTH-6)));
+  const above=rect.top-HEIGHT-8,below=rect.bottom+8;
+  const top=above>=6?above:below+HEIGHT+6<=viewportHeight?below:above;
+  return {left:Math.round(left),top:Math.round(Math.max(6,Math.min(top,viewportHeight-HEIGHT-6)))};
+}
+function show(button:HTMLButtonElement,fromKeyboard:boolean):void {
   if(!tooltip)return;
   if(active===button){
     // Keyboard may focus the same cell that was already hovered.
@@ -40,18 +49,17 @@ function show(button:HTMLButtonElement,x:number,y:number,fromKeyboard:boolean):v
     active.removeAttribute('aria-describedby');
   active=button;
   keyboard=fromKeyboard;
-  // Pointer path: no geometry/style reads; no text/ARIA changes.
-  // Fixed 190x32 bounding box, flip based only on viewport coordinates.
-  const left=x+WIDTH+18>window.innerWidth?x-WIDTH-10:x+12;
-  const top=y+HEIGHT+22>window.innerHeight?y-HEIGHT-11:y+14;
-  tooltip.style.transform=`translate3d(${Math.round(Math.max(6,left))}px,${Math.round(Math.max(6,top))}px,0)`;
+  // One rect read on entry; never on pointermove. No overlap with the hovered number.
+  const rect=button.getBoundingClientRect();
+  const {left,top}=reportTooltipPosition(rect,window.innerWidth,window.innerHeight);
+  tooltip.style.transform=`translate3d(${left}px,${top}px,0)`;
   if(fromKeyboard)button.setAttribute('aria-describedby',tooltip.id);
   if(!shown){tooltip.dataset.visible='true';shown=true;}
 }
 function onPointerOver(event:PointerEvent):void {
   if(event.pointerType==='touch')return;
   const button=buttonFrom(event.target);
-  if(button)show(button,event.clientX,event.clientY,false);
+  if(button)show(button,false);
 }
 function onPointerOut(event:PointerEvent):void {
   if(!active||buttonFrom(event.target)!==active)return;
@@ -64,8 +72,7 @@ function onPointerOut(event:PointerEvent):void {
 function onFocusIn(event:FocusEvent):void {
   const button=buttonFrom(event.target);
   if(!button||!button.matches(':focus-visible'))return;
-  const rect=button.getBoundingClientRect(); // One read, keyboard only.
-  show(button,rect.left+rect.width/2,rect.bottom,true);
+  show(button,true);
 }
 function onFocusOut(event:FocusEvent):void {
   if(buttonFrom(event.target)===active)hide();

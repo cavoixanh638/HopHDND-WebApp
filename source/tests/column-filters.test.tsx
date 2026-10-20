@@ -21,6 +21,7 @@ describe('always-visible column filter row',()=>{
     const drop=ColumnFilterCell({field:'isDropped',label:'Rút',items,value:'',onChange:vi.fn()});
     const selector=drop.props.children.props.children[0];
     expect(selector.type).toBe('select');
+    expect(selector.props.children[0].props.children).toBe('Chọn để lọc');
     expect(filterChoices(items,'isDropped')).toEqual(['Đã rút']);
   });
   it('ignores an obsolete Rút saved filter since the current A–O source no longer includes it',()=>{

@@ -1,3 +1,12 @@
+## 20/10/2026 — Popup khách gọn, tooltip nhanh và dropdown rõ ràng (PR #4)
+
+- PR #4: `fix/guest-popup-tooltip-dropdown-2026-10-20`. Khách ẩn danh trong `ReportDetailGrid` chỉ có thông tin số nội dung và hàng lọc theo từng cột. Ẩn `Hiện đủ cột Excel`, `Xóa bộ lọc` toàn bảng, `Rộng popup`, `Mở Danh sách dữ liệu` cùng toàn bộ cấu hình/mẫu/sửa/lịch sử. Bỏ cả ô tìm kiếm chung cho mọi tài khoản (đã có lọc từng cột). Các ô lọc dạng chọn ghi `Chọn để lọc` thay cho `Tất cả`.
+- Tên bảng báo cáo, Danh sách nội dung, tiêu đề popup được căn giữa; không đổi căn cột dữ liệu. Tooltip số lượng báo cáo được đặt hoàn toàn phía trên hoặc dưới chính ô đang hover (không che số), lấy một `getBoundingClientRect` khi đổi ô, không chạy pointermove. Đây là thay đổi so với benchmark cũ đòi không đọc layout; cần đo thực tế máy người dùng nếu có phản ánh mới.
+- Tooltip ô sửa không còn dùng `title` có độ trễ trình duyệt, thay bằng một `SharedEditTooltip` dùng event delegation và manual popover top-layer, xuất hiện cùng sự kiện hover; chỉ ô có lớp `editable-cell` được gắn với quyền hiện hành mới hiện. Ô lựa chọn `CellPicker` có khung mảnh bo góc và mũi tên ▼, chỉ render khi sửa được, dùng cùng component với popup.
+- Kiểm thử CI [#39357574934](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39357574934) PASS nhóm 1; [#39358357894](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39358357894) PASS sau cập nhật test hiệu năng; [#39358572239](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39358572239) PASS, bao gồm Chrome xác nhận tooltip mở đồng bộ. **Chưa kết luận site chính đã phát hành trước merge PR #4**. Không đổi Firebase Rules hoặc dữ liệu nguồn.
+
+---
+
 ## 20/10/2026 — Đã chuyển sang phát hành GitHub Pages chính, không dùng HTML preview
 
 - Theo yêu cầu mới, PR #3 đã merge vào `main` tại commit `d6734b1789f8f0494e50213e17a157d7bf96b569` từ PR head `bb82f727eb3a48ea6a2619d3c9aed4d04108d147`. Trước merge, sao lưu `main` thành `backup/before-direct-pages-publish-2026-10-20` từ `8026c7098166d62cb84b0c1981e2be51ec4ca1e1`.

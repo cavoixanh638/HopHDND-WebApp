@@ -111,7 +111,7 @@ export function CellPicker({ label, value, options, searchable = false, disabled
     <button
       ref={triggerRef}
       type="button"
-      className="cell-value-button"
+      className="cell-value-button cell-picker-trigger"
       disabled={disabled}
       aria-label={label}
       aria-haspopup="dialog"
