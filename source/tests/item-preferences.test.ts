@@ -31,6 +31,15 @@ describe('Bố trí cột danh sách', () => {
     for(const key of ['type','partyLevel','progressParty','specificProgress'])
       expect(layout.columns.find(c=>c.key===key)?.visible).toBe(true);
   });
+  it('migrates old E label but preserves explicit custom labels',()=>{
+    const old=defaultItemLayout();
+    const column=old.columns.find(c=>c.key==='type')!;
+    column.label='Loại VB (HC/QPPL/BC)';
+    column.renamed=true;
+    expect(validateItemLayout(old).columns.find(c=>c.key==='type')?.label).toBe('Loại VB');
+    column.label='Loại văn bản riêng';
+    expect(validateItemLayout(old).columns.find(c=>c.key==='type')?.label).toBe('Loại văn bản riêng');
+  });
   it('drops the obsolete History column from previous Firebase/shared or personal layouts safely',()=>{
     const old=defaultItemLayout();
     old.columns.splice(3,0,{key:'history',label:'Lịch sử',width:100,visible:true});

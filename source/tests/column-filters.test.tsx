@@ -22,7 +22,24 @@ describe('always-visible column filter row',()=>{
     const selector=drop.props.children.props.children[0];
     expect(selector.type).toBe('select');
     expect(selector.props.children[0].props.children).toBe('Chọn để lọc');
+    expect(selector.props.className).toBe('filter-placeholder');
     expect(filterChoices(items,'isDropped')).toEqual(['Đã rút']);
+  });
+  it('clears only the focused select or search column on Escape',()=>{
+    for(const field of ['isDropped','content']){
+      const onChange=vi.fn(),event={key:'Escape',preventDefault:vi.fn(),stopPropagation:vi.fn()};
+      const tree=ColumnFilterCell({field,label:'Tiêu đề',items,value:'Đã rút',onChange});
+      tree.props.children.props.children[0].props.onKeyDown(event);
+      expect(onChange).toHaveBeenCalledWith('');
+      expect(event.preventDefault).toHaveBeenCalledOnce();
+      expect(event.stopPropagation).toHaveBeenCalledOnce();
+    }
+    const onChange=vi.fn(),event={key:'Escape',preventDefault:vi.fn(),stopPropagation:vi.fn()};
+    ColumnFilterCell({field:'isDropped',label:'Rút',items,value:'',onChange})
+      .props.children.props.children[0].props.onKeyDown(event);
+    expect(onChange).not.toHaveBeenCalled();
+    const selected=ColumnFilterCell({field:'isDropped',label:'Rút',items,value:'Đã rút',onChange});
+    expect(selected.props.children.props.children[0].props.className).toBe('selected-filter-value');
   });
   it('ignores an obsolete Rút saved filter since the current A–O source no longer includes it',()=>{
     const a=items[0];

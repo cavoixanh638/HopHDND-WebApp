@@ -112,11 +112,14 @@ export function validateItemLayout(value:unknown):ItemLayout{
       }
       if(Object.keys(values).length>1000)throw new Error('Cột tự tạo vượt quá 1.000 dòng.');
     }
+    // Correct only the obsolete app-generated E label in older saved layouts.
+    const label=column.key==='type'&&column.label.trim()==='Loại VB (HC/QPPL/BC)'
+      ?'Loại VB':column.label.trim();
     return {...(base??{key:column.key,label:column.label,width:170,visible:true}),
       width:column.width,visible:column.visible,
       ...(isCustom?{origin:'custom' as const,values}:{ }),
       ...(column.removed?{removed:true}:{}),
-      ...(column.renamed?{renamed:true,label:column.label.trim()}:isCustom?{label:column.label.trim()}:{}),
+      ...(column.renamed?{renamed:true,label}:isCustom?{label}:{}),
       ...(column.kind?{kind}:{ }),
       // Excel fields take their dropdown options from catalog.options only.
       // Discard legacy per-column copies to avoid two competing value lists.
