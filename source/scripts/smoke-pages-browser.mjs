@@ -252,6 +252,28 @@ try{
     return {ok:shown&&hidden,shown,hidden};
   })()`);
   if(!instantEditCue.ok)throw Error('Immediate edit tooltip regression: '+JSON.stringify(instantEditCue));
+  // Emulate a visible history action without modifying guest permissions.
+  // The shared hint should immediately switch its label and remain outside.
+  const historyHint=await evaluate(`(()=>{
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const tip=document.getElementById('edit-shared-tooltip');
+    if(!td||!tip)return false;
+    const btn=document.createElement('button');
+    btn.type='button';btn.className='cell-history-action';
+    btn.dataset.quickTooltip='Xem lần sửa gần nhất';
+    td.append(btn);
+    try {
+      btn.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+      const a=tip.getBoundingClientRect(),b=btn.getBoundingClientRect();
+      const overlap=Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*
+        Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+      return tip.matches(':popover-open')&&tip.textContent==='Xem lần sửa gần nhất'&&overlap===0;
+    }finally{
+      btn.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
+      btn.remove();
+    }
+  })()`);
+  if(!historyHint)throw Error('Quick history tooltip must not obscure its action');
   const cellAlignment=await evaluate(`(()=>{
     const regular=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
     const long=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
