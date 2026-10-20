@@ -212,6 +212,24 @@ try{
   if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
+  // Synthetic marked cell tests the one shared editing tooltip without granting
+  // guest permissions or writing data; native title delay is not used.
+  const instantEditCue=await evaluate(`(()=>{
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const hint=document.getElementById('edit-shared-tooltip');
+    if(!td||!hint)return {ok:false,reason:'missing table cell or singleton'};
+    td.classList.add('editable-cell');
+    let shown=false,hidden=false;
+    try{
+      td.dispatchEvent(new PointerEvent('pointerover',{bubbles:true,pointerType:'mouse'}));
+      shown=hint.matches(':popover-open')&&getComputedStyle(hint).display==='flex'&&
+        hint.textContent==='Bấm để sửa'&&!td.hasAttribute('title');
+      td.dispatchEvent(new PointerEvent('pointerout',{bubbles:true,pointerType:'mouse'}));
+      hidden=!hint.matches(':popover-open');
+    }finally{td.classList.remove('editable-cell');}
+    return {ok:shown&&hidden,shown,hidden};
+  })()`);
+  if(!instantEditCue.ok)throw Error('Immediate edit tooltip regression: '+JSON.stringify(instantEditCue));
   const cellAlignment=await evaluate(`(()=>{
     const regular=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
     const long=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
