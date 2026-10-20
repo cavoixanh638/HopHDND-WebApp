@@ -393,8 +393,12 @@ try{
     })()`);
     if(!clicked)throw Error('Missing navigation tab '+tab);
     await eventually("document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
-    if(await evaluate("!!document.querySelector('.page-heading,.unknown-note,.demo-banner')"))
-      throw Error('Redundant report/list title, source banner or unclassified notice visible');
+    const leftover=await evaluate(`(()=>{
+      const elements=[...document.querySelectorAll('.page-heading,.unknown-note,.demo-banner')];
+      return {active:document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent,
+        elements:elements.map(el=>({class:el.className,text:el.textContent?.slice(0,100),parent:el.parentElement?.className}))};
+    })()`);
+    if(leftover.elements.length)throw Error('Redundant report/list title, source banner or unclassified notice visible: '+JSON.stringify(leftover));
     if(tab==='Báo cáo tổng hợp'){
       const reports=await evaluate(`(()=>{
         const tables=[...document.querySelectorAll('table.report-table')];
