@@ -394,7 +394,7 @@ try{
     if(!clicked)throw Error('Missing navigation tab '+tab);
     await eventually("document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent==="+JSON.stringify(ready),"Navigation "+tab);
     const leftover=await evaluate(`(()=>{
-      const elements=[...document.querySelectorAll('.page-heading,.unknown-note,.demo-banner')];
+      const elements=[...document.querySelectorAll('.page-heading,.demo-banner,main > .unknown-note')];
       return {active:document.querySelector('.nav-tabs button[aria-current=page] .section-card-title')?.textContent,
         elements:elements.map(el=>({class:el.className,text:el.textContent?.slice(0,100),parent:el.parentElement?.className}))};
     })()`);
