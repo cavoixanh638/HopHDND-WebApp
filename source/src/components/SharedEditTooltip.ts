@@ -1,3 +1,5 @@
+import {outsideCellTooltipPosition} from './TooltipPlacement';
+
 /** One immediate editing hint for all authorized source cells (including popup).
  * Event delegation and a manual popover avoid browser title delay and per-row
  * event handlers. Popover is in the top layer above modal dialogs.
@@ -9,10 +11,7 @@ let refs=0;
 let keyboard=false;
 export function editTooltipPosition(rect:Pick<DOMRect,'left'|'right'|'top'|'bottom'>,
   vw:number,vh:number):{left:number;top:number}{
-  const left=Math.max(6,Math.min((rect.left+rect.right)/2-WIDTH/2,Math.max(6,vw-WIDTH-6)));
-  const above=rect.top-HEIGHT-6;
-  const top=above>=6?above:rect.bottom+6;
-  return {left:Math.round(left),top:Math.round(Math.max(6,Math.min(top,vh-HEIGHT-6)))};
+  return outsideCellTooltipPosition(rect,vw,vh,WIDTH,HEIGHT);
 }
 function fromTarget(target:EventTarget|null):HTMLTableCellElement|null{
   if(!(target instanceof Element))return null;
