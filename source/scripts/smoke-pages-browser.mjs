@@ -399,8 +399,8 @@ try{
           });
       })()`);
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
-      // The A/B-winning path uses a static, fixed-size singleton with one
-      // delegated handler; pointer entry never reads geometry or updates ARIA.
+      // Delegated singleton uses one bounded geometry read per newly entered
+      // count cell, never a per-frame pointermove read or global style selector.
       const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
         const tip=document.getElementById('report-shared-tooltip');
@@ -438,7 +438,7 @@ try{
             evt('pointerout',button,540+i%10,380+i%8);
           }
         } finally{Element.prototype.getBoundingClientRect=orig;}
-        return {ok:opened&&shared&&hidden&&reads===0&&
+        return {ok:opened&&shared&&hidden&&reads===300&&
           tip.dataset.visible==='false'&&
           document.querySelectorAll('#report-shared-tooltip').length===1,
           opened,shared,hidden,reads,cycles:300,buttons:buttons.length};
