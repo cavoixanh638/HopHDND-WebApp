@@ -17,6 +17,7 @@ import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell} from './ColumnFilterCell';
+import {progressTone} from '../../domain/progress-visual';
 import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
   compactVisibleColumns,compactFilterText,abbreviateVietnameseName,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
@@ -234,6 +235,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     const original=item[field]||'—';
     const label=TEXT_FIELDS.find(entry=>entry.key===field)?.label??field;
     const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
+    const shortLeader=compactOn&&compactDisplay.shortLeaders&&
+      (field==='vpLeader'||field==='ubndLeader');
     return <span className={'compact-part'+(editable?' compact-part-editable':'')}
       aria-label={field==='specialist'&&!editable?item.specialist:undefined}>
       {editable
@@ -245,9 +248,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
               value={String(item[field]??'')} disabled={locked}
               onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>
             :<CellPicker label={displayId(item)+': '+label} value={item[field]}
+              displayValue={shortLeader?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
-        :original}
+        :shortLeader?<span title={item[field]} aria-label={item[field]}>
+          {abbreviateVietnameseName(item[field])||'—'}</span>:original}
       {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
@@ -385,17 +390,23 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
         return <td key={column.key} data-col-key={column.key}
+          data-progress-tone={progressTone(key,item[key])??undefined}
           className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory?'has-history-action':''].filter(Boolean).join(' ')}
           data-edit-hint={writable?'Bấm để sửa':undefined}
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
   :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]}
-    displayValue={key==='specialist'&&compactOn&&compactDisplay.shortSpecialist?
+    displayValue={compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
+      ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       abbreviateVietnameseName(item[key]):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
+      :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
+        ?<span title={item[key]} aria-label={item[key]}>{abbreviateVietnameseName(item[key])||'—'}</span>
+      :progressTone(key,item[key])
+        ?<span className="workflow-status-value">{item[key]}</span>
       :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;

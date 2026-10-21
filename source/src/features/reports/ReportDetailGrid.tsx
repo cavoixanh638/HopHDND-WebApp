@@ -14,6 +14,7 @@ import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
+import {progressTone} from '../../domain/progress-visual';
 import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
@@ -192,7 +193,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
-    if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))return raw||'—';
+    if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
+      return progressTone(key,raw)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
     if(field==='content'||field==='note')
       return <button type="button" className="cell-value-button"
@@ -353,6 +355,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               const showCellHistory=!readOnlyViewer&&!!onCellHistory&&editableFields.has(c.key);
               const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
               return <td key={c.key} data-col-key={c.key}
+                data-progress-tone={progressTone(c.key,item[c.key])??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}
