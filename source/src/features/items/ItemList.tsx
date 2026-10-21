@@ -76,7 +76,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next={...compactDisplay,[option]:checked};
     setCompactDisplay(next);writeCompactDisplay(personalScope,next);
-    const hidden=new Set(activeCompactPairs(columns,next).map(pair=>pair.hidden));
+    const hidden=new Set<string>(activeCompactPairs(columns,next).map(pair=>pair.hidden));
     setColumnFilters(prev=>{
       const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
       return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
@@ -167,8 +167,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
     codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
   const filtered = useMemo(() => items.filter(item => {
-    const hidden=new Set(compactPairs.map(pair=>pair.hidden));
-    const anchors=new Set(compactPairs.map(pair=>pair.anchor));
+    const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
+    const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.fromEntries(Object.entries(columnFilters).filter(([key])=>
       EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)));
     if(!matchesColumnFilters(item,ordinary))return false;
@@ -199,7 +199,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    const hidden=new Set(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),compactDisplay)
+    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),compactDisplay)
       .map(pair=>pair.hidden));
     setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
     setShowAllSourceColumns(false);
