@@ -176,20 +176,25 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   },[items]);
   const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
     codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
-  const filtered = useMemo(() => items.filter(item => {
+  const filtered = useMemo(() => {
+    // Build filter plans once per change, never for each row or mouse movement.
     const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
     const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.fromEntries(Object.entries(columnFilters).filter(([key])=>
       EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)));
-    if(!matchesColumnFilters(item,ordinary))return false;
-    if(!compactPairs.every(pair=>!columnFilters[pair.anchor]?.trim()||
-      normalizeSearch(compactFilterText(item,pair.anchor,compactPairs))
-        .includes(normalizeSearch(columnFilters[pair.anchor]))))return false;
-    return Object.entries(columnFilters).every(([key,term])=>{
+    const merged=compactPairs.flatMap(pair=>
+      columnFilters[pair.anchor]?.trim()?[{pair,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
+    const custom=Object.entries(columnFilters).flatMap(([key,term])=>{
       const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
-      return !column||!term.trim()||normalizeSearch(column.values?.[customRowKey(item)]??'').includes(normalizeSearch(term));
+      return column&&term.trim()?[{column,term:normalizeSearch(term)}]:[];
     });
-  }),[items,columnFilters,activeLayout,codeCounts,compactDisplay,compactOn,showAllSourceColumns]);
+    return items.filter(item=>
+      matchesColumnFilters(item,ordinary)&&
+      merged.every(({pair,term})=>
+        normalizeSearch(compactFilterText(item,pair.anchor,compactPairs)).includes(term))&&
+      custom.every(({column,term})=>
+        normalizeSearch(column.values?.[customRowKey(item)]??'').includes(term)));
+  },[items,columnFilters,activeLayout,codeCounts,compactDisplay,compactOn,showAllSourceColumns]);
   const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';

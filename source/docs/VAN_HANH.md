@@ -1,3 +1,8 @@
+## 21/10/2026 — Hướng dẫn hiển thị gọn cột
+
+Trong Danh sách các ND trình HĐND, mở **Gộp cột** ở mép trên Bảng dữ liệu, tick một hoặc nhiều trong 4 cách. Các tick chỉ tác động cách đọc bảng trên trình duyệt; muốn xem lại cột gốc, bỏ tick hoặc nhấn **Hiện đủ cột Excel** tạm thời. Trường nằm trong ô gộp vẫn sửa riêng nếu tài khoản được cấp quyền; ô nào không cho sửa không hiển thị editor. Người quản trị muốn sửa thứ tự, width hay quyền cột phải vào chế độ tùy chỉnh, nơi hiển thị đầy đủ cột nguồn.
+Tìm kiếm gõ tên đầy đủ ngay cả khi chuyên viên viết tắt, và lọc nhóm bằng từ thuộc bất kỳ trường nào bên trong. Popup không tự kế thừa tùy chọn cá nhân này. Không xóa dữ liệu nguồn khi bật/tắt, không biến kết quả hiển thị thành nội dung ghi Excel. Quy tắc kiểm thử và giới hạn đã ghi CURRENT_STATE.
+
 ## 20/10/2026 — Đối chiếu tên cột Excel nguồn và nghiệm thu giao diện PR #7
 
 Đã xác nhận từ nội dung file Excel gốc trên Google Drive cập nhật 20/10: cột E là `Loại VB`, không được lấy tên cột mô tả tùy tiện `Loại VB (HC/QPPL/BC)`. Không đổi giá trị `HC/QPPL/BC`. Kiểm ở Danh sách/popup (cùng EXCEL_SOURCE_COLUMNS hoặc ItemLayout) và cấu hình lịch sử. Hai card điều hướng có tổng chiều rộng không vượt 820px; chỉnh màu/hover/focus không làm ảnh hưởng phép tính hay source. Bộ lọc select dùng chữ placeholder mờ, Esc chỉ xóa lọc đúng cột sau chọn. Ô quyền sửa nổi trên điều khiển, guest read-only không xuất hiện editor. CI TypeScript/unit/Firebase emulator/Chrome bắt buộc PASS, sau merge theo dõi cả GitHub Pages build+deploy. Không xuất bản file HTML thử.

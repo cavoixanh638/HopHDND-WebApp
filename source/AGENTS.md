@@ -64,3 +64,10 @@
 - Không tự đặt thêm chú thích vào tên cột Excel: cột E là **Loại VB** theo file nguồn hiện tại. Giữ logic giá trị HC/QPPL/BC, migration cấu hình nhãn cũ hẹp và giữ nhãn người dùng sửa.
 - Một `ColumnFilterCell` chung: placeholder select `Chọn để lọc` mờ như input, Esc khi đang focus và có giá trị phải xóa lọc của cột đó; ngăn Esc không cần thiết khi bộ lọc trống.
 - Chỉ tô viền/màu nhẹ các thành phần nhập/chọn thực của ô được cấp quyền, tránh tô cả ô hoặc làm mất màu ngữ nghĩa; không làm giả quyền edit. Duy trì popup và danh sách đồng nhất.
+
+## Chế độ gộp cột chỉ để trình bày — 21/10/2026 / PR #8
+
+- Chỉ thực hiện projection trong `ItemList` qua `compact-columns.ts` và localStorage độc lập, 4 cờ mặc định false. Không được sửa `EXCEL_SOURCE_COLUMNS` hoặc Firebase `ItemLayout`, và không được cộng các giá trị gộp rồi ghi Excel.
+- Mỗi nguồn trong ô gộp giữ quyền theo khóa gốc, giá trị đầy đủ, editor và lịch sử độc lập. Bộ lọc trên cột gộp dùng cả hai chuỗi gốc; tên chuyên viên rút gọn **chỉ hiển thị**, search/select/sửa tiếp tục dùng tên đầy đủ. Tắt tùy chọn hoặc bật Hiện đủ cột Excel phải khôi phục các cột chuẩn.
+- Chế độ chỉnh schema của admin và popup vẫn dùng layout nguyên gốc và cấu hình riêng; không ép chế độ gộp vào popup. Khi thay đổi phải chạy TypeScript, unit, Firebase emulator, Chrome với kịch bản bật/tắt/gõ họ tên và quyền đọc.
+- Không gộp mặc định các bước nghiệp vụ tiến độ vì có nguy cơ mất ngữ cảnh; không thêm listeners tooltip mới. Đường kẻ dọc dịu `#dfe9e2`, giữ cả hàng tiêu đề, lọc và nội dung.

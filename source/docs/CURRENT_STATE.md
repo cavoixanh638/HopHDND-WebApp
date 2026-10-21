@@ -1,3 +1,13 @@
+## 21/10/2026 — Chế độ hiển thị gọn riêng cho Bảng dữ liệu (PR #8)
+
+- PR #8, nhánh `feat/compact-columns-personal-2026-10-21`. Mỗi người dùng có menu **Gộp cột** trong Bảng dữ liệu với 4 lựa chọn độc lập, **mặc định tắt**, lưu localStorage theo source scope (`hdnd.compact-display.v1:<scope>`): (1) đặt Loại VB trong ngoặc sau Nội dung trình, (2) gộp Lãnh đạo VP / Lãnh đạo UBND TP trong hai dòng có nhãn, (3) gộp Sở chủ trì / Phòng chuyên môn trong hai dòng có nhãn, (4) viết tắt tên chuyên viên `Nguyễn Ngọc Hùng → N.N.Hùng`.
+- 15 khóa cột A–O, giá trị Excel, cấu hình layout Firebase, báo cáo và phân quyền từng trường giữ nguyên. Projection chỉ ẩn cột thứ hai **khi cả hai nguồn đang hiển thị**; nếu cột nguồn chưa hiện thì không tự kéo dữ liệu bị ẩn ra. Hai nhóm chính và tên chuyên viên vẫn tìm kiếm bằng **tên đầy đủ**, kể cả khi hiển thị đã rút gọn. Dropdown editor dùng giá trị đầy đủ; mỗi trường của ô gộp có quyền sửa riêng và lịch sử riêng.
+- Chế độ quản trị cấu hình luôn giữ cột nguồn tách biệt; mở **Hiện đủ cột Excel** tạm tắt projection để kiểm chứng 15 cột, trở về sẽ áp dụng lại tùy chọn cá nhân. Menu không đồng bộ sang popup (popup có bộ cấu hình riêng).
+- Lưới dọc Bảng dữ liệu gồm header, filter, body chuyển từ `#cbdad1` xuống `#dfe9e2`, giữ 1px và không mất ranh giới. Bộ lọc được lập kế hoạch 1 lần trong useMemo, không tạo event handler trên mỗi lần rê chuột.
+- Kiểm thử đơn vị `source/tests/compact-columns.test.ts` và Chrome smoke bật 4 tùy chọn/kiểm chữ gộp/tên đầy đủ/xóa tùy chọn, ngoài TS/Firebase emulator. CI gần nhất trước tài liệu [#39636999622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39636999622) PASS; cần PASS cuối trước merge. Không sửa dữ liệu nguồn hoặc Firebase Rules.
+
+---
+
 ## 20/10/2026 — Thẻ điều hướng nhỏ, nhãn Excel chuẩn, lọc Esc, editor nổi bật (PR #7)
 
 - Nguồn đã kiểm **trực tiếp** qua Google Drive: `Tổng hợp các ND kỳ chuyên đề và kỳ thường lệ cuối năm 2026.xlsx`, ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, cập nhật ngày 20/10. Cột E chính xác **Loại VB**, không kèm `(HC/QPPL/BC)`. Đổi `TEXT_FIELDS`, `EXCEL_SOURCE_COLUMNS`, test và từ điển dữ liệu. `validateItemLayout` chỉ sửa nhãn cũ chính xác khi nạp cấu hình, giữ nhãn do người dùng đặt khác.
