@@ -211,6 +211,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
+  const editableField=(item:Item,field:TextField)=>
+    canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,field));
+  /** Source cells keep field-level permission and history when combined visually. */
+  const compactField=(item:Item,field:TextField)=>{
+    const editable=editableField(item,field);
+    const original=item[field]||'—';
+    const label=TEXT_FIELDS.find(entry=>entry.key===field)?.label??field;
+    const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
+    return <span className={'compact-part'+(editable?' compact-part-editable':'')}
+      aria-label={field==='specialist'&&!editable?item.specialist:undefined}>
+      {editable
+        ?field==='content'
+          ?<button type="button" className="content-button" disabled={locked}
+            onClick={()=>setContentItem({item,field:'content'})}>{original}</button>
+          :kind==='text'
+            ?<input className="custom-cell-input" aria-label={displayId(item)+': '+label}
+              value={String(item[field]??'')} disabled={locked}
+              onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>
+            :<CellPicker label={displayId(item)+': '+label} value={item[field]}
+              options={options(field,item)} searchable={field==='specialist'} disabled={locked}
+              onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
+        :original}
+      {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={label+' · '+displayId(item)}
+        onClick={()=>onCellHistory(item,field)}/>}
+    </span>;
+  };
   return <section className="card item-list-card">
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
@@ -243,8 +269,23 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div className="item-list-summary"><span className="item-result-count">{filtered.length}</span> / {items.length} nội dung</div>
     <div className="item-header-actions">
+      {compactOn&&!permissionMode&&<details className="compact-columns-menu">
+        <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
+          {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
+            <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
+        </summary>
+        <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
+          <strong>Hiển thị gọn (chỉ trên máy này)</strong>
+          {COMPACT_OPTIONS.map(option=><label key={option.key}>
+            <input type="checkbox" checked={compactDisplay[option.key]}
+              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
+          <p>Không sửa Excel, không thay quyền. Tắt tùy chọn để hiện đủ các cột gốc.</p>
+        </div>
+      </details>}
       {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
-        <span>{columns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
+        <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
           {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
@@ -263,18 +304,42 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{columns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{columns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
-  disabled={!customizing||locked||!allowLayout} previousKey={columns[index-1]?.key} nextKey={columns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<ColumnResizeHandle
+  disabled={!customizing||locked||!allowLayout} previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<ColumnResizeHandle
   columnIndex={index} width={visualWidth(column.width)} min={60} max={1600} label={column.label}
   onCommit={width=>setLayout(previous=>({...previous,columns:previous.columns.map(entry=>
     entry.key===column.key?{...entry,width}:entry)}))}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {columns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
-    getValue={column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
+  {displayedColumns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
+    getValue={compactPairs.some(pair=>pair.anchor===column.key)
+      ?item=>compactFilterText(item,column.key,compactPairs)
+      :column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
+    forceText={compactPairs.some(pair=>pair.anchor===column.key)||
+      column.key==='specialist'&&compactOn&&compactDisplay.shortSpecialist}
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
-      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{columns.map(column=>{const key=column.key as TextField;
+      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
+        const pair=compactPairs.find(pair=>pair.anchor===column.key);
+        if(pair){
+          const extra=pair.hidden as TextField;
+          const anyEditable=editableField(item,key)||editableField(item,extra);
+          return <td key={column.key} data-col-key={column.key}
+            className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'}
+            data-edit-hint={anyEditable?'Bấm để sửa':undefined}
+            style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
+            {key==='content'
+              ?<span className="compact-content-line">{compactField(item,'content')}
+                <span className="compact-type-suffix">({compactField(item,'type')})</span>
+              </span>
+              :<div className="compact-pair-lines">
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'Sở'}</span>
+                  {compactField(item,key)}</div>
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>
+                  {compactField(item,extra)}</div>
+              </div>}
+          </td>;
+        }
         if(column.origin==='custom'){
           const rowKey=customRowKey(item),value=column.values?.[rowKey]??'';
           const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
@@ -310,11 +375,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
-  :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]} options={options(key,item)} searchable={key==="specialist"} disabled={locked} onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
+  :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]}
+    displayValue={key==='specialist'&&compactOn&&compactDisplay.shortSpecialist?
+      abbreviateVietnameseName(item[key]):undefined}
+    options={options(key,item)} searchable={key==="specialist"} disabled={locked}
+    onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
+      ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
+      :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
-      {!rows.length && <tr><td className="empty" colSpan={Math.max(1,columns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
+      {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={() => setContentItem(null)} />}

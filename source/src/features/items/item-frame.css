@@ -325,10 +325,10 @@
 .item-data-table thead .item-heading-row th:not(:last-child),
 .item-data-table thead .item-column-filter-row th:not(:last-child),
 .item-data-table tbody tr > td:not(:last-child) {
-  border-right:1px solid #cbdad1;
+  border-right:1px solid #dfe9e2;
 }
 .item-data-table thead .item-heading-row th:not(:last-child) {
-  box-shadow:inset -1px 0 #cbdad1;
+  box-shadow:inset -1px 0 #dfe9e2;
 }
 .inline-permission-table th:not(:last-child),
 .inline-permission-table td:not(:last-child) {
@@ -563,3 +563,49 @@
 /* Match the native selection placeholder tone to the search placeholder. */
 .item-data-table .item-column-filter-row select.filter-placeholder {color:#9aa9a0;}
 .item-data-table .item-column-filter-row select.selected-filter-value {color:#244d3e;}
+
+/* Compact view menu belongs to the table header, not to the Excel schema. */
+.compact-columns-menu{position:relative;z-index:20;flex:none}
+.compact-columns-menu>summary{display:inline-flex;align-items:center;gap:6px;
+  padding:5px 10px;min-height:28px;border:1px solid #85aa98;border-radius:7px;
+  background:#edf7f0;color:#21583f;font-size:11px;font-weight:700;
+  cursor:pointer;list-style:none}
+.compact-columns-menu>summary::-webkit-details-marker{display:none}
+.compact-columns-menu[open]>summary{background:#dcefe4;border-color:#377e5d}
+.compact-columns-menu>summary:focus-visible{outline:2px solid #237f5c;outline-offset:2px}
+.compact-active-count{display:grid;place-items:center;min-width:17px;min-height:17px;
+  padding:0 3px;border-radius:10px;background:#226c4e;color:#fff;font-size:10px}
+.compact-columns-options{position:absolute;right:0;top:calc(100% + 6px);z-index:30;
+  display:grid;gap:8px;width:min(365px,calc(100vw - 45px));padding:13px;
+  border:1px solid #b7d3c3;border-radius:11px;background:#fff;
+  box-shadow:0 12px 28px rgba(20,60,43,.16);color:#2b4939;text-align:left}
+.compact-columns-options>strong{font-size:13px}
+.compact-columns-options>label{display:flex;gap:9px;align-items:flex-start;
+  padding:6px 3px;border-radius:5px;cursor:pointer;font-size:12px}
+.compact-columns-options>label:hover{background:#f3f8f5}
+.compact-columns-options input[type=checkbox]{margin-top:2px;accent-color:#287852;flex:none}
+.compact-columns-options label span{display:grid;gap:3px;min-width:0;font-weight:650}
+.compact-columns-options label small{font-size:11px;color:#6d8375;font-weight:400;line-height:1.35}
+.compact-columns-options p{margin:3px 0 0;padding-top:8px;
+  border-top:1px solid #e3ece6;font-size:11px;color:#687e72;line-height:1.45}
+.item-data-table tbody td.compact-merged-cell{vertical-align:middle}
+.item-data-table tbody td.compact-merged-cell[data-col-key=content]{vertical-align:top}
+.compact-content-line{line-height:1.5;overflow-wrap:anywhere}
+.compact-content-line>.compact-part{display:inline}
+.compact-content-line .compact-part .content-button{display:inline!important;
+  width:auto;max-width:100%;white-space:normal;text-align:left;
+  vertical-align:baseline;overflow-wrap:anywhere}
+.compact-type-suffix{display:inline;margin-left:5px;color:#58776a;
+  white-space:normal;font-size:11px}
+.compact-type-suffix .compact-part{display:inline-flex;align-items:center;gap:3px}
+.compact-type-suffix .cell-picker-trigger{display:inline-flex;width:auto!important;
+  min-height:24px;padding:2px 5px;font-size:11px}
+.compact-pair-lines{display:grid;gap:5px;min-width:0;text-align:left}
+.compact-pair-lines>div{display:flex;align-items:center;gap:5px;min-width:0;line-height:1.35}
+.compact-pair-tag{font-size:10px;font-weight:750;color:#688579;
+  background:#edf3ef;border-radius:4px;padding:2px 4px;flex:none;min-width:34px;text-align:center}
+.compact-pair-lines .compact-part{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.compact-pair-lines .compact-part .cell-picker-trigger{min-height:26px;padding:4px 7px;font-size:11px}
+.compact-pair-lines .cell-history-action,.compact-type-suffix .cell-history-action{
+  position:static!important;transform:none!important;flex:none}
+@media(max-width:650px){.compact-columns-options{left:0;right:auto}}

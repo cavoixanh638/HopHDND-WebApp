@@ -5,13 +5,14 @@ import './cell-picker.css';
 type CellPickerProps = {
   label: string;
   value: string;
+  displayValue?: string;
   options: string[];
   searchable?: boolean;
   disabled?: boolean;
   onChange: (value: string) => void;
 };
 
-export function CellPicker({ label, value, options, searchable = false, disabled = false, onChange }: CellPickerProps) {
+export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, onChange }: CellPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -113,12 +114,12 @@ export function CellPicker({ label, value, options, searchable = false, disabled
       type="button"
       className="cell-value-button cell-picker-trigger"
       disabled={disabled}
-      aria-label={label}
+      aria-label={displayValue?`${label}: ${value}`:label}
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={() => { setQuery(''); setOpen(value => !value); }}
     >
-      {value || '—'}
+      {(displayValue??value) || '—'}
     </button>
     <div
       ref={popoverRef}
