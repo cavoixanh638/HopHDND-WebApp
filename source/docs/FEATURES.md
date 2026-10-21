@@ -1,3 +1,15 @@
+## 21/10/2026 — Gộp cột tùy chọn (PR #8)
+
+Trong **Bảng dữ liệu** dùng menu `Gộp cột` (mọi vai trò, không cấp quyền ghi). Có thể bật/tắt độc lập:
+- Loại VB được đặt trong ngoặc phía sau Nội dung trình khi hai cột hiện cùng nhau.
+- VP và UBND gộp một cột có hai nhãn riêng; Sở chủ trì với Phòng chuyên môn cũng vậy.
+- Chuyên viên VPUB có thể hiển thị dạng `N.N.Hùng`, nhưng lưu giá trị và tìm kiếm vẫn theo `Nguyễn Ngọc Hùng`.
+Mặc định mọi tùy chọn tắt, chỉ lưu trên trình duyệt, không cập nhật Firebase/Excel. Khi gộp, các nút nhập/chọn và lịch sử vẫn dùng trường gốc cùng kiểm quyền. Dùng `Hiện đủ cột Excel` để xem tạm 15 cột chuẩn; màn tùy chỉnh admin luôn dùng schema nguyên vẹn.
+- Không tự gộp các cột tiến độ xin ý kiến/ban hành NQ vì chúng mô tả công đoạn khác nhau. Có thể nghiên cứu thêm sau khi nghiệm thu.
+- Đường phân cách dọc Bảng dữ liệu dịu màu `#dfe9e2`. Popup giữ bố cục riêng.
+- Unit + Chrome mock tại [#39636999622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39636999622) PASS trước cập nhật docs.
+
+
 ## 20/10/2026 — Phân biệt 2 thẻ, bộ lọc và ô nhập theo quyền (PR #7)
 
 - Hai section cards có max-width 820px và hai màu phân biệt (Báo cáo tổng hợp xanh lam; Danh sách nội dung xanh ngọc), active đậm và chữ trắng, inactive nền nhạt, focus rõ. Màn hẹp xếp dọc.

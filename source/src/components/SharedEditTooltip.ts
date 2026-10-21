@@ -18,6 +18,13 @@ function fromTarget(target:EventTarget|null):HTMLElement|null{
   const history=target.closest('button.cell-history-action[data-quick-tooltip]');
   if(history instanceof HTMLButtonElement&&
     history.closest('table.item-data-table,table.report-detail-grid'))return history;
+  // Within a merged display cell only its separately authorized source controls
+  // provide edit hints; hovering the other read-only field must not suggest editing.
+  const merged=target.closest('td.compact-merged-cell');
+  if(merged){
+    const editable=target.closest('.compact-part-editable');
+    return editable instanceof HTMLElement?editable:null;
+  }
   const td=target.closest('td.editable-cell');
   return td instanceof HTMLTableCellElement&&
     !!td.closest('table.item-data-table,table.report-detail-grid')?td:null;
