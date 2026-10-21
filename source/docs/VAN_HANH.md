@@ -1,3 +1,9 @@
+## 22/10/2026 — Tùy chọn tên lãnh đạo và cách đọc trạng thái
+
+Mở **Gộp cột** ở đầu Danh sách các ND trình HĐND, tick `Viết tắt tên Lãnh đạo VP và UBND`. Có thể bật cùng `Gộp Lãnh đạo VP và UBND TP` hoặc dùng độc lập. Di chuột để thấy đầy đủ họ tên; bộ lọc và danh sách chọn vẫn dùng nguyên họ tên, không tạo dữ liệu ghi mới. Lựa chọn chỉ lưu trên trình duyệt của người dùng và mặc định tắt khi chưa chọn.
+Trong các cột tiến độ, nhãn hổ phách báo `Sở chưa trình`, xanh lam báo công việc ở `Văn phòng`, xanh lá chỉ `Hoàn thành`. Trạng thái trung gian khác không được đổi nghĩa hoặc tự tô màu hoàn thành. Trường nào có quyền sửa vẫn có dropdown và lịch sử riêng; màu tùy chỉnh nội dung không bị thay bằng việc tô cả hàng.
+Tiêu đề nhạt hơn và bộ lọc lớn 13px; phím Escape xóa lọc như trước. Kiểm thử trước phát hành dùng [CI #39641851995](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39641851995).
+
 ## 21/10/2026 — Hướng dẫn hiển thị gọn cột
 
 Trong Danh sách các ND trình HĐND, mở **Gộp cột** ở mép trên Bảng dữ liệu, tick một hoặc nhiều trong 4 cách. Các tick chỉ tác động cách đọc bảng trên trình duyệt; muốn xem lại cột gốc, bỏ tick hoặc nhấn **Hiện đủ cột Excel** tạm thời. Trường nằm trong ô gộp vẫn sửa riêng nếu tài khoản được cấp quyền; ô nào không cho sửa không hiển thị editor. Người quản trị muốn sửa thứ tự, width hay quyền cột phải vào chế độ tùy chỉnh, nơi hiển thị đầy đủ cột nguồn.
