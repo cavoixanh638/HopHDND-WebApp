@@ -16,11 +16,11 @@ export function filterChoices(items:Item[],field:string,getValue?:(item:Item)=>s
   return options.length>0&&options.length<=12?options:null;
 }
 
-export function ColumnFilterCell({field,label,items,value,onChange,getValue,choices:configuredChoices}:{
+export function ColumnFilterCell({field,label,items,value,onChange,getValue,choices:configuredChoices,forceText=false}:{
   field:string;label:string;items:Item[];value:string;onChange:(next:string)=>void;
-  getValue?:(item:Item)=>string;choices?:string[];
+  getValue?:(item:Item)=>string;choices?:string[];forceText?:boolean;
 }){
-  const choices=configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue);
+  const choices=forceText?null:configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue);
   const compact=field==='displayCode'||field==='stt';
   const clearOnEscape=(event:{key:string;preventDefault:()=>void;stopPropagation:()=>void})=>{
     if(event.key==='Escape'&&value){

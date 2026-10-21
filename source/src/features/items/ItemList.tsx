@@ -17,6 +17,8 @@ import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell} from './ColumnFilterCell';
+import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
@@ -39,6 +41,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
+  const [compactDisplay,setCompactDisplay]=useState(()=>readCompactDisplay(personalScope));
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -66,6 +69,19 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       ?(EXCEL_COLUMN_KEYS.includes(a.key)?EXCEL_COLUMN_KEYS.indexOf(a.key):1000+activeLayout.columns.indexOf(a))-
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
       :0);
+  // Visual projection only; administrative configuration keeps every Excel source field.
+  const compactOn=!customizing||anonymousViewer;
+  const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
+  const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
+  const updateCompact=(option:CompactOption,checked:boolean)=>{
+    const next={...compactDisplay,[option]:checked};
+    setCompactDisplay(next);writeCompactDisplay(personalScope,next);
+    const hidden=new Set(activeCompactPairs(columns,next).map(pair=>pair.hidden));
+    setColumnFilters(prev=>{
+      const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
+      return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
+    });
+  };
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
   const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
@@ -150,12 +166,20 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   },[items]);
   const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
     codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
-  const filtered = useMemo(() => items.filter(item =>
-    matchesColumnFilters(item,Object.fromEntries(Object.entries(columnFilters).filter(([key])=>EXCEL_COLUMN_KEYS.includes(key)))) &&
-    Object.entries(columnFilters).every(([key,term])=>{
+  const filtered = useMemo(() => items.filter(item => {
+    const hidden=new Set(compactPairs.map(pair=>pair.hidden));
+    const anchors=new Set(compactPairs.map(pair=>pair.anchor));
+    const ordinary=Object.fromEntries(Object.entries(columnFilters).filter(([key])=>
+      EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)));
+    if(!matchesColumnFilters(item,ordinary))return false;
+    if(!compactPairs.every(pair=>!columnFilters[pair.anchor]?.trim()||
+      normalizeSearch(compactFilterText(item,pair.anchor,compactPairs))
+        .includes(normalizeSearch(columnFilters[pair.anchor]))))return false;
+    return Object.entries(columnFilters).every(([key,term])=>{
       const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
       return !column||!term.trim()||normalizeSearch(column.values?.[customRowKey(item)]??'').includes(normalizeSearch(term));
-    })),[items,columnFilters,activeLayout,codeCounts]);
+    });
+  }),[items,columnFilters,activeLayout,codeCounts,compactDisplay,compactOn,showAllSourceColumns]);
   const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
@@ -168,12 +192,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   };
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const tableWidth=Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),columns.reduce((sum,column)=>sum+visualWidth(column.width),0));
+  const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width),0);
+  const tableWidth=compactPairs.length?Math.max(500,shownWidth):
+    Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    setColumnFilters({...filters.columns});
+    const hidden=new Set(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),compactDisplay)
+      .map(pair=>pair.hidden));
+    setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
