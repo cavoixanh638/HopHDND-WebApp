@@ -70,9 +70,19 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
       :0);
   // Visual projection only; administrative configuration keeps every Excel source field.
-  const compactOn=!customizing||anonymousViewer;
+  const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
+  const compactHiddenKeys=compactPairs.map(pair=>pair.hidden).join('|');
+  // Prevent a saved filter for a now-merged hidden field from silently filtering rows.
+  useEffect(()=>{
+    if(!compactHiddenKeys)return;
+    const hidden=new Set(compactHiddenKeys.split('|'));
+    setColumnFilters(prev=>{
+      const remaining=Object.entries(prev).filter(([key])=>!hidden.has(key));
+      return remaining.length===Object.keys(prev).length?prev:Object.fromEntries(remaining);
+    });
+  },[compactHiddenKeys]);
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next={...compactDisplay,[option]:checked};
     setCompactDisplay(next);writeCompactDisplay(personalScope,next);

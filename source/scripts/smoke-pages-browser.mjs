@@ -404,6 +404,57 @@ try{
   await eventually("document.querySelector('[data-filter-key=type] select')?.value===''",
     'Escape did not clear selected type');
 
+  // Compact display preferences may hide presentation columns, never source data.
+  const sourceWidth=await evaluate("document.querySelector('.item-data-table')?.getBoundingClientRect().width");
+  const menuExists=await evaluate(`(()=>{
+    const details=document.querySelector('.compact-columns-menu');
+    if(!details)return false;
+    details.open=true;
+    return details.querySelectorAll('.compact-columns-options input[type=checkbox]').length===4;
+  })()`);
+  if(!menuExists)throw Error('Compact columns menu requires four independent options');
+  for(let i=0;i<4;i++){
+    const checked=await evaluate(`(()=>{
+      const box=document.querySelectorAll('.compact-columns-options input[type=checkbox]')[${i}];
+      if(!box)return false;
+      box.click();return box.checked;
+    })()`);
+    if(!checked)throw Error('Compact option failed to enable: '+i);
+  }
+  await eventually("document.querySelectorAll('.item-heading-row th').length===12",
+    'Three column pairs should compact 15 headers to 12');
+  const compactRows=await evaluate(`(()=>{
+    const headers=[...document.querySelectorAll('.item-heading-row th')].map(th=>th.dataset.columnKey);
+    const content=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
+    const leaders=document.querySelector('.item-data-table tbody td[data-col-key="vpLeader"]');
+    const specialist=document.querySelector('.item-data-table tbody td[data-col-key="specialist"]');
+    return {ok:!headers.includes('type')&&!headers.includes('room')&&!headers.includes('ubndLeader')&&
+      !!content?.textContent?.includes('(QPPL)')&&
+      !!leaders?.textContent?.includes('UBND')&&
+      !!specialist?.textContent?.includes('C.V.mẫu')&&
+      document.querySelector('.item-data-table').getBoundingClientRect().width<${sourceWidth},
+      headers,content:content?.textContent?.slice(-55),specialist:specialist?.textContent};
+  })()`);
+  if(!compactRows.ok)throw Error('Compact projection failed: '+JSON.stringify(compactRows));
+  if(!await evaluate(`(()=>{
+    const input=document.querySelector('[data-filter-key=specialist] input');
+    input?.focus();return !!input;
+  })()`))throw Error('Specialist must remain searchable by full name');
+  await send('Input.insertText',{text:'Chuyên viên mẫu'});
+  await eventually("document.querySelector('[data-filter-key=specialist] input')?.value==='Chuyên viên mẫu'",
+    'Full specialist name was not accepted by filter');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Full source specialist must match even when visually abbreviated');
+  await evaluate("document.querySelector('[data-filter-key=specialist] .item-filter-clear')?.click()");
+  for(let i=0;i<4;i++){
+    const unchecked=await evaluate(`(()=>{
+      const box=document.querySelectorAll('.compact-columns-options input[type=checkbox]')[${i}];
+      if(!box)return false;box.click();return !box.checked;
+    })()`);
+    if(!unchecked)throw Error('Compact option failed to disable: '+i);
+  }
+  await eventually("document.querySelectorAll('.item-heading-row th').length===15",
+    'Turning off compact display must restore 15 source fields');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
