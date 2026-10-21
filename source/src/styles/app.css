@@ -1334,3 +1334,52 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-detail-grid tbody td.editable-cell :is(.content-button,.cell-value-button):not(.cell-picker-trigger)::after {
   content:'✎';flex:none;color:#347c5e;font-size:12px;
 }
+
+/* 22/10: three actionable workflow statuses stand out in both list and popup.
+   Only exact relevant workflow values receive a tone; custom word highlights and
+   the full Excel cell value remain intact. */
+.item-data-table tbody td[data-progress-tone],
+.report-detail-grid tbody td[data-progress-tone] {
+  --workflow-bg:#fff3d5;--workflow-border:#dba84e;--workflow-fg:#825100;
+}
+.item-data-table tbody td[data-progress-tone="office"],
+.report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-bg:#e4efff;--workflow-border:#78a6dc;--workflow-fg:#184e8a;
+}
+.item-data-table tbody td[data-progress-tone="done"],
+.report-detail-grid tbody td[data-progress-tone="done"] {
+  --workflow-bg:#e1f5e9;--workflow-border:#6eb78b;--workflow-fg:#14673c;
+}
+.item-data-table tbody td[data-progress-tone] .workflow-status-value,
+.report-detail-grid tbody td[data-progress-tone] .workflow-status-value {
+  display:inline-flex;align-items:center;gap:6px;max-width:100%;box-sizing:border-box;
+  padding:5px 8px;border:1px solid var(--workflow-border);border-radius:7px;
+  color:var(--workflow-fg);background:var(--workflow-bg);
+  font-size:12px;font-weight:750;line-height:1.3;white-space:normal;
+  text-align:center;overflow-wrap:anywhere;
+}
+.item-data-table tbody td[data-progress-tone] .workflow-status-value::before,
+.report-detail-grid tbody td[data-progress-tone] .workflow-status-value::before {
+  content:"";display:block;flex:none;width:6px;height:6px;border-radius:50%;
+  background:var(--workflow-fg);
+}
+/* Editing remains visually a dropdown or text input, but uses the same
+   workflow tone. No full-td fill and no new hover listeners. */
+.item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input),
+.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input) {
+  background:var(--workflow-bg);border-color:var(--workflow-border);
+  color:var(--workflow-fg);font-weight:750;
+}
+.item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):hover,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):hover {
+  border-color:var(--workflow-fg);box-shadow:0 0 0 1px var(--workflow-border);
+}
+/* More legible permanent filter row, without increasing header height. */
+.report-grid-modal .report-grid-filter-row input,
+.report-grid-modal .report-grid-filter-row select {
+  font-size:13px;min-height:34px;height:34px;padding-block:5px;
+}
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th {
+  background:#edf4ef;
+}
+.report-grid-modal .report-grid-filter-row .item-column-filter-cell {background:#f9fcfa;}
