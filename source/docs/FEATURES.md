@@ -1,3 +1,10 @@
+## 22/10/2026 — Viết tắt cả hai lãnh đạo, tô nhãn trạng thái nghiệp vụ (PR #9)
+
+- Menu `Gộp cột` bổ sung tùy chọn thứ năm `Viết tắt tên Lãnh đạo VP và UBND`: bật/tắt riêng, hoạt động cả khi hai lãnh đạo gộp và khi hai cột tách. Ví dụ `Nguyễn Ngọc Hùng → N.N.Hùng` và `Trần Văn Quân → T.V.Quân`. Dữ liệu gốc/cho phép sửa/tra cứu luôn sử dụng tên đầy đủ.
+- Ba mức trong Bảng dữ liệu và popup: `Sở chưa trình` hổ phách; `VP đang thực hiện / Đang ở Văn phòng` xanh lam; `Hoàn thành` xanh lá, pill có chấm màu với ô chỉ đọc và màu tương ứng trên editor nếu được quyền. Đây là **hiển thị**, không đổi màu quy tắc toàn hàng hay KPI. Không suy `Đã trình HĐND thành phố` thành hoàn thành.
+- Nền tiêu đề nhạt `#edf4ef`, hàng lọc `#f9fcfa`; chữ `Tìm kiếm / Chọn để lọc` 13px và ô cao 34px trong Bảng dữ liệu/popup.
+- Unit/Chrome CI ghi nhận tại [#39641851995](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39641851995) PASS trước cập nhật docs.
+
 ## 21/10/2026 — Gộp cột tùy chọn (PR #8)
 
 Trong **Bảng dữ liệu** dùng menu `Gộp cột` (mọi vai trò, không cấp quyền ghi). Có thể bật/tắt độc lập:

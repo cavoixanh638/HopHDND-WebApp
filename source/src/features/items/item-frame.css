@@ -609,3 +609,13 @@
 .compact-pair-lines .cell-history-action,.compact-type-suffix .cell-history-action{
   position:static!important;transform:none!important;flex:none}
 @media(max-width:650px){.compact-columns-options{left:0;right:auto}}
+
+/* 22/10: slightly lighter heading and readable filter prompts in data list. */
+.item-data-table thead .item-heading-row th {background:#edf4ef;}
+.item-data-table thead .item-column-filter-row th {background:#f9fcfa;}
+.item-data-table .item-column-filter-row input,
+.item-data-table .item-column-filter-row select,
+.item-data-table .item-column-filter-row input[type="search"] {
+  font-size:13px;min-height:34px;height:34px;
+}
+.item-data-table .item-column-filter-row input::placeholder {font-size:13px;}

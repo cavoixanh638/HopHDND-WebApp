@@ -1,3 +1,12 @@
+## 22/10/2026 — Viết tắt lãnh đạo và nhãn tiến độ, bộ lọc rõ chữ (PR #9)
+
+- PR #9 / nhánh `feat/leader-shortnames-status-visual-2026-10-22`: thêm cờ cá nhân `shortLeaders` trong menu `Gộp cột`. Áp dụng đồng thời cho `vpLeader` và `ubndLeader` khi hai cột đang tách hoặc gộp; giá trị gốc, tên trong dropdown, tìm kiếm họ tên đầy đủ và phân quyền theo trường giữ nguyên. Các bản lưu localStorage `v1` thiếu cờ được nạp mặc định tắt; không sửa layout Firebase/Excel.
+- Bảng dữ liệu và popup báo cáo dùng `progressTone` chỉ cho bốn cột tiến độ, đúng chuỗi sau chuẩn hóa dấu/hoa: `Sở chưa trình` (hổ phách), `VP đang thực hiện / Đang ở Văn phòng / Văn phòng đang thực hiện` (xanh lam), `Hoàn thành / Đã hoàn thành` (xanh lục). Ô chỉ đọc có pill và chấm nhận diện; nút chọn/ô nhập được phép sửa nhận đúng tông nhưng không tô nền cả ô. **Không** biến `Đã trình HĐND thành phố`, `Đã có TBKL` hay `Đã trình HĐND, chưa có QĐ` thành hoàn thành. Không đổi KPI, reporting pipeline hoặc status dữ liệu.
+- Nền tiêu đề Bảng dữ liệu và popup từ xanh xám đậm sang `#edf4ef`; hàng lọc `#f9fcfa`. Font `Tìm kiếm`/`Chọn để lọc` tăng lên 13px ở cả hai bảng, chiều cao control 34px; giữ nguyên Esc xóa lọc.
+- CI [#39641851995](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39641851995) PASS gồm TypeScript, unit test strict status + leader, Firebase emulator, Chrome với 5 options, lọc bằng họ tên đầy đủ, nền và cỡ font. Sau docs cần CI cuối PASS rồi mới merge và kiểm tra Build/Pages. Không ghi Sheets production hoặc Firebase Rules.
+
+---
+
 ## 21/10/2026 — Chế độ hiển thị gọn riêng cho Bảng dữ liệu (PR #8)
 
 - PR #8, nhánh `feat/compact-columns-personal-2026-10-21`. Mỗi người dùng có menu **Gộp cột** trong Bảng dữ liệu với 4 lựa chọn độc lập, **mặc định tắt**, lưu localStorage theo source scope (`hdnd.compact-display.v1:<scope>`): (1) đặt Loại VB trong ngoặc sau Nội dung trình, (2) gộp Lãnh đạo VP / Lãnh đạo UBND TP trong hai dòng có nhãn, (3) gộp Sở chủ trì / Phòng chuyên môn trong hai dòng có nhãn, (4) viết tắt tên chuyên viên `Nguyễn Ngọc Hùng → N.N.Hùng`.

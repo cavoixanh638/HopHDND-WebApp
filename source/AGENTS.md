@@ -71,3 +71,9 @@
 - Mỗi nguồn trong ô gộp giữ quyền theo khóa gốc, giá trị đầy đủ, editor và lịch sử độc lập. Bộ lọc trên cột gộp dùng cả hai chuỗi gốc; tên chuyên viên rút gọn **chỉ hiển thị**, search/select/sửa tiếp tục dùng tên đầy đủ. Tắt tùy chọn hoặc bật Hiện đủ cột Excel phải khôi phục các cột chuẩn.
 - Chế độ chỉnh schema của admin và popup vẫn dùng layout nguyên gốc và cấu hình riêng; không ép chế độ gộp vào popup. Khi thay đổi phải chạy TypeScript, unit, Firebase emulator, Chrome với kịch bản bật/tắt/gõ họ tên và quyền đọc.
 - Không gộp mặc định các bước nghiệp vụ tiến độ vì có nguy cơ mất ngữ cảnh; không thêm listeners tooltip mới. Đường kẻ dọc dịu `#dfe9e2`, giữ cả hàng tiêu đề, lọc và nội dung.
+
+## Quy tắc giao diện 22/10/2026 — PR #9
+
+- Hiển thị gọn có **5** lựa chọn cá nhân, `shortLeaders` độc lập với `leadersTogether` và `shortSpecialist`. Mọi dropdown, search, save giữ tên nguồn; tên ngắn chỉ để hiển thị. Thao tác vẫn dựa trên quyền từng trường, tránh sinh quyền chung khi gộp.
+- `progress-visual.ts` là phân loại màu UI duy nhất cho trạng thái này, không sửa báo cáo/KPI, và không suy các trạng thái `Đã trình HĐND` thành hoàn thành. Bảng chính và popup dùng cùng helper.
+- Header chính/popup nhạt nhẹ (`#edf4ef`), filter row `#f9fcfa`, placeholder control 13px. Test Chrome phải xác nhận hoạt động trên dữ liệu mô phỏng và unit kiểm chặt các trạng thái loại trừ.

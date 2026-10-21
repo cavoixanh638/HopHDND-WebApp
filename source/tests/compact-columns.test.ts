@@ -41,6 +41,28 @@ describe('Optional compact projection remains read-only presentation',()=>{
     expect(normalizeSearch(compactFilterText(item,'content',pairs)))
       .toContain(normalizeSearch(item.type));
   });
+  it('shortens both leaders independently of merging while retaining source names for search',()=>{
+    const prefs={...DEFAULT_COMPACT_DISPLAY,shortLeaders:true};
+    const item={...createDemoItems(1)[0],
+      vpLeader:'Nguyễn Ngọc Hùng',ubndLeader:'Trần Văn Quân'};
+    expect(prefs.shortSpecialist).toBe(false);
+    expect(activeCompactPairs(defaultItemLayout().columns,prefs)).toHaveLength(0);
+    expect(abbreviateVietnameseName(item.vpLeader)).toBe('N.N.Hùng');
+    expect(abbreviateVietnameseName(item.ubndLeader)).toBe('T.V.Quân');
+    expect(normalizeSearch(item.vpLeader)).toContain('nguyen ngoc hung');
+    expect(normalizeSearch(item.ubndLeader)).toContain('tran van quan');
+    const merged=activeCompactPairs(defaultItemLayout().columns,
+      {...prefs,leadersTogether:true});
+    expect(normalizeSearch(compactFilterText(item,'vpLeader',merged)))
+      .toContain(normalizeSearch('Trần Văn Quân'));
+  });
+  it('reads old saved settings with leader option off, not resetting existing flags',()=>{
+    const values=new Map([['hdnd.compact-display.v1:old',
+      JSON.stringify({leadersTogether:true,shortSpecialist:true})]]);
+    vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null});
+    expect(readCompactDisplay('old')).toEqual({...DEFAULT_COMPACT_DISPLAY,
+      leadersTogether:true,shortSpecialist:true,shortLeaders:false});
+  });
   it('persists independent boolean choices per local source with safe fallback',()=>{
     const values=new Map<string,string>();
     vi.stubGlobal('localStorage',{getItem:(k:string)=>values.get(k)??null,

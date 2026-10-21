@@ -93,7 +93,7 @@ const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),ro
     8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
   })[i]??''}))},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP','Lãnh đạo UBND','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Nguyễn Ngọc Hùng','Trần Văn Quân','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
   {c:['',2,'','','QPPL','','','','','','','','','',''].map(v=>({v}))},
   ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','',''].map(v=>({v}))}))
 ]}};
@@ -189,6 +189,31 @@ try{
   })()`);
   if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
 
+  const statusStyles=await evaluate(`(()=>{
+    const status=document.querySelector('.item-data-table tbody td[data-col-key=progressParty]');
+    const label=status?.querySelector('.workflow-status-value');
+    const input=document.querySelector('[data-filter-key=content] input');
+    const selector=document.querySelector('[data-filter-key=type] select');
+    const th=document.querySelector('.item-heading-row th');
+    if(!status||!label||!input||!selector||!th)return {ok:false,reason:'missing targets'};
+    const style=getComputedStyle(label),header=getComputedStyle(th);
+    const fontA=getComputedStyle(input).fontSize,fontB=getComputedStyle(selector).fontSize;
+    // Verify other semantic colors without mutating React source or Excel.
+    const colors=['office','done'].map(tone=>{
+      const td=document.createElement('td');td.dataset.progressTone=tone;
+      const span=document.createElement('span');span.className='workflow-status-value';
+      span.textContent=tone;td.append(span);status.parentElement.append(td);
+      const value=getComputedStyle(span).backgroundColor;td.remove();return value;
+    });
+    return {ok:status.dataset.progressTone==='not-submitted'&&
+      label.textContent?.includes('Sở chưa trình')&&
+      style.backgroundColor!=='rgb(255, 255, 255)'&&
+      colors[0]!==colors[1]&&colors[0]!==style.backgroundColor&&
+      fontA==='13px'&&fontB==='13px'&&
+      header.backgroundColor==='rgb(237, 244, 239)',
+      colors,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
+  })()`);
+  if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
   const sortAndGuestLayout=await evaluate(`(()=>{
     const topbar=document.querySelector('.topbar'),nav=document.querySelector('.nav-tabs');
     const cardHeader=document.querySelector('.item-data-region .card-header');
@@ -410,10 +435,10 @@ try{
     const details=document.querySelector('.compact-columns-menu');
     if(!details)return false;
     details.open=true;
-    return details.querySelectorAll('.compact-columns-options input[type=checkbox]').length===4;
+    return details.querySelectorAll('.compact-columns-options input[type=checkbox]').length===5;
   })()`);
-  if(!menuExists)throw Error('Compact columns menu requires four independent options');
-  for(let i=0;i<4;i++){
+  if(!menuExists)throw Error('Compact columns menu requires five independent options');
+  for(let i=0;i<5;i++){
     const checked=await evaluate(`(()=>{
       const box=document.querySelectorAll('.compact-columns-options input[type=checkbox]')[${i}];
       if(!box)return false;
@@ -431,6 +456,8 @@ try{
     return {ok:!headers.includes('type')&&!headers.includes('room')&&!headers.includes('ubndLeader')&&
       !!content?.textContent?.includes('(QPPL)')&&
       !!leaders?.textContent?.includes('UBND')&&
+      !!leaders?.textContent?.includes('N.N.Hùng')&&
+      !!leaders?.textContent?.includes('T.V.Quân')&&
       !!specialist?.textContent?.includes('C.V.mẫu')&&
       document.querySelector('.item-data-table').getBoundingClientRect().width<${sourceWidth},
       headers,content:content?.textContent?.slice(-55),specialist:specialist?.textContent};
@@ -446,6 +473,17 @@ try{
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
     'Full source specialist must match even when visually abbreviated');
   await evaluate("document.querySelector('[data-filter-key=specialist] .item-filter-clear')?.click()");
+  // Even when both leaders share one visual column, the filter keeps full names.
+  if(!await evaluate(`(()=>{
+    const input=document.querySelector('[data-filter-key=vpLeader] input');
+    input?.focus();return !!input;
+  })()`))throw Error('Combined leaders must offer full-text filter');
+  await send('Input.insertText',{text:'Trần Văn Quân'});
+  await eventually("document.querySelector('[data-filter-key=vpLeader] input')?.value==='Trần Văn Quân'",
+    'Full leader name not accepted by combined filter');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Combined leader filter lost original source name');
+  await evaluate("document.querySelector('[data-filter-key=vpLeader] .item-filter-clear')?.click()");
   for(let i=0;i<4;i++){
     const unchecked=await evaluate(`(()=>{
       const box=document.querySelectorAll('.compact-columns-options input[type=checkbox]')[${i}];
@@ -454,7 +492,23 @@ try{
     if(!unchecked)throw Error('Compact option failed to disable: '+i);
   }
   await eventually("document.querySelectorAll('.item-heading-row th').length===15",
-    'Turning off compact display must restore 15 source fields');
+    'Unmerging all pairs must restore 15 source fields');
+  const separateLeaders=await evaluate(`(()=>{
+    const vp=document.querySelector('.item-data-table tbody td[data-col-key=vpLeader]');
+    const ubnd=document.querySelector('.item-data-table tbody td[data-col-key=ubndLeader]');
+    return !!vp?.textContent?.includes('N.N.Hùng')&&
+      !!ubnd?.textContent?.includes('T.V.Quân')&&
+      vp?.querySelector('[aria-label="Nguyễn Ngọc Hùng"]')!==null&&
+      ubnd?.querySelector('[aria-label="Trần Văn Quân"]')!==null;
+  })()`);
+  if(!separateLeaders)throw Error('Short leader option must work with separate columns too');
+  const restored=await evaluate(`(()=>{
+    const box=document.querySelectorAll('.compact-columns-options input[type=checkbox]')[4];
+    if(!box)return false;box.click();return !box.checked;
+  })()`);
+  if(!restored)throw Error('Short leader preference failed to turn off');
+  await eventually("document.querySelector('.item-data-table tbody td[data-col-key=vpLeader]')?.textContent?.includes('Nguyễn Ngọc Hùng')===true",
+    'Turning off leader abbreviation must restore full source name');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.

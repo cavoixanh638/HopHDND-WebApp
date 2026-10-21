@@ -2,16 +2,17 @@ import type {Item} from '../../../shared/types';
 import type {ItemColumn} from '../../data/item-preferences';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
-export type CompactOption='typeInContent'|'leadersTogether'|'departmentRoom'|'shortSpecialist';
+export type CompactOption='typeInContent'|'leadersTogether'|'departmentRoom'|'shortSpecialist'|'shortLeaders';
 export type CompactDisplay=Record<CompactOption,boolean>;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
-  typeInContent:false,leadersTogether:false,departmentRoom:false,shortSpecialist:false,
+  typeInContent:false,leadersTogether:false,departmentRoom:false,shortSpecialist:false,shortLeaders:false,
 };
 export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string}[]=[
   {key:'typeInContent',label:'Loại VB → Nội dung trình',detail:'Ví dụ: Nội dung nghị quyết (QPPL)'},
   {key:'leadersTogether',label:'Gộp Lãnh đạo VP và UBND TP',detail:'Hai dòng có nhãn VP / UBND'},
   {key:'departmentRoom',label:'Gộp Sở chủ trì và Phòng chuyên môn',detail:'Hai dòng có nhãn Sở / Phòng'},
   {key:'shortSpecialist',label:'Viết tắt tên chuyên viên',detail:'Nguyễn Ngọc Hùng → N.N.Hùng; tìm theo tên đầy đủ'},
+  {key:'shortLeaders',label:'Viết tắt tên Lãnh đạo VP và UBND',detail:'Áp dụng cho cả hai lãnh đạo, gộp hay tách cột; vẫn tìm theo họ tên đầy đủ'},
 ];
 const keyFor=(scope:string)=>'hdnd.compact-display.v1:'+scope;
 export function readCompactDisplay(scope:string):CompactDisplay {
