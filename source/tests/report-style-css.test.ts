@@ -167,13 +167,13 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).not.toContain('--workflow-fg:#307651');
   });
-  it('lightly brightens status INK and thins text without changing fills or history',()=>{
+  it('keeps V4 brighter status ink at weight 600 without changing fills or history',()=>{
     // Foreground is intentionally separate from the checkpoint's semantic fill,
     // border and status-dot variable (--workflow-fg).
     for(const [tone,ink,fill,minimum] of [
-      ['not-submitted','BA2E42','FFE0E4',4.5],
-      ['office','935300','FFE8B8',4.5],
-      ['done','08784E','D5F0DE',4.5],
+      ['not-submitted','C52445','FFE0E4',4.5],
+      ['office','A15700','FFE8B8',4.5],
+      ['done','00794A','D5F0DE',4.5],
     ] as const){
       const selector='tbody td[data-progress-tone="'+tone+'"]';
       expect(css).toContain(selector);
@@ -188,9 +188,9 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).toContain('opacity:.42;');
     // V3 is text-only: do not change weight, background or dot colors.
-    expect(css).toContain('--workflow-text:#BA2E42;');
-    expect(css).toContain('--workflow-text:#935300;');
-    expect(css).toContain('--workflow-text:#08784E;');
+    expect(css).toContain('--workflow-text:#C52445;');
+    expect(css).toContain('--workflow-text:#A15700;');
+    expect(css).toContain('--workflow-text:#00794A;');
     expect(css).toContain('font-weight:600;');
   });
 });

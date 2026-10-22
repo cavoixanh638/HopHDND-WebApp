@@ -1,5 +1,10 @@
 # Hướng dẫn làm việc
 
+## Biến thể V4 thử màu chữ sáng hơn — 22/10/2026
+
+- V4 chỉ thay `--workflow-text` của `Sở chưa trình` thành `#C52445`, `VP đang thực hiện` thành `#A15700`, `Hoàn thành` và tương đương thành `#00794A`, giữ `font-weight:600`. Áp dụng đồng nhất Bảng dữ liệu/popup; nền/viền/chấm/icon/history và quyền không đổi. Chữ trên nền giữ tương phản ít nhất 4,5:1; không làm nhạt quá ngưỡng để “sáng” hơn.
+- Đây là **V4 thử nghiệm**, **không ghi đè** nhánh backup V1 và V2; xem `docs/CURRENT_STATE.md` và `docs/VAN_HANH.md` để phân biệt bản chốt với bản thử.
+
 ## Danh mục hai mốc màu đã chốt (22/10/2026)
 
 - **V1 — Nền màu chuẩn, chữ cũ:** commit `6c151458561b7800af51bab64837430e147fdcef`, nhánh `backup/ui-colored-status-pill-approved-2026-10-22`; chữ `#7F1D30/#704500/#2B7450`, status font-weight 750 và completed 650.
