@@ -9,16 +9,19 @@ import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,co
 afterEach(()=>vi.unstubAllGlobals());
 describe('Optional compact projection remains read-only presentation',()=>{
   const all={...DEFAULT_COMPACT_DISPLAY,typeInContent:true,leadersTogether:true,
-    departmentRoom:true,shortSpecialist:true};
+    roomSpecialist:true,shortSpecialist:true};
   it('does not remove or mutate the 15 Excel source columns',()=>{
     const source=defaultItemLayout().columns;
     const pairs=activeCompactPairs(source,all);
     const displayed=compactVisibleColumns(source,all);
     expect(source).toHaveLength(15);
     expect(displayed).toHaveLength(12);
-    expect(pairs.map(p=>p.hidden)).toEqual(['type','ubndLeader','room']);
+    expect(pairs.map(p=>p.hidden)).toEqual(['type','ubndLeader','specialist']);
     expect(displayed.find(c=>c.key==='content')?.label).toContain('Loại VB');
     expect(displayed.find(c=>c.key==='vpLeader')?.label).toContain('UBND');
+    expect(displayed.find(c=>c.key==='room')?.label).toBe('Phòng chuyên môn / Chuyên viên');
+    expect(displayed.some(c=>c.key==='specialist')).toBe(false);
+    expect(displayed.some(c=>c.key==='department')).toBe(true);
     expect(source.find(c=>c.key==='content')?.label).toBe('Nội dung trình');
     expect(compactVisibleColumns(source,DEFAULT_COMPACT_DISPLAY)).toHaveLength(15);
   });
@@ -40,6 +43,7 @@ describe('Optional compact projection remains read-only presentation',()=>{
       .toContain(normalizeSearch('Trần Văn Quân'));
     expect(normalizeSearch(compactFilterText(item,'content',pairs)))
       .toContain(normalizeSearch(item.type));
+    expect(compactFilterText(item,'room',pairs)).toContain('Nguyễn Ngọc Hùng');
   });
   it('shortens both leaders independently of merging while retaining source names for search',()=>{
     const prefs={...DEFAULT_COMPACT_DISPLAY,shortLeaders:true};
@@ -77,6 +81,14 @@ describe('Optional compact projection remains read-only presentation',()=>{
     vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null});
     expect(readCompactDisplay('old')).toEqual({...DEFAULT_COMPACT_DISPLAY,
       leadersTogether:true,shortSpecialist:true,shortLeaders:false});
+  });
+  it('does not silently migrate the OLD Sở/Phòng merge into the new Phòng/CV merge',()=>{
+    const prefs={...DEFAULT_COMPACT_DISPLAY,roomSpecialist:true};
+    expect(activeCompactPairs(defaultItemLayout().columns,prefs).find(pair=>
+      pair.anchor==='room')).toMatchObject({hidden:'specialist'});
+    const values=new Map([['hdnd.compact-display.v1:old-merge',JSON.stringify({departmentRoom:true})]]);
+    vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null});
+    expect(readCompactDisplay('old-merge').roomSpecialist).toBe(false);
   });
   it('persists independent boolean choices per local source with safe fallback',()=>{
     const values=new Map<string,string>();
