@@ -579,7 +579,7 @@ try{
     input?.focus();return !!input;
   })()`))throw Error('Specialist must remain searchable by full name');
   await send('Input.insertText',{text:'Chuyên viên mẫu'});
-  await eventually("document.querySelector('[data-filter-key=room] input[aria-label="Tìm kiếm tên CV"]')?.value==='Chuyên viên mẫu'",
+  await eventually("document.querySelector('[data-filter-key=room] input[aria-label=\\"Tìm kiếm tên CV\\"]')?.value==='Chuyên viên mẫu'",
     'Full specialist name was not accepted by filter');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
     'Full source specialist must match even when visually abbreviated');
