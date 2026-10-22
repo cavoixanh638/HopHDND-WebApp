@@ -33,7 +33,7 @@ export function validateStatusPalette(value:unknown):StatusPalette{
     if(!swatch||typeof swatch!=='object'||Array.isArray(swatch))throw Error('Thiếu màu cho '+key);
     const text=color((swatch as Record<string,unknown>).text);
     const background=color((swatch as Record<string,unknown>).background);
-    if(!text||!background)throw Error('Mã màu phải ở dạng #RRGGBB.');
+    if(!text||!background)throw Error('Mã màu HEX phải ở dạng #RRGGBB.');
     result[key]={text,background};
   }
   if(typeof input.otherEnabled!=='boolean')throw Error('Thiếu tùy chọn tô màu trạng thái khác.');
