@@ -62,8 +62,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
       reports:withReportPageWidth(defaultReportLayout(),1240),items:columns};
     firebase.common.status='loading';
     let tree=render();
-    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
-    expect(text(tree)).toContain('Đang tải bố cục đã lưu');
+    // A confirmed matching profile must remain visible during background fetch.
+    expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
+    expect(tree.props.style['--page-content-width']).toBe('1240px');
     firebase.common.status='ready';
     respond();await settle();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
