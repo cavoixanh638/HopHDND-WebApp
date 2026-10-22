@@ -167,6 +167,15 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).not.toContain('--workflow-fg:#307651');
   });
+  it('never paints a yellow/orange entire row solely because it has a pending edit',()=>{
+    expect(css).not.toMatch(/\\.data-table\\s+tr\\.dirty-row\\s*\\{/);
+    expect(css).not.toMatch(/\\.report-detail-grid\\s+tbody\\s+\\.report-grid-row-dirty\\s*\\{/);
+    expect(css).toContain('.item-data-table tr.color-row td');
+    // Manually configured row-highlights and status pills still work.
+    expect(css).toContain('.color-amber, .color-amber td');
+    expect(css).toContain('background-color:var(--workflow-bg)');
+    expect(css).toContain('opacity:.42;');
+  });
   it('keeps V5 saturated status ink at weight 600 without changing fills or history',()=>{
     // Foreground is intentionally separate from the checkpoint's semantic fill,
     // border and status-dot variable (--workflow-fg).
