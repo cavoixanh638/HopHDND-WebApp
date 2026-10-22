@@ -148,8 +148,12 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(luminance('F2F6F9')).toBeGreaterThan(luminance('D5F0DE'));
   });
   it('preserves image-matched colored status dropdowns in editing mode, list and popup',()=>{
+    const pairedRule=/\.item-data-table tbody td\.editable-cell\[data-progress-tone\] \.cell-picker-trigger,\s*\.report-detail-grid tbody td\.editable-cell\[data-progress-tone\] \.cell-picker-trigger\s*\{([^}]*)\}/;
+    const control=css.match(pairedRule)?.[1];
+    expect(control).toBeDefined();
+    expect(control).toContain('background-color:var(--workflow-bg)');
+    expect(control).toContain('border-color:var(--workflow-border)');
     for(const grid of ['item-data-table','report-detail-grid']){
-      expect(css).toContain('.'+grid+' tbody td.editable-cell[data-progress-tone] .cell-picker-trigger {');
       expect(css).toContain('.'+grid+' tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:hover,');
       expect(css).toContain('.'+grid+' tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:focus-visible');
     }
