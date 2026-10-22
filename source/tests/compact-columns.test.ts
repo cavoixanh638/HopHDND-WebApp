@@ -2,7 +2,7 @@ import {afterEach,describe,expect,it,vi} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {normalizeSearch} from '../src/domain/search';
-import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,compactFilterText,
+import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,compactFilterText,
   activeCompactPairs,compactVisibleColumns,readCompactDisplay,writeCompactDisplay}
   from '../src/features/items/compact-columns';
 
@@ -55,6 +55,21 @@ describe('Optional compact projection remains read-only presentation',()=>{
       {...prefs,leadersTogether:true});
     expect(normalizeSearch(compactFilterText(item,'vpLeader',merged)))
       .toContain(normalizeSearch('Trần Văn Quân'));
+  });
+  it('keeps PCVP, Q.CVP, PCT, PCTT titles in full while shortening only the personal name',()=>{
+    expect(abbreviateLeaderName('PCVP Trịnh Nam Hưng')).toBe('PCVP T.N.Hưng');
+    expect(abbreviateLeaderName('Q.CVP Nguyễn Ngọc Hùng')).toBe('Q.CVP N.N.Hùng');
+    expect(abbreviateLeaderName('PCT Trần Văn Quân')).toBe('PCT T.V.Quân');
+    expect(abbreviateLeaderName('PCTT Phạm Minh Đức')).toBe('PCTT P.M.Đức');
+    expect(abbreviateLeaderName('CVP Nguyễn Văn A')).toBe('CVP N.V.A');
+    expect(abbreviateLeaderName('PCT: Trần Văn Quân')).toBe('PCT:T.V.Quân');
+    expect(abbreviateLeaderName('Nguyễn Ngọc Hùng (PCVP)')).toBe('N.N.Hùng (PCVP)');
+    expect(abbreviateLeaderName('PCVP')).toBe('PCVP');
+    expect(abbreviateLeaderName('Trần Văn Quân')).toBe('T.V.Quân');
+    // Source values, search, and editor options must remain full names.
+    const full='Q.CVP Nguyễn Ngọc Hùng';
+    expect(abbreviateLeaderName(full)).toBe('Q.CVP N.N.Hùng');
+    expect(full).toBe('Q.CVP Nguyễn Ngọc Hùng');
   });
   it('reads old saved settings with leader option off, not resetting existing flags',()=>{
     const values=new Map([['hdnd.compact-display.v1:old',
