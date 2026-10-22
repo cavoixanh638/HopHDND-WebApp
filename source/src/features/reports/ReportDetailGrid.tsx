@@ -14,7 +14,8 @@ import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
-import {progressTone} from '../../domain/progress-visual';
+import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
+import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
@@ -38,10 +39,12 @@ type Props={
   dirtyIds:Set<string>;
   errors:Record<string,string>;
   onClose:()=>void;
+  statusPaletteStore?:StatusPaletteStore;
+  onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
-  onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose}:Props){
+  onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
@@ -194,7 +197,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
-      return progressTone(key,raw)?<span className="workflow-status-value">{raw}</span>:raw||'—';
+      return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
     if(field==='content'||field==='note')
       return <button type="button" className="cell-value-button"
@@ -235,6 +238,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             onCommit={changeDialogWidth}/>
           <span>px</span>
         </label>
+        {!readOnlyViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
+          store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
         {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
@@ -355,7 +360,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               const showCellHistory=!readOnlyViewer&&!!onCellHistory&&editableFields.has(c.key);
               const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
               return <td key={c.key} data-col-key={c.key}
-                data-progress-tone={progressTone(c.key,item[c.key])??undefined}
+                data-progress-tone={statusPaletteTone(c.key,item[c.key],statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}

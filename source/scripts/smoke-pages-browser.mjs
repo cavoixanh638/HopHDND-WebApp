@@ -265,6 +265,45 @@ try{
       fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
+  // Verify the REAL UI exists, and palette CSS variables cascade into list AND
+  // popup status cells without writing any Sheets or Firebase test records.
+  const paletteUi=await evaluate(`(()=>{
+    const trigger=document.querySelector('.item-header-actions .status-palette-trigger');
+    if(!trigger)return {ok:false,reason:'missing palette button'};
+    trigger.click();return {ok:true};
+  })()`);
+  if(!paletteUi.ok)throw Error('Status palette button missing: '+JSON.stringify(paletteUi));
+  await eventually(`!!document.querySelector('.status-palette-modal[open] input[aria-label="Mã màu chữ Sở chưa trình"]')`,
+    'Status palette editor must expose HEX fields');
+  const paletteStructure=await evaluate(`(()=>{
+    const dialog=document.querySelector('.status-palette-modal[open]');
+    const hexFields=[...(dialog?.querySelectorAll('.status-palette-color-controls input[type=text]')??[])];
+    const pickers=[...(dialog?.querySelectorAll('.status-palette-color-controls input[type=color]')??[])];
+    const options=dialog?.querySelector('select[aria-label="Chọn bộ màu trạng thái đã lưu"]');
+    return {ok:hexFields.length===8&&pickers.length===8&&!!options&&
+      !!dialog.querySelector('input[type=checkbox]')&&
+      [...dialog.querySelectorAll('button')].some(b=>b.textContent.includes('Lưu bộ mới')),
+      hexCount:hexFields.length,colorCount:pickers.length};
+  })()`);
+  if(!paletteStructure.ok)throw Error('Status palette editor fields missing: '+JSON.stringify(paletteStructure));
+  const paletteCascade=await evaluate(`(()=>{
+    const root=document.querySelector('.app-shell');
+    const sample=document.querySelector('.item-data-table tbody td[data-progress-tone="not-submitted"] .workflow-status-value');
+    if(!root||!sample)return {ok:false,reason:'missing table/status'};
+    root.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
+    root.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
+    const style=getComputedStyle(sample);
+    const ok=style.color==='rgb(161, 0, 34)'&&style.backgroundColor==='rgb(241, 203, 219)';
+    root.style.removeProperty('--hdnd-status-not-submitted-text');
+    root.style.removeProperty('--hdnd-status-not-submitted-bg');
+    return {ok,text:style.color,background:style.backgroundColor};
+  })()`);
+  if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
+  await evaluate(`(()=>{
+    document.querySelector('.status-palette-modal[open] .modal-footer button')?.click();
+  })()`);
+  await eventually(`!document.querySelector('.status-palette-modal[open]')`,
+    'Status palette dialog should close normally');
   const sortAndGuestLayout=await evaluate(`(()=>{
     const topbar=document.querySelector('.topbar'),nav=document.querySelector('.nav-tabs');
     const cardHeader=document.querySelector('.item-data-region .card-header');

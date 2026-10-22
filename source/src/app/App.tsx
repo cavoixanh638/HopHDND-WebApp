@@ -8,6 +8,8 @@ import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
 import { MemoReportTable } from '../features/reports/ReportTable';
 import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
+import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
+  type StatusPaletteStore} from '../data/status-palettes';
 import { ItemList } from '../features/items/ItemList';
 import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
@@ -50,6 +52,16 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [storageHint, setStorageHint] = useState('');
   const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const workspace = useWorkspace(repository, sourceKey);
+  // Presentation-only personal colors: no shared layout, permissions or source data.
+  const [statusPaletteHolder,setStatusPaletteHolder]=useState(()=>
+    ({source:sourceKey,store:loadStatusPaletteStore(sourceKey)}));
+  const statusPaletteStore=statusPaletteHolder.source===sourceKey
+    ?statusPaletteHolder.store:loadStatusPaletteStore(sourceKey);
+  const updateStatusPaletteStore=(next:StatusPaletteStore):boolean=>{
+    if(!saveStatusPaletteStore(sourceKey,next))return false;
+    setStatusPaletteHolder({source:sourceKey,store:next});
+    return true;
+  };
   const [page, setPage] = useState<Page>('overview');
   const [editorUnsaved,setEditorUnsaved]=useState(false);
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
@@ -191,7 +203,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const pageContentWidth=frameChoice==='auto'?'100%':`${Math.min(6000,Math.max(320,frameChoice))}px`;
   const frameStyle={'--page-content-width':pageContentWidth,
     '--table-font-family':tableFontStack(getReportFont(layout)),
-    '--table-font-size':`${getReportFontSize(layout)}px`} as CSSProperties;
+    '--table-font-size':`${getReportFontSize(layout)}px`,
+    ...statusPaletteCssVariables(statusPaletteStore.active)} as CSSProperties;
   return <div className={`app-shell ${listPage?'wide-table-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
       <div className="top-actions">
@@ -272,7 +285,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </>}
       {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
-      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&!isDemo} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>firebase!.canEdit(id,field) &&
+      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={updateStatusPaletteStore} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&!isDemo} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>firebase!.canEdit(id,field) &&
         (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
@@ -283,6 +296,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </>}
     </main>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
+      statusPaletteStore={statusPaletteStore} onStatusPaletteChange={updateStatusPaletteStore}
       selectedIds={selection.items.map(item=>item.recordId)}
       items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
