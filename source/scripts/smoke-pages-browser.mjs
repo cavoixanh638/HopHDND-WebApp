@@ -236,7 +236,7 @@ try{
         history.type='button';history.className='cell-history-action';
         cell.appendChild(history);row.appendChild(cell);
         const style=getComputedStyle(trigger),h=getComputedStyle(history);
-        const result={background:style.backgroundColor,color:style.color,
+        const result={background:style.backgroundColor,color:style.color,weight:style.fontWeight,
           border:style.borderTopColor,historyOpacity:h.opacity,tag:trigger.tagName,
           arrow:getComputedStyle(trigger,'::after').content};
         cell.remove();return result;
@@ -245,17 +245,18 @@ try{
       return values;
     });
     const expectedStatusColors=[
-      ['rgb(255, 224, 228)','rgb(127, 29, 48)'],
-      ['rgb(255, 232, 184)','rgb(112, 69, 0)'],
-      ['rgb(213, 240, 222)','rgb(43, 116, 80)']];
+      ['rgb(255, 224, 228)','rgb(178, 38, 61)'],
+      ['rgb(255, 232, 184)','rgb(135, 80, 0)'],
+      ['rgb(213, 240, 222)','rgb(39, 119, 75)']];
     const coloredEditableOk=editableStatuses.every(group=>group.every((entry,i)=>
       entry.background===expectedStatusColors[i][0]&&entry.color===expectedStatusColors[i][1]&&
-      entry.historyOpacity==='0.42'&&entry.tag==='BUTTON'&&entry.arrow==='""'));
+      entry.weight==='600'&&entry.historyOpacity==='0.42'&&entry.tag==='BUTTON'&&entry.arrow==='""'));
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&coloredEditableOk&&
       colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
-      colors[1].fg==='rgb(43, 116, 80)'&&colors[1].weight==='650'&&
+      colors[0].fg==='rgb(135, 80, 0)'&&colors[0].weight==='600'&&
+      colors[1].fg==='rgb(39, 119, 75)'&&colors[1].weight==='600'&&
       editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
       editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
