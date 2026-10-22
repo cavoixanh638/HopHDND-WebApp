@@ -1,3 +1,11 @@
+## 22/10/2026 — V3 THỬ MÀU CHỮ TƯƠI/SÁNG HƠN V2 (chưa chốt làm mốc backup)
+
+- Thử thay **chỉ màu chữ** trong ba tone nghiệp vụ Bảng dữ liệu + popup: đỏ `#B2263D → #BA2E42`, cam `#875000 → #935300`, xanh `#27774B → #08784E` (xanh tăng độ tươi/sắc xanh, giới hạn độ sáng để duy trì tương phản tối thiểu 4,5:1). Chữ giữ **font-weight 600**.
+- **Bất biến:** nền hồng `#FFE0E4` / vàng `#FFE8B8` / xanh `#D5F0DE`; viền, chấm, mũi tên dropdown, icon lịch sử mờ, phân quyền và cơ chế cập nhật dữ liệu 60 giây đều giữ nguyên. Bảng tổng hợp không thay đổi.
+- **Đây là phiên bản thử V3**, không ghi đè hai mốc V1 và V2: `backup/ui-colored-status-pill-approved-2026-10-22` và `backup/ui-vivid-status-ink-weight600-2026-10-22`. Kiểm TypeScript/unit/Chrome và xem thực tế trên Pages trước khi người dùng quyết định giữ V3 hay quay lại V2.
+
+---
+
 ## Phiên bản bộ màu V2 đã lưu riêng — 22/10/2026
 
 - **Tên:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2**. Mốc code + HTML đã phát hành: [`d6e4b447e25ede00683cdea7689af40a781c1ea8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/d6e4b447e25ede00683cdea7689af40a781c1ea8). Backup độc lập: [`backup/ui-vivid-status-ink-weight600-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-vivid-status-ink-weight600-2026-10-22); nhánh backup V1 `backup/ui-colored-status-pill-approved-2026-10-22` vẫn giữ nguyên.
