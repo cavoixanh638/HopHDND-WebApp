@@ -22,6 +22,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
   const skipCheckpoint = useRef(false);
   const latestDraft = useRef({items,drafts}); latestDraft.current = {items,drafts};
   const [dataSource, setDataSource] = useState(repository);
+  const dataSourceRef=useRef(dataSource);dataSourceRef.current=dataSource;
   const sourceRef = useRef(repository);
   sourceRef.current = repository;
   const fetching = useRef<Repository | null>(null);
@@ -30,7 +31,10 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
   // nor mark a no-change response as a new data revision.
   const refresh = useCallback(async (background=false) => {
     if (fetching.current === repository||saving.current) return;
-    if(Object.keys(latestDraft.current.drafts).length){setMessage('Có thay đổi trên máy chưa lưu vào file nguồn; dữ liệu đang sửa vẫn được giữ. Hãy lưu hoặc bỏ thay đổi trước khi đọc lại file.');return;}
+    if(Object.keys(latestDraft.current.drafts).length){
+      if(!background)setMessage('Có thay đổi trên máy chưa lưu vào file nguồn; dữ liệu đang sửa vẫn được giữ. Hãy lưu hoặc bỏ thay đổi trước khi đọc lại file nguồn.');
+      return;
+    }
     fetching.current = repository;
     if(!background)setBusy(true);
     try {
@@ -38,7 +42,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
       if (sourceRef.current !== repository) return;
       if(Object.keys(latestDraft.current.drafts).length){setMessage('Dữ liệu vừa đọc từ file nguồn chưa áp dụng vì bạn đang sửa. Phần sửa trên máy vẫn được giữ.');return;}
       const signature=JSON.stringify(rows);
-      const changed=lastRowsSignature.current!==signature||dataSource!==repository;
+      const changed=lastRowsSignature.current!==signature||dataSourceRef.current!==repository;
       if(changed){
         lastRowsSignature.current=signature;
         setItems(rows);
@@ -59,7 +63,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
       if (fetching.current === repository) fetching.current = null;
       if (sourceRef.current === repository&&!background) setBusy(false);
     }
-  }, [repository, sourceKey,canDraft,dataSource]);
+  }, [repository, sourceKey,canDraft]);
   useEffect(() => {
     lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});
     setLoadedAt('');setMessage('');setAutosaveMessage('');
@@ -77,12 +81,12 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
     return repository.subscribe(rows=>{
       if(sourceRef.current!==repository)return;
       const signature=JSON.stringify(rows);
-      if(lastRowsSignature.current!==signature||dataSource!==repository){
+      if(lastRowsSignature.current!==signature||dataSourceRef.current!==repository){
         lastRowsSignature.current=signature;
         setItems(rows);setDataSource(repository);setLoadedAt(new Date().toLocaleString('vi-VN'));
       }
     },cause=>setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`));
-  },[repository,dataSource]);
+  },[repository]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
     if (!item || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
