@@ -77,3 +77,10 @@
 - Hiển thị gọn có **5** lựa chọn cá nhân, `shortLeaders` độc lập với `leadersTogether` và `shortSpecialist`. Mọi dropdown, search, save giữ tên nguồn; tên ngắn chỉ để hiển thị. Thao tác vẫn dựa trên quyền từng trường, tránh sinh quyền chung khi gộp.
 - `progress-visual.ts` là phân loại màu UI duy nhất cho trạng thái này, không sửa báo cáo/KPI, và không suy các trạng thái `Đã trình HĐND` thành hoàn thành. Bảng chính và popup dùng cùng helper.
 - Header chính/popup nhạt nhẹ (`#edf4ef`), filter row `#f9fcfa`, placeholder control 13px. Test Chrome phải xác nhận hoạt động trên dữ liệu mô phỏng và unit kiểm chặt các trạng thái loại trừ.
+
+## Quy tắc 22/10/2026 — tránh mất UI khi poll và sai màu báo cáo (PR #10)
+
+- Không để `useWorkspace.refresh` làm dependency khởi tạo/reset của `useWorkspace`; thay đổi hàm gọi poll KHÔNG đồng nghĩa đổi nguồn. Đọc nền 60s không `setBusy`, không reset/replace items nếu JSON nguồn giống bản đã xác nhận. Bản đọc chỉ commit khi hoàn chỉnh và nguồn vẫn đúng; nháp được ưu tiên. Timer/subscribe không chạy lại chỉ vì mảng rows đổi.
+- Giữ cache `useSharedConfig` đang có nếu read mới giống hệt hoặc tạm lỗi. Không hiển thị placeholder cho trường hợp common đã có config hợp lệ; lần khởi động chưa có layout vẫn chờ để đảm bảo an toàn quyền.
+- Palette Bảng tổng hợp là chuẩn: source đỏ hồng `#FFE0E4`, office vàng cam `#FFE8B8`, completed xanh `#D5F0DE`. Bảng chính/popup dùng nguồn/VP y như vậy, riêng completed **xanh đậm** `#126442` + trắng để không lẫn màu nền ô input. Chỉ các giá trị đúng theo `progress-visual.ts` được tô; terminal equivalents chỉ trong cột tương ứng; không tô các bước giữa và không sửa dữ liệu/KPI.
+- Header `#f6f9f7`, filter `#fbfdfc`, font 15px. Regression test bắt buộc kiểm run 60 giây không thay nội dung, run có dữ liệu đổi và lần đầu thiếu layout; test Chrome đo màu/font.

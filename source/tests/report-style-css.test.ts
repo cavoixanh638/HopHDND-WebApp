@@ -121,3 +121,18 @@ describe('Editable dropdown and shared immediate tooltip presentation',()=>{
     expect(css).not.toContain('body:has(.report-surface .report-table button.count-drill');
   });
 });
+
+
+describe('Data list workflow palette is synchronized with the actual report stage palette',()=>{
+  it('keeps source pink and office amber exactly as Bảng tổng hợp and uses a solid distinct completion',()=>{
+    const palette=css.match(/\.report-surface\s*\{([^}]*)\}/g)?.find(block=>block.includes('--source-bg'));
+    expect(palette).toContain('--source-bg:#FFE0E4');
+    expect(palette).toContain('--office-bg:#FFE8B8');
+    expect(palette).toContain('--completed-bg:#D5F0DE');
+    expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
+    expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
+    expect(css).toContain('--workflow-bg:#126442;--workflow-border:#0D5639;--workflow-fg:#FFFFFF');
+    expect(contrast('126442','FFFFFF')).toBeGreaterThanOrEqual(4.5);
+    expect(contrast('126442','D5F0DE')).toBeGreaterThanOrEqual(4.5);
+  });
+});
