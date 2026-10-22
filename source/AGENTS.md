@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## Cố định UI theo ảnh sau rollback PR #13 — 22/10/2026
+
+- Ảnh chuẩn của người dùng là **dropdown có nền trạng thái nghiệp vụ** (Sở chưa trình hồng `#FFE0E4`, VP đang thực hiện vàng `#FFE8B8`, hoàn thành xanh `#D5F0DE`), áp dụng cho ô **được phép sửa**, kể cả hover/focus, trong Bảng dữ liệu và popup; không chuyển thành nền trắng.
+- Giữ `CellHistoryAction` như phiên bản trước PR #13 (icon thấy mờ mặc định `opacity:.42`) và màu chữ `Hoàn thành` của PR #12 (`#2B7450`). Chỉ khóa hồi quy và bảo đảm CSS đúng, không tự làm mới thiết kế.
+- Chrome smoke phải kiểm **computed background của nút CellPicker khi có quyền sửa**, không chỉ pill read-only; kiểm đủ 3 tone ở cả hai bảng và icon history. Không sửa dữ liệu nguồn/permission để thử.
+
 ## Quy tắc popup, tooltip và dropdown từ 20/10/2026
 
 - Khách popup chỉ có bộ lọc theo cột, không thêm nút resize, xem đủ cột, tìm kiếm chung hoặc điều hướng Danh sách. Chế độ chỉnh sửa/nút history/permission đều ẩn hoàn toàn; test Chrome và unit phải chặn tái phát.
