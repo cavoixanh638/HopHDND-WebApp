@@ -1471,3 +1471,87 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   color:var(--workflow-text);
   font-weight:600;
 }
+
+
+/* Named workflow palette: browser-local presentation variables set on the app
+   shell. Preserve semantic status border/dot and all report-aggregate colors.
+   'Other' only gets a data-progress-tone when the user explicitly enables it. */
+.item-data-table tbody td[data-progress-tone="not-submitted"],
+.report-detail-grid tbody td[data-progress-tone="not-submitted"] {
+  --workflow-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4);
+  --workflow-text:var(--hdnd-status-not-submitted-text,#D00025);
+}
+.item-data-table tbody td[data-progress-tone="office"],
+.report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-bg:var(--hdnd-status-office-bg,#FFE8B8);
+  --workflow-text:var(--hdnd-status-office-text,#B04700);
+}
+.item-data-table tbody td[data-progress-tone="done"],
+.report-detail-grid tbody td[data-progress-tone="done"] {
+  --workflow-bg:var(--hdnd-status-done-bg,#D5F0DE);
+  --workflow-text:var(--hdnd-status-done-text,#007A18);
+}
+.item-data-table tbody td[data-progress-tone="other"],
+.report-detail-grid tbody td[data-progress-tone="other"] {
+  --workflow-bg:var(--hdnd-status-other-bg,#F2F6F9);
+  --workflow-text:var(--hdnd-status-other-text,#426274);
+  --workflow-fg:#426274;
+  --workflow-border:#B7CBD6;
+}
+.status-palette-trigger {white-space:nowrap;}
+.status-palette-modal {
+  width:min(940px,calc(100vw - 28px));
+  max-width:calc(100vw - 28px);
+  max-height:calc(100vh - 28px);
+}
+.status-palette-body {max-height:calc(100vh - 155px);overflow:auto;padding:18px 22px;}
+.status-palette-savebar,.status-palette-presets-actions {
+  display:flex;align-items:end;gap:12px;flex-wrap:wrap;
+}
+.status-palette-savebar label,.status-palette-presets-actions label {
+  display:flex;flex-direction:column;gap:5px;min-width:220px;flex:1 1 230px;
+  font-size:13px;font-weight:600;
+}
+.status-palette-savebar select,.status-palette-presets-actions input {
+  width:100%;min-width:0;min-height:36px;padding:7px 9px;
+  border:1px solid #b8c8c5;border-radius:8px;background:var(--surface,#fff);color:inherit;
+}
+.status-palette-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0;}
+.status-palette-row {
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:11px;
+  align-content:start;padding:14px;border:1px solid #dbe4e1;border-radius:12px;
+  background:rgba(247,250,249,.75);
+}
+.status-palette-row-heading {grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 12px;}
+.status-palette-row-heading strong {font-size:15px;}
+.status-palette-row-heading small {color:#687b76;font-size:12px;}
+.status-palette-other-toggle {
+  display:inline-flex;align-items:center;gap:7px;font-weight:500;
+  font-size:12px;cursor:pointer;
+}
+.status-palette-color-field {min-width:0;display:grid;gap:5px;font-size:13px;font-weight:600;}
+.status-palette-color-controls {display:flex;gap:6px;align-items:center;min-width:0;}
+.status-palette-color-controls input[type=color] {
+  flex:none;min-width:38px;width:40px;height:36px;padding:2px;cursor:pointer;
+  border:1px solid #b8c8c5;border-radius:7px;background:#fff;
+}
+.status-palette-color-controls input[type=text] {
+  min-width:0;width:100%;height:36px;padding:6px;
+  font:500 13px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;
+  border:1px solid #b8c8c5;border-radius:7px;background:#fff;color:#243c35;
+}
+.status-palette-preview {
+  grid-column:1/-1;display:block;text-align:center;
+  padding:9px;border-radius:7px;font-size:13px;font-weight:600;
+  overflow-wrap:anywhere;
+}
+.status-palette-presets {border-top:1px solid #dbe4e1;padding-top:10px;}
+.status-palette-presets h3 {font-size:15px;margin:4px 0 10px;}
+.status-palette-presets small {display:block;color:#65766f;margin-top:8px;}
+.status-palette-presets-actions .button {flex:none;}
+@media(max-width:680px){
+  .status-palette-body {padding:12px;}
+  .status-palette-grid {grid-template-columns:1fr;}
+  .status-palette-savebar,.status-palette-presets-actions {align-items:stretch;}
+  .status-palette-color-controls input[type=text] {font-size:14px;}
+}
