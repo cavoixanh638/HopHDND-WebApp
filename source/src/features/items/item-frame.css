@@ -629,3 +629,26 @@
   font-size:15px;min-height:36px;height:36px;
 }
 .item-data-table .item-column-filter-row input::placeholder {font-size:15px;}
+
+/* Room + specialist are one visual column but always have TWO independent
+   controls. Let the shared sticky filter row grow so neither control overlaps. */
+.item-data-table thead .item-column-filter-row:has(.room-specialist-filter) th {
+  height:76px;
+}
+.item-data-table .item-column-filter-row .room-specialist-filter {
+  min-width:170px;vertical-align:middle;
+}
+.item-data-table .room-specialist-filter-stack {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;}
+.item-data-table .room-specialist-filter-stack input,
+.item-data-table .room-specialist-filter-stack select {
+  min-height:29px;height:29px;font-size:12px;box-sizing:border-box;
+}
+.item-data-table .room-specialist-filter-stack .item-filter-input-wrap {min-width:0;}
+.item-data-table .item-column-filter-row:has(.room-specialist-filter) .item-filter-clear {
+  width:19px;height:19px;
+}
+.admin-column-arrange-hint {font-size:12px;max-width:460px;text-align:right;}
+.note-history-demo {margin-top:16px;padding-top:10px;border-top:1px solid #dce8e1;}
+.note-history-demo h3 {font-size:15px;margin:0 0 6px;}
+.note-history-demo-entry {border-left:3px solid #b9d4ed;padding:7px 11px;margin:8px 0;background:#f8fbff;}
+.note-history-demo-entry strong {font-size:13px;}
