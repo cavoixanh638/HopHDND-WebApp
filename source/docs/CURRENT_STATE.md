@@ -1,3 +1,12 @@
+## Phiên bản bộ màu V2 đã lưu riêng — 22/10/2026
+
+- **Tên:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2**. Mốc code + HTML đã phát hành: [`d6e4b447e25ede00683cdea7689af40a781c1ea8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/d6e4b447e25ede00683cdea7689af40a781c1ea8). Backup độc lập: [`backup/ui-vivid-status-ink-weight600-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-vivid-status-ink-weight600-2026-10-22); nhánh backup V1 `backup/ui-colored-status-pill-approved-2026-10-22` vẫn giữ nguyên.
+- Màu chữ V2: **Sở chưa trình `#B2263D` (đỏ tươi hơn), VP đang thực hiện `#875000` (cam tươi hơn), Hoàn thành/tương đương `#27774B` (xanh dịu hơn), chữ `font-weight:600`**. Chỉ đổi màu chữ và độ đậm; nền/viền/chấm và dropdown/history giữ nguyên, Bảng dữ liệu + popup cùng cách trình bày.
+- Bằng chứng [CI #39784818033](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39784818033), [Publisher #39785115951](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39785115951), [Pages #39785243101](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39785243101) đều **SUCCESS**. Cách restore **chỉ màu V2** (không ghi đè toàn bộ mã), đối chiếu V1/V2 và các bất biến: xem đầu [VAN_HANH.md](VAN_HANH.md).
+- Đây là mốc riêng khi người dùng nói “khôi phục màu chữ tươi, nét mảnh 600”; nếu nói “khôi phục màu bản có nền như ảnh trước khi chỉnh chữ” thì dùng mốc **V1** `6c151458561b7800af51bab64837430e147fdcef`. Không được nhầm.
+
+---
+
 ## 22/10/2026 — Thử màu chữ tiến độ tươi hơn và mảnh hơn (PR tiếp theo)
 
 - Theo yêu cầu thử tinh chỉnh **chỉ màu chữ** trong **Bảng dữ liệu + popup**: đỏ `Sở chưa trình` từ `#7F1D30` → `#B2263D`; vàng cam `VP đang thực hiện` từ `#704500` → `#875000`; xanh `Hoàn thành` và tương đương từ `#2B7450` → `#27774B` (nhạt thêm rất ít). Toàn bộ nhãn tiến độ dùng font-weight `600` thay cho 750/650, bao gồm chế độ xem lẫn ô được quyền chọn.
