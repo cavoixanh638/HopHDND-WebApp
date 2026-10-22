@@ -17,6 +17,7 @@ import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell} from './ColumnFilterCell';
+import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
@@ -33,12 +34,13 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void> }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
+  const [personalViewActive,setPersonalViewActive]=useState(!!selectedView);
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
@@ -75,7 +77,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
-  const compactHiddenKeys=compactPairs.map(pair=>pair.hidden).join('|');
+  const compactHiddenKeys=compactPairs.filter(pair=>pair.hidden!=='specialist').map(pair=>pair.hidden).join('|');
   // Prevent a saved filter for a now-merged hidden field from silently filtering rows.
   useEffect(()=>{
     if(!compactHiddenKeys)return;
@@ -88,7 +90,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next={...compactDisplay,[option]:checked};
     setCompactDisplay(next);writeCompactDisplay(personalScope,next);
-    const hidden=new Set<string>(activeCompactPairs(columns,next).map(pair=>pair.hidden));
+    const hidden=new Set<string>(activeCompactPairs(columns,next).filter(pair=>pair.hidden!=='specialist').map(pair=>pair.hidden));
     setColumnFilters(prev=>{
       const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
       return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
@@ -101,6 +103,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const [saveFeedback,setSaveFeedback] = useState('');
   const [allSpecialists,setAllSpecialists] = useState(false);
   const [saving,setSaving] = useState(false);
+  const [viewSaving,setViewSaving]=useState(false);
+  const viewSavingRef=useRef(false);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
@@ -108,7 +112,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const exitAfterPermissions=useRef(false);
   const handledExitRequest=useRef(exitRequest);
   useEffect(()=>{onDirtyChange?.(customizing&&(dirty||permissionDirty||columnExtrasDirty));},[customizing,dirty,permissionDirty,columnExtrasDirty,onDirtyChange]);
-  const locked=busy||saving||!!unmatchedCheckpoint&&customizing;
+  const locked=busy||saving||viewSaving||!!unmatchedCheckpoint&&customizing;
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;
   const saveIssue=(cause:unknown)=>{
@@ -181,17 +185,22 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const filtered = useMemo(() => {
     // Build filter plans once per change, never for each row or mouse movement.
     const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
+    const roomSpecialist=compactPairs.some(pair=>pair.anchor==='room'&&pair.hidden==='specialist');
     const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.fromEntries(Object.entries(columnFilters).filter(([key])=>
       EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)));
+    const roomTerm=roomSpecialist?(columnFilters.room??''):'';
+    const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
     const merged=compactPairs.flatMap(pair=>
-      columnFilters[pair.anchor]?.trim()?[{pair,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
+      pair.anchor!=='room'&&columnFilters[pair.anchor]?.trim()?[{pair,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
     const custom=Object.entries(columnFilters).flatMap(([key,term])=>{
       const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
       return column&&term.trim()?[{column,term:normalizeSearch(term)}]:[];
     });
     return items.filter(item=>
       matchesColumnFilters(item,ordinary)&&
+      (!roomTerm||item.room===roomTerm)&&
+      (!personTerm||normalizeSearch(item.specialist).includes(personTerm))&&
       merged.every(({pair,term})=>
         normalizeSearch(compactFilterText(item,pair.anchor,compactPairs)).includes(term))&&
       custom.every(({column,term})=>
@@ -212,7 +221,37 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width),0);
   const tableWidth=compactPairs.length?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
-  const moveColumn=(from:string,to:string)=>{if(!customizing||locked||!allowLayout)return;setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));};
+  // Admin can commit a one-shot shared layout change in view mode; the Firebase
+  // merge/CAS logic always compares the original shared layout, not local presets.
+  const canViewerArrange=!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
+    !personalViewActive&&!showAllSourceColumns&&!locked;
+  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout)=>{
+    if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return;
+    const baseline=initialLayout;
+    let next:ItemLayout;
+    try{next=validateItemLayout(transform(baseline));}
+    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return;}
+    if(JSON.stringify(next)===JSON.stringify(baseline))return;
+    viewSavingRef.current=true;setViewSaving(true);setLayoutError('');
+    setSaveFeedback('Đang lưu vị trí/độ rộng cột dùng chung…');
+    setApplied(next); // optimistic only; revert on any failure
+    try{
+      const confirmed=await onPersistViewerLayout(next,baseline);
+      const valid=validateItemLayout(confirmed??next);
+      setApplied(valid);sharedBase.current=valid;
+      setSaveFeedback('Đã lưu bố trí cột dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.');
+    }catch(error){
+      setApplied(initialLayout);
+      setLayoutError(saveIssue(error));
+      setSaveFeedback('Không lưu được vị trí/độ rộng. Đã hoàn lại bố trí trước thao tác.');
+    }finally{viewSavingRef.current=false;setViewSaving(false);}
+  };
+  const moveColumn=(from:string,to:string)=>{
+    if(customizing){if(locked||!allowLayout)return;
+      setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));return;
+    }
+    void applyViewerLayout(base=>({...base,columns:reorderByKey(base.columns,column=>column.key,from,to)}));
+  };
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
@@ -222,6 +261,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
+    setPersonalViewActive(!!view);
     return true;
   };
   const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
@@ -238,6 +278,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
     const shortLeader=compactOn&&compactDisplay.shortLeaders&&
       (field==='vpLeader'||field==='ubndLeader');
+    const shortPerson=compactOn&&compactDisplay.shortSpecialist&&field==='specialist';
     return <span className={'compact-part'+(editable?' compact-part-editable':'')}
       aria-label={field==='specialist'&&!editable?item.specialist:undefined}>
       {editable
@@ -249,11 +290,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
               value={String(item[field]??'')} disabled={locked}
               onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>
             :<CellPicker label={displayId(item)+': '+label} value={item[field]}
-              displayValue={shortLeader?abbreviateLeaderName(item[field]):undefined}
+              displayValue={shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
-        :shortLeader?<span title={item[field]} aria-label={item[field]}>
-          {abbreviateLeaderName(item[field])||'—'}</span>:original}
+        :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
+          {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:original}
       {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
@@ -307,6 +348,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       </details>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
+      {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
+        role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
       {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
@@ -316,6 +359,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       </div>}
 
     </div></div>
+    {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
+      <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
      {!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
@@ -329,11 +374,24 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       }
     }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
-  disabled={!customizing||locked||!allowLayout} previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key} onMove={moveColumn}>{column.label}{customizing&&!locked&&allowLayout&&<ColumnResizeHandle
-  columnIndex={index} width={visualWidth(column.width)} min={60} max={1600} label={column.label}
-  onCommit={width=>setLayout(previous=>({...previous,columns:previous.columns.map(entry=>
-    entry.key===column.key?{...entry,width}:entry)}))}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {displayedColumns.map(column=><ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
+  disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
+  previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
+  onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
+    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width)}
+      min={60} max={1600} label={column.label} onCommit={width=>{
+        const added=compactPairs.find(pair=>pair.anchor===column.key)?.extraWidth??0;
+        const sourceWidth=Math.max(60,width-(compactOn?added:0));
+        if(customizing)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>
+          entry.key===column.key?{...entry,width:sourceWidth}:entry)}));
+        else void applyViewerLayout(base=>({...base,columns:base.columns.map(entry=>
+          entry.key===column.key?{...entry,width:sourceWidth}:entry)}));
+      }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
+  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.hidden==='specialist')
+    ?<RoomSpecialistFilterCell key={column.key} items={items}
+      room={columnFilters.room??''} person={columnFilters.specialist??''}
+      onRoom={value=>setColumnFilters(previous=>({...previous,room:value}))}
+      onPerson={value=>setColumnFilters(previous=>({...previous,specialist:value}))}/>
+    :<ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
     getValue={compactPairs.some(pair=>pair.anchor===column.key)
       ?item=>compactFilterText(item,column.key,compactPairs)
       :column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
@@ -356,9 +414,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
                 <span className="compact-type-suffix">({compactField(item,'type')})</span>
               </span>
               :<div className="compact-pair-lines">
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'Sở'}</span>
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'Phòng'}</span>
                   {compactField(item,key)}</div>
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'CV'}</span>
                   {compactField(item,extra)}</div>
               </div>}
           </td>;
