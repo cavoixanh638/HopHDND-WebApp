@@ -1,3 +1,12 @@
+## 22/10/2026 — Bộ màu trạng thái có thể tùy chỉnh và lưu nhiều mẫu (PR #mới)
+
+- Mục **🎨 Bộ màu trạng thái** trong thanh Bảng dữ liệu và (với người dùng đã đăng nhập) thanh công cụ popup. Có 4 nhóm: **Sở chưa trình, Văn phòng đang thực hiện, Hoàn thành và tương đương, Trạng thái khác**; mỗi nhóm độc lập **màu chữ + màu nền** bằng color picker và mã HEX `#RRGGBB`. Bảng chính/popup nhận cùng cấu hình qua app shell; màu thay đổi ngay mà không làm mới dữ liệu.
+- Mặc định giữ nguyên V5 (chữ `#D00025/#B04700/#007A18`, nền `#FFE0E4/#FFE8B8/#D5F0DE`, nét 600). **Trạng thái khác mặc định không tô**, có checkbox riêng; bật mới tạo pill/định dạng trong 4 trường tiến độ, không áp dụng tràn sang các cột khác. Danh sách trạng thái tương đương theo chính `progressTone` cũ; không thay logic thống kê, không ghi thay giá trị.
+- Có **Lưu bộ mới (tên tùy chọn), chọn bộ có tên, cập nhật bộ đã chọn, xác nhận xóa**, khôi phục màu mặc định. Tối đa 20 bộ, tên tối đa 60 ký tự, kiểm tra trùng tên/mã, màu HEX hợp lệ. **Tự lưu cấu hình đang xem trên localStorage theo nguồn và preview scope**; bộ màu đặt tên vẫn giữ độc lập khi đổi màu đang dùng. Lưu cá nhân trên **cùng trình duyệt**, không đồng bộ thiết bị và không ghi Firebase/Excel. Nếu localStorage lỗi thông báo, không tuyên bố đã lưu.
+- Popup của khách vẫn ẩn công cụ quản trị, tùy chọn này không cấp quyền sửa ô. Dữ liệu, quyền, polling 60s không thay đổi. Có unit validator/CRUD và Chrome smoke bắt buộc kiểm màu trong danh sách + popup. **Hai nhánh backup V1/V2 không được sửa**.
+
+---
+
 ## 22/10/2026 — V5 thử màu chữ rực và tươi rõ hơn (không đổi nền)
 
 - Theo phản hồi “vẫn vậy, cho các màu tươi thêm chút nữa”, V5 chuyển **chỉ màu chữ** nhãn trạng thái trên Bảng dữ liệu + popup từ V4 sang sắc độ bão hòa rõ hơn: **Sở chưa trình** đỏ `#C52445 → #D00025`; **VP đang thực hiện** cam `#A15700 → #B04700`; **Hoàn thành và tương đương** từ xanh ngọc `#00794A → #007A18` (xanh lá thuần rõ hơn). Trọng lượng vẫn **600**.
