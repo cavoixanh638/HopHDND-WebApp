@@ -146,7 +146,6 @@ input::placeholder,textarea::placeholder {  color:#8a9891}
   .data-table td,.report-table td {  padding:9px 11px; border-bottom:1px solid #edf0ed;
    vertical-align:top}
 .data-table:not(.report-table) tr:hover {background:#f8faf8}
-.data-table tr.dirty-row {  background:#fff9e9}
   .data-table input:not([type=checkbox]),.data-table select,.data-table textarea {  min-width:140px; min-height:36px; padding:8px;
     font-size:13px}
 .data-table textarea {  min-width:230px}
@@ -928,7 +927,6 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-grid-filter-row input {box-sizing:border-box;width:100%;height:28px;min-width:0;
   border:1px solid #cadcd0;border-radius:5px;padding:4px 6px;font-size:12px;background:#fff;}
 .report-detail-grid tbody tr:nth-child(even){background:#f8faf9;}
-.report-detail-grid tbody .report-grid-row-dirty {box-shadow:inset 3px 0 #b77e37;}
 .report-detail-grid tbody td {min-height:40px;}
 .report-detail-grid .code {white-space:nowrap;}
 .report-detail-select,.detail-inline-editor input,.detail-inline-editor textarea {
