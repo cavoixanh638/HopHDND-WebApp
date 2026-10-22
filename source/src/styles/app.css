@@ -1063,15 +1063,31 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   border-radius:5px;
   color:#57786e;
   background:transparent;
-  opacity:.42;
+  opacity:0;
+  pointer-events:none;
   cursor:pointer;
   z-index:1;
+}
+/* A history icon must not look like an extra dropdown/caret.
+   Reveal it only on its cell's hover/focus, including compact sub-fields.
+   It remains keyboard-focusable even when visually hidden. */
+.item-data-table tbody td.has-history-action:hover .cell-history-action,
+.report-detail-grid tbody td.has-history-action:hover .cell-history-action,
+.item-data-table tbody td.has-history-action:focus-within .cell-history-action,
+.report-detail-grid tbody td.has-history-action:focus-within .cell-history-action,
+.item-data-table tbody .compact-part:hover .cell-history-action,
+.item-data-table tbody .compact-part:focus-within .cell-history-action,
+.item-data-table tbody td .cell-history-action:focus-visible,
+.report-detail-grid tbody td .cell-history-action:focus-visible {
+  opacity:.8;
+  pointer-events:auto;
 }
 .item-data-table tbody td .cell-history-action:hover,
 .report-detail-grid tbody td .cell-history-action:hover,
 .item-data-table tbody td .cell-history-action:focus-visible,
 .report-detail-grid tbody td .cell-history-action:focus-visible {
   opacity:1;
+  pointer-events:auto;
   background:#e5f0e9;
   border-color:#a9cbbc;
   outline:2px solid #6d9e87;
@@ -1369,16 +1385,33 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   content:"";display:block;flex:none;width:6px;height:6px;border-radius:50%;
   background:var(--workflow-fg);
 }
-/* Editing remains visually a dropdown or text input, but uses the same
-   workflow tone. No full-td fill and no new hover listeners. */
+/* Editing a workflow value is NOT another filled status badge.
+   Keep its semantic ink/border/dot, but no rose/amber/green paint in the editor.
+   Read-only status badges and the report palette keep their original fills. */
 .item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input),
 .report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input) {
-  background:var(--workflow-bg);border-color:var(--workflow-border);
-  color:var(--workflow-fg);font-weight:750;
+  background:#fff;
+  border-color:var(--workflow-border);
+  color:var(--workflow-fg);
+  font-weight:650;
+  box-shadow:none;
+}
+.item-data-table tbody td.editable-cell[data-progress-tone] .cell-picker-trigger::before,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] .cell-picker-trigger::before {
+  content:"";display:block;flex:none;width:6px;height:6px;border-radius:50%;
+  background:var(--workflow-fg);
 }
 .item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):hover,
 .report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):hover {
-  border-color:var(--workflow-fg);box-shadow:0 0 0 1px var(--workflow-border);
+  background:#fff;
+  border-color:var(--workflow-border);
+  box-shadow:inset 0 0 0 1px var(--workflow-border);
+}
+.item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):focus-visible,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input):focus-visible {
+  background:#fff;
+  outline:2px solid #356d86;
+  outline-offset:1px;
 }
 /* More legible permanent filter row, without increasing header height. */
 .report-grid-modal .report-grid-filter-row input,
@@ -1403,13 +1436,13 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450;
+  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#307651;
 }
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
   background:#125B35;
 }
-/* Softer completed lettering (WCAG >= 4.5:1 on #D5F0DE).
+/* Soft completed lettering (WCAG >= 4.5:1 on #D5F0DE).
    Keep its small status dot stronger for immediate recognition. */
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value,

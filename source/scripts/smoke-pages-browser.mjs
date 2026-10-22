@@ -215,16 +215,30 @@ try{
     const editStyle={bg:regularEditable.backgroundColor,fg:regularEditable.color,
       weight:regularEditable.fontWeight,border:regularEditable.borderTopColor};
     td.remove();
+    const statusEditors=['not-submitted','office','done'].map(tone=>{
+      const cell=document.createElement('td');cell.className='editable-cell';
+      cell.dataset.progressTone=tone;
+      const trigger=document.createElement('button');trigger.className='cell-picker-trigger';
+      trigger.textContent=tone;cell.append(trigger);status.parentElement.append(cell);
+      const styling=getComputedStyle(trigger),mark=getComputedStyle(trigger,'::before');
+      const editor={bg:styling.backgroundColor,fg:styling.color,border:styling.borderTopColor,
+        mark:mark.backgroundColor,markContent:mark.content};
+      cell.remove();return editor;
+    });
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&
       colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
-      colors[1].fg==='rgb(43, 116, 80)'&&colors[1].weight==='650'&&
+      colors[1].fg==='rgb(48, 118, 81)'&&colors[1].weight==='650'&&
+      statusEditors.every(edit=>edit.bg==='rgb(255, 255, 255)'&&edit.markContent==='""')&&
+      statusEditors[0].fg==='rgb(127, 29, 48)'&&
+      statusEditors[1].fg==='rgb(112, 69, 0)'&&
+      statusEditors[2].fg==='rgb(48, 118, 81)'&&
       editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
       editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
       header.backgroundColor==='rgb(246, 249, 247)',
-      colors,editStyle,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
+      colors,editStyle,statusEditors,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
   const sortAndGuestLayout=await evaluate(`(()=>{
