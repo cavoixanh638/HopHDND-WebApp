@@ -1,3 +1,12 @@
+## 22/10/2026 — V5 thử màu chữ rực và tươi rõ hơn (không đổi nền)
+
+- Theo phản hồi “vẫn vậy, cho các màu tươi thêm chút nữa”, V5 chuyển **chỉ màu chữ** nhãn trạng thái trên Bảng dữ liệu + popup từ V4 sang sắc độ bão hòa rõ hơn: **Sở chưa trình** đỏ `#C52445 → #D00025`; **VP đang thực hiện** cam `#A15700 → #B04700`; **Hoàn thành và tương đương** từ xanh ngọc `#00794A → #007A18` (xanh lá thuần rõ hơn). Trọng lượng vẫn **600**.
+- **Giữ nguyên nền** hồng `#FFE0E4`, vàng `#FFE8B8`, xanh `#D5F0DE` đúng Bảng tổng hợp; giữ viền, chấm, mũi tên dropdown, icon lịch sử, quyền, dữ liệu, KPI, polling 60 giây. Chỉ thay `--workflow-text`; `--workflow-fg` cho chấm/viền không đổi.
+- Độ tương phản của V5 lần lượt khoảng **4,59:1 / 4,67:1 / 4,57:1**, đạt 4,5:1 trên nền hiện hành. Unit + Chrome smoke trên giả lập kiểm màu thực của cả pill chỉ đọc và dropdown có quyền sửa trong bảng chính/popup. **V5 chưa là mốc nghiệm thu/sao lưu**; backup V1 `backup/ui-colored-status-pill-approved-2026-10-22` và V2 `backup/ui-vivid-status-ink-weight600-2026-10-22` giữ nguyên.
+- Kết quả PR CI / Pages phải kiểm theo đúng SHA sau khi chạy, không mặc định đã PASS.
+
+---
+
 ## 22/10/2026 — V4 THỬ MÀU CHỮ SÁNG/TƯƠI HƠN V3
 
 - Thử tăng rõ độ tươi của **chữ trạng thái** trong **Bảng dữ liệu và popup**, không đổi nền: `Sở chưa trình` từ `#BA2E42` sang **`#C52445`** (đỏ tươi hơn); `VP đang thực hiện` từ `#935300` sang **`#A15700`** (cam sáng hơn); `Hoàn thành`/tương đương từ `#08784E` sang **`#00794A`** (xanh lá thuần và tươi hơn một chút). Chữ giữ font-weight **600**. Màu xanh bị giới hạn độ sáng vì nền xanh `#D5F0DE` và yêu cầu tương phản chữ tối thiểu **4,5:1**.

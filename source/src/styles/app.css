@@ -1450,19 +1450,19 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 
 /* Optional ink-only refinement, 22/10/2026. Preserve the checkpoint's
    EXACT status fills, borders, status dots, editing affordance and history UI.
-   V4: red/amber brighter, green more vivid through hue shift; weight stays 600.
+   V5: more vivid red/orange/true-green chroma at >=4.5:1 on unchanged fills; weight stays 600.
    New variable deliberately differs from --workflow-fg (dots/focus borders). */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
-  --workflow-text:#C52445;
+  --workflow-text:#D00025;
 }
 .item-data-table tbody td[data-progress-tone="office"],
 .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-text:#A15700;
+  --workflow-text:#B04700;
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-text:#00794A;
+  --workflow-text:#007A18;
 }
 .item-data-table tbody td[data-progress-tone] .workflow-status-value,
 .report-detail-grid tbody td[data-progress-tone] .workflow-status-value,

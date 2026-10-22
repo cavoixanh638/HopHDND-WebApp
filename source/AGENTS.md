@@ -1,5 +1,10 @@
 # Hướng dẫn làm việc
 
+## V5 thử sắc màu chữ rõ hơn (22/10/2026)
+
+- V5 chỉ đổi màu chữ `--workflow-text`: đỏ `#D00025`, cam `#B04700`, xanh hoàn thành `#007A18` (600); dùng cho Bảng dữ liệu + popup cả pill xem và editor. Nền, viền, dot, lịch sử, quyền, dashboard không đổi. Đảm bảo contrast >=4.5:1; nếu lần sau muốn làm **sáng hơn** thực sự mà vẫn đạt WCAG thì phải đánh giá đổi nền đồng bộ Bảng tổng hợp, không chỉ làm sáng chữ không kiểm tra.
+- Backup V1/V2 đã chốt không được di chuyển. V5 là bản thử chưa lưu chốt. Tham khảo `docs/CURRENT_STATE.md` và `docs/VAN_HANH.md`.
+
 ## Biến thể V4 thử màu chữ sáng hơn — 22/10/2026
 
 - V4 chỉ thay `--workflow-text` của `Sở chưa trình` thành `#C52445`, `VP đang thực hiện` thành `#A15700`, `Hoàn thành` và tương đương thành `#00794A`, giữ `font-weight:600`. Áp dụng đồng nhất Bảng dữ liệu/popup; nền/viền/chấm/icon/history và quyền không đổi. Chữ trên nền giữ tương phản ít nhất 4,5:1; không làm nhạt quá ngưỡng để “sáng” hơn.
