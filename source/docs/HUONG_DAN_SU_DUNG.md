@@ -1,3 +1,13 @@
+## Bộ màu trạng thái — cá nhân hóa màu chữ, màu nền (22/10/2026)
+
+Trong **Danh sách các ND trình HĐND**, bấm **🎨 Bộ màu trạng thái** (ở thanh phía trên bảng). Khi đã đăng nhập, cũng có nút **Bộ màu** ở thanh công cụ **bảng popup chi tiết**. Hai nơi dùng **một bộ màu đang chọn**.
+
+Mỗi dòng cho 1 nhóm nghiệp vụ: `Sở chưa trình`, `Văn phòng đang thực hiện` (kể cả `VP đang thực hiện`), `Hoàn thành và tương đương` (bao gồm `Đã có TBKL`, `Không phải trình`, `Đã trình HĐND` tùy cột) và `Trạng thái khác`. Bấm ô vuông bảng màu hoặc **nhập mã HEX 6 ký tự** (ví dụ `#D00025`) ở **Màu chữ/Màu nền**. Màu hợp lệ có hiệu lực ngay; không thay nội dung văn bản. **Trạng thái khác** không màu mặc định; muốn tô các trạng thái trung gian, đánh dấu **Tô màu trạng thái khác**. Bỏ dấu để quay lại hiển thị trung tính.
+
+Sau khi chọn màu, nhập **Tên bộ màu mới**, bấm **Lưu bộ mới**. Sau này chọn tên ở danh sách **Bộ màu đã lưu** để dùng lại; bấm **Cập nhật bộ** nếu muốn ghi đè bộ đang chọn. Bấm **Xóa bộ đã chọn** rồi **Xác nhận xóa bộ màu** để xóa tên/mẫu (màu đang hiển thị vẫn còn). **Khôi phục màu V5 mặc định** để về màu mặc định không có tên. Hệ thống cho phép tối đa **20 bộ** trên trình duyệt. Việc đang dùng màu tự lưu trên trình duyệt; thay đổi bảng không ghi Excel/Google Sheets/Firebase, không đồng bộ sang máy khác. Nếu dùng máy khác, cần tạo lại bảng màu trên máy đó. Các bộ màu V1/V2 đã sao lưu **trên GitHub** là các mốc khôi phục code riêng, không bị công cụ này xóa.
+
+---
+
 ## Popup sau phản hồi ảnh 19/10/2026 22:32 — đang ở PR #3, chưa phát hành preview
 
 Với **khách ẩn danh**, khi bấm số lượng trong báo cáo, popup chỉ có thao tác xem/lọc/tìm/sắp xếp, Hiện đủ cột Excel, **Rộng popup** (thanh kéo ngay trên đầu) và Mở Danh sách dữ liệu; không còn nút chỉnh sửa dữ liệu/cấu hình/mẫu. Quyền sửa thử của khách trong **Danh sách nội dung** nếu được quản trị cấp **không** tự mở quyền sửa trong popup. Thanh Rộng popup chỉ điều chỉnh khung và tự lưu trên trình duyệt, không thay đổi Excel/Firebase.
