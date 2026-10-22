@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## Danh mục hai mốc màu đã chốt (22/10/2026)
+
+- **V1 — Nền màu chuẩn, chữ cũ:** commit `6c151458561b7800af51bab64837430e147fdcef`, nhánh `backup/ui-colored-status-pill-approved-2026-10-22`; chữ `#7F1D30/#704500/#2B7450`, status font-weight 750 và completed 650.
+- **V2 — Màu chữ tươi, nét mảnh 600:** commit `d6e4b447e25ede00683cdea7689af40a781c1ea8`, nhánh `backup/ui-vivid-status-ink-weight600-2026-10-22`; chữ `#B2263D/#875000/#27774B`, font-weight 600. **Nền, viền, chấm và icon không đổi** so với V1. Đây là mốc độc lập lưu theo lệnh 22/10/2026.
+- **Quy tắc phục hồi:** đọc `docs/VAN_HANH.md`, chọn **đúng V1 hay V2**. Khi chỉ restore màu: lấy ba `--workflow-text` + selector chữ ở V2, **không** `git restore` toàn bộ CSS, không reset/force-push main, không sửa hai nhánh backup. Chỉ thay code sau khi soát ảnh hưởng và chạy CI/Chrome Bảng dữ liệu + popup.
+
 ## Biến thể thử điều chỉnh chữ tiến độ — 22/10/2026
 
 - Chỉ **chữ** của nhãn nghiệp vụ ở Bảng dữ liệu/popup đổi sang `#B2263D` (Sở chưa trình), `#875000` (VP đang thực hiện), `#27774B` (hoàn thành), weight `600`, thông qua `--workflow-text`. Độ tương phản tối thiểu 4,5:1; **nền, viền, chấm, dropdown, lịch sử không đổi**. Giữ màu trạng thái Bảng tổng hợp theo nguồn.
