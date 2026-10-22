@@ -124,15 +124,16 @@ describe('Editable dropdown and shared immediate tooltip presentation',()=>{
 
 
 describe('Data list workflow palette is synchronized with the actual report stage palette',()=>{
-  it('keeps source pink and office amber exactly as Bảng tổng hợp and uses a solid distinct completion',()=>{
+  it('uses identical report-stage fills for all three main statuses including completion',()=>{
     const palette=css.match(/\.report-surface\s*\{([^}]*)\}/g)?.find(block=>block.includes('--source-bg'));
     expect(palette).toContain('--source-bg:#FFE0E4');
     expect(palette).toContain('--office-bg:#FFE8B8');
     expect(palette).toContain('--completed-bg:#D5F0DE');
     expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
     expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
-    expect(css).toContain('--workflow-bg:#126442;--workflow-border:#0D5639;--workflow-fg:#FFFFFF');
-    expect(contrast('126442','FFFFFF')).toBeGreaterThanOrEqual(4.5);
-    expect(contrast('126442','D5F0DE')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#125B35');
+    expect(contrast('D5F0DE','125B35')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('td[data-progress-tone="done"] .workflow-status-value::before');
+    expect(css).toContain('background:#125B35;');
   });
 });

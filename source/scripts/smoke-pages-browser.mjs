@@ -208,7 +208,7 @@ try{
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&
-      colors[0]==='rgb(255, 232, 184)'&&colors[1]==='rgb(18, 100, 66)'&&
+      colors[0]==='rgb(255, 232, 184)'&&colors[1]==='rgb(213, 240, 222)'&&
       fontA==='15px'&&fontB==='15px'&&
       header.backgroundColor==='rgb(246, 249, 247)',
       colors,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
