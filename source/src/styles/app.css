@@ -1405,6 +1405,22 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-detail-grid tbody td[data-progress-tone="done"] {
   --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450;
 }
+/* Snapshot-verified colored dropdowns: the edit-mode status button itself
+   must retain the report-matched pink/amber/green fill, including hover and
+   keyboard focus. Ordinary editable values still use the quiet slate palette;
+   history buttons stay visible as before PR #13. */
+.item-data-table tbody td.editable-cell[data-progress-tone] .cell-picker-trigger,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] .cell-picker-trigger {
+  background-color:var(--workflow-bg);
+  border-color:var(--workflow-border);
+  color:var(--workflow-fg);
+}
+.item-data-table tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:hover,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:hover,
+.item-data-table tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:focus-visible,
+.report-detail-grid tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:focus-visible {
+  background-color:var(--workflow-bg);
+}
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
   background:#125B35;
