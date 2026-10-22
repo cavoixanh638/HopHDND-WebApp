@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## Bộ màu trạng thái cá nhân (22/10/2026)
+
+- Tính năng UI `src/features/items/StatusPaletteManager.tsx`; model/lưu local `src/data/status-palettes.ts`; cấp state chung từ `src/app/App.tsx` qua CSS vars `--hdnd-status-*` để cả bảng chính/popup cùng cập nhật. Giữ nguyên `progressTone` định nghĩa các trạng thái hoàn thành tương đương; chỉ `statusPaletteTone` mở thêm nhóm `other` **khi người dùng bật**.
+- Luôn giữ bốn nhóm có HEX hợp lệ và người dùng có thể chọn màu chữ + màu nền, đặt tên, lưu/chọn/cập nhật/xóa tối đa 20 mẫu; cấu hình theo nguồn lưu **localStorage** cá nhân, không ghi dữ liệu chung/Firebase/Excel. Đổi palette không được reset, remount hay refetch bảng. Khách không thấy công cụ sửa quyền/popup; chỉ thay hiển thị.
+- Default là màu V5, chưa phải preset có tên; V1/V2 vẫn là checkpoint GitHub bất biến. Tự động kiểm TypeScript, unit, Chrome (CSS computed) và Pages trước khi chốt.
+
 ## V5 thử sắc màu chữ rõ hơn (22/10/2026)
 
 - V5 chỉ đổi màu chữ `--workflow-text`: đỏ `#D00025`, cam `#B04700`, xanh hoàn thành `#007A18` (600); dùng cho Bảng dữ liệu + popup cả pill xem và editor. Nền, viền, dot, lịch sử, quyền, dashboard không đổi. Đảm bảo contrast >=4.5:1; nếu lần sau muốn làm **sáng hơn** thực sự mà vẫn đạt WCAG thì phải đánh giá đổi nền đồng bộ Bảng tổng hợp, không chỉ làm sáng chữ không kiểm tra.
