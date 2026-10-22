@@ -1,3 +1,13 @@
+## Gộp Phòng/CV · Kéo cột chế độ xem · Lịch sử minh họa Ghi chú (23/10/2026)
+
+Trong **Danh sách các ND trình HĐND**, mở **Gộp cột** và bật **Gộp Phòng chuyên môn và chuyên viên**. Dòng phía trên của ô gộp hiện Phòng, dòng dưới hiện CV. Bên dưới cột gộp có **Lọc theo Phòng** (danh sách chọn) và **Tìm kiếm tên CV** (nhập một phần/tên đầy đủ); có thể kết hợp cả hai. **Sở, ngành chủ trì** vẫn là cột riêng. Tắt gộp để hiện lại cột Phòng và Chuyên viên độc lập; giá trị gốc không đổi.
+
+Với **tài khoản admin Firebase**, tại **chế độ xem**, đưa chuột lên **mép phải tiêu đề cột** để kéo độ rộng, hoặc **giữ kéo tiêu đề cột** sang vị trí mong muốn. Hệ thống chỉ lưu **sau khi thả**, rồi tự cập nhật cấu hình dùng chung cho các tài khoản khác; nếu lỗi sẽ hoàn lại bố cục và thông báo. Trước khi kéo, cần về **giao diện chung** nếu đang mở mẫu xem cá nhân, và tắt **Hiện đủ cột Excel**. Khách không được dùng chức năng này. Nếu muốn sắp xếp dữ liệu tăng/giảm, vẫn vào chế độ chỉnh sửa; kéo cột không phải là sắp xếp giá trị.
+
+Để xem giao diện lịch sử, ở một ô **Ghi chú** bấm biểu tượng **Lịch sử** bên cạnh nội dung. Màn hình có lịch sử nguồn thật (nếu có) ở phần đầu, tiếp theo là **3 lần sửa Ghi chú demo** gồm ngày giờ và giá trị mẫu, với nhãn **DỮ LIỆU DEMO**. Các dữ liệu này không phải lịch sử thật của hồ sơ, không lưu vào Excel/Firebase. Tài khoản khách vẫn áp dụng hạn chế xem lịch sử như trước.
+
+---
+
 ## Bộ màu trạng thái — cá nhân hóa màu chữ, màu nền (22/10/2026)
 
 Trong **Danh sách các ND trình HĐND**, bấm **🎨 Bộ màu trạng thái** (ở thanh phía trên bảng). Khi đã đăng nhập, cũng có nút **Bộ màu** ở thanh công cụ **bảng popup chi tiết**. Hai nơi dùng **một bộ màu đang chọn**.
