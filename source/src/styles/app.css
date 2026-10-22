@@ -1383,3 +1383,37 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   background:#edf4ef;
 }
 .report-grid-modal .report-grid-filter-row .item-column-filter-cell {background:#f9fcfa;}
+
+/* 22/10: source and office match the five Bảng tổng hợp reports exactly;
+   completion is made DEEPER than its report green tint, to remain distinct
+   from green input backgrounds. No coloring for intermediate workflow labels. */
+.item-data-table tbody td[data-progress-tone="not-submitted"],
+.report-detail-grid tbody td[data-progress-tone="not-submitted"] {
+  --workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30;
+}
+.item-data-table tbody td[data-progress-tone="office"],
+.report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500;
+}
+.item-data-table tbody td[data-progress-tone="done"],
+.report-detail-grid tbody td[data-progress-tone="done"] {
+  --workflow-bg:#126442;--workflow-border:#0D5639;--workflow-fg:#FFFFFF;
+}
+.item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
+.report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
+  background:#FFFFFF;
+}
+/* A report heading and list heading do not have to share the same fill.
+   Keep the list header barely tinted without losing separations. */
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th {
+  background:#f6f9f7;
+}
+.report-grid-modal .report-grid-filter-row .item-column-filter-cell {
+  background:#fbfdfc;
+  height:47px;
+}
+.report-grid-modal .report-grid-filter-row input,
+.report-grid-modal .report-grid-filter-row select {
+  font-size:15px;min-height:36px;height:36px;
+}
+.report-grid-modal .report-grid-filter-row input::placeholder {font-size:15px;}
