@@ -1,12 +1,3 @@
-## 22/10/2026 — Bỏ nền khi sửa trạng thái, ẩn nút lịch sử khi chưa tương tác (PR #13)
-
-- Tiếp tục góp ý sau PR #12: cả **Bảng dữ liệu và popup** khi sửa trạng thái **không tô nền vàng/đỏ/xanh** lên control dropdown nữa. Nút chọn có nền trắng, chỉ giữ chữ/viền theo màu nghiệp vụ và thêm chấm 6px cùng tone; mũi tên chọn vẫn hoạt động. Nhãn trạng thái **chỉ đọc** giữ nguyên màu nền theo Bảng tổng hợp, không thay phân loại nguồn.
-- Biểu tượng nhỏ hình đồng hồ/mũi tên tại các ô trong ảnh là **Xem lần sửa gần nhất**, không phải con trỏ nhấp nháy. Cho `CellHistoryAction` ẩn mặc định, chỉ hiện khi rê/đưa focus vào ô hoặc điều khiển bằng bàn phím; không xóa chức năng xem lịch sử, không cấp quyền mới hoặc làm lệch bố cục.
-- Chữ xanh của `Hoàn thành` và tương đương dịu tiếp từ `#2B7450` sang `#307651` (tương phản tối thiểu 4,5:1 trên nền `#D5F0DE`). Giữ chấm xanh đậm, nền/viền của nhãn chỉ đọc, không thay palette Bảng tổng hợp hay poll 60s.
-- Bổ sung unit cho màu, affordance và Chrome smoke với mock DOM (không ghi nguồn). Trạng thái CI/merge/Pages cần kết quả xác minh trước khi coi đã phát hành.
-
----
-
 ## 22/10/2026 — Tinh chỉnh độ nổi của chữ hoàn thành và ô có quyền sửa (PR mới)
 
 - Theo phản hồi giao diện: chữ **Hoàn thành** và mọi trạng thái tương đương trong **Bảng dữ liệu/popup** chuyển từ xanh sẫm `#125B35` sang xanh vừa `#2B7450`, trọng lượng chữ `650`; nền `#D5F0DE`, viền `#91CFA8` và chấm xanh sẫm vẫn giữ. Tương phản chữ/nền đạt ít nhất 4,5:1; màu báo cáo tổng hợp **không đổi**.
