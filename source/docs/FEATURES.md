@@ -1,3 +1,11 @@
+## 22/10/2026 — Đồng bộ dữ liệu ngầm và nhãn tiến độ đúng ngữ nghĩa (PR #10)
+
+- Mỗi 60 giây vẫn kiểm tra file nguồn khi trang đang hiển thị, nhưng **không xóa màn hình, không bật loading toàn bảng, không làm mới items nếu dữ liệu giữ nguyên**. Khi có thay đổi thì cập nhật nội dung sau khi bản đọc thành công. Nếu có phần sửa đang nhập, ưu tiên dữ liệu nháp và không áp kết quả đọc ngầm. Cấu hình chung giữ bản xác nhận cũ trong lúc thăm dò, không tắt các cột.
+- Màu theo đúng Bảng tổng hợp: Sở chưa trình = đỏ hồng `#FFE0E4`, VP đang thực hiện/đang ở Văn phòng = vàng cam `#FFE8B8`, hoàn thành = xanh đậm `#126442` chữ trắng để khác xanh nền ô nhập. Chỉ gắn badge trạng thái ở cột workflow; các bước khác không có badge màu.
+- Cột Thành ủy: Không phải xin ý kiến, Đã có TBKL dùng UI hoàn thành. Cột xây dựng NQ: Không phải trình, Đã có QĐ chấp thuận dùng UI hoàn thành. Trạng thái terminal Council: Đã trình HĐND thành phố, phù hợp Bảng tổng hợp, cũng hiển thị kết thúc. Không tự đổi mức tiến độ trong nguồn hoặc đếm KPI.
+- Tìm kiếm/Chọn để lọc = 15px; nền tiêu đề `#f6f9f7`, bộ lọc `#fbfdfc`, cả Bảng dữ liệu/popup.
+- Test unit, browser và mock poll 60s; production không sửa Excel/Firebase.
+
 ## 22/10/2026 — Viết tắt cả hai lãnh đạo, tô nhãn trạng thái nghiệp vụ (PR #9)
 
 - Menu `Gộp cột` bổ sung tùy chọn thứ năm `Viết tắt tên Lãnh đạo VP và UBND`: bật/tắt riêng, hoạt động cả khi hai lãnh đạo gộp và khi hai cột tách. Ví dụ `Nguyễn Ngọc Hùng → N.N.Hùng` và `Trần Văn Quân → T.V.Quân`. Dữ liệu gốc/cho phép sửa/tra cứu luôn sử dụng tên đầy đủ.

@@ -1,3 +1,9 @@
+## 22/10/2026 — Lưu ý về đồng bộ 60 giây và màu trạng thái (PR #10)
+
+Bảng vẫn mở nguyên, cả vị trí cuộn/bộ lọc/ô dữ liệu, khi chương trình kiểm tra nguồn sau mỗi 60 giây. Không cần tải lại thủ công. Khi dữ liệu không đổi, hệ thống không tái tạo mảng hàng/bố cục; nếu thay đổi thực thì chỉ cập nhật sau lần tải thành công. Nếu nguồn tạm lỗi, bản đọc trước vẫn giữ và thông báo lỗi có thể hiển thị; khi nhập nháp thì đợt poll không ghi đè. Màn hình chờ/khóa cấu hình vẫn dùng **chỉ khi lần đầu chưa đọc được layout**; nếu config đã xác nhận thì tải lại ngầm không xóa UI.
+Các màu chính thống: Sở chưa trình đỏ hồng, VP đang thực hiện vàng cam, hoàn thành và các giá trị tương đương theo đúng trường là xanh lá đậm chữ trắng. Những bước trung gian không được tô nhầm. Màu trong Bảng tổng hợp được giữ nguyên.
+Chữ tìm kiếm và chọn lọc 15px, header nhạt thêm, popup cùng tông. Sau chỉnh sửa bắt buộc chạy test 60s giữ nguyên hàng + cập nhật thật + permission/Chrome để tránh lỗi tái phát.
+
 ## 22/10/2026 — Tùy chọn tên lãnh đạo và cách đọc trạng thái
 
 Mở **Gộp cột** ở đầu Danh sách các ND trình HĐND, tick `Viết tắt tên Lãnh đạo VP và UBND`. Có thể bật cùng `Gộp Lãnh đạo VP và UBND TP` hoặc dùng độc lập. Di chuột để thấy đầy đủ họ tên; bộ lọc và danh sách chọn vẫn dùng nguyên họ tên, không tạo dữ liệu ghi mới. Lựa chọn chỉ lưu trên trình duyệt của người dùng và mặc định tắt khi chưa chọn.

@@ -619,3 +619,13 @@
   font-size:13px;min-height:34px;height:34px;
 }
 .item-data-table .item-column-filter-row input::placeholder {font-size:13px;}
+
+/* 22/10: lighter header and 15px permanent search/select controls. */
+.item-data-table thead .item-heading-row th {background:#f6f9f7;}
+.item-data-table thead .item-column-filter-row th {background:#fbfdfc;height:47px;}
+.item-data-table .item-column-filter-row input,
+.item-data-table .item-column-filter-row select,
+.item-data-table .item-column-filter-row input[type="search"] {
+  font-size:15px;min-height:36px;height:36px;
+}
+.item-data-table .item-column-filter-row input::placeholder {font-size:15px;}

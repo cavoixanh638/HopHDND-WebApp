@@ -176,9 +176,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // Account/settings must be available even if auth is still establishing its
   // profile. These panels never require drawing a table with fallback widths.
   const layoutPending=!accountPage&&!allowTemporaryLayout&&
-    (common.status==='loading'||(isFirebase&&!firebase!.ready&&!firebase!.error));
+    ((common.status==='loading'&&!common.config)||
+      (isFirebase&&!firebase!.ready&&!firebase!.error));
   const layoutUnavailable=!accountPage&&!allowTemporaryLayout&&isFirebase&&
-    (common.status==='error'||!!firebase!.error);
+    !common.config&&(common.status==='error'||!!firebase!.error);
   const loadingWidth=page==='overview'||page==='customize'
     ?confirmedWidths?.report??1120
     :confirmedWidths?.list??1120;
