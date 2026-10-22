@@ -1,5 +1,10 @@
 # Hướng dẫn làm việc
 
+## Mốc khôi phục giao diện được người dùng chốt — 22/10/2026
+
+- **Mốc ổn định “dropdown trạng thái có nền màu như ảnh”**: commit phát hành `6c151458561b7800af51bab64837430e147fdcef`, nhánh backup **`backup/ui-colored-status-pill-approved-2026-10-22`**, [quy trình rollback](docs/VAN_HANH.md). Không tự di chuyển/sửa nhánh backup.
+- Trước khi thay màu dropdown hoặc lịch sử, so sánh với snapshot này và đọc đoạn mới nhất của `docs/CURRENT_STATE.md`. Chỉ chốt restore khi cả Bảng dữ liệu và popup có nền hồng/vàng/xanh tương ứng, history icon mờ mặc định, chữ done `#2B7450` và kiểm Chrome đã PASS; không lặp lại PR #13.
+
 ## Cố định UI theo ảnh sau rollback PR #13 — 22/10/2026
 
 - Ảnh chuẩn của người dùng là **dropdown có nền trạng thái nghiệp vụ** (Sở chưa trình hồng `#FFE0E4`, VP đang thực hiện vàng `#FFE8B8`, hoàn thành xanh `#D5F0DE`), áp dụng cho ô **được phép sửa**, kể cả hover/focus, trong Bảng dữ liệu và popup; không chuyển thành nền trắng.
