@@ -245,9 +245,9 @@ try{
       return values;
     });
     const expectedStatusColors=[
-      ['rgb(255, 224, 228)','rgb(197, 36, 69)'],
-      ['rgb(255, 232, 184)','rgb(161, 87, 0)'],
-      ['rgb(213, 240, 222)','rgb(0, 121, 74)']];
+      ['rgb(255, 224, 228)','rgb(208, 0, 37)'],
+      ['rgb(255, 232, 184)','rgb(176, 71, 0)'],
+      ['rgb(213, 240, 222)','rgb(0, 122, 24)']];
     const coloredEditableOk=editableStatuses.every(group=>group.every((entry,i)=>
       entry.background===expectedStatusColors[i][0]&&entry.color===expectedStatusColors[i][1]&&
       entry.weight==='600'&&entry.historyOpacity==='0.42'&&entry.tag==='BUTTON'&&entry.arrow==='""'));
@@ -255,8 +255,8 @@ try{
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&coloredEditableOk&&
       colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
-      colors[0].fg==='rgb(161, 87, 0)'&&colors[0].weight==='600'&&
-      colors[1].fg==='rgb(0, 121, 74)'&&colors[1].weight==='600'&&
+      colors[0].fg==='rgb(176, 71, 0)'&&colors[0].weight==='600'&&
+      colors[1].fg==='rgb(0, 122, 24)'&&colors[1].weight==='600'&&
       editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
       editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
