@@ -17,7 +17,8 @@ import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell} from './ColumnFilterCell';
-import {progressTone} from '../../domain/progress-visual';
+import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
+import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
   compactVisibleColumns,compactFilterText,abbreviateVietnameseName,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
@@ -32,7 +33,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void> }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const personalScope=layoutRecoveryScope(sourceKey);
   const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
@@ -304,6 +305,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
           <p>Không sửa Excel, không thay quyền. Tắt tùy chọn để hiện đủ các cột gốc.</p>
         </div>
       </details>}
+      {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
+        <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
@@ -390,7 +393,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
         return <td key={column.key} data-col-key={column.key}
-          data-progress-tone={progressTone(key,item[key])??undefined}
+          data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory?'has-history-action':''].filter(Boolean).join(' ')}
           data-edit-hint={writable?'Bấm để sửa':undefined}
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
@@ -405,7 +408,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
         ?<span title={item[key]} aria-label={item[key]}>{abbreviateVietnameseName(item[key])||'—'}</span>
-      :progressTone(key,item[key])
+      :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
         ?<span className="workflow-status-value">{item[key]}</span>
       :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
