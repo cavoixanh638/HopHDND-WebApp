@@ -1,3 +1,11 @@
+## 22/10/2026 — V4 THỬ MÀU CHỮ SÁNG/TƯƠI HƠN V3
+
+- Thử tăng rõ độ tươi của **chữ trạng thái** trong **Bảng dữ liệu và popup**, không đổi nền: `Sở chưa trình` từ `#BA2E42` sang **`#C52445`** (đỏ tươi hơn); `VP đang thực hiện` từ `#935300` sang **`#A15700`** (cam sáng hơn); `Hoàn thành`/tương đương từ `#08784E` sang **`#00794A`** (xanh lá thuần và tươi hơn một chút). Chữ giữ font-weight **600**. Màu xanh bị giới hạn độ sáng vì nền xanh `#D5F0DE` và yêu cầu tương phản chữ tối thiểu **4,5:1**.
+- Nền nghiệp vụ V1–V3 **giữ nguyên**: hồng `#FFE0E4`, vàng `#FFE8B8`, xanh `#D5F0DE`; viền, chấm trạng thái, popup/dropdown, hiển thị icon lịch sử, KPI, phân quyền và đồng bộ 60 giây cũng giữ nguyên. Kiểm Chrome trên cả pill chỉ đọc và dropdown quyền sửa.
+- **Chỉ là thử nghiệm V4, chưa được người dùng chốt lưu riêng.** Backup V1 `backup/ui-colored-status-pill-approved-2026-10-22` và V2 `backup/ui-vivid-status-ink-weight600-2026-10-22` phải giữ bất biến. CI và Pages cần xác minh PASS trước khi phát hành.
+
+---
+
 ## 22/10/2026 — V3 THỬ MÀU CHỮ TƯƠI/SÁNG HƠN V2 (chưa chốt làm mốc backup)
 
 - Thử thay **chỉ màu chữ** trong ba tone nghiệp vụ Bảng dữ liệu + popup: đỏ `#B2263D → #BA2E42`, cam `#875000 → #935300`, xanh `#27774B → #08784E` (xanh tăng độ tươi/sắc xanh, giới hạn độ sáng để duy trì tương phản tối thiểu 4,5:1). Chữ giữ **font-weight 600**.
