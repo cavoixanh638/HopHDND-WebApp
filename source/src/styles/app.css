@@ -1304,26 +1304,32 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   color:#253a30;
 }
 
-/* Editable controls are unmistakably input-like, while read-only values remain
-   plain text. Never recolor entire cells (report status and custom highlights
-   have precedence), and never put new listeners on every cell. */
+/* Ordinary editable values have the QUIETEST affordance: cool slate-blue.
+   This is more discoverable than plain read-only text, but far less salient than
+   the red/amber/green business statuses. Do not recolor entire td, row highlights
+   or report aggregates, and do not add hover listeners. */
 .item-data-table tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input),
 .report-detail-grid tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input) {
   box-sizing:border-box;
-  border:1.5px solid #78a994;
+  border:1.5px solid #b7cbd6;
   border-radius:7px;
-  background:#eaf6ef;
-  color:#154d3b;
+  background:#f2f6f9;
+  color:#426274;
+  font-weight:550;
   box-shadow:inset 0 1px 0 #ffffffd0;
 }
 .item-data-table tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input):hover,
 .report-detail-grid tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input):hover {
-  border-color:#237e5c;background:#dcf0e4;
-  box-shadow:0 0 0 1px #73b594;
+  border-color:#87aaba;background:#eaf1f5;
+  box-shadow:0 0 0 1px #bdd3df;
 }
 .item-data-table tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input):focus-visible,
 .report-detail-grid tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.custom-cell-input):focus-visible {
-  outline:2px solid #166849;outline-offset:1px;background:#e4f5eb;
+  outline:2px solid #356d86;outline-offset:1px;background:#eaf1f5;
+}
+.item-data-table tbody td.editable-cell:not([data-progress-tone]) .cell-picker-trigger::after,
+.report-detail-grid tbody td.editable-cell:not([data-progress-tone]) .cell-picker-trigger::after {
+  border-right-color:#60879a;border-bottom-color:#60879a;
 }
 .item-data-table tbody td.editable-cell :is(.content-button,.cell-value-button):not(.cell-picker-trigger),
 .report-detail-grid tbody td.editable-cell :is(.content-button,.cell-value-button):not(.cell-picker-trigger) {
@@ -1332,7 +1338,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td.editable-cell :is(.content-button,.cell-value-button):not(.cell-picker-trigger)::after,
 .report-detail-grid tbody td.editable-cell :is(.content-button,.cell-value-button):not(.cell-picker-trigger)::after {
-  content:'✎';flex:none;color:#347c5e;font-size:12px;
+  content:'✎';flex:none;color:#60879a;font-size:12px;
 }
 
 /* 22/10: three actionable workflow statuses stand out in both list and popup.
@@ -1384,9 +1390,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .report-grid-modal .report-grid-filter-row .item-column-filter-cell {background:#f9fcfa;}
 
-/* 22/10: source and office match the five Bảng tổng hợp reports exactly;
-   completion is made DEEPER than its report green tint, to remain distinct
-   from green input backgrounds. No coloring for intermediate workflow labels. */
+/* 22/10: report stage fills remain authoritative. Completion stays
+   report-green and is distinguished from the softer, slate-blue edit controls;
+   intermediate workflow labels receive no semantic tone. */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
   --workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30;
@@ -1397,11 +1403,19 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#125B35;
+  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450;
 }
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
   background:#125B35;
+}
+/* Softer completed lettering (WCAG >= 4.5:1 on #D5F0DE).
+   Keep its small status dot stronger for immediate recognition. */
+.item-data-table tbody td[data-progress-tone="done"] .workflow-status-value,
+.report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value,
+.item-data-table tbody td.editable-cell[data-progress-tone="done"] :is(.cell-picker-trigger,.custom-cell-input),
+.report-detail-grid tbody td.editable-cell[data-progress-tone="done"] :is(.cell-picker-trigger,.custom-cell-input) {
+  font-weight:650;
 }
 /* A report heading and list heading do not have to share the same fill.
    Keep the list header barely tinted without losing separations. */

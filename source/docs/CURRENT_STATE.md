@@ -1,3 +1,11 @@
+## 22/10/2026 — Tinh chỉnh độ nổi của chữ hoàn thành và ô có quyền sửa (PR mới)
+
+- Theo phản hồi giao diện: chữ **Hoàn thành** và mọi trạng thái tương đương trong **Bảng dữ liệu/popup** chuyển từ xanh sẫm `#125B35` sang xanh vừa `#2B7450`, trọng lượng chữ `650`; nền `#D5F0DE`, viền `#91CFA8` và chấm xanh sẫm vẫn giữ. Tương phản chữ/nền đạt ít nhất 4,5:1; màu báo cáo tổng hợp **không đổi**.
+- Các giá trị thường **được quyền sửa** (không thuộc ba tone nghiệp vụ) dùng nền xanh xám rất nhẹ `#F2F6F9`, chữ `#426274`, viền `#B7CBD6` và độ đậm 550, có hover/focus nhẹ. Giá trị **chỉ đọc** vẫn là chữ thường, không tự sinh nút sửa. Thứ tự ưu tiên: đỏ Sở chưa trình / vàng VP đang thực hiện / xanh hoàn thành dễ nhận biết hơn ô sửa thông thường; màu từ khóa theo ô và phân loại nghiệp vụ không thay đổi.
+- CSS, unit đối chiếu độ tương phản và Chrome smoke kiểm computed style của nhãn hoàn thành/các nút sửa. Chỉ sửa giao diện; không thay dữ liệu Excel, quyền Firebase, KPI hay đồng bộ 60 giây. **Chưa coi phát hành thành công trước khi PR CI và Pages đều PASS.**
+
+---
+
 ## 22/10/2026 — Đồng nhất xanh hoàn thành Bảng dữ liệu với Bảng tổng hợp (PR #11)
 
 - Theo yêu cầu mới: thay màu xanh đậm hoàn thành (`#126442` chữ trắng) ở **Bảng dữ liệu và popup** bằng đúng màu Bảng tổng hợp `#D5F0DE`, chữ `#125B35`, viền `#91CFA8`. Chấm trạng thái cũng `#125B35`. Cả `Hoàn thành`, `Đã có TBKL`, `Không phải xin ý kiến`, `Không phải trình`, `Đã có QĐ chấp thuận`, `Đã trình HĐND thành phố` đang thuộc tone `done` theo đúng cột nhận cùng UI xanh nhạt; phân loại / tổng hợp / dữ liệu không đổi.

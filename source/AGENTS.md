@@ -85,6 +85,12 @@
 - Palette Bảng tổng hợp là chuẩn: source đỏ hồng `#FFE0E4`, office vàng cam `#FFE8B8`, completed xanh `#D5F0DE`. Bảng chính/popup dùng nguồn/VP y như vậy, riêng completed **xanh đậm** `#126442` + trắng để không lẫn màu nền ô input. Chỉ các giá trị đúng theo `progress-visual.ts` được tô; terminal equivalents chỉ trong cột tương ứng; không tô các bước giữa và không sửa dữ liệu/KPI.
 - Header `#f6f9f7`, filter `#fbfdfc`, font 15px. Regression test bắt buộc kiểm run 60 giây không thay nội dung, run có dữ liệu đổi và lần đầu thiếu layout; test Chrome đo màu/font.
 
+## Điều chỉnh tương phản thứ bậc — 22/10/2026
+
+- Giữ màu nền hoàn thành của Bảng tổng hợp (`#D5F0DE`), nhãn chữ tại Danh sách/popup dùng xanh dịu `#2B7450` (weight 650, vẫn >=4,5:1). Chấm trạng thái giữ xanh sẫm để dễ nhận; không đổi report stage palette.
+- **Các ô có thể sửa nhưng không phải trạng thái cần chú ý** dùng bộ màu slate-blue nhạt `#F2F6F9`/`#426274`/`#B7CBD6` (nền/chữ/viền), không được tô cả `td` hay tự bật quyền; hover/focus chỉ đổi affordance của nút/input. Ô không sửa được là plain text. Không biến trạng thái trung gian thành cờ hoàn thành.
+- Mọi chỉnh màu áp dụng đồng nhất Bảng dữ liệu và popup, kiểm CSS/Chrome, ưu tiên trạng thái nghiệp vụ so với trường sửa thường; không được làm hồi quy poll 60s, phân quyền hay highlight theo từ khóa.
+
 ## Đồng nhất xanh hoàn thành — 22/10/2026, PR #11
 
 - Không dùng màu đặc `#126442` chữ trắng cho nhãn completion trong Danh sách/popup nữa. Dùng chính xác màu hoàn thành của Bảng tổng hợp `#D5F0DE` / `#125B35` / `#91CFA8` (nền/chữ/viền), chấm màu chữ; giữ các tone khác và mapping `progressTone`. Sửa test CSS & Chrome cùng một lúc, không đụng sync 60 giây hay dữ liệu Excel.
