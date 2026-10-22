@@ -1,3 +1,49 @@
+## Mốc khôi phục được chốt — HopHDND UI, pill trạng thái có nền màu — 22/10/2026
+
+**Đây là mốc tham chiếu bắt buộc khi người dùng yêu cầu “quay lại bản có nền màu như ảnh”.** Đã lưu cả trạng thái `source/` và `index.html` được GitHub Pages triển khai thành công, không chỉ screenshot hoặc CSS.
+
+| Thuộc tính | Giá trị đã xác minh |
+|---|---|
+| Tên nhận diện | **HopHDND UI — Colored Status Pill — 22/10/2026** |
+| Commit Pages chính xác (checkpoint) | [`6c151458561b7800af51bab64837430e147fdcef`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6c151458561b7800af51bab64837430e147fdcef) |
+| Nhánh backup | [`backup/ui-colored-status-pill-approved-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-colored-status-pill-approved-2026-10-22) |
+| PR giao diện đã merge | [PR #15](https://github.com/cavoixanh638/HopHDND-WebApp/pull/15), merge commit `24e4d338e79616241c101ce68eb26140595e7a28` |
+| Commit nguồn CI PASS | `b5ea9a2403adca57ac25c0a0ab854f6dcd8c8e34` |
+| Bằng chứng kiểm | [Verify #39778929334](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39778929334) **SUCCESS**; [Publisher #39779152810](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39779152810) **SUCCESS**; [Pages #39779299040](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39779299040) **SUCCESS** |
+| Blob trang phát hành `index.html` | `c5235b68eaf252e3ca8c0eccf1bf25bd8da30258` (Git blob SHA trong checkpoint) |
+| Phạm vi | Mã nguồn và artifact đã phát hành trên GitHub; **không** là backup dữ liệu Excel, Firebase, dữ liệu cá nhân hay localStorage |
+
+**Dấu hiệu nhận biết đúng phiên bản:**
+
+- Cả **Bảng dữ liệu và popup**: ô trạng thái **được phép sửa** là nút dropdown hình pill **có nền màu**, không phải nền trắng; nền giữ nguyên lúc hover/focus.
+- `Sở chưa trình`: nền hồng `#FFE0E4`, chữ `#7F1D30`, viền `#E7A1AD`. `VP đang thực hiện`: nền vàng cam `#FFE8B8`, chữ `#704500`, viền `#DCB76A`. `Hoàn thành` và tương đương: nền xanh mint `#D5F0DE`, chữ `#2B7450`, viền `#91CFA8` (chấm xanh đậm với nhãn xem).
+- Biểu tượng lịch sử hiển thị mờ mặc định (`opacity:.42`), đúng cách trước PR #13; không dùng biến thể PR #13 (nền dropdown trắng, ẩn history icon, chữ xanh `#307651`). Giá trị thường được quyền sửa dùng xanh xám nhạt. Không thay quyền và ý nghĩa trạng thái.
+- Điểm kiểm mã: `source/src/styles/app.css`, `source/tests/report-style-css.test.ts`, `source/scripts/smoke-pages-browser.mjs`.
+
+### Quy trình trở về đúng mốc này nếu giao diện sau này bị hỏng
+
+1. **Đối chiếu trước khi thay:** xem `main`, commit/tag/nhánh backup phía trên và chạy `git diff 6c151458561b7800af51bab64837430e147fdcef..main -- source/src`. Nhánh `backup/ui-colored-status-pill-approved-2026-10-22` là mốc lưu, **không cập nhật/force-push vào nhánh backup**. Ghim **SHA đầy đủ** để tránh tên nhánh di chuyển.
+2. Chỉ cần khôi phục riêng bộ màu trạng thái: tạo **nhánh làm việc mới từ `main`**, lấy lại `source/src/styles/app.css` từ commit checkpoint, kiểm không xóa những CSS mới không liên quan. Chỉ khôi phục toàn bộ `source/` nếu người dùng thực sự yêu cầu trả về **toàn bộ phần mềm** của mốc này. Dữ liệu Sheets/Firebase không thuộc rollback mã nguồn.
+3. Ví dụ khôi phục **toàn bộ source** vào một commit rollback có thể xem xét qua PR (không reset/force-push `main`):
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+git switch -c restore/ui-colored-status-pill-2026-10-22
+git restore --source=6c151458561b7800af51bab64837430e147fdcef --staged --worktree -- source
+git diff --cached --stat
+git commit -m "restore: return HopHDND UI to colored status pill snapshot 2026-10-22"
+git push -u origin restore/ui-colored-status-pill-2026-10-22
+```
+
+4. Tạo PR vào `main`, soát khác biệt (phải chú ý source docs và tính năng phát sinh sau mốc). Chỉ merge khi các test TypeScript, unit, Firebase emulator, Chrome smoke và xác nhận quyền đều PASS. Không sửa trực tiếp `main:index.html` hay ghi dữ liệu nghiệp vụ để “restore”; workflow `publish-pages.yml` sẽ build lại artifact từ nguồn rồi Pages deploy. Kiểm đủ **Verify / Publisher / Pages**, chạy nghiệm thu trực quan tài khoản có quyền trên Bảng dữ liệu **và** popup, có thể `Ctrl+F5` để loại cache.
+5. Nếu cần phục hồi **đúng cả artifact HTML** (không chỉ source), đối chiếu blob `index.html` của checkpoint ở trên với artifact build mới; khác blob thì không tự tuyên bố đã khôi phục đúng byte. Ưu tiên công bố khác biệt và kiểm tính năng trước khi phát hành. Nhánh backup không bảo vệ thay đổi dữ liệu thực hoặc cài đặt trình duyệt.
+
+**Trạng thái đã xác minh ngày 22/10/2026:** PR #15 merge, Verify + Publisher + Pages đều SUCCESS; đây là **mốc sao lưu mã nguồn và artifact** đã kiểm, không thay cho nghiệm thu trực quan trên thiết bị người dùng. Tài liệu ghi nhận mốc có thể tiếp tục được cập nhật sau ngày này nhưng không thay đổi commit backup.
+
+---
+
 ## 22/10/2026 — Lưu ý về đồng bộ 60 giây và màu trạng thái (PR #10)
 
 Bảng vẫn mở nguyên, cả vị trí cuộn/bộ lọc/ô dữ liệu, khi chương trình kiểm tra nguồn sau mỗi 60 giây. Không cần tải lại thủ công. Khi dữ liệu không đổi, hệ thống không tái tạo mảng hàng/bố cục; nếu thay đổi thực thì chỉ cập nhật sau lần tải thành công. Nếu nguồn tạm lỗi, bản đọc trước vẫn giữ và thông báo lỗi có thể hiển thị; khi nhập nháp thì đợt poll không ghi đè. Màn hình chờ/khóa cấu hình vẫn dùng **chỉ khi lần đầu chưa đọc được layout**; nếu config đã xác nhận thì tải lại ngầm không xóa UI.
