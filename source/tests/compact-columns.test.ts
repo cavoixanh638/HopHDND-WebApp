@@ -62,7 +62,7 @@ describe('Optional compact projection remains read-only presentation',()=>{
     expect(abbreviateLeaderName('PCT Trần Văn Quân')).toBe('PCT T.V.Quân');
     expect(abbreviateLeaderName('PCTT Phạm Minh Đức')).toBe('PCTT P.M.Đức');
     expect(abbreviateLeaderName('CVP Nguyễn Văn A')).toBe('CVP N.V.A');
-    expect(abbreviateLeaderName('PCT: Trần Văn Quân')).toBe('PCT:T.V.Quân');
+    expect(abbreviateLeaderName('PCT: Trần Văn Quân')).toBe('PCT: T.V.Quân');
     expect(abbreviateLeaderName('Nguyễn Ngọc Hùng (PCVP)')).toBe('N.N.Hùng (PCVP)');
     expect(abbreviateLeaderName('PCVP')).toBe('PCVP');
     expect(abbreviateLeaderName('Trần Văn Quân')).toBe('T.V.Quân');
