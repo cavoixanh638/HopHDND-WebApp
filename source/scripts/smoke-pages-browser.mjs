@@ -207,10 +207,10 @@ try{
     });
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
-      style.backgroundColor!=='rgb(255, 255, 255)'&&
-      colors[0]!==colors[1]&&colors[0]!==style.backgroundColor&&
-      fontA==='13px'&&fontB==='13px'&&
-      header.backgroundColor==='rgb(237, 244, 239)',
+      style.backgroundColor==='rgb(255, 224, 228)'&&
+      colors[0]==='rgb(255, 232, 184)'&&colors[1]==='rgb(18, 100, 66)'&&
+      fontA==='15px'&&fontB==='15px'&&
+      header.backgroundColor==='rgb(246, 249, 247)',
       colors,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));

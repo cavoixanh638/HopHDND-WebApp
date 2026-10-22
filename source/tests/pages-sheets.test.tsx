@@ -120,6 +120,48 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     (document as any).hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);
     const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Sau polling');
   });
+  it('keeps the same mounted list and report rows during unchanged 60-second polls',async()=>{
+    render();respond();await settle();render();
+    let tree=open('Danh sách các ND trình HĐND');
+    let list=nodes(tree).find(n=>n.type===ItemList);
+    const original=list.props.items;
+    expect(original).toHaveLength(1);
+    expect(list.props.busy).toBe(false);
+    await vi.advanceTimersByTimeAsync(60000);
+    // Request is still in flight: the table must remain visible and interactive.
+    tree=render();list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.items).toBe(original);
+    expect(list.props.busy).toBe(false);
+    expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
+    respond();await settle();
+    tree=render();list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.items).toBe(original);
+    expect(list.props.busy).toBe(false);
+    // A genuine source change is applied once without first clearing the rows.
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(nodes(render()).find(n=>n.type===ItemList).props.items).toBe(original);
+    respond('Nguồn đã đổi');await settle();
+    tree=render();list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.items).not.toBe(original);
+    expect(list.props.items[0].note).toBe('Nguồn đã đổi');
+  });
+  it('keeps previously confirmed Firebase layout visible when refreshing or temporarily unavailable',async()=>{
+    const columns=defaultItemLayout();columns.frameWidth=1050;
+    firebase.common.config={revision:4,catalogs:catalogFromItems(createDemoItems(1)),
+      items:columns,reports:withReportPageWidth(defaultReportLayout(),1260)};
+    firebase.common.status='ready';
+    render();respond();await settle();
+    let tree=open('Danh sách các ND trình HĐND');
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    firebase.common.status='loading';
+    tree=render();
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    expect(tree.props.style['--page-content-width']).toBe('1050px');
+    firebase.common.status='error';firebase.error='Temporary network failure';
+    tree=render();
+    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    expect(text(tree)).not.toContain('Chưa đọc được bố cục đã lưu từ Firebase');
+  });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
     render();respond();await settle();const tree=open('Danh sách các ND trình HĐND');
     expect(button(tree,'Đăng nhập')).toBeDefined();
