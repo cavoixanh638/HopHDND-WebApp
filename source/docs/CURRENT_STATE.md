@@ -1,3 +1,11 @@
+## 22/10/2026 — Khóa hồi quy theo ảnh: dropdown trạng thái có nền màu (PR mới)
+
+- Ảnh người dùng xác nhận: **trong chế độ được quyền sửa**, ô chọn `Sở chưa trình` phải là pill **hồng `#FFE0E4`**, chữ `#7F1D30`, viền `#E7A1AD`; `VP đang thực hiện` dùng vàng `#FFE8B8`, `Hoàn thành` dùng xanh `#D5F0DE` và chữ `#2B7450`. Nền màu phải giữ khi hover/focus; danh sách/popup giống nhau.
+- Không tái áp dụng **PR #13** (nền dropdown trắng, chấm bổ sung, ẩn nút history, chuyển chữ completed thành `#307651`). **PR #14 đã khôi phục đúng source của PR #12**; bổ sung selector CSS khóa trường hợp bị generic edit style ghi đè và Chrome smoke kiểm màu **nút chọn đang sửa thật** bằng giả lập DOM trong cả bảng chính và popup; trước đây smoke chỉ kiểm pill chỉ đọc.
+- Giữ icon history mặc định như phiên bản cũ (`opacity:.42`), không tác động polling 60 giây, dữ liệu Sheets/Excel, quyền hay KPI. Kết quả CI/Pages cần ghi theo thực tế trước khi nghiệm thu.
+
+---
+
 ## 22/10/2026 — Tinh chỉnh độ nổi của chữ hoàn thành và ô có quyền sửa (PR mới)
 
 - Theo phản hồi giao diện: chữ **Hoàn thành** và mọi trạng thái tương đương trong **Bảng dữ liệu/popup** chuyển từ xanh sẫm `#125B35` sang xanh vừa `#2B7450`, trọng lượng chữ `650`; nền `#D5F0DE`, viền `#91CFA8` và chấm xanh sẫm vẫn giữ. Tương phản chữ/nền đạt ít nhất 4,5:1; màu báo cáo tổng hợp **không đổi**.

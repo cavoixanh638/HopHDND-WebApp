@@ -147,4 +147,24 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(contrast('F2F6F9','426274')).toBeGreaterThanOrEqual(4.5);
     expect(luminance('F2F6F9')).toBeGreaterThan(luminance('D5F0DE'));
   });
+  it('preserves image-matched colored status dropdowns in editing mode, list and popup',()=>{
+    const pairedRule=/\.item-data-table tbody td\.editable-cell\[data-progress-tone\] \.cell-picker-trigger,\s*\.report-detail-grid tbody td\.editable-cell\[data-progress-tone\] \.cell-picker-trigger\s*\{([^}]*)\}/;
+    const control=css.match(pairedRule)?.[1];
+    expect(control).toBeDefined();
+    expect(control).toContain('background-color:var(--workflow-bg)');
+    expect(control).toContain('border-color:var(--workflow-border)');
+    for(const grid of ['item-data-table','report-detail-grid']){
+      expect(css).toContain('.'+grid+' tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:hover,');
+      expect(css).toContain('.'+grid+' tbody td.editable-cell[data-progress-tone] .cell-picker-trigger:focus-visible');
+    }
+    expect(css).toContain('background-color:var(--workflow-bg);');
+    expect(css).toContain('border-color:var(--workflow-border);');
+    expect(css).toContain('color:var(--workflow-fg);');
+    // PR #13 mistakenly removed the semantic fill, hid idle history, and
+    // altered completed ink. Those regressions must remain rolled back.
+    expect(css).not.toContain('td.editable-cell[data-progress-tone] .cell-picker-trigger::before');
+    expect(css).toContain('opacity:.42;');
+    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(css).not.toContain('--workflow-fg:#307651');
+  });
 });
