@@ -215,16 +215,53 @@ try{
     const editStyle={bg:regularEditable.backgroundColor,fg:regularEditable.color,
       weight:regularEditable.fontWeight,border:regularEditable.borderTopColor};
     td.remove();
+    // Regression for the user's pink-pill screenshot: check EDITABLE dropdowns,
+    // not just the guest's read-only status badges. Test both grids in Chrome.
+    const editableStatuses=['item-data-table','report-detail-grid'].map(grid=>{
+      let table;
+      const row=grid==='item-data-table'?status.parentElement:(()=>{
+        table=document.createElement('table');table.className='report-detail-grid';
+        table.style.position='absolute';table.style.top='-10000px';
+        const body=table.appendChild(document.createElement('tbody'));
+        const tr=body.appendChild(document.createElement('tr'));
+        document.body.appendChild(table);return tr;
+      })();
+      const values=['not-submitted','office','done'].map(tone=>{
+        const cell=document.createElement('td');
+        cell.className='editable-cell has-history-action';cell.dataset.progressTone=tone;
+        const trigger=document.createElement('button');
+        trigger.className='cell-value-button cell-picker-trigger';
+        trigger.type='button';trigger.textContent=tone;cell.appendChild(trigger);
+        const history=document.createElement('button');
+        history.type='button';history.className='cell-history-action';
+        cell.appendChild(history);row.appendChild(cell);
+        const style=getComputedStyle(trigger),h=getComputedStyle(history);
+        const result={background:style.backgroundColor,color:style.color,
+          border:style.borderTopColor,historyOpacity:h.opacity,tag:trigger.tagName,
+          arrow:getComputedStyle(trigger,'::after').content};
+        cell.remove();return result;
+      });
+      if(table)table.remove();
+      return values;
+    });
+    const expectedStatusColors=[
+      ['rgb(255, 224, 228)','rgb(127, 29, 48)'],
+      ['rgb(255, 232, 184)','rgb(112, 69, 0)'],
+      ['rgb(213, 240, 222)','rgb(43, 116, 80)']];
+    const coloredEditableOk=editableStatuses.every(group=>group.every((entry,i)=>
+      entry.background===expectedStatusColors[i][0]&&entry.color===expectedStatusColors[i][1]&&
+      entry.historyOpacity==='0.42'&&entry.tag==='BUTTON'&&entry.arrow==='""'));
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
-      style.backgroundColor==='rgb(255, 224, 228)'&&
+      style.backgroundColor==='rgb(255, 224, 228)'&&coloredEditableOk&&
       colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
       colors[1].fg==='rgb(43, 116, 80)'&&colors[1].weight==='650'&&
       editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
       editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
       header.backgroundColor==='rgb(246, 249, 247)',
-      colors,editStyle,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
+      colors,editStyle,editableStatuses,statusColor:style.backgroundColor,
+      fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
   const sortAndGuestLayout=await evaluate(`(()=>{
