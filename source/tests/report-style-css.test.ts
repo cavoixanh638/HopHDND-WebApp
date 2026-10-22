@@ -171,9 +171,9 @@ describe('Data list workflow palette is synchronized with the actual report stag
     // Foreground is intentionally separate from the checkpoint's semantic fill,
     // border and status-dot variable (--workflow-fg).
     for(const [tone,ink,fill,minimum] of [
-      ['not-submitted','B2263D','FFE0E4',4.5],
-      ['office','875000','FFE8B8',4.5],
-      ['done','27774B','D5F0DE',4.5],
+      ['not-submitted','BA2E42','FFE0E4',4.5],
+      ['office','935300','FFE8B8',4.5],
+      ['done','08784E','D5F0DE',4.5],
     ] as const){
       const selector='tbody td[data-progress-tone="'+tone+'"]';
       expect(css).toContain(selector);
@@ -187,5 +187,10 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).toContain('opacity:.42;');
+    // V3 is text-only: do not change weight, background or dot colors.
+    expect(css).toContain('--workflow-text:#BA2E42;');
+    expect(css).toContain('--workflow-text:#935300;');
+    expect(css).toContain('--workflow-text:#08784E;');
+    expect(css).toContain('font-weight:600;');
   });
 });
