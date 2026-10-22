@@ -353,8 +353,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               })}/>)}</tr>
         </thead>
         <tbody>
-          {visible.map(item=><tr key={item.recordId} className={[dirtyIds.has(item.recordId)?'report-grid-row-dirty':'',
-            itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
+          {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               canEditCell(item.recordId,c.key as TextField);
               const showCellHistory=!readOnlyViewer&&!!onCellHistory&&editableFields.has(c.key);

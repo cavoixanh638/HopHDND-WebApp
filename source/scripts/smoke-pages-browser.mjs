@@ -93,7 +93,7 @@ const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),ro
     8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
   })[i]??''}))},
   {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','Nguyễn Ngọc Hùng','Trần Văn Quân','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
+    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','PCVP Nguyễn Ngọc Hùng','PCT Trần Văn Quân','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
   {c:['',2,'','','QPPL','','','','','','','','','',''].map(v=>({v}))},
   ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','',''].map(v=>({v}))}))
 ]}};
@@ -519,6 +519,26 @@ try{
   await eventually("document.querySelector('[data-filter-key=type] select')?.value===''",
     'Escape did not clear selected type');
 
+  // An unsaved edit must not highlight the whole row in yellow or paint an
+  // amber stripe in the detail popup. Explicit user row color rules are separate.
+  const noDraftRowYellow=await evaluate(`(()=>{
+    const root=document.querySelector('.item-data-table tbody tr');
+    if(!root)return false;
+    const before=getComputedStyle(root).backgroundColor;
+    root.classList.add('dirty-row');
+    const after=getComputedStyle(root).backgroundColor;
+    root.classList.remove('dirty-row');
+    const popup=document.createElement('table');
+    popup.className='report-detail-grid';popup.style.position='absolute';popup.style.left='-10000px';
+    const body=popup.appendChild(document.createElement('tbody'));
+    const test=body.appendChild(document.createElement('tr'));
+    document.body.appendChild(popup);
+    const plain=getComputedStyle(test).boxShadow;
+    test.classList.add('report-grid-row-dirty');
+    const dirty=getComputedStyle(test).boxShadow;popup.remove();
+    return before===after&&plain===dirty;
+  })()`);
+  if(!noDraftRowYellow)throw Error('Unsaved record still highlights whole table row');
   // Compact display preferences may hide presentation columns, never source data.
   const sourceWidth=await evaluate("document.querySelector('.item-data-table')?.getBoundingClientRect().width");
   const menuExists=await evaluate(`(()=>{
@@ -546,8 +566,8 @@ try{
     return {ok:!headers.includes('type')&&!headers.includes('room')&&!headers.includes('ubndLeader')&&
       !!content?.textContent?.includes('(QPPL)')&&
       !!leaders?.textContent?.includes('UBND')&&
-      !!leaders?.textContent?.includes('N.N.Hùng')&&
-      !!leaders?.textContent?.includes('T.V.Quân')&&
+      !!leaders?.textContent?.includes('PCVP N.N.Hùng')&&
+      !!leaders?.textContent?.includes('PCT T.V.Quân')&&
       !!specialist?.textContent?.includes('C.V.mẫu')&&
       document.querySelector('.item-data-table').getBoundingClientRect().width<${sourceWidth},
       headers,content:content?.textContent?.slice(-55),specialist:specialist?.textContent};
@@ -586,10 +606,10 @@ try{
   const separateLeaders=await evaluate(`(()=>{
     const vp=document.querySelector('.item-data-table tbody td[data-col-key=vpLeader]');
     const ubnd=document.querySelector('.item-data-table tbody td[data-col-key=ubndLeader]');
-    return !!vp?.textContent?.includes('N.N.Hùng')&&
-      !!ubnd?.textContent?.includes('T.V.Quân')&&
-      vp?.querySelector('[aria-label="Nguyễn Ngọc Hùng"]')!==null&&
-      ubnd?.querySelector('[aria-label="Trần Văn Quân"]')!==null;
+    return !!vp?.textContent?.includes('PCVP N.N.Hùng')&&
+      !!ubnd?.textContent?.includes('PCT T.V.Quân')&&
+      vp?.querySelector('[aria-label="PCVP Nguyễn Ngọc Hùng"]')!==null&&
+      ubnd?.querySelector('[aria-label="PCT Trần Văn Quân"]')!==null;
   })()`);
   if(!separateLeaders)throw Error('Short leader option must work with separate columns too');
   const restored=await evaluate(`(()=>{

@@ -1,5 +1,10 @@
 # Hướng dẫn làm việc
 
+## Chặn hồi quy màu dòng nháp và chức vụ lãnh đạo (22/10/2026)
+
+- **Không** tô vàng toàn bộ hàng chỉ vì nháp: không khôi phục `.data-table tr.dirty-row {background:#fff9e9}`, không gắn class `dirty-row` từ `ItemList` hay sọc cam `.report-grid-row-dirty` từ popup. Vẫn báo nội dung chưa lưu và giữ màu dòng **tùy chỉnh chủ động** của người dùng.
+- Chế độ `shortLeaders` phải gọi `abbreviateLeaderName` (trong `src/features/items/compact-columns.ts`) cho Lãnh đạo VP và UBND dù gộp hay riêng. Chức vụ `PCVP`, `Q.CVP`, `PCT`, `PCTT` phải **giữ nguyên**, chỉ rút tên cá nhân. Không áp dụng tên viết tắt lên dữ liệu nguồn, dropdown lựa chọn, bộ lọc; chỉ bản xem. Có unit + Chrome smoke bắt buộc.
+
 ## Bộ màu trạng thái cá nhân (22/10/2026)
 
 - Tính năng UI `src/features/items/StatusPaletteManager.tsx`; model/lưu local `src/data/status-palettes.ts`; cấp state chung từ `src/app/App.tsx` qua CSS vars `--hdnd-status-*` để cả bảng chính/popup cùng cập nhật. Giữ nguyên `progressTone` định nghĩa các trạng thái hoàn thành tương đương; chỉ `statusPaletteTone` mở thêm nhóm `other` **khi người dùng bật**.

@@ -35,6 +35,23 @@ export function abbreviateVietnameseName(name:string):string {
   return [...words.slice(0,-1).map(word=>Array.from(word)[0]?.toLocaleUpperCase('vi')+'.'),
     words[words.length-1]].join('');
 }
+/** A leader's office title is NEVER part of their abbreviated personal name.
+ * Keep official labels (PCVP, Q.CVP, PCT, PCTT etc.) exactly as stored in Excel.
+ * This changes displayed text only; source values and filters stay untouched. */
+export function abbreviateLeaderName(value:string):string {
+  const input=value.trim();
+  if(!input)return input;
+  const leading=input.match(/^((?:Q\.\s*CVP|Q\.?\s*CT|PCVP|CVP|PCTT|PCT|CT))(\s*[:：–-]\s*|\s+)(.+)$/iu);
+  if(leading){
+    const [,title,separator,name]=leading;
+    const abbreviated=abbreviateVietnameseName(name);
+    return title+(separator.trim()?separator:' ')+abbreviated;
+  }
+  const trailing=input.match(/^(.+?)\s+(\((?:Q\.\s*CVP|Q\.?\s*CT|PCVP|CVP|PCTT|PCT|CT)\))$/iu);
+  if(trailing)return abbreviateVietnameseName(trailing[1])+' '+trailing[2];
+  // A bare title is a role, not a person: never turn it into initials.
+  return abbreviateVietnameseName(input);
+}
 export type CompactPair={anchor:'content'|'vpLeader'|'department';hidden:'type'|'ubndLeader'|'room';label:string;extraWidth:number};
 const PAIRS:Record<'typeInContent'|'leadersTogether'|'departmentRoom',CompactPair>={
   typeInContent:{anchor:'content',hidden:'type',label:'Nội dung trình (Loại VB)',extraWidth:0},

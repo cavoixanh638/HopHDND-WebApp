@@ -20,7 +20,7 @@ import {ColumnFilterCell} from './ColumnFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
@@ -249,11 +249,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
               value={String(item[field]??'')} disabled={locked}
               onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>
             :<CellPicker label={displayId(item)+': '+label} value={item[field]}
-              displayValue={shortLeader?abbreviateVietnameseName(item[field]):undefined}
+              displayValue={shortLeader?abbreviateLeaderName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
         :shortLeader?<span title={item[field]} aria-label={item[field]}>
-          {abbreviateVietnameseName(item[field])||'—'}</span>:original}
+          {abbreviateLeaderName(item[field])||'—'}</span>:original}
       {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
@@ -342,7 +342,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr></thead><tbody>
-      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):'',drafts[item.recordId]?'dirty-row':''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
+      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
           const extra=pair.hidden as TextField;
@@ -402,12 +402,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]}
     displayValue={compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
-      abbreviateVietnameseName(item[key]):undefined}
+      (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
-        ?<span title={item[key]} aria-label={item[key]}>{abbreviateVietnameseName(item[key])||'—'}</span>
+        ?<span title={item[key]} aria-label={item[key]}>{abbreviateLeaderName(item[key])||'—'}</span>
       :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
         ?<span className="workflow-status-value">{item[key]}</span>
       :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
