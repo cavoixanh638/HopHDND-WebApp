@@ -1,3 +1,11 @@
+## Mốc phiên bản khôi phục cố định — 22/10/2026 (giao diện có nền màu như ảnh)
+
+- **Tên:** `HopHDND UI — Colored Status Pill — 22/10/2026`. **Commit phát hành:** [`6c151458561b7800af51bab64837430e147fdcef`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6c151458561b7800af51bab64837430e147fdcef). **Nhánh backup:** [`backup/ui-colored-status-pill-approved-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-colored-status-pill-approved-2026-10-22).
+- Bản này là PR #15 đã merge, [Verify #39778929334](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39778929334) / [Publisher #39779152810](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39779152810) / [Pages #39779299040](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39779299040) **PASS**. Bao gồm đúng nút dropdown trạng thái có nền hồng/vàng/xanh khi được quyền sửa trong danh sách/popup, icon lịch sử mờ mặc định, chữ completed `#2B7450`. Không tái áp dụng PR #13.
+- **Quy trình khôi phục chi tiết, phạm vi mã/dữ liệu, câu lệnh Git và cách kiểm artifact:** xem đầu [VAN_HANH.md](VAN_HANH.md). Không tự sửa nguồn Excel/Firebase hoặc reset main để rollback giao diện. Nhánh backup được tạo từ **exact commit**, không theo `main` di động.
+
+---
+
 ## 22/10/2026 — Khóa hồi quy theo ảnh: dropdown trạng thái có nền màu (PR mới)
 
 - Ảnh người dùng xác nhận: **trong chế độ được quyền sửa**, ô chọn `Sở chưa trình` phải là pill **hồng `#FFE0E4`**, chữ `#7F1D30`, viền `#E7A1AD`; `VP đang thực hiện` dùng vàng `#FFE8B8`, `Hoàn thành` dùng xanh `#D5F0DE` và chữ `#2B7450`. Nền màu phải giữ khi hover/focus; danh sách/popup giống nhau.
