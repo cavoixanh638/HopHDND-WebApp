@@ -116,7 +116,7 @@ export function StatusPaletteManager({store,onStoreChange,compact=false}:Props){
             })}
             <span className="status-palette-preview" style={{color:current[key].text,
               backgroundColor:current[key].background,
-              opacity:key==='other'&&!current.otherEnabled?.85:1} as CSSProperties}>
+              opacity:key==='other'&&!current.otherEnabled?0.85:1} as CSSProperties}>
               {label}
             </span>
           </section>)}
