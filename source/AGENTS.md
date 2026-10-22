@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## 23/10/2026 — Quy tắc gộp Phòng/CV và kéo cột của quản trị
+
+- Tùy chọn mới `roomSpecialist` gộp `room` (anchor) với `specialist` (hidden), trong khi `department` **vẫn là cột độc lập**. Giữ hai điều khiển cùng một ô lọc: `Lọc theo Phòng` và `Tìm kiếm tên CV` dùng phép **AND**. Không dùng một textbox chung, không bỏ lọc tên CV khi ẩn cột chuyên viên. Không tự chuyển lựa chọn cá nhân `departmentRoom` trước đây.
+- Admin Firebase trên chế độ xem được kéo đầu/biên cột để sắp xếp/đổi rộng trên **bản dùng chung**. Chặn khách; chặn mẫu cá nhân, chế độ hiện đủ Excel; lưu nguyên tử một thao tác sau khi thả bằng `onPersistViewerLayout` với baseline `initialLayout`, transaction merge/CAS. Optimistic UI phải rollback nếu save không được xác nhận. Tuyệt đối không ghi dữ liệu nguồn hoặc lưu trên từng pixel. Sort chỉ ở chế độ chỉnh sửa.
+- Ghi chú: `NOTE_HISTORY_DEMO` gồm đúng 3 sự kiện minh họa tĩnh (thời điểm/giá trị), hiển thị rõ “DỮ LIỆU DEMO”, không lẫn audit thật và không ghi backend. Giữ lịch sử thật nguyên vẹn.
+
 ## Chặn hồi quy màu dòng nháp và chức vụ lãnh đạo (22/10/2026)
 
 - **Không** tô vàng toàn bộ hàng chỉ vì nháp: không khôi phục `.data-table tr.dirty-row {background:#fff9e9}`, không gắn class `dirty-row` từ `ItemList` hay sọc cam `.report-grid-row-dirty` từ popup. Vẫn báo nội dung chưa lưu và giữ màu dòng **tùy chỉnh chủ động** của người dùng.
