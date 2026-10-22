@@ -131,9 +131,20 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(palette).toContain('--completed-bg:#D5F0DE');
     expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
     expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
-    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#125B35');
-    expect(contrast('D5F0DE','125B35')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(contrast('D5F0DE','2B7450')).toBeGreaterThanOrEqual(4.5);
     expect(css).toContain('td[data-progress-tone="done"] .workflow-status-value::before');
     expect(css).toContain('background:#125B35;');
+  });
+  it('keeps edit fields subtly slate-blue and completed lettering softer in list and popup',()=>{
+    expect(css).toContain('border:1.5px solid #b7cbd6');
+    expect(css).toContain('background:#f2f6f9');
+    expect(css).toContain('color:#426274');
+    expect(css).toContain('font-weight:550');
+    expect(css).toContain('td.editable-cell:not([data-progress-tone]) .cell-picker-trigger::after');
+    expect(css).toContain('td.editable-cell[data-progress-tone="done"] :is(.cell-picker-trigger,.custom-cell-input)');
+    expect(css).toContain('font-weight:650');
+    expect(contrast('F2F6F9','426274')).toBeGreaterThanOrEqual(4.5);
+    expect(luminance('F2F6F9')).toBeGreaterThan(luminance('D5F0DE'));
   });
 });
