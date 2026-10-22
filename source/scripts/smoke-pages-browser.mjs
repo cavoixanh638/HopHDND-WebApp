@@ -198,20 +198,33 @@ try{
     if(!status||!label||!input||!selector||!th)return {ok:false,reason:'missing targets'};
     const style=getComputedStyle(label),header=getComputedStyle(th);
     const fontA=getComputedStyle(input).fontSize,fontB=getComputedStyle(selector).fontSize;
-    // Verify other semantic colors without mutating React source or Excel.
+    // Verify semantic colors and the editing hierarchy with inert mock DOM only.
+    // No Sheets/Firebase records or permissions are changed by this check.
     const colors=['office','done'].map(tone=>{
       const td=document.createElement('td');td.dataset.progressTone=tone;
       const span=document.createElement('span');span.className='workflow-status-value';
       span.textContent=tone;td.append(span);status.parentElement.append(td);
-      const value=getComputedStyle(span).backgroundColor;td.remove();return value;
+      const styled=getComputedStyle(span);
+      const value={bg:styled.backgroundColor,fg:styled.color,weight:styled.fontWeight};
+      td.remove();return value;
     });
+    const td=document.createElement('td');td.className='editable-cell';
+    const button=document.createElement('button');button.className='cell-picker-trigger';
+    button.textContent='Giá trị khác';td.append(button);status.parentElement.append(td);
+    const regularEditable=getComputedStyle(button);
+    const editStyle={bg:regularEditable.backgroundColor,fg:regularEditable.color,
+      weight:regularEditable.fontWeight,border:regularEditable.borderTopColor};
+    td.remove();
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&
-      colors[0]==='rgb(255, 232, 184)'&&colors[1]==='rgb(213, 240, 222)'&&
+      colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
+      colors[1].fg==='rgb(43, 116, 80)'&&colors[1].weight==='650'&&
+      editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
+      editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
       header.backgroundColor==='rgb(246, 249, 247)',
-      colors,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
+      colors,editStyle,statusColor:style.backgroundColor,fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
   const sortAndGuestLayout=await evaluate(`(()=>{
