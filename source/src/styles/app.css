@@ -1454,15 +1454,15 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    New variable deliberately differs from --workflow-fg (dots/focus borders). */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
-  --workflow-text:#B2263D;
+  --workflow-text:#BA2E42;
 }
 .item-data-table tbody td[data-progress-tone="office"],
 .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-text:#875000;
+  --workflow-text:#935300;
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-text:#27774B;
+  --workflow-text:#08784E;
 }
 .item-data-table tbody td[data-progress-tone] .workflow-status-value,
 .report-detail-grid tbody td[data-progress-tone] .workflow-status-value,
