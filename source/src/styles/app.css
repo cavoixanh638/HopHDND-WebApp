@@ -1447,3 +1447,27 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   font-size:15px;min-height:36px;height:36px;
 }
 .report-grid-modal .report-grid-filter-row input::placeholder {font-size:15px;}
+
+/* Optional ink-only refinement, 22/10/2026. Preserve the checkpoint's
+   EXACT status fills, borders, status dots, editing affordance and history UI.
+   Text: brighter red/amber, slightly lighter greener green, thinner at 600.
+   New variable deliberately differs from --workflow-fg (dots/focus borders). */
+.item-data-table tbody td[data-progress-tone="not-submitted"],
+.report-detail-grid tbody td[data-progress-tone="not-submitted"] {
+  --workflow-text:#B2263D;
+}
+.item-data-table tbody td[data-progress-tone="office"],
+.report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-text:#875000;
+}
+.item-data-table tbody td[data-progress-tone="done"],
+.report-detail-grid tbody td[data-progress-tone="done"] {
+  --workflow-text:#27774B;
+}
+.item-data-table tbody td[data-progress-tone] .workflow-status-value,
+.report-detail-grid tbody td[data-progress-tone] .workflow-status-value,
+.item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input),
+.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input) {
+  color:var(--workflow-text);
+  font-weight:600;
+}
