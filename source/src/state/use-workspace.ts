@@ -25,16 +25,28 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
   const sourceRef = useRef(repository);
   sourceRef.current = repository;
   const fetching = useRef<Repository | null>(null);
-  const refresh = useCallback(async () => {
+  const lastRowsSignature=useRef<string|null>(null);
+  // Background refresh must never replace mounted content with a loading shell,
+  // nor mark a no-change response as a new data revision.
+  const refresh = useCallback(async (background=false) => {
     if (fetching.current === repository||saving.current) return;
     if(Object.keys(latestDraft.current.drafts).length){setMessage('Có thay đổi trên máy chưa lưu vào file nguồn; dữ liệu đang sửa vẫn được giữ. Hãy lưu hoặc bỏ thay đổi trước khi đọc lại file.');return;}
     fetching.current = repository;
-    setBusy(true);
+    if(!background)setBusy(true);
     try {
       const rows = await repository.list();
       if (sourceRef.current !== repository) return;
       if(Object.keys(latestDraft.current.drafts).length){setMessage('Dữ liệu vừa đọc từ file nguồn chưa áp dụng vì bạn đang sửa. Phần sửa trên máy vẫn được giữ.');return;}
-      setItems(rows); setDataSource(repository); setLoadedAt(new Date().toLocaleString('vi-VN')); setMessage(rows.length === 0 ? 'Nguồn đã phản hồi nhưng chưa có dòng nội dung. Kiểm tra link, GID, tiêu đề cột C/D và dữ liệu của tab đang chọn; không nhập dữ liệu sang Firebase để thay thế.' : '');
+      const signature=JSON.stringify(rows);
+      const changed=lastRowsSignature.current!==signature||dataSource!==repository;
+      if(changed){
+        lastRowsSignature.current=signature;
+        setItems(rows);
+        setDataSource(repository);
+        setLoadedAt(new Date().toLocaleString('vi-VN'));
+      }
+      if(rows.length===0&&changed)setMessage('Nguồn đã phản hồi nhưng chưa có dòng nội dung. Kiểm tra link, GID, tiêu đề cột C/D và dữ liệu của tab đang chọn; không nhập dữ liệu sang Firebase để thay thế.');
+      else if(changed)setMessage('');
       if (canDraft && recovered.current !== repository) {
         recovered.current = repository;
         const saved = readWorkspaceRecovery(sourceKey);
@@ -45,25 +57,35 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
       if (sourceRef.current === repository) setMessage(`${error instanceof Error ? error.message : 'Không đọc được dữ liệu.'} Bản đọc trước được giữ nếu có.`);
     } finally {
       if (fetching.current === repository) fetching.current = null;
-      if (sourceRef.current === repository) setBusy(false);
+      if (sourceRef.current === repository&&!background) setBusy(false);
     }
-  }, [repository, sourceKey,canDraft]);
-  useEffect(() => { setItems([]); setDrafts({}); setErrors({}); setLoadedAt(''); setMessage(''); setAutosaveMessage(''); skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};protectedRecovery.current=false; void refresh(); }, [refresh]);
+  }, [repository, sourceKey,canDraft,dataSource]);
+  useEffect(() => {
+    lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});
+    setLoadedAt('');setMessage('');setAutosaveMessage('');
+    skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
+    protectedRecovery.current=false;void refresh();
+    // A changed refresh callback is not a source switch; never clear the mounted table.
+  }, [repository,sourceKey]);
   useEffect(() => {
     if (repository.sourceKind!=='google'&&!repository.readOnly) return;
-    const interval = window.setInterval(() => { if (!document.hidden) void refresh(); }, 60000);
+    const interval = window.setInterval(() => { if (!document.hidden) void refresh(true); }, 60000);
     return () => clearInterval(interval);
   }, [repository, refresh]);
   useEffect(()=>{
     if(!repository.subscribe)return;
     return repository.subscribe(rows=>{
       if(sourceRef.current!==repository)return;
-      setItems(rows);setDataSource(repository);setLoadedAt(new Date().toLocaleString('vi-VN'));
+      const signature=JSON.stringify(rows);
+      if(lastRowsSignature.current!==signature||dataSource!==repository){
+        lastRowsSignature.current=signature;
+        setItems(rows);setDataSource(repository);setLoadedAt(new Date().toLocaleString('vi-VN'));
+      }
     },cause=>setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`));
-  },[repository]);
+  },[repository,dataSource]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
-    if (!item || (!firebase&&(busy||saving.current)) || fetching.current===repository || !canDraft||protectedRecovery.current) return;
+    if (!item || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
     skipCheckpoint.current = false;
     const canonicalChanges:Changes=repository.sourceKind==='google'?Object.fromEntries(Object.entries(changes).map(([field,value])=>[field,typeof value==='string'?value.trim():value])):changes;
     setDrafts(previous => {

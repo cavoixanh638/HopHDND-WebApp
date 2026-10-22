@@ -27,12 +27,18 @@ export function useSharedConfig(source:SheetConfig,enabled:boolean,editing:boole
         if(next?.revision!==stored.current.revision)setMessage('Danh mục và bố trí dùng chung đã đổi; phần bạn đang sửa vẫn giữ trên máy. Đối chiếu trước khi lưu.');
         return;
       }
-      stored.current=next;setConfig(next);setStatus(next?'ready':'empty');
-      setMessage(next?`Đã đọc danh mục và bố trí · bản lưu số ${next.revision}`:'Google Sheets riêng chưa có danh mục và bố trí cho nguồn này. Mở Danh mục và bố trí dùng chung để khởi tạo.');
+      // A periodic read of the SAME saved profile is not a layout change:
+      // avoid remounting the table or invalidating the column view.
+      const changed=JSON.stringify(stored.current)!==JSON.stringify(next);
+      stored.current=next;
+      if(changed)setConfig(next);
+      if(status!==(next?'ready':'empty'))setStatus(next?'ready':'empty');
+      if(changed)setMessage(next?`Đã đọc danh mục và bố trí · bản lưu số ${next.revision}`:'Google Sheets riêng chưa có danh mục và bố trí cho nguồn này. Mở Danh mục và bố trí dùng chung để khởi tạo.');
     }catch(cause){
       if(epoch!==generation.current||writeVersion!==mutation.current||!current.current.enabled)return;
       const detail=cause instanceof Error?cause.message:'Không đọc được cấu hình chung.';
-      setStatus('error');setMessage(`Không đọc được danh mục và bố trí từ Google: ${detail} Phần sửa trên máy vẫn được giữ; bấm Đọc lại danh mục và bố trí.`);
+      if(!stored.current)setStatus('error');
+      setMessage(`Không đọc được danh mục và bố trí từ Google: ${detail} Bố cục đã xác nhận vẫn được giữ; bấm Đọc lại danh mục và bố trí nếu cần.`);
     }finally{pending.current.delete(epoch);}
   };
   const refreshRef=useRef(refresh);refreshRef.current=refresh;
