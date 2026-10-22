@@ -1,3 +1,11 @@
+## 22/10/2026 — Bỏ nền vàng tô cả dòng đang sửa; chỉ viết tắt tên lãnh đạo
+
+- Bỏ tô **nền vàng cả hàng** `tr.dirty-row` ở Bảng dữ liệu và bỏ sọc cam `tr.report-grid-row-dirty` của popup. Trạng thái nháp/dấu đếm nháp và cảnh báo lưu vẫn giữ, lịch sử ô, phân quyền, màu trạng thái theo nghiệp vụ và màu dòng người dùng thiết lập riêng không thay đổi. Không liên quan cập nhật dữ liệu, Excel, Firebase hay polling.
+- **Gộp cột/viết tắt tên Lãnh đạo VP/UBND:** thêm `abbreviateLeaderName` để giữ đúng **chức vụ** `PCVP`, `Q.CVP`, `PCT`, `PCTT` (và `CVP`, `CT` khi xuất hiện), chỉ viết tắt họ và tên đệm. Ví dụ `PCVP Trịnh Nam Hưng → PCVP T.N.Hưng`, `Q.CVP Nguyễn Ngọc Hùng → Q.CVP N.N.Hùng`, `PCT Trần Văn Quân → PCT T.V.Quân`, `PCTT Phạm Minh Đức → PCTT P.M.Đức`. Không sửa tên gốc, lựa chọn dropdown hay tìm kiếm; cả cột độc lập và gộp cột dùng cùng logic. Tên chuyên viên giữ logic rút gọn hiện tại.
+- Có test đơn vị với từng loại chức vụ và Chrome smoke ở bảng gộp/tách; CSS test ngăn nền vàng toàn hàng xuất hiện lại. Backup V1/V2 cùng bộ màu người dùng đã lưu giữ nguyên.
+
+---
+
 ## 22/10/2026 — Bộ màu trạng thái có thể tùy chỉnh và lưu nhiều mẫu (PR #mới)
 
 - Mục **🎨 Bộ màu trạng thái** trong thanh Bảng dữ liệu và (với người dùng đã đăng nhập) thanh công cụ popup. Có 4 nhóm: **Sở chưa trình, Văn phòng đang thực hiện, Hoàn thành và tương đương, Trạng thái khác**; mỗi nhóm độc lập **màu chữ + màu nền** bằng color picker và mã HEX `#RRGGBB`. Bảng chính/popup nhận cùng cấu hình qua app shell; màu thay đổi ngay mà không làm mới dữ liệu.
