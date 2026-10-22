@@ -9,6 +9,12 @@ export function latestHistoryForField(entries:AuditEntry[],field:string):AuditEn
   return entries.filter(entry=>Object.prototype.hasOwnProperty.call(entry.changes,field))
     .sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0];
 }
+/** Illustrative values only; never insert these rows into the audit log. */
+export const NOTE_HISTORY_DEMO=[
+  {at:'2026-10-18T08:30:00+07:00',value:'Đã tiếp nhận, đề nghị đơn vị bổ sung hồ sơ.'},
+  {at:'2026-10-20T10:15:00+07:00',value:'Đã nhận hồ sơ bổ sung, đang rà soát nội dung.'},
+  {at:'2026-10-22T15:40:00+07:00',value:'Đã tổng hợp ý kiến, chuyển bước xử lý tiếp theo.'},
+] as const;
 export function HistoryDialog({item,field,repository,onClose}:{
   item:Item;field?:string;repository:Repository;onClose:()=>void;
 }){
@@ -38,7 +44,17 @@ export function HistoryDialog({item,field,repository,onClose}:{
             </p>)}
         </article>):
         <p className="empty">{field?'Chưa có lần sửa đã lưu cho ô này.':'Chưa có thay đổi đã lưu trong nguồn lịch sử.'}</p>}
-      {field&&<p className="muted">Chỉ hiển thị lịch sử đã lưu trong nguồn; nháp chưa lưu không có ở đây.</p>}
+      {field==='note'&&<section className="note-history-demo" aria-label="Ba lần sửa ghi chú minh họa">
+        <h3>Minh họa 3 lần sửa Ghi chú</h3>
+        <p className="muted"><strong>DỮ LIỆU DEMO</strong> — chỉ để xem giao diện; các giá trị và ngày dưới đây
+          không phải lịch sử thật, không ghi hoặc sửa Excel/Firebase và không được cộng vào số lần sửa đã lưu.</p>
+        {NOTE_HISTORY_DEMO.map((entry,index)=><article className="history-entry note-history-demo-entry" key={entry.at}>
+          <strong>Lần {index+1} · {new Date(entry.at).toLocaleString('vi-VN')}</strong>
+          <p>Giá trị Ghi chú: <strong>{entry.value}</strong></p>
+        </article>)}
+      </section>}
+      {field&&<p className="muted">Lịch sử thật (nếu có) ở phía trên được đọc từ nguồn đã lưu;
+        bản demo tách riêng, không tính nháp chưa lưu.</p>}
     </div>
   </Modal>;
 }
