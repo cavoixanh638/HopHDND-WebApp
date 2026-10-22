@@ -1,3 +1,8 @@
+## 22/10/2026 — Tông xanh hoàn thành giống Bảng tổng hợp (PR #11)
+
+- Màu `done` trong Bảng dữ liệu và popup đổi từ xanh lá đậm/chữ trắng sang chính xác **nền `#D5F0DE`, chữ `#125B35`, viền `#91CFA8`** như Bảng tổng hợp. Chấm màu đi cùng chữ; nhãn có viền phân biệt với nền mint của ô có quyền sửa.
+- Cùng áp dụng cho trạng thái kết thúc tương đương tùy cột; không sửa logic `progressTone`, không đổi các màu `source/office` hay dữ liệu, quyền sửa, báo cáo và bộ lọc.
+
 ## 22/10/2026 — Đồng bộ dữ liệu ngầm và nhãn tiến độ đúng ngữ nghĩa (PR #10)
 
 - Mỗi 60 giây vẫn kiểm tra file nguồn khi trang đang hiển thị, nhưng **không xóa màn hình, không bật loading toàn bảng, không làm mới items nếu dữ liệu giữ nguyên**. Khi có thay đổi thì cập nhật nội dung sau khi bản đọc thành công. Nếu có phần sửa đang nhập, ưu tiên dữ liệu nháp và không áp kết quả đọc ngầm. Cấu hình chung giữ bản xác nhận cũ trong lúc thăm dò, không tắt các cột.

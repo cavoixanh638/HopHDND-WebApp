@@ -1397,11 +1397,11 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-bg:#126442;--workflow-border:#0D5639;--workflow-fg:#FFFFFF;
+  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#125B35;
 }
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
-  background:#FFFFFF;
+  background:#125B35;
 }
 /* A report heading and list heading do not have to share the same fill.
    Keep the list header barely tinted without losing separations. */

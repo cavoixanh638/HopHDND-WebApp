@@ -1,3 +1,11 @@
+## 22/10/2026 — Đồng nhất xanh hoàn thành Bảng dữ liệu với Bảng tổng hợp (PR #11)
+
+- Theo yêu cầu mới: thay màu xanh đậm hoàn thành (`#126442` chữ trắng) ở **Bảng dữ liệu và popup** bằng đúng màu Bảng tổng hợp `#D5F0DE`, chữ `#125B35`, viền `#91CFA8`. Chấm trạng thái cũng `#125B35`. Cả `Hoàn thành`, `Đã có TBKL`, `Không phải xin ý kiến`, `Không phải trình`, `Đã có QĐ chấp thuận`, `Đã trình HĐND thành phố` đang thuộc tone `done` theo đúng cột nhận cùng UI xanh nhạt; phân loại / tổng hợp / dữ liệu không đổi.
+- Bỏ sắc xanh đặc bất nhất trước đó; vẫn nhận biết trạng thái hoàn thành bằng nhãn có viền và chấm cùng màu, chữ tương phản, không phủ cả nền ô. Giữ nguyên màu `Sở chưa trình`, `VP đang thực hiện`, những trạng thái trung gian và màu tô từ khóa tùy chỉnh.
+- Không thay đồng bộ nền 60 giây, kích thước bộ lọc hay Firebase Rules. Unit CSS kiểm màu y hệt report và độ tương phản; Chrome smoke kiểm màu computed. CI/Pages cần PASS trước khi xác nhận phát hành.
+
+---
+
 ## 22/10/2026 — Ổn định đồng bộ 60 giây; màu tiến độ thống nhất Bảng tổng hợp (PR #10)
 
 - [PR #10](https://github.com/cavoixanh638/HopHDND-WebApp/pull/10), nhánh `fix/polling-stable-consistent-status-2026-10-22`: lỗi bảng tạm mất khi poll liên quan `useWorkspace` tái khởi tạo theo closure `refresh` và việc ghi `setItems(rows)` ngay cả khi dữ liệu không đổi. Sửa: khởi tạo/reset **chỉ khi repository hoặc sourceKey đổi**; poll 60s đọc ngầm (không `setBusy`/màn chờ), fingerprint JSON của bản đọc để **không thay array state** khi các dòng y hệt, chỉ commit sau khi nguồn trả hoàn chỉnh và thực sự đổi. Không cấm nhập nháp trong lúc đọc ngầm; nếu phát sinh nháp giữa chừng thì bỏ áp dụng bản poll; có nháp từ trước thì tự bỏ lượt poll im lặng. Hiệu ứng subscribe/timer không tái gắn do dataSource đổi; tránh giật/nháy màn hình. Thời điểm `loadedAt` chỉ thay đổi nếu nguồn thực sự đổi.
