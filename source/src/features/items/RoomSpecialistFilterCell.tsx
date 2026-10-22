@@ -1,4 +1,5 @@
 import type {Item} from '../../../shared/types';
+import type {KeyboardEvent} from 'react';
 
 /** Independent AND filters for the visually merged Room / Specialist column. */
 export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
@@ -6,7 +7,7 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
   onRoom:(next:string)=>void;onPerson:(next:string)=>void;
 }){
   const rooms=[...new Set(items.map(item=>item.room).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
-  const clear=(event:React.KeyboardEvent<HTMLInputElement|HTMLSelectElement>,fn:(v:string)=>void)=>{
+  const clear=(event:KeyboardEvent<HTMLInputElement|HTMLSelectElement>,fn:(v:string)=>void)=>{
     if(event.key==='Escape'){event.preventDefault();event.stopPropagation();fn('');}
   };
   return <th className={'item-column-filter-cell room-specialist-filter'+(room||person?' has-filter':'')}
