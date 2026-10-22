@@ -85,12 +85,6 @@
 - Palette Bảng tổng hợp là chuẩn: source đỏ hồng `#FFE0E4`, office vàng cam `#FFE8B8`, completed xanh `#D5F0DE`. Bảng chính/popup dùng nguồn/VP y như vậy, riêng completed **xanh đậm** `#126442` + trắng để không lẫn màu nền ô input. Chỉ các giá trị đúng theo `progress-visual.ts` được tô; terminal equivalents chỉ trong cột tương ứng; không tô các bước giữa và không sửa dữ liệu/KPI.
 - Header `#f6f9f7`, filter `#fbfdfc`, font 15px. Regression test bắt buộc kiểm run 60 giây không thay nội dung, run có dữ liệu đổi và lần đầu thiếu layout; test Chrome đo màu/font.
 
-## Tránh nền màu khi sửa trạng thái và nút lịch sử nhiễu mắt — 22/10/2026
-
-- Với ô **đang cho sửa** trạng thái nghiệp vụ, chỉ dùng viền/chữ/chấm nhỏ tương ứng và nền **trắng**, tuyệt đối không tô vàng/hồng/xanh vào control hoặc td khi hover/focus. Các nhãn trạng thái **chỉ đọc** vẫn giữ nền nghiệp vụ; màu xanh chữ completion hiện tại `#307651` tối thiểu 4,5:1 trên `#D5F0DE`.
-- `CellHistoryAction` (đồng hồ có mũi tên) phải ẩn khi chưa tương tác, chỉ hiện khi hover/focus trong đúng ô, vẫn hiện cho focus bàn phím để duy trì accessibility và chỉ người có quyền xem history mới được render. Không để icon luôn hiển thị cạnh dropdown.
-- CSS và browser smoke phải chứng minh quy tắc cho cả Danh sách/popup, không sửa quyền, dữ liệu Excel, Firebase hay polling.
-
 ## Điều chỉnh tương phản thứ bậc — 22/10/2026
 
 - Giữ màu nền hoàn thành của Bảng tổng hợp (`#D5F0DE`), nhãn chữ tại Danh sách/popup dùng xanh dịu `#2B7450` (weight 650, vẫn >=4,5:1). Chấm trạng thái giữ xanh sẫm để dễ nhận; không đổi report stage palette.
