@@ -1,3 +1,11 @@
+## 22/10/2026 — Thử màu chữ tiến độ tươi hơn và mảnh hơn (PR tiếp theo)
+
+- Theo yêu cầu thử tinh chỉnh **chỉ màu chữ** trong **Bảng dữ liệu + popup**: đỏ `Sở chưa trình` từ `#7F1D30` → `#B2263D`; vàng cam `VP đang thực hiện` từ `#704500` → `#875000`; xanh `Hoàn thành` và tương đương từ `#2B7450` → `#27774B` (nhạt thêm rất ít). Toàn bộ nhãn tiến độ dùng font-weight `600` thay cho 750/650, bao gồm chế độ xem lẫn ô được quyền chọn.
+- **Không đổi bất kỳ nền, viền hay chấm trạng thái**: nguồn hồng `#FFE0E4`, VP vàng `#FFE8B8`, hoàn thành xanh `#D5F0DE`. Màu chữ được tách thành `--workflow-text`, giữ `--workflow-fg` hiện tại cho chấm/hover. Các điều khiển được quyền sửa ngoài trạng thái, biểu tượng lịch sử, dropdown, phân quyền, KPI, cập nhật nền 60s đều không thay đổi. Độ tương phản mỗi nhóm màu chữ đạt WCAG AA (>=4,5:1) trên nền cũ.
+- **Mốc khôi phục đã chốt vẫn bất biến**: `6c151458561b7800af51bab64837430e147fdcef` / `backup/ui-colored-status-pill-approved-2026-10-22`. Đây là biến thể **thử nghiệm tiếp theo**, không ghi đè backup. Chrome smoke và unit kiểm computed color/font-weight của các dropdown trên Bảng dữ liệu & popup; kết quả CI/Pages ghi theo thực tế.
+
+---
+
 ## Mốc phiên bản khôi phục cố định — 22/10/2026 (giao diện có nền màu như ảnh)
 
 - **Tên:** `HopHDND UI — Colored Status Pill — 22/10/2026`. **Commit phát hành:** [`6c151458561b7800af51bab64837430e147fdcef`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6c151458561b7800af51bab64837430e147fdcef). **Nhánh backup:** [`backup/ui-colored-status-pill-approved-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-colored-status-pill-approved-2026-10-22).

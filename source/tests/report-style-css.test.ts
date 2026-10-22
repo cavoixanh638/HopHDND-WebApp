@@ -167,4 +167,25 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).not.toContain('--workflow-fg:#307651');
   });
+  it('lightly brightens status INK and thins text without changing fills or history',()=>{
+    // Foreground is intentionally separate from the checkpoint's semantic fill,
+    // border and status-dot variable (--workflow-fg).
+    for(const [tone,ink,fill,minimum] of [
+      ['not-submitted','B2263D','FFE0E4',4.5],
+      ['office','875000','FFE8B8',4.5],
+      ['done','27774B','D5F0DE',4.5],
+    ] as const){
+      const selector='tbody td[data-progress-tone="'+tone+'"]';
+      expect(css).toContain(selector);
+      expect(css).toContain('--workflow-text:#'+ink);
+      expect(contrast(fill,ink)).toBeGreaterThanOrEqual(minimum);
+    }
+    expect(css).toContain('color:var(--workflow-text);\n  font-weight:600;');
+    expect(css).toContain('.item-data-table tbody td[data-progress-tone] .workflow-status-value,');
+    expect(css).toContain('.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input)');
+    expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
+    expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
+    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(css).toContain('opacity:.42;');
+  });
 });

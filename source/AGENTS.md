@@ -1,5 +1,10 @@
 # Hướng dẫn làm việc
 
+## Biến thể thử điều chỉnh chữ tiến độ — 22/10/2026
+
+- Chỉ **chữ** của nhãn nghiệp vụ ở Bảng dữ liệu/popup đổi sang `#B2263D` (Sở chưa trình), `#875000` (VP đang thực hiện), `#27774B` (hoàn thành), weight `600`, thông qua `--workflow-text`. Độ tương phản tối thiểu 4,5:1; **nền, viền, chấm, dropdown, lịch sử không đổi**. Giữ màu trạng thái Bảng tổng hợp theo nguồn.
+- Đây là biến thể sau mốc đã chốt; mốc bất biến `6c151458561b7800af51bab64837430e147fdcef` và nhánh `backup/ui-colored-status-pill-approved-2026-10-22` **không được cập nhật**. Nếu người dùng bảo quay lại bản đã chốt thì theo `docs/VAN_HANH.md` và mốc cố định, không nhầm biến thể thử với bản gốc.
+
 ## Mốc khôi phục giao diện được người dùng chốt — 22/10/2026
 
 - **Mốc ổn định “dropdown trạng thái có nền màu như ảnh”**: commit phát hành `6c151458561b7800af51bab64837430e147fdcef`, nhánh backup **`backup/ui-colored-status-pill-approved-2026-10-22`**, [quy trình rollback](docs/VAN_HANH.md). Không tự di chuyển/sửa nhánh backup.
