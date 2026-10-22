@@ -1,3 +1,62 @@
+## BỘ MÀU LƯU RIÊNG V2 — Màu chữ tươi, nét mảnh 600 (22/10/2026)
+
+**Tên khôi phục chính thức:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2 (22/10/2026)**. Người dùng xác nhận “OK, lưu riêng các màu này”. V2 là **màu chữ trạng thái**, **không** thay nền/viền, điều khiển dropdown hay lịch sử.
+
+| Mục | Giá trị cố định |
+|---|---|
+| Nhánh bản sao lưu V2 (không được ghi đè) | [`backup/ui-vivid-status-ink-weight600-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-vivid-status-ink-weight600-2026-10-22) |
+| Commit **đã phát hành** chứa đúng giao diện V2 | [`d6e4b447e25ede00683cdea7689af40a781c1ea8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/d6e4b447e25ede00683cdea7689af40a781c1ea8) |
+| PR giới thiệu màu mới | [#17](https://github.com/cavoixanh638/HopHDND-WebApp/pull/17) (merge SHA `1aecf946a013ff2246796fa4f622600a96146e47`) |
+| Test nguồn / xuất bản / Pages | [CI #39784818033](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39784818033) **PASS**; [Publisher #39785115951](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39785115951) **SUCCESS**; [Pages #39785243101](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39785243101) **SUCCESS** |
+| SHA blob CSS | `6547a64eaddc125438451a021d9178fb8806372b` (`source/src/styles/app.css`) |
+| SHA blob HTML đã xuất bản | `3ed4fab416fba846b46c8dffff9e8d0007a6d23b` (`index.html`) |
+
+### Bảng tên phiên bản màu — tránh nhầm V1 với V2
+
+| Bộ màu | Đỏ — Sở chưa trình | Cam — VP đang thực hiện | Xanh — Hoàn thành/tương đương | Độ đậm chữ |
+|---|---|---|---|---|
+| **V1 — Nền màu chuẩn, chữ cũ** | `#7F1D30` | `#704500` | `#2B7450` | 750 (Hoàn thành 650) |
+| **V2 — Màu chữ tươi, nét mảnh 600** | **`#B2263D`** | **`#875000`** | **`#27774B`** | **600 cả ba** |
+
+**Cả V1 và V2 cùng giữ nền và viền:** Sở chưa trình nền hồng `#FFE0E4`, viền `#E7A1AD`; VP đang thực hiện nền vàng cam `#FFE8B8`, viền `#DCB76A`; Hoàn thành nền xanh `#D5F0DE`, viền `#91CFA8`. Giữ nguyên màu chấm, màu hover, mũi tên dropdown, dấu lịch sử (`opacity:.42`), quyền sửa, bảng popup, dữ liệu và các trạng thái không nằm trong ba nhóm.
+
+- **V1** được ghim ở commit [`6c151458561b7800af51bab64837430e147fdcef`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6c151458561b7800af51bab64837430e147fdcef), nhánh [`backup/ui-colored-status-pill-approved-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-colored-status-pill-approved-2026-10-22). **Tuyệt đối không di chuyển, ghi đè hai nhánh backup này**.
+- **V2** được ghim ở commit [`d6e4b447e25ede00683cdea7689af40a781c1ea8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/d6e4b447e25ede00683cdea7689af40a781c1ea8), nhánh [`backup/ui-vivid-status-ink-weight600-2026-10-22`](https://github.com/cavoixanh638/HopHDND-WebApp/tree/backup/ui-vivid-status-ink-weight600-2026-10-22). Đặt tên **V2** khi người dùng yêu cầu “quay lại màu chữ đỏ tươi hơn, xanh nhạt hơn, chữ mảnh hơn”.
+
+### Cách phục hồi **riêng bộ màu V2** trong các bản phát triển sau
+
+1. Từ `main` mới nhất, tạo branch/PR riêng; **không reset `main`**, không khôi phục cả `app.css` hoặc toàn bộ `source/` vì sẽ mất những chức năng phát triển sau V2. Mở `source/src/styles/app.css`, kiểm có đoạn `/* Optional ink-only refinement, 22/10/2026. ... */`.
+2. Chỉ đảm bảo ba quy tắc `--workflow-text` và selector dùng `color:var(--workflow-text);font-weight:600` ở Bảng dữ liệu và popup. Nếu code đã thay khác, lấy chính xác **đoạn CSS dưới đây** từ SHA V2, đặt tại cuối chuỗi quy tắc màu trạng thái (phía sau các khai báo `--workflow-bg`) để hiệu lực vẫn đúng. Khi có thiết kế màu mới, cần soát xung đột CSS trước, không chồng hai quy tắc vô điều kiện.
+
+```css
+.item-data-table tbody td[data-progress-tone="not-submitted"],
+.report-detail-grid tbody td[data-progress-tone="not-submitted"] {
+  --workflow-text:#B2263D;
+}
+.item-data-table tbody td[data-progress-tone="office"],
+.report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-text:#875000;
+}
+.item-data-table tbody td[data-progress-tone="done"],
+.report-detail-grid tbody td[data-progress-tone="done"] {
+  --workflow-text:#27774B;
+}
+.item-data-table tbody td[data-progress-tone] .workflow-status-value,
+.report-detail-grid tbody td[data-progress-tone] .workflow-status-value,
+.item-data-table tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input),
+.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input) {
+  color:var(--workflow-text);
+  font-weight:600;
+}
+```
+
+3. Giữ các nền trạng thái cũ, không thay `--workflow-fg` vốn còn dùng cho chấm/viền. Soát trạng thái tương đương theo đúng cột (không tự gắn xanh cho giá trị trung gian), chạy kiểm tra TypeScript, unit, Firebase Emulator, Chrome smoke trên Bảng dữ liệu + popup trước khi merge PR. Kiểm Publisher + Pages **SUCCESS**; so sánh màu chữ, nền, trọng lượng trong trình duyệt thật.
+4. Chỉ khi người dùng yêu cầu **khôi phục toàn bộ phiên bản V2**, mới dùng snapshot commit `d6e4b447e25ede00683cdea7689af40a781c1ea8` làm mốc tham chiếu cho toàn bộ code/HTML; dữ liệu Excel, Firebase và thiết lập trình duyệt **không nằm trong backup GitHub**. Nếu người dùng yêu cầu bản gốc như ảnh trước khi chỉnh chữ, phải chọn **V1**, không chọn V2.
+
+**Lưu ý:** Tài liệu tạo sau mốc V2 nằm trên `main`, không thuộc snapshot V2. Chính SHA và nhánh backup mới là nguồn phục hồi độc lập.
+
+---
+
 ## Mốc khôi phục được chốt — HopHDND UI, pill trạng thái có nền màu — 22/10/2026
 
 **Đây là mốc tham chiếu bắt buộc khi người dùng yêu cầu “quay lại bản có nền màu như ảnh”.** Đã lưu cả trạng thái `source/` và `index.html` được GitHub Pages triển khai thành công, không chỉ screenshot hoặc CSS.
