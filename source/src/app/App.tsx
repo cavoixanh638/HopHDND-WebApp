@@ -135,9 +135,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const editingPage = page === 'customize' || page === 'items-customize' || page === 'items-permissions' || page === 'catalogs' || page === 'connection'||page==='source'||page==='sync'||page==='transfer'||page==='review';
   const googleCommon=useSharedConfig(configured,!firebase&&!isDemo&&!privateTest,editingPage);
   const common=firebase?firebase.common:googleCommon;
-  const canCustomize=isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config);
+  const canCustomize=!comparison&&(isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config));
   const canEditDraft=!comparison&&(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
   const changeDataSource=async(next:'excel'|'database')=>{
+    if(comparison)throw new Error('Đang chạy phép thử tốc độ; không thay đổi nguồn admin.');
     if(!firebase?.isAdmin||common.status!=='ready'||!firebase.profile)throw new Error('Cần quản trị và bản bố cục Firebase đã xác nhận.');
     if(next==='database')await new FirebaseMirrorRepository(firebase.database,configured).list();
     const updated=await firebase.common.save('dataSource',next,firebase.profile.revision);
