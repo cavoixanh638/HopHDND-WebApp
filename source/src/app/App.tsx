@@ -62,7 +62,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
   const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
-  const workspace = useWorkspace(repository, sourceKey);
+  // Database reads require a known Firebase Auth user; do not query protected RTDB anonymously before sign-in resolves.
+  const canStartDatabase=repository.sourceKind!=='firebase'||!!firebase?.user;
+  const workspace = useWorkspace(repository, sourceKey,canStartDatabase);
   useEffect(()=>{markStartup('react-commit');},[]);
   const reportedPaint=useRef(false);
   useEffect(()=>{
