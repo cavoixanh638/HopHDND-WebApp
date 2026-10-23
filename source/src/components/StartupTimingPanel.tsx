@@ -24,6 +24,8 @@ const labels:Record<string,string>={
  'excel-request-start':'Bắt đầu yêu cầu Excel (GViz)',
  'excel-response':'Excel đã phản hồi',
  'data-cache-hydrated':'Dữ liệu lưu phiên được mở để xem tạm',
+ 'mirror-warm-start':'Bắt đầu đọc dữ liệu khi đã xác thực',
+ 'mirror-warm-first':'Dữ liệu đến, chờ xác nhận nguồn/layout',
  'data-subscribe':'Bắt đầu nghe dữ liệu HĐND',
  'data-first':'Nhận được 55 dòng (hoặc số dòng hiện tại)',
  'first-data-painted':'Dữ liệu đúng nguồn đã hiển thị với bố cục hợp lệ'
