@@ -34,7 +34,8 @@ if (/<script\b[^>]*\bsrc\s*=/i.test(markup) || /<link\b[^>]*\brel=["']stylesheet
 const name = pages?'index.html':'Dashboard_HĐND.html';
 for (const match of html.matchAll(/<script type="module">([\s\S]*?)<\/script>/gi)) {
   // Kiểm tra cú pháp bundle đã ghép, không thực thi code trong Node.
-  new Script(match[1], { filename: `${target}/inline-bundle.js` });
+  try { new Script(match[1], { filename: `${target}/inline-bundle.js` }); }
+  catch (error) { throw new Error(`Standalone JS syntax validation failed: ${error?.message??String(error)}`); }
 }
 await writeFile(resolve(directory, name), html, 'utf8');
 for (const path of consumed) await unlink(path);
