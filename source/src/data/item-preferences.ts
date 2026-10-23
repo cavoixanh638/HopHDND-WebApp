@@ -29,7 +29,7 @@ export function cellHighlightStyle(value:unknown,field:string,rules:readonly Cel
  * UI-only actions, derived metadata and audit history must not become Excel columns.
  */
 export const EXCEL_SOURCE_COLUMNS = [
-  {key:'displayCode',label:'ID',width:100},
+  {key:'displayCode',label:'ID',width:68},
   {key:'stt',label:'STT',width:70},
   {key:'content',label:'Nội dung trình',width:440},
   {key:'department',label:'Sở, ngành chủ trì',width:170},
@@ -116,7 +116,8 @@ export function validateItemLayout(value:unknown):ItemLayout{
     const label=column.key==='type'&&column.label.trim()==='Loại VB (HC/QPPL/BC)'
       ?'Loại VB':column.label.trim();
     return {...(base??{key:column.key,label:column.label,width:170,visible:true}),
-      width:column.width,visible:column.visible,
+      // One-off migration of old generated 100px ID default, not custom widths.
+      width:column.key==='displayCode'&&column.width===100?68:column.width,visible:column.visible,
       ...(isCustom?{origin:'custom' as const,values}:{ }),
       ...(column.removed?{removed:true}:{}),
       ...(column.renamed?{renamed:true,label}:isCustom?{label}:{}),
