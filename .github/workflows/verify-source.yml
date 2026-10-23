@@ -59,6 +59,8 @@ jobs:
         run: |
           node --check scripts/measure-web-startup.mjs
           node scripts/measure-web-startup.mjs --help
+          node --check scripts/compare-guest-cold-start.mjs
+          node scripts/compare-guest-cold-start.mjs --help
       - name: Informational production Chrome A/B (read-only, not a release gate)
         continue-on-error: true
         timeout-minutes: 4
