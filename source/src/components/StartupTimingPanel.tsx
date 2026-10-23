@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import {startupEnabled,startupSamples,type StartupSample} from '../data/startup-timings';
+import {markStartup,startupEnabled,startupSamples,type StartupSample} from '../data/startup-timings';
 import {captureNetworkDiagnostics} from '../data/network-diagnostics';
 const labels:Record<string,string>={
  'js-entry':'JavaScript bắt đầu chạy',
@@ -32,7 +32,7 @@ export function StartupTimingPanel(){
    if(!startupEnabled())return;
    const handle=()=>setElapsed(Math.round(performance.now()));
    const visibility=()=>{const now=Math.round(performance.now());setElapsed(now);
-     if(document.visibilityState==='hidden')console.info('[HopHDND startup] tab hidden at',now,'ms');
+     markStartup(document.visibilityState==='hidden'?'tab-hidden':'tab-visible');
    };
    const id=setInterval(handle,1000);
    document.addEventListener('visibilitychange',visibility);
