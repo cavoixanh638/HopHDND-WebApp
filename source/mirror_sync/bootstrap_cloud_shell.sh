@@ -13,7 +13,7 @@ SOURCE_FILE_ID="1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp"
 SOURCE_GID="60961344"
 SOURCE_SHEET_NAME="Các nội dung trình HĐND"
 RTDB_URL="https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app"
-RUNNER="${RUNNER_ID}${PROJECT:+@}${PROJECT}.iam.gserviceaccount.com"
+RUNNER="${RUNNER_ID}@${PROJECT}.iam.gserviceaccount.com"
 SCHEDULER="${SCHED_ID}@${PROJECT}.iam.gserviceaccount.com"
 MIRROR_PATH="hdnd/mirrors/${SOURCE_FILE_ID}/${SOURCE_GID}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -64,7 +64,7 @@ function resume() {
 }
 function fail_hint() {
   echo >&2
-  echo >&2 "FAILED. This script has not enabled any new schedule."
+  echo >&2 "FAILED. This script has not enabled any new schedule. An existing schedule (if any) remains unchanged."
   echo >&2 "If Drive returns 403/404, share ONLY the source Excel file (Reader) with:"
   echo >&2 "  $RUNNER"
   echo >&2 "Then rerun the same install command."
@@ -103,7 +103,7 @@ gcloud services enable run.googleapis.com cloudscheduler.googleapis.com \
 echo "[2/6] Create service accounts if needed..."
 for ident in "$RUNNER_ID" "$SCHED_ID"; do
   if ! gcloud iam service-accounts describe \
-    "${ident}${PROJECT:+@}${PROJECT}.iam.gserviceaccount.com" --project="$PROJECT" >/dev/null 2>&1; then
+    "${ident}@${PROJECT}.iam.gserviceaccount.com" --project="$PROJECT" >/dev/null 2>&1; then
     gcloud iam service-accounts create "$ident" --project="$PROJECT" \
       --display-name="HopHDND $ident" --quiet
   fi
