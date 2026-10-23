@@ -94,8 +94,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // idle time; its code must never delay authentication or the overview table.
   useEffect(()=>{
     if(!workspace.items.length||typeof window==='undefined')return;
-    const id=window.setTimeout(()=>prefetchItemList(),1200);
-    return()=>window.clearTimeout(id);
+    const id=setTimeout(()=>prefetchItemList(),1200);
+    return()=>clearTimeout(id);
   },[workspace.items.length]);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
