@@ -28,6 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Validate Cloud Shell bootstrap script syntax
+        run: bash -n mirror_sync/bootstrap_cloud_shell.sh
       - name: Validate server mirror Python and isolated fixture
         run: |
           python3 -m venv /tmp/hophdnd-mirror-test
