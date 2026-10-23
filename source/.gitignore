@@ -14,3 +14,4 @@ dist-pages/
 dist-pages-test/
 *-debug.log
 firebase-debug.*
+dist-hosting/
