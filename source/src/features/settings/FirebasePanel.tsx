@@ -14,10 +14,12 @@ type Props = {
   onSavePermissions:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;
   onOpenItemsCustomize:()=>void;
   onClose:()=>void;
+  dataSource?:'excel'|'database';
+  onChangeDataSource?:(next:'excel'|'database')=>Promise<void>;
 };
 
 /** Authentication only. Permission editing is now directly inside ItemList customization. */
-export function FirebasePanel({userLabel,isAdmin,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose}:Props){
+export function FirebasePanel({userLabel,isAdmin,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,dataSource='excel',onChangeDataSource}:Props){
   const [working,setWorking]=useState(false);
   const [error,setError]=useState('');
   const login=async()=>{setWorking(true);setError('');try{await onLogin();}catch(cause){setError(cause instanceof Error?cause.message:'Không đăng nhập được.');}finally{setWorking(false);}};
@@ -35,6 +37,16 @@ export function FirebasePanel({userLabel,isAdmin,connected,busy,onLogin,onLogout
       {!isGuest&&<button type="button" className="button ghost" disabled={busy||working} onClick={()=>void logout()}>Đăng xuất</button>}
       {isAdmin&&<button type="button" className="button primary" disabled={busy||working} onClick={onOpenItemsCustomize}>Mở tùy chỉnh Danh sách và phân quyền ô</button>}
     </div>
+    {isAdmin&&onChangeDataSource&&<div className="card-header"><div><h3>Nguồn dữ liệu hiển thị</h3>
+      <p className="muted">Database chỉ được chọn khi đã có bản sao Excel hợp lệ. Lựa chọn lưu dùng chung cho mọi người xem; Excel gốc không bị sửa.</p>
+      <label className="field">Nguồn đọc bảng
+        <select aria-label="Nguồn đọc bảng" value={dataSource} disabled={busy||working} onChange={async e=>{
+          const next=e.target.value as 'excel'|'database';setWorking(true);setError('');
+          try{await onChangeDataSource(next);}catch(cause){setError(cause instanceof Error?cause.message:'Không đổi được nguồn dữ liệu.');}
+          finally{setWorking(false);}
+        }}><option value="excel">Link Excel / Google Sheets (trực tiếp)</option><option value="database">Firebase Database (bản sao đồng bộ)</option></select>
+      </label>
+    </div></div>}
     <p className="muted">Khách chỉ được sửa thử những ô được quản trị viên cấp quyền. Bảng Google Sheets và dữ liệu Firebase nghiệp vụ không bị ghi bởi các thao tác sửa thử này.</p>
   </section>;
 }
