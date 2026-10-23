@@ -80,6 +80,23 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     (firebase.profile?.dataSource==='database'&&!!firebase.user);
   const canStartSource=sourceReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource);
+  // If a new visitor has no local snapshot and RTDB stalls, don't show an
+  // indefinite blank loading state. Offer an explicit transport comparison.
+  // Do not silently switch the protocol or bypass Firebase authentication.
+  const [slowRealtime,setSlowRealtime]=useState(false);
+  useEffect(()=>{
+    if(repository.sourceKind!=='firebase'||!canStartSource||!workspace.busy||workspace.items.length>0){
+      setSlowRealtime(false);return;
+    }
+    const id=window.setTimeout(()=>setSlowRealtime(true),10000);
+    return()=>window.clearTimeout(id);
+  },[repository.sourceKind,canStartSource,workspace.busy,workspace.items.length]);
+  const retryWithLongPolling=()=>{
+    const url=new URL(window.location.href);
+    url.searchParams.set('dbTransport','longpoll');
+    url.searchParams.set('startupMetrics','1');
+    window.location.assign(url.toString());
+  };
   useEffect(()=>{markStartup('react-commit');},[]);
   useEffect(()=>{
     if(canStartSource)markStartup('source-selected',repository.sourceKind==='firebase'?'Database':'Excel');
@@ -288,6 +305,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         </button>)}
     </nav>
     <StartupTimingPanel/>
+    {slowRealtime&&<div className="notice" role="alert">Firebase đang phản hồi chậm. Có thể do mạng hoặc giao thức kết nối. <button type="button" className="button ghost" onClick={retryWithLongPolling}>Thử kết nối tương thích</button> (sẽ tải lại trang; hãy lưu bản sửa trước khi thử).</div>}
     <main>
       {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">
         <span>Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.</span>
