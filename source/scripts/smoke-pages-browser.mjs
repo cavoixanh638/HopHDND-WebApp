@@ -611,12 +611,28 @@ try{
     'Full source specialist must match even when visually abbreviated');
   // Room drop-down AND specialist text search must coexist in one column.
   const roomsAvailable=await evaluate(`(()=>{
-    const select=document.querySelector('[data-filter-key=room] select[aria-label="Lọc theo Phòng"]');
+    const select=document.querySelector('[data-filter-key=room] select[aria-label="Chọn để lọc Phòng"]');
     return !!select&&[...select.options].some(o=>o.value==='Phòng mẫu');
   })()`);
   if(!roomsAvailable)throw Error('Room drop-down missing from merged Room/CV column');
+  const roomFilterFont=await evaluate(`(()=>{
+    const select=document.querySelector('[data-filter-key=room] select[aria-label="Chọn để lọc Phòng"]');
+    const input=document.querySelector('[data-filter-key=room] input[aria-label="Tìm kiếm tên CV"]');
+    if(!select||!input)return null;
+    return {label:select.options[0]?.textContent,
+      selectFont:parseFloat(getComputedStyle(select).fontSize),
+      inputFont:parseFloat(getComputedStyle(input).fontSize),
+      rowHeight:select.closest('tr')?.getBoundingClientRect().height,
+      selectHeight:select.getBoundingClientRect().height,
+      inputHeight:input.getBoundingClientRect().height};
+  })()`);
+  if(!roomFilterFont||roomFilterFont.label!=='Chọn để lọc Phòng'||
+      roomFilterFont.selectFont<15||roomFilterFont.inputFont<15||
+      roomFilterFont.rowHeight<84)
+    throw Error('Room/CV filter size or text is incorrect: '+JSON.stringify(roomFilterFont));
+
   await evaluate(`(()=>{
-    const select=document.querySelector('[data-filter-key=room] select[aria-label="Lọc theo Phòng"]');
+    const select=document.querySelector('[data-filter-key=room] select[aria-label="Chọn để lọc Phòng"]');
     select.value='Phòng mẫu';select.dispatchEvent(new Event('change',{bubbles:true}));
   })()`);
   await eventually("document.querySelector('[data-filter-key=room] select')?.value==='Phòng mẫu'",
