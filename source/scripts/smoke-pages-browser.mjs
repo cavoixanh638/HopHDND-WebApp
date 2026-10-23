@@ -502,6 +502,32 @@ try{
       color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Chọn để lọc',color};
   })()`);
   if(!placeholderSelect.ok)throw Error('Category placeholder styling regression: '+JSON.stringify(placeholderSelect));
+  // Focus the REAL sticky select through CDP after scrolling deep into the
+  // grid. Opening a dropdown must not scroll all rows to the top.
+  const stickySelectPoint=await evaluate(`(()=>{
+    const grid=document.querySelector('.item-table-scroll');
+    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
+    if(!grid||!select)return null;
+    grid.scrollTop=320;
+    const r=select.getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2,top:grid.scrollTop,
+      actual:document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.tagName};
+  })()`);
+  if(!stickySelectPoint||stickySelectPoint.top<200||stickySelectPoint.actual!=='SELECT')
+    throw Error('Sticky category dropdown not hittable when scrolled: '+JSON.stringify(stickySelectPoint));
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',x:stickySelectPoint.x,
+    y:stickySelectPoint.y,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:stickySelectPoint.x,
+    y:stickySelectPoint.y,button:'left',clickCount:1});
+  await sleep(70);
+  const afterOpenTop=await evaluate("document.querySelector('.item-table-scroll')?.scrollTop");
+  if(Math.abs(afterOpenTop-stickySelectPoint.top)>2)
+    throw Error('Opening sticky dropdown moved list rows: '+JSON.stringify({
+      before:stickySelectPoint.top,after:afterOpenTop}));
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await evaluate("document.querySelector('.item-table-scroll').scrollTop=0");
+
   const selectedType=await evaluate(`(()=>{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     if(!select||select.options.length<2)return false;
