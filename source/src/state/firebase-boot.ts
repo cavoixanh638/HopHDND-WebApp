@@ -1,5 +1,5 @@
 import {initializeApp} from 'firebase/app';
-import {connectAuthEmulator,getAuth,signInAnonymously,type Auth} from 'firebase/auth';
+import {connectAuthEmulator,getAuth,initializeAuth,indexedDBLocalPersistence,browserLocalPersistence,inMemoryPersistence,signInAnonymously,type Auth} from 'firebase/auth';
 import {connectDatabaseEmulator,forceLongPolling,getDatabase} from 'firebase/database';
 import {firebaseConfig} from '../data/firebase-config';
 import {markStartup} from '../data/startup-timings';
@@ -28,7 +28,13 @@ function createServices(){
   if(longpoll)forceLongPolling();
   markStartup('db-transport',longpoll?'HTTP long-poll':'Firebase auto');
   const app=initializeApp(config,'hdnd-pages');
-  const auth=getAuth(app),database=getDatabase(app);
+  // Avoid the default popup/redirect iframe bootstrap for ordinary viewers;
+  // popup code is only needed when an admin explicitly chooses Google login.
+  // Keep emulator defaults unchanged for reliable isolated smoke tests.
+  const auth=emulator?getAuth(app):initializeAuth(app,{
+    persistence:[indexedDBLocalPersistence,browserLocalPersistence,inMemoryPersistence]
+  });
+  const database=getDatabase(app);
   if(emulator){
     connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
     connectDatabaseEmulator(database,'127.0.0.1',9000);
