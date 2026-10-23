@@ -1,3 +1,5 @@
+> **KẾT LUẬN SAU ĐO (23/10/2026): ĐÃ LOẠI PHƯƠNG ÁN NÀY.** Đây là bản ghi nghiên cứu lịch sử, KHÔNG PHẢI tính năng đang có trên website. PR #41 từng cung cấp công tắc `guestMetadata=defer` chỉ trong chẩn đoán; kết quả đo 5 hồ sơ Chrome mới mỗi nhánh trên cùng host cho thấy bản cũ nhanh hơn: median bảng 1632ms so với 1726ms, p75 1683ms so với 1880ms, median dữ liệu trực tuyến 1610ms so với 1682ms; 5/5 mỗi nhánh thành công. [Bằng chứng CI](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39974764918), [PR thử một lần đã đóng](https://github.com/cavoixanh638/HopHDND-WebApp/pull/42). Vì vậy rollback code thử, giữ thứ tự listener hiện tại; KHÔNG bật tính năng mặc định và KHÔNG thay hosting, Firebase Rules hay data. Những đường dẫn thử phía dưới chỉ còn giá trị lịch sử, **không còn kích hoạt chế độ mới** sau rollback.
+
 # HopHDND — ưu tiên tải dữ liệu và bố cục trước quyền sửa (23/10/2026)
 
 ## Phạm vi
