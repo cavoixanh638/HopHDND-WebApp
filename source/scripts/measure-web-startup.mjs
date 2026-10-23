@@ -100,16 +100,18 @@ async function benchmark(host){
           "const ms=k=>k==null?null:Math.round(k);"+
           "return {htmlMs:ms(n?.responseEnd),fcpMs:ms(paint),jsEntryMs:ms(mark('js-entry')),"+
           "authMs:ms(mark('auth-signed-in')),snapshotMs:ms(mark('data-first')),"+
+          "dataCacheMs:ms(mark('data-cache-hydrated')),"+
           "dataMilestoneMs:ms(mark('first-data-painted')),visible:document.visibilityState};})()";
         try{
           const response=await send('Runtime.evaluate',{expression,returnByValue:true});
           metrics=response.result?.value??null;
-          if(metrics?.dataMilestoneMs!=null)break;
+          // Cache can paint before any live snapshot: wait for BOTH milestones.
+          if(metrics?.dataMilestoneMs!=null&&metrics?.snapshotMs!=null)break;
         }catch{ /* Navigation may destroy the previous execution context. */ }
         await sleep(180);
       }
       const sample={host:host.label,visit:i+1,kind:i===0?'fresh-profile':'reused-auth-http-cache-off',
-        ...(metrics??{}),result:metrics?.dataMilestoneMs!=null?'observed':'timeout-or-error'};
+        ...(metrics??{}),result:metrics?.dataMilestoneMs!=null&&metrics?.snapshotMs!=null?'verified-live':'timeout-or-no-live-data'};
       samples.push(sample);
       console.log('HOPHDND_STARTUP_SAMPLE',JSON.stringify(sample));
     }
@@ -119,10 +121,12 @@ async function benchmark(host){
     await sleep(300);
     rmSync(dir,{recursive:true,force:true});
   }
-  const good=samples.filter(x=>x.result==='observed'),reused=good.filter(x=>x.visit>1);
+  const good=samples.filter(x=>x.result==='verified-live'),reused=good.filter(x=>x.visit>1);
   const summary={host:host.label,runs,success:good.length,timeout:runs-good.length,
     freshProfileDataMs:good.find(x=>x.visit===1)?.dataMilestoneMs??null,
-    reusedAuthNoHttpCache:{data:aggregate(reused,'dataMilestoneMs'),
+    freshProfileLiveVerifiedMs:good.find(x=>x.visit===1)?.snapshotMs??null,
+    reusedAuthNoHttpCache:{dataVisible:aggregate(reused,'dataMilestoneMs'),
+      liveVerified:aggregate(reused,'snapshotMs'),cacheHydrated:aggregate(reused,'dataCacheMs'),
       auth:aggregate(reused,'authMs'),html:aggregate(reused,'htmlMs'),
       js:aggregate(reused,'jsEntryMs'),snapshot:aggregate(reused,'snapshotMs')}};
   console.log('HOPHDND_STARTUP_SUMMARY',JSON.stringify(summary));
@@ -131,5 +135,5 @@ async function benchmark(host){
 const summaries=[];
 for(const host of hosts)summaries.push(await benchmark(host));
 console.log('HOPHDND_STARTUP_DONE',JSON.stringify({runnerOnly:true,
-  warning:'Navigation milestone runs before guaranteed pixel paint; corroborate with Chrome trace. No host ranking without same build, profile and network.',
+  warning:'Timing now waits for a LIVE Firebase data-first marker as well as table rendering. Cached view may appear earlier; Chrome trace is needed to establish pixel paint. No host ranking without same build, profile and network.',
   summaries}));
