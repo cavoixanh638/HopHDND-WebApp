@@ -55,6 +55,7 @@ export function StartupTimingPanel(){
  const first=samples.find(s=>s.stage==='data-first');
  const auth=samples.find(s=>s.stage==='auth-signed-in');
  const longpoll=new URLSearchParams(window.location.search).get('dbTransport')==='longpoll';
+ const warmOff=new URLSearchParams(window.location.search).get('mirrorWarmup')==='off';
  const comparison=compareSourceFromSearch(window.location.search);
  const selection=samples.find(s=>s.stage==='source-selected');
  const sheetStarted=samples.find(s=>s.stage==='excel-request-start');
@@ -98,6 +99,19 @@ export function StartupTimingPanel(){
      {network.assets.length>0&&<div>JS/CSS: {network.assets.map((a,i)=>`${a.kind} #${i+1}: phản hồi xong ${a.responseEndMs} ms, tải ${a.durationMs} ms`).join(' · ')}</div>}
    </div>
    <div style={{margin:'8px 0',fontSize:12}}>
+     <strong>Đo dữ liệu song song:</strong> {warmOff?'Tắt để đối chứng (cách cũ)':'Bật: đọc sớm cùng profile và quyền sửa'}.
+     <div style={{marginTop:5}}>
+       <button type="button" className="button ghost" onClick={()=>{
+         const target=new URL(window.location.href);
+         if(warmOff)target.searchParams.delete('mirrorWarmup');
+         else target.searchParams.set('mirrorWarmup','off');
+         target.searchParams.set('startupMetrics','1');
+         window.location.assign(target.toString());
+       }}>{warmOff?'Bật đọc dữ liệu song song':'Đo đối chứng: tắt đọc song song'}</button>
+     </div>
+     <p>Đo ít nhất 5 lần mỗi chế độ, cùng máy/mạng. Quyền đăng nhập và nguồn dữ liệu không thay đổi.</p>
+   </div>
+   <div style={{margin:'8px 0',fontSize:12}}>
      <strong>Giao thức RTDB:</strong> {longpoll?'HTTP long-poll (thử nghiệm)':'Mặc định Firebase (WebSocket / tự fallback)'}.
      {stall&&<p role="alert">Firebase đã bắt đầu nghe dữ liệu nhưng chưa có phản hồi sau 12 giây. Có thể mạng, proxy, giao thức hoặc trình duyệt đang trì hoãn; không phải do xử lý 55 dòng.</p>}
      {authStall&&<p role="alert">Chưa xác nhận phiên Firebase sau 12 giây. Hãy kiểm tra mạng, đăng nhập hoặc trình duyệt; thay giao thức RTDB không sửa được giai đoạn xác thực.</p>}
@@ -106,6 +120,6 @@ export function StartupTimingPanel(){
        {longpoll?'Trở về kết nối Firebase mặc định':'Thử kết nối Firebase tương thích (HTTP long-poll)'}
      </button>
    </div>
-   <button type="button" className="button ghost" onClick={() => void navigator.clipboard?.writeText(JSON.stringify({measurements:startupSamples(),network:captureNetworkDiagnostics(),transport:longpoll?'longpoll':'default',compareSource:comparison,comparisonMeasurement:comparison?{readLatencyMs:sourceLatency,firstPaintMs:overall,rowCountNote:dataReady?.detail??null}:null,elapsedMs:Math.round(performance.now())},null,2))}>Sao chép số đo (không gồm dữ liệu bảng)</button>
+   <button type="button" className="button ghost" onClick={() => void navigator.clipboard?.writeText(JSON.stringify({measurements:startupSamples(),network:captureNetworkDiagnostics(),transport:longpoll?'longpoll':'default',mirrorWarmup:warmOff?'off':'on',compareSource:comparison,comparisonMeasurement:comparison?{readLatencyMs:sourceLatency,firstPaintMs:overall,rowCountNote:dataReady?.detail??null}:null,elapsedMs:Math.round(performance.now())},null,2))}>Sao chép số đo (không gồm dữ liệu bảng)</button>
  </details>;
 }
