@@ -1,9 +1,10 @@
-import {get,onValue,ref,type Database} from 'firebase/database';
+import {get,ref,type Database} from 'firebase/database';
 import type {Item,AuditEntry,Patch,SaveResult} from '../../shared/types';
 import type {Repository} from './repository';
 import type {SheetConfig} from './sheet-config';
 import {markStartup} from './startup-timings';
 import {loadSessionMirror,storeSessionMirror} from './firebase-snapshot-cache';
+import {subscribeMirrorStream} from './authenticated-mirror-stream';
 
 /** Immutable server-published snapshot. No browser write path. */
 export interface ExcelMirrorSnapshot {
@@ -67,8 +68,8 @@ export class FirebaseMirrorRepository implements Repository {
   }
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void) {
     markStartup('data-subscribe');
-    return onValue(ref(this.database,mirrorPath(this.source)),
-      snap=>{try{const rows=this.parse(snap.val());
+    return subscribeMirrorStream(this.database,this.viewerUid()??'',mirrorPath(this.source),
+      value=>{try{const rows=this.parse(value);
         this.liveConfirmed=true;
         const uid=this.viewerUid();
         if(uid&&this.snapshot&&this.sessionCacheEnabled)storeSessionMirror(uid,this.source,this.snapshot);
