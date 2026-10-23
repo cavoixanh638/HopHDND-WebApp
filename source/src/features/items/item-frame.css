@@ -595,9 +595,8 @@
 .compact-content-line .compact-part .content-button{display:inline!important;
   width:auto;max-width:100%;white-space:normal;text-align:left;
   vertical-align:baseline;overflow-wrap:anywhere}
-.compact-type-suffix{display:inline;margin-left:5px;color:#58776a;
-  white-space:normal;font-size:11px}
-.compact-type-suffix .compact-part{display:inline-flex;align-items:center;gap:3px}
+.compact-type-suffix{display:inline-flex;align-items:center;white-space:nowrap;margin-left:4px;color:#58776a;font-size:11px;gap:0}
+.compact-type-suffix .compact-part{display:inline-flex;align-items:center;white-space:nowrap;gap:0}
 .compact-type-suffix .cell-picker-trigger{display:inline-flex;width:auto!important;
   min-height:24px;padding:2px 5px;font-size:11px}
 .compact-pair-lines{display:grid;gap:5px;min-width:0;text-align:left}
@@ -636,7 +635,7 @@
   height:76px;
 }
 .item-data-table .item-column-filter-row .room-specialist-filter {
-  min-width:170px;vertical-align:middle;
+  min-width:0;vertical-align:middle;
 }
 .item-data-table .room-specialist-filter-stack {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;}
 .item-data-table .room-specialist-filter-stack input,
@@ -690,3 +689,7 @@
   font-size:15px;
 }
 .item-data-table .room-specialist-filter-stack input::placeholder {font-size:15px;}
+
+.history-timestamp{display:block;color:#315EA8;font-size:12px;font-weight:650;margin:0 0 4px;}
+.history-change-content{color:#263D32;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;}
+.item-data-table tbody td.compact-merged-cell,.item-data-table .compact-pair-lines{min-width:0;}

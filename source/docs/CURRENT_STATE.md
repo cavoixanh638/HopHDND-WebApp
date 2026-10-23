@@ -1,3 +1,15 @@
+## 23/10/2026 — Cột cuối bù độ rộng, UBND trước VP, dữ liệu Tiến độ hiện tại và lịch sử 2 cột
+
+- **ID** mặc định 68px (trước 100px); cấu hình ID còn ở độ rộng mặc định cũ đúng `100`px sẽ được đưa về 68px khi đọc; độ rộng ID đã chỉnh khác 100 vẫn giữ. ID chỉ là mã tối đa 4 ký tự trong trường hợp điển hình; các mã dài vẫn có tooltip.
+- **Kéo cột:** chỉ thay độ rộng của cột đang kéo và **cột CUỐI đang hiển thị** theo tỷ lệ 1:1; tổng số px các cột không đổi. Các cột còn lại không đổi. Cột cuối làm nơi nhận/trả chênh lệch, vì thế **không có chốt kéo ở mép ngoài cột cuối**. Clamp mỗi cột 60–1600px; khi cột cuối đã chạm giới hạn thì cột đang kéo cũng dừng. Resize preview vẫn thao tác trực tiếp `<col>`, chỉ lưu một lần khi thả và vẫn dùng Firebase CAS/merge cho admin ở chế độ xem. `trailingWidthBounds` / `resizeWithLastColumn` cung cấp một logic được unit test cho cả sửa giao diện và xem admin.
+- **Gộp cột:** `Gộp Lãnh đạo UBND và VP` có tiêu đề **“Lãnh đạo UBND / VP”**, hai dòng **UBND trên, VP dưới**, giữ nguyên hai dữ liệu gốc và chức vụ (PCVP, Q.CVP, PCT, PCTT). Bỏ tự cộng 75px/80px khi gộp lãnh đạo và Phòng/CV; loại bỏ `min-width:170px` ở ô lọc Phòng để các cột gộp thu bé được theo độ rộng 60px. Khi độ rộng quá nhỏ, chữ có thể wrap/truncate theo CSS nhưng không thay dữ liệu nguồn.
+- **Loại văn bản HC:** suffix dạng `(HC)`, `(QPPL)` được giữ cả cụm không bẻ dòng; nút lịch sử của loại văn bản đã ẩn, tránh chen biểu tượng giữa dấu ngoặc và chữ như ảnh người dùng.
+- **Excel:** cột N `Tiến độ hiện tại` (mapping `specificProgress:values[13]` từ trước) và cột O `Ghi chú` (mapping `note:values[14]` từ trước). Giữ 15 cột A–O, KHÔNG tự tạo cột mới. `Tiến độ hiện tại` chuyển từ kiểu select sang văn bản nhiều dòng như Ghi chú, sử dụng ContentEditor và bộ lọc tìm chữ; quyền sửa ở từng ô/Firebase, nguồn dữ liệu và giá trị không đổi.
+- **Lịch sử hiển thị:** nút lịch sử **chỉ ở cột `note` và `specificProgress`** trong bảng chính và popup, không hiện ở ID, cột gộp hay các cột khác. Khi mở trường, hiển thị **toàn bộ các lần sửa thực của đúng trường** mới nhất trước (không chỉ một sự kiện gần nhất), mỗi dòng chỉ thời gian màu xanh và nội dung mới; không đánh số “Lần sửa N”. Giữ ba mốc Ghi chú minh họa có nhãn **DỮ LIỆU DEMO**, giờ/nội dung và thứ tự gần nhất trước, không tạo audit/ghi Firebase hoặc Excel.
+- Không đổi quyền, polling, dropdown màu, các mốc backup V1/V2. CI và Chrome smoke phải PASS trước merge/Pages.
+
+---
+
 ## 23/10/2026 — Kéo ngay ở đường kẻ dọc và chống nhảy scroll khi mở bộ lọc
 
 - **Đổi độ rộng cột:** giữ bộ xử lý kéo theo pixel và lưu một lần khi thả đã có; **không có icon/tay nắm màu riêng**. Hit-zone trong suốt rộng 8px trùng chính đường viền giữa hai tiêu đề, khi hover chỉ nhấn nét của đường kẻ dọc. Admin Firebase dùng chế độ xem vẫn được kéo và lưu chung; khách không được sửa bố cục.

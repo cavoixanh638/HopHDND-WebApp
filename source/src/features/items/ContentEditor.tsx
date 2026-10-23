@@ -4,8 +4,8 @@ import { Modal } from '../../components/Modal';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import { displayId } from '../../domain/display-id';
 
-export function ContentEditor({ item, onSave, onClose, sourceKey, field = "content",sourceKind,draftOnly=false }: { item: Item; onSave: (content: string) => boolean | void; onClose: () => void; sourceKey:string;field?:"content"|"note";sourceKind?:string;draftOnly?:boolean }) {
-  const label=field === "content" ? "Nội dung trình" : "Ghi chú";
+export function ContentEditor({ item, onSave, onClose, sourceKey, field = "content",sourceKind,draftOnly=false }: { item: Item; onSave: (content: string) => boolean | void; onClose: () => void; sourceKey:string;field?:"content"|"note"|"specificProgress";sourceKind?:string;draftOnly?:boolean }) {
+  const label=field === "content" ? "Nội dung trình" : field==="specificProgress"?"Tiến độ hiện tại":"Ghi chú";
   const {draft:content,setDraft:setContent,dirty,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(`${field}:${sourceKey}:${item.recordId}`,item[field],value=>{if(typeof value!=='string'||value.length>20000)throw new Error('Nội dung nháp không hợp lệ.');return value;});
   const [error, setError] = useState('');
   const [confirmDiscard, setConfirmDiscard] = useState(false);

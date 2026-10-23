@@ -4,24 +4,33 @@ type DragSession = {
   pointer: number; startX: number; startWidth: number; currentWidth: number;
   col: HTMLTableColElement | null; table: HTMLTableElement | null;
   originalTableWidth: string; originalMinWidth: string; tableWidth: number;
+  compensatorCol?:HTMLTableColElement|null;compensatorStartWidth?:number;
 };
 
 /** Drag the actual column edge without rerendering a large table on every pixel.
  * Only commit the new width to React / shared configuration on pointer release. */
-export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=1200,windowDragFallback=false}:{
+export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=1200,windowDragFallback=false,compensator}:{
   columnIndex:number;width:number;label:string;onCommit:(next:number)=>void;min?:number;max?:number;
   /** For a nested dialog: keep drag tracking if the native pointer capture is lost. */
   windowDragFallback?:boolean;
+  /** Transfer drag delta ONLY to the last visible column; table total remains constant. */
+  compensator?:{index:number;width:number;min?:number;max?:number};
 }) {
   const active=useRef<DragSession|null>(null);
   const windowListeners=useRef<AbortController|null>(null);
   useEffect(()=>()=>windowListeners.current?.abort(),[]);
-  const clamp=(value:number)=>Math.min(max,Math.max(min,Math.round(value)));
+  const clamp=(value:number)=>{
+    const lower=compensator?Math.max(min,width+compensator.width-(compensator.max??1600)):min;
+    const upper=compensator?Math.min(max,width+compensator.width-(compensator.min??60)):max;
+    return Math.min(upper,Math.max(lower,Math.round(value)));
+  };
   const preview=(value:number)=>{
     const session=active.current;if(!session)return;
     session.currentWidth=clamp(value);
     if(session.col)session.col.style.width=`${session.currentWidth}px`;
-    if(session.table){
+    if(session.compensatorCol&&session.compensatorStartWidth!==undefined)
+      session.compensatorCol.style.width=`${session.compensatorStartWidth-session.currentWidth+session.startWidth}px`;
+    if(session.table&&!compensator){
       const next=Math.max(0,session.tableWidth+session.currentWidth-session.startWidth);
       session.table.style.width=`${next}px`;
       session.table.style.minWidth=`${next}px`;
@@ -36,6 +45,8 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
       session.table.style.minWidth=session.originalMinWidth;
     }
     if(session.col)session.col.style.width=`${session.startWidth}px`;
+    if(session.compensatorCol&&session.compensatorStartWidth!==undefined)
+      session.compensatorCol.style.width=`${session.compensatorStartWidth}px`;
     if(save&&session.currentWidth!==session.startWidth)onCommit(session.currentWidth);
   };
   return <span draggable={false} className="column-resizer" role="separator" tabIndex={0}
@@ -49,7 +60,10 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
       const col=table?.querySelectorAll('colgroup > col').item(columnIndex) as HTMLTableColElement|null;
       active.current={
         pointer:event.pointerId,startX:event.clientX,startWidth:width,currentWidth:width,
-        col:col??null,table:table??null,originalTableWidth:table?.style.width??'',
+        col:col??null,table:table??null,
+        compensatorCol:compensator?
+          table?.querySelectorAll('colgroup > col').item(compensator.index) as HTMLTableColElement|null:undefined,
+        compensatorStartWidth:compensator?.width,originalTableWidth:table?.style.width??'',
         originalMinWidth:table?.style.minWidth??'',tableWidth:table?.getBoundingClientRect().width??width,
       };
       if(windowDragFallback){

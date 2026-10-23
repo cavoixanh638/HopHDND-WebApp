@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## 23/10/2026 — Quy tắc kiểm soát bố cục và lịch sử
+
+- ID mặc định 68px; migrate legacy 100px của bố trí cũ, giữ các giá trị custom khác 100. Bảng dữ liệu: kéo một cột không chia đều hoặc dồn vào cột bất kỳ, chỉ `resizeWithLastColumn` thay width cột đang kéo **và cột cuối đang hiển thị** với tổng không đổi; không gắn tay kéo vào cột cuối. Preview `ColumnResizeHandle.compensator` phải giữ tổng width, React/Firebase commit một lần khi thả; cột cuối chạm giới hạn 60/1600 thì dừng.
+- Cặp gộp Lãnh đạo hiển thị **UBND trên, VP dưới** với nhãn `Lãnh đạo UBND / VP`, không đổi giá trị nguồn hoặc chức vụ. Phòng/CV và lãnh đạo không được cộng chiều rộng bắt buộc hay áp min-width 170px. Loại VB khi gộp với nội dung luôn hiển thị nguyên cụm `(HC)`, không có history chen giữa các ký tự.
+- `specificProgress` là **Excel N** đã có, `note` là **Excel O**. Cả hai text/textarea, không biến dữ liệu N thành dropdown status tùy tiện. Chỉ hai trường này có lịch sử ở main/popup; ID và trường khác không có icon. Lịch sử field phải liệt kê đầy đủ, mới nhất lên đầu, màu thời gian riêng, nội dung sửa riêng, không đánh số. Ghi chú có 3 mẫu DEMO rõ ràng và không ghi backend.
+
 ## 23/10/2026 — Khóa hồi quy đường kẻ kéo cột và bộ lọc không nhảy
 
 - Hit-zone đổi rộng cột Bảng dữ liệu chính là 8px quanh đường viền dọc có sẵn, `background:transparent;border:0`, không vẽ icon/tay nắm dày; hover/focus chỉ đổi màu nét chính đường kẻ, không chặn drag tiêu đề đổi vị trí. Giữ commit sau pointer release, không viết Firebase theo từng pixel.

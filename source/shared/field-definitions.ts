@@ -12,7 +12,7 @@ export const TEXT_FIELDS: readonly { key: TextField; label: string; editor: 'tex
   { key: 'room', label: 'Phòng chuyên môn', editor: 'select' },
   { key: 'vpLeader', label: 'Lãnh đạo VP', editor: 'select' },
   { key: 'ubndLeader', label: 'Lãnh đạo UBND TP', editor: 'select' },
-  { key: 'specificProgress', label: 'Tiến độ hiện tại', editor: 'select' },
+  { key: 'specificProgress', label: 'Tiến độ hiện tại', editor: 'textarea' },
   { key: 'note', label: 'Ghi chú', editor: 'textarea' },
 ];
 
