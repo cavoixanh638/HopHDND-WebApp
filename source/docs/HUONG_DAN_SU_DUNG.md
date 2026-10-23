@@ -1,3 +1,12 @@
+## Điều chỉnh độ rộng và lịch sử Ghi chú/Tiến độ hiện tại (23/10/2026)
+
+- Cột **ID** mặc định chỉ 68px. Khi admin kéo rộng một cột, hệ thống **thu nhỏ đúng phần tăng tương ứng ở cột cuối cùng đang hiển thị**; khi thu hẹp một cột, phần giảm được **cộng vào cột cuối**. Các cột ở giữa giữ nguyên. Vì cột cuối làm nơi bù, không chỉnh trực tiếp mép ngoài của cột cuối. Khi một trong hai cột đạt giới hạn 60–1600px, phần kéo dừng; nếu bảng rộng hơn màn hình vẫn có thanh cuộn ngang.
+- Bật **Gộp Lãnh đạo UBND và VP** sẽ thấy tiêu đề **Lãnh đạo UBND / VP**, dòng UBND ở trên và VP ở dưới; chức vụ giữ nguyên. Khi gộp Phòng/CV và lãnh đạo không bị tự cộng thêm độ rộng. Loại văn bản gộp ở cuối Nội dung trình sẽ hiện liền **(HC)** hoặc **(QPPL)**, không có biểu tượng lịch sử xen vào.
+- Cột **Tiến độ hiện tại** tương ứng cột **N của Excel gốc**, dạng văn bản tự do như Ghi chú cột O. Nếu có quyền sửa, bấm ô để mở khung soạn nhiều dòng; lọc bằng tìm kiếm văn bản.
+- Biểu tượng lịch sử chỉ xuất hiện tại **Ghi chú** và **Tiến độ hiện tại**. Mở sẽ thấy các thời điểm (màu xanh riêng) và giá trị mới, **mới nhất trước**, không đánh số lần. Ghi chú còn có 3 ví dụ bên dưới gắn nhãn **DỮ LIỆU DEMO**, không phải lịch sử sửa thật.
+
+---
+
 ## Kéo độ rộng tại đường kẻ và lọc không nhảy (23/10/2026)
 
 Khi ở chế độ được phép tùy chỉnh cột, **rê chuột đúng đường kẻ dọc giữa hai tiêu đề**: con trỏ đổi sang mũi tên chỉnh độ rộng, giữ chuột kéo qua trái hoặc phải. Không có tay nắm/icon riêng. Admin Firebase đang ở chế độ xem vẫn tự lưu bố cục cho các tài khoản sau khi thả; nếu không đủ quyền sẽ không thấy vùng chỉnh này.
