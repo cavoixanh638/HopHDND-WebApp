@@ -917,6 +917,8 @@ try{
       Math.abs(top.left-reference.left)<=2&&Math.abs(top.width-reference.width)<=2&&
       nav.width<=820&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
+      shellClass:shell.className,activeTab:document.querySelector('.nav-tabs button[aria-current=page]')?.textContent?.trim(),
+      mainCssWidth:getComputedStyle(document.querySelector('main')).width,
       boxes:all.map(r=>r?{left:r.left,width:r.width}:null)};
   })()`);
   for(const customWidth of [850,1280]){

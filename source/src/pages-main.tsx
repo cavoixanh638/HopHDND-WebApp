@@ -7,6 +7,7 @@ import {useFirebase} from './state/use-firebase';
 const ExcelTransferPanel=lazy(()=>import('./features/settings/ExcelTransferPanel')
   .then(module=>({default:module.ExcelTransferPanel})));
 import {markStartup} from './data/startup-timings';
+import {startFirebaseWarmup} from './state/firebase-boot';
 import './styles/app.css';
 function FirebaseEntry(){
   const firebase=useFirebase();
@@ -16,4 +17,7 @@ function FirebaseEntry(){
   </Suspense>;
 }
 markStartup('js-entry');
+// Warm up Firebase's restored identity before the first React commit;
+// don't wait for the useEffect that mounts after the UI shell.
+void startFirebaseWarmup();
 createRoot(document.getElementById('root')!).render(<FirebaseEntry/>);
