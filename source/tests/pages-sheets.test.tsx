@@ -190,7 +190,10 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('1050px');
     firebase.common.status='error';firebase.error='Temporary network failure';
     tree=render();
-    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    const mounted=nodes(tree).find(n=>n.type===ItemList);
+    expect(mounted).toBeDefined();
+    expect(mounted.props.items).toHaveLength(1);
+    expect(scripts).toHaveLength(1); // no redundant Sheets fetch while Firebase is reconnecting
     expect(text(tree)).not.toContain('Chưa đọc được bố cục đã lưu từ Firebase');
   });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
