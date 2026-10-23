@@ -16,7 +16,7 @@ interface Channel {
   received:boolean;
   error:Error|null;
   watchers:Set<Watcher>;
-  warmOwner:boolean;
+  warmOwners:number;
   stop:()=>void;
 }
 const active=new WeakMap<Database,Map<string,Channel>>();
@@ -27,7 +27,7 @@ function getChannel(database:Database,uid:string,path:string):Channel{
   const key=channelKey(uid,path);
   const existing=map.get(key);
   if(existing)return existing;
-  const created:Channel={latest:null,received:false,error:null,watchers:new Set(),warmOwner:false,stop:()=>{}};
+  const created:Channel={latest:null,received:false,error:null,watchers:new Set(),warmOwners:0,stop:()=>{}};
   map.set(key,created);
   created.stop=onValue(ref(database,path),snapshot=>{
     if(!created.received)markStartup('mirror-warm-first','Đã nhận bản sao, chờ nguồn admin xác nhận');
@@ -42,7 +42,7 @@ function getChannel(database:Database,uid:string,path:string):Channel{
   return created;
 }
 function clean(database:Database,uid:string,path:string,channel:Channel):void{
-  if(channel.warmOwner||channel.watchers.size)return;
+  if(channel.warmOwners||channel.watchers.size)return;
   const map=active.get(database);
   if(map?.get(channelKey(uid,path))!==channel)return;
   map.delete(channelKey(uid,path));
@@ -51,9 +51,12 @@ function clean(database:Database,uid:string,path:string,channel:Channel):void{
 export function warmMirrorStream(database:Database,uid:string,path:string):()=>void{
   if(!uid)return()=>{};
   const channel=getChannel(database,uid,path);
-  channel.warmOwner=true;
+  channel.warmOwners++;
+  let released=false;
   return()=>{
-    channel.warmOwner=false;
+    if(released)return;
+    released=true;
+    channel.warmOwners--;
     clean(database,uid,path,channel);
   };
 }
