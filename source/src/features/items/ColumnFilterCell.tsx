@@ -12,7 +12,7 @@ export const filterValue=(item:Item,key:string):string=>{
 };
 export function filterChoices(items:Item[],field:string,getValue?:(item:Item)=>string):string[]|null{
   if(field==='isDropped')return ['Đã rút'];
-  if(field==='content'||field==='note'||field==='displayCode'||field==='stt'||field==='history')return null;
+  if(field==='content'||field==='note'||field==='specificProgress'||field==='displayCode'||field==='stt'||field==='history')return null;
   const options=[...new Set(items.map(item=>getValue?.(item)??filterValue(item,field)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
   return options.length>0&&options.length<=12?options:null;
 }
