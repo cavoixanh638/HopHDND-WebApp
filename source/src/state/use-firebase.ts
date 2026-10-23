@@ -10,7 +10,8 @@ import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-me
 import type {SheetConfig} from '../data/sheet-config';
 import {markStartup} from '../data/startup-timings';
 import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
-import {warmMirrorStream} from '../data/authenticated-mirror-stream';
+import {warmMirrorStream,subscribeMirrorStream} from '../data/authenticated-mirror-stream';
+import {deferGuestEditMetadata} from '../data/data-first-settings';
 import {mirrorPath} from '../data/firebase-mirror-repository';
 import {DEFAULT_SHEET_URL,loadSheetConfig,parseSheetConfig} from '../data/sheet-config';
 import {compareSourceFromSearch} from '../data/source-comparison';
@@ -98,18 +99,80 @@ export function useFirebase(){
       stopMirrorWarmup.current=null;
     }
   },[profileReady,profile?.dataSource]);
+  // Essential data + confirmed layout are subscribed immediately. The diagnostic
+  // guest variant lets the mirror deliver its first snapshot before requesting
+  // editing permissions/control. Editing always fails closed until BOTH arrive.
   useEffect(()=>{
     if(!user)return;
     let active=true;
-    const failed=(cause:Error)=>{markStartup('database-error','Lỗi kết nối hoặc phân quyền');if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);};
-    const stop=[onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
+    const stops:(()=>void)[]=[];
+    let rightsStarted=false,rightsTimer:ReturnType<typeof setTimeout>|null=null;
+    let stopFirstData:(()=>void)|undefined;
+    const failed=(cause:Error)=>{
+      markStartup('database-error','Lỗi kết nối hoặc phân quyền');
+      if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);
+    };
+    const startRights=()=>{
+      if(!active||rightsStarted)return;
+      rightsStarted=true;
+      if(rightsTimer!==null){clearTimeout(rightsTimer);rightsTimer=null;}
+      markStartup('edit-metadata-start','Bắt đầu đọc quyền/khóa chỉnh sửa');
+      stops.push(onValue(ref(database,'hdnd/permissions'),snap=>{
+        if(!active)return;
+        markStartup('permissions-received');
+        const raw=snap.val();
+        setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});
+        setPermissionsReady(true);
+      },cause=>{
+        if(active){setPermissionsReady(false);setPermissions({columns:{}});}
+        failed(cause);
+      }));
+      stops.push(onValue(ref(database,'hdnd/control'),snap=>{
+        if(!active)return;
+        markStartup('control-received');
+        const current=snap.val();
+        setEditControl({ready:true,revision:Number(current?.revision??0),editingLocked:current?.editingLocked===true});
+      },cause=>{
+        if(active)setEditControl({ready:false,revision:0,editingLocked:true});
+        failed(cause);
+      }));
+      // Retire the metadata-only watcher after the first snapshot (or timeout).
+      stopFirstData?.();
+      stopFirstData=undefined;
+    };
+    stops.push(onValue(ref(database,'.info/connected'),snap=>{
+      if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}
+    }));
+    stops.push(onValue(ref(database,'hdnd/profile'),snap=>{
       if(!active)return;
-      markStartup('control-received');
-      const current=snap.val();
-      setEditControl({ready:true,revision:Number(current?.revision??0),editingLocked:current?.editingLocked===true});
-    },cause=>{if(active)setEditControl({ready:false,revision:0,editingLocked:true});failed(cause);}),
-    onValue(ref(database,'hdnd/profile'),snap=>{if(!active)return;markStartup('profile-received');try{const raw=snap.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setProfileReady(true);}catch(cause){setProfileReady(false);failed(cause as Error);}},cause=>{if(active)setProfileReady(false);failed(cause);})];
-    return()=>{active=false;stop.forEach(unsubscribe=>unsubscribe());};
+      markStartup('profile-received');
+      try{
+        const raw=snap.val();
+        const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;
+        setProfile(verified);storeConfirmedProfile(verified);setProfileReady(true);
+        // An unexpected Excel source must not delay editing metadata
+        // or turn a cached Database preference into a permission decision.
+        if(verified?.dataSource!=='database')startRights();
+      }catch(cause){setProfileReady(false);startRights();failed(cause as Error);}
+    },cause=>{if(active){setProfileReady(false);startRights();}failed(cause);}));
+    const diagnostic=deferGuestEditMetadata(
+      typeof window==='undefined'?'':window.location?.search??'',user.isAnonymous===true);
+    const cached=loadConfirmedProfile();
+    if(diagnostic&&cached?.dataSource!=='excel'){
+      markStartup('guest-data-first-start','Ưu tiên dữ liệu trước quyền chỉnh sửa (thử nghiệm)');
+      const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
+      let observed=false;
+      stopFirstData=subscribeMirrorStream(database,user.uid,mirrorPath(source),
+        ()=>{observed=true;startRights();},()=>{observed=true;startRights();});
+      if(observed){stopFirstData();stopFirstData=undefined;}
+      if(!rightsStarted)rightsTimer=setTimeout(startRights,1600);
+    }else startRights();
+    return()=>{
+      active=false;
+      if(rightsTimer!==null)clearTimeout(rightsTimer);
+      stopFirstData?.();
+      stops.forEach(unsubscribe=>unsubscribe());
+    };
   },[user?.uid,database]);
   const admin=firebaseAdmin(user);
   const login=async()=>{
