@@ -20,12 +20,15 @@ Từ thư mục source/:
       --host='control=https://cavoixanh638.github.io/HopHDND-WebApp/?mirrorWarmup=off' \
       --runs=5 --timeout=25000
 
+Bộ đo luôn gắn `startupMetrics=1&dataCache=off` để bỏ cache **dữ liệu bảng** (không bỏ cache cấu hình quyền hoặc Firebase Auth). Chế độ này chỉ hoạt động khi URL chẩn đoán có đủ hai tham số; người dùng bình thường vẫn giữ cache để mở nhanh. Đo lại sau khi phiên bản hỗ trợ `dataCache=off` đã lên Pages; bản public cũ chưa hiểu tham số này.
+
 Tham số --host có thể thêm Firebase Hosting/Cloudflare Pages **sau khi có URL staging thực tế**. Host phải là HTTPS. Không đưa JWT, query cá nhân hoặc URL có credential vào tham số.
 
-- Mỗi host có Chrome profile mới: **chỉ lần 1** là truy cập fresh profile. Lần 2–5 giữ lại phiên Firebase/Auth, **tắt HTTP cache**; không được ghi nhãn "cold-first-ever" cho 2–5. Một mẫu cold/host không đủ để kết luận cold-start.
+- Mỗi host có Chrome profile mới: **chỉ lần 1** là truy cập fresh profile. Lần 2–5 giữ lại phiên Firebase/Auth, **tắt HTTP cache và tắt session row-cache bằng URL chẩn đoán**, nhưng vẫn dùng lại hồ sơ/phiên Auth; không được ghi nhãn "cold-first-ever" cho 2–5. Một mẫu cold/host không đủ để kết luận cold-start.
 - Mẫu ghi **riêng** 'dataCacheMs' (bản lưu phiên chưa xác nhận), 'dataMilestoneMs' (bảng đã lên lịch vẽ) và 'snapshotMs' (mốc 'data-first' đã nhận/kiểm chứng dữ liệu trực tuyến). Bộ đo tiếp tục chờ cả bảng **và** dữ liệu trực tuyến. Vì marker bảng được ghi trong requestAnimationFrame, nó **không chứng minh pixel đã vẽ**: cần Chrome Performance trace/filmstrip hoặc nhìn trang để chốt cảm nhận.
 - Báo cáo chỉ gồm host nhãn, thời gian số học, trạng thái visible và số lượt; không thu cell Excel, path RTDB, token, UID, email, URL.
 - Chỉ tính trung vị/p75/p95 trên các mẫu quan sát được và ghi riêng số timeout, không loại bỏ thất bại rồi nói tốc độ tốt. Nếu >1 timeout trong 5 lượt, **không nghiệm thu**.
+- Trước khi phát hành URL chẩn đoán `dataCache=off` trên site chính, CI đo site cũ có thể còn đọc từ cache và **không được dùng làm đối chứng chuẩn**. 
 - GitHub runner có mạng, DNS và vị trí khác máy người dùng. CI chỉ cho bằng chứng bổ sung, **không thay thế** A/B 5+ lượt trên máy người dùng.
 
 ## 2. Tạo hai bản HOST staging giống hệt GitHub Pages (không deploy)
