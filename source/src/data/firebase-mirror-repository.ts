@@ -42,11 +42,11 @@ export class FirebaseMirrorRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly readOnly=true;
   readonly subscribeInitial=true;
-  readonly canDraft=true;
+  readonly canDraft:boolean;
   snapshot:ExcelMirrorSnapshot|null=null;
   liveConfirmed=false;
   constructor(private readonly database:Database,private readonly source:SheetConfig,
-    private readonly viewerUid:()=>string|null=()=>null){}
+    private readonly viewerUid:()=>string|null=()=>null,canDraft=true){this.canDraft=canDraft;}
   cachedRows():Item[]|null{
     const uid=this.viewerUid();
     if(!uid)return null;
