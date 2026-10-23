@@ -24,9 +24,11 @@ const hosts=requested.length?requested.map(raw=>{
   const label=value.slice(0,pos),url=new URL(value.slice(pos+1));
   if(!/^[a-zA-Z0-9_-]{1,25}$/.test(label)||url.protocol!=='https:'||url.username||url.password)
     throw Error('Invalid host label or non-HTTPS URL');
-  url.searchParams.set('startupMetrics','1');url.hash='';
+  url.searchParams.set('startupMetrics','1');
+  url.searchParams.set('dataCache','off'); // Compare LIVE reads, not a fast but stale session snapshot.
+  url.hash='';
   return {label,url:url.toString()};
-}):[{label:'github_pages',url:'https://cavoixanh638.github.io/HopHDND-WebApp/?startupMetrics=1'}];
+}):[{label:'github_pages',url:'https://cavoixanh638.github.io/HopHDND-WebApp/?startupMetrics=1&dataCache=off'}];
 if(new Set(hosts.map(x=>x.label)).size!==hosts.length)throw Error('Duplicate host labels');
 const candidates=process.env.CHROME_BIN?[process.env.CHROME_BIN]:['google-chrome','google-chrome-stable','chromium','chromium-browser'];
 const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
