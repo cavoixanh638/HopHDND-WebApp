@@ -69,6 +69,10 @@ jobs:
             --host='early=https://cavoixanh638.github.io/HopHDND-WebApp/' \
             --host='control=https://cavoixanh638.github.io/HopHDND-WebApp/?mirrorWarmup=off' \
             --runs=5 --timeout=18000
+      - name: ONE-OFF cold-profile data-first A/B on deployed Pages (informational)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: node scripts/compare-guest-cold-start.mjs --rounds=5 --timeout=20000
       - name: Verify legacy single-file offline build remains available
         run: npm run build
       - name: Verify standalone offline HTML
