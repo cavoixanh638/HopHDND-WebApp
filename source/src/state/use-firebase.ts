@@ -82,8 +82,8 @@ export function useFirebase(){
     setError('');
     // The Google popup resolver is not used by public/anonymous visitors.
     // Load it only when the admin explicitly presses Sign in.
-    const {GoogleAuthProvider,signInWithPopup,browserPopupRedirectResolver}=await import('firebase/auth');
-    await signInWithPopup(auth,new GoogleAuthProvider(),browserPopupRedirectResolver);
+    const {loginWithGooglePopup}=await import('./google-popup-login');
+    await loginWithGooglePopup(auth);
   };
   const logout=async()=>{clearSessionMirrors();await signOut(auth);};
   const saveProfile=async(section:ConfigSection|'dataSource',value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown,resolutions:LayoutConflictChoices={})=>{
