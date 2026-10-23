@@ -64,3 +64,27 @@ Yêu cầu: thời gian mở **trình duyệt mới, không cache**, không ch�
 - Không ảnh hưởng vấn đề **Excel→Firebase 60s chưa triển khai tự động**; tốc độ đọc DB không có nghĩa snapshot Excel luôn mới.
 
 **Build cuối** (Verify HopHDND source CI #39943024303): tệp `google-popup-login-*.js` thật sự tồn tại, gzip **132 bytes**, được tải theo thao tác admin. Tuy nhiên tổng cold gzip chỉ thay đổi dưới 1% so với bản trước, vì phần lớn Firebase Auth SDK vẫn nằm trong bundle chính; **không được coi đây là tối ưu giảm mạnh dung lượng**. Điểm ưu tiên là Auth bắt đầu trước React effect, loại bỏ khởi tạo popup/redirect resolver cho khách, giữ nguyên chức năng quản trị và bảo mật. Chrome smoke PASS, bản offline và emulator PASS.
+
+## PR #36 — tải bảng trước, quản trị tải khi dùng
+
+Yêu cầu mới: "các chức năng chỉnh sửa, tài khoản... load sau được không? quan trọng nhất là các bảng, dữ liệu".
+
+**Đã triển khai**:
+- Trang mặc định `Báo cáo tổng hợp`: tải ngay UI khung, dữ liệu, Firebase Authentication, profile/layout admin (cần để xác nhận nguồn), các KPI và `ReportTable`. Không làm thay đổi bảo mật hoặc các quy tắc đọc.
+- Tách theo `React.lazy` cho `ItemList` (tab thứ 2), `ReportDetailGrid` (khi click số lượng), `HistoryDialog`, `ConnectionPanel`, `FirebasePanel` (tài khoản), `ReportSettings`, `CatalogSettings`, `SyncPanel`, `ApprovalReviewPanel`. `ExcelTransferPanel` và `google-popup-login` đã deferred ở PR cũ và được giữ nguyên.
+- Sau khi nguồn bảng đã hiện, đợi 1,2 giây rồi **prefetch mã tab Danh sách**, tránh tranh băng thông với dữ liệu Firebase của lần mở đầu. Nếu bấm tab sớm thì dùng Suspense fallback.
+- Bản HTML offline vẫn một file, chỉ thay kiểm tra cú pháp để dùng kiểm tra ESM đúng `<script type=module>` (các dynamic import có thể sử dụng `import.meta`). Không bổ sung đường dẫn JS ngoài cho bản offline.
+
+**Kết quả CI build so sánh** (hai lượt GitHub runner khác nhau, KHÔNG phải cùng máy/CPU):
+| Đo | Main trước PR #36 (run 39949606538) | PR #36 (run 39955485568) |
+| --- | ---: | ---: |
+| Gzip HTML + các JS/CSS bắt buộc cho lượt đầu | 178.692 B | **144.120 B** |
+| Giảm | — | **34.572 B (19,35%)** |
+| Số asset bắt buộc | 2 | 10 (nhiều chunk dùng chung) |
+| Chrome CI khung giao diện | 555 ms | 694 ms |
+| Bản offline độc lập | PASS (gzip 148.782 B) | PASS (gzip 153.428 B) |
+| TypeScript, unit, Firebase emulator, browser smoke | PASS | PASS |
+
+**Không được tuyên bố Chrome thực tế đã tăng tốc** chỉ dựa vào 19% gzip vì nhiều request nhỏ hơn có thể tăng overhead, và Chrome smoke từ các runner khác nhau. Bản mới cải thiện **đường dữ liệu cần tải trước**, nhưng thời điểm first paint phải kiểm chứng qua `?startupMetrics=1` trên cùng máy và mạng: `first-data-painted`, Firebase `data-first`, JS entry; trung vị ít nhất 3 lần. Nếu first paint xấu đi rõ rệt cần điều chỉnh chiến lược chunking/rollback.
+
+**Thẩm quyền**: danh sách chỉ mở chế độ sửa đúng cơ chế cũ, kiểm tra Firebase Auth/quyền qua server; React.lazy chỉ hoãn mã giao diện, **không thay đổi quyền**. Layout admin và nguồn là điều kiện xác nhận cần thiết và phải kiểm tra trước khi cho phép cấu hình hay sửa. Dữ liệu Excel vs DB vẫn là nguồn admin đã lưu, A/B URL chỉ đọc không đổi profile. Bản Firebase mirror hiện chưa có lịch tự đồng bộ Excel 60 giây.
