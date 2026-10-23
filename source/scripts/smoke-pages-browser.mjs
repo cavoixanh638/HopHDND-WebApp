@@ -185,7 +185,8 @@ try{
       headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
       headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&
-      button?.getAttribute('aria-pressed')==='false';
+      // Column visibility is an admin configuration, not a guest-side preference.
+       !button;
   })()`);
   if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
 
