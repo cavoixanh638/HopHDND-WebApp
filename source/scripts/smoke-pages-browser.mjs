@@ -2,15 +2,23 @@
 // GViz is intercepted with synthetic records; Firebase production is never contacted.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 
-const html=readFileSync(resolve('dist-pages-test/index.html'));
+const appRoot=resolve('dist-pages-test');
+const html=readFileSync(resolve(appRoot,'index.html'));
 const server=createServer((req,res)=>{
-  if(!req.url||req.url==='/'||req.url.startsWith('/index.html')){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);}
-  else{res.writeHead(404);res.end();}
+  try{
+    const pathname=new URL(req.url??'/', 'http://127.0.0.1').pathname;
+    const file=pathname==='/'?resolve(appRoot,'index.html'):resolve(appRoot,'.'+pathname);
+    if(!file.startsWith(appRoot+'/')&&!file.startsWith(appRoot+'\\'))throw Error('Invalid path');
+    const meta=statSync(file);
+    if(!meta.isFile())throw Error('Not a file');
+    const mime=file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
+    res.writeHead(200,{'content-type':mime,'Cache-Control':'no-store'});res.end(readFileSync(file));
+  }catch{res.writeHead(404);res.end();}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
