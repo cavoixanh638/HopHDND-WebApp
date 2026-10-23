@@ -1,4 +1,5 @@
 import {onValue,ref,type Database} from 'firebase/database';
+import {markStartup} from './startup-timings';
 
 /**
  * An authenticated, one-connection-per-source RTDB stream.
@@ -29,6 +30,7 @@ function getChannel(database:Database,uid:string,path:string):Channel{
   const created:Channel={latest:null,received:false,error:null,watchers:new Set(),warmOwner:false,stop:()=>{}};
   map.set(key,created);
   created.stop=onValue(ref(database,path),snapshot=>{
+    if(!created.received)markStartup('mirror-warm-first','Đã nhận bản sao, chờ nguồn admin xác nhận');
     created.received=true;
     created.latest=snapshot.val();
     created.error=null;
