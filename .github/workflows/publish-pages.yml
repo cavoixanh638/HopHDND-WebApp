@@ -53,13 +53,18 @@ jobs:
         run: npm run docs:check
       - name: Build Pages from TypeScript
         run: npm run build:pages
-      - name: Copy split, content-hashed Pages assets to the GitHub Pages root
+      - name: Copy split Pages build while keeping older hashed assets for cached HTML
         run: |
+          # GitHub Pages/browser/CDN may still serve the previous index.html.
+          # Deleting its hashed JS breaks the entire app before Firebase can start.
+          # Keep previously published hashed assets, never replace the data/rules.
+          cp ../index.html /tmp/hophdnd-previous-index.html
           cp dist-pages/index.html ../index.html
           mkdir -p ../assets
-          rsync -a --delete dist-pages/assets/ ../assets/
+          rsync -a dist-pages/assets/ ../assets/
           test -s ../index.html
           test -n "$(find ../assets -type f -name '*.js' -print -quit)"
+          node scripts/check-published-assets.mjs ../index.html /tmp/hophdnd-previous-index.html ../assets
       - name: Commit and push Pages HTML and assets if changed
         working-directory: .
         shell: bash
