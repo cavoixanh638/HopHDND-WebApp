@@ -62,12 +62,13 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
   const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
+  const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
   // the live admin-selected source. That caused 57 Excel rows before 55 RTDB rows.
   // An already-confirmed cached Database preference can start after authentication
   // while profile/permissions listeners validate the current configuration in parallel.
-  const sourceReady=!firebase||firebase.common.status==='ready'||
+  const sourceReady=!firebase||firebase.common.status==='ready'||allowTemporaryLayout||
     (firebase.profile?.dataSource==='database'&&!!firebase.user);
   const canStartSource=sourceReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource);
@@ -88,7 +89,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   };
   const [page, setPage] = useState<Page>('overview');
   const [editorUnsaved,setEditorUnsaved]=useState(false);
-  const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   const [editorExitRequest,setEditorExitRequest]=useState(0);
   const [catalogField,setCatalogField]=useState<CatalogKey|undefined>(undefined);
   // null means the list has not reported its own active width yet; 'auto' is an explicit setting.
