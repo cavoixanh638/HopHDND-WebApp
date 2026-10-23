@@ -22,12 +22,15 @@ function declaration(source: string, property: string): string {
 }
 
 describe('Năm phong cách tô màu báo cáo', () => {
-  it('loads the six open-license font families from the web instead of requiring local installation', () => {
-    expect(css).toMatch(/^\/\* Six open-license web-font choices[\s\S]*?@import url\('https:\/\/fonts\.googleapis\.com\/css2\?/);
-    for(const font of ['IBM+Plex+Sans','Inter','Lato','Noto+Sans','Open+Sans','Roboto']){
-      expect(css).toContain('family='+font);
+  it('loads only the administrator-selected web font without blocking first paint', () => {
+    const loader=readFileSync(new URL('../src/data/on-demand-fonts.ts',import.meta.url),'utf8');
+    expect(css).not.toContain('@import url(');
+    for(const font of ['IBM Plex Sans','Inter','Lato','Noto Sans','Open Sans','Roboto']){
+      expect(loader).toContain(font);
     }
-    // System fonts are still local-only; CSS has no embedded proprietary font assets.
+    expect(loader).toContain('if(!name||requested.has(name)');
+    expect(loader).toContain('document.head.appendChild(link)');
+    expect(loader).toContain('display=swap');
     expect(css).not.toContain('@font-face');
   });
   it('keeps Party middle and excluded build columns pale but VP/source/completed prominent',()=>{
