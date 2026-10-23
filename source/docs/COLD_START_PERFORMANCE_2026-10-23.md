@@ -101,3 +101,18 @@ Ngày 23/10/2026, sau khi PR #36 phát hành, người dùng đo trực tiếp h
 Quyết định: rollback **riêng phần lazy-load giao diện PR #36** (App, test virtual-tree, offline packager, deferred-sections), giữ nguyên tối ưu PR #32–35 (Excel import lazy, font chọn theo yêu cầu, Auth warmup và Google popup lazy, chẩn đoán RTDB, so sánh Excel vs Database). Đồng thời không thay đổi Firebase Rules hoặc dữ liệu. Để tiếp tục việc hoãn giao diện chỉnh sửa trong tương lai, phải thiết kế split 1–2 chunk, thiết lập A/B production có đối chứng ít nhất 5 lần và ngưỡng thất bại/rollback trước khi triển khai thay đổi mặc định. Tối ưu **first-data-painted** thay vì chỉ gzip payload.
 
 Nghiệm thu rollback: typecheck/unit/Emulator/offline single HTML/Chrome smoke và Pages PASS; so sánh log CI `PAGES_COLD_PAYLOAD` và `COLD_CHROME_SHELL`; kiểm tra riêng hai tab/các trang admin không mất chức năng. Nguồn Firebase vẫn có 55 dòng với `syncedAt` 11:41:44 23/10/2026; đây là vấn đề tươi mới dữ liệu, không phải thời gian tải trang.
+
+## PR #38 — khởi động đọc dữ liệu sau Auth, song song cấu hình/quyền
+
+Cơ sở ảnh từ người dùng: sau rollback PR #37 có hai lần bảng hiển thị lúc 3.912s và 3.379s. Lần đầu Auth hoàn tất 2.349s nhưng mirror listener chỉ bắt đầu 3.571s (chờ 1.222s); lần hai subscribe 1.295s nhưng có data lúc 3.344s (chờ 2.049s). Khoảng chờ này **không liên quan số lượng 55 dòng** và không được khắc phục chỉ bằng gộp bundle JS.
+
+Thay đổi:
+1. Sau khi Firebase Auth xác thực người dùng, `useFirebase` khởi động **đọc RTDB mirror** song song với `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `.info/connected`. Không đợi có quyền sửa hoặc tải xong chức năng admin trước khi yêu cầu dữ liệu.
+2. `authenticated-mirror-stream.ts` quản lý một listener cho mỗi `Database + UID + source path`. Khi profile xác nhận Database, `FirebaseMirrorRepository.subscribe()` tái sử dụng listener và snapshot đã đến, **không gọi network listener lần hai**. Sau đó realtime updates vẫn chạy. Listener tắt khi hết chủ sở hữu.
+3. Nếu profile đã cache và chọn Excel, không mở mirror. Nếu profile live xác nhận Excel, dừng warm-up Database; Excel đọc theo cơ chế gốc. Dữ liệu được đọc sớm **không được hiển thị khi nguồn vẫn chưa được xác nhận**; không công khai dữ liệu, không vượt Firebase Rules, không chia cache giữa UID.
+4. Các mốc `mirror-warm-start` và `mirror-warm-first` cho phép phân biệt thời gian Auth→mở listener, listener→nhận snapshot, nhận snapshot→profile/layout đủ điều kiện, và thời gian render. Không dùng chúng như bằng chứng rằng nguồn đã xác nhận.
+5. Giữ nguyên số tệp JS ban đầu theo PR #37, không tách thêm giao diện. Quyền sửa tiếp tục cần `permissionsReady + control.ready + mayEdit` và xác thực; không được nâng quyền vì ưu tiên bảng.
+
+**Giới hạn:** Prefetch mirror có thể tải thêm 1 payload (~55 dòng) nếu browser mới chưa có profile cache nhưng admin thật sự chọn Excel, dù listener sẽ đóng sau khi xác nhận nguồn. Đổi lại nếu live config chọn Database, listener đã chạy song song và có thể loại bỏ chờ tuần tự. Chưa có bằng chứng đó giảm 1.222s cho mọi lượt, vì độ trễ Firebase/Chrome vẫn biến động.
+
+Nghiệm thu: unit manager (UID isolation, only one listener, cleanup), Firebase hook (5 listeners concurrently), full TypeScript/unit/emulator/Chrome/offline test. Sau publish: đo ít nhất 5 lần incognito mới trên cùng máy/mạng, so median `first-data-painted`, 95th percentile và thời gian `mirror-warm-first` với `profile-received`. Nếu không cải thiện hoặc gây lỗi thì rollback. **Không chạm vào lịch Excel→Firebase 60s (chưa thực sự hoạt động).**
