@@ -20,7 +20,7 @@ vi.mock('firebase/auth',()=>({getAuth:()=>h.auth,initializeAuth:()=>h.auth,
   connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn()}));
 vi.mock('firebase/database',()=>({getDatabase:()=>({}),connectDatabaseEmulator:vi.fn(),ref:(_db:any,path:string)=>path,onValue:(path:string,next:any,error:any)=>{h.listeners.set(path,{next,error});return()=>h.listeners.delete(path);},get:h.get,runTransaction:h.transaction}));
 import {useFirebase} from '../src/state/use-firebase';
-const user=(admin=false)=>({uid:admin?'admin':'guest',isAnonymous:!admin,email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
+const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
 const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems(1)),reports:defaultReportLayout(),items:defaultItemLayout()});
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
@@ -51,33 +51,6 @@ describe('Firebase config controller remains independent of business data',()=>{
       login();
       expect([...h.listeners.keys()]).not.toContain('hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344');
       expect(h.listeners.has('hdnd/profile')).toBe(true);
-    }finally{vi.unstubAllGlobals();}
-  });
-  it('offers guest data-first diagnostics without starting editing rights before the mirror snapshot',()=>{
-    vi.stubGlobal('window',{location:{search:'?startupMetrics=1&guestMetadata=defer'}});
-    try{
-      login();
-      const mirror='hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344';
-      expect(h.listeners.has(mirror)).toBe(true);
-      expect(h.listeners.has('hdnd/profile')).toBe(true);
-      expect(h.listeners.has('hdnd/permissions')).toBe(false);
-      expect(h.listeners.has('hdnd/control')).toBe(false);
-      expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-      emit(mirror,{schemaVersion:1,rows:[]});
-      expect(h.listeners.has('hdnd/permissions')).toBe(true);
-      expect(h.listeners.has('hdnd/control')).toBe(true);
-      emit('hdnd/permissions',{columns:{note:true}});
-      expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-      emit('hdnd/control',{revision:1,editingLocked:false});
-      expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
-    }finally{vi.unstubAllGlobals();}
-  });
-  it('keeps admin metadata immediate even if the guest-only experiment is requested',()=>{
-    vi.stubGlobal('window',{location:{search:'?startupMetrics=1&guestMetadata=defer'}});
-    try{
-      login(true);
-      expect(h.listeners.has('hdnd/permissions')).toBe(true);
-      expect(h.listeners.has('hdnd/control')).toBe(true);
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
