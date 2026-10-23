@@ -36,11 +36,11 @@ export function readSheet(config: SheetConfig, timeoutMs = 15000): Promise<Sheet
 export class SheetsRepository implements Repository {
   readonly sourceKind = 'google' as const;
   readonly readOnly = true;
-  readonly canDraft = true;
+  readonly canDraft:boolean;
   private pending: Promise<SheetSnapshot> | null = null;
   snapshot: SheetSnapshot | null = null;
   private seeded: boolean;
-  constructor(readonly config: SheetConfig, seed?: SheetSnapshot) { this.snapshot = seed ?? null; this.seeded = !!seed; }
+  constructor(readonly config: SheetConfig, seed?: SheetSnapshot, canDraft=true) { this.canDraft=canDraft;this.snapshot = seed ?? null; this.seeded = !!seed; }
   async list(): Promise<Item[]> {
     if (this.seeded) { this.seeded = false; return this.snapshot!.items; }
     this.pending ??= readSheet(this.config);
