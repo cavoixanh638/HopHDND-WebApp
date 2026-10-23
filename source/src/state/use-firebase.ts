@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, type User } from 'firebase/auth';
-import { connectDatabaseEmulator, forceLongPolling, get, getDatabase, onValue, ref, runTransaction } from 'firebase/database';
-import { firebaseConfig } from '../data/firebase-config';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { get, onValue, ref, runTransaction } from 'firebase/database';
 import { firebaseAdmin, mayEdit, samePermissions, type CellPermissions } from '../data/firebase-repository';
 import type { ConfigSection } from '../data/shared-config';
 import { validateCatalog, type CatalogConfig } from '../data/catalogs';
@@ -12,6 +10,7 @@ import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-me
 import type {SheetConfig} from '../data/sheet-config';
 import {markStartup} from '../data/startup-timings';
 import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
+import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
 export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'}
@@ -42,24 +41,8 @@ function storeConfirmedProfile(profile:FirebaseProfile|null):void{
   try{if(profile)globalThis.localStorage?.setItem(profileCacheKey,JSON.stringify(profile));
     else globalThis.localStorage?.removeItem(profileCacheKey);}catch{}
 }
-function initialize(){
-  const emulator=import.meta.env.MODE==='pages-test';
-  // Test builds cannot address the real project, even when an emulator is absent.
-  const config=emulator?{apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',projectId:'demo-hdnd',appId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com'}:firebaseConfig;
-  // Diagnostic transport override only; regular visitors keep Firebase's default.
-  // Firebase documents that forceLongPolling MUST run before listeners connect.
-  const longpoll=!emulator&&typeof window!=='undefined'&&
-    new URLSearchParams(window.location?.search??'').get('dbTransport')==='longpoll';
-  if(longpoll)forceLongPolling();
-  markStartup('db-transport',longpoll?'HTTP long-poll':'Firebase auto');
-  const app=initializeApp(config,'hdnd-pages');
-  const auth=getAuth(app),database=getDatabase(app);
-  if(emulator){connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectDatabaseEmulator(database,'127.0.0.1',9000);}
-  markStartup('firebase-initialized');
-  return {auth,database,emulator};
-}
 export function useFirebase(){
-  const [services]=useState(initialize);
+  const [services]=useState(getFirebaseServices);
   const {auth,database}=services;
   const [user,setUser]=useState<User|null>(null),[error,setError]=useState(''),[ready,setReady]=useState(false),[connected,setConnected]=useState(false);
   const [permissions,setPermissions]=useState<CellPermissions>({columns:{}});
@@ -77,7 +60,7 @@ export function useFirebase(){
       markStartup('auth-checked');
       if(next)markStartup('auth-signed-in');
       setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});
-      if(!next&&!signing){signing=true;markStartup('auth-start-anonymous');void signInAnonymously(auth).catch(cause=>{markStartup('auth-error','Đăng nhập ẩn danh không thành công');setError(`Không đăng nhập ẩn danh được: ${cause.message}`);}).finally(()=>{signing=false;});}
+      if(!next&&!signing){signing=true;void ensureGuestAuth(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
     },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
   },[auth]);
