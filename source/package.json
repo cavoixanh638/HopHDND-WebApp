@@ -14,8 +14,8 @@
     "docs:check": "node scripts/check-docs.mjs",
     "build:server": "node scripts/build-server.mjs",
     "dev:pages": "vite --host 127.0.0.1 --mode pages-test",
-    "build:pages": "npm run typecheck && vite build --mode pages --outDir dist-pages && node scripts/package-html.mjs dist-pages",
-    "build:pages:test": "npm run typecheck && vite build --mode pages-test --outDir dist-pages-test && node scripts/package-html.mjs dist-pages-test",
+    "build:pages": "npm run typecheck && vite build --mode pages --outDir dist-pages && node scripts/prepare-pages.mjs dist-pages",
+    "build:pages:test": "npm run typecheck && vite build --mode pages-test --outDir dist-pages-test && node scripts/prepare-pages.mjs dist-pages-test",
     "test:firebase": "node scripts/test-firebase.mjs"
   },
   "dependencies": {
