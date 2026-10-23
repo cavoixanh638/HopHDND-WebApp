@@ -6,7 +6,7 @@ import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-che
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {markStartup} from '../data/startup-timings';
 
-export function useWorkspace(repository: Repository, sourceKey = 'demo') {
+export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true) {
   const [items, setItems] = useState<Item[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Patch>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -70,10 +70,11 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
     setLoadedAt('');setMessage('');setAutosaveMessage('');
     skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
     protectedRecovery.current=false;
-    if(repository.subscribeInitial&&repository.subscribe){setBusy(true);}
+    if(!canStartDatabase){setBusy(true);}
+    else if(repository.subscribeInitial&&repository.subscribe){setBusy(true);}
     else void refresh();
     // A changed refresh callback is not a source switch; never clear the mounted table.
-  }, [repository,sourceKey]);
+  }, [repository,sourceKey,canStartDatabase]);
   useEffect(() => {
     // Mirrored Firebase data is pushed by onValue; only direct Excel sources poll in the viewer.
     if (repository.sourceKind!=='google') return;
@@ -81,7 +82,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
     return () => clearInterval(interval);
   }, [repository, refresh]);
   useEffect(()=>{
-    if(!repository.subscribe)return;
+    if(!repository.subscribe||!canStartDatabase)return;
     return repository.subscribe(rows=>{
       if(sourceRef.current!==repository)return;
       const signature=JSON.stringify(rows);
@@ -91,7 +92,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
       }
       if(repository.subscribeInitial)setBusy(false);
     },cause=>{if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
-  },[repository]);
+  },[repository,canStartDatabase]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
     if (!item || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
