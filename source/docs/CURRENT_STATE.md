@@ -770,3 +770,11 @@ Google Test deployments yêu cầu deploy web app lần đầu trước khi mở
 - Chờ CI của PR và URL host thử độc lập, rồi mới quyết định có áp dụng tối ưu thật hay giữ nguyên.
 
 - Bổ sung sau lần CI đo đầu: các lượt mở lại hiện bảng khoảng 0,17–0,66 giây nhưng trace kết thúc sớm **trước mốc `data-first`**, nên chưa được dùng để kết luận dữ liệu đã xác nhận hoặc đối chứng hai chế độ. Bộ đo đã sửa để chờ cả hai mốc `first-data-painted` + `data-first`; cần chạy CI lại. Số liệu fresh-profile từ runner lần đầu (2.457s vs 1.929s) chỉ là một mẫu mỗi phương án, không chứng minh phiên nào tốt hơn.
+
+
+## 23/10/2026 — bản đo cache/hosting đã lên Pages, đối chứng sau phát hành
+
+- PR #39 merged vào main tại `3900e9d03a83f74517159f99315f11813eafa9ce`; Pages workflow thành công, công bố JS `assets/pages-CJqRe2sU.js` tại bot commit `ed0706e010865f6a15d1d9e85014865eefc2fc0c`. Xác nhận file build chứa nhánh chẩn đoán `dataCache=off`, không đổi trải nghiệm bình thường. Firebase Auth, Rules, RTDB nguồn và Google Sheets không được sửa.
+- Đối chứng trên runner **trước khi URL mới triển khai** cho thấy `dataCacheMs` xuất hiện ở các lần mở lại, nên kết quả này bị loại khỏi đánh giá chiến lược đọc sớm. CI PR #39 kiểm TypeScript/unit/Emulator/Chrome/browser smoke và gói staging 5 file trùng SHA-256 đều PASS.
+- Thử nghiệm tiếp PR sau phát hành chỉ bổ sung kiểm tra phát hiện cache sai khi `dataCache=off`. CI của PR này sẽ đo được website đã có tham số mới. Các số đo GitHub runner không là nghiệm thu trên mạng tại Hải Phòng; muốn chuyển host phải có project Firebase Hosting/Cloudflare Pages staging thực và so sánh cùng một build.
+- **Giữ mặc định** warmup hiện tại cho đến khi có bằng chứng nhiều mẫu tin cậy; không công bố tăng tốc hoặc tự triển khai host mới.
