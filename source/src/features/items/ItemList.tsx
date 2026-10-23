@@ -30,6 +30,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
+import {resizeWithLastColumn,trailingWidthBounds} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -148,7 +149,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
     return merged;
   };
   const savingRef=useRef(false);
-  const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"} | null>(null);
+  const [contentItem, setContentItem] = useState<{item:Item;field:"content"|"note"|"specificProgress"} | null>(null);
   // Any Firebase viewer (including the signed-in admin) may draft explicitly
   // granted cells in the ordinary list. Non-Firebase views stay read-only;
   // the per-cell checker still enforces the live permission and lock state.
@@ -295,7 +296,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:original}
-      {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={label+' · '+displayId(item)}
+      {!anonymousViewer&&onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
@@ -377,14 +378,15 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
+    index<displayedColumns.length-1&&
+    trailingWidthBounds(activeLayout,displayedColumns.map(col=>col.key),column.key)&&
     <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width)}
+      compensator={{index:displayedColumns.length-1,
+        width:visualWidth(displayedColumns[displayedColumns.length-1].width),min:60,max:1600}}
       min={60} max={1600} label={column.label} onCommit={width=>{
-        const added=compactPairs.find(pair=>pair.anchor===column.key)?.extraWidth??0;
-        const sourceWidth=Math.max(60,width-(compactOn?added:0));
-        if(customizing)setLayout(previous=>({...previous,columns:previous.columns.map(entry=>
-          entry.key===column.key?{...entry,width:sourceWidth}:entry)}));
-        else void applyViewerLayout(base=>({...base,columns:base.columns.map(entry=>
-          entry.key===column.key?{...entry,width:sourceWidth}:entry)}));
+        const keys=displayedColumns.map(col=>col.key);
+        if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,width));
+        else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,width));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.hidden==='specialist')
     ?<RoomSpecialistFilterCell key={column.key} items={items}
@@ -414,10 +416,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
                 <span className="compact-type-suffix">({compactField(item,'type')})</span>
               </span>
               :<div className="compact-pair-lines">
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'Phòng'}</span>
-                  {compactField(item,key)}</div>
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'CV'}</span>
-                  {compactField(item,extra)}</div>
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>
+                  {compactField(item,key==='vpLeader'?'ubndLeader':key)}</div>
+                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'CV'}</span>
+                  {compactField(item,key==='vpLeader'?'vpLeader':extra)}</div>
               </div>}
           </td>;
         }
@@ -438,9 +440,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
             :value||'—'}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
-          className={customizing&&!anonymousViewer?'has-history-action':undefined}
-          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{customizing&&!anonymousViewer&&<CellHistoryAction label={displayId(item)}
-          tooltip="Xem lịch sử nội dung" onClick={()=>onHistory(item)}/>}{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+          className={undefined}
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
         // Excel columns P and Q are displayed and searchable but not editable.
@@ -452,9 +453,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
         return <td key={column.key} data-col-key={column.key}
           data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
-          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory?'has-history-action':''].filter(Boolean).join(' ')}
+          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')}
           data-edit-hint={writable?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`} onClick={()=>setContentItem({item,field:"note"})} disabled={locked}>{item.note||'—'}</button>:column.kind==='text'
+          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'||key==='specificProgress'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`}
+    onClick={()=>setContentItem({item,field:key})} disabled={locked}>{item[key]||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>
   :<CellPicker label={`${displayId(item)}: ${column.label}`} value={item[key]}
@@ -469,7 +471,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onHistory, onC
       :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
         ?<span className="workflow-status-value">{item[key]}</span>
       :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
-          {!anonymousViewer&&onCellHistory&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
+          {!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
