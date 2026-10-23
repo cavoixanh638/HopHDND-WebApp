@@ -38,7 +38,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(h.popup.mock.calls[0][2]).toBe(h.popupResolver);
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/control',{revision:1,editingLocked:false});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
