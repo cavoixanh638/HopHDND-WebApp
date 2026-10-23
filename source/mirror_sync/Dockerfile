@@ -3,5 +3,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY sync.py .
+COPY server.py .
 USER 65532:65532
-CMD ["python", "sync.py"]
+CMD ["python", "server.py"]
