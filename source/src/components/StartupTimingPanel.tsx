@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {markStartup,startupEnabled,startupSamples,type StartupSample} from '../data/startup-timings';
 import {captureNetworkDiagnostics} from '../data/network-diagnostics';
+import {compareSourceFromSearch,comparisonUrl} from '../data/source-comparison';
 const labels:Record<string,string>={
  'js-entry':'JavaScript bắt đầu chạy',
  'app-module-fetch':'Bắt đầu tải giao diện báo cáo',
@@ -52,6 +53,15 @@ export function StartupTimingPanel(){
  const first=samples.find(s=>s.stage==='data-first');
  const auth=samples.find(s=>s.stage==='auth-signed-in');
  const longpoll=new URLSearchParams(window.location.search).get('dbTransport')==='longpoll';
+ const comparison=compareSourceFromSearch(window.location.search);
+ const selection=samples.find(s=>s.stage==='source-selected');
+ const sheetStarted=samples.find(s=>s.stage==='excel-request-start');
+ const sheetFinished=samples.find(s=>s.stage==='excel-response');
+ const dataReady=comparison==='excel'?sheetFinished:first;
+ const requestStart=comparison==='excel'?sheetStarted:subscribed;
+ const renderDone=samples.find(s=>s.stage==='first-data-painted');
+ const sourceLatency=requestStart&&dataReady?dataReady.atMs-requestStart.atMs:null;
+ const overall=renderDone?.atMs??null;
  const stall=!!subscribed&&!first&&elapsed-subscribed.atMs>12000;
  const authStall=!auth&&elapsed>12000;
  const urlWithTransport=(mode:'auto'|'longpoll')=>{
@@ -66,6 +76,17 @@ export function StartupTimingPanel(){
  return <details className="startup-timing-panel" open style={{border:'1px solid #afc0cf',borderRadius:8,padding:10,margin:'8px auto',maxWidth:980,background:'#f7fafc',color:'#223c50'}}>
    <summary><strong>Chẩn đoán thời gian mở trang (thời gian tính từ navigationStart)</strong></summary>
    <p style={{fontSize:12,margin:'4px 0'}}>Các mốc độc lập có thể trùng thời gian; không cộng các hàng để suy ra tổng. Không chứa dữ liệu nghiệp vụ hay thông tin đăng nhập.</p>
+   {comparison&&<div style={{border:'1px solid #cbd5df',borderRadius:6,padding:8,margin:'8px 0',fontSize:12}}>
+     <strong>Thử nghiệm nguồn dữ liệu (A/B): {comparison==='excel'?'EXCEL TRỰC TIẾP':'FIREBASE REALTIME DATABASE'}</strong>
+     <p>Đọc dữ liệu thật từ mạng, không dùng cache bản ghi; cùng xác thực và layout Firebase. Chỉ xem, không đổi nguồn mặc định admin.</p>
+     <strong>Yêu cầu → nhận dữ liệu: {sourceLatency===null?'Chưa có kết quả':sourceLatency+' ms'}</strong>
+     <span> · Bảng hiện: {overall===null?'Chưa có kết quả':overall+' ms'} · Số dòng: {dataReady?.detail??'Đang chờ'}</span>
+     <div style={{display:'flex',gap:8,marginTop:6,flexWrap:'wrap'}}>
+       <button type="button" className="button ghost" onClick={()=>window.location.assign(comparisonUrl(window.location.href,'excel'))}>Đọc trực tiếp Excel</button>
+       <button type="button" className="button ghost" onClick={()=>window.location.assign(comparisonUrl(window.location.href,'database'))}>Đọc Firebase Database</button>
+     </div>
+     <p>Mỗi lựa chọn tải lại trang để đo từ đầu. Nên thử cùng máy/mạng và giữ tab ở phía trước; chạy ít nhất ba lần mỗi nguồn.</p>
+   </div>}
    <table style={{width:'100%',fontSize:12,borderCollapse:'collapse'}}>
      <thead><tr><th style={{textAlign:'left'}}>Giai đoạn</th><th style={{textAlign:'right'}}>Mốc (ms)</th><th style={{textAlign:'left'}}>Ghi chú</th></tr></thead>
      <tbody>{samples.map(s=><tr key={s.stage}><td>{labels[s.stage]??s.stage}</td><td style={{textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{s.atMs}</td><td>{s.detail??''}</td></tr>)}</tbody>
@@ -83,6 +104,6 @@ export function StartupTimingPanel(){
        {longpoll?'Trở về kết nối Firebase mặc định':'Thử kết nối Firebase tương thích (HTTP long-poll)'}
      </button>
    </div>
-   <button type="button" className="button ghost" onClick={() => void navigator.clipboard?.writeText(JSON.stringify({measurements:startupSamples(),network:captureNetworkDiagnostics(),transport:longpoll?'longpoll':'default',elapsedMs:Math.round(performance.now())},null,2))}>Sao chép số đo (không gồm dữ liệu bảng)</button>
+   <button type="button" className="button ghost" onClick={() => void navigator.clipboard?.writeText(JSON.stringify({measurements:startupSamples(),network:captureNetworkDiagnostics(),transport:longpoll?'longpoll':'default',compareSource:comparison,comparisonMeasurement:comparison?{readLatencyMs:sourceLatency,firstPaintMs:overall,rowCountNote:dataReady?.detail??null}:null,elapsedMs:Math.round(performance.now())},null,2))}>Sao chép số đo (không gồm dữ liệu bảng)</button>
  </details>;
 }
