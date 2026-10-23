@@ -32,3 +32,32 @@ Chỉ số trên được tính từ **sản phẩm build**, cùng gzip Node; kh
 - Sau khi publish, đo bằng tab ẩn danh mới qua `?startupMetrics=1`: 3 lần, ghi `js-entry`, `auth-start-anonymous`, `auth-signed-in`, `data-first`, `first-data-painted`. Nếu không mở admin, Network tab không có chunk Excel.
 - Xác thực RTDB vẫn bắt buộc (`hdnd/.read` yêu cầu `auth != null`). Không bỏ Auth hoặc đưa 55 dòng nghiệp vụ vào public HTML để tạo cảm giác nhanh. Tối ưu mã chỉ làm **Auth được bắt đầu sớm hơn**, không làm biến mất thời gian Auth network. Nếu cần giảm thêm login lần đầu, phải tách chi phí DNS/network của Identity Toolkit bằng Chrome DevTools và đánh giá kiến trúc backend, không nới quyền dữ liệu.
 - Không nhầm cache RTDB 15 phút với đồng bộ nguồn Excel: mirror 55 dòng đã import vẫn chưa có lịch tự copy Excel → Firebase.
+
+## PR #34 — Lần mở đầu: khởi tạo Firebase Auth trước React (23/10/2026)
+
+Yêu cầu: thời gian mở **trình duyệt mới, không cache**, không chỉ F5. Hai ảnh mới của người dùng cho thấy tab ẩn danh hiện bảng ~2.241 giây, Chrome nhiều tab ~2.000 giây. Trong tab ẩn danh, từ bắt đầu sign-in tới `auth-signed-in` là ~1.423 giây; 55 dòng RTDB sau khi subscribe đến trong 126ms. Dữ liệu không được chuyển thành public JSON hoặc làm suy yếu `hdnd/.read = auth != null`.
+
+### Cách triển khai
+
+- `firebase-boot.ts` tạo **một** Firebase app/Auth/Database singleton, độc lập React. `pages-main.tsx` gọi `startFirebaseWarmup()` **trước** `createRoot().render()`. Chờ `auth.authStateReady()` để không tạo tài khoản khách khi danh tính Google/admin đang khôi phục. Một `ensureGuestAuth` dùng chung Promise với hook `useFirebase` tránh hai lệnh tạo guest đồng thời.
+- Production dùng `initializeAuth` với IndexedDB, browser local và fallback memory, không khởi tạo popup/redirect resolver mặc định cho khách. Chỉ khi user bấm đăng nhập Google, `login()` mới lấy `GoogleAuthProvider`, `signInWithPopup` và `browserPopupRedirectResolver`. Các kênh RTDB cần xác thực vẫn **chỉ** mở sau Auth.
+- Đã thử tách **Firebase boot và toàn bộ UI** thành hai tệp JS (preload UI). Kết quả riêng trong GitHub runner: gzip khởi động 169.458 bytes, nhưng Chrome shell 927ms so với mốc 654ms trước đó. **Loại bỏ biến thể này**, không đưa lên website. Giữ UI chạy một lượt, giữ lazy-load riêng SheetJS quản trị và font chọn riêng.
+- Khi đổi thứ tự gộp CSS trong biến thể tách JS, phát hiện `.app-shell.wide-table-page > main {min-width:920px}` từ `item-frame.css` vô tình ép trang khách rộng hơn cấu hình 850px. Đã khoanh quy tắc 920px đúng màn hình chỉnh sửa admin (`.settings-page`) và Chrome smoke đã xác nhận căn giữa trở lại.
+
+### Chứng cứ CI — không coi là thời gian Firebase production
+
+| Bản CI | gzip HTML + JS/CSS cold | Chrome clean profile: thấy khung |
+| --- | ---: | ---: |
+| Bản Pages trước PR #34 | 178.560 bytes | 654ms (một lần chạy, CI) |
+| Tách UI riêng, bị loại | 169.458 bytes | 927ms (một lần chạy, CI) |
+| Khôi phục UI một lượt, Auth gọn | 177.697 bytes | 718ms (một lần chạy, CI) |
+| Auth gọn + popup Google chỉ khi bấm | 177.836 bytes | **320ms** (một lần chạy, CI) |
+
+**Các con số Chrome là bốn lần chạy khác nhau trên GitHub runners, không phải phép A/B cùng phần cứng và đường truyền**; dao động rất lớn. Không thể khẳng định tốc độ 320ms là cải thiện trung bình hoặc hứa mục tiêu 1–1,5 giây ở Firebase production. Giá trị thực tế của thay đổi là sớm hơn 1 bước React effect, bỏ phụ thuộc popup không cần thiết và không tạo tài khoản ẩn danh trùng.
+
+### Test / điều kiện phát hành
+
+- `firebase-warmup.test.ts`: khi Auth đang khôi phục tài khoản Google không được gọi anonymous; nếu hai thành phần cùng yêu cầu guest login thì chỉ phát sinh **một** call. `firebase-config-state.test.ts`: nút đăng nhập Google vẫn nhận popup resolver.
+- Firebase emulator, TypeScript, toàn bộ unit, Chrome smoke cột/bảng/tab/UI, HTML offline độc lập và công cụ Excel lazy phải PASS.
+- Đo production trên **cùng máy, cùng mạng**: `?startupMetrics=1` vào tab ẩn danh mới, ít nhất ba lần, ghi thời điểm `js-entry`, `auth-start-anonymous`, `auth-signed-in`, `data-subscribe`, `data-first`, `first-data-painted`. Chrome Network có thể đối chiếu request Identity Toolkit / WebSocket. **Không gửi token hoặc dữ liệu nghiệp vụ trong log.**
+- Không ảnh hưởng vấn đề **Excel→Firebase 60s chưa triển khai tự động**; tốc độ đọc DB không có nghĩa snapshot Excel luôn mới.
