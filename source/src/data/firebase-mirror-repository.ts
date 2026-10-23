@@ -3,6 +3,7 @@ import type {Item,AuditEntry,Patch,SaveResult} from '../../shared/types';
 import type {Repository} from './repository';
 import type {SheetConfig} from './sheet-config';
 import {markStartup} from './startup-timings';
+import {loadSessionMirror,storeSessionMirror} from './firebase-snapshot-cache';
 
 /** Immutable server-published snapshot. No browser write path. */
 export interface ExcelMirrorSnapshot {
@@ -43,7 +44,18 @@ export class FirebaseMirrorRepository implements Repository {
   readonly subscribeInitial=true;
   readonly canDraft=true;
   snapshot:ExcelMirrorSnapshot|null=null;
-  constructor(private readonly database:Database,private readonly source:SheetConfig){}
+  liveConfirmed=false;
+  constructor(private readonly database:Database,private readonly source:SheetConfig,
+    private readonly viewerUid:()=>string|null=()=>null){}
+  cachedRows():Item[]|null{
+    const uid=this.viewerUid();
+    if(!uid)return null;
+    const snapshot=loadSessionMirror(uid,this.source);
+    if(!snapshot)return null;
+    this.snapshot=snapshot;
+    markStartup('data-cache-hydrated',snapshot.rows.length+' dòng (chưa xác nhận trực tuyến)');
+    return snapshot.rows;
+  }
   private parse(raw:unknown) {
     const verified=validateExcelMirror(raw,this.source);
     this.snapshot=verified;return verified.rows;
@@ -54,7 +66,12 @@ export class FirebaseMirrorRepository implements Repository {
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void) {
     markStartup('data-subscribe');
     return onValue(ref(this.database,mirrorPath(this.source)),
-      snap=>{try{const rows=this.parse(snap.val());markStartup('data-first',rows.length+' dòng');next(rows);}catch(cause){error(cause as Error);}},
+      snap=>{try{const rows=this.parse(snap.val());
+        this.liveConfirmed=true;
+        const uid=this.viewerUid();
+        if(uid&&this.snapshot)storeSessionMirror(uid,this.source,this.snapshot);
+        markStartup('data-first',rows.length+' dòng (đã xác nhận trực tuyến)');next(rows);
+      }catch(cause){error(cause as Error);}},
       cause=>error(cause));
   }
   async save(_patches:Patch[]):Promise<SaveResult[]> {

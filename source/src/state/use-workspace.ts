@@ -13,6 +13,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [loadedAt, setLoadedAt] = useState('');
+  const [cachePending,setCachePending]=useState(false);
   const [autosaveMessage, setAutosaveMessage] = useState('');
   const firebase=repository.sourceKind==='firebase';
   const autoFailed=useRef('');
@@ -66,12 +67,21 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     }
   }, [repository, sourceKey,canDraft]);
   useEffect(() => {
-    lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});
+    lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});setCachePending(false);
     setLoadedAt('');setMessage('');setAutosaveMessage('');
     skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
     protectedRecovery.current=false;
     if(!canStartDatabase){setBusy(true);}
-    else if(repository.subscribeInitial&&repository.subscribe){setBusy(true);}
+    else if(repository.subscribeInitial&&repository.subscribe){
+      const cached=repository.cachedRows?.();
+      if(cached?.length){
+        lastRowsSignature.current=JSON.stringify(cached);
+        setItems(cached);setDataSource(repository);
+        setLoadedAt('Bản lưu phiên này · đang kiểm tra Firebase');
+        setCachePending(true);
+        setBusy(false);
+      }else setBusy(true);
+    }
     else void refresh();
     // A changed refresh callback is not a source switch; never clear the mounted table.
   }, [repository,sourceKey,canStartDatabase]);
@@ -90,12 +100,16 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         lastRowsSignature.current=signature;
         setItems(rows);setDataSource(repository);setLoadedAt(new Date().toLocaleString('vi-VN'));
       }
-      if(repository.subscribeInitial)setBusy(false);
+      if(repository.subscribeInitial){
+        setCachePending(false);
+        setLoadedAt(new Date().toLocaleString('vi-VN'));
+        setBusy(false);
+      }
     },cause=>{if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
   },[repository,canStartDatabase]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
-    if (!item || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
+    if (!item || cachePending || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
     skipCheckpoint.current = false;
     const canonicalChanges:Changes=repository.sourceKind==='google'?Object.fromEntries(Object.entries(changes).map(([field,value])=>[field,typeof value==='string'?value.trim():value])):changes;
     setDrafts(previous => {
@@ -109,7 +123,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   };
   const discard = () => { protectedRecovery.current=false;skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage(''); setDrafts({}); setErrors({}); setMessage('Đã bỏ phần sửa trên máy. File nguồn không thay đổi.'); };
   const save = async () => {
-    if (busy || saving.current||!canDraft) return false;
+    if (busy || cachePending || saving.current||!canDraft) return false;
     if (!Object.keys(drafts).length) return true;
     saving.current=true;setBusy(true);
     const requestRepository=repository;
@@ -168,5 +182,5 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     return () => { clearInterval(interval); window.removeEventListener('pagehide',flush); window.removeEventListener('beforeunload',unload); document.removeEventListener('visibilitychange',visibility); flush(); };
   },[repository,sourceKey,canDraft]);
   useEffect(()=>{const timer=window.setTimeout(()=>checkpoint.current(),800);return()=>clearTimeout(timer);},[drafts]);
-  return { keepDraft,protectedRecovery:protectedRecovery.current,items: visibleItems, workingItems, drafts, errors, busy, message, loadedAt, autosaveMessage, refresh, update, discard, save };
+  return { keepDraft,protectedRecovery:protectedRecovery.current,cachePending,items: visibleItems, workingItems, drafts, errors, busy, message, loadedAt, autosaveMessage, refresh, update, discard, save };
 }

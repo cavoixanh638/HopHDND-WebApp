@@ -11,6 +11,7 @@ import { validateItemLayout, type ItemLayout } from '../data/item-preferences';
 import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-merge';
 import type {SheetConfig} from '../data/sheet-config';
 import {markStartup} from '../data/startup-timings';
+import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
 export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'}
@@ -89,7 +90,7 @@ export function useFirebase(){
   },[user?.uid,database]);
   const admin=firebaseAdmin(user);
   const login=async()=>{setError('');await signInWithPopup(auth,new GoogleAuthProvider());};
-  const logout=async()=>{await signOut(auth);};
+  const logout=async()=>{clearSessionMirrors();await signOut(auth);};
   const saveProfile=async(section:ConfigSection|'dataSource',value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown,resolutions:LayoutConflictChoices={})=>{
     if(!firebaseAdmin(auth.currentUser))throw new Error('Chỉ tài khoản Google quản trị được lưu bố trí và danh mục.');
     if(!profileReady)throw new Error('Chưa đọc được cấu hình gốc; không khởi tạo hoặc ghi đè. Đọc lại danh mục và bố trí trước.');

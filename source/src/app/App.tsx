@@ -49,12 +49,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [configured, setConfigured] = useState(() => window.HDND_SOURCE?parseSheetConfig(window.HDND_SOURCE):loadSheetConfig() ?? parseSheetConfig(DEFAULT_SHEET_URL));
   const [browserRepository,setRepository] = useState<Repository>(()=>connectedRepository(configured));
   const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
+  const activeViewerUid=useRef<string|null>(null);
+  activeViewerUid.current=firebase?.user?.uid??null;
   // When selected, the verified Firebase mirror replaces slow GViz reads for all viewers.
   const repository=useMemo<Repository>(()=>firebase
     ?firebase.profile?.dataSource==='database'
-      ?new FirebaseMirrorRepository(firebase.database,configured)
+      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current)
       :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined)
-    :browserRepository,[firebase?.database,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
+    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
@@ -107,7 +109,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const googleCommon=useSharedConfig(configured,!firebase&&!isDemo&&!privateTest,editingPage);
   const common=firebase?firebase.common:googleCommon;
   const canCustomize=isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config);
-  const canEditDraft=repository.canDraft??!repository.readOnly;
+  const canEditDraft=(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
   const changeDataSource=async(next:'excel'|'database')=>{
     if(!firebase?.isAdmin||common.status!=='ready'||!firebase.profile)throw new Error('Cần quản trị và bản bố cục Firebase đã xác nhận.');
     if(next==='database')await new FirebaseMirrorRepository(firebase.database,configured).list();
@@ -236,10 +238,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   useEffect(()=>{
     if(reportedPaint.current||layoutPending||layoutUnavailable||!canStartSource||!workspace.items.length)return;
     if(typeof requestAnimationFrame!=='function')return;
-    const rows=workspace.items.length,kind=repository.sourceKind;
-    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',rows+' dòng · '+(kind==='firebase'?'Database':'Excel'));});
+    const rows=workspace.items.length,kind=repository.sourceKind,fromCache=workspace.cachePending;
+    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',rows+' dòng · '+(kind==='firebase'?'Database':'Excel')+(fromCache?' · bản lưu đang xác minh':''));});
     return()=>cancelAnimationFrame(raf);
-  },[workspace.items,layoutPending,layoutUnavailable,canStartSource,repository.sourceKind]);
+  },[workspace.items,workspace.cachePending,layoutPending,layoutUnavailable,canStartSource,repository.sourceKind]);
   const loadingWidth=page==='overview'||page==='customize'
     ?confirmedWidths?.report??1120
     :confirmedWidths?.list??1120;
@@ -319,7 +321,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         {!isFirebase&&<button className={page==='sync'?'active':''} onClick={event=>openOptions('sync',event)}>Cấu hình chung</button>}
       </nav>}
       {isFirebase&&common.config&&common.status!=='ready'&&<p className="muted" role="status">Đang xem bố cục admin đã lưu gần nhất trên máy; quyền đổi cấu hình vẫn bị khóa tới khi Firebase xác nhận.</p>}
-      {isFirebase&&repository instanceof FirebaseMirrorRepository&&repository.snapshot&&<p className="muted" role="status">Nguồn Database · Đồng bộ Excel thành công: {new Date(repository.snapshot.syncedAt).toLocaleString('vi-VN')}{Date.now()-Date.parse(repository.snapshot.syncedAt)>120000?' · Bản sao có thể chậm cập nhật':''}</p>}
+      {workspace.cachePending&&<p className="notice" role="status">Đang hiển thị bản dữ liệu lưu trong phiên trên thiết bị này. Chỉ xem; đang xác nhận bản mới nhất trên Firebase.</p>}
+      {isFirebase&&repository instanceof FirebaseMirrorRepository&&repository.snapshot&&!workspace.cachePending&&<p className="muted" role="status">Nguồn Database · Đồng bộ Excel thành công: {new Date(repository.snapshot.syncedAt).toLocaleString('vi-VN')}{Date.now()-Date.parse(repository.snapshot.syncedAt)>120000?' · Bản sao có thể chậm cập nhật':''}</p>}
       {!anonymousVisitor&&!isDemo&&!privateTest&&common.status==='error'&&<p className="notice" role="alert">Không tải được danh mục và cách hiển thị: {common.message} <button className="button ghost" disabled={common.busy} onClick={()=>void common.refresh()}>Thử lại</button>{!isFirebase&&!isGoogleHost()&&editorUrl&&<> · <a href={editorUrl} target="_blank" rel="noreferrer">Mở trang cấu hình trên Google</a></>}</p>}{workspace.message && <p className="notice" role="alert">{workspace.message}</p>}
       {storageHint && <p className="notice" role="status">{storageHint}</p>}
       {workspace.protectedRecovery&&<p className="notice">Có thay đổi trên máy chưa khớp dữ liệu nguồn hiện tại. <button className="button ghost" onClick={()=>{const bundle=readWorkspaceRecovery(sourceKey);if(!bundle)return;const blob=new Blob([JSON.stringify({schemaVersion:1,source:configured,bundle},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='HDND_nhap_can_doi_chieu.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Tải phần sửa trên máy để đối chiếu</button><button className="button danger" onClick={discard}>Bỏ phần sửa cũ trên máy</button></p>}

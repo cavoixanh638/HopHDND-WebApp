@@ -61,3 +61,22 @@ Thời điểm là **mốc tính từ navigationStart**, không phải tổng th
 - Không đổi Firebase Rules, không thay dữ liệu admin hoặc nhập dữ liệu mới.
 
 **Nghiệm thu bằng cùng trình duyệt:** mở `?startupMetrics=1` rồi F5 thường/ẩn danh, so `source-selected` và `first-data-painted`; khi admin đã chọn Database thì không được xuất hiện `excel-request-start` lúc mở mới, và `first-data-painted` phải ghi **55 dòng · Database** (hoặc số thực tế RTDB). Đo ít nhất 3 lần mỗi chế độ để tránh kết luận từ một mẫu.
+
+## Tiếp tục tối ưu 23/10 — đọc từ bộ nhớ đệm phiên, xác thực chạy song song
+
+Đề nghị từ người dùng: auth chạy nền; admin save tạo layout mặc định; 55 dòng trích nhanh để đọc ngay. Đánh giá theo **quy tắc Firebase production**:
+
+- **Có thể dựng khung/layout ngay**: profile `hdnd.confirmed-profile.v1:hophdnd-8b7b2` đã cache sau khi Firebase xác nhận, trong `localStorage`. Khi admin lưu, `storeConfirmedProfile(valid)` đã tạo bản xem nhanh trên thiết bị đang lưu, còn các thiết bị khác nhận từ Firebase và tạo cache sau lần kết nối đầu. Không có bước build lại GitHub Pages sau khi admin save.
+- **Không được vô hiệu hóa Auth cho nội dung**: production rule `hdnd/.read = auth != null`; công bố snapshot 55 dòng ở HTML/GitHub Pages/JSON công khai sẽ làm mất ranh giới này, kể cả khách thông thường có thể đăng nhập ẩn danh. Có thể chạy **Auth bất đồng bộ song song với UI shell**, nhưng dữ liệu lần đầu vẫn phải xác thực.
+- **Tốc độ dữ liệu thực**: hai mẫu đo trên máy người dùng cho thấy sau khi bắt đầu nghe RTDB, 55 dòng tới trong 106–390ms; tốc độ này không tỉ lệ thuận với số dòng mà còn có RTT/handshake. Nếu đọc toàn bộ 55 dòng trong JSON, dung lượng đủ nhỏ; tách fetch theo trang không chắc giảm thời gian và có thể làm sai số thống kê.
+- **PR #31** tạo cache theo phiên tab, UID đã xác thực, Excel ID, GID, TTL 15 phút, kiểm tra schema. Sau Auth, `useWorkspace` dựng ngay snapshot cache nếu có; `onValue()` tiếp tục xác minh trực tuyến và cập nhật; trong lúc chờ **chỉ xem**, nhãn cảnh báo rõ đây là bản cũ. Mất kết nối không xóa cache nhưng giữ read-only. Khi đăng xuất xóa cache; không đẩy nội dung lên GitHub công khai. Không dùng `localStorage` lâu dài để tránh dữ liệu nghiệp vụ tồn lưu trên máy dùng chung.
+- Lần mở **tab ẩn danh mới** hoặc **thiết bị chưa từng mở** không có cache, vì thế thời gian Auth + network vẫn tồn tại; không hứa hiển thị 55 dòng trước Firebase. Nếu muốn preload nội dung trước Auth cần quyết định/chính sách cho phép dữ liệu đó đọc công khai, không thể tự thay đổi Rules.
+- Đo lại hai kiểu: F5 trong **cùng tab** sau lần đọc thành công (có thể có `data-cache-hydrated` trước `data-first`), và cửa sổ incognito mới (không có cache). Không cộng thời gian milestone. Đối chiếu số dòng, `syncedAt` và `sourceModifiedAt`: cache chỉ nhanh, không tự biến bản Excel nhập thủ công thành bản mới.
+- Muốn giảm tiếp khoảng 740ms từ lúc tải trang đến khi JavaScript bắt đầu và giảm Auth lần đầu 1.383ms phải tối ưu **khởi động JS/đường truyền/Auth** trên chứng cứ waterfall. Bản build Pages đang đóng gói **1 HTML chứa JS/CSS** theo quy tắc offline; code-splitting/lazy loading admin module đòi thay kiến trúc gói không được thực hiện ngầm.
+
+### Kiểm thử bắt buộc
+1. Mở lần đầu chưa có Auth: không đọc `hdnd/mirrors`, không hiển thị cache người khác.
+2. Sau auth: cache đúng UID/source, chưa quá 15 phút, schema hợp lệ được dựng ở chế độ chỉ xem; RTDB vẫn đăng ký **một** kênh `onValue`.
+3. Khi RTDB xác nhận: gỡ cảnh báo, mở quyền xem/sửa thử theo quyền hiện tại, thay nội dung nếu nguồn cập nhật.
+4. Khi RTDB lỗi: giữ cache nhưng vẫn khóa sửa, cảnh báo nguồn chưa được xác nhận. Đăng xuất xóa cache.
+5. Không xuất JSON nội dung HĐND ra public repo/web assets, không sửa Rules, không tự đổi dataSource.

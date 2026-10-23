@@ -34,9 +34,9 @@ describe('Realtime Database initial read is a single authenticated listener',()=
  });
  const repo:Repository={sourceKind:'firebase',readOnly:true,canDraft:false,
    subscribeInitial:true,list,subscribe,history:async()=>[],save:async()=>[]};
- function render(authorized:boolean){
+ function render(authorized:boolean,selected:Repository=repo){
    h.render();
-   const result=useWorkspace(repo,'fixture',authorized);
+   const result=useWorkspace(selected,'fixture',authorized);
    h.flush();
    return result;
  }
@@ -46,6 +46,27 @@ describe('Realtime Database initial read is a single authenticated listener',()=
    vi.stubGlobal('document',{hidden:false,addEventListener:vi.fn(),removeEventListener:vi.fn()});
  });
  afterEach(()=>{h.dispose();vi.unstubAllGlobals();});
+ it('renders a read-only recent session snapshot once the viewer is authenticated, then confirms online',()=>{
+   const recent=[{...rows[0],note:'Bản lưu tạm'}];
+   const cachedRows=vi.fn(()=>recent);
+   const viewerRepo:Repository={...repo,cachedRows};
+   let status=render(false,viewerRepo);
+   expect(status.items).toHaveLength(0);
+   expect(cachedRows).not.toHaveBeenCalled();
+   status=render(true,viewerRepo);
+   expect(cachedRows).toHaveBeenCalledTimes(1);
+   expect(status.items).toHaveLength(0); // React state update needs the following render.
+   status=render(true,viewerRepo);
+   expect(status.items).toEqual(recent);
+   expect(status.busy).toBe(false);
+   expect(status.cachePending).toBe(true);
+   expect(list).not.toHaveBeenCalled();
+   receive!(rows);
+   status=render(true,viewerRepo);
+   expect(status.items).toEqual(rows);
+   expect(status.cachePending).toBe(false);
+   expect(subscribe).toHaveBeenCalledTimes(1);
+ });
  it('starts no protected request before authentication and only one listener after',()=>{
    render(false);
    expect(list).not.toHaveBeenCalled();
