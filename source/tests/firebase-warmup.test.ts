@@ -38,7 +38,7 @@ describe('Firebase cold-start warmup',()=>{
     expect(h.signIn).not.toHaveBeenCalled();
   });
   it('signs in guest while UI may still load and shares a single in-flight attempt',async()=>{
-    let resolveSign!:()=>void;
+    let resolveSign!:(value:unknown)=>void;
     h.signIn.mockReturnValue(new Promise(resolve=>resolveSign=resolve));
     const boot=await import('../src/state/firebase-boot');
     const first=boot.startFirebaseWarmup();
@@ -46,7 +46,7 @@ describe('Firebase cold-start warmup',()=>{
     expect(h.signIn).toHaveBeenCalledTimes(1);
     const controllerAttempt=boot.ensureGuestAuth(h.auth as never);
     expect(h.signIn).toHaveBeenCalledTimes(1);
-    resolveSign();
+    resolveSign(undefined);
     await Promise.all([first,controllerAttempt]);
     expect(boot.getFirebaseServices().auth).toBe(h.auth);
     expect(h.initialize).toHaveBeenCalledTimes(1);
