@@ -786,3 +786,16 @@ Google Test deployments yêu cầu deploy web app lần đầu trước khi mở
 - Kiểm soát độc lập [PR #42](https://github.com/cavoixanh638/HopHDND-WebApp/pull/42) được **đóng không merge** sau khi chạy 10 lượt Chrome fresh profile (5 lượt mỗi nhóm), URL giống nhau, bộ nhớ cache dữ liệu tắt, thứ tự A/B đảo lượt. Log: [GitHub Actions #39974764918](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39974764918). Tất cả 10 lượt có mốc data-first trực tuyến.
 - **Kết quả thực đo GitHub runner:** cách hiện tại median bảng 1.632ms, p75 1.683ms, median dữ liệu online 1.610ms; cách hoãn quyền cho khách median bảng 1.726ms, p75 1.880ms, median dữ liệu online 1.682ms. Cách thử **chậm hơn** khoảng 5,8% (median bảng) và 11,7% (p75 bảng). Mẫu nhỏ và runner không đại diện mạng người dùng, nhưng **không có căn cứ bật mặc định**.
 - Quyết định: khôi phục `use-firebase.ts` và test về phiên trước PR41, xóa công tắc thử và helper cold A/B không còn dùng. Giữ benchmark được CI kiểm đã có từ PR39/40 và tài liệu lịch sử [DATA_FIRST_REORDER_2026-10-23](DATA_FIRST_REORDER_2026-10-23.md). Không ghi Excel/RTDB, không đổi Firebase Auth/Rules/host hoặc các chức năng sửa/tài khoản. Chưa chứng minh tốc độ mới nhanh hơn; muốn tối ưu sâu cần waterfall/network từ Chrome người dùng hoặc API dữ liệu có xác thực thiết kế độc lập.
+
+
+## 23/10/2026 — Khẩn cấp: trang treo/không kết nối dữ liệu sau nhiều lượt publish
+
+Người dùng báo web treo sau phát hành. **Đã kiểm chứng một lỗi thực tế trong pipeline phát hành**: `.github/workflows/publish-pages.yml` dùng `rsync -a --delete dist-pages/assets/ ../assets/` khiến mọi JS/CSS có hash từ build trước bị xóa, trong khi tab Chrome, HTTP cache hoặc GitHub Pages CDN còn có thể giữ `index.html` cũ. Ví dụ root bản mới tham chiếu `pages-CJqRe2sU.js`, nhưng file `pages-oZVCTerc.js` từ bản PR41 và `pages-CC0VcbrY.js` từ PR39 đã bị xóa khỏi tree: browser dùng HTML cache có thể gặp 404 trước khi Firebase khởi động. Đây là **đường lỗi đã xác nhận qua mã và tệp GitHub**, chưa chứng minh được là nguyên nhân duy nhất trên máy người dùng, cần xác nhận chạy thực.
+
+Hotfix `hotfix/retain-pages-hashed-assets-20261023`:
+- Bỏ `--delete` để giữ các assets có hash từng phát hành. Không thay app logic, hosting, Auth, Security Rules, nguồn hay hàng dữ liệu.
+- Phục hồi 3 entry JS từ các build mới gần đây (oZVCTerc, CC0VcbrY, VmAk19Ch) **và sáu module popup/Excel** đi kèm từ đúng commit lịch sử, vì khôi phục entry nhưng thiếu chunk phụ vẫn gây hỏng màn quản trị.
+- Thêm script `source/scripts/check-published-assets.mjs` để publisher chặn publish nếu `index.html` mới/cũ tham chiếu tệp JS/CSS không có; CI kiểm cú pháp và chạy checker với build thử.
+- Chỉ nghiệm thu sau CI verify, publisher thành công, Pages deployment thành công và probe Firebase Auth/RTDB trực tuyến. **Không coi CI PASS = đã chữa được lỗi trên thiết bị của người dùng.** Nếu giao diện còn treo: mở `?startupMetrics=1` và `?startupMetrics=1&dbTransport=longpoll`, đối chiếu các mốc auth/profile/data-first, đồng thời xem Console/Network 404, permission_denied, auth/network-request-failed.
+
+Quyết định: dừng mọi thử nghiệm thay thứ tự dữ liệu/hosting. Ưu tiên độ ổn định, tránh lỗi stale JS asset và truy nguyên RTDB nếu sự cố vẫn còn.
