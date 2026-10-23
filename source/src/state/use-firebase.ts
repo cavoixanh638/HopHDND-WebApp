@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, GoogleAuthProvider, onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, type User } from 'firebase/auth';
-import { connectDatabaseEmulator, get, getDatabase, onValue, ref, runTransaction } from 'firebase/database';
+import { connectDatabaseEmulator, forceLongPolling, get, getDatabase, onValue, ref, runTransaction } from 'firebase/database';
 import { firebaseConfig } from '../data/firebase-config';
 import { firebaseAdmin, mayEdit, samePermissions, type CellPermissions } from '../data/firebase-repository';
 import type { ConfigSection } from '../data/shared-config';
@@ -46,6 +46,12 @@ function initialize(){
   const emulator=import.meta.env.MODE==='pages-test';
   // Test builds cannot address the real project, even when an emulator is absent.
   const config=emulator?{apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',projectId:'demo-hdnd',appId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com'}:firebaseConfig;
+  // Diagnostic transport override only; regular visitors keep Firebase's default.
+  // Firebase documents that forceLongPolling MUST run before listeners connect.
+  const longpoll=!emulator&&typeof window!=='undefined'&&
+    new URLSearchParams(window.location?.search??'').get('dbTransport')==='longpoll';
+  if(longpoll)forceLongPolling();
+  markStartup('db-transport',longpoll?'HTTP long-poll':'Firebase auto');
   const app=initializeApp(config,'hdnd-pages');
   const auth=getAuth(app),database=getDatabase(app);
   if(emulator){connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectDatabaseEmulator(database,'127.0.0.1',9000);}
@@ -71,14 +77,14 @@ export function useFirebase(){
       markStartup('auth-checked');
       if(next)markStartup('auth-signed-in');
       setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});
-      if(!next&&!signing){signing=true;markStartup('auth-start-anonymous');void signInAnonymously(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
-    },cause=>setError(cause.message));
+      if(!next&&!signing){signing=true;markStartup('auth-start-anonymous');void signInAnonymously(auth).catch(cause=>{markStartup('auth-error','Đăng nhập ẩn danh không thành công');setError(`Không đăng nhập ẩn danh được: ${cause.message}`);}).finally(()=>{signing=false;});}
+    },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
   },[auth]);
   useEffect(()=>{
     if(!user)return;
     let active=true;
-    const failed=(cause:Error)=>{if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);};
+    const failed=(cause:Error)=>{markStartup('database-error','Lỗi kết nối hoặc phân quyền');if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);};
     const stop=[onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
       if(!active)return;
       markStartup('control-received');
