@@ -396,22 +396,8 @@ try{
   })()`);
   if(!cellAlignment)throw Error('Column-key cell alignment regression');
 
-  if(!await evaluate(`(()=>{
-    const button=document.querySelector('.source-column-visibility button');
-    if(!button)return false;
-    button.click();return true;
-  })()`))throw Error('Missing viewer column switch button');
-  // New source layouts display all A–O by default, even in saved mode.
-  // The control must switch state, not manufacture missing columns in a fresh layout.
-  await eventually("document.querySelector('.source-column-visibility button')?.getAttribute('aria-pressed')==='true'",
-    'Show-all column selection toggle did not switch state');
-  if(!await evaluate(`(()=>{
-    const button=document.querySelector('.source-column-visibility button');
-    if(!button)return false;
-    button.click();return true;
-  })()`))throw Error('Cannot restore full column view');
-  await eventually("document.querySelectorAll('.item-column-filter-row [data-filter-key]').length===15",
-    'Returning to full A–O columns did not restore the source view');
+  if(await evaluate("!!document.querySelector('.source-column-visibility button')"))
+    throw Error('Guest must not change admin source column visibility');
 
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
