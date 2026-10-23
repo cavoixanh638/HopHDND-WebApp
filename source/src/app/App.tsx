@@ -15,6 +15,7 @@ import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
 import type { Repository } from '../data/repository';
 import { SheetsRepository, readSheet } from '../data/sheets-repository';
+import type {SheetSnapshot} from '../data/gviz-parser';
 import { FirebaseMirrorRepository } from '../data/firebase-mirror-repository';
 import { ExcelRepository } from '../data/excel-repository';
 import { DEFAULT_SHEET_URL, clearSheetConfig, loadSheetConfig, parseSheetConfig, saveSheetConfig, type SheetConfig } from '../data/sheet-config';
@@ -45,12 +46,13 @@ const connectedRepository=(config:SheetConfig):Repository=>isGoogleHost()&&windo
 export function App({firebase,TransferPanel}:{firebase?:FirebaseController;TransferPanel?:typeof import('../features/settings/ExcelTransferPanel').ExcelTransferPanel}={}) {
   const [configured, setConfigured] = useState(() => window.HDND_SOURCE?parseSheetConfig(window.HDND_SOURCE):loadSheetConfig() ?? parseSheetConfig(DEFAULT_SHEET_URL));
   const [browserRepository,setRepository] = useState<Repository>(()=>connectedRepository(configured));
+  const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
   // When selected, the verified Firebase mirror replaces slow GViz reads for all viewers.
   const repository=useMemo<Repository>(()=>firebase
     ?firebase.profile?.dataSource==='database'
       ?new FirebaseMirrorRepository(firebase.database,configured)
-      :new SheetsRepository(configured)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository]);
+      :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined)
+    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
@@ -146,7 +148,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const openOptions = (next: Page, event: { currentTarget: HTMLElement }) => {
     event.currentTarget.closest('.options-menu')?.removeAttribute('open');
     if(editorUnsaved&&next!==page){setLayoutMessage('Có thay đổi chưa lưu. Hãy lưu hoặc bỏ phần đang chỉnh trước khi chuyển mục.');return;}
-    if(isFirebase&&['items-customize','items-permissions','customize','catalogs','source'].includes(next)&&!canCustomize){setLayoutMessage('Chỉ tài khoản quản trị được thay đổi cấu hình nguồn và bố cục.');return;}
+    if(isFirebase&&next==='source'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị được thay link Excel.');return;}
+    if(isFirebase&&['items-customize','items-permissions','customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage('Chỉ tài khoản quản trị được thay đổi cấu hình nguồn và bố cục.');return;}
     if(['customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage(isFirebase?'Cần đăng nhập Google quản trị và đọc được cấu hình chung.':'Chờ cấu hình chung tải xong hoặc mở trình chỉnh chung trên Google.');return;}
     if(next==='review'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị mới xem và phê duyệt mốc dữ liệu.');return;}if(isFirebase){firebaseEditRevision.current=firebase!.profile?.revision??0;}
     setReportWidthPreview(null);
@@ -165,6 +168,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(privateTest&&config.url!==window.HDND_SOURCE)throw new Error('Bản thử chỉ dùng bản sao Excel đã chỉ định.');
     const snapshot = await readSheet(config);
     setStorageHint(saveSheetConfig(config) ? '' : 'Đã kết nối, nhưng trình duyệt không lưu được lựa chọn. Lần mở sau có thể cần nhập lại link.');
+    if(isFirebase)setFirebaseSourceSeed({url:config.url,snapshot});
     setConfigured(config); setRepository(!firebase&&isGoogleHost()&&window.HDND_EXCEL_ENABLED===true&&window.HDND_SOURCE===config.url?new ExcelRepository(config):new SheetsRepository(config,snapshot)); setSelection(null); setHistory(null);
   };
   const warnings = repository instanceof SheetsRepository ? repository.snapshot?.warnings ?? [] : repository instanceof ExcelRepository?repository.warnings:[];
@@ -186,7 +190,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(!canCustomize||!preset)return itemLayout.frameWidth??'auto';
     try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
     catch{return itemLayout.frameWidth??'auto';}
-  },[itemLayout,sourceKey,listPage]);
+  },[itemLayout,sourceKey,listPage,canCustomize]);
   // Cache only widths from an actually confirmed profile. This keeps the
   // header, tabs and loading placeholder at their last saved width on reload.
   // Without a prior profile, use a compact neutral loading shell rather than
