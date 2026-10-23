@@ -45,6 +45,14 @@ describe('Firebase config controller remains independent of business data',()=>{
       expect(h.listeners.has('hdnd/profile')).toBe(true);
     }finally{vi.unstubAllGlobals();}
   });
+  it('can disable early prefetch to perform an on-device A/B performance comparison',()=>{
+    vi.stubGlobal('window',{location:{search:'?startupMetrics=1&mirrorWarmup=off'}});
+    try{
+      login();
+      expect([...h.listeners.keys()]).not.toContain('hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344');
+      expect(h.listeners.has('hdnd/profile')).toBe(true);
+    }finally{vi.unstubAllGlobals();}
+  });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
     login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
