@@ -53,6 +53,10 @@ jobs:
           test -s dist-pages/index.html
           test -n "$(find dist-pages/assets -type f -name '*.js' -print -quit)"
           node scripts/check-pages-performance.mjs dist-pages
+      - name: Verify cached HTML asset compatibility hotfix
+        run: |
+          node --check scripts/check-published-assets.mjs
+          node scripts/check-published-assets.mjs dist-pages/index.html dist-pages/index.html dist-pages/assets
       - name: Stage identical candidate hosting bundles without deploying
         run: node scripts/prepare-hosting-staging.mjs
       - name: Verify browser benchmark command
