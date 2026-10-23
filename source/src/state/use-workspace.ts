@@ -4,6 +4,7 @@ import type { Repository } from '../data/repository';
 import { updateDraft } from '../domain/items';
 import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-checkpoints';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
+import {markStartup} from '../data/startup-timings';
 
 export function useWorkspace(repository: Repository, sourceKey = 'demo') {
   const [items, setItems] = useState<Item[]>([]);
@@ -68,7 +69,9 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
     lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});
     setLoadedAt('');setMessage('');setAutosaveMessage('');
     skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
-    protectedRecovery.current=false;void refresh();
+    protectedRecovery.current=false;
+    if(repository.subscribeInitial&&repository.subscribe){setBusy(true);}
+    else void refresh();
     // A changed refresh callback is not a source switch; never clear the mounted table.
   }, [repository,sourceKey]);
   useEffect(() => {
@@ -86,7 +89,8 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
         lastRowsSignature.current=signature;
         setItems(rows);setDataSource(repository);setLoadedAt(new Date().toLocaleString('vi-VN'));
       }
-    },cause=>setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`));
+      if(repository.subscribeInitial)setBusy(false);
+    },cause=>{if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
   },[repository]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
