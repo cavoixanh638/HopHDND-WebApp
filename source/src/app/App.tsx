@@ -56,7 +56,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     ?firebase.profile?.dataSource==='database'
       ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current)
       :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined)
-    :browserRepository,[firebase?.database,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
+    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
