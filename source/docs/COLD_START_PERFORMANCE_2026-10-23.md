@@ -51,7 +51,8 @@ Yêu cầu: thời gian mở **trình duyệt mới, không cache**, không ch�
 | Bản Pages trước PR #34 | 178.560 bytes | 654ms (một lần chạy, CI) |
 | Tách UI riêng, bị loại | 169.458 bytes | 927ms (một lần chạy, CI) |
 | Khôi phục UI một lượt, Auth gọn | 177.697 bytes | 718ms (một lần chạy, CI) |
-| Auth gọn + popup Google chỉ khi bấm | 177.836 bytes | **320ms** (một lần chạy, CI) |
+| Auth gọn (trước khi tách module Google) | 177.836 bytes | **320ms** (một lần chạy, CI) |
+| **Bản chốt PR #34**: Google login được tách thành module riêng | **177.742 bytes** | **332ms** (một lần chạy, CI) |
 
 **Các con số Chrome là bốn lần chạy khác nhau trên GitHub runners, không phải phép A/B cùng phần cứng và đường truyền**; dao động rất lớn. Không thể khẳng định tốc độ 320ms là cải thiện trung bình hoặc hứa mục tiêu 1–1,5 giây ở Firebase production. Giá trị thực tế của thay đổi là sớm hơn 1 bước React effect, bỏ phụ thuộc popup không cần thiết và không tạo tài khoản ẩn danh trùng.
 
@@ -61,3 +62,5 @@ Yêu cầu: thời gian mở **trình duyệt mới, không cache**, không ch�
 - Firebase emulator, TypeScript, toàn bộ unit, Chrome smoke cột/bảng/tab/UI, HTML offline độc lập và công cụ Excel lazy phải PASS.
 - Đo production trên **cùng máy, cùng mạng**: `?startupMetrics=1` vào tab ẩn danh mới, ít nhất ba lần, ghi thời điểm `js-entry`, `auth-start-anonymous`, `auth-signed-in`, `data-subscribe`, `data-first`, `first-data-painted`. Chrome Network có thể đối chiếu request Identity Toolkit / WebSocket. **Không gửi token hoặc dữ liệu nghiệp vụ trong log.**
 - Không ảnh hưởng vấn đề **Excel→Firebase 60s chưa triển khai tự động**; tốc độ đọc DB không có nghĩa snapshot Excel luôn mới.
+
+**Build cuối** (Verify HopHDND source CI #39943024303): tệp `google-popup-login-*.js` thật sự tồn tại, gzip **132 bytes**, được tải theo thao tác admin. Tuy nhiên tổng cold gzip chỉ thay đổi dưới 1% so với bản trước, vì phần lớn Firebase Auth SDK vẫn nằm trong bundle chính; **không được coi đây là tối ưu giảm mạnh dung lượng**. Điểm ưu tiên là Auth bắt đầu trước React effect, loại bỏ khởi tạo popup/redirect resolver cho khách, giữ nguyên chức năng quản trị và bảo mật. Chrome smoke PASS, bản offline và emulator PASS.
