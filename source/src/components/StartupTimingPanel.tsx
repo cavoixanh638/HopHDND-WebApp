@@ -3,6 +3,8 @@ import {markStartup,startupEnabled,startupSamples,type StartupSample} from '../d
 import {captureNetworkDiagnostics} from '../data/network-diagnostics';
 const labels:Record<string,string>={
  'js-entry':'JavaScript bắt đầu chạy',
+ 'app-module-fetch':'Bắt đầu tải giao diện báo cáo',
+ 'app-module-loaded':'Đã tải giao diện báo cáo',
  'firebase-initialized':'Khởi tạo Firebase SDK',
  'react-commit':'Giao diện khởi tạo',
  'auth-checked':'Firebase trả trạng thái đăng nhập',
