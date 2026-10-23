@@ -13,7 +13,7 @@ export const defaultDetailGridPreferences=():DetailGridPreferences=>({
   dialogWidth:1480,
   columns:EXCEL_SOURCE_COLUMNS.map(c=>({
     key:c.key,visible:['displayCode','content','department','progressParty','progressBuild',
-      'progressCouncil','specialist','room','specificProgress','note'].includes(c.key),width:c.width
+      'progressCouncil','specialist','room','specificProgress','note'].includes(c.key),width:Math.max(70,c.width)
   })),
 });
 /** Reject polluted or stale source configurations instead of introducing
