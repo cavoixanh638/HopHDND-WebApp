@@ -76,7 +76,11 @@ export function useFirebase(){
   useEffect(()=>{
     if(!user)return;
     // A/B mode must not give Database a prefetch head-start over GViz Excel.
-    if(typeof window!=='undefined'&&compareSourceFromSearch(window.location?.search??'')!==null)return;
+    if(typeof window!=='undefined'){
+      const params=new URLSearchParams(window.location?.search??'');
+      if(compareSourceFromSearch(window.location?.search??'')!==null)return;
+      if(params.get('startupMetrics')==='1'&&params.get('mirrorWarmup')==='off')return;
+    }
     const cached=loadConfirmedProfile();
     if(cached?.dataSource==='excel')return;
     const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
