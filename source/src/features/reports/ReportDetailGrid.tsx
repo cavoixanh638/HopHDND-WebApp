@@ -55,7 +55,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const [filters,setFilters]=useState<Record<string,string>>({});
   const [sort,setSort]=useState<ColumnSort>(null);
   const [showAll,setShowAll]=useState(false);
-  const [contentItem,setContentItem]=useState<{item:Item;field:'content'|'note'}|null>(null);
+  const [contentItem,setContentItem]=useState<{item:Item;field:'content'|'note'|'specificProgress'}|null>(null);
   const [presets,setPresets]=useState(()=>loadDetailPresets(sourceKey));
   const [selectedPreset,setSelectedPreset]=useState('');
   const [presetName,setPresetName]=useState('');
@@ -191,15 +191,14 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     const raw=String(item[key]??'');
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
-      {!readOnlyViewer&&onHistory&&<CellHistoryAction label={displayId(item)}
-        tooltip="Xem lịch sử nội dung" onClick={()=>onHistory(item)}/>}
+
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
-    if(field==='content'||field==='note')
+    if(field==='content'||field==='note'||field==='specificProgress')
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
@@ -356,8 +355,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               canEditCell(item.recordId,c.key as TextField);
-              const showCellHistory=!readOnlyViewer&&!!onCellHistory&&editableFields.has(c.key);
-              const showRowHistory=!readOnlyViewer&&c.key==='displayCode'&&!!onHistory;
+              const showCellHistory=!readOnlyViewer&&!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
+              const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
                 data-progress-tone={statusPaletteTone(c.key,item[c.key],statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
