@@ -3,10 +3,12 @@ import type { Repository } from './repository';
 import type { SheetConfig } from './sheet-config';
 import { parseSheetConfig } from './sheet-config';
 import { parseGvizPayload, type SheetSnapshot } from './gviz-parser';
+import {markStartup} from './startup-timings';
 
 /** JSONP chỉ từ docs.google.com đã kiểm tra, không nhận URL script tùy ý. */
 export function readSheet(config: SheetConfig, timeoutMs = 15000): Promise<SheetSnapshot> {
   const validated = parseSheetConfig(config.url, config.gid);
+  markStartup('excel-request-start');
   return new Promise((resolve, reject) => {
     const callback = `hdnd_gviz_${crypto.randomUUID().replaceAll('-', '')}`;
     const scope = window as unknown as Record<string, unknown>;
@@ -20,7 +22,8 @@ export function readSheet(config: SheetConfig, timeoutMs = 15000): Promise<Sheet
     };
     const timer = window.setTimeout(() => finish(new Error('Sheets chưa trả dữ liệu sau 15 giây. Kiểm tra mạng, quyền đọc hoặc định dạng Google Trang tính.')), timeoutMs);
     scope[callback] = (payload: unknown) => {
-      try { finish(undefined, parseGvizPayload(payload, `${validated.spreadsheetId}:${validated.gid}`)); }
+      try { const snapshot=parseGvizPayload(payload, `${validated.spreadsheetId}:${validated.gid}`);
+        markStartup('excel-response',snapshot.items.length+' dòng');finish(undefined,snapshot); }
       catch (error) { finish(error instanceof Error ? error : new Error('Dữ liệu không hợp lệ.')); }
     };
     const params = new URLSearchParams({ tqx: `out:json;responseHandler:${callback}`, gid: validated.gid, headers: '0', range: 'A:O', cb: String(Date.now()) });

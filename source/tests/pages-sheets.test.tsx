@@ -55,6 +55,34 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(text(tree)).toContain('Chưa đọc được bố cục đã lưu từ Firebase');
     expect(h.common.mock.calls.at(-1)?.[1]).toBe(false);
   });
+  it('never fetches provisional Excel while live admin datasource is not confirmed',async()=>{
+    // This is the production cold-start case that briefly painted 57 Excel
+    // rows before the actual 55-row Database snapshot.
+    firebase.common.status='loading';firebase.profile=null;firebase.common.config=null;
+    render();expect(scripts).toHaveLength(0);
+    const cached={
+      revision:8,catalogs:catalogFromItems(createDemoItems(1)),
+      reports:defaultReportLayout(),items:defaultItemLayout(),dataSource:'excel' as const
+    };
+    firebase.profile=cached;firebase.common.config=cached;
+    render();expect(scripts).toHaveLength(0);
+    // The saved Excel preference is used only after live Firebase confirms it.
+    firebase.common.status='ready';render();
+    expect(scripts).toHaveLength(1);
+    expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('60961344');
+    respond();await settle();
+    const tree=open('Danh sách các ND trình HĐND');
+    expect(nodes(tree).some(node=>node.type===ItemList)).toBe(true);
+  });
+  it('allows only an explicit temporary-layout action to load Excel before Firebase source confirmation',()=>{
+    firebase.common.status='loading';firebase.profile=null;firebase.common.config=null;
+    let tree=render();expect(scripts).toHaveLength(0);
+    const action=nodes(tree).find(n=>n.type==='button'&&text(n).includes('Xem dữ liệu tạm'));
+    expect(action).toBeDefined();
+    action.props.onClick();
+    tree=render();
+    expect(scripts).toHaveLength(1);
+  });
   it('uses the saved Firebase page widths on the first visible frame, not a post-paint child effect',async()=>{
     const columns=defaultItemLayout();
     columns.frameWidth=1090;
@@ -65,7 +93,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     // A confirmed matching profile must remain visible during background fetch.
     expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
     expect(tree.props.style['--page-content-width']).toBe('1240px');
+    expect(scripts).toHaveLength(0); // layout cache is visible, but stale Excel is NOT fetched
     firebase.common.status='ready';
+    tree=render();expect(scripts).toHaveLength(1);
     respond();await settle();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
     tree=open('Danh sách các ND trình HĐND');
@@ -160,7 +190,10 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('1050px');
     firebase.common.status='error';firebase.error='Temporary network failure';
     tree=render();
-    expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    const mounted=nodes(tree).find(n=>n.type===ItemList);
+    expect(mounted).toBeDefined();
+    expect(mounted.props.items).toHaveLength(1);
+    expect(scripts).toHaveLength(1); // no redundant Sheets fetch while Firebase is reconnecting
     expect(text(tree)).not.toContain('Chưa đọc được bố cục đã lưu từ Firebase');
   });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
