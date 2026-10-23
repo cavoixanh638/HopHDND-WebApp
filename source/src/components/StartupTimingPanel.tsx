@@ -11,9 +11,12 @@ const labels:Record<string,string>={
  'profile-received':'Cấu hình admin tải xong',
  'permissions-received':'Quyền chỉnh sửa tải xong',
  'control-received':'Trạng thái khóa chỉnh sửa tải xong',
+ 'source-selected':'Nguồn dữ liệu được chọn',
+ 'excel-request-start':'Bắt đầu yêu cầu Excel (GViz)',
+ 'excel-response':'Excel đã phản hồi',
  'data-subscribe':'Bắt đầu nghe dữ liệu HĐND',
  'data-first':'Nhận được 55 dòng (hoặc số dòng hiện tại)',
- 'first-data-painted':'Giao diện đầu tiên có dữ liệu đã dựng'
+ 'first-data-painted':'Dữ liệu đúng nguồn đã hiển thị với bố cục hợp lệ'
 };
 export function StartupTimingPanel(){
  const [samples,setSamples]=useState<StartupSample[]>(startupSamples);
