@@ -41,7 +41,7 @@ export function ColumnResizeHandle({columnIndex,width,label,onCommit,min=80,max=
   return <span draggable={false} className="column-resizer" role="separator" tabIndex={0}
     aria-label={`Kéo ranh giới để đổi độ rộng cột ${label}`} aria-orientation="vertical"
     aria-valuemin={min} aria-valuemax={max} aria-valuenow={width}
-    title="Kéo sang trái/phải để chỉnh độ rộng; dùng phím mũi tên khi chọn tay nắm"
+    title="Đưa chuột vào đường kẻ dọc giữa hai cột và kéo để chỉnh độ rộng; dùng phím mũi tên khi được chọn"
     onPointerDown={event=>{
       if(event.button!==0)return;
       event.preventDefault();event.stopPropagation();
