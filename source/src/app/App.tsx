@@ -21,6 +21,7 @@ import { ExcelRepository } from '../data/excel-repository';
 import { DEFAULT_SHEET_URL, clearSheetConfig, loadSheetConfig, parseSheetConfig, saveSheetConfig, type SheetConfig } from '../data/sheet-config';
 import { ConnectionPanel } from '../features/settings/ConnectionPanel';
 import { configuredReports, getReportFont, getReportFontSize, tableFontStack, loadReportLayout, reportPageWidth, saveReportLayout, type ReportLayout } from '../data/report-preferences';
+import {loadSelectedWebFont} from '../data/on-demand-fonts';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
@@ -160,6 +161,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     return next;
   };
   const reports = useMemo(() => configuredReports(layout), [layout]);
+  const tableFont=getReportFont(layout);
+  useEffect(()=>{loadSelectedWebFont(tableFont);},[tableFont]);
   const showReportDetails=useCallback((title:string,items:Item[])=>setSelection({title,items}),[]);
   const [layoutMessage, setLayoutMessage] = useState('');
   const saveLayout = async(next: ReportLayout[]) => {
