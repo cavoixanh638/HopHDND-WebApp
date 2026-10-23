@@ -38,6 +38,8 @@ import {mayEdit} from '../data/firebase-repository';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
+import {StartupTimingPanel} from '../components/StartupTimingPanel';
+import {markStartup} from '../data/startup-timings';
 
 type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'items-customize' | 'items-permissions' | 'catalogs'|'sync'|'transfer'|'review';
 declare global {interface Window {HDND_SOURCE?:string;HDND_EXCEL_ENABLED?:boolean;HDND_TEST?:boolean}}
@@ -52,7 +54,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     ?firebase.profile?.dataSource==='database'
       ?new FirebaseMirrorRepository(firebase.database,configured)
       :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
+    :browserRepository,[firebase?.database,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
@@ -61,6 +63,13 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [storageHint, setStorageHint] = useState('');
   const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const workspace = useWorkspace(repository, sourceKey);
+  useEffect(()=>{markStartup('react-commit');},[]);
+  const reportedPaint=useRef(false);
+  useEffect(()=>{
+    if(reportedPaint.current||!workspace.items.length)return;
+    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',workspace.items.length+' dòng');});
+    return()=>cancelAnimationFrame(raf);
+  },[workspace.items]);
   // Presentation-only personal colors: no shared layout, permissions or source data.
   const [statusPaletteHolder,setStatusPaletteHolder]=useState(()=>
     ({source:sourceKey,store:loadStatusPaletteStore(sourceKey)}));
@@ -252,6 +261,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           <span className="section-card-state" aria-hidden="true">{page===key?'Đang xem':'Xem'}</span>
         </button>)}
     </nav>
+    <StartupTimingPanel/>
     <main>
       {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">
         <span>Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.</span>
