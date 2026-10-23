@@ -80,3 +80,28 @@ Thời điểm là **mốc tính từ navigationStart**, không phải tổng th
 3. Khi RTDB xác nhận: gỡ cảnh báo, mở quyền xem/sửa thử theo quyền hiện tại, thay nội dung nếu nguồn cập nhật.
 4. Khi RTDB lỗi: giữ cache nhưng vẫn khóa sửa, cảnh báo nguồn chưa được xác nhận. Đăng xuất xóa cache.
 5. Không xuất JSON nội dung HĐND ra public repo/web assets, không sửa Rules, không tự đổi dataSource.
+
+## 23/10/2026, ảnh tiếp nhận sau khi Pages đã code-split — phản hồi chậm cực đoan
+
+Hai ảnh gửi bởi người dùng cùng ngày (mở incognito / mở Chrome với nhiều tab):
+
+| Mốc (ms từ navigationStart) | Ảnh 1, incognito | Ảnh 2, Chrome nhiều tab |
+| --- | ---: | ---: |
+| JS entry | 402 | 19.419 |
+| React | 449 | 19.505 |
+| Firebase Auth ready | 1.957 | 31.448 |
+| Database listener subscribe | 2.335 | 31.462 |
+| .info/connected = true | 2.199 | 89.192 |
+| 55 rows first snapshot | 2.465 | **203.545** |
+| valid first paint | 2.488 | **203.570** |
+| profile/permissions/control | ~2.275–2.305 | ~203.645 |
+
+Thời gian 19.419ms trước JS entry **không phải do tính toán 55 dòng**; cần tách HTML TTFB, bundle asset finish và browser scheduling. 172.083 giây từ đăng ký listener tới snapshot (với RTDB connected vào 89s) **không phải tốc độ xử lý JSON**; có thể do mạng, proxy chặn/buffer WebSocket, tab background/suspended, hoặc SDK reconnect sau mạng không ổn định. **Không kết luận chính xác nguyên nhân chỉ từ hai ảnh; không quy lỗi chắc chắn cho WebSocket.**
+
+Thay đổi PR tiếp theo:
+- `captureNetworkDiagnostics`: Navigation Timing (TTFB HTML, DOM ready), static bundle JS/CSS Resource Timing, browser visibility, connection effectiveType nếu trình duyệt cung cấp. Không đưa full URLs, API keys, tokens, business data vào clipboard.
+- `?startupMetrics=1`: cảnh báo nếu Auth chưa xong sau 12s hoặc listener RTDB chưa có snapshot sau 12s; người dùng có lựa chọn **so sánh** đường kết nối Firebase thường và chế độ `?dbTransport=longpoll`. Firebase `forceLongPolling()` được gọi trước khi khởi tạo DB; không áp dụng mặc định hoặc ép người dùng chuyển, vì ở môi trường WebSocket bình thường long-polling có thể chậm hơn.
+- Cửa sổ ẩn danh nhiều/ít tab không đồng nghĩa mạng ổn định/không ổn định. Khi so sánh phải đo cùng mạng, cùng máy, tab foreground, không chuyển tab chờ tải. Mỗi giao thức ít nhất ba lần mở mới; theo dõi nguồn và số dòng như cũ.
+- Khi tab nền, Chrome có thể throttle hoặc suspend; chỉ dựa `visibilityState` thời điểm snapshot không đủ chứng minh tab đã bị suspend trước JS entry. Cần thêm Chrome Performance/Network waterfall nếu xuất hiện mốc >10s.
+
+**Giới hạn:** Đây là tính năng chẩn đoán và lựa chọn kết nối, không phải cam kết giảm thời gian thực tế từ 203s xuống số giây cụ thể. Không bỏ Firebase Authentication hoặc sửa Firebase Rules; dữ liệu HĐND không được công khai trong build.
