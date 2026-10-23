@@ -53,6 +53,33 @@ describe('Firebase config controller remains independent of business data',()=>{
       expect(h.listeners.has('hdnd/profile')).toBe(true);
     }finally{vi.unstubAllGlobals();}
   });
+  it('offers guest data-first diagnostics without starting editing rights before the mirror snapshot',()=>{
+    vi.stubGlobal('window',{location:{search:'?startupMetrics=1&guestMetadata=defer'}});
+    try{
+      login();
+      const mirror='hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344';
+      expect(h.listeners.has(mirror)).toBe(true);
+      expect(h.listeners.has('hdnd/profile')).toBe(true);
+      expect(h.listeners.has('hdnd/permissions')).toBe(false);
+      expect(h.listeners.has('hdnd/control')).toBe(false);
+      expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+      emit(mirror,{schemaVersion:1,rows:[]});
+      expect(h.listeners.has('hdnd/permissions')).toBe(true);
+      expect(h.listeners.has('hdnd/control')).toBe(true);
+      emit('hdnd/permissions',{columns:{note:true}});
+      expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+      emit('hdnd/control',{revision:1,editingLocked:false});
+      expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    }finally{vi.unstubAllGlobals();}
+  });
+  it('keeps admin metadata immediate even if the guest-only experiment is requested',()=>{
+    vi.stubGlobal('window',{location:{search:'?startupMetrics=1&guestMetadata=defer'}});
+    try{
+      login(true);
+      expect(h.listeners.has('hdnd/permissions')).toBe(true);
+      expect(h.listeners.has('hdnd/control')).toBe(true);
+    }finally{vi.unstubAllGlobals();}
+  });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
     login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
