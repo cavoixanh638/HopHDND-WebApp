@@ -58,10 +58,13 @@ export function useFirebase(){
   const [profileReady,setProfileReady]=useState(false),[permissionsReady,setPermissionsReady]=useState(false);
   const [editControl,setEditControl]=useState({ready:false,revision:0,editingLocked:true});
   const saving=useRef(false);
+  const hadAuthenticatedSession=useRef(false);
   useEffect(()=>{
     let active=true,signing=false;
     const unsubscribe=onAuthStateChanged(auth,next=>{
       if(!active)return;
+      if(!next&&hadAuthenticatedSession.current)setProfile(null);
+      if(next)hadAuthenticatedSession.current=true;
       setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});
       if(!next&&!signing){signing=true;void signInAnonymously(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
     },cause=>setError(cause.message));
