@@ -28,6 +28,12 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Validate server mirror Python and isolated fixture
+        run: |
+          python3 -m venv /tmp/hophdnd-mirror-test
+          /tmp/hophdnd-mirror-test/bin/pip install -r mirror_sync/requirements.txt
+          /tmp/hophdnd-mirror-test/bin/python -m unittest discover -s mirror_sync -p 'test_*.py'
+          /tmp/hophdnd-mirror-test/bin/python -m py_compile mirror_sync/sync.py
       - name: Documentation checks
         run: npm run docs:check
       - uses: actions/setup-java@v4

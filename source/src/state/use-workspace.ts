@@ -72,7 +72,8 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo') {
     // A changed refresh callback is not a source switch; never clear the mounted table.
   }, [repository,sourceKey]);
   useEffect(() => {
-    if (repository.sourceKind!=='google'&&!repository.readOnly) return;
+    // Mirrored Firebase data is pushed by onValue; only direct Excel sources poll in the viewer.
+    if (repository.sourceKind!=='google') return;
     const interval = window.setInterval(() => { if (!document.hidden) void refresh(true); }, 60000);
     return () => clearInterval(interval);
   }, [repository, refresh]);

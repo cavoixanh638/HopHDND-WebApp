@@ -80,6 +80,9 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const frameWidth=merge(base.frameWidth??'auto',edited.frameWidth??'auto',remote.frameWidth??'auto','frameWidth','độ rộng vùng danh sách');
   const cellHighlights=merge(base.cellHighlights??[],edited.cellHighlights??[],
     remote.cellHighlights??[],'cellHighlights','màu ô theo từ khóa');
+  const compactDisplay=Object.fromEntries((Object.keys(base.compactDisplay??{}) as (keyof NonNullable<ItemLayout['compactDisplay']>)[]).map(key=>
+    [key,merge(base.compactDisplay?.[key],edited.compactDisplay?.[key],remote.compactDisplay?.[key],
+      `compactDisplay.${key}`,`gộp cột: ${key}`)])) as NonNullable<ItemLayout['compactDisplay']>;
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay});
 }

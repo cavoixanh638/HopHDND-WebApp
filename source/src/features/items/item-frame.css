@@ -693,3 +693,10 @@
 .history-timestamp{display:block;color:#315EA8;font-size:12px;font-weight:650;margin:0 0 4px;}
 .history-change-content{color:#263D32;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;}
 .item-data-table tbody td.compact-merged-cell,.item-data-table .compact-pair-lines{min-width:0;}
+
+/* Text-only secondary document classification: no pill, border or background. */
+.compact-type-suffix{font-size:.92em;font-weight:600;background:none;border:0}
+.compact-type-suffix[data-kind='HC']{color:#3166A2}
+.compact-type-suffix[data-kind='QPPL']{color:#9C4C2F}
+.compact-type-suffix[data-kind='BC']{color:#4B7752}
+.compact-type-suffix .compact-part,.compact-type-suffix .compact-part>span{color:inherit}

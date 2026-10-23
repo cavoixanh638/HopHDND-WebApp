@@ -1,9 +1,9 @@
 import type {Item} from '../../../shared/types';
-import type {ItemColumn} from '../../data/item-preferences';
+import type {ItemColumn,SharedCompactDisplay} from '../../data/item-preferences';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
 export type CompactOption='typeInContent'|'leadersTogether'|'roomSpecialist'|'shortSpecialist'|'shortLeaders';
-export type CompactDisplay=Record<CompactOption,boolean>;
+export type CompactDisplay=SharedCompactDisplay;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
   typeInContent:false,leadersTogether:false,roomSpecialist:false,shortSpecialist:false,shortLeaders:false,
 };
@@ -58,6 +58,13 @@ const PAIRS:Record<'typeInContent'|'leadersTogether'|'roomSpecialist',CompactPai
   leadersTogether:{anchor:'vpLeader',hidden:'ubndLeader',label:'Lãnh đạo UBND / VP',extraWidth:0},
   roomSpecialist:{anchor:'room',hidden:'specialist',label:'Phòng chuyên môn / Chuyên viên',extraWidth:0},
 };
+export function compactTypeTone(value:string):'HC'|'QPPL'|'BC'|'other'{
+  const plain=value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  if(plain==='HC'||plain==='HANH CHINH')return 'HC';
+  if(plain==='QPPL')return 'QPPL';
+  if(plain==='BC'||plain==='BAO CAO')return 'BC';
+  return 'other';
+}
 export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDisplay):CompactPair[]{
   const keys=new Set(columns.map(c=>c.key));
   return (['typeInContent','leadersTogether','roomSpecialist'] as const)
