@@ -16,9 +16,29 @@ const h=vi.hoisted(()=>{
     begin:()=>{cursor=0;},flush:()=>{const work=effects;effects=[];work.forEach(fn=>fn());},dispose:()=>slots.forEach(slot=>slot?.cleanup?.()),reset:()=>{slots.length=0;cursor=0;effects=[];},
   };
 });
-vi.mock('react',()=>({memo:(component:any)=>component,useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
+vi.mock('react',()=>({memo:(component:any)=>component,Suspense:'suspense',useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
 vi.mock('../src/state/use-shared-config',()=>({useSharedConfig:h.common}));
 vi.mock('../src/data/google-bridge',()=>({isGoogleHost:()=>false,googleCall:vi.fn()}));
+vi.mock('../src/app/deferred-sections',async()=>{
+  // App's production code is lazy, but these synchronous virtual-tree tests
+  // need the real component identities to validate admin route props.
+  const [list,detail,history,connection,report,catalog,sync,firebase,approval]=await Promise.all([
+    import('../src/features/items/ItemList'),
+    import('../src/features/reports/ReportDetailGrid'),
+    import('../src/features/history/HistoryDialog'),
+    import('../src/features/settings/ConnectionPanel'),
+    import('../src/features/settings/ReportSettings'),
+    import('../src/features/catalogs/CatalogSettings'),
+    import('../src/features/settings/SyncPanel'),
+    import('../src/features/settings/FirebasePanel'),
+    import('../src/features/settings/ApprovalReviewPanel')
+  ]);
+  return {ItemList:list.ItemList,ReportDetailGrid:detail.ReportDetailGrid,
+    HistoryDialog:history.HistoryDialog,ConnectionPanel:connection.ConnectionPanel,
+    ReportSettings:report.ReportSettings,CatalogSettings:catalog.CatalogSettings,
+    SyncPanel:sync.SyncPanel,FirebasePanel:firebase.FirebasePanel,
+    ApprovalReviewPanel:approval.ApprovalReviewPanel,prefetchItemList:vi.fn()};
+});
 import {App} from '../src/app/App';
 import {ItemList} from '../src/features/items/ItemList';
 import {ReportSettings} from '../src/features/settings/ReportSettings';
