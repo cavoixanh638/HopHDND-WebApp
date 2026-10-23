@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { GoogleAuthProvider, browserPopupRedirectResolver, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { get, onValue, ref, runTransaction } from 'firebase/database';
 import { firebaseAdmin, mayEdit, samePermissions, type CellPermissions } from '../data/firebase-repository';
 import type { ConfigSection } from '../data/shared-config';
@@ -78,7 +78,7 @@ export function useFirebase(){
     return()=>{active=false;stop.forEach(unsubscribe=>unsubscribe());};
   },[user?.uid,database]);
   const admin=firebaseAdmin(user);
-  const login=async()=>{setError('');await signInWithPopup(auth,new GoogleAuthProvider());};
+  const login=async()=>{setError('');await signInWithPopup(auth,new GoogleAuthProvider(),browserPopupRedirectResolver);};
   const logout=async()=>{clearSessionMirrors();await signOut(auth);};
   const saveProfile=async(section:ConfigSection|'dataSource',value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown,resolutions:LayoutConflictChoices={})=>{
     if(!firebaseAdmin(auth.currentUser))throw new Error('Chỉ tài khoản Google quản trị được lưu bố trí và danh mục.');
