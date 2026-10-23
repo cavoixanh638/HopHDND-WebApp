@@ -1,5 +1,6 @@
 import type {Item} from '../../../shared/types';
 import {displayId} from '../../domain/display-id';
+import {preserveStickyFilterViewport} from './filter-scroll';
 
 /** A compact permanent header filter row; options are for short categorical lists.
  * The whole table owns scrolling so the heading and input remain aligned. */
@@ -33,14 +34,16 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
     <div className="item-filter-input-wrap">
       {choices?<select aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
         className={value?'selected-filter-value':'filter-placeholder'}
-        value={value} onChange={event=>onChange(event.currentTarget.value)}
+        value={value} onPointerDown={event=>preserveStickyFilterViewport(event.currentTarget)}
+        onChange={event=>onChange(event.currentTarget.value)}
         onKeyDown={clearOnEscape}>
         <option value="">Chọn để lọc</option>
         {choices.map(option=><option value={option} key={option}>{option}</option>)}
         {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
       </select>:<input aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
         type="search" autoComplete="off" spellCheck={false} placeholder={compact?'':'Tìm kiếm'}
-        value={value} onChange={event=>onChange(event.currentTarget.value)}
+        value={value} onPointerDown={event=>preserveStickyFilterViewport(event.currentTarget)}
+        onChange={event=>onChange(event.currentTarget.value)}
         onKeyDown={clearOnEscape}/>}
       {value&&<button type="button" className="item-filter-clear" aria-label={`Xóa tìm kiếm cột ${label}`} title="Xóa tìm kiếm" onClick={()=>onChange('')}>×</button>}
     </div>

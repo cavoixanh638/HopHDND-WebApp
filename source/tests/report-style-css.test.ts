@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(new URL('../src/styles/app.css', import.meta.url), 'utf8');
+const frameCss = readFileSync(new URL('../src/features/items/item-frame.css', import.meta.url), 'utf8');
 const variants = ['classic', 'signal', 'compact', 'bars', 'band'] as const;
 const stages = ['source', 'office', 'next', 'completed', 'withdrawn', 'other'] as const;
 
@@ -201,5 +202,20 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('--workflow-text:#B04700;');
     expect(css).toContain('--workflow-text:#007A18;');
     expect(css).toContain('font-weight:600;');
+  });
+});
+
+describe('List border resize and room/CV filter controls',()=>{
+  it('uses an invisible 8px hit-zone exactly on the existing column separator, not another colored handle',()=>{
+    expect(frameCss).toContain('/* 23/10: no separate resizing icon');
+    expect(frameCss).toMatch(/\.item-data-table \.item-heading-row th \.column-resizer\s*\{[^}]*right:-4px;[^}]*width:8px;[^}]*border:0;[^}]*background:transparent;/s);
+    expect(frameCss).toContain('cursor:col-resize;');
+    // Only the same line is accented when hovered; not a new icon.
+    expect(frameCss).toContain('.column-resizer:is(:hover,:focus-visible)::after');
+  });
+  it('keeps stacked room/CV search controls equally readable at 15px',()=>{
+    expect(frameCss).toContain('.room-specialist-filter-stack input,');
+    expect(frameCss).toMatch(/\.room-specialist-filter-stack select,\s*\n\.item-data-table \.room-specialist-filter-stack input\[type="search"\] \{[\s\S]*?font-size:15px;/);
+    expect(frameCss).toContain('height:96px;');
   });
 });

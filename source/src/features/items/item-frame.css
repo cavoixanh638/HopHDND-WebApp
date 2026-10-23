@@ -652,3 +652,41 @@
 .note-history-demo h3 {font-size:15px;margin:0 0 6px;}
 .note-history-demo-entry {border-left:3px solid #b9d4ed;padding:7px 11px;margin:8px 0;background:#f8fbff;}
 .note-history-demo-entry strong {font-size:13px;}
+
+/* 23/10: no separate resizing icon or thick green "handle". The existing 1px
+   vertical separator is the target; only an invisible 8px hit zone over it.
+   On hover/focus accent that same line rather than painting a new control. */
+.item-data-table .item-heading-row th .column-resizer {
+  right:-4px;
+  width:8px;
+  border:0;
+  background:transparent;
+  padding:0;
+  box-shadow:none;
+  cursor:col-resize;
+  touch-action:none;
+  z-index:8;
+}
+.item-data-table .item-heading-row th .column-resizer:hover,
+.item-data-table .item-heading-row th .column-resizer:focus-visible {
+  border:0;
+  background:transparent;
+  outline:none;
+}
+.item-data-table .item-heading-row th .column-resizer:is(:hover,:focus-visible)::after {
+  content:"";position:absolute;right:3px;top:0;bottom:0;
+  width:2px;background:#348768;pointer-events:none;
+}
+/* One merged Phòng/CV column has TWO full-size filter controls. Keep the
+   whole sticky row taller (instead of shrinking both labels to 12px). */
+.item-data-table thead .item-column-filter-row:has(.room-specialist-filter) th {
+  height:96px;
+}
+.item-data-table .room-specialist-filter-stack {gap:5px;}
+.item-data-table .room-specialist-filter-stack input,
+.item-data-table .room-specialist-filter-stack select,
+.item-data-table .room-specialist-filter-stack input[type="search"] {
+  min-height:36px;height:36px;
+  font-size:15px;
+}
+.item-data-table .room-specialist-filter-stack input::placeholder {font-size:15px;}
