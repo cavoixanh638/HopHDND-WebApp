@@ -1,3 +1,13 @@
+## 23/10/2026 — Kéo ngay ở đường kẻ dọc và chống nhảy scroll khi mở bộ lọc
+
+- **Đổi độ rộng cột:** giữ bộ xử lý kéo theo pixel và lưu một lần khi thả đã có; **không có icon/tay nắm màu riêng**. Hit-zone trong suốt rộng 8px trùng chính đường viền giữa hai tiêu đề, khi hover chỉ nhấn nét của đường kẻ dọc. Admin Firebase dùng chế độ xem vẫn được kéo và lưu chung; khách không được sửa bố cục.
+- **Gộp Phòng chuyên môn / Chuyên viên:** nhãn dropdown đổi thành `Chọn để lọc Phòng` và cả chọn Phòng/tìm tên CV đều 15px; hàng lọc cao hơn cho đủ hai dòng, không chồng lên các cột khác.
+- **Giữ vị trí khi mở “Chọn để lọc”:** input/select trong sticky header chủ động nhận focus bằng `focus({preventScroll:true})` ở pointerdown và hoàn lại scrollTop/Left ngay sau focus nếu trình duyệt tự kéo về vị trí DOM thông thường. Đây là giữ vị trí **khi mở bộ lọc**; sau khi thực sự chọn điều kiện làm danh sách ngắn đi, trình duyệt vẫn có thể giới hạn scrollTop theo chiều cao kết quả còn lại. `overflow-anchor:none` và chiều cao viewport cố định từ trước không đổi.
+- **Phân bổ độ rộng:** `ColumnResizeHandle` chỉ cập nhật `<col>` được kéo và tổng độ rộng bảng trong lúc rê, không chia phần chênh lệch sang cột khác và không cố ý dồn cột cuối. Sau lưu, bảng có `width:max(100%,tableWidth)` cùng `table-layout:fixed`; nếu tổng độ rộng các cột nhỏ hơn chiều rộng tối thiểu/vùng nhìn, phần dư được trình duyệt phân phối theo thuật toán bảng CSS, nên độ rộng thực hiển thị có thể khác số pixel từng cột. Không thay thuật toán phân phối ở PR này.
+- Giữ nguyên Firebase merge/CAS, dữ liệu, phân quyền, bảng tổng hợp, popup, bộ màu/preset và backup V1/V2. Chrome smoke mở dropdown bằng CDP mouse sau khi cuộn sâu để xác minh không nhảy; CSS/unit kiểm đường kẻ và 15px.
+
+---
+
 ## 23/10/2026 — Gộp Phòng/CV, kéo thả cột ngay ở trang xem cho admin, demo lịch sử Ghi chú
 
 - **Bảng dữ liệu → Gộp cột:** thay cặp cũ `Sở chủ trì / Phòng chuyên môn` bằng `Phòng chuyên môn / Chuyên viên`, giữ cột Sở chủ trì độc lập. Cặp mới gộp **Phòng** (cột gốc `room`) và **CV** (cột gốc `specialist`) trên hai dòng; hàng bộ lọc có **hai dòng riêng:** `Lọc theo Phòng` (select), `Tìm kiếm tên CV` (search theo tên đầy đủ). Hai điều kiện lọc đồng thời; không sửa cột gốc hay dữ liệu. Tên CV ở dòng gộp tôn trọng tùy chọn viết tắt tên CV. Khóa cấu hình cá nhân đổi từ `departmentRoom` sang `roomSpecialist` để không tự bật hành vi mới cho người dùng đã lưu cặp cũ.
