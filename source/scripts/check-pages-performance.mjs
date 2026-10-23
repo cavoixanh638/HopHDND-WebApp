@@ -23,6 +23,8 @@ for(const file of files){
 if([...initial].some(file=>!files.includes(file)))throw Error('Entry points to missing asset.');
 if(![...initial].some(file=>file.endsWith('.js')))throw Error('Initial JavaScript not found.');
 if(!js.some(file=>!initial.has(file)))throw Error('No lazy Javascript chunk exists.');
+const adminPopup=js.find(file=>/^google-popup-login-[A-Za-z0-9_-]+\.js$/.test(file));
+if(!adminPopup||initial.has(adminPopup))throw Error('Google popup login was not deferred to a private user-action chunk.');
 // Previous single-file Pages gzip size was 336,691 bytes. Prevent cold bundle regressions.
 if(initialGzip>=330000)throw Error('Cold startup payload not improved: '+initialGzip+' gzip bytes.');
 console.log('PAGES_COLD_PAYLOAD',JSON.stringify({initialGzip,totalJsGzip,baselineSingleFileGzip:336691,initialAssets:[...initial],details}));
