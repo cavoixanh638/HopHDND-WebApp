@@ -61,7 +61,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const selectedSource=comparison?compareSource:firebase?.profile?.dataSource;
   const repository=useMemo<Repository>(()=>firebase
     ?selectedSource==='database'
-      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison)
+      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison)
       :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
     :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
