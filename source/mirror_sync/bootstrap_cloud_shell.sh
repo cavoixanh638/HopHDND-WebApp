@@ -44,13 +44,13 @@ function preflight() {
 function status() {
   preflight
   explain
-  gcloud run jobs describe "$JOB" --region "$REGION" --format="value(metadata.name)" 2>/dev/null \
-    || echo "Cloud Run Job is not deployed yet."
+  gcloud run services describe "$JOB" --region "$REGION" --format="value(metadata.name)" 2>/dev/null \
+    || echo "Cloud Run Service is not deployed yet."
   gcloud scheduler jobs describe "$TRIGGER" --location "$REGION" \
     --format="yaml(name,state,schedule,timeZone,httpTarget.uri)" 2>/dev/null \
     || echo "Cloud Scheduler job is not installed yet."
   echo "Mirror data: Firebase Console -> Realtime Database -> ${MIRROR_PATH}"
-  echo "Cloud Run logs: https://console.cloud.google.com/run/jobs/details/${REGION}/${JOB}?project=${PROJECT}"
+  echo "Cloud Run logs: https://console.cloud.google.com/run/detail/${REGION}/${JOB}/metrics?project=${PROJECT}"
 }
 function pause() {
   preflight
@@ -84,7 +84,7 @@ This action:
   2. Creates two dedicated service accounts WITHOUT private key files.
   3. Grants runner Realtime Database Admin (project-wide IAM; cannot
      restrict this OAuth credential to one JSON subtree via Rules).
-  4. Builds and runs a job that reads XLSX and writes ONLY
+  4. Deploys an authenticated request-based HTTP service that reads XLSX and writes ONLY
      '$MIRROR_PATH' after schema, conditional ETag and readback checks.
   5. Enables a 1-minute schedule ONLY after first import succeeds.
 It does NOT modify Excel, Firebase Database Rules, the WebApp data source,
@@ -123,44 +123,67 @@ SOURCE_SHEET_NAME: "$SOURCE_SHEET_NAME"
 RTDB_URL: "$RTDB_URL"
 VARS
 
-echo "[4/6] Build source/mirror_sync and deploy Cloud Run Job..."
-gcloud run jobs deploy "$JOB" --source "$ROOT" \
+echo "[4/6] Build source/mirror_sync and deploy a PRIVATE Cloud Run Service..."
+gcloud run deploy "$JOB" --source "$ROOT" \
   --region "$REGION" --project "$PROJECT" \
-  --service-account "$RUNNER" --tasks 1 --parallelism 1 \
-  --max-retries 0 --task-timeout 180s --cpu 1 --memory 512Mi \
+  --service-account "$RUNNER" --no-allow-unauthenticated \
+  --min-instances 0 --max-instances 1 --concurrency 1 \
+  --timeout 120s --cpu 1 --memory 512Mi \
   --env-vars-file "$ENV_FILE" --quiet
-
-echo "[5/6] First live import + database readback (stop on failure)..."
-if ! gcloud run jobs execute "$JOB" --region "$REGION" --project "$PROJECT" \
-    --wait --quiet; then
-  fail_hint
+SERVICE_URL="$(gcloud run services describe "$JOB" --region "$REGION" \
+  --project "$PROJECT" --format='value(status.url)')"
+if [[ ! "$SERVICE_URL" =~ ^https:// ]]; then
+  echo >&2 "Cloud Run did not return a valid service URL."
   exit 1
 fi
 
+echo "[5/6] First live import via authenticated HTTPS; fail closed..."
+ACTIVE_ACCOUNT="$(gcloud auth list --filter=status:ACTIVE --format='value(account)')"
+if [[ "$ACTIVE_ACCOUNT" != *"@"* ]]; then
+  echo >&2 "Cloud Shell active account is missing; use 'gcloud auth login'."
+  exit 1
+fi
+gcloud run services add-iam-policy-binding "$JOB" --region "$REGION" \
+  --project "$PROJECT" --member="user:$ACTIVE_ACCOUNT" \
+  --role="roles/run.invoker" --quiet >/dev/null
+if ! curl -fSs --max-time 125 -X POST \
+  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  -H "Content-Type: application/json" \
+  -d '{}' "$SERVICE_URL"; then
+  echo >&2 "Importer did not confirm success; inspect Cloud Run service logs."
+  fail_hint
+  exit 1
+fi
+echo
+
 echo "[6/6] Create or update 60s Cloud Scheduler trigger..."
-gcloud run jobs add-iam-policy-binding "$JOB" --region "$REGION" \
+gcloud run services add-iam-policy-binding "$JOB" --region "$REGION" \
   --project "$PROJECT" --member="serviceAccount:$SCHEDULER" \
   --role="roles/run.invoker" --quiet >/dev/null
 
-URI="https://run.googleapis.com/v2/projects/${PROJECT}/locations/${REGION}/jobs/${JOB}:run"
+URI="$SERVICE_URL"
 schedule_args=(
   --location="$REGION" --project="$PROJECT"
   --schedule="* * * * *" --time-zone="Asia/Bangkok"
   --uri="$URI" --http-method=POST
-  --oauth-service-account-email="$SCHEDULER"
+  --oidc-service-account-email="$SCHEDULER"
+  --oidc-token-audience="$SERVICE_URL"
   --headers="Content-Type=application/json" --message-body="{}"
-  --attempt-deadline=60s --max-retry-attempts=0
+  --attempt-deadline=120s --max-retry-attempts=0
   --description="HopHDND Excel XLSX -> Firebase RTDB mirror"
   --quiet
 )
 if gcloud scheduler jobs describe "$TRIGGER" --location "$REGION" \
   --project "$PROJECT" >/dev/null 2>&1; then
   gcloud scheduler jobs update http "$TRIGGER" "${schedule_args[@]}"
+  if [[ "$(gcloud scheduler jobs describe "$TRIGGER" --location "$REGION" --format='value(state)')" == "PAUSED" ]]; then
+    gcloud scheduler jobs resume "$TRIGGER" --location="$REGION" --quiet
+  fi
 else
   gcloud scheduler jobs create http "$TRIGGER" "${schedule_args[@]}"
 fi
 echo
-echo "SUCCESS: initial Excel import and Firebase readback confirmed by Cloud Run."
+echo "SUCCESS: initial Excel import and Firebase readback confirmed by private Cloud Run service."
 echo "SUCCESS: Cloud Scheduler every 60 seconds configured."
 echo "RUNNER: $RUNNER"
 echo "SCHEDULER: https://console.cloud.google.com/cloudscheduler?project=$PROJECT"
