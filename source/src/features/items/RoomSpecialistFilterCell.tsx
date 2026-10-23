@@ -1,5 +1,6 @@
 import type {Item} from '../../../shared/types';
 import type {KeyboardEvent} from 'react';
+import {preserveStickyFilterViewport} from './filter-scroll';
 
 /** Independent AND filters for the visually merged Room / Specialist column. */
 export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
@@ -14,10 +15,11 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
     scope="col" data-filter-key="room">
     <div className="room-specialist-filter-stack">
       <div className="item-filter-input-wrap">
-        <select aria-label="Lọc theo Phòng" title="Lọc theo Phòng" value={room}
+        <select aria-label="Chọn để lọc Phòng" title="Chọn để lọc Phòng" value={room}
           className={room?'selected-filter-value':'filter-placeholder'}
+          onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
           onChange={e=>onRoom(e.currentTarget.value)} onKeyDown={e=>clear(e,onRoom)}>
-          <option value="">Lọc theo Phòng</option>
+          <option value="">Chọn để lọc Phòng</option>
           {rooms.map(option=><option key={option} value={option}>{option}</option>)}
           {room&&!rooms.includes(room)&&<option value={room}>{room}</option>}
         </select>
@@ -27,6 +29,7 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
       <div className="item-filter-input-wrap">
         <input type="search" autoComplete="off" spellCheck={false}
           aria-label="Tìm kiếm tên CV" placeholder="Tìm kiếm tên CV" value={person}
+          onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
           onChange={e=>onPerson(e.currentTarget.value)}
           onKeyDown={e=>clear(e,onPerson)}/>
         {person&&<button type="button" className="item-filter-clear"
