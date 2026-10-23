@@ -226,7 +226,9 @@
 /* Guard against a transient narrow frame propagating to editing controls during
    rapid table-width edits. On desktop, only the data viewport may become 320px. */
 @media(min-width:980px) {
-  .app-shell.wide-table-page > main {min-width:920px;}
+  /* The 920px editing workspace minimum must NOT apply to guests. With CSS
+     emitted in a deferred JS chunk it could override public page centering. */
+  .app-shell.wide-table-page.settings-page > main {min-width:920px;}
   .app-shell.wide-table-page .item-list-card > .settings-mode-bar {
     min-width: min(840px, calc(100vw - 80px));
     box-sizing:border-box;
