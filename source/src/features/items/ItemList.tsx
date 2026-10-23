@@ -20,8 +20,8 @@ import {ColumnFilterCell} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
-import {COMPACT_OPTIONS,readCompactDisplay,writeCompactDisplay,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,type CompactOption} from './compact-columns';
+import {COMPACT_OPTIONS,activeCompactPairs,
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
@@ -38,7 +38,7 @@ import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveCol
 export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void> }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const personalScope=layoutRecoveryScope(sourceKey);
-  const selectedView=loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope));
+  const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const [personalViewActive,setPersonalViewActive]=useState(!!selectedView);
@@ -46,7 +46,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
-  const [compactDisplay,setCompactDisplay]=useState(()=>readCompactDisplay(personalScope));
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -64,6 +63,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
+  const compactDisplay=activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
   // The viewer already receives the exact first-frame width from App. Avoid
   // a post-paint callback that can override the saved CSS with stale values.
   useEffect(()=>{if(customizing)onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[customizing,activeLayout.frameWidth,onFrameWidthChange]);
@@ -90,7 +90,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[compactHiddenKeys]);
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next={...compactDisplay,[option]:checked};
-    setCompactDisplay(next);writeCompactDisplay(personalScope,next);
+    if(!allowLayout)return;
+    if(customizing)setLayout(previous=>({...previous,compactDisplay:next}));
+    else void applyViewerLayout(previous=>({...previous,compactDisplay:next}));
     const hidden=new Set<string>(activeCompactPairs(columns,next).filter(pair=>pair.hidden!=='specialist').map(pair=>pair.hidden));
     setColumnFilters(prev=>{
       const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
@@ -332,26 +334,26 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
     <div className="card-header"><div className="item-list-summary"><span className="item-result-count">{filtered.length}</span> / {items.length} nội dung</div>
     <div className="item-header-actions">
-      {compactOn&&!permissionMode&&<details className="compact-columns-menu">
+      {compactOn&&!permissionMode&&allowLayout&&!!onPersistViewerLayout&&<details className="compact-columns-menu">
         <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
           {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
             <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
         </summary>
         <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-          <strong>Hiển thị gọn (chỉ trên máy này)</strong>
+          <strong>Hiển thị gọn (cấu hình chung của admin)</strong>
           {COMPACT_OPTIONS.map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-          <p>Không sửa Excel, không thay quyền. Tắt tùy chọn để hiện đủ các cột gốc.</p>
+          <p>Thay đổi lưu vào bố cục admin trên Firebase, áp dụng cho người xem; không sửa Excel.</p>
         </div>
       </details>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
-      {!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+      {allowLayout&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
@@ -363,7 +365,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
-     {!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
+     {allowLayout&&!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
@@ -413,7 +415,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
             {key==='content'
               ?<span className="compact-content-line">{compactField(item,'content')}
-                <span className="compact-type-suffix">({compactField(item,'type')})</span>
+                <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>({compactField(item,'type')})</span>
               </span>
               :<div className="compact-pair-lines">
                 <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>

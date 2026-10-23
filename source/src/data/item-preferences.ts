@@ -9,8 +9,11 @@ export interface ItemColumn {
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
+export type SharedCompactDisplay=Record<'typeInContent'|'leadersTogether'|'roomSpecialist'|'shortSpecialist'|'shortLeaders',boolean>;
+export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,leadersTogether:false,roomSpecialist:false,shortSpecialist:false,shortLeaders:false};
 export interface ItemLayout {
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
+  compactDisplay?:SharedCompactDisplay;
   cellHighlights?:CellHighlightRule[];
 }
 const hexColor=/^#[0-9a-fA-F]{6}$/;
@@ -50,7 +53,7 @@ const expected=new Set<string>(EXCEL_COLUMN_KEYS);
 const oldUiOnly=new Set(['history','isDropped','partyMeeting','examined']);
 
 export const defaultItemLayout=():ItemLayout=>({
-  tableWidth:1500,frameWidth:'auto',cellHighlights:[],
+  tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
   })),
@@ -142,9 +145,15 @@ export function validateItemLayout(value:unknown):ItemLayout{
     return {id:rule.id,word:rule.word.trim(),field:rule.field,
       textColor:rule.textColor,backgroundColor:rule.backgroundColor};
   });
+  const compactSource=input.compactDisplay??EMPTY_COMPACT;
+  if(!compactSource||typeof compactSource!=='object'||Array.isArray(compactSource)||
+    (Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>typeof compactSource[key]!=='boolean'))
+    throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
+  const compactDisplay=Object.fromEntries((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[])
+    .map(key=>[key,compactSource[key]])) as SharedCompactDisplay;
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */
