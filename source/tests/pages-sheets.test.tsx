@@ -93,7 +93,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     // A confirmed matching profile must remain visible during background fetch.
     expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
     expect(tree.props.style['--page-content-width']).toBe('1240px');
+    expect(scripts).toHaveLength(0); // layout cache is visible, but stale Excel is NOT fetched
     firebase.common.status='ready';
+    tree=render();expect(scripts).toHaveLength(1);
     respond();await settle();
     tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
     tree=open('Danh sách các ND trình HĐND');
