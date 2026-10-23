@@ -760,3 +760,13 @@ Tổng chỉ huy đọc hai bộ server; Luna sync_copy_review rà HTML read-onl
 Mã gốc được giữ trong patch từ baseline lúc sửa; cache của một lượt đọc bị bỏ không được đổi mục tiêu ghi khi hàng chuyển vị trí. Nháp legacy thiếu metadata chỉ bổ sung từ baseline đã lưu, giữ operationId; lệch mã bị chặn. History dùng mã gốc item đang xem; caller/đọc đang chạy được khóa trước rerender.188 tests/24files, typecheck, build HTML148.837byte/gzip43.563byte và ba gói server đạt. Không thêm dependency.
 
 Google Test deployments yêu cầu deploy web app lần đầu trước khi mở /dev ở project thử. Chưa tạo deployment thử/production. Gói kích hoạt [EnableExcel.gs](../server/EnableExcel.gs), [manifest](../server/enable-excel.appsscript.json) và server/dist-enable đã chuẩn bị, chưa upload/thi hành ở app chính.7 test fake kiểm guard và không PUT workbook: overlay chỉ đọc metadata, tạo hai kho riêng và đăng ký nguồn gốc. Main cần thêm Drive + external_request bên cạnh Sheets; Google cấp Drive rộng hơn một tệp. USER_ACCESSING/MYSELF và quyền chia sẻ giữ nguyên. Chờ người dùng chọn chỉ triển khai thử, hoặc thử rồi cập nhật main nếu UI đạt; người dùng tự xác nhận Google. Chưa tự gửi phần sửa NQ01 thật.
+
+
+## 23/10/2026 — kiểm thử tốc độ hosting cùng bản build (đề xuất PR)
+
+- Nhánh thử `perf/hosting-ab-browser-benchmark-20261023`: tạo bộ Chrome CDP `scripts/measure-web-startup.mjs` ghi thời gian HTML/JS/Auth/data-first/first-data-painted, báo lỗi timeout và trung vị/p75/p95; chỉ số, không ghi dữ liệu HĐND. CI chạy A/B mirrorWarmup on/off **informational**, không chặn phát hành khi mạng GitHub runner biến động.
+- `scripts/prepare-hosting-staging.mjs` đóng gói cùng một dist-pages thành 2 bản Firebase Hosting / Cloudflare Pages, xác minh SHA-256 từng HTML/JS/CSS và sinh header cache riêng. **Chưa triển khai** host mới, chưa có kết quả tốc độ hosting, chưa đổi Firebase Rules/nguồn dữ liệu/quyền hoặc GitHub Pages.
+- Các lượt Chrome trên runner **không thay thế** 5+ lượt đo thực tế trên máy người dùng. Không chấp nhận các kết luận tăng tốc từ gzip hoặc CI shell đơn lẻ, không coi mốc rAF trước vẽ là khung hình đã xuất hiện. Quy trình/rollback xem [HOSTING_STARTUP_AB_2026-10-23](HOSTING_STARTUP_AB_2026-10-23.md).
+- Chờ CI của PR và URL host thử độc lập, rồi mới quyết định có áp dụng tối ưu thật hay giữ nguyên.
+
+- Bổ sung sau lần CI đo đầu: các lượt mở lại hiện bảng khoảng 0,17–0,66 giây nhưng trace kết thúc sớm **trước mốc `data-first`**, nên chưa được dùng để kết luận dữ liệu đã xác nhận hoặc đối chứng hai chế độ. Bộ đo đã sửa để chờ cả hai mốc `first-data-painted` + `data-first`; cần chạy CI lại. Số liệu fresh-profile từ runner lần đầu (2.457s vs 1.929s) chỉ là một mẫu mỗi phương án, không chứng minh phiên nào tốt hơn.

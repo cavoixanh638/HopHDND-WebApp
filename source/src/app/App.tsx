@@ -41,7 +41,7 @@ import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
 import {StartupTimingPanel} from '../components/StartupTimingPanel';
 import {markStartup} from '../data/startup-timings';
-import {compareSourceFromSearch} from '../data/source-comparison';
+import {compareSourceFromSearch,disableSessionCacheForBenchmark} from '../data/source-comparison';
 
 type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'items-customize' | 'items-permissions' | 'catalogs'|'sync'|'transfer'|'review';
 declare global {interface Window {HDND_SOURCE?:string;HDND_EXCEL_ENABLED?:boolean;HDND_TEST?:boolean}}
@@ -54,6 +54,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // Explicit A/B URL: no administrator setting is saved or changed.
   const compareSource=compareSourceFromSearch(typeof window==='undefined'?'':window.location?.search??'');
   const comparison=!!firebase&&compareSource!==null;
+  // Bench-only opt-in: do not let an old session snapshot masquerade as a live data speedup.
+  const benchNoCache=disableSessionCacheForBenchmark(typeof window==='undefined'?'':window.location?.search??'');
   const activeViewerUid=useRef<string|null>(null);
   activeViewerUid.current=firebase?.user?.uid??null;
   // A/B uses the same URL, Firebase auth and confirmed admin layout, changing
@@ -61,9 +63,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const selectedSource=comparison?compareSource:firebase?.profile?.dataSource;
   const repository=useMemo<Repository>(()=>firebase
     ?selectedSource==='database'
-      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison)
+      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
       :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,configured.url,browserRepository,firebaseSourceSeed]);
+    :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;

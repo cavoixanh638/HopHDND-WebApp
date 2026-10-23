@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {compareSourceFromSearch,comparisonUrl} from '../src/data/source-comparison';
+import {compareSourceFromSearch,comparisonUrl,disableSessionCacheForBenchmark} from '../src/data/source-comparison';
 
 describe('source A/B preview is opt-in and never persists admin configuration',()=>{
  it('requires exact diagnostic mode and a recognized source',()=>{
@@ -8,6 +8,12 @@ describe('source A/B preview is opt-in and never persists admin configuration',(
    expect(compareSourceFromSearch('?startupMetrics=1&compareSource=database')).toBe('database');
    expect(compareSourceFromSearch('?startupMetrics=1&compareSource=excel')).toBe('excel');
    expect(compareSourceFromSearch('?startupMetrics=0&compareSource=excel')).toBeNull();
+ });
+ it('disables session row-cache only with explicit diagnostic opt-in',()=>{
+   expect(disableSessionCacheForBenchmark('?dataCache=off')).toBe(false);
+   expect(disableSessionCacheForBenchmark('?startupMetrics=0&dataCache=off')).toBe(false);
+   expect(disableSessionCacheForBenchmark('?startupMetrics=1&dataCache=off')).toBe(true);
+   expect(disableSessionCacheForBenchmark('?startupMetrics=1&dataCache=on')).toBe(false);
  });
  it('changes only the temporary URL and clears transport override for an equal comparison',()=>{
    const url=comparisonUrl('https://site.test/HopHDND/?startupMetrics=1&dbTransport=longpoll&utm_source=chatgpt','excel');

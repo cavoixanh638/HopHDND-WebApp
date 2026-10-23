@@ -53,6 +53,20 @@ jobs:
           test -s dist-pages/index.html
           test -n "$(find dist-pages/assets -type f -name '*.js' -print -quit)"
           node scripts/check-pages-performance.mjs dist-pages
+      - name: Stage identical candidate hosting bundles without deploying
+        run: node scripts/prepare-hosting-staging.mjs
+      - name: Verify browser benchmark command
+        run: |
+          node --check scripts/measure-web-startup.mjs
+          node scripts/measure-web-startup.mjs --help
+      - name: Informational production Chrome A/B (read-only, not a release gate)
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          node scripts/measure-web-startup.mjs \
+            --host='early=https://cavoixanh638.github.io/HopHDND-WebApp/' \
+            --host='control=https://cavoixanh638.github.io/HopHDND-WebApp/?mirrorWarmup=off' \
+            --runs=5 --timeout=18000
       - name: Verify legacy single-file offline build remains available
         run: npm run build
       - name: Verify standalone offline HTML

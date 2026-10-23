@@ -13,3 +13,9 @@ export function comparisonUrl(current:string,source:CompareSource):string{
   next.searchParams.delete('dbTransport'); // Equal Firebase transport for both groups
   return next.toString();
 }
+
+/** Diagnostic-only control: compare live network reads without session row-cache. */
+export function disableSessionCacheForBenchmark(search:string):boolean{
+  const params=new URLSearchParams(search);
+  return params.get('startupMetrics')==='1'&&params.get('dataCache')==='off';
+}
