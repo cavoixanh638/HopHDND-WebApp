@@ -68,7 +68,12 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // the live admin-selected source. That caused 57 Excel rows before 55 RTDB rows.
   // An already-confirmed cached Database preference can start after authentication
   // while profile/permissions listeners validate the current configuration in parallel.
+  // After a live confirmation, preserve mounted data through temporary Firebase
+  // status errors. Never drop 55 rows just because permission/profile refresh failed.
+  const verifiedRepository=useRef<Repository|null>(null);
+  if(!firebase||firebase.common.status==='ready')verifiedRepository.current=repository;
   const sourceReady=!firebase||firebase.common.status==='ready'||allowTemporaryLayout||
+    verifiedRepository.current===repository||
     (firebase.profile?.dataSource==='database'&&!!firebase.user);
   const canStartSource=sourceReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource);
