@@ -1,4 +1,4 @@
-import {useEffect,useMemo, useRef, useState, useCallback, Suspense} from 'react';
+import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -7,11 +7,11 @@ import { createDemoItems } from '../data/demo-items';
 import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
 import { MemoReportTable } from '../features/reports/ReportTable';
-
+import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
   type StatusPaletteStore} from '../data/status-palettes';
-
-
+import { ItemList } from '../features/items/ItemList';
+import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
 import type { Repository } from '../data/repository';
 import { SheetsRepository, readSheet } from '../data/sheets-repository';
@@ -19,11 +19,11 @@ import type {SheetSnapshot} from '../data/gviz-parser';
 import { FirebaseMirrorRepository } from '../data/firebase-mirror-repository';
 import { ExcelRepository } from '../data/excel-repository';
 import { DEFAULT_SHEET_URL, clearSheetConfig, loadSheetConfig, parseSheetConfig, saveSheetConfig, type SheetConfig } from '../data/sheet-config';
-
+import { ConnectionPanel } from '../features/settings/ConnectionPanel';
 import { configuredReports, getReportFont, getReportFontSize, tableFontStack, loadReportLayout, reportPageWidth, saveReportLayout, type ReportLayout } from '../data/report-preferences';
 import {loadSelectedWebFont} from '../data/on-demand-fonts';
-
-
+import { ReportSettings } from '../features/settings/ReportSettings';
+import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
 import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
 import {loadActiveListView,loadListViews} from '../data/list-views';
@@ -33,14 +33,13 @@ import type {LayoutConflictChoices} from '../data/item-layout-merge';
 import {useSharedConfig} from '../state/use-shared-config';
 import {googleCall,isGoogleHost} from '../data/google-bridge';
 import {CONFIG_EDITOR_URL} from '../data/shared-store';
-
+import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {mayEdit} from '../data/firebase-repository';
 import type {FirebaseController} from '../state/use-firebase';
-
-
+import {FirebasePanel} from '../features/settings/FirebasePanel';
+import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
 import {StartupTimingPanel} from '../components/StartupTimingPanel';
-import {ItemList,ReportDetailGrid,HistoryDialog,ConnectionPanel,ReportSettings,CatalogSettings,SyncPanel,FirebasePanel,ApprovalReviewPanel,prefetchItemList} from './deferred-sections';
 import {markStartup} from '../data/startup-timings';
 import {compareSourceFromSearch} from '../data/source-comparison';
 
@@ -90,13 +89,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
   const canStartSource=sourceReady&&compareReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource);
-  // After the first real report paints, fetch the secondary data table during
-  // idle time; its code must never delay authentication or the overview table.
-  useEffect(()=>{
-    if(!workspace.items.length||typeof window==='undefined')return;
-    const id=setTimeout(()=>prefetchItemList(),1200);
-    return()=>clearTimeout(id);
-  },[workspace.items.length]);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
   // Do not silently switch the protocol or bypass Firebase authentication.
@@ -325,7 +317,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     <StartupTimingPanel/>
     {slowRealtime&&<div className="notice" role="alert">Firebase đang phản hồi chậm. Có thể do mạng hoặc giao thức kết nối. <button type="button" className="button ghost" onClick={retryWithLongPolling}>Thử kết nối tương thích</button> (sẽ tải lại trang; hãy lưu bản sửa trước khi thử).</div>}
     <main>
-      <Suspense fallback={<div className="layout-loading-placeholder" role="status">Đang mở bảng hoặc công cụ đã chọn…</div>}>
       {layoutPending?<div className="layout-loading-placeholder" role="status" aria-busy="true">
         <span>Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.</span>
         <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
@@ -393,9 +384,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='connection'&&isFirebase&&<FirebasePanel dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
       </>}
-      </Suspense>
     </main>
-    <Suspense fallback={<div className="layout-loading-placeholder" role="status">Đang mở chi tiết nội dung…</div>}>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
       statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined}
       selectedIds={selection.items.map(item=>item.recordId)}
@@ -410,7 +399,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       dirtyIds={new Set(Object.keys(workspace.drafts))} errors={workspace.errors}
       onClose={()=>setSelection(null)}/>}
     {history && <HistoryDialog item={history.item} field={history.field} repository={repository} onClose={() => setHistory(null)} />}
-    </Suspense>
     {confirmDiscard && <Modal title="Bỏ các thay đổi chưa lưu vào file nguồn?" onClose={() => setConfirmDiscard(false)}><div className="modal-body"><p>Phần chưa lưu của {workspace.protectedRecovery?'phần sửa cũ trên máy':`${dirtyCount} nội dung`} sẽ được bỏ. Dữ liệu trong file nguồn không bị thay đổi.</p></div><div className="modal-footer"><button className="button ghost" onClick={() => setConfirmDiscard(false)}>Tiếp tục sửa</button><button className="button danger" onClick={() => { workspace.discard(); setConfirmDiscard(false); }}>Bỏ các thay đổi</button></div></Modal>}
     <footer className="app-footer">{anonymousVisitor?'Nội dung trình HĐND · Dữ liệu tự cập nhật':'Dashboard HĐND · Một file HTML · '+sourceLabel}</footer>
   </div>;
