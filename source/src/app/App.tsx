@@ -41,6 +41,7 @@ import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
 import {StartupTimingPanel} from '../components/StartupTimingPanel';
 import {markStartup} from '../data/startup-timings';
+import {compareSourceFromSearch} from '../data/source-comparison';
 
 type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'items-customize' | 'items-permissions' | 'catalogs'|'sync'|'transfer'|'review';
 declare global {interface Window {HDND_SOURCE?:string;HDND_EXCEL_ENABLED?:boolean;HDND_TEST?:boolean}}
@@ -50,21 +51,26 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [configured, setConfigured] = useState(() => window.HDND_SOURCE?parseSheetConfig(window.HDND_SOURCE):loadSheetConfig() ?? parseSheetConfig(DEFAULT_SHEET_URL));
   const [browserRepository,setRepository] = useState<Repository>(()=>connectedRepository(configured));
   const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
+  // Explicit A/B URL: no administrator setting is saved or changed.
+  const compareSource=compareSourceFromSearch(typeof window==='undefined'?'':window.location?.search??'');
+  const comparison=!!firebase&&compareSource!==null;
   const activeViewerUid=useRef<string|null>(null);
   activeViewerUid.current=firebase?.user?.uid??null;
-  // When selected, the verified Firebase mirror replaces slow GViz reads for all viewers.
+  // A/B uses the same URL, Firebase auth and confirmed admin layout, changing
+  // ONLY the read-only source of rows. The actual saved source is untouched.
+  const selectedSource=comparison?compareSource:firebase?.profile?.dataSource;
   const repository=useMemo<Repository>(()=>firebase
-    ?firebase.profile?.dataSource==='database'
-      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current)
-      :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.profile?.dataSource,configured.url,browserRepository,firebaseSourceSeed]);
+    ?selectedSource==='database'
+      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison)
+      :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
+    :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
+  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
@@ -78,7 +84,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const sourceReady=!firebase||firebase.common.status==='ready'||allowTemporaryLayout||
     verifiedRepository.current===repository||
     (firebase.profile?.dataSource==='database'&&!!firebase.user);
-  const canStartSource=sourceReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
+  // Fair A/B: start both data requests only after exactly the same auth+profile
+  // gates. No provisional Excel request while the admin config is pending.
+  const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
+  const canStartSource=sourceReady&&compareReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
@@ -127,7 +136,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const googleCommon=useSharedConfig(configured,!firebase&&!isDemo&&!privateTest,editingPage);
   const common=firebase?firebase.common:googleCommon;
   const canCustomize=isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config);
-  const canEditDraft=(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
+  const canEditDraft=!comparison&&(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
   const changeDataSource=async(next:'excel'|'database')=>{
     if(!firebase?.isAdmin||common.status!=='ready'||!firebase.profile)throw new Error('Cần quản trị và bản bố cục Firebase đã xác nhận.');
     if(next==='database')await new FirebaseMirrorRepository(firebase.database,configured).list();
@@ -214,7 +223,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     setConfigured(config); setRepository(!firebase&&isGoogleHost()&&window.HDND_EXCEL_ENABLED===true&&window.HDND_SOURCE===config.url?new ExcelRepository(config):new SheetsRepository(config,snapshot)); setSelection(null); setHistory(null);
   };
   const warnings = repository instanceof SheetsRepository ? repository.snapshot?.warnings ?? [] : repository instanceof ExcelRepository?repository.warnings:[];
-  const sourceLabel = isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase Database':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
+  const sourceLabel = comparison?(compareSource==='excel'?'Google Sheets/Excel · so sánh':'Firebase Database · so sánh'):isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase Database':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
   const listPage=page==='items'||page==='items-customize'||page==='items-permissions';
   const anonymousVisitor=isFirebase&&!firebase!.isAdmin&&(!firebase!.user||firebase!.user.isAnonymous);
   const guestMayEdit=anonymousVisitor&&!firebase!.editingLocked&&!workspace.protectedRecovery&&
@@ -342,6 +351,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         {!isFirebase&&<button className={page==='sync'?'active':''} onClick={event=>openOptions('sync',event)}>Cấu hình chung</button>}
       </nav>}
       {isFirebase&&common.config&&common.status!=='ready'&&<p className="muted" role="status">Đang xem bố cục admin đã lưu gần nhất trên máy; quyền đổi cấu hình vẫn bị khóa tới khi Firebase xác nhận.</p>}
+      {comparison&&<p className="notice" role="status">ĐANG SO SÁNH TỐC ĐỘ — {compareSource==='excel'?'đọc Excel trực tiếp qua Google Sheets GViz':'đọc Firebase Realtime Database'}. Dữ liệu chỉ xem; không thay nguồn mặc định admin đã lưu. Hai nguồn có thể có số dòng/thời điểm cập nhật khác nhau.</p>}
       {workspace.cachePending&&<p className="notice" role="status">Đang hiển thị bản dữ liệu lưu trong phiên trên thiết bị này. Chỉ xem; đang xác nhận bản mới nhất trên Firebase.</p>}
       {isFirebase&&repository instanceof FirebaseMirrorRepository&&repository.snapshot&&!workspace.cachePending&&<p className="muted" role="status">Nguồn Database · Đồng bộ Excel thành công: {new Date(repository.snapshot.syncedAt).toLocaleString('vi-VN')}{Date.now()-Date.parse(repository.snapshot.syncedAt)>120000?' · Bản sao có thể chậm cập nhật':''}</p>}
       {!anonymousVisitor&&!isDemo&&!privateTest&&common.status==='error'&&<p className="notice" role="alert">Không tải được danh mục và cách hiển thị: {common.message} <button className="button ghost" disabled={common.busy} onClick={()=>void common.refresh()}>Thử lại</button>{!isFirebase&&!isGoogleHost()&&editorUrl&&<> · <a href={editorUrl} target="_blank" rel="noreferrer">Mở trang cấu hình trên Google</a></>}</p>}{workspace.message && <p className="notice" role="alert">{workspace.message}</p>}
