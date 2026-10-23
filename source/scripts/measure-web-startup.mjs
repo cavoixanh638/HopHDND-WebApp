@@ -113,7 +113,8 @@ async function benchmark(host){
         await sleep(180);
       }
       const sample={host:host.label,visit:i+1,kind:i===0?'fresh-profile':'reused-auth-http-cache-off',
-        ...(metrics??{}),result:metrics?.dataMilestoneMs!=null&&metrics?.snapshotMs!=null?'verified-live':'timeout-or-no-live-data'};
+        ...(metrics??{}),result:metrics?.dataCacheMs!=null?'invalid-session-cache':
+          metrics?.dataMilestoneMs!=null&&metrics?.snapshotMs!=null?'verified-live':'timeout-or-no-live-data'};
       samples.push(sample);
       console.log('HOPHDND_STARTUP_SAMPLE',JSON.stringify(sample));
     }
@@ -125,6 +126,7 @@ async function benchmark(host){
   }
   const good=samples.filter(x=>x.result==='verified-live'),reused=good.filter(x=>x.visit>1);
   const summary={host:host.label,runs,success:good.length,timeout:runs-good.length,
+    invalidSessionCache:samples.filter(x=>x.result==='invalid-session-cache').length,
     freshProfileDataMs:good.find(x=>x.visit===1)?.dataMilestoneMs??null,
     freshProfileLiveVerifiedMs:good.find(x=>x.visit===1)?.snapshotMs??null,
     reusedAuthNoHttpCache:{dataVisible:aggregate(reused,'dataMilestoneMs'),
@@ -139,3 +141,6 @@ for(const host of hosts)summaries.push(await benchmark(host));
 console.log('HOPHDND_STARTUP_DONE',JSON.stringify({runnerOnly:true,
   warning:'Timing now waits for a LIVE Firebase data-first marker as well as table rendering. Cached view may appear earlier; Chrome trace is needed to establish pixel paint. No host ranking without same build, profile and network.',
   summaries}));
+
+// A benchmark with session-cache hits despite dataCache=off is not a valid live-read comparison.
+if(summaries.some(result=>result.invalidSessionCache>0))process.exitCode=1;
