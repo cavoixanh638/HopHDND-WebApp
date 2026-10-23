@@ -1,3 +1,12 @@
+## 23/10/2026 — Gộp Phòng/CV, kéo thả cột ngay ở trang xem cho admin, demo lịch sử Ghi chú
+
+- **Bảng dữ liệu → Gộp cột:** thay cặp cũ `Sở chủ trì / Phòng chuyên môn` bằng `Phòng chuyên môn / Chuyên viên`, giữ cột Sở chủ trì độc lập. Cặp mới gộp **Phòng** (cột gốc `room`) và **CV** (cột gốc `specialist`) trên hai dòng; hàng bộ lọc có **hai dòng riêng:** `Lọc theo Phòng` (select), `Tìm kiếm tên CV` (search theo tên đầy đủ). Hai điều kiện lọc đồng thời; không sửa cột gốc hay dữ liệu. Tên CV ở dòng gộp tôn trọng tùy chọn viết tắt tên CV. Khóa cấu hình cá nhân đổi từ `departmentRoom` sang `roomSpecialist` để không tự bật hành vi mới cho người dùng đã lưu cặp cũ.
+- **Admin xem Bảng dữ liệu:** khi ở giao diện chung không chọn mẫu cá nhân/không ép hiện đủ cột, admin Firebase đã kết nối kéo tiêu đề đổi vị trí hoặc kéo mép cột đổi độ rộng ngay chế độ **xem**. Chỉ commit **khi thả/ấn phím**, sử dụng `onPersistViewerLayout` và giao thức `saveItemLayoutConfig` / Firebase transaction `mergeItemLayout`, giữ nguyên cấu hình không liên quan và rollback nếu mất mạng/xung đột/quyền lỗi. Hiện trạng thái đang lưu/thành công/lỗi. Khách và tài khoản không có quyền admin không thấy tay nắm, không kéo cột; sort vẫn chỉ trong chế độ chỉnh sửa. Bộ lọc, màu và quyền sửa ô không đổi. Muốn kéo trong một mẫu xem cá nhân, quay lại giao diện chung trước để tránh vô tình đẩy mẫu cá nhân lên tất cả người dùng.
+- **Ghi chú:** mở biểu tượng lịch sử ô Ghi chú để xem thêm **ba mốc ngày và giá trị demo** (18, 20, 22/10/2026), nhãn **DỮ LIỆU DEMO** rõ ràng; lịch sử thật (nếu có) vẫn tải riêng ở trên, demo không thêm vào kho audit, Excel, Google Sheets, Firebase hay thống kê. Mỗi ô Ghi chú có cùng ba tình huống minh họa, không giả lập là các lần sửa thực tế của hồ sơ đó.
+- Test thêm cặp gộp, hai điều kiện lọc + DOM hai điều khiển, demo lịch sử, rollback và bảo vệ quyền quản trị qua CI/Chrome. Giữ nguyên màu V1/V2 backup và trạng thái đã chốt.
+
+---
+
 ## 22/10/2026 — Bỏ nền vàng tô cả dòng đang sửa; chỉ viết tắt tên lãnh đạo
 
 - Bỏ tô **nền vàng cả hàng** `tr.dirty-row` ở Bảng dữ liệu và bỏ sọc cam `tr.report-grid-row-dirty` của popup. Trạng thái nháp/dấu đếm nháp và cảnh báo lưu vẫn giữ, lịch sử ô, phân quyền, màu trạng thái theo nghiệp vụ và màu dòng người dùng thiết lập riêng không thay đổi. Không liên quan cập nhật dữ liệu, Excel, Firebase hay polling.

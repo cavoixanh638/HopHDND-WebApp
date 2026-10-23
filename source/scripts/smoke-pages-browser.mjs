@@ -562,27 +562,43 @@ try{
     const headers=[...document.querySelectorAll('.item-heading-row th')].map(th=>th.dataset.columnKey);
     const content=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
     const leaders=document.querySelector('.item-data-table tbody td[data-col-key="vpLeader"]');
-    const specialist=document.querySelector('.item-data-table tbody td[data-col-key="specialist"]');
-    return {ok:!headers.includes('type')&&!headers.includes('room')&&!headers.includes('ubndLeader')&&
+    const specialist=document.querySelector('.item-data-table tbody td[data-col-key="room"]');
+    return {ok:!headers.includes('type')&&!headers.includes('specialist')&&!headers.includes('ubndLeader')&&headers.includes('room')&&headers.includes('department')&&
       !!content?.textContent?.includes('(QPPL)')&&
       !!leaders?.textContent?.includes('UBND')&&
       !!leaders?.textContent?.includes('PCVP N.N.Hùng')&&
       !!leaders?.textContent?.includes('PCT T.V.Quân')&&
+      !!specialist?.textContent?.includes('Phòng')&&!!specialist?.textContent?.includes('CV')&&
       !!specialist?.textContent?.includes('C.V.mẫu')&&
       document.querySelector('.item-data-table').getBoundingClientRect().width<${sourceWidth},
       headers,content:content?.textContent?.slice(-55),specialist:specialist?.textContent};
   })()`);
   if(!compactRows.ok)throw Error('Compact projection failed: '+JSON.stringify(compactRows));
   if(!await evaluate(`(()=>{
-    const input=document.querySelector('[data-filter-key=specialist] input');
+    const input=document.querySelector('[data-filter-key=room] input[aria-label="Tìm kiếm tên CV"]');
     input?.focus();return !!input;
   })()`))throw Error('Specialist must remain searchable by full name');
   await send('Input.insertText',{text:'Chuyên viên mẫu'});
-  await eventually("document.querySelector('[data-filter-key=specialist] input')?.value==='Chuyên viên mẫu'",
+  await eventually("document.querySelector('[data-filter-key=room] input[aria-label=\"Tìm kiếm tên CV\"]')?.value==='Chuyên viên mẫu'",
     'Full specialist name was not accepted by filter');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
     'Full source specialist must match even when visually abbreviated');
-  await evaluate("document.querySelector('[data-filter-key=specialist] .item-filter-clear')?.click()");
+  // Room drop-down AND specialist text search must coexist in one column.
+  const roomsAvailable=await evaluate(`(()=>{
+    const select=document.querySelector('[data-filter-key=room] select[aria-label="Lọc theo Phòng"]');
+    return !!select&&[...select.options].some(o=>o.value==='Phòng mẫu');
+  })()`);
+  if(!roomsAvailable)throw Error('Room drop-down missing from merged Room/CV column');
+  await evaluate(`(()=>{
+    const select=document.querySelector('[data-filter-key=room] select[aria-label="Lọc theo Phòng"]');
+    select.value='Phòng mẫu';select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await eventually("document.querySelector('[data-filter-key=room] select')?.value==='Phòng mẫu'",
+    'Room selection must apply while specialist search remains active');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'AND combined filter lost the matching record');
+  await evaluate("document.querySelector('[data-filter-key=room] input[aria-label=\"Tìm kiếm tên CV\"]')?.closest('.item-filter-input-wrap')?.querySelector('.item-filter-clear')?.click()");
+  await evaluate("document.querySelector('[data-filter-key=room] select')?.closest('.item-filter-input-wrap')?.querySelector('.item-filter-clear')?.click()");
   // Even when both leaders share one visual column, the filter keeps full names.
   if(!await evaluate(`(()=>{
     const input=document.querySelector('[data-filter-key=vpLeader] input');

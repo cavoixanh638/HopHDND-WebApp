@@ -2,15 +2,15 @@ import type {Item} from '../../../shared/types';
 import type {ItemColumn} from '../../data/item-preferences';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
-export type CompactOption='typeInContent'|'leadersTogether'|'departmentRoom'|'shortSpecialist'|'shortLeaders';
+export type CompactOption='typeInContent'|'leadersTogether'|'roomSpecialist'|'shortSpecialist'|'shortLeaders';
 export type CompactDisplay=Record<CompactOption,boolean>;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
-  typeInContent:false,leadersTogether:false,departmentRoom:false,shortSpecialist:false,shortLeaders:false,
+  typeInContent:false,leadersTogether:false,roomSpecialist:false,shortSpecialist:false,shortLeaders:false,
 };
 export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string}[]=[
   {key:'typeInContent',label:'Loại VB → Nội dung trình',detail:'Ví dụ: Nội dung nghị quyết (QPPL)'},
   {key:'leadersTogether',label:'Gộp Lãnh đạo VP và UBND TP',detail:'Hai dòng có nhãn VP / UBND'},
-  {key:'departmentRoom',label:'Gộp Sở chủ trì và Phòng chuyên môn',detail:'Hai dòng có nhãn Sở / Phòng'},
+  {key:'roomSpecialist',label:'Gộp Phòng chuyên môn và chuyên viên',detail:'Hai dòng Phòng / CV; lọc Phòng và tìm tên chuyên viên riêng'},
   {key:'shortSpecialist',label:'Viết tắt tên chuyên viên',detail:'Nguyễn Ngọc Hùng → N.N.Hùng; tìm theo tên đầy đủ'},
   {key:'shortLeaders',label:'Viết tắt tên Lãnh đạo VP và UBND',detail:'Áp dụng cho cả hai lãnh đạo, gộp hay tách cột; vẫn tìm theo họ tên đầy đủ'},
 ];
@@ -52,15 +52,15 @@ export function abbreviateLeaderName(value:string):string {
   // A bare title is a role, not a person: never turn it into initials.
   return abbreviateVietnameseName(input);
 }
-export type CompactPair={anchor:'content'|'vpLeader'|'department';hidden:'type'|'ubndLeader'|'room';label:string;extraWidth:number};
-const PAIRS:Record<'typeInContent'|'leadersTogether'|'departmentRoom',CompactPair>={
+export type CompactPair={anchor:'content'|'vpLeader'|'room';hidden:'type'|'ubndLeader'|'specialist';label:string;extraWidth:number};
+const PAIRS:Record<'typeInContent'|'leadersTogether'|'roomSpecialist',CompactPair>={
   typeInContent:{anchor:'content',hidden:'type',label:'Nội dung trình (Loại VB)',extraWidth:0},
   leadersTogether:{anchor:'vpLeader',hidden:'ubndLeader',label:'Lãnh đạo VP / UBND TP',extraWidth:75},
-  departmentRoom:{anchor:'department',hidden:'room',label:'Sở chủ trì / Phòng chuyên môn',extraWidth:65},
+  roomSpecialist:{anchor:'room',hidden:'specialist',label:'Phòng chuyên môn / Chuyên viên',extraWidth:80},
 };
 export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDisplay):CompactPair[]{
   const keys=new Set(columns.map(c=>c.key));
-  return (['typeInContent','leadersTogether','departmentRoom'] as const)
+  return (['typeInContent','leadersTogether','roomSpecialist'] as const)
     .filter(opt=>prefs[opt]&&keys.has(PAIRS[opt].anchor)&&keys.has(PAIRS[opt].hidden))
     .map(opt=>PAIRS[opt]);
 }
