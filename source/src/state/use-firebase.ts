@@ -10,6 +10,7 @@ import { validateReportLayout, type ReportLayout } from '../data/report-preferen
 import { validateItemLayout, type ItemLayout } from '../data/item-preferences';
 import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-merge';
 import type {SheetConfig} from '../data/sheet-config';
+import {markStartup} from '../data/startup-timings';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
 export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'}
@@ -47,6 +48,7 @@ function initialize(){
   const app=initializeApp(config,'hdnd-pages');
   const auth=getAuth(app),database=getDatabase(app);
   if(emulator){connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectDatabaseEmulator(database,'127.0.0.1',9000);}
+  markStartup('firebase-initialized');
   return {auth,database,emulator};
 }
 export function useFirebase(){
@@ -65,8 +67,10 @@ export function useFirebase(){
       if(!active)return;
       if(!next&&hadAuthenticatedSession.current)setProfile(null);
       if(next)hadAuthenticatedSession.current=true;
+      markStartup('auth-checked');
+      if(next)markStartup('auth-signed-in');
       setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});
-      if(!next&&!signing){signing=true;void signInAnonymously(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
+      if(!next&&!signing){signing=true;markStartup('auth-start-anonymous');void signInAnonymously(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
     },cause=>setError(cause.message));
     return()=>{active=false;unsubscribe();};
   },[auth]);
@@ -74,12 +78,13 @@ export function useFirebase(){
     if(!user)return;
     let active=true;
     const failed=(cause:Error)=>{if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);};
-    const stop=[onValue(ref(database,'.info/connected'),snap=>{if(active)setConnected(snap.val()===true);}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
+    const stop=[onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
       if(!active)return;
+      markStartup('control-received');
       const current=snap.val();
       setEditControl({ready:true,revision:Number(current?.revision??0),editingLocked:current?.editingLocked===true});
     },cause=>{if(active)setEditControl({ready:false,revision:0,editingLocked:true});failed(cause);}),
-    onValue(ref(database,'hdnd/profile'),snap=>{if(!active)return;try{const raw=snap.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setProfileReady(true);}catch(cause){setProfileReady(false);failed(cause as Error);}},cause=>{if(active)setProfileReady(false);failed(cause);})];
+    onValue(ref(database,'hdnd/profile'),snap=>{if(!active)return;markStartup('profile-received');try{const raw=snap.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setProfileReady(true);}catch(cause){setProfileReady(false);failed(cause as Error);}},cause=>{if(active)setProfileReady(false);failed(cause);})];
     return()=>{active=false;stop.forEach(unsubscribe=>unsubscribe());};
   },[user?.uid,database]);
   const admin=firebaseAdmin(user);
