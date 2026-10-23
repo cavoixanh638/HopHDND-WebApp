@@ -53,20 +53,25 @@ jobs:
         run: npm run docs:check
       - name: Build Pages from TypeScript
         run: npm run build:pages
-      - name: Copy verified artifact to GitHub Pages root
-        run: cp dist-pages/index.html ../index.html
-      - name: Commit and push Pages HTML if changed
+      - name: Copy split, content-hashed Pages assets to the GitHub Pages root
+        run: |
+          cp dist-pages/index.html ../index.html
+          mkdir -p ../assets
+          rsync -a --delete dist-pages/assets/ ../assets/
+          test -s ../index.html
+          test -n "$(find ../assets -type f -name '*.js' -print -quit)"
+      - name: Commit and push Pages HTML and assets if changed
         working-directory: .
         shell: bash
         run: |
-          if git diff --quiet -- index.html; then
+          git add -A -- index.html assets
+          if git diff --cached --quiet -- index.html assets; then
             echo "Published HTML already matches the source build."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git commit -m "build(pages): publish verified HopHDND source"
+          git commit -m "build(pages): publish verified split HopHDND source"
           # Documentation-only pushes can advance main while CI is building.
           # Rebase the HTML-only commit, never overwrite a newer source revision.
           for attempt in 1 2 3; do
