@@ -62,17 +62,20 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
   const sourceKey = isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
-  // Database reads require a known Firebase Auth user; do not query protected RTDB anonymously before sign-in resolves.
-  const canStartDatabase=repository.sourceKind!=='firebase'||!!firebase?.user;
-  const workspace = useWorkspace(repository, sourceKey,canStartDatabase);
+  // A cached admin layout can paint immediately, but an unverified cached Excel
+  // preference must NEVER trigger a GViz download while Firebase is still checking
+  // the live admin-selected source. That caused 57 Excel rows before 55 RTDB rows.
+  // An already-confirmed cached Database preference can start after authentication
+  // while profile/permissions listeners validate the current configuration in parallel.
+  const sourceReady=!firebase||firebase.common.status==='ready'||
+    (firebase.profile?.dataSource==='database'&&!!firebase.user);
+  const canStartSource=sourceReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
+  const workspace = useWorkspace(repository, sourceKey,canStartSource);
   useEffect(()=>{markStartup('react-commit');},[]);
-  const reportedPaint=useRef(false);
   useEffect(()=>{
-    if(reportedPaint.current||!workspace.items.length)return;
-    if(typeof requestAnimationFrame!=='function')return;
-    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',workspace.items.length+' dòng');});
-    return()=>cancelAnimationFrame(raf);
-  },[workspace.items]);
+    if(canStartSource)markStartup('source-selected',repository.sourceKind==='firebase'?'Database':'Excel');
+  },[canStartSource,repository.sourceKind]);
+  const reportedPaint=useRef(false);
   // Presentation-only personal colors: no shared layout, permissions or source data.
   const [statusPaletteHolder,setStatusPaletteHolder]=useState(()=>
     ({source:sourceKey,store:loadStatusPaletteStore(sourceKey)}));
@@ -222,6 +225,16 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     !common.config&&common.status==='loading';
   const layoutUnavailable=!accountPage&&!allowTemporaryLayout&&isFirebase&&
     !common.config&&(common.status==='error'||!!firebase!.error);
+  // Only report a FIRST paint once the correct datasource has arrived AND
+  // the admin layout allows the table to be rendered. Previously this timing
+  // fired on 57 provisional Excel rows even though the layout was blocked.
+  useEffect(()=>{
+    if(reportedPaint.current||layoutPending||layoutUnavailable||!canStartSource||!workspace.items.length)return;
+    if(typeof requestAnimationFrame!=='function')return;
+    const rows=workspace.items.length,kind=repository.sourceKind;
+    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',rows+' dòng · '+(kind==='firebase'?'Database':'Excel'));});
+    return()=>cancelAnimationFrame(raf);
+  },[workspace.items,layoutPending,layoutUnavailable,canStartSource,repository.sourceKind]);
   const loadingWidth=page==='overview'||page==='customize'
     ?confirmedWidths?.report??1120
     :confirmedWidths?.list??1120;
