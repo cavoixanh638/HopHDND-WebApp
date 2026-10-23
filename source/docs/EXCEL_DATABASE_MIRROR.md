@@ -1,10 +1,10 @@
 # HopHDND — Bản sao Excel → Firebase Database mỗi phút (triển khai có kiểm soát)
 
-Cập nhật: 23/10/2026. Phạm vi **bản thử PR #27**. **Chưa nạp vào RTDB production, chưa tạo Cloud Run Job hoặc Cloud Scheduler**; việc có mã nguồn không phải bằng chứng đã đồng bộ thành công. Không thay Excel gốc, không tự đổi Rules đang chạy.
+Cập nhật: 23/10/2026. PR #27 đã gộp; bộ nạp và bootstrap riêng tại nhánh `feature/cloud-shell-bootstrap-excel-firebase-20261023`. **Chưa nạp vào RTDB production, chưa tạo Cloud Run Job hoặc Cloud Scheduler**; việc có mã nguồn không phải bằng chứng đã đồng bộ thành công. Không thay Excel gốc, không tự đổi Rules đang chạy.
 
 ## Quy tắc nghiệp vụ
 
-- File nguồn duy nhất được nhận diện bằng **Drive file ID** `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, tab `gid=60961344`; nguồn là **Office .xlsx**, không phải Google Sheets native. Tên tab phải được quản trị xác nhận chính xác từ file Excel. GID chỉ là phần xác nhận nguồn với trình đọc web; job Office phải chọn tab bằng **tên tab thực tế** (`SOURCE_SHEET_NAME`) chứ không được đoán sheet đầu tiên.
+- File nguồn duy nhất được nhận diện bằng **Drive file ID** `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, tab `gid=60961344`; nguồn là **Office .xlsx**, không phải Google Sheets native. Đã kiểm tra trực tiếp workbook thực tế ngày 23/10/2026: tên tab dữ liệu là **`Các nội dung trình HĐND`** (tổng cộng 4 sheet). GID chỉ là phần xác nhận nguồn với trình đọc web; job Office phải chọn tab bằng **tên tab thực tế** (`SOURCE_SHEET_NAME`) chứ không được đoán sheet đầu tiên.
 - **Excel là nguồn chính duy nhất**; mirror là snapshot chỉ đọc, không sinh ra thay đổi ngược về Excel. Bảng báo cáo/chi tiết cùng đọc một snapshot nhất quán.
 - Không xóa snapshot khi Excel đọc lỗi, sai tab, thiếu header A–O, không có hàng, giảm bất thường số hàng, mất mạng hoặc ghi RTDB lỗi.
 - Mirror phải có `schemaVersion`, `source`, `sourceModifiedAt`, `syncedAt`, `sha256`, `rows`. Ghi conditional `If-Match` theo ETag và đọc lại sau ghi. Nếu file Excel **không đổi**, không ghi RTDB lần nữa.
