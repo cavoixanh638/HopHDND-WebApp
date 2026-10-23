@@ -47,6 +47,27 @@ beforeEach(()=>{
 });
 afterEach(()=>{h.dispose();vi.useRealTimers();vi.unstubAllGlobals();});
 describe('Pages integrates Sheets content with Firebase administration',()=>{
+  it('tests direct Excel in a diagnostic URL without changing the admin Database source',async()=>{
+    (window as any).location={search:'?startupMetrics=1&compareSource=excel'};
+    const confirmed={revision:12,catalogs:catalogFromItems(createDemoItems(1)),
+      reports:defaultReportLayout(),items:defaultItemLayout(),dataSource:'database' as const};
+    firebase.profile=confirmed;firebase.common.config=confirmed;firebase.common.status='loading';
+    render();
+    expect(scripts).toHaveLength(0); // do not race auth/profile to fetch Google
+    firebase.common.status='ready';
+    let tree=render();
+    expect(scripts).toHaveLength(1);
+    expect(new URL(scripts[0].src).hostname).toBe('docs.google.com');
+    expect(new URL(scripts[0].src).searchParams.get('range')).toBe('A:O');
+    expect(text(tree)).toContain('ĐANG SO SÁNH TỐC ĐỘ');
+    expect(text(tree)).toContain('đọc Excel trực tiếp');
+    expect(firebase.profile.dataSource).toBe('database'); // never save switch
+    respond('Excel thử trực tiếp');await settle();
+    tree=open('Danh sách các ND trình HĐND');
+    const list=nodes(tree).find(node=>node.type===ItemList);
+    expect(list.props.items[0].note).toBe('Excel thử trực tiếp');
+    expect(list.props.canEdit).not.toBe(true);
+  });
   it('continues fetching Sheets but never paints an unsaved fallback layout while Firebase is unavailable',async()=>{
     firebase.ready=false;firebase.connected=false;firebase.error='Auth unavailable';
     render();expect(scripts).toHaveLength(1);const url=new URL(scripts[0].src);expect(url.pathname).toContain(parseSheetConfig(DEFAULT_SHEET_URL).spreadsheetId);expect(url.searchParams.get('gid')).toBe('60961344');expect(url.searchParams.get('range')).toBe('A:O');

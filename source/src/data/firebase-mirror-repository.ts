@@ -42,12 +42,14 @@ export class FirebaseMirrorRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly readOnly=true;
   readonly subscribeInitial=true;
-  readonly canDraft=true;
+  readonly canDraft:boolean;
   snapshot:ExcelMirrorSnapshot|null=null;
   liveConfirmed=false;
   constructor(private readonly database:Database,private readonly source:SheetConfig,
-    private readonly viewerUid:()=>string|null=()=>null){}
+    private readonly viewerUid:()=>string|null=()=>null,canDraft=true,
+    private readonly sessionCacheEnabled=true){this.canDraft=canDraft;}
   cachedRows():Item[]|null{
+    if(!this.sessionCacheEnabled)return null;
     const uid=this.viewerUid();
     if(!uid)return null;
     const snapshot=loadSessionMirror(uid,this.source);
@@ -69,7 +71,7 @@ export class FirebaseMirrorRepository implements Repository {
       snap=>{try{const rows=this.parse(snap.val());
         this.liveConfirmed=true;
         const uid=this.viewerUid();
-        if(uid&&this.snapshot)storeSessionMirror(uid,this.source,this.snapshot);
+        if(uid&&this.snapshot&&this.sessionCacheEnabled)storeSessionMirror(uid,this.source,this.snapshot);
         markStartup('data-first',rows.length+' dòng (đã xác nhận trực tuyến)');next(rows);
       }catch(cause){error(cause as Error);}},
       cause=>error(cause));
