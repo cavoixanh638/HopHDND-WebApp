@@ -1,5 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
-import type {CSSProperties} from 'react';
+import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
 import { MockRepository } from '../data/mock-repository';
@@ -46,7 +46,7 @@ type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'item
 declare global {interface Window {HDND_SOURCE?:string;HDND_EXCEL_ENABLED?:boolean;HDND_TEST?:boolean}}
 const connectedRepository=(config:SheetConfig):Repository=>isGoogleHost()&&window.HDND_EXCEL_ENABLED===true&&window.HDND_SOURCE===config.url?new ExcelRepository(config):new SheetsRepository(config);
 
-export function App({firebase,TransferPanel}:{firebase?:FirebaseController;TransferPanel?:typeof import('../features/settings/ExcelTransferPanel').ExcelTransferPanel}={}) {
+export function App({firebase,TransferPanel}:{firebase?:FirebaseController;TransferPanel?:ComponentType<ComponentProps<typeof import('../features/settings/ExcelTransferPanel').ExcelTransferPanel>>}={}) {
   const [configured, setConfigured] = useState(() => window.HDND_SOURCE?parseSheetConfig(window.HDND_SOURCE):loadSheetConfig() ?? parseSheetConfig(DEFAULT_SHEET_URL));
   const [browserRepository,setRepository] = useState<Repository>(()=>connectedRepository(configured));
   const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
