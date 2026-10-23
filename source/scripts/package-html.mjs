@@ -1,7 +1,7 @@
 import { readFile, readdir, writeFile, unlink, rmdir } from 'node:fs/promises';
 import { resolve, relative, isAbsolute } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import {spawnSync} from 'node:child_process';
+import { Script } from 'node:vm';
 
 const target = process.argv[2];
 if (!['dist', 'dist-preact', 'dist-react','dist-pages','dist-pages-test'].includes(target)) throw new Error('Chỉ đóng gói thư mục build đã quy định.');
@@ -33,12 +33,8 @@ if (/<script\b[^>]*\bsrc\s*=/i.test(markup) || /<link\b[^>]*\brel=["']stylesheet
 }
 const name = pages?'index.html':'Dashboard_HĐND.html';
 for (const match of html.matchAll(/<script type="module">([\s\S]*?)<\/script>/gi)) {
-  // HTML executes this as type=module, not as a classic script. In particular
-  // Vite's inlined lazy modules may legitimately reference import.meta.
-  // Node --check parses ESM from stdin without executing browser code.
-  const checked=spawnSync(process.execPath,['--input-type=module','--check'],
-    {input:match[1],encoding:'utf8',maxBuffer:2*1024*1024});
-  if(checked.status!==0)throw new Error(`Standalone module syntax invalid: ${checked.stderr?.split('\n').filter(line=>!line.startsWith('    at ')).slice(-4).join(' ').slice(0,600)}`);
+  // Kiểm tra cú pháp bundle đã ghép, không thực thi code trong Node.
+  new Script(match[1], { filename: `${target}/inline-bundle.js` });
 }
 await writeFile(resolve(directory, name), html, 'utf8');
 for (const path of consumed) await unlink(path);
