@@ -1,5 +1,11 @@
 # Hướng dẫn làm việc
 
+## 23/10/2026 — Khóa hồi quy đường kẻ kéo cột và bộ lọc không nhảy
+
+- Hit-zone đổi rộng cột Bảng dữ liệu chính là 8px quanh đường viền dọc có sẵn, `background:transparent;border:0`, không vẽ icon/tay nắm dày; hover/focus chỉ đổi màu nét chính đường kẻ, không chặn drag tiêu đề đổi vị trí. Giữ commit sau pointer release, không viết Firebase theo từng pixel.
+- Filter `Chọn để lọc Phòng` cùng tìm CV font 15px, chiều cao hàng đủ cho 2 điều khiển; các select/input sticky gọi `preserveStickyFilterViewport` trên pointerdown để bấm mở không đổi `scrollTop`/Left. Chỉ cho trình duyệt clamp lại nếu người dùng thực sự thay bộ lọc làm giảm số dòng.
+- Browser smoke phải thử CDP click select ở scrollTop>200, kiểm scrollTop gần như giữ nguyên; không dùng kiểm test dispatch change giả thay cho thao tác bấm mở dropdown.
+
 ## 23/10/2026 — Quy tắc gộp Phòng/CV và kéo cột của quản trị
 
 - Tùy chọn mới `roomSpecialist` gộp `room` (anchor) với `specialist` (hidden), trong khi `department` **vẫn là cột độc lập**. Giữ hai điều khiển cùng một ô lọc: `Lọc theo Phòng` và `Tìm kiếm tên CV` dùng phép **AND**. Không dùng một textbox chung, không bỏ lọc tên CV khi ẩn cột chuyên viên. Không tự chuyển lựa chọn cá nhân `departmentRoom` trước đây.
