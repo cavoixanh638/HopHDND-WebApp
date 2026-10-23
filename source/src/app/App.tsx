@@ -69,6 +69,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const reportedPaint=useRef(false);
   useEffect(()=>{
     if(reportedPaint.current||!workspace.items.length)return;
+    if(typeof requestAnimationFrame!=='function')return;
     const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',workspace.items.length+' dòng');});
     return()=>cancelAnimationFrame(raf);
   },[workspace.items]);
