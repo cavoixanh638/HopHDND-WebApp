@@ -1,0 +1,1 @@
+function e(e){return e.normalize(`NFD`).replace(/[\u0300-\u036f]/g,``).replace(/[đĐ]/g,`d`).toLowerCase().trim()}export{e as t};
