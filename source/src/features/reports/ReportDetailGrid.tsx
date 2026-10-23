@@ -44,7 +44,7 @@ type Props={
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
-  onUpdate,onKeepDraft,onHistory,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
+  onUpdate,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
