@@ -42,7 +42,7 @@ describe('Realtime Database initial read is a single authenticated listener',()=
  }
  beforeEach(()=>{
    h.reset();list.mockClear();subscribe.mockClear();receive=undefined;
-   vi.stubGlobal('window',{setInterval:vi.fn(),clearInterval:vi.fn(),addEventListener:vi.fn(),removeEventListener:vi.fn()});
+   vi.stubGlobal('window',{setInterval:globalThis.setInterval,clearInterval:globalThis.clearInterval,setTimeout:globalThis.setTimeout,clearTimeout:globalThis.clearTimeout,addEventListener:vi.fn(),removeEventListener:vi.fn()});
    vi.stubGlobal('document',{hidden:false,addEventListener:vi.fn(),removeEventListener:vi.fn()});
  });
  afterEach(()=>{h.dispose();vi.unstubAllGlobals();});
