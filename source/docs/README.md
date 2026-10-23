@@ -8,6 +8,7 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x
 |---|---|
 | AI/người phát triển phải làm việc theo quy tắc gì? | [AGENTS](../AGENTS.md) |
 | Hệ thống phục vụ nghiệp vụ gì, điều gì không được vi phạm? | [SYSTEM](SYSTEM.md) |
+| **Thử ưu tiên dữ liệu + bố cục trước quyền chỉnh sửa (khách, A/B)** | [DATA_FIRST_REORDER_2026-10-23](DATA_FIRST_REORDER_2026-10-23.md) |
 | **Đo Chrome thực tế, so sánh 3 host và giới hạn rollback** | [HOSTING_STARTUP_AB_2026-10-23](HOSTING_STARTUP_AB_2026-10-23.md) |
 | **Ma trận đối chiếu popup với Danh sách và kiểm thử kéo cột** | [REPORT_DETAIL_PARITY](REPORT_DETAIL_PARITY_2026-10-19.md) |
 | **Bảng chi tiết mở từ ô báo cáo; cấu hình cột hiển thị riêng** | [FEATURES — phần Bảng chi tiết nhanh](FEATURES.md), [ARCHITECTURE — ReportDetailGrid](ARCHITECTURE.md), [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md) |
