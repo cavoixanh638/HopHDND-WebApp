@@ -10,6 +10,8 @@ const h=vi.hoisted(()=>{
 vi.mock('firebase/app',()=>({initializeApp:h.initialize.mockImplementation(()=>({}))}));
 vi.mock('firebase/auth',()=>({
   getAuth:h.getAuth.mockImplementation(()=>h.auth),
+  initializeAuth:h.getAuth.mockImplementation(()=>h.auth),
+  indexedDBLocalPersistence:{},browserLocalPersistence:{},inMemoryPersistence:{},
   signInAnonymously:h.signIn.mockImplementation(async()=>({user:{uid:'guest'}})),
   connectAuthEmulator:vi.fn()
 }));
