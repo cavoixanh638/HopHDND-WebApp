@@ -238,10 +238,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   useEffect(()=>{
     if(reportedPaint.current||layoutPending||layoutUnavailable||!canStartSource||!workspace.items.length)return;
     if(typeof requestAnimationFrame!=='function')return;
-    const rows=workspace.items.length,kind=repository.sourceKind;
-    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',rows+' dòng · '+(kind==='firebase'?'Database':'Excel'));});
+    const rows=workspace.items.length,kind=repository.sourceKind,fromCache=workspace.cachePending;
+    const raf=requestAnimationFrame(()=>{reportedPaint.current=true;markStartup('first-data-painted',rows+' dòng · '+(kind==='firebase'?'Database':'Excel')+(fromCache?' · bản lưu đang xác minh':''));});
     return()=>cancelAnimationFrame(raf);
-  },[workspace.items,layoutPending,layoutUnavailable,canStartSource,repository.sourceKind]);
+  },[workspace.items,workspace.cachePending,layoutPending,layoutUnavailable,canStartSource,repository.sourceKind]);
   const loadingWidth=page==='overview'||page==='customize'
     ?confirmedWidths?.report??1120
     :confirmedWidths?.list??1120;
