@@ -2,15 +2,23 @@
 // GViz is intercepted with synthetic records; Firebase production is never contacted.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 
-const html=readFileSync(resolve('dist-pages-test/index.html'));
+const appRoot=resolve('dist-pages-test');
+const html=readFileSync(resolve(appRoot,'index.html'));
 const server=createServer((req,res)=>{
-  if(!req.url||req.url==='/'||req.url.startsWith('/index.html')){res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);}
-  else{res.writeHead(404);res.end();}
+  try{
+    const pathname=new URL(req.url??'/', 'http://127.0.0.1').pathname;
+    const file=pathname==='/'?resolve(appRoot,'index.html'):resolve(appRoot,'.'+pathname);
+    if(!file.startsWith(appRoot+'/')&&!file.startsWith(appRoot+'\\'))throw Error('Invalid path');
+    const meta=statSync(file);
+    if(!meta.isFile())throw Error('Not a file');
+    const mime=file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
+    res.writeHead(200,{'content-type':mime,'Cache-Control':'no-store'});res.end(readFileSync(file));
+  }catch{res.writeHead(404);res.end();}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
@@ -136,6 +144,15 @@ try{
   await send('Fetch.enable',{patterns:[{urlPattern:'*docs.google.com/spreadsheets/*/gviz/tq*',requestStage:'Request'}]});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
+  // A genuine clean Chrome profile measures cold UI shell render on this runner;
+  // auth and Firebase production timing must still be tested on the user's network.
+  const cold=await evaluate(`(()=>{const navigation=performance.getEntriesByType('navigation')[0];
+    const resources=performance.getEntriesByType('resource');
+    return {shellVisibleMs:Math.round(performance.now()),
+      responseEndMs:Math.round(navigation?.responseEnd??0),
+      moduleFetches:resources.filter(r=>r.initiatorType==='script'||r.name.endsWith('.js')).length,
+      stylesheetFetches:resources.filter(r=>r.initiatorType==='link'||r.name.endsWith('.css')).length};})()`);
+  console.log('COLD_CHROME_SHELL',JSON.stringify(cold));
   const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
   // This test intentionally blocks real Firebase. Keep normal first paint gated,

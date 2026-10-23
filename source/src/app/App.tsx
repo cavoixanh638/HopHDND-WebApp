@@ -1,5 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
-import type {CSSProperties} from 'react';
+import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
 import { MockRepository } from '../data/mock-repository';
@@ -21,6 +21,7 @@ import { ExcelRepository } from '../data/excel-repository';
 import { DEFAULT_SHEET_URL, clearSheetConfig, loadSheetConfig, parseSheetConfig, saveSheetConfig, type SheetConfig } from '../data/sheet-config';
 import { ConnectionPanel } from '../features/settings/ConnectionPanel';
 import { configuredReports, getReportFont, getReportFontSize, tableFontStack, loadReportLayout, reportPageWidth, saveReportLayout, type ReportLayout } from '../data/report-preferences';
+import {loadSelectedWebFont} from '../data/on-demand-fonts';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
@@ -45,7 +46,7 @@ type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'item
 declare global {interface Window {HDND_SOURCE?:string;HDND_EXCEL_ENABLED?:boolean;HDND_TEST?:boolean}}
 const connectedRepository=(config:SheetConfig):Repository=>isGoogleHost()&&window.HDND_EXCEL_ENABLED===true&&window.HDND_SOURCE===config.url?new ExcelRepository(config):new SheetsRepository(config);
 
-export function App({firebase,TransferPanel}:{firebase?:FirebaseController;TransferPanel?:typeof import('../features/settings/ExcelTransferPanel').ExcelTransferPanel}={}) {
+export function App({firebase,TransferPanel}:{firebase?:FirebaseController;TransferPanel?:ComponentType<ComponentProps<typeof import('../features/settings/ExcelTransferPanel').ExcelTransferPanel>>}={}) {
   const [configured, setConfigured] = useState(() => window.HDND_SOURCE?parseSheetConfig(window.HDND_SOURCE):loadSheetConfig() ?? parseSheetConfig(DEFAULT_SHEET_URL));
   const [browserRepository,setRepository] = useState<Repository>(()=>connectedRepository(configured));
   const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
@@ -160,6 +161,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     return next;
   };
   const reports = useMemo(() => configuredReports(layout), [layout]);
+  const tableFont=getReportFont(layout);
+  useEffect(()=>{loadSelectedWebFont(tableFont);},[tableFont]);
   const showReportDetails=useCallback((title:string,items:Item[])=>setSelection({title,items}),[]);
   const [layoutMessage, setLayoutMessage] = useState('');
   const saveLayout = async(next: ReportLayout[]) => {

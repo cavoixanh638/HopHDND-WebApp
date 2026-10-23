@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: './',
   optimizeDeps: { entries: mode.startsWith('pages')?['pages.html']:['index.html'] },
-  build: { cssCodeSplit: false, rolldownOptions: { ...(mode.startsWith('pages')?{input:'pages.html'}:{}),output: { codeSplitting: false } } },
+  build: { cssCodeSplit: false, rolldownOptions: { ...(mode.startsWith('pages')?{input:'pages.html'}:{}),output: mode.startsWith('pages')?{}:{codeSplitting:false} } },
   resolve: mode === 'preact'||mode.startsWith('pages') ? {
     alias: [
       { find: /^react-dom\/client$/, replacement: 'preact/compat/client' },

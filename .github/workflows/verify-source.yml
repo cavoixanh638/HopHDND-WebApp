@@ -46,10 +46,19 @@ jobs:
         run: npm run test:firebase
       - name: Probe source GViz endpoint (read-only, diagnostic)
         run: node scripts/probe-gviz.mjs
-      - name: Build standalone Pages artifact
+      - name: Build split, on-demand Pages artifact
         run: npm run build:pages
-      - name: Verify build exists
-        run: test -s dist-pages/index.html
+      - name: Verify split Pages artifact
+        run: |
+          test -s dist-pages/index.html
+          test -n "$(find dist-pages/assets -type f -name '*.js' -print -quit)"
+          node scripts/check-pages-performance.mjs dist-pages
+      - name: Verify legacy single-file offline build remains available
+        run: npm run build
+      - name: Verify standalone offline HTML
+        run: |
+          test -s dist/Dashboard_HĐND.html
+          test "$(find dist -type f | wc -l)" -eq 1
       - name: Build Pages test artifact (isolated Firebase emulator configuration)
         run: npm run build:pages:test
       - name: Browser smoke with mock Sheets and headless Chrome
