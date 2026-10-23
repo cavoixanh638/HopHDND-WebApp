@@ -13,6 +13,7 @@ import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
 import {warmMirrorStream} from '../data/authenticated-mirror-stream';
 import {mirrorPath} from '../data/firebase-mirror-repository';
 import {DEFAULT_SHEET_URL,loadSheetConfig,parseSheetConfig} from '../data/sheet-config';
+import {compareSourceFromSearch} from '../data/source-comparison';
 import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
@@ -74,6 +75,8 @@ export function useFirebase(){
   // If a cached profile explicitly says Excel, do not request the mirror.
   useEffect(()=>{
     if(!user)return;
+    // A/B mode must not give Database a prefetch head-start over GViz Excel.
+    if(typeof window!=='undefined'&&compareSourceFromSearch(window.location?.search??'')!==null)return;
     const cached=loadConfirmedProfile();
     if(cached?.dataSource==='excel')return;
     const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
