@@ -88,3 +88,16 @@ Yêu cầu mới: "các chức năng chỉnh sửa, tài khoản... load sau đ�
 **Không được tuyên bố Chrome thực tế đã tăng tốc** chỉ dựa vào 19% gzip vì nhiều request nhỏ hơn có thể tăng overhead, và Chrome smoke từ các runner khác nhau. Bản mới cải thiện **đường dữ liệu cần tải trước**, nhưng thời điểm first paint phải kiểm chứng qua `?startupMetrics=1` trên cùng máy và mạng: `first-data-painted`, Firebase `data-first`, JS entry; trung vị ít nhất 3 lần. Nếu first paint xấu đi rõ rệt cần điều chỉnh chiến lược chunking/rollback.
 
 **Thẩm quyền**: danh sách chỉ mở chế độ sửa đúng cơ chế cũ, kiểm tra Firebase Auth/quyền qua server; React.lazy chỉ hoãn mã giao diện, **không thay đổi quyền**. Layout admin và nguồn là điều kiện xác nhận cần thiết và phải kiểm tra trước khi cho phép cấu hình hay sửa. Dữ liệu Excel vs DB vẫn là nguồn admin đã lưu, A/B URL chỉ đọc không đổi profile. Bản Firebase mirror hiện chưa có lịch tự đồng bộ Excel 60 giây.
+
+## PR #37 — quyết định khôi phục bản tải giao diện một lượt
+
+Ngày 23/10/2026, sau khi PR #36 phát hành, người dùng đo trực tiếp hai phiên Chrome:
+- Tab ẩn danh: JS entry 387ms, đăng nhập 842ms, RTDB subscribe 848ms, kết nối 1788ms, nhận 55 dòng 2187ms, hiển thị 2225ms.
+- Chrome nhiều tab: JS entry 889ms, đăng nhập 1249ms, subscribe 1253ms, kết nối 1927ms, nhận 55 dòng 2459ms, hiển thị 2492ms.
+- Đo bản **trước PR #36** (hai phiên khác nhau): hiển thị 1704ms và 2221ms. Trung bình bản trước 1962,5ms; bản mới 2358,5ms; **tăng khoảng 396ms (~20,2%)**, nhưng số mẫu nhỏ và không A/B cùng phiên nên chưa khẳng định duy nhất nguyên nhân.
+- CI bản trước (run 39949606538): Chrome shell 555ms, initial gzip 178692B, hai assets đầu.
+- CI PR #36 (run 39955485568): Chrome shell 694ms, initial gzip 144120B, **10 assets** bắt buộc. Gzip giảm 19% nhưng shell chậm hơn trong phép thử. Nhiều chunk và scheduling/roundtrips có thể làm lợi ích bị triệt tiêu; phần RTDB kết nối cũng biến động độc lập.
+
+Quyết định: rollback **riêng phần lazy-load giao diện PR #36** (App, test virtual-tree, offline packager, deferred-sections), giữ nguyên tối ưu PR #32–35 (Excel import lazy, font chọn theo yêu cầu, Auth warmup và Google popup lazy, chẩn đoán RTDB, so sánh Excel vs Database). Đồng thời không thay đổi Firebase Rules hoặc dữ liệu. Để tiếp tục việc hoãn giao diện chỉnh sửa trong tương lai, phải thiết kế split 1–2 chunk, thiết lập A/B production có đối chứng ít nhất 5 lần và ngưỡng thất bại/rollback trước khi triển khai thay đổi mặc định. Tối ưu **first-data-painted** thay vì chỉ gzip payload.
+
+Nghiệm thu rollback: typecheck/unit/Emulator/offline single HTML/Chrome smoke và Pages PASS; so sánh log CI `PAGES_COLD_PAYLOAD` và `COLD_CHROME_SHELL`; kiểm tra riêng hai tab/các trang admin không mất chức năng. Nguồn Firebase vẫn có 55 dòng với `syncedAt` 11:41:44 23/10/2026; đây là vấn đề tươi mới dữ liệu, không phải thời gian tải trang.
