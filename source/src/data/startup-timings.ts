@@ -6,7 +6,7 @@
  */
 export interface StartupSample {stage:string;atMs:number;detail?:string}
 const enabled=typeof window!=='undefined'&&
-  new URLSearchParams(window.location.search).get('startupMetrics')==='1';
+  new URLSearchParams(window.location?.search??'').get('startupMetrics')==='1';
 const samples:StartupSample[]=[];
 const clock=()=>typeof performance==='undefined'?0:performance.now();
 export function startupEnabled(){return enabled;}
