@@ -12,7 +12,7 @@ describe('startup timing diagnosis without sensitive network information',()=>{
         requestStart:43,responseStart:110,responseEnd:125,domContentLoadedEventEnd:170})]
       :[res('https://site.example/assets/pages-secret.js',15000,14800),
         res('https://site.example/assets/site-style.css',100,90),
-        res('https://hophdnd.firebaseio.com/.json?auth=secret',200000,120000)]} as Performance;
+        res('https://hophdnd.firebaseio.com/.json?auth=secret',200000,120000)]} as unknown as Performance;
    const got=captureNetworkDiagnostics(perf,{visibilityState:'hidden'} as Document,{} as Navigator);
    expect(got.navigation.ttfbMs).toBe(67);
    expect(got.navigation.responseEndMs).toBe(125);
