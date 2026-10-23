@@ -23,7 +23,7 @@ Từ thư mục source/:
 Tham số --host có thể thêm Firebase Hosting/Cloudflare Pages **sau khi có URL staging thực tế**. Host phải là HTTPS. Không đưa JWT, query cá nhân hoặc URL có credential vào tham số.
 
 - Mỗi host có Chrome profile mới: **chỉ lần 1** là truy cập fresh profile. Lần 2–5 giữ lại phiên Firebase/Auth, **tắt HTTP cache**; không được ghi nhãn "cold-first-ever" cho 2–5. Một mẫu cold/host không đủ để kết luận cold-start.
-- Mẫu dùng mốc performance.mark('hdnd:first-data-painted') do ứng dụng phát khi có dữ liệu và bố cục đã đủ điều kiện. Mốc được ghi trong requestAnimationFrame, **không chứng minh pixel đã vẽ**: cần Chrome Performance trace/filmstrip hoặc nhìn trang để chốt cảm nhận.
+- Mẫu ghi **riêng** 'dataCacheMs' (bản lưu phiên chưa xác nhận), 'dataMilestoneMs' (bảng đã lên lịch vẽ) và 'snapshotMs' (mốc 'data-first' đã nhận/kiểm chứng dữ liệu trực tuyến). Bộ đo tiếp tục chờ cả bảng **và** dữ liệu trực tuyến. Vì marker bảng được ghi trong requestAnimationFrame, nó **không chứng minh pixel đã vẽ**: cần Chrome Performance trace/filmstrip hoặc nhìn trang để chốt cảm nhận.
 - Báo cáo chỉ gồm host nhãn, thời gian số học, trạng thái visible và số lượt; không thu cell Excel, path RTDB, token, UID, email, URL.
 - Chỉ tính trung vị/p75/p95 trên các mẫu quan sát được và ghi riêng số timeout, không loại bỏ thất bại rồi nói tốc độ tốt. Nếu >1 timeout trong 5 lượt, **không nghiệm thu**.
 - GitHub runner có mạng, DNS và vị trí khác máy người dùng. CI chỉ cho bằng chứng bổ sung, **không thay thế** A/B 5+ lượt trên máy người dùng.
@@ -66,8 +66,8 @@ Chỉ chạy câu lệnh Cloudflare từ thư mục source/. Hai câu lệnh nà
 | HTML responseEnd | Tài nguyên HTML xong, KHÔNG phải bảng |
 | JS entry | JavaScript ứng dụng bắt đầu chạy |
 | Auth signed in | Có định danh Firebase hợp lệ |
-| data-first | Nhận dữ liệu qua repository |
-| first-data-painted | Ứng dụng đã có bảng dữ liệu hợp lệ và lên lịch vẽ |
+| data-first | Dữ liệu được Firebase mirror xác nhận trực tuyến; khác bản session cache |
+| first-data-painted | Ứng dụng đã có bảng (có thể từ cache chỉ xem) và lên lịch vẽ |
 | Timeout/tỷ lệ thành công | Mức ổn định thực tế, không được bỏ |
 | Bằng chứng visual Chrome | Xác minh thực sự hiển thị hai bảng |
 
