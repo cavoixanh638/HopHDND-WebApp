@@ -10,6 +10,9 @@ import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-me
 import type {SheetConfig} from '../data/sheet-config';
 import {markStartup} from '../data/startup-timings';
 import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
+import {warmMirrorStream} from '../data/authenticated-mirror-stream';
+import {mirrorPath} from '../data/firebase-mirror-repository';
+import {DEFAULT_SHEET_URL,loadSheetConfig,parseSheetConfig} from '../data/sheet-config';
 import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
@@ -51,6 +54,7 @@ export function useFirebase(){
   const [editControl,setEditControl]=useState({ready:false,revision:0,editingLocked:true});
   const saving=useRef(false);
   const hadAuthenticatedSession=useRef(false);
+  const stopMirrorWarmup=useRef<(()=>void)|null>(null);
   useEffect(()=>{
     let active=true,signing=false;
     const unsubscribe=onAuthStateChanged(auth,next=>{
@@ -64,6 +68,29 @@ export function useFirebase(){
     },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
   },[auth]);
+  // Data-first: issue the protected mirror read immediately after Auth.
+  // It runs alongside profile, permissions and editing-lock listeners, but
+  // remains invisible until a LIVE admin profile confirms Database is selected.
+  // If a cached profile explicitly says Excel, do not request the mirror.
+  useEffect(()=>{
+    if(!user)return;
+    const cached=loadConfirmedProfile();
+    if(cached?.dataSource==='excel')return;
+    const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
+    markStartup('mirror-warm-start','Song song cấu hình/quyền, chưa hiển thị');
+    const release=warmMirrorStream(database,user.uid,mirrorPath(source));
+    stopMirrorWarmup.current=release;
+    return()=>{
+      release();
+      if(stopMirrorWarmup.current===release)stopMirrorWarmup.current=null;
+    };
+  },[user?.uid,database]);
+  useEffect(()=>{
+    if(profileReady&&profile?.dataSource==='excel'){
+      stopMirrorWarmup.current?.();
+      stopMirrorWarmup.current=null;
+    }
+  },[profileReady,profile?.dataSource]);
   useEffect(()=>{
     if(!user)return;
     let active=true;
