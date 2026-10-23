@@ -7,5 +7,7 @@ export interface Repository {
   list(): Promise<Item[]>;
   save(patches: Patch[]): Promise<SaveResult[]>;
   history(recordId: string,sourceCode?:string): Promise<AuditEntry[]>;
+  /** True only when subscribe() supplies its own initial full snapshot. */
+  readonly subscribeInitial?: boolean;
   subscribe?(next:(items:Item[])=>void,error:(cause:Error)=>void):()=>void;
 }

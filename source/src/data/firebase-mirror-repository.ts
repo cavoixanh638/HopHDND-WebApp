@@ -2,6 +2,7 @@ import {get,onValue,ref,type Database} from 'firebase/database';
 import type {Item,AuditEntry,Patch,SaveResult} from '../../shared/types';
 import type {Repository} from './repository';
 import type {SheetConfig} from './sheet-config';
+import {markStartup} from './startup-timings';
 
 /** Immutable server-published snapshot. No browser write path. */
 export interface ExcelMirrorSnapshot {
@@ -39,6 +40,7 @@ export function validateExcelMirror(value:unknown,source:Pick<SheetConfig,'sprea
 export class FirebaseMirrorRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly readOnly=true;
+  readonly subscribeInitial=true;
   readonly canDraft=true;
   snapshot:ExcelMirrorSnapshot|null=null;
   constructor(private readonly database:Database,private readonly source:SheetConfig){}
@@ -50,8 +52,9 @@ export class FirebaseMirrorRepository implements Repository {
     return this.parse((await get(ref(this.database,mirrorPath(this.source)))).val());
   }
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void) {
+    markStartup('data-subscribe');
     return onValue(ref(this.database,mirrorPath(this.source)),
-      snap=>{try{next(this.parse(snap.val()));}catch(cause){error(cause as Error);}},
+      snap=>{try{const rows=this.parse(snap.val());markStartup('data-first',rows.length+' dòng');next(rows);}catch(cause){error(cause as Error);}},
       cause=>error(cause));
   }
   async save(_patches:Patch[]):Promise<SaveResult[]> {
