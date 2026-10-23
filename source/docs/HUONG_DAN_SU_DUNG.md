@@ -1,3 +1,13 @@
+## Kéo độ rộng tại đường kẻ và lọc không nhảy (23/10/2026)
+
+Khi ở chế độ được phép tùy chỉnh cột, **rê chuột đúng đường kẻ dọc giữa hai tiêu đề**: con trỏ đổi sang mũi tên chỉnh độ rộng, giữ chuột kéo qua trái hoặc phải. Không có tay nắm/icon riêng. Admin Firebase đang ở chế độ xem vẫn tự lưu bố cục cho các tài khoản sau khi thả; nếu không đủ quyền sẽ không thấy vùng chỉnh này.
+
+Ở chế độ **Gộp Phòng chuyên môn / Chuyên viên**, bộ lọc trên là **Chọn để lọc Phòng**, bên dưới là **Tìm kiếm tên CV**, cùng cỡ chữ 15px. Sau khi cuộn sâu, bấm mở bất kỳ “Chọn để lọc” nào sẽ không tự nhảy dòng; nếu chọn một điều kiện lọc làm giảm đáng kể số dòng, vị trí cuộn có thể được giới hạn theo chiều dài của kết quả mới.
+
+Kéo rộng/hẹp một cột không chủ động chia chênh lệch cho các cột khác hay dồn sang cuối; nó làm tăng/giảm tổng độ rộng bảng. Khi khung bảng còn khoảng trống dư, thuật toán bảng CSS của trình duyệt có thể tự phân phối phần dư hiển thị. Các tính năng khác giữ nguyên.
+
+---
+
 ## Gộp Phòng/CV · Kéo cột chế độ xem · Lịch sử minh họa Ghi chú (23/10/2026)
 
 Trong **Danh sách các ND trình HĐND**, mở **Gộp cột** và bật **Gộp Phòng chuyên môn và chuyên viên**. Dòng phía trên của ô gộp hiện Phòng, dòng dưới hiện CV. Bên dưới cột gộp có **Lọc theo Phòng** (danh sách chọn) và **Tìm kiếm tên CV** (nhập một phần/tên đầy đủ); có thể kết hợp cả hai. **Sở, ngành chủ trì** vẫn là cột riêng. Tắt gộp để hiện lại cột Phòng và Chuyên viên độc lập; giá trị gốc không đổi.
