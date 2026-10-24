@@ -881,3 +881,8 @@ Theo ảnh người dùng ngày 24/10, bỏ riêng hai phần chữ thừa trên
 
 
 **Bằng chứng phát hành (24/10/2026):** [PR #52](https://github.com/cavoixanh638/HopHDND-WebApp/pull/52) đã **merge** vào main tại commit `58fa7297214b7ed7d15b92a0b7b988cd77886212`. [Verify GitHub Actions #40081395885](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40081395885): **SUCCESS**, gồm TypeScript/unit/Firebase emulator/Chrome smoke. [Publisher commit `bb8b45ba`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/bb8b45ba5423994390acc7781c20d0bf6e7a2bea) xuất bản `index.html` trỏ tới `assets/pages-BfDw9NJm.js` + `assets/style-w5JU51R0.css`; đối chiếu file JS không còn hai câu đã bỏ, CSS có chiều cao viewport desktop/mobile mới. Chưa kiểm độc lập trạng thái CDN/Pages deploy cuối cùng hoặc màn hình người dùng; không gọi là người dùng nghiệm thu.
+
+## 24/10/2026 — Rút gọn nhãn lọc Phòng
+
+- Theo yêu cầu người dùng, đổi `Chọn để lọc Phòng` → `Lọc theo Phòng` trong `RoomSpecialistFilterCell.tsx`, đồng bộ nội dung mặc định của select, `aria-label` và `title`.
+- Không đổi cách lọc theo Phòng/Tên CV (AND), dữ liệu, quyền, hiệu ứng 3D, cỡ chữ hay cách giữ vị trí cuộn sticky khi mở danh sách. Kiểm CI trước khi phát hành.
