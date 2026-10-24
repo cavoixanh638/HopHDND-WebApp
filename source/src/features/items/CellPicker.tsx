@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeSearch } from '../../domain/search';
+import {SearchHighlight} from './SearchHighlight';
 import './cell-picker.css';
 
 type CellPickerProps = {
@@ -8,11 +9,12 @@ type CellPickerProps = {
   displayValue?: string;
   options: string[];
   searchable?: boolean;
+  highlightQuery?: string;
   disabled?: boolean;
   onChange: (value: string) => void;
 };
 
-export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, onChange }: CellPickerProps) {
+export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange }: CellPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -119,7 +121,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       aria-expanded={open}
       onClick={() => { setQuery(''); setOpen(value => !value); }}
     >
-      {(displayValue??value) || '—'}
+      <SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/>
     </button>
     <div
       ref={popoverRef}
