@@ -1237,18 +1237,21 @@ try{
         const button=document.querySelector('.report-surface .report-table td.report-clickable-cell .count-drill');
         const td=button.closest('td'),pill=button.querySelector('span');
         const rect=button.getBoundingClientRect(),cell=td.getBoundingClientRect(),ps=getComputedStyle(pill);
+        const tdCss=getComputedStyle(td);
         return {hover:button.matches(':hover'),fullHit:Math.abs(rect.width-cell.width)<2,
+          cellLift:new DOMMatrixReadOnly(tdCss.transform).m42,cellShadow:tdCss.boxShadow,
           overlayLift:new DOMMatrixReadOnly(getComputedStyle(button).transform).m42,
           pillLift:new DOMMatrixReadOnly(ps.transform).m42,shadow:ps.boxShadow,border:ps.borderTopColor};
       })()`);
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:9});
       await new Promise(resolve=>setTimeout(resolve,270));
       const drillReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
-        document.querySelector('.report-surface .report-table td.report-clickable-cell .count-drill > span')).transform).m42`);
+        document.querySelector('.report-surface .report-table td.report-clickable-cell')).transform).m42`);
       if(!drillLift.hover||!drillLift.fullHit||Math.abs(drillLift.overlayLift)>.25||
-        Math.abs(drillLift.pillLift+2)>.25||!drillLift.shadow.includes('7px 13px')||
-        drillLift.border!=='rgb(167, 216, 237)'||Math.abs(drillReset)>.25)
-        throw Error('Report count must retain full-cell hit area while lifting only numeral: '+JSON.stringify({drillLift,drillReset}));
+        Math.abs(drillLift.cellLift+2)>.25||!drillLift.cellShadow.includes('7px 13px')||
+        Math.abs(drillLift.pillLift)>.25||drillLift.shadow!=='none'||
+        Math.abs(drillReset)>.25)
+        throw Error('Report count must retain full-cell hit area and lift whole cell: '+JSON.stringify({drillLift,drillReset}));
       console.log('HOVER_3D_B_REPORT_COUNTERS_PASS',JSON.stringify(drillLift));
 
       // Compare new cell-only focus against the previous very faint .035
@@ -1301,8 +1304,8 @@ try{
       await evaluate("document.querySelector('#hover-ab-previous')?.remove()");
       await send('Performance.disable');
       console.log('CELL_HOVER_VISUAL_AB',JSON.stringify(abResults));
-      // New 3D B contract: report cells remain full-size hit targets but only
-      // the visible numeral badge gets the pale hover lift. No full-cell outline.
+      // New 3D B contract: whole clickable report cell lifts, numeric badge
+      // stays flat and the invisible button still covers the entire cell.
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:abPoints[0].x,y:abPoints[0].y});
       await new Promise(resolve=>setTimeout(resolve,270));
@@ -1310,17 +1313,23 @@ try{
         const button=document.elementFromPoint(${abPoints[0].x},${abPoints[0].y})?.closest('.count-drill');
         if(!button)return {ok:false,reason:'mouse missed the count'};
         const s=getComputedStyle(button),r=button.getBoundingClientRect(),td=button.closest('td').getBoundingClientRect();
-        const pill=button.querySelector('span'),badge=getComputedStyle(pill);
+        const pill=button.querySelector('span'),badge=getComputedStyle(pill),
+          tdStyle=getComputedStyle(button.closest('td'));
         const others=[...document.querySelectorAll('.report-surface .count-drill')].filter(b=>b!==button);
-        const onlyOne=others.every(b=>getComputedStyle(b).outlineStyle==='none'||getComputedStyle(b).outlineWidth==='0px');
+        const onlyOne=others.every(b=>Math.abs(new DOMMatrixReadOnly(
+          getComputedStyle(b.closest('td')).transform).m42)<.25);
         const oneCell=Math.abs(r.width-td.width)<3&&Math.abs(r.height-td.height)<3;
         return {ok:s.outlineStyle==='none'&&s.backgroundColor==='rgba(0, 0, 0, 0)'&&
-          badge.borderTopColor==='rgb(167, 216, 237)'&&badge.boxShadow.includes('7px 13px')&&
-          Math.abs(new DOMMatrixReadOnly(badge.transform).m42+2)<.25&&oneCell&&onlyOne,
-          fullCellOutline:s.outline,fill:s.backgroundColor,badgeShadow:badge.boxShadow,
-          badgeLift:new DOMMatrixReadOnly(badge.transform).m42,oneCell,onlyOne};
+          tdStyle.boxShadow.includes('7px 13px')&&
+          Math.abs(new DOMMatrixReadOnly(tdStyle.transform).m42+2)<.25&&
+          badge.boxShadow==='none'&&Math.abs(new DOMMatrixReadOnly(badge.transform).m42)<.25&&
+          oneCell&&onlyOne,
+          fullCellOutline:tdStyle.outline,fill:s.backgroundColor,cellShadow:tdStyle.boxShadow,
+          cellLift:new DOMMatrixReadOnly(tdStyle.transform).m42,
+          badgeShadow:badge.boxShadow,badgeLift:new DOMMatrixReadOnly(badge.transform).m42,
+          oneCell,onlyOne};
       })()`);
-      if(!hoverVisual.ok)throw Error('Report count must raise inner numeral only while preserving whole-cell clicks: '+JSON.stringify(hoverVisual));
+      if(!hoverVisual.ok)throw Error('Report count must raise whole clickable cell while numeral stays flat: '+JSON.stringify(hoverVisual));
       console.log('CELL_HOVER_VISUAL_PASS',JSON.stringify(hoverVisual));
       // Real CDP pointer events at the lower-right INSIDE each data cell, not
       // .click() on the number. These corners used to miss the tiny count button.
