@@ -132,12 +132,12 @@ describe('Data list workflow palette is synchronized with the actual report stag
     const palette=css.match(/\.report-surface\s*\{([^}]*)\}/g)?.find(block=>block.includes('--source-bg'));
     expect(palette).toContain('--source-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4)');
     expect(palette).toContain('--source-ink:var(--hdnd-status-not-submitted-text,#7F1D30)');
-    expect(palette).toContain('--office-bg:var(--hdnd-status-office-bg,#FFE8B8)');
-    expect(palette).toContain('--office-ink:var(--hdnd-status-office-text,#704500)');
+    expect(palette).toContain('--office-bg:var(--hdnd-status-office-bg,#FEF9C3)');
+    expect(palette).toContain('--office-ink:var(--hdnd-status-office-text,#854D0E)');
     expect(palette).toContain('--completed-bg:var(--hdnd-status-done-bg,#D5F0DE)');
     expect(palette).toContain('--completed-ink:var(--hdnd-status-done-text,#125B35)');
     expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
-    expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
+    expect(css).toContain('--workflow-bg:#FEF9C3;--workflow-border:#E5CD70;--workflow-fg:#854D0E');
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(contrast('D5F0DE','2B7450')).toBeGreaterThanOrEqual(4.5);
     expect(css).toContain('td[data-progress-tone="done"] .workflow-status-value::before');
@@ -188,7 +188,7 @@ describe('Data list workflow palette is synchronized with the actual report stag
     // border and status-dot variable (--workflow-fg).
     for(const [tone,ink,fill,minimum] of [
       ['not-submitted','D00025','FFE0E4',4.5],
-      ['office','B04700','FFE8B8',4.5],
+      ['office','854D0E','FEF9C3',4.5],
       ['done','007A18','D5F0DE',4.5],
     ] as const){
       const selector='tbody td[data-progress-tone="'+tone+'"]';
@@ -200,12 +200,12 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('.item-data-table tbody td[data-progress-tone] .workflow-status-value,');
     expect(css).toContain('.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input)');
     expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
-    expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
+    expect(css).toContain('--workflow-bg:#FEF9C3;--workflow-border:#E5CD70;--workflow-fg:#854D0E');
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
     expect(css).toContain('opacity:.42;');
     // V5 is text-only: do not change weight, background or dot colors.
     expect(css).toContain('--workflow-text:#D00025;');
-    expect(css).toContain('--workflow-text:#B04700;');
+    expect(css).toContain('--workflow-text:#854D0E;');
     expect(css).toContain('--workflow-text:#007A18;');
     expect(css).toContain('font-weight:600;');
   });
