@@ -973,7 +973,7 @@ try{
       buttonWidth<tdWidth-25&&
       inner.borderColor==='rgb(158, 207, 231)'&&
       inner.boxShadow.includes('rgb(216, 241, 252)')&&
-      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(208, 0, 37)',
+      inner.outlineStyle==='none',
       parentShadow:parent.boxShadow,parentOutline:parent.outlineStyle,
       innerBorder:inner.borderColor,innerShadow:inner.boxShadow,
       innerOutline:inner.outlineStyle,tdWidth,buttonWidth};
