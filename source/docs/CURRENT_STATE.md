@@ -858,3 +858,15 @@ Người dùng duyệt **phương án B** từ mẫu thử ba mức hover: đi�
 **Giới hạn hiệu ứng:** Chỉ `button` xem/chọn nội dung nhỏ bên trong ô được nổi khối; không nâng viền `td`, không tô sáng toàn hàng. Hover vào vùng trống ô đơn đủ điều kiện vẫn kích hoạt nút bên trong như trước; ô gộp nhiều điều khiển chỉ nâng điều khiển đang hover để tránh tô đồng loạt hoặc mở sai field. Không nâng phần tử `textarea` đang nhập hoặc `input` dạng text; đóng hover là tự trả về 0 px, không đóng hoặc lưu bản nháp. Chip số 0 `disabled`, nhãn preview và ô không có quyền cũng không được nổi khối. Hỗ trợ `prefers-reduced-motion` và chế độ in. Không sửa CSS popup Bảng chi tiết, vì kế hoạch mẫu thử đã duyệt chỉ chọn hai vị trí trên.
 
 **Kiểm thử:** Chrome smoke đo trực tiếp trạng thái hover ở khoảng trống của ô danh sách và giá trị nội dung bên trong: `td.boxShadow=none`, button nổi -2px và có shadow, sau rời chuột trở lại 0 px; ghi chú button cũng tương tự; Bảng tổng hợp button chưa khóa nổi -2px, chip disabled không nổi; kiểm thử textarea focus không đổi và kiểm thử dropdown/chi tiết cũ giữ nguyên. Đánh giá an toàn chỉ sau CI PASS. Quy trình release `source/AGENTS.md` và GitHub Pages không đổi.
+
+
+## 24/10/2026 — Mở rộng hiệu ứng 3D B tới ô bấm và hai tab, làm sáng chữ hai tab
+
+Người dùng giữ nguyên hiệu ứng **B có viền xanh nhạt + quầng sáng + bóng + nâng 2 px** (không chọn các mẫu bỏ viền). Mở rộng đúng các vùng tương tác: các nút giá trị đã được phép sửa trong **Danh sách chi tiết**, bốn chip trạng thái ở đầu **Bảng tổng hợp**, số đếm trong ô có thể bấm ở 5 bảng tổng hợp, điều khiển chỉnh sửa có quyền trong popup Bảng chi tiết, và **hai tab điều hướng chính**. Không nâng `td`/hàng bảng, không tô viền quanh ô lớn, không áp dụng cho ô chỉ đọc/đã khóa, disabled hoặc `textarea/input` đang nhập.
+
+- **Bảng tổng hợp:** `count-drill` phải bao toàn bộ `td` để bấm/hiện tooltip từ bất kỳ điểm nào. Chỉ `span` số lượng nhỏ bên trong được nâng 2 px + bóng; overlay giữ nguyên hình học kích thước vùng click và phân quyền. Không đổi tính số liệu hay màu trạng thái.
+- **Popup Bảng chi tiết:** `td.editable-cell` không có highlight; hover vào vùng ô kích hoạt nâng **nút nhỏ bên trong**; màu nền/chữ workflow vẫn giữ palette hiện có, không nổi khi đang nhập.
+- **Hai tab chính:** giữ nền một màu `#E3F2EA` khi active và `#F8FAFB` khi inactive, màu chữ đổi từ quá tối thành xanh teal tươi nhưng đủ tương phản: **active `#24745B` (khoảng 4.87:1), inactive `#3D728A` (khoảng 5.05:1)**. Mô tả phụ không hạ opacity; cả hai tab hover nổi 2 px, bóng mềm + viền xanh nhạt, vẫn có active border và focus-visible riêng. Không tác động màu ô trạng thái bên trong.
+- Giữ `prefers-reduced-motion`, in không bóng/không nâng. Không đổi GitHub Pages, Firebase, dữ liệu Excel, permission, autosave hoặc cấu trúc tab.
+
+Kiểm thử Chrome smoke mở rộng: xác nhận 2 tab có chữ/hiệu ứng đúng và reset sau hover; popup nâng chỉ nút nhỏ từ hover ở khoảng trống ô; overlay `count-drill` vẫn full-cell nhưng số nhỏ nổi, không phá tooltip/click; các tests 3D của ô trạng thái/Ghi chú và chip ở đầu bảng vẫn phải đạt. Không phát hành nếu CI chưa PASS.
