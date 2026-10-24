@@ -1,3 +1,4 @@
+import {useMemo} from 'react';
 import type {Item} from '../../../shared/types';
 import type {KeyboardEvent} from 'react';
 import {preserveStickyFilterViewport} from './filter-scroll';
@@ -7,7 +8,8 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
   items:Item[];room:string;person:string;
   onRoom:(next:string)=>void;onPerson:(next:string)=>void;
 }){
-  const rooms=[...new Set(items.map(item=>item.room).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const rooms=useMemo(()=>[...new Set(items.map(item=>item.room).filter(Boolean))]
+    .sort((a,b)=>a.localeCompare(b,'vi')),[items]);
   const clear=(event:KeyboardEvent<HTMLInputElement|HTMLSelectElement>,fn:(v:string)=>void)=>{
     if(event.key==='Escape'){event.preventDefault();event.stopPropagation();fn('');}
   };
