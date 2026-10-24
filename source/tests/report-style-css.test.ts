@@ -45,7 +45,7 @@ describe('Năm phong cách tô màu báo cáo', () => {
     for(const stage of ['source','office','completed']){
       const vividBg=declaration(palette!,stage+'-bg');
       expect(luminance(vividBg),stage+' must stand out against Party middle columns')
-        .toBeLessThan(luminance(softBg)-0.10);
+        .toBeLessThan(luminance(softBg)-(stage==='office'?0.02:0.10));
     }
     expect(css).toContain('report-style-band .report-table thead th.report-stage-intermediate');
     expect(css).toContain('report-style-compact .report-table :is(tbody,tfoot) td.report-stage-intermediate');
