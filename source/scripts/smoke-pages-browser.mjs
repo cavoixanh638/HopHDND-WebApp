@@ -456,6 +456,35 @@ try{
       labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+
+  for(const [selector,color] of [['.active','rgb(36, 116, 91)'],[':not(.active)','rgb(61, 114, 138)']]){
+    const query='nav.primary-section-switcher .primary-section-card'+selector;
+    const p=await evaluate(`(()=>{
+      const el=document.querySelector(${JSON.stringify(query)});
+      el?.scrollIntoView({block:'center',inline:'nearest'});
+      const r=el?.getBoundingClientRect();return r?{x:r.left+r.width/2,y:r.top+r.height/2}:null;
+    })()`);
+    if(!p)throw Error('No main tab for 3D hover '+selector);
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});
+    await new Promise(resolve=>setTimeout(resolve,270));
+    const hover=await evaluate(`(()=>{
+      const el=document.querySelector(${JSON.stringify(query)});
+      const style=getComputedStyle(el);
+      return {hover:el.matches(':hover'),liftY:new DOMMatrixReadOnly(style.transform).m42,
+        color:style.color,shadow:style.boxShadow,
+        opacity:getComputedStyle(el.querySelector('.section-card-description')).opacity};
+    })()`);
+    if(!hover.hover||Math.abs(hover.liftY+2)>.25||!hover.shadow.includes('7px 13px')||
+      hover.color!==color||hover.opacity!=='1')
+      throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
+  }
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const navReset=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')]
+    .every(el=>Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)<.25)`);
+  if(!navReset)throw Error('Main tabs still elevated after mouseleave');
+  console.log('HOVER_3D_B_MAIN_TABS_PASS');
+
   const listHeadingAndLines=await evaluate(`(()=>{
     const card=document.querySelector('.item-data-region .card-header');
     const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
@@ -699,6 +728,35 @@ try{
   })()`);
   if(!compactEditRing.ok)throw Error('Popup edit highlight must be a compact soft-color ring, not the entire dark cell: '+JSON.stringify(compactEditRing));
   console.log('POPUP_COMPACT_SOFT_HIGHLIGHT_PASS',JSON.stringify(compactEditRing));
+
+  const modalHoverPoint=await evaluate(`(()=>{
+    const host=document.createElement('div');host.id='popup-3d-probe';host.className='report-grid-modal';
+    host.style.cssText='position:fixed;left:25px;top:80px;width:355px;z-index:9999;';
+    host.innerHTML='<table class="data-table report-detail-grid" style="width:340px"><tbody><tr><td class="editable-cell" data-progress-tone="not-submitted" style="height:70px"><button class="cell-value-button cell-picker-trigger" type="button">Sở chưa trình</button></td></tr></tbody></table>';
+    document.body.append(host);
+    const r=host.querySelector('td').getBoundingClientRect();
+    return {x:r.right-6,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...modalHoverPoint});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const modalLift=await evaluate(`(()=>{
+    const cell=document.querySelector('#popup-3d-probe td'),button=cell.querySelector('button');
+    return {parent:getComputedStyle(cell).boxShadow,hover:cell.matches(':hover'),
+      buttonHover:button.matches(':hover'),liftY:new DOMMatrixReadOnly(getComputedStyle(button).transform).m42,
+      shadow:getComputedStyle(button).boxShadow,
+      widths:[cell.getBoundingClientRect().width,button.getBoundingClientRect().width]};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const modalReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
+    document.querySelector('#popup-3d-probe button')).transform).m42`);
+  await evaluate("document.querySelector('#popup-3d-probe')?.remove()");
+  if(!modalLift.hover||modalLift.buttonHover||modalLift.parent!=='none'||
+    Math.abs(modalLift.liftY+2)>.25||!modalLift.shadow.includes('7px 13px')||
+    modalLift.widths[1]>=modalLift.widths[0]-25||Math.abs(modalReset)>.25)
+    throw Error('Popup must lift compact inner control, not table cell: '+JSON.stringify({modalLift,modalReset}));
+  console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
+
 
   // Compact column layout is an ADMIN shared setting. Viewer must have no
   // local control to diverge from the authoritative profile.
@@ -970,6 +1028,34 @@ try{
           buttons:buttons.length,bodyTotals,footerTotals,statusCells,allFull,noEmptyActions,bad};
       })()`);
       if(!fullCellGeometry.ok)throw Error('Report full-cell hit targets are incomplete: '+JSON.stringify(fullCellGeometry));
+
+      const drillPoint=await evaluate(`(()=>{
+        const b=document.querySelector('.report-surface .report-table td.report-clickable-cell .count-drill');
+        b?.scrollIntoView({block:'center',inline:'nearest'});
+        const r=b?.getBoundingClientRect();
+        return r?{x:r.left+Math.max(9,r.width*.15),y:r.top+r.height/2}:null;
+      })()`);
+      if(!drillPoint)throw Error('No clickable report count');
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',...drillPoint});
+      await new Promise(resolve=>setTimeout(resolve,270));
+      const drillLift=await evaluate(`(()=>{
+        const button=document.querySelector('.report-surface .report-table td.report-clickable-cell .count-drill');
+        const td=button.closest('td'),pill=button.querySelector('span');
+        const rect=button.getBoundingClientRect(),cell=td.getBoundingClientRect(),ps=getComputedStyle(pill);
+        return {hover:button.matches(':hover'),fullHit:Math.abs(rect.width-cell.width)<2,
+          overlayLift:new DOMMatrixReadOnly(getComputedStyle(button).transform).m42,
+          pillLift:new DOMMatrixReadOnly(ps.transform).m42,shadow:ps.boxShadow,border:ps.borderTopColor};
+      })()`);
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:9});
+      await new Promise(resolve=>setTimeout(resolve,270));
+      const drillReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
+        document.querySelector('.report-surface .report-table td.report-clickable-cell .count-drill > span')).transform).m42`);
+      if(!drillLift.hover||!drillLift.fullHit||Math.abs(drillLift.overlayLift)>.25||
+        Math.abs(drillLift.pillLift+2)>.25||!drillLift.shadow.includes('7px 13px')||
+        drillLift.border!=='rgb(167, 216, 237)'||Math.abs(drillReset)>.25)
+        throw Error('Report count must retain full-cell hit area while lifting only numeral: '+JSON.stringify({drillLift,drillReset}));
+      console.log('HOVER_3D_B_REPORT_COUNTERS_PASS',JSON.stringify(drillLift));
+
       // Compare new cell-only focus against the previous very faint .035
       // fill using the SAME Chrome, DOM, positions and 36 actual mouse moves.
       // CDP CPU counters are diagnostics, not a perceived-latency guarantee.
