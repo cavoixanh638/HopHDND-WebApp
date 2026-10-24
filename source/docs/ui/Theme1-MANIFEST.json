@@ -1,0 +1,99 @@
+{
+  "name": "Theme1",
+  "frozenAt": "2026-10-24",
+  "schema": "hophdnd-theme-source-baseline/v1",
+  "sourceCommit": "74d8a32e1dbc1d4ad9ad87e0a949924c6cbdec31",
+  "sameTreeSnapshotCommit": "c52f162e42b5ad6893c043d8b84b7914fe247b16",
+  "sameTreeSha": "1029ee15336a15a42a9f1b1b2ca8fefd387ba63a",
+  "snapshotBranch": "snapshot/Theme1-before-ImperialSky-2026-10-24",
+  "publishedGitHubPagesCommit": "69b550521b1368d2811afb3255ca299042cb6aac",
+  "publishedCss": "assets/style-CLU1LTUA.css",
+  "publishedJs": "assets/pages-D5qZVENf.js",
+  "sources": [
+    {
+      "path": "source/src/styles/app.css",
+      "blobSha": "60cb1a18ed018de4b4885e0cd5841d4fb1751c8e",
+      "bytes": 122666
+    },
+    {
+      "path": "source/src/features/items/item-frame.css",
+      "blobSha": "679f62d2582ff399b65a56a21160587e2ad27473",
+      "bytes": 39661
+    },
+    {
+      "path": "source/src/features/items/cell-picker.css",
+      "blobSha": "77ffd16e006a7dfd62d3afef2095753c94d07bd2",
+      "bytes": 1224
+    },
+    {
+      "path": "source/src/data/status-palettes.ts",
+      "blobSha": "a1cd2e8e7111f11ddd5d1d4f9768288b31462283",
+      "bytes": 5511
+    },
+    {
+      "path": "source/src/data/report-preferences.ts",
+      "blobSha": "e6bcbce447d80e6bc5a4d3b6a397fd34e0c6ca76",
+      "bytes": 15183
+    },
+    {
+      "path": "source/src/data/item-preferences.ts",
+      "blobSha": "9aa8d06c2a751e39fffadc03afe25defa88db392",
+      "bytes": 10779
+    },
+    {
+      "path": "source/src/data/list-views.ts",
+      "blobSha": "0d7f6c23ab3ef9d169054b4f0d72fd771e61bf7e",
+      "bytes": 4689
+    },
+    {
+      "path": "source/src/data/report-detail-presets.ts",
+      "blobSha": "6ba381d5d356a544680f6588809aa03a09e3d7c0",
+      "bytes": 2730
+    },
+    {
+      "path": "source/src/features/items/StatusPaletteManager.tsx",
+      "blobSha": "aa7180e0421b434ffe0562e73a1afd40fa8cba41",
+      "bytes": 8711
+    },
+    {
+      "path": "source/src/features/settings/ReportLayoutPanel.tsx",
+      "blobSha": "d8c0a34bfbd4750ac0f3443dfea665cdae292900",
+      "bytes": 11345
+    },
+    {
+      "path": "source/src/app/App.tsx",
+      "blobSha": "58ac707e8e58ef8e2156f1369e6db47839e79d43",
+      "bytes": 43272
+    }
+  ],
+  "note": "These capture all tracked baseline files and their verified blob SHAs. Runtime localStorage / remote user customizations are NOT extracted.",
+  "statusColorsDefault": {
+    "Sở chưa trình": {
+      "text": "#D00025",
+      "background": "#FFE0E4"
+    },
+    "VP đang thực hiện": {
+      "text": "#B04700",
+      "background": "#FFE8B8"
+    },
+    "Hoàn thành": {
+      "text": "#007A18",
+      "background": "#D5F0DE"
+    },
+    "Khác": {
+      "text": "#426274",
+      "background": "#F2F6F9",
+      "enabled": false
+    }
+  },
+  "localConfigurationNamespaces": [
+    "hdnd.status-palettes.v1:<layoutRecoveryScope(source)>",
+    "hdnd.list-colors.v1:<source>",
+    "hdnd.list-views.v1:<source>",
+    "hdnd.active-list-view.v1:<source>",
+    "hdnd.report-detail-colors.v1:<layoutRecoveryScope(source)>",
+    "hdnd.report-detail-presets.v1:<layoutRecoveryScope(source)>",
+    "hdnd.report-layout.v1:<source>",
+    "ItemLayout.cellHighlights via shared config/profile (Firebase or Sheets source)"
+  ]
+}
