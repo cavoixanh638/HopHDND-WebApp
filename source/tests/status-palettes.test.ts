@@ -15,7 +15,7 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
   it('keeps the exact accepted V5 palette as default and intermediate statuses uncolored',()=>{
     const colors=defaultStatusPalette();
     expect(colors['not-submitted']).toEqual({text:'#D00025',background:'#FFE0E4'});
-    expect(colors.office).toEqual({text:'#B04700',background:'#FFE8B8'});
+    expect(colors.office).toEqual({text:'#854D0E',background:'#FEF9C3'});
     expect(colors.done).toEqual({text:'#007A18',background:'#D5F0DE'});
     expect(colors.otherEnabled).toBe(false);
     expect(statusPaletteTone('progressParty','Đang chờ xử lý',false)).toBeNull();
