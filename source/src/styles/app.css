@@ -2503,3 +2503,13 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     transform:none!important;
   }
 }
+
+/* 25/10 — Reduce confusion between grouping label and adjacent total count.
+   Group column is near-white neutral, not another blue-filled metric column;
+   a fine separator communicates hierarchy without a new saturated hue. */
+.app-shell.imperial-sky-theme .report-surface .report-table
+  :is(thead th.report-group-heading,tbody th.report-group-heading,tfoot th:first-child) {
+  background:#FAFBFC;
+  color:#34465A;
+  border-right:2px solid #C5D2DE;
+}
