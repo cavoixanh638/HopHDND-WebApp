@@ -69,8 +69,13 @@ export function loadStatusPaletteStore(source:string):StatusPaletteStore{
     // Only migrate an untouched legacy office default in the *active* view.
     // Explicit named presets (including Theme1) and user-picked colors stay
     // bit-for-bit unchanged. Never rewrite localStorage during a read.
-    if(!store.activePresetId&&store.active.office.text==='#B04700'&&
-      store.active.office.background==='#FFE8B8')
+    const original=defaultStatusPalette();
+    if(!store.activePresetId&&store.presets.length===0&&
+      store.active.office.text==='#B04700'&&store.active.office.background==='#FFE8B8'&&
+      store.active.otherEnabled===original.otherEnabled&&
+      (['not-submitted','done','other'] as const).every(group=>
+        store.active[group].text===original[group].text&&
+        store.active[group].background===original[group].background))
       return {...store,active:{...store.active,office:{...defaultStatusPalette().office}}};
     return store;
   }catch{return defaultStatusPaletteStore();}
