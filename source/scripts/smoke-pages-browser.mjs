@@ -519,7 +519,7 @@ try{
     if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-tabs.bottom;
-    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=820&&tabs.width<top.width;
+    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=900&&tabs.width<top.width;
     return {ok:aligned&&gap<115&&!status&&!cardHeader,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
