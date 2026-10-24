@@ -72,9 +72,9 @@ describe('separate item layout save and data draft',()=>{
     for(const key of ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note'])
       expect(headers).not.toContain(key);
     expect(headers).not.toContain('history');
+    // Guests must see their configured columns, but no admin visibility toolbar.
     const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===false);
-    expect(control).toBeDefined();
-    expect(text(control)).toContain('Hiện đủ cột Excel');
+    expect(control).toBeUndefined();
   });
   it('preserves saved column order and removes obsolete phantom history',()=>{
     const items=createDemoItems(1);
