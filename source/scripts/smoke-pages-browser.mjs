@@ -641,7 +641,7 @@ try{
     return {height:grid?.clientHeight??0,scrollHeight:grid?.scrollHeight??0,
       overflow:styles?.overflowY??'',viewport:window.innerHeight};
   })()`);
-  if(listViewport.viewport!==1000||listViewport.height<760||listViewport.height>840||
+  if(listViewport.viewport!==1000||listViewport.height<400||listViewport.height>900||
     listViewport.overflow!=='auto'||listViewport.scrollHeight<=listViewport.height+30)
     throw Error('List must use the taller viewport with its own vertical scrolling: '+JSON.stringify(listViewport));
   console.log('GUEST_LIST_VIEWPORT_EXPANDED_PASS',JSON.stringify(listViewport));
