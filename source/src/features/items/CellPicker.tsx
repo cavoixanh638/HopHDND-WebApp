@@ -21,18 +21,22 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  // Most dropdowns are closed. With ~60 rows, eagerly rendering their hidden
+  // popovers creates thousands of offscreen option buttons whenever a cleared
+  // search brings all rows back. Build options and mount the dialog only OPEN.
   const filteredOptions = useMemo(() => {
+    if (!open) return [];
     const normalizedQuery = normalizeSearch(query);
     return normalizedQuery
       ? options.filter(option => normalizeSearch(option).includes(normalizedQuery))
       : options;
-  }, [options, query]);
-  const selectedIsFilteredOut = value !== '' && !filteredOptions.includes(value);
-  const visibleOptions = [
+  }, [open, options, query]);
+  const selectedIsFilteredOut = open && value !== '' && !filteredOptions.includes(value);
+  const visibleOptions = open ? [
     { value: '', label: '—' },
     ...(selectedIsFilteredOut ? [{ value, label: `${value} (giá trị hiện tại)` }] : []),
     ...filteredOptions.filter(option => option !== '' && !(selectedIsFilteredOut && option === value)).map(option => ({ value: option, label: option })),
-  ];
+  ] : [];
 
   const close = (restoreFocus = false) => {
     setOpen(false);
@@ -123,7 +127,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     >
       <SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/>
     </button>
-    <div
+    {open && <div
       ref={popoverRef}
       className="cell-picker-popover"
       popover="manual"
@@ -160,6 +164,6 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         ))}
         {!visibleOptions.length && <p className="cell-picker-empty">Không có lựa chọn phù hợp.</p>}
       </div>
-    </div>
+    </div>}
   </>;
 }
