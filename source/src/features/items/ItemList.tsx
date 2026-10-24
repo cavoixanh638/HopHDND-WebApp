@@ -23,7 +23,7 @@ import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {activateEditableCell} from './activate-editable-cell';
 import { reorderByKey } from '../../domain/reorder-columns';
