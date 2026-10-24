@@ -554,6 +554,33 @@ try{
     return before===after&&plain===dirty;
   })()`);
   if(!noDraftRowYellow)throw Error('Unsaved record still highlights whole table row');
+
+  // CSS contract for signed-in edit-mode popup using a synthetic cell. Guest
+  // smoke may not enter editing; no Firebase write or authentication is needed.
+  const compactEditRing=await evaluate(`(()=>{
+    const host=document.createElement('div');
+    host.className='report-grid-modal';
+    host.style.cssText='position:fixed;left:30px;top:30px;width:355px;z-index:99999;';
+    host.innerHTML='<table class="data-table report-detail-grid" style="width:340px"><tbody><tr><td class="editable-cell" data-col-key="progressBuild" data-progress-tone="not-submitted"><button type="button" class="cell-value-button cell-picker-trigger">Sở chưa trình</button></td></tr></tbody></table>';
+    document.body.append(host);
+    const td=host.querySelector('td'),button=host.querySelector('button');
+    button.focus({preventScroll:true});
+    const parent=getComputedStyle(td),inner=getComputedStyle(button);
+    const tdWidth=td.getBoundingClientRect().width;
+    const buttonWidth=button.getBoundingClientRect().width;
+    const result={ok:parent.boxShadow==='none'&&parent.outlineStyle==='none'&&
+      buttonWidth<tdWidth-25&&
+      inner.borderColor==='rgb(158, 207, 231)'&&
+      inner.boxShadow.includes('rgb(216, 241, 252)')&&
+      inner.outlineStyle==='none',
+      parentShadow:parent.boxShadow,parentOutline:parent.outlineStyle,
+      innerBorder:inner.borderColor,innerShadow:inner.boxShadow,
+      innerOutline:inner.outlineStyle,tdWidth,buttonWidth};
+    host.remove();return result;
+  })()`);
+  if(!compactEditRing.ok)throw Error('Popup edit highlight must be a compact soft-color ring, not the entire dark cell: '+JSON.stringify(compactEditRing));
+  console.log('POPUP_COMPACT_SOFT_HIGHLIGHT_PASS',JSON.stringify(compactEditRing));
+
   // Compact column layout is an ADMIN shared setting. Viewer must have no
   // local control to diverge from the authoritative profile.
   const compactGuestBlocked=await evaluate(`!document.querySelector('.compact-columns-menu')`);
