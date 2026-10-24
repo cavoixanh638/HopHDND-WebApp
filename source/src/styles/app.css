@@ -1925,3 +1925,11 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     transform:none!important;box-shadow:none!important;
   }
 }
+
+/* The legacy [data-progress-tone] selector can otherwise reapply its semantic
+   pink/amber/green BORDER even while the popup picker is focused. The fill/text
+   continue to follow the user's palette; only the interactive ring is pale. */
+.report-grid-modal .report-detail-grid tbody td.editable-cell[data-progress-tone]
+  button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  border-color:#9ECFE7;
+}
