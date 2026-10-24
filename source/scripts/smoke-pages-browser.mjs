@@ -283,6 +283,43 @@ try{
       fontA,fontB,header:header.backgroundColor};
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
+
+  // Hover anywhere in a LIST editable cell: no parent ring, only a compact
+  // pale inner status button ring. Uses real Chrome pointer hover, fake data.
+  const hoverProbe=await evaluate(`(()=>{
+    const host=document.createElement('div');
+    host.id='list-edit-hover-probe';
+    host.style.cssText='position:fixed;left:18px;top:96px;width:340px;z-index:20000;background:#fff;';
+    host.innerHTML='<table class="data-table item-data-table" style="width:340px;table-layout:fixed"><tbody><tr><td class="editable-cell" data-progress-tone="not-submitted" style="height:86px"><button type="button" class="cell-value-button cell-picker-trigger">Sở chưa trình</button></td></tr></tbody></table>';
+    document.body.append(host);
+    const td=host.querySelector('td'),control=host.querySelector('button');
+    const parent=td.getBoundingClientRect(),inner=control.getBoundingClientRect();
+    return {x:parent.right-7,y:parent.top+parent.height/2,
+      outerWidth:parent.width,innerWidth:inner.width,
+      outsideInner:parent.right-7>inner.right};
+  })()`);
+  if(!hoverProbe.outsideInner||hoverProbe.innerWidth>=hoverProbe.outerWidth-25)
+    throw Error('List status inner editor must be compact and leave clickable parent padding: '+JSON.stringify(hoverProbe));
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:hoverProbe.x,y:hoverProbe.y});
+  const listHoverRing=await evaluate(`(()=>{
+    const td=document.querySelector('#list-edit-hover-probe td');
+    const button=td?.querySelector('button');
+    if(!td||!button)return {ok:false,missing:true};
+    const outer=getComputedStyle(td),inner=getComputedStyle(button);
+    return {ok:td.matches(':hover')&&!button.matches(':hover')&&
+      outer.boxShadow==='none'&&outer.outlineStyle==='none'&&
+      inner.borderTopColor==='rgb(167, 216, 237)'&&
+      inner.boxShadow.includes('rgb(221, 243, 253)')&&
+      inner.outlineStyle==='none',
+      outerShadow:outer.boxShadow,outerOutline:outer.outlineStyle,
+      innerBorder:inner.borderTopColor,innerShadow:inner.boxShadow,
+      hoverCell:td.matches(':hover'),hoverButton:button.matches(':hover')};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+  await evaluate("document.querySelector('#list-edit-hover-probe')?.remove()");
+  if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
+  console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
+
   // Guest receives the palette but never an editable palette control.
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
