@@ -64,6 +64,9 @@ export interface ReportLayout {
   titleAccentColor?:string;
   visible: boolean;
   hiddenColumns: string[];
+  /** Build NQ only: explicit opt-in to show the non-applicable column.
+   * Old saved layouts without this flag receive the new hidden-by-default policy. */
+  showNotRequiredColumn?:boolean;
   columnOrder: string[];
   /** Pixel widths of report columns, including reserved __group/__total/__percent keys. */
   columnWidths?:Record<string,number>;
@@ -83,9 +86,17 @@ const widthOwnerId=DEFAULT_REPORTS[0].id;
 export const reportPageWidth=(layout:readonly ReportLayout[]):'auto'|number=>layout.find(row=>row.id===widthOwnerId)?.pageWidth??'auto';
 export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number):ReportLayout[]=>layout.map(row=>row.id===widthOwnerId?{...row,pageWidth}:row);
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
+
+/** Build-NQ column visibility defaults to hidden independently of counting.
+ * An explicit admin opt-in survives validation, sharing and future saves. */
+export const reportHiddenColumns=(row:Pick<ReportLayout,'id'|'hiddenColumns'|'showNotRequiredColumn'>):string[]=>
+  row.id!=='build'?[...row.hiddenColumns]:row.showNotRequiredColumn===true
+    ?row.hiddenColumns.filter(col=>col!=='Không phải trình')
+    :[...new Set([...row.hiddenColumns,'Không phải trình'])];
+
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
-  id: report.id, title: report.title, visible: true, hiddenColumns: [], columnOrder: [...report.columns],emphasizeProgress:true,
-  ...(report.id==='build'?{includeNotRequired:false}:{}),
+  id: report.id, title: report.title, visible: true, hiddenColumns: [...report.hiddenColumns], columnOrder: [...report.columns],emphasizeProgress:true,
+  ...(report.id==='build'?{includeNotRequired:false,showNotRequiredColumn:false}:{}),
   ...(report.id===widthOwnerId?{tableFont:'segoe' as const,tableFontSize:DEFAULT_TABLE_FONT_SIZE,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
@@ -143,6 +154,15 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       hiddenValues.some(col=>typeof col!=='string'||(!base.columns.includes(rename(col))&&!obsolete.has(col))))
       throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
     const hiddenColumns=[...new Set(hiddenValues.filter(col=>!obsolete.has(col)).map(rename))];
+    if(base.id==='build'&&row.showNotRequiredColumn!==undefined&&
+       typeof row.showNotRequiredColumn!=='boolean')
+      throw new Error('Tùy chọn hiển thị cột Không phải trình phải là Có hoặc Không.');
+    const normalizedHiddenColumns=reportHiddenColumns({
+      id:base.id,hiddenColumns,showNotRequiredColumn:row.showNotRequiredColumn,
+    });
+    const buildVisibility=base.id==='build'
+      ?{showNotRequiredColumn:row.showNotRequiredColumn===true}:{};
+
     const rawOrder=row.columnOrder??base.columns;
     if(!Array.isArray(rawOrder)||rawOrder.some(col=>typeof col!=='string'))
       throw new Error('Thứ tự cột không hợp lệ.');
@@ -209,10 +229,10 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
       return { id:base.id,title,...accentSettings,visible:row.visible,
-        hiddenColumns,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
+        hiddenColumns:normalizedHiddenColumns,...buildVisibility,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
         pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
-    return { id: base.id, title, ...accentSettings, ...buildCountSetting, visible: row.visible, hiddenColumns, columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
+    return { id: base.id, title, ...accentSettings, ...buildCountSetting, visible: row.visible, hiddenColumns:normalizedHiddenColumns, ...buildVisibility,columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
@@ -240,7 +260,7 @@ export function configuredReports(layout: ReportLayout[], includeHidden = false)
   return layout.filter(row => includeHidden || row.visible).map(row => ({
     ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title,
     ...(row.id==='build'?{includeNotRequired:row.includeNotRequired===true}:{}),
-    ...(row.titleAccentText?{titleAccentText:row.titleAccentText,titleAccentColor:row.titleAccentColor}:{}), hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
+    ...(row.titleAccentText?{titleAccentText:row.titleAccentText,titleAccentColor:row.titleAccentColor}:{}), hiddenColumns: reportHiddenColumns(row), columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
     tableFont,tableFontSize,reportVariant,
     ...(row.columnWidths&&Object.keys(row.columnWidths).length?{columnWidths:{...row.columnWidths}}:{}),
   }));
