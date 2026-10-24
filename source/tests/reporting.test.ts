@@ -103,7 +103,7 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
       room:'Một phòng',progressBuild:i===0?'Không phải trình xây dựng NQ':'Sở chưa trình',
     }));
     const onSelect=vi.fn();
-    const rendered=ReportTable({items,config:DEFAULT_REPORTS[1],group:'room',
+    const rendered=ReportTable({items,config:{...DEFAULT_REPORTS[1],includeNotRequired:true},group:'room',
       sourceLabel:'Nguồn thử',groupOrder:[],onSelect});
     const buttons=flatten(rendered).filter(node=>
       node.type==='button'&&node.props?.className==='count-button count-drill');
@@ -128,7 +128,7 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     ]);
     expect(DEFAULT_REPORTS[1].completed).toEqual(['Đã có QĐ chấp thuận']);
   });
-  it('includes explicit non-applicable construction rows but excludes blanks and BC without duplicating records',()=>{
+  it('excludes non-applicable construction rows by default without modifying records',()=>{
     const states=['Không phải trình xây dựng NQ','Sở chưa trình','VP đang thực hiện',
       'Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','','Đã có QĐ chấp thuận'];
     const items=createDemoItems(7).map((item,index)=>({...item,
@@ -137,10 +137,10 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     }));
     const before=JSON.stringify(items);
     const report=aggregateReport(items,DEFAULT_REPORTS[1],'room');
-    expect(report.total).toBe(5);
-    expect(report.items).toHaveLength(5);
+    expect(report.total).toBe(4);
+    expect(report.items).toHaveLength(4);
     expect(report.completedCount).toBe(1);
-    expect(report.percent).toBe(20);
+    expect(report.percent).toBe(25);
     expect(report.unknown).toEqual([]);
     expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns);
     expect(JSON.stringify(items)).toBe(before);

@@ -12,12 +12,12 @@ const fixture=()=>{
     {...c,documentKind:'NQ' as const,progressBuild:'Đã có QĐ chấp thuận',isDropped:false,archivedAt:null},
   ];
 };
-describe('Build NQ counting option preserves source and existing default',()=>{
-  it('includes Không phải trình in the denominator by default',()=>{
+describe('Build NQ excludes non-required items by default without touching the source',()=>{
+  it('excludes Không phải trình in the denominator by default',()=>{
     const report=aggregateReport(fixture(),build,'department');
-    expect(report.total).toBe(3);
+    expect(report.total).toBe(2);
     expect(report.completedCount).toBe(1);
-    expect(report.percent).toBe(33);
+    expect(report.percent).toBe(50);
     expect(report.rows.size).toBeGreaterThan(0);
   });
   it('excludes only Không phải trình from the scope, not from Excel',()=>{
@@ -34,12 +34,17 @@ describe('Build NQ counting option preserves source and existing default',()=>{
     const source=fixture().map((item,i)=>i===0?{...item,progressBuild:'Không phải trình xây dựng NQ'}:item);
     expect(aggregateReport(source,{...build,includeNotRequired:false},'department').total).toBe(2);
   });
-  it('keeps saved older report profiles inclusive and supports a persistent dropdown value',()=>{
+  it('defaults missing or fresh profiles to exclusion, but respects an explicit saved inclusion',()=>{
     const old=defaultReportLayout();
-    expect(configuredReports(validateReportLayout(old)).find(r=>r.id==='build')?.includeNotRequired).toBe(true);
-    const updated=validateReportLayout(old.map(row=>row.id==='build'?{...row,includeNotRequired:false}:row));
-    expect(configuredReports(updated).find(r=>r.id==='build')?.includeNotRequired).toBe(false);
+    expect(configuredReports(validateReportLayout(old)).find(r=>r.id==='build')?.includeNotRequired).toBe(false);
+    const updated=validateReportLayout(old.map(row=>row.id==='build'?{...row,includeNotRequired:true}:row));
+    expect(configuredReports(updated).find(r=>r.id==='build')?.includeNotRequired).toBe(true);
     expect(configuredReports(updated).find(r=>r.id==='party')?.includeNotRequired).toBeUndefined();
+    expect(configuredReports(validateReportLayout(old.map(row=>
+      row.id==='build'?((({includeNotRequired:ignored,...rest})=>rest)(row)):row
+    ))).find(r=>r.id==='build')?.includeNotRequired).toBe(false);
+    expect(aggregateReport(fixture(),configuredReports(updated).find(r=>r.id==='build')!,'department').total).toBe(3);
+
     expect(()=>validateReportLayout(old.map(row=>row.id==='build'?{...row,includeNotRequired:'no'}:row))).toThrow();
   });
 });

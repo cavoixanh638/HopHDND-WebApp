@@ -69,7 +69,7 @@ export interface ReportLayout {
   columnWidths?:Record<string,number>;
   /** Visual emphasis only; does not affect report totals or source rules. */
   emphasizeProgress?:boolean;
-  /** Build-NQ report only; existing configurations include exempt items by default. */
+  /** Build-NQ: exclude 'Không phải trình' by default; explicit saved true stays valid. */
   includeNotRequired?:boolean;
   /** Shared presentation settings, owned by the first canonical report. */
   tableFont?:TableFont;
@@ -85,7 +85,7 @@ export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number)
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
   id: report.id, title: report.title, visible: true, hiddenColumns: [], columnOrder: [...report.columns],emphasizeProgress:true,
-  ...(report.id==='build'?{includeNotRequired:true}:{}),
+  ...(report.id==='build'?{includeNotRequired:false}:{}),
   ...(report.id===widthOwnerId?{tableFont:'segoe' as const,tableFontSize:DEFAULT_TABLE_FONT_SIZE,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
@@ -183,7 +183,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
     if(base.id==='build'&&row.includeNotRequired!==undefined&&typeof row.includeNotRequired!=='boolean')
       throw new Error('Cách tính nội dung Không phải trình phải là Bao gồm hoặc Không bao gồm.');
-    const buildCountSetting=base.id==='build'?{includeNotRequired:row.includeNotRequired!==false}:{};
+    const buildCountSetting=base.id==='build'?{includeNotRequired:row.includeNotRequired===true}:{};
     const accentText=row.titleAccentText??'';
     const accentColor=row.titleAccentColor??'#b42318';
     if(typeof accentText!=='string'||accentText.length>80||
@@ -239,7 +239,7 @@ export function configuredReports(layout: ReportLayout[], includeHidden = false)
   const tableFont=getReportFont(layout),tableFontSize=getReportFontSize(layout),reportVariant=getReportVariant(layout);
   return layout.filter(row => includeHidden || row.visible).map(row => ({
     ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title,
-    ...(row.id==='build'?{includeNotRequired:row.includeNotRequired!==false}:{}),
+    ...(row.id==='build'?{includeNotRequired:row.includeNotRequired===true}:{}),
     ...(row.titleAccentText?{titleAccentText:row.titleAccentText,titleAccentColor:row.titleAccentColor}:{}), hiddenColumns: [...row.hiddenColumns], columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
     tableFont,tableFontSize,reportVariant,
     ...(row.columnWidths&&Object.keys(row.columnWidths).length?{columnWidths:{...row.columnWidths}}:{}),

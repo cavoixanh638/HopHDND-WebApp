@@ -15,11 +15,31 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
   it('keeps the exact accepted V5 palette as default and intermediate statuses uncolored',()=>{
     const colors=defaultStatusPalette();
     expect(colors['not-submitted']).toEqual({text:'#D00025',background:'#FFE0E4'});
-    expect(colors.office).toEqual({text:'#B04700',background:'#FFE8B8'});
+    expect(colors.office).toEqual({text:'#854D0E',background:'#FEF9C3'});
     expect(colors.done).toEqual({text:'#007A18',background:'#D5F0DE'});
     expect(colors.otherEnabled).toBe(false);
     expect(statusPaletteTone('progressParty','Đang chờ xử lý',false)).toBeNull();
     expect(statusPaletteTone('department','Sở chưa trình',true)).toBeNull();
+  });
+  it('upgrades only the untouched V5 office default without rewriting stored presets',()=>{
+    const browser=storage();
+    vi.stubGlobal('localStorage',browser);
+    vi.stubGlobal('location',{pathname:'/HopHDND-WebApp/'});
+    const legacy={...defaultStatusPalette(),
+      office:{text:'#B04700',background:'#FFE8B8'}};
+    const raw:StatusPaletteStore={version:1,active:legacy,activePresetId:'',presets:[]};
+    browser.saved.set('hdnd.status-palettes.v1:source-legacy',JSON.stringify(raw));
+    const upgraded=loadStatusPaletteStore('source-legacy');
+    expect(upgraded.active.office).toEqual({text:'#854D0E',background:'#FEF9C3'});
+    expect(JSON.parse(browser.saved.get('hdnd.status-palettes.v1:source-legacy')!).active.office)
+      .toEqual(legacy.office); // reading does not overwrite user storage
+    const custom:StatusPaletteStore={...raw,active:{...legacy,done:{text:'#108B40',background:'#DAF5E2'}}};
+    browser.saved.set('hdnd.status-palettes.v1:source-custom',JSON.stringify(custom));
+    expect(loadStatusPaletteStore('source-custom')).toEqual(custom);
+    const named:StatusPaletteStore={...raw,activePresetId:'named',presets:[
+      {id:'named',name:'Theme1 cá nhân',colors:legacy}]};
+    browser.saved.set('hdnd.status-palettes.v1:source-named',JSON.stringify(named));
+    expect(loadStatusPaletteStore('source-named')).toEqual(named);
   });
   it('classifies equivalent completion per status field, with other opt-in only',()=>{
     expect(statusPaletteTone('progressParty','Không phải xin ý kiến',false)).toBe('done');

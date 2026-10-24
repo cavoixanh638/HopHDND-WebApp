@@ -17,7 +17,7 @@ const validHex=/^#[0-9a-f]{6}$/i;
 const color=(v:unknown)=>typeof v==='string'&&validHex.test(v)?v.toUpperCase():null;
 export const defaultStatusPalette=():StatusPalette=>({
   'not-submitted':{text:'#D00025',background:'#FFE0E4'},
-  office:{text:'#B04700',background:'#FFE8B8'},
+  office:{text:'#854D0E',background:'#FEF9C3'},
   done:{text:'#007A18',background:'#D5F0DE'},
   other:{text:'#426274',background:'#F2F6F9'},
   otherEnabled:false,
@@ -64,7 +64,20 @@ export function validateStatusPaletteStore(value:unknown):StatusPaletteStore{
 const keyFor=(source:string)=>'hdnd.status-palettes.v1:'+layoutRecoveryScope(source);
 export function loadStatusPaletteStore(source:string):StatusPaletteStore{
   try{const raw=globalThis.localStorage?.getItem(keyFor(source));
-    return raw?validateStatusPaletteStore(JSON.parse(raw)):defaultStatusPaletteStore();
+    if(!raw)return defaultStatusPaletteStore();
+    const store=validateStatusPaletteStore(JSON.parse(raw));
+    // Only migrate an untouched legacy office default in the *active* view.
+    // Explicit named presets (including Theme1) and user-picked colors stay
+    // bit-for-bit unchanged. Never rewrite localStorage during a read.
+    const original=defaultStatusPalette();
+    if(!store.activePresetId&&store.presets.length===0&&
+      store.active.office.text==='#B04700'&&store.active.office.background==='#FFE8B8'&&
+      store.active.otherEnabled===original.otherEnabled&&
+      (['not-submitted','done','other'] as const).every(group=>
+        store.active[group].text===original[group].text&&
+        store.active[group].background===original[group].background))
+      return {...store,active:{...store.active,office:{...defaultStatusPalette().office}}};
+    return store;
   }catch{return defaultStatusPaletteStore();}
 }
 export function saveStatusPaletteStore(source:string,value:StatusPaletteStore):boolean{
