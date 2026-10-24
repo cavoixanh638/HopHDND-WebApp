@@ -159,6 +159,29 @@ try{
   // then explicitly opt in to temporary source viewing for isolated Sheets checks.
   await evaluate("(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('Xem dữ liệu tạm'));button?.click();return true;})()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
+  // CSS-only hover: assert that the value's ink remains exactly unchanged
+  // for an editable content button and a workflow status picker.
+  const inkPoints=await evaluate(`(()=>{
+    const fixture=document.createElement('div');
+    fixture.id='hover-ink-fixture';
+    fixture.style.cssText='position:fixed;left:180px;top:170px;z-index:100000;background:white;';
+    fixture.innerHTML='<table class="item-data-table"><tbody><tr><td class="editable-cell" data-col-key="content"><button class="content-button" type="button">Nội dung thử</button></td><td class="editable-cell" data-progress-tone="office"><button class="cell-value-button cell-picker-trigger" type="button">VP đang thực hiện</button></td></tr></tbody></table>';
+    document.body.append(fixture);
+    return [...fixture.querySelectorAll('button')].map(button=>{
+      const rect=button.getBoundingClientRect();
+      return {x:rect.left+rect.width/2,y:rect.top+rect.height/2,color:getComputedStyle(button).color};
+    });
+  })()`);
+  for(let index=0;index<inkPoints.length;index++){
+    const item=inkPoints[index];
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:item.x,y:item.y});
+    const color=await evaluate(`getComputedStyle(document.querySelectorAll('#hover-ink-fixture button')[${index}]).color`);
+    if(color!==item.color)
+      throw Error('Editable hover must preserve exact text ink: '+JSON.stringify({index,before:item.color,after:color}));
+  }
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:7,y:7});
+  await evaluate("document.querySelector('#hover-ink-fixture')?.remove()");
+  console.log('EDITABLE_HOVER_INK_PRESERVED_PASS');
   const layoutAndBlanks=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell'),card=document.querySelector('.item-list-card'),
       viewport=document.querySelector('.item-list-card .table-wrap'),table=document.querySelector('.item-data-table');
@@ -622,6 +645,18 @@ try{
     listViewport.overflow!=='auto'||listViewport.scrollHeight<=listViewport.height+30)
     throw Error('List must use the taller viewport with its own vertical scrolling: '+JSON.stringify(listViewport));
   console.log('GUEST_LIST_VIEWPORT_EXPANDED_PASS',JSON.stringify(listViewport));
+  // Viewport-fit list must own the only vertical scrollbar on normal screens.
+  const fit=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),grid=document.querySelector('.item-table-scroll');
+    const doc=document.scrollingElement,box=grid?.getBoundingClientRect();
+    return {active:shell?.classList.contains('list-fit-page'),window:innerHeight,
+      documentHeight:doc?.scrollHeight,documentClientHeight:doc?.clientHeight,
+      tableBottom:box?.bottom,tableHeight:box?.height,overflow:grid?getComputedStyle(grid).overflowY:null};
+  })()`);
+  if(!fit.active||fit.documentHeight>fit.documentClientHeight+3||
+    fit.tableBottom>fit.window+3||fit.tableHeight<250||fit.overflow!=='auto')
+    throw Error('List page must fit one screen and scroll only inside table: '+JSON.stringify(fit));
+  console.log('LIST_VIEWPORT_FIT_PASS',JSON.stringify(fit));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
     const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect();
@@ -647,6 +682,26 @@ try{
   await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
   await assertStable('clearing column search');
+  // Search without diacritics, highlight ALL occurrences inside the source
+  // content cell without changing text or the underlying edit value.
+  const began=Date.now();
+  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm cột Nội dung trình\\\"]')?.focus()");
+  await send('Input.insertText',{text:'kiem thu'});
+  await eventually("document.querySelector('.item-data-table tbody td[data-col-key=\\\"content\\\"] mark.item-search-match')?.textContent?.toLowerCase().includes('kiểm thử')===true",
+    'Vietnamese search matches must be marked in visible contents');
+  const marked=await evaluate(`(()=>{
+    const content=[...document.querySelectorAll('.item-data-table tbody td[data-col-key="content"]')];
+    const marks=content.flatMap(cell=>[...cell.querySelectorAll('mark.item-search-match')]);
+    const source=content[0]?.textContent??'';
+    return {matches:marks.length,count:content.length,first:marks[0]?.textContent,
+      fullTextPreserved:source.includes('Nội dung kiểm thử'),input:document.querySelector('[data-filter-key=content] input')?.value};
+  })()`);
+  if(marked.matches<40||!marked.fullTextPreserved||marked.input!=='kiem thu')
+    throw Error('Search highlights must preserve Vietnamese text in all matching rows: '+JSON.stringify(marked));
+  console.log('CONTENT_SEARCH_MARKED_PASS',JSON.stringify({...marked,elapsedMs:Date.now()-began}));
+  await evaluate("document.querySelector('[data-filter-key=\\\"content\\\"] .item-filter-clear')?.click()");
+  await eventually("document.querySelectorAll('.item-data-table mark.item-search-match').length===0",
+    'Clearing content search must remove every yellow mark');
   const placeholderSelect=await evaluate(`(()=>{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     const color=select?getComputedStyle(select).color:'';
