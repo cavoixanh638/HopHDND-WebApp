@@ -1673,3 +1673,40 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   border-color:#20775B;
   box-shadow:0 0 0 2px #B7DECC;
 }
+
+/* 24/10 — Detail popup ONLY. A selected/editable VALUE receives a small, soft
+   ice-blue ring. The table CELL and row are never the highlight target.
+   This deliberately overrides legacy dark workflow hover/focus borders without
+   touching their user-selected fill/text colors or the main data-list styles. */
+.report-grid-modal .report-detail-grid tbody td.editable-cell:is(:hover,:focus-within) {
+  outline:none;
+  box-shadow:none;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell
+  :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger) {
+  display:inline-flex;
+  width:fit-content;
+  max-width:100%;
+  align-items:center;
+  vertical-align:middle;
+  border-radius:6px;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell
+  :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger):is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  border-color:#9ECFE7;
+  outline:none;
+  box-shadow:0 0 0 2px #D8F1FC;
+}
+/* Legacy workflow styling used the dark ink as the hover border. Keep its
+   semantic pink/yellow/green background, but not that dark outline. */
+.report-grid-modal .report-detail-grid tbody td.editable-cell[data-progress-tone]
+  .cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  border-color:#9ECFE7;
+  outline:none;
+  box-shadow:0 0 0 2px #D8F1FC;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell .inline-note-textarea:focus {
+  border-color:#9ECFE7;
+  outline:none;
+  box-shadow:0 0 0 2px #D8F1FC;
+}
