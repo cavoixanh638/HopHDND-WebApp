@@ -142,7 +142,10 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
       node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
     const header=flatten(root).find(node=>node.type==='div'&&node.props?.className==='card-header');
     expect(flatten(header).some(node=>node.type==='p'&&node.props?.className==='report-section-kicker')).toBe(false);
-    expect(flatten(header).find(node=>node.type==='h3')?.props.children).toBe(DEFAULT_REPORTS[1].title);
+    const heading=flatten(header).find(node=>node.type==='h3');
+    expect(heading).toBeDefined();
+    expect(heading!.props.children[0]).toBe(DEFAULT_REPORTS[1].title);
+    expect(flatten(heading).some(node=>node.props?.className==='report-heading-count')).toBe(true);
   });
 });
 
