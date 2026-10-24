@@ -12,7 +12,7 @@ export function activateEditableCell(event:{
   const target=event.target;
   if(!(target instanceof Element))return;
   // A real click on a control must not be forwarded twice (or hijack history).
-  if(target.closest('button,input,textarea,select,a,[role="button"],[contenteditable="true"]'))return;
+  if(target.closest('button,input,textarea,select,a,[role="button"],[role="dialog"],[popover],[contenteditable="true"]'))return;
   const controls=[...cell.querySelectorAll<HTMLButtonElement|HTMLInputElement>(
     'button.cell-picker-trigger,button.inline-note-trigger,button.content-button,input.custom-cell-input'
   )].filter(control=>!control.disabled);
