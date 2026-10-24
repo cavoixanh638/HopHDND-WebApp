@@ -6,6 +6,7 @@ import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
 import {ColumnResizeHandle} from '../src/components/ColumnResizeHandle';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {ContentEditor} from '../src/features/items/ContentEditor';
+import {InlineNoteEditor} from '../src/features/items/InlineNoteEditor';
 import {DeferredWidthInput} from '../src/features/items/DeferredWidthInput';
 
 const hooks=vi.hoisted(()=>{
@@ -71,16 +72,14 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(edit).toBeDefined();edit!.props.onClick();
     hooks.begin();tree=ReportDetailGrid(props);
     expect(text(tree)).toContain('Về chế độ xem');
-    const note=nodes(tree).find(n=>n.type==='button'&&String(n.props['aria-label']??'').startsWith('Sửa Ghi chú'));
-    expect(note).toBeDefined();note!.props.onClick();
-    hooks.begin();tree=ReportDetailGrid(props);
-    const editor=nodes(tree).find(n=>n.type===ContentEditor);
+    const editor=nodes(tree).find(n=>n.type===InlineNoteEditor);
     expect(editor).toBeDefined();
+    expect(nodes(tree).some(n=>n.type===ContentEditor)).toBe(false);
     permitted=false;
-    expect(editor!.props.onSave('Sửa không còn quyền')).toBe(false);
+    expect(editor!.props.onCommit('Sửa không còn quyền')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
     permitted=true;
-    expect(editor!.props.onSave('Sửa được cấp quyền')).toBe(true);
+    expect(editor!.props.onCommit('Sửa được cấp quyền')).toBe(true);
     expect(props.onUpdate).toHaveBeenCalledOnce();
   });
   it('changes and persists the width of the whole dialog independently from column widths',()=>{

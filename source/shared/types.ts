@@ -63,6 +63,8 @@ export interface ReportConfig {
   columns: string[];
   hiddenColumns: string[];
   completed: string[];
+  /** Build-NQ report only: whether 'Không phải trình' enters the report denominator. */
+  includeNotRequired?:boolean;
   emphasizeProgress?:boolean;
   tableFont?:'segoe'|'system'|'arial'|'roboto'|'inter'|'helvetica'|'openSans'|'lato'|'notoSans'|'plex';
   tableFontSize?:number;

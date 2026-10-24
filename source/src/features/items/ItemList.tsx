@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
+import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
@@ -456,7 +457,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')}
           data-edit-hint={writable?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'||key==='specificProgress'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`}
+          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<InlineNoteEditor value={item.note}
+    label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
+      if(!writable)return false;
+      onUpdate(item.recordId,{note:value});return true;
+    }}/>:key==='specificProgress'?<button className="cell-value-button" aria-label={`${displayId(item)}: ${metadata.label}`}
     onClick={()=>setContentItem({item,field:key})} disabled={locked}>{item[key]||'—'}</button>:column.kind==='text'
   ?<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`} maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={event=>onUpdate(item.recordId,{[key]:event.currentTarget.value})}/>

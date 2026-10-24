@@ -318,15 +318,23 @@ try{
     const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
     const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
     const boxes=cards.map(el=>el.getBoundingClientRect());
-    const firstStyle=getComputedStyle(cards[0]),lastStyle=getComputedStyle(cards[1]);
+    const selected=cards.find(el=>el.classList.contains('active'));
+    const unselected=cards.find(el=>!el.classList.contains('active'));
+    const activeStyle=selected?getComputedStyle(selected):null;
+    const idleStyle=unselected?getComputedStyle(unselected):null;
+    const flat=activeStyle?.backgroundImage==='none'&&idleStyle?.backgroundImage==='none';
+    const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
+    const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
+    const innerFlat=[...nav.querySelectorAll('.section-card-icon,.section-card-state')]
+      .every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)');
     return {ok:nav?.getBoundingClientRect().width<=820&&
-      firstStyle.backgroundImage!==lastStyle.backgroundImage&&
+      flat&&distinct&&border&&innerFlat&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
       boxes.every(box=>box.width>=200&&box.height>=60)&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width))};
+      labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   const listHeadingAndLines=await evaluate(`(()=>{
@@ -597,13 +605,13 @@ try{
         const progress=tables.flatMap(table=>[...table.querySelectorAll('td.report-percent-col progress')]);
         const coloredHeaders=tables.flatMap(table=>[...table.querySelectorAll('thead th.report-stage-source')]);
         return {ok:samples.length>=6&&samples.every(cell=>getComputedStyle(cell).textAlign==='center')&&
-          focus.length>=2&&summaries.length>=8&&percents.length===tables.length&&
+          focus.length===0&&summaries.length>=8&&percents.length===tables.length&&
           progress.length>=tables.length&&progress.every(el=>el.value>=0&&el.value<=100)&&
           coloredHeaders.length>=1&&tables.every(t=>!!getComputedStyle(t).fontFamily),
           samples:samples.map(cell=>getComputedStyle(cell).textAlign),focus:focus.length,
           summaries:summaries.length,percents:percents.length,progress:progress.length,headers:coloredHeaders.length};
       })()`);
-      if(!cells.ok)throw Error('Report numeric alignment or focus UI missing: '+JSON.stringify(cells));
+      if(!cells.ok)throw Error('Report numeric alignment or streamlined summary UI missing: '+JSON.stringify(cells));
       const colorConsistency=await evaluate(`(()=>{
         const table=[...document.querySelectorAll('table.report-table')]
           .find(t=>t.querySelector('thead th.report-stage-source'));
@@ -658,19 +666,21 @@ try{
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
       // Delegated singleton uses one bounded geometry read per newly entered
       // count cell, never a per-frame pointermove read or global style selector.
-      const centeredReportTitles=await evaluate(`(()=>{
+      const leftReportTitles=await evaluate(`(()=>{
         const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
         const deltas=titles.map(h=>{
           const header=h.closest('.card-header');
-          const head=header?.getBoundingClientRect(),text=h.getBoundingClientRect();
-          return {name:h.textContent?.slice(0,35),offset:head?Math.round(((text.left+text.right)-(head.left+head.right))/2):null,
-            display:header?getComputedStyle(header).display:null,align:getComputedStyle(h).textAlign,
-            headWidth:Math.round(head?.width??0),textWidth:Math.round(text.width)};
+          const head=header?.getBoundingClientRect(),txt=h.getBoundingClientRect();
+          return {name:h.textContent?.slice(0,35),leftGap:head?Math.round(txt.left-head.left):null,
+            align:getComputedStyle(h).textAlign,
+            hasInlineCount:(h.textContent??'').includes(' nội dung)')&&(h.textContent??'').includes('(')};
         });
-        return {ok:titles.length===5&&deltas.every(v=>v.offset!==null&&Math.abs(v.offset)<4),
+        return {ok:titles.length===5&&deltas.every(v=>v.leftGap!==null&&v.leftGap>=0&&
+          v.leftGap<=32&&(v.align==='left'||v.align==='start')&&v.hasInlineCount)&&
+          !document.querySelector('.report-surface .card-header p.muted,.report-flow-note,.report-focus-button'),
           count:titles.length,deltas};
       })()`);
-      if(!centeredReportTitles.ok)throw Error('Report titles are no longer centered: '+JSON.stringify(centeredReportTitles));
+      if(!leftReportTitles.ok)throw Error('Report titles must be left-aligned with inline totals and no redundant note/filter: '+JSON.stringify(leftReportTitles));
           const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
         const tip=document.getElementById('report-shared-tooltip');

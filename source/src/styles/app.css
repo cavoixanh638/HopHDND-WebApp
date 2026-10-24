@@ -629,10 +629,10 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 /* Consistent meanings across ALL five techniques. Do not infer overdue from stage alone.
    Each semantic stage carries readable foreground/background, border and a strong header ink. */
 .report-surface {
- --source-bg:#FFE0E4;--source-ink:#7F1D30;--source-stroke:#E7A1AD;--source-solid:#9B1731;
- --office-bg:#FFE8B8;--office-ink:#704500;--office-stroke:#DCB76A;--office-solid:#865000;
+ --source-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4);--source-ink:var(--hdnd-status-not-submitted-text,#7F1D30);--source-stroke:#E7A1AD;--source-solid:var(--hdnd-status-not-submitted-text,#9B1731);
+ --office-bg:var(--hdnd-status-office-bg,#FFE8B8);--office-ink:var(--hdnd-status-office-text,#704500);--office-stroke:#DCB76A;--office-solid:var(--hdnd-status-office-text,#865000);
  --next-bg:#DCEBFD;--next-ink:#164C89;--next-stroke:#A1C6EF;--next-solid:#124E8C;
- --completed-bg:#D5F0DE;--completed-ink:#125B35;--completed-stroke:#91CFA8;--completed-solid:#126442;
+ --completed-bg:var(--hdnd-status-done-bg,#D5F0DE);--completed-ink:var(--hdnd-status-done-text,#125B35);--completed-stroke:#91CFA8;--completed-solid:var(--hdnd-status-done-text,#126442);
  --withdrawn-bg:#ECE8F5;--withdrawn-ink:#5B3B78;--withdrawn-stroke:#CEC0DB;--withdrawn-solid:#563583;
  --other-bg:#EBEFF2;--other-ink:#3D5261;--other-stroke:#CBD5DC;--other-solid:#405460;
 }
@@ -715,7 +715,7 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 .report-surface.report-style-bars .report-table .count-button {border-color:transparent;}
 /* 5 — Strong header band: saturated status headers, neutral body and understated figures. */
 .report-surface.report-style-band .report-table thead th[class*="report-stage-"] {
- background:var(--stage-solid);color:#fff;border-color:var(--stage-solid);
+  background:var(--stage-bg);color:var(--stage-ink);border-color:var(--stage-stroke);
 }
 .report-surface.report-style-band .report-table tbody td[class*="report-stage-"] {
  background:#fff;color:var(--stage-ink);
@@ -1551,4 +1551,81 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .status-palette-grid {grid-template-columns:1fr;}
   .status-palette-savebar,.status-palette-presets-actions {align-items:stretch;}
   .status-palette-color-controls input[type=text] {font-size:14px;}
+}
+
+/* HopHDND 24-10: isolated primary tabs and editable-cell refinements. */
+.app-shell > nav.primary-section-switcher .primary-section-card:is(:first-child,:last-child) {
+  background:#F8FAFB;color:#334C54;border:1.5px solid #D4E0E2;
+  box-shadow:0 2px 6px rgba(20,69,76,.09);cursor:pointer;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card:is(:first-child,:last-child).active {
+  background:#E3F2EA;color:#163F34;border:2.5px solid #15805F;
+  box-shadow:0 0 0 2px #A7D3BE,0 5px 16px rgba(18,91,68,.20);
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-icon,
+.app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-icon {
+  background:transparent;border-color:transparent;color:inherit;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-state,
+.app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-state {
+  background:transparent;border:0;color:inherit;font-weight:750;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-description {opacity:.89;}
+.app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled) {
+  border-color:#15805F;box-shadow:0 0 0 2px #C0E2D2,0 5px 14px rgba(25,83,70,.15);
+}
+.app-shell > nav.primary-section-switcher .primary-section-card:focus-visible {
+  outline:3px solid #166B50;outline-offset:3px;
+}
+/* Edit values stay interactive with hand cursor, but are not hyperlinks. */
+.item-data-table tbody td.editable-cell :is(.cell-value-button,.content-button):hover,
+.report-detail-grid tbody td.editable-cell :is(.cell-value-button,.content-button):hover {
+  text-decoration:none;color:inherit;cursor:pointer;
+}
+.item-data-table tbody td.editable-cell[data-col-key="note"] .cell-value-button::after,
+.item-data-table tbody td.editable-cell[data-col-key="specificProgress"] .cell-value-button::after,
+.report-detail-grid tbody td.editable-cell[data-col-key="note"] .cell-value-button::after,
+.report-detail-grid tbody td.editable-cell[data-col-key="specificProgress"] .cell-value-button::after {
+  content:none;display:none;
+}
+.item-data-table tbody td.editable-cell:hover,
+.report-detail-grid tbody td.editable-cell:hover {
+  box-shadow:inset 0 0 0 2px #408A75,0 0 0 1px #C8E3D7;
+}
+.item-data-table tbody td.editable-cell:focus-within,
+.report-detail-grid tbody td.editable-cell:focus-within {
+  box-shadow:inset 0 0 0 2px #166A53,0 0 0 2px #A6D4C0;
+}
+.item-data-table .inline-note-trigger,.report-detail-grid .inline-note-trigger {
+  width:100%;min-height:30px;padding:5px 7px;background:transparent;color:inherit;
+  border:1px solid #A5BEB5;border-radius:6px;text-align:left;white-space:pre-wrap;
+  overflow-wrap:anywhere;font:inherit;cursor:pointer;text-decoration:none;
+}
+.item-data-table .inline-note-trigger:hover,.report-detail-grid .inline-note-trigger:hover {
+  background:#EFF8F3;border-color:#26785C;box-shadow:0 0 0 1px #A2CCB6;
+  text-decoration:none;
+}
+.item-data-table .inline-note-textarea,.report-detail-grid .inline-note-textarea {
+  box-sizing:border-box;display:block;width:100%;min-height:68px;max-height:280px;
+  padding:7px 8px;resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere;
+  font:inherit;line-height:1.5;color:var(--ink);background:#FFF;
+  border:2px solid #26785C;border-radius:6px;box-shadow:0 0 0 2px #C6E5D6;
+}
+.item-data-table .inline-note-textarea:focus,.report-detail-grid .inline-note-textarea:focus {
+  outline:2px solid #126046;outline-offset:1px;
+}
+.report-surface > .card-header {justify-content:space-between;text-align:left;}
+.report-surface > .card-header > div {text-align:left;}
+.report-surface > .card-header h3 {text-align:left;}
+.report-heading-count {font-size:.84em;font-weight:600;color:#476357;white-space:nowrap;}
+.build-count-setting {margin:9px 0 12px;display:flex;flex-direction:column;gap:5px;}
+.build-count-setting select {max-width:400px;}
+.build-count-setting small {color:var(--muted);}
+
+/* Report headings: undo historical 76px centering gutters; reserve space only for print. */
+.report-surface > .card-header > div:first-child {
+  box-sizing:border-box;
+  width:100%;
+  padding:0 88px 0 0;
+  text-align:left;
 }
