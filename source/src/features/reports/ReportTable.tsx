@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
 import {mountSharedReportTooltip} from '../../components/SharedReportTooltip';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
@@ -39,17 +39,13 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const ref = useRef<HTMLElement>(null);
   // One tooltip instance serves all mounted reports, not one per cell.
   useEffect(()=>preview?undefined:mountSharedReportTooltip(),[preview]);
-  const [focusWaiting,setFocusWaiting]=useState(false);
   const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
   const stages=useMemo(()=>{
     const counts:Record<ReportStage,number>={source:0,office:0,next:0,completed:0,withdrawn:0,excluded:0,other:0};
     for(const item of report.items)counts[reportStage(status(item),config)]++;
     return counts;
   },[report.items,config]);
-  const pendingTotal=stages.source+stages.office;
-  const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder))
-    .filter(([,cells])=>!focusWaiting||[...cells.entries()].some(([status,entries])=>
-      entries.length>0&&(['source','office'] as ReportStage[]).includes(reportStage(status,config))));
+  const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder));
   const emphasize=config.emphasizeProgress!==false;
   const visualStyle=config.reportVariant??'classic';
   // Bar lengths compare counts between groups in the SAME status column, never completion rates.
@@ -108,7 +104,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   return <section className={'card report-surface report-style-'+visualStyle} ref={ref}
     style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
       '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
-    <div className="card-header"><div><h3>{heading()}</h3><p className="muted">{report.total} nội dung · Xác nhận hoàn thành: {report.percent === null ? '—' : `${report.percent}%`}</p></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
+    <div className="card-header"><div><h3>{heading()} <span className="report-heading-count">({report.total} nội dung)</span></h3></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
     {report.unknown.length > 0 && <p className="unknown-note">Trạng thái nguồn chưa chuẩn hóa: {report.unknown.join(', ')}. {'Các nội dung được gom tại cột Chưa chuẩn hóa, vẫn tính vào tổng nhưng không tự tính hoàn thành.'}</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
@@ -118,17 +114,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
           <span>{reportStageLabels[stage]}</span><strong>{stages[stage]}</strong>
         </span>)}
       </div>
-      {!preview&&<button type="button" className="button ghost report-focus-button"
-        aria-pressed={focusWaiting} disabled={!pendingTotal}
-        onClick={()=>setFocusWaiting(value=>!value)}>
-        {focusWaiting?'Xem toàn bộ đơn vị':'Chỉ xem đơn vị còn ở Sở/VP'}
-      </button>}
+
     </div>
-    <p className="report-flow-note">Màu sắc là gợi ý mức độ ưu tiên theo từng bước xử lý, không khẳng định hồ sơ quá hạn. Chỉ trạng thái hoàn thành cuối cùng mới tính tỷ lệ hoàn thành.
-      {stages.withdrawn>0?' Đề nghị rút: '+stages.withdrawn+'.':''}
-      {stages.excluded>0?' Không phải trình: '+stages.excluded+'.':''}
-       {stages.other>0?' Trạng thái chưa khớp: '+stages.other+'.':''}
-    </p>
     <div className="table-wrap"><table className="data-table report-table"
       style={{minWidth:`${gridWidth}px`,width:`${gridWidth}px`}}>
       <colgroup>
@@ -170,7 +157,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         </td></tr>}
       </tbody>
       <tfoot><tr>
-        <th scope="row">{focusWaiting?'Tổng toàn bảng':'Tổng cộng'}</th>
+        <th scope="row">Tổng cộng</th>
         <td className={'report-number report-total-col'+clickable(report.items)}>{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
         {report.columns.map(column=>{
           const entries=[...report.rows.values()].flatMap(cells=>cells.get(column)??[]);
