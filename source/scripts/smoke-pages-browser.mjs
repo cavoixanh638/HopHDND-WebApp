@@ -1155,7 +1155,8 @@ try{
         const header=[...(table?.querySelectorAll('thead th')??[])];
         const pending=header.find(el=>el.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
         const total=table?.querySelector('tfoot td.report-total-col');
-        const totalText=total?.textContent?.trim()??'';
+        const totalText=total?.querySelector('.count-drill > span')?.textContent?.trim() ??
+          total?.querySelector('strong')?.textContent?.trim()??'';
         const rendered=section?.querySelector('.report-heading-count')?.textContent??'';
         const count=Number(rendered.match(/\\d+/)?.[0]??-1);
         return {ok:!!pending&&pending.classList.contains('report-stage-intermediate')&&
