@@ -287,7 +287,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     '--table-font-family':tableFontStack(getReportFont(layout)),
     '--table-font-size':`${getReportFontSize(layout)}px`,
     ...statusPaletteCssVariables(statusPaletteStore.active)} as CSSProperties;
-  return <div className={`app-shell ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
+  return <div className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
       <div className="top-actions">
         <span className="version">Bản {isFirebase?'0.7.1':'0.6.2'}</span>
