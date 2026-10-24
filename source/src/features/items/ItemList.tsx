@@ -6,6 +6,7 @@ import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
+import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
@@ -17,12 +18,12 @@ import { Modal } from '../../components/Modal';
 import { orderValues } from '../../domain/catalog-order';
 import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
-import {ColumnFilterCell} from './ColumnFilterCell';
+import {ColumnFilterCell,filterValue} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
+  compactVisibleColumns,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {activateEditableCell} from './activate-editable-cell';
 import { reorderByKey } from '../../domain/reorder-columns';
@@ -35,7 +36,7 @@ import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {resizeWithLastColumn,trailingWidthBounds} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
-import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,matchesColumnFilters,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
+import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void> }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
@@ -187,39 +188,67 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[items]);
   const customRowKey=(item:Item)=>/^[A-Za-z0-9_-]{1,100}$/.test(item.displayCode)&&
     codeCounts.get(item.displayCode)===1?`code:${item.displayCode}`:item.recordId;
-  const filtered = useMemo(() => {
-    // Build filter plans once per change, never for each row or mouse movement.
-    const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
+  // Small source (normally ~55 rows): normalize every source value ONCE per
+  // data/layout change rather than for every keystroke and every table cell.
+  // Retain full original strings for display, editing and Vietnamese highlights.
+  const filterIndex=useMemo(()=>{
+    const result=new Map<string,Record<string,string>>();
+    for(const item of items){
+      const fields:Record<string,string>={};
+      for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(filterValue(item,key));
+      for(const anchor of ['content','room','vpLeader'])
+        fields['merged:'+anchor]=normalizeSearch(
+          anchor==='content'?item.content+' '+item.type:
+          anchor==='room'?item.room+' '+item.specialist:
+          item.vpLeader+' '+item.ubndLeader);
+      for(const column of activeLayout.columns)
+        if(column.origin==='custom')
+          fields[column.key]=normalizeSearch(column.values?.[customRowKey(item)]??'');
+      result.set(item.recordId,fields);
+    }
+    return result;
+  },[items,activeLayout.columns,codeCounts]);
+  const filtered=useMemo(()=>{
+    const hidden=new Set(compactPairs.map(pair=>pair.hidden));
     const roomSpecialist=compactPairs.some(pair=>pair.anchor==='room'&&pair.hidden==='specialist');
-    const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
-    const ordinary=Object.fromEntries(Object.entries(columnFilters).filter(([key])=>
-      EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)));
+    const anchors=new Set(compactPairs.map(pair=>pair.anchor));
+    const ordinary=Object.entries(columnFilters)
+      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)&&term.trim())
+      .map(([key,term])=>({key,term:normalizeSearch(term)}));
     const roomTerm=roomSpecialist?(columnFilters.room??''):'';
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
-    const merged=compactPairs.flatMap(pair=>
-      pair.anchor!=='room'&&columnFilters[pair.anchor]?.trim()?[{pair,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
-    const custom=Object.entries(columnFilters).flatMap(([key,term])=>{
-      const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
-      return column&&term.trim()?[{column,term:normalizeSearch(term)}]:[];
+    const merged=compactPairs.flatMap(pair=>pair.anchor!=='room'&&columnFilters[pair.anchor]?.trim()
+      ?[{key:'merged:'+pair.anchor,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
+    const custom=Object.entries(columnFilters).flatMap(([key,term])=>
+      term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom')
+        ?[{key,term:normalizeSearch(term)}]:[]);
+    return items.filter(item=>{
+      const values=filterIndex.get(item.recordId);
+      if(!values)return false;
+      return ordinary.every(({key,term})=>values[key]?.includes(term))&&
+        (!roomTerm||item.room===roomTerm)&&
+        (!personTerm||values.specialist?.includes(personTerm))&&
+        merged.every(({key,term})=>values[key]?.includes(term))&&
+        custom.every(({key,term})=>values[key]?.includes(term));
     });
-    return items.filter(item=>
-      matchesColumnFilters(item,ordinary)&&
-      (!roomTerm||item.room===roomTerm)&&
-      (!personTerm||normalizeSearch(item.specialist).includes(personTerm))&&
-      merged.every(({pair,term})=>
-        normalizeSearch(compactFilterText(item,pair.anchor,compactPairs)).includes(term))&&
-      custom.every(({column,term})=>
-        normalizeSearch(column.values?.[customRowKey(item)]??'').includes(term)));
-  },[items,columnFilters,activeLayout,codeCounts,compactDisplay,compactOn,showAllSourceColumns]);
+  },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
   const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
   }),[filtered,columnSort,activeLayout,codeCounts]);
   const cycleSort=(key:string)=>setColumnSort(current=>
     current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);
+  // CellPicker option lists used to be sorted once PER CELL PER KEYSTROKE.
+  const optionCache=useMemo(()=>new Map<string,string[]>(),[catalog,items,allSpecialists]);
   const options = (field: TextField,item:Item) => {
+    const cacheKey=item.recordId+'|'+field;
+    const cached=optionCache.get(cacheKey);
+    if(cached)return cached;
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
-    return orderValues([...new Set([...list,item[field]])].filter(Boolean),list).filter(value=>field!=='specialist'||allSpecialists||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
+    const selected=orderValues([...new Set([...list,item[field]])].filter(Boolean),list)
+      .filter(value=>field!=='specialist'||allSpecialists||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
+    optionCache.set(cacheKey,selected);
+    return selected;
   };
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
@@ -289,17 +318,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {editable
         ?field==='content'
           ?<button type="button" className="content-button" disabled={locked}
-            onClick={()=>setContentItem({item,field:'content'})}>{original}</button>
+            onClick={()=>setContentItem({item,field:'content'})}><SearchHighlight value={original} query={columnFilters.content}/></button>
           :kind==='text'
             ?<input className="custom-cell-input" aria-label={displayId(item)+': '+label}
               value={String(item[field]??'')} disabled={locked}
               onChange={e=>onUpdate(item.recordId,{[field]:e.currentTarget.value})}/>
             :<CellPicker label={displayId(item)+': '+label} value={item[field]}
               displayValue={shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
-              options={options(field,item)} searchable={field==='specialist'} disabled={locked}
+              options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
-          {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:original}
+          {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content}/>:original}
       {!anonymousViewer&&onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
@@ -417,7 +446,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
             {key==='content'
               ?<span className="compact-content-line">{compactField(item,'content')}
-                <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>({compactField(item,'type')})</span>
+                <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>(<SearchHighlight value={item.type||'—'} query={columnFilters.content}/>)</span>
               </span>
               :<div className="compact-pair-lines">
                 <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>
@@ -441,7 +470,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
                 options={column.options??[]} onChange={updateCustom}/>
               :<input className="custom-cell-input" aria-label={`${displayId(item)}: ${column.label}`}
                 type="text" maxLength={1000} value={value} onChange={e=>updateCustom(e.currentTarget.value)}/>
-            :value||'—'}</td>;
+            :<SearchHighlight value={value||'—'} query={columnFilters[column.key]}/>}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
           style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
@@ -460,11 +489,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<InlineNoteEditor value={item.note}
+          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content}/></button>:key==='note'?<InlineNoteEditor value={item.note} highlightQuery={columnFilters.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{note:value});return true;
-    }}/>:key==='specificProgress'?<InlineNoteEditor value={item.specificProgress}
+    }}/>:key==='specificProgress'?<InlineNoteEditor value={item.specificProgress} highlightQuery={columnFilters.specificProgress}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{specificProgress:value});return true;
@@ -475,14 +504,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     displayValue={compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
-    options={options(key,item)} searchable={key==="specialist"} disabled={locked}
+    options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
         ?<span title={item[key]} aria-label={item[key]}>{abbreviateLeaderName(item[key])||'—'}</span>
       :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
-        ?<span className="workflow-status-value">{item[key]}</span>
-      :item[key]||'—'}{key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
+        ?<span className="workflow-status-value"><SearchHighlight value={item[key]} query={columnFilters[key]}/></span>
+      :<SearchHighlight value={item[key]||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
