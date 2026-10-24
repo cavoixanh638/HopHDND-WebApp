@@ -681,6 +681,36 @@ try{
           count:titles.length,deltas};
       })()`);
       if(!leftReportTitles.ok)throw Error('Report titles must be left-aligned with inline totals and no redundant note/filter: '+JSON.stringify(leftReportTitles));
+      const stageChips=await evaluate(`(()=>{
+        const chips=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')];
+        const active=chips.filter(c=>!c.disabled);
+        const height=chips.map(c=>Math.round(c.getBoundingClientRect().height));
+        const labels=chips.slice(0,4).map(c=>c.getAttribute('aria-label'));
+        return {ok:chips.length===20&&active.length>0&&height.every(n=>n>=35)&&
+          chips.every(c=>c.type==='button'&&c.hasAttribute('aria-label'))&&
+          chips.every(c=>(parseInt(c.querySelector('strong')?.textContent??'0',10)===0)===c.disabled),
+          count:chips.length,active:active.length,smallest:Math.min(...height),labels};
+      })()`);
+      if(!stageChips.ok)throw Error('Stage summary chips not enlarged or interactive: '+JSON.stringify(stageChips));
+      const selectedChip=await evaluate(`(()=>{
+        const button=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')]
+          .find(c=>!c.disabled);
+        if(!button)return null;
+        const count=Number(button.querySelector('strong')?.textContent??0);
+        const label=button.getAttribute('aria-label');
+        button.click();
+        return {count,label};
+      })()`);
+      if(!selectedChip)throw Error('No populated stage summary to click');
+      await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
+        'Click on stage summary did not open detail list');
+      const stageGrid=await evaluate("document.querySelector('dialog.report-detail-modal[open] .report-grid-summary strong')?.textContent??''");
+      if(!stageGrid.includes(selectedChip.count+' nội dung'))
+        throw Error('Stage summary count and popup selected records differ: '+JSON.stringify({selectedChip,stageGrid}));
+      await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
+      await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
+        'Stage detail dialog failed to close');
+
           const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
         const tip=document.getElementById('report-shared-tooltip');

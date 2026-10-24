@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 
-/** Inline multiline note editor: it changes only the existing draft via onCommit.
+/** Reusable inline multiline editor for Note and Current progress; it changes only the existing draft via onCommit.
  * Escape discards local edits; Ctrl/Cmd+Enter or blur applies changes locally.
  * It never writes directly to Excel/Firebase and never grants permissions. */
 export function InlineNoteEditor({value,label,onCommit}:{

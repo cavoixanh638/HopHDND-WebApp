@@ -40,10 +40,12 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   // One tooltip instance serves all mounted reports, not one per cell.
   useEffect(()=>preview?undefined:mountSharedReportTooltip(),[preview]);
   const status=(item:Item)=>normalizeReportStatus(item[config.statusField],config);
-  const stages=useMemo(()=>{
-    const counts:Record<ReportStage,number>={source:0,office:0,next:0,completed:0,withdrawn:0,excluded:0,other:0};
-    for(const item of report.items)counts[reportStage(status(item),config)]++;
-    return counts;
+  // Single grouped source of truth for the displayed counts AND their drilldown records.
+  // This respects reportItems scope, including the saved "Không phải trình" option.
+  const stageItems=useMemo(()=>{
+    const groups:Record<ReportStage,Item[]>={source:[],office:[],next:[],completed:[],withdrawn:[],excluded:[],other:[]};
+    for(const item of report.items)groups[reportStage(status(item),config)].push(item);
+    return groups;
   },[report.items,config]);
   const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder));
   const emphasize=config.emphasizeProgress!==false;
@@ -93,7 +95,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     element.className = ref.current.className;
     element.style.cssText = ref.current.style.cssText;
     element.innerHTML = ref.current.innerHTML;
-    element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(button.querySelector('span')?.textContent ?? button.textContent ?? '')));
+    element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(
+      button.classList.contains('count-drill') ? (button.querySelector('span')?.textContent ?? '') : (button.textContent ?? '')
+    )));
     const note = document.createElement('p');
     note.textContent = `${sourceLabel} · In lúc ${new Date().toLocaleString('vi-VN')} · Tổng ${report.total}`;
     element.prepend(note);
@@ -109,10 +113,19 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
       <div className="report-flow-summary" aria-label="Số nội dung theo giai đoạn">
-        {(['source','office','next','completed'] as const).map(stage=><span key={stage}
-          className={'report-stage-summary'+(emphasize?' report-stage-'+stage:'')}>
-          <span>{reportStageLabels[stage]}</span><strong>{stages[stage]}</strong>
-        </span>)}
+        {(['source','office','next','completed'] as const).map(stage=>{
+          const entries=stageItems[stage];
+          const className='report-stage-summary'+(emphasize?' report-stage-'+stage:'');
+          const contents=<><span>{reportStageLabels[stage]}</span><strong>{entries.length}</strong></>;
+          return preview
+            ?<span key={stage} className={className}>{contents}</span>
+            :<button type="button" key={stage} className={className}
+              disabled={entries.length===0}
+              aria-label={`${config.title} · ${reportStageLabels[stage]}: ${entries.length} nội dung. Bấm để xem chi tiết`}
+              onClick={()=>onSelect(`${config.title} · ${reportStageLabels[stage]}`,entries)}>
+              {contents}
+            </button>;
+        })}
       </div>
 
     </div>

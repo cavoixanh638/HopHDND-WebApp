@@ -60,6 +60,43 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
       expect(preview.some(node=>node.type==='button'&&node.props.className==='count-button count-drill')).toBe(false);
     }
   });
+  it('opens the four summary chips with exactly the records counted for each stage',()=>{
+    const names=['Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','Không phải trình','Lạ'];
+    const records=createDemoItems(names.length).map((item,index)=>({...item,
+      isDropped:false,archivedAt:null,documentKind:'NQ' as const,progressBuild:names[index],
+      room:'Phòng kiểm thử'
+    }));
+    const onSelect=vi.fn();
+    const config=DEFAULT_REPORTS[1];
+    const root=ReportTable({items:records,config,group:'room',groupOrder:[],onSelect});
+    const buttons=flatten(root).filter(node=>node.type==='button'&&
+      String(node.props.className??'').includes('report-stage-summary'));
+    expect(buttons).toHaveLength(4);
+    const expected=[['Sở chưa trình',records[0]],['Văn phòng đang thực hiện',records[1]],
+      ['Bước tiếp theo',records[2]],['Đã hoàn thành',records[3]]] as const;
+    for(const [label,entry] of expected){
+      const button=buttons.find(button=>button.props['aria-label'].includes(' · '+label+':'));
+      expect(button).toBeDefined();
+      expect(button.props.disabled).toBe(false);
+      button.props.onClick();
+      expect(onSelect).toHaveBeenLastCalledWith(config.title+' · '+label,[entry]);
+      expect(button.props['aria-label']).toContain('Bấm để xem chi tiết');
+    }
+    const hidden=ReportTable({items:records,config:{...config,includeNotRequired:false},
+      group:'room',groupOrder:[],onSelect:vi.fn()});
+    expect(flatten(hidden).find(n=>n.type==='span'&&n.props.className==='report-heading-count')
+      ?.props.children).toContain(' nội dung)');
+    const onlySource=records.filter((_,index)=>index===0);
+    const emptyButtons=flatten(ReportTable({items:onlySource,config,group:'room',
+      groupOrder:[],onSelect})).filter(node=>node.type==='button'&&
+        String(node.props.className??'').includes('report-stage-summary'));
+    expect(emptyButtons).toHaveLength(4);
+    expect(emptyButtons.filter(node=>node.props.disabled)).toHaveLength(3);
+    const preview=flatten(ReportTable({items:records,config,group:'room',
+      groupOrder:[],onSelect,preview:true}));
+    expect(preview.some(node=>node.type==='button'&&String(node.props.className??'')
+      .includes('report-stage-summary'))).toBe(false);
+  });
   it('opens matching detail records from positive counts including group totals',()=>{
     const items=createDemoItems(5).map((item,i)=>({
       ...item,isDropped:false,archivedAt:null,documentKind:'NQ' as const,
