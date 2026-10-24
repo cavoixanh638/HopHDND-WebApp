@@ -838,3 +838,14 @@ Yêu cầu: bỏ **viền highlight ngoài quanh cả ô dữ liệu** trong tab
 Thay đổi chỉ trên `ItemList.tsx`, `app.css` và hàm điều phối click `activate-editable-cell.ts`. Cú click vào khoảng trống của `td.editable-cell` chuyển đến **duy nhất một** điều khiển sửa bên trong; không chuyển nếu ô chưa được cấp quyền, nút bị vô hiệu hóa, đã nhấp trực tiếp điều khiển, nhấp nút lịch sử hoặc ô gộp có nhiều điều khiển khác nhau (tránh sửa sai trường). Các ô nhập dạng text được focus thay vì giả lập bấm nút. Không sửa Firebase Rules, Excel/RTDB, bố cục tổng hợp hay trạng thái nguồn.
 
 Kiểm thử bổ sung: unit mô phỏng 5 trường hợp đúng quyền/không quyền/nút disabled/history/ô gộp/input; Chrome hover vào padding ô giả lập và kiểm trực tiếp CSS `td.boxShadow=none`, nút có viền/halo sáng, nút nhỏ hơn `td`. Chỉ phát hành khi CI, Chrome smoke và GitHub Pages đạt.
+
+
+## 24/10/2026 — Viền textarea bị giữ lại sau khi chuột rời ô (ảnh người dùng)
+
+Nguồn lỗi: quy tắc chung trong `app.css` gán `inline-note-textarea` viền `2px solid #26785C`, `box-shadow` thường trực và viền tối khi `:focus`. Trên Danh sách chi tiết, `td.editable-cell:focus-within` cũng được gắn chung với `:hover` để highlight nút; `:focus-within` không mất khi di chuyển chuột. Vì thế các ô nhập **Ghi chú** và **Tiến độ hiện tại** có thể giữ viền đậm sau khi chuột đi nơi khác; `onBlur` chỉ được gọi khi mất focus, không phải mouseleave.
+
+Sửa giới hạn trong Danh sách chi tiết:
+- Chỉ `td.editable-cell:hover` làm sáng viền nút bên trong, không đồng nhất với `focus-within`.
+- `textarea` bình thường **và đang focus nhưng chuột ở nơi khác** dùng viền trung tính `#CDD9D4`, không halo, không outline. Khi hover vào `td`, vùng nhập hiện viền `#A7D8ED` và halo `#DDF3FD`. Không tự lưu hoặc đóng editor trên mouseleave (bảo vệ phần đang gõ).
+- `InlineNoteEditor` bổ sung `textareaRef` và `useEffect` focus khi mở để blur callback chắc chắn có cơ hội đóng editor cũ; giữ `autoFocus` dự phòng.
+- Chrome smoke thêm bài thực tế: vẫn focus textarea khi chuột rời, kiểm tra không còn viền/bóng đậm và `td` không highlight; so sánh với hover có viền nhạt. Không đổi nội dung nguồn, quyền Firebase, History, hosting và giao diện popup báo cáo.
