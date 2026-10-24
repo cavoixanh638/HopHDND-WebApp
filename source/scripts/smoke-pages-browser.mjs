@@ -375,6 +375,51 @@ try{
   })()`);
   if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
 
+  // Semantic report styling applies to both numeric totals and % completion.
+  // Real CSS inheritance must not be replaced with a hardcoded color copy.
+  const semanticCells=await evaluate(`(()=>{
+    const root=document.createElement('section');root.id='report-semantic-probe';
+    root.className='report-surface report-style-classic';
+    root.style.cssText='position:fixed;left:480px;top:95px;z-index:11000';
+    root.innerHTML='<table class="data-table report-table" style="width:480px;table-layout:fixed"><thead><tr><th class="report-group-heading">Lãnh đạo VP</th><th class="report-number-header report-percent-col">% hoàn thành</th></tr></thead><tbody><tr><th class="report-group-heading">Phòng</th><td class="report-number report-percent-col">25%</td></tr><tr><td class="report-number report-stage-source report-clickable-cell">2</td><td class="report-number report-stage-office report-clickable-cell">3</td><td class="report-number report-stage-completed report-clickable-cell">4</td></tr></tbody></table>';
+    document.querySelector('.app-shell').append(root);
+    const css=el=>{const c=getComputedStyle(el);return {bg:c.backgroundColor,ink:c.color,border:c.borderColor}};
+    return {header:css(root.querySelector('th.report-group-heading')),
+      percent:css(root.querySelector('td.report-percent-col')),
+      complete:css(root.querySelector('td.report-stage-completed')),
+      office:css(root.querySelector('td.report-stage-office')),
+      statusCells:[...root.querySelectorAll('td.report-clickable-cell')].map(el=>({
+        tone:el.className.split(' ').find(k=>k.startsWith('report-stage-')),
+        rect:el.getBoundingClientRect().toJSON(),
+        ink:getComputedStyle(el).color}))};
+  })()`);
+  if(semanticCells.header.bg!=='rgb(234, 241, 246)'||
+    semanticCells.percent.bg!==semanticCells.complete.bg||
+    semanticCells.percent.ink!==semanticCells.complete.ink||
+    semanticCells.office.bg!=='rgb(254, 249, 195)'||
+    semanticCells.office.ink!=='rgb(133, 77, 14)')
+    throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
+  const expectedBorder={ 'report-stage-source':'rgb(208, 0, 37)',
+    'report-stage-office':'rgb(133, 77, 14)',
+    'report-stage-completed':'rgb(0, 122, 24)'};
+  for(const cell of semanticCells.statusCells){
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',
+      x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
+    await new Promise(resolve=>setTimeout(resolve,240));
+    const style=await evaluate(`(()=>{
+      const cell=[...document.querySelectorAll('#report-semantic-probe td.report-clickable-cell')]
+        .find(el=>el.classList.contains(${JSON.stringify(cell.tone)}));
+      const css=getComputedStyle(cell);return {color:css.outlineColor,width:css.outlineWidth,
+        lift:new DOMMatrixReadOnly(css.transform).m42};
+    })()`);
+    if(style.color!==expectedBorder[cell.tone]||style.width!=='2px'||Math.abs(style.lift+3)>.3)
+      throw Error('Entire report count cell needs semantic 3px hover: '+JSON.stringify({cell,style}));
+  }
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:6,y:6});
+  await evaluate("document.querySelector('#report-semantic-probe')?.remove()");
+  console.log('SEMANTIC_HOVER_COLORS_AND_COMPLETION_PASS',JSON.stringify(semanticCells));
+
+
   // Hover anywhere in a LIST editable cell: no parent ring, only a compact
   // pale inner status button ring. Uses real Chrome pointer hover, fake data.
   const hoverProbe=await evaluate(`(()=>{
