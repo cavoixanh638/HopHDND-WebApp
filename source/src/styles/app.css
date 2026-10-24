@@ -1621,3 +1621,11 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .build-count-setting {margin:9px 0 12px;display:flex;flex-direction:column;gap:5px;}
 .build-count-setting select {max-width:400px;}
 .build-count-setting small {color:var(--muted);}
+
+/* Report headings: undo historical 76px centering gutters; reserve space only for print. */
+.report-surface > .card-header > div:first-child {
+  box-sizing:border-box;
+  width:100%;
+  padding:0 88px 0 0;
+  text-align:left;
+}
