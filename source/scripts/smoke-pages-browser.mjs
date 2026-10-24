@@ -666,19 +666,21 @@ try{
       if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
       // Delegated singleton uses one bounded geometry read per newly entered
       // count cell, never a per-frame pointermove read or global style selector.
-      const centeredReportTitles=await evaluate(`(()=>{
+      const leftReportTitles=await evaluate(`(()=>{
         const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
         const deltas=titles.map(h=>{
           const header=h.closest('.card-header');
-          const head=header?.getBoundingClientRect(),text=h.getBoundingClientRect();
-          return {name:h.textContent?.slice(0,35),offset:head?Math.round(((text.left+text.right)-(head.left+head.right))/2):null,
-            display:header?getComputedStyle(header).display:null,align:getComputedStyle(h).textAlign,
-            headWidth:Math.round(head?.width??0),textWidth:Math.round(text.width)};
+          const head=header?.getBoundingClientRect(),txt=h.getBoundingClientRect();
+          return {name:h.textContent?.slice(0,35),leftGap:head?Math.round(txt.left-head.left):null,
+            align:getComputedStyle(h).textAlign,
+            hasInlineCount:(h.textContent??'').includes(' nội dung)')&&(h.textContent??'').includes('(')};
         });
-        return {ok:titles.length===5&&deltas.every(v=>v.offset!==null&&Math.abs(v.offset)<4),
+        return {ok:titles.length===5&&deltas.every(v=>v.leftGap!==null&&v.leftGap>=0&&
+          v.leftGap<=32&&(v.align==='left'||v.align==='start')&&v.hasInlineCount)&&
+          !document.querySelector('.report-surface .card-header p.muted,.report-flow-note,.report-focus-button'),
           count:titles.length,deltas};
       })()`);
-      if(!centeredReportTitles.ok)throw Error('Report titles are no longer centered: '+JSON.stringify(centeredReportTitles));
+      if(!leftReportTitles.ok)throw Error('Report titles must be left-aligned with inline totals and no redundant note/filter: '+JSON.stringify(leftReportTitles));
           const sharedTooltip=await evaluate(`(()=>{
         const buttons=[...document.querySelectorAll('.report-surface .count-drill')];
         const tip=document.getElementById('report-shared-tooltip');
