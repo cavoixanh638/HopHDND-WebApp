@@ -11,7 +11,12 @@ export function InlineNoteEditor({value,label,onCommit}:{
   const [error,setError]=useState('');
   const cancelled=useRef(false);
   const completed=useRef(false);
+  const textareaRef=useRef<HTMLTextAreaElement>(null);
   useEffect(()=>{if(!editing)setDraft(value);},[value,editing]);
+  // In the Pages Preact build, don't rely only on autoFocus. Without DOM focus,
+  // blur may never fire and several textareas can remain open simultaneously.
+  useEffect(()=>{if(editing&&textareaRef.current&&document.activeElement!==textareaRef.current)
+    textareaRef.current.focus();},[editing]);
   const apply=()=>{
     if(cancelled.current){cancelled.current=false;return;}
     if(completed.current)return;
@@ -29,7 +34,7 @@ export function InlineNoteEditor({value,label,onCommit}:{
       setDraft(value);setEditing(true);
     }}>{value||'—'}</button>;
   return <div className="inline-note-editor">
-    <textarea className="inline-note-textarea" autoFocus aria-label={label}
+    <textarea ref={textareaRef} className="inline-note-textarea" autoFocus aria-label={label}
       maxLength={20000} rows={Math.min(8,Math.max(3,draft.split('\n').length))}
       value={draft} onChange={event=>setDraft(event.currentTarget.value)}
       onBlur={apply} onKeyDown={event=>{
