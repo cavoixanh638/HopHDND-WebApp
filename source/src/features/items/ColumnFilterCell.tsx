@@ -1,3 +1,4 @@
+import {useMemo} from 'react';
 import type {Item} from '../../../shared/types';
 import {displayId} from '../../domain/display-id';
 import {preserveStickyFilterViewport} from './filter-scroll';
@@ -21,7 +22,8 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
   field:string;label:string;items:Item[];value:string;onChange:(next:string)=>void;
   getValue?:(item:Item)=>string;choices?:string[];forceText?:boolean;
 }){
-  const choices=forceText?null:configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue);
+  const choices=useMemo(()=>forceText?null:configuredChoices?.length?configuredChoices:filterChoices(items,field,getValue),
+    [forceText,configuredChoices,items,field,getValue]);
   const compact=field==='displayCode'||field==='stt';
   const clearOnEscape=(event:{key:string;preventDefault:()=>void;stopPropagation:()=>void})=>{
     if(event.key==='Escape'&&value){
