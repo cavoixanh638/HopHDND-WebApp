@@ -18,6 +18,7 @@ import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palet
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
+import {InlineNoteEditor} from '../items/InlineNoteEditor';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
@@ -198,7 +199,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
-    if(field==='content'||field==='note'||field==='specificProgress')
+    if(field==='note')return <InlineNoteEditor value={raw}
+      label={'Sửa Ghi chú · '+displayId(item)} onCommit={value=>{
+        if(!editing||!popupMayEdit||!canEditCell(item.recordId,'note'))return false;
+        onUpdate(item.recordId,{note:value});return true;
+      }}/>;
+    if(field==='content'||field==='specificProgress')
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
