@@ -569,6 +569,43 @@ try{
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
 
+  // Theme2 is a visual skin: a very subtle gradient ONLY on the active tab,
+  // solid Imperial Sky action buttons, white/ice surfaces elsewhere.
+  const imperial=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell');
+    const tabs=[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')];
+    const active=tabs.find(el=>el.classList.contains('active')),
+      inactive=tabs.find(el=>!el.classList.contains('active'));
+    const ac=getComputedStyle(active),ic=getComputedStyle(inactive);
+    const fixture=document.createElement('div');
+    fixture.style.cssText='position:fixed;top:80px;left:30px;z-index:100000;';
+    fixture.innerHTML='<button class="button primary">Lưu</button><button class="button ghost">Khác</button><input type="text" />';
+    shell.appendChild(fixture);
+    const solid=getComputedStyle(fixture.querySelector('.button.primary')),
+      ghost=getComputedStyle(fixture.querySelector('.button.ghost'));
+    const result={scope:shell.classList.contains('imperial-sky-theme'),
+      gradient:ac.backgroundImage,activeInk:ac.color,activeBorder:ac.borderTopColor,
+      inactiveFill:ic.backgroundColor,inactiveInk:ic.color,
+      actionFill:solid.backgroundColor,actionInk:solid.color,
+      ghostInk:ghost.color,activeBox:active.getBoundingClientRect().width,
+      inactiveBox:inactive.getBoundingClientRect().width};
+    fixture.remove();return result;
+  })()`);
+  if(!imperial.scope||
+    !imperial.gradient.includes('linear-gradient')||
+    !imperial.gradient.includes('36, 90, 121')||
+    !imperial.gradient.includes('46, 111, 149')||
+    imperial.activeInk!=='rgb(248, 251, 253)'||
+    imperial.activeBorder!=='rgb(36, 90, 121)'||
+    imperial.inactiveFill!=='rgb(242, 248, 252)'||
+    imperial.inactiveInk!=='rgb(53, 85, 107)'||
+    imperial.actionFill!=='rgb(46, 111, 149)'||
+    imperial.actionInk!=='rgb(255, 255, 255)'||
+    imperial.ghostInk!=='rgb(53, 85, 107)'||
+    Math.abs(imperial.activeBox-imperial.inactiveBox)>1)
+    throw Error('Imperial Sky must style chrome without changing geometry: '+JSON.stringify(imperial));
+  console.log('THEME2_IMPERIAL_SKY_CHROME_PASS',JSON.stringify(imperial));
+
   // The inactive label reserves exactly the same space as "Đang xem".
   // Switching either main tab must not resize either button.
   const beforeSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
@@ -578,25 +615,31 @@ try{
     'Overview tab did not become active');
   const duringSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
     .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
-      state:getComputedStyle(el.querySelector('.section-card-state')).visibility}))`);
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
+      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
   await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1].click()");
   await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:last-child')?.classList.contains('active')===true",
     'List tab did not become active again');
   const afterSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
     .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
-      state:getComputedStyle(el.querySelector('.section-card-state')).visibility}))`);
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
+      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
   const stableSize=beforeSwitch.every((item,i)=>
     Math.abs(item.width-duringSwitch[i].width)<1&&
     Math.abs(item.height-duringSwitch[i].height)<1&&
     Math.abs(item.width-afterSwitch[i].width)<1&&
     Math.abs(item.height-afterSwitch[i].height)<1);
   if(!stableSize||duringSwitch[0].state!=='visible'||duringSwitch[1].state!=='hidden'||
-    afterSwitch[0].state!=='hidden'||afterSwitch[1].state!=='visible')
+    afterSwitch[0].state!=='hidden'||afterSwitch[1].state!=='visible'||
+    !duringSwitch[0].gradient.includes('linear-gradient')||
+    duringSwitch[1].gradient!=='none'||
+    !afterSwitch[1].gradient.includes('linear-gradient')||
+    afterSwitch[0].gradient!=='none')
     throw Error('Main tabs changed size/hidden-label spacing while switching: '+
       JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
   console.log('PRIMARY_TABS_FIXED_SIZE_PASS',JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
 
-  for(const [selector,color] of [['.active','rgb(36, 116, 91)'],[':not(.active)','rgb(61, 114, 138)']]){
+  for(const [selector,color] of [['.active','rgb(248, 251, 253)'],[':not(.active)','rgb(53, 85, 107)']]){
     const query='nav.primary-section-switcher .primary-section-card'+selector;
     const p=await evaluate(`(()=>{
       const el=document.querySelector(${JSON.stringify(query)});
