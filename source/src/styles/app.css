@@ -2169,3 +2169,70 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     transform:none!important;box-shadow:none!important;outline:none!important;
   }
 }
+
+/* 24/10 — Primary tab alignment correction.
+   Reserve exactly the same right-hand "Đang xem" slot in BOTH tab cards.
+   The content flexes into the middle column; active coloring does not affect
+   geometry. At desktop size, no title is allowed to break to a second line. */
+.app-shell > nav.nav-tabs.primary-section-switcher {
+  width:min(100%,850px);
+  max-width:850px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.app-shell > nav.primary-section-switcher .primary-section-card {
+  gap:9px;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-copy {
+  flex:1 1 auto;
+  min-width:0;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-title {
+  white-space:nowrap;
+  overflow:visible;
+  word-break:normal;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-state {
+  box-sizing:border-box;
+  flex:0 0 62px;
+  width:62px;
+  min-width:62px;
+  height:23px;
+  padding:2px 5px;
+  margin-left:auto;
+  justify-content:flex-end;
+  text-align:right;
+  border:1px solid transparent;
+  white-space:nowrap;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-state {
+  border-width:1px;
+}
+/* Mobile: keep both tabs fully visible rather than truncating a long heading
+   or allowing it to spill over the label. Two equal-width stacked cards. */
+@media(max-width:760px) {
+  .app-shell > nav.nav-tabs.primary-section-switcher {
+    grid-template-columns:minmax(0,1fr);
+    width:min(100%,440px);
+    max-width:440px;
+    gap:6px;
+  }
+  .app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card {
+    min-height:46px;
+  }
+}
+@media(max-width:440px) {
+  .app-shell > nav.primary-section-switcher .primary-section-card {
+    gap:6px;
+    padding:7px 9px;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card .section-card-title {
+    font-size:14px;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card .section-card-icon {
+    width:21px;height:21px;font-size:16px;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card .section-card-state {
+    flex-basis:57px;width:57px;min-width:57px;
+    font-size:10px;padding:2px 3px;
+  }
+}
