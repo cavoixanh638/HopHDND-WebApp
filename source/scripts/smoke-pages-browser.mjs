@@ -182,6 +182,43 @@ try{
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:7,y:7});
   await evaluate("document.querySelector('#hover-ink-fixture')?.remove()");
   console.log('EDITABLE_HOVER_INK_PRESERVED_PASS');
+
+  // Overview report: the full clickable TD is the raised hover surface;
+  // numeral stays flat, and a non-clickable/zero cell remains unchanged.
+  const reportHit=await evaluate(`(()=>{
+    const host=document.createElement('section');
+    host.className='report-surface';host.id='report-cell-3d-probe';
+    host.style.cssText='position:fixed;left:95px;top:350px;z-index:99999;width:400px;';
+    host.innerHTML='<table class="data-table report-table" style="width:380px;table-layout:fixed"><tbody><tr><td class="report-number report-clickable-cell" style="width:175px;height:82px"><span class="report-cell-sizer" aria-hidden="true">12</span><button type="button" class="count-button count-drill"><span>12</span></button></td><td class="report-number" style="width:175px;height:82px">—</td></tr></tbody></table>';
+    document.body.appendChild(host);
+    const clickable=host.querySelector('td.report-clickable-cell'),box=clickable.getBoundingClientRect();
+    return {x:box.left+box.width*.8,y:box.top+box.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...reportHit});
+  await new Promise(resolve=>setTimeout(resolve,260));
+  const reportFullCell=await evaluate(`(()=>{
+    const root=document.querySelector('#report-cell-3d-probe');
+    const td=root.querySelector('td.report-clickable-cell'),button=td.querySelector('button'),
+      badge=button.querySelector('span'),empty=root.querySelector('td:not(.report-clickable-cell)');
+    const tdCss=getComputedStyle(td),badgeCss=getComputedStyle(badge),emptyCss=getComputedStyle(empty);
+    return {hover:td.matches(':hover'),wholeLift:new DOMMatrixReadOnly(tdCss.transform).m42,
+      wholeShadow:tdCss.boxShadow,badgeLift:new DOMMatrixReadOnly(badgeCss.transform).m42,
+      badgeShadow:badgeCss.boxShadow,emptyLift:new DOMMatrixReadOnly(emptyCss.transform).m42,
+      targetWidth:button.getBoundingClientRect().width,cellWidth:td.getBoundingClientRect().width};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:12,y:12});
+  await new Promise(resolve=>setTimeout(resolve,220));
+  const reportReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
+    document.querySelector('#report-cell-3d-probe td.report-clickable-cell')).transform).m42`);
+  await evaluate("document.querySelector('#report-cell-3d-probe')?.remove()");
+  if(!reportFullCell.hover||Math.abs(reportFullCell.wholeLift+2)>.3||
+    !reportFullCell.wholeShadow.includes('7px 13px')||
+    Math.abs(reportFullCell.badgeLift)>.2||reportFullCell.badgeShadow!=='none'||
+    Math.abs(reportFullCell.emptyLift)>.2||Math.abs(reportReset)>.3||
+    reportFullCell.targetWidth<reportFullCell.cellWidth-8)
+    throw Error('Overview must lift whole actionable count cell, not just numeral: '+
+      JSON.stringify({reportFullCell,reportReset}));
+  console.log('REPORT_FULL_CELL_3D_PASS',JSON.stringify(reportFullCell));
   const layoutAndBlanks=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell'),card=document.querySelector('.item-list-card'),
       viewport=document.querySelector('.item-list-card .table-wrap'),table=document.querySelector('.item-data-table');
@@ -205,6 +242,37 @@ try{
       values.includes('Sở đang thực hiện')&&values.includes('Ghi chú nguồn O');
   })()`);
   if(!fullExcelColumns)throw Error('Current 15-column E/F/G/N/O source values missing from viewer');
+
+  // Read-only anonymous viewers have the same TWO field-history actions as
+  // administrators. Neither history action grants edit rights.
+  const listHistory=await evaluate(`(()=>{
+    const historyFields=['note','specificProgress'];
+    const find=key=>document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="'+key+'"]');
+    const buttons=historyFields.map(key=>find(key)?.querySelector('button.cell-history-action'));
+    const unrelated=['content','department','progressCouncil'].some(key=>
+      !!find(key)?.querySelector('button.cell-history-action'));
+    return {ok:buttons.every(Boolean)&&!unrelated,
+      labels:buttons.map(button=>button?.getAttribute('aria-label'))};
+  })()`);
+  if(!listHistory.ok||!listHistory.labels.some(x=>x?.includes('Ghi chú'))||
+    !listHistory.labels.some(x=>x?.includes('Tiến độ hiện tại')))
+    throw Error('Guest must see history on note and current-progress only: '+JSON.stringify(listHistory));
+  for(const field of ['specificProgress','note']){
+    await evaluate(`document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="${field}"] button.cell-history-action').click()`);
+    await eventually(`!!document.querySelector('dialog.modal[open][aria-label^="Lịch sử sửa đổi"]')`,
+      'History dialog did not open for '+field);
+    const modalField=await evaluate(`(()=>{
+      const dialog=document.querySelector('dialog.modal[open]');
+      return {title:dialog?.getAttribute('aria-label'),demo:!!dialog?.querySelector('.note-history-demo')};
+    })()`);
+    if(!modalField.title?.includes(field==='note'?'Ghi chú':'Tiến độ hiện tại')||
+      modalField.demo!==(field==='note'))
+      throw Error('History dialog must target exactly the requested column: '+
+        JSON.stringify({field,modalField}));
+    await evaluate("document.querySelector('dialog.modal[open] button[aria-label=\\\"Đóng cửa sổ\\\"]')?.click()");
+    await eventually("!document.querySelector('dialog.modal[open]')",'History dialog did not close');
+  }
+  console.log('GUEST_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
   const all15=await evaluate(`(()=>{
     const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
       .map(el=>el.getAttribute('data-filter-key'));
