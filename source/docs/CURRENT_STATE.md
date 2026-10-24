@@ -907,3 +907,13 @@ Theo ảnh người dùng ngày 24/10, bỏ riêng hai phần chữ thừa trên
 
 
 **PR #55 kết quả (24/10/2026):** [PR #55](https://github.com/cavoixanh638/HopHDND-WebApp/pull/55) đã merge tại `73025c8fe4e5455cf1988c19aa5d12e1bac4addd`; [GitHub Actions Verify #40085438135](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40085438135) **SUCCESS** gồm TypeScript, unit (60 picker × 30 choices lazy regression), Firebase emulator, Chrome smoke. [Publisher `537ffa61`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/537ffa6106c4da476d7428b469a9a5c2cdb276c2) thay root `index.html` trỏ `assets/pages-6UzNL7bn.js`; xác minh chính file build JavaScript chỉ render `cell-picker-popover` khi `open` true. **Chưa có phép đo trước/sau trên máy người dùng**; nếu còn lag khi phục hồi tất cả dòng, tiếp tục profile React render/commit/layout trong phiên người dùng thực, tránh kết luận đã hết chỉ từ CI.
+
+## 24/10/2026 — Canh đều văn bản, lọc không dấu, chỉnh highlight và thu gọn giao diện chính
+
+Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhãn chính xác **"Tìm kiếm (không dấu)"**:
+- 3 cột dữ liệu **Nội dung trình** (`content`), **Tiến độ hiện tại** (`specificProgress`) và **Ghi chú** (`note`): canh chữ `text-align:justify`, `text-align-last:left` như Word trong các phần hiển thị; không canh đều input/textarea đang sửa hay header/filter. Ở cột gộp Nội dung + loại VB, bảo toàn cách trình bày suffix (HC/QPPL/Báo cáo).
+- Thay placeholder duy nhất của bộ lọc văn bản dạng tự do thành `Tìm kiếm (không dấu)`. Không đổi nhãn aria-label `Tìm kiếm cột ...`, không thay thuật toán tìm có/không dấu, không đổi dropdown.
+- Sửa trường hợp tô vàng số `254` bị bẻ thành `25` + `4`: `SearchHighlight` thêm class `item-search-match-atomic` cho token ngắn, không có khoảng trắng; CSS bỏ padding, border, margin gây thay đổi độ rộng và dùng `white-space:nowrap` chỉ cho token ngắn. Các cụm nhiều từ vẫn được xuống dòng tự nhiên. Không thay đổi giá trị nguồn/giá trị chỉnh sửa.
+- Hai tab chính: bỏ phần mô tả nhỏ, bỏ chữ `Xem` ở tab không đang chọn; giữ `Đang xem` cho tab hoạt động. Tăng tên tab lên 16px, thu khung thành 2 nút có chiều rộng theo nội dung để giảm chiếm không gian; giữ màu trạng thái và hiệu ứng 3D đã duyệt.
+- Bỏ hoàn toàn dòng `N/M nội dung` khỏi `Danh sách chi tiết`. Ẩn khoảng cách header của khách khi không có các công cụ admin; các công cụ quản trị giữ nguyên.
+- Thêm unit test `search-highlight.test.tsx` cho số 254/câu gốc; Chrome smoke xác nhận hai tab vẫn đúng, placeholder, không có counter/header rỗng, ô Tiến độ canh đều và số được tô vàng không tách dòng. Không tác động Firebase/Excel/cơ chế quyền; phát hành sau CI SUCCESS.
