@@ -363,7 +363,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    <div className="card-header"><div className="item-list-summary"><span className="item-result-count">{filtered.length}</span> / {items.length} nội dung</div>
+    {!anonymousViewer&&<div className="card-header">
     <div className="item-header-actions">
       {compactOn&&!permissionMode&&allowLayout&&!!onPersistViewerLayout&&<details className="compact-columns-menu">
         <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
@@ -392,7 +392,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         </button>
       </div>}
 
-    </div></div>
+    </div></div>}
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
