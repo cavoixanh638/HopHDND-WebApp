@@ -2135,3 +2135,37 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     width:100%;max-width:100%;flex-wrap:nowrap;
   }
 }
+
+/* 24/10: the OVERVIEW report counts lift as an entire actionable TABLE CELL,
+   not only as their inner numeral. Keep the full-td button hit target and
+   all red/amber/green business status fills; no effect on empty counts,
+   list cells, report detail popups, or print. */
+.report-surface .report-table td.report-clickable-cell {
+  transition:transform .18s ease,box-shadow .18s ease;
+  transform:translateY(0);
+}
+.report-surface .report-table td.report-clickable-cell:is(:hover,:focus-within) {
+  position:relative;z-index:2;
+  transform:translateY(-2px);
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+  outline:1px solid #A7D8ED;outline-offset:0;
+  border-radius:6px;
+}
+.report-surface .report-table td.report-clickable-cell
+  .count-drill:is(:hover,:focus-visible)>span {
+  transform:none;border-color:transparent;
+  box-shadow:none;outline:none;
+}
+@media(prefers-reduced-motion:reduce) {
+  .report-surface .report-table td.report-clickable-cell {
+    transition:none;
+  }
+  .report-surface .report-table td.report-clickable-cell:is(:hover,:focus-within) {
+    transform:none;
+  }
+}
+@media print {
+  .report-surface .report-table td.report-clickable-cell {
+    transform:none!important;box-shadow:none!important;outline:none!important;
+  }
+}
