@@ -1710,3 +1710,49 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   outline:none;
   box-shadow:0 0 0 2px #D8F1FC;
 }
+
+/* 24/10 — DANH SÁCH CHI TIẾT only: the whole permitted table cell is
+   the pointer/click target; the visible highlight stays on its small editor.
+   Preserve the status palette fills/text and the unrelated report popup. */
+.item-data-table tbody td.editable-cell:is(:hover,:focus-within) {
+  outline:none;
+  box-shadow:none;
+}
+.item-data-table tbody td.editable-cell :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger) {
+  width:fit-content;
+  max-width:100%;
+  display:inline-flex;
+  align-items:center;
+  vertical-align:middle;
+  border-radius:6px;
+}
+/* Center just the status/value editor where the cell is normally centered. */
+.item-data-table tbody td.editable-cell:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"])
+  .cell-picker-trigger {
+  margin-inline:auto;
+}
+/* Hover on any padding/blank space of the parent highlights its inner control.
+   Only one control is highlighted in ordinary cells; combined cells keep their
+   independent triggers so the wrong underlying field is never chosen. */
+.item-data-table tbody td.editable-cell:not(.compact-merged-cell):is(:hover,:focus-within)
+  :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger,.custom-cell-input),
+.item-data-table tbody td.editable-cell.compact-merged-cell
+  :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger,.custom-cell-input):is(:hover,:focus-visible,[aria-expanded="true"]) {
+  outline:none;
+  border-color:#A7D8ED;
+  box-shadow:0 0 0 2px #DDF3FD;
+}
+/* The open dropdown retains its accessible focus indication even after the
+   pointer leaves its parent table cell. */
+.item-data-table tbody td.editable-cell .cell-picker-trigger:is(:focus-visible,[aria-expanded="true"]),
+.item-data-table tbody td.editable-cell :is(.cell-value-button,.content-button,.inline-note-trigger):focus-visible,
+.item-data-table tbody td.editable-cell .custom-cell-input:focus {
+  outline:none;
+  border-color:#A7D8ED;
+  box-shadow:0 0 0 2px #DDF3FD;
+}
+.item-data-table tbody td.editable-cell .inline-note-textarea:focus {
+  outline:none;
+  border-color:#A7D8ED;
+  box-shadow:0 0 0 2px #DDF3FD;
+}
