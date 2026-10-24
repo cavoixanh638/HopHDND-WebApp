@@ -590,7 +590,7 @@ try{
     return !!regular&&!!long&&
       getComputedStyle(regular).textAlign==='center'&&
       getComputedStyle(regular).verticalAlign==='middle'&&
-      getComputedStyle(long).textAlign==='left'&&
+      getComputedStyle(long).textAlign==='justify'&&
       getComputedStyle(long).verticalAlign==='top';
   })()`);
   if(!cellAlignment)throw Error('Column-key cell alignment regression');
