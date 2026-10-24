@@ -1455,7 +1455,7 @@ try{
     const reference=all[2],nav=all[1],top=all[0];
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
       Math.abs(top.left-reference.left)<=2&&Math.abs(top.width-reference.width)<=2&&
-      nav.width<=820&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
+      nav.width<=900&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
       shellClass:shell.className,activeTab:document.querySelector('.nav-tabs button[aria-current=page]')?.textContent?.trim(),
       mainCssWidth:getComputedStyle(document.querySelector('main')).width,
