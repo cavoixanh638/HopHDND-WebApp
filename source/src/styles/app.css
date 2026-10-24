@@ -2175,8 +2175,8 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    The content flexes into the middle column; active coloring does not affect
    geometry. At desktop size, no title is allowed to break to a second line. */
 .app-shell > nav.nav-tabs.primary-section-switcher {
-  width:min(100%,860px);
-  max-width:860px;
+  width:min(100%,850px);
+  max-width:850px;
   grid-template-columns:repeat(2,minmax(0,1fr));
 }
 .app-shell > nav.primary-section-switcher .primary-section-card {
