@@ -1824,3 +1824,113 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     box-shadow:none!important;
   }
 }
+
+/* 24/10 — Expand the approved 3D hover B consistently across ALL actionable
+   table values plus the two main navigation tabs. Keep the original border +
+   gentle halo (not the later borderless prototype). Never elevate whole data
+   table cells, disabled controls, typed-in textarea or text inputs. */
+.app-shell > nav.primary-section-switcher .primary-section-card:is(:first-child,:last-child) {
+  color:#3D728A; /* lighter blue-teal, >= 5:1 against #F8FAFB */
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card:is(:first-child,:last-child).active {
+  color:#24745B; /* brighter green-teal, >= 4.8:1 against #E3F2EA */
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-description,
+.app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-description {
+  color:inherit;opacity:1;
+}
+.app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled),
+.app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled):not(.active),
+.app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled).active {
+  transform:translateY(-2px);
+  border-color:#62A7CF;
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card:disabled {
+  transform:none;
+}
+/* Report number buttons MUST remain full-cell invisible hit areas so the
+   previous full-cell click and hover tooltip continue working. Only their
+   small VISIBLE numeral badge lifts; never transform the full hit target. */
+.report-surface .report-table td.report-clickable-cell .count-drill {
+  transform:none;
+}
+.report-surface .report-table td.report-clickable-cell .count-drill:hover {
+  outline:0;
+  background:transparent;
+  box-shadow:none;
+}
+.report-surface .report-table td.report-clickable-cell .count-drill > span {
+  position:relative;
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:34px;min-height:26px;padding:2px 7px;
+  border:1px solid transparent;border-radius:7px;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+.report-surface .report-table td.report-clickable-cell .count-drill:hover > span {
+  transform:translateY(-2px);
+  border-color:#A7D8ED;
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+}
+.report-surface .report-table td.report-clickable-cell .count-drill:focus-visible > span {
+  border-color:#62A7CF;
+  outline:2px solid #2B7190;outline-offset:2px;
+}
+.report-surface .report-table td.report-clickable-cell .count-drill:focus-visible {
+  outline:0;
+  background:transparent;
+}
+/* Report detail popup: lift ONLY the little inner editor, never its td.
+   Preserve all status-color presets and previously fixed pale borders. */
+.report-grid-modal .report-detail-grid tbody td.editable-cell
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
+  /* Focus border should update instantly; only lift/shadow are animated. */
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
+  position:relative;z-index:1;
+  transform:translateY(-2px);
+  border-color:#A7D8ED;
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell:is(:hover,:focus-within) {
+  box-shadow:none;outline:none;
+}
+.report-grid-modal .report-detail-grid tbody td.editable-cell
+  :is(.inline-note-textarea,.custom-cell-input,.cell-picker-input) {
+  transform:none;
+}
+/* Keep buttons (including editable status chips) flat while printing,
+   respect the user's reduced-motion preference. */
+@media(prefers-reduced-motion:reduce) {
+  .app-shell > nav.primary-section-switcher .primary-section-card:is(:first-child,:last-child),
+  .report-surface .report-table td.report-clickable-cell .count-drill > span,
+  .report-grid-modal .report-detail-grid tbody td.editable-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger) {
+    transition:none;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled),
+  .report-surface .report-table td.report-clickable-cell .count-drill:hover > span,
+  .report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
+    transform:none;
+  }
+}
+@media print {
+  .app-shell > nav.primary-section-switcher .primary-section-card,
+  .report-surface .report-table td.report-clickable-cell .count-drill > span,
+  .report-grid-modal .report-detail-grid tbody td.editable-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger) {
+    transform:none!important;box-shadow:none!important;
+  }
+}
+
+/* The legacy [data-progress-tone] selector can otherwise reapply its semantic
+   pink/amber/green BORDER even while the popup picker is focused. The fill/text
+   continue to follow the user's palette; only the interactive ring is pale. */
+.report-grid-modal .report-detail-grid tbody td.editable-cell[data-progress-tone]
+  button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  border-color:#9ECFE7;
+}
