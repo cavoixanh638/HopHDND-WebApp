@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".nojekyll"
       - "source/src/**"
       - "source/shared/**"
       - "source/scripts/**"
@@ -63,6 +64,8 @@ jobs:
           mkdir -p ../assets
           rsync -a dist-pages/assets/ ../assets/
           test -s ../index.html
+          test -f ../.nojekyll || { echo "::error::Missing .nojekyll; GitHub Pages Jekyll will parse TypeScript documentation and fail."; exit 1; }
+          echo "PAGES_JEKYLL_DISABLED_PASS"
           test -n "$(find ../assets -type f -name '*.js' -print -quit)"
           node scripts/check-published-assets.mjs ../index.html /tmp/hophdnd-previous-index.html ../assets
       - name: Commit and push Pages HTML and assets if changed
