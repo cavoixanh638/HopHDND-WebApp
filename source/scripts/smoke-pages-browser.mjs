@@ -475,13 +475,43 @@ try{
       labels[1]==='Danh sách các ND trình HĐND'&&
       boxes.every(box=>box.width>=150&&box.height>=44&&box.height<=72)&&
       !nav.querySelector('.section-card-description')&&
-      !unselected?.querySelector('.section-card-state')&&
-      !!selected?.querySelector('.section-card-state')&&
+      getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
+      getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
+      cards.every(el=>el.querySelector('.section-card-state')?.textContent==='Đang xem')&&
+      Math.abs(boxes[0].width-boxes[1].width)<1&&
+      Math.abs(boxes[0].height-boxes[1].height)<1&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
       labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+
+  // The inactive label reserves exactly the same space as "Đang xem".
+  // Switching either main tab must not resize either button.
+  const beforeSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))`);
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0].click()");
+  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:first-child')?.classList.contains('active')===true",
+    'Overview tab did not become active');
+  const duringSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility}))`);
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1].click()");
+  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:last-child')?.classList.contains('active')===true",
+    'List tab did not become active again');
+  const afterSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility}))`);
+  const stableSize=beforeSwitch.every((item,i)=>
+    Math.abs(item.width-duringSwitch[i].width)<1&&
+    Math.abs(item.height-duringSwitch[i].height)<1&&
+    Math.abs(item.width-afterSwitch[i].width)<1&&
+    Math.abs(item.height-afterSwitch[i].height)<1);
+  if(!stableSize||duringSwitch[0].state!=='visible'||duringSwitch[1].state!=='hidden'||
+    afterSwitch[0].state!=='hidden'||afterSwitch[1].state!=='visible')
+    throw Error('Main tabs changed size/hidden-label spacing while switching: '+
+      JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
+  console.log('PRIMARY_TABS_FIXED_SIZE_PASS',JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
 
   for(const [selector,color] of [['.active','rgb(36, 116, 91)'],[':not(.active)','rgb(61, 114, 138)']]){
     const query='nav.primary-section-switcher .primary-section-card'+selector;
