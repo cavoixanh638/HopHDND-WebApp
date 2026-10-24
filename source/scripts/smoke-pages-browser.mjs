@@ -320,6 +320,48 @@ try{
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
 
+  // Regression: textarea may remain focused for typing after pointer leaves.
+  // That MUST NOT look like the active green/blue mouse-hover highlight.
+  const inlineProbe=await evaluate(`(()=>{
+    const host=document.createElement('div');host.id='inline-hover-off-probe';
+    host.style.cssText='position:fixed;left:26px;top:103px;width:345px;z-index:20000;background:#fff;';
+    host.innerHTML='<table class="data-table item-data-table" style="width:345px"><tbody><tr><td class="editable-cell" data-col-key="specificProgress"><textarea class="inline-note-textarea" rows="3">Đang xử lý</textarea></td></tr></tbody></table>';
+    document.body.append(host);
+    const field=host.querySelector('textarea');
+    field.focus({preventScroll:true});
+    const box=field.getBoundingClientRect();
+    return {x:box.left+box.width/2,y:box.top+box.height/2,focused:document.activeElement===field};
+  })()`);
+  if(!inlineProbe.focused)throw Error('Synthetic multiline editor could not receive focus');
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:inlineProbe.x,y:inlineProbe.y});
+  const inlineHover=await evaluate(`(()=>{
+    const td=document.querySelector('#inline-hover-off-probe td');
+    const area=td?.querySelector('textarea');
+    const style=area&&getComputedStyle(area);
+    return {active:document.activeElement===area,hover:td?.matches(':hover'),
+      border:style?.borderTopColor,shadow:style?.boxShadow};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+  const inlineAfterLeave=await evaluate(`(()=>{
+    const td=document.querySelector('#inline-hover-off-probe td');
+    const area=td?.querySelector('textarea');
+    const style=area&&getComputedStyle(area);
+    return {active:document.activeElement===area,hover:td?.matches(':hover'),
+      border:style?.borderTopColor,shadow:style?.boxShadow,outline:style?.outlineStyle,
+      tdShadow:td?getComputedStyle(td).boxShadow:null};
+  })()`);
+  await evaluate("document.querySelector('#inline-hover-off-probe')?.remove()");
+  if(!inlineHover.active||!inlineHover.hover||
+    inlineHover.border!=='rgb(167, 216, 237)'||
+    !inlineHover.shadow.includes('rgb(221, 243, 253)')||
+    !inlineAfterLeave.active||inlineAfterLeave.hover||
+    inlineAfterLeave.border!=='rgb(205, 217, 212)'||
+    inlineAfterLeave.shadow!=='none'||inlineAfterLeave.outline!=='none'||
+    inlineAfterLeave.tdShadow!=='none')
+    throw Error('Focused inline textarea kept hover highlight after pointer left: '+JSON.stringify({inlineHover,inlineAfterLeave}));
+  console.log('INLINE_HOVER_LEAVE_CLEARS_HIGHLIGHT_PASS',JSON.stringify({inlineHover,inlineAfterLeave}));
+
+
   // Guest receives the palette but never an editable palette control.
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
