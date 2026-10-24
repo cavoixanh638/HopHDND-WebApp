@@ -886,3 +886,11 @@ Theo ảnh người dùng ngày 24/10, bỏ riêng hai phần chữ thừa trên
 
 - Theo yêu cầu người dùng, đổi `Chọn để lọc Phòng` → `Lọc theo Phòng` trong `RoomSpecialistFilterCell.tsx`, đồng bộ nội dung mặc định của select, `aria-label` và `title`.
 - Không đổi cách lọc theo Phòng/Tên CV (AND), dữ liệu, quyền, hiệu ứng 3D, cỡ chữ hay cách giữ vị trí cuộn sticky khi mở danh sách. Kiểm CI trước khi phát hành.
+
+## 24/10/2026 — Danh sách vừa màn hình, giữ màu chữ hover, tăng tốc tìm kiếm và đánh dấu kết quả (PR #54)
+
+- **Màu chữ hover:** Giữ đúng màu chữ hiện hành, kể cả custom status-palette; hover chỉ thay viền/bóng/nhấc nút giá trị 3D B, không thay màu chữ trong danh sách hay popup.
+- **Chiều cao bảng:** Page `items` có class `list-fit-page`; flex layout dùng 100dvh và phân chia không gian thật sự còn lại sau tab/thông báo/công cụ, nội dung dài cuộn trong `item-table-scroll`, bảo toàn sticky heading/filter và cuộn ngang. Không sửa tab overview, cấu hình admin, popup; cửa sổ thấp dưới 560px có fallback cuộn trang để giữ điều khiển khả dụng. In không giới hạn chiều cao.
+- **Tìm kiếm:** Tiền chuẩn hóa nguồn A–R và cột tùy chỉnh qua `filterIndex` chỉ khi dữ liệu hoặc bố cục đổi; các filter term chuẩn hóa một lần, so khớp chuỗi cache; bộ lựa chọn CellPicker cache theo bản dữ liệu/cấu hình, thay vì sort lại mỗi lần nhập. Không thêm debounce cố định làm chậm ký tự. Không thay nguồn, quyền, draft, Firebase/Sheets.
+- **Bôi vàng:** `SearchHighlight`/ `searchMatchRanges` tạo `<mark>` chỉ trong chuỗi **hiển thị**, giữ nguyên văn bản gốc, khớp tiếng Việt có/không dấu, hoa/thường và toàn bộ vị trí xuất hiện. Có trong cột Nội dung (kể cả gộp Loại VB), Ghi chú, Tiến độ hiện tại và nhãn hiển thị các cột đang lọc; không chèn đánh dấu vào textarea/input hoặc giá trị ghi nguồn, xóa lọc là xóa đánh dấu.
+- Unit tests `tests/search-highlight.test.tsx`, Chrome smoke giả lập đo text-ink trước/sau hover, page scrollHeight tại viewport, click/filter và <mark>. Phải phân biệt CI/GitHub Pages publish với nghiệm thu trên màn hình người dùng. Chỉ release sau CI PASS, không viết Firebase Rules hoặc dữ liệu người dùng.

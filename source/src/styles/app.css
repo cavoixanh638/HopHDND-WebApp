@@ -1954,3 +1954,81 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     height:auto!important;max-height:none!important;overflow:visible!important;
   }
 }
+
+
+/* 24/10: hovering an editable value must NEVER modify its text color.
+   Preserve each selected business-status preset, including the active
+   user's custom --workflow-text; only border, shadow and lift may react. */
+.item-data-table tbody td.editable-cell:not([data-progress-tone])
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button):hover,
+.report-grid-modal .report-detail-grid tbody td.editable-cell:not([data-progress-tone])
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button):hover {
+  color:#426274;
+}
+.item-data-table tbody td.editable-cell[data-progress-tone] button.cell-picker-trigger:hover,
+.report-grid-modal .report-detail-grid tbody td.editable-cell[data-progress-tone] button.cell-picker-trigger:hover {
+  color:var(--workflow-text);
+}
+.item-data-table tbody td.editable-cell button.inline-note-trigger:hover,
+.report-grid-modal .report-detail-grid tbody td.editable-cell button.inline-note-trigger:hover {
+  color:inherit;
+}
+/* A search hit is part of the original content and retains its text ink. */
+.item-data-table mark.item-search-match {
+  background:#FFE18B;color:inherit;
+  border-radius:2px;padding:0 1px;
+  box-decoration-break:clone;-webkit-box-decoration-break:clone;
+}
+
+/* Viewport-fit layout only for the ordinary data list, not report overview,
+   printing, modal detail grids or administrator configuration screens.
+   CSS flex computes remaining height from ACTUAL tab/header/warning sizes.
+   No magic height subtraction or browser page scroll in supported viewports. */
+.app-shell.list-fit-page {
+  display:flex;flex-direction:column;
+  height:100dvh;min-height:0;overflow:hidden;padding-bottom:0;
+}
+.app-shell.list-fit-page > header,
+.app-shell.list-fit-page > nav,
+.app-shell.list-fit-page > .notice,
+.app-shell.list-fit-page > .startup-timing-panel {
+  flex:none;
+}
+.app-shell.list-fit-page > main {
+  display:flex;flex-direction:column;flex:1 1 0;
+  min-height:0;max-height:none;overflow:hidden;
+}
+.app-shell.list-fit-page > main > :not(.item-list-card) {
+  flex:0 0 auto;
+}
+.app-shell.list-fit-page .item-list-card {
+  display:flex;flex-direction:column;flex:1 1 0;
+  min-height:0;margin-bottom:0;overflow:hidden;
+}
+.app-shell.list-fit-page .item-list-card > .item-data-region {
+  display:flex;flex-direction:column;flex:1 1 0;
+  min-height:0;overflow:hidden;
+}
+.app-shell.list-fit-page .item-data-region .item-table-scroll {
+  flex:1 1 0;height:auto;min-height:0;max-height:none;
+  overflow:auto;overscroll-behavior:contain;
+}
+.app-shell.list-fit-page > footer.app-footer {display:none;}
+/* Very short mobile/browser windows require document scrolling so controls
+   are never hidden behind a forced viewport height. */
+@media(max-height:560px){
+  .app-shell.list-fit-page {height:auto;min-height:100dvh;overflow:visible;}
+  .app-shell.list-fit-page > main,.app-shell.list-fit-page .item-list-card,
+  .app-shell.list-fit-page .item-list-card > .item-data-region {overflow:visible;flex:none;}
+  .app-shell.list-fit-page .item-data-region .item-table-scroll {
+    height:clamp(240px,48dvh,410px);max-height:none;flex:none;
+  }
+}
+@media print {
+  .app-shell.list-fit-page {display:block;height:auto;min-height:0;overflow:visible;}
+  .app-shell.list-fit-page > main,.app-shell.list-fit-page .item-list-card,
+  .app-shell.list-fit-page .item-list-card > .item-data-region {display:block;overflow:visible;}
+  .app-shell.list-fit-page .item-data-region .item-table-scroll {
+    height:auto!important;max-height:none!important;overflow:visible!important;
+  }
+}
