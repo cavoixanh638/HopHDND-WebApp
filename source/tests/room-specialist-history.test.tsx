@@ -12,8 +12,8 @@ describe('Phòng/CV merged search and illustrative Ghi chú history',()=>{
       <RoomSpecialistFilterCell items={[item]} room="Phòng Kinh tế" person="Nguyễn Ngọc"
         onRoom={()=>{}} onPerson={()=>{}}/>
     </tr></thead></table>);
-    expect(html).toContain('aria-label="Chọn để lọc Phòng"');
-    expect(html).toContain('>Chọn để lọc Phòng</option>');
+    expect(html).toContain('aria-label="Lọc theo Phòng"');
+    expect(html).toContain('>Lọc theo Phòng</option>');
     expect(html).toContain('aria-label="Tìm kiếm tên CV"');
     expect(html).toContain('value="Nguyễn Ngọc"');
     expect(html).toContain('value="Phòng Kinh tế"');

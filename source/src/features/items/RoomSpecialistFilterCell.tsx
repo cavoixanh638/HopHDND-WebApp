@@ -15,11 +15,11 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
     scope="col" data-filter-key="room">
     <div className="room-specialist-filter-stack">
       <div className="item-filter-input-wrap">
-        <select aria-label="Chọn để lọc Phòng" title="Chọn để lọc Phòng" value={room}
+        <select aria-label="Lọc theo Phòng" title="Lọc theo Phòng" value={room}
           className={room?'selected-filter-value':'filter-placeholder'}
           onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
           onChange={e=>onRoom(e.currentTarget.value)} onKeyDown={e=>clear(e,onRoom)}>
-          <option value="">Chọn để lọc Phòng</option>
+          <option value="">Lọc theo Phòng</option>
           {rooms.map(option=><option key={option} value={option}>{option}</option>)}
           {room&&!rooms.includes(room)&&<option value={room}>{room}</option>}
         </select>
