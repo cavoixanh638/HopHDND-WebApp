@@ -312,7 +312,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           <span className="section-card-copy">
             <strong className="section-card-title">{title}</strong>
           </span>
-          {page===key&&<span className="section-card-state" aria-hidden="true">Đang xem</span>}
+          <span className="section-card-state" aria-hidden="true">Đang xem</span>
         </button>)}
     </nav>
     <StartupTimingPanel/>
