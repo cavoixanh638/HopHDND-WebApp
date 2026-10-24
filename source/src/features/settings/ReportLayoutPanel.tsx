@@ -148,7 +148,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   <option value="exclude">Không bao gồm nội dung “Không phải trình”</option>
                 </select>
                 <small>Chỉ ảnh hưởng thống kê của bảng này; không đổi trạng thái trong Excel hoặc Danh sách dữ liệu.</small>
-              </label>
+              </label>}
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
