@@ -1383,12 +1383,29 @@ try{
           const cols=grid?.querySelectorAll('thead tr:first-child th').length??0;
           const rows=grid?.querySelectorAll('tbody tr').length??0;
           const forbidden=modal?.querySelector('.report-grid-search,.report-grid-actions,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.cell-value-button,.custom-cell-input');
+          const history=['note','specificProgress'].map(key=>
+            grid?.querySelector('tbody tr:first-child td[data-col-key="'+key+'"] button.cell-history-action'));
+          const irrelevant=!!grid?.querySelector('tbody tr:first-child td[data-col-key="content"] button.cell-history-action');
           return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!forbidden&&
             !modal.querySelector('.report-grid-toolbar button,.report-grid-toolbar input')&&
-            !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select'),
-            cols,rows,forbidden:!!forbidden};
+            !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select')&&
+            history.every(Boolean)&&!irrelevant,
+            cols,rows,forbidden:!!forbidden,historyButtons:history.filter(Boolean).length,irrelevant};
         })()`);
-        if(!reportGrid.ok)throw Error('Anonymous report grid controls regression: '+JSON.stringify(reportGrid));
+        if(!reportGrid.ok)throw Error('Anonymous report grid controls/history regression: '+JSON.stringify(reportGrid));
+        if(selector==='.report-surface tbody td.report-clickable-cell:not(.report-total-col)'){
+          // Guest can inspect audit on these two fields even though the popup
+          // remains strictly read-only and has no editing controls.
+          await evaluate("document.querySelector('dialog.report-detail-modal[open] td[data-col-key=\\\"note\\\"] button.cell-history-action')?.click()");
+          await eventually("!!document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"]')",
+            'Guest report history must open');
+          const historyTitle=await evaluate(`[...document.querySelectorAll('dialog.modal[open]')].map(el=>el.getAttribute('aria-label')).find(x=>x?.includes('Lịch sử sửa đổi'))`);
+          if(!historyTitle?.includes('Ghi chú'))throw Error('Guest popup opened wrong history field: '+historyTitle);
+          await evaluate("document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"] button[aria-label=\\\"Đóng cửa sổ\\\"]')?.click()");
+          await eventually("!document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"]')",
+            'Guest nested history did not close');
+          console.log('GUEST_REPORT_POPUP_HISTORY_PASS',historyTitle);
+        }
         if(selector!=='.report-surface tfoot td.report-total-col.report-clickable-cell'){
           await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
           await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
