@@ -9,7 +9,11 @@ export function SearchHighlight({value,query}:{value:string;query?:string}){
   let cursor=0;
   const fragments:Array<string|ReturnType<typeof renderMark>>=[];
   function renderMark(part:string,index:number){
-    return <mark key={index} className="item-search-match">{part}</mark>;
+    // Numeric/short word hits must stay in one piece. A matching "254" must
+    // never become "25" on one line and "4" on the next. Longer phrases may
+    // wrap naturally; none of these spans may alter the original source text.
+    const atomic=/^\S{1,24}$/u.test(part);
+    return <mark key={index} className={'item-search-match'+(atomic?' item-search-match-atomic':'')}>{part}</mark>;
   }
   ranges.forEach(({start,end},index)=>{
     if(start>cursor)fragments.push(value.slice(cursor,start));

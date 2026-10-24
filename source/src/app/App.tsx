@@ -302,18 +302,17 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </div>
     </header>
     <nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
-      {([['overview','Báo cáo tổng hợp','Tổng hợp số liệu, tiến độ và trạng thái'],
-        ['items','Danh sách các ND trình HĐND','Tra cứu và cập nhật từng nội dung']] as const)
-        .map(([key,title,description])=><button type="button" key={key}
+      {([['overview','Báo cáo tổng hợp'],
+        ['items','Danh sách các ND trình HĐND']] as const)
+        .map(([key,title])=><button type="button" key={key}
           disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
           onClick={()=>{setListFramePreview(null);setPage(key);}}>
           <span className="section-card-icon" aria-hidden="true">{key==='overview'?'▦':'▤'}</span>
           <span className="section-card-copy">
             <strong className="section-card-title">{title}</strong>
-            <small className="section-card-description">{description}</small>
           </span>
-          <span className="section-card-state" aria-hidden="true">{page===key?'Đang xem':'Xem'}</span>
+          {page===key&&<span className="section-card-state" aria-hidden="true">Đang xem</span>}
         </button>)}
     </nav>
     <StartupTimingPanel/>

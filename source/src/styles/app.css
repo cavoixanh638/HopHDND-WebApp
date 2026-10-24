@@ -2032,3 +2032,75 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     height:auto!important;max-height:none!important;overflow:visible!important;
   }
 }
+
+/* 24/10 — Navigation is a pair of short, legible tabs, not two large cards.
+   Retain both active-status colors and the approved 3D hover shadow. */
+.app-shell > nav.nav-tabs.primary-section-switcher {
+  display:flex;align-items:center;justify-content:center;
+  width:max-content;max-width:100%;gap:8px;
+  margin:5px auto 10px;padding:0;
+}
+.app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card {
+  width:auto;min-width:0;min-height:50px;
+  padding:8px 12px;gap:8px;flex:0 1 auto;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-copy {
+  flex:0 1 auto;gap:0;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-title {
+  font-size:16px;line-height:1.25;font-weight:750;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-icon {
+  width:26px;height:26px;font-size:18px;flex:none;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-state {
+  min-width:0;padding:2px 3px;font-size:10px;white-space:nowrap;
+}
+@media(max-width:650px){
+  .app-shell > nav.nav-tabs.primary-section-switcher {
+    display:flex;flex-wrap:wrap;width:max-content;max-width:100%;gap:7px;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card {
+    min-height:46px;padding:7px 10px;gap:6px;
+  }
+  .app-shell > nav.primary-section-switcher .primary-section-card .section-card-title {
+    font-size:16px;
+  }
+}
+
+/* Word-like justification applies only to three long-text DATA columns;
+   the final line remains left-aligned. Filters, titles, buttons in other
+   columns and any active textarea are deliberately left untouched. */
+.item-data-table tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]),
+.report-grid-modal .report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]) {
+  text-align:justify;text-align-last:left;
+}
+.item-data-table tbody td[data-col-key="content"]:not(.compact-merged-cell) .content-button,
+.item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger,
+.report-grid-modal .report-detail-grid tbody td[data-col-key="content"] .content-button,
+.report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger {
+  display:block!important;width:100%;max-width:100%;
+  text-align:justify;text-align-last:left;
+  white-space:pre-wrap;
+}
+.item-data-table tbody td[data-col-key="content"].compact-merged-cell .compact-content-line {
+  display:block;text-align:justify;text-align-last:left;
+}
+.item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea,
+.report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea {
+  text-align:left;text-align-last:auto;
+}
+
+/* Highlight must not change intrinsic text width: no padding, border or
+   spacing. Short single-token hits stay atomic (e.g. 254, QPPL), while
+   long/multi-word matches retain normal wrapping. */
+.item-data-table mark.item-search-match,
+.report-grid-modal .report-detail-grid mark.item-search-match {
+  display:inline;padding:0;border:0;margin:0;
+  font:inherit;letter-spacing:inherit;line-height:inherit;
+  background:#FFE18B;color:inherit;border-radius:2px;
+}
+.item-data-table mark.item-search-match-atomic,
+.report-grid-modal .report-detail-grid mark.item-search-match-atomic {
+  white-space:nowrap;overflow-wrap:normal;word-break:normal;
+}
