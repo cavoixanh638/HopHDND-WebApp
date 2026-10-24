@@ -82,6 +82,26 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(editor!.props.onCommit('Sửa được cấp quyền')).toBe(true);
     expect(props.onUpdate).toHaveBeenCalledOnce();
   });
+  it('edits Tiến độ hiện tại inline, checking permission again at commit',()=>{
+    const props={...testProps(),readOnlyViewer:false};
+    let permitted=true;
+    props.canEditCell=vi.fn((_id:string,field:string)=>permitted&&field==='specificProgress');
+    hooks.begin();let tree=ReportDetailGrid(props);
+    const edit=nodes(tree).find(n=>n.type==='button'&&text(n)==='Chỉnh sửa nháp');
+    expect(edit).toBeDefined();edit!.props.onClick();
+    hooks.begin();tree=ReportDetailGrid(props);
+    const fields=nodes(tree).filter(n=>n.type===InlineNoteEditor);
+    expect(fields).toHaveLength(2);
+    expect(fields.every(n=>n.props.label.includes('Tiến độ hiện tại'))).toBe(true);
+    expect(nodes(tree).some(n=>n.type===ContentEditor)).toBe(false);
+    permitted=false;
+    expect(fields[0].props.onCommit('Không còn quyền')).toBe(false);
+    expect(props.onUpdate).not.toHaveBeenCalled();
+    permitted=true;
+    expect(fields[0].props.onCommit('Đang xử lý\\nĐã trình')).toBe(true);
+    expect(props.onUpdate).toHaveBeenCalledWith(props.items[0].recordId,
+      {specificProgress:'Đang xử lý\\nĐã trình'});
+  });
   it('changes and persists the width of the whole dialog independently from column widths',()=>{
     const props={...testProps(),readOnlyViewer:false};
     hooks.begin();let tree=ReportDetailGrid(props);
