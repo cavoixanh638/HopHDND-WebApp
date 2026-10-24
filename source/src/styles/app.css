@@ -2120,6 +2120,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   display:flex;
   box-sizing:border-box;
   width:100%;min-width:0;min-height:50px;
+  border-width:2.5px;
   align-self:stretch;
 }
 .app-shell > nav.primary-section-switcher .primary-section-card .section-card-state {
