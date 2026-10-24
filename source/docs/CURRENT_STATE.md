@@ -849,3 +849,12 @@ Sửa giới hạn trong Danh sách chi tiết:
 - `textarea` bình thường **và đang focus nhưng chuột ở nơi khác** dùng viền trung tính `#CDD9D4`, không halo, không outline. Khi hover vào `td`, vùng nhập hiện viền `#A7D8ED` và halo `#DDF3FD`. Không tự lưu hoặc đóng editor trên mouseleave (bảo vệ phần đang gõ).
 - `InlineNoteEditor` bổ sung `textareaRef` và `useEffect` focus khi mở để blur callback chắc chắn có cơ hội đóng editor cũ; giữ `autoFocus` dự phòng.
 - Chrome smoke thêm bài thực tế: vẫn focus textarea khi chuột rời, kiểm tra không còn viền/bóng đậm và `td` không highlight; so sánh với hover có viền nhạt. Không đổi nội dung nguồn, quyền Firebase, History, hosting và giao diện popup báo cáo.
+
+
+## 24/10/2026 — Hiệu ứng 3D hover phương án B (được người dùng lựa chọn)
+
+Người dùng duyệt **phương án B** từ mẫu thử ba mức hover: điều khiển bấm/sửa tăng nổi khối vừa phải `translateY(-2px)`, bóng `0 7px 13px rgba(41,89,112,.20)`, viền sáng `#A7D8ED`, quầng sáng `#DDF3FD`. Chỉ triển khai trên (1) **ô có quyền thao tác trong Danh sách chi tiết** và (2) **4 chip thống kê có thể bấm trong Bảng tổng hợp**. Giữ tất cả màu nền/chữ trạng thái đang chọn; không đổi diện tích ô, độ rộng cột, cỡ chữ, dữ liệu nguồn hoặc chức năng lọc, chỉnh sửa và lịch sử.
+
+**Giới hạn hiệu ứng:** Chỉ `button` xem/chọn nội dung nhỏ bên trong ô được nổi khối; không nâng viền `td`, không tô sáng toàn hàng. Hover vào vùng trống ô đơn đủ điều kiện vẫn kích hoạt nút bên trong như trước; ô gộp nhiều điều khiển chỉ nâng điều khiển đang hover để tránh tô đồng loạt hoặc mở sai field. Không nâng phần tử `textarea` đang nhập hoặc `input` dạng text; đóng hover là tự trả về 0 px, không đóng hoặc lưu bản nháp. Chip số 0 `disabled`, nhãn preview và ô không có quyền cũng không được nổi khối. Hỗ trợ `prefers-reduced-motion` và chế độ in. Không sửa CSS popup Bảng chi tiết, vì kế hoạch mẫu thử đã duyệt chỉ chọn hai vị trí trên.
+
+**Kiểm thử:** Chrome smoke đo trực tiếp trạng thái hover ở khoảng trống của ô danh sách và giá trị nội dung bên trong: `td.boxShadow=none`, button nổi -2px và có shadow, sau rời chuột trở lại 0 px; ghi chú button cũng tương tự; Bảng tổng hợp button chưa khóa nổi -2px, chip disabled không nổi; kiểm thử textarea focus không đổi và kiểm thử dropdown/chi tiết cũ giữ nguyên. Đánh giá an toàn chỉ sau CI PASS. Quy trình release `source/AGENTS.md` và GitHub Pages không đổi.
