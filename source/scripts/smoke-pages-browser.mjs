@@ -301,6 +301,7 @@ try{
   if(!hoverProbe.outsideInner||hoverProbe.innerWidth>=hoverProbe.outerWidth-25)
     throw Error('List status inner editor must be compact and leave clickable parent padding: '+JSON.stringify(hoverProbe));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:hoverProbe.x,y:hoverProbe.y});
+  await new Promise(resolve=>setTimeout(resolve,270)); // let the moderate lift transition settle
   const listHoverRing=await evaluate(`(()=>{
     const td=document.querySelector('#list-edit-hover-probe td');
     const button=td?.querySelector('button');
@@ -310,15 +311,54 @@ try{
       outer.boxShadow==='none'&&outer.outlineStyle==='none'&&
       inner.borderTopColor==='rgb(167, 216, 237)'&&
       inner.boxShadow.includes('rgb(221, 243, 253)')&&
+      inner.boxShadow.includes('7px 13px')&&
+      Math.abs(new DOMMatrixReadOnly(inner.transform).m42+2)<.25&&
       inner.outlineStyle==='none',
       outerShadow:outer.boxShadow,outerOutline:outer.outlineStyle,
       innerBorder:inner.borderTopColor,innerShadow:inner.boxShadow,
+      liftY:new DOMMatrixReadOnly(inner.transform).m42,
       hoverCell:td.matches(':hover'),hoverButton:button.matches(':hover')};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const liftAfterLeave=await evaluate(`(()=>{
+    const cell=document.querySelector('#list-edit-hover-probe td');
+    const control=cell?.querySelector('button');
+    return {noParentRing:getComputedStyle(cell).boxShadow==='none',
+      liftY:new DOMMatrixReadOnly(getComputedStyle(control).transform).m42};
+  })()`);
   await evaluate("document.querySelector('#list-edit-hover-probe')?.remove()");
+  if(Math.abs(liftAfterLeave.liftY)>.25||!liftAfterLeave.noParentRing)
+    throw Error('3D option B must reset after mouseleave: '+JSON.stringify(liftAfterLeave));
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
+
+  // Note preview button also lifts, while an active multiline textarea stays flat.
+  const noteProbe=await evaluate(`(()=>{
+    const root=document.createElement('table');
+    root.className='data-table item-data-table';root.id='hover-3d-note-probe';
+    root.style.cssText='position:fixed;left:20px;top:130px;width:350px;z-index:20000;background:#fff';
+    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger">Nội dung ghi chú</button></td></tr></tbody>';
+    document.body.append(root);
+    const box=root.querySelector('td').getBoundingClientRect();
+    return {x:box.right-9,y:box.top+box.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.x,y:noteProbe.y});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const note3d=await evaluate(`(()=>{
+    const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
+    const style=getComputedStyle(button),parent=getComputedStyle(cell);
+    return {active:cell.matches(':hover'),outerShadow:parent.boxShadow,
+      liftY:new DOMMatrixReadOnly(style.transform).m42,shadow:style.boxShadow,
+      border:style.borderTopColor};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+  await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
+  if(!note3d.active||note3d.outerShadow!=='none'||Math.abs(note3d.liftY+2)>.25||
+    !note3d.shadow.includes('7px 13px')||note3d.border!=='rgb(167, 216, 237)')
+    throw Error('3D option B note affordance mismatch: '+JSON.stringify(note3d));
+  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify(note3d));
+
 
   // Regression: textarea may remain focused for typing after pointer leaves.
   // That MUST NOT look like the active green/blue mouse-hover highlight.
@@ -798,6 +838,37 @@ try{
           count:chips.length,active:active.length,smallest:Math.min(...height),labels};
       })()`);
       if(!stageChips.ok)throw Error('Stage summary chips not enlarged or interactive: '+JSON.stringify(stageChips));
+
+      // Option B applies only to clickable summary buttons. Do not lift
+      // a disabled zero-count button or change record selection behavior.
+      const stageHoverPoint=await evaluate(`(()=>{
+        const button=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')]
+          .find(b=>!b.disabled);
+        button?.scrollIntoView({block:'center',inline:'nearest'});
+        const rect=button?.getBoundingClientRect();
+        return rect?{x:rect.left+rect.width/2,y:rect.top+rect.height/2}:null;
+      })()`);
+      if(!stageHoverPoint)throw Error('No active stage button available for 3D hover B test');
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',...stageHoverPoint});
+      await new Promise(resolve=>setTimeout(resolve,270));
+      const stageHoverB=await evaluate(`(()=>{
+        const button=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')]
+          .find(b=>!b.disabled);
+        const style=getComputedStyle(button);
+        const disabled=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')]
+          .find(b=>b.disabled);
+        return {hover:button.matches(':hover'),liftY:new DOMMatrixReadOnly(style.transform).m42,
+          shadow:style.boxShadow,border:style.borderTopColor,
+          disabledLift:disabled?new DOMMatrixReadOnly(getComputedStyle(disabled).transform).m42:null};
+      })()`);
+      await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+      if(!stageHoverB.hover||Math.abs(stageHoverB.liftY+2)>.25||
+        stageHoverB.border!=='rgb(167, 216, 237)'||
+        !stageHoverB.shadow.includes('7px 13px')||
+        (stageHoverB.disabledLift!==null&&Math.abs(stageHoverB.disabledLift)>.25))
+        throw Error('3D hover B must lift only enabled summary buttons: '+JSON.stringify(stageHoverB));
+      console.log('HOVER_3D_B_REPORT_STAGE_PASS',JSON.stringify(stageHoverB));
+
       const selectedChip=await evaluate(`(()=>{
         const button=[...document.querySelectorAll('.report-surface .report-flow-summary button.report-stage-summary')]
           .find(c=>!c.disabled);
