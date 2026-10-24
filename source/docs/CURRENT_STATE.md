@@ -799,3 +799,16 @@ Hotfix `hotfix/retain-pages-hashed-assets-20261023`:
 - Chỉ nghiệm thu sau CI verify, publisher thành công, Pages deployment thành công và probe Firebase Auth/RTDB trực tuyến. **Không coi CI PASS = đã chữa được lỗi trên thiết bị của người dùng.** Nếu giao diện còn treo: mở `?startupMetrics=1` và `?startupMetrics=1&dbTransport=longpoll`, đối chiếu các mốc auth/profile/data-first, đồng thời xem Console/Network 404, permission_denied, auth/network-request-failed.
 
 Quyết định: dừng mọi thử nghiệm thay thứ tự dữ liệu/hosting. Ưu tiên độ ổn định, tránh lỗi stale JS asset và truy nguyên RTDB nếu sự cố vẫn còn.
+
+
+## 24/10/2026 — Giao diện 2 tab / Ghi chú inline / cấu hình đếm xây dựng NQ
+
+Đề nghị theo yêu cầu mới: **không đổi host, Firebase Auth/Rules, Excel nguồn hoặc quy trình tải dữ liệu**. Mã nguồn triển khai trên branch `feature/overview-list-ux-build-count-20261024`; không kết luận production pass trước khi CI và Pages publish thành công.
+
+- **Chỉ hai tab chuyển đổi chính**: nền đơn sắc sáng, chữ sẫm, viền màu xanh và bóng nhẹ nhấn tab active, icon và trạng thái không còn nền màu lồng; không đổi style bảng bên trong theo yêu cầu này.
+- **Ô sửa được** ở Danh sách dữ liệu và bảng chi tiết: giữ cursor bàn tay, không gạch chân, hover/focus thêm viền; bỏ icon bút sửa trên giá trị Ghi chú và Tiến độ hiện tại. Chỉ render hover editable khi có quyền.
+- **Ghi chú**: click vào ô mở textarea đa dòng ngay tại ô, Ctrl/Cmd+Enter hoặc blur áp dụng vào nháp hiện có, Escape hủy phần đang nhập. Giữ lịch sử sửa đổi và quyền theo ô; không gọi writer trực tiếp hay thay logic autosave nguồn. Áp dụng cả Danh sách và bảng chi tiết.
+- **Tiêu đề các bảng tổng hợp**: căn trái, `Tên bảng (N nội dung)`, bỏ dòng phần trăm dưới tiêu đề, chú thích gợi ý màu và nút `Chỉ xem đơn vị còn ở Sở/VP`; không ẩn hàng dữ liệu sau khi bỏ nút lọc. Cột % thống kê vẫn còn.
+- **Màu thống kê**: trạng thái Sở chưa trình/VP đang thực hiện/hoàn thành sử dụng biến CSS màu đang chọn ở Danh sách dữ liệu; những trạng thái trung gian vẫn có màu riêng theo workflow. Không sửa preset gốc.
+- **Bảng Tiến độ trình HĐND xây dựng NQ**: dropdown `Bao gồm/Không bao gồm “Không phải trình”` tại phần tùy chỉnh báo cáo, lưu với config của bảng đó. Cấu hình cũ mặc định **bao gồm**. Khi loại trừ, các hàng không phải trình không nằm trong tổng số và phần trăm; giữ nguyên bản ghi Excel, cách tính các bảng khác không đổi.
+- Kiểm thử bổ sung `tests/build-report-count-mode.test.ts`. Nghiệm thu yêu cầu UI và số liệu thực sau CI/browser smoke; **không sử dụng CI để giả định đã xác minh quyền và lưu trên dữ liệu thực**.
