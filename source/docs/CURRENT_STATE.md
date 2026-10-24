@@ -822,3 +822,10 @@ Yêu cầu cập nhật sau PR #45, sửa trên nhánh `feat/report-stage-drilld
 - Trong Bảng chi tiết popup, loại bỏ bóng viền ở **cả `td`** khi hover/focus; nút chọn trạng thái có độ rộng theo nội dung thay vì ngang cả cột; viền chỉ ở nút chọn (ví dụ “Sở chưa trình”). **Bảng dữ liệu chính giữ viền hover cũ**, không đổi mọi cột/nhãn.
 - `specificProgress` (Excel N) sử dụng `InlineNoteEditor` giống `note` (Excel O): nhập nhiều dòng ngay tại ô, Ctrl/Cmd+Enter hoặc blur áp dụng vào nháp; Escape hủy; phân quyền theo ô vẫn được kiểm lại khi lưu. Áp dụng cả Danh sách và Bảng chi tiết, không còn popup chỉnh sửa riêng cho hai trường. Lịch sử hai trường vẫn được giữ.
 - Các bước cần xác nhận trước phát hành: TypeScript, unit mới (chip mở chính xác tập records và field permission), Firebase Emulator, Chrome smoke (chip tăng kích thước + click mở detail), build Pages, publish và deploy Pages PASS. Không tự suy ra lưu vào production hay khôi phục quyền chỉ vì unit test PASS.
+
+
+## 24/10/2026 — Hotfix highlight khi sửa ô trong Bảng chi tiết
+
+Sau PR #46, người dùng xác nhận viền đang bao **cả ô** và quá tối khi chọn sửa. Thay đổi giới hạn trong `app.css`: popup `.report-grid-modal .report-detail-grid` không còn viền/shadow ở phần tử `td.editable-cell` khi hover/focus; chỉ khung nút/giá trị nhỏ có border xanh băng nhạt `#9ECFE7` và halo `#D8F1FC`. Bỏ đường outline xanh sẫm của legacy workflow trên nút status, nhưng **giữ nguyên nền và chữ** pink/amber/green theo bộ màu hiện tại; không đổi CSS Danh sách dữ liệu hoặc quyền chỉnh sửa.
+
+Chrome browser smoke tạo mẫu ô trạng thái có thể sửa, focus vào `cell-picker-trigger`, kiểm tra trực tiếp CSS `td.boxShadow=none`, `td.outlineStyle=none`, giá trị nút nhỏ hơn chiều ngang ô và màu viền/halo đúng nhạt. Không gọi Firebase production, không chỉnh dữ liệu.
