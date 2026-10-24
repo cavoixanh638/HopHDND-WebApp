@@ -41,7 +41,7 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
         {choices.map(option=><option value={option} key={option}>{option}</option>)}
         {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
       </select>:<input aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
-        type="search" autoComplete="off" spellCheck={false} placeholder={compact?'':'Tìm kiếm'}
+        type="search" autoComplete="off" spellCheck={false} placeholder={compact?'':'Tìm kiếm (không dấu)'}
         value={value} onPointerDown={event=>preserveStickyFilterViewport(event.currentTarget)}
         onChange={event=>onChange(event.currentTarget.value)}
         onKeyDown={clearOnEscape}/>}
