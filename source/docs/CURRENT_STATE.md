@@ -960,3 +960,10 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - **Không sửa một giá trị CSS/TS nào trên production**; các tệp này thuần tài liệu. Theme Imperial Sky mới chỉ là đề xuất, chưa triển khai.
 - Phân biệt rõ: **đã lưu mọi cấu hình màu nằm trong Git**, không thể khẳng định đã sao lưu preset màu cá nhân `localStorage` trên máy người dùng hay mọi giá trị cấu hình live trong Firebase/Sheets. Không reset những kho này khi thử theme mới.
 - Khi quay lại Theme1: phục hồi **chọn lọc** CSS/token từ nhánh snapshot qua PR và test; không reset toàn bộ repo, không làm mất các công việc phát triển sau mốc.
+
+## 24/10/2026 — Theme2 Imperial Sky (B gradient + A solid) — bản thử
+
+- Theo chốt của người dùng, bổ sung Theme2 độc lập: **B — Subtle Gradient** `#245A79 → #2E6F95` chỉ cho tab active, **A — Solid Elegant** `#2E6F95` cho nút chính và giao diện thao tác. Tab inactive `#F2F8FC`, chữ `#35556B`, viền `#C9DCE8`; hai tab active/inactive giữ size/căn phải nhãn và title một dòng như PR #59.
+- Triển khai bằng class `.app-shell.imperial-sky-theme` trong `App.tsx` và quy tắc riêng cuối `app.css`. Tuyệt đối không sửa biến `--green` toàn cục hoặc biến màu nghiệp vụ, không đổi data, Firebase, preset, quyền, tô vàng hay hover số Bảng tổng hợp.
+- Tài liệu thiết kế và hướng dẫn gỡ lớp Theme2 để về đúng Theme1: [`docs/ui/Theme2-ImperialSky.md`](ui/Theme2-ImperialSky.md); [`docs/ui/Theme1.md`](ui/Theme1.md) và nhánh snapshot tiếp tục FROZEN.
+- CI phải PASS TypeScript, unit, Firebase emulator và Chrome smoke trước khi merge/publish; Chrome assert background-image gradient chỉ active, nút chính dùng solid, chữ/viền đúng màu và tab không đổi kích thước; không suy diễn đó là nghiệm thu máy người dùng.

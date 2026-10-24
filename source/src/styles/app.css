@@ -2236,3 +2236,131 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     font-size:10px;padding:2px 3px;
   }
 }
+
+
+/* =======================================================================
+   THEME2 — IMPERIAL SKY / SUBTLE GRADIENT (trial, 24 Oct 2026)
+   Baseline Theme1: docs/ui/Theme1.md and frozen Git snapshot. No changes
+   to semantic status palettes, report stage tones, user cell highlights,
+   warning/success/error meanings, yellow search matches or editable values.
+   The gradient is deliberately limited to the TWO selected main tabs.
+   Theme2's other actionable chrome uses solid colors only.
+   ======================================================================= */
+.app-shell.imperial-sky-theme {
+  --imperial-primary:#2E6F95;
+  --imperial-deep:#245A79;
+  --imperial-ink:#35556B;
+  --imperial-ice:#F2F8FC;
+  --imperial-border:#C9DCE8;
+  --imperial-hover:#EAF4FA;
+  --imperial-focus:#9FC6DD;
+}
+
+/* Both tabs have identical box geometry and a reserved "Đang xem" position.
+   No tab-specific colors: only active vs inactive changes appearance. */
+.app-shell.imperial-sky-theme > nav.primary-section-switcher
+  .primary-section-card:is(:first-child,:last-child) {
+  background:var(--imperial-ice);
+  color:var(--imperial-ink);
+  border:2.5px solid var(--imperial-border);
+  box-shadow:0 2px 6px rgba(30,75,103,.08);
+}
+.app-shell.imperial-sky-theme > nav.primary-section-switcher
+  .primary-section-card:is(:first-child,:last-child).active {
+  background:#2E6F95;
+  background:linear-gradient(110deg,#245A79 0%,#2E6F95 100%);
+  border-color:var(--imperial-deep);
+  color:#F8FBFD;
+  box-shadow:0 3px 10px rgba(36,90,121,.16);
+}
+.app-shell.imperial-sky-theme > nav.primary-section-switcher
+  .primary-section-card.active .section-card-state {
+  color:#EAF5FB;
+}
+.app-shell.imperial-sky-theme > nav.primary-section-switcher
+  .primary-section-card:not(.active) .section-card-state {
+  visibility:hidden;
+}
+.app-shell.imperial-sky-theme > nav.primary-section-switcher
+  .primary-section-card .section-card-icon {
+  background:transparent;border-color:transparent;color:inherit;
+}
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher
+  .primary-section-card:hover:not(:disabled),
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher
+  .primary-section-card:hover:not(:disabled):not(.active),
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher
+  .primary-section-card:hover:not(:disabled).active {
+  transform:translateY(-2px);
+  border-color:var(--imperial-focus);
+  box-shadow:0 7px 13px rgba(41,89,112,.17),0 0 0 2px #DDF3FD;
+}
+.app-shell.imperial-sky-theme > nav.primary-section-switcher .primary-section-card:focus-visible {
+  outline:3px solid var(--imperial-deep);outline-offset:3px;
+}
+
+/* Chrome / action surfaces: flat Imperial Sky, NOT gradient. */
+.app-shell.imperial-sky-theme .button.primary:not(.danger) {
+  background:var(--imperial-primary);
+  border-color:var(--imperial-deep);
+  color:#FFFFFF;
+}
+.app-shell.imperial-sky-theme .button.primary:not(.danger):hover:not(:disabled) {
+  background:var(--imperial-deep);
+  border-color:#1E4D6C;
+}
+.app-shell.imperial-sky-theme .button.ghost:not(.danger) {
+  color:var(--imperial-ink);
+}
+.app-shell.imperial-sky-theme .button.ghost:not(.danger):hover:not(:disabled) {
+  background:var(--imperial-hover);
+}
+.app-shell.imperial-sky-theme .button:not(.primary):not(.danger):not(.ghost):hover:not(:disabled) {
+  background:var(--imperial-ice);
+  border-color:var(--imperial-focus);
+}
+.app-shell.imperial-sky-theme .brand {color:var(--imperial-deep);}
+.app-shell.imperial-sky-theme .brand-mark {
+  background:var(--imperial-primary);
+}
+.app-shell.imperial-sky-theme .page-heading h1,
+.app-shell.imperial-sky-theme .settings-section-path {
+  color:var(--imperial-ink);
+}
+/* Selected settings tabs are flat/white, with restrained blue selection. */
+.app-shell.imperial-sky-theme .settings-hub-tabs {
+  background:var(--imperial-ice);
+  border-color:var(--imperial-border);
+}
+.app-shell.imperial-sky-theme .settings-hub-tabs button:not(.shared-view-exit) {
+  color:var(--imperial-ink);
+}
+.app-shell.imperial-sky-theme .settings-hub-tabs button.active {
+  background:#FFFFFF;
+  color:var(--imperial-deep);
+  border-color:var(--imperial-focus);
+  box-shadow:inset 0 -2px 0 var(--imperial-primary),0 1px 3px rgba(46,111,149,.10);
+}
+.app-shell.imperial-sky-theme .settings-hub-tabs button:not(.active):hover:not(:disabled) {
+  background:var(--imperial-hover);
+}
+/* Blue focus communicates INTERACTION only, never workflow meaning. */
+.app-shell.imperial-sky-theme :is(input:not([type=color]),select,textarea):focus {
+  border-color:var(--imperial-primary);
+  box-shadow:0 0 0 3px rgba(46,111,149,.16);
+}
+.app-shell.imperial-sky-theme .column-filter-active summary {
+  background:var(--imperial-ice);
+  border-color:var(--imperial-primary);
+  color:var(--imperial-deep);
+}
+.app-shell.imperial-sky-theme .account-source-details summary,
+.app-shell.imperial-sky-theme .advanced-settings summary {
+  color:var(--imperial-deep);
+}
+/* The report's red, amber and green KPI/status colors remain untouched.
+   Printouts keep flat backgrounds rather than a selected-tab gradient. */
+@media print {
+  .app-shell.imperial-sky-theme > nav.primary-section-switcher
+    .primary-section-card.active {background:var(--imperial-primary);}
+}
