@@ -1734,7 +1734,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 /* Hover on any padding/blank space of the parent highlights its inner control.
    Only one control is highlighted in ordinary cells; combined cells keep their
    independent triggers so the wrong underlying field is never chosen. */
-.item-data-table tbody td.editable-cell:not(.compact-merged-cell):is(:hover,:focus-within)
+.item-data-table tbody td.editable-cell:not(.compact-merged-cell):hover
   :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger,.custom-cell-input),
 .item-data-table tbody td.editable-cell.compact-merged-cell
   :is(.cell-picker-trigger,.cell-value-button,.content-button,.inline-note-trigger,.custom-cell-input):is(:hover,:focus-visible,[aria-expanded="true"]) {
@@ -1753,6 +1753,21 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td.editable-cell .inline-note-textarea:focus {
   outline:none;
+  border-color:#A7D8ED;
+  box-shadow:0 0 0 2px #DDF3FD;
+}
+
+/* Hotfix 24/10: inline Note/Current Progress controls MUST NOT keep an active
+   green/blue halo when the pointer leaves.  Focus may remain for text entry;
+   it must not be confused with hover. We deliberately don't blur/save on
+   mouseleave, so a user can type without losing a draft. */
+.item-data-table tbody td.editable-cell .inline-note-textarea,
+.item-data-table tbody td.editable-cell .inline-note-textarea:focus {
+  border:1px solid #CDD9D4;
+  outline:none;
+  box-shadow:none;
+}
+.item-data-table tbody td.editable-cell:hover .inline-note-textarea {
   border-color:#A7D8ED;
   box-shadow:0 0 0 2px #DDF3FD;
 }
