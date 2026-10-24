@@ -528,6 +528,17 @@ try{
     const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
     const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
     const boxes=cards.map(el=>el.getBoundingClientRect());
+    const geometry=cards.map(el=>{
+      const title=el.querySelector('.section-card-title'),slot=el.querySelector('.section-card-state');
+      const r=title?.getBoundingClientRect(),badge=slot?.getBoundingClientRect(),button=el.getBoundingClientRect();
+      const range=document.createRange();
+      if(title)range.selectNodeContents(title);
+      const pieces=range.getClientRects().length;
+      return {lines:pieces,rightInset:button.right-(badge?.right??0),
+        titleFits:!!r&&!!badge&&r.right<badge.left-2,
+        overflow:!!title&&title.scrollWidth>title.clientWidth+1,
+        badgeWidth:badge?.width};
+    });
     const selected=cards.find(el=>el.classList.contains('active'));
     const unselected=cards.find(el=>!el.classList.contains('active'));
     const activeStyle=selected?getComputedStyle(selected):null;
@@ -537,8 +548,11 @@ try{
     const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
     const innerFlat=[...nav.querySelectorAll('.section-card-icon,.section-card-state')]
       .every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)');
-    return {ok:nav?.getBoundingClientRect().width<=820&&
+    return {ok:nav?.getBoundingClientRect().width<=900&&
       flat&&distinct&&border&&innerFlat&&
+      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=7&&g.rightInset<=18)&&
+      Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
+      Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
       boxes.every(box=>box.width>=150&&box.height>=44&&box.height<=72)&&
@@ -550,9 +564,10 @@ try{
       Math.abs(boxes[0].height-boxes[1].height)<1&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
+      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,flat,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+  console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
 
   // The inactive label reserves exactly the same space as "Đang xem".
   // Switching either main tab must not resize either button.
