@@ -8,7 +8,7 @@ export const DEFAULT_REPORTS: ReportConfig[] = [
     hiddenColumns:[],completed:['Đã có TBKL'] },
   { id: 'build', title: 'Tiến độ trình HĐND xây dựng NQ', source: 'build', statusField: 'progressBuild',includeNotRequired:false,
     columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'],
-    hiddenColumns:[],completed:['Đã có QĐ chấp thuận'] },
+    hiddenColumns:['Không phải trình'],completed:['Đã có QĐ chấp thuận'] },
   { id: 'council', title: 'Tiến độ các Nghị quyết và Báo cáo trình HĐND', source: 'council',
     statusField: 'progressCouncil', columns:[...COUNCIL_STAGE_COLUMNS],
     hiddenColumns:[],completed:['Đã trình HĐND thành phố'] },

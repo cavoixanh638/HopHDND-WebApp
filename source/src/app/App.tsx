@@ -130,7 +130,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // null means the list has not reported its own active width yet; 'auto' is an explicit setting.
   const [listFramePreview,setListFramePreview]=useState<'auto'|number|null>(null);
   const [reportWidthPreview,setReportWidthPreview]=useState<'auto'|number|null>(null);
-  const [group, setGroup] = useState<GroupField>('vpLeader');
+  const [group, setGroup] = useState<GroupField>('department');
   const [selection, setSelection] = useState<{ title: string; items: Item[] } | null>(null);
   const [history, setHistory] = useState<{item:Item;field?:TextField}|null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);

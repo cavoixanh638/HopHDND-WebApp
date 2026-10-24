@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {aggregateReport,DEFAULT_REPORTS} from '../src/domain/reporting';
 import {createDemoItems} from '../src/data/demo-items';
-import {configuredReports,defaultReportLayout,validateReportLayout} from '../src/data/report-preferences';
+import {configuredReports,defaultReportLayout,validateReportLayout,reportHiddenColumns} from '../src/data/report-preferences';
 
 const build=DEFAULT_REPORTS.find(report=>report.id==='build')!;
 const fixture=()=>{
@@ -19,6 +19,41 @@ describe('Build NQ excludes non-required items by default without touching the s
     expect(report.completedCount).toBe(1);
     expect(report.percent).toBe(50);
     expect(report.rows.size).toBeGreaterThan(0);
+  });
+  it('hides Không phải trình by default while keeping original stage in source',()=>{
+    const layout=defaultReportLayout(),buildLayout=layout.find(row=>row.id==='build')!;
+    expect(build.hiddenColumns).toContain('Không phải trình');
+    expect(buildLayout.hiddenColumns).toContain('Không phải trình');
+    expect(buildLayout.showNotRequiredColumn).toBe(false);
+    const config=configuredReports(layout).find(row=>row.id==='build')!;
+    const report=aggregateReport(fixture(),config,'department');
+    expect(report.total).toBe(2);
+    expect(report.columns).not.toContain('Không phải trình');
+    expect(fixture()[0].progressBuild).toBe('Không phải trình');
+  });
+  it('migrates old layout without flag to hidden, keeps other user layouts, and remembers explicit reveal',()=>{
+    const old=defaultReportLayout().map(row=>({...row,hiddenColumns:[...row.hiddenColumns]}));
+    const buildRow=old.find(row=>row.id==='build')!;
+    delete buildRow.showNotRequiredColumn;
+    buildRow.hiddenColumns=[];
+    const migrated=validateReportLayout(old),restored=migrated.find(row=>row.id==='build')!;
+    expect(restored.hiddenColumns).toContain('Không phải trình');
+    expect(restored.showNotRequiredColumn).toBe(false);
+    expect(migrated.find(row=>row.id==='party')?.hiddenColumns).toEqual([]);
+    expect(reportHiddenColumns({...restored,showNotRequiredColumn:true})).not.toContain('Không phải trình');
+    const shown=validateReportLayout(migrated.map(row=>row.id==='build'
+      ?{...row,showNotRequiredColumn:true}:row));
+    const visibleConfig=configuredReports(shown).find(row=>row.id==='build')!;
+    expect(visibleConfig.hiddenColumns).not.toContain('Không phải trình');
+    // Column visibility does NOT override the independent counting policy.
+    expect(aggregateReport(fixture(),visibleConfig,'department').total).toBe(2);
+    const including=validateReportLayout(shown.map(row=>row.id==='build'
+      ?{...row,includeNotRequired:true}:row));
+    const withExempt=configuredReports(including).find(row=>row.id==='build')!;
+    expect(aggregateReport(fixture(),withExempt,'department').columns).toContain('Không phải trình');
+    expect(aggregateReport(fixture(),withExempt,'department').total).toBe(3);
+    expect(()=>validateReportLayout(shown.map(row=>row.id==='build'
+      ?{...row,showNotRequiredColumn:'invalid' as any}:row))).toThrow('hiển thị');
   });
   it('excludes only Không phải trình from the scope, not from Excel',()=>{
     const original=fixture();

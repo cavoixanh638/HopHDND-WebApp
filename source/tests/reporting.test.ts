@@ -17,7 +17,7 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
     node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
   it('displays independent resize grips on each report header only in editing mode',()=>{
     const onColumnResize=vi.fn();
-    const config={...DEFAULT_REPORTS[1],columnWidths:{'Không phải trình':178}};
+    const config={...DEFAULT_REPORTS[1],hiddenColumns:[],columnWidths:{'Không phải trình':178}};
     const rendered=ReportTable({items:createDemoItems(5),config,group:'room',
       sourceLabel:'Nguồn thử',groupOrder:[],onSelect:()=>{},onColumnResize,preview:true});
     const handles=flatten(rendered).filter(element=>element.type===ColumnResizeHandle);
@@ -103,7 +103,7 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
       room:'Một phòng',progressBuild:i===0?'Không phải trình xây dựng NQ':'Sở chưa trình',
     }));
     const onSelect=vi.fn();
-    const rendered=ReportTable({items,config:{...DEFAULT_REPORTS[1],includeNotRequired:true},group:'room',
+    const rendered=ReportTable({items,config:{...DEFAULT_REPORTS[1],includeNotRequired:true,hiddenColumns:[]},group:'room',
       sourceLabel:'Nguồn thử',groupOrder:[],onSelect});
     const buttons=flatten(rendered).filter(node=>
       node.type==='button'&&node.props?.className==='count-button count-drill');
@@ -142,7 +142,7 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     expect(report.completedCount).toBe(1);
     expect(report.percent).toBe(25);
     expect(report.unknown).toEqual([]);
-    expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns);
+    expect(report.columns).toEqual(DEFAULT_REPORTS[1].columns.filter(col=>col!=='Không phải trình'));
     expect(JSON.stringify(items)).toBe(before);
   });
   it('combines NQ+BC exactly as the sum of both issuance tables, including final completion',()=>{
@@ -199,6 +199,24 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(onChange.mock.calls[0][0][1]).toEqual(draft[1]);
     const auto=nodes(root).find(node=>node.type==='input'&&node.props?.type==='checkbox'&&node.props?.checked===true);
     expect(auto).toBeDefined();
+  });
+  it('offers a hidden Build NQ column as a selectable option and persists explicit reveal',()=>{
+    const draft=defaultReportLayout(),onChange=vi.fn();
+    const root=ReportLayoutPanel({draft,onChange,items:createDemoItems(2),group:'department',
+      groupOrder:[],sourceLabel:'Google Sheets'});
+    const walk=(node:any):any[]=>Array.isArray(node)?node.flatMap(walk):
+      node&&typeof node==='object'?[node,...walk(node.props?.children)]:[];
+    const labels=walk(root).filter(node=>node.type==='label'&&
+      node.props?.children?.[1]==='Không phải trình');
+    expect(labels).toHaveLength(1);
+    const checkbox=walk(labels[0]).find(node=>node.type==='input'&&node.props.type==='checkbox');
+    expect(checkbox?.props.checked).toBe(false);
+    checkbox.props.onChange();
+    const next=onChange.mock.calls[0][0];
+    expect(next.find((row:any)=>row.id==='build').showNotRequiredColumn).toBe(true);
+    expect(configuredReports(validateReportLayout(next)).find(r=>r.id==='build')?.hiddenColumns)
+      .not.toContain('Không phải trình');
+    expect(next[0]).toEqual(draft[0]);
   });
   it('renders all numeric cells centered with wrapped headings and preserves counts',()=>{
     const items=createDemoItems(7);
@@ -414,7 +432,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       const ths=all(header).filter(n=>n.type==='th');
       expect(ths[0].props.children).toBe('Lãnh đạo VP');
       expect(ths[1].props.children).toBe('Tổng số nội dung');
-      expect(ths[2].props.className).toContain(config.id==='build'?'report-stage-excluded':'report-stage-source');
+      expect(ths[2].props.className).toContain('report-stage-source');
       const group=all(table).find(n=>n.type==='colgroup');
       expect(all(group).filter(n=>n.type==='col').slice(0,2).map(n=>n.props.className))
         .toEqual(['report-group-col','report-total-width']);
@@ -423,7 +441,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
         const cells=all(tr).filter(n=>n.type==='td');
         if(cells.length===1)continue;
         expect(cells[0].props.className).toContain('report-total-col');
-        expect(cells[1].props.className).toContain(config.id==='build'?'report-stage-excluded':'report-stage-source');
+        expect(cells[1].props.className).toContain('report-stage-source');
       }
       const foot=all(table).find(n=>n.type==='tfoot');
       expect(all(foot).filter(n=>n.type==='td')[0].props.className).toContain('report-total-col');
