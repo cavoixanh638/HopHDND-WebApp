@@ -601,12 +601,27 @@ try{
       !!document.querySelector('.version')&&
       !document.querySelector('.brand')&&!document.querySelector('.demo-banner')&&
       !document.querySelector('.settings-mode-bar')&&
+      !document.querySelector('.app-footer')&&
+      !document.body.textContent?.includes('Có thể bấm trực tiếp vào ô được cấp quyền để sửa thử.')&&
+      !document.body.textContent?.includes('Dữ liệu tự cập nhật')&&
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
       document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
       document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]')?.placeholder==='Tìm kiếm';
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
+  // Guest footer and generic edit hint are intentionally removed. Use the
+  // freed space for a vertically scrollable list, with sticky filters intact.
+  const listViewport=await evaluate(`(()=>{
+    const grid=document.querySelector('.item-table-scroll');
+    const styles=grid?getComputedStyle(grid):null;
+    return {height:grid?.clientHeight??0,scrollHeight:grid?.scrollHeight??0,
+      overflow:styles?.overflowY??'',viewport:window.innerHeight};
+  })()`);
+  if(listViewport.viewport!==1000||listViewport.height<760||listViewport.height>840||
+    listViewport.overflow!=='auto'||listViewport.scrollHeight<=listViewport.height+30)
+    throw Error('List must use the taller viewport with its own vertical scrolling: '+JSON.stringify(listViewport));
+  console.log('GUEST_LIST_VIEWPORT_EXPANDED_PASS',JSON.stringify(listViewport));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
     const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect();
