@@ -870,3 +870,11 @@ Người dùng giữ nguyên hiệu ứng **B có viền xanh nhạt + quầng s
 - Giữ `prefers-reduced-motion`, in không bóng/không nâng. Không đổi GitHub Pages, Firebase, dữ liệu Excel, permission, autosave hoặc cấu trúc tab.
 
 Kiểm thử Chrome smoke mở rộng: xác nhận 2 tab có chữ/hiệu ứng đúng và reset sau hover; popup nâng chỉ nút nhỏ từ hover ở khoảng trống ô; overlay `count-drill` vẫn full-cell nhưng số nhỏ nổi, không phá tooltip/click; các tests 3D của ô trạng thái/Ghi chú và chip ở đầu bảng vẫn phải đạt. Không phát hành nếu CI chưa PASS.
+
+## 24/10/2026 — Dọn cuối trang và mở rộng vùng cuộn Danh sách chi tiết
+
+Theo ảnh người dùng ngày 24/10, bỏ riêng hai phần chữ thừa trên giao diện khách:
+- Bỏ toàn bộ `footer.app-footer` của khách (dòng “Nội dung trình HĐND · Dữ liệu tự cập nhật”, viền và khoảng cách cuối trang); footer của admin/các tài khoản quản trị vẫn giữ nguyên.
+- Khi tài khoản khách đã kết nối/xác nhận quyền và có ô được sửa, **không hiển thị** banner “Có thể bấm trực tiếp vào ô được cấp quyền để sửa thử. Thay đổi chỉ giữ trên trình duyệt, không ghi vào Google Sheets.” Các thông báo thực sự về mất kết nối, đang tải quyền, quản trị khóa chỉnh sửa hoặc chưa có ô được cấp quyền **vẫn hiển thị đúng**. Không thay đổi quyền thực tế hoặc việc chỉ sửa nháp, không ghi vào Google Sheets.
+- Chỉ ở tab Danh sách chi tiết thông thường (`.wide-table-page:not(.settings-page)`), giới hạn chiều cao vùng `.item-table-scroll` theo cửa sổ: desktop `clamp(480px, 100dvh - 180px, 1080px)`; màn hình <=700px `clamp(360px, 100dvh - 235px, 760px)`. Các ô vẫn giữ nguyên chiều cao; sử dụng phần không gian theo chiều dọc tốt hơn, nội dung dài có cuộn dọc trong khung, bộ lọc/tiêu đề sticky và cuộn ngang giữ nguyên. Chế độ in không giới hạn chiều cao, popup/bảng tổng hợp/biên tập thiết lập không đổi.
+- Chrome smoke có kiểm trực tiếp footer/hint vắng mặt, viewport khách 1600x1000 khoảng 820px có scroll độc lập và sticky filter ổn định. CI và publish Pages cần kiểm PASS theo đúng SHA, không đồng nhất commit nguồn với người dùng đã nghiệm thu trên màn hình thực.
