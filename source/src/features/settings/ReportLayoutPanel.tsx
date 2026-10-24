@@ -165,7 +165,19 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   </li>)}
                 </ol>
                 <div className="column-choices">
-                  {preview.columns.map(column => <label key={column}><input type="checkbox" checked={!report.hiddenColumns.includes(column)} onChange={() => update(index, { hiddenColumns: report.hiddenColumns.includes(column) ? report.hiddenColumns.filter(value => value !== column) : [...report.hiddenColumns, column] })} />{column}</label>)}
+                  {report.columnOrder.map(column => {
+                    // Use all canonical columns here, not preview.columns (which
+                    // intentionally omit hidden ones), so admin can show them again.
+                    const exempt=report.id==='build'&&column==='Không phải trình';
+                    const shown=exempt?report.showNotRequiredColumn===true:
+                      !report.hiddenColumns.includes(column);
+                    return <label key={column}><input type="checkbox" checked={shown}
+                      onChange={()=>update(index,{
+                        hiddenColumns:shown?[...new Set([...report.hiddenColumns,column])]:
+                          report.hiddenColumns.filter(value=>value!==column),
+                        ...(exempt?{showNotRequiredColumn:!shown}:{})
+                      })}/>{column}</label>;
+                  })}
                 </div>
               </fieldset>
             </div>
