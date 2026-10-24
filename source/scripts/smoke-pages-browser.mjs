@@ -448,11 +448,11 @@ try{
     const status=document.querySelector('.item-filter-status-slot');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=stt?.querySelector('.column-sort-button');
-    if(!topbar||!nav||!cardHeader||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
+    if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
-    const gap=viewport.getBoundingClientRect().top-cardHeader.getBoundingClientRect().bottom;
+    const gap=viewport.getBoundingClientRect().top-tabs.bottom;
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=820&&tabs.width<top.width;
-    return {ok:aligned&&gap<33&&!status,aligned,gap,hasEmptyStatus:!!status};
+    return {ok:aligned&&gap<115&&!status&&!cardHeader,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const mainSectionCards=await evaluate(`(()=>{
@@ -473,7 +473,10 @@ try{
       flat&&distinct&&border&&innerFlat&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
-      boxes.every(box=>box.width>=200&&box.height>=60)&&
+      boxes.every(box=>box.width>=150&&box.height>=44&&box.height<=72)&&
+      !nav.querySelector('.section-card-description')&&
+      !unselected?.querySelector('.section-card-state')&&
+      !!selected?.querySelector('.section-card-state')&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
       labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
@@ -495,10 +498,10 @@ try{
       const style=getComputedStyle(el);
       return {hover:el.matches(':hover'),liftY:new DOMMatrixReadOnly(style.transform).m42,
         color:style.color,shadow:style.boxShadow,
-        opacity:getComputedStyle(el.querySelector('.section-card-description')).opacity};
+        titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
     if(!hover.hover||Math.abs(hover.liftY+2)>.25||!hover.shadow.includes('7px 13px')||
-      hover.color!==color||hover.opacity!=='1')
+      hover.color!==color||hover.titleSize<16)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
@@ -517,9 +520,9 @@ try{
     const filter=document.querySelector('.item-column-filter-row th');
     const td=document.querySelector('.item-data-table tbody td');
     const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
-    return {ok:!!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
-      !card.querySelector('h3')&&!!card.querySelector('.item-list-summary')&&
-      !card.querySelector('.status-pill')&&headers.length>=10&&
+    return {ok:!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
+      !document.querySelector('.item-list-summary')&&
+      headers.length>=10&&
       getComputedStyle(label).textAlign==='center'&&
       thinLine(first)==='1px'&&thinLine(filter)==='1px'&&thinLine(td)==='1px',
       heading:title?.textContent,headers:headers.length,
@@ -630,7 +633,7 @@ try{
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
       document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]')?.placeholder==='Tìm kiếm';
+      document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]')?.placeholder==='Tìm kiếm (không dấu)';
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   // Guest footer and generic edit hint are intentionally removed. Use the
@@ -702,6 +705,30 @@ try{
   await evaluate("document.querySelector('[data-filter-key=\\\"content\\\"] .item-filter-clear')?.click()");
   await eventually("document.querySelectorAll('.item-data-table mark.item-search-match').length===0",
     'Clearing content search must remove every yellow mark');
+  const highlightLayout=await evaluate(`(()=>{
+    const table=document.createElement('table');
+    table.className='item-data-table';table.style.cssText='width:228px;table-layout:fixed;';
+    const body=table.appendChild(document.createElement('tbody'));
+    const row=body.appendChild(document.createElement('tr'));
+    const td=row.appendChild(document.createElement('td'));
+    td.dataset.colKey='specificProgress';td.style.width='228px';
+    const trigger=td.appendChild(document.createElement('button'));
+    trigger.className='inline-note-trigger';trigger.type='button';
+    trigger.innerHTML='Đã có Tờ trình số <mark class="item-search-match item-search-match-atomic">254</mark> ngày 15/10 trình HĐND TP';
+    document.body.appendChild(table);
+    const mark=trigger.querySelector('mark'),range=document.createRange();
+    range.selectNodeContents(mark);
+    const style=getComputedStyle(trigger),markStyle=getComputedStyle(mark);
+    const result={justify:style.textAlign,finalLine:style.textAlignLast,
+      numberWhitespace:markStyle.whiteSpace,pieces:range.getClientRects().length,
+      text:trigger.textContent};
+    table.remove();return result;
+  })()`);
+  if(highlightLayout.justify!=='justify'||highlightLayout.finalLine!=='left'||
+    highlightLayout.numberWhitespace!=='nowrap'||highlightLayout.pieces!==1||
+    !highlightLayout.text.includes('số 254 ngày'))
+    throw Error('Justified progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
+  console.log('JUSTIFY_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
   const placeholderSelect=await evaluate(`(()=>{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     const color=select?getComputedStyle(select).color:'';
