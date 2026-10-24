@@ -25,7 +25,7 @@ describe('Vietnamese search text highlighting',()=>{
   });
   it('handles Đ and decomposed Vietnamese combining marks',()=>{
     const text='Đất đai và đất đai'; // Contains intentionally decomposed letters
-    expect(searchMatchRanges(text,'dat')).toHaveLength(0);
+    expect(searchMatchRanges(text,'dat')).toHaveLength(2);
     expect(searchMatchRanges(text,'dat dai')).toHaveLength(2);
     expect(normalizeSearch('ĐẤT ĐAI')).toBe('dat dai');
   });
