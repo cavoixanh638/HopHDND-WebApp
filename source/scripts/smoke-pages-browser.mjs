@@ -1106,25 +1106,26 @@ try{
       await evaluate("document.querySelector('#hover-ab-previous')?.remove()");
       await send('Performance.disable');
       console.log('CELL_HOVER_VISUAL_AB',JSON.stringify(abResults));
-      // Real pointer at a populated count: readable contrasting border, cell-
-      // scoped fill, no box layout/row movement. Do not highlight empty cells.
+      // New 3D B contract: report cells remain full-size hit targets but only
+      // the visible numeral badge gets the pale hover lift. No full-cell outline.
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:4,y:4});
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:abPoints[0].x,y:abPoints[0].y});
+      await new Promise(resolve=>setTimeout(resolve,270));
       const hoverVisual=await evaluate(`(()=>{
         const button=document.elementFromPoint(${abPoints[0].x},${abPoints[0].y})?.closest('.count-drill');
         if(!button)return {ok:false,reason:'mouse missed the count'};
         const s=getComputedStyle(button),r=button.getBoundingClientRect(),td=button.closest('td').getBoundingClientRect();
+        const pill=button.querySelector('span'),badge=getComputedStyle(pill);
         const others=[...document.querySelectorAll('.report-surface .count-drill')].filter(b=>b!==button);
-        const onlyOne=others.every(b=>getComputedStyle(b).outlineStyle==='none'||
-          getComputedStyle(b).outlineWidth==='0px');
+        const onlyOne=others.every(b=>getComputedStyle(b).outlineStyle==='none'||getComputedStyle(b).outlineWidth==='0px');
         const oneCell=Math.abs(r.width-td.width)<3&&Math.abs(r.height-td.height)<3;
-        const colored=s.backgroundColor==='rgba(9, 106, 113, 0.14)';
-        return {ok:s.outlineStyle==='solid'&&s.outlineWidth==='2px'&&
-          s.outlineColor==='rgb(8, 119, 123)'&&s.outlineOffset==='-2px'&&
-          colored&&oneCell&&onlyOne,outline:s.outline,fill:s.backgroundColor,
-          oneCell,onlyOne};
+        return {ok:s.outlineStyle==='none'&&s.backgroundColor==='rgba(0, 0, 0, 0)'&&
+          badge.borderTopColor==='rgb(167, 216, 237)'&&badge.boxShadow.includes('7px 13px')&&
+          Math.abs(new DOMMatrixReadOnly(badge.transform).m42+2)<.25&&oneCell&&onlyOne,
+          fullCellOutline:s.outline,fill:s.backgroundColor,badgeShadow:badge.boxShadow,
+          badgeLift:new DOMMatrixReadOnly(badge.transform).m42,oneCell,onlyOne};
       })()`);
-      if(!hoverVisual.ok)throw Error('Hovered count cell has no clear isolated outline: '+JSON.stringify(hoverVisual));
+      if(!hoverVisual.ok)throw Error('Report count must raise inner numeral only while preserving whole-cell clicks: '+JSON.stringify(hoverVisual));
       console.log('CELL_HOVER_VISUAL_PASS',JSON.stringify(hoverVisual));
       // Real CDP pointer events at the lower-right INSIDE each data cell, not
       // .click() on the number. These corners used to miss the tiny count button.
