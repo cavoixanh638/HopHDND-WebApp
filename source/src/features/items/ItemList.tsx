@@ -209,9 +209,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return result;
   },[items,activeLayout.columns,codeCounts]);
   const filtered=useMemo(()=>{
-    const hidden=new Set(compactPairs.map(pair=>pair.hidden));
+    const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
     const roomSpecialist=compactPairs.some(pair=>pair.anchor==='room'&&pair.hidden==='specialist');
-    const anchors=new Set(compactPairs.map(pair=>pair.anchor));
+    const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.entries(columnFilters)
       .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)&&term.trim())
       .map(([key,term])=>({key,term:normalizeSearch(term)}));
