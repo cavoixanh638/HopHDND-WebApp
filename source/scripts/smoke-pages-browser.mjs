@@ -166,7 +166,7 @@ try{
     fixture.id='hover-ink-fixture';
     fixture.style.cssText='position:fixed;left:180px;top:170px;z-index:100000;background:white;';
     fixture.innerHTML='<table class="item-data-table"><tbody><tr><td class="editable-cell" data-col-key="content"><button class="content-button" type="button">Nội dung thử</button></td><td class="editable-cell" data-progress-tone="office"><button class="cell-value-button cell-picker-trigger" type="button">VP đang thực hiện</button></td></tr></tbody></table>';
-    document.body.append(fixture);
+    document.querySelector('.app-shell').append(fixture);
     return [...fixture.querySelectorAll('button')].map(button=>{
       const rect=button.getBoundingClientRect();
       return {x:rect.left+rect.width/2,y:rect.top+rect.height/2,color:getComputedStyle(button).color};
@@ -190,7 +190,7 @@ try{
     host.className='report-surface';host.id='report-cell-3d-probe';
     host.style.cssText='position:fixed;left:95px;top:350px;z-index:99999;width:400px;';
     host.innerHTML='<table class="data-table report-table" style="width:380px;table-layout:fixed"><tbody><tr><td class="report-number report-clickable-cell" style="width:175px;height:82px"><span class="report-cell-sizer" aria-hidden="true">12</span><button type="button" class="count-button count-drill"><span>12</span></button></td><td class="report-number" style="width:175px;height:82px">—</td></tr></tbody></table>';
-    document.body.appendChild(host);
+    document.querySelector('.app-shell').appendChild(host);
     const clickable=host.querySelector('td.report-clickable-cell'),box=clickable.getBoundingClientRect();
     return {x:box.left+box.width*.8,y:box.top+box.height/2};
   })()`);
@@ -211,8 +211,8 @@ try{
   const reportReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
     document.querySelector('#report-cell-3d-probe td.report-clickable-cell')).transform).m42`);
   await evaluate("document.querySelector('#report-cell-3d-probe')?.remove()");
-  if(!reportFullCell.hover||Math.abs(reportFullCell.wholeLift+2)>.3||
-    !reportFullCell.wholeShadow.includes('7px 13px')||
+  if(!reportFullCell.hover||Math.abs(reportFullCell.wholeLift+3)>.3||
+    !reportFullCell.wholeShadow.includes('8px 16px')||
     Math.abs(reportFullCell.badgeLift)>.2||reportFullCell.badgeShadow!=='none'||
     Math.abs(reportFullCell.emptyLift)>.2||Math.abs(reportReset)>.3||
     reportFullCell.targetWidth<reportFullCell.cellWidth-8)
@@ -333,7 +333,7 @@ try{
         table.style.position='absolute';table.style.top='-10000px';
         const body=table.appendChild(document.createElement('tbody'));
         const tr=body.appendChild(document.createElement('tr'));
-        document.body.appendChild(table);return tr;
+        document.querySelector('.app-shell').appendChild(table);return tr;
       })();
       const values=['not-submitted','office','done'].map(tone=>{
         const cell=document.createElement('td');
@@ -355,7 +355,7 @@ try{
     });
     const expectedStatusColors=[
       ['rgb(255, 224, 228)','rgb(208, 0, 37)'],
-      ['rgb(255, 232, 184)','rgb(176, 71, 0)'],
+      ['rgb(254, 249, 195)','rgb(133, 77, 14)'],
       ['rgb(213, 240, 222)','rgb(0, 122, 24)']];
     const coloredEditableOk=editableStatuses.every(group=>group.every((entry,i)=>
       entry.background===expectedStatusColors[i][0]&&entry.color===expectedStatusColors[i][1]&&
@@ -363,13 +363,13 @@ try{
     return {ok:status.dataset.progressTone==='not-submitted'&&
       label.textContent?.includes('Sở chưa trình')&&
       style.backgroundColor==='rgb(255, 224, 228)'&&coloredEditableOk&&
-      colors[0].bg==='rgb(255, 232, 184)'&&colors[1].bg==='rgb(213, 240, 222)'&&
-      colors[0].fg==='rgb(176, 71, 0)'&&colors[0].weight==='600'&&
+      colors[0].bg==='rgb(254, 249, 195)'&&colors[1].bg==='rgb(213, 240, 222)'&&
+      colors[0].fg==='rgb(133, 77, 14)'&&colors[0].weight==='600'&&
       colors[1].fg==='rgb(0, 122, 24)'&&colors[1].weight==='600'&&
       editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
       editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
       fontA==='15px'&&fontB==='15px'&&
-      header.backgroundColor==='rgb(246, 249, 247)',
+      header.backgroundColor==='rgb(239, 245, 249)',
       colors,editStyle,editableStatuses,statusColor:style.backgroundColor,
       fontA,fontB,header:header.backgroundColor};
   })()`);
@@ -382,7 +382,7 @@ try{
     host.id='list-edit-hover-probe';
     host.style.cssText='position:fixed;left:18px;top:96px;width:340px;z-index:20000;background:#fff;';
     host.innerHTML='<table class="data-table item-data-table" style="width:340px;table-layout:fixed"><tbody><tr><td class="editable-cell" data-progress-tone="not-submitted" style="height:86px"><button type="button" class="cell-value-button cell-picker-trigger">Sở chưa trình</button></td></tr></tbody></table>';
-    document.body.append(host);
+    document.querySelector('.app-shell').append(host);
     const td=host.querySelector('td'),control=host.querySelector('button');
     const parent=td.getBoundingClientRect(),inner=control.getBoundingClientRect();
     return {x:parent.right-7,y:parent.top+parent.height/2,
@@ -400,11 +400,11 @@ try{
     const outer=getComputedStyle(td),inner=getComputedStyle(button);
     return {ok:td.matches(':hover')&&!button.matches(':hover')&&
       outer.boxShadow==='none'&&outer.outlineStyle==='none'&&
-      inner.borderTopColor==='rgb(167, 216, 237)'&&
-      inner.boxShadow.includes('rgb(221, 243, 253)')&&
-      inner.boxShadow.includes('7px 13px')&&
-      Math.abs(new DOMMatrixReadOnly(inner.transform).m42+2)<.25&&
-      inner.outlineStyle==='none',
+      inner.borderTopColor==='rgb(208, 0, 37)'&&
+      inner.boxShadow.includes('rgb(255, 224, 228)')&&
+      inner.boxShadow.includes('8px 16px')&&
+      Math.abs(new DOMMatrixReadOnly(inner.transform).m42+3)<.25&&
+      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(208, 0, 37)',
       outerShadow:outer.boxShadow,outerOutline:outer.outlineStyle,
       innerBorder:inner.borderTopColor,innerShadow:inner.boxShadow,
       liftY:new DOMMatrixReadOnly(inner.transform).m42,
@@ -430,7 +430,7 @@ try{
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
     root.style.cssText='position:fixed;left:20px;top:130px;width:350px;z-index:20000;background:#fff';
     root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger">Nội dung ghi chú</button></td></tr></tbody>';
-    document.body.append(root);
+    document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
     return {x:box.right-9,y:box.top+box.height/2};
   })()`);
@@ -445,8 +445,8 @@ try{
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
-  if(!note3d.active||note3d.outerShadow!=='none'||Math.abs(note3d.liftY+2)>.25||
-    !note3d.shadow.includes('7px 13px')||note3d.border!=='rgb(167, 216, 237)')
+  if(!note3d.active||note3d.outerShadow!=='none'||Math.abs(note3d.liftY+3)>.25||
+    !note3d.shadow.includes('8px 16px')||note3d.border!=='rgb(46, 111, 149)')
     throw Error('3D option B note affordance mismatch: '+JSON.stringify(note3d));
   console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify(note3d));
 
@@ -457,7 +457,7 @@ try{
     const host=document.createElement('div');host.id='inline-hover-off-probe';
     host.style.cssText='position:fixed;left:26px;top:103px;width:345px;z-index:20000;background:#fff;';
     host.innerHTML='<table class="data-table item-data-table" style="width:345px"><tbody><tr><td class="editable-cell" data-col-key="specificProgress"><textarea class="inline-note-textarea" rows="3">Đang xử lý</textarea></td></tr></tbody></table>';
-    document.body.append(host);
+    document.querySelector('.app-shell').append(host);
     const field=host.querySelector('textarea');
     field.focus({preventScroll:true});
     const box=field.getBoundingClientRect();
@@ -656,7 +656,7 @@ try{
         color:style.color,shadow:style.boxShadow,
         titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
-    if(!hover.hover||Math.abs(hover.liftY+2)>.25||!hover.shadow.includes('7px 13px')||
+    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('7px 13px')||
       hover.color!==color||hover.titleSize<16)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
@@ -963,7 +963,7 @@ try{
     host.className='report-grid-modal';
     host.style.cssText='position:fixed;left:30px;top:30px;width:355px;z-index:99999;';
     host.innerHTML='<table class="data-table report-detail-grid" style="width:340px"><tbody><tr><td class="editable-cell" data-col-key="progressBuild" data-progress-tone="not-submitted"><button type="button" class="cell-value-button cell-picker-trigger">Sở chưa trình</button></td></tr></tbody></table>';
-    document.body.append(host);
+    document.querySelector('.app-shell').append(host);
     const td=host.querySelector('td'),button=host.querySelector('button');
     button.focus({preventScroll:true});
     const parent=getComputedStyle(td),inner=getComputedStyle(button);
@@ -973,7 +973,7 @@ try{
       buttonWidth<tdWidth-25&&
       inner.borderColor==='rgb(158, 207, 231)'&&
       inner.boxShadow.includes('rgb(216, 241, 252)')&&
-      inner.outlineStyle==='none',
+      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(208, 0, 37)',
       parentShadow:parent.boxShadow,parentOutline:parent.outlineStyle,
       innerBorder:inner.borderColor,innerShadow:inner.boxShadow,
       innerOutline:inner.outlineStyle,tdWidth,buttonWidth};
@@ -986,7 +986,7 @@ try{
     const host=document.createElement('div');host.id='popup-3d-probe';host.className='report-grid-modal';
     host.style.cssText='position:fixed;left:25px;top:80px;width:355px;z-index:9999;';
     host.innerHTML='<table class="data-table report-detail-grid" style="width:340px"><tbody><tr><td class="editable-cell" data-progress-tone="not-submitted" style="height:70px"><button class="cell-value-button cell-picker-trigger" type="button">Sở chưa trình</button></td></tr></tbody></table>';
-    document.body.append(host);
+    document.querySelector('.app-shell').append(host);
     const r=host.querySelector('td').getBoundingClientRect();
     return {x:r.right-6,y:r.top+r.height/2};
   })()`);
@@ -1005,7 +1005,7 @@ try{
     document.querySelector('#popup-3d-probe button')).transform).m42`);
   await evaluate("document.querySelector('#popup-3d-probe')?.remove()");
   if(!modalLift.hover||modalLift.buttonHover||modalLift.parent!=='none'||
-    Math.abs(modalLift.liftY+2)>.25||!modalLift.shadow.includes('7px 13px')||
+    Math.abs(modalLift.liftY+3)>.25||!modalLift.shadow.includes('7px 13px')||
     modalLift.widths[1]>=modalLift.widths[0]-25||Math.abs(modalReset)>.25)
     throw Error('Popup must lift compact inner control, not table cell: '+JSON.stringify({modalLift,modalReset}));
   console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
@@ -1173,7 +1173,7 @@ try{
           disabledLift:disabled?new DOMMatrixReadOnly(getComputedStyle(disabled).transform).m42:null};
       })()`);
       await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
-      if(!stageHoverB.hover||Math.abs(stageHoverB.liftY+2)>.25||
+      if(!stageHoverB.hover||Math.abs(stageHoverB.liftY+3)>.25||
         stageHoverB.border!=='rgb(167, 216, 237)'||
         !stageHoverB.shadow.includes('7px 13px')||
         (stageHoverB.disabledLift!==null&&Math.abs(stageHoverB.disabledLift)>.25))
@@ -1306,7 +1306,7 @@ try{
       const drillReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
         document.querySelector('.report-surface .report-table td.report-clickable-cell')).transform).m42`);
       if(!drillLift.hover||!drillLift.fullHit||Math.abs(drillLift.overlayLift)>.25||
-        Math.abs(drillLift.cellLift+2)>.25||!drillLift.cellShadow.includes('7px 13px')||
+        Math.abs(drillLift.cellLift+3)>.25||!drillLift.cellShadow.includes('8px 16px')||
         Math.abs(drillLift.pillLift)>.25||drillLift.shadow!=='none'||
         Math.abs(drillReset)>.25)
         throw Error('Report count must retain full-cell hit area and lift whole cell: '+JSON.stringify({drillLift,drillReset}));
@@ -1378,8 +1378,8 @@ try{
           getComputedStyle(b.closest('td')).transform).m42)<.25);
         const oneCell=Math.abs(r.width-td.width)<3&&Math.abs(r.height-td.height)<3;
         return {ok:s.outlineStyle==='none'&&s.backgroundColor==='rgba(0, 0, 0, 0)'&&
-          tdStyle.boxShadow.includes('7px 13px')&&
-          Math.abs(new DOMMatrixReadOnly(tdStyle.transform).m42+2)<.25&&
+          tdStyle.boxShadow.includes('8px 16px')&&
+          Math.abs(new DOMMatrixReadOnly(tdStyle.transform).m42+3)<.25&&
           badge.boxShadow==='none'&&Math.abs(new DOMMatrixReadOnly(badge.transform).m42)<.25&&
           oneCell&&onlyOne,
           fullCellOutline:tdStyle.outline,fill:s.backgroundColor,cellShadow:tdStyle.boxShadow,
