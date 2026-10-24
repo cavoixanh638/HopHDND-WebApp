@@ -381,7 +381,7 @@ try{
     const root=document.createElement('section');root.id='report-semantic-probe';
     root.className='report-surface report-style-classic';
     root.style.cssText='position:fixed;left:480px;top:95px;z-index:11000';
-    root.innerHTML='<table class="data-table report-table" style="width:480px;table-layout:fixed"><thead><tr><th class="report-group-heading">Lãnh đạo VP</th><th class="report-number-header report-percent-col">% hoàn thành</th></tr></thead><tbody><tr><th class="report-group-heading">Phòng</th><td class="report-number report-percent-col">25%</td></tr><tr><td class="report-number report-stage-source report-clickable-cell">2</td><td class="report-number report-stage-office report-clickable-cell">3</td><td class="report-number report-stage-completed report-clickable-cell">4</td></tr></tbody></table>';
+    root.innerHTML='<table class="data-table report-table" style="width:480px;table-layout:fixed"><thead><tr><th class="report-group-heading">Sở, ngành chủ trì</th><th class="report-number-header report-percent-col">% hoàn thành</th></tr></thead><tbody><tr><th class="report-group-heading">Phòng</th><td class="report-number report-percent-col">25%</td></tr><tr><td class="report-number report-stage-source report-clickable-cell">2</td><td class="report-number report-stage-office report-clickable-cell">3</td><td class="report-number report-stage-completed report-clickable-cell">4</td></tr></tbody></table>';
     document.querySelector('.app-shell').append(root);
     const css=el=>{const c=getComputedStyle(el);return {bg:c.backgroundColor,ink:c.color,border:c.borderColor}};
     return {header:css(root.querySelector('th.report-group-heading')),
@@ -393,7 +393,7 @@ try{
         rect:el.getBoundingClientRect().toJSON(),
         ink:getComputedStyle(el).color}))};
   })()`);
-  if(semanticCells.header.bg!=='rgb(234, 241, 246)'||
+  if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
     semanticCells.office.bg!=='rgb(254, 249, 195)'||
@@ -1090,7 +1090,7 @@ try{
         if(tables.length<2)return {ok:false,reason:'Missing report tables'};
         const headers=tables.map(table=>table.querySelector('thead th:first-child')?.textContent?.trim());
         const widths=tables.map(table=>table.querySelector('thead th:first-child')?.getBoundingClientRect().width);
-        return {ok:headers.every(text=>text==='Lãnh đạo VP')&&
+        return {ok:headers.every(text=>text==='Sở, ngành chủ trì')&&
           widths.every(width=>Math.abs(width-widths[0])<2),headers,widths};
       })()`);
       if(!reports.ok)throw Error('Report first-column heading/width mismatch: '+JSON.stringify(reports));
@@ -1142,30 +1142,30 @@ try{
           .find(node=>node.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
         const heads=[...(title?.closest('.report-surface')?.querySelectorAll('thead th')??[])]
           .map(cell=>cell.textContent?.trim());
-        return heads[1]==='Tổng số nội dung'&&heads[2]==='Không phải trình';
+        return heads[1]==='Tổng số nội dung'&&heads[2]==='Sở chưa trình'&&
+          !heads.includes('Không phải trình');
       })()`);
-      if(!buildHeading)throw Error('Building NQ must show Không phải trình immediately after total');
-      // The excluded build stage uses exactly the quiet pending-decision colors.
-      const mutedBuild=await evaluate(`(()=>{
+      if(!buildHeading)throw Error('Build NQ default must hide Không phải trình, preserving other stage columns');
+      // The excluded Build NQ column must be hidden in the initial view.
+      // A middle milestone stays visible and appropriately muted.
+      const hiddenBuild=await evaluate(`(()=>{
         const section=[...document.querySelectorAll('.report-surface')]
           .find(node=>node.querySelector('h3')?.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
         const table=section?.querySelector('table.report-table');
-        const excluded=table?.querySelector('thead th.report-stage-excluded');
-        const pending=[...(table?.querySelectorAll('thead th')??[])]
-          .find(th=>th.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
-        if(!excluded||!pending)return false;
-        const visual=node=>{
-          const style=getComputedStyle(node);
-          return [style.backgroundColor,style.color,style.borderBottomColor].join('|');
-        };
-        return excluded.classList.contains('report-stage-intermediate')&&visual(excluded)===visual(pending)&&
-          ['tbody','tfoot'].every(group=>{
-            const a=table.querySelector(group+' td.report-stage-excluded');
-            const b=table.querySelector(group+' td.report-stage-next.report-stage-intermediate');
-            return !!a&&!!b&&visual(a)===visual(b);
-          });
+        const header=[...(table?.querySelectorAll('thead th')??[])];
+        const pending=header.find(el=>el.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
+        const total=table?.querySelector('tfoot td.report-total-col');
+        const totalText=total?.textContent?.trim()??'';
+        const rendered=section?.querySelector('.report-heading-count')?.textContent??'';
+        const count=Number(rendered.match(/\\d+/)?.[0]??-1);
+        return {ok:!!pending&&pending.classList.contains('report-stage-intermediate')&&
+          !header.some(el=>el.textContent?.trim()==='Không phải trình')&&
+          !table?.querySelector('.report-stage-excluded')&&
+          Number(totalText)===count,
+          pending:pending?.className,header:header.map(el=>el.textContent?.trim()),count,totalText};
       })()`);
-      if(!mutedBuild)throw Error('Không phải trình differs from muted pending-decision stage');
+      if(!hiddenBuild.ok)throw Error('Build NQ must hide exempt column without altering counted totals: '+JSON.stringify(hiddenBuild));
+      console.log('BUILD_NQ_HIDDEN_EXEMPT_DEFAULT_PASS',JSON.stringify(hiddenBuild));
       // Delegated singleton uses one bounded geometry read per newly entered
       // count cell, never a per-frame pointermove read or global style selector.
       const leftReportTitles=await evaluate(`(()=>{
