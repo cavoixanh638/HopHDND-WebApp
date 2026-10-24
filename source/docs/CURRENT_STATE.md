@@ -829,3 +829,12 @@ Yêu cầu cập nhật sau PR #45, sửa trên nhánh `feat/report-stage-drilld
 Sau PR #46, người dùng xác nhận viền đang bao **cả ô** và quá tối khi chọn sửa. Thay đổi giới hạn trong `app.css`: popup `.report-grid-modal .report-detail-grid` không còn viền/shadow ở phần tử `td.editable-cell` khi hover/focus; chỉ khung nút/giá trị nhỏ có border xanh băng nhạt `#9ECFE7` và halo `#D8F1FC`. Bỏ đường outline xanh sẫm của legacy workflow trên nút status, nhưng **giữ nguyên nền và chữ** pink/amber/green theo bộ màu hiện tại; không đổi CSS Danh sách dữ liệu hoặc quyền chỉnh sửa.
 
 Chrome browser smoke tạo mẫu ô trạng thái có thể sửa, focus vào `cell-picker-trigger`, kiểm tra trực tiếp CSS `td.boxShadow=none`, `td.outlineStyle=none`, giá trị nút nhỏ hơn chiều ngang ô và màu viền/halo đúng nhạt. Không gọi Firebase production, không chỉnh dữ liệu.
+
+
+## 24/10/2026 — Sửa viền hover trên Danh sách chi tiết và vùng bấm
+
+Yêu cầu: bỏ **viền highlight ngoài quanh cả ô dữ liệu** trong tab Danh sách chi tiết. Khi rê chuột vào bất cứ phần padding/khoảng trống của ô có quyền sửa, chỉ làm nổi **viền nhỏ quanh điều khiển chỉnh sửa bên trong** bằng màu xanh băng sáng `#A7D8ED` và halo `#DDF3FD`. Vẫn dùng nền/chữ của preset trạng thái, không tô viền tối và không tác động Bảng tổng hợp hoặc popup chi tiết.
+
+Thay đổi chỉ trên `ItemList.tsx`, `app.css` và hàm điều phối click `activate-editable-cell.ts`. Cú click vào khoảng trống của `td.editable-cell` chuyển đến **duy nhất một** điều khiển sửa bên trong; không chuyển nếu ô chưa được cấp quyền, nút bị vô hiệu hóa, đã nhấp trực tiếp điều khiển, nhấp nút lịch sử hoặc ô gộp có nhiều điều khiển khác nhau (tránh sửa sai trường). Các ô nhập dạng text được focus thay vì giả lập bấm nút. Không sửa Firebase Rules, Excel/RTDB, bố cục tổng hợp hay trạng thái nguồn.
+
+Kiểm thử bổ sung: unit mô phỏng 5 trường hợp đúng quyền/không quyền/nút disabled/history/ô gộp/input; Chrome hover vào padding ô giả lập và kiểm trực tiếp CSS `td.boxShadow=none`, nút có viền/halo sáng, nút nhỏ hơn `td`. Chỉ phát hành khi CI, Chrome smoke và GitHub Pages đạt.

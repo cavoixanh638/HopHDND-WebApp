@@ -24,6 +24,7 @@ import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
   compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
+import {activateEditableCell} from './activate-editable-cell';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
@@ -411,7 +412,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           const extra=pair.hidden as TextField;
           const anyEditable=editableField(item,key)||editableField(item,extra);
           return <td key={column.key} data-col-key={column.key}
-            className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'}
+            className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
             {key==='content'
@@ -432,7 +433,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             ...c,values:{...(c.values??{}),[rowKey]:next}
           })}));
           const writable=customizing&&allowLayout&&!locked;
-          return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined}
+          return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined} onClick={activateEditableCell}
             data-edit-hint={writable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
             ?column.kind==='select'
@@ -445,7 +446,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
           style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
-        if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
+        if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}
+           className={canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?'editable-cell':undefined}
+           onClick={activateEditableCell}>{canEdit&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?<CellPicker label={`${displayId(item)}: Rút`} value={item.isDropped?"Đã rút":"Chưa rút"} options={["Chưa rút","Đã rút"]} disabled={locked} onChange={value=>onUpdate(item.recordId,{isDropped:value==="Đã rút"})}/>:<span className={item.isDropped?'status-pill warning':''}>{item.isDropped?'Đã rút':'—'}</span>}</td>;
         // Excel columns P and Q are displayed and searchable but not editable.
         // They must not be offered as writable fields until a source writer and
         // server-side permission rules explicitly support these new columns.
@@ -455,7 +458,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
         return <td key={column.key} data-col-key={column.key}
           data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
-          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')}
+          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}>{item.content||'—'}</button>:key==='note'?<InlineNoteEditor value={item.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
