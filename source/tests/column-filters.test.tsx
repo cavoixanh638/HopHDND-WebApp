@@ -11,7 +11,7 @@ describe('always-visible column filter row',()=>{
     const search=text.props.children.props.children[0];
     expect(search.type).toBe('input');
     expect(search.props['aria-label']).toBe('Tìm kiếm cột Nội dung');
-    expect(search.props.placeholder).toBe('Tìm kiếm');
+    expect(search.props.placeholder).toBe('Tìm kiếm (không dấu)');
     const compact=ColumnFilterCell({field:'displayCode',label:'ID',items,value:'',onChange:vi.fn()});
     expect(compact.props.className).toContain('compact-filter');
     expect(compact.props.children.props.children[0].props.placeholder).toBe('');
