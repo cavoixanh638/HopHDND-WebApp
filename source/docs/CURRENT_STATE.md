@@ -944,7 +944,7 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 
 ## 24/10/2026 — Căn phải nhãn "Đang xem" và không xuống dòng tiêu đề hai tab
 
-- Khắc phục lỗi `Đang xem` nằm mỗi tab một vị trí: cả hai tab có ô nhãn bằng nhau rộng **62px**, `margin-left:auto`, chữ căn phải và lề phải cố định; nhãn ở tab inactive vẫn giữ không gian bằng `visibility:hidden`. Tiêu đề có `white-space:nowrap`, phần tiêu đề co giãn theo khoảng giữa icon và nhãn, **không bẻ dòng**. Khung hai tab có độ rộng bằng nhau (desktop chung tối đa 860px); không được co giãn khi chọn.
+- Khắc phục lỗi `Đang xem` nằm mỗi tab một vị trí: cả hai tab có ô nhãn bằng nhau rộng **62px**, `margin-left:auto`, chữ căn phải và lề phải cố định; nhãn ở tab inactive vẫn giữ không gian bằng `visibility:hidden`. Tiêu đề có `white-space:nowrap`, phần tiêu đề co giãn theo khoảng giữa icon và nhãn, **không bẻ dòng**. Khung hai tab có độ rộng bằng nhau (desktop tối đa 850px, thẳng hàng với nội dung chính); không được co giãn khi chọn.
 - Màn nhỏ dưới 760px hiển thị hai tab thành hai hàng đều nhau, thay vì để chữ đè lên nhau hoặc tạo cuộn ngang toàn trang; dưới 440px giảm nhẹ font và icon để tiêu đề vẫn một dòng. Vẫn giữ hiệu ứng hover 3D B.
 - Chrome smoke xác nhận tại desktop: vị trí nhãn tính từ mép phải cả hai khung bằng nhau, tên mỗi tab chỉ một dòng, không đè nhãn và khung không đổi kích thước khi bấm qua lại.
 - **Đề xuất thiết kế chưa triển khai:** chuyển cả hai tab về cùng theme xanh thép/sky blue (active `#176A9C`, inactive `#F1F7FB`, chữ `#365872`, border `#CBDCE8`), để riêng trạng thái điều hướng với 3 màu nghiệp vụ đỏ/cam/xanh. Người dùng cần duyệt trước khi đổi theme; lần phát hành này chỉ sửa bố cục, giữ màu hiện tại.
