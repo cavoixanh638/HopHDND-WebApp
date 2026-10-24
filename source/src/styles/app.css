@@ -1632,6 +1632,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    Keep the selected status palette applied to each button via report-stage-* vars. */
 .report-flow-summary button.report-stage-summary {
   font:inherit;font-size:13px;font-weight:500;line-height:1.35;
+  background:#F6F8F7;color:#526B5E;border:1px solid #D4E0D9;border-radius:7px;
   text-align:left;cursor:pointer;
   transition:box-shadow .15s ease,transform .15s ease,border-color .15s ease;
 }
