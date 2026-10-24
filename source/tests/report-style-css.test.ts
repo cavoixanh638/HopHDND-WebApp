@@ -16,7 +16,7 @@ function contrast(first: string, second: string): number {
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
 function declaration(source: string, property: string): string {
-  const match = source.match(new RegExp('--' + property + ':#([0-9a-fA-F]{6})'));
+  const match = source.match(new RegExp('--' + property + ':(?:#|var\\([^,]+,#)([0-9a-fA-F]{6})'));
   if (!match) throw new Error('Thiếu màu ' + property);
   return match[1];
 }
@@ -96,7 +96,7 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(css).toMatch(/report-style-signal .report-table tbody[\s\S]*?report-count-mark/);
     expect(css).toMatch(/report-style-compact .report-table :is\(tbody,tfoot\)[\s\S]*?box-shadow:inset 4px 0/);
     expect(css).toMatch(/report-style-bars .report-table tbody[\s\S]*?background:linear-gradient\(to right/);
-    expect(css).toMatch(/report-style-band .report-table thead[\s\S]*?background:var\(--stage-solid\)/);
+    expect(css).toMatch(/report-style-band .report-table thead[\s\S]*?background:var\(--stage-bg\)/);
     expect(new Set(variants).size).toBe(5);
   });
 
@@ -130,9 +130,12 @@ describe('Editable dropdown and shared immediate tooltip presentation',()=>{
 describe('Data list workflow palette is synchronized with the actual report stage palette',()=>{
   it('uses identical report-stage fills for all three main statuses including completion',()=>{
     const palette=css.match(/\.report-surface\s*\{([^}]*)\}/g)?.find(block=>block.includes('--source-bg'));
-    expect(palette).toContain('--source-bg:#FFE0E4');
-    expect(palette).toContain('--office-bg:#FFE8B8');
-    expect(palette).toContain('--completed-bg:#D5F0DE');
+    expect(palette).toContain('--source-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4)');
+    expect(palette).toContain('--source-ink:var(--hdnd-status-not-submitted-text,#7F1D30)');
+    expect(palette).toContain('--office-bg:var(--hdnd-status-office-bg,#FFE8B8)');
+    expect(palette).toContain('--office-ink:var(--hdnd-status-office-text,#704500)');
+    expect(palette).toContain('--completed-bg:var(--hdnd-status-done-bg,#D5F0DE)');
+    expect(palette).toContain('--completed-ink:var(--hdnd-status-done-text,#125B35)');
     expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
     expect(css).toContain('--workflow-bg:#FFE8B8;--workflow-border:#DCB76A;--workflow-fg:#704500');
     expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
