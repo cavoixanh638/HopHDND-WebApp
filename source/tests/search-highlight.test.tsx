@@ -23,6 +23,15 @@ describe('Vietnamese search text highlighting',()=>{
     expect(renderToStaticMarkup(<SearchHighlight value={source} query="  "/>))
       .not.toContain('<mark');
   });
+  it('keeps a short numeric result atomic and the surrounding progress text unchanged',()=>{
+    const value='Đã có Tờ trình số 254 ngày 15/10 trình HĐND TP';
+    const html=renderToStaticMarkup(<SearchHighlight value={value} query="254"/>);
+    expect(html).toContain('<mark class="item-search-match item-search-match-atomic">254</mark>');
+    expect(html.replace(/<[^>]+>/g,'')).toBe(value);
+    const phrase=renderToStaticMarkup(<SearchHighlight value={value} query="tờ trình số"/>);
+    expect(phrase).toContain('<mark class="item-search-match">Tờ trình số</mark>');
+    expect(phrase).not.toContain('item-search-match-atomic');
+  });
   it('handles Đ and decomposed Vietnamese combining marks',()=>{
     const text='Đất đai và đất đai'; // Contains intentionally decomposed letters
     expect(searchMatchRanges(text,'dat')).toHaveLength(2);
