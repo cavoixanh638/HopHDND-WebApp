@@ -543,13 +543,13 @@ try{
     const unselected=cards.find(el=>!el.classList.contains('active'));
     const activeStyle=selected?getComputedStyle(selected):null;
     const idleStyle=unselected?getComputedStyle(unselected):null;
-    const flat=activeStyle?.backgroundImage==='none'&&idleStyle?.backgroundImage==='none';
+    const restrainedGradient=activeStyle?.backgroundImage.includes('linear-gradient')&&idleStyle?.backgroundImage==='none';
     const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
     const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
     const innerFlat=[...nav.querySelectorAll('.section-card-icon,.section-card-state')]
       .every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)');
     return {ok:nav?.getBoundingClientRect().width<=900&&
-      flat&&distinct&&border&&innerFlat&&
+      restrainedGradient&&distinct&&border&&innerFlat&&
       geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=7&&g.rightInset<=18)&&
       Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
       Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
@@ -564,7 +564,7 @@ try{
       Math.abs(boxes[0].height-boxes[1].height)<1&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,flat,distinct,border,innerFlat};
+      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
