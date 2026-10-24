@@ -85,6 +85,7 @@ export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number)
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
   id: report.id, title: report.title, visible: true, hiddenColumns: [], columnOrder: [...report.columns],emphasizeProgress:true,
+  ...(report.id==='build'?{includeNotRequired:true}:{}),
   ...(report.id===widthOwnerId?{tableFont:'segoe' as const,tableFontSize:DEFAULT_TABLE_FONT_SIZE,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
