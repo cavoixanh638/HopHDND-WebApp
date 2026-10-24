@@ -1934,3 +1934,23 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
   border-color:#9ECFE7;
 }
+
+/* 24/10 — Give the main list its own taller vertical viewport.
+   Use the area reclaimed from guest-only text/footer, keep row heights
+   unchanged and retain the sticky heading/filter and horizontal scroll.
+   Scope to ordinary list view, never admin setup or report popup. */
+.app-shell.wide-table-page:not(.settings-page) .item-data-region .item-table-scroll {
+  height:clamp(480px,calc(100dvh - 180px),1080px);
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+}
+@media (max-width:700px) {
+  .app-shell.wide-table-page:not(.settings-page) .item-data-region .item-table-scroll {
+    height:clamp(360px,calc(100dvh - 235px),760px);
+  }
+}
+@media print {
+  .app-shell.wide-table-page .item-data-region .item-table-scroll {
+    height:auto!important;max-height:none!important;overflow:visible!important;
+  }
+}
