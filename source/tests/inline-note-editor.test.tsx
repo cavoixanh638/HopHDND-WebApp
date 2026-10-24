@@ -9,9 +9,12 @@ const hook=vi.hoisted(()=>{
 });
 vi.mock('react',()=>({useState:hook.useState,useRef:hook.useRef,useEffect:()=>{}}));
 import {InlineNoteEditor} from '../src/features/items/InlineNoteEditor';
-const node=(tree:any,type:string):any=>tree?.type===type?tree:
-  Array.isArray(tree?.props?.children)?tree.props.children.map((child:any)=>node(child,type)).find(Boolean):
-  node(tree?.props?.children,type);
+const node=(tree:any,type:string):any=>{
+  if(Array.isArray(tree))return tree.map(child=>node(child,type)).find(Boolean);
+  if(!tree||typeof tree!=='object')return undefined;
+  if(tree.type===type)return tree;
+  return node(tree.props?.children,type);
+};
 beforeEach(()=>hook.reset());
 describe('Inline Note editor never opens a popup',()=>{
   it('uses a multiline textarea and commits on Ctrl+Enter',()=>{
