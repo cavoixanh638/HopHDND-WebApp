@@ -318,15 +318,23 @@ try{
     const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
     const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
     const boxes=cards.map(el=>el.getBoundingClientRect());
-    const firstStyle=getComputedStyle(cards[0]),lastStyle=getComputedStyle(cards[1]);
+    const selected=cards.find(el=>el.classList.contains('active'));
+    const unselected=cards.find(el=>!el.classList.contains('active'));
+    const activeStyle=selected?getComputedStyle(selected):null;
+    const idleStyle=unselected?getComputedStyle(unselected):null;
+    const flat=activeStyle?.backgroundImage==='none'&&idleStyle?.backgroundImage==='none';
+    const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
+    const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
+    const innerFlat=[...nav.querySelectorAll('.section-card-icon,.section-card-state')]
+      .every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)');
     return {ok:nav?.getBoundingClientRect().width<=820&&
-      firstStyle.backgroundImage!==lastStyle.backgroundImage&&
+      flat&&distinct&&border&&innerFlat&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
       boxes.every(box=>box.width>=200&&box.height>=60)&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width))};
+      labels,widths:boxes.map(box=>Math.round(box.width)),flat,distinct,border,innerFlat};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   const listHeadingAndLines=await evaluate(`(()=>{
