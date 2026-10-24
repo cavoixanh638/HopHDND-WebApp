@@ -1885,8 +1885,8 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
   transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
 }
-.report-grid-modal .report-detail-grid tbody td.editable-cell
-  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):hover:not(:disabled) {
+.report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
   position:relative;z-index:1;
   transform:translateY(-2px);
   border-color:#A7D8ED;
@@ -1910,8 +1910,8 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
   .app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled),
   .report-surface .report-table td.report-clickable-cell .count-drill:hover > span,
-  .report-grid-modal .report-detail-grid tbody td.editable-cell
-    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):hover:not(:disabled) {
+  .report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
     transform:none;
   }
 }
