@@ -200,6 +200,24 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const auto=nodes(root).find(node=>node.type==='input'&&node.props?.type==='checkbox'&&node.props?.checked===true);
     expect(auto).toBeDefined();
   });
+  it('offers a hidden Build NQ column as a selectable option and persists explicit reveal',()=>{
+    const draft=defaultReportLayout(),onChange=vi.fn();
+    const root=ReportLayoutPanel({draft,onChange,items:createDemoItems(2),group:'department',
+      groupOrder:[],sourceLabel:'Google Sheets'});
+    const walk=(node:any):any[]=>Array.isArray(node)?node.flatMap(walk):
+      node&&typeof node==='object'?[node,...walk(node.props?.children)]:[];
+    const labels=walk(root).filter(node=>node.type==='label'&&
+      node.props?.children?.[1]==='Không phải trình');
+    expect(labels).toHaveLength(1);
+    const checkbox=walk(labels[0]).find(node=>node.type==='input'&&node.props.type==='checkbox');
+    expect(checkbox?.props.checked).toBe(false);
+    checkbox.props.onChange();
+    const next=onChange.mock.calls[0][0];
+    expect(next.find((row:any)=>row.id==='build').showNotRequiredColumn).toBe(true);
+    expect(configuredReports(validateReportLayout(next)).find(r=>r.id==='build')?.hiddenColumns)
+      .not.toContain('Không phải trình');
+    expect(next[0]).toEqual(draft[0]);
+  });
   it('renders all numeric cells centered with wrapped headings and preserves counts',()=>{
     const items=createDemoItems(7);
     const config=DEFAULT_REPORTS[2];
@@ -414,7 +432,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       const ths=all(header).filter(n=>n.type==='th');
       expect(ths[0].props.children).toBe('Lãnh đạo VP');
       expect(ths[1].props.children).toBe('Tổng số nội dung');
-      expect(ths[2].props.className).toContain(config.id==='build'?'report-stage-excluded':'report-stage-source');
+      expect(ths[2].props.className).toContain('report-stage-source');
       const group=all(table).find(n=>n.type==='colgroup');
       expect(all(group).filter(n=>n.type==='col').slice(0,2).map(n=>n.props.className))
         .toEqual(['report-group-col','report-total-width']);
