@@ -139,6 +139,16 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
               <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Tô màu các cột trạng thái trong bảng này</label>
+              {report.id==='build'&&<label className="field build-count-setting" htmlFor="build-count-mode">
+                Cách tính số liệu — nội dung “Không phải trình”
+                <select id="build-count-mode" aria-label="Cách tính nội dung Không phải trình"
+                  value={report.includeNotRequired===false?'exclude':'include'}
+                  onChange={event=>update(index,{includeNotRequired:event.currentTarget.value==='include'})}>
+                  <option value="include">Bao gồm nội dung “Không phải trình”</option>
+                  <option value="exclude">Không bao gồm nội dung “Không phải trình”</option>
+                </select>
+                <small>Chỉ ảnh hưởng thống kê của bảng này; không đổi trạng thái trong Excel hoặc Danh sách dữ liệu.</small>
+              </label>
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
