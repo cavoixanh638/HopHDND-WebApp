@@ -7,9 +7,9 @@ const build=DEFAULT_REPORTS.find(report=>report.id==='build')!;
 const fixture=()=>{
   const [a,b,c]=createDemoItems(3);
   return [
-    {...a,documentKind:'NQ' as const,progressBuild:'Không phải trình',isDropped:false,archivedAt:undefined},
-    {...b,documentKind:'NQ' as const,progressBuild:'Sở chưa trình',isDropped:false,archivedAt:undefined},
-    {...c,documentKind:'NQ' as const,progressBuild:'Đã có QĐ chấp thuận',isDropped:false,archivedAt:undefined},
+    {...a,documentKind:'NQ' as const,progressBuild:'Không phải trình',isDropped:false,archivedAt:null},
+    {...b,documentKind:'NQ' as const,progressBuild:'Sở chưa trình',isDropped:false,archivedAt:null},
+    {...c,documentKind:'NQ' as const,progressBuild:'Đã có QĐ chấp thuận',isDropped:false,archivedAt:null},
   ];
 };
 describe('Build NQ counting option preserves source and existing default',()=>{
