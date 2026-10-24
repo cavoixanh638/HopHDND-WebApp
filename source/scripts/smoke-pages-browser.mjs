@@ -605,13 +605,13 @@ try{
         const progress=tables.flatMap(table=>[...table.querySelectorAll('td.report-percent-col progress')]);
         const coloredHeaders=tables.flatMap(table=>[...table.querySelectorAll('thead th.report-stage-source')]);
         return {ok:samples.length>=6&&samples.every(cell=>getComputedStyle(cell).textAlign==='center')&&
-          focus.length>=2&&summaries.length>=8&&percents.length===tables.length&&
+          focus.length===0&&summaries.length>=8&&percents.length===tables.length&&
           progress.length>=tables.length&&progress.every(el=>el.value>=0&&el.value<=100)&&
           coloredHeaders.length>=1&&tables.every(t=>!!getComputedStyle(t).fontFamily),
           samples:samples.map(cell=>getComputedStyle(cell).textAlign),focus:focus.length,
           summaries:summaries.length,percents:percents.length,progress:progress.length,headers:coloredHeaders.length};
       })()`);
-      if(!cells.ok)throw Error('Report numeric alignment or focus UI missing: '+JSON.stringify(cells));
+      if(!cells.ok)throw Error('Report numeric alignment or streamlined summary UI missing: '+JSON.stringify(cells));
       const colorConsistency=await evaluate(`(()=>{
         const table=[...document.querySelectorAll('table.report-table')]
           .find(t=>t.querySelector('thead th.report-stage-source'));
