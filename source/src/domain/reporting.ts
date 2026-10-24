@@ -48,7 +48,9 @@ export function normalizeReportStatus(raw:string,config:ReportConfig):string{
   return value;
 }
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
-  return items.filter(item => isActive(item) && (
+  return items.filter(item => isActive(item) &&
+    !(config.id==='build'&&config.includeNotRequired===false&&
+      normalizeSearch(normalizeReportStatus(item.progressBuild,config))===normalizeSearch('Không phải trình')) && (
     config.source === 'all' ||
     (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
     (config.source === 'build' && item.documentKind === 'NQ' &&
