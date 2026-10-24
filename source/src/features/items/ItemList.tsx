@@ -329,7 +329,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content}/>:original}
-      {!anonymousViewer&&onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
+      {onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
@@ -487,7 +487,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
         return <td key={column.key} data-col-key={column.key}
           data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
-          className={[writable?'editable-cell':'',!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
+          className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
           style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>setContentItem({item,field:"content"})} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content}/></button>:key==='note'?<InlineNoteEditor value={item.note} highlightQuery={columnFilters.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
@@ -512,7 +512,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
         ?<span className="workflow-status-value"><SearchHighlight value={item[key]} query={columnFilters[key]}/></span>
       :<SearchHighlight value={item[key]||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
-          {!anonymousViewer&&onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
+          {onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}

@@ -15,6 +15,7 @@ vi.mock('../src/state/use-recoverable-draft',()=>({
 import {ItemList} from '../src/features/items/ItemList';
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
+import {CellHistoryAction} from '../src/components/CellHistoryAction';
 function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
 function list(readOnly=false) {
@@ -110,6 +111,26 @@ describe('separate item layout save and data draft',()=>{
       initialLayout:defaultItemLayout(),canEditCell:(_id:string,field:string)=>_id===id&&field==='content'});
     expect(nodes(tree).some(n=>n.type==='button'&&n.props?.className==='content-button')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='select'&&String(n.props?.['aria-label']??'').includes('Chuyên viên'))).toBe(false);
+  });
+  it('offers read-only history on only Ghi chú and Tiến độ hiện tại in the guest list',()=>{
+    const items=createDemoItems(1),onCellHistory=vi.fn();
+    const tree=ItemList({items,drafts:{},errors:{},busy:false,
+      onUpdate:vi.fn(),onHistory:vi.fn(),onCellHistory,
+      readOnly:true,sourceKind:'firebase',customizing:false,anonymousViewer:true,
+      sourceKey:'guest-two-field-history',catalog:catalogFromItems(items),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),
+      onLayoutSaved:vi.fn(),initialLayout:defaultItemLayout(),
+      canEditCell:()=>false});
+    const historyButtons=nodes(tree).filter(node=>node.type===CellHistoryAction);
+    expect(historyButtons).toHaveLength(2);
+    expect(historyButtons.map(node=>node.props.label)).toEqual(expect.arrayContaining([
+      expect.stringContaining('Ghi chú'),expect.stringContaining('Tiến độ hiện tại')
+    ]));
+    for(const button of historyButtons)button.props.onClick();
+    expect(onCellHistory.mock.calls.map(([,field])=>field).sort())
+      .toEqual(['note','specificProgress']);
+    expect(nodes(tree).filter(n=>n.type==='button'&&n.props.className==='content-button'))
+      .toHaveLength(0);
   });
   it('enables granted cells on the signed-in ordinary view but not ungranted cells or unauthenticated Sheets-only views',()=>{
     const items=createDemoItems(1),id=items[0].recordId;

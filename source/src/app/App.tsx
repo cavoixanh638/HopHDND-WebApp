@@ -395,7 +395,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
       onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
       onHistory={anonymousVisitor?undefined:(item)=>setHistory({item})}
-      onCellHistory={anonymousVisitor?undefined:(item,field)=>setHistory({item,field})}
+      onCellHistory={(item,field)=>setHistory({item,field})}
       onOpenFullList={()=>{setSelection(null);setPage('items');}}
       dirtyIds={new Set(Object.keys(workspace.drafts))} errors={workspace.errors}
       onClose={()=>setSelection(null)}/>}
