@@ -199,12 +199,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
-    if(field==='note')return <InlineNoteEditor value={raw}
-      label={'Sửa Ghi chú · '+displayId(item)} onCommit={value=>{
-        if(!editing||!popupMayEdit||!canEditCell(item.recordId,'note'))return false;
-        onUpdate(item.recordId,{note:value});return true;
+    if(field==='note'||field==='specificProgress')return <InlineNoteEditor value={raw}
+      label={'Sửa '+(labelByKey.get(key)??field)+' · '+displayId(item)} onCommit={value=>{
+        if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return false;
+        onUpdate(item.recordId,{[field]:value});return true;
       }}/>;
-    if(field==='content'||field==='specificProgress')
+    if(field==='content')
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
