@@ -1840,7 +1840,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .app-shell > nav.primary-section-switcher .primary-section-card.active .section-card-description {
   color:inherit;opacity:1;
 }
-.app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled) {
+.app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled),
+.app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled):not(.active),
+.app-shell > nav.primary-section-switcher .primary-section-card:hover:not(:disabled).active {
   transform:translateY(-2px);
   border-color:#62A7CF;
   box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
