@@ -1771,3 +1771,56 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   border-color:#A7D8ED;
   box-shadow:0 0 0 2px #DDF3FD;
 }
+
+/* 24/10 — approved hover 3D option B: a 2px lift and moderate soft shadow.
+   Only the compact actionable value is elevated, NEVER its table cell.
+   The existing parent-cell hover and click-to-open behavior is unchanged.
+   Use inherited business-state fill/ink; no dark status-colored outline. */
+.item-data-table tbody td.editable-cell:not(.compact-merged-cell):hover
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled),
+.item-data-table tbody td.editable-cell.compact-merged-cell
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):hover:not(:disabled) {
+  position:relative;
+  z-index:1;
+  transform:translateY(-2px);
+  border-color:#A7D8ED;
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+}
+.item-data-table tbody td.editable-cell
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger) {
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+}
+/* The 3D effect belongs only to the VIEW-mode button. An open multiline editor
+   must remain flat and lose its mouse-hover ring on pointer leave. */
+.item-data-table tbody td.editable-cell .inline-note-textarea,
+.item-data-table tbody td.editable-cell .custom-cell-input {
+  transform:none;
+}
+.report-flow-summary button.report-stage-summary:hover:not(:disabled) {
+  transform:translateY(-2px);
+  border-color:#A7D8ED;
+  box-shadow:0 7px 13px rgba(41,89,112,.20),0 0 0 2px #DDF3FD;
+}
+/* Disabled / preview-only summary chips are neither elevated nor clickable.
+   Focus-visible remains keyboard-accessible without a persistent 3D lift. */
+@media(prefers-reduced-motion:reduce) {
+  .item-data-table tbody td.editable-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger) {
+    transition:none;
+  }
+  .item-data-table tbody td.editable-cell:not(.compact-merged-cell):hover
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled),
+  .item-data-table tbody td.editable-cell.compact-merged-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):hover:not(:disabled),
+  .report-flow-summary button.report-stage-summary:hover:not(:disabled) {
+    transform:none;
+  }
+}
+@media print {
+  .item-data-table tbody td.editable-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger),
+  .report-flow-summary button.report-stage-summary {
+    transform:none!important;
+    box-shadow:none!important;
+  }
+}
