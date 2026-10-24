@@ -2364,3 +2364,142 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .app-shell.imperial-sky-theme > nav.primary-section-switcher
     .primary-section-card.active {background:var(--imperial-primary);}
 }
+
+/* 25/10 — semantic borders and 3px hover; Theme2 only (Theme1 is frozen).
+   Make group-column and list headers easy to scan without adding another
+   saturated color competing with real red/yellow/green workflow states. */
+.app-shell.imperial-sky-theme .report-surface .report-table
+  :is(thead th.report-group-heading,tbody th.report-group-heading,tfoot th:first-child) {
+  background:#EAF1F6;
+  color:#2B4D63;
+  border-color:#CCDCE7;
+}
+.app-shell.imperial-sky-theme .item-data-table thead .item-heading-row th {
+  background:#EFF5F9;
+  color:#2B4D63;
+  border-bottom-color:#D6E2EA;
+}
+.app-shell.imperial-sky-theme .item-data-table thead .item-column-filter-row th {
+  background:#FAFCFE;
+}
+
+/* Office palette is consciously softer than the red "Sở chưa trình".
+   Read the selected user's CSS vars first, never erase other preset colors. */
+.app-shell.imperial-sky-theme .report-surface {
+  --office-bg:var(--hdnd-status-office-bg,#FEF9C3);
+  --office-ink:var(--hdnd-status-office-text,#854D0E);
+  --office-solid:var(--hdnd-status-office-text,#854D0E);
+  --office-stroke:#E5CD70;
+}
+.app-shell.imperial-sky-theme .item-data-table tbody td[data-progress-tone="office"],
+.app-shell.imperial-sky-theme .report-detail-grid tbody td[data-progress-tone="office"] {
+  --workflow-bg:var(--hdnd-status-office-bg,#FEF9C3);
+  --workflow-text:var(--hdnd-status-office-text,#854D0E);
+  --workflow-fg:var(--workflow-text);
+  --workflow-border:#E5CD70;
+}
+/* A completion percentage is an outcome: it should use the same green as
+   the "Hoàn thành" state in each currently selected user palette. */
+.app-shell.imperial-sky-theme .report-surface .report-table :is(th,td).report-percent-col {
+  background:var(--completed-bg);
+  color:var(--completed-ink);
+  border-color:var(--completed-stroke);
+}
+.app-shell.imperial-sky-theme .report-percent-value progress {
+  accent-color:var(--completed-ink);
+}
+.app-shell.imperial-sky-theme .report-percent-value progress::-webkit-progress-value {
+  background:var(--completed-ink);
+}
+.app-shell.imperial-sky-theme .report-percent-value progress::-moz-progress-bar {
+  background:var(--completed-ink);
+}
+
+/* Bảng tổng hợp: show an OUTER, 2px semantic status outline around the
+   complete clickable TD, not around its numeral. No geometry/column widths
+   change because CSS outline does not participate in table layout.
+   Group/total cells use restrained Imperial blue; stage cells follow stage ink. */
+.app-shell.imperial-sky-theme .report-surface .report-table td.report-clickable-cell {
+  --report-hover-outline:var(--imperial-deep);
+}
+.app-shell.imperial-sky-theme .report-surface .report-table
+  td.report-clickable-cell[class*="report-stage-"] {
+  --report-hover-outline:var(--stage-ink);
+}
+.app-shell.imperial-sky-theme .report-surface .report-table
+  td.report-clickable-cell:is(:hover,:focus-within) {
+  transform:translateY(-3px);
+  outline:2px solid var(--report-hover-outline);
+  outline-offset:-1px;
+  box-shadow:0 8px 16px rgba(41,89,112,.19),0 0 0 1px var(--report-hover-outline);
+}
+.app-shell.imperial-sky-theme .report-surface .report-table
+  td.report-clickable-cell .count-drill:is(:hover,:focus-visible)>span {
+  transform:none;box-shadow:none;border-color:transparent;
+}
+
+/* Danh sách chi tiết: the INNER EDIT CONTROL alone receives a semantic
+   2px outline, respecting the original "3D B" behavior. An editable merged
+   cell applies hover to only the specifically hovered inner trigger.
+   Colors are picked up from the status palette via --workflow-text. */
+.app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell {
+  --list-hover-outline:var(--imperial-primary);
+  --list-hover-halo:var(--imperial-ice);
+}
+.app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell[data-progress-tone] {
+  --list-hover-outline:var(--workflow-text);
+  --list-hover-halo:var(--workflow-bg);
+}
+.app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell:not(.compact-merged-cell):hover
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled),
+.app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell.compact-merged-cell
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):is(:hover,:focus-visible):not(:disabled) {
+  transform:translateY(-3px);
+  border-color:var(--list-hover-outline);
+  outline:2px solid var(--list-hover-outline);
+  outline-offset:0;
+  box-shadow:0 8px 16px rgba(41,89,112,.17),0 0 0 2px var(--list-hover-halo);
+}
+/* Note/progress textareas themselves must stay flat while typing. */
+.app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell
+  :is(.inline-note-textarea,.custom-cell-input) {
+  transform:none;
+}
+
+/* Raise other already-approved action surfaces by 3px as well, without
+   changing their click bounds, text ink, settings, or status fill. */
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled),
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled):not(.active),
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled).active,
+.app-shell.imperial-sky-theme .report-flow-summary button.report-stage-summary:hover:not(:disabled),
+.app-shell.imperial-sky-theme .report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+  :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
+  transform:translateY(-3px);
+}
+
+/* Motion/accessibility: outlines remain as a cue when motion is reduced. */
+@media(prefers-reduced-motion:reduce) {
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled),
+  .app-shell.imperial-sky-theme .report-surface .report-table td.report-clickable-cell:is(:hover,:focus-within),
+  .app-shell.imperial-sky-theme .report-flow-summary button.report-stage-summary:hover:not(:disabled),
+  .app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell:hover
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled),
+  .app-shell.imperial-sky-theme .report-grid-modal .report-detail-grid tbody td.editable-cell:hover
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger):not(:disabled) {
+    transform:none;
+    transition:none;
+  }
+}
+@media print {
+  .app-shell.imperial-sky-theme .report-surface .report-table td.report-clickable-cell {
+    transform:none!important;
+    outline:none!important;
+    box-shadow:none!important;
+  }
+  .app-shell.imperial-sky-theme .item-data-table tbody td.editable-cell
+    :is(button.cell-picker-trigger,button.cell-value-button,button.content-button,button.inline-note-trigger) {
+    outline:none!important;
+    box-shadow:none!important;
+    transform:none!important;
+  }
+}
