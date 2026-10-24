@@ -36,6 +36,13 @@ describe('click empty space in a writable detail-list cell',()=>{
     invoke(cell,nestedButton);
     expect(button.click).not.toHaveBeenCalled();
   });
+  it('never closes an editor by forwarding clicks inside its open popover',()=>{
+    const trigger=new FakeButton(),cell=makeCell([trigger]);
+    const popoverBackground=new FakeElement();
+    popoverBackground.interactive=true; // equivalent to [popover]/[role=dialog]
+    invoke(cell,popoverBackground);
+    expect(trigger.click).not.toHaveBeenCalled();
+  });
   it('never activates cells without editable permission or locked editors',()=>{
     const button=new FakeButton();invoke(makeCell([button],false),new FakeElement());
     expect(button.click).not.toHaveBeenCalled();
