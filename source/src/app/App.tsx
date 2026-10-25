@@ -164,18 +164,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     firebaseEditRevision.current=updated.revision;
     setLayoutMessage(next==='primary'?'Đã chuyển sang Firebase Database chính, cập nhật realtime.':next==='database'?'Đã chọn bản sao dữ liệu Excel trong Database.':'Đã chọn nguồn Excel dự phòng.');
   };
-  const bootstrapPrimary=async()=>{
-    if(!firebase?.isAdmin||!firebase.connected||common.status!=='ready'||!firebase.profile)
-      throw new Error('Cần tài khoản quản trị đã kết nối và cấu hình Firebase được xác nhận.');
-    if(comparison||dirtyCount>0||workspace.protectedRecovery)
-      throw new Error('Có dữ liệu đang sửa hoặc bản nháp cần đối chiếu. Không được tự động chuyển nguồn.');
-    const result=await migrateMirrorToPrimary(firebase.database,firebase.user,configured);
-    const verified=await new FirebaseRepository(firebase.database,()=>firebase.user,()=>firebase.permissions).list();
-    if(verified.length!==result.importedCount)throw new Error('Số dòng Database chưa khớp; chưa đổi nguồn.');
-    const updated=await firebase.common.save('dataSource','primary',firebase.profile.revision);
-    firebaseEditRevision.current=updated.revision;
-    setLayoutMessage(`Đã nhập và kiểm tra ${result.importedCount} nội dung trên Firebase chính. Từ nay không đọc dữ liệu từ link Excel trong chế độ này.`);
-  };
+  // Production migration is not exposed as a one-click UI operation:
+  // the historical Firebase mirror might be stale while staff are still
+  // making edits elsewhere. Use a final approved, frozen source and the
+  // documented operator cutover procedure only.
   const [sourceDiagnostic,setSourceDiagnostic]=useState('');
   const [viewerLabel,setViewerLabel]=useState('');
   useEffect(()=>{let active=true;setSourceDiagnostic('');setViewerLabel('');if(!isDemo&&isGoogleHost())void googleCall('getDashboardSourceStatus',configured).then(value=>{const v=value as {reason?:unknown;actorLabel?:unknown};if(active&&typeof v?.reason==='string')setSourceDiagnostic(v.reason);if(active&&typeof v?.actorLabel==='string')setViewerLabel(v.actorLabel);}).catch(()=>{});return()=>{active=false;};},[configured.url,isDemo]);
@@ -428,7 +420,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
-      {page==='connection'&&isFirebase&&<FirebasePanel userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={bootstrapPrimary} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
+      {page==='connection'&&isFirebase&&<FirebasePanel userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
