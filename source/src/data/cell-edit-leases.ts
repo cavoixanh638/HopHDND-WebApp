@@ -88,10 +88,18 @@ export async function releaseCellLease(database:Database,lease:CellLease,
     current.session!==lease.session||current.token!==lease.token)return;
   // Without warming the server snapshot, a cold Firebase transaction sees
   // null locally, aborts without querying and leaves a phantom active lease.
-  const result=await runTransaction(target,raw=>
-    validLease(raw)&&raw.uid===lease.uid&&raw.session===lease.session&&raw.token===lease.token
-      ?null:undefined,{applyLocally:false});
-  if(!result.committed)throw new Error('Chưa xác nhận giải phóng khóa từ Firebase.');
+  const result=await runTransaction(target,raw=>{
+    if(raw===null)return raw; // cold local cache: let the server rerun CAS with its value
+    if(validLease(raw)&&raw.uid===lease.uid&&raw.session===lease.session&&raw.token===lease.token)
+      return null;
+    return undefined; // a newer lease is never touched
+  },{applyLocally:false});
+  if(!result.committed){
+    const latest=(await get(target)).val();
+    // A canceled transaction is safe only when our specific token is gone.
+    if(!validLease(latest)||latest.token!==lease.token)return;
+    throw new Error('Chưa xác nhận giải phóng khóa từ Firebase.');
+  }
 }
 export function watchCellLease(database:Database,id:string,field:EditableField,
  callback:(lease:CellLease|null)=>void,fail:(e:Error)=>void){
