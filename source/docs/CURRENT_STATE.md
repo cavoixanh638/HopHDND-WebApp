@@ -1,3 +1,10 @@
+## 25/10/2026 — Công cụ sao lưu Firebase chỉ đọc được chuẩn bị (CHƯA CHẠY THẬT)
+- PR #72 bổ sung `source/scripts/firebase-production-readonly-backup.mjs`. Công cụ không chứa hành động ghi database; giới hạn cứng project `hophdnd-8b7b2` và instance `hophdnd-8b7b2-default-rtdb`, xuất hai lượt JSON so SHA-256, đối chiếu file Rules hiện hành do người quản trị tự lấy từ Console, và tạo manifest ở thư mục riêng tư ngoài GitHub.
+- **Chưa có quyền Firebase quản trị trong phiên ChatGPT, chưa xuất được Rules/Database thật, chưa có SHA production, chưa thử khôi phục, chưa chấp thuận phát hành.** Không gọi là đã backup hoặc deploy.
+- [Quy trình Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [cổng GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). GitHub chỉ kiểm tra cú pháp và fail-closed sai project (KHÔNG đọc production).
+
+---
+
 **Kiểm thử bổ sung 25/10:** [CI #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) **SUCCESS** tại exact code SHA `8391041abc727835b7d7ff8f3b12750de950d776`: gồm quyền xin khóa ô, hai tab cùng UID, quyền admin/tạm dừng khách, hard deadline DRAINING, chặn ghi sau deadline khi admin offline, Firebase Emulator và browser smoke giả lập. Đây là bằng chứng **mã staging**, không phải Firebase production. Rules và dữ liệu thật vẫn chưa được backup/đối chiếu/readback.
 
 

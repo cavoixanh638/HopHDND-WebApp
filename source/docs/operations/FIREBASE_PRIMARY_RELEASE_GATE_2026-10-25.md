@@ -1,3 +1,10 @@
+## Công cụ bổ sung cho bước sao lưu: read-only operator helper
+- Đã thêm `source/scripts/firebase-production-readonly-backup.mjs`, cùng [hướng dẫn Windows](FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md). Công cụ dùng Firebase CLI **chỉ thực hiện `database:get /`** hai lần với project và instance bị giới hạn, so hash, cất Rules người vận hành cung cấp, tạo manifest ở nơi riêng tư ngoài repo.
+- **Chưa chạy production:** không có Firebase Console đang đăng nhập trong phiên làm việc và không lấy dữ liệu bằng GitHub. Không được đổi GO/NO-GO sang PASS nếu chưa có bằng chứng export thật, đối chiếu Rules đã Publish, thử khôi phục và phê duyệt.
+- Kết quả thử offline trong CI không thay thế quyền Firebase production. Quy trình được thiết kế để tránh đẩy dữ liệu nghiệp vụ hoặc file Rules thật lên GitHub.
+
+---
+
 ## Bổ sung bảo vệ 25/10: deadline từ chối ghi ngay trên Firebase Rules
 - Candidate Rules đã kiểm tra `now < hdnd/freezeControl/deadline` cho **mọi ghi nội dung trong DRAINING** và việc gia hạn khóa cũ: ngay cả khi tab admin đóng, sau deadline sẽ không ai tiếp tục cập nhật dữ liệu được; điều này bảo vệ dữ liệu chờ chốt.
 - **Đây không phải server coordinator:** chỉ admin/browser sau khi trở lại mới có thể chuyển giá trị `mode` sang `FROZEN` và ghi biên nhận. Nếu admin đóng tab khi DRAINING, phải quay lại kiểm tra/chốt, không thông báo cho người dùng rằng biên nhận đã sinh tự động.

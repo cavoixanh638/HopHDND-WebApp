@@ -1,3 +1,10 @@
+## Công cụ sao lưu Firebase trước phát hành 25/10/2026
+- Chạy từ `source/`: `node scripts/firebase-production-readonly-backup.mjs --help`. Hướng dẫn Windows và thông tin đầu vào (đúng project/instance, Rules export từ Console, thư mục backup riêng tư): [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
+- Đường dẫn backup bắt buộc nằm ngoài repo. Phải đạt `BACKUP_READONLY_OK` và so SHA hai lượt đọc; nếu thất bại dừng, không coi snapshot là hợp lệ. **Các file Rules phải được người vận hành tự xác nhận đúng Rules đang Publish.**
+- Script không cấp quyền Firebase và không tự kết nối Console bằng ChatGPT; cần Firebase CLI đã xác thực bởi quản trị dự án. Mọi bước GO/NO-GO/rollback theo [cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 ## Vận hành đợt chuyển nguồn/khóa ô — 25/10/2026 (HOLD)
 - **Chưa triển khai:** main/Pages và Firebase Rules production vẫn chưa chuyển theo #71/#72. PR Draft/CI thành công không đồng nghĩa dữ liệu đã được nhập hoặc chế độ sửa đã mở.
 - **Đầu mối phát hành:** [Checklist GO/NO-GO, backup Rules + RTDB, chuyển nguồn, nghiệm thu và rollback](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); [kịch bản DRAINING/FROZEN](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).

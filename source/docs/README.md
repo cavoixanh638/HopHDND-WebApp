@@ -1,3 +1,8 @@
+## Hướng dẫn sao lưu production trước khi mở realtime — 25/10/2026
+[Hướng dẫn backup read-only trên Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Công cụ đã có trên nhánh PR #72 nhưng **chưa chạy lên dữ liệu thật**; không upload JSON/Rules thật lên GitHub.
+
+---
+
 ## Hồ sơ hệ thống mới cần đọc trước khi phát hành (25/10/2026)
 **[Cổng phát hành Firebase chính, khóa ô, đóng băng — GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md)** là điểm vào vận hành chính thức cho PR #71/#72 (Draft). [Thiết kế khóa và đóng băng](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md) · [Quy trình thao tác](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md). Những mục nói “Sheets là nguồn chính” bên dưới thể hiện bản production cũ/lịch sử; đích dài hạn là Firebase `hdnd/items` sau migration được xác nhận. **Chưa deploy Firebase production.**
 

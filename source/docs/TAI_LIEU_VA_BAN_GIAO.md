@@ -1,3 +1,9 @@
+## Bổ sung hồ sơ bàn giao sao lưu Firebase 25/10/2026
+- Script: `source/scripts/firebase-production-readonly-backup.mjs`. Cách chạy an toàn, xử lý lỗi và chứng cứ: [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
+- Quản trị Firebase phải xác nhận tài khoản/project, sao lưu Rules đang chạy và toàn bộ JSON, lưu bản riêng tư, cung cấp **chỉ hash và kết quả không nhạy cảm** để đối chiếu. Chưa có backup production thực tế tính đến phiên tài liệu này. Giữ PR #71/#72 Draft/NO-GO cho tới khi đủ bằng chứng.
+
+---
+
 ## Bàn giao đợt kiến trúc Firebase chính/khóa ô 25/10/2026
 **Trạng thái bàn giao mã nguồn:** PR #71 + PR #72, đều **Draft**. Đã có mã nguồn, Rules ứng viên và test; chưa triển khai Database/Rules production, chưa bàn giao quyền chốt hoạt động thật.
 - Hồ sơ điều hành chuẩn: [GO/NO-GO Firebase primary](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md), [quy trình đóng băng](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md), [thiết kế quyết định](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md).
