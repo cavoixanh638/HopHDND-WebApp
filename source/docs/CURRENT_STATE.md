@@ -1,3 +1,12 @@
+## 25/10/2026 — Đối chiếu live Firebase mirror với file Excel Drive đã kết nối
+- **Firebase live (người vận hành đọc read-only):** 1 mirror source/1 dataset, 55 hàng, 0 ID thêm, 0 ID xóa so với backup, `hdnd/items=0`. `syncedAt=2026-10-23T04:41:44.104873Z`; `sourceModifiedAt=2026-10-23T02:07:11.387Z`; `schemaVersion=1`. Mirror **chưa có bản phát hành mới sau 23/10**.
+- **Excel Drive nguồn được đọc trực tiếp, không ghi:** file ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, Office .xlsx, `modifiedTime=2026-10-25T04:22:14.272Z` (11:22 giờ VN). Nội dung tab theo dõi trích xuất có **55 dòng STT số**, chia nhóm 7 nội dung chuyên đề tháng 10 và 48 nội dung còn lại; đây là dấu hiệu số lượng **có thể vẫn khớp** mirror, nhưng chưa so từng `recordId` và 15 trường A–O. Việc file được sửa 25/10 không chứng minh nội dung nghiệp vụ nào đã đổi.
+- **Rà soát an ninh Drive:** metadata connector báo file Excel nguồn có phân quyền kiểu `anyone / writer` (liên kết có thể sửa), `allowFileDiscovery=false`. Đây là **rủi ro an toàn nguồn**, cần chủ sở hữu xác minh và thu hẹp quyền phù hợp trước khi chốt bản nhập. Không thay quyền tự động vì có thể tác động công việc hiện tại.
+- Số 57 trong một ảnh báo cáo cũ không đủ bằng chứng để kết luận thiếu hai hàng vì thời điểm và phạm vi tính có thể khác nhau. Cần đối chiếu danh sách ID, ngày sửa và quy tắc lọc trước GO.
+- **Trạng thái:** `MIRROR_LIVE_STALE`, `DRIVE_EXCEL_55_ROWS_READONLY`, `PRIMARY_EMPTY_AT_LIVE_CHECK`, `IDENTITY_AND_CELL_PARITY_NOT_VERIFIED`. **NO-GO** cho import và Rules deployment production.
+
+---
+
 ## 25/10/2026 — Xác nhận metadata của bản mirror 55 dòng (đầu ra người vận hành)
 - Bản sao riêng tư `database-1.json` có **1 source / 1 dataset / 55 nội dung / 0 recordId trùng** như đã ghi.
 - `schemaVersion=1`; `syncedAt=2026-10-23T04:41:44.104873Z` (**11:41:44 ngày 23/10 giờ Việt Nam**); `sourceModifiedAt=2026-10-23T02:07:11.387Z` (**09:07:11 ngày 23/10 giờ Việt Nam**); `rows=55`. Đây là bản mirror cập nhật **23/10**, không phải kết quả đọc live ngày 25/10.
