@@ -55,10 +55,11 @@ describe('tab-only source policy (no Firebase admin mutation)',()=>{
   it('stores only an explicitly validated public staging connection in this tab',()=>{
     const memory=memoryStorage();
     expect(readSupabaseTabConfig(memory)).toBeNull();
-    expect(saveSupabaseTabConfig(config,memory)).toBe(true);
-    expect(readSupabaseTabConfig(memory)).toEqual(config);
+    expect(saveSupabaseTabConfig(HDND_SUPABASE_STAGING_PUBLIC,memory)).toBe(true);
+    expect(readSupabaseTabConfig(memory)).toEqual(HDND_SUPABASE_STAGING_PUBLIC);
     expect(saveSupabaseTabConfig({...config,publishableKey:'sb_secret_bad'},memory)).toBe(false);
-    expect(readSupabaseTabConfig(memory)).toEqual(config);
+    expect(saveSupabaseTabConfig(config,memory)).toBe(false); // wrong project host
+    expect(readSupabaseTabConfig(memory)).toEqual(HDND_SUPABASE_STAGING_PUBLIC);
   });
   it('never accepts secret keys, unsupported hosts or non-HTTPS backends',()=>{
     expect(validateSupabasePreviewConfig(config.url,config.publishableKey)).toEqual(config);
