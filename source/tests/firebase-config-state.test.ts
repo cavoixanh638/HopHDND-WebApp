@@ -20,11 +20,11 @@ vi.mock('firebase/auth',()=>({getAuth:()=>h.auth,initializeAuth:()=>h.auth,
   connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn(),setPersistence:h.persistence}));
 vi.mock('firebase/database',()=>({getDatabase:()=>({}),connectDatabaseEmulator:vi.fn(),ref:(_db:any,path:string)=>path,onValue:(path:string,next:any,error:any)=>{h.listeners.set(path,{next,error});return()=>h.listeners.delete(path);},get:h.get,runTransaction:h.transaction}));
 import {useFirebase} from '../src/state/use-firebase';
-const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
+const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':'guest@example.test',emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]});
 const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems(1)),reports:defaultReportLayout(),items:defaultItemLayout()});
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
-function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});}
+function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get('hdnd/editors').next({val:()=>({guest:true})});}
 function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
 beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockReset().mockResolvedValue({});h.persistence.mockReset().mockResolvedValue(undefined);});
 afterEach(()=>h.dispose());
@@ -67,10 +67,14 @@ describe('Firebase config controller remains independent of business data',()=>{
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/editors','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/control',{revision:1,editingLocked:false});
     emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/editors',{guest:false});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/editors',{guest:true});
     expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
     emit('hdnd/freezeControl',{mode:'DRAINING',revision:2,epoch:1,actor:'admin',changedAt:2,deadline:62,closedAt:0});
     expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
