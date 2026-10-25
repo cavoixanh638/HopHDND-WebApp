@@ -1,5 +1,9 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+### Xác minh trực tiếp đã BẬT Google Auth trên Supabase Cloud — 26/10/2026
+
+[GitHub Actions Verify source #40221153349](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40221153349) **SUCCESS**, bao gồm `SUPABASE_AUTH_SMOKE_STATIC_GUARDS_PASS` và public Cloud `SUPABASE_STAGING_GOOGLE_PROVIDER_ENABLED=true` qua `/auth/v1/settings` với **publishable key, không sử dụng Client Secret**. Việc bật provider đã được kiểm chứng server-side. **Chưa xác thực được tài khoản Google người thật**: khi kiểm tra SQL trước lúc test, `auth.users=0`, `auth.identities[google]=0`, admin allowlist trống. Tiếp theo chạy độc lập `source/scripts/supabase-auth-smoke.html` trên `localhost:8765` và đối chiếu readback. Không vì provider enabled mà cấp quyền admin hoặc GO.
+
 ## Cập nhật sau khi cấu hình Google Provider — 26/10/2026 (đăng nhập thử độc lập)
 
 Chủ dự án xác nhận **đã bấm Save tại Supabase → Authentication → Google**. Kết nối Supabase hiện có **không hỗ trợ đọc/ghi cấu hình OAuth providers, client secret hoặc Redirect URLs**; vì vậy Save không được coi là bằng chứng Google sign-in PASS. Đọc Cloud SQL trực tiếp: `auth.users=0`, `auth.identities[provider=google]=0`, `hdnd_private.admin_emails=0`, dữ liệu 6 hồ sơ QA giả, import gate đóng. Supabase project vẫn `ACTIVE_HEALTHY` với bốn migration. Sau khi bật anonymous sign-ins, Security Advisor có **6 cảnh báo WARN** về chính sách SELECT cho phiên anonymous; không còn được báo cáo "0 cảnh báo bảo mật". Cần phê duyệt mô hình khách xem và kiểm tra RLS trước dữ liệu thật.
