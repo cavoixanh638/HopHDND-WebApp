@@ -1,6 +1,6 @@
 import type { AuditEntry, Item, Patch, SaveResult } from '../../shared/types';
 export interface Repository {
-  readonly sourceKind?: 'demo' | 'google' | 'firebase';
+  readonly sourceKind?: 'demo' | 'google' | 'firebase' | 'supabase';
   readonly readOnly?: boolean;
   /** Editing a local draft is independent of permission to commit the source. */
   readonly canDraft?: boolean;
