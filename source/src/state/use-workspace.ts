@@ -16,7 +16,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   const [loadedAt, setLoadedAt] = useState('');
   const [cachePending,setCachePending]=useState(false);
   const [autosaveMessage, setAutosaveMessage] = useState('');
-  const firebase=repository.sourceKind==='firebase';
+  const firebase=repository.sourceKind==='firebase'||repository.sourceKind==='supabase';
   const autoFailed=useRef('');
   const canDraft=repository.canDraft??!repository.readOnly;
   const protectedRecovery=useRef(false);
@@ -78,7 +78,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
       if(cached?.length){
         lastRowsSignature.current=JSON.stringify(cached);
         setItems(cached);setDataSource(repository);
-        setLoadedAt('Bản lưu phiên này · đang kiểm tra Firebase');
+        setLoadedAt(repository.sourceKind==='supabase'?'Bản lưu phiên này · đang kiểm tra Supabase':'Bản lưu phiên này · đang kiểm tra Firebase');
         setCachePending(true);
         setBusy(false);
       }else setBusy(true);
@@ -152,7 +152,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         return next;
       });
       setErrors(Object.fromEntries(results.filter(r => !r.ok).map(r => [r.recordId, r.message ?? 'Không lưu được.'])));
-      setMessage(`Đã lưu ${saved.length} nội dung${firebase?' vào Firebase, máy chủ đã xác nhận':repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
+      setMessage(`Đã lưu ${saved.length} nội dung${firebase?(repository.sourceKind==='supabase'?' vào Supabase, máy chủ đã xác nhận':' vào Firebase, máy chủ đã xác nhận'):repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
       if (saved.length === pending.length) { if(!firebase){skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage('');} return true; }
       return false;
     } catch(cause) { setMessage(cause instanceof Error?cause.message:'Chưa xác định kết quả lưu. Giữ bản nháp để kiểm tra; không tự gửi lại.'); return false; }
