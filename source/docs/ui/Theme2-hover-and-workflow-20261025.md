@@ -19,3 +19,8 @@
 - **Rollback:** xóa lớp CSS bổ sung liên quan + khôi phục default/migration và default build count qua PR; không `git reset` mã dự án, không động vào snapshot `Theme1`/preset cá nhân.
 
 **Ghi chú:** "3pt" trên mô tả thao tác được triển khai thành 3 **CSS px** (pixel là đơn vị đúng của transform trên trình duyệt) theo hiệu ứng 2px trước đây.
+
+
+## 25/10/2026 — Chính sách ngoại lệ bảng Thành ủy
+
+Khi cột tiến độ xin ý kiến Thành ủy có trạng thái nguồn "Không phải trình", không được gom vào "Chưa chuẩn hóa". Bổ sung "Không phải trình" như trạng thái hợp lệ, mặc định ẩn cột và loại khỏi tổng/% hoàn thành của riêng bảng Thành ủy. Admin có thể bật tính và bật hiện cột **độc lập** trong cấu hình báo cáo như bảng Build NQ. Phần Party khác giữ chuẩn 6 mốc; trạng thái cũ "TU đã cho ý kiến" vẫn là chưa chuẩn hóa, không tự suy diễn là đã có TBKL. Không sửa dữ liệu/Excel/Firebase/quyền hoặc màu của Theme2.

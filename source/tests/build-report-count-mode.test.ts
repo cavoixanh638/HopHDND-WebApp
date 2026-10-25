@@ -39,7 +39,7 @@ describe('Build NQ excludes non-required items by default without touching the s
     const migrated=validateReportLayout(old),restored=migrated.find(row=>row.id==='build')!;
     expect(restored.hiddenColumns).toContain('Không phải trình');
     expect(restored.showNotRequiredColumn).toBe(false);
-    expect(migrated.find(row=>row.id==='party')?.hiddenColumns).toEqual([]);
+    expect(migrated.find(row=>row.id==='party')?.hiddenColumns).toEqual(['Không phải trình']);
     expect(reportHiddenColumns({...restored,showNotRequiredColumn:true})).not.toContain('Không phải trình');
     const shown=validateReportLayout(migrated.map(row=>row.id==='build'
       ?{...row,showNotRequiredColumn:true}:row));
@@ -74,7 +74,7 @@ describe('Build NQ excludes non-required items by default without touching the s
     expect(configuredReports(validateReportLayout(old)).find(r=>r.id==='build')?.includeNotRequired).toBe(false);
     const updated=validateReportLayout(old.map(row=>row.id==='build'?{...row,includeNotRequired:true}:row));
     expect(configuredReports(updated).find(r=>r.id==='build')?.includeNotRequired).toBe(true);
-    expect(configuredReports(updated).find(r=>r.id==='party')?.includeNotRequired).toBeUndefined();
+    expect(configuredReports(updated).find(r=>r.id==='party')?.includeNotRequired).toBe(false);
     expect(configuredReports(validateReportLayout(old.map(row=>
       row.id==='build'?((({includeNotRequired:ignored,...rest})=>rest)(row)):row
     ))).find(r=>r.id==='build')?.includeNotRequired).toBe(false);

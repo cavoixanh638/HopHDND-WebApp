@@ -1148,6 +1148,24 @@ try{
           !heads.includes('Không phải trình');
       })()`);
       if(!buildHeading)throw Error('Build NQ default must hide Không phải trình, preserving other stage columns');
+      // Party report shares Build NQ's independently hidden exemption policy.
+      // Real source values "Không phải trình" are normalized before collecting
+      // unknown states, so no spurious Chưa chuẩn hóa warning should appear.
+      const partyExemption=await evaluate(`(()=>{
+        const section=[...document.querySelectorAll('.report-surface')]
+          .find(node=>node.querySelector('h3')?.textContent?.includes('Tiến độ xin ý kiến Thành ủy'));
+        const heads=[...(section?.querySelectorAll('thead th')??[])].map(el=>el.textContent?.trim());
+        const total=section?.querySelector('tfoot td.report-total-col');
+        const totalText=total?.querySelector('.count-drill > span')?.textContent?.trim()??
+          total?.querySelector('strong')?.textContent?.trim()??'';
+        const countText=section?.querySelector('.report-heading-count')?.textContent??'';
+        const count=Number(countText.match(/\\d+/)?.[0]??-1);
+        return {ok:!!section&&heads[1]==='Tổng số nội dung'&&heads[2]==='Sở chưa trình'&&
+          !heads.includes('Không phải trình')&&Number(totalText)===count,
+          heads,count,totalText};
+      })()`);
+      if(!partyExemption.ok)throw Error('Party must hide Không phải trình by default: '+JSON.stringify(partyExemption));
+      console.log('PARTY_HIDDEN_EXEMPT_DEFAULT_PASS',JSON.stringify(partyExemption));
       // The excluded Build NQ column must be hidden in the initial view.
       // A middle milestone stays visible and appropriately muted.
       const hiddenBuild=await evaluate(`(()=>{

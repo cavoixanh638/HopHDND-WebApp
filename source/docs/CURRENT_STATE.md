@@ -1013,3 +1013,12 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - Người dùng duyệt mở rộng hai tab thành card nổi rõ ngay ở trạng thái bình thường, không còn icon; giữ tên hai bảng và nhãn "Đang xem" với slot dự phòng ở tab chưa chọn.
 - Theme2: max 980px, min-height 80px desktop, radius 16px, title 18px, shadow chủ động active/inactive; hover -3px, mobile xếp dọc. Không đổi Theme1 snapshot.
 - Code: src/app/App.tsx, src/styles/app.css, smoke browser scripts/smoke-pages-browser.mjs; mô tả/rollback tại docs/ui/Theme2-ImperialSky.md. Không đổi màu trạng thái/bảng, nguồn, dữ liệu, Firebase, quyền hay hành vi click. Chờ CI và GitHub Pages deploy success để xác nhận phát hành.
+
+
+## 25/10/2026 — Thành ủy: "Không phải trình" là trạng thái hợp lệ, mặc định không tính và ẩn
+
+- Báo cáo **Tiến độ xin ý kiến Thành ủy** từng báo "Chưa chuẩn hóa: Không phải trình" vì Party chưa định nghĩa cột hợp lệ này; khác Build NQ. Đây là lỗi phân loại hiển thị/thống kê, không phải lỗi dữ liệu Excel.
+- Party nay có cột hợp lệ "Không phải trình" (với một số nhãn tương đương được chuẩn hóa), mặc định **không đưa bản ghi này vào tổng, phần trăm hoàn thành, số theo đơn vị và drilldown**. Cột cũng mặc định **ẩn**, giống bảng xây dựng NQ. Tính số liệu và ẩn/hiện cột là hai chính sách độc lập.
+- Trong **Tùy chỉnh bảng báo cáo → bảng Thành ủy**, admin có lựa chọn Bao gồm/Không bao gồm nội dung "Không phải trình", và checkbox cột "Không phải trình" ở danh sách cột; lưu cấu hình riêng Party, không đổi bảng Build hoặc các bảng khác.
+- Bố cục cũ thiếu cột được tự bổ sung vào columnOrder nhưng mặc định ẩn (có thể bật lại). Giữ tên bảng, thứ tự khác, cột ẩn cũ, độ rộng, font, preset. Tùy chọn đã lưu tường minh được tôn trọng. "Chưa chuẩn hóa" vẫn dành cho trạng thái khác thực sự không nằm trong danh mục (ví dụ "TU đã cho ý kiến"), không được tự coi là "Đã có TBKL".
+- Không sửa nguồn Excel, Firebase, Sheet2, lịch sử, phân quyền hay Theme1/Theme2. Kiểm thử hồi quy Party count/column/migration/UI, Build NQ độc lập, Chrome smoke và GitHub Pages build/deploy. Nếu CI/chính Pages chưa SUCCESS thì không coi là đã xuất bản.

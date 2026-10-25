@@ -8,7 +8,7 @@ export function reportStage(label:string,config:ReportConfig):ReportStage{
   if(value===normalizeSearch('Sở chưa trình'))return 'source';
   if(value===normalizeSearch('VP đang thực hiện'))return 'office';
   if(value===normalizeSearch('Sở xin rút'))return 'withdrawn';
-  if(config.id==='build'&&value===normalizeSearch('Không phải trình'))return 'excluded';
+  if(['party','build'].includes(config.id)&&value===normalizeSearch('Không phải trình'))return 'excluded';
   if(config.completed.some(status=>normalizeSearch(status)===value))return 'completed';
   if(config.columns.some(status=>normalizeSearch(status)===value))return 'next';
   return 'other';

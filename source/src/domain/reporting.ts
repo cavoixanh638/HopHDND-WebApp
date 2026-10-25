@@ -3,9 +3,9 @@ import {normalizeSearch} from './search';
 
 export const COUNCIL_STAGE_COLUMNS = ['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố'] as const;
 export const DEFAULT_REPORTS: ReportConfig[] = [
-  { id: 'party', title: 'Tiến độ xin ý kiến Thành ủy', source: 'party', statusField: 'progressParty',
-    columns: ['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL'],
-    hiddenColumns:[],completed:['Đã có TBKL'] },
+  { id: 'party', title: 'Tiến độ xin ý kiến Thành ủy', source: 'party', statusField: 'progressParty',includeNotRequired:false,
+    columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL'],
+    hiddenColumns:['Không phải trình'],completed:['Đã có TBKL'] },
   { id: 'build', title: 'Tiến độ trình HĐND xây dựng NQ', source: 'build', statusField: 'progressBuild',includeNotRequired:false,
     columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'],
     hiddenColumns:['Không phải trình'],completed:['Đã có QĐ chấp thuận'] },
@@ -27,6 +27,10 @@ export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
   'Đã họp, chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
   'Đã họp/xin phiếu chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
   'VP đang xử lý':'VP đang thực hiện',
+  'Không phải trình xin ý kiến Thành ủy':'Không phải trình',
+  'Không phải trình Thành ủy':'Không phải trình',
+  'Không phải xin ý kiến':'Không phải trình',
+  'Không xin ý kiến':'Không phải trình',
 };
 const partyAliasMap=new Map(Object.entries(PARTY_STATUS_ALIASES)
   .map(([old,modern])=>[normalizeSearch(old),modern]));
@@ -49,10 +53,14 @@ export function normalizeReportStatus(raw:string,config:ReportConfig):string{
 }
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
   return items.filter(item => isActive(item) &&
-    !(config.id==='build'&&config.includeNotRequired===false&&
-      normalizeSearch(normalizeReportStatus(item.progressBuild,config))===normalizeSearch('Không phải trình')) && (
+    !(['build','party'].includes(config.id)&&config.includeNotRequired!==true&&
+      normalizeSearch(normalizeReportStatus(item[config.statusField],config))===normalizeSearch('Không phải trình')) && (
     config.source === 'all' ||
-    (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
+    (config.source === 'party' && (
+      (!['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) &&
+        normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
+      (config.includeNotRequired===true && normalizeSearch(normalizeReportStatus(item.progressParty,config))===normalizeSearch('Không phải trình'))
+    )) ||
     (config.source === 'build' && item.documentKind === 'NQ' &&
       !!normalizeSearch(item.progressBuild)) ||
     (config.source === 'council' && (item.documentKind === 'NQ'||item.documentKind === 'BC')) ||
