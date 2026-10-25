@@ -31,6 +31,15 @@ node scripts/firebase-production-readonly-backup.mjs `
 6. Đối chiếu Rules với ứng viên `firebase/database.exclusive-candidate.rules.json` trên PR #72, xác nhận tất cả nhánh không thuộc HopHDND và các quyền admin hiện hành. Rà cả từng `.write` của nhánh cha; test Firebase Emulator, thử khôi phục **trên emulator hoặc Firebase staging KHÁC project**. Không thực hiện thử phục hồi trên production.
 7. Ghi vào `docs/CURRENT_STATE.md`/biên bản riêng **chỉ các mã SHA và kết quả test không nhạy cảm**, không đính kèm dữ liệu hoặc email/UID. Khi tất cả điều kiện khác trong [cổng GO/NO-GO](FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) đạt mới có thể triển khai Rules và chuyển `hdnd/profile/dataSource` có kiểm soát.
 
+## D. Kiểm tra lại bản sao lưu khi bàn giao/di chuyển máy
+Từ thư mục `source/`, dùng **bản sao lưu nằm ở nơi riêng tư**:
+
+```powershell
+node scripts/firebase-backup-verify.mjs "C:\\HopHDND-private\\backup-before-primary"
+```
+
+Dòng `BACKUP_INTEGRITY_PASS` chỉ xác minh SHA-256, kích thước và số bản ghi **của bản sao cục bộ**; nó không chứng minh Rules là bản đang chạy hoặc đã thử restore. Nếu file bị sửa/tráo/tên chứa đường dẫn bất thường, script thoát khác 0. Kịch bản được chạy với fixture giả trong CI; không dùng credential. Không công bố dữ liệu JSON, hash có thể ghi vào hồ sơ nội bộ.
+
 ## C. Lỗi, tình huống phải dừng
 - Không có quyền đọc project/instance hoặc xác thực Firebase CLI lỗi.
 - File Rules không chắc chắn là bản đang publish, bị sửa sau khi sao lưu hoặc chứa dữ liệu khác.
