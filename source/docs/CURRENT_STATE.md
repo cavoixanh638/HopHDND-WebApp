@@ -1028,3 +1028,15 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - Bảng Thành ủy và Bảng xây dựng NQ: có cột trạng thái trung gian, tiếp tục hiển thị Bước tiếp theo.
 - Bảng tổng hợp NQ+BC, Bảng ban hành NQ, Bảng ban hành BC: chỉ có ba trạng thái, bỏ chỉ số Bước tiếp theo dưới tiêu đề. Vẫn giữ nguồn, cột, tổng, tỷ lệ hoàn thành, popup và quyền.
 - Chrome smoke kiểm tra đúng 5 bảng, unit test đúng nhóm; độc lập với việc chuyển Firebase sang ghi realtime ở PR khác.
+
+## 25/10/2026 — Chỉ số trung gian và chỉnh sửa Database realtime (phải triển khai Rules)
+
+**Các chỉ số báo cáo:** Ba báo cáo HĐND (tổng hợp NQ+BC, ban hành NQ, ban hành BC) không có bước trung gian giữa Văn phòng đang thực hiện và hoàn thành. Chỉ số Bước tiếp theo dưới tiêu đề chỉ hiển thị ở báo cáo có ít nhất một cột thuộc giai đoạn next: Thành ủy và xây dựng NQ. Không sửa số liệu, thứ tự cột, drilldown.
+
+**Nguồn dữ liệu:** Bản mirror hdnd/mirrors/{spreadsheetId}/{gid} tiếp tục do Excel xuất bản và bất biến với trình duyệt. Dữ liệu do người dùng sửa lưu tách biệt tại hdnd/mirrorEdits/{spreadsheetId}/{gid}/{rowIndex}. Mỗi overlay lưu revision, operationId, updatedAt, updatedBy, values. Dòng dữ liệu khi xem được hợp nhất từ mirror và overlay; hai realtime listeners chỉ phát dữ liệu đã xác nhận khi cả mirror và overlay đều đọc xong. Đồng bộ Excel mới không ghi đè overlay. Chế độ A/B vẫn chỉ đọc.
+
+**Bảo vệ:** RTDB security rules kiểm token auth, quyền từng ô (ưu tiên quyền ô, dòng rồi cột), khóa sửa, kiểu dữ liệu, nguồn, revision và thời gian server; cấm tạo/sửa dòng mirror trực tiếp, cấm xóa overlay và xóa giá trị đã có. Client transaction CAS chống ghi đè cùng trường và có thể hợp nhất trường khác nhau. Autosave chờ 800ms như hiện có, chỉ báo thành công sau xác nhận server; lỗi không tự thử lặp vô hạn, giữ nháp để đối chiếu.
+
+**Bắt buộc để vận hành:** Rules production KHÔNG tự triển khai qua GitHub Pages. Phải triển khai firebase/database.rules.json lên đúng project Firebase theo quy trình có quyền sau khi CI emulator và Chrome đạt. Nếu Rules chưa triển khai, mọi thay đổi sẽ bị từ chối trên server; không được kết luận bản phát hành web đã mở được realtime. Không tự deploy Rules từ PR hoặc thay đổi dữ liệu Excel/Firebase production.
+
+**Ngoài phạm vi:** Lịch sử dài hạn cho overlay cần thiết kế audit độc lập an toàn. Không giả lập lịch sử mới hay sử dụng demo làm sự kiện thật.
