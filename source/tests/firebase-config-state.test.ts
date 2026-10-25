@@ -17,7 +17,7 @@ vi.mock('react',()=>({useState:h.state,useRef:h.ref,useEffect:h.effect}));
 vi.mock('firebase/app',()=>({initializeApp:()=>({})}));
 vi.mock('firebase/auth',()=>({getAuth:()=>h.auth,initializeAuth:()=>h.auth,
   indexedDBLocalPersistence:{},browserLocalPersistence:{},inMemoryPersistence:{},
-  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn()}));
+  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn(),setPersistence:vi.fn().mockResolvedValue(undefined)}));
 vi.mock('firebase/database',()=>({getDatabase:()=>({}),connectDatabaseEmulator:vi.fn(),ref:(_db:any,path:string)=>path,onValue:(path:string,next:any,error:any)=>{h.listeners.set(path,{next,error});return()=>h.listeners.delete(path);},get:h.get,runTransaction:h.transaction}));
 import {useFirebase} from '../src/state/use-firebase';
 const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
