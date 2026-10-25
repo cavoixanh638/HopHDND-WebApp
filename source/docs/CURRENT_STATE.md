@@ -1,3 +1,11 @@
+## 25/10/2026 — Kiểm kê chi tiết mirror (bằng chứng PowerShell do người vận hành cung cấp)
+- Trong bản sao riêng tư `database-1.json`: `Mirror sources=1`; `Mirror datasets=1`; `Total content rows=55`; `Duplicate record IDs=0`.
+- Giá trị `Mirror metadata valid` **chưa có trong đầu ra** (người vận hành gửi đến dòng lệnh trước khi có kết quả True/False). **Chưa được khẳng định** schema/timestamps/SHA/source của mirror đáp ứng tiêu chuẩn chuyển đổi.
+- **Rủi ro đối chiếu cần giải quyết:** ảnh giao diện trước đó thể hiện báo cáo `Tiến độ xin ý kiến Thành ủy (57 nội dung)`, nhưng bản sao chỉ có 55 bản ghi tổng. Có thể là khác mốc đồng bộ, khác nguồn dữ liệu hoặc sự không nhất quán. **Không chuyển 55 bản ghi lên Primary** trước khi chứng minh không thiếu nội dung; kiểm live mirror và nguồn mà giao diện sử dụng, so mã ID trên các nguồn.
+- Bước tiếp: xác nhận metadata True/False, chạy restore test trên Emulator **cách ly**, và trước khi migration phải lấy lại bản sao live/mốc đồng bộ, đối chiếu số dòng, ID đầy đủ, quyền, sau đó mới ra quyết định.
+
+---
+
 ## 25/10/2026 — Kiểm kê nhánh dữ liệu trên bản sao RTDB (bằng chứng PowerShell do người vận hành gửi)
 - Bản sao `database-1.json` JSON hợp lệ: `hdnd` có dữ liệu; `hdnd/items` **0 bản ghi**; `hdnd/mirrors` **1 nguồn cấp cao nhất**; `hdnd/permissions` tồn tại; `hdnd/profile` tồn tại; `hdnd/profile.dataSource` không có giá trị hiển thị.
 - **Lưu ý:** Con số 1 là số khóa trực tiếp dưới `hdnd/mirrors`, **chưa chắc** là số bản sao tab/GID; phải kiểm tra các khóa con và số hàng `rows`. `items=0` chỉ chứng minh tại thời điểm backup, không khẳng định Database hiện tại vẫn rỗng. Giá trị `dataSource` trống không được suy đoán là `primary`.
