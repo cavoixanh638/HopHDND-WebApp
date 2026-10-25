@@ -1,5 +1,37 @@
 # Cài đặt và chạy — HopHDND (local, gồm Pages 0.7.0 và legacy)
 
+## 25/10/2026 — Chạy thử Firebase realtime trên Windows (PR #72; KHÔNG phải production)
+
+**Đã có script thật trong GitHub, không chỉ có hướng dẫn chat:** [`source/scripts/start-local-staging.ps1`](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/scripts/start-local-staging.ps1), và [hướng dẫn nghiệm thu hai trình duyệt](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/docs/operations/FIREBASE_LOCAL_MULTI_BROWSER_STAGING_2026-10-25.md). Script ở **branch** `feat/exclusive-cell-leases-admin-freeze-20261025` của PR #72; không nhầm với main, không trộn với code Supabase PR #75.
+
+Máy QA hiện dùng clone `D:\HopHDND-Firebase-QA-20261025-Retry`, đã `npm ci` và cài Microsoft OpenJDK 21. Từ PowerShell, chạy nguyên khối:
+
+```powershell
+& {
+  $ErrorActionPreference = "Stop"
+  $repo = "D:\HopHDND-Firebase-QA-20261025-Retry"
+  $branch = "feat/exclusive-cell-leases-admin-freeze-20261025"
+  git -C $repo -c http.version=HTTP/1.1 pull --ff-only origin $branch
+  if ($LASTEXITCODE -ne 0) { throw "Khong cap nhat duoc GitHub. DUNG." }
+  & "$repo\source\scripts\start-local-staging.ps1"
+  if ($LASTEXITCODE -ne 0) { throw "Staging da loi. DUNG." }
+}
+```
+
+Nếu máy không cho chạy `.ps1`, **chỉ ở phiên PowerShell kiểm thử** có thể dùng:
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\HopHDND-Firebase-QA-20261025-Retry\source\scripts\start-local-staging.ps1"`.
+
+- URL chỉ trên **máy Windows đó**: `http://127.0.0.1:5173/pages.html`. Giữ terminal mở để Emulator Auth `127.0.0.1:9099`, RTDB `127.0.0.1:9000` và Vite chạy; `Ctrl+C` để dừng. Firebase project **`demo-hdnd`**, tạo ba bản ghi **giả**; **không đọc/ghi production**.
+- Anonymous chỉ được xem trong Rules ứng viên mới. Muốn nghiệm thu lưu thật bằng Google trên môi trường giả lập phải đăng nhập các UID Google thử nghiệm được quản trị viên cấp quyền, và chứng minh UID A/B khác nhau; không coi chỉ mở hai cửa sổ ẩn danh là PASS cho phần edit.
+- Không cần clone/npm ci/Java lại khi các bước đã thành công; không chạy cùng thư mục với agent khác đang checkout Supabase. Dùng **clone/worktree riêng** cho Supabase, tách cấu hình localhost/port và không chia sẻ `.env.local`/credential qua nhánh.
+- Script không kết nối Supabase và **không làm WebApp production chạy realtime**. Chỉ khi có tích hợp trên một exact commit được nghiệm thu mới thử được nút chọn Supabase trong WebApp. Supabase PR #75 vẫn Draft/read-only QA tùy trạng thái thực tế ở [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+**Cảnh báo:** source ở main chưa chứa các file staging PR #72 cho tới khi PR được ghép và phát hành an toàn. Lệnh này thực thi bản feature đã kiểm thử, không hứa dữ liệu công việc thật.
+
+---
+
+
+
 ## Bản GitHub Pages 0.7.0 — điểm bắt đầu hiện hành
 
 Repo GitHub đặt toàn bộ mã trong `source/` và giữ HTML triển khai `index.html` ngoài gốc. **Chạy các lệnh dưới đây trong `source/`** khi làm việc với bản clone GitHub; nếu làm ở thư mục dự án Windows vốn là gốc mã nguồn thì chạy tại đó:
