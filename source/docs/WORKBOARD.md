@@ -1,3 +1,15 @@
+## 25/10/2026 — Kết quả sao lưu từ máy quản trị do người vận hành xác nhận
+| Mã | Owner | Trạng thái mới | Chứng cứ / bước tiếp |
+| --- | --- | --- | --- |
+| HDND-BACKUP-READ | Người vận hành máy Firebase CLI | **PARTIAL PASS — 2 exports same SHA** | `database-1.json` và `database-2.json` cùng SHA256 `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`. Đầu ra PowerShell do người dùng báo; chưa đọc JSON thực, chưa có Rules hoặc restore drill. |
+| HDND-BACKUP-RULES | Quản trị Firebase | **TODO / HOLD** | Lưu chính xác Rules đang được Publish trên Firebase Console vào file riêng tư, kiểm JSON, tính SHA256. **Không nhấn Publish**, không lấy candidate GitHub giả làm Rules production. |
+| HDND-BACKUP-RESTORE | Quản trị Firebase / reviewer | **TODO / HOLD** | Test đọc và phục hồi bản sao trên emulator hoặc staging riêng; không ghi vào production. |
+| HDND-RELEASE | Quản trị Firebase | **NO-GO** | Sau khi backup Rules, restore drill và security diff/staging được chứng minh mới xem xét phát hành PR #71/#72. |
+
+Chứng cứ ghi nhận từ ảnh/đầu ra PowerShell của người dùng, không phải quyền truy cập Firebase của ChatGPT. Giữ nguyên dữ liệu JSON và access token ở nơi riêng tư, không commit lên GitHub.
+
+---
+
 ## Công việc đang chặn triển khai — 25/10/2026, sau khi chuẩn bị công cụ backup
 | Mã | Owner | Trạng thái | Bằng chứng cần thu |
 | --- | --- | --- | --- |
