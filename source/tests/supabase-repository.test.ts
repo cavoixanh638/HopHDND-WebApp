@@ -82,6 +82,8 @@ describe('Supabase repository (offline client contract, not server security test
     const repo=setup(http,cb=>{signal=cb;return()=>{signal=()=>{}};});
     const stop=repo.subscribe(rows=>output.push(rows),e=>{throw e});
     signal();
+    // request() awaits the Auth JWT before dispatching either fetch.
+    await new Promise(resolve=>setTimeout(resolve,0));
     expect(resolvers).toHaveLength(2);
     resolvers[1](json([databaseRow({...row,revision:2,note:'new'})]));
     await Promise.resolve();await Promise.resolve();await new Promise(resolve=>setTimeout(resolve,0));
