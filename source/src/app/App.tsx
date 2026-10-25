@@ -129,6 +129,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
+  const [sourceProbe,setSourceProbe]=useState('');
   const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase?
     sourceNamespace(selectedSource,configured.url,
       (supabaseConfig?new URL(supabaseConfig.url).hostname:'unconfigured')+
@@ -318,7 +319,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       busy:workspace.busy,cachePending:workspace.cachePending,editorUnsaved,
       editorOpen:!!selection||!!history||editingPage,heldLeases:leaseManager?.activeCount()??0});
     if(blocker){setLayoutMessage(blocker);return;}
-    setTabSource(next);
+    setTabSource(next);setSourceProbe('');
     try{sessionStorage.setItem('hdnd.source.tab.v1',next);}catch{/* tab-only fallback */}
     setHistory(null);setSelection(null);
     setLayoutMessage('Đã đổi nguồn CHỈ TRONG TAB này. Không sao chép hoặc ghi sang database khác.');
@@ -437,6 +438,17 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         </select>
       </label>
       <span className="muted">Đang đọc: <strong>{sourceLabel}</strong>. Lựa chọn này không thay đổi nguồn chung và không đồng bộ giữa các database.</span>
+      <button type="button" className="button ghost" disabled={workspace.busy||dirtyCount>0}
+        onClick={()=>{void (async()=>{
+          const name=sourceLabel;
+          const began=performance.now();
+          try{
+            const rows=await repository.list();
+            const duration=Math.round(performance.now()-began);
+            setSourceProbe('Đọc lại '+name+': '+rows.length+' dòng / '+duration+' ms. Không ghi dữ liệu. Dữ liệu giữa các nguồn có thể khác nên chưa so sánh trực tiếp được.');
+          }catch(error){setSourceProbe('Kiểm tra '+name+' thất bại: '+(error instanceof Error?error.message:'Chưa rõ lý do')+'. Không tự đổi nguồn.');}
+        })();}}>Kiểm tra tốc độ đọc nguồn này</button>
+      {sourceProbe&&<span role="status" className="muted">{sourceProbe}</span>}
       <details className="source-runtime-settings">
         <summary>Cấu hình Supabase staging {supabasePreview?'· đã có khóa công khai':'· cần khóa công khai'}</summary>
         <form onSubmit={event=>{
