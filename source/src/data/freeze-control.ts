@@ -48,6 +48,13 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
     throw new Error('Firebase chưa xác nhận trạng thái chốt.');
   return confirmed;
 }
+export async function activeEditLeaseCount(database:Database):Promise<number>{
+  const raw=(await get(ref(database,'hdnd/editLocks'))).val();
+  if(!raw||typeof raw!=='object')return 0;
+  const now=Date.now()+Number((await get(ref(database,'.info/serverTimeOffset'))).val()??0);
+  return Object.values(raw as Record<string,Record<string,{expiresAt:number}>>).reduce(
+    (sum,fields)=>sum+Object.values(fields??{}).filter(lock=>Number(lock?.expiresAt)>now).length,0);
+}
 export async function readFreeze(database:Database):Promise<FreezeControl>{
   return parseFreeze((await get(ref(database,FREEZE_PATH))).val());
 }
