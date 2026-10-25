@@ -250,6 +250,27 @@
             ".validate": "newData.hasChildren(['uid','session','token','revision','kind','acquiredAt','expiresAt']) && newData.child('uid').val() === auth.uid && newData.child('session').isString() && newData.child('session').val().matches(/^[0-9a-f-]{36}$/) && newData.child('token').isString() && newData.child('token').val().matches(/^[0-9a-f-]{36}$/) && newData.child('revision').val() === (data.exists() ? data.child('revision').val()+1 : 1) && (newData.child('kind').val() === 'status' || newData.child('kind').val() === 'search' || newData.child('kind').val() === 'short' || newData.child('kind').val() === 'multiline' || newData.child('kind').val() === 'long') && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now+45000 && (data.exists() && data.child('token').val() === newData.child('token').val() ? (newData.child('acquiredAt').val() === data.child('acquiredAt').val() && newData.child('session').val() === data.child('session').val()) : newData.child('acquiredAt').val() >= now-4000 && newData.child('acquiredAt').val() <= now+4000)",
             "$other": {
               ".validate": false
+            },
+            "uid": {
+              ".validate": "true"
+            },
+            "session": {
+              ".validate": "true"
+            },
+            "token": {
+              ".validate": "true"
+            },
+            "revision": {
+              ".validate": "true"
+            },
+            "kind": {
+              ".validate": "true"
+            },
+            "acquiredAt": {
+              ".validate": "true"
+            },
+            "expiresAt": {
+              ".validate": "true"
             }
           }
         }
@@ -259,6 +280,27 @@
         ".validate": "newData.hasChildren(['mode','revision','epoch','actor','changedAt','deadline','closedAt']) && newData.child('actor').val() === auth.uid && newData.child('revision').val() === (data.exists()?data.child('revision').val()+1:1) && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? (newData.child('mode').val() === 'DRAINING' || newData.child('mode').val() === 'FROZEN') : (data.child('mode').val() === 'DRAINING' ? (newData.child('mode').val() === 'FROZEN' || newData.child('mode').val() === 'OPEN') : (data.child('mode').val() === 'FROZEN' && newData.child('mode').val() === 'OPEN'))) && newData.child('epoch').val() === (data.child('mode').val() === 'OPEN' || !data.exists() ? (data.child('epoch').val()===null?0:data.child('epoch').val())+1 : data.child('epoch').val()) && newData.child('changedAt').val() === now && newData.child('closedAt').isNumber() && (newData.child('mode').val() === 'FROZEN' ? newData.child('closedAt').val() === now : newData.child('closedAt').val() === 0) && newData.child('deadline').isNumber() && (newData.child('mode').val() === 'DRAINING' ? (newData.child('deadline').val() >= now && newData.child('deadline').val() <= now+60000) : newData.child('deadline').val() === 0)",
         "$other": {
           ".validate": false
+        },
+        "mode": {
+          ".validate": "true"
+        },
+        "revision": {
+          ".validate": "true"
+        },
+        "epoch": {
+          ".validate": "true"
+        },
+        "actor": {
+          ".validate": "true"
+        },
+        "changedAt": {
+          ".validate": "true"
+        },
+        "deadline": {
+          ".validate": "true"
+        },
+        "closedAt": {
+          ".validate": "true"
         }
       },
       "freezeReceipts": {
@@ -267,6 +309,24 @@
           ".validate": "newData.hasChildren(['epoch','rows','sha256','actor','frozenAt','recordedAt']) && newData.child('epoch').val() + '' === $epoch && newData.child('rows').isNumber() && newData.child('rows').val() >= 0 && newData.child('rows').val() <= 5000 && newData.child('sha256').isString() && newData.child('sha256').val().matches(/^[0-9a-f]{64}$/) && newData.child('actor').val() === auth.uid && newData.child('frozenAt').val() === root.child('hdnd/freezeControl/closedAt').val() && newData.child('recordedAt').val() === now",
           "$other": {
             ".validate": false
+          },
+          "epoch": {
+            ".validate": "true"
+          },
+          "rows": {
+            ".validate": "true"
+          },
+          "sha256": {
+            ".validate": "true"
+          },
+          "actor": {
+            ".validate": "true"
+          },
+          "frozenAt": {
+            ".validate": "true"
+          },
+          "recordedAt": {
+            ".validate": "true"
           }
         }
       }
