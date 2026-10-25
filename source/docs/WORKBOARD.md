@@ -1,3 +1,14 @@
+## 25/10/2026 — Đồng bộ nguồn mirror 55 dòng: metadata thời gian đã rõ, live chưa đối chiếu
+| Mã | Trạng thái | Chứng cứ còn thiếu |
+| --- | --- | --- |
+| HDND-MIRROR-SCHEMA | **PARTIAL PASS** | schemaVersion=1, rows=55, sourceModifiedAt=23/10/2026 02:07:11Z, syncedAt=23/10/2026 04:41:44Z. Chưa có kết quả `Mirror metadata valid` và chưa chạy `validateExcelMirror` cho toàn bộ fields. |
+| HDND-LIVE-RECONCILE | **NEXT / BLOCKING** | Bản backup chốt 55 hàng từ mirror 23/10, còn người dùng từng thấy báo cáo 57 hàng trong ảnh khác mốc. Phải `firebase database:get /` **read-only** lần mới để so live row count, live `syncedAt`, `hdnd/items` và ID set trước khi migrate. |
+| HDND-RESTORE-DRILL | **HOLD** | Chưa có kết quả nạp backup vào demo RTDB Emulator và full readback SHA. |
+| HDND-RULES-REVIEW | **HOLD** | Chưa xác nhận Rules Published/readback và diff candidate. |
+| HDND-PRODUCTION-GO | **NO-GO** | Không nhập 55 row vào `hdnd/items` hoặc deploy Rules khi dữ liệu hiện tại chưa được đối chiếu. |
+
+---
+
 ## 25/10/2026 — Nguồn mirror 55 hàng, cần xử lý chênh lệch với giao diện
 | Mã | Kết quả | Blocker / bước tiếp |
 | --- | --- | --- |
