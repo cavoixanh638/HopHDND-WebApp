@@ -1,3 +1,10 @@
+## 25/10/2026 — Kiểm kê nhánh dữ liệu trên bản sao RTDB (bằng chứng PowerShell do người vận hành gửi)
+- Bản sao `database-1.json` JSON hợp lệ: `hdnd` có dữ liệu; `hdnd/items` **0 bản ghi**; `hdnd/mirrors` **1 nguồn cấp cao nhất**; `hdnd/permissions` tồn tại; `hdnd/profile` tồn tại; `hdnd/profile.dataSource` không có giá trị hiển thị.
+- **Lưu ý:** Con số 1 là số khóa trực tiếp dưới `hdnd/mirrors`, **chưa chắc** là số bản sao tab/GID; phải kiểm tra các khóa con và số hàng `rows`. `items=0` chỉ chứng minh tại thời điểm backup, không khẳng định Database hiện tại vẫn rỗng. Giá trị `dataSource` trống không được suy đoán là `primary`.
+- **Chưa có quyền xem file nội bộ của người dùng**, chưa khôi phục emulator, chưa đối chiếu bản Rules Published. Không chuyển nguồn/ghi production. Bước kế: kiểm metadata mirror bằng script chỉ đọc (schema, số tab, tổng dòng, ID trùng, dấu thời gian) rồi thử restore cách ly, lấy lại trạng thái live ngay trước khi có quyết định migrate.
+
+---
+
 ## 25/10/2026 — Bằng chứng người vận hành: hai bản DB + bản Rules JSON kiểm tra đạt (chưa GO)
 - Người vận hành trên Windows đã xác nhận cả ba file trong thư mục riêng tư trên máy (không upload lên GitHub): `database-1.json` **56.185 bytes**, `database-2.json` **56.185 bytes**, `rules-live.json` **24.497 bytes**. Cả ba `ConvertFrom-Json` thành công; file Rules có thuộc tính `rules`.
 - Hai bản Database SHA256 cùng bằng `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
