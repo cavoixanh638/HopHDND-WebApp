@@ -1,5 +1,9 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+### Cập nhật khả năng tự chọn nguồn (QA) — cấu hình sẵn Supabase staging
+
+Bản nguồn PR #75 đã có **publishable key mặc định của chính dự án QA** `uguhyunuzsdrkykqgdmq` được lấy từ connector Supabase. `sb_publishable_...` là khóa công khai dành cho trình duyệt, **không phải** service_role/secret key; mọi dữ liệu vẫn chỉ được đọc sau Supabase Auth JWT và RLS. Vì vậy trên bản build QA, lựa chọn Supabase sẽ xuất hiện ngay, **không cần tự dán key để bắt đầu thử**. Tùy chọn cấu hình key trong tab vẫn được giữ để thử việc xoay khóa/môi trường; mọi override phải được operator kiểm tra kỹ, không nhằm trỏ vào production. Khoá công khai **không mở** Anonymous/Google Auth và không tự tạo quản trị viên. Những bước Auth provider, Google OAuth và verified admin ở hướng dẫn dưới vẫn là blocker bắt buộc.
+
 ### Bằng chứng CI chính xác sau vòng chỉnh sửa Auth/Realtime và bộ chọn nguồn
 
 - **Commit nguồn chính xác:** `5713e18281db3bc2d73de2430a013547eacebbbd`.
