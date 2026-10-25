@@ -45,7 +45,14 @@ export function parseSupabaseItem(raw:unknown):Item {
     if(!(field in row.fields))throw new Error('Thiếu trường dữ liệu: '+field);
     clean[field]=row.fields[field];
   }
-  if(validateChanges(clean as Changes))throw new Error('Giá trị nguồn Supabase không hợp lệ.');
+  for(const extra of ['partyMeeting','examined'] as const){
+    if(extra in row.fields){
+      if(typeof row.fields[extra]!=='string')throw new Error('Trường nguồn mở rộng không hợp lệ: '+extra);
+      clean[extra]=row.fields[extra];
+    }
+  }
+  if(validateChanges(Object.fromEntries(EDITABLE_FIELDS.map(f=>[f,clean[f]])) as Changes))
+    throw new Error('Giá trị nguồn Supabase không hợp lệ.');
   return {
     ...(clean as unknown as Omit<Item,'recordId'|'displayCode'|'stt'|'revision'|'archivedAt'>),
     recordId:row.record_id,displayCode:row.display_code,stt:row.stt,
