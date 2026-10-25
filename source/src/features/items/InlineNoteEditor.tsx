@@ -15,26 +15,31 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
   const [draft,setDraft]=useState(value);
   const [error,setError]=useState('');
   const cancelled=useRef(false);
+  const composing=useRef(false);
+  const drainRequested=useRef(false);
+  const latestDraft=useRef(value);
   const completed=useRef(false);
   const textareaRef=useRef<HTMLTextAreaElement>(null);
-  useEffect(()=>{if(!editing)setDraft(value);},[value,editing]);
+  useEffect(()=>{if(!editing){setDraft(value);latestDraft.current=value;}},[value,editing]);
   // In the Pages Preact build, don't rely only on autoFocus. Without DOM focus,
   // blur may never fire and several textareas can remain open simultaneously.
   useEffect(()=>{if(editing&&textareaRef.current&&document.activeElement!==textareaRef.current)
     textareaRef.current.focus();},[editing]);
   const apply=()=>{
+    if(composing.current){drainRequested.current=true;return;}
+    const current=latestDraft.current;
     if(cancelled.current){cancelled.current=false;return;}
     if(completed.current)return;
-    if(draft!==value&&leaseManager&&recordId&&field&&!leaseManager.has(recordId,field)){
+    if(current!==value&&leaseManager&&recordId&&field&&!leaseManager.has(recordId,field)){
       setError('Quyền sửa ô đã hết hạn. Hãy sao chép nội dung trước khi rời ô.');return;
     }
-    if(draft!==value&&onCommit(draft)===false){
+    if(current!==value&&onCommit(current)===false){
       setError('Quyền sửa đã thay đổi. Nội dung chưa được áp dụng; hãy sao chép nội dung trước khi rời ô.');
       return;
     }
     completed.current=true;
     setEditing(false);
-    if(leaseManager&&recordId&&field&&draft===value)void leaseManager.cancel(recordId,field);
+    if(leaseManager&&recordId&&field&&current===value)void leaseManager.cancel(recordId,field);
     setError('');
   };
   useEffect(()=>{
@@ -47,7 +52,7 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
   const beginEdit=(initial:string)=>{
     const begin=()=>{
       cancelled.current=false;completed.current=false;setError('');
-      setDraft(initial);setEditing(true);
+      latestDraft.current=initial;setDraft(initial);setEditing(true);
     };
     if(!leaseManager||!recordId||!field){begin();return;}
     setWaiting(true);
@@ -74,7 +79,15 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
       value={draft} onChange={event=>{
         const next=event.currentTarget.value;
         if(leaseManager&&recordId&&field)leaseManager.preserveDraft(recordId,field,next);
-        setDraft(next);
+        latestDraft.current=next;setDraft(next);
+      }}
+      onCompositionStart={()=>{composing.current=true;}}
+      onCompositionEnd={event=>{
+        composing.current=false;
+        const finalText=event.currentTarget.value;
+        latestDraft.current=finalText;setDraft(finalText);
+        if(leaseManager&&recordId&&field)leaseManager.preserveDraft(recordId,field,finalText);
+        if(drainRequested.current){drainRequested.current=false;apply();}
       }}
       onBlur={apply} onKeyDown={event=>{
         if(event.key==='Escape'){
