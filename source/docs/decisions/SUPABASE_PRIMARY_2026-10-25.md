@@ -1,3 +1,10 @@
+> **CẬP NHẬT QUYẾT ĐỊNH 25/10/2026 — ƯU TIÊN MỚI NHẤT: CHẠY SONG SONG.** Chủ dự án yêu cầu **GIỮ Firebase và bổ sung Supabase thành nguồn thứ hai**, với lựa chọn nguồn trong WebApp. Đây là thử nghiệm A/B song song, **không phải Supabase thay thế và xóa Firebase**. Mọi câu bên dưới về "thay Firebase", "thay thế Firebase-only" được hiểu là lịch sử quyết định đích trước yêu cầu mới; quy tắc mới dưới đây có ưu tiên:
+> - Bộ chọn nguồn **Firebase RTDB / Supabase PostgreSQL** trong ứng dụng, cùng giao diện, 5 báo cáo và quyền; nguồn nào đang chọn chỉ đọc/ghi **đúng nguồn đó**, thông báo rõ nguồn trước khi lưu.
+> - **Không đồng bộ hai chiều ngầm, không tự sao chép dữ liệu thật giữa hai bên, không tự merge/xóa/disable Firebase.** Dữ liệu từng backend độc lập; mở nguồn chưa khởi tạo thì hiện trạng thái chưa có dữ liệu, không coi là lỗi hoặc âm thầm fallback.
+> - Chuyển nguồn phải cảnh báo và xử lý nháp, lease đang mở; khóa nguồn theo `sourceKey`, kiểm soát quyền/auth riêng cho từng backend, không dùng token Firebase để viết Supabase hay ngược lại.
+> - Chỉ kích hoạt Supabase khi staging + server RPC + Auth + realtime + regression đạt GO; Firebase vẫn có thể được chọn ngay cả khi Supabase được phát hành.
+> - Lựa chọn cuối (nếu có chuyển nguồn duy nhất) sẽ cần quyết định mới bằng văn bản; **hiện tại không có quyết định bỏ bất cứ database nào**.
+
 # ADR — Supabase là nền tảng đích của HopHDND (25/10/2026)
 
 **Trạng thái: APPROVED FOR DEVELOPMENT / PRODUCTION NO-GO.** Người quyết định: chủ dự án, cuộc trao đổi ngày 25/10/2026. Quyết định này **THAY THẾ lựa chọn công nghệ Firebase-only** trong [FIREBASE_ONLY_POST_CUTOVER_2026-10-25](FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md), nhưng **GIỮ NGUYÊN các bất biến nghiệp vụ** được chốt trong đó: WebApp là nơi nhập/xem/sửa duy nhất sau cutover, một lần nhập dữ liệu khởi tạo, không phụ thuộc Google Sheets/Excel về lâu dài.
