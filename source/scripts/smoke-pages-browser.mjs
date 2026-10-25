@@ -1139,6 +1139,21 @@ try{
       })()`);
       if(!colorConsistency.ok)throw Error('Report status header/body/footer palette mismatch: '+
         JSON.stringify(colorConsistency));
+      // A report without intermediate stage must not show an empty
+      // "Bước tiếp theo" action chip; Party and Build retain that chip.
+      const intermediateChips=await evaluate(`(()=>{
+        const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
+        const reports=titles.map(title=>{
+          const section=title.closest('.report-surface');
+          const labels=[...section.querySelectorAll('.report-flow-summary .report-stage-summary')]
+            .map(el=>el.textContent?.trim());
+          return {title:title.textContent?.trim(),labels,hasNext:labels.some(l=>l?.includes('Bước tiếp theo'))};
+        });
+        return {ok:reports.length===5&&reports.every(r=>
+          r.hasNext===(r.title.includes('xin ý kiến Thành ủy')||r.title.includes('xây dựng NQ'))),reports};
+      })()`);
+      if(!intermediateChips.ok)throw Error('Intermediate-stage chips mismatch: '+JSON.stringify(intermediateChips));
+      console.log('REPORT_STAGE_SUMMARIES_MATCH_COLUMNS_PASS');
       const buildHeading=await evaluate(`(()=>{
         const title=[...document.querySelectorAll('.report-surface h3')]
           .find(node=>node.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
