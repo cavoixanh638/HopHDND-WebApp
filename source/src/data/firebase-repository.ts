@@ -4,6 +4,7 @@ import type { AuditEntry, EditableField, Item, Patch, SaveResult } from '../../s
 import type { Repository } from './repository';
 import { EDITABLE_FIELDS, validateChanges } from '../domain/items';
 import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
+import type {CellEditSessionManager} from './cell-edit-leases';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -47,6 +48,7 @@ export class FirebaseRepository implements Repository {
   readonly canDraft=true;
   readonly readOnly=false;
   readonly subscribeInitial=true;
+  leaseManager?:CellEditSessionManager;
   checkAssignment?:(item:Item)=>string;
   constructor(readonly database:Database,private user:()=>User|null,private permissions:()=>CellPermissions,private readonly itemPath='hdnd/items'){}
   async list(){return rowsFrom((await get(ref(this.database,this.itemPath))).val());}
@@ -59,6 +61,8 @@ export class FirebaseRepository implements Repository {
         const user=this.user();if(!user)throw new Error('Chưa đăng nhập Firebase.');
         const issue=validateChanges(patch.changes);if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
+        if(this.leaseManager&&fields.some(field=>!this.leaseManager!.proof(patch.recordId,field)))
+          throw new Error('Mất khóa ô trước khi lưu. Bản nháp được giữ.');
         if(!fields.length||fields.some(field=>!(field in patch.baseValues)||!mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))throw new Error('Bạn chưa được phép sửa ô này.');
         let replay=false;
         const transaction=await runTransaction(ref(this.database,`${this.itemPath}/${patch.recordId}`),raw=>{
@@ -70,7 +74,10 @@ export class FirebaseRepository implements Repository {
           const conflict=fields.find(field=>current[field]!==patch.baseValues[field]);
           if(conflict){reason=`Ô ${conflict} hiện ở nguồn là “${String(current[conflict])}”; phần bạn nhập “${String(patch.changes[conflict])}” vẫn được giữ. Bỏ phần sửa để nhận dữ liệu nguồn hoặc đối chiếu trước khi nhập lại.`;return undefined;}
           if(fields.some(field=>field==='specialist'||field==='room')){const issue=this.checkAssignment?.({...current,...patch.changes});if(issue)throw new Error(issue);}
-          const next={...raw,...patch.changes,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
+          const editProofs={...(raw.editProofs??{})};
+          if(this.leaseManager)for(const field of fields)
+            editProofs[field]=this.leaseManager.proof(patch.recordId,field);
+          const next={...raw,...patch.changes,editProofs,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
           const history:Record<string,FirebaseEvent>={...(raw.history??{})};
           history[String(next.revision%50)]={operationId:patch.operationId,recordId:patch.recordId,at:serverTimestamp() as unknown as number,actor:user.uid,changesJson:JSON.stringify(patch.changes),oldValuesJson:JSON.stringify(patch.baseValues)};
           return {...next,history};
