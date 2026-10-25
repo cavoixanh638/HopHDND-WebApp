@@ -1,3 +1,15 @@
+## 25/10/2026 — Kiểm kê offline trước khi thử restore
+| Mã | Trạng thái | Bằng chứng |
+| --- | --- | --- |
+| HDND-SOURCE-INVENTORY | **PARTIAL PASS / WAIT MIRROR ROW COUNT** | Người vận hành báo `hdnd` tồn tại; `hdnd/items=0` (tại backup), `hdnd/mirrors=1` cấp gốc, `permissions/profile` tồn tại, `profile.dataSource` trống. Cần số tab/GID, schemaVersion, số hàng, ID trùng và metadata bản sao. |
+| HDND-RESTORE-DRILL | **HOLD** | Chưa khôi phục JSON vào Emulator cách ly; không chạy import production. |
+| HDND-RULES-DIFF | **HOLD** | Rules production file đã có hash, chưa readback chứng minh Published hay so với candidate. |
+| HDND-PROD-SWITCH | **NO-GO** | Trước migrate phải đọc lại chính xác `hdnd/items` từ server, kiểm phương án transaction và Rules ghi tập dữ liệu, backup/restore và multi-user test. |
+
+Các số liệu trên chỉ có từ lệnh PowerShell trên backup riêng tư (không phải kết nối Firebase trực tiếp của ChatGPT).
+
+---
+
 ## 25/10/2026 — Checkpoint backup mới, cập nhật từ đầu ra PowerShell của người vận hành
 | Mã | Status | Bằng chứng / điều kiện còn thiếu |
 | --- | --- | --- |
