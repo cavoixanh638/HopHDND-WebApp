@@ -1,6 +1,6 @@
 import {describe,it,expect,vi} from 'vitest';
 import {sourceNamespace,sourceSwitchBlocker,resolveTabSource,type SourceSwitchState} from '../src/data/parallel-source-selection';
-import {SupabasePreviewRepository,SupabaseAnonymousPreviewAuth,validateSupabasePreviewConfig} from '../src/data/supabase-preview-source';
+import {SupabasePreviewRepository,SupabaseAnonymousPreviewAuth,validateSupabasePreviewConfig,readSupabaseTabConfig,saveSupabaseTabConfig} from '../src/data/supabase-preview-source';
 import {createDemoItems} from '../src/data/demo-items';
 import type {Item,Patch} from '../shared/types';
 
@@ -45,6 +45,14 @@ describe('tab-only source policy (no Firebase admin mutation)',()=>{
       {drafts:1},{protectedRecovery:true},{heldLeases:1},
       {editorUnsaved:true},{editorOpen:true},{busy:true},{cachePending:true}
     ])expect(sourceSwitchBlocker({...clear,...state})).toBeTruthy();
+  });
+  it('stores only an explicitly validated public staging connection in this tab',()=>{
+    const memory=memoryStorage();
+    expect(readSupabaseTabConfig(memory)).toBeNull();
+    expect(saveSupabaseTabConfig(config,memory)).toBe(true);
+    expect(readSupabaseTabConfig(memory)).toEqual(config);
+    expect(saveSupabaseTabConfig({...config,publishableKey:'sb_secret_bad'},memory)).toBe(false);
+    expect(readSupabaseTabConfig(memory)).toEqual(config);
   });
   it('never accepts secret keys, unsupported hosts or non-HTTPS backends',()=>{
     expect(validateSupabasePreviewConfig(config.url,config.publishableKey)).toEqual(config);
