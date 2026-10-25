@@ -237,6 +237,36 @@
         "$other": {
           ".validate": "$other === 'revision' || $other === 'editingLocked' || $other === 'changedAt'"
         }
+      },
+      "mirrorEdits": {
+        "$sheet": {
+          "$gid": {
+            "$row": {
+              ".write": "auth != null && newData.exists() && $sheet.matches(/^[A-Za-z0-9_-]{10,200}$/) && $gid.matches(/^[0-9]{1,20}$/) && $row.matches(/^[1-9][0-9]{0,4}$/) && root.child('hdnd/mirrors').child($sheet).child($gid).child('schemaVersion').val() === 1 && ((auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || root.child('hdnd/control/editingLocked').val() !== true)",
+              ".validate": "newData.hasChildren(['revision','operationId','updatedAt','updatedBy','values']) && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && ((!data.child('values/content').exists() || newData.child('values/content').exists()) && (!data.child('values/department').exists() || newData.child('values/department').exists()) && (!data.child('values/type').exists() || newData.child('values/type').exists()) && (!data.child('values/partyLevel').exists() || newData.child('values/partyLevel').exists()) && (!data.child('values/progressParty').exists() || newData.child('values/progressParty').exists()) && (!data.child('values/progressBuild').exists() || newData.child('values/progressBuild').exists()) && (!data.child('values/progressCouncil').exists() || newData.child('values/progressCouncil').exists()) && (!data.child('values/specialist').exists() || newData.child('values/specialist').exists()) && (!data.child('values/room').exists() || newData.child('values/room').exists()) && (!data.child('values/vpLeader').exists() || newData.child('values/vpLeader').exists()) && (!data.child('values/ubndLeader').exists() || newData.child('values/ubndLeader').exists()) && (!data.child('values/specificProgress').exists() || newData.child('values/specificProgress').exists()) && (!data.child('values/note').exists() || newData.child('values/note').exists()) && (!data.child('values/documentKind').exists() || newData.child('values/documentKind').exists()) && (!data.child('values/isDropped').exists() || newData.child('values/isDropped').exists()))",
+              "revision": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0"
+              },
+              "operationId": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,100}$/) && newData.val() !== data.val()"
+              },
+              "updatedAt": {
+                ".validate": "newData.isNumber() && newData.val() === now"
+              },
+              "updatedBy": {
+                ".validate": "newData.isString() && newData.val() === auth.uid"
+              },
+              "values": {
+                "$field": {
+                  ".validate": "($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && ((($field === 'isDropped' && newData.isBoolean()) || ($field === 'documentKind' && (newData.val() === 'NQ' || newData.val() === 'BC' || newData.val() === 'UNCLASSIFIED')) || ($field !== 'isDropped' && $field !== 'documentKind' && newData.isString() && newData.val().length <= 20000 && ($field !== 'content' || newData.val().length > 0)))) && ((auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($sheet + ':' + $gid + ':row:' + $row).child($field).exists() ? root.child('hdnd/permissions/cells').child($sheet + ':' + $gid + ':row:' + $row).child($field).val() === true : (root.child('hdnd/permissions/rows').child($sheet + ':' + $gid + ':row:' + $row).exists() ? root.child('hdnd/permissions/rows').child($sheet + ':' + $gid + ':row:' + $row).val() === true : root.child('hdnd/permissions/columns').child($field).val() === true)))"
+                }
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
       }
     },
     "hdndReviews": {
