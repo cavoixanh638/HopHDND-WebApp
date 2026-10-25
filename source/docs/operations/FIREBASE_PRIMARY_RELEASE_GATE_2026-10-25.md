@@ -7,6 +7,13 @@ Không dùng chênh lệch 55/57 trong các tài liệu lịch sử làm **block
 
 ---
 
+## 25/10/2026 — Kết quả kiểm thử tích hợp Firebase-only mới
+- **PR #72 exact commit** `54ff4eeb45ba1e3ed0c30a15d3a85c7d6768b828`; [GitHub Actions #40190875312](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40190875312) **PASS** (unit, TypeScript, Firebase Emulator, browser smoke, Pages build). Đây là kiểm thử trên branch DRAFT, **không triển khai production**.
+- Workflow `.github/workflows/verify-source.yml` không còn ba bước CI bắt buộc kiểm GViz trực tiếp, bootstrap Cloud Shell mirror và Python mirror. Kiểm thử Chrome vẫn sử dụng fixture/mock lịch sử để chống hồi quy giao diện, **không ghi hoặc kiểm kê Google Sheets thật**.
+- Bổ sung **thử khôi phục RTDB từ JSON giả** trên emulator cô lập `demo-hdnd-restore` (`127.0.0.1:9198`), PUT/GET và SHA256 của JSON chuẩn hóa khớp. Chứng cứ này **không thay thế** thử restore với file backup riêng tư trên máy người vận hành.
+- Bổ sung bài test xuyên PR: admin chuyển bộ mirror mẫu một lần sang `hdnd/items` dưới **Rules khóa ô ứng viên #72**. Test đầu tiên đã **FAIL `permission_denied`** vì quy tắc yêu cầu lease cho cả bản ghi mới; đã sửa ngoại lệ chỉ cho quản trị viên được xác thực **khi `hdnd/items` chưa tồn tại**, giữ nguyên lease cho cập nhật tiếp theo. Test và toàn bộ CI hiện **PASS**; thử nhập lần hai phải bị từ chối.
+- **Vẫn NO-GO production:** phải xác minh Rules Published thật, thử restore backup riêng tư trên emulator, rà đường ghi Rules và nghiệm thu 2–3 tài khoản staging; sau đó mới phê duyệt triển khai. Không khảo sát định kỳ Sheet/mirror như một nhiệm vụ phát triển WebApp.
+
 ## 25/10/2026 — Đối chiếu LIVE mirror và Office Excel mới nhất
 - Người vận hành đã chạy `firebase database:get /` live read-only; `hdnd/items=0`, mirror vẫn 55 dòng cùng tập ID với snapshot và vẫn `syncedAt=2026-10-23T04:41:44.104873Z`. Không có bằng chứng đồng bộ hoạt động sau 23/10.
 - Read-only Google Drive metadata của file Office nguồn (`1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`) báo `modifiedTime=2026-10-25T04:22:14.272Z`. Trích xuất nội dung đọc được 55 dòng STT số trong tab dữ liệu (7 nội dung kỳ chuyên đề tháng 10, 48 nội dung còn lại). Số đếm **tạm khớp**, nhưng modifiedTime mới hơn và chưa biết thay đổi nào; chưa so từng ID và nội dung.
