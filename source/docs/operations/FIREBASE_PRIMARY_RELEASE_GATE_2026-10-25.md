@@ -1,3 +1,10 @@
+## 25/10/2026 — Cửa kiểm kê dữ liệu trước migration (không để mất nội dung)
+- Người vận hành đã đếm trên backup: 1 mirror source/1 dataset/55 dòng/0 ID trùng; `Mirror metadata valid` chưa trả kết quả rõ trong transcript. **Không đánh dấu mirror verified**.
+- **Bất thường có thể nghiêm trọng:** báo cáo giao diện người dùng trước đó cho thấy `Tiến độ xin ý kiến Thành ủy (57 nội dung)`; nếu cùng nguồn và cùng thời điểm, việc chuyển 55 dòng sẽ làm thiếu ít nhất hai dòng. Cần kiểm tra dữ liệu ở website tương ứng mốc nào, mirror `syncedAt`/sourceModifiedAt và danh sách recordId trước khi GO. Không suy rằng chắc chắn thiếu dữ liệu khi chưa xác nhận nguồn/mốc.
+- Điều kiện GO bổ sung: `validateExcelMirror` đạt, staging restore toàn bộ backup khớp hash, số nội dung khớp bản live và expected source IDs, không sót bản nháp local, kiểm `hdnd/items` vẫn rỗng ngay tại thời điểm transaction. **NO-GO** cho import production nếu tồn tại chênh lệch chưa giải thích.
+
+---
+
 ## 25/10/2026 — Kết quả kiểm kê các nhánh trên backup (reported by operator)
 - `hdnd/items`: 0 tại thời điểm backup. `hdnd/mirrors`: 1 khóa con trực tiếp (có thể bao gồm nhiều GID); `hdnd/profile` và `hdnd/permissions` tồn tại; `hdnd/profile.dataSource` trống/không hiển thị. Không coi đây là bằng chứng có thể switch source tức thì.
 - **Tiếp theo:** kiểm đúng cấu trúc `hdnd/mirrors/{spreadsheetId}/{gid}`, `schemaVersion=1`, `rows` không rỗng, metadata `source`/SHA/timestamp và record IDs trước staging import. Backup phải restore thành công trên Emulator cô lập.
