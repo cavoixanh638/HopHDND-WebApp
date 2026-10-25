@@ -56,6 +56,17 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       note:'Anonymous bypass',revision:before.revision+1
     }));
   });
+  it('denies unregistered Google employee even if global column permission allows note',async()=>{
+    const other=guest('not-on-allowlist');
+    await assertFails(set(ref(other as never,'hdnd/editLocks/r1/note'),{
+      uid:'not-on-allowlist',session:crypto.randomUUID(),token:crypto.randomUUID(),
+      revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
+    }));
+    const baseline=(await get(ref(other as never,'hdnd/items/r1'))).val();
+    await assertFails(update(ref(other as never,'hdnd/items/r1'),{
+      note:'UID without grant',revision:baseline.revision+1
+    }));
+  });
   it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
     const staff=guest('a'),list=ref(staff as never,'hdnd/editors/a');
     expect((await get(list)).val()).toBe(true);
