@@ -26,8 +26,10 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
   if(!authorized(user))throw new Error('Chỉ tài khoản quản trị xác thực được chốt dữ liệu.');
   const transitions:Record<FreezeMode,FreezeMode[]>={OPEN:['DRAINING','FROZEN'],DRAINING:['FROZEN','OPEN'],FROZEN:['OPEN']};
   if(!transitions[expected.mode].includes(next))throw new Error('Chuyển trạng thái chốt không hợp lệ.');
-  if(next==='FROZEN'&&expected.mode==='DRAINING'&&!force)
-    throw new Error('Cần xác nhận tất cả phiên đã kết thúc hoặc chọn Đóng băng ngay.');
+  if(next==='FROZEN'&&expected.mode==='DRAINING'&&!force){
+    const count=await activeEditLeaseCount(database);
+    if(count>0)throw new Error(`Còn ${count} ô đang sửa. Chờ lưu xác nhận hoặc dùng Đóng băng ngay.`);
+  }
   const x=await runTransaction(ref(database,FREEZE_PATH),raw=>{
     let current:FreezeControl;
     try{current=parseFreeze(raw);}catch{return undefined;}
