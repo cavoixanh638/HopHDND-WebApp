@@ -25,12 +25,12 @@ export async function migrateMirrorToPrimary(
   const primaryRef=ref(database,'hdnd/items');
   if((await get(primaryRef)).exists())
     throw new Error('Database chính đã có dữ liệu. Không nhập chồng; kiểm tra và đối chiếu trước khi chuyển nguồn.');
-  const ids=new Set<string>(),codes=new Set<string>();
+  const ids=new Set<string>();
   const rows:Item[]=mirror.rows.map(row=>{
     const normalized=validateFirebaseItem({...row,revision:1,archivedAt:row.archivedAt??null});
-    if(ids.has(normalized.recordId)||codes.has(normalized.displayCode))
-      throw new Error('Dữ liệu nguồn bị trùng ID hoặc mã nội dung; không chuyển.');
-    ids.add(normalized.recordId);codes.add(normalized.displayCode);
+    if(ids.has(normalized.recordId))
+      throw new Error('Dữ liệu nguồn bị trùng ID nội dung; không chuyển.');
+    ids.add(normalized.recordId);
     return normalized;
   });
   if(rows.length===0||rows.length>5000)throw new Error('Nguồn không có số lượng dòng hợp lệ để chuyển.');
