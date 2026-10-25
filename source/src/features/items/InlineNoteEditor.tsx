@@ -58,7 +58,11 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
   return <div className="inline-note-editor">
     <textarea ref={textareaRef} className="inline-note-textarea" autoFocus aria-label={label}
       maxLength={20000} rows={Math.min(8,Math.max(3,draft.split('\n').length))}
-      value={draft} onChange={event=>setDraft(event.currentTarget.value)}
+      value={draft} onChange={event=>{
+        const next=event.currentTarget.value;
+        if(leaseManager&&recordId&&field)leaseManager.preserveDraft(recordId,field,next);
+        setDraft(next);
+      }}
       onBlur={apply} onKeyDown={event=>{
         if(event.key==='Escape'){
           event.preventDefault();event.stopPropagation();
