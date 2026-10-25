@@ -91,7 +91,8 @@ describe('Supabase staging anonymous auth and READ-ONLY REST',()=>{
     const fetcher=vi.fn(async()=>json({msg:'Anonymous sign-ins disabled'},401)) as unknown as typeof fetch;
     const source=new SupabasePreviewRepository(config,fetcher,memoryStorage());
     await expect(source.list()).rejects.toThrow('Không đăng nhập được Supabase');
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    await expect(source.list()).rejects.toThrow('Không đăng nhập được Supabase');
+    expect(fetcher).toHaveBeenCalledTimes(1); // No signup flood on Free tier.
     expect(source.readOnly).toBe(true);
     expect(source.canDraft).toBe(false);
   });
