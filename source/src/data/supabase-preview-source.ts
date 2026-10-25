@@ -212,6 +212,16 @@ export class SupabasePreviewRepository implements Repository {
     this.lastAccess=raw;
     return raw;
   }
+  async savePermissions(next:CellPermissions,expectedRevision:number):Promise<number>{
+    if(!this.lastAccess?.isAdmin)throw new Error('Supabase chưa xác minh quyền quản trị.');
+    const normalized={columns:next.columns??{},rows:next.rows??{},cells:next.cells??{}};
+    const revision=await this.rpc<number>('hdnd_set_permissions',{
+      p_expected:expectedRevision,p_rights:normalized
+    });
+    if(!Number.isSafeInteger(revision)||revision<=expectedRevision)
+      throw new Error('Supabase chưa xác nhận phiên bản quyền đã lưu.');
+    return revision;
+  }
   /** UI control only: server independently validates every subsequent SQL write. */
   setVerifiedWriteMode(enabled:boolean):void{
     this.verifiedWrites=enabled&&!!this.lastAccess&&
