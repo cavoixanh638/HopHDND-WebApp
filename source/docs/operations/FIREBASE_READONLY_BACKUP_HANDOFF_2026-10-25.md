@@ -1,3 +1,11 @@
+## E. Kết quả trên máy quản trị được báo ngày 25/10/2026 (không phải chứng nhận GO)
+- `database-1.json` và `database-2.json`: mỗi file 56.185 bytes, parse JSON thành công, SHA256 giống nhau `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- `rules-live.json`: 24.497 bytes, parse JSON hợp lệ và có `rules`, SHA256 `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`.
+- Dữ liệu JSON chưa được trợ lý đọc; không có dữ liệu/Rules production nào được đưa vào GitHub. Mức bằng chứng là đầu ra PowerShell của người vận hành.
+- Cần tiếp: xác nhận đúng Rules Published, kiểm kê metadata của dữ liệu (không in giá trị), diff candidate Rules bảo mật và nạp thử trên môi trường Firebase Emulator độc lập. Không coi 3 hash PASS là restore đã đạt.
+
+---
+
 # HopHDND — Bàn giao sao lưu Firebase production (READ-ONLY)
 **Ngày:** 25/10/2026 · **Trạng thái:** Chưa chạy trên Firebase thật, chưa có file Rules/data production, KHÔNG GO.
 
