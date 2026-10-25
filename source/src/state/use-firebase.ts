@@ -16,6 +16,7 @@ import {DEFAULT_SHEET_URL,loadSheetConfig,parseSheetConfig} from '../data/sheet-
 import {compareSourceFromSearch} from '../data/source-comparison';
 import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
+import {initialFreeze,watchFreeze,setFreezeMode,activeEditLeaseCount,type FreezeControl,type FreezeMode} from '../data/freeze-control';
 
 export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'|'primary'}
 export interface ReviewBaseline {revision:number;source:string;approvedAt:string;approvedBy:string;changedCount:number;snapshot:ReviewSnapshot;history:{revision:number;at:string;changedCount:number}[]}
@@ -53,6 +54,7 @@ export function useFirebase(){
   const [profile,setProfile]=useState<FirebaseProfile|null>(loadConfirmedProfile),[busy,setBusy]=useState(false);
   const [profileReady,setProfileReady]=useState(false),[permissionsReady,setPermissionsReady]=useState(false);
   const [editControl,setEditControl]=useState({ready:false,revision:0,editingLocked:true});
+  const [freezeControl,setFreezeControl]=useState<FreezeControl|null>(null);
   const saving=useRef(false);
   const hadAuthenticatedSession=useRef(false);
   const stopMirrorWarmup=useRef<(()=>void)|null>(null);
@@ -64,7 +66,7 @@ export function useFirebase(){
       if(next)hadAuthenticatedSession.current=true;
       markStartup('auth-checked');
       if(next)markStartup('auth-signed-in');
-      setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});
+      setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditControl({ready:false,revision:0,editingLocked:true});setFreezeControl(null);
       if(!next&&!signing){signing=true;void ensureGuestAuth(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
     },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
@@ -219,6 +221,19 @@ export function useFirebase(){
       throw new Error('Firebase chưa xác nhận đúng quyền đã lưu. Hãy đọc lại và đối chiếu; bản nháp vẫn được giữ.');
     }finally{saving.current=false;setBusy(false);}
   };
+  useEffect(()=>{
+    if(!user)return;
+    return watchFreeze(database,setFreezeControl,cause=>{
+      setFreezeControl(null);setError('Không đọc được trạng thái đóng băng: '+cause.message);
+    });
+  },[database,user?.uid]);
+  const updateFreeze=async(next:'DRAINING'|'FROZEN'|'OPEN',force=false)=>{
+    if(!connected||!freezeControl)throw new Error('Chưa xác nhận chế độ chốt trên Firebase.');
+    const confirmed=await setFreezeMode(database,auth.currentUser,freezeControl,next,force);
+    setFreezeControl(confirmed);
+    return confirmed;
+  };
+  const countEditingCells=()=>activeEditLeaseCount(database);
   const saveEditingLock=async(nextLocked:boolean)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!editControl.ready)throw new Error('Chỉ quản trị đã kết nối mới được khóa hoặc mở sửa.');
     if(saving.current)throw new Error('Đang lưu thiết lập khác.');
@@ -270,8 +285,8 @@ export function useFirebase(){
     if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase; dữ liệu Sheets vẫn có thể đọc.');return;}
     try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,'hdnd/permissions'))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
   };
-  return {database,user,ready,error,connected,permissions,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
-    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&(!editControl.editingLocked||admin)&&mayEdit(permissions,id,field,admin),
+  return {database,user,ready,error,connected,permissions,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
+    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&(!editControl.editingLocked||admin)&&mayEdit(permissions,id,field,admin),
     common:{config:profile,busy,message:error||(!ready?'Đang đăng nhập Firebase để đọc quyền và cấu hình…':!connected?'Mất kết nối Firebase; phần sửa thử vẫn giữ trên máy.':!profileReady?'Đang đọc cấu hình chung từ Firebase…':profile?'Danh mục và bố trí đang dùng chung qua Firebase.':'Chưa có bố trí chung; quản trị có thể lưu bố trí mặc định.'),status:error?'error':profileReady?'ready':'loading',refresh,save:saveProfile}};
 }
 export type FirebaseController=ReturnType<typeof useFirebase>;
