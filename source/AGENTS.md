@@ -1,5 +1,23 @@
 # Hướng dẫn làm việc
 
+## 25/10/2026 — QUY TẮC PHỐI HỢP BẮT BUỘC: Firebase + Supabase trên MỘT WebApp (chưa phát hành)
+
+**Chỉ đạo sản phẩm mới nhất:** giữ **cả Firebase Realtime Database và Supabase PostgreSQL**, chọn một nguồn nghiệp vụ đang hoạt động **theo từng tab/phiên**; không tự đồng bộ/đọc hợp nhất/ghi kép hai nguồn. Việc thay nguồn cục bộ không được thay `hdnd/profile.dataSource` chung. Nguồn Sheets cũ chỉ phục vụ giai đoạn chuyển tiếp, không phải đường đồng bộ vĩnh viễn.
+
+- **Các nhánh đang phát triển và phụ thuộc:** Firebase security/realtime [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72); Supabase foundation [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73); chọn nguồn [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) xếp chồng PR #73; hợp đồng tích hợp [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). **PR #73 bắt đầu từ snapshot Firebase cũ, không tự khẳng định đã nhận mọi sửa bảo mật cuối của #72.** Tất cả Draft / NO-GO.
+- **Một người tích hợp được chỉ định, không tự merge độc lập.** Người làm Firebase sở hữu trực tiếp Security Rules RTDB, xác thực/lease/freeze Firebase. Người làm Supabase sở hữu schema SQL, RLS/RPC, Supabase Auth/Realtime, repository Supabase. Các file `src/app/App.tsx`, `src/state/use-workspace.ts`, `src/features/items/ItemList.tsx`, `src/data/cell-edit-leases.ts`, editor và report UI là **vùng chung do người tích hợp điều phối**. Không được `git checkout --theirs`, ghi đè nguyên file, cherry-pick xung đột tự động hoặc gộp PR #73/#75 vào main trước khi replay/regression từ head cuối #72.
+- **Hợp đồng phân tách nguồn:** repository adapter có `sourceKind`, `list/watch/save/history`; snapshot, draft/checkpoint, lease/session, audit, rights, freeze, source status và cache **đặt namespace theo backend + project + user/phiên khi phù hợp**. Mọi save phải khớp `activeSource` tại lúc bắt đầu và ngay trước khi ACK; cấm đọc Firebase nhưng ghi Supabase, hoặc ngược lại. Không mặc định fallback nguồn khác khi backend lỗi. Chặn đổi nguồn khi có draft/editor, lease, save, pending ACK, offline/recovery hoặc dữ liệu đang tải.
+- **Quyền và bảo mật:** Firebase Auth token **không** là Supabase Auth token; Firebase Rules **không** thay cho Supabase RLS/RPC. Mỗi backend tự xác minh UID/định danh, ACL, CAS, exclusive lease và audit trên máy chủ. Supabase không để `service_role`/secret/database password vào frontend, docs hoặc CI; bảng expose phải bật RLS và policy deny-by-default; không dùng `user_metadata` làm quyền. Firebase người sửa phải dùng tài khoản Google đã xác minh và UID được quản trị duyệt (candidate PR #72). Cấm quyền sửa ẩn danh ngoài chính sách cụ thể.
+- **Chuyển đổi và release:** Firebase, Supabase và Pages production không đổi cho đến GO riêng. Dữ liệu mẫu hoàn toàn giả dùng trong CI/staging; không nhập business data vào Supabase staging theo nhánh thử. Quyết định **chọn backend mặc định khi phát hành, nhập một lần mỗi nguồn và rollback không mất ACKed edits** phải được phê duyệt; không mượn dữ liệu mirror cũ thay nguồn cuối.
+- **Nghiệm thu bắt buộc trên exact integration commit:** TypeScript/build/docs check, Firebase Auth+RTDB Emulator, PostgreSQL/RLS/RPC security tests, browser 2–3 UID thật, thay nguồn với nháp/lease chưa giải quyết, realtime/ACK/audit/freeze từng backend, so sánh số liệu 15 cột A–O và 5 báo cáo. PASS của riêng nhánh hay UI staging **không phải GO**.
+- **Tài liệu:** mỗi thay đổi code cần cập nhật file chuẩn tương ứng cùng PR: `docs/CURRENT_STATE.md` (thực trạng, exact SHA/CI, blocker), `docs/ARCHITECTURE.md` (source contract), `docs/CAI_DAT_VA_CHAY.md` (lệnh máy), `docs/VAN_HANH.md` (release/rollback), `docs/README.md` (chỉ mục); Supabase QA riêng theo `docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md` **trên nhánh PR #75**. Không phân tán thêm nhiều bản kế hoạch trùng nội dung. Mỗi branch chỉ nhận bản cập nhật của nhánh khác qua người tích hợp/commit đã đối chiếu; tránh “mới hơn” không có exact SHA.
+
+**Quy định ưu tiên:** phần này áp dụng cho các PR đang Draft và không viết lại lịch sử của `main` đang phục vụ người dùng. Xem [CURRENT_STATE](docs/CURRENT_STATE.md) và [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+---
+
+
+
 ## 23/10/2026 — Quy tắc kiểm soát bố cục và lịch sử
 
 - ID mặc định 68px; migrate legacy 100px của bố trí cũ, giữ các giá trị custom khác 100. Bảng dữ liệu: kéo một cột không chia đều hoặc dồn vào cột bất kỳ, chỉ `resizeWithLastColumn` thay width cột đang kéo **và cột cuối đang hiển thị** với tổng không đổi; không gắn tay kéo vào cột cuối. Preview `ColumnResizeHandle.compensator` phải giữ tổng width, React/Firebase commit một lần khi thả; cột cuối chạm giới hạn 60/1600 thì dừng.
