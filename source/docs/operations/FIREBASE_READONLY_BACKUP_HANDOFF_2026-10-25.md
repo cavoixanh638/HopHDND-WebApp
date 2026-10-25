@@ -1,3 +1,14 @@
+## H. Windows: Java chưa nhận diện sau clone/npm thành công
+
+**Bằng chứng trên máy người vận hành (25/10/2026):** Git clone trên nhánh PR #72 thành công tại `D:\HopHDND-Firebase-QA-20261025-Retry`; `npm ci` cài 719 gói; lệnh `java -version` thất bại với `CommandNotFoundException`. Không hề bắt đầu restore backup thật; không ghi PASS. Đây là sự cố điều kiện môi trường, **không xóa/reclone hoặc sửa npm lock**, không chạm production.
+
+- Cài bản Java 21 từ nhà phát hành uy tín theo tài liệu Microsoft: `winget install --id Microsoft.OpenJDK.21 --exact --source winget --accept-package-agreements --accept-source-agreements`. Cài đặt có thể cần quyền Admin. Mở PowerShell mới để nhận PATH.
+- Xác nhận `java -version` chạy thành công. Nếu vẫn báo không nhận diện, kiểm tra thư mục cài và PATH của Java, không mặc định cài lại hoặc thay đổi môi trường global bừa bãi.
+- **Tiếp tục trên clone cũ** bằng `Push-Location 'D:\HopHDND-Firebase-QA-20261025-Retry\source'`, giữ `HDND_PRIVATE_BACKUP` trỏ riêng tư, chạy `.\node_modules\.bin\firebase.cmd emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json 'node scripts/firebase-backup-emulator-restore.mjs'`, kiểm `$LASTEXITCODE` và xóa biến môi trường trong `finally`.
+- `npm ci` có cảnh báo 8 lỗ hổng (6 moderate, 2 high), **không tự chạy `npm audit fix` hoặc `--force`** vì có thể thay đổi dependency/lockfile. Ghi nhận thành đầu mục security release review độc lập. Bước restore vẫn thử được nếu mã/Java hoàn chỉnh.
+
+---
+
 ## G. Windows: khi GitHub không phân giải DNS (25/10/2026)
 
 **Bằng chứng từ PowerShell người vận hành:** `git clone` lỗi `Could not resolve host: github.com`; thư mục `D:\HopHDND-Firebase-QA-20261025\source` không tồn tại, nên `npm ci` chạy từ `C:\WINDOWS\system32` báo thiếu package-lock, rồi Firebase Emulator không tìm thấy file config. **Không có cuộc thử restore nào được thực hiện; trạng thái vẫn HOLD, không được ghi PASS.** Các lỗi sau là hậu quả của clone thất bại, không phải bằng chứng backup hỏng hay cấu hình emulator không đúng.
