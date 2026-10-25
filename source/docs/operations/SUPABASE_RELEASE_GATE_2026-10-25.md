@@ -1,5 +1,24 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Cập nhật sau khi cấu hình Google Provider — 26/10/2026 (đăng nhập thử độc lập)
+
+Chủ dự án xác nhận **đã bấm Save tại Supabase → Authentication → Google**. Kết nối Supabase hiện có **không hỗ trợ đọc/ghi cấu hình OAuth providers, client secret hoặc Redirect URLs**; vì vậy Save không được coi là bằng chứng Google sign-in PASS. Đọc Cloud SQL trực tiếp: `auth.users=0`, `auth.identities[provider=google]=0`, `hdnd_private.admin_emails=0`, dữ liệu 6 hồ sơ QA giả, import gate đóng. Supabase project vẫn `ACTIVE_HEALTHY` với bốn migration. Sau khi bật anonymous sign-ins, Security Advisor có **6 cảnh báo WARN** về chính sách SELECT cho phiên anonymous; không còn được báo cáo "0 cảnh báo bảo mật". Cần phê duyệt mô hình khách xem và kiểm tra RLS trước dữ liệu thật.
+
+**Đường QA đơn giản mới, KHÔNG cần chạy WebApp/Firebase:**
+1. Trong [Supabase Authentication → URL Configuration](https://supabase.com/dashboard/project/uguhyunuzsdrkykqgdmq/auth/url-configuration), thêm Redirect URL dành riêng cho localhost thử: `http://localhost:8765/**`. Không thay Site URL đang sử dụng hoặc mở wildcard trên tên miền thật.
+2. Trong Google Cloud OAuth Client dành cho Supabase staging, thêm `http://localhost:8765` vào **Authorized JavaScript origins** khi cần kiểm thử browser localhost. **Authorized redirect URI của Google** vẫn là `https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/callback`; đây là hai cấu hình KHÁC NHAU.
+3. Mở GitHub Desktop, checkout nhánh PR #75. Mở PowerShell tại thư mục `source` và chạy `py -m http.server 8765 --directory scripts` (có Python). Mở `http://localhost:8765/supabase-auth-smoke.html` trên **chính máy đó**. Trang tĩnh chỉ gọi Auth/REST của Cloud staging, không cần emulators, không có secrets hoặc ghi nghiệp vụ.
+4. Bấm **Kiểm tra Auth của Supabase** để kiểm tra provider Google có đang bật. Bấm **Đăng nhập Google trên Supabase** bằng tài khoản nằm trong Google Cloud Audience → Test users; chờ quay về localhost (redirect URI đã được allowlist). Bấm **Xác minh bằng Supabase**: phải thấy email, UID thật, `isAdmin`, trạng thái control và 6 dòng QA. Session JWT chỉ giữ trong RAM, callback URL bị xóa token ngay.
+5. Nếu `isAdmin=false` thì **bình thường**: mặc định không có admin allowlist. Sau khi đăng nhập Google thật và xác minh đúng tài khoản, operator có thể duyệt và cấp quyền chính xác cho tài khoản ấy trong `hdnd_private.admin_emails`; không commit email/secret vào repo. Chưa có bước này nên **KHÔNG thử ghi**.
+6. Nếu callback không hoạt động, kiểm tra Provider Google có Enable/Save, Google Cloud Audience test users, Supabase Redirect URLs và cấu hình browser localhost. Không gỡ RLS hoặc tự bật quyền admin để lách lỗi.
+
+**CI cho trang standalone:** `source/scripts/check-supabase-auth-smoke.mjs` xác minh cú pháp JS và các rào chắn staging-only / anti-CSRF / không secret bằng cách kiểm tra HTML; workflow `Verify HopHDND source` chạy offline. CI này không thể thay thế đăng nhập Google thật.
+
+**Google Client Secret đã xuất hiện trong ảnh trước đó**; chủ dự án chọn tiếp tục dùng trong môi trường staging. Không sao chép secret vào code, lịch sử GitHub hay trả lại trong tin nhắn; trước phát hành production cần thay và kiểm thử lại.
+
+---
+
+
 ### QA build tải trực tiếp, không đụng Firebase production
 
 Workflow `Verify HopHDND source` trên nhánh [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) sau CI SUCCESS lưu artifact **`hophdnd-parallel-source-qa-site`** (nội dung `source/dist-pages-test/`, 7 ngày). Đây là website test với `MODE=pages-test`, **Firebase trỏ duy nhất vào emulator local** `127.0.0.1:9099` / `127.0.0.1:9000`, **không được đẩy sang Firebase production**. Supabase vẫn trỏ đến Cloud staging `uguhyunuzsdrkykqgdmq` với publishable key, 6 hồ sơ QA riêng. Artifact chỉ là bản QA, không phải link web đã deploy, phải dùng local static HTTP server và chạy Firebase Auth + RTDB emulator cho Firebase. OAuth Google trên localhost bắt buộc phải có redirect URL được cấu hình trong Dashboard và kiểm thử thủ công.
