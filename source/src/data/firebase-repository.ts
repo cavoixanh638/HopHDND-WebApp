@@ -85,10 +85,17 @@ export class FirebaseRepository implements Repository {
           const auditChanges=Object.fromEntries(changed.map(field=>[field,patch.changes[field]]));
           const auditOldValues=Object.fromEntries(changed.map(field=>[field,current[field]]));
           const history:Record<string,FirebaseEvent>={...(raw.history??{})};
-          history[String(next.revision%50)]={
+          history[String(next.revision%50)]=this.leaseManager?{
             operationId:patch.operationId,recordId:patch.recordId,
             at:serverTimestamp() as unknown as number,actor:user.uid,
             changes:auditChanges,oldValues:auditOldValues
+          }:{
+            // Preserve the older Rules contract for non-primary/migration-only
+            // adapters. Exclusive primary Rules require structured audit values.
+            operationId:patch.operationId,recordId:patch.recordId,
+            at:serverTimestamp() as unknown as number,actor:user.uid,
+            changesJson:JSON.stringify(patch.changes),
+            oldValuesJson:JSON.stringify(patch.baseValues)
           };
           return {...next,history};
         },{applyLocally:false});
