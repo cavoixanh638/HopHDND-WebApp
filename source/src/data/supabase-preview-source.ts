@@ -58,14 +58,17 @@ export function readSupabaseTabConfig(storage:Pick<Storage,'getItem'>|null=
     const raw:unknown=JSON.parse(saved);
     if(!raw||typeof raw!=='object')return null;
     const cfg=raw as Record<string,unknown>;
-    return cleanConfig(String(cfg.url??''),String(cfg.publishableKey??''));
+    const valid=cleanConfig(String(cfg.url??''),String(cfg.publishableKey??''));
+    // Tab-scoped QA configuration must NEVER redirect business writes to an
+    // arbitrary Supabase Cloud database. Only the isolated staging ref is valid.
+    return valid?.url===HDND_SUPABASE_STAGING_PUBLIC.url?valid:null;
   }catch{return null;}
 }
 export function saveSupabaseTabConfig(config:SupabasePublicConfig,
   storage:Pick<Storage,'setItem'>|null=
     typeof sessionStorage==='undefined'?null:sessionStorage):boolean{
   const valid=cleanConfig(config.url,config.publishableKey);
-  if(!valid||!storage)return false;
+  if(!valid||valid.url!==HDND_SUPABASE_STAGING_PUBLIC.url||!storage)return false;
   try{storage.setItem(TAB_CONFIG_KEY,JSON.stringify(valid));return true;}
   catch{return false;}
 }
