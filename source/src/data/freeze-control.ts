@@ -30,9 +30,15 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
     const count=await activeEditLeaseCount(database);
     if(count>0)throw new Error(`Còn ${count} ô đang sửa. Chờ lưu xác nhận hoặc dùng Đóng băng ngay.`);
   }
-  const x=await runTransaction(ref(database,FREEZE_PATH),raw=>{
+  const location=ref(database,FREEZE_PATH);
+  await get(location); // obtain server revision before running the CAS
+  const x=await runTransaction(location,raw=>{
     let current:FreezeControl;
-    try{current=parseFreeze(raw);}catch{return undefined;}
+    try{
+      // RTDB can supply null from its cold local cache before retrying with
+      // server data. The optimistic candidate MUST NOT delete control.
+      current=raw===null&&expected.revision>0?expected:parseFreeze(raw);
+    }catch{return undefined;}
     if(current.revision!==expected.revision||current.mode!==expected.mode||current.epoch!==expected.epoch)return undefined;
     return {mode:next,revision:expected.revision+1,
       epoch:expected.epoch+(expected.mode==='OPEN'&&next!=='OPEN'?1:0),
