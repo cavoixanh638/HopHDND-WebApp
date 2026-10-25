@@ -255,11 +255,32 @@ export class SupabasePreviewRepository implements Repository {
       throw new Error('Supabase chưa xác nhận phiên bản quyền đã lưu.');
     return revision;
   }
+  async pauseGuests(expectedRevision:number,locked:boolean):Promise<number>{
+    if(!this.lastAccess?.isAdmin)throw new Error('ADMIN_REQUIRED');
+    const revision=await this.rpc<number>('hdnd_guest_pause',{
+      p_expected:expectedRevision,p_locked:locked
+    });
+    if(!Number.isSafeInteger(revision)||revision<=expectedRevision)
+      throw new Error('Máy chủ chưa xác nhận trạng thái khóa khách.');
+    return revision;
+  }
+  async transitionFreeze(expectedRevision:number,next:'OPEN'|'DRAINING'|'FROZEN',
+    force=false):Promise<{mode:string;revision:number}>{
+    if(!this.lastAccess?.isAdmin)throw new Error('ADMIN_REQUIRED');
+    const ack=await this.rpc<{mode:string;revision:number}>('hdnd_freeze_transition',{
+      p_expected:expectedRevision,p_next:next,p_force:force
+    });
+    if(ack?.mode!==next||!Number.isSafeInteger(ack.revision)||ack.revision<=expectedRevision)
+      throw new Error('Máy chủ chưa xác nhận trạng thái đóng băng.');
+    return ack;
+  }
   /** UI control only: server independently validates every subsequent SQL write. */
   setVerifiedWriteMode(enabled:boolean):void{
-    this.verifiedWrites=enabled&&!!this.lastAccess&&
-      this.lastAccess.mode==='OPEN'&&
-      (!this.lastAccess.guestEditingLocked||this.lastAccess.isAdmin);
+    const a=this.lastAccess;
+    const draining=!!a&&a.mode==='DRAINING'&&this.leaseManager.activeCount()>0&&
+      !!a.deadline&&Date.now()<Date.parse(a.deadline);
+    this.verifiedWrites=enabled&&!!a&&(a.mode==='OPEN'||draining)&&
+      (!a.guestEditingLocked||a.isAdmin);
   }
   list():Promise<Item[]>{return this.backing.list();}
   history(id:string):Promise<AuditEntry[]>{return this.backing.history(id);}
