@@ -48,7 +48,7 @@ export class FirebaseMirrorRepository implements Repository {
   readonly subscribeInitial=true;
   readonly canDraft:boolean;
   readonly readOnly:boolean;
-  checkAssignment?:(item:Item)=>string;
+  checkAssignment?:(item:Item)=>string|undefined;
   snapshot:ExcelMirrorSnapshot|null=null;
   liveConfirmed=false;
   private baseRows:Item[]=[];
