@@ -1,3 +1,6 @@
+**Kiểm thử bổ sung 25/10:** [CI #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) **SUCCESS** tại exact code SHA `8391041abc727835b7d7ff8f3b12750de950d776`: gồm quyền xin khóa ô, hai tab cùng UID, quyền admin/tạm dừng khách, hard deadline DRAINING, chặn ghi sau deadline khi admin offline, Firebase Emulator và browser smoke giả lập. Đây là bằng chứng **mã staging**, không phải Firebase production. Rules và dữ liệu thật vẫn chưa được backup/đối chiếu/readback.
+
+
 ## 25/10/2026 — Phát triển Firebase chính và khóa ô (KHÔNG PHẢI production)
 - **Production:** `main` vẫn `c85b16dd9b0ea3c02d2eae98d80985dc5d8de8f4` tại thời điểm lập biên bản. Dữ liệu chưa ghi realtime giữa tài khoản, nháp trình duyệt không là dữ liệu chính.
 - **PR #71:** [database-primary](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) vẫn **Draft**; nhập mirror một lần rồi chuyển `dataSource=primary`, không phụ thuộc link Google Sheets sau đó.

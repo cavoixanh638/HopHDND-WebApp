@@ -1,3 +1,6 @@
+**Bằng chứng CI sau bảo vệ bổ sung:** [verify-source #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) **PASS** tại SHA `8391041abc727835b7d7ff8f3b12750de950d776`. Security Emulator chứng minh tài khoản không có quyền không chiếm được khóa, đóng băng ngăn commit mọi tài khoản, DRAINING quá hạn không cho ghi kể cả khi tab admin không hoạt động. Vẫn cần xác minh readback Rules/database và staging nhiều tài khoản thật trước GO.
+
+
 ## Hồ sơ kiểm thử khóa ô/đóng băng 25/10/2026 — KHÔNG là nghiệm thu production
 - CI SHA `527229b9919117c4ef012ce2a84fe73726895455`: [GitHub Actions #40159751225](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40159751225) PASS (unit, TypeScript, Firebase Emulator, build, Chrome smoke với dữ liệu giả). Sau đó bổ sung kiểm thử quyền chiếm khóa, ngăn phá token ở tab cùng UID và tài liệu vận hành. **Chỉ CI PASS ở exact SHA cuối mới là bằng chứng của phiên bản cuối.**
 - `tests/exclusive-cell-freeze.test.ts`: hai người cùng ô, hai tab cùng UID, hai ô khác nhau, sửa không khóa, chốt thông thường, đóng băng khẩn cấp, giới hạn thời gian và grant/guest pause. Không thay thế nghiệm thu thật bằng 2–3 tài khoản có quyền trên staging.

@@ -1,3 +1,8 @@
+## Bổ sung bảo vệ 25/10: deadline từ chối ghi ngay trên Firebase Rules
+- Candidate Rules đã kiểm tra `now < hdnd/freezeControl/deadline` cho **mọi ghi nội dung trong DRAINING** và việc gia hạn khóa cũ: ngay cả khi tab admin đóng, sau deadline sẽ không ai tiếp tục cập nhật dữ liệu được; điều này bảo vệ dữ liệu chờ chốt.
+- **Đây không phải server coordinator:** chỉ admin/browser sau khi trở lại mới có thể chuyển giá trị `mode` sang `FROZEN` và ghi biên nhận. Nếu admin đóng tab khi DRAINING, phải quay lại kiểm tra/chốt, không thông báo cho người dùng rằng biên nhận đã sinh tự động.
+- Bằng chứng CI staging cuối mã [#40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) PASS trên `8391041abc727835b7d7ff8f3b12750de950d776`, **không** chứng minh backup/triển khai production.
+
 # HopHDND — Cổng phát hành Firebase chính, khóa ô và chốt số liệu
 **Ngày:** 25/10/2026 · **Áp dụng:** PR #71 → PR #72 · **Trạng thái:** CHƯA PHÁT HÀNH PRODUCTION (HOLD)
 

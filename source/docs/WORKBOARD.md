@@ -1,3 +1,6 @@
+**Cập nhật kiểm thử HDND-FREEZE:** Quy tắc server đã bổ sung hạn cứng DRAINING: hết hạn thì máy chủ từ chối mọi commit, **không phụ thuộc tab admin**; tuy nhiên bước chuyển trạng thái sang FROZEN và lập biên nhận vẫn cần admin đăng nhập lại hoặc backend coordinator. [CI #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) PASS ở SHA `8391041abc727835b7d7ff8f3b12750de950d776`. **Production HOLD/NO-GO**.
+
+
 ## Công việc vận hành đang mở — 25/10/2026
 | Mã | Owner | Trạng thái | Đầu ra / blocker |
 |---|---|---|---|
