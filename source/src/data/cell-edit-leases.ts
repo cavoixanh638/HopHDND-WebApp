@@ -88,7 +88,11 @@ export async function releaseCellLease(database:Database,lease:CellLease,
     current.session!==lease.session||current.token!==lease.token)return;
   // Write a revisioned tombstone, not remove(). A security-rule check on
   // current token + owner prevents an old session from clearing a newer lock.
-  await update(target,{expiresAt:0,revision:current.revision+1});
+  // Send the expected token and session explicitly. If a different tab with
+  // the same UID has acquired the lock since get(), Security Rules reject
+  // this stale release instead of expiring the new tab's token.
+  await update(target,{token:lease.token,session:lease.session,expiresAt:0,
+    revision:current.revision+1});
   const confirmed=(await get(target)).val();
   if(!validLease(confirmed)||confirmed.token!==lease.token||confirmed.expiresAt!==0)
     throw new Error('Khóa ô đã chuyển phiên hoặc Firebase chưa xác nhận giải phóng.');
