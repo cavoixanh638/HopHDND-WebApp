@@ -39,7 +39,7 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
       actor:user!.uid,changedAt:serverTimestamp(),
       // Relative deadline is only advisory UX; final freeze relies on a
       // server-acknowledged control transaction, never on client countdown.
-      deadline:next==='DRAINING'?Date.now()+60000:0,
+      deadline:next==='DRAINING'?Date.now()+50000:0,
       closedAt:next==='FROZEN'?serverTimestamp():0};
   },{applyLocally:false});
   if(!x.committed)throw new Error('Một admin khác đã đổi chế độ; tải lại trước khi thao tác.');
