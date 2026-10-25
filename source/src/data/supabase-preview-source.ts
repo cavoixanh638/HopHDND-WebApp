@@ -65,6 +65,8 @@ export class SupabaseAnonymousPreviewAuth {
   private pending:Promise<string>|null=null;
   private readonly storageKey:string;
   private cached:AuthSession|null=null;
+  private blockedUntil=0;
+  private lastAuthError='';
   constructor(private readonly config:SupabasePublicConfig,
     private readonly fetcher:typeof fetch=fetch,
     private readonly storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>|null=
@@ -154,18 +156,28 @@ export class SupabaseAnonymousPreviewAuth {
       expires_at:Math.floor(Date.now()/1000)+expires};
     if(!this.isSession(session)||!Number.isFinite(expires)||expires<=0)
       throw new Error('Google OAuth không cấp cặp token hợp lệ; từ chối phiên.');
-    this.cached=session;
+    this.cached=session;this.blockedUntil=0;this.lastAuthError='';
     try{this.storage?.setItem(this.storageKey,JSON.stringify(session));}catch{/* in-memory only */}
     current.searchParams.delete('hdnd_supabase_auth');current.hash='';
     window.history.replaceState(window.history.state,'',current.toString());
     return true;
   }
   clearSession():void {
-    this.cached=null;
+    this.cached=null;this.blockedUntil=0;this.lastAuthError='';
     try{this.storage?.removeItem(this.storageKey);this.storage?.removeItem(this.storageKey+':oauth_state');}catch{}
   }
   getAccessToken=():Promise<string>=>{
-    if(!this.pending)this.pending=this.renewOrLogin().finally(()=>{this.pending=null;});
+    if(!this.pending&&Date.now()<this.blockedUntil)
+      return Promise.reject(new Error(this.lastAuthError||'Supabase Auth tạm không khả dụng.'));
+    if(!this.pending)this.pending=this.renewOrLogin().then(token=>{
+      this.lastAuthError='';this.blockedUntil=0;return token;
+    }).catch(error=>{
+      this.lastAuthError=error instanceof Error?error.message:'Supabase Auth không khả dụng.';
+      // Prevent auth signup flooding when anonymous sign-in has not been enabled.
+      // Retain the previous refresh token; never silently swap accounts.
+      this.blockedUntil=Date.now()+(this.cached?3000:60000);
+      throw error;
+    }).finally(()=>{this.pending=null;});
     return this.pending;
   };
 }
