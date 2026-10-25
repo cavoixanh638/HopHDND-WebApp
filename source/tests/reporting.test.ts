@@ -97,6 +97,23 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
     expect(preview.some(node=>node.type==='button'&&String(node.props.className??'')
       .includes('report-stage-summary'))).toBe(false);
   });
+  it('omits the intermediate-stage chip from reports with only three statuses',()=>{
+    const walk=(node:any):any[]=>Array.isArray(node)?node.flatMap(walk):
+      node&&typeof node==='object'?[node,...walk(node.props?.children)]:[];
+    for(const config of DEFAULT_REPORTS){
+      const root=ReportTable({items:createDemoItems(8),config,group:'department',groupOrder:[],onSelect:()=>{}});
+      const stages=walk(root).filter(node=>node.props?.className?.includes('report-stage-summary')&&
+        ['button','span'].includes(node.type));
+      const labels=stages.map(stage=>walk(stage).find(n=>n.type==='span'&&!String(n.props.className??'').includes('report-stage'))?.props.children);
+      if(['party','build'].includes(config.id)){
+        expect(stages).toHaveLength(4);
+        expect(labels).toContain('Bước tiếp theo');
+      }else{
+        expect(stages).toHaveLength(3);
+        expect(labels).not.toContain('Bước tiếp theo');
+      }
+    }
+  });
   it('opens matching detail records from positive counts including group totals',()=>{
     const items=createDemoItems(5).map((item,i)=>({
       ...item,isDropped:false,archivedAt:null,documentKind:'NQ' as const,
