@@ -5,7 +5,11 @@
 Trên máy Windows đã có clone chứa đúng nhánh PR #72 và dependencies ở \`source/node_modules\`:
 
 \`\`\`powershell
-cd "D:\Google Drive\VP UBND\HDND\HopHDND-WebApp\source"
+# Clone RIÊNG bản thử nghiệm vào D:\\HopHDND-Staging (không chứa file backup)
+git clone --depth 1 --branch feat/exclusive-cell-leases-admin-freeze-20261025 https://github.com/cavoixanh638/HopHDND-WebApp.git "D:\\HopHDND-Staging"
+Set-Location "D:\\HopHDND-Staging\\source"
+npm ci
+java -version
 $env:HDND_PRIVATE_BACKUP = "D:\HopHDND-Private-Backup\2026-10-25\database-1.json"
 node --check scripts/firebase-backup-emulator-restore.mjs
 npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
