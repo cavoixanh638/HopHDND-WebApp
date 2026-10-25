@@ -30,6 +30,10 @@ jobs:
         run: npm test
       - name: Verify standalone Supabase Google OAuth smoke page (offline, no credentials)
         run: node scripts/check-supabase-auth-smoke.mjs
+      - name: Observe public Google OAuth provider setting on staging (optional network, no secrets)
+        if: github.event_name == 'pull_request' && github.head_ref == 'feat/supabase-parallel-source-selector-20261025'
+        timeout-minutes: 1
+        run: node scripts/verify-supabase-auth-public.mjs
       - name: Validate production BACKUP READ-ONLY helper offline (no Firebase credentials)
         run: |
           node --check scripts/firebase-production-readonly-backup.mjs
