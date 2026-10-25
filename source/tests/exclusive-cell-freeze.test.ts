@@ -137,6 +137,53 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();
   });
+  it('denies row/collection/metadata bypass even for verified admin without cell lease',async()=>{
+    const untrusted=guest('untrusted'),verified=admin();
+    const original=(await get(ref(untrusted as never,'hdnd/items/r1'))).val();
+    const originalNote=original.note as string;
+    const forbiddenUpdate={
+      note:'Attempt without acquiring lease',
+      revision:original.revision+1,operationId:'forged-update',
+      updatedAt:Date.now(),updatedBy:'untrusted',
+    };
+    // The collection-level bootstrap grant must never be reusable after a primary row exists.
+    await assertFails(set(ref(verified as never,'hdnd/items'),{r1:original}));
+    await assertFails(set(ref(untrusted as never,'hdnd/items'),{r1:original}));
+    await assertFails(update(ref(untrusted as never,'hdnd/items/r1'),forbiddenUpdate));
+    await assertFails(update(ref(verified as never,'hdnd/items/r1'),{
+      ...forbiddenUpdate,updatedBy:'administrator'}));
+    await assertFails(set(ref(verified as never,'hdnd/items/r1/displayCode'),'NQ-FORGED'));
+    await assertFails(set(ref(untrusted as never,'hdnd/items/r1/stt'),999));
+    await assertFails(set(ref(untrusted as never,'hdnd/items/r1'),null));
+    const after=(await get(ref(untrusted as never,'hdnd/items/r1'))).val();
+    expect(after.note).toBe(originalNote);
+    expect(after.revision).toBe(original.revision);
+    expect(after.displayCode).toBe(original.displayCode);
+    expect(after.stt).toBe(original.stt);
+  });
+
+  it('refuses one-time primary bootstrap from non-admin and while FROZEN',async()=>{
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/items'),null);
+    });
+    const {archivedAt,...base}=row;
+    const initial={r1:{...base,operationId:'bootstrap-1',
+      updatedAt:Date.now(),updatedBy:'administrator'}};
+    await assertFails(set(ref(guest('untrusted') as never,'hdnd/items'),initial));
+    const spoof=env.authenticatedContext('spoof',{
+      ...adminClaims,firebase:{sign_in_provider:'anonymous'},
+    }).database();
+    await assertFails(set(ref(spoof as never,'hdnd/items'),initial));
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/freezeControl'),{
+        mode:'FROZEN',revision:1,epoch:1,actor:'administrator',
+        changedAt:Date.now(),deadline:0,closedAt:Date.now(),
+      });
+    });
+    await assertFails(set(ref(admin() as never,'hdnd/items'),initial));
+    expect((await get(ref(admin() as never,'hdnd/items'))).exists()).toBe(false);
+  });
+
   it('publishes a server-ACKed edit to two other accounts via live RTDB onValue, without reloading',async()=>{
     const session=manager('a');
     const writer=repo('a',session);
