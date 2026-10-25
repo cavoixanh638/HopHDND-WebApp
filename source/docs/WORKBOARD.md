@@ -1,3 +1,16 @@
+## 25/10/2026 — Checkpoint backup mới, cập nhật từ đầu ra PowerShell của người vận hành
+| Mã | Status | Bằng chứng / điều kiện còn thiếu |
+| --- | --- | --- |
+| HDND-DATA-BACKUP | **USER-VERIFIED JSON PASS** | 2 file 56.185 bytes, cả hai parse JSON và cùng SHA `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`. Chưa tự đọc binary/restore. |
+| HDND-RULES-BACKUP | **USER-VERIFIED JSON PASS** | `rules-live.json` 24.497 bytes, JSON có `rules`, SHA `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`. Cần người có quyền xác minh đây chính xác là Rules Published đang chạy, không chỉ nội dung trình soạn thảo. |
+| HDND-RESTORE-DRILL | **TODO / HOLD** | Test nạp JSON trên Database Emulator/staging biệt lập; đối chiếu số dòng và dữ liệu, không ghi production. |
+| HDND-RULES-DIFF | **TODO / HOLD** | Đối chiếu local Rules thật và `firebase/database.exclusive-candidate.rules.json`, xem chặn ghi/đường cha/quyền admin, chạy security tests. |
+| HDND-PRODUCTION-GO | **NO-GO** | Chưa restore drill, chưa diff Rules và chưa phê duyệt. Giữ PR #71/#72 Draft. |
+
+Chỉ ghi hash, size, trạng thái kiểm tra (không ghi bản sao JSON, UID, email, token, nội dung Rules production lên GitHub).
+
+---
+
 ## 25/10/2026 — Kết quả sao lưu từ máy quản trị do người vận hành xác nhận
 | Mã | Owner | Trạng thái mới | Chứng cứ / bước tiếp |
 | --- | --- | --- | --- |
