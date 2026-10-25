@@ -208,8 +208,8 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
       node&&typeof node==='object'?[node,...walk(node.props?.children)]:[];
     const labels=walk(root).filter(node=>node.type==='label'&&
       node.props?.children?.[1]==='Không phải trình');
-    expect(labels).toHaveLength(1);
-    const checkbox=walk(labels[0]).find(node=>node.type==='input'&&node.props.type==='checkbox');
+    expect(labels).toHaveLength(2); // Party and Build NQ have independent hidden-by-default columns.
+    const checkbox=walk(labels[1]).find(node=>node.type==='input'&&node.props.type==='checkbox');
     expect(checkbox?.props.checked).toBe(false);
     checkbox.props.onChange();
     const next=onChange.mock.calls[0][0];
@@ -217,6 +217,29 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     expect(configuredReports(validateReportLayout(next)).find(r=>r.id==='build')?.hiddenColumns)
       .not.toContain('Không phải trình');
     expect(next[0]).toEqual(draft[0]);
+  });
+  it('offers Party a separate count mode and hidden-column toggle without changing Build NQ',()=>{
+    const draft=defaultReportLayout(),onChange=vi.fn();
+    const root=ReportLayoutPanel({draft,onChange,items:createDemoItems(2),group:'department',
+      groupOrder:[],sourceLabel:'Google Sheets'});
+    const walk=(node:any):any[]=>Array.isArray(node)?node.flatMap(walk):
+      node&&typeof node==='object'?[node,...walk(node.props?.children)]:[];
+    const picker=walk(root).find(node=>node.type==='select'&&node.props.id==='party-count-mode');
+    expect(picker).toBeDefined();
+    expect(picker.props.value).toBe('exclude');
+    picker.props.onChange({currentTarget:{value:'include'}});
+    const changed=onChange.mock.lastCall![0];
+    expect(changed.find((row:any)=>row.id==='party').includeNotRequired).toBe(true);
+    expect(changed.find((row:any)=>row.id==='build').includeNotRequired).toBe(false);
+    const labels=walk(root).filter(node=>node.type==='label'&&
+      node.props?.children?.[1]==='Không phải trình');
+    expect(labels).toHaveLength(2);
+    const partyCheckbox=walk(labels[0]).find(node=>node.type==='input'&&node.props.type==='checkbox');
+    expect(partyCheckbox.props.checked).toBe(false);
+    partyCheckbox.props.onChange();
+    const visible=onChange.mock.lastCall![0];
+    expect(visible.find((row:any)=>row.id==='party').showNotRequiredColumn).toBe(true);
+    expect(visible.find((row:any)=>row.id==='build').showNotRequiredColumn).toBe(false);
   });
   it('renders all numeric cells centered with wrapped headings and preserves counts',()=>{
     const items=createDemoItems(7);
