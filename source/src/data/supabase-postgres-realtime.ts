@@ -49,7 +49,7 @@ export class SupabasePostgresRealtime {
     try{socket=this.socketFactory(url.toString());}
     catch(e){this.report(e);this.reconnect();return;}
     this.socket=socket;
-    this.joined=false;this.lastToken='';
+    this.seq=0;this.joined=false;this.lastToken='';
     socket.onopen=()=>{
       void this.getToken().then(jwt=>{
         if(this.stopped||this.socket!==socket||socket.readyState!==WebSocket.OPEN)return;
