@@ -1,3 +1,24 @@
+## F. Thử khôi phục có kiểm soát trên Emulator biệt lập (KHÔNG ghi Firebase thật)
+
+Đã bổ sung hai file cấu hình test trong \`source/scripts/restore-emulator/\` và script \`source/scripts/firebase-backup-emulator-restore.mjs\` trên nhánh PR #72. Bản test chỉ chạy với namespace demo \`demo-hdnd-restore\`, host \`127.0.0.1:9198\`, không đọc hay ghi Firebase production. File Rules mở tạm trong thư mục này **chỉ phục vụ Emulator demo**, tuyệt đối không deploy lên production.
+
+Trên máy Windows đã có clone chứa đúng nhánh PR #72 và dependencies ở \`source/node_modules\`:
+
+\`\`\`powershell
+cd "D:\Google Drive\VP UBND\HDND\HopHDND-WebApp\source"
+$env:HDND_PRIVATE_BACKUP = "D:\HopHDND-Private-Backup\2026-10-25\database-1.json"
+node --check scripts/firebase-backup-emulator-restore.mjs
+npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
+Remove-Item Env:HDND_PRIVATE_BACKUP
+\`\`\`
+
+Phải có Java đủ mới cho Firebase Emulator. Nếu Firebase Emulator không khởi động, lệnh phải dừng, **không đổi \`--project\` thành ID production**, không dùng Firebase Console Import Data trên production. Chỉ chấp nhận dòng \`LOCAL_EMULATOR_RESTORE_DRILL_PASS\` khi đã PUT vào localhost, GET đọc lại và so SHA256 JSON chuẩn hóa toàn bộ, số dòng và các nhánh cấu hình. Nếu cấu trúc hai bên khác, phải dừng để điều tra, không chấp nhận một lượt xuất đúng hash chỉ vì file JSON parse được.
+
+**Trạng thái hiện tại:** mã thử restore đã được lưu GitHub nhưng **chưa có bằng chứng đã chạy với file backup riêng tư trên máy người vận hành**. Không đánh dấu \`HDND-RESTORE-DRILL\` PASS trước khi có kết quả đó.
+
+
+---
+
 ## E. Kết quả trên máy quản trị được báo ngày 25/10/2026 (không phải chứng nhận GO)
 - `database-1.json` và `database-2.json`: mỗi file 56.185 bytes, parse JSON thành công, SHA256 giống nhau `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
 - `rules-live.json`: 24.497 bytes, parse JSON hợp lệ và có `rules`, SHA256 `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`.
