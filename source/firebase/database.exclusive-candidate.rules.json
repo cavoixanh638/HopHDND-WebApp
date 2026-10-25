@@ -1,0 +1,278 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "hdnd": {
+      ".read": "auth != null",
+      "items": {
+        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.exists() && newData.exists() && ((!root.child('hdnd/freezeControl/mode').exists() || root.child('hdnd/freezeControl/mode').val() === 'OPEN'))",
+        "$id": {
+          ".write": "auth != null && (data.exists() || (auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')) && newData.exists() && (root.child('hdnd/freezeControl/mode').val() !== 'FROZEN')",
+          ".validate": "newData.hasChildren([\"recordId\", \"displayCode\", \"stt\", \"content\", \"department\", \"type\", \"partyLevel\", \"progressParty\", \"progressBuild\", \"progressCouncil\", \"specialist\", \"room\", \"vpLeader\", \"ubndLeader\", \"specificProgress\", \"note\", \"documentKind\", \"isDropped\", \"revision\", \"operationId\", \"updatedAt\", \"updatedBy\"]) && newData.child('recordId').val() === $id && ((!data.exists() && newData.child('revision').val() === 1 && !newData.child('history').exists()) || (data.exists() && newData.child('revision').val() === data.child('revision').val() + 1 && newData.child('history').child((newData.child('revision').val() % 50) + '').exists())) && (!data.exists() || (newData.child('recordId').val() === data.child('recordId').val() && newData.child('displayCode').val() === data.child('displayCode').val() && newData.child('stt').val() === data.child('stt').val() && newData.child('archivedAt').val() === data.child('archivedAt').val()))",
+          "content": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000 && newData.val().length > 0) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('content').exists() ? root.child('hdnd/permissions/cells').child($id).child('content').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/content').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('content').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('content').child('token').val() === newData.parent().child('editProofs/content').val() && root.child('hdnd/editLocks').child($id).child('content').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('content').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "department": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('department').exists() ? root.child('hdnd/permissions/cells').child($id).child('department').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/department').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('department').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('department').child('token').val() === newData.parent().child('editProofs/department').val() && root.child('hdnd/editLocks').child($id).child('department').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('department').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "type": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('type').exists() ? root.child('hdnd/permissions/cells').child($id).child('type').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/type').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('type').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('type').child('token').val() === newData.parent().child('editProofs/type').val() && root.child('hdnd/editLocks').child($id).child('type').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('type').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "partyLevel": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('partyLevel').exists() ? root.child('hdnd/permissions/cells').child($id).child('partyLevel').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/partyLevel').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('partyLevel').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('partyLevel').child('token').val() === newData.parent().child('editProofs/partyLevel').val() && root.child('hdnd/editLocks').child($id).child('partyLevel').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('partyLevel').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "progressParty": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('progressParty').exists() ? root.child('hdnd/permissions/cells').child($id).child('progressParty').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/progressParty').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('progressParty').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('progressParty').child('token').val() === newData.parent().child('editProofs/progressParty').val() && root.child('hdnd/editLocks').child($id).child('progressParty').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('progressParty').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "progressBuild": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('progressBuild').exists() ? root.child('hdnd/permissions/cells').child($id).child('progressBuild').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/progressBuild').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('progressBuild').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('progressBuild').child('token').val() === newData.parent().child('editProofs/progressBuild').val() && root.child('hdnd/editLocks').child($id).child('progressBuild').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('progressBuild').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "progressCouncil": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('progressCouncil').exists() ? root.child('hdnd/permissions/cells').child($id).child('progressCouncil').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/progressCouncil').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('progressCouncil').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('progressCouncil').child('token').val() === newData.parent().child('editProofs/progressCouncil').val() && root.child('hdnd/editLocks').child($id).child('progressCouncil').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('progressCouncil').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "specialist": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('specialist').exists() ? root.child('hdnd/permissions/cells').child($id).child('specialist').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/specialist').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('specialist').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('specialist').child('token').val() === newData.parent().child('editProofs/specialist').val() && root.child('hdnd/editLocks').child($id).child('specialist').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('specialist').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "room": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('room').exists() ? root.child('hdnd/permissions/cells').child($id).child('room').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/room').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('room').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('room').child('token').val() === newData.parent().child('editProofs/room').val() && root.child('hdnd/editLocks').child($id).child('room').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('room').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "vpLeader": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('vpLeader').exists() ? root.child('hdnd/permissions/cells').child($id).child('vpLeader').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/vpLeader').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('vpLeader').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('vpLeader').child('token').val() === newData.parent().child('editProofs/vpLeader').val() && root.child('hdnd/editLocks').child($id).child('vpLeader').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('vpLeader').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "ubndLeader": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('ubndLeader').exists() ? root.child('hdnd/permissions/cells').child($id).child('ubndLeader').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/ubndLeader').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('ubndLeader').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('ubndLeader').child('token').val() === newData.parent().child('editProofs/ubndLeader').val() && root.child('hdnd/editLocks').child($id).child('ubndLeader').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('ubndLeader').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "specificProgress": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('specificProgress').exists() ? root.child('hdnd/permissions/cells').child($id).child('specificProgress').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/specificProgress').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('specificProgress').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('specificProgress').child('token').val() === newData.parent().child('editProofs/specificProgress').val() && root.child('hdnd/editLocks').child($id).child('specificProgress').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('specificProgress').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "note": {
+            ".validate": "((newData.isString() && newData.val().length <= 20000) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('note').exists() ? root.child('hdnd/permissions/cells').child($id).child('note').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/note').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('note').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('note').child('token').val() === newData.parent().child('editProofs/note').val() && root.child('hdnd/editLocks').child($id).child('note').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('note').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "documentKind": {
+            ".validate": "((newData.val() === 'NQ' || newData.val() === 'BC' || newData.val() === 'UNCLASSIFIED') && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('documentKind').exists() ? root.child('hdnd/permissions/cells').child($id).child('documentKind').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/documentKind').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('documentKind').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('documentKind').child('token').val() === newData.parent().child('editProofs/documentKind').val() && root.child('hdnd/editLocks').child($id).child('documentKind').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('documentKind').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "isDropped": {
+            ".validate": "((newData.isBoolean()) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('isDropped').exists() ? root.child('hdnd/permissions/cells').child($id).child('isDropped').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/isDropped').val() === true)))) && (newData.val() === data.val() || (root.child('hdnd/editLocks').child($id).child('isDropped').child('uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('isDropped').child('token').val() === newData.parent().child('editProofs/isDropped').val() && root.child('hdnd/editLocks').child($id).child('isDropped').child('expiresAt').val() > now && (root.child('hdnd/freezeControl/mode').val() !== 'DRAINING' || root.child('hdnd/editLocks').child($id).child('isDropped').child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())))"
+          },
+          "recordId": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_:-]{1,200}$/)"
+          },
+          "displayCode": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+          },
+          "stt": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() % 1 === 0"
+          },
+          "revision": {
+            ".validate": "newData.isNumber() && newData.val() % 1 === 0"
+          },
+          "archivedAt": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "operationId": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,100}$/) && newData.val() !== data.val()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber() && newData.val() === now"
+          },
+          "updatedBy": {
+            ".validate": "newData.val() === auth.uid"
+          },
+          "$other": {
+            ".validate": false
+          },
+          "history": {
+            ".validate": "(!data.child('0').exists() || newData.child('0').exists()) && (!data.child('1').exists() || newData.child('1').exists()) && (!data.child('2').exists() || newData.child('2').exists()) && (!data.child('3').exists() || newData.child('3').exists()) && (!data.child('4').exists() || newData.child('4').exists()) && (!data.child('5').exists() || newData.child('5').exists()) && (!data.child('6').exists() || newData.child('6').exists()) && (!data.child('7').exists() || newData.child('7').exists()) && (!data.child('8').exists() || newData.child('8').exists()) && (!data.child('9').exists() || newData.child('9').exists()) && (!data.child('10').exists() || newData.child('10').exists()) && (!data.child('11').exists() || newData.child('11').exists()) && (!data.child('12').exists() || newData.child('12').exists()) && (!data.child('13').exists() || newData.child('13').exists()) && (!data.child('14').exists() || newData.child('14').exists()) && (!data.child('15').exists() || newData.child('15').exists()) && (!data.child('16').exists() || newData.child('16').exists()) && (!data.child('17').exists() || newData.child('17').exists()) && (!data.child('18').exists() || newData.child('18').exists()) && (!data.child('19').exists() || newData.child('19').exists()) && (!data.child('20').exists() || newData.child('20').exists()) && (!data.child('21').exists() || newData.child('21').exists()) && (!data.child('22').exists() || newData.child('22').exists()) && (!data.child('23').exists() || newData.child('23').exists()) && (!data.child('24').exists() || newData.child('24').exists()) && (!data.child('25').exists() || newData.child('25').exists()) && (!data.child('26').exists() || newData.child('26').exists()) && (!data.child('27').exists() || newData.child('27').exists()) && (!data.child('28').exists() || newData.child('28').exists()) && (!data.child('29').exists() || newData.child('29').exists()) && (!data.child('30').exists() || newData.child('30').exists()) && (!data.child('31').exists() || newData.child('31').exists()) && (!data.child('32').exists() || newData.child('32').exists()) && (!data.child('33').exists() || newData.child('33').exists()) && (!data.child('34').exists() || newData.child('34').exists()) && (!data.child('35').exists() || newData.child('35').exists()) && (!data.child('36').exists() || newData.child('36').exists()) && (!data.child('37').exists() || newData.child('37').exists()) && (!data.child('38').exists() || newData.child('38').exists()) && (!data.child('39').exists() || newData.child('39').exists()) && (!data.child('40').exists() || newData.child('40').exists()) && (!data.child('41').exists() || newData.child('41').exists()) && (!data.child('42').exists() || newData.child('42').exists()) && (!data.child('43').exists() || newData.child('43').exists()) && (!data.child('44').exists() || newData.child('44').exists()) && (!data.child('45').exists() || newData.child('45').exists()) && (!data.child('46').exists() || newData.child('46').exists()) && (!data.child('47').exists() || newData.child('47').exists()) && (!data.child('48').exists() || newData.child('48').exists()) && (!data.child('49').exists() || newData.child('49').exists())",
+            "$slot": {
+              ".validate": "newData.hasChildren(['operationId','recordId','at','actor','changesJson','oldValuesJson']) && $slot.matches(/^([0-9]|[1-4][0-9])$/) && (data.exists() || $slot === (newData.parent().parent().child('revision').val() % 50) + '')",
+              "operationId": {
+                ".validate": "(newData.isString() && newData.val().length <= 200000) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (newData.val() === newData.parent().parent().parent().child('operationId').val()) : (data.exists() && newData.val() === data.val()))"
+              },
+              "recordId": {
+                ".validate": "(newData.isString() && newData.val().length <= 200000) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (newData.val() === $id) : (data.exists() && newData.val() === data.val()))"
+              },
+              "at": {
+                ".validate": "(newData.isNumber()) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (newData.val() === now) : (data.exists() && newData.val() === data.val()))"
+              },
+              "actor": {
+                ".validate": "(newData.isString() && newData.val().length <= 200000) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (newData.val() === auth.uid) : (data.exists() && newData.val() === data.val()))"
+              },
+              "changesJson": {
+                ".validate": "(newData.isString() && newData.val().length <= 200000) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (true) : (data.exists() && newData.val() === data.val()))"
+              },
+              "oldValuesJson": {
+                ".validate": "(newData.isString() && newData.val().length <= 200000) && (($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '') ? (true) : (data.exists() && newData.val() === data.val()))"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "editProofs": {
+            "$field": {
+              ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{20,100}$/)"
+            }
+          }
+        }
+      },
+      "permissions": {
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        "columns": {
+          "content": {
+            ".validate": "newData.isBoolean()"
+          },
+          "department": {
+            ".validate": "newData.isBoolean()"
+          },
+          "type": {
+            ".validate": "newData.isBoolean()"
+          },
+          "partyLevel": {
+            ".validate": "newData.isBoolean()"
+          },
+          "progressParty": {
+            ".validate": "newData.isBoolean()"
+          },
+          "progressBuild": {
+            ".validate": "newData.isBoolean()"
+          },
+          "progressCouncil": {
+            ".validate": "newData.isBoolean()"
+          },
+          "specialist": {
+            ".validate": "newData.isBoolean()"
+          },
+          "room": {
+            ".validate": "newData.isBoolean()"
+          },
+          "vpLeader": {
+            ".validate": "newData.isBoolean()"
+          },
+          "ubndLeader": {
+            ".validate": "newData.isBoolean()"
+          },
+          "specificProgress": {
+            ".validate": "newData.isBoolean()"
+          },
+          "note": {
+            ".validate": "newData.isBoolean()"
+          },
+          "documentKind": {
+            ".validate": "newData.isBoolean()"
+          },
+          "isDropped": {
+            ".validate": "newData.isBoolean()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "cells": {
+          "$id": {
+            ".validate": "$id.matches(/^[A-Za-z0-9_:-]{1,200}$/)",
+            "content": {
+              ".validate": "newData.isBoolean()"
+            },
+            "department": {
+              ".validate": "newData.isBoolean()"
+            },
+            "type": {
+              ".validate": "newData.isBoolean()"
+            },
+            "partyLevel": {
+              ".validate": "newData.isBoolean()"
+            },
+            "progressParty": {
+              ".validate": "newData.isBoolean()"
+            },
+            "progressBuild": {
+              ".validate": "newData.isBoolean()"
+            },
+            "progressCouncil": {
+              ".validate": "newData.isBoolean()"
+            },
+            "specialist": {
+              ".validate": "newData.isBoolean()"
+            },
+            "room": {
+              ".validate": "newData.isBoolean()"
+            },
+            "vpLeader": {
+              ".validate": "newData.isBoolean()"
+            },
+            "ubndLeader": {
+              ".validate": "newData.isBoolean()"
+            },
+            "specificProgress": {
+              ".validate": "newData.isBoolean()"
+            },
+            "note": {
+              ".validate": "newData.isBoolean()"
+            },
+            "documentKind": {
+              ".validate": "newData.isBoolean()"
+            },
+            "isDropped": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        },
+        "rows": {
+          "$id": {
+            ".validate": "$id.matches(/^[A-Za-z0-9_:-]{1,200}$/) && newData.isBoolean()"
+          }
+        }
+      },
+      "profile": {
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".validate": "newData.hasChildren(['revision','payload']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('payload').isString() && newData.child('payload').val().length <= 200000",
+        "$other": {
+          ".validate": "$other === 'revision' || $other === 'payload'"
+        }
+      },
+      "control": {
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".validate": "newData.hasChildren(['revision','editingLocked','changedAt']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('editingLocked').isBoolean() && newData.child('changedAt').isString() && newData.child('changedAt').val().length <= 40",
+        "$other": {
+          ".validate": "$other === 'revision' || $other === 'editingLocked' || $other === 'changedAt'"
+        }
+      },
+      "editLocks": {
+        "$id": {
+          "$field": {
+            ".write": "auth != null && ($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && (newData.exists() ? ((!root.child('hdnd/freezeControl/mode').exists() || root.child('hdnd/freezeControl/mode').val() === 'OPEN') || (root.child('hdnd/freezeControl/mode').val() === 'DRAINING' && data.child('uid').val() === auth.uid && data.child('token').val() === newData.child('token').val() && data.child('acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val())) : (data.child('uid').val() === auth.uid)) && (!data.exists() || data.child('expiresAt').val() <= now || (data.child('uid').val() === auth.uid && data.child('token').val() === newData.child('token').val()))",
+            ".validate": "newData.hasChildren(['uid','session','token','revision','kind','acquiredAt','expiresAt']) && newData.child('uid').val() === auth.uid && newData.child('session').isString() && newData.child('session').val().matches(/^[0-9a-f-]{36}$/) && newData.child('token').isString() && newData.child('token').val().matches(/^[0-9a-f-]{36}$/) && newData.child('revision').val() === (data.exists() ? data.child('revision').val()+1 : 1) && (newData.child('kind').val() === 'status' || newData.child('kind').val() === 'search' || newData.child('kind').val() === 'short' || newData.child('kind').val() === 'multiline' || newData.child('kind').val() === 'long') && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now+45000 && (data.exists() && data.child('token').val() === newData.child('token').val() ? (newData.child('acquiredAt').val() === data.child('acquiredAt').val() && newData.child('session').val() === data.child('session').val()) : newData.child('acquiredAt').val() >= now-4000 && newData.child('acquiredAt').val() <= now+4000)",
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      },
+      "freezeControl": {
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".validate": "newData.hasChildren(['mode','revision','epoch','actor','changedAt','deadline','closedAt']) && newData.child('actor').val() === auth.uid && newData.child('revision').val() === (data.exists()?data.child('revision').val()+1:1) && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? (newData.child('mode').val() === 'DRAINING' || newData.child('mode').val() === 'FROZEN') : (data.child('mode').val() === 'DRAINING' ? (newData.child('mode').val() === 'FROZEN' || newData.child('mode').val() === 'OPEN') : (data.child('mode').val() === 'FROZEN' && newData.child('mode').val() === 'OPEN'))) && newData.child('epoch').val() === (data.child('mode').val() === 'OPEN' || !data.exists() ? (data.child('epoch').val()===null?0:data.child('epoch').val())+1 : data.child('epoch').val()) && newData.child('changedAt').val() === now && newData.child('closedAt').isNumber() && (newData.child('mode').val() === 'FROZEN' ? newData.child('closedAt').val() === now : newData.child('closedAt').val() === 0) && newData.child('deadline').isNumber() && (newData.child('mode').val() === 'DRAINING' ? (newData.child('deadline').val() >= now && newData.child('deadline').val() <= now+60000) : newData.child('deadline').val() === 0)",
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "hdndReviews": {
+      ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+      ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+      "$sheet": {
+        "$gid": {
+          ".validate": "$sheet.matches(/^[A-Za-z0-9_-]{10,200}$/) && $gid.matches(/^[0-9]{1,20}$/) && newData.hasChildren(['revision','source','approvedAt','approvedBy','changedCount','payload','historyJson']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('source').val() === $sheet + ':' + $gid && newData.child('approvedAt').isString() && newData.child('approvedAt').val().length <= 40 && newData.child('approvedBy').isString() && newData.child('approvedBy').val().length <= 254 && newData.child('changedCount').isNumber() && newData.child('changedCount').val() >= 0 && newData.child('payload').isString() && newData.child('payload').val().length <= 850000 && newData.child('historyJson').isString() && newData.child('historyJson').val().length <= 5000",
+          "$other": {
+            ".validate": "$other === 'revision' || $other === 'source' || $other === 'approvedAt' || $other === 'approvedBy' || $other === 'changedCount' || $other === 'payload' || $other === 'historyJson'"
+          }
+        }
+      }
+    }
+  }
+}
