@@ -1,5 +1,17 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Chạy song song nguồn dữ liệu — chỉ đạo mới và Cloud staging (25/10/2026)
+
+**Yêu cầu mới ưu tiên cao nhất:** Firebase RTDB vẫn được giữ nguyên và có thể chọn; Supabase được bổ sung để chạy song song/so sánh, **không có quyết định loại bỏ database nào**. Google Sheets vẫn chỉ là nguồn tạm thời nếu được chọn trong bản app chưa cutover. Không tự đồng bộ, copy hoặc ghi đè giữa Firebase, Supabase và Sheets. Mỗi nguồn có namespace độc lập cho draft, realtime, audit, ACL, auth và freeze. Chuyển lựa chọn phải xử lý nháp/lease trước, không đổi cấu hình nguồn toàn hệ thống của Firebase để thử Supabase.
+
+- **Supabase staging tạo thật:** project `HopHDND-Staging`, ref `uguhyunuzsdrkykqgdmq`, region `ap-southeast-1`, PostgreSQL 17, plan Free, báo giá công cụ `0 USD/tháng`; chỉ project test, chưa nạp dữ liệu thực. Chủ dự án đã chấp thuận sử dụng tổ chức Free có sẵn.
+- **Applied Cloud migrations**: `hophdnd_core_staging_20261025`, `hophdnd_single_import_gate_staging_20261025`, `hophdnd_rls_initplan_staging_20261025`. Truy vấn server cho thấy **0 hồ sơ, 0 admin mặc định, import gate=false, control OPEN**; bảo đảm chỉ môi trường rỗng.
+- **Supabase advisors:** bảo mật `lints: []`; hiệu năng ban đầu cảnh báo 6 lần gọi auth.uid() trên mỗi dòng RLS, đã sửa ở migration `202610250003_rls_initplan.sql` (cần kiểm tra advisors lại).
+- **KHÔNG tạo auth Google client/secret, không bật import, không mở quyền write trong frontend, không thay Pages hiện hành hoặc Firebase, không chạy chuyển dữ liệu thật.**
+- **G1 Cloud schema có điều kiện PASS** cho triển khai DDL/advisors; **G2-G8 và GO production vẫn HOLD** vì chưa tích hợp UI lựa chọn nguồn, Supabase Auth, browser realtime, multi-account và benchmark thật.
+
+
+
 ## Tiến độ triển khai PR #73 — 25/10/2026
 
 - [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) là **Draft**, base là nhánh PR #72 để review delta Supabase dễ dàng. Không merge PR #72 chỉ để phát hành Supabase. Phần UI production vẫn nguyên trạng.
