@@ -1,4 +1,4 @@
-import {get,onValue,ref,runTransaction,type Database} from 'firebase/database';
+import {get,onValue,ref,runTransaction,update,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {EditableField} from '../../shared/types';
 import {parseFreeze,readFreeze,FREEZE_PATH} from './freeze-control';
@@ -81,26 +81,17 @@ export async function renewCellLease(database:Database,lease:CellLease,id:string
 }
 export async function releaseCellLease(database:Database,lease:CellLease,
  id?:string,field?:EditableField):Promise<void>{
-  // A former holder may never remove a newer holder's lease.
   if(!id||!field)return;
   const target=ref(database,lockPath(id,field));
   const current=(await get(target)).val();
   if(!validLease(current)||current.uid!==lease.uid||
     current.session!==lease.session||current.token!==lease.token)return;
-  // Without warming the server snapshot, a cold Firebase transaction sees
-  // null locally, aborts without querying and leaves a phantom active lease.
-  const result=await runTransaction(target,raw=>{
-    if(raw===null)return raw; // cold local cache: let the server rerun CAS with its value
-    if(validLease(raw)&&raw.uid===lease.uid&&raw.session===lease.session&&raw.token===lease.token)
-      return null;
-    return undefined; // a newer lease is never touched
-  },{applyLocally:false});
-  if(!result.committed){
-    const latest=(await get(target)).val();
-    // A canceled transaction is safe only when our specific token is gone.
-    if(!validLease(latest)||latest.token!==lease.token)return;
-    throw new Error('Chưa xác nhận giải phóng khóa từ Firebase.');
-  }
+  // Write a revisioned tombstone, not remove(). A security-rule check on
+  // current token + owner prevents an old session from clearing a newer lock.
+  await update(target,{expiresAt:0,revision:current.revision+1});
+  const confirmed=(await get(target)).val();
+  if(!validLease(confirmed)||confirmed.token!==lease.token||confirmed.expiresAt!==0)
+    throw new Error('Khóa ô đã chuyển phiên hoặc Firebase chưa xác nhận giải phóng.');
 }
 export function watchCellLease(database:Database,id:string,field:EditableField,
  callback:(lease:CellLease|null)=>void,fail:(e:Error)=>void){
