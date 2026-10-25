@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch } from '../../shared/types';
 import type { Repository } from '../data/repository';
 import { updateDraft } from '../domain/items';
-import type {CellEditSessionManager} from '../data/cell-edit-leases';
+import type {CellLeaseUiManager} from '../data/cell-edit-leases';
 import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-checkpoints';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {markStartup} from '../data/startup-timings';
 
-export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true,leaseManager?:CellEditSessionManager) {
+export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true,leaseManager?:CellLeaseUiManager) {
   const [items, setItems] = useState<Item[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Patch>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
