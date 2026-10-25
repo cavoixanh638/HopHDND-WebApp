@@ -36,6 +36,29 @@ export function readSupabasePreviewConfig():SupabasePublicConfig|null{
 export function validateSupabasePreviewConfig(url:string,key:string){
   return cleanConfig(url,key);
 }
+/** Optional per-tab QA configuration, never the privileged service key.
+ * This allows operators to choose Firebase/Supabase without rebuilding Pages.
+ */
+const TAB_CONFIG_KEY='hdnd.supabase.staging.public-config.v1';
+export function readSupabaseTabConfig(storage:Pick<Storage,'getItem'>|null=
+  typeof sessionStorage==='undefined'?null:sessionStorage):SupabasePublicConfig|null{
+  try {
+    const saved=storage?.getItem(TAB_CONFIG_KEY);
+    if(!saved)return null;
+    const raw:unknown=JSON.parse(saved);
+    if(!raw||typeof raw!=='object')return null;
+    const cfg=raw as Record<string,unknown>;
+    return cleanConfig(String(cfg.url??''),String(cfg.publishableKey??''));
+  }catch{return null;}
+}
+export function saveSupabaseTabConfig(config:SupabasePublicConfig,
+  storage:Pick<Storage,'setItem'>|null=
+    typeof sessionStorage==='undefined'?null:sessionStorage):boolean{
+  const valid=cleanConfig(config.url,config.publishableKey);
+  if(!valid||!storage)return false;
+  try{storage.setItem(TAB_CONFIG_KEY,JSON.stringify(valid));return true;}
+  catch{return false;}
+}
 /** Session is browser-tab scoped; never reuses a Firebase access token. */
 export class SupabaseAnonymousPreviewAuth {
   private pending:Promise<string>|null=null;
