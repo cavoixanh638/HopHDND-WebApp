@@ -1,3 +1,13 @@
+## 25/10/2026 — Nguồn mirror 55 hàng, cần xử lý chênh lệch với giao diện
+| Mã | Kết quả | Blocker / bước tiếp |
+| --- | --- | --- |
+| HDND-MIRROR-INVENTORY | **PARTIAL PASS** | 1 spreadsheet source, 1 GID dataset, 55 rows, 0 duplicate IDs. Chưa có kết quả `Mirror metadata valid` True/False. |
+| HDND-COUNT-RECONCILIATION | **BLOCKED / PRIORITY** | Ảnh báo cáo `Tiến độ xin ý kiến Thành ủy` từng hiển thị **57 nội dung**; mirror snapshot chứa **55 dòng tổng**. Phải xác minh cùng mốc, cùng nguồn, đúng bộ lọc; không chuyển thiếu 2 nội dung do snapshot cũ. |
+| HDND-LOCAL-RESTORE | **TODO / HOLD** | Chạy `firebase-backup-emulator-restore.mjs` chỉ trên emulator demo; ghi số dòng và kiểm checksum đọc lại, không nhập production. |
+| HDND-RELEASE | **NO-GO** | Ngoài sao lưu/Rules/staging, phải giải quyết count/ID reconciliation và giá trị metadata trước khi import. |
+
+---
+
 ## 25/10/2026 — Kiểm kê offline trước khi thử restore
 | Mã | Trạng thái | Bằng chứng |
 | --- | --- | --- |
