@@ -381,7 +381,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         </button>)}
     </nav>
     <StartupTimingPanel/>
-    {isFirebase&&<div className="toolbar" role="group" aria-label="Chọn database cho tab hiện tại">
+    {isFirebase&&!anonymousVisitor&&<div className="toolbar" role="group" aria-label="Chọn database cho tab hiện tại">
       <label className="field">Nguồn dữ liệu của tab này
         <select aria-label="Nguồn dữ liệu của tab này" value={selectedSource}
           disabled={comparison} onChange={event=>switchLocalSource(event.currentTarget.value as TabDataSource)}>
