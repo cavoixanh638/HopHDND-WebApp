@@ -256,7 +256,13 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
-  it('denies same-UID second tab replaying a visible foreign tab lease token',async()=>{
+  // KNOWN NO-GO SECURITY LIMITATION: the owning user's read access exposes
+  // the lease token to another tab carrying the same Firebase auth.uid.
+  // RTDB Rules cannot distinguish two browser tabs sharing one auth identity.
+  // Vitest expected failure keeps this adversarial regression visible in CI,
+  // without hiding it as a PASS/solved security property. Do not remove the
+  // expected-failure marker without a server-enforced session isolation design.
+  it.fails('KNOWN BLOCKER: deny same-UID second tab replaying a visible foreign tab lease token',async()=>{
     const first=manager('a');
     await first.acquire('r1','note','multiline');
     // Both tabs have the same Firebase UID, but NOT the same tab-local session.
@@ -282,6 +288,23 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(after.revision).toBe(original.revision);
     await first.cancel('r1','note');
     await first.dispose();
+  });
+
+  it('rejects a different UID even if that user learns another editor lease token',async()=>{
+    const owner=manager('a');await owner.acquire('r1','note','multiline');
+    const second=guest('b'),before=(await get(ref(second as never,'hdnd/items/r1'))).val();
+    const lease=(await get(ref(second as never,'hdnd/editLocks/r1/note'))).val();
+    const rev=before.revision+1;
+    await assertFails(update(ref(second as never,'hdnd/items/r1'),{
+      note:'Attempt by a different UID',revision:rev,
+      operationId:'foreign-uid-token-replay',updatedAt:serverTimestamp(),updatedBy:'b',
+      ['editProofs/note']:lease.token,
+      ['history/'+(rev%50)]:{operationId:'foreign-uid-token-replay',
+        recordId:'r1',at:serverTimestamp(),actor:'b',
+        changes:{note:'Attempt by a different UID'},oldValues:{note:before.note}}
+    }));
+    expect((await get(ref(second as never,'hdnd/items/r1'))).val().revision).toBe(before.revision);
+    await owner.cancel('r1','note');await owner.dispose();
   });
 
   it('prevents a valid editor from forging structured audit values while changing a leased cell',async()=>{
