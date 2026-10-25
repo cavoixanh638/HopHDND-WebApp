@@ -1,3 +1,5 @@
+> **TRA CỨU ĐÍCH SUPABASE (25/10/2026):** [Quyết định thay thế Firebase-only](decisions/SUPABASE_PRIMARY_2026-10-25.md) → [Kế hoạch kỹ thuật/giữ chức năng](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md) → [Một cổng GO/NO-GO duy nhất](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) → [migrations](../supabase/migrations/). Supabase đang ở **nhánh thử nghiệm, production NO-GO**; các dòng “Firebase là đích” phía dưới thuộc bản đã chốt trước 20:51 ngày 25/10 và nay đã được thay thế về quyết định công nghệ.
+
 ## Hướng dẫn sao lưu production trước khi mở realtime — 25/10/2026
 [Hướng dẫn backup read-only trên Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Công cụ đã có trên nhánh PR #72 nhưng **chưa chạy lên dữ liệu thật**; không upload JSON/Rules thật lên GitHub.
 
