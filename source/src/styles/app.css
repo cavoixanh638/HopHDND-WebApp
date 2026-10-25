@@ -2632,7 +2632,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card {
     transition:none;
   }
-  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled) {
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled),
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled):not(.active),
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card:hover:not(:disabled).active {
     transform:none;
   }
 }
