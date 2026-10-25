@@ -1,3 +1,11 @@
+## 25/10/2026 — Xác nhận metadata của bản mirror 55 dòng (đầu ra người vận hành)
+- Bản sao riêng tư `database-1.json` có **1 source / 1 dataset / 55 nội dung / 0 recordId trùng** như đã ghi.
+- `schemaVersion=1`; `syncedAt=2026-10-23T04:41:44.104873Z` (**11:41:44 ngày 23/10 giờ Việt Nam**); `sourceModifiedAt=2026-10-23T02:07:11.387Z` (**09:07:11 ngày 23/10 giờ Việt Nam**); `rows=55`. Đây là bản mirror cập nhật **23/10**, không phải kết quả đọc live ngày 25/10.
+- **Chưa được xác nhận:** `Mirror metadata valid` True/False (không xuất trong lời đáp), khớp cặp source/gid, SHA256 nguồn, từng trường trong 55 hàng, và bản live hiện hành. Không tự suy luận chênh lệch 57 (ảnh trước) vs 55 là lỗi mất dữ liệu; có thể do khác thời điểm/nguồn.
+- **Giữ NO-GO** cho migration và Rules deploy; ưu tiên đọc live chỉ đọc để đối chiếu mốc `syncedAt`, `rows`, ID và đích `hdnd/items` trước khi chạy thử import.
+
+---
+
 ## 25/10/2026 — Kiểm kê chi tiết mirror (bằng chứng PowerShell do người vận hành cung cấp)
 - Trong bản sao riêng tư `database-1.json`: `Mirror sources=1`; `Mirror datasets=1`; `Total content rows=55`; `Duplicate record IDs=0`.
 - Giá trị `Mirror metadata valid` **chưa có trong đầu ra** (người vận hành gửi đến dòng lệnh trước khi có kết quả True/False). **Chưa được khẳng định** schema/timestamps/SHA/source của mirror đáp ứng tiêu chuẩn chuyển đổi.
