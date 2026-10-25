@@ -68,6 +68,7 @@ export async function renewCellLease(database:Database,lease:CellLease,id:string
   const control=await readFreeze(database);
   if(control.mode==='FROZEN')throw new Error('Dữ liệu đã đóng băng.');
   const target=ref(database,lockPath(id,field));
+  await get(target); // make existing lease visible before applying CAS renewal
   const result=await runTransaction(target,raw=>{
     if(!validLease(raw)||raw.token!==lease.token||raw.uid!==lease.uid||
       raw.session!==lease.session||raw.expiresAt<=now)return undefined;
@@ -82,9 +83,15 @@ export async function releaseCellLease(database:Database,lease:CellLease,
   // A former holder may never remove a newer holder's lease.
   if(!id||!field)return;
   const target=ref(database,lockPath(id,field));
-  await runTransaction(target,raw=>
+  const current=(await get(target)).val();
+  if(!validLease(current)||current.uid!==lease.uid||
+    current.session!==lease.session||current.token!==lease.token)return;
+  // Without warming the server snapshot, a cold Firebase transaction sees
+  // null locally, aborts without querying and leaves a phantom active lease.
+  const result=await runTransaction(target,raw=>
     validLease(raw)&&raw.uid===lease.uid&&raw.session===lease.session&&raw.token===lease.token
       ?null:undefined,{applyLocally:false});
+  if(!result.committed)throw new Error('Chưa xác nhận giải phóng khóa từ Firebase.');
 }
 export function watchCellLease(database:Database,id:string,field:EditableField,
  callback:(lease:CellLease|null)=>void,fail:(e:Error)=>void){
