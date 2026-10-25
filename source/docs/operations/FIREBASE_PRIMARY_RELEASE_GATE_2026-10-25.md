@@ -1,3 +1,15 @@
+## 25/10/2026 — OFFLINE_RULES_DIFF_20261025 và sửa lỗ hổng ghost audit
+
+**Kết quả máy Windows do người vận hành cung cấp** khi chạy `firebase-private-rules-compare.mjs` trên nhánh PR #72: `OFFLINE_RULES_COMPARE_COMPLETED`. File private `rules-live.json` có canonical SHA256 `005ee641bf70bcb15bf2300e4928cced4567374dcae745f2ab896d55a4f4ab3a`; bản Rules ứng viên TRƯỚC sửa ghost-audit có canonical SHA256 `e54fc8d9872139412bbe8f9ab877a133fffd3b3ee33999ca054348a1d29e14dd`. **85 → 115** rule expressions; **30 mới, 0 xóa, 18 thay đổi**. Các đường cập nhật gồm `/hdnd/items/.write`, `/hdnd/items/$id/.write`, 15 editable field validators, `recordId/.validate`. Đường mới gồm `editProofs`, `editLocks`, `freezeControl`, `freezeReceipts`. Đây mới chỉ là diff cấu trúc **với file rules-live trên máy**; người vận hành **chưa chứng minh bản này trùng stable Rules đang áp dụng thật**.
+
+**Kiểm thử tấn công thêm:** Một khách không cần khóa có thể tăng `revision` và thêm `history` giả **mà không sửa bất kỳ ô nào** dưới Rules ứng viên ban đầu. Bài test `rejects ghost metadata-only revisions and forged audit without a changed leased field` đã FAIL kỳ vọng (máy chủ cho phép), bằng chứng [CI #40199148735](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40199148735). Đã thêm row-level validation bắt buộc có ít nhất một editable field thực sự khác baseline khi tăng revision (không bỏ kiểm khóa và quyền trường); test nay PASS cùng toàn bộ suite tại [CI #40199287995](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40199287995), commit `ae5b558797a190da1d25da52d812f200ecf86a7d`. **Hash ứng viên mới không còn bằng hash ứng viên ở output diff cũ** — phải chạy lại so sánh sau khi cập nhật clone.
+
+**Kiểm tra Published tự động bằng lệnh chỉ đọc:** `source/scripts/firebase-verify-published-rules.mjs` gọi Firebase CLI `database:rules:list` (lấy nhãn `stable`) và `database:rules:get <stable-id>` trên project `hophdnd-8b7b2`, instance `hophdnd-8b7b2-default-rtdb`, so SHA256 JSON chuẩn hóa với snapshot private. Không in Rules, không tạo bản backup công khai, không cập nhật Rules hay production data. `PUBLISHED_RULES_SNAPSHOT_MATCH_PASS` chỉ xác thực provenance và nội dung đúng thời điểm truy vấn, **không thay đánh giá độc lập security hoặc GO deploy**. Nếu không có quyền đọc ruleset, CLI trả lỗi hoặc sai nội dung, giữ HOLD.
+
+**Còn thiếu:** chứng cứ `stable` thật, đánh giá Rules kể cả ràng buộc toàn vẹn audit/lease của bản mới, staging browser đa tài khoản, dữ liệu khởi tạo đã được chốt theo mốc phát hành, phê duyệt GO. **Không tự động deploy/merge/cutover**.
+
+---
+
 ## 25/10/2026 — Kiểm soát Rules độc lập trước khi phát hành
 
 **Bổ sung bảo vệ tự động (commit `d6b4a23`):** thử Firebase Emulator dưới Rules độc quyền ứng viên: chặn sửa hàng/metadata qua đường dẫn `hdnd/items` hoặc `hdnd/items/r1` khi không có lease, kể cả tài khoản admin; chặn người dùng giả quyền Google/admin tạo dữ liệu; chặn nhập mới khi `FROZEN`. [CI #40198453823](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40198453823) **PASS**. Các bài kiểm thử không viết production.
