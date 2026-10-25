@@ -98,6 +98,7 @@ export class CellEditSessionManager {
   constructor(private database:Database,private viewer:()=>User|null){}
   private key(id:string,field:EditableField){return id+'|'+field;}
   has(id:string,field:EditableField){return this.held.has(this.key(id,field));}
+  isPending(id:string,field:EditableField){return this.held.get(this.key(id,field))?.pending===true;}
   proof(id:string,field:EditableField){return this.held.get(this.key(id,field))?.lease.token??null;}
   error(id:string,field:EditableField){return this.failed.get(this.key(id,field))??null;}
   activeCount(){return this.held.size;}
