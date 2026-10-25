@@ -5,6 +5,7 @@ import type {FirebaseController,ReviewBaseline} from '../../state/use-firebase';
 import {approvalIdentityWarnings,compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
 import {readSheet} from '../../data/sheets-repository';
 import {Modal} from '../../components/Modal';
+import {FreezeAdminPanel} from './FreezeAdminPanel';
 
 export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,onClose}:{
   source:SheetConfig;items:Item[];loadedAt:string;hasDrafts:boolean;firebase:FirebaseController;onClose:()=>void;
@@ -58,6 +59,7 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
       <p className="muted">Chỉ tài khoản quản trị. So sánh dữ liệu Google Sheets đang hiển thị với mốc đã duyệt gần nhất.</p></div>
       <div className="top-actions"><button type="button" className="button ghost" onClick={()=>void read()} disabled={busy}>Đọc lại mốc đã duyệt</button><button type="button" className="button ghost" onClick={onClose}>Về tổng quan</button></div>
     </div>
+    {firebase.profile?.dataSource==='primary'&&<FreezeAdminPanel firebase={firebase}/>} 
     <div className="approval-control">
       <div><strong>Quyền chỉnh sửa của người khác trong WebApp</strong>
         <p className="muted">{firebase.editingLocked?'Đang khóa: người khác chỉ xem, lọc và tra cứu.':'Đang mở: người được cấp quyền có thể sửa thử trên trình duyệt.'}</p>
