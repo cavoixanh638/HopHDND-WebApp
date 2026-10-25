@@ -1,3 +1,11 @@
+## 25/10/2026 — Người vận hành đã thực hiện hai lượt sao lưu READ-ONLY RTDB (chứng cứ do người dùng cung cấp)
+- Firebase CLI của máy quản trị nhận đúng project `hophdnd-8b7b2`, instance `hophdnd-8b7b2-default-rtdb`.
+- Người vận hành đã chạy thành công `firebase database:get /` hai lần, xuất ra hai JSON riêng tư và `Get-FileHash -Algorithm SHA256` cho ra **cùng một digest** `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- **Phạm vi chứng cứ:** đầu ra PowerShell do người dùng cung cấp trong chat; trợ lý **không** có quyền đọc file gốc, chưa tự kiểm JSON, chưa xác minh Rules đang Published hoặc thử khôi phục. Không đánh dấu cổng sao lưu production là PASS hoàn chỉnh.
+- **Việc cần thực hiện tiếp:** kiểm định hai JSON là bản sao đầy đủ, lưu riêng bản Rules hiện hành từ Firebase Console ở chế độ **CHỈ ĐỌC**, tính hash Rules, tạo thêm bản bảo quản và thử khôi phục có kiểm soát trên môi trường khác. PR #71/#72 vẫn Draft; **HOLD/NO-GO đối với Rules deploy, migration và writes production**.
+
+---
+
 ## 25/10/2026 — Công cụ sao lưu Firebase chỉ đọc được chuẩn bị (CHƯA CHẠY THẬT)
 - PR #72 bổ sung `source/scripts/firebase-production-readonly-backup.mjs`. Công cụ không chứa hành động ghi database; giới hạn cứng project `hophdnd-8b7b2` và instance `hophdnd-8b7b2-default-rtdb`, xuất hai lượt JSON so SHA-256, đối chiếu file Rules hiện hành do người quản trị tự lấy từ Console, và tạo manifest ở thư mục riêng tư ngoài GitHub.
 - **Chưa có quyền Firebase quản trị trong phiên ChatGPT, chưa xuất được Rules/Database thật, chưa có SHA production, chưa thử khôi phục, chưa chấp thuận phát hành.** Không gọi là đã backup hoặc deploy.
