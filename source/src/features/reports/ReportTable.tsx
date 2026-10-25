@@ -49,6 +49,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   },[report.items,config]);
   const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder));
   const emphasize=config.emphasizeProgress!==false;
+  // Only reports with an actual intermediate configured stage show this summary.
+  const hasNextStage=config.columns.some(column=>reportStage(column,config)==='next');
   const visualStyle=config.reportVariant??'classic';
   // Bar lengths compare counts between groups in the SAME status column, never completion rates.
   const maxByColumn=new Map(report.columns.map(column=>[column,
@@ -114,7 +116,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
       <div className="report-flow-summary" aria-label="Số nội dung theo giai đoạn">
-        {(['source','office','next','completed'] as const).map(stage=>{
+        {(['source','office','next','completed'] as const).filter(stage=>stage!=='next'||hasNextStage).map(stage=>{
           const entries=stageItems[stage];
           const className='report-stage-summary'+(emphasize?' report-stage-'+stage:'');
           const contents=<><span>{reportStageLabels[stage]}</span><strong>{entries.length}</strong></>;
