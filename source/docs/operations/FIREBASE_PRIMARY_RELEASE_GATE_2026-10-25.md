@@ -1,3 +1,10 @@
+## 25/10/2026 — Kết quả kiểm kê các nhánh trên backup (reported by operator)
+- `hdnd/items`: 0 tại thời điểm backup. `hdnd/mirrors`: 1 khóa con trực tiếp (có thể bao gồm nhiều GID); `hdnd/profile` và `hdnd/permissions` tồn tại; `hdnd/profile.dataSource` trống/không hiển thị. Không coi đây là bằng chứng có thể switch source tức thì.
+- **Tiếp theo:** kiểm đúng cấu trúc `hdnd/mirrors/{spreadsheetId}/{gid}`, `schemaVersion=1`, `rows` không rỗng, metadata `source`/SHA/timestamp và record IDs trước staging import. Backup phải restore thành công trên Emulator cô lập.
+- **Bắt buộc kiểm lại live khi GO:** RTDB export tại ngày backup có thể cũ. Ngay trước migration phải đọc `hdnd/items` thật để chắc chắn vẫn chưa có bản ghi và kiểm tra biên nhận Rules của đúng project/instance. Không ghi vào `hdnd/items` trước khi test quyền parent write + child validations trên Emulator.
+
+---
+
 ## 25/10/2026 — Bằng chứng backup mới nhất và mức chứng minh
 Đầu ra PowerShell người vận hành cung cấp (không tự truy cập file trong ChatGPT/GitHub): cả hai `database-[1,2].json` cùng 56.185 bytes và SHA256 `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`; `rules-live.json` 24.497 bytes, SHA256 `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`. Ba file đã qua PowerShell `ConvertFrom-Json`; Rules có trường `rules`.
 
