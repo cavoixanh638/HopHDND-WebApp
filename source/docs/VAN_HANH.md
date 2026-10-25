@@ -1,3 +1,8 @@
+## CHỈ DẪN VẬN HÀNH MỚI NHẤT — Firebase-only 25/10/2026
+[Quyết định dữ liệu](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Trước khi WebApp sẵn sàng, nhân viên cập nhật Sheet theo cách tạm; **không áp đặt yêu cầu mirror luôn mới** để tiếp tục lập trình. Tập trung backup Firebase/Rules và restore test demo; kiểm tình trạng nguồn khởi tạo chỉ **ngay trước cutover** sau khi mã/kiểm thử đủ điều kiện. Sau cutover, vô hiệu hóa luồng đồng bộ nhập Excel vào Firebase như nguồn live, mọi sửa và báo cáo chỉ qua WebApp/Firebase. Các bước rollback vẫn bảo vệ `hdnd/items` và không nhập lại Excel đè dữ liệu thật.
+
+---
+
 ## Công cụ sao lưu Firebase trước phát hành 25/10/2026
 - Chạy từ `source/`: `node scripts/firebase-production-readonly-backup.mjs --help`. Hướng dẫn Windows và thông tin đầu vào (đúng project/instance, Rules export từ Console, thư mục backup riêng tư): [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
 - Đường dẫn backup bắt buộc nằm ngoài repo. Phải đạt `BACKUP_READONLY_OK` và so SHA hai lượt đọc; nếu thất bại dừng, không coi snapshot là hợp lệ. **Các file Rules phải được người vận hành tự xác nhận đúng Rules đang Publish.**

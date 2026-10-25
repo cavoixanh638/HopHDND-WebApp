@@ -1,3 +1,8 @@
+## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)
+[Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md): tương lai `App → FirebaseRepository → hdnd/items` là **đường nghiệp vụ duy nhất** cho bảng/báo cáo/thay đổi. Không duy trì kết nối GViz/Excel/Sheets hoặc mirror thành nguồn sau chuyển. Công cụ nhập mirror của PR #71 chỉ hỗ trợ **nạp ban đầu một lần khi admin duyệt dữ liệu cuối cùng**. Nhân viên vẫn sử dụng Sheet hiện tại trong thời gian phát triển; không cần so Sheet và mirror liên tục để kiểm tra tính năng. Các cảnh báo 55/57 được chuyển sang lịch sử, **không chặn công việc kỹ thuật**.
+
+---
+
 ## Kiến trúc đích 25/10/2026 — Firebase authoritative và phiên sửa độc quyền (DRAFT, chưa phát hành)
 - PR #71: `App → FirebaseRepository → hdnd/items` (realtime `onValue`, transactional CAS, 50 audit slots/record). Admin chọn `dataSource=primary` **sau** khi import mirror một lần, kiểm từng dòng và giá trị; chế độ này **không cần** link Sheets/GViz để đọc nghiệp vụ.
 - PR #72: `CellEditSessionManager` → `hdnd/editLocks/recordId/field` (lease token, tab session, expiredAt, kind); tất cả `ItemList`, `ReportDetailGrid`, dropdown, inline, input, modal phải giữ cùng khóa. Mọi ghi phải mang edit proof và bị server kiểm `permissions`, `freezeControl` và TTL.

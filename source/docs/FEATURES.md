@@ -1,3 +1,8 @@
+## PHẠM VI TÍNH NĂNG CHUẨN — 25/10/2026
+[Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). WebApp sẽ là giao diện **duy nhất** để nhân viên nhập/xem/sửa/báo cáo, Firebase RTDB `hdnd/items` là nguồn chính. Chức năng mirror/Google Sheet là **quá trình chuyển đổi có thời hạn**; không có yêu cầu đồng bộ hai chiều hoặc định kỳ sau phát hành. Trong khi xây dựng, nhân viên được dùng Sheet hiện hành; không coi số dòng mirror cũ là tiêu chí chặn phát triển giao diện/Realtime Database.
+
+---
+
 ## Phạm vi tính năng mới 25/10/2026 — chưa có trên website production
 - **Nguồn dữ liệu chính**: Firebase RTDB `hdnd/items` sau chuyển một lần từ mirror; mọi bảng báo cáo dùng một tập bản ghi, các ô sửa cập nhật sau server ACK và đồng bộ qua `onValue`.
 - **Sửa độc quyền từng ô**: bấm dropdown/soạn văn bản lấy lease trên server theo ID trường; thông báo từ chối nếu ô đã có người khác giữ. Chỉ người có quyền trường đó được xin khóa, kể cả khi mới đang chọn hoặc nhập. Không bị bỏ qua bằng popup, tab thứ hai hoặc tài khoản admin.

@@ -1,3 +1,12 @@
+## CẬP NHẬT PHẠM VI CHÍNH THỨC 25/10/2026 — ưu tiên hơn nội dung lịch sử bên dưới
+**Đọc [quyết định Firebase-only](../decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md) trước tiên.** Nhân viên vẫn dùng Google Sheet/Excel trong giai đoạn WebApp đang lập trình; đó là **phương thức làm việc tạm**, không nằm trong kiến trúc production mục tiêu. Khi đủ điều kiện, admin chốt nguồn khởi tạo một lần và cutover sang `hdnd/items`, **sau đó không dùng Sheets/mirror làm nguồn, không chạy job nhập đè**.
+
+Không dùng chênh lệch 55/57 trong các tài liệu lịch sử làm **blocker sửa mã Firebase, chạy test, hoàn thiện chức năng**. Chỉ kiểm **tại mốc cutover một lần** bộ dữ liệu khởi tạo mới nhất để bảo toàn công việc nhân viên. Việc kiểm các file Google Sheet mỗi ngày không còn là nhiệm vụ của luồng này.
+
+**Cổng release production còn hiệu lực:** backup JSON/Rules + restore thử biệt lập, Rules security review, multi-user staging, readback `hdnd/items` và quyết định nhập một lần với snapshot đã phê duyệt. Giữ `NO-GO production` khi chưa đủ các chứng cứ; **không HOLD phát triển/kiểm thử trên emulator**.
+
+---
+
 ## 25/10/2026 — Đối chiếu LIVE mirror và Office Excel mới nhất
 - Người vận hành đã chạy `firebase database:get /` live read-only; `hdnd/items=0`, mirror vẫn 55 dòng cùng tập ID với snapshot và vẫn `syncedAt=2026-10-23T04:41:44.104873Z`. Không có bằng chứng đồng bộ hoạt động sau 23/10.
 - Read-only Google Drive metadata của file Office nguồn (`1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`) báo `modifiedTime=2026-10-25T04:22:14.272Z`. Trích xuất nội dung đọc được 55 dòng STT số trong tab dữ liệu (7 nội dung kỳ chuyên đề tháng 10, 48 nội dung còn lại). Số đếm **tạm khớp**, nhưng modifiedTime mới hơn và chưa biết thay đổi nào; chưa so từng ID và nội dung.

@@ -1,3 +1,12 @@
+## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
+**Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
+
+Hiện PR #71/#72 vẫn Draft; production chưa cutover. Công việc ưu tiên là cơ chế Firebase primary, khóa độc quyền từng ô, quyền, freeze/ACK, phục hồi và kiểm thử staging. **Ngừng coi 55 hàng snapshot Firebase 23/10 vs 57 hàng ảnh cũ hoặc thời gian sửa Sheet 25/10 là blocker hoàn thiện app**. Một lần đối chiếu dữ liệu khởi tạo cuối cùng được thực hiện **khi chuẩn bị phát hành**, không phải từng bước lúc phát triển.
+
+Các kết quả kiểm kê mirror/Drive và cảnh báo lịch sử **bên dưới chỉ để lưu vết**, không chỉ đạo công việc kế tiếp. Không chỉnh sửa Google Sheet hay metadata/quyền chia sẻ bằng tự động hóa của dự án.
+
+---
+
 ## 25/10/2026 — Đối chiếu live Firebase mirror với file Excel Drive đã kết nối
 - **Firebase live (người vận hành đọc read-only):** 1 mirror source/1 dataset, 55 hàng, 0 ID thêm, 0 ID xóa so với backup, `hdnd/items=0`. `syncedAt=2026-10-23T04:41:44.104873Z`; `sourceModifiedAt=2026-10-23T02:07:11.387Z`; `schemaVersion=1`. Mirror **chưa có bản phát hành mới sau 23/10**.
 - **Excel Drive nguồn được đọc trực tiếp, không ghi:** file ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, Office .xlsx, `modifiedTime=2026-10-25T04:22:14.272Z` (11:22 giờ VN). Nội dung tab theo dõi trích xuất có **55 dòng STT số**, chia nhóm 7 nội dung chuyên đề tháng 10 và 48 nội dung còn lại; đây là dấu hiệu số lượng **có thể vẫn khớp** mirror, nhưng chưa so từng `recordId` và 15 trường A–O. Việc file được sửa 25/10 không chứng minh nội dung nghiệp vụ nào đã đổi.

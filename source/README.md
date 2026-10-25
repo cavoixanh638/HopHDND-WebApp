@@ -1,3 +1,8 @@
+## Chỉ đạo phạm vi 25/10/2026 — WebApp/Firebase là hệ thống duy nhất sau cutover
+Tài liệu có hiệu lực: [Firebase-only](docs/decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Nhân viên đang dùng file Sheet chỉ là **giai đoạn chuyển tiếp trong khi WebApp chưa hoàn thiện**. Sau cutover, tất cả xem/sửa/nhập và báo cáo **duy nhất qua WebApp**, `hdnd/items` là nguồn dữ liệu chính, không dùng đồng bộ Sheets lâu dài. Chỉ nhập dữ liệu khởi tạo **một lần khi phát hành**; các cảnh báo mirror 55/57 trước đây không phải blocker coding. PR #71/#72 đang Draft, production chưa kích hoạt.
+
+---
+
 ## 25/10/2026 — Hướng phát triển Firebase nguồn chính (CHƯA PHÁT HÀNH)
 User đã chốt bỏ phụ thuộc Excel/Google Sheets sau thời kỳ nhập ban đầu. PR [#71](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) (Firebase `hdnd/items` là nguồn nghiệp vụ chính) và [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) (khóa ô per-user/tab, lưu ACK, DRAINING/FROZEN) đang **Draft**. **Main/Pages hiện hành chưa lưu sửa realtime vào Firebase chính**; không suy từ badge “Database” rằng ghi đã được bật. Triển khai Firebase production bắt buộc sao lưu và đối chiếu Rules hiện hành, import một lần, nghiệm thu nhiều tài khoản và rollback. Xem [cổng phát hành và điều kiện NO-GO](docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
 

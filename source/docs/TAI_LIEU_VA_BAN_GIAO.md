@@ -1,3 +1,8 @@
+## BÀN GIAO SCOPE FIREBASE-ONLY — 25/10/2026
+Theo [quyết định kiến trúc](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md), PR #71/#72 chỉ được nghiệm thu khi WebApp sử dụng Firebase chính cho toàn bộ nghiệp vụ; không yêu cầu Google Sheet sau cutover. Nhân viên hiện còn làm trên Sheet là biện pháp chuyển tiếp, không phải mục tiêu kỹ thuật. Checklist bàn giao production cần có một lần chốt/import dữ liệu nhân viên đang làm, test khả năng khôi phục và chứng nhận Rules, không truy đuổi lịch sử snapshot 55/57 trong lúc code.
+
+---
+
 ## Bổ sung hồ sơ bàn giao sao lưu Firebase 25/10/2026
 - Script: `source/scripts/firebase-production-readonly-backup.mjs`. Cách chạy an toàn, xử lý lỗi và chứng cứ: [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
 - Quản trị Firebase phải xác nhận tài khoản/project, sao lưu Rules đang chạy và toàn bộ JSON, lưu bản riêng tư, cung cấp **chỉ hash và kết quả không nhạy cảm** để đối chiếu. Chưa có backup production thực tế tính đến phiên tài liệu này. Giữ PR #71/#72 Draft/NO-GO cho tới khi đủ bằng chứng.

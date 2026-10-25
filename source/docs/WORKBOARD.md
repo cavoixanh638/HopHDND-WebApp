@@ -1,3 +1,19 @@
+## QUYẾT ĐỊNH ĐIỀU HÀNH MỚI NHẤT — 25/10/2026: CHỈ PHÁT TRIỂN FIREBASE-ONLY
+**[Quyết định kiến trúc ưu tiên](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md)**: nhân viên cập nhật Excel/Google Sheet chỉ trong thời gian chuyển tiếp; WebApp đích dùng **duy nhất Firebase RTDB `hdnd/items`** để xem/sửa/báo cáo. Sau cutover, không đọc/ghi nghiệp vụ từ Sheets và không có đồng bộ hai chiều. **DỪNG** chuỗi nhiệm vụ giám sát/chạy theo mirror 55 dòng vs ảnh cũ 57 dòng, mốc sửa Excel và quyền chia sẻ file Excel: đây chỉ là ghi nhận lịch sử, **không được coi là blocker phát triển**. Một lần kiểm tra dữ liệu khởi tạo sẽ được thực hiện **tại thời điểm cutover**, không phải trong vòng coding.
+
+| Nhiệm vụ hiện hành | Trạng thái | Mục tiêu nghiệm thu |
+| --- | --- | --- |
+| HDND-FIREBASE-PRIMARY | **IN DEVELOPMENT — PR #71** | Firebase `hdnd/items` là nguồn duy nhất, không phụ thuộc Sheets/mirror khi đã kích hoạt; realtime hiển thị và save ACK |
+| HDND-EXCLUSIVE-CELL | **IN DEVELOPMENT — PR #72** | Khóa theo ô + tab + UID, check quyền ở Rules, TTL, bản nháp và va chạm nhiều người |
+| HDND-FREEZE-ADMIN | **IN DEVELOPMENT — PR #72** | Admin tạm dừng khách, DRAINING, FROZEN, hash receipt; Rules từ chối ghi đúng mốc |
+| HDND-RESTORE-SECURITY | **NEXT / HOLD production only** | Kiểm backup & restore Emulator, rà live Rules vs staging candidate, test truy cập trái phép; không cần Excel |
+| HDND-CUTOVER-IMPORT | **DEFER UNTIL RELEASE** | Tại thời điểm GO, chọn snapshot nhập cuối cùng, kiểm ID/fields, tránh mất dữ liệu và ghi đè; sau đó ngắt workflow Sheet |
+| HDND-RELEASE | **NO-GO cho PRODUCTION hiện tại** | Quyết định GO sau 2–3 account staging và rollback, không chặn lập trình |
+
+Các bảng 55/57, Drive file metadata và nguồn mirror ở **phần lịch sử bên dưới không còn là việc yêu cầu chạy tiếp**.
+
+---
+
 ## 25/10/2026 — Checkpoint mới: đối chiếu Firebase live, Excel Drive và phân quyền nguồn
 | Mã | Chủ trì / trạng thái | Chứng cứ và yêu cầu |
 | --- | --- | --- |

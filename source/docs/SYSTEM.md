@@ -1,3 +1,8 @@
+## QUY TẮC NGUỒN DỮ LIỆU CÓ HIỆU LỰC — Firebase-only (25/10/2026)
+Xem [quyết định kiến trúc](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Khi WebApp hoàn thiện và được cutover, **mọi nhân viên thao tác duy nhất trên WebApp**, nguồn nghiệp vụ là `hdnd/items`, không còn phụ thuộc đường dẫn Excel/Sheets. Giai đoạn hiện tại nhân viên tiếp tục dùng Sheet **tạm thời**; không biến việc cập nhật Sheet thành một luồng phát triển/đồng bộ lâu dài. Chỉ chuyển snapshot đã đối chiếu **một lần tại cutover**; tuyệt đối không ghi đè bản ghi đã chỉnh sửa trong Firebase chính bằng job mirror.
+
+---
+
 ## Quy tắc bắt buộc về dữ liệu chính và đóng băng — 25/10/2026 (PR #71/#72, CHƯA PHÁT HÀNH)
 - Sau khi admin **chuyển nguồn và đọc lại xác nhận**, `hdnd/items` là nguồn đúng duy nhất cho mọi bảng, báo cáo và lịch sử. Excel/mirror chỉ để nhập một lần, xuất/đối chiếu hoặc dự phòng; không đồng bộ đè dữ liệu đã sửa trên Firebase.
 - Từ lúc người dùng **mở trình sửa** (kể cả dropdown đang tìm, nội dung đang gõ) phải có khóa duy nhất theo `recordId + field`, chứng minh quyền ngay trên Firebase. Không cấp khóa dựa trên dấu hover, focus cục bộ, ô hiển thị trùng, hoặc cùng UID trên hai tab. Chỉ giải phóng sau server ACK, Esc/hủy hợp lệ, hoặc TTL; khóa cũ không xóa được phiên mới.
