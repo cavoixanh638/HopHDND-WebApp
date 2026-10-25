@@ -12,6 +12,16 @@
 
 
 
+## Đánh giá sau kết nối Supabase — 25/10/2026 (mới nhất)
+
+- **Connector Supabase đã kết nối nhưng chưa có Cloud project.** Kiểm tra thực tế trả `projects: []`; chỉ tìm thấy một tổ chức `phitrongphuc2@gmail.com's Org`, plan `free`. Vì chưa có project, **KHÔNG CÓ** migrations trên Supabase Cloud, Google OAuth, Realtime/REST staging, số liệu latency, backup/restore hay quyết định production GO. Tạo mới project phải chọn tổ chức trước, không suy từ việc đã kết nối plugin rằng có DB.
+- Đã thêm PostgreSQL 16 cô lập vào GitHub Actions: [workflow kiểm thử Postgres #40202897639](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40202897639) **SUCCESS** ở commit `5c4900004ea9cf7f6b1953742b03cc7cdc2f4643` (đối với đúng delta SQL/test đã chạy). CI nạp hai migration vào một Postgres sạch, Auth giả lập không liên hệ tài khoản thật, rồi thử nhiều danh tính, deny overrides, server ACK, operation replay, chống giả Google admin, giới hạn direct-write, khóa/tab cũ và chốt OPEN/DRAINING/FROZEN.
+- **Gia cố bảo mật:** mọi `SECURITY DEFINER` ghi dữ liệu chuyển vào schema **không expose** `hdnd_private`. Tầng RPC `public.hdnd_*` chỉ là `SECURITY INVOKER`, có danh sách EXECUTE được thu hẹp và kiểm tra auth từ server; không đưa `service_role` xuống browser. Có test trực tiếp chống public definer trong PostgreSQL. 
+- **Giới hạn bằng chứng:** đây là Postgres 16 với `auth.uid()/auth.jwt()` fixture, **chưa phải Supabase RLS/Data API/Auth/Realtime thật**; cần tiếp tục G1–G8 như bảng dưới. Việc này không được dùng làm lý do merge/cutover.
+- **Cần xác nhận từ chủ dự án:** chọn tổ chức Free để tạo *project staging riêng* (không phải production), kiểm tra chi phí hiển thị của Supabase khi thực hiện. Nếu có phí khác 0, dừng và xin phê duyệt riêng; tuyệt đối không tự phát sinh phí. Cần cấu hình OAuth Google redirect/domain; không tự đăng ký OAuth bằng bí mật không có.
+
+---
+
 **Ngày lập:** 25/10/2026 · **Phạm vi:** nhánh `feat/supabase-safe-migration-20261025` · **QUYẾT ĐỊNH HIỆN TẠI: NO-GO PRODUCTION**.
 
 > Chỉ tệp này được cập nhật làm trạng thái cổng phát hành Supabase. Tài liệu kiến trúc: [ADR Supabase](../decisions/SUPABASE_PRIMARY_2026-10-25.md), [kế hoạch + bảng đối chiếu](SUPABASE_MIGRATION_PLAN_2026-10-25.md). Đích cuối cùng WebApp-only; Excel/Google Sheets hiện tại chỉ là biện pháp tạm thời của nhân viên trong lúc lập trình.
