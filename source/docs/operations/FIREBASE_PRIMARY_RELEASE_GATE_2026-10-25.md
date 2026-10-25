@@ -1,3 +1,15 @@
+## 25/10/2026 — RESTORE_BACKUP_OPERATOR_PASS_20261025 (bằng chứng do người vận hành cung cấp)
+
+**Đã PASS cổng thử khôi phục backup dữ liệu, chỉ trên emulator demo cục bộ.** Người vận hành chạy clone `D:\HopHDND-Firebase-QA-20261025-Retry\source` với `--project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json`; sau khi cài Microsoft OpenJDK 21.0.12.1, script `firebase-backup-emulator-restore.mjs` báo `LOCAL_EMULATOR_RESTORE_DRILL_PASS (NO production writes)`, exit code 0, sau đó `HOAN THANH RESTORE DRILL`.
+
+- Input private `D:\HopHDND-Private-Backup\2026-10-25\database-1.json`; **không đưa file backup lên GitHub**.
+- Kích thước 56.185 bytes; **SHA256 chuẩn hóa JSON sau PUT/GET Emulator** `9d325e2bf15b1eae22234b5ec791a0710a952c6d138779af85d186b5a611f0c7` khớp nguồn. Lưu ý đây **không phải SHA256 bytes nguyên gốc**, nên khác checksum raw backup `D9EF2CBA...` trước đó.
+- Snapshot này chứa **0 primary item**, 1 mirror top-level source, profile/permissions hiện diện. Đây là trạng thái của file backup, **không được suy ra live production hiện còn rỗng**.
+- **Đã giải quyết:** cổng *backup restore drill trên Emulator thật với JSON người vận hành* chuyển sang PASS. **Chưa giải quyết:** Rules Published nguồn gốc/chính xác bản đang có hiệu lực, review toàn bộ candidate Rules và đường ghi cha/con, staging đa trình duyệt/tài khoản, nguồn dữ liệu khởi tạo cuối cùng và GO của quản trị.
+- Tiếp tục **NO-GO deploy/migration/merge production**; không đồng bộ Google Sheets trong giai đoạn phát triển. Không biến restore PASS thành căn cứ phát hành đơn lẻ.
+
+---
+
 ## CẬP NHẬT PHẠM VI CHÍNH THỨC 25/10/2026 — ưu tiên hơn nội dung lịch sử bên dưới
 **Đọc [quyết định Firebase-only](../decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md) trước tiên.** Nhân viên vẫn dùng Google Sheet/Excel trong giai đoạn WebApp đang lập trình; đó là **phương thức làm việc tạm**, không nằm trong kiến trúc production mục tiêu. Khi đủ điều kiện, admin chốt nguồn khởi tạo một lần và cutover sang `hdnd/items`, **sau đó không dùng Sheets/mirror làm nguồn, không chạy job nhập đè**.
 
