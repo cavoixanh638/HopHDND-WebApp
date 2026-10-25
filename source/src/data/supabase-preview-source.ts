@@ -9,7 +9,6 @@ import type {Repository} from './repository';
 import {SupabaseRepository} from './supabase-repository';
 import {SupabaseCellLeaseManager} from './supabase-cell-leases';
 import type {CellPermissions} from './firebase-repository';
-import type {CellLeaseUiManager} from './cell-edit-leases';
 
 export interface SupabasePublicConfig {
   url:string;
@@ -160,6 +159,7 @@ export class SupabasePreviewRepository implements Repository {
   private verifiedWrites=false;
   readonly leaseManager:SupabaseCellLeaseManager;
   readonly auth:SupabaseAnonymousPreviewAuth;
+  readonly oauthError:string|null;
   readonly subscribeInitial=true;
   private readonly backing:SupabaseRepository;
   private readonly fetcher:typeof fetch;
@@ -168,6 +168,11 @@ export class SupabasePreviewRepository implements Repository {
     storage?:Pick<Storage,'getItem'|'setItem'|'removeItem'>|null){
     this.config=config;this.fetcher=fetcher;
     this.auth=new SupabaseAnonymousPreviewAuth(config,fetcher,storage);
+    let oauthIssue:string|null=null;
+    try{this.auth.completeGoogleRedirect();}catch(error){
+      oauthIssue=error instanceof Error?error.message:'Không xác thực được phản hồi Google.';
+    }
+    this.oauthError=oauthIssue;
     this.leaseManager=new SupabaseCellLeaseManager({invoke:(fn,args)=>this.rpc(fn,args)},()=>this.lastAccess?.userId??null);
     this.backing=new SupabaseRepository({
       ...config,
@@ -198,6 +203,7 @@ export class SupabasePreviewRepository implements Repository {
     return value as T;
   }
   async accessState():Promise<SupabaseAccessState>{
+    if(this.oauthError)throw new Error(this.oauthError);
     const raw=await this.rpc<SupabaseAccessState>('hdnd_access_state',{});
     if(!raw||typeof raw.userId!=='string'||typeof raw.isAdmin!=='boolean'||
       typeof raw.guestEditingLocked!=='boolean'||
