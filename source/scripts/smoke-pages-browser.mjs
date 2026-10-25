@@ -1224,7 +1224,7 @@ try{
         const active=chips.filter(c=>!c.disabled);
         const height=chips.map(c=>Math.round(c.getBoundingClientRect().height));
         const labels=chips.slice(0,4).map(c=>c.getAttribute('aria-label'));
-        return {ok:chips.length===20&&active.length>0&&height.every(n=>n>=35)&&
+        return {ok:chips.length===17&&active.length>0&&height.every(n=>n>=35)&&
           chips.every(c=>c.type==='button'&&c.hasAttribute('aria-label'))&&
           chips.every(c=>(parseInt(c.querySelector('strong')?.textContent??'0',10)===0)===c.disabled),
           count:chips.length,active:active.length,smallest:Math.min(...height),labels};
