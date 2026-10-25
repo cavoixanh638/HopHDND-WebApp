@@ -107,6 +107,11 @@ export function watchCellLease(database:Database,id:string,field:EditableField,
   },fail);
 }
 export type HeldLease={id:string;field:EditableField;lease:CellLease;pending:boolean;renewTimer:ReturnType<typeof setInterval>};
+/** Portable editor contract: Firebase and Supabase provide the same interaction API. */
+export type CellLeaseUiManager = Pick<CellEditSessionManager,
+  'acquire'|'has'|'isPending'|'markPending'|'cancel'|'finish'|'dispose'|
+  'activeCount'|'preserveDraft'|'recoverDraft'>;
+
 export class CellEditSessionManager {
   private readonly tabSession=crypto.randomUUID();
   private held=new Map<string,HeldLease>();
