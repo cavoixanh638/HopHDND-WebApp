@@ -1,5 +1,13 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+### Bằng chứng CI chính xác sau vòng chỉnh sửa Auth/Realtime và bộ chọn nguồn
+
+- **Commit nguồn chính xác:** `5713e18281db3bc2d73de2430a013547eacebbbd`.
+- [Verify HopHDND source #40210676482](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40210676482) **SUCCESS**: TypeScript, Vitest (OAuth state/secret guard, nguồn chọn, JWT/mock RPC, WebSocket Phoenix), docs, Firebase emulator, build và browser smoke.
+- [Verify isolated Supabase PostgreSQL #40210676481](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40210676481) **SUCCESS**: nạp đủ 4 migrations và kiểm thử độc lập các RPC với identity tổng hợp. Các commit tài liệu sau SHA này phải check CI riêng nếu cần khẳng định exact-head PASS.
+- Cloud staging độc lập đã đọc lại: `hdnd_items=6` và cả 6 có mã QA, các bảng nghiệp vụ đều `RLS=true`, Security Advisor `lints=[]`, 4 migrations đúng, `admin_allowlist=0`, import gate vẫn đóng. Không có Cloud Auth Google/Realtime nhiều phiên thật.
+- **Không tự nhận hoàn thành production:** ci xanh chỉ là mã nguồn + emulator + test protocol giả lập; xác thực Google thật, ACL với người thật, đồng bộ theo giây trên Cloud và latency p50/p95 vẫn phải được kiểm chứng. `PR #75` tiếp tục Draft NO-GO.
+
 ## CẬP NHẬT KỸ THUẬT 25/10/2026 — DỰ ÁN VẪN ĐANG QA SONG SONG, KHÔNG CẮT FIREBASE
 
 **Quyết định chủ dự án:** Người vận hành phải có thể chọn **Firebase chính / Firebase mirror / Excel tạm / Supabase staging** trong cùng WebApp (tab-local). Mỗi lựa chọn chỉ được ghi vào backend đã chọn; không tự đồng bộ, không xóa nguồn nào. [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) tiếp tục là stacked Draft trên [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73); `main` và Pages production chưa đổi.
