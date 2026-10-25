@@ -137,6 +137,35 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();
   });
+  it('publishes a server-ACKed edit to two other accounts via live RTDB onValue, without reloading',async()=>{
+    const session=manager('a');
+    const writer=repo('a',session);
+    const readerB=repo('b',manager('b'));
+    const readerAdmin=repo('administrator',manager('administrator',true),true);
+    const awaitUpdate=(client:FirebaseRepository,label:string)=>new Promise<void>((resolve,reject)=>{
+      let stop=()=>{};
+      const timeout=setTimeout(()=>{stop();reject(new Error('Missing realtime update for '+label));},7000);
+      stop=client.subscribe(rows=>{
+        if(rows.find(item=>item.recordId==='r1')?.note==='Realtime đã được xác nhận'){
+          clearTimeout(timeout);queueMicrotask(stop);resolve();
+        }
+      },error=>{clearTimeout(timeout);stop();reject(error);});
+    });
+    // Both observers subscribe before the writer sends anything to the server.
+    const fromB=awaitUpdate(readerB,'independent anonymous account');
+    const fromAdmin=awaitUpdate(readerAdmin,'authenticated administrator');
+    const [original]=await writer.list();
+    await session.acquire('r1','note','multiline');
+    const result=(await writer.save([updateDraft(original,undefined,{note:'Realtime đã được xác nhận'})!]))[0];
+    expect(result.ok,result.message).toBe(true);
+    expect(result.item?.revision).toBe(original.revision+1);
+    await Promise.all([fromB,fromAdmin]);
+    expect((await readerB.list())[0].note).toBe('Realtime đã được xác nhận');
+    expect((await readerAdmin.list())[0].note).toBe('Realtime đã được xác nhận');
+    await session.finish('r1','note');
+    await session.dispose();
+  });
+
   it('DRAINING refuses new locks but accepts previously acquired save; then FROZEN rejects everyone',async()=>{
     const a=manager('a'),writer=repo('a',a),baseline=(await writer.list())[0];
     await a.acquire('r1','note','multiline');
