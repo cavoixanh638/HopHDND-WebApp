@@ -35,6 +35,7 @@ jobs:
           node --check scripts/firebase-backup-emulator-restore.mjs
           node --check scripts/firebase-private-rules-compare.mjs
           node --check scripts/firebase-verify-published-rules.mjs
+          node scripts/firebase-verify-published-rules.mjs --self-test
           if node scripts/firebase-verify-published-rules.mjs; then
             echo "::error::Live Rules provenance helper must reject missing private file and may not contact production in CI."
             exit 1
