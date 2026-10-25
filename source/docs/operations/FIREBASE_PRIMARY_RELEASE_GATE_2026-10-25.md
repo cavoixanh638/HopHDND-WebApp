@@ -1,3 +1,10 @@
+## 25/10/2026 — Metadata bổ sung: snapshot 23/10, không phải bản live ngày 25/10
+- `schemaVersion=1`, `syncedAt=2026-10-23T04:41:44.104873Z`, `sourceModifiedAt=2026-10-23T02:07:11.387Z`, `rows=55`. Đầu ra PowerShell do người vận hành gửi từ file `database-1.json` riêng tư.
+- Bản mirror có timestamp cũ hơn hai ngày so với ngày kiểm tra. Đếm ID trùng=0 trên backup, **chưa có bằng chứng live**: không bật `dataSource=primary`, không lập luận dataset đã đầy đủ chỉ từ số 55. Chênh lệch 57/55 từ ảnh khác thời điểm phải xác minh nguồn và phép lọc, không tự ý bù/xóa hai nội dung.
+- GO gate mới: đọc RTDB **read-only** hiện tại vào file timestamped riêng tư, in **chỉ metadata** (total rows, ID count, syncedAt, items count) và đối chiếu bộ ID với backup. Sau đó chạy `validateExcelMirror`/restore staging mới xem xét kết luận nguồn.
+
+---
+
 ## 25/10/2026 — Cửa kiểm kê dữ liệu trước migration (không để mất nội dung)
 - Người vận hành đã đếm trên backup: 1 mirror source/1 dataset/55 dòng/0 ID trùng; `Mirror metadata valid` chưa trả kết quả rõ trong transcript. **Không đánh dấu mirror verified**.
 - **Bất thường có thể nghiêm trọng:** báo cáo giao diện người dùng trước đó cho thấy `Tiến độ xin ý kiến Thành ủy (57 nội dung)`; nếu cùng nguồn và cùng thời điểm, việc chuyển 55 dòng sẽ làm thiếu ít nhất hai dòng. Cần kiểm tra dữ liệu ở website tương ứng mốc nào, mirror `syncedAt`/sourceModifiedAt và danh sách recordId trước khi GO. Không suy rằng chắc chắn thiếu dữ liệu khi chưa xác nhận nguồn/mốc.
