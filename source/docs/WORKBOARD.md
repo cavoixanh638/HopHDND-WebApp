@@ -1,3 +1,15 @@
+## 25/10/2026 — Checkpoint mới: đối chiếu Firebase live, Excel Drive và phân quyền nguồn
+| Mã | Chủ trì / trạng thái | Chứng cứ và yêu cầu |
+| --- | --- | --- |
+| HDND-LIVE-MIRROR | Operator / **PASS đọc live, STALE dữ liệu** | 55 rows, 0 added/removed ID vs backup, `hdnd/items=0`, mirror vẫn `syncedAt 23/10/2026 04:41:44Z`; nguồn không cập nhật realtime sau đó. |
+| HDND-EXCEL-CURRENT | Reviewer / **PARTIAL PASS** | Google Drive Office .xlsx `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp` sửa `25/10/2026 04:22:14Z`; phần tab dữ liệu trích xuất có 55 dòng STT số (07 kỳ chuyên đề + 48 kỳ thường lệ). Chưa so ID và field-level values với RTDB mirror. |
+| HDND-DRIVE-PERMISSIONS | Chủ sở hữu file / **SECURITY REVIEW** | Metadata Drive cho file nguồn có `anyone:writer`. Xác minh việc mở sửa cho người có link là chủ đích; siết phân quyền nếu không cần, giữ quyền cấp cho đơn vị hợp lệ. Không đổi bằng tự động hóa. |
+| HDND-RESTORE | Operator / **HOLD** | Khôi phục thử bản sao trên `demo-hdnd-restore` localhost, so full readback JSON SHA; không import vào production. |
+| HDND-PARITY | Reviewer / **HOLD** | So tập 55 `recordId` cùng 15 cột A–O giữa file Excel đã chốt và mirror; xác minh lý do ảnh báo cáo 57 và mốc thời gian trước GO. |
+| HDND-PROD-RELEASE | Admin / **NO-GO** | Không deploy Rules, không ghi `hdnd/items` hay chỉnh `dataSource` cho đến khi restore, parity, Rule diff, staging PASS. |
+
+---
+
 ## 25/10/2026 — Đồng bộ nguồn mirror 55 dòng: metadata thời gian đã rõ, live chưa đối chiếu
 | Mã | Trạng thái | Chứng cứ còn thiếu |
 | --- | --- | --- |
