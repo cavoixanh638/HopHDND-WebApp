@@ -76,7 +76,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(migrated[0].columnOrder.slice(0,3)).toEqual(['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU']);
     expect(migrated[0].columnOrder).toContain('Đã có TBKL');
     expect(migrated[0].columnOrder).not.toContain('Đã báo cáo TU');
-    expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp']);
+    expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp','Không phải trình']);
     expect(aggregateReport(createDemoItems(9),configuredReports(migrated)[0],'department').columns).not.toContain('ĐU đã gửi TU, chưa họp');
     const unknown=structuredClone(layout);
     unknown[0].columnOrder=['Sở chưa trình'];
@@ -92,7 +92,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(migrated[0].columnOrder).toHaveLength(correct.length);
     expect(migrated[0].columnOrder.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
     expect(migrated[0].columnOrder).not.toContain('Đã họp, chưa có TBKL');
-    expect(migrated[0].hiddenColumns).toEqual(['Đã họp/xin phiếu, chưa có TBKL']);
+    expect(migrated[0].hiddenColumns).toEqual(['Đã họp/xin phiếu, chưa có TBKL','Không phải trình']);
     expect(migrated[0].columnOrder).toEqual(correct);
     expect(old[0].columnOrder).toContain('Đã họp, chưa có TBKL'); // draft not mutated
     const invalid=structuredClone(old);
