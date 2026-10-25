@@ -1,3 +1,17 @@
+## 25/10/2026 — VẬN HÀNH SONG SONG FIREBASE / SUPABASE (chưa triển khai; KHÔNG chạy cutover)
+
+Định hướng người dùng đã xác nhận: trong **cùng một WebApp** có thể chọn **Firebase RTDB hoặc Supabase PostgreSQL** theo tab, giữ cả hai. Không tự đồng bộ dữ liệu giữa chúng. Các nhánh thử nghiệm [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72), [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73), [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) đều Draft; issue điều phối [#74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). **Production NO-GO.**
+
+**Quy trình vận hành kiểm thử:** chạy Firebase Emulator chỉ ở máy QA theo [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md), `demo-hdnd`, localhost; dùng dữ liệu giả, không nối tên project live. Nhánh Supabase staging dùng cấu hình public có tên dự án và file `.env.local` riêng được gitignore, không đặt `service_role`/JWT/password trong HTML hoặc tài liệu; không dùng cùng clone/checkout đè lên Firebase đang mở. Supabase preview trước mắt là read-only; không ghi/import business rows. CI qua hai nhánh không thay thế phép test integration chung.
+
+**Trước khi chọn nguồn mặc định để phát hành:** (1) người tích hợp duy nhất chốt exact PR/commit và đối chiếu đầy đủ hunk thay đổi; (2) soát quyền Auth/Firebase Rules và Supabase RLS/RPC độc lập; (3) test 2–3 tài khoản/trình duyệt trên đúng commit, chuyển nguồn khi có nháp/lease/ACK pending phải bị chặn; (4) benchmark công bằng trên fixture giả tương đương; (5) lập danh sách **nguồn dữ liệu nghiệp vụ cuối** tại thời điểm chốt, kiểm 15 cột A–O, count/ID/SHA256 theo từng nguồn được chủ dự án duyệt; (6) backup tươi trước bất kỳ ghi thật nào; (7) triển khai một lần, bật **một đường ghi chủ động mỗi tab** và quan sát; (8) có rollback không làm mất bất kỳ ACKed edits. **Không có GO thì chỉ test demo.** Việc import vào Firebase không cho phép tự động import sang Supabase hoặc ngược lại.
+
+**Phân biệt rollback:** khôi phục mã giao diện không khôi phục dữ liệu; đổi backend chỉ đổi đường đọc/ghi của tab, không trả lại bản ghi trước đó. Không chạy `database:set /` hoặc `TRUNCATE`/SQL reset trên môi trường thật. Nếu đã có dữ liệu được xác nhận ACK trong bất kỳ backend nào, phải dừng edit, backup mới và đối chiếu trước khi fix-forward/rollback. Không tự chọn một bản backup cũ làm nguồn hiện hành.
+
+**Thông tin phát hành cuối phải lưu** vào [CURRENT_STATE](CURRENT_STATE.md): commit tích hợp exact, tên URL môi trường (không ghi bí mật), loại bản build, Rules/RLS versions và hash đã kiểm, dữ liệu source manifest, bản ghi import được duyệt, kết quả test browser, người quyết định GO, thời điểm và kết quả deploy. Chi tiết Firebase dự thảo trong [PR #72 docs](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/docs/operations/FIREBASE_ONE_TIME_CUTOVER_ROLLBACK_PLAN_2026-10-25.md); Supabase GO/NO-GO trong PR #75.
+
+---
+
 ## BỘ MÀU LƯU RIÊNG V2 — Màu chữ tươi, nét mảnh 600 (22/10/2026)
 
 **Tên khôi phục chính thức:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2 (22/10/2026)**. Người dùng xác nhận “OK, lưu riêng các màu này”. V2 là **màu chữ trạng thái**, **không** thay nền/viền, điều khiển dropdown hay lịch sử.
