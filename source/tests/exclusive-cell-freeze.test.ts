@@ -6,7 +6,7 @@ import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
-import {CellEditSessionManager,acquireCellLease,releaseCellLease,lockPath} from '../src/data/cell-edit-leases';
+import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
