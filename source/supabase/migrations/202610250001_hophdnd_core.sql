@@ -7,8 +7,8 @@ begin;
 create schema if not exists hdnd_private;
 revoke all on schema hdnd_private from public, anon, authenticated;
 create table if not exists hdnd_private.admin_emails (email text primary key);
-insert into hdnd_private.admin_emails(email) values ('cavoixanh638@gmail.com')
-on conflict do nothing;
+-- No default administrator: stage/release operator explicitly provisions a
+-- verified Google account after identity inspection. Fail closed by default.
 
 create table public.hdnd_items (
   record_id text primary key check(record_id ~ '^[A-Za-z0-9_:-]{1,200}$'),
