@@ -256,6 +256,34 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
+  it('denies same-UID second tab replaying a visible foreign tab lease token',async()=>{
+    const first=manager('a');
+    await first.acquire('r1','note','multiline');
+    // Both tabs have the same Firebase UID, but NOT the same tab-local session.
+    // The second tab has not obtained a lease and must not be able to save.
+    const secondTab=guest('a');
+    const original=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    const visibleLease=(await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val();
+    const revision=original.revision+1;
+    await assertFails(update(ref(secondTab as never,'hdnd/items/r1'),{
+      note:'Unauthorised same-UID second tab',
+      revision,
+      operationId:'different-tab-lease-replay',
+      updatedAt:serverTimestamp(),updatedBy:'a',
+      ['editProofs/note']:visibleLease.token,
+      ['history/'+String(revision%50)]:{
+        operationId:'different-tab-lease-replay',recordId:'r1',
+        at:serverTimestamp(),actor:'a',
+        changes:{note:'Unauthorised same-UID second tab'},
+        oldValues:{note:original.note}
+      }
+    }));
+    const after=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    expect(after.revision).toBe(original.revision);
+    await first.cancel('r1','note');
+    await first.dispose();
+  });
+
   it('prevents a valid editor from forging structured audit values while changing a leased cell',async()=>{
     const session=manager('a'),db=guest('a');
     const original=(await get(ref(db as never,'hdnd/items/r1'))).val();
