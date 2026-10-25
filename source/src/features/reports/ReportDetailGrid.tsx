@@ -20,7 +20,7 @@ import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
 import {InlineNoteEditor} from '../items/InlineNoteEditor';
 import {LeaseTextInput} from '../items/LeaseTextInput';
-import type {CellEditSessionManager} from '../../data/cell-edit-leases';
+import type {CellLeaseUiManager} from '../../data/cell-edit-leases';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
@@ -35,7 +35,7 @@ type Props={
   readOnlyViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
-  leaseManager?:CellEditSessionManager;
+  leaseManager?:CellLeaseUiManager;
   onKeepDraft:()=>boolean;
   onHistory?:(item:Item)=>void;
   onCellHistory?:(item:Item,field:TextField)=>void;
