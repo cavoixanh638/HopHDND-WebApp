@@ -28,6 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Verify standalone Supabase Google OAuth smoke page (offline, no credentials)
+        run: node scripts/check-supabase-auth-smoke.mjs
       - name: Validate production BACKUP READ-ONLY helper offline (no Firebase credentials)
         run: |
           node --check scripts/firebase-production-readonly-backup.mjs
