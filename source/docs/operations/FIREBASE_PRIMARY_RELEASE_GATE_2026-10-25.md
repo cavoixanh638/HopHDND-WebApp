@@ -1,3 +1,10 @@
+## Ghi nhận CHECKPOINT sao lưu READ-ONLY — 25/10/2026
+- Đã nhận **kết quả PowerShell do quản trị viên cung cấp**: Firebase CLI export `/` 2 lần trên `hophdnd-8b7b2/hophdnd-8b7b2-default-rtdb` và cả hai tệp có cùng SHA256 `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`. Tệp nằm trên máy người vận hành, **chưa được công cụ GitHub/ChatGPT tự đọc**.
+- Đây mới là `DATA_EXPORT_CONSISTENCY=USER_REPORTED_PASS`, không phải đầy đủ `BACKUP_PRODUCTION_VERIFIED` vì chưa xác minh cấu trúc file, chưa sao lưu Rules Published, chưa thử phục hồi hay kiểm tra chặn đường ghi/đường cha.
+- **Cửa kế tiếp:** vào Firebase Console → Realtime Database → Rules, chép Rules **đang có hiệu lực** ra JSON riêng tư trong cùng kho sao lưu (không click Publish), kiểm `ConvertFrom-Json` và SHA256. Sau đó so với candidate bằng bản copy không công khai và thử restore riêng. Không chạy `firebase deploy`, `database:set`, `database:update` hay thay đổi profile.
+
+---
+
 ## Công cụ bổ sung cho bước sao lưu: read-only operator helper
 - Đã thêm `source/scripts/firebase-production-readonly-backup.mjs`, cùng [hướng dẫn Windows](FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md). Công cụ dùng Firebase CLI **chỉ thực hiện `database:get /`** hai lần với project và instance bị giới hạn, so hash, cất Rules người vận hành cung cấp, tạo manifest ở nơi riêng tư ngoài repo.
 - **Chưa chạy production:** không có Firebase Console đang đăng nhập trong phiên làm việc và không lấy dữ liệu bằng GitHub. Không được đổi GO/NO-GO sang PASS nếu chưa có bằng chứng export thật, đối chiếu Rules đã Publish, thử khôi phục và phê duyệt.
