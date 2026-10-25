@@ -1,3 +1,15 @@
+## CURRENT RELEASE STATE — employee Google allowlist + safe one-time cutover
+
+**Engineering candidate COMPLETE for isolated test; production still gated.** Verified Google employees must appear at `hdnd/editors/{uid}=true` before RTDB Rules allow any lease or row write, in addition to per-cell grants. Anonymous users can **read but cannot write**. Administrator can grant/revoke Google UIDs on the Firebase Account panel. The earlier stale-mirror one-click import button has been removed; a current approved snapshot and maintenance window are mandatory for final primary import.
+
+Source/build/Emulator integration verified on [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) by [Verify HopHDND source #40208414174](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40208414174) SUCCESS and [isolated Firebase staging #40208414172](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40208414172) SUCCESS. New regressions: anonymous denied, unenrolled Google denied despite column grant, admin revoke immediate, authenticated Google employee allowed across separate UIDs; updated mock controller tests. **All these are emulator/build proofs, not production deploy proofs.**
+
+**Launch sequence still required:** 1) named final source frozen with every pending staff edit included; 2) final production read-only backup + Rules snapshot; 3) current Rules candidate independent authorization review and approved deployment; 4) exactly one reviewed data import and readback; 5) primary profile activation and deployment of tested app build; 6) employee Google UID enrollment, two-browser acceptance receipt and rollback checkpoints. **No production write/Rules publish/merge/Website update performed by this work.**
+
+**Security contract:** mutually exclusive edits are enforced for independent Firebase Auth UIDs; normal anonymous tabs each get separate short-lived UIDs but cannot edit. Google employee/editor accounts must be individual; hostile same-UID multi-tab token replay still cannot be separated by client-only RTDB Rules. Consult [employee launch procedures](FIREBASE_EMPLOYEE_GOOGLE_LAUNCH_2026-10-25.md), [adversarial review](FIREBASE_PR72_SECURITY_REVIEW_VERDICT_2026-10-25.md), and [cutover plan](FIREBASE_ONE_TIME_CUTOVER_ROLLBACK_PLAN_2026-10-25.md).
+
+---
+
 ## CURRENT RELEASE VERDICT — 25/10/2026, post-auth-hardening
 
 **Implementation CI:** [#40205895722](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40205895722) PASS; [isolated staging #40205895723](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40205895723) PASS. These include Auth Emulator evidence that two normal anonymous editor tabs obtain separate Firebase UIDs; backend still validates cross-UID leases. React/login unit tests ensure a canceled Google popup does not persist anonymous credentials.
