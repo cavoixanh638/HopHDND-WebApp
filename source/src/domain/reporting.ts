@@ -56,7 +56,11 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
     !(['build','party'].includes(config.id)&&config.includeNotRequired!==true&&
       normalizeSearch(normalizeReportStatus(item[config.statusField],config))===normalizeSearch('Không phải trình')) && (
     config.source === 'all' ||
-    (config.source === 'party' && !['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) && normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
+    (config.source === 'party' && (
+      (!['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) &&
+        normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
+      (config.includeNotRequired===true && normalizeSearch(normalizeReportStatus(item.progressParty,config))===normalizeSearch('Không phải trình'))
+    )) ||
     (config.source === 'build' && item.documentKind === 'NQ' &&
       !!normalizeSearch(item.progressBuild)) ||
     (config.source === 'council' && (item.documentKind === 'NQ'||item.documentKind === 'BC')) ||
