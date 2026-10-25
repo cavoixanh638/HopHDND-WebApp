@@ -1,3 +1,11 @@
+## 25/10/2026 — Chủ dự án chọn Supabase thay Firebase (TRẠNG THÁI ĐÍCH, CHƯA LIVE)
+
+- [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md) **ưu tiên** so với lựa chọn Firebase-only trước đây. Mục tiêu: WebApp là nguồn thao tác duy nhất, mọi cấu hình, quyền, audit, khóa ô, đóng băng và dữ liệu chuyển về PostgreSQL khi đạt GO. Sheets là công cụ tạm của nhân viên khi WebApp chưa sẵn sàng.
+- Nhánh `feat/supabase-safe-migration-20261025`, tách từ PR #72; schema PostgreSQL/RPC và adapter/thử nghiệm được phát triển tách biệt. **Không có bằng chứng Supabase staging, CI SQL, OAuth, multiuser hay benchmark đã PASS; không chỉnh production Firebase/Pages.**
+- **Tài liệu vận hành và trạng thái thực tế duy nhất:** [SUPABASE_RELEASE_GATE_2026-10-25](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [kế hoạch chức năng](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md). Các mục ngày trước ở dưới chỉ là lịch sử đã xác minh trong thời điểm tương ứng.
+
+---
+
 ## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
 **Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
 
