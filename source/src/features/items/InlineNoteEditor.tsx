@@ -25,7 +25,10 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
   const apply=()=>{
     if(cancelled.current){cancelled.current=false;return;}
     if(completed.current)return;
-    if(draft!==value&&(!leaseManager||!recordId||!field||leaseManager.has(recordId,field))&&onCommit(draft)===false){
+    if(draft!==value&&leaseManager&&recordId&&field&&!leaseManager.has(recordId,field)){
+      setError('Quyền sửa ô đã hết hạn. Hãy sao chép nội dung trước khi rời ô.');return;
+    }
+    if(draft!==value&&onCommit(draft)===false){
       setError('Quyền sửa đã thay đổi. Nội dung chưa được áp dụng; hãy sao chép nội dung trước khi rời ô.');
       return;
     }
