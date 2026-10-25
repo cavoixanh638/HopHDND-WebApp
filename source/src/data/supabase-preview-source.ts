@@ -234,7 +234,7 @@ export class SupabasePreviewRepository implements Repository {
     return this.backing.subscribe(next,error);
   }
   save(patches:Patch[]):Promise<SaveResult[]>{
-    if(!this.verifiedWrites)return Promise.reject(new Error('Supabase chưa xác nhận quyền chỉnh sửa trong phiên này.'));
+    if(!this.verifiedWrites)return Promise.reject(new Error('Supabase staging chỉ được đọc cho đến khi máy chủ xác nhận quyền chỉnh sửa trong phiên này.'));
     return this.backing.save(patches);
   }
 }
