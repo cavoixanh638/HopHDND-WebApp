@@ -7,6 +7,9 @@
 import type {AuditEntry,Item,Patch,SaveResult} from '../../shared/types';
 import type {Repository} from './repository';
 import {SupabaseRepository} from './supabase-repository';
+import {SupabaseCellLeaseManager} from './supabase-cell-leases';
+import type {CellPermissions} from './firebase-repository';
+import type {CellLeaseUiManager} from './cell-edit-leases';
 
 export interface SupabasePublicConfig {
   url:string;
@@ -93,25 +96,83 @@ export class SupabaseAnonymousPreviewAuth {
     try{this.storage?.setItem(this.storageKey,JSON.stringify(session));}catch{/* RAM fallback */}
     return session.access_token;
   }
+  /** Redirect with an unpredictable, per-tab state. The Google provider must be
+   * manually enabled in Supabase Dashboard, with an allowlisted redirect URL.
+   * Never pass Firebase credentials or Google client secrets through this app.
+   */
+  startGoogleSignIn():void {
+    if(typeof window==='undefined')throw new Error('Google OAuth requires a browser.');
+    if(!this.storage)throw new Error('Bật lưu phiên trình duyệt trước khi đăng nhập Google.');
+    const state=crypto.randomUUID();
+    const returnTo=new URL(window.location.href);
+    if(returnTo.protocol!=='https:'&&returnTo.hostname!=='localhost'&&returnTo.hostname!=='127.0.0.1')
+      throw new Error('Google OAuth chỉ được phép qua HTTPS hoặc localhost.');
+    returnTo.hash='';
+    returnTo.searchParams.set('hdnd_supabase_auth',state);
+    this.storage.setItem(this.storageKey+':oauth_state',state);
+    const target=new URL(this.config.url+'/auth/v1/authorize');
+    target.searchParams.set('provider','google');
+    target.searchParams.set('redirect_to',returnTo.toString());
+    window.location.assign(target.toString());
+  }
+  /** Process only a verified same-tab OAuth return; never accept forged hash tokens. */
+  completeGoogleRedirect():boolean {
+    if(typeof window==='undefined')return false;
+    const current=new URL(window.location.href);
+    const state=current.searchParams.get('hdnd_supabase_auth');
+    if(!state)return false;
+    const expected=this.storage?.getItem(this.storageKey+':oauth_state');
+    if(!expected||state!==expected)throw new Error('Supabase OAuth state không khớp; từ chối phiên đăng nhập.');
+    this.storage?.removeItem(this.storageKey+':oauth_state');
+    const hash=new URLSearchParams(current.hash.startsWith('#')?current.hash.slice(1):current.hash);
+    if(hash.has('error'))throw new Error('Google OAuth bị từ chối: '+String(hash.get('error_description')??hash.get('error')));
+    const expires=Number(hash.get('expires_in'));
+    const session={access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),
+      expires_at:Math.floor(Date.now()/1000)+expires};
+    if(!this.isSession(session)||!Number.isFinite(expires)||expires<=0)
+      throw new Error('Google OAuth không cấp cặp token hợp lệ; từ chối phiên.');
+    this.cached=session;
+    try{this.storage?.setItem(this.storageKey,JSON.stringify(session));}catch{/* in-memory only */}
+    current.searchParams.delete('hdnd_supabase_auth');current.hash='';
+    window.history.replaceState(window.history.state,'',current.toString());
+    return true;
+  }
+  clearSession():void {
+    this.cached=null;
+    try{this.storage?.removeItem(this.storageKey);this.storage?.removeItem(this.storageKey+':oauth_state');}catch{}
+  }
   getAccessToken=():Promise<string>=>{
     if(!this.pending)this.pending=this.renewOrLogin().finally(()=>{this.pending=null;});
     return this.pending;
   };
 }
 
+export interface SupabaseAccessState {
+  userId:string;isAdmin:boolean;aclRevision:number;rights:CellPermissions;
+  controlRevision:number;mode:'OPEN'|'DRAINING'|'FROZEN';
+  guestEditingLocked:boolean;epoch:number;deadline:string|null;
+}
+
 export class SupabasePreviewRepository implements Repository {
   readonly sourceKind='supabase' as const;
-  readonly readOnly=true;
-  readonly canDraft=false;
+  get readOnly(){return !this.verifiedWrites;}
+  get canDraft(){return this.verifiedWrites;}
+  private verifiedWrites=false;
+  readonly leaseManager:SupabaseCellLeaseManager;
+  readonly auth:SupabaseAnonymousPreviewAuth;
   readonly subscribeInitial=true;
   private readonly backing:SupabaseRepository;
+  private readonly fetcher:typeof fetch;
+  private readonly config:SupabasePublicConfig;
   constructor(config:SupabasePublicConfig,fetcher:typeof fetch=fetch,
     storage?:Pick<Storage,'getItem'|'setItem'|'removeItem'>|null){
-    const auth=new SupabaseAnonymousPreviewAuth(config,fetcher,storage);
+    this.config=config;this.fetcher=fetcher;
+    this.auth=new SupabaseAnonymousPreviewAuth(config,fetcher,storage);
+    this.leaseManager=new SupabaseCellLeaseManager({invoke:(fn,args)=>this.rpc(fn,args)},()=>this.lastAccess?.userId??null);
     this.backing=new SupabaseRepository({
       ...config,
-      getAccessToken:auth.getAccessToken,
-      getLease:()=>null,
+      getAccessToken:this.auth.getAccessToken,
+      getLease:this.leaseManager.getLease,
       fetcher,
       // Polling is explicitly temporary QA behavior; NOT mislabeled as realtime.
       onBusinessChange:change=>{
@@ -122,12 +183,42 @@ export class SupabasePreviewRepository implements Repository {
       }
     });
   }
+  private lastAccess:SupabaseAccessState|null=null;
+  private async rpc<T>(fn:string,args:Record<string,unknown>):Promise<T>{
+    if(!/^hdnd_[a-z_]+$/.test(fn))throw new Error('RPC name không hợp lệ.');
+    const token=await this.auth.getAccessToken();
+    const response=await this.fetcher(this.config.url+'/rest/v1/rpc/'+fn,{
+      method:'POST',headers:{apikey:this.config.publishableKey,
+        authorization:'Bearer '+token,'content-type':'application/json'},
+      body:JSON.stringify(args)
+    });
+    const value:unknown=await response.json().catch(()=>null);
+    if(!response.ok){const err=value&&typeof value==='object'?value as Record<string,unknown>:{};
+      throw new Error('Supabase RPC: '+String(err.message??response.status));}
+    return value as T;
+  }
+  async accessState():Promise<SupabaseAccessState>{
+    const raw=await this.rpc<SupabaseAccessState>('hdnd_access_state',{});
+    if(!raw||typeof raw.userId!=='string'||typeof raw.isAdmin!=='boolean'||
+      typeof raw.guestEditingLocked!=='boolean'||
+      !['OPEN','DRAINING','FROZEN'].includes(raw.mode)||
+      !raw.rights||typeof raw.rights!=='object')throw new Error('Quyền Supabase trả về không hợp lệ.');
+    this.lastAccess=raw;
+    return raw;
+  }
+  /** UI control only: server independently validates every subsequent SQL write. */
+  setVerifiedWriteMode(enabled:boolean):void{
+    this.verifiedWrites=enabled&&!!this.lastAccess&&
+      this.lastAccess.mode==='OPEN'&&
+      (!this.lastAccess.guestEditingLocked||this.lastAccess.isAdmin);
+  }
   list():Promise<Item[]>{return this.backing.list();}
   history(id:string):Promise<AuditEntry[]>{return this.backing.history(id);}
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void):()=>void{
     return this.backing.subscribe(next,error);
   }
-  save(_patches:Patch[]):Promise<SaveResult[]>{
-    return Promise.reject(new Error('Supabase staging hiện chỉ được đọc; chưa phát hành chức năng ghi.'));
+  save(patches:Patch[]):Promise<SaveResult[]>{
+    if(!this.verifiedWrites)return Promise.reject(new Error('Supabase chưa xác nhận quyền chỉnh sửa trong phiên này.'));
+    return this.backing.save(patches);
   }
 }
