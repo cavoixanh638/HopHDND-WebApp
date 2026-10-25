@@ -22,7 +22,7 @@ Mở cùng WebApp `pages.html` trong Chrome bình thường và Microsoft Edge (
     & ".\node_modules\.bin\firebase.cmd" emulators:exec `
       --project demo-hdnd `
       --only auth,database `
-      --config scripts/staging-emulator/firebase.json `
+      --config firebase.staging.json `
       "node scripts/seed-local-staging.mjs && node node_modules/vite/bin/vite.js --mode pages-test --host 127.0.0.1 --port 5173 --strictPort"
     if ($LASTEXITCODE -ne 0) { throw "Staging emulator failure; no production change." }
   } finally { Pop-Location }
