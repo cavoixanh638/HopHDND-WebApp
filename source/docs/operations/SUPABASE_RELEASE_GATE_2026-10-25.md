@@ -1,5 +1,36 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## CẬP NHẬT KỸ THUẬT 25/10/2026 — DỰ ÁN VẪN ĐANG QA SONG SONG, KHÔNG CẮT FIREBASE
+
+**Quyết định chủ dự án:** Người vận hành phải có thể chọn **Firebase chính / Firebase mirror / Excel tạm / Supabase staging** trong cùng WebApp (tab-local). Mỗi lựa chọn chỉ được ghi vào backend đã chọn; không tự đồng bộ, không xóa nguồn nào. [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) tiếp tục là stacked Draft trên [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73); `main` và Pages production chưa đổi.
+
+**Bằng chứng Cloud mới nhất:**
+- Project Supabase Free `uguhyunuzsdrkykqgdmq`, Singapore, PostgreSQL 17 đang ACTIVE_HEALTHY. Đã áp dụng **4 migration**, bổ sung `hophdnd_access_state_20261025` cho RPC quyền đọc phiên (`hdnd_access_state`).
+- Truy vấn phân quyền trực tiếp trên Cloud: `anon_can_read_access=false`, `auth_can_read_access=true`. Quyền quản trị được xác minh ở hàm SQL riêng với Google identity thực, email đã xác nhận và allowlist không mặc định. Supabase Security Advisor: **0 security lints**; chỉ còn 3 INFO về index chưa sử dụng vì bảng dữ liệu rất nhỏ.
+- Đã chạy script **staging-only** `source/supabase/tests/staging-only-qa-data.sql`, xác minh **6/6 hồ sơ là QA** (`qa-supa-0001…0006`, `QA-NQ-0001…0006`), `stt=900001…900006`. Không nhập nội dung thực, **admin_count=0**, `import_gate=false`. Script dọn chính xác 6 dòng QA, audit và leases đi kèm nằm tại `source/supabase/tests/staging-only-qa-cleanup.sql`. Trước bất kỳ import thật nào phải xóa QA rows, xác minh 0 dòng và backup.
+- Bộ Postgres synthetic CI đã kiểm tra 4 migrations, direct-write deny, 3 identity, quản trị giả, ACL per-cell, lease, operationId replay, freeze, admin control, phát hiện thay đổi phiên bản.
+
+**Mã WebApp trên PR #75 (không phải production):**
+- Nút chọn nguồn theo tab, ghi lại lựa chọn trong `sessionStorage` để duy trì sau Google OAuth redirect; guard chặn đổi nguồn khi có bản nháp chưa lưu, lease, editor mở, dữ liệu đang đọc/lưu hoặc phải đối chiếu. Không ghi sang `FirebaseProfile.dataSource`.
+- Hỗ trợ cấu hình public Supabase staging ngay trong **tab** bằng `sb_publishable_...` hoặc `source/.env.local` gitignored; từ chối `sb_secret_*`, `service_role`, HTTP hoặc host ngoài Supabase.
+- Supabase Auth dùng **session JWT riêng**, không tái sử dụng Firebase Auth token. Có nhánh guest anonymous và Google OAuth redirect với random state theo tab; cần dashboard Google provider/redirect chuẩn trước khi kiểm thử thật. Auth failure được backoff để không spam gói Free.
+- `SupabaseRepository` đọc qua REST RLS và chỉ ghi qua RPC `hdnd_save_cell_changes` khi chính máy chủ xác nhận quyền + khóa ô + CAS + readback, nháp được giữ khi có lỗi. Giao diện dropdown/note/progress/content sử dụng cùng `CellLeaseUiManager` đa backend. Supabase admin có chức năng quyền ô qua RPC CAS, khóa khách và chuyển `OPEN/DRAINING/FROZEN` độc lập với Firebase; thao tác quản trị có dialog xác nhận.
+- Có triển khai WebSocket Supabase Postgres Changes (`hdnd_items` duy nhất) và đọc lại bằng JWT sau mỗi sự kiện; khi mạng/kênh lỗi có polling dự phòng 15 giây. **Đây là integration code + test mock Phoenix, CHƯA phải bằng chứng Realtime nhiều người trên Cloud.**
+- Nút **Kiểm tra tốc độ đọc nguồn này** gửi duy nhất GET tới backend được chọn, hiển thị số dòng và thời gian (ms) cho phiên đang mở; không tạo ghi và không tự fallback. **Không thể kết luận Supabase nhanh/chậm hơn Firebase từ 6 dòng QA vs dữ liệu khác kích thước**.
+
+### Hướng dẫn thao tác tối thiểu cho quản trị viên — staging, KHÔNG đụng production
+
+1. Truy cập **Supabase Dashboard → HopHDND-Staging → Authentication → Providers**. Bật **Anonymous Sign-Ins** cho QA theo chính sách bảo mật; bật **Google** sau khi tạo Google OAuth Web Client và cấu hình client ID/secret **chỉ trong dashboard Supabase**. Trong Google Cloud OAuth cần callback URI `https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/callback`. Trong Supabase Authentication URL Configuration đặt URL WebApp QA thực và redirect URL `https://<host-thật>/<path-thật>` theo host Pages đang sử dụng. Không suy đoán URL sản phẩm, dùng domain thực ở phần Settings → Pages. Không chép Google Client Secret vào repo/ChatGPT/webapp.
+2. Mở **bản build QA của PR #75** trên HTTPS, đăng nhập Firebase Google QA nếu cần hiển thị bộ chọn nguồn; đây không phải website production hiện hành. Mở thanh chọn **Nguồn dữ liệu của tab này**. Nếu Supabase chưa khả dụng, trong **Cấu hình Supabase staging** dán duy nhất Supabase **publishable key** (`sb_publishable_...`), bấm lưu. Không dùng service_role/secret key. Chuyển Firebase/Supabase tùy ý khi không có nháp/lease hoặc màn hình chỉnh sửa.
+3. Chọn **Supabase staging**: trước tiên có thể thấy 6 hồ sơ QA. Để có quyền quản trị Supabase, bấm **Đăng nhập Google trên Supabase**. Sau khi đã đăng nhập bằng Google thực và xác nhận email/provider trong Supabase Auth → Users, người quản trị DBA **thêm chính xác email đã kiểm chứng** vào bảng private `hdnd_private.admin_emails`, không suy diễn từ email GitHub/Firebase hoặc tổ chức. Không ghi email thật vào GitHub. Sau đó tải lại nguồn: `hdnd_access_state` phải trả `isAdmin=true`. Nếu chưa xác minh, WebApp giữ **read-only**.
+4. Với tài khoản admin Supabase đã được kiểm chứng: dùng **Phân quyền ô trên Supabase**, **Mở/Khóa quyền sửa khách**, **OPEN/DRAINING/FROZEN** và kiểm thử đồng thời ít nhất 3 phiên trên 2 máy. Kiểm tra cùng ô bị từ chối, khác ô đồng thời vẫn giữ cả hai, mất mạng giữ nháp, lịch sử đúng 1 lần, freeze chặn ghi, và realtime event tới phiên khác. Kiểm tra Firebase vẫn độc lập, có thể quay lại nguồn Firebase bằng bộ chọn.
+5. Đọc benchmark cold/warm trên nguồn đã chọn; lưu bằng chứng p50/p95 từ cùng tập dữ liệu và quyền sau khi đã có test parity tổng quát. Sau QA, dùng script cleanup riêng ở staging để xóa 6 mẫu, xác minh `hdnd_items=0` trước khi xem xét import thật.
+
+**Các blocker G2-G8 chưa được đánh dấu PASS:** hoàn tất cấu hình OAuth/Anonymous Provider **ngoài GitHub**, người quản trị xác thực thực trên Cloud, QA REST/Reatime/3 người thật, backup/restore drill Cloud, so sánh tốc độ đúng dữ liệu, import được duyệt riêng (nếu cần), rollback và quyết định GO. **Không được merge/deploy/mở sử dụng thật chỉ nhờ CI PASS.**
+
+---
+
+
 ## Kiểm tra trạng thái trước đợt triển khai mới và thực thi PR #75 — 25/10/2026
 
 **Kiểm tra thực tế lúc bắt đầu (trước khi tạo nhánh mới):**
