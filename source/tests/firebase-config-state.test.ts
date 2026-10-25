@@ -93,6 +93,19 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(update({revision:2,editingLocked:true})).toMatchObject({revision:3,editingLocked:false});
     expect(render().editingLocked).toBe(false);
   });
+  it('administrator grants and revokes Google employee UID through guarded CAS',async()=>{
+    login(true);
+    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/editors/employee123'?null:null}));
+    h.transaction.mockImplementation(async(path:string,fn:(value:unknown)=>unknown)=>{
+      expect(path).toBe('hdnd/editors/employee123');
+      const next=fn(null);
+      expect(next).toBe(true);
+      return {committed:true,snapshot:{val:()=>next}};
+    });
+    await render().saveEditorAccess('employee123',true);
+    expect(h.transaction).toHaveBeenCalledOnce();
+    await expect(render().saveEditorAccess('invalid uid!',true)).rejects.toThrow('UID');
+  });
   it('denies guest config writes, even with direct handler calls',async()=>{
     login();emit('hdnd/profile',null);emit('hdnd/permissions',{columns:{note:true}});const state=render();
     await expect(state.common.save('all',profile(),0)).rejects.toThrow('Chỉ tài khoản Google');await expect(state.savePermissions({columns:{content:true}})).rejects.toThrow('Cần quản trị Google');expect(h.transaction).not.toHaveBeenCalled();
