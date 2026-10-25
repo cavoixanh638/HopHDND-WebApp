@@ -76,6 +76,14 @@ jobs:
           node scripts/check-published-assets.mjs dist-pages/index.html dist-pages/index.html dist-pages/assets
       - name: Stage identical candidate hosting bundles without deploying
         run: node scripts/prepare-hosting-staging.mjs
+      - name: Preserve verified hosting bundles (NO deployment)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-verified-hosting-candidates
+          path: source/dist-hosting/
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify browser benchmark command
         run: |
           node --check scripts/measure-web-startup.mjs
