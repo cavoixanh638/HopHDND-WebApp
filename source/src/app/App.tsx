@@ -44,7 +44,8 @@ import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
 import {StartupTimingPanel} from '../components/StartupTimingPanel';
 import {markStartup} from '../data/startup-timings';
 import {compareSourceFromSearch,disableSessionCacheForBenchmark} from '../data/source-comparison';
-import {readSupabasePreviewConfig,SupabasePreviewRepository,type SupabaseAccessState} from '../data/supabase-preview-source';
+import {readSupabasePreviewConfig,readSupabaseTabConfig,saveSupabaseTabConfig,validateSupabasePreviewConfig,
+  SupabasePreviewRepository,type SupabaseAccessState} from '../data/supabase-preview-source';
 import {resolveTabSource,sourceNamespace,sourceSwitchBlocker,type TabDataSource} from '../data/parallel-source-selection';
 
 type Page = 'overview' | 'items' | 'connection' | 'source' | 'customize' | 'items-customize' | 'items-permissions' | 'catalogs'|'sync'|'transfer'|'review';
@@ -61,7 +62,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       return saved==='primary'||saved==='database'||saved==='excel'||saved==='supabase'?saved:null;
     }catch{return null;}
   });
-  const supabaseConfig=useMemo(readSupabasePreviewConfig,[]);
+  const [supabaseConfig,setSupabaseConfig]=useState(()=>readSupabaseTabConfig()??readSupabasePreviewConfig());
+  const [stagingPublicKey,setStagingPublicKey]=useState('');
   const supabasePreview=useMemo(()=>supabaseConfig?new SupabasePreviewRepository(supabaseConfig):null,[supabaseConfig]);
   const [supabaseAccess,setSupabaseAccess]=useState<SupabaseAccessState|null>(null);
   const [supabaseAccessError,setSupabaseAccessError]=useState('');
@@ -432,6 +434,26 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         </select>
       </label>
       <span className="muted">Đang đọc: <strong>{sourceLabel}</strong>. Lựa chọn này không thay đổi nguồn chung và không đồng bộ giữa các database.</span>
+      <details className="source-runtime-settings">
+        <summary>Cấu hình Supabase staging {supabasePreview?'· đã có khóa công khai':'· cần khóa công khai'}</summary>
+        <form onSubmit={event=>{
+          event.preventDefault();
+          const config=validateSupabasePreviewConfig(
+            'https://uguhyunuzsdrkykqgdmq.supabase.co',stagingPublicKey.trim());
+          if(!config){setLayoutMessage('Chỉ nhập publishable key sb_publishable_ của Supabase staging; KHÔNG nhập service_role hoặc secret key.');return;}
+          if(!saveSupabaseTabConfig(config)){setLayoutMessage('Không giữ được cấu hình trong tab này. Không đổi nguồn.');return;}
+          setSupabaseConfig(config);setStagingPublicKey('');
+          setLayoutMessage('Đã cấu hình Supabase staging cho tab này. Có thể chọn Supabase để kiểm tra; Firebase vẫn giữ nguyên.');
+        }}>
+          <label className="field">Publishable key Supabase (chỉ dùng trong tab)
+            <input type="password" autoComplete="off" value={stagingPublicKey}
+              onChange={e=>setStagingPublicKey(e.currentTarget.value)}
+              placeholder="sb_publishable_…" />
+          </label>
+          <button type="submit" className="button ghost">Lưu cấu hình nguồn thử</button>
+          <span className="muted">Project cố định: HopHDND-Staging. Không nhập private key, API secret hoặc service_role.</span>
+        </form>
+      </details>
     </div>}
     {selectedSource==='supabase'&&<div className="notice" role="status">
       <strong>SUPABASE STAGING · {repository.readOnly?'CHỈ ĐỌC':'CHỈ GHI THEO QUYỀN SUPABASE'}</strong>
