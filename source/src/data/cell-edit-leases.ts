@@ -113,23 +113,35 @@ export class CellEditSessionManager {
   private failed=new Map<string,string>();
   constructor(private database:Database,private viewer:()=>User|null){}
   private key(id:string,field:EditableField){return id+'|'+field;}
+  private draftStorage(){
+    // Transient anonymous UID is rotated per page/tab for exclusive editing,
+    // therefore an anonymous draft must be scoped to browser session storage,
+    // NOT to the changing Firebase uid. Session storage survives reloads but
+    // does not synchronize draft values across unrelated tabs.
+    return this.viewer()?.isAnonymous?globalThis.sessionStorage:globalThis.localStorage;
+  }
   private draftKey(id:string,field:EditableField){
-    return 'hdnd.primary.unsaved-cell.v1:'+this.viewer()?.uid+':'+id+':'+field;
+    return this.viewer()?.isAnonymous
+      ?'hdnd.primary.unsaved-cell.tab.v2:'+id+':'+field
+      :'hdnd.primary.unsaved-cell.v1:'+this.viewer()?.uid+':'+id+':'+field;
   }
   /** Recovery is a local checkpoint, NEVER a database acknowledgement. */
   preserveDraft(id:string,field:EditableField,value:unknown){
-    try{globalThis.localStorage?.setItem(this.draftKey(id,field),
-      JSON.stringify({savedAt:Date.now(),value}));return true;}catch{return false;}
+    try{
+      const storage=this.draftStorage();if(!storage)return false;
+      storage.setItem(this.draftKey(id,field),JSON.stringify({savedAt:Date.now(),value}));
+      return true;
+    }catch{return false;}
   }
   recoverDraft(id:string,field:EditableField):string|null{
     try{
-      const raw=globalThis.localStorage?.getItem(this.draftKey(id,field));
+      const raw=this.draftStorage()?.getItem(this.draftKey(id,field));
       const parsed=raw?JSON.parse(raw):null;
       return typeof parsed?.value==='string'?parsed.value:null;
     }catch{return null;}
   }
   private clearDraft(id:string,field:EditableField){
-    try{globalThis.localStorage?.removeItem(this.draftKey(id,field));}catch{}
+    try{this.draftStorage()?.removeItem(this.draftKey(id,field));}catch{}
   }
   has(id:string,field:EditableField){return this.held.has(this.key(id,field));}
   isPending(id:string,field:EditableField){return this.held.get(this.key(id,field))?.pending===true;}
