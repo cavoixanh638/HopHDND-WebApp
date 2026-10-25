@@ -7,6 +7,14 @@ Không dùng chênh lệch 55/57 trong các tài liệu lịch sử làm **block
 
 ---
 
+## 25/10/2026 — Yêu cầu kiểm tra realtime giữa các tài khoản (đã xác minh giới hạn production)
+- **WebApp đang public trên `main` chưa có ghi chung realtime:** chế độ Sheets/mirror của bản hiện hành chỉ cho sửa nháp trình duyệt; vì thế thử hai tài khoản khác nhau trên Website này không thể chứng minh đồng bộ. Không coi việc mở hai account trên `main` là kiểm thử code trong PR #71/#72.
+- Bổ sung bài thử **ba tài khoản Firebase Emulator độc lập** (1 tài khoản sửa + 1 tài khoản khách theo dõi + 1 tài khoản quản trị theo dõi); cả hai tài khoản theo dõi subscribe trước, nhận server-ACK qua `onValue` không cần reload và đọc lại `hdnd/items` cùng giá trị. Chạy dưới **Rules ứng viên độc quyền #72**, không đọc Google Sheets. Exact code commit `940055adad5dd83d972cb2957eeb4f423ce4e934`; [CI #40192723187](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40192723187) **PASS** (có Chrome smoke mock).
+- **Chưa chứng minh hoạt động giữa tài khoản trên production:** chưa phát hành front-end PR, chưa thay Rules production, chưa nhập/đọc lại nguồn dữ liệu khởi tạo thực, chưa kiểm 2–3 trình duyệt thật kết nối Firebase staging đã cô lập. Không hạ cấp cổng NO-GO chỉ vì CI PASS.
+- **Bước tiếp theo có thể làm trên máy vận hành, không cần chạm Sheets:** sử dụng `database-1.json` riêng tư đã sao lưu, thực thi `source/scripts/firebase-backup-emulator-restore.mjs` với `--project demo-hdnd-restore` và `--config scripts/restore-emulator/firebase.json`; sau đó kiểm Rules Published bằng tài khoản admin trong Firebase Console, so với candidate và thử staging. Đừng đính kèm bản Rules/data gốc vào GitHub.
+
+---
+
 ## 25/10/2026 — Kết quả kiểm thử tích hợp Firebase-only mới
 - **PR #72 exact commit** `54ff4eeb45ba1e3ed0c30a15d3a85c7d6768b828`; [GitHub Actions #40190875312](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40190875312) **PASS** (unit, TypeScript, Firebase Emulator, browser smoke, Pages build). Đây là kiểm thử trên branch DRAFT, **không triển khai production**.
 - Workflow `.github/workflows/verify-source.yml` không còn ba bước CI bắt buộc kiểm GViz trực tiếp, bootstrap Cloud Shell mirror và Python mirror. Kiểm thử Chrome vẫn sử dụng fixture/mock lịch sử để chống hồi quy giao diện, **không ghi hoặc kiểm kê Google Sheets thật**.
