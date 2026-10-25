@@ -90,6 +90,14 @@ jobs:
         run: npm run build:pages:test
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
+      - name: Upload SAFE parallel source QA website (Firebase emulator + Supabase staging)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-parallel-source-qa-site
+          path: source/dist-pages-test/
+          if-no-files-found: error
+          retention-days: 7
       - name: Preserve browser smoke screenshot (synthetic data only)
         if: success()
         uses: actions/upload-artifact@v4
