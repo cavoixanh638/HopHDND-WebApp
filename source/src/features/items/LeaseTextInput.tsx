@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import type {EditableField} from '../../../shared/types';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 
@@ -7,6 +7,8 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
  disabled?:boolean;maxLength?:number;manager?:CellEditSessionManager;
  onChange:(value:string)=>void}){
   const [ready,setReady]=useState(false);
+  const composing=useRef(false);
+  const [compositionDraft,setCompositionDraft]=useState(value);
   const [waiting,setWaiting]=useState(false);
   const [error,setError]=useState('');
   useEffect(()=>{
@@ -24,10 +26,22 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
   };
   return <>
     <input className="custom-cell-input" aria-label={label}
-      value={value} maxLength={maxLength} disabled={disabled}
+      value={composing.current?compositionDraft:value} maxLength={maxLength} disabled={disabled}
       readOnly={!!manager&&!ready} onFocus={focus}
+      onCompositionStart={()=>{composing.current=true;setCompositionDraft(value);}}
+      onCompositionEnd={event=>{
+        composing.current=false;
+        const complete=event.currentTarget.value;
+        if(manager&&!manager.has(id,field)){setError('Đã mất khóa ô, nội dung đang nhập được giữ làm nháp.');manager.preserveDraft(id,field,complete);return;}
+        onChange(complete);
+      }}
       onChange={event=>{
         if(manager&&!manager.has(id,field)){setError('Chưa được phép sửa ô này.');return;}
+        if(composing.current){
+          setCompositionDraft(event.currentTarget.value);
+          if(manager)manager.preserveDraft(id,field,event.currentTarget.value);
+          return;
+        }
         onChange(event.currentTarget.value);
       }}
       onBlur={()=>{
