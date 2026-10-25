@@ -140,7 +140,7 @@ create policy hdnd_audit_read on public.hdnd_audit for select to authenticated u
 create policy hdnd_locks_self on public.hdnd_cell_locks for select to authenticated
 using (owner_uid=auth.uid());
 
-create or replace function public.hdnd_acquire_cell(
+create or replace function hdnd_private.hdnd_acquire_cell(
   p_record_id text,p_field text,p_kind text,p_session uuid
 ) returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -170,7 +170,7 @@ begin
      'acquiredAt',v.acquired_at,'revision',v.revision,'kind',v.kind);
 end; $$;
 
-create or replace function public.hdnd_renew_cell(
+create or replace function hdnd_private.hdnd_renew_cell(
   p_record_id text,p_field text,p_session uuid,p_token uuid
 ) returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -195,7 +195,7 @@ begin
     'expiresAt',v.expires_at,'revision',v.revision);
 end; $$;
 
-create or replace function public.hdnd_release_cell(
+create or replace function hdnd_private.hdnd_release_cell(
   p_record_id text,p_field text,p_session uuid,p_token uuid
 ) returns boolean language plpgsql security definer set search_path = ''
 as $$
@@ -208,7 +208,7 @@ begin
   return found;
 end; $$;
 
-create or replace function public.hdnd_save_cell_changes(
+create or replace function hdnd_private.hdnd_save_cell_changes(
   p_record_id text,p_session uuid,p_operation_id uuid,p_base jsonb,
   p_changes jsonb,p_tokens jsonb
 ) returns jsonb language plpgsql security definer set search_path = ''
@@ -284,7 +284,7 @@ begin
   return jsonb_build_object('ok',true,'item',snap,'replay',false);
 end; $$;
 
-create or replace function public.hdnd_set_permissions(p_expected bigint,p_rights jsonb)
+create or replace function hdnd_private.hdnd_set_permissions(p_expected bigint,p_rights jsonb)
 returns bigint language plpgsql security definer set search_path = ''
 as $$
 declare current_rev bigint;
@@ -315,7 +315,7 @@ begin
   return current_rev;
 end; $$;
 
-create or replace function public.hdnd_set_profile(p_expected bigint,p_profile jsonb)
+create or replace function hdnd_private.hdnd_set_profile(p_expected bigint,p_profile jsonb)
 returns bigint language plpgsql security definer set search_path = ''
 as $$
 declare current_rev bigint;
@@ -328,7 +328,7 @@ begin
   return current_rev;
 end; $$;
 
-create or replace function public.hdnd_guest_pause(p_expected bigint,p_locked boolean)
+create or replace function hdnd_private.hdnd_guest_pause(p_expected bigint,p_locked boolean)
 returns bigint language plpgsql security definer set search_path = ''
 as $$
 declare c public.hdnd_control%rowtype;
@@ -341,7 +341,7 @@ begin
   return c.revision;
 end; $$;
 
-create or replace function public.hdnd_freeze_transition(
+create or replace function hdnd_private.hdnd_freeze_transition(
  p_expected bigint,p_next text,p_force boolean default false
 ) returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -366,23 +366,72 @@ begin
     'changedAt',c.changed_at,'deadline',c.deadline,'closedAt',c.closed_at);
 end; $$;
 
--- Default Postgres grants to PUBLIC include function EXECUTE; revoke explicitly.
-revoke execute on function public.hdnd_acquire_cell(text,text,text,uuid),
-  public.hdnd_renew_cell(text,text,uuid,uuid),
-  public.hdnd_release_cell(text,text,uuid,uuid),
-  public.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb),
-  public.hdnd_set_permissions(bigint,jsonb),
-  public.hdnd_set_profile(bigint,jsonb),
-  public.hdnd_guest_pause(bigint,boolean),
-  public.hdnd_freeze_transition(bigint,text,boolean) from public,anon,authenticated;
-grant execute on function public.hdnd_acquire_cell(text,text,text,uuid),
-  public.hdnd_renew_cell(text,text,uuid,uuid),
-  public.hdnd_release_cell(text,text,uuid,uuid),
-  public.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb),
-  public.hdnd_set_permissions(bigint,jsonb),
-  public.hdnd_set_profile(bigint,jsonb),
-  public.hdnd_guest_pause(bigint,boolean),
-  public.hdnd_freeze_transition(bigint,text,boolean) to authenticated;
+-- Privileged state-changing functions live in a NONEXPOSED schema.
+-- Public RPCs below are SECURITY INVOKER wrappers, never privileged definer APIs.
+grant usage on schema hdnd_private to authenticated;
+revoke execute on function hdnd_private.hdnd_acquire_cell(text,text,text,uuid) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_acquire_cell(text,text,text,uuid) to authenticated;
+create or replace function public.hdnd_acquire_cell(p_record_id text,p_field text,p_kind text,p_session uuid)
+ returns jsonb language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_acquire_cell($1,$2,$3,$4); $$;
+revoke execute on function public.hdnd_acquire_cell(text,text,text,uuid) from public,anon,authenticated;
+grant execute on function public.hdnd_acquire_cell(text,text,text,uuid) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_renew_cell(text,text,uuid,uuid) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_renew_cell(text,text,uuid,uuid) to authenticated;
+create or replace function public.hdnd_renew_cell(p_record_id text,p_field text,p_session uuid,p_token uuid)
+ returns jsonb language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_renew_cell($1,$2,$3,$4); $$;
+revoke execute on function public.hdnd_renew_cell(text,text,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.hdnd_renew_cell(text,text,uuid,uuid) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_release_cell(text,text,uuid,uuid) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_release_cell(text,text,uuid,uuid) to authenticated;
+create or replace function public.hdnd_release_cell(p_record_id text,p_field text,p_session uuid,p_token uuid)
+ returns boolean language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_release_cell($1,$2,$3,$4); $$;
+revoke execute on function public.hdnd_release_cell(text,text,uuid,uuid) from public,anon,authenticated;
+grant execute on function public.hdnd_release_cell(text,text,uuid,uuid) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb) to authenticated;
+create or replace function public.hdnd_save_cell_changes(p_record_id text,p_session uuid,p_operation_id uuid,p_base jsonb,p_changes jsonb,p_tokens jsonb)
+ returns jsonb language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_save_cell_changes($1,$2,$3,$4,$5,$6); $$;
+revoke execute on function public.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_set_permissions(bigint,jsonb) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_set_permissions(bigint,jsonb) to authenticated;
+create or replace function public.hdnd_set_permissions(p_expected bigint,p_rights jsonb)
+ returns bigint language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_set_permissions($1,$2); $$;
+revoke execute on function public.hdnd_set_permissions(bigint,jsonb) from public,anon,authenticated;
+grant execute on function public.hdnd_set_permissions(bigint,jsonb) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_set_profile(bigint,jsonb) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_set_profile(bigint,jsonb) to authenticated;
+create or replace function public.hdnd_set_profile(p_expected bigint,p_profile jsonb)
+ returns bigint language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_set_profile($1,$2); $$;
+revoke execute on function public.hdnd_set_profile(bigint,jsonb) from public,anon,authenticated;
+grant execute on function public.hdnd_set_profile(bigint,jsonb) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_guest_pause(bigint,boolean) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_guest_pause(bigint,boolean) to authenticated;
+create or replace function public.hdnd_guest_pause(p_expected bigint,p_locked boolean)
+ returns bigint language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_guest_pause($1,$2); $$;
+revoke execute on function public.hdnd_guest_pause(bigint,boolean) from public,anon,authenticated;
+grant execute on function public.hdnd_guest_pause(bigint,boolean) to authenticated;
+
+revoke execute on function hdnd_private.hdnd_freeze_transition(bigint,text,boolean) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_freeze_transition(bigint,text,boolean) to authenticated;
+create or replace function public.hdnd_freeze_transition(p_expected bigint,p_next text,p_force boolean default false)
+ returns jsonb language sql security invoker set search_path = ''
+ as $$ select hdnd_private.hdnd_freeze_transition($1,$2,$3); $$;
+revoke execute on function public.hdnd_freeze_transition(bigint,text,boolean) from public,anon,authenticated;
+grant execute on function public.hdnd_freeze_transition(bigint,text,boolean) to authenticated;
 
 -- Postgres Changes should be enabled only for the business rows, not secret tokens.
 do $$
