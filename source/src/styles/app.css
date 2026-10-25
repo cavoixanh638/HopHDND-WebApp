@@ -2522,7 +2522,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
-  width:min(100%,980px);
+  width:min(100%,980px,var(--page-content-width,100%));
   max-width:980px;
   gap:16px;
   margin:12px auto 22px;
