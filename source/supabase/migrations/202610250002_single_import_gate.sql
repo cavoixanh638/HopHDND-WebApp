@@ -73,7 +73,7 @@ revoke execute on function hdnd_private.hdnd_import_once(jsonb,text) from public
 grant execute on function hdnd_private.hdnd_import_once(jsonb,text) to authenticated;
 create or replace function public.hdnd_import_once(p_rows jsonb,p_digest text)
 returns jsonb language sql security invoker set search_path = ''
-as $ select hdnd_private.hdnd_import_once($1,$2); $;
+as $$ select hdnd_private.hdnd_import_once($1,$2); $$;
 revoke execute on function public.hdnd_import_once(jsonb,text) from public,anon,authenticated;
 grant execute on function public.hdnd_import_once(jsonb,text) to authenticated;
 commit;
