@@ -218,6 +218,7 @@ declare c public.hdnd_control%rowtype;
         l public.hdnd_cell_locks%rowtype;
         k text; v jsonb; old_vals jsonb := '{}'::jsonb;
         t timestamptz := clock_timestamp(); snap jsonb;
+        specialist_rooms jsonb; allowed_rooms jsonb; new_fields jsonb;
 begin
   if auth.uid() is null or p_operation_id is null or p_session is null then raise exception 'AUTH_REQUIRED'; end if;
   if jsonb_typeof(p_changes)<>'object' or jsonb_typeof(p_base)<>'object'
@@ -257,6 +258,21 @@ begin
       then raise exception 'DRAINING: %',k; end if;
     old_vals:=jsonb_set(old_vals,array[k],d.fields->k,true);
   end loop;
+  -- Mirror the existing assignmentIssue() business invariant on the SERVER.
+  -- Client validation alone can be bypassed by calling RPC directly.
+  if p_changes ? 'specialist' or p_changes ? 'room' then
+    new_fields:=d.fields||p_changes;
+    select profile #> '{catalogs,specialistRooms}' into specialist_rooms
+      from public.hdnd_profile where id=true;
+    if jsonb_typeof(specialist_rooms)='object' then
+      allowed_rooms:=specialist_rooms -> (new_fields->>'specialist');
+      if jsonb_typeof(allowed_rooms)='array' and jsonb_array_length(allowed_rooms)>0
+         and not exists (
+           select 1 from jsonb_array_elements_text(allowed_rooms) as t(room)
+           where t.room = new_fields->>'room'
+         ) then raise exception 'ASSIGNMENT_CONFLICT'; end if;
+    end if;
+  end if;
   update public.hdnd_items set fields=d.fields||p_changes,revision=d.revision+1,
     updated_at=t,updated_by=auth.uid(),operation_id=p_operation_id
     where record_id=p_record_id returning * into d;
