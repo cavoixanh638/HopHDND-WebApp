@@ -295,3 +295,16 @@ Không tự coi hướng dẫn này là giấy phép triển khai production, th
 - **Mốc duyệt/khóa sửa:** sử dụng Firebase `hdndReviews` (admin-only) và `hdnd/control`. Khi đưa Rules mới vào production, lưu snapshot Rules đang chạy và thử emulator trước; không ghi đè toàn bộ Rules của project dùng chung. Rollback code **không tự xóa** mốc duyệt, trạng thái khóa hoặc khôi phục Google Sheets.
 - **Phạm vi khóa:** nút khóa trong WebApp chỉ chặn người không phải admin sửa thử trong ứng dụng. Muốn ngừng sửa trực tiếp file nguồn, cần quản lý quyền Google Sheets/Drive tại nguồn theo chính sách riêng.
 
+
+
+## 25/10/2026 — Chỉ số trung gian và chỉnh sửa Database realtime (phải triển khai Rules)
+
+**Các chỉ số báo cáo:** Ba báo cáo HĐND (tổng hợp NQ+BC, ban hành NQ, ban hành BC) không có bước trung gian giữa Văn phòng đang thực hiện và hoàn thành. Chỉ số Bước tiếp theo dưới tiêu đề chỉ hiển thị ở báo cáo có ít nhất một cột thuộc giai đoạn next: Thành ủy và xây dựng NQ. Không sửa số liệu, thứ tự cột, drilldown.
+
+**Nguồn dữ liệu:** Bản mirror hdnd/mirrors/{spreadsheetId}/{gid} tiếp tục do Excel xuất bản và bất biến với trình duyệt. Dữ liệu do người dùng sửa lưu tách biệt tại hdnd/mirrorEdits/{spreadsheetId}/{gid}/{rowIndex}. Mỗi overlay lưu revision, operationId, updatedAt, updatedBy, values. Dòng dữ liệu khi xem được hợp nhất từ mirror và overlay; hai realtime listeners chỉ phát dữ liệu đã xác nhận khi cả mirror và overlay đều đọc xong. Đồng bộ Excel mới không ghi đè overlay. Chế độ A/B vẫn chỉ đọc.
+
+**Bảo vệ:** RTDB security rules kiểm token auth, quyền từng ô (ưu tiên quyền ô, dòng rồi cột), khóa sửa, kiểu dữ liệu, nguồn, revision và thời gian server; cấm tạo/sửa dòng mirror trực tiếp, cấm xóa overlay và xóa giá trị đã có. Client transaction CAS chống ghi đè cùng trường và có thể hợp nhất trường khác nhau. Autosave chờ 800ms như hiện có, chỉ báo thành công sau xác nhận server; lỗi không tự thử lặp vô hạn, giữ nháp để đối chiếu.
+
+**Bắt buộc để vận hành:** Rules production KHÔNG tự triển khai qua GitHub Pages. Phải triển khai firebase/database.rules.json lên đúng project Firebase theo quy trình có quyền sau khi CI emulator và Chrome đạt. Nếu Rules chưa triển khai, mọi thay đổi sẽ bị từ chối trên server; không được kết luận bản phát hành web đã mở được realtime. Không tự deploy Rules từ PR hoặc thay đổi dữ liệu Excel/Firebase production.
+
+**Ngoài phạm vi:** Lịch sử dài hạn cho overlay cần thiết kế audit độc lập an toàn. Không giả lập lịch sử mới hay sử dụng demo làm sự kiện thật.
