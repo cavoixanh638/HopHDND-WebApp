@@ -1,3 +1,10 @@
+## 25/10/2026 — Bằng chứng backup mới nhất và mức chứng minh
+Đầu ra PowerShell người vận hành cung cấp (không tự truy cập file trong ChatGPT/GitHub): cả hai `database-[1,2].json` cùng 56.185 bytes và SHA256 `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`; `rules-live.json` 24.497 bytes, SHA256 `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`. Ba file đã qua PowerShell `ConvertFrom-Json`; Rules có trường `rules`.
+
+**GO/NO-GO:** xuất dữ liệu và sao lưu file Rules qua kiểm tra JSON ban đầu. Chưa độc lập xác nhận bản Rules là bản Published thật, chưa xác minh nguồn dữ liệu nghiệp vụ/đích migration rỗng, chưa thử phục hồi, chưa diff candidate với Rules live và thử 2 tài khoản. **NO-GO** cho thay đổi Rules/Database production. Bảo mật: file Rules và Database ở máy người vận hành, không chia sẻ nội dung qua GitHub/ChatGPT. Tiếp tục kiểm tra metadata và restore drill chỉ trên emulator/staging đã cô lập. Không chạy lệnh `firebase deploy` hoặc `database:set` đối với project production.
+
+---
+
 ## Ghi nhận CHECKPOINT sao lưu READ-ONLY — 25/10/2026
 - Đã nhận **kết quả PowerShell do quản trị viên cung cấp**: Firebase CLI export `/` 2 lần trên `hophdnd-8b7b2/hophdnd-8b7b2-default-rtdb` và cả hai tệp có cùng SHA256 `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`. Tệp nằm trên máy người vận hành, **chưa được công cụ GitHub/ChatGPT tự đọc**.
 - Đây mới là `DATA_EXPORT_CONSISTENCY=USER_REPORTED_PASS`, không phải đầy đủ `BACKUP_PRODUCTION_VERIFIED` vì chưa xác minh cấu trúc file, chưa sao lưu Rules Published, chưa thử phục hồi hay kiểm tra chặn đường ghi/đường cha.
