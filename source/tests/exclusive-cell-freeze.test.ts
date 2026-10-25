@@ -195,8 +195,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       updatedBy:'forger',
       history:{2:{
         operationId:forgedId,recordId:'r1',at:{'.sv':'timestamp'},
-        actor:'forger',changesJson:JSON.stringify({note:'fake record'}),
-        oldValuesJson:JSON.stringify({note:original.note})
+        actor:'forger',changes:{note:'fake record'},
+        oldValues:{note:original.note}
       }}
     }));
     const after=(await get(ref(client as never,'hdnd/items/r1'))).val();
@@ -220,7 +220,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
-  it('denies rewriting existing audit JSON via its descendant path',async()=>{
+  it('denies rewriting existing structured audit values via descendant path',async()=>{
     const owner=guest('a'),session=manager('a'),writer=repo('a',session);
     const [original]=await writer.list();
     await session.acquire('r1','note','multiline');
@@ -228,7 +228,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(saved.ok,saved.message).toBe(true);
     const current=(await get(ref(owner as never,'hdnd/items/r1'))).val();
     const slot=String(current.revision%50);
-    const auditPath='hdnd/items/r1/history/'+slot+'/changesJson';
+    const auditPath='hdnd/items/r1/history/'+slot+'/changes/note';
     const before=(await get(ref(owner as never,auditPath))).val();
     await assertFails(set(ref(owner as never,auditPath),'{"note":"forged by direct child write"}'));
     const after=(await get(ref(owner as never,auditPath))).val();
@@ -237,7 +237,26 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
-  it('prevents a valid editor from forging history JSON while changing a leased cell',async()=>{
+  it('saves truthful structured audit before/after values for a legitimate edit',async()=>{
+    const session=manager('a'),db=guest('a'),writer=repo('a',session);
+    const [original]=await writer.list();
+    await session.acquire('r1','note','multiline');
+    const [result]=await writer.save([updateDraft(original,undefined,{note:'Verified structured audit'})!]);
+    expect(result.ok,result.message).toBe(true);
+    const current=(await get(ref(db as never,'hdnd/items/r1'))).val();
+    const event=current.history?.[String(current.revision%50)];
+    expect(event?.changes).toEqual({note:'Verified structured audit'});
+    expect(event?.oldValues).toEqual({note:original.note});
+    expect(event?.changesJson).toBeUndefined();
+    expect(event?.oldValuesJson).toBeUndefined();
+    const retrieved=await writer.history('r1');
+    expect(retrieved.at(-1)?.changes).toEqual({note:'Verified structured audit'});
+    expect(retrieved.at(-1)?.oldValues).toEqual({note:original.note});
+    await session.finish('r1','note');
+    await session.dispose();
+  });
+
+  it('prevents a valid editor from forging structured audit values while changing a leased cell',async()=>{
     const session=manager('a'),db=guest('a');
     const original=(await get(ref(db as never,'hdnd/items/r1'))).val();
     await session.acquire('r1','note','multiline');
@@ -256,8 +275,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       ['history/'+historySlot]:{
         operationId:'attack-legit-edit-fake-audit',
         recordId:'r1',at:serverTimestamp(),actor:'a',
-        changesJson:JSON.stringify({note:'Completely different forged content'}),
-        oldValuesJson:JSON.stringify({note:'Not the actual old note'})
+        changes:{note:'Completely different forged content'},
+        oldValues:{note:'Not the actual old note'}
       }
     }));
     expect((await get(recordRef)).val().revision).toBe(original.revision);
