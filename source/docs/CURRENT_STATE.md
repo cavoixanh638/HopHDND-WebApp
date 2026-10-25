@@ -1022,3 +1022,9 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - Trong **Tùy chỉnh bảng báo cáo → bảng Thành ủy**, admin có lựa chọn Bao gồm/Không bao gồm nội dung "Không phải trình", và checkbox cột "Không phải trình" ở danh sách cột; lưu cấu hình riêng Party, không đổi bảng Build hoặc các bảng khác.
 - Bố cục cũ thiếu cột được tự bổ sung vào columnOrder nhưng mặc định ẩn (có thể bật lại). Giữ tên bảng, thứ tự khác, cột ẩn cũ, độ rộng, font, preset. Tùy chọn đã lưu tường minh được tôn trọng. "Chưa chuẩn hóa" vẫn dành cho trạng thái khác thực sự không nằm trong danh mục (ví dụ "TU đã cho ý kiến"), không được tự coi là "Đã có TBKL".
 - Không sửa nguồn Excel, Firebase, Sheet2, lịch sử, phân quyền hay Theme1/Theme2. Kiểm thử hồi quy Party count/column/migration/UI, Build NQ độc lập, Chrome smoke và GitHub Pages build/deploy. Nếu CI/chính Pages chưa SUCCESS thì không coi là đã xuất bản.
+
+## 25/10/2026 — Chỉ hiển thị chỉ số Bước tiếp theo ở báo cáo có bước trung gian
+
+- Bảng Thành ủy và Bảng xây dựng NQ: có cột trạng thái trung gian, tiếp tục hiển thị Bước tiếp theo.
+- Bảng tổng hợp NQ+BC, Bảng ban hành NQ, Bảng ban hành BC: chỉ có ba trạng thái, bỏ chỉ số Bước tiếp theo dưới tiêu đề. Vẫn giữ nguồn, cột, tổng, tỷ lệ hoàn thành, popup và quyền.
+- Chrome smoke kiểm tra đúng 5 bảng, unit test đúng nhóm; độc lập với việc chuyển Firebase sang ghi realtime ở PR khác.
