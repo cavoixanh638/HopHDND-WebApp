@@ -199,7 +199,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     }
     if(leaseManager)Object.keys(changes).forEach(field=>leaseManager.markPending(id,field as EditableField));
     if(firebase&&!firebase.isAdmin&&firebase.editingLocked){setLayoutMessage('Quản trị đã khóa chỉnh sửa trên WebApp. Bạn vẫn có thể xem và lọc dữ liệu.');return;}
-    if(firebase&&Object.keys(changes).some(field=>!firebase.canEdit(id,field as EditableField))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
+    if(firebase&&Object.keys(changes).some(field=>!(
+      firebase.canEdit(id,field as EditableField)||
+      (firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field as EditableField)&&
+       mayEdit(firebase.permissions,id,field as EditableField,firebase.isAdmin))
+    ))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
     workspace.update(id,changes);
   };
   const storedLayout = useMemo(() => loadReportLayout(sourceKey), [sourceKey]);
@@ -415,7 +419,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         onPersistViewerLayout={isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline);}
-          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>firebase!.canEdit(id,field) &&
+          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>(firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field))) &&
         (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} leaseManager={leaseManager} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
@@ -431,7 +435,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
       readOnlyViewer={isFirebase&&!firebase!.isAdmin}
-      canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
+      canEditCell={(id,field)=>!firebase||((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
       onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
       onHistory={anonymousVisitor?undefined:(item)=>setHistory({item})}
       onCellHistory={(item,field)=>setHistory({item,field})}
