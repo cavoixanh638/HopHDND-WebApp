@@ -1,3 +1,5 @@
+> **CHỈ ĐẠO MỚI NHẤT — CHẠY SONG SONG FIREBASE + SUPABASE, KHÔNG BỎ DATABASE NÀO (25/10/2026).** Chọn nguồn trong cùng WebApp, độc lập các thao tác đọc/ghi, không đồng bộ tự động, chưa thay production. [ADR sửa theo quyết định mới](decisions/SUPABASE_PRIMARY_2026-10-25.md) · [GO/NO-GO có bằng chứng Cloud](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [Nhiệm vụ tích hợp nguồn chọn](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). Những dòng “Supabase thay Firebase” bên dưới là mô tả kế hoạch cũ, không còn là quyết định của chủ dự án.
+
 > **TRA CỨU ĐÍCH SUPABASE (25/10/2026):** [Quyết định thay thế Firebase-only](decisions/SUPABASE_PRIMARY_2026-10-25.md) → [Kế hoạch kỹ thuật/giữ chức năng](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md) → [Một cổng GO/NO-GO duy nhất](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) → [migrations](../supabase/migrations/). Supabase đang ở **nhánh thử nghiệm, production NO-GO**; các dòng “Firebase là đích” phía dưới thuộc bản đã chốt trước 20:51 ngày 25/10 và nay đã được thay thế về quyết định công nghệ.
 
 ## Hướng dẫn sao lưu production trước khi mở realtime — 25/10/2026
