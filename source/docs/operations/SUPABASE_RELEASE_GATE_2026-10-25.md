@@ -1,5 +1,17 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Tiến độ triển khai PR #73 — 25/10/2026
+
+- [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) là **Draft**, base là nhánh PR #72 để review delta Supabase dễ dàng. Không merge PR #72 chỉ để phát hành Supabase. Phần UI production vẫn nguyên trạng.
+- Đã commit schema SQL server-side (bảo vệ direct-write, RLS, quyền cell>row>column, auth Google verified, per-tab lease, deadline, freeze, audit, CAS và idempotent replay), release-closed one-time import, bộ adapter `SupabaseRepository` và `SupabaseCellLeaseManager`, offline importer private, kiểm thử mock và SQL sentinel.
+- **CI offline thực tế:** [Verify #40201614763](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40201614763) **SUCCESS** sau khi sửa lỗi typecheck và async test; [Firebase isolated staging #40201614742](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40201614742) **SUCCESS**, chỉ xác nhận chức năng Firebase kế thừa. Các commit SQL/client sau mốc này phải có CI riêng; không suy PASS cho SQL staging.
+- **Còn thiếu quan trọng:** Supabase project/Auth/Reatime staging chưa có kết nối; SQL chưa áp dụng và chưa qua penetration/RLS tests; controller Supabase Auth, Postgres Changes bridge, toàn bộ đường cấu hình/phân quyền UI và 2–3 tài khoản thật chưa tích hợp. Không cutover production; mọi cổng G1–G8 giữ HOLD.
+- Do chưa có tài khoản Supabase đã được kết nối trong phiên làm việc, **không thể tạo/chạy database Supabase thật, bật Google OAuth hoặc kiểm tra quota**. Chỉ hoàn tất phần mã ngoại tuyến độc lập. Cần kết nối tài khoản Supabase vào ChatGPT và cung cấp quyền dự án staging phù hợp (không gửi mật khẩu hoặc secret trong chat).
+
+---
+
+
+
 **Ngày lập:** 25/10/2026 · **Phạm vi:** nhánh `feat/supabase-safe-migration-20261025` · **QUYẾT ĐỊNH HIỆN TẠI: NO-GO PRODUCTION**.
 
 > Chỉ tệp này được cập nhật làm trạng thái cổng phát hành Supabase. Tài liệu kiến trúc: [ADR Supabase](../decisions/SUPABASE_PRIMARY_2026-10-25.md), [kế hoạch + bảng đối chiếu](SUPABASE_MIGRATION_PLAN_2026-10-25.md). Đích cuối cùng WebApp-only; Excel/Google Sheets hiện tại chỉ là biện pháp tạm thời của nhân viên trong lúc lập trình.
