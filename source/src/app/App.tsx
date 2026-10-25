@@ -68,8 +68,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [supabaseAccess,setSupabaseAccess]=useState<SupabaseAccessState|null>(null);
   const [supabaseAccessError,setSupabaseAccessError]=useState('');
   const canEditSupabaseCell=(id:string,field:EditableField)=>{
-    if(!supabaseAccess||supabaseAccess.mode!=='OPEN'||
+    if(!supabaseAccess||supabaseAccess.mode==='FROZEN'||
       (supabaseAccess.guestEditingLocked&&!supabaseAccess.isAdmin))return false;
+    if(supabaseAccess.mode==='DRAINING'&&
+      (!supabasePreview?.leaseManager.has(id,field)||!supabaseAccess.deadline||
+        Date.now()>=Date.parse(supabaseAccess.deadline)))return false;
     return mayEdit(supabaseAccess.rights,id,field,supabaseAccess.isAdmin);
   };
   useEffect(()=>{
@@ -467,6 +470,29 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {supabaseAccess?.isAdmin&&<button type="button" className="button ghost"
         disabled={workspace.busy||dirtyCount>0||!!leaseManager?.activeCount()}
         onClick={()=>setPage('items-permissions')}>Phân quyền ô trên Supabase</button>}
+      {supabaseAccess?.isAdmin&&<button type="button" className="button ghost"
+        disabled={workspace.busy||dirtyCount>0}
+        onClick={()=>{void (async()=>{
+          try{
+            if(!supabasePreview||!supabaseAccess)return;
+            const next=!supabaseAccess.guestEditingLocked;
+            if(!window.confirm(next?'Khóa quyền sửa khách trên Supabase staging?':'Mở quyền sửa khách trên Supabase staging?'))return;
+            await supabasePreview.pauseGuests(supabaseAccess.controlRevision,next);
+            setSupabaseAccess(await supabasePreview.accessState());
+          }catch(error){setSupabaseAccessError(error instanceof Error?error.message:'Không đổi được trạng thái Supabase.');}
+        })();}}>{supabaseAccess.guestEditingLocked?'Mở quyền sửa khách':'Khóa quyền sửa khách'}</button>}
+      {supabaseAccess?.isAdmin&&<button type="button" className="button ghost"
+        disabled={workspace.busy||dirtyCount>0}
+        onClick={()=>{void (async()=>{
+          try{
+            if(!supabasePreview||!supabaseAccess)return;
+            const next=supabaseAccess.mode==='OPEN'?'DRAINING':
+              supabaseAccess.mode==='DRAINING'?'FROZEN':'OPEN';
+            if(!window.confirm('Đổi trạng thái đóng băng của SUPABASE STAGING sang '+next+'? Firebase không bị thay đổi.'))return;
+            await supabasePreview.transitionFreeze(supabaseAccess.controlRevision,next,false);
+            setSupabaseAccess(await supabasePreview.accessState());
+          }catch(error){setSupabaseAccessError(error instanceof Error?error.message:'Không đổi được trạng thái Supabase.');}
+        })();}}>Supabase {supabaseAccess.mode} · đổi chế độ</button>}
       <span className="muted">{supabaseAccess?.isAdmin?'Quyền quản trị Supabase đã xác minh':supabaseAccess?'Phiên Supabase không có quyền quản trị':'Chưa có phiên xác minh Supabase'}</span></div>
     </div>}
     {slowRealtime&&<div className="notice" role="alert">Firebase đang phản hồi chậm. Có thể do mạng hoặc giao thức kết nối. <button type="button" className="button ghost" onClick={retryWithLongPolling}>Thử kết nối tương thích</button> (sẽ tải lại trang; hãy lưu bản sửa trước khi thử).</div>}
