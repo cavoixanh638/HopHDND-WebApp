@@ -9,6 +9,7 @@
  */
 import {readFileSync,writeFileSync,statSync,existsSync} from 'node:fs';
 import {resolve,relative,isAbsolute} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 
 export const TEXT_FIELDS=[
@@ -82,6 +83,6 @@ function main(){
   console.log('SUPABASE_IMPORT_PREPARED_OFFLINE rows='+rows.length+' sha256='+sha256+
     ' (NOT IMPORTED, production NO-GO)');
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href){
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   try{main();}catch(e){console.error(e instanceof Error?e.message:'SUPABASE_IMPORT_HOLD');process.exitCode=1;}
 }
