@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HopHDND — Supabase Auth QA (chỉ đọc)</title>
+<style>body{margin:0;padding:28px 18px;background:#f8fafc;color:#172b37;font:16px/1.55 system-ui,Arial}main{max-width:740px;margin:auto;background:white;border:1px solid #dae4ea;border-radius:14px;padding:26px;box-shadow:0 8px 32px #21304409}h1{font-size:25px;margin:0 0 8px}h2{font-size:18px;margin-top:28px}button{padding:10px 16px;background:#176b61;border:0;border-radius:8px;color:white;font-weight:600;cursor:pointer}button.secondary{background:#d7e3e9;color:#172b37}button:disabled{opacity:.5;cursor:not-allowed}section{margin-top:14px}.muted{color:#546975}.notice{border-left:4px solid #b98125;padding:12px;background:#fff9ee;margin:16px 0}.status{padding:10px;background:#eef6f4;border-radius:8px;min-height:26px;white-space:pre-line}code{overflow-wrap:anywhere}.controls{display:flex;gap:10px;flex-wrap:wrap}</style>
+</head><body><main>
+<h1>HopHDND · kiểm thử đăng nhập Supabase</h1>
+<p>Trang QA độc lập, <strong>không dùng Firebase</strong> và không thay đổi dữ liệu. Chỉ truy cập dự án Supabase <code>HopHDND-Staging</code>.</p>
+<div class="notice">Chỉ chạy trên <strong>http://localhost:8765</strong> hoặc <strong>http://127.0.0.1:8765</strong>. Không sử dụng trên website đang phục vụ nhân viên. Không chụp hoặc sao chép URL có token trong quá trình chuyển hướng.</div>
+<section><h2>1. Kiểm tra cấu hình Google Provider</h2>
+<div class="controls"><button id="check" type="button">Kiểm tra Auth của Supabase</button></div>
+<p id="settings" class="status" role="status">Chưa kiểm tra.</p></section>
+<section><h2>2. Đăng nhập Google</h2>
+<div class="controls"><button id="login" type="button">Đăng nhập Google trên Supabase</button><button id="logout" type="button" class="secondary">Xóa phiên thử trên tab</button></div>
+<p id="login-status" class="status" role="status">Chưa đăng nhập trong tab này.</p></section>
+<section><h2>3. Kiểm tra quyền và dữ liệu QA</h2>
+<div class="controls"><button id="verify" type="button">Xác minh bằng Supabase</button></div>
+<p id="data" class="status" role="status">Chỉ đọc, không thực hiện UPDATE/INSERT/DELETE.</p></section>
+<p class="muted">Trang này không gửi JWT hoặc dữ liệu người dùng đến GitHub, Google Sheets hay ChatGPT. Chỉ gửi yêu cầu xác thực/đọc tới Supabase staging. Firebase và WebApp production không thay đổi.</p>
+</main><script>
+"use strict";
+(() => {
+  const SUPABASE="https://uguhyunuzsdrkykqgdmq.supabase.co";
+  const PUBLIC_KEY="sb_publishable_BEsiC_qU_lB__vjNiJxPeA_-9GBDhs3";
+  const PENDING="hdnd.qa.oauth.pending.v1";
+  const safeLocal=(location.protocol==="http:"&&["localhost","127.0.0.1"].includes(location.hostname)&&location.port==="8765");
+  const el=id=>document.getElementById(id);
+  let token=null;
+  const show=(id,message)=>{el(id).textContent=message;};
+  const headers=(jwt)=>({apikey:PUBLIC_KEY,...(jwt?{Authorization:"Bearer "+jwt}:{})});
+  const getJSON=async(url,init={})=>{
+    const response=await fetch(SUPABASE+url,{...init,headers:{...headers(token),...(init.headers||{})}});
+    const body=await response.json().catch(()=>null);
+    if(!response.ok)throw Error((body&&body.message)||"HTTP "+response.status);
+    return body;
+  };
+  if(!safeLocal){
+    for(const id of ["check","login","logout","verify"])el(id).disabled=true;
+    show("login-status","Trang này chỉ được phép chạy trong localhost:8765 để không nhầm với môi trường thật.");
+    return;
+  }
+  // Remove session tokens from the address bar BEFORE making any requests.
+  const current=new URL(location.href),incomingState=current.searchParams.get("hdnd_qa_state");
+  const fragment=new URLSearchParams(current.hash.startsWith("#")?current.hash.slice(1):"");
+  if(incomingState||fragment.has("access_token")){
+    current.searchParams.delete("hdnd_qa_state");current.hash="";
+    history.replaceState(history.state,"",current.toString());
+    const expected=sessionStorage.getItem(PENDING);
+    sessionStorage.removeItem(PENDING);
+    const expires=Number(fragment.get("expires_in"));
+    if(!expected||expected!==incomingState){
+      show("login-status","Từ chối: mã xác nhận đăng nhập không khớp. Không nhận JWT.");
+    }else if(fragment.has("error")){
+      show("login-status","Google OAuth chưa thành công: "+String(fragment.get("error_description")||fragment.get("error")));
+    }else if(!fragment.get("access_token")||!Number.isFinite(expires)||expires<1){
+      show("login-status","Supabase chưa trả về phiên đăng nhập hợp lệ.");
+    }else{
+      token=fragment.get("access_token"); // RAM only: never write token to HTML or storage
+      show("login-status","Nhận được phiên từ Supabase; bấm 'Xác minh bằng Supabase' để kiểm tra danh tính thực.");
+    }
+  }
+  el("check").onclick=async()=>{
+    show("settings","Đang kiểm tra cấu hình từ Supabase...");
+    try{
+      const s=await getJSON("/auth/v1/settings");
+      show("settings","Google provider: "+(s?.external?.google===true?"ĐÃ BẬT":"CHƯA XÁC NHẬN ĐÃ BẬT")+
+        "\nAnonymous sign-ins: "+(s?.external?.anonymous===true?"Đã bật":"Kiểm tra tại Supabase Dashboard nếu cần")+
+        "\n(Đây chỉ là cấu hình Auth, chưa chứng minh login thành công.)");
+    }catch(e){show("settings","Không đọc được Auth settings: "+String(e.message||e));}
+  };
+  el("login").onclick=()=>{
+    if(!safeLocal)return;
+    const state=crypto.randomUUID();
+    sessionStorage.setItem(PENDING,state);
+    const back=new URL(location.href);
+    back.hash="";back.search="";back.searchParams.set("hdnd_qa_state",state);
+    const target=new URL(SUPABASE+"/auth/v1/authorize");
+    target.searchParams.set("provider","google");
+    target.searchParams.set("redirect_to",back.toString());
+    location.assign(target.toString());
+  };
+  el("verify").onclick=async()=>{
+    if(!token){show("data","Chưa có phiên Google trên tab này. Bấm Đăng nhập Google trước.");return;}
+    show("data","Đang đọc xác nhận server...");
+    try{
+      const user=await getJSON("/auth/v1/user");
+      const capabilities=await getJSON("/rest/v1/rpc/hdnd_access_state",{
+        method:"POST",headers:{"content-type":"application/json"},body:"{}"
+      });
+      const items=await getJSON("/rest/v1/hdnd_items?select=record_id,display_code&order=stt.asc&limit=20");
+      const qa=Array.isArray(items)?items.filter(x=>String(x.record_id).startsWith("qa-supa-")):[];
+      show("data","Đăng nhập Supabase: THÀNH CÔNG"+
+        "\nGoogle account: "+String(user?.email||"(không trả email)")+
+        "\nNgười dùng ID: "+String(user?.id||"(không có)")+
+        "\nAdmin được SQL xác minh: "+(capabilities?.isAdmin===true?"CÓ":"CHƯA")+
+        "\nChế độ khóa chỉnh sửa: "+String(capabilities?.mode||"Không rõ")+
+        "\nHồ sơ QA nhìn thấy: "+qa.length+
+        "\nKhông ghi dữ liệu.");
+    }catch(e){show("data","Kiểm thử không hoàn tất: "+String(e.message||e)+
+      "\nKhông ghi và không thay đổi Firebase.");}
+  };
+  el("logout").onclick=()=>{token=null;sessionStorage.removeItem(PENDING);
+    show("login-status","Đã xóa JWT khỏi bộ nhớ tab kiểm thử. Phiên server không bị thay đổi.");
+    show("data","Chưa có phiên thử.");};
+})();
+</script></body></html>
