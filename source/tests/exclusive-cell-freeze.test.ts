@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update} from 'firebase/database';
+import {get,ref,set,update,serverTimestamp} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
@@ -234,6 +234,34 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const after=(await get(ref(owner as never,auditPath))).val();
     expect(after).toEqual(before);
     await session.finish('r1','note');
+    await session.dispose();
+  });
+
+  it('prevents a valid editor from forging history JSON while changing a leased cell',async()=>{
+    const session=manager('a'),db=guest('a');
+    const original=(await get(ref(db as never,'hdnd/items/r1'))).val();
+    await session.acquire('r1','note','multiline');
+    const nextRevision=original.revision+1;
+    const historySlot=String(nextRevision%50);
+    const recordRef=ref(db as never,'hdnd/items/r1');
+    // A genuine edit with a genuine lease must not let the writer lie
+    // about previous values or fabricate changes in the audit trail.
+    await assertFails(update(recordRef,{
+      note:'Real edited note',
+      revision:nextRevision,
+      operationId:'attack-legit-edit-fake-audit',
+      updatedAt:serverTimestamp(),
+      updatedBy:'a',
+      ['editProofs/note']:session.proof('r1','note'),
+      ['history/'+historySlot]:{
+        operationId:'attack-legit-edit-fake-audit',
+        recordId:'r1',at:serverTimestamp(),actor:'a',
+        changesJson:JSON.stringify({note:'Completely different forged content'}),
+        oldValuesJson:JSON.stringify({note:'Not the actual old note'})
+      }
+    }));
+    expect((await get(recordRef)).val().revision).toBe(original.revision);
+    await session.cancel('r1','note');
     await session.dispose();
   });
 
