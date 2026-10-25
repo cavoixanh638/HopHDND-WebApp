@@ -28,6 +28,14 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Validate production BACKUP READ-ONLY helper offline (no Firebase credentials)
+        run: |
+          node --check scripts/firebase-production-readonly-backup.mjs
+          node scripts/firebase-production-readonly-backup.mjs --help
+          if node scripts/firebase-production-readonly-backup.mjs --project invalid --instance invalid --rules-file /tmp/none --output-dir /tmp/forbidden; then
+            echo "::error::Production backup must reject wrong project and instance."
+            exit 1
+          fi
       - name: Validate Cloud Shell bootstrap script syntax
         run: bash -n mirror_sync/bootstrap_cloud_shell.sh
       - name: Validate server mirror Python and isolated fixture
