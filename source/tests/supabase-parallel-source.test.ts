@@ -1,4 +1,4 @@
-import {describe,it,expect,vi} from 'vitest';
+import {describe,it,expect,vi,afterEach} from 'vitest';
 import {sourceNamespace,sourceSwitchBlocker,resolveTabSource,type SourceSwitchState} from '../src/data/parallel-source-selection';
 import {SupabasePreviewRepository,SupabaseAnonymousPreviewAuth,validateSupabasePreviewConfig,readSupabaseTabConfig,saveSupabaseTabConfig} from '../src/data/supabase-preview-source';
 import {createDemoItems} from '../src/data/demo-items';
@@ -20,6 +20,7 @@ function memoryStorage(){
     removeItem:(key:string)=>{cache.delete(key);}
   };
 }
+afterEach(()=>vi.unstubAllGlobals());
 const authResponse=(expires_in:number,marker='123456789ab')=>({
   access_token:'header.payload.'+marker,
   refresh_token:'refresh-token-'+marker,
@@ -63,6 +64,40 @@ describe('tab-only source policy (no Firebase admin mutation)',()=>{
 });
 
 describe('Supabase staging anonymous auth and READ-ONLY REST',()=>{
+
+  it('OAuth callback accepts a matching per-tab state and strips tokens from the address bar',async()=>{
+    const storage=memoryStorage();
+    const hostname='qa-example.supabase.co';
+    storage.setItem('hdnd.supabase.qa.session.v1:'+hostname+':oauth_state','trusted-state');
+    const replaceState=vi.fn();
+    vi.stubGlobal('window',{
+      location:{href:'https://webapp.example.test/?hdnd_supabase_auth=trusted-state#access_token=header.payload.oauth-token&refresh_token=refresh-real-token&expires_in=3600'},
+      history:{state:null,replaceState}
+    });
+    const auth=new SupabaseAnonymousPreviewAuth(config,vi.fn() as unknown as typeof fetch,storage);
+    expect(auth.completeGoogleRedirect()).toBe(true);
+    expect(await auth.getAccessToken()).toBe('header.payload.oauth-token');
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    expect(String(replaceState.mock.calls[0][2])).toBe('https://webapp.example.test/');
+    expect(storage.getItem('hdnd.supabase.qa.session.v1:'+hostname+':oauth_state')).toBeNull();
+  });
+  it('OAuth state mismatch destroys any old tab session and removes injected token fragment',()=>{
+    const storage=memoryStorage();
+    const base='hdnd.supabase.qa.session.v1:qa-example.supabase.co';
+    storage.setItem(base,JSON.stringify({access_token:'old.header.token-12345',
+      refresh_token:'refresh-old',expires_at:Math.floor(Date.now()/1000)+3600}));
+    storage.setItem(base+':oauth_state','real-state');
+    const replaceState=vi.fn();
+    vi.stubGlobal('window',{
+      location:{href:'https://webapp.example.test/?hdnd_supabase_auth=forged#access_token=evil-access&refresh_token=evil-refresh&expires_in=3600'},
+      history:{state:null,replaceState}
+    });
+    const auth=new SupabaseAnonymousPreviewAuth(config,vi.fn() as unknown as typeof fetch,storage);
+    expect(()=>auth.completeGoogleRedirect()).toThrow('state không khớp');
+    expect(storage.getItem(base)).toBeNull();
+    expect(String(replaceState.mock.calls[0][2])).not.toContain('evil-access');
+    expect(String(replaceState.mock.calls[0][2])).not.toContain('hdnd_supabase_auth');
+  });
   it('uses only Supabase Auth, keeps one session per tab and refreshes rotated token',async()=>{
     const storage=memoryStorage();
     const fetcher=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
