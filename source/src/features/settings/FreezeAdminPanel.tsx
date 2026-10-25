@@ -77,6 +77,14 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
       {error&&<p className="error-text" role="alert">{error}</p>}
     </div>
     <div className="top-actions">
+      {state?.mode==='OPEN'&&<button type="button" className="button ghost" disabled={busy||!firebase.connected||!firebase.controlReady}
+        onClick={async()=>{
+          setBusy(true);setError('');
+          try{await firebase.saveEditingLock(!firebase.editingLocked);
+            setMessage(firebase.editingLocked?'Đã mở lại quyền sửa của khách.':'Đã tạm dừng mọi lượt ghi mới của khách; admin vẫn được làm việc.');}
+          catch(e){setError(e instanceof Error?e.message:'Không thay đổi được quyền sửa khách.');}
+          finally{setBusy(false);}
+        }}>{firebase.editingLocked?'Mở quyền sửa của khách':'Tạm dừng sửa của khách'}</button>}
       {state?.mode==='OPEN'&&<button type="button" className="button primary" disabled={busy||!firebase.connected} onClick={()=>void change('DRAINING')}>Yêu cầu lưu rồi chốt</button>}
       {state?.mode==='DRAINING'&&<button type="button" className="button danger" disabled={busy} onClick={()=>void change('FROZEN',true)}>Đóng băng ngay</button>}
       {state?.mode==='OPEN'&&<button type="button" className="button ghost" disabled={busy} onClick={()=>void change('FROZEN',true)}>Đóng băng khẩn cấp</button>}
