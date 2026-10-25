@@ -11,6 +11,16 @@ This is an adversarial source-code and Firebase Emulator review undertaken separ
 - Auth + RTDB Emulator primary staging synthetic seeding passed, as did multi-UID realtime functional test and safety regressions including freeze, permission grants, row CAS and structured audit.
 - A previous audit forgery was discovered and fixed: client-provided opaque JSON strings for history values were accepted under a genuine lease. New structured `changes/{field}` and `oldValues/{field}` values are checked against prior/current row values by candidate Rules. Automated tests pass.
 
+## Update — per-tab anonymous principal mitigation (25/10/2026)
+
+The candidate app now forces **anonymous Firebase Auth into in-memory persistence** and rotates an older/restored anonymous UID once per page load. Normal Chrome/Edge tabs therefore obtain **different authenticated UIDs**, not merely different client-generated session strings. The existing Rules then enforce cross-UID exclusive editing. Firebase Auth Emulator test `tests/firebase-tab-auth.test.ts` checks restored-anonymous rotation and two distinct tab identities; the emulator suite also denies cross-UID lease token replay. A cancelled Google popup never upgrades the anonymous user's persistence; only a successful Google login becomes persistent. The production app and Rules remain unmodified.
+
+**Hard limitation remains:** when two clients deliberately share the *same valid Firebase Auth UID*, Rules cannot establish a distinct tab's authenticated identity from a client-created UUID/token. Consequently, SEC-001 remains **OPEN for any absolute hostile same-UID adversarial guarantee**, especially a Google admin signed into several tabs. The `it.fails` regression is evidence of this exception, not a successful security test. The safer, honest supported contract is server-exclusivity across different Firebase UIDs and cooperative per-tab lock behavior for clients with a common UID. Do **not** claim a hard per-tab guarantee until a trusted session credential issuer/backend exists and is separately verified.
+
+**Operational consequence:** anonymous tab UID rotation also means a tab reload starts a new anonymous identity and any outstanding 45-second lease must expire or be released before reacquiring the same cell. Data server-ACKed before reload remains saved; drafts not ACKed must be recovered locally. This is an intentional availability/privacy trade-off. An anonymous identity is *not* a named employee account; edit grants based only on columns/rows/cells remain publicly available to every anonymous Firebase user, if anonymous auth is enabled. **Employee identity policy is still a release decision.**
+
+---
+
 ## Blocker SEC-001 — shared-UID tab can replay another tab's lease token
 
 **Severity: MAJOR. Current verdict: OPEN, NOT FIXED.**
