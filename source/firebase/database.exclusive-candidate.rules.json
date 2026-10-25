@@ -107,15 +107,15 @@
                 ".validate": false
               },
               "changes": {
-                ".validate": "newData.hasChildren(['note']) || newData.exists()",
+                ".validate": "newData.exists()",
                 "$field": {
-                  ".validate": "($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && (newData.isString() || newData.isBoolean()) && newData.val() === newData.parent().parent().parent().parent().child($field).val()"
+                  ".validate": "($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && (newData.isString() || newData.isBoolean()) && (newData.val() === data.val() || (newData.parent().parent().parent().parent().child('revision').val() === data.parent().parent().parent().parent().child('revision').val() + 1 && $slot === (newData.parent().parent().parent().parent().child('revision').val() % 50) + ''))"
                 }
               },
               "oldValues": {
                 ".validate": "newData.exists()",
                 "$field": {
-                  ".validate": "($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && (newData.isString() || newData.isBoolean()) && newData.val() === data.parent().parent().parent().parent().child($field).val()"
+                  ".validate": "($field === 'content' || $field === 'department' || $field === 'type' || $field === 'partyLevel' || $field === 'progressParty' || $field === 'progressBuild' || $field === 'progressCouncil' || $field === 'specialist' || $field === 'room' || $field === 'vpLeader' || $field === 'ubndLeader' || $field === 'specificProgress' || $field === 'note' || $field === 'documentKind' || $field === 'isDropped') && (newData.isString() || newData.isBoolean()) && (newData.val() === data.val() || (newData.parent().parent().parent().parent().child('revision').val() === data.parent().parent().parent().parent().child('revision').val() + 1 && $slot === (newData.parent().parent().parent().parent().child('revision').val() % 50) + ''))"
                 }
               }
             }
