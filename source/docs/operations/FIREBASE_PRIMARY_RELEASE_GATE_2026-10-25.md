@@ -1,3 +1,17 @@
+## CURRENT RELEASE VERDICT — 25/10/2026, post-auth-hardening
+
+**Implementation CI:** [#40205895722](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40205895722) PASS; [isolated staging #40205895723](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40205895723) PASS. These include Auth Emulator evidence that two normal anonymous editor tabs obtain separate Firebase UIDs; backend still validates cross-UID leases. React/login unit tests ensure a canceled Google popup does not persist anonymous credentials.
+
+**Production status: NO-GO.** No code deployed, no import, no merge. Same valid Google UID shared between malicious tabs is still outside the enforced server-side lease contract and remains an acknowledged risk; Google/admin is a trusted account but its tabs are not separately authenticated security principals. Anonymous public write policy is not yet approved as a named-employee authorization system. Candidate Rules are still only in PR #72. Read detailed security verdict and one-time rollback plan linked below.
+
+**Previously completed:** local restore of real private database backup PASS; effective Published production Rules hash match PASS. These do not need to be repeated until the final release-time read-only checkpoint. Operator's earlier staging “ok rồi” predates the latest auth changes; current browser-level acceptance still needs a final verification before GO.
+
+- [Current security verdict](FIREBASE_PR72_SECURITY_REVIEW_VERDICT_2026-10-25.md)
+- [One-time migration and rollback plan](FIREBASE_ONE_TIME_CUTOVER_ROLLBACK_PLAN_2026-10-25.md)
+- [Local two-browser staging](FIREBASE_LOCAL_MULTI_BROWSER_STAGING_2026-10-25.md)
+
+---
+
 ## 25/10/2026 — Published Rules provenance: first live attempt HOLD, GET-based fix
 
 Người vận hành cập nhật nhánh đến `9397fcb` và chạy bộ so sánh mới. Offline diff: private Rules canonical SHA256 `005ee641bf70bcb15bf2300e4928cced4567374dcae745f2ab896d55a4f4ab3a`, candidate mới canonical SHA256 `b38c6a0f82c089c93597daaa2c260d0a70f6dcda8af93dc9facb05becfd9e53f`; số biểu thức **85→115, 30 ADDED / 0 REMOVED / 19 CHANGED**. Kết quả trùng dự kiến sau bản sửa ghost-audit ở `/hdnd/items/$id/.validate`.
