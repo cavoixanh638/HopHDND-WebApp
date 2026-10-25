@@ -52,6 +52,39 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();await otherTab.dispose();
   });
+  it('refuses to let a guest monopolize a field without effective permission',async()=>{
+    const stranger=manager('a');
+    await expect(stranger.acquire('r1','department','short')).rejects.toThrow();
+    const snapshot=(await get(ref(guest('a') as never,'hdnd/editLocks/r1/department'))).val();
+    expect(snapshot).toBe(null);
+    const granted=manager('a');
+    await granted.acquire('r1','note','multiline');
+    await granted.cancel('r1','note');
+    await stranger.dispose();await granted.dispose();
+  });
+  it('guest pause blocks new leases while a verified admin can still edit',async()=>{
+    await set(ref(admin() as never,'hdnd/control'),{revision:2,editingLocked:true,changedAt:new Date().toISOString()});
+    const guestManager=manager('guest'),adminManager=manager('administrator',true);
+    await expect(guestManager.acquire('r1','note','multiline')).rejects.toThrow();
+    expect(await adminManager.acquire('r1','note','multiline')).toBe(true);
+    await adminManager.cancel('r1','note');
+    await guestManager.dispose();await adminManager.dispose();
+  });
+  it('old tab cannot expire another lease after ownership changes within the same UID',async()=>{
+    const first=manager('a'),nextTab=manager('a');
+    await first.acquire('r1','note','multiline');
+    const lockRef=ref(guest('a') as never,lockPath('r1','note'));
+    const previous=(await get(lockRef)).val();
+    await first.cancel('r1','note');
+    await nextTab.acquire('r1','note','multiline');
+    const current=(await get(lockRef)).val();
+    expect(current.token).not.toBe(previous.token);
+    await assertFails(update(lockRef,{session:previous.session,token:previous.token,
+      expiresAt:0,revision:current.revision+1}));
+    expect((await get(lockRef)).val().token).toBe(current.token);
+    await nextTab.cancel('r1','note');
+    await first.dispose();await nextTab.dispose();
+  });
   it('rejects forging a longer edit category inside an active lease',async()=>{
     const a=manager('a');
     await a.acquire('r1','progressParty','status');
