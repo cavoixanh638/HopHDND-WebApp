@@ -150,7 +150,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // Fair A/B: start both data requests only after exactly the same auth+profile
   // gates. No provisional Excel request while the admin config is pending.
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
-  const canStartSource=sourceReady&&compareReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
+  // Supabase rows/checkpoints must never mount before the server authenticates
+  // the exact userId: otherwise anonymous/Google sessions can share draft scope.
+  const canStartSource=sourceReady&&compareReady&&
+    (repository.sourceKind!=='firebase'||!!firebase?.user)&&
+    (repository.sourceKind!=='supabase'||!!supabaseAccess);
   const workspace = useWorkspace(repository, sourceKey,canStartSource,leaseManager);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
@@ -316,7 +320,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(comparison){setLayoutMessage('Chế độ so sánh tốc độ cố định nguồn; không thể đổi trong tab này.');return;}
     if(next==='supabase'&&!supabasePreview){setLayoutMessage('Supabase chưa được cấu hình bằng publishable key dành cho staging.');return;}
     const blocker=sourceSwitchBlocker({drafts:dirtyCount,protectedRecovery:workspace.protectedRecovery,
-      busy:workspace.busy,cachePending:workspace.cachePending,editorUnsaved,
+      busy:workspace.busy&&!(selectedSource==='supabase'&&!supabaseAccess),
+      cachePending:workspace.cachePending,editorUnsaved,
       editorOpen:!!selection||!!history||editingPage,heldLeases:leaseManager?.activeCount()??0});
     if(blocker){setLayoutMessage(blocker);return;}
     setTabSource(next);setSourceProbe('');
