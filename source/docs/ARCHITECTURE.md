@@ -1,3 +1,21 @@
+## 25/10/2026 — KIẾN TRÚC MỤC TIÊU: một WebApp, hai backend **độc lập** (đang phát triển, chưa chạy production)
+
+**Ưu tiên hơn mô tả lịch sử “Sheets là nguồn chính” bên dưới cho việc triển khai tương lai, nhưng không suy ra main đã chuyển nguồn.** [Chỉ đạo tích hợp #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) yêu cầu giữ **Firebase RTDB và Supabase PostgreSQL** cùng tồn tại, thêm bộ chọn nguồn tại **tab trình duyệt**. PR #72 = Firebase edit/realtime/security; PR #73 = Supabase SQL/RLS/Repository; PR #75 = UI source chooser/preview xếp chồng PR #73. Cả ba Draft.
+
+**Hợp đồng kỹ thuật sau tích hợp:**
+
+1. App chỉ có một `activeSource` tại một thời điểm cho mỗi tab, tương ứng một adapter `Repository`. Phải gắn tên nguồn vào giao diện **ngay trước khi ghi**, trạng thái truy cập và bản ghi nhật ký. `FirebaseProfile.dataSource` là cấu hình chung/legacy, **không** được cập nhật khi người dùng chọn Supabase để xem thử cục bộ.
+2. Firebase primary sử dụng Firebase Auth, RTDB Security Rules, `hdnd/items`, `hdnd/editors/{uid}`, `hdnd/permissions`, leases `hdnd/editLocks`, audit và freeze riêng. Supabase sử dụng Supabase Auth/JWT độc lập, PostgreSQL/RLS/RPC, audit và leases/freeze **riêng**. Mọi thao tác `save/history/permissions/freeze/subscribe` định tuyến đến backend được chọn; **không** mượn quyền Firebase để ghi Supabase.
+3. Các `sourceNamespace` dành cho nháp, revision, cache, trạng thái phục hồi, danh sách/bộ lọc, source-specific subscriptions và phiên khóa phải có backend, project/instance và account hoặc session thích hợp; tuyệt đối không đưa snapshot/hàng cũ của nguồn khác sang màn hình mới. **Không ghi kép, tự đồng bộ hay tự hợp nhất dữ liệu giữa backend.**
+4. Nút đổi nguồn phải chặn khi có draft chưa xác nhận, editor đang mở, lease đang giữ, save đang chờ ACK, network/reconnect, protected recovery hoặc fetch đang chạy. Chuyển thành công phải cleanup listener/editor và đối chiếu nguồn trước khi hiển thị hoặc cho phép lưu. Không tự fallback sang Firebase/Sheets khi Supabase lỗi. Không đổi backend trong khoảng thời gian chờ server ACK.
+5. Đối chiếu tính năng 15 cột A–O hiện hành (cột N `specificProgress` là văn bản nhiều dòng, O `note`), 5 báo cáo, bộ lọc, popup, bố cục, phân quyền, trạng thái đóng băng. Nhập dữ liệu từng backend là sự kiện có điều kiện và có bảng kê duyệt, không được giả định hai nguồn chứa cùng một bộ hồ sơ.
+6. Supabase preview của PR #75 hiện là **read-only staging**, polling 15 giây khi đủ điều kiện, **không phải Supabase Realtime hay quyền sửa production**. Realtime Supabase/Google OAuth/đường ghi phải QA riêng; Firebase Emulator PASS không thay cho PostgreSQL RLS/RPC PASS.
+7. **Ranh giới người phụ trách:** PR #72 sở hữu mã bảo mật Firebase, PR #73 sở hữu cấu trúc và adapter Supabase, PR #75 sở hữu chọn nguồn; người tích hợp duy nhất quản lý các file dùng chung `App.tsx`, `use-workspace.ts`, `ItemList.tsx`, các editor, `cell-edit-leases.ts`, popup/report và docs. Không “theirs overwrite” các sửa Firebase cuối trên PR #72 vì PR #73 xuất phát từ nền snapshot cũ.
+
+Trạng thái chính xác và bằng chứng theo SHA tại [CURRENT_STATE](CURRENT_STATE.md); chỉ dẫn build Windows [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md); phát hành/khôi phục [VAN_HANH](VAN_HANH.md).
+
+---
+
 # ARCHITECTURE — Kiến trúc ứng dụng
 
 > **Cách đọc:** phần “Pages 0.7.0 — Sheets là nguồn chính” đầu tiên là lựa chọn hiện hành; các phần có nhãn “đề xuất”, “legacy”, “giai đoạn” hoặc mô tả phiên bản trước là bối cảnh lịch sử, không phải bằng chứng triển khai thực tế. Schema/cột/ID chi tiết thuộc [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md); các thao tác build, rollback, khôi phục và ứng cứu thuộc [VAN_HANH](VAN_HANH.md). Trạng thái chạy thật tại [CURRENT_STATE](CURRENT_STATE.md).
