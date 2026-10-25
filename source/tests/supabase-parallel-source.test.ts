@@ -89,19 +89,19 @@ describe('Supabase staging anonymous auth and READ-ONLY REST',()=>{
   });
   it('loads staging business rows for reports but never invokes mutation RPC',async()=>{
     const row=createDemoItems(1)[0];
-    const fetcher=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
+    const fetchMock=vi.fn(async(input:RequestInfo|URL,options?:RequestInit)=>{
       if(String(input).includes('/signup'))return json(authResponse(3600,'good-login'));
       expect(String(input)).toContain('/rest/v1/hdnd_items');
       expect(options?.method).toBe('GET');
       expect(String((options?.headers as Record<string,string>).authorization)).toContain('Bearer header.payload.');
       return json([dbRow(row)]);
-    }) as unknown as typeof fetch;
-    const source=new SupabasePreviewRepository(config,fetcher,memoryStorage());
+    });
+    const source=new SupabasePreviewRepository(config,fetchMock as unknown as typeof fetch,memoryStorage());
     expect(await source.list()).toEqual([row]);
     const dummy:Patch={recordId:row.recordId,operationId:'33333333-3333-4333-8333-333333333333',
       baseRevision:row.revision,baseValues:{note:row.note},changes:{note:'forbidden'}};
     await expect(source.save([dummy])).rejects.toThrow('chỉ được đọc');
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls.every(([url])=>!String(url).includes('/rpc/'))).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.every(([url])=>!String(url).includes('/rpc/'))).toBe(true);
   });
 });
