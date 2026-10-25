@@ -32,6 +32,11 @@ jobs:
         run: |
           node --check scripts/firebase-production-readonly-backup.mjs
           node --check scripts/firebase-backup-verify.mjs
+          node --check scripts/firebase-backup-emulator-restore.mjs
+          if node scripts/firebase-backup-emulator-restore.mjs; then
+            echo "::error::Restore drill must reject execution without the isolated local demo emulator."
+            exit 1
+          fi
           node --test scripts/firebase-backup-verify.fixture.mjs
           node scripts/firebase-production-readonly-backup.mjs --help
           if node scripts/firebase-production-readonly-backup.mjs --project invalid --instance invalid --rules-file /tmp/none --output-dir /tmp/forbidden; then
