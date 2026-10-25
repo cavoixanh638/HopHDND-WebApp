@@ -138,7 +138,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   it('server rejects all edits after DRAINING deadline even if admin browser disappeared',async()=>{
     const a=manager('a'),writer=repo('a',a);
     const [old]=await writer.list();
-    const lease=await acquireCellLease(guest('a') as never,actor('a'),'11111111-1111-4111-8111-111111111111','r1','note','multiline');
+    await a.acquire('r1','note','multiline');
+    const lease=(await get(ref(guest('a') as never,lockPath('r1','note')))).val();
     const now=Date.now();
     await env.withSecurityRulesDisabled(async ctx=>{
       await set(ref(ctx.database() as never,'hdnd/freezeControl'),{
@@ -156,7 +157,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       token:current.token,session:current.session,revision:current.revision+1,
       expiresAt:Date.now()+40000
     }));
-    await releaseCellLease(guest('a') as never,lease,'r1','note');
+    await a.cancel('r1','note');
     await a.dispose();
   });
   it('emergency freeze rejects in-flight old editor, whose locally retained values cannot become saved',async()=>{
