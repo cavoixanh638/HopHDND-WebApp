@@ -1,3 +1,5 @@
+> **MỐC CẬP NHẬT ƯU TIÊN — 25/10/2026:** Chủ dự án yêu cầu GIỮ Firebase RTDB + Supabase PostgreSQL song song, lựa chọn nguồn khi chạy WebApp; không loại bỏ database nào, không đồng bộ giữa các backend, Google Sheet còn là nguồn tạm. Staging Supabase Free `uguhyunuzsdrkykqgdmq` đã có schema/RLS; 0 hồ sơ thật, 0 admin mặc định, cổng import đóng. **Chưa có bộ chọn UI hoạt động và Auth Supabase**; PR #73 tiếp tục Draft, production không đổi. [Theo dõi thực tế](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [Nhiệm vụ tích hợp](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
 ## 25/10/2026 — Chủ dự án chọn Supabase thay Firebase (TRẠNG THÁI ĐÍCH, CHƯA LIVE)
 
 - [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md) **ưu tiên** so với lựa chọn Firebase-only trước đây. Mục tiêu: WebApp là nguồn thao tác duy nhất, mọi cấu hình, quyền, audit, khóa ô, đóng băng và dữ liệu chuyển về PostgreSQL khi đạt GO. Sheets là công cụ tạm của nhân viên khi WebApp chưa sẵn sàng.
