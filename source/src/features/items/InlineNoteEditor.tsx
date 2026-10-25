@@ -43,18 +43,27 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
     window.addEventListener('hdnd:drain-editors',drain);
     return()=>window.removeEventListener('hdnd:drain-editors',drain);
   },[editing,draft,value]);
-  if(!editing)return <button type="button" className="inline-note-trigger"
-    aria-label={label} disabled={waiting} onClick={()=>{
-      const begin=()=>{
-        cancelled.current=false;completed.current=false;setError('');
-        setDraft(value);setEditing(true);
-      };
-      if(!leaseManager||!recordId||!field){begin();return;}
-      setWaiting(true);
-      void leaseManager.acquire(recordId,field,'multiline').then(begin)
-        .catch(e=>setError(e instanceof Error?e.message:'Ô đang có người khác sửa.'))
-        .finally(()=>setWaiting(false));
-    }}><SearchHighlight value={value||'—'} query={highlightQuery}/></button>;
+  const savedDraft=leaseManager&&recordId&&field?leaseManager.recoverDraft(recordId,field):null;
+  const beginEdit=(initial:string)=>{
+    const begin=()=>{
+      cancelled.current=false;completed.current=false;setError('');
+      setDraft(initial);setEditing(true);
+    };
+    if(!leaseManager||!recordId||!field){begin();return;}
+    setWaiting(true);
+    void leaseManager.acquire(recordId,field,'multiline').then(begin)
+      .catch(e=>setError(e instanceof Error?e.message:'Ô đang có người khác sửa.'))
+      .finally(()=>setWaiting(false));
+  };
+  if(!editing)return <span className="inline-note-entry">
+    <button type="button" className="inline-note-trigger"
+      aria-label={label} disabled={waiting} onClick={()=>beginEdit(value)}>
+      <SearchHighlight value={value||'—'} query={highlightQuery}/>
+    </button>
+    {savedDraft!==null&&savedDraft!==value&&<button type="button" className="button ghost" disabled={waiting}
+      onClick={()=>beginEdit(savedDraft)} title="Nháp chỉ có trên máy này, chưa lưu vào Firebase">Khôi phục nháp chưa lưu</button>}
+    {error&&<small className="error-text" role="alert">{error}</small>}
+  </span>;
   return <div className="inline-note-editor">
     <textarea ref={textareaRef} className="inline-note-textarea" autoFocus aria-label={label}
       maxLength={20000} rows={Math.min(8,Math.max(3,draft.split('\n').length))}
