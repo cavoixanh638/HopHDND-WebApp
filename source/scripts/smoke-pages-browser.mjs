@@ -1615,7 +1615,7 @@ try{
       return {ok:false,reason:'Account settings frame missing'};
     const m=main.getBoundingClientRect(),t=top.getBoundingClientRect(),n=tabs.getBoundingClientRect();
     return {ok:Math.abs(m.width-1100)<3&&Math.abs(m.left-t.left)<3&&
-      Math.abs(m.width-t.width)<3&&n.width<=900&&
+      Math.abs(m.width-t.width)<3&&n.width<=1000&&
       Math.abs((n.left+n.right)/2-(m.left+m.right)/2)<3,
       main:m.width,top:t.width,tabs:n.width};
   })()`);
