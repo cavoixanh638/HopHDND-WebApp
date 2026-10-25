@@ -70,6 +70,7 @@ export async function renewCellLease(database:Database,lease:CellLease,id:string
   const target=ref(database,lockPath(id,field));
   await get(target); // make existing lease visible before applying CAS renewal
   const result=await runTransaction(target,raw=>{
+    if(raw===null)return raw; // cold transaction cache must retry on server
     if(!validLease(raw)||raw.token!==lease.token||raw.uid!==lease.uid||
       raw.session!==lease.session||raw.expiresAt<=now)return undefined;
     return {...raw,revision:raw.revision+1,expiresAt:now+LEASE_TTL_MS};
