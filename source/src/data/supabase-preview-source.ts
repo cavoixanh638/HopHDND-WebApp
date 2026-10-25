@@ -8,6 +8,7 @@ import type {AuditEntry,Item,Patch,SaveResult} from '../../shared/types';
 import type {Repository} from './repository';
 import {SupabaseRepository} from './supabase-repository';
 import {SupabaseCellLeaseManager} from './supabase-cell-leases';
+import {SupabasePostgresRealtime} from './supabase-postgres-realtime';
 import type {CellPermissions} from './firebase-repository';
 
 export interface SupabasePublicConfig {
@@ -202,13 +203,10 @@ export class SupabasePreviewRepository implements Repository {
       getAccessToken:this.auth.getAccessToken,
       getLease:this.leaseManager.getLease,
       fetcher,
-      // Polling is explicitly temporary QA behavior; NOT mislabeled as realtime.
-      onBusinessChange:change=>{
-        const timer=setInterval(()=>{
-          if(typeof document==='undefined'||!document.hidden)change();
-        },15000);
-        return()=>clearInterval(timer);
-      }
+      // Native WebSocket invalidations with authenticated REST readback.
+      // 15-second REST refresh remains the fail-safe when Realtime is unavailable.
+      onBusinessChange:(change,failed)=>
+        new SupabasePostgresRealtime(config,this.auth.getAccessToken,change,failed).start()
     });
   }
   private lastAccess:SupabaseAccessState|null=null;
