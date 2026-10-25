@@ -1,3 +1,11 @@
+## 25/10/2026 — Đối chiếu LIVE mirror và Office Excel mới nhất
+- Người vận hành đã chạy `firebase database:get /` live read-only; `hdnd/items=0`, mirror vẫn 55 dòng cùng tập ID với snapshot và vẫn `syncedAt=2026-10-23T04:41:44.104873Z`. Không có bằng chứng đồng bộ hoạt động sau 23/10.
+- Read-only Google Drive metadata của file Office nguồn (`1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`) báo `modifiedTime=2026-10-25T04:22:14.272Z`. Trích xuất nội dung đọc được 55 dòng STT số trong tab dữ liệu (7 nội dung kỳ chuyên đề tháng 10, 48 nội dung còn lại). Số đếm **tạm khớp**, nhưng modifiedTime mới hơn và chưa biết thay đổi nào; chưa so từng ID và nội dung.
+- Cảnh báo: Drive metadata báo phân quyền `anyone / writer` cho file Excel nguồn. Chủ file cần kiểm tra ngay trên Share settings, phân biệt việc chia sẻ cho nội bộ/khách; không mặc nhiên chấp nhận cho nguồn nghiệp vụ lâu dài.
+- **GO gate:** thử khôi phục bản sao localhost, so `recordId` và 15 trường A–O bằng dữ liệu Office nguồn đã chốt tại cùng mốc, rà `syncedAt` thực và reason ảnh báo cáo 57. Nếu khác nhau, có thể tạo lại snapshot đối chiếu bằng quy trình một lần, **không ghi đè** primary/Excel; cần phê duyệt khi chuyển. `NO-GO` cho deploy Firebase Rules/migration production.
+
+---
+
 ## 25/10/2026 — Metadata bổ sung: snapshot 23/10, không phải bản live ngày 25/10
 - `schemaVersion=1`, `syncedAt=2026-10-23T04:41:44.104873Z`, `sourceModifiedAt=2026-10-23T02:07:11.387Z`, `rows=55`. Đầu ra PowerShell do người vận hành gửi từ file `database-1.json` riêng tư.
 - Bản mirror có timestamp cũ hơn hai ngày so với ngày kiểm tra. Đếm ID trùng=0 trên backup, **chưa có bằng chứng live**: không bật `dataSource=primary`, không lập luận dataset đã đầy đủ chỉ từ số 55. Chênh lệch 57/55 từ ảnh khác thời điểm phải xác minh nguồn và phép lọc, không tự ý bù/xóa hai nội dung.
