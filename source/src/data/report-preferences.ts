@@ -64,7 +64,7 @@ export interface ReportLayout {
   titleAccentColor?:string;
   visible: boolean;
   hiddenColumns: string[];
-  /** Build NQ only: explicit opt-in to show the non-applicable column.
+  /** Party/Build NQ: explicit opt-in to show the non-applicable column.
    * Old saved layouts without this flag receive the new hidden-by-default policy. */
   showNotRequiredColumn?:boolean;
   columnOrder: string[];
@@ -72,7 +72,7 @@ export interface ReportLayout {
   columnWidths?:Record<string,number>;
   /** Visual emphasis only; does not affect report totals or source rules. */
   emphasizeProgress?:boolean;
-  /** Build-NQ: exclude 'Không phải trình' by default; explicit saved true stays valid. */
+  /** Party/Build-NQ: exclude 'Không phải trình' by default; explicit saved true stays valid. */
   includeNotRequired?:boolean;
   /** Shared presentation settings, owned by the first canonical report. */
   tableFont?:TableFont;
@@ -87,16 +87,16 @@ export const reportPageWidth=(layout:readonly ReportLayout[]):'auto'|number=>lay
 export const withReportPageWidth=(layout:ReportLayout[],pageWidth:'auto'|number):ReportLayout[]=>layout.map(row=>row.id===widthOwnerId?{...row,pageWidth}:row);
 const key = (source: string) => `hdnd.report-layout.v1:${source}`;
 
-/** Build-NQ column visibility defaults to hidden independently of counting.
+/** Party and Build-NQ column visibility defaults to hidden independently of counting.
  * An explicit admin opt-in survives validation, sharing and future saves. */
 export const reportHiddenColumns=(row:Pick<ReportLayout,'id'|'hiddenColumns'|'showNotRequiredColumn'>):string[]=>
-  row.id!=='build'?[...row.hiddenColumns]:row.showNotRequiredColumn===true
+  !['party','build'].includes(row.id)?[...row.hiddenColumns]:row.showNotRequiredColumn===true
     ?row.hiddenColumns.filter(col=>col!=='Không phải trình')
     :[...new Set([...row.hiddenColumns,'Không phải trình'])];
 
 export const defaultReportLayout = (): ReportLayout[] => DEFAULT_REPORTS.map(report => ({
   id: report.id, title: report.title, visible: true, hiddenColumns: [...report.hiddenColumns], columnOrder: [...report.columns],emphasizeProgress:true,
-  ...(report.id==='build'?{includeNotRequired:false,showNotRequiredColumn:false}:{}),
+  ...(['party','build'].includes(report.id)?{includeNotRequired:false,showNotRequiredColumn:false}:{}),
   ...(report.id===widthOwnerId?{tableFont:'segoe' as const,tableFontSize:DEFAULT_TABLE_FONT_SIZE,reportVariant:'classic' as const}:{}),
   ...(report.id===widthOwnerId?{pageWidth:'auto' as const}:{}),
 }));
@@ -154,13 +154,13 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       hiddenValues.some(col=>typeof col!=='string'||(!base.columns.includes(rename(col))&&!obsolete.has(col))))
       throw new Error('Cột hoặc trạng thái hiển thị không hợp lệ.');
     const hiddenColumns=[...new Set(hiddenValues.filter(col=>!obsolete.has(col)).map(rename))];
-    if(base.id==='build'&&row.showNotRequiredColumn!==undefined&&
+    if(['party','build'].includes(base.id)&&row.showNotRequiredColumn!==undefined&&
        typeof row.showNotRequiredColumn!=='boolean')
       throw new Error('Tùy chọn hiển thị cột Không phải trình phải là Có hoặc Không.');
     const normalizedHiddenColumns=reportHiddenColumns({
       id:base.id,hiddenColumns,showNotRequiredColumn:row.showNotRequiredColumn,
     });
-    const buildVisibility=base.id==='build'
+    const notRequiredVisibility=['party','build'].includes(base.id)
       ?{showNotRequiredColumn:row.showNotRequiredColumn===true}:{};
 
     const rawOrder=row.columnOrder??base.columns;
@@ -185,9 +185,9 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     }
     if(order.length!==base.columns.length){
       const missing=base.columns.filter(col=>!order.includes(col));
-      const introducingBuildNotRequired=base.id==='build'&&missing.length===1&&missing[0]==='Không phải trình';
-      if((!hasOld&&!introducingBuildNotRequired)||(!['party','nq','bc','council'].includes(base.id)&&
-        !(base.id==='build'&&introducingBuildNotRequired)))
+      const introducingNotRequired=['party','build'].includes(base.id)&&missing.length===1&&missing[0]==='Không phải trình';
+      if((!hasOld&&!introducingNotRequired)||(!['party','nq','bc','council'].includes(base.id)&&
+        !(base.id==='build'&&introducingNotRequired)))
         throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
       for(const add of missing){
         const next=base.columns.slice(base.columns.indexOf(add)+1).find(col=>order.includes(col));
@@ -201,9 +201,9 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
         !Number.isSafeInteger(width)||width<80||width>1200))
       throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
     const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
-    if(base.id==='build'&&row.includeNotRequired!==undefined&&typeof row.includeNotRequired!=='boolean')
+    if(['party','build'].includes(base.id)&&row.includeNotRequired!==undefined&&typeof row.includeNotRequired!=='boolean')
       throw new Error('Cách tính nội dung Không phải trình phải là Bao gồm hoặc Không bao gồm.');
-    const buildCountSetting=base.id==='build'?{includeNotRequired:row.includeNotRequired===true}:{};
+    const notRequiredCountSetting=['party','build'].includes(base.id)?{includeNotRequired:row.includeNotRequired===true}:{};
     const accentText=row.titleAccentText??'';
     const accentColor=row.titleAccentColor??'#b42318';
     if(typeof accentText!=='string'||accentText.length>80||
@@ -229,10 +229,10 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       if(!REPORT_VARIANTS.some(option=>option.value===reportVariant))
         throw new Error('Kiểu trình bày bảng không hợp lệ.');
       return { id:base.id,title,...accentSettings,visible:row.visible,
-        hiddenColumns:normalizedHiddenColumns,...buildVisibility,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
+        hiddenColumns:normalizedHiddenColumns,...notRequiredVisibility,...notRequiredCountSetting,columnOrder:[...order],...(columnWidths?{columnWidths}:{}),
         pageWidth,emphasizeProgress:row.emphasizeProgress!==false,tableFont,tableFontSize,reportVariant };
     }
-    return { id: base.id, title, ...accentSettings, ...buildCountSetting, visible: row.visible, hiddenColumns:normalizedHiddenColumns, ...buildVisibility,columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
+    return { id: base.id, title, ...accentSettings, ...notRequiredCountSetting, visible: row.visible, hiddenColumns:normalizedHiddenColumns, ...notRequiredVisibility,columnOrder: [...order], ...(columnWidths?{columnWidths}:{}), emphasizeProgress:row.emphasizeProgress!==false };
   });
 }
 
@@ -259,7 +259,7 @@ export function configuredReports(layout: ReportLayout[], includeHidden = false)
   const tableFont=getReportFont(layout),tableFontSize=getReportFontSize(layout),reportVariant=getReportVariant(layout);
   return layout.filter(row => includeHidden || row.visible).map(row => ({
     ...DEFAULT_REPORTS.find(report => report.id === row.id)!, title: row.title,
-    ...(row.id==='build'?{includeNotRequired:row.includeNotRequired===true}:{}),
+    ...(['party','build'].includes(row.id)?{includeNotRequired:row.includeNotRequired===true}:{}),
     ...(row.titleAccentText?{titleAccentText:row.titleAccentText,titleAccentColor:row.titleAccentColor}:{}), hiddenColumns: reportHiddenColumns(row), columns: [...row.columnOrder], emphasizeProgress:row.emphasizeProgress!==false,
     tableFont,tableFontSize,reportVariant,
     ...(row.columnWidths&&Object.keys(row.columnWidths).length?{columnWidths:{...row.columnWidths}}:{}),
