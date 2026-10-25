@@ -31,7 +31,7 @@ export const mayEdit=(permissions:CellPermissions,id:string,field:EditableField,
 export function validateFirebaseItem(value:unknown):Item {
   if(!value||typeof value!=='object')throw new Error('Dòng Firebase không hợp lệ.');
   const row=value as Item;
-  if(typeof row.recordId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(row.recordId)||typeof row.displayCode!=='string'||!row.displayCode||row.displayCode.length>100||!Number.isSafeInteger(row.stt)||row.stt<1||!Number.isSafeInteger(row.revision)||row.revision<1||!(row.archivedAt==null||typeof row.archivedAt==='string'))throw new Error('ID, STT hoặc phiên bản dòng Firebase không hợp lệ.');
+  if(typeof row.recordId!=='string'||!/^[A-Za-z0-9_:-]{1,200}$/.test(row.recordId)||typeof row.displayCode!=='string'||!row.displayCode||row.displayCode.length>100||!Number.isSafeInteger(row.stt)||row.stt<1||!Number.isSafeInteger(row.revision)||row.revision<1||!(row.archivedAt==null||typeof row.archivedAt==='string'))throw new Error('ID, STT hoặc phiên bản dòng Firebase không hợp lệ.');
   const changes=Object.fromEntries(EDITABLE_FIELDS.map(field=>[field,row[field]]));
   const issue=validateChanges(changes);if(issue)throw new Error(issue);
   return {recordId:row.recordId,displayCode:row.displayCode,stt:row.stt,revision:row.revision,archivedAt:row.archivedAt??null,...changes} as Item;
@@ -46,6 +46,7 @@ export class FirebaseRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly canDraft=true;
   readonly readOnly=false;
+  readonly subscribeInitial=true;
   checkAssignment?:(item:Item)=>string;
   constructor(readonly database:Database,private user:()=>User|null,private permissions:()=>CellPermissions,private readonly itemPath='hdnd/items'){}
   async list(){return rowsFrom((await get(ref(this.database,this.itemPath))).val());}
