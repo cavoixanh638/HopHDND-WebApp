@@ -21,7 +21,12 @@ const validLease=(x:unknown):x is CellLease=>{
     Number.isFinite(y.acquiredAt)&&Number.isFinite(y.expiresAt);
 };
 const serverTime=async(database:Database)=>{
-  const offset=Number((await get(ref(database,'.info/serverTimeOffset'))).val()??0);
+  const offset=await new Promise<number>((resolve,reject)=>{
+    // Firebase's .info nodes are local connection metadata and must be
+    // observed; get() performs a server query and cannot fetch this path.
+    onValue(ref(database,'.info/serverTimeOffset'),snap=>resolve(Number(snap.val()??0)),
+      reject,{onlyOnce:true});
+  });
   if(!Number.isFinite(offset)||Math.abs(offset)>600000)
     throw new Error('Không xác nhận được đồng hồ máy chủ, chưa được sửa.');
   return Date.now()+offset;
