@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LOCAL DEMO ONLY: seed an isolated Auth + RTDB Emulator using synthetic items,
- * primary profile, and minimal test cell grants. No Firebase production I/O.
+ * primary profile, and minimal test cell grants; anonymous users cannot edit. No Firebase production I/O.
  * Intended for: firebase emulators:exec --project demo-hdnd --only auth,database
  *   --config scripts/staging-emulator/firebase.json "node scripts/seed-local-staging.mjs"
  */
@@ -70,7 +70,8 @@ async function main(){
     console.log('LOCAL_PRIMARY_STAGING_SEED_PASS (synthetic; NO production writes)');
     console.log('Demo project: '+PROJECT);
     console.log('Primary rows: 3');
-    console.log('Anonymous editor grants: note, specificProgress');
+    console.log('Granted fields after enrolled Google login: note, specificProgress');
+    console.log('Anonymous sessions: VIEW ONLY; employee UID must be allowlisted by verified administrator.');
     console.log('Local browser page: http://127.0.0.1:5173/pages.html');
   }finally{await environment.cleanup();}
 }
