@@ -55,7 +55,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   };
 
   const choose = (nextValue: string) => {
-    chosen.current=nextValue!==value;
+    if(nextValue===value){chosen.current=false;close(true);return;}
+    chosen.current=true;
     onChange(nextValue);
     close(true);
   };
