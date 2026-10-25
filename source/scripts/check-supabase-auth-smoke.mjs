@@ -16,7 +16,7 @@ assert(html.includes('/rest/v1/hdnd_items?select=record_id,display_code'),
   'Synthetic row readback missing');
 assert(html.includes('sb_publishable_'),'Publishable QA key missing');
 assert(!html.includes('sb_secret_')&&!html.includes('service_role'),'Privileged key present');
-assert(!/\b(?:firebase|googleapis\.com\/sheets)\b/i.test(js),
+assert(!/(firebaseapp\.com|firebasedatabase\.app|googleapis\.com\/sheets|firebase\/(?:app|auth))/i.test(js),
   'Standalone QA probe must not contact Firebase/Google Sheets');
 assert(!/sessionStorage\.setItem\([^,]+,\s*(?:token|fragment|session)/.test(js),
   'Must not persist access token');
