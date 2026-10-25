@@ -564,7 +564,7 @@ try{
     if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-tabs.bottom;
-    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=900&&tabs.width<top.width;
+    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     return {ok:aligned&&gap<115&&!status&&!cardHeader,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
@@ -591,16 +591,17 @@ try{
     const restrainedGradient=activeStyle?.backgroundImage.includes('linear-gradient')&&idleStyle?.backgroundImage==='none';
     const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
     const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
-    const innerFlat=[...nav.querySelectorAll('.section-card-icon,.section-card-state')]
-      .every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)');
-    return {ok:nav?.getBoundingClientRect().width<=900&&
-      restrainedGradient&&distinct&&border&&innerFlat&&
-      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=7&&g.rightInset<=18)&&
+    const noIcons=nav.querySelectorAll('.section-card-icon').length===0;
+    const activeBadge=!!selected&&getComputedStyle(selected.querySelector('.section-card-state')).backgroundColor!=='rgba(0, 0, 0, 0)';
+    const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
+    return {ok:nav?.getBoundingClientRect().width<=1000&&
+      restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
+      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=15&&g.rightInset<=29)&&
       Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
       Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
-      boxes.every(box=>box.width>=150&&box.height>=44&&box.height<=72)&&
+      boxes.every(box=>box.width>=300&&box.height>=78&&box.height<=100)&&
       !nav.querySelector('.section-card-description')&&
       getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
       getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
@@ -609,10 +610,11 @@ try{
       Math.abs(boxes[0].height-boxes[1].height)<1&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,innerFlat};
+      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
+  console.log('PRIMARY_CARD_TABS_NO_ICONS_PASS',JSON.stringify({widths:mainSectionCards.widths,cardDepth:mainSectionCards.cardDepth,activeBadge:mainSectionCards.activeBadge}));
 
   // Theme2 is a visual skin: a very subtle gradient ONLY on the active tab,
   // solid Imperial Sky action buttons, white/ice surfaces elsewhere.
@@ -701,8 +703,8 @@ try{
         color:style.color,shadow:style.boxShadow,
         titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
-    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('7px 13px')||
-      hover.color!==color||hover.titleSize<16)
+    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
+      hover.color!==color||hover.titleSize<18)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
