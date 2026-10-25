@@ -73,7 +73,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(migrated[3].title).toBe(DEFAULT_REPORTS[3].title);
     expect(migrated[4].title).toBe(DEFAULT_REPORTS[4].title);
     expect(migrated[0].columnOrder).toHaveLength(DEFAULT_REPORTS[0].columns.length);
-    expect(migrated[0].columnOrder.slice(0,3)).toEqual(['Sở chưa trình','VP đang thực hiện','Đã gửi ĐU']);
+    expect(migrated[0].columnOrder.slice(0,4)).toEqual(['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU']);
     expect(migrated[0].columnOrder).toContain('Đã có TBKL');
     expect(migrated[0].columnOrder).not.toContain('Đã báo cáo TU');
     expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp','Không phải trình']);
