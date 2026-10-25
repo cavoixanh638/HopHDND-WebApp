@@ -139,10 +139,10 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
               <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Tô màu các cột trạng thái trong bảng này</label>
-              {report.id==='build'&&<label className="field build-count-setting" htmlFor="build-count-mode">
+              {['party','build'].includes(report.id)&&<label className="field build-count-setting" htmlFor={`${report.id}-count-mode`}>
                 Cách tính số liệu — nội dung “Không phải trình”
-                <select id="build-count-mode" aria-label="Cách tính nội dung Không phải trình"
-                  value={report.includeNotRequired===false?'exclude':'include'}
+                <select id={`${report.id}-count-mode`} aria-label={`Cách tính nội dung Không phải trình - ${report.title}`}
+                  value={report.includeNotRequired===true?'include':'exclude'}
                   onChange={event=>update(index,{includeNotRequired:event.currentTarget.value==='include'})}>
                   <option value="include">Bao gồm nội dung “Không phải trình”</option>
                   <option value="exclude">Không bao gồm nội dung “Không phải trình”</option>
@@ -168,7 +168,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   {report.columnOrder.map(column => {
                     // Use all canonical columns here, not preview.columns (which
                     // intentionally omit hidden ones), so admin can show them again.
-                    const exempt=report.id==='build'&&column==='Không phải trình';
+                    const exempt=['party','build'].includes(report.id)&&column==='Không phải trình';
                     const shown=exempt?report.showNotRequiredColumn===true:
                       !report.hiddenColumns.includes(column);
                     return <label key={column}><input type="checkbox" checked={shown}
