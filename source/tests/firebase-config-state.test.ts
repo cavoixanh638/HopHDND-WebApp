@@ -6,7 +6,7 @@ import {defaultReportLayout} from '../src/data/report-preferences';
 import {firebaseAdmin,mayEdit} from '../src/data/firebase-repository';
 const h=vi.hoisted(()=>{
   const slots:any[]=[];let cursor=0;let effects:(()=>void)[]=[];
-  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),popup:vi.fn().mockResolvedValue({}),popupResolver:{kind:'google-popup'},
+  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),popup:vi.fn().mockResolvedValue({}),persistence:vi.fn().mockResolvedValue(undefined),popupResolver:{kind:'google-popup'},
     state:(initial:any)=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     ref:(v:any)=>{const i=cursor++;return slots[i]??(slots[i]={current:v});},
     effect:(fn:any,deps:any[])=>{const i=cursor++,old=slots[i];if(!old||deps.some((d,j)=>!Object.is(d,old.deps[j])))effects.push(()=>{old?.cleanup?.();slots[i]={deps,cleanup:fn()};});},
@@ -17,7 +17,7 @@ vi.mock('react',()=>({useState:h.state,useRef:h.ref,useEffect:h.effect}));
 vi.mock('firebase/app',()=>({initializeApp:()=>({})}));
 vi.mock('firebase/auth',()=>({getAuth:()=>h.auth,initializeAuth:()=>h.auth,
   indexedDBLocalPersistence:{},browserLocalPersistence:{},inMemoryPersistence:{},
-  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn(),setPersistence:vi.fn().mockResolvedValue(undefined)}));
+  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn(),setPersistence:h.persistence}));
 vi.mock('firebase/database',()=>({getDatabase:()=>({}),connectDatabaseEmulator:vi.fn(),ref:(_db:any,path:string)=>path,onValue:(path:string,next:any,error:any)=>{h.listeners.set(path,{next,error});return()=>h.listeners.delete(path);},get:h.get,runTransaction:h.transaction}));
 import {useFirebase} from '../src/state/use-firebase';
 const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
@@ -26,7 +26,7 @@ const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))}
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
 function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});}
 function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
-beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockClear();});
+beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockReset().mockResolvedValue({});h.persistence.mockReset().mockResolvedValue(undefined);});
 afterEach(()=>h.dispose());
 describe('Firebase config controller remains independent of business data',()=>{
   it('loads the Google popup resolver only for an explicit login action',async()=>{
@@ -36,6 +36,19 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(h.popup).toHaveBeenCalledTimes(1);
     expect(h.popup.mock.calls[0][0]).toBe(h.auth);
     expect(h.popup.mock.calls[0][2]).toBe(h.popupResolver);
+  });
+  it('does not persist an anonymous user when Google popup is cancelled',async()=>{
+    const view=render();
+    h.popup.mockRejectedValueOnce(new Error('popup-closed-by-user'));
+    await expect(view.login()).rejects.toThrow('popup-closed-by-user');
+    expect(h.persistence).not.toHaveBeenCalled();
+  });
+  it('persists only a successful verified Google login',async()=>{
+    const view=render();
+    await view.login();
+    expect(h.popup).toHaveBeenCalledOnce();
+    expect(h.persistence).toHaveBeenCalledOnce();
+    expect(h.popup.mock.invocationCallOrder[0]).toBeLessThan(h.persistence.mock.invocationCallOrder[0]);
   });
   it('does not prefetch the mirror during source comparison so Excel and Database are measured fairly',()=>{
     vi.stubGlobal('window',{location:{search:'?startupMetrics=1&compareSource=database'}});
