@@ -1,5 +1,17 @@
 # Chỉ mục tài liệu dự án HopHDND
 
+## Cập nhật điều hành 25/10/2026 — hai backend và Windows QA
+
+**Một WebApp / hai Database vẫn giữ độc lập:** Firebase RTDB và Supabase PostgreSQL, lựa chọn theo tab. Trước GO, main/Pages không thay đổi. Công việc liên quan ở [PR #72 Firebase](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72), [PR #73 Supabase](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73), [PR #75 chọn nguồn](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75), [điều phối issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+**Tài liệu chuẩn phải cập nhật khi thay code:** quy định vùng sở hữu/tích hợp [AGENTS](../AGENTS.md); giao diện nguồn, Auth/ACL, adapter [ARCHITECTURE](ARCHITECTURE.md); tình trạng **đã chạy thật hay chỉ test** [CURRENT_STATE](CURRENT_STATE.md); lệnh chạy Windows [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md); release, chuyển một lần, rollback [VAN_HANH](VAN_HANH.md). Tài liệu kỹ thuật từng branch nằm tại PR tương ứng, nhưng **không thay thế cập nhật các file chuẩn này khi thay hành vi hệ thống**. CI green trên PR Draft không chứng minh production đã phát hành.
+
+Không tạo thêm kế hoạch, workboard hay hướng dẫn vận hành trùng nghĩa; mỗi PR sửa nguồn chuẩn trong phần mình phụ trách và chuyển phần thay đổi file chung cho người tích hợp duy nhất. Bằng chứng Supabase chi tiết trên PR #75 được giữ ở `source/docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md` của nhánh thử nghiệm.
+
+---
+
+
+
 Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x–0.7.0 mô tả mốc quá khứ có thể còn ví dụ A–P/16 cột; mọi việc đang sửa phải ưu tiên Excel A–O mới và các đoạn 19/10/2026 trong tài liệu nguồn chuẩn. Lịch sử chat đã archived chỉ truy xuất được một phần, không được coi là đã đối soát 100%.** [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.
 
 ## Nguồn chuẩn — mỗi loại thông tin một nơi
