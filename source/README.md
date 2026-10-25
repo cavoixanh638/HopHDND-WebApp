@@ -1,3 +1,5 @@
+> **YÊU CẦU HIỆN HÀNH 25/10/2026:** Firebase + Supabase phải chạy song song, người sử dụng có thể chọn nguồn trên WebApp, **không bỏ database nào**. Supabase Free Cloud staging đã được khởi tạo và áp dụng schema, chưa có frontend Auth/UI hay dữ liệu thật. Đọc [quyết định mới](docs/decisions/SUPABASE_PRIMARY_2026-10-25.md) · [cổng tiến độ](docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [tích hợp song song #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). Dòng Supabase thay Firebase/Firebase-only bên dưới là ghi chép lịch sử.
+
 > **QUYẾT ĐỊNH MỚI 25/10/2026:** đích lâu dài của HopHDND là **WebApp + Supabase/PostgreSQL** (không phải Firebase); toàn bộ tính năng quyền sửa, lease, freeze, báo cáo được bảo toàn. Đọc [ADR Supabase](docs/decisions/SUPABASE_PRIMARY_2026-10-25.md), [kế hoạch](docs/operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md), [GO/NO-GO](docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md). Đây là hướng lập trình, **không phải production đã cutover**. Nội dung Firebase-only phía dưới là lịch sử/mốc trước.
 
 ## Chỉ đạo phạm vi 25/10/2026 — WebApp/Firebase là hệ thống duy nhất sau cutover
