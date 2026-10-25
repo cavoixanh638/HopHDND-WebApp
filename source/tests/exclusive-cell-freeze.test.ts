@@ -14,12 +14,13 @@ import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
-const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:null,
-  emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]}) as User;
+const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:id+'@example.test',
+  emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]}) as User;
 const row={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
 describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB security',()=>{
   let env:RulesTestEnvironment;
-  const guest=(id:string)=>env.authenticatedContext(id,{firebase:{sign_in_provider:'anonymous'}}).database();
+  const guest=(id:string)=>env.authenticatedContext(id,{email:id+'@example.test',email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
+  const anonymous=(id:string)=>env.authenticatedContext(id,{firebase:{sign_in_provider:'anonymous'}}).database();
   const admin=()=>env.authenticatedContext('administrator',adminClaims).database();
   const manager=(id:string,isAdmin=false)=>new CellEditSessionManager(
     (isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin));
@@ -38,11 +39,35 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await set(ref(context.database() as never),{
         hdnd:{items:{r1:{...record,operationId:'initial',updatedAt:Date.now(),updatedBy:'administrator'}},
           permissions:{columns:{note:true,specificProgress:true,progressParty:true}},
+          editors:{a:true,b:true,forger:true,ungranted:true,untrusted:true},
           control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()}}
       });
     });
   });
   afterAll(async()=>env?.cleanup());
+  it('denies anonymous editor even when globally editable columns are true',async()=>{
+    const anonymousDb=anonymous('anon-a');
+    await assertFails(set(ref(anonymousDb as never,'hdnd/editLocks/r1/note'),{
+      uid:'anon-a',session:crypto.randomUUID(),token:crypto.randomUUID(),
+      revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
+    }));
+    const before=(await get(ref(anonymousDb as never,'hdnd/items/r1'))).val();
+    await assertFails(update(ref(anonymousDb as never,'hdnd/items/r1'),{
+      note:'Anonymous bypass',revision:before.revision+1
+    }));
+  });
+  it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
+    const staff=guest('a'),list=ref(staff as never,'hdnd/editors/a');
+    expect((await get(list)).val()).toBe(true);
+    await assertFails(set(list,false));
+    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    const managerA=manager('a');
+    await expect(managerA.acquire('r1','note','multiline')).rejects.toThrow();
+    await set(ref(admin() as never,'hdnd/editors/a'),true);
+    await managerA.acquire('r1','note','multiline');
+    await managerA.cancel('r1','note');
+    await managerA.dispose();
+  });
   it('accepts approved one-time primary import under exclusive candidate Rules (no live Sheets)',async()=>{
     const source=parseSheetConfig(DEFAULT_SHEET_URL);
     const recordId=source.spreadsheetId+':'+source.gid+':row:3';
@@ -350,7 +375,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       },error=>{clearTimeout(timeout);stop();reject(error);});
     });
     // Both observers subscribe before the writer sends anything to the server.
-    const fromB=awaitUpdate(readerB,'independent anonymous account');
+    const fromB=awaitUpdate(readerB,'independent verified Google employee');
     const fromAdmin=awaitUpdate(readerAdmin,'authenticated administrator');
     const [original]=await writer.list();
     await session.acquire('r1','note','multiline');
