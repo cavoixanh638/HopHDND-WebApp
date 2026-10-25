@@ -1,5 +1,24 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Kiểm tra trạng thái trước đợt triển khai mới và thực thi PR #75 — 25/10/2026
+
+**Kiểm tra thực tế lúc bắt đầu (trước khi tạo nhánh mới):**
+- GitHub [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) (Firebase) và [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) (Supabase foundation) đều `open`, `Draft`, **chưa merge**. Đúng head PR #73: `66553279791cddec0039c54a0da194a8ec24d1c0`.
+- Tại **exact commit trên**, [Verify HopHDND source #40204193173](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193173), [Verify isolated Firebase staging #40204193170](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193170), [Verify isolated Supabase PostgreSQL #40204193178](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193178) đều **SUCCESS**. Các kết luận CI chỉ áp dụng cho commit đó, không tự suy cho PR mới.
+- Supabase project `uguhyunuzsdrkykqgdmq` trả `ACTIVE_HEALTHY` trên PostgreSQL 17 Singapore; lịch sử gồm **đúng ba migrations đã apply** (`hophdnd_core_staging_20261025`, `hophdnd_single_import_gate_staging_20261025`, `hophdnd_rls_initplan_staging_20261025`). SQL đọc trực tiếp: `item_count=0`, `audit_count=0`, `admin_count=0`, `import_open=false`, `mode=OPEN`. Security advisors: `lints=[]`.
+- Nguồn webapp vẫn chưa có lựa chọn riêng Supabase, chưa có Google OAuth Supabase, native Realtime, full UI phân quyền Supabase hoặc ghi Supabase hoàn chỉnh. Không tuyên bố đã xong chỉ vì cloud migrations PASS.
+
+**Đợt triển khai #75:** branch `feat/supabase-parallel-source-selector-20261025` sinh trực tiếp từ SHA `66553279791cddec0039c54a0da194a8ec24d1c0`; [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) Draft **base là branch PR #73**, giữ PR #73 nguyên vẹn. Liên kết điều hành [Issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+- Nguồn ở cấp **tab trình duyệt**, các lựa chọn `excel/database/primary/supabase`. Nguồn này **không gọi Firebase.common.save('dataSource')**; chuyển đổi bị chặn khi có draft, protected recovery, dữ liệu đang load/confirm, editor mở hoặc Firebase cell lease đang giữ. Namespace Supabase khác Firebase và Excel.
+- **Read-only staging prototype**: khi có cấu hình chính xác, sử dụng Supabase REST/Auth anonymous JWT riêng, refresh token theo tab; bảng `hdnd_items` được đọc bằng RLS và kiểm tra lại 15 giây/lần khi tab hiển thị. Đây **không phải native Supabase Realtime**. Chỉ khi operator bật Anonymous Sign-Ins và cấu hình URL + `sb_publishable_...` của **staging** qua `source/.env.local` (gitignored) thì tùy chọn mới khả dụng; không để secret hoặc service_role vào mã.
+- Supabase preview tuyệt đối `readOnly=true`, `canDraft=false`, `save()` từ chối; chưa chạy import hoặc tạo admin. Firebase, link Excel và thiết lập nguồn admin chung vẫn tồn tại. **Không triển khai production**.
+- Tests mới: `source/tests/supabase-parallel-source.test.ts` kiểm guard/namespace, chặn key bí mật, auth JWT isolated+rotated refresh, read-only REST, không gọi RPC ghi. Chỉ xác nhận PASS khi Verify source CI trên head của #75 thành công; không bỏ qua Firebase CI.
+- **Các việc vẫn HOLD:** native Google OAuth, auth provider thủ công trong Supabase Dashboard, security multiuser qua REST/RLS, Supabase Realtime Postgres Changes, write lease + permission UI + freeze thực tế, so sánh hiệu năng có số liệu, backup/restore, E2E, import thật và production GO. Google Sheets tiếp tục được giữ theo nhu cầu vận hành tạm. **Không database nào bị bỏ.**
+
+---
+
+
 ## Chạy song song nguồn dữ liệu — chỉ đạo mới và Cloud staging (25/10/2026)
 
 **Yêu cầu mới ưu tiên cao nhất:** Firebase RTDB vẫn được giữ nguyên và có thể chọn; Supabase được bổ sung để chạy song song/so sánh, **không có quyết định loại bỏ database nào**. Google Sheets vẫn chỉ là nguồn tạm thời nếu được chọn trong bản app chưa cutover. Không tự đồng bộ, copy hoặc ghi đè giữa Firebase, Supabase và Sheets. Mỗi nguồn có namespace độc lập cho draft, realtime, audit, ACL, auth và freeze. Chuyển lựa chọn phải xử lý nháp/lease trước, không đổi cấu hình nguồn toàn hệ thống của Firebase để thử Supabase.
