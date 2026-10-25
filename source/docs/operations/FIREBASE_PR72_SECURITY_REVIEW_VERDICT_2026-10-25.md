@@ -33,7 +33,7 @@ This does **not** allow a different UID to impersonate the lease holder merely b
 
 ## Security and architecture review observations
 
-1. **Anonymous write authority:** grants in `hdnd/permissions/columns`, `rows` and `cells` apply to **any authenticated anonymous viewer**, not a named employee. When enabled on the public website, a person who can create an anonymous Firebase session may edit granted fields. Document grant scope and consider named employee authentication/UID-level grants if identity-based authorization is required. This is a requirements/security gate, not a test failure.
+1. **Anonymous write authority (FIXED in candidate, not deployed):** a verified Google ID must be explicitly allowlisted at `hdnd/editors/{uid}=true` (or pass the narrowly scoped verified-admin check) before the row or lease `.write` can succeed. Anonymous viewers and unenrolled Google users are denied even when global column/cell grants are true. Revocations invalidate future server writes. Regression coverage includes anonymous, unenrolled Google, approved Google, and revoke. The separate read scope remains unchanged.
 2. **Read scope:** `hdnd/.read` grants all authenticated identities visibility over primary data, grants, edit locks and configuration. No per-employee read isolation is implemented; do not promise it.
 3. **Audit lifetime:** row history is a circular 50-event window; a project administrator or person with administrative Firebase console rights can still edit backend data outside client Rules. It is not a permanent independently immutable evidence store.
 4. **Freeze receipt limits:** `freezeReceipts` accepts a checksum and count submitted by the verified admin. Rules validate shape and timing but cannot recompute the checksum of all primary items. Treat a receipt as an operator assertion pending independent readback, not a cryptographically checked server snapshot.
@@ -47,7 +47,7 @@ This does **not** allow a different UID to impersonate the lease holder merely b
 - [x] Automated emulator multi-UID edits/denial/freeze/structured history.
 - [x] Isolated primary staging seed and application build CI.
 - [ ] Resolve or expressly accept SEC-001 with the documented narrower security contract; preserve an adversarial regression.
-- [ ] Decide whether anonymous edit grants are acceptable for public access or implement signed-in per-user grants.
+- [x] Replace public anonymous editing with verified, allowlisted Google staff UIDs; preserve public read behavior.
 - [ ] Independent review of the *final* candidate Rules against all intended authorization boundaries.
 - [ ] Two-browser/2–3 identity acceptance receipt against the **current head**, including lock, realtime, reconnect, and audit; the user's informal “ok rồi” is progress but not detailed proof of these cases on the latest code.
 - [ ] Approve the exact final data-export source/manifest at cutover, perform a new read-only production checkpoint immediately before import, check destination empty and freeze state, demonstrate dry run with same schema.
