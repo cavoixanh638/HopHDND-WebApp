@@ -1,3 +1,22 @@
+## 25/10/2026 — Published Rules provenance: first live attempt HOLD, GET-based fix
+
+Người vận hành cập nhật nhánh đến `9397fcb` và chạy bộ so sánh mới. Offline diff: private Rules canonical SHA256 `005ee641bf70bcb15bf2300e4928cced4567374dcae745f2ab896d55a4f4ab3a`, candidate mới canonical SHA256 `b38c6a0f82c089c93597daaa2c260d0a70f6dcda8af93dc9facb05becfd9e53f`; số biểu thức **85→115, 30 ADDED / 0 REMOVED / 19 CHANGED**. Kết quả trùng dự kiến sau bản sửa ghost-audit ở `/hdnd/items/$id/.validate`.
+
+Lượt kiểm Published đầu tiên qua `firebase-verify-published-rules.mjs` trả `RULES_PROVENANCE_HOLD: Firebase CLI read-only query failed`; **không chứng minh được rằng thiếu quyền hoặc Rules không khớp** (công cụ trước đó nuốt nguyên nhân lỗi). Rà trực tiếp nguồn Firebase CLI `firebase-tools@15.34.0`: `database:rules:list` dùng metadata API và IAM `firebasedatabase.instances.get`. Google hướng dẫn đọc RTDB Rules hiện hành bằng **HTTP GET** tới `/.settings/rules.json`. Đã sửa helper sang gọi `firebase database:get /.settings/rules --project hophdnd-8b7b2 --instance hophdnd-8b7b2-default-rtdb` bằng child process, giữ toàn bộ JSON trong bộ nhớ, chỉ so hash và in trạng thái; không đọc/ghi Google Sheets, không deploy, không ghi production. Công cụ chặn emulator/custom database URL override để không nhầm môi trường, có `--self-test` giả lập GET không dùng mạng và được CI kiểm.
+
+**Cần người vận hành xác minh tiếp trên bản clone đã có:**
+```powershell
+git -C "D:\HopHDND-Firebase-QA-20261025-Retry" -c http.version=HTTP/1.1 pull --ff-only origin feat/exclusive-cell-leases-admin-freeze-20261025
+Push-Location "D:\HopHDND-Firebase-QA-20261025-Retry\source"
+try {
+  node scripts/firebase-verify-published-rules.mjs --self-test
+  node scripts/firebase-verify-published-rules.mjs --live-file "D:\HopHDND-Private-Backup\2026-10-25\rules-live.json"
+} finally { Pop-Location }
+```
+Chỉ nếu CLI GET thực sự trả hash khớp mới đánh dấu `PUBLISHED_RULES_SNAPSHOT_MATCH_PASS`. Nếu lỗi giữ `HOLD`; không tự cấp quyền IAM hoặc deploy Rules. Các cổng staging đa tài khoản, Security Rules review độc lập và cutover cuối cùng vẫn **NO-GO**.
+
+---
+
 ## 25/10/2026 — OFFLINE_RULES_DIFF_20261025 và sửa lỗ hổng ghost audit
 
 **Kết quả máy Windows do người vận hành cung cấp** khi chạy `firebase-private-rules-compare.mjs` trên nhánh PR #72: `OFFLINE_RULES_COMPARE_COMPLETED`. File private `rules-live.json` có canonical SHA256 `005ee641bf70bcb15bf2300e4928cced4567374dcae745f2ab896d55a4f4ab3a`; bản Rules ứng viên TRƯỚC sửa ghost-audit có canonical SHA256 `e54fc8d9872139412bbe8f9ab877a133fffd3b3ee33999ca054348a1d29e14dd`. **85 → 115** rule expressions; **30 mới, 0 xóa, 18 thay đổi**. Các đường cập nhật gồm `/hdnd/items/.write`, `/hdnd/items/$id/.write`, 15 editable field validators, `recordId/.validate`. Đường mới gồm `editProofs`, `editLocks`, `freezeControl`, `freezeReceipts`. Đây mới chỉ là diff cấu trúc **với file rules-live trên máy**; người vận hành **chưa chứng minh bản này trùng stable Rules đang áp dụng thật**.
