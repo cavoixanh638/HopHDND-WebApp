@@ -1,5 +1,5 @@
 import {initializeApp} from 'firebase/app';
-import {connectAuthEmulator,getAuth,initializeAuth,indexedDBLocalPersistence,browserLocalPersistence,inMemoryPersistence,signInAnonymously,type Auth} from 'firebase/auth';
+import {connectAuthEmulator,getAuth,initializeAuth,indexedDBLocalPersistence,browserLocalPersistence,inMemoryPersistence,setPersistence,signOut,signInAnonymously,type Auth} from 'firebase/auth';
 import {connectDatabaseEmulator,forceLongPolling,getDatabase} from 'firebase/database';
 import {firebaseConfig} from '../data/firebase-config';
 import {markStartup} from '../data/startup-timings';
@@ -14,6 +14,7 @@ import {markStartup} from '../data/startup-timings';
  */
 let services:ReturnType<typeof createServices>|null=null;
 let anonymousTask:Promise<void>|null=null;
+let guestTabIdentityReady=false;
 let warmupTask:Promise<void>|null=null;
 
 function createServices(){
@@ -45,18 +46,33 @@ function createServices(){
 export function getFirebaseServices(){
   return services??(services=createServices());
 }
+/**
+ * Each anonymous editing tab needs an independent Firebase Auth principal.
+ * Never reuse an anonymous login persisted from older versions/another tab.
+ * A tab-local UID is stronger than a client-generated session UUID but does
+ * not turn a Google/admin UID shared across tabs into separate principals.
+ */
 export function ensureGuestAuth(auth:Auth):Promise<void>{
-  if(auth.currentUser)return Promise.resolve();
+  if(auth.currentUser&&!auth.currentUser.isAnonymous)return Promise.resolve();
   if(anonymousTask)return anonymousTask;
+  if(guestTabIdentityReady&&auth.currentUser)return Promise.resolve();
   markStartup('auth-start-anonymous');
-  anonymousTask=signInAnonymously(auth).then(()=>{})
-    .catch(error=>{
-      markStartup('auth-error','Đăng nhập ẩn danh không thành công');
-      throw error;
-    })
-    .finally(()=>{anonymousTask=null;});
+  anonymousTask=(async()=>{
+    // Make each page load's anonymous principal independent, including when
+    // upgrading from older releases that persisted an anonymous session.
+    const mustRotate=!guestTabIdentityReady&&auth.currentUser?.isAnonymous;
+    guestTabIdentityReady=true;
+    await setPersistence(auth,inMemoryPersistence);
+    if(mustRotate)await signOut(auth);
+    if(!auth.currentUser)await signInAnonymously(auth);
+  })().catch(error=>{
+    markStartup('auth-error','Đăng nhập ẩn danh không thành công');
+    guestTabIdentityReady=false;
+    throw error;
+  }).finally(()=>{anonymousTask=null;});
   return anonymousTask;
 }
+
 export function startFirebaseWarmup():Promise<void>{
   if(warmupTask)return warmupTask;
   const {auth}=getFirebaseServices();
@@ -64,7 +80,7 @@ export function startFirebaseWarmup():Promise<void>{
   // existing Google/admin session that Firebase is still restoring.
   warmupTask=(typeof auth.authStateReady==='function'
     ?auth.authStateReady():Promise.resolve())
-    .then(()=>auth.currentUser?undefined:ensureGuestAuth(auth))
+    .then(()=>auth.currentUser&&!auth.currentUser.isAnonymous?undefined:ensureGuestAuth(auth))
     .catch(error=>{
       markStartup('auth-error','Khởi tạo phiên Firebase không thành công');
       // The React controller still reports auth failures to the user.
