@@ -25,7 +25,7 @@ export function canonicalPermissions(input:CellPermissions|null|undefined):strin
 export function samePermissions(a:CellPermissions|null|undefined,b:CellPermissions|null|undefined):boolean {
   return canonicalPermissions(a)===canonicalPermissions(b);
 }
-interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changesJson:string;oldValuesJson:string}
+interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changes?:Partial<Record<EditableField,string|boolean>>;oldValues?:Partial<Record<EditableField,string|boolean>>;changesJson?:string;oldValuesJson?:string}
 type StoredItem=Item & {operationId:string;updatedAt:number;updatedBy:string;history?:Record<string,FirebaseEvent>};
 export const firebaseAdmin=(user:Pick<User,'email'|'emailVerified'|'providerData'>|null)=>!!user&&user.email===FIREBASE_ADMIN_EMAIL&&user.emailVerified&&user.providerData.some(provider=>provider.providerId==='google.com');
 export const mayEdit=(permissions:CellPermissions,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true);
@@ -78,8 +78,18 @@ export class FirebaseRepository implements Repository {
           if(this.leaseManager)for(const field of fields)
             editProofs[field]=this.leaseManager.proof(patch.recordId,field);
           const next={...raw,...patch.changes,editProofs,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
+          // First-class audit values are validated by RTDB Rules against row
+          // before/after values. Opaque JSON strings cannot be validated.
+          const changed=fields.filter(field=>current[field]!==patch.changes[field]);
+          if(!changed.length){reason='Không có thay đổi dữ liệu mới cần lưu.';return undefined;}
+          const auditChanges=Object.fromEntries(changed.map(field=>[field,patch.changes[field]]));
+          const auditOldValues=Object.fromEntries(changed.map(field=>[field,current[field]]));
           const history:Record<string,FirebaseEvent>={...(raw.history??{})};
-          history[String(next.revision%50)]={operationId:patch.operationId,recordId:patch.recordId,at:serverTimestamp() as unknown as number,actor:user.uid,changesJson:JSON.stringify(patch.changes),oldValuesJson:JSON.stringify(patch.baseValues)};
+          history[String(next.revision%50)]={
+            operationId:patch.operationId,recordId:patch.recordId,
+            at:serverTimestamp() as unknown as number,actor:user.uid,
+            changes:auditChanges,oldValues:auditOldValues
+          };
           return {...next,history};
         },{applyLocally:false});
         const item=transaction.snapshot.exists()?validateFirebaseItem(transaction.snapshot.val()):undefined;
@@ -92,7 +102,11 @@ export class FirebaseRepository implements Repository {
   }
   async history(recordId:string):Promise<AuditEntry[]>{
     const raw=(await get(ref(this.database,`${this.itemPath}/${recordId}/history`))).val()??{};
-    return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),changes:JSON.parse(event.changesJson),oldValues:JSON.parse(event.oldValuesJson)}));
+    return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({
+      operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),
+      changes:event.changes??JSON.parse(event.changesJson??'{}'),
+      oldValues:event.oldValues??JSON.parse(event.oldValuesJson??'{}')
+    }));
   }
   /** Explicit admin import only. Existing IDs are never silently overwritten. */
   async importItems(items:Item[]){
