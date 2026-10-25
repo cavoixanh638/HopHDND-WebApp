@@ -197,4 +197,70 @@ begin
  end;
 end $$;
 reset role;
+
+-- Privileged code MUST NOT be API-exposed SECURITY DEFINER.
+do $$
+begin
+ if exists (
+   select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public' and p.proname like 'hdnd_%' and p.prosecdef
+ ) then raise exception 'PUBLIC_SECURITY_DEFINER_EXPOSED'; end if;
+ if not exists (
+   select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='hdnd_private' and p.proname='hdnd_save_cell_changes' and p.prosecdef
+ ) then raise exception 'MISSING_PRIVATE_AUTHORIZED_TRANSACTION'; end if;
+end $$;
+
+-- Fake JWT email or a non-Google identity must NEVER pass the admin allowlist.
+set role authenticated;
+select set_config('request.jwt.claim.sub','44444444-4444-4444-8444-444444444444',false);
+select set_config('request.jwt.claims','{"is_anonymous":false,"email":"admin@example.test"}',false);
+do $$
+begin
+ begin
+   perform public.hdnd_freeze_transition(4,'OPEN',false);
+   raise exception 'EXPECTED_FORGED_ADMIN_REJECTION';
+ exception when others then
+   if sqlerrm<>'ADMIN_REQUIRED' then raise; end if;
+ end;
+end $$;
+reset role;
+
+-- Old tab release cannot clear the lock acquired later by a different user.
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+select set_config('request.jwt.claims','{"is_anonymous":false}',false);
+select public.hdnd_freeze_transition(4,'OPEN',false);
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
+select set_config('request.jwt.claims','{"is_anonymous":true}',false);
+do $$
+declare t uuid;
+begin
+ select token into t from qa_lease where id=1;
+ if not public.hdnd_release_cell('demo-1','note',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',t)
+   then raise exception 'LEASE_RELEASE_FAILED'; end if;
+end $$;
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',false);
+insert into qa_lease(id,token,session_id)
+select 2,(p->>'token')::uuid,(p->>'session')::uuid
+from (select public.hdnd_acquire_cell('demo-1','note','short',
+ 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') p) v;
+select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false);
+do $$
+declare old_token uuid;
+begin
+ select token into old_token from qa_lease where id=1;
+ if public.hdnd_release_cell('demo-1','note',
+     'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',old_token)
+   then raise exception 'STALE_TAB_RELEASED_NEW_LEASE'; end if;
+end $$;
+reset role;
+do $$
+begin
+ if (select token from public.hdnd_cell_locks where record_id='demo-1' and field_key='note')
+   is distinct from (select token from qa_lease where id=2)
+ then raise exception 'NEW_SESSION_LEASE_CORRUPTED'; end if;
+end $$;
+
 select 'SUPABASE_POSTGRES_SYNTHETIC_SECURITY_PASS' result;
