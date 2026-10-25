@@ -1,3 +1,12 @@
+## 25/10/2026 — Bằng chứng người vận hành: hai bản DB + bản Rules JSON kiểm tra đạt (chưa GO)
+- Người vận hành trên Windows đã xác nhận cả ba file trong thư mục riêng tư trên máy (không upload lên GitHub): `database-1.json` **56.185 bytes**, `database-2.json` **56.185 bytes**, `rules-live.json` **24.497 bytes**. Cả ba `ConvertFrom-Json` thành công; file Rules có thuộc tính `rules`.
+- Hai bản Database SHA256 cùng bằng `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- File Rules (người vận hành chép từ Firebase Console) SHA256 bằng `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`.
+- **Phân loại chứng cứ:** `DATA_EXPORT_JSON_AND_MATCH=USER_REPORTED_PASS`; `RULES_FILE_JSON_AND_HASH=USER_REPORTED_PASS`. **Chưa** chứng minh file Rules thực sự khớp phiên bản Published tại thời điểm kiểm tra bằng readback độc lập. **Chưa** thử restore một bản backup lên môi trường cô lập hoặc chạy kiểm thử staging với hai tài khoản.
+- **Quyết định:** giữ PR #71/#72 Draft, chưa deploy Rules, chưa chuyển `dataSource=primary`, chưa merge hoặc ghi dữ liệu production. Tiếp theo: xem metadata backup không tiết lộ nội dung, so Rules hiện hành và candidate ở máy riêng tư, restore drill trên emulator.
+
+---
+
 ## 25/10/2026 — Người vận hành đã thực hiện hai lượt sao lưu READ-ONLY RTDB (chứng cứ do người dùng cung cấp)
 - Firebase CLI của máy quản trị nhận đúng project `hophdnd-8b7b2`, instance `hophdnd-8b7b2-default-rtdb`.
 - Người vận hành đã chạy thành công `firebase database:get /` hai lần, xuất ra hai JSON riêng tư và `Get-FileHash -Algorithm SHA256` cho ra **cùng một digest** `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
