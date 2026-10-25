@@ -31,9 +31,15 @@ Mở cùng WebApp `pages.html` trong Chrome bình thường và Microsoft Edge (
 
 Chờ dòng `LOCAL_PRIMARY_STAGING_SEED_PASS` và Vite thông báo local URL. Giữ PowerShell đó mở trong thời gian thử; URL thực tế là **http://127.0.0.1:5173/pages.html**. Toàn bộ dịch vụ chỉ bind `127.0.0.1`; không mở cho mạng cơ quan hay Internet. **Không** thay `demo-hdnd` bằng Firebase project production.
 
+## Cập nhật quan trọng — danh tính nhân viên Google và quyền cấp theo UID
+
+Sau bản security hardening mới nhất, **anonymous Firebase sessions chỉ đọc**. Checklist cũ yêu cầu hai anonymous sessions sửa dữ liệu không còn hợp lệ. Mỗi editor phải đăng nhập Google thông qua Auth Emulator (màn hình provider giả lập), dùng UID riêng được admin cấp ở `Tài khoản Firebase` trước khi kiểm tra nội dung `note` và `specificProgress`. Admin phải đăng nhập bằng account khớp với quy tắc admin trên emulator. Nếu không hoàn thành luồng giả lập Google, **không kết luận browser edit PASS**; chạy suite Auth/Rules Emulator CI đã có bằng chứng, và thực hiện nghiệm thu browser với 2 Google UIDs ở release window.
+
+Cách thử mới: mở browser A và B, nhấn **Đăng nhập Google nhân viên**, ghi lại UID A, UID B (phải khác nhau), admin thêm cả hai UID trong mục **Nhân viên được phép chỉnh sửa**, sau đó thực hiện mục 2–4 bên dưới. Nếu chỉ mở tab anonymous, chỉ xác nhận VIEW/READ-ONLY chứ không thử lưu. Không nhấn nút nhập tự động từ bản mirror cũ; UI này đã được loại bỏ để tránh nhập bản sao lỗi thời.
+
 ## Checklist nghiệm thu
 
-1. Mở `http://127.0.0.1:5173/pages.html` trong trình duyệt A (Chrome thường) và B (Edge hoặc Chrome Ẩn danh), chờ kết nối Firebase. Cả hai phải hiển thị ba bản ghi **giả** và nhãn **Firebase Database · nguồn chính**. Nếu thấy dữ liệu công việc thật hoặc nguồn Sheets thì **DỪNG**; môi trường chưa đúng.
+1. Mở `http://127.0.0.1:5173/pages.html` trong trình duyệt A (Chrome thường) và B (Edge hoặc Chrome Ẩn danh), chờ kết nối Firebase. Cả hai phải hiển thị ba bản ghi **giả** và nhãn **Firebase Database · nguồn chính**; chưa đăng nhập Google và chưa được cấp UID thì **chỉ được xem**. Nếu thấy dữ liệu công việc thật hoặc nguồn Sheets thì **DỪNG**; môi trường chưa đúng.
 2. A sửa `Ghi chú` (`note`) ở cùng một dòng mẫu, nhấn Lưu, đợi tín hiệu lưu thành công. Trong B không tải lại, nội dung phải đổi sang giá trị A vừa lưu. Ghi nhận thời gian bắt đầu và lúc nội dung hiện trên B (không suy diễn tốc độ từ UI).
 3. A bắt đầu sửa một ô `note`, giữ editor mở. B thử cùng ô: phải nhận thông báo ô đang được sửa, không được ghi đè. B vẫn phải có thể thử sửa `specificProgress` cùng dòng (nếu đã được cấp quyền).
 4. Lưu từ B trong `specificProgress`, kiểm A tự nhận giá trị mới. Mất mạng/đóng tab khi còn bản nháp không được báo lưu thành công; những bản nháp này không tính vào dữ liệu chung.
