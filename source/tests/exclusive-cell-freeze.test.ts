@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set} from 'firebase/database';
+import {get,ref,set,update} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
@@ -51,6 +51,15 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(await activeEditLeaseCount(guest('a') as never)).toBe(2);
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();await otherTab.dispose();
+  });
+  it('rejects forging a longer edit category inside an active lease',async()=>{
+    const a=manager('a');
+    await a.acquire('r1','progressParty','status');
+    const at=ref(guest('a') as never,lockPath('r1','progressParty'));
+    const before=(await get(at)).val();
+    await assertFails(update(at,{kind:'long',revision:before.revision+1}));
+    expect((await get(at)).val().kind).toBe('status');
+    await a.dispose();
   });
   it('server accepts separate fields on one row, rejects forged writes and rejects no-lease admin write',async()=>{
     const a=manager('a'),b=manager('b'),writerA=repo('a',a),writerB=repo('b',b);
