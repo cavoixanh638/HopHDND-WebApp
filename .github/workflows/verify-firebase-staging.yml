@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - "source/scripts/seed-local-staging.mjs"
-      - "source/scripts/staging-emulator/**"
+      - "source/firebase.staging.json"
       - "source/src/data/**"
       - "source/firebase/database.exclusive-candidate.rules.json"
       - ".github/workflows/verify-firebase-staging.yml"
@@ -36,4 +36,4 @@ jobs:
             exit 1
           fi
       - name: Seed synthetic primary rows under Auth and Database Emulator
-        run: npx firebase emulators:exec --project demo-hdnd --only database,auth --config scripts/staging-emulator/firebase.json "node scripts/seed-local-staging.mjs"
+        run: npx firebase emulators:exec --project demo-hdnd --only database,auth --config firebase.staging.json "node scripts/seed-local-staging.mjs"
