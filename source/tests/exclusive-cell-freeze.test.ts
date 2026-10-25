@@ -184,6 +184,26 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect((await get(ref(admin() as never,'hdnd/items'))).exists()).toBe(false);
   });
 
+  it('rejects ghost metadata-only revisions and forged audit without a changed leased field',async()=>{
+    const client=guest('forger');
+    const original=(await get(ref(client as never,'hdnd/items/r1'))).val();
+    const forgedId='forged-metadata-only-2';
+    await assertFails(update(ref(client as never,'hdnd/items/r1'),{
+      revision:original.revision+1,
+      operationId:forgedId,
+      updatedAt:{'.sv':'timestamp'},
+      updatedBy:'forger',
+      history:{2:{
+        operationId:forgedId,recordId:'r1',at:{'.sv':'timestamp'},
+        actor:'forger',changesJson:JSON.stringify({note:'fake record'}),
+        oldValuesJson:JSON.stringify({note:original.note})
+      }}
+    }));
+    const after=(await get(ref(client as never,'hdnd/items/r1'))).val();
+    expect(after.revision).toBe(original.revision);
+    expect(after.operationId).toBe(original.operationId);
+    expect(after.history?.['2']).toBeUndefined();
+  });
   it('publishes a server-ACKed edit to two other accounts via live RTDB onValue, without reloading',async()=>{
     const session=manager('a');
     const writer=repo('a',session);
