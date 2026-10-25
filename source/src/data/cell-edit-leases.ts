@@ -102,6 +102,24 @@ export class CellEditSessionManager {
   private failed=new Map<string,string>();
   constructor(private database:Database,private viewer:()=>User|null){}
   private key(id:string,field:EditableField){return id+'|'+field;}
+  private draftKey(id:string,field:EditableField){
+    return 'hdnd.primary.unsaved-cell.v1:'+this.viewer()?.uid+':'+id+':'+field;
+  }
+  /** Recovery is a local checkpoint, NEVER a database acknowledgement. */
+  preserveDraft(id:string,field:EditableField,value:unknown){
+    try{globalThis.localStorage?.setItem(this.draftKey(id,field),
+      JSON.stringify({savedAt:Date.now(),value}));return true;}catch{return false;}
+  }
+  recoverDraft(id:string,field:EditableField):string|null{
+    try{
+      const raw=globalThis.localStorage?.getItem(this.draftKey(id,field));
+      const parsed=raw?JSON.parse(raw):null;
+      return typeof parsed?.value==='string'?parsed.value:null;
+    }catch{return null;}
+  }
+  private clearDraft(id:string,field:EditableField){
+    try{globalThis.localStorage?.removeItem(this.draftKey(id,field));}catch{}
+  }
   has(id:string,field:EditableField){return this.held.has(this.key(id,field));}
   isPending(id:string,field:EditableField){return this.held.get(this.key(id,field))?.pending===true;}
   proof(id:string,field:EditableField){return this.held.get(this.key(id,field))?.lease.token??null;}
@@ -126,10 +144,17 @@ export class CellEditSessionManager {
   async finish(id:string,field:EditableField){
     const key=this.key(id,field),entry=this.held.get(key);
     if(!entry)return;
+    this.clearDraft(id,field);
     clearInterval(entry.renewTimer);this.held.delete(key);
     await releaseCellLease(this.database,entry.lease,id,field);
   }
-  async cancel(id:string,field:EditableField){await this.finish(id,field);}
+  async cancel(id:string,field:EditableField){
+    // Cancel must NEVER clear an unfinished local text draft.
+    const key=this.key(id,field),entry=this.held.get(key);
+    if(!entry)return;
+    clearInterval(entry.renewTimer);this.held.delete(key);
+    await releaseCellLease(this.database,entry.lease,id,field);
+  }
   async dispose(){
     const active=[...this.held.values()];
     this.held.clear();
