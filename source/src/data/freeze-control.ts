@@ -51,7 +51,11 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
 export async function activeEditLeaseCount(database:Database):Promise<number>{
   const raw=(await get(ref(database,'hdnd/editLocks'))).val();
   if(!raw||typeof raw!=='object')return 0;
-  const now=Date.now()+Number((await get(ref(database,'.info/serverTimeOffset'))).val()??0);
+  const offset=await new Promise<number>((resolve,reject)=>{
+    onValue(ref(database,'.info/serverTimeOffset'),snap=>resolve(Number(snap.val()??0)),
+      reject,{onlyOnce:true});
+  });
+  const now=Date.now()+offset;
   return Object.values(raw as Record<string,Record<string,{expiresAt:number}>>).reduce(
     (sum,fields)=>sum+Object.values(fields??{}).filter(lock=>Number(lock?.expiresAt)>now).length,0);
 }
