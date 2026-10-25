@@ -260,6 +260,15 @@
         "$other": {
           ".validate": false
         }
+      },
+      "freezeReceipts": {
+        "$epoch": {
+          ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.exists() && newData.exists() && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/freezeControl/epoch').val() + '' === $epoch",
+          ".validate": "newData.hasChildren(['epoch','rows','sha256','actor','frozenAt','recordedAt']) && newData.child('epoch').val() + '' === $epoch && newData.child('rows').isNumber() && newData.child('rows').val() >= 0 && newData.child('rows').val() <= 5000 && newData.child('sha256').isString() && newData.child('sha256').val().matches(/^[0-9a-f]{64}$/) && newData.child('actor').val() === auth.uid && newData.child('frozenAt').val() === root.child('hdnd/freezeControl/closedAt').val() && newData.child('recordedAt').val() === now",
+          "$other": {
+            ".validate": false
+          }
+        }
       }
     },
     "hdndReviews": {
