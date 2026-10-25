@@ -1006,3 +1006,10 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - **Mặc định phân nhóm** toàn Bảng tổng hợp dùng `group='department'` (nhãn `Sở, ngành chủ trì`) thay vì `vpLeader`; người dùng vẫn có thể chọn Lãnh đạo VP/Phòng chuyên môn/Lãnh đạo UBND qua ô phân nhóm. Đây là state mở trang, không ghi đè bộ catalog, các bản ghi nguồn.
 - **Màu cột đầu**: đổi từ xanh ghi `#EAF1F6` sang gần trắng `#FAFBFC`, chữ `#34465A`, phân cách phải 2px `#C5D2DE`. Cột `Tổng số nội dung` giữ xanh nhạt `#E9F0FA`; cột trạng thái đỏ/vàng/xanh và `% hoàn thành` giữ nguyên màu đúng nghĩa. Không thêm gradient tại ô, không đổi kích thước cột/bảng.
 - Bảo vệ Theme1 snapshot; lớp màu mới chỉ bổ sung vào Theme2. Kiểm thử source/unit/Chrome/Firebase; Pages phải `build` và `deploy` thành công, kiểm tra JS/CSS hash trước khi báo đã lên web.
+
+
+## 25/10/2026 — Hai tab chính thành card nổi, bỏ icon
+
+- Người dùng duyệt mở rộng hai tab thành card nổi rõ ngay ở trạng thái bình thường, không còn icon; giữ tên hai bảng và nhãn "Đang xem" với slot dự phòng ở tab chưa chọn.
+- Theme2: max 980px, min-height 80px desktop, radius 16px, title 18px, shadow chủ động active/inactive; hover -3px, mobile xếp dọc. Không đổi Theme1 snapshot.
+- Code: src/app/App.tsx, src/styles/app.css, smoke browser scripts/smoke-pages-browser.mjs; mô tả/rollback tại docs/ui/Theme2-ImperialSky.md. Không đổi màu trạng thái/bảng, nguồn, dữ liệu, Firebase, quyền hay hành vi click. Chờ CI và GitHub Pages deploy success để xác nhận phát hành.
