@@ -143,8 +143,8 @@ export class CellEditSessionManager {
   }
   async finish(id:string,field:EditableField){
     const key=this.key(id,field),entry=this.held.get(key);
+    this.clearDraft(id,field); // only called after a confirmed server save
     if(!entry)return;
-    this.clearDraft(id,field);
     clearInterval(entry.renewTimer);this.held.delete(key);
     await releaseCellLease(this.database,entry.lease,id,field);
   }
