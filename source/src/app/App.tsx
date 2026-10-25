@@ -35,7 +35,8 @@ import {googleCall,isGoogleHost} from '../data/google-bridge';
 import {CONFIG_EDITOR_URL} from '../data/shared-store';
 import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
-import {mayEdit} from '../data/firebase-repository';
+import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
+import {migrateMirrorToPrimary} from '../data/firebase-primary-bootstrap';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
@@ -58,13 +59,19 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const benchNoCache=disableSessionCacheForBenchmark(typeof window==='undefined'?'':window.location?.search??'');
   const activeViewerUid=useRef<string|null>(null);
   activeViewerUid.current=firebase?.user?.uid??null;
+  const firebaseLive=useRef<FirebaseController|undefined>(firebase);
+  firebaseLive.current=firebase;
   // A/B uses the same URL, Firebase auth and confirmed admin layout, changing
   // ONLY the read-only source of rows. The actual saved source is untouched.
   const selectedSource=comparison?compareSource:firebase?.profile?.dataSource;
   const repository=useMemo<Repository>(()=>firebase
-    ?selectedSource==='database'
-      ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
-      :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
+    ?selectedSource==='primary'&&!comparison
+      ?new FirebaseRepository(firebase.database,
+        ()=>firebaseLive.current?.user??null,
+        ()=>firebaseLive.current?.permissions??{columns:{}})
+      :selectedSource==='database'
+        ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
+        :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
     :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
@@ -72,7 +79,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase?`pages:sheets:${configured.url}`:configured.url;
+  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase&&selectedSource==='primary'?'pages:primary':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
@@ -85,7 +92,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   if(!firebase||firebase.common.status==='ready')verifiedRepository.current=repository;
   const sourceReady=!firebase||firebase.common.status==='ready'||allowTemporaryLayout||
     verifiedRepository.current===repository||
-    (firebase.profile?.dataSource==='database'&&!!firebase.user);
+    (['database','primary'].includes(firebase.profile?.dataSource??'')&&!!firebase.user);
   // Fair A/B: start both data requests only after exactly the same auth+profile
   // gates. No provisional Excel request while the admin config is pending.
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
@@ -139,22 +146,40 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const common=firebase?firebase.common:googleCommon;
   const canCustomize=!comparison&&(isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config));
   const canEditDraft=!comparison&&(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
-  const changeDataSource=async(next:'excel'|'database')=>{
+  const changeDataSource=async(next:'excel'|'database'|'primary')=>{
     if(comparison)throw new Error('Đang chạy phép thử tốc độ; không thay đổi nguồn admin.');
     if(!firebase?.isAdmin||common.status!=='ready'||!firebase.profile)throw new Error('Cần quản trị và bản bố cục Firebase đã xác nhận.');
+    if(dirtyCount>0)throw new Error('Có nội dung sửa chưa lưu. Hãy giữ lại bản nháp và xử lý trước khi đổi nguồn.');
     if(next==='database')await new FirebaseMirrorRepository(firebase.database,configured).list();
+    if(next==='primary'){
+      const existing=await new FirebaseRepository(firebase.database,()=>firebase.user,()=>firebase.permissions).list();
+      if(!existing.length)throw new Error('Database chính chưa được khởi tạo. Hãy dùng chức năng chuyển dữ liệu một lần từ bản sao đã xác nhận.');
+    }
     const updated=await firebase.common.save('dataSource',next,firebase.profile.revision);
     firebaseEditRevision.current=updated.revision;
-    setLayoutMessage(next==='database'?'Đã chọn Database đã xác nhận.':'Đã chọn nguồn Excel trực tiếp.');
+    setLayoutMessage(next==='primary'?'Đã chuyển sang Firebase Database chính, cập nhật realtime.':next==='database'?'Đã chọn bản sao dữ liệu Excel trong Database.':'Đã chọn nguồn Excel dự phòng.');
+  };
+  const bootstrapPrimary=async()=>{
+    if(!firebase?.isAdmin||!firebase.connected||common.status!=='ready'||!firebase.profile)
+      throw new Error('Cần tài khoản quản trị đã kết nối và cấu hình Firebase được xác nhận.');
+    if(comparison||dirtyCount>0||workspace.protectedRecovery)
+      throw new Error('Có dữ liệu đang sửa hoặc bản nháp cần đối chiếu. Không được tự động chuyển nguồn.');
+    const result=await migrateMirrorToPrimary(firebase.database,firebase.user,configured);
+    const verified=await new FirebaseRepository(firebase.database,()=>firebase.user,()=>firebase.permissions).list();
+    if(verified.length!==result.importedCount)throw new Error('Số dòng Database chưa khớp; chưa đổi nguồn.');
+    const updated=await firebase.common.save('dataSource','primary',firebase.profile.revision);
+    firebaseEditRevision.current=updated.revision;
+    setLayoutMessage(`Đã nhập và kiểm tra ${result.importedCount} nội dung trên Firebase chính. Từ nay không đọc dữ liệu từ link Excel trong chế độ này.`);
   };
   const [sourceDiagnostic,setSourceDiagnostic]=useState('');
   const [viewerLabel,setViewerLabel]=useState('');
   useEffect(()=>{let active=true;setSourceDiagnostic('');setViewerLabel('');if(!isDemo&&isGoogleHost())void googleCall('getDashboardSourceStatus',configured).then(value=>{const v=value as {reason?:unknown;actorLabel?:unknown};if(active&&typeof v?.reason==='string')setSourceDiagnostic(v.reason);if(active&&typeof v?.actorLabel==='string')setViewerLabel(v.actorLabel);}).catch(()=>{});return()=>{active=false;};},[configured.url,isDemo]);
-  const dataSaveHint=isFirebase?'Google Sheets là nguồn chính. Sửa ô được cấp quyền chỉ để thử trên trình duyệt; không ghi Google Sheets hoặc Firebase. Nội dung sửa qua cửa sổ; Ghi chú và Tiến độ hiện tại sửa nhiều dòng trực tiếp tại ô và áp dụng vào nháp.':isDemo?'Dữ liệu mẫu: lưu chỉ giữ trong phiên thử.':(sourceDiagnostic||(repository.readOnly?'Chưa bật lưu vào file Excel nguồn. Thay đổi bạn sửa chỉ giữ trên trình duyệt này; file nguồn chưa được cập nhật.':'Lưu dữ liệu vào Excel có chiều app → file nguồn; chỉ báo thành công sau khi đọc lại xác nhận.'));
+  const dataSaveHint=isFirebase?(selectedSource==='primary'?'Dữ liệu lưu vào Firebase chính và đồng bộ realtime sau khi máy chủ xác nhận. Khách chỉ sửa ô được cấp quyền. Khi mất mạng hoặc xung đột, bản nháp được giữ.':'Đang dùng nguồn Excel hoặc bản sao chỉ đọc. Thay đổi chưa lưu chung; quản trị có thể chuyển một lần sang Firebase chính.'): isDemo?'Dữ liệu mẫu: lưu chỉ giữ trong phiên thử.':(sourceDiagnostic||(repository.readOnly?'Chưa bật lưu vào file Excel nguồn. Thay đổi bạn sửa chỉ giữ trên trình duyệt này; file nguồn chưa được cập nhật.':'Lưu dữ liệu vào Excel có chiều app → file nguồn; chỉ báo thành công sau khi đọc lại xác nhận.'));
   const editorUrl=googleCommon.config?.editorUrl||(configured.url===DEFAULT_SHEET_URL?CONFIG_EDITOR_URL:'');
   const storedCatalog = useMemo(()=>loadCatalog(sourceKey,workspace.items),[sourceKey,workspace.items]);
   const [catalogState,setCatalogState]=useState<{source:string;config:CatalogConfig}|null>(null);
   const catalog=useMemo(()=>common.config&&!isDemo?mergeCatalogItems(common.config.catalogs,workspace.items):catalogState?.source===sourceKey?catalogState.config:storedCatalog,[common.config,isDemo,workspace.items,catalogState,sourceKey,storedCatalog]);
+  if(repository instanceof FirebaseRepository)repository.checkAssignment=item=>assignmentIssue(item,catalog)??'';
   const saveCatalogConfig=async(next:CatalogConfig)=>{if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('catalogs',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('');return;}if(!isDemo&&!privateTest){await common.save('catalogs',next);setLayoutMessage('');}else{if(!saveCatalog(sourceKey,next))throw new Error('Không lưu được danh mục trên máy. Nháp được giữ.');setCatalogState({source:sourceKey,config:next});setLayoutMessage('');}};
   const saveData = async () => { const issue = workspace.workingItems.filter(item => {const changes=workspace.drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item => assignmentIssue(item,catalog)).find(Boolean); if(issue){setLayoutMessage(issue);return false;} return workspace.save(); };
   const updateDataDraft=(id:string,changes:Changes)=>{
@@ -226,7 +251,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     setConfigured(config); setRepository(!firebase&&isGoogleHost()&&window.HDND_EXCEL_ENABLED===true&&window.HDND_SOURCE===config.url?new ExcelRepository(config):new SheetsRepository(config,snapshot)); setSelection(null); setHistory(null);
   };
   const warnings = repository instanceof SheetsRepository ? repository.snapshot?.warnings ?? [] : repository instanceof ExcelRepository?repository.warnings:[];
-  const sourceLabel = comparison?(compareSource==='excel'?'Google Sheets/Excel · so sánh':'Firebase Database · so sánh'):isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase Database':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
+  const sourceLabel = comparison?(compareSource==='excel'?'Google Sheets/Excel · so sánh':'Firebase Database · so sánh'):isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='primary'?'Firebase Database · nguồn chính':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase · bản sao Excel':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
   const listPage=page==='items'||page==='items-customize'||page==='items-permissions';
   const anonymousVisitor=isFirebase&&!firebase!.isAdmin&&(!firebase!.user||firebase!.user.isAnonymous);
   const guestMayEdit=anonymousVisitor&&!firebase!.editingLocked&&!workspace.protectedRecovery&&
@@ -361,7 +386,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {!anonymousVisitor&&workspace.autosaveMessage && <p className="muted" role="status">{workspace.autosaveMessage}</p>}{!anonymousVisitor&&layoutMessage && <p className="notice" role="status">{layoutMessage}</p>}
       {!anonymousVisitor&&warnings.length > 0 && <details className="notice source-warnings"><summary>{warnings.length} cảnh báo về dữ liệu nguồn</summary><ul>{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details>}
       {anonymousVisitor&&page==='items'&&(!firebase!.connected||!firebase!.controlReady||firebase!.editingLocked||!guestMayEdit)&&<p className="guest-rights-hint" role="status">{!firebase!.connected?'Chưa kết nối Firebase để kiểm tra quyền sửa.':!firebase!.controlReady?'Đang đọc trạng thái quyền sửa.':firebase!.editingLocked?'Quản trị đang khóa chế độ sửa thử.':'Chưa có ô nào được cấp quyền sửa cho tài khoản khách trên dữ liệu đang xem. Nếu quản trị vừa cấp quyền, hãy bấm Làm mới dữ liệu và kiểm tra lại quyền.'}</p>}
-      {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đã sửa thử trên máy`: `${dirtyCount} nội dung đã sửa, chưa lưu vào ${isDemo?"dữ liệu mẫu":"file nguồn"}`}</strong><span> Phần sửa đang giữ trên trình duyệt này; báo cáo vẫn dùng dữ liệu từ nguồn.</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ giữ thay đổi thử trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Thử lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
+      {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đã sửa thử trên máy`: `${dirtyCount} nội dung đã sửa, chưa lưu vào ${isDemo?"dữ liệu mẫu":"file nguồn"}`}</strong><span> Phần sửa đang giữ trên trình duyệt này; báo cáo vẫn dùng dữ liệu từ nguồn.</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ giữ thay đổi thử trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
       {page === 'overview' && <>
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang thực hiện', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
         
@@ -381,7 +406,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
-      {page==='connection'&&isFirebase&&<FirebasePanel dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
+      {page==='connection'&&isFirebase&&<FirebasePanel dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={bootstrapPrimary} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
