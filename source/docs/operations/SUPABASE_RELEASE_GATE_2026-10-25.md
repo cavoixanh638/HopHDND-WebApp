@@ -1,0 +1,43 @@
+# HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
+
+**Ngày lập:** 25/10/2026 · **Phạm vi:** nhánh `feat/supabase-safe-migration-20261025` · **QUYẾT ĐỊNH HIỆN TẠI: NO-GO PRODUCTION**.
+
+> Chỉ tệp này được cập nhật làm trạng thái cổng phát hành Supabase. Tài liệu kiến trúc: [ADR Supabase](../decisions/SUPABASE_PRIMARY_2026-10-25.md), [kế hoạch + bảng đối chiếu](SUPABASE_MIGRATION_PLAN_2026-10-25.md). Đích cuối cùng WebApp-only; Excel/Google Sheets hiện tại chỉ là biện pháp tạm thời của nhân viên trong lúc lập trình.
+
+## Kiểm kê chứng cứ và người duyệt
+
+| Cổng | Điều kiện bắt buộc | Trạng thái ngày 25/10 | Nguồn chứng cứ |
+|---|---|---|---|
+| G0 code isolated | Không thay main/Pages/Firebase production; nhánh riêng, PR Draft | PASS: nhánh riêng | [ADR](../decisions/SUPABASE_PRIMARY_2026-10-25.md) |
+| G1 schema/RLS/RPC | SQL chạy trên Supabase staging; hạn chế quyền; test ẩn danh, Google, admin, guest, tấn công API | **HOLD** | `source/supabase/migrations` mới là code; chưa chạy staging |
+| G2 chức năng | Giữ 15 trường, 5 báo cáo, popup, màu, quyền chi tiết, layout, nhập xuất, lịch sử, checkpoint, trạng thái chốt | **HOLD** | Test TypeScript/Chrome/Supabase phải PASS |
+| G3 concurrency | 2–3 tài khoản/2 tab cùng UID; khóa khác ô, chặn trùng ô; mất mạng, timeout, replay, quyền đổi giữa lúc edit | **HOLD** | Chưa có Supabase staging |
+| G4 xác thực | Google provider xác minh thực; guest anonymous; admin allowlist; chặn caller giả email/UID/token; không lộ secret | **HOLD** | Chưa cấu hình Auth staging |
+| G5 hiệu năng | A/B p50/p95 cùng máy/mạng/cache, cold auth, first-data-painted, lưu và đồng bộ; quota free | **HOLD** | Chưa đo, không được nói Supabase nhanh hơn |
+| G6 sao lưu | PostgreSQL backup riêng tư, tự động hóa ngoài gói Free nếu khả thi, restore trên staging cách ly, checksum và quyền truy cập | **HOLD** | Chưa có database thật/backup |
+| G7 dữ liệu khởi tạo | Người quản trị xác nhận ảnh chụp cuối cùng một lần; đủ ID/15 trường; đích rỗng; giữ lịch sử cần thiết; đọc lại hash | **HOLD** | CHỈ KIỂM LÚC CUTOVER |
+| G8 xác nhận phát hành | GO tường minh của chủ dự án, phương án rollback/tiêu chí dừng và triển khai có kiểm soát | **HOLD** | Chưa có quyết định GO |
+
+**Không phê duyệt cutover chỉ vì CI pass hoặc vì schema đã commit.** Trước khi đổi source, hoàn thành tất cả cổng và ghi link tới log/commit/ảnh hoặc xác nhận người vận hành; tuyệt đối không đưa JSON, mật khẩu, khóa DB, token, email nhân sự lên tài liệu public.
+
+## Sổ trạng thái
+- **25/10 — Đã tạo nhánh riêng từ PR #72 (lúc tách: `3683ce487743b0b37903f5ff310149d13068d4a2`) và ADR:** Supabase đã được chủ dự án chọn là hướng đích. Lịch sử PR #71/#72 Firebase còn để truy vết, không được ngầm merge/cutover.
+- **25/10 — SQL PostgreSQL đầu tiên:** schema/RPC server-side đã commit ở `source/supabase/migrations/202610250001_hophdnd_core.sql`. Đây là **source code chưa nghiệm thu SQL runtime**, phải rà soát bảo mật độc lập và chạy với database test.
+- **Staging Supabase:** chưa tạo/kết nối bằng công cụ của phiên làm việc; không có URL, anon/publishable key, OAuth, backup, benchmark hoặc bằng chứng integration.
+- **Firebase production:** không chỉnh Rules, không ghi dữ liệu và không đổi profile/nguồn bởi công việc Supabase này.
+
+## Quy trình phát hành an toàn (sau khi đạt các cổng)
+1. Chụp snapshot cuối cùng **một lần**, duyệt nguồn có ID bất biến; backup Firebase cấu hình/dữ liệu hiện còn và backup Supabase staging.
+2. Khóa ghi WebApp hiện hành, xử lý toàn bộ nháp đang mở, xác nhận đích Supabase trống và kiểm duyệt tài khoản admin. Không chạy đồng bộ định kỳ Excel→Supabase.
+3. Import một lần qua thủ tục có khóa release gate, không overwrite, kiểm count + SHA/giá trị từng trường. Bất kỳ sai biệt nào = STOP; không tự thêm/bớt hồ sơ.
+4. Đổi cấu hình nguồn trên một build Pages đã được test và QA; xác thực người dùng; kiểm 2–3 tài khoản và ghi/đọc; chỉ sau đó mở sửa.
+5. Nếu sai dữ liệu, quyền, audit, tốc độ vượt ngưỡng đã chọn hoặc lỗi đồng bộ: ngừng ghi, bảo toàn các thao tác mới và nháp, chuyển về chế độ an toàn; **không** tự động đẩy dữ liệu Supabase ngược Firebase.
+
+## Các lỗi đã biết phải kiểm khi viết code
+- Câu lệnh SQL client không được cho phép UPDATE/INSERT vào bảng trực tiếp, kể cả guest có JWT.
+- Security definer functions cần `set search_path=''`, schema qualify, revoke EXECUTE khỏi PUBLIC/anon.
+- Supabase anonymous users dùng vai trò SQL `authenticated`, cần phân biệt bằng JWT `is_anonymous`.
+- Frontend không được truyền quyền admin/UID từ localStorage vào RPC như danh tính được tin cậy.
+- Realtime chỉ đăng ký business rows, không broadcast khóa token/ẩn danh tính ngoài phạm vi cần thiết.
+- Không xóa nháp/checkpoint sau timeout hoặc trạng thái unknown; idempotency dùng UUID operationId.
+- Gói Supabase Free có giới hạn và có thể pause khi ít hoạt động, quy trình backup miễn phí phải thử restore.
