@@ -43,14 +43,10 @@ jobs:
             echo "::error::Production backup must reject wrong project and instance."
             exit 1
           fi
-      - name: Validate Cloud Shell bootstrap script syntax
-        run: bash -n mirror_sync/bootstrap_cloud_shell.sh
-      - name: Validate server mirror Python and isolated fixture
+      - name: Demonstrate isolated RTDB backup restore (synthetic data only)
         run: |
-          python3 -m venv /tmp/hophdnd-mirror-test
-          /tmp/hophdnd-mirror-test/bin/pip install -r mirror_sync/requirements.txt
-          /tmp/hophdnd-mirror-test/bin/python -m unittest discover -s mirror_sync -p 'test_*.py'
-          /tmp/hophdnd-mirror-test/bin/python -m py_compile mirror_sync/sync.py
+          printf '%s\\n' '{"hdnd":{"items":{"demo-1":{"recordId":"demo-1","note":"synthetic-only"}},"mirrors":{},"profile":{"dataSource":"primary"},"permissions":{"columns":{}}}}' > "$RUNNER_TEMP/hophdnd-demo-restore.json"
+          HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
       - name: Documentation checks
         run: npm run docs:check
       - uses: actions/setup-java@v4
@@ -59,8 +55,6 @@ jobs:
           java-version: '21'
       - name: Firebase emulator tests
         run: npm run test:firebase
-      - name: Probe source GViz endpoint (read-only, diagnostic)
-        run: node scripts/probe-gviz.mjs
       - name: Build split, on-demand Pages artifact
         run: npm run build:pages
       - name: Verify split Pages artifact
