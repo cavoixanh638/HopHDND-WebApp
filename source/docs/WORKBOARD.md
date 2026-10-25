@@ -1,3 +1,15 @@
+## Công việc vận hành đang mở — 25/10/2026
+| Mã | Owner | Trạng thái | Đầu ra / blocker |
+|---|---|---|---|
+| HDND-DB-PRIMARY | Repo implementer + admin Firebase | **DRAFT / HOLD** | PR #71; cần backup Rules+DB, xác nhận đích rỗng, import một lần, readback và chuyển profile |
+| HDND-CELL-LOCK | Repo implementer / reviewer độc lập | **DRAFT / TEST** | PR #72; hoàn thiện security Rules, thử 2 UID + 2 tab đồng UID, grant/revoke và popup/IME |
+| HDND-FREEZE | Repo implementer + admin Firebase | **DRAFT / HOLD** | DRAINING, FROZEN, receipt; cần chứng minh không còn ghi sau freeze và cách xử lý khi admin đóng tab |
+| HDND-RELEASE | Admin Firebase (quyết định production) | **NO-GO** | Đối chiếu Rules thật, sao lưu/khôi phục, nghiệm thu staging, ghi bằng chứng và rollback trước merge/deploy |
+
+**Nguồn điều hành:** [Cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Quy tắc: không ghi dữ liệu production khi chưa có hai bản sao lưu xác nhận và quyết định rõ ràng; mỗi báo cáo PASS phải kèm exact commit và CI. Lịch sử phân công cũ bên dưới được giữ để tra cứu.
+
+---
+
 # Điều phối triển khai
 
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.

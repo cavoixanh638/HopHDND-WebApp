@@ -1,3 +1,10 @@
+## Hướng dẫn dự kiến: khóa ô và chốt dữ liệu trên Firebase (25/10/2026, CHƯA MỞ)
+**Người sửa:** tại chế độ `Database chính` đã kích hoạt, bấm ô hoặc mở danh sách để xin quyền giữ ô. Khi người khác đang sửa sẽ thấy trạng thái khóa, không cố sửa bằng tab mới. Với dropdown, chỉ lựa chọn thực sự mới tạo thay đổi; Esc/đóng chưa chọn thì bỏ. Với Ghi chú/Tiến độ hiện tại, nhập văn bản rồi rời ô hoặc Ctrl+Enter; ứng dụng chỉ coi đã lưu sau khi Firebase xác nhận. Nếu có cảnh báo mất mạng, hết hạn hoặc chốt dữ liệu, **không đóng trang Ẩn danh** khi chưa sao chép/khôi phục nháp.
+**Admin:** chọn “Tạm dừng sửa của khách” để chỉ cho khách xem trong khi admin tiếp tục làm việc; chọn “Yêu cầu lưu rồi chốt” để ngừng nhận lượt sửa mới, đợi phiên đang sửa lưu có xác nhận, sau đó chuyển FROZEN. “Đóng băng ngay” dùng khi cần chốt gấp; bản nháp chưa ACK không tính vào mốc. Phải thấy trạng thái **Đã đóng băng** và biên nhận số dòng/hash mới coi là chốt. Nếu đóng tab trong khi DRAINING, đăng nhập lại để kiểm tra và hoàn tất — chưa có tự chốt máy chủ khi không có tab admin.
+**Khi mở lại:** không tự phát tán bản nháp cũ; người dùng xem giá trị mới nhất, đối chiếu rồi mới xác nhận lại. Những thao tác này **chưa có trên trang production**, vui lòng tiếp tục sử dụng hướng dẫn hiện hành bên dưới cho đến khi nghiệm thu. [Điều kiện phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 ## Điều chỉnh độ rộng và lịch sử Ghi chú/Tiến độ hiện tại (23/10/2026)
 
 - Cột **ID** mặc định chỉ 68px. Khi admin kéo rộng một cột, hệ thống **thu nhỏ đúng phần tăng tương ứng ở cột cuối cùng đang hiển thị**; khi thu hẹp một cột, phần giảm được **cộng vào cột cuối**. Các cột ở giữa giữ nguyên. Vì cột cuối làm nơi bù, không chỉnh trực tiếp mép ngoài của cột cuối. Khi một trong hai cột đạt giới hạn 60–1600px, phần kéo dừng; nếu bảng rộng hơn màn hình vẫn có thanh cuộn ngang.

@@ -1,3 +1,8 @@
+## Hồ sơ hệ thống mới cần đọc trước khi phát hành (25/10/2026)
+**[Cổng phát hành Firebase chính, khóa ô, đóng băng — GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md)** là điểm vào vận hành chính thức cho PR #71/#72 (Draft). [Thiết kế khóa và đóng băng](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md) · [Quy trình thao tác](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md). Những mục nói “Sheets là nguồn chính” bên dưới thể hiện bản production cũ/lịch sử; đích dài hạn là Firebase `hdnd/items` sau migration được xác nhận. **Chưa deploy Firebase production.**
+
+---
+
 # Chỉ mục tài liệu dự án HopHDND
 
 Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x–0.7.0 mô tả mốc quá khứ có thể còn ví dụ A–P/16 cột; mọi việc đang sửa phải ưu tiên Excel A–O mới và các đoạn 19/10/2026 trong tài liệu nguồn chuẩn. Lịch sử chat đã archived chỉ truy xuất được một phần, không được coi là đã đối soát 100%.** [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.

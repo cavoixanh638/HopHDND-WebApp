@@ -1,3 +1,8 @@
+## Chuyển vai trò Excel/mirror kể từ đích kiến trúc 25/10/2026 (CHƯA CHUYỂN THẬT)
+Tài liệu dưới đây là quy trình cũ: `Excel → Firebase mirror`, Excel là nguồn chính ở mốc đã kiểm tra. **Chủ dự án đã chọn Firebase RTDB `hdnd/items` làm nguồn lâu dài.** Sau khi PR #71/#72 nghiệm thu và admin chuyển `dataSource=primary`, Excel chỉ được dùng nhập lần đầu, đối chiếu hoặc xuất/sao lưu bằng thao tác rõ ràng; Cloud Scheduler/mirror job phải được kiểm soát để không ghi đè, không coi snapshot mirror là bản chính và không tự khởi tạo lại `hdnd/items`. [Kế hoạch GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # HopHDND — Đồng bộ Excel → Firebase Database mỗi phút qua Cloud Shell
 
 Cập nhật: 23/10/2026. PR #27 đã gộp; script Cloud Shell cập nhật trong PR tiếp theo. Có **bản JSON 55 nội dung được tạo riêng ngoài repo** từ Office Excel ngày 23/10; không lưu dữ liệu nghiệp vụ lên GitHub công khai. **Chưa nạp vào RTDB production, chưa tạo Cloud Run Job hoặc Cloud Scheduler**; việc có mã nguồn không phải bằng chứng đã đồng bộ thành công. Không thay Excel gốc, không tự đổi Rules đang chạy.

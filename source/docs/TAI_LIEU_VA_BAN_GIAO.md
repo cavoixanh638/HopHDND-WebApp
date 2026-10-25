@@ -1,3 +1,12 @@
+## Bàn giao đợt kiến trúc Firebase chính/khóa ô 25/10/2026
+**Trạng thái bàn giao mã nguồn:** PR #71 + PR #72, đều **Draft**. Đã có mã nguồn, Rules ứng viên và test; chưa triển khai Database/Rules production, chưa bàn giao quyền chốt hoạt động thật.
+- Hồ sơ điều hành chuẩn: [GO/NO-GO Firebase primary](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md), [quy trình đóng băng](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md), [thiết kế quyết định](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md).
+- Tài liệu nguồn: `SYSTEM.md`, `ARCHITECTURE.md`, `FIREBASE_PAGES.md`, `TU_DIEN_DU_LIEU.md`, `REPO_MAP.md`.
+- Kiểm thử/bàn giao: `KIEM_THU_VA_NGHIEM_THU.md`, `CURRENT_STATE.md`, `WORKBOARD.md`. Quy trình khôi phục/backup nằm tại `VAN_HANH.md`.
+- Người tiếp nhận cần bảo đảm trạng thái đúng exact SHA, Rules đang chạy và bản sao lưu trước khi gộp; không ghi data thật khi chưa có GO. Dữ liệu cá nhân, nháp và khóa bí mật không được đưa vào GitHub.
+
+---
+
 # Bộ tài liệu, tra cứu và bàn giao dự án
 
 > **Quyết định tinh gọn tài liệu (16/10/2026):** Bảng “Danh mục tài liệu phải bàn giao” bên dưới phản ánh **đề xuất gốc ngày 13/10**, không còn là chỉ thị tạo mỗi dòng thành một file riêng. Quy ước cập nhật và nguồn chuẩn nằm ở [docs/README](README.md). Hiện chỉ bổ sung [VAN_HANH](VAN_HANH.md) (gộp triển khai, quay lại, sao lưu, khôi phục, xử lý sự cố) và [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). Hướng dẫn quản trị gộp trong [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md); lịch sử phiên bản trong [CURRENT_STATE](CURRENT_STATE.md); kế hoạch chuyển đổi cũ ở [KE_HOACH_VIET_LAI](KE_HOACH_VIET_LAI.md). Chỉ tách thêm nếu phát sinh nhu cầu thật, không tạo hồ sơ trùng lặp.

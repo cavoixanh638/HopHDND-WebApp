@@ -1,3 +1,11 @@
+## Hồ sơ kiểm thử khóa ô/đóng băng 25/10/2026 — KHÔNG là nghiệm thu production
+- CI SHA `527229b9919117c4ef012ce2a84fe73726895455`: [GitHub Actions #40159751225](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40159751225) PASS (unit, TypeScript, Firebase Emulator, build, Chrome smoke với dữ liệu giả). Sau đó bổ sung kiểm thử quyền chiếm khóa, ngăn phá token ở tab cùng UID và tài liệu vận hành. **Chỉ CI PASS ở exact SHA cuối mới là bằng chứng của phiên bản cuối.**
+- `tests/exclusive-cell-freeze.test.ts`: hai người cùng ô, hai tab cùng UID, hai ô khác nhau, sửa không khóa, chốt thông thường, đóng băng khẩn cấp, giới hạn thời gian và grant/guest pause. Không thay thế nghiệm thu thật bằng 2–3 tài khoản có quyền trên staging.
+- **Chưa có bằng chứng:** backup/readback Rules thật, backup/khôi phục JSON production, so sánh số dòng thật và bản nháp cục bộ, import thành công `hdnd/items`, phê duyệt biên nhận số liệu production, rollback thực.
+- [Tiêu chí GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); giữ trạng thái **HOLD/NO-GO** cho tất cả bước tác động Firebase thật trước khi điền bằng chứng.
+
+---
+
 ## Browser nghiệm thu mới: popup kéo độ rộng cột trực tiếp — 19/10/2026
 
 **PASS** [Verify #39263671680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/39263671680), exact SHA `37774e6d32d843f37337f5cb8936db2617e42d0d`, 357 unit PASS/20 skipped, 20 Firebase emulator PASS, TypeScript/build/docs/Chrome smoke PASS. `REPORT_DETAIL_DRAG_RESIZE_PASS`: Chrome CDP đặt pointer lên ranh giới cột ID trong popup, `mousePressed`/di chuyển **65px**/`mouseReleased`, assert cột **100→165px**, table width **2120→2185px**, preference `hdnd.report-detail-grid.v1` cập nhật; **không cần form nhập px**. `REPORT_DETAIL_COLUMNS_PASS`: ẩn một cột **10→9**. `REPORT_DETAIL_REOPEN_PERSISTENCE_PASS`: đóng/mở popup rồi vẫn **9 cột**, ID **165px**, thứ tự/độ rộng lấy từ cùng localStorage riêng. `BROWSER_SMOKE_PASS` giữ cả trạng thái guest không được chỉnh sửa và tooltip không lag.

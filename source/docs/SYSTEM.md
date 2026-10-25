@@ -1,3 +1,13 @@
+## Quy tắc bắt buộc về dữ liệu chính và đóng băng — 25/10/2026 (PR #71/#72, CHƯA PHÁT HÀNH)
+- Sau khi admin **chuyển nguồn và đọc lại xác nhận**, `hdnd/items` là nguồn đúng duy nhất cho mọi bảng, báo cáo và lịch sử. Excel/mirror chỉ để nhập một lần, xuất/đối chiếu hoặc dự phòng; không đồng bộ đè dữ liệu đã sửa trên Firebase.
+- Từ lúc người dùng **mở trình sửa** (kể cả dropdown đang tìm, nội dung đang gõ) phải có khóa duy nhất theo `recordId + field`, chứng minh quyền ngay trên Firebase. Không cấp khóa dựa trên dấu hover, focus cục bộ, ô hiển thị trùng, hoặc cùng UID trên hai tab. Chỉ giải phóng sau server ACK, Esc/hủy hợp lệ, hoặc TTL; khóa cũ không xóa được phiên mới.
+- Admin có **Tạm dừng khách** (admin vẫn được sửa) và **Đóng băng toàn bộ** (admin cũng không được ghi). `DRAINING`: từ chối phiên mới, cho phiên hợp lệ có trước lưu trước hạn. `FROZEN`: không nhận commit mới. Không đồng nhất “đang gõ”, “đã yêu cầu lưu” với “đã Firebase xác nhận”.
+- Chốt thông thường: yêu cầu lưu rồi đợi ACK và release, giới hạn khoảng 60 giây; nếu không hoàn tất có thể đóng băng ngay và bảo toàn nháp chưa ACK **cục bộ**, không đưa vào số liệu chốt. Dropdown chưa chọn thì Esc không ghi; text đang IME/không hợp lệ không auto-save.
+- Mọi nhánh ghi (kể cả admin và SDK/REST cũ) phải qua Security Rules/fencing. Không mở quyền ở đường cha làm vượt quyền ở con. Chuyển dữ liệu/Rules thật cần sao lưu, readback và thử nghiệm khác tài khoản.
+- Chi tiết GO/NO-GO và rollback: [Cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # SYSTEM — Quy tắc nghiệp vụ
 
 ## Quy tắc thao tác xem chi tiết trên bảng báo cáo — chốt 19/10/2026

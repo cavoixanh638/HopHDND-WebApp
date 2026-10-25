@@ -1,3 +1,8 @@
+## 25/10/2026 — Hướng phát triển Firebase nguồn chính (CHƯA PHÁT HÀNH)
+User đã chốt bỏ phụ thuộc Excel/Google Sheets sau thời kỳ nhập ban đầu. PR [#71](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) (Firebase `hdnd/items` là nguồn nghiệp vụ chính) và [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) (khóa ô per-user/tab, lưu ACK, DRAINING/FROZEN) đang **Draft**. **Main/Pages hiện hành chưa lưu sửa realtime vào Firebase chính**; không suy từ badge “Database” rằng ghi đã được bật. Triển khai Firebase production bắt buộc sao lưu và đối chiếu Rules hiện hành, import một lần, nghiệm thu nhiều tài khoản và rollback. Xem [cổng phát hành và điều kiện NO-GO](docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # Dashboard tổng hợp nội dung trình HĐND — dự án viết lại
 
 Ngày lập kế hoạch: **13/10/2026**. Theo dõi tình trạng thực tế tại [CURRENT_STATE.md](docs/CURRENT_STATE.md).

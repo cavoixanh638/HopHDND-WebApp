@@ -1,3 +1,13 @@
+## 25/10/2026 — Phát triển Firebase chính và khóa ô (KHÔNG PHẢI production)
+- **Production:** `main` vẫn `c85b16dd9b0ea3c02d2eae98d80985dc5d8de8f4` tại thời điểm lập biên bản. Dữ liệu chưa ghi realtime giữa tài khoản, nháp trình duyệt không là dữ liệu chính.
+- **PR #71:** [database-primary](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) vẫn **Draft**; nhập mirror một lần rồi chuyển `dataSource=primary`, không phụ thuộc link Google Sheets sau đó.
+- **PR #72:** [cell-leases/freeze](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) vẫn **Draft**, base là #71. Mã đã triển khai khóa ô per-field/per-tab, timeout, Firebase ACK, khôi phục nháp và OPEN/DRAINING/FROZEN cùng UI quản trị. Rules chuyên biệt **chỉ có trong source**, không ở production.
+- **Bằng chứng từng có:** CI [#40159751225](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40159751225) PASS tại SHA `527229b9919117c4ef012ce2a84fe73726895455`. Các lần bổ sung phân quyền/tài liệu **phải có CI PASS ở SHA cuối** và thử nghiệm staging trước merge; không dùng run cũ chứng minh head mới.
+- **Điểm chặn:** chưa có bản sao lưu có hash và phép thử khôi phục Database/Rules thật; chưa đối chiếu Rules production hiện tại; chưa có backend điều phối đóng băng khi tab admin đóng; chưa có nghiệm thu hai–ba phiên thật. **NO-GO** đối với chuyển nguồn/Rules/deploy production cho đến khi cổng phát hành đạt.
+- Điều hành/bàn giao/rollback: [Cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) và [Quy trình thử nghiệm](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).
+
+---
+
 ## 23/10/2026 — Cột cuối bù độ rộng, UBND trước VP, dữ liệu Tiến độ hiện tại và lịch sử 2 cột
 
 - **ID** mặc định 68px (trước 100px); cấu hình ID còn ở độ rộng mặc định cũ đúng `100`px sẽ được đưa về 68px khi đọc; độ rộng ID đã chỉnh khác 100 vẫn giữ. ID chỉ là mã tối đa 4 ký tự trong trường hợp điển hình; các mã dài vẫn có tooltip.

@@ -1,3 +1,11 @@
+## Quy tắc phát triển mới 25/10/2026: Firebase primary và bảo toàn dữ liệu
+- PR #71/#72 là kiến trúc đích, **chưa được coi là đã deploy**. Muốn phát hành phải kiểm thử đúng exact head, sao lưu/đối chiếu Firebase Rules + RTDB thực, staging 2–3 tài khoản, phê duyệt GO/NO-GO theo `docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md`.
+- Không sửa/xóa/import đè `hdnd/items`; không tự chuyển `hdnd/profile/dataSource` nếu chưa xác minh dữ liệu. Excel chỉ là nguồn tạm và bản đối chiếu sau chuyển.
+- Bắt buộc bảo vệ mọi đường ghi nghiệp vụ bằng khóa theo ô `(recordId,field)`, quyền thực, expiry/fencing, CAS và chế độ chốt cả admin. Không bỏ qua do một button/nhánh popup. Đóng băng chỉ chốt các commit đã server ACK; nháp chưa ACK phải giữ.
+- Phân biệt `editingLocked` chỉ khóa khách với `FROZEN` chặn cả admin. DRAINING có thể tồn tại nếu tab admin đóng, không tự khẳng định snapshot đã chốt. Không triển khai Rules qua cấu hình firebase.json mặc định mà chưa xác nhận candidate.
+
+---
+
 # Hướng dẫn làm việc
 
 ## 23/10/2026 — Quy tắc kiểm soát bố cục và lịch sử

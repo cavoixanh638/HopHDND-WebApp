@@ -1,3 +1,12 @@
+## Vận hành đợt chuyển nguồn/khóa ô — 25/10/2026 (HOLD)
+- **Chưa triển khai:** main/Pages và Firebase Rules production vẫn chưa chuyển theo #71/#72. PR Draft/CI thành công không đồng nghĩa dữ liệu đã được nhập hoặc chế độ sửa đã mở.
+- **Đầu mối phát hành:** [Checklist GO/NO-GO, backup Rules + RTDB, chuyển nguồn, nghiệm thu và rollback](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); [kịch bản DRAINING/FROZEN](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).
+- **Thứ tự an toàn:** bản sao Rules và toàn bộ RTDB + hash + thử đọc/khôi phục → kiểm tra Rules production mới nhất → emulator/2–3 account staging → chọn đúng candidate Rules → đọc lại Rules từ server → import mirror vào `hdnd/items` chỉ khi đích rỗng → xác nhận dữ liệu → chuyển shared profile `dataSource=primary` → thử ghi/khóa/chốt → ghi biên nhận.
+- **Không chạy** `firebase deploy --only database` từ cấu hình mặc định `source/firebase.json`; file này tham chiếu `firebase/database.rules.json` của bản Pages khóa ghi, **không** phải ứng viên `database.exclusive-candidate.rules.json`. CLI deployment ghi đè Rules hiện hành; nếu không có bản sao Rules thật và xác nhận candidate phải dừng.
+- **Rollback:** không được xóa `hdnd/items` khi đã có dữ liệu; khôi phục Rules đúng bản đã backup, đưa UI về chế độ an toàn và đối chiếu giá trị/nháp. Không công bố chốt số liệu khi chỉ ở trạng thái DRAINING.
+
+---
+
 ## BỘ MÀU LƯU RIÊNG V2 — Màu chữ tươi, nét mảnh 600 (22/10/2026)
 
 **Tên khôi phục chính thức:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2 (22/10/2026)**. Người dùng xác nhận “OK, lưu riêng các màu này”. V2 là **màu chữ trạng thái**, **không** thay nền/viền, điều khiển dropdown hay lịch sử.
