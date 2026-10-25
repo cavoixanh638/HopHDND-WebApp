@@ -1,3 +1,18 @@
+## 25/10/2026 — Kiểm soát Rules độc lập trước khi phát hành
+
+**Bổ sung bảo vệ tự động (commit `d6b4a23`):** thử Firebase Emulator dưới Rules độc quyền ứng viên: chặn sửa hàng/metadata qua đường dẫn `hdnd/items` hoặc `hdnd/items/r1` khi không có lease, kể cả tài khoản admin; chặn người dùng giả quyền Google/admin tạo dữ liệu; chặn nhập mới khi `FROZEN`. [CI #40198453823](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40198453823) **PASS**. Các bài kiểm thử không viết production.
+
+**Công cụ so sánh Rules riêng tư không đưa file lên GitHub:** `source/scripts/firebase-private-rules-compare.mjs`, chỉ đọc JSON `--live-file` từ đường dẫn tuyệt đối và candidate local, in hash canonical JSON và số lượng/đường dẫn `.read/.write/.validate` được thêm, xóa hoặc sửa, **không in biểu thức** và **không kết nối mạng**. Có fixture chặn tiết lộ biểu thức/private value; CI chạy `node --test scripts/firebase-private-rules-compare.fixture.mjs`. Chạy từ `D:\HopHDND-Firebase-QA-20261025-Retry\source` sau `git pull` vào đúng nhánh, không chạy trên thư mục chứa backup:
+
+```powershell
+Set-Location "D:\HopHDND-Firebase-QA-20261025-Retry\source"
+node scripts/firebase-private-rules-compare.mjs --live-file "D:\HopHDND-Private-Backup\2026-10-25\rules-live.json"
+```
+
+**Chưa được phép tuyên bố Rules PASS:** kết quả diff chỉ là công cụ hỗ trợ rà soát; `rules-live.json` do người vận hành lưu vẫn cần xác thực **đúng bản Published trong Firebase Console và đúng instance**. Chưa có chứng cứ staging multi-browser người thật hoặc phát hành. Do đó **NO-GO** production vẫn giữ.
+
+---
+
 ## 25/10/2026 — RESTORE_BACKUP_OPERATOR_PASS_20261025 (bằng chứng do người vận hành cung cấp)
 
 **Đã PASS cổng thử khôi phục backup dữ liệu, chỉ trên emulator demo cục bộ.** Người vận hành chạy clone `D:\HopHDND-Firebase-QA-20261025-Retry\source` với `--project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json`; sau khi cài Microsoft OpenJDK 21.0.12.1, script `firebase-backup-emulator-restore.mjs` báo `LOCAL_EMULATOR_RESTORE_DRILL_PASS (NO production writes)`, exit code 0, sau đó `HOAN THANH RESTORE DRILL`.
