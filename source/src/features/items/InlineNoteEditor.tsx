@@ -55,6 +55,10 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
       .catch(e=>setError(e instanceof Error?e.message:'Ô đang có người khác sửa.'))
       .finally(()=>setWaiting(false));
   };
+  if(!editing&&!leaseManager)return <button type="button" className="inline-note-trigger"
+    aria-label={label} onClick={()=>beginEdit(value)}>
+      <SearchHighlight value={value||'—'} query={highlightQuery}/>
+    </button>;
   if(!editing)return <span className="inline-note-entry">
     <button type="button" className="inline-note-trigger"
       aria-label={label} disabled={waiting} onClick={()=>beginEdit(value)}>
