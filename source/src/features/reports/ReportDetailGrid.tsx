@@ -399,7 +399,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     </div>
     {!readOnlyViewer&&contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
       sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
-      draftOnly sourceKind="google" onSave={value=>{
+      draftOnly={!leaseManager} sourceKind={leaseManager?'firebase':'google'} onSave={value=>{
         if(!editing||!popupMayEdit||!canEditCell(contentItem.item.recordId,contentItem.field)){
           setNotice('Ô này hiện không được cấp quyền sửa; nội dung chưa áp dụng.');
           return false;
