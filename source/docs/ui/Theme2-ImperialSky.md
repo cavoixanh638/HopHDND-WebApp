@@ -43,3 +43,17 @@
 3. Chạy CI và Chrome smoke trước khi xuất bản. Chỉ khi yêu cầu phục hồi toàn bộ ứng dụng mới cân nhắc rollback code khác, cần có phê duyệt riêng.
 
 **Theme1 là baseline mã nguồn**, không phải bản xuất mọi preset người dùng từ localStorage hoặc Firebase. Không tuyên bố snapshot này bao gồm các cấu hình runtime đó.
+
+
+## 25/10/2026 — Hai card điều hướng lớn, không icon
+
+Hai tab chính cần là **hai khối card nổi bật** ngay khi chưa hover; bỏ hoàn toàn icon bên trái. Giữ tên "Báo cáo tổng hợp" và "Danh sách các ND trình HĐND"; nhãn "Đang xem" chỉ hiện ở tab active. Tab inactive vẫn dành sẵn vùng cho nhãn (visibility:hidden) để không giật layout.
+
+- Desktop: toàn cụm tối đa 980px, hai cột bằng nhau, gap 16px; mỗi card min-height 80px, padding 16px 20px, radius 16px, title 18px/750.
+- Màu vẫn Theme2 Imperial Sky: inactive ice #F2F8FC, shadow 0 4px 14px; active gradient #245A79 → #2E6F95, shadow 0 10px 24px. Badge active trắng trong dạng pill.
+- JSX loại bỏ hoàn toàn section-card-icon, giữ title và trạng thái; hover -3 CSS px, focus-visible và reduced-motion như trước.
+- Mobile <=760px: xếp dọc, min-height 74px và max-width 480px; <=440px giảm cỡ chữ/badge; <=360px cho phép tên tab ngắt dòng tránh tràn.
+- Phạm vi chỉ Theme2 và cấu trúc tab: không sửa Theme1 snapshot, màu trạng thái, dữ liệu, quyền, Firebase, Excel hay ô bảng.
+- Chrome smoke kiểm tra zero icon, kích thước/bóng cả hai card, badge active, text 18px, hover -3px, đổi tab không đổi width/height và giữ contrast. Chỉ xác nhận phát hành khi Verify và GitHub Pages deploy đều SUCCESS; chưa coi là đã nghiệm thu trên thiết bị người dùng.
+
+Rollback: bỏ lớp "PRIMARY CARD TABS — NO ICONS" ở cuối app.css và khôi phục icon JSX qua PR, test lại. Không reset toàn repo/Theme1.

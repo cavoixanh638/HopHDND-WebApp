@@ -308,7 +308,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
           onClick={()=>{setListFramePreview(null);setPage(key);}}>
-          <span className="section-card-icon" aria-hidden="true">{key==='overview'?'▦':'▤'}</span>
           <span className="section-card-copy">
             <strong className="section-card-title">{title}</strong>
           </span>
