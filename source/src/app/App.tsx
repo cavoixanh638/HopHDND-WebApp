@@ -35,7 +35,7 @@ import {googleCall,isGoogleHost} from '../data/google-bridge';
 import {CONFIG_EDITOR_URL} from '../data/shared-store';
 import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
-import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
+import {FirebaseRepository,mayEdit,samePermissions,type CellPermissions} from '../data/firebase-repository';
 import {migrateMirrorToPrimary} from '../data/firebase-primary-bootstrap';
 import {CellEditSessionManager,type CellLeaseUiManager} from '../data/cell-edit-leases';
 import type {FirebaseController} from '../state/use-firebase';
@@ -100,7 +100,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   firebaseLive.current=firebase;
   // A/B uses the same URL, Firebase auth and confirmed admin layout, changing
   // ONLY the read-only source of rows. The actual saved source is untouched.
-  const selectedSource=resolveTabSource(tabSource,firebase?.profile?.dataSource,comparison?compareSource:null);
+  const selectedSource=resolveTabSource(tabSource==='supabase'&&!supabasePreview?null:tabSource,
+    firebase?.profile?.dataSource,comparison?compareSource:null);
   const repository=useMemo<Repository>(()=>firebase
     ?selectedSource==='supabase'&&!comparison&&supabasePreview
       ?supabasePreview
@@ -123,7 +124,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase?sourceNamespace(selectedSource,configured.url,supabaseConfig?new URL(supabaseConfig.url).hostname:'unconfigured'):configured.url;
+  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase?
+    sourceNamespace(selectedSource,configured.url,
+      (supabaseConfig?new URL(supabaseConfig.url).hostname:'unconfigured')+
+      (selectedSource==='supabase'?':'+(supabaseAccess?.userId??'unauthenticated'):'')):configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
@@ -236,10 +240,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return;
     }
-    if(leaseManager)Object.entries(changes).forEach(([field,value])=>{
-      leaseManager.preserveDraft(id,field as EditableField,value);
-      leaseManager.markPending(id,field as EditableField);
-    });
     if(selectedSource==='supabase'&&Object.keys(changes).some(field=>!canEditSupabaseCell(id,field as EditableField))){
       setLayoutMessage('Supabase chưa cấp quyền sửa ô này hoặc đang khóa chỉnh sửa.');return;
     }
@@ -249,6 +249,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       (firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field as EditableField)&&
        mayEdit(firebase.permissions,id,field as EditableField,firebase.isAdmin))
     ))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
+    if(leaseManager)Object.entries(changes).forEach(([field,value])=>{
+      leaseManager.preserveDraft(id,field as EditableField,value);
+      leaseManager.markPending(id,field as EditableField);
+    });
     workspace.update(id,changes);
   };
   const storedLayout = useMemo(() => loadReportLayout(sourceKey), [sourceKey]);
@@ -437,7 +441,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {supabasePreview?.oauthError&&<p role="alert">{supabasePreview.oauthError}</p>}
       <div className="top-actions"><button type="button" className="button ghost"
         disabled={workspace.busy||dirtyCount>0||!!leaseManager?.activeCount()}
-        onClick={()=>supabasePreview?.auth.startGoogleSignIn()}>Đăng nhập Google trên Supabase</button>
+        onClick={()=>{try{supabasePreview?.auth.startGoogleSignIn();}catch(e){setSupabaseAccessError(e instanceof Error?e.message:'Không khởi tạo được đăng nhập Google.');}}}>Đăng nhập Google trên Supabase</button>
+      {supabaseAccess?.isAdmin&&<button type="button" className="button ghost"
+        disabled={workspace.busy||dirtyCount>0||!!leaseManager?.activeCount()}
+        onClick={()=>setPage('items-permissions')}>Phân quyền ô trên Supabase</button>}
       <span className="muted">{supabaseAccess?.isAdmin?'Quyền quản trị Supabase đã xác minh':supabaseAccess?'Phiên Supabase không có quyền quản trị':'Chưa có phiên xác minh Supabase'}</span></div>
     </div>}
     {slowRealtime&&<div className="notice" role="alert">Firebase đang phản hồi chậm. Có thể do mạng hoặc giao thức kết nối. <button type="button" className="button ghost" onClick={retryWithLongPolling}>Thử kết nối tương thích</button> (sẽ tải lại trang; hãy lưu bản sửa trước khi thử).</div>}
@@ -500,7 +507,21 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         onPersistViewerLayout={isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline);}
-          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={selectedSource==='supabase'?(id,field)=>canEditSupabaseCell(id,field):isFirebase?(id,field)=>(firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field))) &&
+          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissionModeOnly={selectedSource==='supabase'&&page==='items-permissions'}
+        permissions={selectedSource==='supabase'&&supabaseAccess?.isAdmin?supabaseAccess.rights:isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined}
+        onSavePermissions={selectedSource==='supabase'&&supabaseAccess?.isAdmin?async(next:CellPermissions,expected:CellPermissions)=>{
+          if(!supabasePreview)throw new Error('Không có nguồn Supabase.');
+          const fresh=await supabasePreview.accessState();
+          if(!fresh.isAdmin||!samePermissions(fresh.rights,expected))throw new Error('Phân quyền Supabase đã thay đổi ở phiên khác. Hãy tải lại để đối chiếu.');
+          await supabasePreview.savePermissions(next,fresh.aclRevision);
+          const confirmed=await supabasePreview.accessState();
+          if(!samePermissions(confirmed.rights,next))throw new Error('Supabase chưa xác nhận phân quyền; không báo đã lưu.');
+          setSupabaseAccess(confirmed);
+        }:isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined}
+        onReloadPermissions={selectedSource==='supabase'&&supabaseAccess?.isAdmin?async()=>{
+          if(!supabasePreview)throw new Error('Không có nguồn Supabase.');
+          const current=await supabasePreview.accessState();setSupabaseAccess(current);return current.rights;
+        }:isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={selectedSource==='supabase'?(id,field)=>canEditSupabaseCell(id,field):isFirebase?(id,field)=>(firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field))) &&
         (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} leaseManager={leaseManager} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
