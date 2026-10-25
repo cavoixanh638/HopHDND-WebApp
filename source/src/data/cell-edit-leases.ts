@@ -52,7 +52,7 @@ export async function acquireCellLease(database:Database,user:User|null,session:
   // If DRAINING/FROZEN, release the newly obtained lock and fail closed.
   const state=await readFreeze(database);
   if(state.mode!=='OPEN'){
-    await releaseCellLease(database,entry).catch(()=>{});
+    await releaseCellLease(database,entry,id,field).catch(()=>{});
     throw new Error('Quản trị đang chốt số liệu, không nhận thêm lượt sửa.');
   }
   return entry;
