@@ -54,9 +54,14 @@ describe('Firebase config controller remains independent of business data',()=>{
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-    emit('hdnd/control',{revision:1,editingLocked:false});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/control',{revision:1,editingLocked:false});
+    emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/freezeControl',{mode:'DRAINING',revision:2,epoch:1,actor:'admin',changedAt:2,deadline:62,closedAt:0});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/freezeControl',{mode:'OPEN',revision:3,epoch:1,actor:'admin',changedAt:3,deadline:0,closedAt:0});
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
   });
   it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
