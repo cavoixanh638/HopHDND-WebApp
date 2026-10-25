@@ -197,7 +197,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return;
     }
-    if(leaseManager)Object.keys(changes).forEach(field=>leaseManager.markPending(id,field as EditableField));
+    if(leaseManager)Object.entries(changes).forEach(([field,value])=>{
+      leaseManager.preserveDraft(id,field as EditableField,value);
+      leaseManager.markPending(id,field as EditableField);
+    });
     if(firebase&&!firebase.isAdmin&&firebase.editingLocked){setLayoutMessage('Quản trị đã khóa chỉnh sửa trên WebApp. Bạn vẫn có thể xem và lọc dữ liệu.');return;}
     if(firebase&&Object.keys(changes).some(field=>!(
       firebase.canEdit(id,field as EditableField)||
