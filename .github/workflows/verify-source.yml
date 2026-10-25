@@ -45,7 +45,7 @@ jobs:
           fi
       - name: Demonstrate isolated RTDB backup restore (synthetic data only)
         run: |
-          printf '%s\\n' '{"hdnd":{"items":{"demo-1":{"recordId":"demo-1","note":"synthetic-only"}},"mirrors":{},"profile":{"dataSource":"primary"},"permissions":{"columns":{}}}}' > "$RUNNER_TEMP/hophdnd-demo-restore.json"
+          printf '%s\n' '{"hdnd":{"items":{"demo-1":{"recordId":"demo-1","note":"synthetic-only"}},"mirrors":{},"profile":{"dataSource":"primary"},"permissions":{"columns":{}}}}' > "$RUNNER_TEMP/hophdnd-demo-restore.json"
           HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
       - name: Documentation checks
         run: npm run docs:check
