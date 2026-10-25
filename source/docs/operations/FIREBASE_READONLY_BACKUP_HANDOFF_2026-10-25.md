@@ -1,3 +1,21 @@
+## G. Windows: khi GitHub không phân giải DNS (25/10/2026)
+
+**Bằng chứng từ PowerShell người vận hành:** `git clone` lỗi `Could not resolve host: github.com`; thư mục `D:\HopHDND-Firebase-QA-20261025\source` không tồn tại, nên `npm ci` chạy từ `C:\WINDOWS\system32` báo thiếu package-lock, rồi Firebase Emulator không tìm thấy file config. **Không có cuộc thử restore nào được thực hiện; trạng thái vẫn HOLD, không được ghi PASS.** Các lỗi sau là hậu quả của clone thất bại, không phải bằng chứng backup hỏng hay cấu hình emulator không đúng.
+
+**Chẩn đoán chỉ đọc:**
+```powershell
+Clear-DnsClientCache
+nslookup github.com
+nslookup github.com 1.1.1.1
+Test-NetConnection github.com -Port 443
+```
+
+Nếu host GitHub chưa phân giải/port 443 chưa kết nối thì dừng, kiểm DNS/VPN/proxy của chính máy; không tiếp tục chạy npm/Firebase. Không tự động đổi DNS máy cơ quan, không tắt firewall hay kiểm tra bằng cách tắt bảo vệ mạng. Khi mạng bình thường, dùng **một script block** `& { ... }` có `$ErrorActionPreference='Stop'`, kiểm `$LASTEXITCODE` sau `git clone` và `npm ci`, xác nhận tồn tại `source/package-lock.json`, `source/scripts/restore-emulator/firebase.json`, đúng thư mục `source` trước lệnh Firebase. Gõ từng dòng lệnh vào PowerShell tương tác có thể **tiếp tục sau một `throw`**, vì vậy không coi `$ErrorActionPreference='Stop'` ở prompt là cơ chế chặn cả chuỗi. Không xóa tự động bản clone dở hoặc thư mục backup riêng tư.
+
+**Bất biến an toàn:** chỉ dùng emulator `--project demo-hdnd-restore`, `--only database`, `--config scripts/restore-emulator/firebase.json` và `HDND_PRIVATE_BACKUP` trỏ tới tệp JSON ngoài repository. Không đổi demo project thành production, không gọi Firebase `database:set`/deploy. Chỉ khi xuất hiện `LOCAL_EMULATOR_RESTORE_DRILL_PASS` với backup thật mới ghi nhận tiến độ tương ứng.
+
+---
+
 ## F. Thử khôi phục có kiểm soát trên Emulator biệt lập (KHÔNG ghi Firebase thật)
 
 Đã bổ sung hai file cấu hình test trong \`source/scripts/restore-emulator/\` và script \`source/scripts/firebase-backup-emulator-restore.mjs\` trên nhánh PR #72. Bản test chỉ chạy với namespace demo \`demo-hdnd-restore\`, host \`127.0.0.1:9198\`, không đọc hay ghi Firebase production. File Rules mở tạm trong thư mục này **chỉ phục vụ Emulator demo**, tuyệt đối không deploy lên production.
