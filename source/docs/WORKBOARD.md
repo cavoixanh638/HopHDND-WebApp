@@ -1,3 +1,16 @@
+## 25/10/2026 — Điểm phối hợp duy nhất, không mở thêm luồng phát triển
+
+| Luồng / PR | Vùng sở hữu | Không được làm | Điều kiện bàn giao |
+|---|---|---|---|
+| Firebase [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) | RTDB Rules/Auth/nhân viên UID, row CAS, cell leases, freeze, local staging | Tự sửa router chọn Supabase, ghép PR #75 hoặc deploy main | Exact head, CI Firebase, nhận diện thay đổi trong file UI chung |
+| Supabase nền [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) | Postgres schema/migrations/RLS/RPC, auth và adapter riêng | Đè file Firebase/Auth từ snapshot cũ; nhập dữ liệu thật | SQL/RLS security CI, schema ABI, không lộ secret |
+| Supabase giao diện [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) (base #73) | Tab source switch, guard nháp/lease/ACK, Supabase QA read-only rồi write-path khi đủ gate | Ghi `profile.dataSource` Firebase chung khi đổi nguồn, fallback ngầm, sửa chung file không đối chiếu | Exact head, nguồn đích visible, Supabase auth/ACL/audit/realtime E2E, Firebase regression |
+| **Người tích hợp (điều phối #74)** | Quyết định hunk ở `App.tsx`, `use-workspace.ts`, `ItemList.tsx`, editors và docs; tập hợp final build | Merge độc lập/ghi đè cả file, triển khai Rules/data/web khi chưa GO | Hợp đồng chuẩn, cùng 1 SHA tích hợp và CI cả hai, browser 2–3 UID, rollback đầy đủ |
+
+**Hiện chưa có head tích hợp đã được nghiệm thu; các PR vẫn Draft.** Không tạo thêm nhiều AI-chat/workboard riêng cho từng xung đột nhỏ; ghi trạng thái/tài liệu thực hiện ngay trong [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) và [CURRENT_STATE](CURRENT_STATE.md). Rà soát PR #72/#73/#75 theo ngày/commit, không gắn nhãn hoàn thành nếu CI đầu nhánh khác mới PASS.
+
+---
+
 # Điều phối triển khai
 
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.
