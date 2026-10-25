@@ -11,7 +11,7 @@ import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../sr
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
-const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com'}};
+const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
 const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:null,
   emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]}) as User;
 const row={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
