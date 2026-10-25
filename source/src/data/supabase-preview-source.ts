@@ -147,9 +147,15 @@ export class SupabaseAnonymousPreviewAuth {
     const state=current.searchParams.get('hdnd_supabase_auth');
     if(!state)return false;
     const expected=this.storage?.getItem(this.storageKey+':oauth_state');
-    if(!expected||state!==expected)throw new Error('Supabase OAuth state không khớp; từ chối phiên đăng nhập.');
-    this.storage?.removeItem(this.storageKey+':oauth_state');
+    // Strip auth tokens from the URL in ALL outcomes, including invalid state.
     const hash=new URLSearchParams(current.hash.startsWith('#')?current.hash.slice(1):current.hash);
+    current.searchParams.delete('hdnd_supabase_auth');current.hash='';
+    window.history.replaceState(window.history.state,'',current.toString());
+    if(!expected||state!==expected){
+      this.clearSession();
+      throw new Error('Supabase OAuth state không khớp; từ chối phiên đăng nhập.');
+    }
+    this.storage?.removeItem(this.storageKey+':oauth_state');
     if(hash.has('error'))throw new Error('Google OAuth bị từ chối: '+String(hash.get('error_description')??hash.get('error')));
     const expires=Number(hash.get('expires_in'));
     const session={access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),
@@ -158,8 +164,6 @@ export class SupabaseAnonymousPreviewAuth {
       throw new Error('Google OAuth không cấp cặp token hợp lệ; từ chối phiên.');
     this.cached=session;this.blockedUntil=0;this.lastAuthError='';
     try{this.storage?.setItem(this.storageKey,JSON.stringify(session));}catch{/* in-memory only */}
-    current.searchParams.delete('hdnd_supabase_auth');current.hash='';
-    window.history.replaceState(window.history.state,'',current.toString());
     return true;
   }
   clearSession():void {
