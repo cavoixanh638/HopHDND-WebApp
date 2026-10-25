@@ -28,11 +28,20 @@ function cleanConfig(url:string,key:string):SupabasePublicConfig|null{
   }catch{return null;}
 }
 /** Explicit build-time, publicly safe settings. Missing configuration is never silently replaced. */
+// This is an explicitly PUBLIC, revocable staging API key; never a secret,
+// service_role or authenticated user's session. All rows still require RLS + JWT.
+// Cloud project is fixed to the standalone QA environment (NOT production).
+export const HDND_SUPABASE_STAGING_PUBLIC={
+  url:'https://uguhyunuzsdrkykqgdmq.supabase.co',
+  publishableKey:'sb_publishable_BEsiC_qU_lB__vjNiJxPeA_-9GBDhs3'
+} as const;
 export function readSupabasePreviewConfig():SupabasePublicConfig|null{
-  return cleanConfig(
+  const configured=cleanConfig(
     String(import.meta.env.VITE_HDND_SUPABASE_URL??''),
     String(import.meta.env.VITE_HDND_SUPABASE_PUBLISHABLE_KEY??'')
   );
+  return configured??cleanConfig(HDND_SUPABASE_STAGING_PUBLIC.url,
+    HDND_SUPABASE_STAGING_PUBLIC.publishableKey);
 }
 export function validateSupabasePreviewConfig(url:string,key:string){
   return cleanConfig(url,key);
