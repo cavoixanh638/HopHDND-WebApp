@@ -8,6 +8,8 @@ import {updateDraft} from '../src/domain/items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
 import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
+import {migrateMirrorToPrimary} from '../src/data/firebase-primary-bootstrap';
+import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
@@ -41,6 +43,26 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     });
   });
   afterAll(async()=>env?.cleanup());
+  it('accepts approved one-time primary import under exclusive candidate Rules (no live Sheets)',async()=>{
+    const source=parseSheetConfig(DEFAULT_SHEET_URL);
+    const recordId=source.spreadsheetId+':'+source.gid+':row:3';
+    const mirrored={...row,recordId,displayCode:'NQ-IM1',stt:3};
+    await env.withSecurityRulesDisabled(async context=>{
+      const db=context.database() as never;
+      await set(ref(db,'hdnd/items'),null);
+      await set(ref(db,'hdnd/mirrors/'+source.spreadsheetId+'/'+source.gid),{
+        schemaVersion:1,source:source.spreadsheetId+':'+source.gid,
+        syncedAt:'2026-10-25T00:00:00Z',sourceModifiedAt:'2026-10-24T23:00:00Z',
+        sha256:'a'.repeat(64),rows:[mirrored]
+      });
+    });
+    const result=await migrateMirrorToPrimary(admin() as never,actor('administrator',true),source);
+    expect(result).toEqual({sourceCount:1,importedCount:1});
+    const imported=(await get(ref(admin() as never,'hdnd/items/'+recordId))).val();
+    expect(imported.recordId).toBe(recordId);
+    await expect(migrateMirrorToPrimary(admin() as never,actor('administrator',true),source))
+      .rejects.toThrow(/đã có dữ liệu/);
+  });
   it('only one of two different users (or two tabs same UID) can hold the same field',async()=>{
     const a=manager('a'),b=manager('b');
     expect(await a.acquire('r1','note','multiline')).toBe(true);
