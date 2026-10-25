@@ -63,7 +63,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const emphasis=(status:string)=>emphasize
     ?' report-stage-'+reportStage(status,config)
       +((config.id==='party'&&quietPartyMilestones.has(normalizeSearch(status)))||
-          (config.id==='build'&&[quietBuildMilestone,normalizeSearch('Không phải trình')].includes(normalizeSearch(status)))
+          (config.id==='build'&&[quietBuildMilestone,normalizeSearch('Không phải trình')].includes(normalizeSearch(status)))||
+          (config.id==='party'&&normalizeSearch(status)===normalizeSearch('Không phải trình'))
         ?' report-stage-intermediate':'')
     :'';
   const widths=config.columnWidths??{};
