@@ -1,3 +1,5 @@
+> **MỐC QUYẾT ĐỊNH 25/10/2026:** chuyển hướng kiến trúc đích sang Supabase. Việc triển khai Supabase/QA/GO được quản lý **ở một cổng** [SUPABASE_RELEASE_GATE](operations/SUPABASE_RELEASE_GATE_2026-10-25.md), quyết định ở [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md). Không dùng các nhiệm vụ Firebase-only lịch sử dưới đây làm điều kiện buộc phát hành. PR #71/#72 chỉ làm cơ sở kế thừa code, **không tự merge**.
+
 ## QUYẾT ĐỊNH ĐIỀU HÀNH MỚI NHẤT — 25/10/2026: CHỈ PHÁT TRIỂN FIREBASE-ONLY
 **[Quyết định kiến trúc ưu tiên](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md)**: nhân viên cập nhật Excel/Google Sheet chỉ trong thời gian chuyển tiếp; WebApp đích dùng **duy nhất Firebase RTDB `hdnd/items`** để xem/sửa/báo cáo. Sau cutover, không đọc/ghi nghiệp vụ từ Sheets và không có đồng bộ hai chiều. **DỪNG** chuỗi nhiệm vụ giám sát/chạy theo mirror 55 dòng vs ảnh cũ 57 dòng, mốc sửa Excel và quyền chia sẻ file Excel: đây chỉ là ghi nhận lịch sử, **không được coi là blocker phát triển**. Một lần kiểm tra dữ liệu khởi tạo sẽ được thực hiện **tại thời điểm cutover**, không phải trong vòng coding.
 

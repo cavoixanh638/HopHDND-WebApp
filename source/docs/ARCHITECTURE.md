@@ -1,3 +1,5 @@
+> **QUYẾT ĐỊNH ĐÍCH ƯU TIÊN (25/10/2026):** chuyển hệ thống lưu trữ và Auth tương lai sang **Supabase PostgreSQL**; UI React/báo cáo/chức năng giữ nguyên. Tài liệu nguồn chuẩn: [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md), [mapping Supabase](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md). Chi tiết Firebase/Google Sheets dưới đây mô tả **bản hiện hành/lịch sử và PR #71/#72**, không phải quyết định mới. Chưa có cutover production.
+
 ## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)
 [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md): tương lai `App → FirebaseRepository → hdnd/items` là **đường nghiệp vụ duy nhất** cho bảng/báo cáo/thay đổi. Không duy trì kết nối GViz/Excel/Sheets hoặc mirror thành nguồn sau chuyển. Công cụ nhập mirror của PR #71 chỉ hỗ trợ **nạp ban đầu một lần khi admin duyệt dữ liệu cuối cùng**. Nhân viên vẫn sử dụng Sheet hiện tại trong thời gian phát triển; không cần so Sheet và mirror liên tục để kiểm tra tính năng. Các cảnh báo 55/57 được chuyển sang lịch sử, **không chặn công việc kỹ thuật**.
 
