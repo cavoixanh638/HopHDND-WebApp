@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
-import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-leases';
+import type {CellLeaseUiManager,EditorKind} from '../../data/cell-edit-leases';
 import type {EditableField} from '../../../shared/types';
 import './cell-picker.css';
 
@@ -14,7 +14,7 @@ type CellPickerProps = {
   highlightQuery?: string;
   disabled?: boolean;
   onChange: (value: string) => void;
-  leaseManager?:CellEditSessionManager;recordId?:string;field?:EditableField;editorKind?:EditorKind;
+  leaseManager?:CellLeaseUiManager;recordId?:string;field?:EditableField;editorKind?:EditorKind;
 };
 
 export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange, leaseManager,recordId,field,editorKind='status' }: CellPickerProps) {
