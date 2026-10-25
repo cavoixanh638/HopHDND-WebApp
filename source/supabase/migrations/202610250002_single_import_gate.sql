@@ -12,7 +12,7 @@ create table if not exists hdnd_private.import_gate (
 insert into hdnd_private.import_gate(id) values(true) on conflict do nothing;
 revoke all on hdnd_private.import_gate from public,anon,authenticated;
 
-create or replace function public.hdnd_import_once(p_rows jsonb,p_digest text)
+create or replace function hdnd_private.hdnd_import_once(p_rows jsonb,p_digest text)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
 declare g hdnd_private.import_gate%rowtype;
@@ -69,6 +69,11 @@ begin
     'gateClosed',true,'confirmedAt',clock_timestamp());
 end; $$;
 
+revoke execute on function hdnd_private.hdnd_import_once(jsonb,text) from public,anon,authenticated;
+grant execute on function hdnd_private.hdnd_import_once(jsonb,text) to authenticated;
+create or replace function public.hdnd_import_once(p_rows jsonb,p_digest text)
+returns jsonb language sql security invoker set search_path = ''
+as $ select hdnd_private.hdnd_import_once($1,$2); $;
 revoke execute on function public.hdnd_import_once(jsonb,text) from public,anon,authenticated;
 grant execute on function public.hdnd_import_once(jsonb,text) to authenticated;
 commit;
