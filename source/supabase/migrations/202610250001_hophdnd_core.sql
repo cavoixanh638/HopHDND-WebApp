@@ -105,7 +105,7 @@ returns boolean language plpgsql stable security definer set search_path = ''
 as $$
 declare r jsonb;
 begin
-  if not hdnd_private.valid_field(p_field, case when p_field='isDropped' then 'false'::jsonb when p_field='documentKind' then '"NQ"'::jsonb else '""'::jsonb end)
+  if not hdnd_private.valid_field(p_field, case when p_field='isDropped' then 'false'::jsonb when p_field='documentKind' then '"NQ"'::jsonb else '"x"'::jsonb end)
     then return false; end if;
   if hdnd_private.is_admin() then return true; end if;
   select rights into r from public.hdnd_acl where id=true;
@@ -281,7 +281,7 @@ begin
   if exists (
     select 1 from jsonb_each(p_rights->'columns') e
     where not hdnd_private.valid_field(e.key,
-      case when e.key='isDropped' then 'false'::jsonb when e.key='documentKind' then '"NQ"'::jsonb else '""'::jsonb end)
+      case when e.key='isDropped' then 'false'::jsonb when e.key='documentKind' then '"NQ"'::jsonb else '"x"'::jsonb end)
       or jsonb_typeof(e.value)<>'boolean'
   ) or exists (
     select 1 from jsonb_each(p_rights->'rows') e
@@ -290,7 +290,7 @@ begin
     select 1 from jsonb_each(p_rights->'cells') r, jsonb_each(r.value) e
     where r.key !~ '^[A-Za-z0-9_:-]{1,200}$'
       or not hdnd_private.valid_field(e.key,
-      case when e.key='isDropped' then 'false'::jsonb when e.key='documentKind' then '"NQ"'::jsonb else '""'::jsonb end)
+      case when e.key='isDropped' then 'false'::jsonb when e.key='documentKind' then '"NQ"'::jsonb else '"x"'::jsonb end)
       or jsonb_typeof(e.value)<>'boolean'
   ) then raise exception 'BAD_RIGHTS'; end if;
   select revision into current_rev from public.hdnd_acl where id=true for update;
@@ -351,7 +351,14 @@ begin
 end; $$;
 
 -- Default Postgres grants to PUBLIC include function EXECUTE; revoke explicitly.
-revoke execute on all functions in schema public from public, anon, authenticated;
+revoke execute on function public.hdnd_acquire_cell(text,text,text,uuid),
+  public.hdnd_renew_cell(text,text,uuid,uuid),
+  public.hdnd_release_cell(text,text,uuid,uuid),
+  public.hdnd_save_cell_changes(text,uuid,uuid,jsonb,jsonb,jsonb),
+  public.hdnd_set_permissions(bigint,jsonb),
+  public.hdnd_set_profile(bigint,jsonb),
+  public.hdnd_guest_pause(bigint,boolean),
+  public.hdnd_freeze_transition(bigint,text,boolean) from public,anon,authenticated;
 grant execute on function public.hdnd_acquire_cell(text,text,text,uuid),
   public.hdnd_renew_cell(text,text,uuid,uuid),
   public.hdnd_release_cell(text,text,uuid,uuid),
