@@ -34,10 +34,10 @@ const requireRules=raw=>{
 // so environments where the metadata endpoint is restricted still work.
 // The CLI streams a raw JSON payload for database:get; do NOT pass --json,
 // which wraps structured CLI output differently and can obscure this payload.
-const readPublishedRules=()=>{
+const readPublishedRules=(run=spawnSync)=>{
   if(process.env.FIREBASE_DATABASE_EMULATOR_HOST||process.env.FIREBASE_REALTIME_URL)
     throw Error('RULES_PROVENANCE_HOLD: emulator/custom database URL override detected.');
-  const child=spawnSync(process.execPath,[CLI,
+  const child=run(process.execPath,[CLI,
     'database:get','/.settings/rules',
     '--project',PROJECT,'--instance',INSTANCE],{
     cwd:resolve('.'),encoding:'utf8',maxBuffer:8*1024*1024,timeout:90000,
@@ -52,6 +52,29 @@ const readPublishedRules=()=>{
   catch{throw Error(
     'RULES_PROVENANCE_HOLD: live /.settings/rules response is not Rules JSON.');}
 };
+// Never touch the network in fixture mode. Assert the exact read-only
+// command and that failed or malformed Firebase responses cannot imply PASS.
+if(process.argv.length===3&&process.argv[2]==='--self-test'){
+  let requestCount=0;
+  const fake=(executable,args)=>{
+    requestCount++;
+    if(executable!==process.execPath||args[1]!=='database:get'||
+      args[2]!=='/.settings/rules'||args[3]!=='--project'||
+      args[4]!==PROJECT||args[5]!=='--instance'||args[6]!==INSTANCE||
+      args.includes('--json'))throw Error('FIXTURE_BAD_READ_ONLY_COMMAND');
+    return {status:0,stdout:JSON.stringify({rules:{'.read':false,'.write':false}})};
+  };
+  const got=readPublishedRules(fake);
+  if(got.rules['.write']!==false||requestCount!==1)
+    throw Error('FIXTURE_UNEXPECTED_LIVE_RESPONSE');
+  let rejected=false;
+  try{readPublishedRules(()=>({status:1,stdout:'',stderr:'PRIVATE_TOKEN_DO_NOT_LOG'}));}
+  catch(err){rejected=/RULES_PROVENANCE_HOLD/.test(String(err))&&
+    !String(err).includes('PRIVATE_TOKEN_DO_NOT_LOG');}
+  if(!rejected)throw Error('FIXTURE_FAILED_DENIAL');
+  console.log('RULES_PROVENANCE_OFFLINE_FIXTURE_PASS (no network)');
+  process.exit(0);
+}
 try{
   const args=process.argv.slice(2),index=args.indexOf('--live-file');
   if(args.length!==2||index<0||!args[index+1]||!isAbsolute(args[index+1]))
