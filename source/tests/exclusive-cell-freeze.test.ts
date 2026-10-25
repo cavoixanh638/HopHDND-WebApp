@@ -204,6 +204,39 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(after.operationId).toBe(original.operationId);
     expect(after.history?.['2']).toBeUndefined();
   });
+  it('denies a direct field overwrite while a valid lease and saved editProof still exist',async()=>{
+    const owner=guest('a'),session=manager('a'),writer=repo('a',session);
+    const [original]=await writer.list();
+    await session.acquire('r1','note','multiline');
+    const saved=(await writer.save([updateDraft(original,undefined,{note:'Server-confirmed edit'})!]))[0];
+    expect(saved.ok,saved.message).toBe(true);
+    const before=(await get(ref(owner as never,'hdnd/items/r1'))).val();
+    expect(before.editProofs.note).toBeTruthy();
+    await assertFails(set(ref(owner as never,'hdnd/items/r1/note'),'Bypass without revision/history'));
+    const after=(await get(ref(owner as never,'hdnd/items/r1'))).val();
+    expect(after.note).toBe(before.note);
+    expect(after.revision).toBe(before.revision);
+    await session.finish('r1','note');
+    await session.dispose();
+  });
+
+  it('denies rewriting existing audit JSON via its descendant path',async()=>{
+    const owner=guest('a'),session=manager('a'),writer=repo('a',session);
+    const [original]=await writer.list();
+    await session.acquire('r1','note','multiline');
+    const saved=(await writer.save([updateDraft(original,undefined,{note:'Audit that must remain immutable'})!]))[0];
+    expect(saved.ok,saved.message).toBe(true);
+    const current=(await get(ref(owner as never,'hdnd/items/r1'))).val();
+    const slot=String(current.revision%50);
+    const auditPath='hdnd/items/r1/history/'+slot+'/changesJson';
+    const before=(await get(ref(owner as never,auditPath))).val();
+    await assertFails(set(ref(owner as never,auditPath),'{"note":"forged by direct child write"}'));
+    const after=(await get(ref(owner as never,auditPath))).val();
+    expect(after).toEqual(before);
+    await session.finish('r1','note');
+    await session.dispose();
+  });
+
   it('publishes a server-ACKed edit to two other accounts via live RTDB onValue, without reloading',async()=>{
     const session=manager('a');
     const writer=repo('a',session);
