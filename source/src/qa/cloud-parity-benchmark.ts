@@ -22,6 +22,7 @@ const mirrorSource=parseSheetConfig(DEFAULT_SHEET_URL);
 let lastMirror:ExcelMirrorSnapshot|null=null;
 const cfg=readSupabasePreviewConfig();
 if(!cfg||cfg.url!==HDND_SUPABASE_STAGING_PUBLIC.url)throw new Error('Chỉ chấp nhận Supabase STAGING cố định.');
+const accountLookupConfig=cfg;
 const supabase=new SupabasePreviewRepository(cfg);
 const canonicalFields=['recordId','displayCode','stt','revision','archivedAt',
   'documentKind','content','department','type','partyLevel','progressParty',
@@ -95,9 +96,9 @@ function setWorking(value:boolean){
 async function describeSupabaseIdentity():Promise<string>{
   try{
     const jwt=await supabase.auth.getAccessToken();
-    const response=await fetch(cfg.url+'/auth/v1/user',{
+    const response=await fetch(accountLookupConfig.url+'/auth/v1/user',{
       cache:'no-store',
-      headers:{apikey:cfg.publishableKey,authorization:'Bearer '+jwt}
+      headers:{apikey:accountLookupConfig.publishableKey,authorization:'Bearer '+jwt}
     });
     if(!response.ok)return 'không xác định được tài khoản Supabase ('+response.status+')';
     const raw:unknown=await response.json();
