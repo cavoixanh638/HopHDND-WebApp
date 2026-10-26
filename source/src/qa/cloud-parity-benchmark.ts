@@ -60,7 +60,7 @@ const cancel=pick<HTMLButtonElement>('cancel');
 const csv=pick<HTMLButtonElement>('csv');
 const check=pick<HTMLButtonElement>('check');
 const importButton=pick<HTMLButtonElement>('import');
-let parity=false,aborted=false,working=false,importReady=false;
+let parity=false,aborted=false,working=false;
 let lastFirebaseHash='';let lastFirebaseCount=0;
 let samples:Sample[]=[];
 let baselineHash='';
@@ -86,42 +86,71 @@ function setWorking(value:boolean){
   pctl.disabled=value||!parity;
   cancel.disabled=!value;
   check.disabled=value;
-  importButton.disabled=value||!importReady;
+  importButton.disabled=value||!auth.currentUser||parity;
   pick<HTMLButtonElement>('firebase-login').disabled=value;
   pick<HTMLButtonElement>('supabase-google').disabled=value;
   pick<HTMLSelectElement>('rounds').disabled=value;
   csv.disabled=value||!samples.length;
 }
+async function describeSupabaseIdentity():Promise<string>{
+  try{
+    const jwt=await supabase.auth.getAccessToken();
+    const response=await fetch(cfg.url+'/auth/v1/user',{
+      cache:'no-store',
+      headers:{apikey:cfg.publishableKey,authorization:'Bearer '+jwt}
+    });
+    if(!response.ok)return 'không xác định được tài khoản Supabase ('+response.status+')';
+    const raw:unknown=await response.json();
+    if(!raw||typeof raw!=='object')return 'không xác định được tài khoản Supabase';
+    const u=raw as {email?:unknown;is_anonymous?:unknown;app_metadata?:{provider?:unknown;providers?:unknown}};
+    const email=typeof u.email==='string'?u.email:'';
+    const providers=Array.isArray(u.app_metadata?.providers)?u.app_metadata.providers:[];
+    if(u.is_anonymous===true||(!email&&!providers.includes('google')))
+      return 'đang dùng phiên ẩn danh, chưa đăng nhập Google Supabase';
+    return 'đang dùng Google '+email+' nhưng chưa nằm trong danh sách quản trị';
+  }catch{return 'không kiểm tra được phiên Supabase Google';}
+}
 async function checkParity(){
-  parity=false;pctl.disabled=true;importReady=false;importButton.disabled=true;samples=[];render();
-  say('Đang đọc dữ liệu thật từ Firebase và Supabase staging; không ghi…');
+  parity=false;pctl.disabled=true;samples=[];render();
+  say('Đang xác minh từng nguồn Cloud: Firebase 55+ hồ sơ trước, rồi quyền Supabase…');
   const t0=performance.now();
   try{
-    // Supabase permission check is mandatory. No reliance on Firebase auth JWT.
-    const access=await supabase.accessState();
     const fbStart=performance.now();
     const fbRows=await snap('fb');
     const fbMs=performance.now()-fbStart;
+    const fbHash=await digest(canonical(fbRows));
+    lastFirebaseHash=fbHash;lastFirebaseCount=fbRows.length;
+    baselineCount=fbRows.length;baselineHash=fbHash;
+    if(fbRows.length<50){
+      say('Firebase mirror: '+fbRows.length+' hồ sơ. Chưa đủ 50 hồ sơ; dừng vì sai nguồn.');
+      return;
+    }
+    const access=await supabase.accessState();
+    if(!access.isAdmin){
+      say('Firebase mirror: '+fbRows.length+' hồ sơ / '+fbMs.toFixed(1)+' ms.\n'
+        +'Supabase: CHƯA ĐƯỢC CẤP QUYỀN ĐỌC. Không thể gọi đây là 0 hồ sơ.\n'
+        +'Lý do: '+await describeSupabaseIdentity()+'.\n'
+        +'Hãy bấm “Chọn lại tài khoản Google Supabase quản trị”, chọn Google được phép quản trị, rồi kiểm tra lại.\n'
+        +'Chưa sao chép dữ liệu, chưa thể đo tốc độ.');
+      return;
+    }
     const spStart=performance.now();
     const spRows=await snap('sp');
     const spMs=performance.now()-spStart;
-    const [fbHash,spHash]=await Promise.all([digest(canonical(fbRows)),digest(canonical(spRows))]);
-    baselineCount=fbRows.length;baselineHash=fbHash;
-    lastFirebaseHash=fbHash;lastFirebaseCount=fbRows.length;
-    importReady=fbRows.length>=50&&access.isAdmin;
-    parity=fbRows.length>=50&&fbRows.length===spRows.length&&fbHash===spHash;
-    say('Firebase mirror thật: '+fbRows.length+' dòng / '+fbMs.toFixed(1)+' ms\n'
-      +'Supabase staging: '+spRows.length+' dòng / '+spMs.toFixed(1)+' ms\n'
+    const spHash=await digest(canonical(spRows));
+    parity=fbRows.length===spRows.length&&fbHash===spHash;
+    say('Firebase mirror: '+fbRows.length+' hồ sơ / '+fbMs.toFixed(1)+' ms\n'
+      +'Supabase staging: '+spRows.length+' hồ sơ / '+spMs.toFixed(1)+' ms\n'
       +'SHA-256 Firebase: '+fbHash+'\nSHA-256 Supabase: '+spHash+'\n'
-      +'Supabase Google-admin: '+(access.isAdmin?'ĐÃ XÁC MINH':'CHƯA XÁC MINH')+'\n'
-      +(parity?'ĐẠT: hai nguồn có đủ 50+ hồ sơ và dữ liệu trùng nhau sau chuẩn hóa revision 0→1. Có thể đo.':
-        'CHẶN ĐO: hai nguồn chưa cùng dữ liệu. '+(importReady?
-        'Có thể bấm nút sao chép từ Firebase mirror sang Supabase staging; Firebase không thay đổi.':
-        'Phải đọc được >=50 dòng mirror và xác minh tài khoản Supabase quản trị.'))+'\n'
-      +'Thời gian xác minh tổng: '+(performance.now()-t0).toFixed(0)+' ms');
-  }catch(e){say('Không xác minh được nguồn, chưa thể đo: '+message(e));}
-  pctl.disabled=!parity;
-  importButton.disabled=!importReady;
+      +(parity?'ĐÃ KHỚP: hai nguồn có cùng nội dung và số lượng; có thể bắt đầu đo.':
+        'CHƯA KHỚP: bấm “NẠP HỒ SƠ SANG SUPABASE” rồi xác nhận trước khi đo.')+'\n'
+      +'Đã xác minh quyền Google Supabase quản trị. Tổng thời gian xác minh: '
+      +(performance.now()-t0).toFixed(0)+' ms');
+  }catch(e){say('Không xác minh được: '+message(e)+'. Chưa nạp, chưa thể đo.');}
+  finally{
+    pctl.disabled=!parity;
+    importButton.disabled=working||!auth.currentUser||parity;
+  }
 }
 pick<HTMLButtonElement>('firebase-login').onclick=async()=>{
   try{const r=await signInWithPopup(auth,new GoogleAuthProvider());
@@ -134,44 +163,72 @@ pick<HTMLButtonElement>('supabase-google').onclick=()=>{
 };
 check.onclick=()=>{void checkParity();};
 importButton.onclick=()=>{void (async()=>{
-  if(working||!importReady||parity)return;
-  if(!window.confirm('Sao chép TOÀN BỘ '+lastFirebaseCount+
-    ' hồ sơ THẬT đang có trên Firebase mirror sang Supabase STAGING?\n'+
-    'Thao tác chỉ xóa 6 dòng QA giả trong staging. KHÔNG ghi hoặc sửa Firebase.\n'+
-    'Dữ liệu nghiệp vụ THẬT sẽ tồn tại trên Supabase Cloud sau khi xác nhận.'))return;
-  setWorking(true);importReady=false;
+  if(working)return;
+  setWorking(true);parity=false;pctl.disabled=true;samples=[];render();
   try{
-    if(!auth.currentUser)throw new Error('Phải đăng nhập Google trên Firebase.');
+    if(!auth.currentUser)throw new Error('Đăng nhập Google Firebase trước khi nạp.');
+    say('Đang kiểm tra quyền Supabase và đọc 55+ hồ sơ Firebase. Chưa ghi dữ liệu…');
     const access=await supabase.accessState();
-    if(!access.isAdmin)throw new Error('Supabase chưa xác minh Google quản trị.');
-    const rows=await snap('fb');
+    if(!access.isAdmin){
+      throw new Error('Tài khoản Supabase chưa được cấp quyền quản trị: '
+        +await describeSupabaseIdentity()
+        +'. Bấm “Chọn lại tài khoản Google Supabase quản trị” trước khi nạp.');
+    }
+    const firstRows=await snap('fb');
+    if(firstRows.length<50)throw new Error('Firebase mirror chỉ có '+firstRows.length+' hồ sơ, không đủ để sao chép.');
     const mirrorSnapshot=lastMirror;
-    if(!mirrorSnapshot||rows.length!==lastFirebaseCount||rows.length<50 ||
-      await digest(canonical(rows))!==lastFirebaseHash)
-      throw new Error('Firebase mirror thay đổi sau lần xác minh; kiểm tra lại dữ liệu.');
+    const firstHash=await digest(canonical(firstRows));
+    lastFirebaseHash=firstHash;lastFirebaseCount=firstRows.length;
+    const currentSupabase=await snap('sp');
+    if(currentSupabase.length===firstRows.length&&
+       await digest(canonical(currentSupabase))===firstHash){
+      baselineHash=firstHash;baselineCount=firstRows.length;parity=true;
+      say('Hai nguồn đã có sẵn '+firstRows.length+' hồ sơ TRÙNG KHỚP. Không nạp lại, có thể bắt đầu đo.');
+      return;
+    }
+    if(!window.confirm('NẠP BẢN SAO '+firstRows.length+' HỒ SƠ THẬT vào SUPABASE STAGING?\n'
+      +'Firebase hiện tại CHỈ ĐỌC, KHÔNG THAY ĐỔI.\n'
+      +'Supabase staging hiện đọc được '+currentSupabase.length+' hồ sơ.\n'
+      +'Dữ liệu thật sẽ được lưu vào Supabase staging; chỉ thực hiện một lần.')){
+      say('Bạn đã hủy sao chép. Firebase không thay đổi; chưa có phép đo hợp lệ.');
+      return;
+    }
+    say('Đang đối chiếu lần cuối bản sao Firebase rồi nạp Supabase staging…');
+    const latestRows=await snap('fb');
+    if(!lastMirror||lastMirror.source!==mirrorSnapshot?.source||
+      latestRows.length!==firstRows.length||
+      await digest(canonical(latestRows))!==firstHash)
+      throw new Error('Firebase đã thay đổi trong quá trình xác nhận; chưa nạp.');
     const jwt=await supabase.auth.getAccessToken();
     const response=await fetch(cfg.url+'/rest/v1/rpc/hdnd_stage_mirror_snapshot_for_benchmark',{
       method:'POST',cache:'no-store',
       headers:{apikey:cfg.publishableKey,authorization:'Bearer '+jwt,'content-type':'application/json'},
-      body:JSON.stringify({p_rows:rows,p_source:mirrorSnapshot.source,p_sha256:mirrorSnapshot.sha256})
+      body:JSON.stringify({p_rows:latestRows,p_source:lastMirror.source,p_sha256:lastMirror.sha256})
     });
     const result:unknown=await response.json().catch(()=>null);
     if(!response.ok||!result||typeof result!=='object'||!(result as {ok?:boolean}).ok)
-      throw new Error('Supabase từ chối bản sao staging ('+response.status+'): '+
-        String((result as {message?:string}|null)?.message??'Chưa xác nhận'));
-    const confirmed=(result as {rows?:number}).rows;
-    if(confirmed!==rows.length)throw new Error('Supabase nhập sai số lượng; cần đối chiếu.');
+      throw new Error('Supabase chưa xác nhận nhập ('+response.status+'): '
+        +String((result as {message?:string}|null)?.message??'máy chủ từ chối'));
+    if((result as {rows?:number}).rows!==latestRows.length)
+      throw new Error('Supabase trả về sai số lượng nhập; cần đối chiếu.');
     const readback=await snap('sp');
-    if(readback.length!==rows.length||await digest(canonical(readback))!==lastFirebaseHash)
-      throw new Error('Supabase đã nhận nhưng nội dung đọc lại chưa khớp. Dừng benchmark.');
-    say('ĐÃ NẠP VÀ XÁC MINH '+rows.length+
-      ' hồ sơ THẬT: Firebase mirror ↔ Supabase staging; hash SHA-256 trùng.\n'+
-      'Firebase không bị ghi. Bấm “Kiểm tra cùng dữ liệu” để bật đo tốc độ.');
-  }catch(e){say('CHƯA XÁC NHẬN NẠP DỮ LIỆU: '+message(e)+'\nKhông thay đổi Firebase.');}
-  finally{setWorking(false);importButton.disabled=true;}
+    if(readback.length!==latestRows.length||await digest(canonical(readback))!==firstHash)
+      throw new Error('Supabase đã nhận nhưng đọc lại chưa trùng 100% nội dung; KHÔNG đo.');
+    parity=true;baselineCount=latestRows.length;baselineHash=firstHash;
+    say('ĐÃ NẠP VÀ ĐỐI CHIẾU THÀNH CÔNG '+latestRows.length
+      +' hồ sơ THẬT. SHA-256 trùng nhau.\n'
+      +'Firebase: chỉ đọc, không thay đổi. Supabase staging: đã chứa bản sao.\n'
+      +'Bây giờ bạn có thể bấm “Bắt đầu đo”.');
+  }catch(e){say('CHƯA HOÀN TẤT BẢN SAO: '+message(e)+'\nKhông kết luận tốc độ hai nguồn.');}
+  finally{
+    setWorking(false);
+    importButton.disabled=!auth.currentUser||parity;
+    pctl.disabled=!parity;
+  }
 })();};
 onAuthStateChanged(auth,u=>{
-  if(u&&!working)pick<HTMLElement>('progress').textContent='Firebase có phiên đăng nhập Google; nhấn “Kiểm tra cùng dữ liệu” trước khi đo.';
+  importButton.disabled=working||!u||parity;
+  if(u&&!working)pick<HTMLElement>('progress').textContent='Firebase đã có phiên Google. Chọn đúng tài khoản Google quản trị ở Supabase, rồi nạp 55+ hồ sơ trước khi đo.';
 });
 cancel.onclick=()=>{aborted=true;pick<HTMLElement>('progress').textContent='Đang ngừng sau yêu cầu đọc hiện tại…';};
 const sleep=(ms:number)=>new Promise<void>(resolve=>setTimeout(resolve,ms));
