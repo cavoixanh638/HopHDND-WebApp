@@ -203,7 +203,7 @@ async function run(){
 csv.onclick=()=>{
   if(!samples.length||working)return;
   const head='round,source,ms,rows,ok,reason\n';
-  const safe=s=>String(s).replaceAll('"','""').replace(/[\r\n]+/g,' ');
+  const safe=(s:string)=>String(s).replaceAll('"','""').replace(/[\r\n]+/g,' ');
   const value=head+samples.map(x=>
     [x.round,x.source,x.ms.toFixed(2),x.rows,x.ok,'"'+safe(x.reason)+'"'].join(',')).join('\n')+'\n';
   const blob=new Blob(['\uFEFF'+value],{type:'text/csv;charset=utf-8'});
