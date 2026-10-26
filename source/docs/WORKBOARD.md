@@ -1,17 +1,3 @@
-## ĐIỀU PHỐI DUY NHẤT — 26/10/2026: INTEGRATION PR #77
-
-| Đơn vị công việc | Đầu vào cố định | Trách nhiệm |
-|---|---|---|
-| Firebase [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) | `259c36ac…` | Auth Google UID allowlist, RTDB Rules, leases, freeze, bản nháp và audit; giữ nguyên kiểm thử bảo mật |
-| Supabase [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) | `66553279…` | SQL migrations/RLS/RPC, repository/permission, security PostgreSQL |
-| Supabase chooser [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) | `afb10fe2…` | Chọn nguồn theo tab, auth/realtime Supabase, guard chuyển khi có draft/ACK |
-| **Tích hợp [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77)** | `manifest.json` | Một đầu mối ghép hunk file dùng chung, kiểm thử cùng build, quản lý phát hành/rollback |
-| Tài liệu [#76](https://github.com/cavoixanh638/HopHDND-WebApp/pull/76) | Theo exact head lúc cập nhật | Gộp hướng dẫn hệ thống vào PR tích hợp sau khi đối chiếu, không ghi đè code/docs mới |
-
-**Quy tắc:** PR #77 Draft/NO-GO đến khi tất cả gate trong [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md) đạt. CI riêng PR #72 hoặc #75 không thay cho CI tích hợp; không cherry-pick mà bỏ một nửa adapter, không deploy dữ liệu giả/production khi vẫn còn blocker. Mọi quyết định và bằng chứng giao việc nằm trong issue [#74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) để dễ truy vết.
-
----
-
 ## QUYẾT ĐỊNH ĐIỀU HÀNH MỚI NHẤT — 25/10/2026: CHỈ PHÁT TRIỂN FIREBASE-ONLY
 **[Quyết định kiến trúc ưu tiên](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md)**: nhân viên cập nhật Excel/Google Sheet chỉ trong thời gian chuyển tiếp; WebApp đích dùng **duy nhất Firebase RTDB `hdnd/items`** để xem/sửa/báo cáo. Sau cutover, không đọc/ghi nghiệp vụ từ Sheets và không có đồng bộ hai chiều. **DỪNG** chuỗi nhiệm vụ giám sát/chạy theo mirror 55 dòng vs ảnh cũ 57 dòng, mốc sửa Excel và quyền chia sẻ file Excel: đây chỉ là ghi nhận lịch sử, **không được coi là blocker phát triển**. Một lần kiểm tra dữ liệu khởi tạo sẽ được thực hiện **tại thời điểm cutover**, không phải trong vòng coding.
 
@@ -179,3 +165,17 @@ Mốc 0.6.2 — 15/10/2026: tổng chỉ huy tích hợp `ExcelRepository`/data 
 Mốc Firebase Pages: tổng chỉ huy phụ trách tích hợp repository, Auth, rules/emulator và kiểm tra browser; Luna bàn giao `FirebasePanel`, JSON profile transfer, nhãn storage cho cấu hình báo cáo/danh mục và hướng dẫn [Firebase Pages](FIREBASE_PAGES.md). Kiểm cục bộ đã báo 196 unit pass/9 skip, 9 emulator checks pass và `build:pages:test`/typecheck pass; kiểm Google popup chưa hoàn tất. Firebase production, Auth và rules chưa bị sửa.
 
 Theo duyệt của người dùng, main được kích hoạt và deploy tại deployment v6 lúc11:31 ngày15/10. `prepareDashboardExcelStorage` hoàn tất lúc11:29; `checkDashboardExcelConnection` lúc11:30:08 chỉ đọc và ghi log backendReady=true, actor `phucpixel2025@gmail.com`, 51 dòng, 0 cảnh báo, configRevision12. UI tải mới lúc11:34 xác nhận đúng nguồn (ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, gid60961344), 51 dòng và chế độ sửa; không submit sửa lên nguồn chính. Ảnh: main kết nối/sẵn sàng (tệp chưa đồng bộ: `assets/main-excel-ready-0.6.2.png`), kiểm tra chỉ đọc (tệp chưa đồng bộ: `assets/main-excel-connection-pass-0.6.2.png`). Save/readback/restore chỉ được nghiệm thu trên copy riêng: lưu UI bản sao (tệp chưa đồng bộ: `assets/ui-excel-save-pass-0.6.2.png`), khôi phục bản sao (tệp chưa đồng bộ: `assets/ui-excel-restore-pass-0.6.2.png`). Không gộp hai bằng chứng thành ghi thành công nguồn thật. F31 chưa hoàn tất; lịch sử và tình trạng còn lại ở [CURRENT_STATE](CURRENT_STATE.md).
+
+## ĐIỀU PHỐI DUY NHẤT — 26/10/2026: INTEGRATION PR #77
+
+| Đơn vị công việc | Đầu vào cố định | Trách nhiệm |
+|---|---|---|
+| Firebase [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) | `259c36ac…` | Auth Google UID allowlist, RTDB Rules, leases, freeze, bản nháp và audit; giữ nguyên kiểm thử bảo mật |
+| Supabase [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) | `66553279…` | SQL migrations/RLS/RPC, repository/permission, security PostgreSQL |
+| Supabase chooser [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) | `afb10fe2…` | Chọn nguồn theo tab, auth/realtime Supabase, guard chuyển khi có draft/ACK |
+| **Tích hợp [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77)** | `manifest.json` | Một đầu mối ghép hunk file dùng chung, kiểm thử cùng build, quản lý phát hành/rollback |
+| Tài liệu [#76](https://github.com/cavoixanh638/HopHDND-WebApp/pull/76) | Theo exact head lúc cập nhật | Gộp hướng dẫn hệ thống vào PR tích hợp sau khi đối chiếu, không ghi đè code/docs mới |
+
+**Quy tắc:** PR #77 Draft/NO-GO đến khi tất cả gate trong [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md) đạt. CI riêng PR #72 hoặc #75 không thay cho CI tích hợp; không cherry-pick mà bỏ một nửa adapter, không deploy dữ liệu giả/production khi vẫn còn blocker. Mọi quyết định và bằng chứng giao việc nằm trong issue [#74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) để dễ truy vết.
+
+---
