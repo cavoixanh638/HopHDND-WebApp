@@ -4,6 +4,12 @@
 - **UI-PRIMARY: IN PROGRESS / ƯU TIÊN SỐ 1** — tiếp tục UI hiện hành trên Firebase-only PR #72 và giữ công năng Theme2, không phát sinh nhánh/luồng mới khi chưa cần. Rà theo thứ tự: (a) điều hướng Báo cáo tổng hợp / Danh sách và trạng thái chọn; (b) bảng 15 cột, bộ lọc, kéo cột, tooltip, popup chi tiết và phối màu; (c) trạng thái quyền/khóa ô/đã lưu/đang lưu/mất mạng và modal cảnh báo nháp; (d) responsive, bàn phím, tương phản màu, lỗi/loading; (e) browser smoke và kiểm chứng hồi quy trên Firebase emulator. Ưu tiên sửa **mã thật**, không thay bằng giao diện demo rời, không đụng Firebase Rules/dữ liệu production chỉ để làm UI.
 - **Điều kiện ghi DONE:** rà UI bằng browser trên desktop + màn hẹp; đối chiếu `FEATURES.md`, `AGENTS.md`, Theme2 và quyết định màu mới nhất; `npm run typecheck`, `npm test`, CI source/Firebase emulator PASS; tài liệu/ảnh QA mô tả đúng tính năng đã test; chỉ merge/deploy sau release gate và GO.
 
+### Đã bắt đầu thực hiện UI trên PR #72
+
+- **UI-LEASE-FEEDBACK (mã đã commit, CI đang kiểm):** Trong `CellPicker` và `InlineNoteEditor`, khi đang chờ Firebase cấp quyền sửa, hiển thị trạng thái “Đang xác nhận quyền sửa ô…” (`role=status`) và nút chọn trạng thái có `aria-busy`. CSS chỉ bổ sung kiểu chữ phản hồi, không đổi palette Theme2, nghiệp vụ, quyền/RLS hay dữ liệu. Mục tiêu là loại bỏ cảm giác nút sửa bị treo khi mạng chậm; chưa tuyên bố đã QA bằng mắt trên Windows.
+- **Tiếp theo:** rà giao diện desktop/mobile thực tế và tích hợp skill `ui-ux-pro-max` từ máy phát triển; ưu tiên các trạng thái có rủi ro mất nháp/khóa ô rồi tới bố cục báo cáo, danh sách và popup. Yêu cầu screenshot thực tế khi nghiệm thu; không tự thay UI bằng demo LAN.
+
+
 ---
 
 ## ƯU TIÊN CAO NHẤT 26/10/2026 — CHỈ FIREBASE, DỪNG SUPABASE
