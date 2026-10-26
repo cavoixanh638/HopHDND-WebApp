@@ -1,3 +1,11 @@
+## 26/10/2026 — Công cụ đo tự phát hiện WebApp local THẬT
+
+Người dùng hỏi có đo local không; kiểm gói `...Moi5Giay_Windows.zip` xác nhận **chỉ tự động đo HTTP synthetic localhost:18765**, còn WebApp QA thật tại `127.0.0.1:5173/pages.html` yêu cầu truyền `-LocalWebAppUrl`. Đã tạo gói mới `HopHDND_CongCu_DoMang_60Phut_5Giay_LocalWebApp_Windows.zip`, thêm **kiểm tra HTTP GET local startup và auto-add target `local-webapp` khi server đang chạy**. Nếu không có server, công cụ báo rõ `ACTUAL LOCAL WEBAPP: NOT MEASURED`; vẫn đo `local-synthetic` liên tục 60 phút/5 giây. Người dùng phải bật WebApp QA ở cửa sổ khác trước; gói không tự khởi chạy Firebase Emulator hoặc thay production. Chưa có phép đo Windows thật; ZIP đã CRC verified. Chỉ dẫn sử dụng ở [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md).
+
+Không được lấy localhost làm bằng chứng host PC ổn định với các nhân viên bên ngoài; đo Cloudflare Tunnel từ mạng ngoài bằng cùng build mới so sánh được. Không ghi Firebase/Supabase production hay deploy.
+
+---
+
 ## 26/10/2026 — Chu kỳ lấy mẫu 5 giây/lần, đo đồng thời các đích (bản cập nhật mới nhất)
 
 Theo yêu cầu cập nhật, thay bản 60 phút/30 giây bằng `HopHDND_CongCu_DoMang_LienTuc_60Phut_Moi5Giay_Windows.zip` (đính kèm hội thoại, **chưa commit mã công cụ vào GitHub**). Mặc định `-DurationMinutes 60 -SampleSeconds 5 -MaxProbeSeconds 4`, mỗi vòng khởi chạy `curl.exe` **song song** tới GitHub Pages, Cloudflare Edge tham chiếu, Firebase RTDB, Firebase Auth, Supabase staging và localhost giả lập; không đo tuần tự, tránh chu kỳ 5 giây bị trễ do cộng timeout từng host. Bình thường khoảng **720 mẫu/đích/giờ** (không cam kết tuyệt đối khi Windows quá tải hoặc mạng treo lâu); `CSV` được ghi ngay sau mỗi mẫu, `HTML/JSON` có thể tái tạo từ CSV. Bắt đầu bằng `DO-THU-2-PHUT.cmd` (2 phút/5 giây) hoặc chính thức `DO-MANG-1-CLICK.cmd` (60 phút/5 giây).
