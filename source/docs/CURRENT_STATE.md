@@ -4,6 +4,11 @@ Người dùng xác nhận demo tại `localhost:8787` đã được máy thứ 
 
 **Ưu tiên từ đây:** tạm lưu phương án LAN, **quay lại hoàn thiện UI WebApp HopHDND trên Firebase-only PR #72**. Không lấy mã trên nhánh Supabase và chưa tự deploy. Skill `ui-ux-pro-max` người dùng đã cài trên máy Windows, chỉ dùng hỗ trợ thiết kế khi chạy Codex; cần kiểm tra hiệu quả thực tế bằng ảnh/chạy browser và hồi quy.
 
+### Tiến độ UI Firebase PR #72 — 27/10/2026
+
+Đã chỉnh `src/features/items/CellPicker.tsx`, `InlineNoteEditor.tsx` và `cell-picker.css` để hiển thị phản hồi khi chờ cấp quyền sửa ô qua Firebase; nút chọn có `aria-busy`, thông báo dùng `role=status`. Đây là thay đổi UX cấp ô, **không** đổi quyền, lease, hợp đồng ghi, bảng báo cáo hoặc nguồn dữ liệu. Kiểm thử CI/browser mới là điều kiện kết luận PASS; chưa deploy production. [Theo dõi UI trong WORKBOARD](WORKBOARD.md).
+
+
 ---
 
 ## TRẠNG THÁI QUYẾT ĐỊNH MỚI 26/10/2026 — FIREBASE-ONLY
