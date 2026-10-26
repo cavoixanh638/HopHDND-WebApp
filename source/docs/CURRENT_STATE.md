@@ -1,3 +1,9 @@
+## TRẠNG THÁI QUYẾT ĐỊNH MỚI 26/10/2026 — FIREBASE-ONLY
+
+[**Chỉ thị chính thức: Firebase-only, Supabase tạm dừng và giữ dự phòng**](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Phát triển tiếp trên Firebase PR #71 và #72; không tiếp tục nhánh tích hợp Firebase+Supabase PR #77 hay các PR Supabase #73/#75, không tự merge/deploy/copy/sync. Supabase staging hiện là bản sao cố định 55 hồ sơ của nguồn Firebase mirror, **không phải dữ liệu luôn mới**. Firebase production/WebApp đang phục vụ người dùng chưa được thay đổi bằng quyết định này; vẫn cần các kiểm thử/backup/Rules và phê duyệt phát hành. Các đoạn tài liệu cũ nói phát triển đồng thời 2 backend chỉ còn giá trị lịch sử.
+
+---
+
 ## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
 **Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
 
