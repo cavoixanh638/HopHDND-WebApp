@@ -1,5 +1,18 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Local/LAN-host demo separate from Supabase QA — 27/10/2026
+
+A Windows LAN proof-of-concept was delivered in this ChatGPT conversation as `HopHDND_Demo_Host_LAN_Windows_5s_60min.zip`. It is a standalone **synthetic-data-only** trial, deliberately not deployed to GitHub Pages, not merged, and not connected to Firebase, Supabase or production HopHDND data. The package contains `CHAY_DEMO_LAN.cmd`, Node.js stdlib HTTP host (with Python fallback), local sample persistence (Node JSON / Python SQLite), a 5-row browser demonstration, optimistic revision checking to reject stale writes with HTTP 409, `/health` and `DO_LAN_60_PHUT.cmd` / `DO_ON_DINH_LAN_60_PHUT.ps1` to measure office client-to-host stability every five seconds for sixty minutes. `DO_THU_LAN_2_PHUT.cmd` enables a short pilot. Raw CSV is saved continuously.
+
+**Scope:** Host binds port 8787 on Windows; coworkers use `http://<host-private-ip>:8787/` on a routed LAN. A Windows firewall allow script is optional and restricted to Private profile, TCP 8787 and LocalSubnet. No automatic firewall changes, Internet port forwarding, or public access. Demo does not provide login, permissions, audited production backup, encryption, application auth, outage failover or real HopHDND database; therefore **it must never be offered to staff as the production WebApp or contain real user data**. For the actual WebApp to be independent of international connectivity, the application backend, data store and auth must also be local or reachable through a resilient private path; merely serving the frontend locally does not eliminate Firebase/Supabase/Google dependencies.
+
+**Validation:** Offline local tests passed HTTP GET `/health`, `/api/state`, cross-client readback, two concurrent writes to the same row (one 200, one 409), Origin restriction (403), and Node sample persistence after restart. The 60-minute LAN test is **provided but not yet performed at the user's office**; do not claim measured availability, RTT percentiles or 100% reliability. The original international-network monitor showed TIMEOUT/DNS anomalies and a failed synthetic host startup, so it is not a reliable network-comparison baseline until debugged.
+
+**Next decision gate:** Observe two real office Windows PCs, 2-minute connectivity trial, then 60-minute 5-second LAN CSV. Check network segmentation, host Wi-Fi/Ethernet IP stability, Power/Sleep, local firewall, CPU load and backup/UPS before selecting LAN hosting vs cloud. **Existing Firebase and Supabase paths and import release gate stay untouched.**
+
+---
+
+
 ### Xác minh trực tiếp đã BẬT Google Auth trên Supabase Cloud — 26/10/2026
 
 [GitHub Actions Verify source #40221153349](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40221153349) **SUCCESS**, bao gồm `SUPABASE_AUTH_SMOKE_STATIC_GUARDS_PASS` và public Cloud `SUPABASE_STAGING_GOOGLE_PROVIDER_ENABLED=true` qua `/auth/v1/settings` với **publishable key, không sử dụng Client Secret**. Việc bật provider đã được kiểm chứng server-side. **Chưa xác thực được tài khoản Google người thật**: khi kiểm tra SQL trước lúc test, `auth.users=0`, `auth.identities[google]=0`, admin allowlist trống. Tiếp theo chạy độc lập `source/scripts/supabase-auth-smoke.html` trên `localhost:8765` và đối chiếu readback. Không vì provider enabled mà cấp quyền admin hoặc GO.
