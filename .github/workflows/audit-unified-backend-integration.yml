@@ -37,6 +37,9 @@ jobs:
           set -euo pipefail
           git config user.name "HopHDND Integration Build (no deploy)"
           git config user.email "integration@users.noreply.github.com"
+          # Test the exact immutable source pair independent of newly edited docs
+          # on this coordinator branch; do not silently drift to moving PR heads.
+          git switch --detach 259c36acaa3d35367459204fda81a58bff7abc32
           git merge --no-commit --no-ff "$SUPABASE_SHA"
           if test -n "$(git diff --name-only --diff-filter=U)"; then
             echo "::error::Combined source has unresolved conflicts"
@@ -91,8 +94,10 @@ jobs:
           baseline="$(git rev-parse HEAD)"
           echo "Base HEAD: $baseline"
           echo "Target Supabase HEAD: $SUPABASE_SHA"
+          set +e
           git merge --no-commit --no-ff "$SUPABASE_SHA" > integration-evidence/merge-output.txt 2>&1
           merge_exit=$?
+          set -e
           git diff --name-only --diff-filter=U > integration-evidence/unresolved.txt
           git diff --name-status --cached > integration-evidence/staged.txt
           {
