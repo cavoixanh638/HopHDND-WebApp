@@ -8,7 +8,7 @@ Trong menu **Gộp cột** của chế độ xem, admin có thể bật độc l
 
 Các lựa chọn chồng nhau loại trừ hợp lý: gộp Loại VB + Sở thay gộp Loại VB đơn; gộp cả bốn người/đơn vị thay gộp 2+2. Khi tắt gộp, mọi cột gốc vẫn nguyên cấu hình và dữ liệu. Chỉ nhóm có **đủ cột thành viên đang hiển thị** mới được gộp. Tìm kiếm trong ô gộp dùng **toàn bộ giá trị gốc**, không dùng tên viết tắt; từng trường vẫn có editor riêng, quyền/lease riêng và ghi ACK riêng. Các bộ lọc theo cột gốc bị ẩn được xử lý để không lọc ngầm, ngoại trừ giao diện Phòng/CV cũ vẫn có hai ô lọc riêng. Trạng thái gộp là cấu hình xem Firebase của admin, **không sửa Excel, Supabase, RTDB items, báo cáo KPI hoặc Rules**.
 
-Giao diện menu chia hai nhóm **Gộp cột** và **Tên hiển thị**, nhãn ngắn, có mô tả một dòng, khung chọn tự cuộn trên màn nhỏ. Phần `compactDisplay` cũ khi đọc được mở rộng bằng bốn cờ mặc định `false` (không đặt lại gộp cũ); có test cho lựa chọn đè nhau, giá trị tìm kiếm đủ, 15 cột nguồn còn nguyên và điều kiện thiếu cột. Bản phát triển ở PR #72, không coi CI thay cho nghiệm thu bằng mắt.
+Giao diện menu ưu tiên hiển thị trực tiếp **bốn cách gộp mới**; các cách gộp cũ được xếp trong mục có thể mở **Các cách gộp khác**, hai tùy chọn tên viết tắt nằm trong mục **Viết tắt tên**. Nhãn gọn, mô tả một dòng, khung chọn không tràn màn nhỏ (đã chụp Chrome desktop/mobile QA). Phần `compactDisplay` cũ khi đọc được mở rộng bằng bốn cờ mặc định `false` (không đặt lại gộp cũ); có test cho lựa chọn đè nhau, giá trị tìm kiếm đủ, 15 cột nguồn còn nguyên và điều kiện thiếu cột. Bản phát triển ở PR #72, không coi CI thay cho nghiệm thu bằng mắt.
 
 ---
 
