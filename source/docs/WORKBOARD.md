@@ -1,3 +1,11 @@
+## BỔ SUNG 26/10/2026 — NẠP MIRROR 55 HỒ SƠ THẬT VÀ SO SÁNH TỐC ĐỘ CLOUD
+
+Nhánh QA PR #77 đã bổ sung trang benchmark localhost:8765 và nút **“Sao chép đúng 55+ hồ sơ Firebase mirror sang Supabase staging”**. Xác nhận đường dẫn 55 hồ sơ Firebase là `hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344`, **không phải** `hdnd/items` (mốc backup trước đó là 0). Supabase staging hiện còn 6 bản ghi QA, **chưa có bằng chứng đã chép dữ liệu thật hoặc benchmark PASS**. Cần chủ dự án đăng nhập Google ở Firebase và Supabase trên trình duyệt Windows rồi chủ động xác nhận sao chép; không tự chạy nền.
+
+Quy trình chuẩn: [REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md](operations/REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md). Cloud staging đã có RLS admin-only và RPC nhập snapshot một lần có chặn dữ liệu hiện hữu. Firebase production/GitHub Pages main không thay đổi.
+
+---
+
 > **26/10/2026 — TIẾN ĐỘ TÍCH HỢP:** PR [#78](https://github.com/cavoixanh638/HopHDND-WebApp/pull/78) đã được gộp vào nhánh [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77), merge SHA `815291926da2ae001a0b4fec906c414db87e3872`; #77 tiếp tục Draft/NO-GO. Launcher local Windows cho phép nhánh tích hợp; script đo 60 phút/5 giây hỗ trợ localhost/LAN/self-host; chưa chạy phép đo thực tế trên máy người dùng. Tiếp tục CI cùng HEAD, Supabase Cloud Auth/RLS/Realtime 2–3 user, hoàn thiện tài liệu, backup và phê duyệt phát hành. [Runbook chuẩn](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
 
 > **NHIỆM VỤ HIỆN HÀNH — 25/10/2026: HOÀN THIỆN SUPABASE + FIREBASE CHỌN NGUỒN.** [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) (Draft, stacked trên #73) có lựa chọn theo tab, Auth JWT Supabase riêng, server-side ACL, khóa ô và RPC ghi, admin pause/freeze, WebSocket Postgres Changes + polling an toàn, đo tốc độ đọc theo nguồn. Supabase Free staging Cloud có **4 migrations, 6 hồ sơ thử nghiệm**, 0 admin bootstrap và import đóng; hiện thiếu cấu hình Google OAuth/Anonymous Auth trong Dashboard, kiểm thử 3 phiên thật, Cloud Realtime, benchmark có parity, backup/restore, GO. **Không xóa Firebase hoặc tự đồng bộ giữa các nguồn.** Tiến độ chi tiết, rollback và điều kiện GO chỉ quản lý tại [cổng Supabase](operations/SUPABASE_RELEASE_GATE_2026-10-25.md), không phát sinh WORKBOARD khác. Các dòng Firebase-only / Supabase-only bên dưới là mốc lịch sử.
