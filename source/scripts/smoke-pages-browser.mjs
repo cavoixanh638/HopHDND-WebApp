@@ -1705,7 +1705,9 @@ try{
     const rect=popup?.getBoundingClientRect();
     return {ok:!!popup&&popup.querySelectorAll('input[type="checkbox"]').length===9&&
       popup.querySelectorAll('.compact-more-options').length===2&&
-      rect.left>=0&&rect.right<=innerWidth&&rect.height<=innerHeight,
+      popup.querySelectorAll(':scope > label').length===4&&
+      [...popup.querySelectorAll('.compact-more-options')].every(group=>!group.open)&&
+      rect.left>=0&&rect.right<=innerWidth&&rect.height<510,
       rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
   if(!compactMenuDesktop.ok)throw Error('Compact desktop menu geometry regression: '+JSON.stringify(compactMenuDesktop));
@@ -1739,6 +1741,7 @@ try{
   await eventually(`document.querySelectorAll('.item-heading-row th').length===8`,
     'Restoring four-way team merge after overlapping option failed');
 
+  await evaluate("document.querySelector('.compact-more-options')?.removeAttribute('open')");
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
   const mobileGroups=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');
