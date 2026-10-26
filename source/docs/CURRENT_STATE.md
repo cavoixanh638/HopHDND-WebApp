@@ -1,3 +1,31 @@
+## 26/10/2026 — ĐÃ CÓ SỐ ĐO startupMetrics TRÊN WEBSITE THẬT (Edge InPrivate; 1 lượt)
+
+Người vận hành cung cấp ảnh `https://cavoixanh638.github.io/HopHDND-WebApp/?startupMetrics=1&utm_source=chatgpt.com`, Edge **InPrivate**; tab foreground. Bảng startup timing đọc từ `source/src/components/StartupTimingPanel.tsx` và `network-diagnostics.ts` của `main`, mốc tính từ navigationStart (ms):
+
+| Chỉ số | ms |
+|---|---:|
+| HTML TTFB | 41 |
+| HTML responseEnd | 3369 |
+| JS asset download duration (trong phần JS/CSS) | 158 |
+| CSS asset duration | 66 |
+| JavaScript bắt đầu chạy | 3548 |
+| DOM ready | 3559 |
+| Auth state checked | 3585 |
+| Bắt đầu anonymous sign-in | 3624 |
+| Auth signed in | 5043 |
+| RTDB connected | 5212 |
+| Profile/permissions/admin config arrived | ~5324–5326 |
+| Nhận 55 dòng (real-time) | 5359 |
+| First-data-painted / dữ liệu đúng nguồn có bố cục hợp lệ | 5402 |
+
+**Kết luận từ CHÍNH lượt đo này:** tính đến first-paint ~5,4 s. `TTFB 41 ms` nhưng `responseEnd 3369 ms` nghĩa là phần từ byte đầu tới nhận hết HTML chiếm ~3328 ms — **nút thắt lớn nhất hiện có**; initial JS/CSS asset durations riêng chỉ ~158/66 ms, chưa thể đổ cho bundle JS nặng. Anonymous Auth từ `auth-start-anonymous=3624` tới `auth-signed-in=5043` ~1419 ms (mốc tương quan, không phân rã transport). Từ `rt-db-connected=5212` tới nhận 55 dòng lúc `5359` khoảng **147 ms**, và từ cấu hình admin về đến first-paint chỉ ~76 ms. Từ mốc này **không có cơ sở khẳng định Firebase RTDB lưu 55 dòng gây chậm, hoặc Supabase nhanh hơn**.
+
+**Giới hạn kết luận:** mới **một lượt, browser InPrivate/cold cache**, HTML tĩnh GitHub Pages có thể đang có nghẽn truyền tải/proxy/trình duyệt; chưa quy kết chính xác nguyên nhân gần 3,3 s transfer cho mạng hay host. Chưa có A/B long-poll, cache thường, trình duyệt khác hay 5 lượt để tính median/p95. Không sửa Firebase Rules, đặt chế độ longpoll mặc định hoặc chuyển Supabase chỉ vì phép đo này.
+
+**Ưu tiên điều tra kỹ thuật:** (1) đo 5 lượt thường + InPrivate cùng mạng, so `responseEnd-ttfb` của HTML và JS/CSS transfer, Network tab xem Content-Length/encoding/cache; (2) phân rã Auth anonymous/Google warm vs cold sign-in; (3) giữ render gate an toàn nhưng nếu **cache profile đã xác minh** thì hiển thị read-only lập tức, rồi xác nhận live; (4) dùng tối ưu preload/code splitting/chunk build chỉ nếu từng lượt đo xác nhận JS/CSS là nút thắt; (5) kiểm thử nguồn Supabase độc lập để không kéo `hdnd/profile` Firebase vào đường startup Supabase không liên quan. Giao việc chung tại [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) để tránh hai nhánh cùng sửa App.tsx. **Không thực hiện deploy production**.
+
+---
+
 ## 26/10/2026 — Chờ bố cục quá lâu trước khi hiện bảng: chẩn đoán từ mã nguồn, CHƯA đo mạng
 
 Ảnh người dùng cho thấy placeholder `Đang tải bố cục đã lưu… Chờ xác nhận trước khi hiển thị bảng.` / `Xem dữ liệu tạm (bố cục mặc định)`. Đã truy mã trên `main` và nhánh #72/#75: `App.tsx` đặt `layoutPending = !accountPage && !allowTemporaryLayout && !common.config && common.status === 'loading'`; khi `layoutPending` thì **ẩn toàn bộ bảng**. Với Firebase, `common.status='loading'` tới khi `profileReady=true`, và `profileReady` chỉ được xác nhận sau listener `onValue('hdnd/profile')` hoặc readback riêng trong `use-firebase.ts`. `hdnd/profile` mang bố cục đã lưu và lựa chọn nguồn chung. `firebase-boot.ts` phải khôi phục Auth/đăng nhập ẩn danh trước khi lắng nghe. Người dùng chưa có cache `hdnd.confirmed-profile.v1:hophdnd-8b7b2` trên máy có thể thấy placeholder kéo dài, kể cả khi dữ liệu bảng đã tải đủ.
