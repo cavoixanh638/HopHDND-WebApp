@@ -1,3 +1,11 @@
+## CHECKPOINT UI GỘP CỘT — CI / BROWSER PASS (27/10/2026)
+
+Đã dùng chế độ Vite **QA riêng** tạo bản thử bằng **component `ItemList` thật**, dữ liệu giả, không có kết nối Firebase thật; không liên quan trang Pages production. [Run #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40379091513) **SUCCESS**, ghi `COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS` và `COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS`: 8 cột hiển thị với 4 kiểu gộp, bốn dòng UBND–VP–Phòng–CV đúng nhãn; menu 9 lựa chọn trong 2 nhóm, hình học desktop 1600px + màn hẹp 390px đạt, thử chuyển lựa chọn cũ/mới rồi khôi phục không mất cột; test chỉnh một trường con giữ nguyên trường con khác. **Screenshot** trong artifact `hophdnd-browser-smoke-preview` (desktop, mobile, screenshot chung). [Firebase Emulator staging #40379091832](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40379091832) **SUCCESS**.
+
+Kết quả này là **kiểm thử tự động Chrome trên Linux với dữ liệu mô phỏng**, chưa phải QA trực quan do người dùng xác nhận trên Windows, chưa phải Cloud multiuser E2E hoặc duyệt triển khai. Supabase PAUSED, không chỉnh cấu hình/dữ liệu, chỉ phát triển Firebase PR #72; frontend website chính và RTDB production nguyên trạng.
+
+---
+
 ## UI: Thêm 4 tùy chọn gộp cột — 27/10/2026 (Firebase PR #72)
 
 Đã sửa mã nguồn trên nhánh `feat/exclusive-cell-leases-admin-freeze-20261025`: **Loại VB + Sở vào Nội dung; Cấp + Tiến độ Thành ủy; Tiến độ trình HĐND xây dựng + ban hành; Lãnh đạo UBND + VP + Phòng + Chuyên viên**. Menu hiển thị chia nhóm `Gộp cột` / `Tên hiển thị`, giữ lựa chọn trước, tránh bật đè, không trộn các trường dữ liệu, nhãn rõ từng phần, tìm theo toàn bộ giá trị gốc và mỗi trường sửa theo quyền riêng. Bố cục Firebase lưu cũ được mở rộng bốn flag mới mặc định tắt. Đã bổ sung test và xử lý kéo cột theo độ rộng nguồn khi gộp. **CI PASS:** [source #40376214201](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40376214201), [Firebase emulator #40376214430](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40376214430). Đây là thay đổi UI; chưa kiểm tra trực quan tại máy Windows, chưa triển khai website chính, chưa ghi RTDB production. [Đặc tả](FEATURES.md) · [Theo dõi test/UI](WORKBOARD.md).
