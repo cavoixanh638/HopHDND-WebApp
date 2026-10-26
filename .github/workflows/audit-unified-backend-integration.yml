@@ -138,3 +138,43 @@ jobs:
         run: |
           echo "::error::Firebase/Supabase merge has unresolved conflicts. Resolve per file, then rerun tests. NO-GO."
           exit 1
+
+  publish-verified-merge-to-integration-only:
+    # ONLY the trusted owner's own Draft integration PR and ONLY after BOTH
+    # immutable source security/compile tests pass. NEVER update main/prod.
+    needs: [replay-and-conflict-audit, simulated-combined-source-qa]
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'integration/firebase-supabase-unified-20261026'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: integration/firebase-supabase-unified-20261026
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Fast-forward protected merge into integration branch only
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          SUPABASE_SHA: afb10fe2e5371a81a54fa736ecac403bb7fe57b2
+          TARGET_BRANCH: integration/firebase-supabase-unified-20261026
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          if [ "$actual" != "$EXPECTED_HEAD" ]; then
+            echo "::error::Integration head changed during QA; refuse to merge stale result"
+            exit 1
+          fi
+          if git merge-base --is-ancestor "$SUPABASE_SHA" HEAD; then
+            echo "Supabase input is already an ancestor; no duplicate merge needed"
+            exit 0
+          fi
+          git config user.name "HopHDND Integration CI"
+          git config user.email "integration@users.noreply.github.com"
+          git merge --no-ff -m "merge(integration): retain full PR #75/#73 history on Firebase #72 base [skip ci]" "$SUPABASE_SHA"
+          # Refuse anything except a regular fast-forward push to THIS draft branch.
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          echo "Single integration merge commit created; main/production untouched"
