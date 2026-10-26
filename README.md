@@ -1,3 +1,5 @@
+> **KIẾN TRÚC ĐÍCH MỚI (25/10/2026): Supabase/PostgreSQL, chưa phát hành.** [Quyết định chính thức](source/docs/decisions/SUPABASE_PRIMARY_2026-10-25.md) · [Kế hoạch chuyển đổi](source/docs/operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md) · [Trạng thái GO/NO-GO](source/docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md). Đang phát triển trên nhánh riêng; production Pages/Firebase chưa đổi. Các mô tả Firebase-only bên dưới là kiến trúc cũ hoặc đang chạy, **không còn là đích dài hạn**.
+
 # HopHDND WebApp
 
 GitHub Pages serves the generated **`index.html` at the repository root**. Source code, tests, configuration and documentation live under **`source/`**.

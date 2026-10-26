@@ -1,6 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {SearchHighlight} from './SearchHighlight';
-import type {CellEditSessionManager} from '../../data/cell-edit-leases';
+import type {CellLeaseUiManager} from '../../data/cell-edit-leases';
 import type {EditableField} from '../../../shared/types';
 
 /** Reusable inline multiline editor for Note and Current progress; it changes only the existing draft via onCommit.
@@ -8,7 +8,7 @@ import type {EditableField} from '../../../shared/types';
  * It never writes directly to Excel/Firebase and never grants permissions. */
 export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManager,recordId,field}:{
   value:string;label:string;highlightQuery?:string;onCommit:(next:string)=>boolean|void;
-  leaseManager?:CellEditSessionManager;recordId?:string;field?:EditableField;
+  leaseManager?:CellLeaseUiManager;recordId?:string;field?:EditableField;
 }){
   const [editing,setEditing]=useState(false);
   const [waiting,setWaiting]=useState(false);

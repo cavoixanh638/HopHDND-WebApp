@@ -1,0 +1,50 @@
+name: Verify isolated Supabase PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'source/supabase/**'
+      - '.github/workflows/verify-supabase-postgres.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: synthetic_ci_only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: synthetic_ci_only
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare isolated Auth and Realtime emulation (never live Supabase)
+        run: psql -X -v ON_ERROR_STOP=1 -f source/supabase/tests/bootstrap.sql
+      - name: Compile protected schema and closed import gate on real PostgreSQL 16
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250001_hophdnd_core.sql
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250002_single_import_gate.sql
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250003_rls_initplan.sql
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250004_access_state.sql
+      - name: Exercise 3 isolated identities, ACL precedence, leases and freeze
+        run: psql -X -v ON_ERROR_STOP=1 -f source/supabase/tests/security-rpc.sql
+      - name: Verify no real production data or credentials are accessed
+        run: |
+          echo "Local PostgreSQL 16 only; Auth and business rows synthetic."
+          test -z "${SUPABASE_URL:-}"
+          test -z "${SUPABASE_SERVICE_ROLE_KEY:-}"
