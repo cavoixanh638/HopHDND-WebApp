@@ -1,3 +1,30 @@
+## CẬP NHẬT 26/10/2026 — PR #78 ĐÃ GỘP VÀO NHÁNH TÍCH HỢP (CHỈ STAGING)
+
+- **Đã làm:** [PR #78](https://github.com/cavoixanh638/HopHDND-WebApp/pull/78) gộp thành công vào `integration/firebase-supabase-unified-20261026`; merge SHA `815291926da2ae001a0b4fec906c414db87e3872`. Từ đây, các đoạn lịch sử nói "chưa gộp Supabase" chỉ phản ánh thời điểm trước commit này.
+- **Chưa làm:** PR #77 vẫn Draft/NO-GO, không merge main, không deploy Pages, Firebase Rules, Supabase sản xuất hoặc dữ liệu nghiệp vụ thật. CI pass trên PR #72/#75 không thay thế QA cùng một merged HEAD; Supabase Auth/Google multi-user, quyền ghi, realtime và rollback thật còn chờ.
+- **Windows:** `source/scripts/start-local-staging.ps1` chấp nhận chính xác nhánh #72 và nhánh tích hợp #77, dùng Firebase Auth+RTDB Emulator `demo-hdnd` và Vite `http://127.0.0.1:5173/pages.html`, không tự chạy deployment.
+- **Công cụ đo mạng:** `source/scripts/START_NETWORK_MONITOR_1H.cmd` (nhấp đúp) hoặc `network-stability-1h.ps1`: đo đồng thời 720 lượt/đích trong 60 phút, cứ 5 giây, timeout 4 giây; đích GitHub Pages, Cloudflare edge baseline (không phải Workers thực), Firebase RTDB, Supabase staging health, **localhost**, tùy chọn máy tự host trong LAN (`-LanUrl`) và HTTPS bên ngoài (`-SelfHostUrl`). CSV từng mẫu, CSV thống kê P50/P95 và HTML trong Documents/HopHDND-NetworkReports.
+- **Chưa có kết quả đo thật:** Không thể suy localhost ổn định bằng đường truy cập của người ngoài. Muốn so self-host từ nhà nhân viên, chạy monitor tại mạng nhân viên. 401/403 chứng tỏ HTTP server có phản hồi nhưng không có nghĩa nghiệp vụ sẵn sàng; P50/P95 này là độ trễ HTTP headers, không phải tốc độ mở UI hay ACK ghi dữ liệu.
+
+### Chạy bản tích hợp riêng trên Windows
+
+```powershell
+git clone --branch integration/firebase-supabase-unified-20261026 https://github.com/cavoixanh638/HopHDND-WebApp.git D:\HopHDND-Unified-QA
+cd D:\HopHDND-Unified-QA\source
+npm ci
+# PowerShell cửa sổ thứ nhất: để chạy local staging
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-staging.ps1
+# PowerShell cửa sổ thứ hai: đo 60 phút, 5 giây/mẫu, có localhost
+.\scripts\START_NETWORK_MONITOR_1H.cmd
+# Tùy chọn khi đang chạy self-host (thay đúng IP và domain thực):
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\network-stability-1h.ps1 -LanUrl 'http://192.168.1.10:8080/' -SelfHostUrl 'https://your-valid-host.example/'
+```
+
+Không điền domain ví dụ nếu chưa có host thật. `LocalUrl` mặc định đo `127.0.0.1:5173/pages.html`; nếu chưa bật local webserver, lỗi kết nối là dự kiến, không phải chứng cứ mạng Internet hỏng. Scripts chưa chạy trực tiếp 1 giờ trên máy người dùng.
+
+**Gate còn mở:** GitHub Actions cùng merged HEAD, kiểm 2–3 UID thực (Auth/RLS/Realtime/CAS/lease), xác thực nguồn chọn không ghi chéo, backup/restore, hiệu năng và phê duyệt GO; chuẩn hóa docs PR #76 theo từng hunk, không ghi đè.
+
+---
 # HopHDND — Một WebApp, hai nguồn dữ liệu, một quy trình phát hành có truy vết
 
 **Trạng thái 26/10/2026:** nhánh tích hợp `integration/firebase-supabase-unified-20261026` lấy **Firebase PR #72 SHA 259c36a… làm nền bảo mật đã kiểm thử**, đang đưa PR #73/#75 vào bằng merge ba chiều có kiểm soát. Đây là nhánh hợp nhất đang làm, **KHÔNG phải đã tích hợp Supabase hoàn chỉnh hay được phép phát hành**.
