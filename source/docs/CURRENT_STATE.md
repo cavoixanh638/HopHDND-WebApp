@@ -1,13 +1,3 @@
-## TRẠNG THÁI TÍCH HỢP — 26/10/2026: PR #77 CHỈ QA, production NO-GO
-
-Người dùng yêu cầu hợp nhất công việc luồng "Chuyển supabase" vào **một dự án HopHDND-WebApp**, dễ theo dõi và triển khai. Đã tạo nhánh `integration/firebase-supabase-unified-20261026`, PR [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) Draft, base Firebase PR #72 exact `259c36acaa3d35367459204fda81a58bff7abc32`; Supabase foundation PR #73 `66553279791cddec0039c54a0da194a8ec24d1c0` và selector PR #75 `afb10fe2e5371a81a54fa736ecac403bb7fe57b2` được khóa làm source input, chưa commit backend Supabase vào PR #77. Manifest: [manifest.json](operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json).
-
-CI [audit merge](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/audit-unified-backend-integration.yml) đã chạy phép thử `git merge --no-commit` trong runner read-only và báo **0 xung đột Git/text** tại exact input; **đó không phải là chứng cứ TypeScript/React/authorization đã PASS**. CI build/smoke tổng hợp đang là gate kế tiếp. Mục tiêu: một `activeSource` theo tab, Firebase/Supabase song song nhưng không đồng bộ tự động; Supabase Cloud staging `uguhyunuzsdrkykqgdmq` ACTIVE_HEALTHY với dữ liệu QA giả, không phải production. Supabase security advisor ngày 26/10/2026 có **6 WARN** anonymous-access; truy `pg_policies` read-only cho thấy **6 policy đều là SELECT** (1 locks_self lọc owner UID, 5 read cho authenticated UID), không có các WARN trực tiếp đối với INSERT/UPDATE/DELETE. Tuy nhiên, nếu bật Supabase anonymous Auth thì vai trò `authenticated` có thể bao gồm anonymous identity, nên cần xem đó có phải **chính sách đọc mong muốn** hay không; chưa tự sửa RLS.
-
-Không tự merge PR #72/#73/#75/#76, không deploy Pages/Rules/Supabase, không nhập bất kỳ hồ sơ nghiệp vụ nào trong giai đoạn tích hợp. Ghi mọi kết quả và conflict vào issue #74 / PR #77, cập nhật runbook và bản này theo exact head. Tài liệu Firebase-only cũ chỉ còn mang tính lịch sử.
-
----
-
 ## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
 **Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
 
@@ -1134,3 +1124,13 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - **Dữ liệu local trước chuyển đổi:** người dùng có bản nháp chưa ghi trên thiết bị (như ảnh 25/10). KHÔNG xóa hoặc âm thầm đưa bản nháp này vào Database chính. Xuất/đối chiếu bản nháp rồi mới áp dụng lại theo quyền sau khi chuyển; thông báo rõ. Giữ Theme2, nhóm báo cáo, trạng thái, bảng và phân quyền.
 
 **Trạng thái:** mã nguồn PR đang thử, chưa migrate hoặc thay đổi Rules hay Database thật, chưa được gọi là đã kích hoạt realtime trên HopHDND.
+
+## TRẠNG THÁI TÍCH HỢP — 26/10/2026: PR #77 CHỈ QA, production NO-GO
+
+Người dùng yêu cầu hợp nhất công việc luồng "Chuyển supabase" vào **một dự án HopHDND-WebApp**, dễ theo dõi và triển khai. Đã tạo nhánh `integration/firebase-supabase-unified-20261026`, PR [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) Draft, base Firebase PR #72 exact `259c36acaa3d35367459204fda81a58bff7abc32`; Supabase foundation PR #73 `66553279791cddec0039c54a0da194a8ec24d1c0` và selector PR #75 `afb10fe2e5371a81a54fa736ecac403bb7fe57b2` được khóa làm source input, chưa commit backend Supabase vào PR #77. Manifest: [manifest.json](operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json).
+
+CI [audit merge](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/audit-unified-backend-integration.yml) đã chạy phép thử `git merge --no-commit` trong runner read-only và báo **0 xung đột Git/text** tại exact input; **đó không phải là chứng cứ TypeScript/React/authorization đã PASS**. CI build/smoke tổng hợp đang là gate kế tiếp. Mục tiêu: một `activeSource` theo tab, Firebase/Supabase song song nhưng không đồng bộ tự động; Supabase Cloud staging `uguhyunuzsdrkykqgdmq` ACTIVE_HEALTHY với dữ liệu QA giả, không phải production. Supabase security advisor ngày 26/10/2026 có **6 WARN** anonymous-access; truy `pg_policies` read-only cho thấy **6 policy đều là SELECT** (1 locks_self lọc owner UID, 5 read cho authenticated UID), không có các WARN trực tiếp đối với INSERT/UPDATE/DELETE. Tuy nhiên, nếu bật Supabase anonymous Auth thì vai trò `authenticated` có thể bao gồm anonymous identity, nên cần xem đó có phải **chính sách đọc mong muốn** hay không; chưa tự sửa RLS.
+
+Không tự merge PR #72/#73/#75/#76, không deploy Pages/Rules/Supabase, không nhập bất kỳ hồ sơ nghiệp vụ nào trong giai đoạn tích hợp. Ghi mọi kết quả và conflict vào issue #74 / PR #77, cập nhật runbook và bản này theo exact head. Tài liệu Firebase-only cũ chỉ còn mang tính lịch sử.
+
+---
