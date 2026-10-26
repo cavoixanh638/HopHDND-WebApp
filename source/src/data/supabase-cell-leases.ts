@@ -21,6 +21,7 @@ export class SupabaseCellLeaseManager {
   private readonly held=new Map<string,{lease:SupabaseLease;timer:ReturnType<typeof setInterval>}>();
   private readonly errors=new Map<string,string>();
   private readonly releasePending=new Set<string>();
+  private readonly savePending=new Set<string>();
   constructor(private readonly rpc:SupabaseLeaseRpc,
     private readonly userScope:()=>string|null,
     private readonly onLost:(id:string,field:EditableField,reason:string)=>void=()=>{}){}
@@ -40,6 +41,12 @@ export class SupabaseCellLeaseManager {
     try {localStorage.removeItem(this.draftKey(id,field));}catch{/* keep server ACK */}
   }
   has(id:string,field:EditableField){return this.held.has(makeKey(id,field));}
+  isPending(id:string,field:EditableField){return this.savePending.has(makeKey(id,field));}
+  markPending(id:string,field:EditableField){
+    const key=makeKey(id,field);
+    if(!this.held.has(key))throw new Error('Chưa giữ khóa ô Supabase để lưu.');
+    this.savePending.add(key);
+  }
   error(id:string,field:EditableField){return this.errors.get(makeKey(id,field))??null;}
   /** Only proofs actually held by this browser tab can enter SupabaseRepository.save. */
   getLease:SupabaseConnection['getLease']=(id,field)=>{
@@ -83,6 +90,7 @@ export class SupabaseCellLeaseManager {
     // delete a newer session's lock. Draft intentionally preserved.
     clearInterval(entry.timer);this.held.delete(key);
     this.releasePending.add(key);
+    this.savePending.delete(key);
     try {await this.rpc.invoke<boolean>('hdnd_release_cell',{
       p_record_id:id,p_field:field,p_session:entry.lease.session,p_token:entry.lease.token
     });}

@@ -1,10 +1,10 @@
 import {useEffect,useRef,useState} from 'react';
 import type {EditableField} from '../../../shared/types';
-import type {CellEditSessionManager} from '../../data/cell-edit-leases';
+import type {CellLeaseUiManager} from '../../data/cell-edit-leases';
 
 export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
  manager,onChange}:{value:string;label:string;id:string;field:EditableField;
- disabled?:boolean;maxLength?:number;manager?:CellEditSessionManager;
+ disabled?:boolean;maxLength?:number;manager?:CellLeaseUiManager;
  onChange:(value:string)=>void}){
   const [ready,setReady]=useState(false);
   const composing=useRef(false);

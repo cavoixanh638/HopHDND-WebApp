@@ -1,3 +1,5 @@
+> **CẬP NHẬT KIẾN TRÚC ƯU TIÊN — 25/10/2026:** Giữ cả Firebase RTDB và Supabase PostgreSQL, chọn nguồn theo tab trong cùng WebApp; không copy/sync ngầm và không bỏ bất kỳ database nào. [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) hiện triển khai bước 1: bộ chọn nguồn có guard nháp/lease, Supabase **staging read-only** qua anonymous Auth độc lập và polling 15 giây, không có viết Supabase hay native Realtime; OAuth Google và Supabase write pipeline còn HOLD. [Canonical status](operations/SUPABASE_RELEASE_GATE_2026-10-25.md). Các sơ đồ Firebase-only / Supabase-only dưới đây ghi nhận lịch sử, không thay quyết định mới.
+
 > **QUYẾT ĐỊNH ĐÍCH ƯU TIÊN (25/10/2026):** chuyển hệ thống lưu trữ và Auth tương lai sang **Supabase PostgreSQL**; UI React/báo cáo/chức năng giữ nguyên. Tài liệu nguồn chuẩn: [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md), [mapping Supabase](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md). Chi tiết Firebase/Google Sheets dưới đây mô tả **bản hiện hành/lịch sử và PR #71/#72**, không phải quyết định mới. Chưa có cutover production.
 
 ## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)

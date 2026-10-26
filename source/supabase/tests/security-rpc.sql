@@ -263,4 +263,42 @@ begin
  then raise exception 'NEW_SESSION_LEASE_CORRUPTED'; end if;
 end $$;
 
+
+-- Capability RPC returns only caller's own verified rights; never admin by JWT email.
+set role authenticated;
+select set_config('request.jwt.claim.sub','44444444-4444-4444-8444-444444444444',false);
+select set_config('request.jwt.claims','{"is_anonymous":false,"email":"admin@example.test"}',false);
+do $$
+declare a jsonb;
+begin
+ a:=public.hdnd_access_state();
+ if a->>'userId'<>'44444444-4444-4444-8444-444444444444'
+   or (a->>'isAdmin')::boolean
+   or (a->>'guestEditingLocked')::boolean<>false
+   then raise exception 'CAPABILITY_SPOOFED_ADMIN'; end if;
+end $$;
+reset role;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);
+select set_config('request.jwt.claims','{"is_anonymous":false}',false);
+do $$
+declare a jsonb;
+begin
+ a:=public.hdnd_access_state();
+ if not (a->>'isAdmin')::boolean or a->>'mode'<>'OPEN'
+   or (a->>'aclRevision')::integer<>3
+   then raise exception 'CAPABILITY_ADMIN_STATE_WRONG'; end if;
+end $$;
+reset role;
+
+do $$
+begin
+ if has_function_privilege('anon','public.hdnd_access_state()','execute')
+   then raise exception 'ANON_CAPABILITY_LEAK'; end if;
+ if exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname='hdnd_access_state' and p.prosecdef)
+   then raise exception 'CAPABILITY_PUBLIC_DEFINER'; end if;
+end $$;
+
 select 'SUPABASE_POSTGRES_SYNTHETIC_SECURITY_PASS' result;

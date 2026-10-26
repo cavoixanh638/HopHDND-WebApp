@@ -1,5 +1,110 @@
 # HopHDND — SUPABASE GO/NO-GO (nguồn sự thật về tiến độ triển khai)
 
+## Local/LAN-host demo separate from Supabase QA — 27/10/2026
+
+A Windows LAN proof-of-concept was delivered in this ChatGPT conversation as `HopHDND_Demo_Host_LAN_Windows_5s_60min.zip`. It is a standalone **synthetic-data-only** trial, deliberately not deployed to GitHub Pages, not merged, and not connected to Firebase, Supabase or production HopHDND data. The package contains `CHAY_DEMO_LAN.cmd`, Node.js stdlib HTTP host (with Python fallback), local sample persistence (Node JSON / Python SQLite), a 5-row browser demonstration, optimistic revision checking to reject stale writes with HTTP 409, `/health` and `DO_LAN_60_PHUT.cmd` / `DO_ON_DINH_LAN_60_PHUT.ps1` to measure office client-to-host stability every five seconds for sixty minutes. `DO_THU_LAN_2_PHUT.cmd` enables a short pilot. Raw CSV is saved continuously.
+
+**Scope:** Host binds port 8787 on Windows; coworkers use `http://<host-private-ip>:8787/` on a routed LAN. A Windows firewall allow script is optional and restricted to Private profile, TCP 8787 and LocalSubnet. No automatic firewall changes, Internet port forwarding, or public access. Demo does not provide login, permissions, audited production backup, encryption, application auth, outage failover or real HopHDND database; therefore **it must never be offered to staff as the production WebApp or contain real user data**. For the actual WebApp to be independent of international connectivity, the application backend, data store and auth must also be local or reachable through a resilient private path; merely serving the frontend locally does not eliminate Firebase/Supabase/Google dependencies.
+
+**Validation:** Offline local tests passed HTTP GET `/health`, `/api/state`, cross-client readback, two concurrent writes to the same row (one 200, one 409), Origin restriction (403), and Node sample persistence after restart. The 60-minute LAN test is **provided but not yet performed at the user's office**; do not claim measured availability, RTT percentiles or 100% reliability. The original international-network monitor showed TIMEOUT/DNS anomalies and a failed synthetic host startup, so it is not a reliable network-comparison baseline until debugged.
+
+**Next decision gate:** Observe two real office Windows PCs, 2-minute connectivity trial, then 60-minute 5-second LAN CSV. Check network segmentation, host Wi-Fi/Ethernet IP stability, Power/Sleep, local firewall, CPU load and backup/UPS before selecting LAN hosting vs cloud. **Existing Firebase and Supabase paths and import release gate stay untouched.**
+
+---
+
+
+### Xác minh trực tiếp đã BẬT Google Auth trên Supabase Cloud — 26/10/2026
+
+[GitHub Actions Verify source #40221153349](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40221153349) **SUCCESS**, bao gồm `SUPABASE_AUTH_SMOKE_STATIC_GUARDS_PASS` và public Cloud `SUPABASE_STAGING_GOOGLE_PROVIDER_ENABLED=true` qua `/auth/v1/settings` với **publishable key, không sử dụng Client Secret**. Việc bật provider đã được kiểm chứng server-side. **Chưa xác thực được tài khoản Google người thật**: khi kiểm tra SQL trước lúc test, `auth.users=0`, `auth.identities[google]=0`, admin allowlist trống. Tiếp theo chạy độc lập `source/scripts/supabase-auth-smoke.html` trên `localhost:8765` và đối chiếu readback. Không vì provider enabled mà cấp quyền admin hoặc GO.
+
+## Cập nhật sau khi cấu hình Google Provider — 26/10/2026 (đăng nhập thử độc lập)
+
+Chủ dự án xác nhận **đã bấm Save tại Supabase → Authentication → Google**. Kết nối Supabase hiện có **không hỗ trợ đọc/ghi cấu hình OAuth providers, client secret hoặc Redirect URLs**; vì vậy Save không được coi là bằng chứng Google sign-in PASS. Đọc Cloud SQL trực tiếp: `auth.users=0`, `auth.identities[provider=google]=0`, `hdnd_private.admin_emails=0`, dữ liệu 6 hồ sơ QA giả, import gate đóng. Supabase project vẫn `ACTIVE_HEALTHY` với bốn migration. Sau khi bật anonymous sign-ins, Security Advisor có **6 cảnh báo WARN** về chính sách SELECT cho phiên anonymous; không còn được báo cáo "0 cảnh báo bảo mật". Cần phê duyệt mô hình khách xem và kiểm tra RLS trước dữ liệu thật.
+
+**Đường QA đơn giản mới, KHÔNG cần chạy WebApp/Firebase:**
+1. Trong [Supabase Authentication → URL Configuration](https://supabase.com/dashboard/project/uguhyunuzsdrkykqgdmq/auth/url-configuration), thêm Redirect URL dành riêng cho localhost thử: `http://localhost:8765/**`. Không thay Site URL đang sử dụng hoặc mở wildcard trên tên miền thật.
+2. Trong Google Cloud OAuth Client dành cho Supabase staging, thêm `http://localhost:8765` vào **Authorized JavaScript origins** khi cần kiểm thử browser localhost. **Authorized redirect URI của Google** vẫn là `https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/callback`; đây là hai cấu hình KHÁC NHAU.
+3. Mở GitHub Desktop, checkout nhánh PR #75. Mở PowerShell tại thư mục `source` và chạy `py -m http.server 8765 --directory scripts` (có Python). Mở `http://localhost:8765/supabase-auth-smoke.html` trên **chính máy đó**. Trang tĩnh chỉ gọi Auth/REST của Cloud staging, không cần emulators, không có secrets hoặc ghi nghiệp vụ.
+4. Bấm **Kiểm tra Auth của Supabase** để kiểm tra provider Google có đang bật. Bấm **Đăng nhập Google trên Supabase** bằng tài khoản nằm trong Google Cloud Audience → Test users; chờ quay về localhost (redirect URI đã được allowlist). Bấm **Xác minh bằng Supabase**: phải thấy email, UID thật, `isAdmin`, trạng thái control và 6 dòng QA. Session JWT chỉ giữ trong RAM, callback URL bị xóa token ngay.
+5. Nếu `isAdmin=false` thì **bình thường**: mặc định không có admin allowlist. Sau khi đăng nhập Google thật và xác minh đúng tài khoản, operator có thể duyệt và cấp quyền chính xác cho tài khoản ấy trong `hdnd_private.admin_emails`; không commit email/secret vào repo. Chưa có bước này nên **KHÔNG thử ghi**.
+6. Nếu callback không hoạt động, kiểm tra Provider Google có Enable/Save, Google Cloud Audience test users, Supabase Redirect URLs và cấu hình browser localhost. Không gỡ RLS hoặc tự bật quyền admin để lách lỗi.
+
+**CI cho trang standalone:** `source/scripts/check-supabase-auth-smoke.mjs` xác minh cú pháp JS và các rào chắn staging-only / anti-CSRF / không secret bằng cách kiểm tra HTML; workflow `Verify HopHDND source` chạy offline. CI này không thể thay thế đăng nhập Google thật.
+
+**Google Client Secret đã xuất hiện trong ảnh trước đó**; chủ dự án chọn tiếp tục dùng trong môi trường staging. Không sao chép secret vào code, lịch sử GitHub hay trả lại trong tin nhắn; trước phát hành production cần thay và kiểm thử lại.
+
+---
+
+
+### QA build tải trực tiếp, không đụng Firebase production
+
+Workflow `Verify HopHDND source` trên nhánh [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) sau CI SUCCESS lưu artifact **`hophdnd-parallel-source-qa-site`** (nội dung `source/dist-pages-test/`, 7 ngày). Đây là website test với `MODE=pages-test`, **Firebase trỏ duy nhất vào emulator local** `127.0.0.1:9099` / `127.0.0.1:9000`, **không được đẩy sang Firebase production**. Supabase vẫn trỏ đến Cloud staging `uguhyunuzsdrkykqgdmq` với publishable key, 6 hồ sơ QA riêng. Artifact chỉ là bản QA, không phải link web đã deploy, phải dùng local static HTTP server và chạy Firebase Auth + RTDB emulator cho Firebase. OAuth Google trên localhost bắt buộc phải có redirect URL được cấu hình trong Dashboard và kiểm thử thủ công.
+
+Cách đơn giản cho người dùng trên Windows/GitHub Desktop: chọn nhánh `feat/supabase-parallel-source-selector-20261025`, mở PowerShell ở thư mục `source`, chạy `npm ci`; cửa sổ PowerShell A dùng `npx firebase emulators:start --project demo-hdnd --only auth,database`; cửa sổ B dùng `npm run dev:pages` (Vite `pages-test`, Firebase emulator, Supabase Cloud staging). Mở URL localhost in ra bởi Vite. **Tuyệt đối không đổi thành `--mode pages` để thử ghi Firebase production**, và không dùng `firebase deploy`. Khi có Google OAuth Supabase staging và user allowlist xác thực đúng, nút chọn nguồn/kiểm tra tốc độ sẽ hoạt động trên chế độ QA; Firebase emulator data chỉ là giả lập, không so sánh hiệu năng Cloud của Firebase production với Supabase bằng run này.
+
+### Cập nhật khả năng tự chọn nguồn (QA) — cấu hình sẵn Supabase staging
+
+Bản nguồn PR #75 đã có **publishable key mặc định của chính dự án QA** `uguhyunuzsdrkykqgdmq` được lấy từ connector Supabase. `sb_publishable_...` là khóa công khai dành cho trình duyệt, **không phải** service_role/secret key; mọi dữ liệu vẫn chỉ được đọc sau Supabase Auth JWT và RLS. Vì vậy trên bản build QA, lựa chọn Supabase sẽ xuất hiện ngay, **không cần tự dán key để bắt đầu thử**. Tùy chọn cấu hình key trong tab vẫn được giữ để thử việc xoay khóa/môi trường; mọi override phải được operator kiểm tra kỹ, không nhằm trỏ vào production. Khoá công khai **không mở** Anonymous/Google Auth và không tự tạo quản trị viên. Cấu hình QA được **ghim cứng vào đúng project staging**; mọi cố gắng đặt URL Supabase khác trong tab bị từ chối, tránh nhập nhầm database production. Supabase publishable key sẽ còn có thể được xoay trong cùng project staging. Những bước Auth provider, Google OAuth và verified admin ở hướng dẫn dưới vẫn là blocker bắt buộc.
+
+### Bằng chứng CI chính xác sau vòng chỉnh sửa Auth/Realtime và bộ chọn nguồn
+
+- **Commit nguồn chính xác:** `5713e18281db3bc2d73de2430a013547eacebbbd`.
+- [Verify HopHDND source #40210676482](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40210676482) **SUCCESS**: TypeScript, Vitest (OAuth state/secret guard, nguồn chọn, JWT/mock RPC, WebSocket Phoenix), docs, Firebase emulator, build và browser smoke.
+- [Verify isolated Supabase PostgreSQL #40210676481](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40210676481) **SUCCESS**: nạp đủ 4 migrations và kiểm thử độc lập các RPC với identity tổng hợp. Các commit tài liệu sau SHA này phải check CI riêng nếu cần khẳng định exact-head PASS.
+- Cloud staging độc lập đã đọc lại: `hdnd_items=6` và cả 6 có mã QA, các bảng nghiệp vụ đều `RLS=true`, Security Advisor `lints=[]`, 4 migrations đúng, `admin_allowlist=0`, import gate vẫn đóng. Không có Cloud Auth Google/Realtime nhiều phiên thật.
+- **Không tự nhận hoàn thành production:** ci xanh chỉ là mã nguồn + emulator + test protocol giả lập; xác thực Google thật, ACL với người thật, đồng bộ theo giây trên Cloud và latency p50/p95 vẫn phải được kiểm chứng. `PR #75` tiếp tục Draft NO-GO.
+
+## CẬP NHẬT KỸ THUẬT 25/10/2026 — DỰ ÁN VẪN ĐANG QA SONG SONG, KHÔNG CẮT FIREBASE
+
+**Quyết định chủ dự án:** Người vận hành phải có thể chọn **Firebase chính / Firebase mirror / Excel tạm / Supabase staging** trong cùng WebApp (tab-local). Mỗi lựa chọn chỉ được ghi vào backend đã chọn; không tự đồng bộ, không xóa nguồn nào. [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) tiếp tục là stacked Draft trên [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73); `main` và Pages production chưa đổi.
+
+**Bằng chứng Cloud mới nhất:**
+- Project Supabase Free `uguhyunuzsdrkykqgdmq`, Singapore, PostgreSQL 17 đang ACTIVE_HEALTHY. Đã áp dụng **4 migration**, bổ sung `hophdnd_access_state_20261025` cho RPC quyền đọc phiên (`hdnd_access_state`).
+- Truy vấn phân quyền trực tiếp trên Cloud: `anon_can_read_access=false`, `auth_can_read_access=true`. Quyền quản trị được xác minh ở hàm SQL riêng với Google identity thực, email đã xác nhận và allowlist không mặc định. Supabase Security Advisor: **0 security lints**; chỉ còn 3 INFO về index chưa sử dụng vì bảng dữ liệu rất nhỏ.
+- Đã chạy script **staging-only** `source/supabase/tests/staging-only-qa-data.sql`, xác minh **6/6 hồ sơ là QA** (`qa-supa-0001…0006`, `QA-NQ-0001…0006`), `stt=900001…900006`. Không nhập nội dung thực, **admin_count=0**, `import_gate=false`. Script dọn chính xác 6 dòng QA, audit và leases đi kèm nằm tại `source/supabase/tests/staging-only-qa-cleanup.sql`. Trước bất kỳ import thật nào phải xóa QA rows, xác minh 0 dòng và backup.
+- Bộ Postgres synthetic CI đã kiểm tra 4 migrations, direct-write deny, 3 identity, quản trị giả, ACL per-cell, lease, operationId replay, freeze, admin control, phát hiện thay đổi phiên bản.
+
+**Mã WebApp trên PR #75 (không phải production):**
+- Nút chọn nguồn theo tab, ghi lại lựa chọn trong `sessionStorage` để duy trì sau Google OAuth redirect; guard chặn đổi nguồn khi có bản nháp chưa lưu, lease, editor mở, dữ liệu đang đọc/lưu hoặc phải đối chiếu. Không ghi sang `FirebaseProfile.dataSource`.
+- Hỗ trợ cấu hình public Supabase staging ngay trong **tab** bằng `sb_publishable_...` hoặc `source/.env.local` gitignored; từ chối `sb_secret_*`, `service_role`, HTTP hoặc host ngoài Supabase.
+- Supabase Auth dùng **session JWT riêng**, không tái sử dụng Firebase Auth token. Có nhánh guest anonymous và Google OAuth redirect với random state theo tab; cần dashboard Google provider/redirect chuẩn trước khi kiểm thử thật. Auth failure được backoff để không spam gói Free.
+- `SupabaseRepository` đọc qua REST RLS và chỉ ghi qua RPC `hdnd_save_cell_changes` khi chính máy chủ xác nhận quyền + khóa ô + CAS + readback, nháp được giữ khi có lỗi. Giao diện dropdown/note/progress/content sử dụng cùng `CellLeaseUiManager` đa backend. Supabase admin có chức năng quyền ô qua RPC CAS, khóa khách và chuyển `OPEN/DRAINING/FROZEN` độc lập với Firebase; thao tác quản trị có dialog xác nhận.
+- Có triển khai WebSocket Supabase Postgres Changes (`hdnd_items` duy nhất) và đọc lại bằng JWT sau mỗi sự kiện; khi mạng/kênh lỗi có polling dự phòng 15 giây. **Đây là integration code + test mock Phoenix, CHƯA phải bằng chứng Realtime nhiều người trên Cloud.**
+- Nút **Kiểm tra tốc độ đọc nguồn này** gửi duy nhất GET tới backend được chọn, hiển thị số dòng và thời gian (ms) cho phiên đang mở; không tạo ghi và không tự fallback. **Không thể kết luận Supabase nhanh/chậm hơn Firebase từ 6 dòng QA vs dữ liệu khác kích thước**.
+
+### Hướng dẫn thao tác tối thiểu cho quản trị viên — staging, KHÔNG đụng production
+
+1. Truy cập **Supabase Dashboard → HopHDND-Staging → Authentication → Providers**. Bật **Anonymous Sign-Ins** cho QA theo chính sách bảo mật; bật **Google** sau khi tạo Google OAuth Web Client và cấu hình client ID/secret **chỉ trong dashboard Supabase**. Trong Google Cloud OAuth cần callback URI `https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/callback`. Trong Supabase Authentication URL Configuration đặt URL WebApp QA thực và redirect URL `https://<host-thật>/<path-thật>` theo host Pages đang sử dụng. Không suy đoán URL sản phẩm, dùng domain thực ở phần Settings → Pages. Không chép Google Client Secret vào repo/ChatGPT/webapp.
+2. Mở **bản build QA của PR #75** trên HTTPS, đăng nhập Firebase Google QA nếu cần hiển thị bộ chọn nguồn; đây không phải website production hiện hành. Mở thanh chọn **Nguồn dữ liệu của tab này**. Nếu Supabase chưa khả dụng, trong **Cấu hình Supabase staging** dán duy nhất Supabase **publishable key** (`sb_publishable_...`), bấm lưu. Không dùng service_role/secret key. Chuyển Firebase/Supabase tùy ý khi không có nháp/lease hoặc màn hình chỉnh sửa.
+3. Chọn **Supabase staging**: trước tiên có thể thấy 6 hồ sơ QA. Để có quyền quản trị Supabase, bấm **Đăng nhập Google trên Supabase**. Sau khi đã đăng nhập bằng Google thực và xác nhận email/provider trong Supabase Auth → Users, người quản trị DBA **thêm chính xác email đã kiểm chứng** vào bảng private `hdnd_private.admin_emails`, không suy diễn từ email GitHub/Firebase hoặc tổ chức. Không ghi email thật vào GitHub. Sau đó tải lại nguồn: `hdnd_access_state` phải trả `isAdmin=true`. Nếu chưa xác minh, WebApp giữ **read-only**.
+4. Với tài khoản admin Supabase đã được kiểm chứng: dùng **Phân quyền ô trên Supabase**, **Mở/Khóa quyền sửa khách**, **OPEN/DRAINING/FROZEN** và kiểm thử đồng thời ít nhất 3 phiên trên 2 máy. Kiểm tra cùng ô bị từ chối, khác ô đồng thời vẫn giữ cả hai, mất mạng giữ nháp, lịch sử đúng 1 lần, freeze chặn ghi, và realtime event tới phiên khác. Kiểm tra Firebase vẫn độc lập, có thể quay lại nguồn Firebase bằng bộ chọn.
+5. Đọc benchmark cold/warm trên nguồn đã chọn; lưu bằng chứng p50/p95 từ cùng tập dữ liệu và quyền sau khi đã có test parity tổng quát. Sau QA, dùng script cleanup riêng ở staging để xóa 6 mẫu, xác minh `hdnd_items=0` trước khi xem xét import thật.
+
+**Các blocker G2-G8 chưa được đánh dấu PASS:** hoàn tất cấu hình OAuth/Anonymous Provider **ngoài GitHub**, người quản trị xác thực thực trên Cloud, QA REST/Reatime/3 người thật, backup/restore drill Cloud, so sánh tốc độ đúng dữ liệu, import được duyệt riêng (nếu cần), rollback và quyết định GO. **Không được merge/deploy/mở sử dụng thật chỉ nhờ CI PASS.**
+
+---
+
+
+## Kiểm tra trạng thái trước đợt triển khai mới và thực thi PR #75 — 25/10/2026
+
+**Kiểm tra thực tế lúc bắt đầu (trước khi tạo nhánh mới):**
+- GitHub [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) (Firebase) và [PR #73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) (Supabase foundation) đều `open`, `Draft`, **chưa merge**. Đúng head PR #73: `66553279791cddec0039c54a0da194a8ec24d1c0`.
+- Tại **exact commit trên**, [Verify HopHDND source #40204193173](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193173), [Verify isolated Firebase staging #40204193170](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193170), [Verify isolated Supabase PostgreSQL #40204193178](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40204193178) đều **SUCCESS**. Các kết luận CI chỉ áp dụng cho commit đó, không tự suy cho PR mới.
+- Supabase project `uguhyunuzsdrkykqgdmq` trả `ACTIVE_HEALTHY` trên PostgreSQL 17 Singapore; lịch sử gồm **đúng ba migrations đã apply** (`hophdnd_core_staging_20261025`, `hophdnd_single_import_gate_staging_20261025`, `hophdnd_rls_initplan_staging_20261025`). SQL đọc trực tiếp: `item_count=0`, `audit_count=0`, `admin_count=0`, `import_open=false`, `mode=OPEN`. Security advisors: `lints=[]`.
+- Nguồn webapp vẫn chưa có lựa chọn riêng Supabase, chưa có Google OAuth Supabase, native Realtime, full UI phân quyền Supabase hoặc ghi Supabase hoàn chỉnh. Không tuyên bố đã xong chỉ vì cloud migrations PASS.
+
+**Đợt triển khai #75:** branch `feat/supabase-parallel-source-selector-20261025` sinh trực tiếp từ SHA `66553279791cddec0039c54a0da194a8ec24d1c0`; [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) Draft **base là branch PR #73**, giữ PR #73 nguyên vẹn. Liên kết điều hành [Issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+- Nguồn ở cấp **tab trình duyệt**, các lựa chọn `excel/database/primary/supabase`. Nguồn này **không gọi Firebase.common.save('dataSource')**; chuyển đổi bị chặn khi có draft, protected recovery, dữ liệu đang load/confirm, editor mở hoặc Firebase cell lease đang giữ. Namespace Supabase khác Firebase và Excel.
+- **Read-only staging prototype**: khi có cấu hình chính xác, sử dụng Supabase REST/Auth anonymous JWT riêng, refresh token theo tab; bảng `hdnd_items` được đọc bằng RLS và kiểm tra lại 15 giây/lần khi tab hiển thị. Đây **không phải native Supabase Realtime**. Chỉ khi operator bật Anonymous Sign-Ins và cấu hình URL + `sb_publishable_...` của **staging** qua `source/.env.local` (gitignored) thì tùy chọn mới khả dụng; không để secret hoặc service_role vào mã.
+- Supabase preview tuyệt đối `readOnly=true`, `canDraft=false`, `save()` từ chối; chưa chạy import hoặc tạo admin. Firebase, link Excel và thiết lập nguồn admin chung vẫn tồn tại. **Không triển khai production**.
+- Tests mới: `source/tests/supabase-parallel-source.test.ts` kiểm guard/namespace, chặn key bí mật, auth JWT isolated+rotated refresh, read-only REST, không gọi RPC ghi. Chỉ xác nhận PASS khi Verify source CI trên head của #75 thành công; không bỏ qua Firebase CI.
+- **CI của nhánh mới sau sửa regression:** [Verify HopHDND source #40206075304](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40206075304) **SUCCESS** tại exact commit `dc649725493fcc7de21b6dd85ea068147491edc3`: TypeScript, Vitest, docs check, Firebase Emulator, hai bundle build và browser smoke. Trước đó phiên đầu [#40205901541](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40205901541) FAILED tại smoke về bố cục khách khi thanh chọn nguồn xuất hiện. Đã sửa: chỉ hiện nguồn staging cho phiên quản trị/QA đã đăng nhập Firebase Google, không hiển thị cho khách; guest smoke PASS ở commit tiếp theo. Đây là bằng chứng kiểm thử **commit nêu trên**, không phải GO toàn hệ thống hoặc nghiệm thu REST cloud trực tiếp.
+- **Các việc vẫn HOLD:** native Google OAuth, auth provider thủ công trong Supabase Dashboard, security multiuser qua REST/RLS, Supabase Realtime Postgres Changes, write lease + permission UI + freeze thực tế, so sánh hiệu năng có số liệu, backup/restore, E2E, import thật và production GO. Google Sheets tiếp tục được giữ theo nhu cầu vận hành tạm. **Không database nào bị bỏ.**
+
+---
+
+
 ## Chạy song song nguồn dữ liệu — chỉ đạo mới và Cloud staging (25/10/2026)
 
 **Yêu cầu mới ưu tiên cao nhất:** Firebase RTDB vẫn được giữ nguyên và có thể chọn; Supabase được bổ sung để chạy song song/so sánh, **không có quyết định loại bỏ database nào**. Google Sheets vẫn chỉ là nguồn tạm thời nếu được chọn trong bản app chưa cutover. Không tự đồng bộ, copy hoặc ghi đè giữa Firebase, Supabase và Sheets. Mỗi nguồn có namespace độc lập cho draft, realtime, audit, ACL, auth và freeze. Chuyển lựa chọn phải xử lý nháp/lease trước, không đổi cấu hình nguồn toàn hệ thống của Firebase để thử Supabase.

@@ -39,6 +39,8 @@ jobs:
         run: |
           psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250001_hophdnd_core.sql
           psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250002_single_import_gate.sql
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250003_rls_initplan.sql
+          psql -X -v ON_ERROR_STOP=1 -f source/supabase/migrations/202610250004_access_state.sql
       - name: Exercise 3 isolated identities, ACL precedence, leases and freeze
         run: psql -X -v ON_ERROR_STOP=1 -f source/supabase/tests/security-rpc.sql
       - name: Verify no real production data or credentials are accessed
