@@ -1,0 +1,84 @@
+name: Audit dual-backend integration (read only)
+on:
+  push:
+    branches:
+      - integration/firebase-supabase-unified-20261026
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-and-conflict-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Ensure exact source commits still exist
+        env:
+          FIREBASE_SHA: 259c36acaa3d35367459204fda81a58bff7abc32
+          SUPABASE_SHA: afb10fe2e5371a81a54fa736ecac403bb7fe57b2
+          FOUNDATION_SHA: 66553279791cddec0039c54a0da194a8ec24d1c0
+        run: |
+          set -euo pipefail
+          for sha in "$FIREBASE_SHA" "$SUPABASE_SHA" "$FOUNDATION_SHA"; do
+            git cat-file -e "$sha^{commit}" || {
+              echo "::error::Missing source commit $sha (do not silently use moving branch heads)"
+              exit 1
+            }
+          done
+          echo "Source commits verified without changing refs"
+      - name: Offline three-way merge conflict audit (NEVER push or deploy)
+        id: audit
+        env:
+          SUPABASE_SHA: afb10fe2e5371a81a54fa736ecac403bb7fe57b2
+        run: |
+          set -uo pipefail
+          mkdir -p integration-evidence
+          git config user.name "HopHDND Merge Audit (CI only)"
+          git config user.email "merge-audit@users.noreply.github.com"
+          baseline="$(git rev-parse HEAD)"
+          echo "Base HEAD: $baseline"
+          echo "Target Supabase HEAD: $SUPABASE_SHA"
+          git merge --no-commit --no-ff "$SUPABASE_SHA" > integration-evidence/merge-output.txt 2>&1
+          merge_exit=$?
+          git diff --name-only --diff-filter=U > integration-evidence/unresolved.txt
+          git diff --name-status --cached > integration-evidence/staged.txt
+          {
+            echo "# HopHDND integration merge audit (NON-DESTRUCTIVE)"
+            echo
+            echo "Firebase-first integration branch HEAD: `$baseline`"
+            echo
+            echo "Supabase stacked PR #75 exact candidate: `$SUPABASE_SHA`"
+            echo
+            echo "Merge exit: $merge_exit (zero = no textual conflicts)"
+            echo
+            echo "Unresolved files: $(wc -l < integration-evidence/unresolved.txt)"
+            echo
+            echo "## Conflict files"
+            sed 's/^/- /' integration-evidence/unresolved.txt
+            echo
+            echo "## Automated merged paths"
+            sed 's/^/- /' integration-evidence/staged.txt
+            echo
+            echo "**NOTICE:** A textually conflict-free merge still requires security and runtime contract review. This CI action never pushes, deploys, imports or changes databases."
+          } > integration-evidence/report.md
+          cat integration-evidence/report.md
+          echo "conflicts=$(wc -l < integration-evidence/unresolved.txt)" >> "$GITHUB_OUTPUT"
+          echo "merge_exit=$merge_exit" >> "$GITHUB_OUTPUT"
+          echo "### Integration audit" >> "$GITHUB_STEP_SUMMARY"
+          cat integration-evidence/report.md >> "$GITHUB_STEP_SUMMARY"
+          # Do not leave a merge in progress; no changes leave runner.
+          git merge --abort || git reset --hard "$baseline"
+      - name: Upload reproducible conflict and staged-file evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-backend-merge-audit
+          path: integration-evidence/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Block release if the two branches still conflict
+        if: steps.audit.outputs.conflicts != '0' || steps.audit.outputs.merge_exit != '0'
+        run: |
+          echo "::error::Firebase/Supabase merge has unresolved conflicts. Resolve per file, then rerun tests. NO-GO."
+          exit 1
