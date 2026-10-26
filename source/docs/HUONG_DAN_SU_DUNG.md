@@ -1,3 +1,15 @@
+## Gộp cột — chọn cách hiển thị gọn (27/10/2026, bản đang phát triển)
+
+Trong **Danh sách các ND trình HĐND** ở chế độ xem, quản trị viên mở **Gộp cột**. Bật các tùy chọn phù hợp:
+- **Loại VB + Sở → Nội dung**: nội dung, loại văn bản, sở chủ trì cùng một ô.
+- **Cấp + Tiến độ Thành ủy**: hai thông tin xin ý kiến Thành ủy trong một ô.
+- **Xây dựng + Ban hành HĐND**: hai bước tiến độ trình HĐND trong một ô.
+- **UBND + VP + Phòng + CV**: bốn thông tin người phụ trách trong một ô có nhãn ngắn.
+
+Các kiểu gộp nhỏ đã có vẫn giữ để lựa chọn khi không cần gộp tất cả. Bật gộp lớn sẽ tự tắt các kiểu gộp con trùng trường; tắt gộp lớn trả lại các cột gốc (nếu cột đó vẫn được thiết lập hiện). Có thể chọn **Viết tắt tên lãnh đạo/chuyên viên** riêng để tiết kiệm chiều ngang. Nhập tên đầy đủ vào ô tìm kiếm vẫn tra được người đó. Khi được phép sửa, bấm đúng dòng/trường bên trong ô gộp; không sửa lẫn tên Sở, cấp hay tiến độ khác. Thao tác gộp không thay dữ liệu nghiệp vụ; chỉ có hiệu lực trên WebApp khi admin lưu được bố cục vào Firebase.
+
+---
+
 ## Hướng dẫn dự kiến: khóa ô và chốt dữ liệu trên Firebase (25/10/2026, CHƯA MỞ)
 **Người sửa:** tại chế độ `Database chính` đã kích hoạt, bấm ô hoặc mở danh sách để xin quyền giữ ô. Khi người khác đang sửa sẽ thấy trạng thái khóa, không cố sửa bằng tab mới. Với dropdown, chỉ lựa chọn thực sự mới tạo thay đổi; Esc/đóng chưa chọn thì bỏ. Với Ghi chú/Tiến độ hiện tại, nhập văn bản rồi rời ô hoặc Ctrl+Enter; ứng dụng chỉ coi đã lưu sau khi Firebase xác nhận. Nếu có cảnh báo mất mạng, hết hạn hoặc chốt dữ liệu, **không đóng trang Ẩn danh** khi chưa sao chép/khôi phục nháp.
 **Admin:** chọn “Tạm dừng sửa của khách” để chỉ cho khách xem trong khi admin tiếp tục làm việc; chọn “Yêu cầu lưu rồi chốt” để ngừng nhận lượt sửa mới, đợi phiên đang sửa lưu có xác nhận, sau đó chuyển FROZEN. “Đóng băng ngay” dùng khi cần chốt gấp; bản nháp chưa ACK không tính vào mốc. Phải thấy trạng thái **Đã đóng băng** và biên nhận số dòng/hash mới coi là chốt. Nếu đóng tab trong khi DRAINING, đăng nhập lại để kiểm tra và hoàn tất — chưa có tự chốt máy chủ khi không có tab admin.
