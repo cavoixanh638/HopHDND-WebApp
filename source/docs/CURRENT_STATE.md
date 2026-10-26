@@ -1,3 +1,11 @@
+## KẾT QUẢ HOST LAN 27/10/2026 — ĐÃ KẾT NỐI LIÊN MÁY, QUAY LẠI UI
+
+Người dùng xác nhận demo tại `localhost:8787` đã được máy thứ hai trong LAN cơ quan truy cập thành công (PASS **khả năng kết nối giữa hai máy**). Chưa đo đủ 60 phút/5 giây, chưa kiểm chứng độ trễ từ máy thứ hai và chưa chạy HopHDND thật trên host LAN; giao diện 5 dòng `DEMO-*` chỉ là dữ liệu giả. Không suy ra SLA 100%, khả năng chạy offline của Firebase, hoặc an toàn triển khai production. [Biên bản và cách tái sử dụng](operations/LAN_HOST_PILOT_2026-10-27.md).
+
+**Ưu tiên từ đây:** tạm lưu phương án LAN, **quay lại hoàn thiện UI WebApp HopHDND trên Firebase-only PR #72**. Không lấy mã trên nhánh Supabase và chưa tự deploy. Skill `ui-ux-pro-max` người dùng đã cài trên máy Windows, chỉ dùng hỗ trợ thiết kế khi chạy Codex; cần kiểm tra hiệu quả thực tế bằng ảnh/chạy browser và hồi quy.
+
+---
+
 ## TRẠNG THÁI QUYẾT ĐỊNH MỚI 26/10/2026 — FIREBASE-ONLY
 
 [**Chỉ thị chính thức: Firebase-only, Supabase tạm dừng và giữ dự phòng**](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Phát triển tiếp trên Firebase PR #71 và #72; không tiếp tục nhánh tích hợp Firebase+Supabase PR #77 hay các PR Supabase #73/#75, không tự merge/deploy/copy/sync. Supabase staging hiện là bản sao cố định 55 hồ sơ của nguồn Firebase mirror, **không phải dữ liệu luôn mới**. Firebase production/WebApp đang phục vụ người dùng chưa được thay đổi bằng quyết định này; vẫn cần các kiểm thử/backup/Rules và phê duyệt phát hành. Các đoạn tài liệu cũ nói phát triển đồng thời 2 backend chỉ còn giá trị lịch sử.
