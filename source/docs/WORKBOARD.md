@@ -1,3 +1,9 @@
+## Sửa lỗi Chrome Illegal invocation — 26/10/2026
+
+Trong UI thử nghiệm tại `http://localhost:8765/qa-benchmark.html`, bước **Kiểm tra cùng dữ liệu** có thể hiển thị `Failed to execute 'fetch' on 'Window': Illegal invocation`. Nguyên nhân đã xác định: bản cũ lưu tham chiếu trần đến `window.fetch` và gọi như phương thức của instance `this.fetcher(...)`, làm mất receiver `Window`. Nhánh tích hợp PR #77 đã sửa mặc định Auth signup/refresh, RPC và REST thành wrapper `(input,init)=>globalThis.fetch(input,init)`; thêm test hồi quy mô phỏng Chrome receiver guard. Không thay đổi dữ liệu hoặc policy Cloud.
+
+**Khắc phục trên Windows:** trong GitHub Desktop, chọn đúng nhánh tích hợp PR #77, bấm **Fetch origin → Pull origin**, đóng cửa sổ terminal chạy benchmark bằng Ctrl+C, nhấp đúp `source/scripts/START_REAL_CLOUD_BENCHMARK.cmd` rồi ở Chrome nhấn Ctrl+Shift+R. Đăng nhập cả Firebase Google và **Supabase Google staging**; bấm Kiểm tra cùng dữ liệu. Nếu chưa xác thực Google trên Supabase, trạng thái quyền sẽ vẫn bị chặn, đây là một blocker khác với lỗi fetch. Chỉ bấm nạp dữ liệu khi đã thấy chính xác >=50 hồ sơ Firebase mirror và chứng thực admin Supabase; import có confirm, không ghi Firebase.
+
 ## BỔ SUNG 26/10/2026 — NẠP MIRROR 55 HỒ SƠ THẬT VÀ SO SÁNH TỐC ĐỘ CLOUD
 
 Nhánh QA PR #77 đã bổ sung trang benchmark localhost:8765 và nút **“Sao chép đúng 55+ hồ sơ Firebase mirror sang Supabase staging”**. Xác nhận đường dẫn 55 hồ sơ Firebase là `hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344`, **không phải** `hdnd/items` (mốc backup trước đó là 0). Supabase staging hiện còn 6 bản ghi QA, **chưa có bằng chứng đã chép dữ liệu thật hoặc benchmark PASS**. Cần chủ dự án đăng nhập Google ở Firebase và Supabase trên trình duyệt Windows rồi chủ động xác nhận sao chép; không tự chạy nền.
