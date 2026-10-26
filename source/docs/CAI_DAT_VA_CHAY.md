@@ -8,6 +8,23 @@ Trang có chế độ đo khởi động **không thay đổi dữ liệu**. G�
 
 Tham chiếu chẩn đoán/trạng thái: [CURRENT_STATE](CURRENT_STATE.md). Khi tích hợp hai backend phải đo thời gian khởi tạo **riêng từng nguồn**, không buộc Supabase tab chờ Firebase profile nếu nguồn Supabase không dùng cấu hình đó và không mở sai quyền chỉnh sửa.
 
+## 26/10/2026 — Thay thế phép thử 10 lượt bằng GIÁM SÁT ĐỘ ỔN ĐỊNH LIÊN TỤC 60 PHÚT
+
+Theo chỉ đạo mới của người dùng, bài kiểm tra 10 lượt tức thời không đủ để kết luận vì mạng đang chập chờn. **Dùng bộ mới** `HopHDND_CongCu_DoMang_LienTuc_60Phut_Windows.zip` (đính kèm trong hội thoại, **chưa commit nguyên script lên GitHub**), thay cho ZIP cũ `HopHDND_CongCu_DoMang_Host_Windows.zip`. Gói mới có `DO-MANG-1-CLICK.cmd`, `DO-THU-2-PHUT.cmd`, `Do-Mang-HopHDND.ps1`, `XEM-BAO-CAO-CU.cmd`, `HUONG-DAN.txt`.
+
+- **Chạy thử script**: nhấp đúp `DO-THU-2-PHUT.cmd` (2 phút, không dùng để kết luận chất lượng mạng).
+- **Đo chính thức liên tục 1 giờ**: nhấp đúp `DO-MANG-1-CLICK.cmd`; mặc định `-DurationMinutes 60 -SampleSeconds 30`, đo GitHub Pages, Cloudflare Edge tham chiếu, Firebase RTDB/Auth, Supabase staging HEAD và localhost synthetic ~64 KiB. Bình thường khoảng **120 lần đo mỗi đích**. Nếu tất cả đích bị timeout, chu kỳ có thể dài hơn 30 giây; **từng mẫu lưu thời điểm thật, không bịa các mẫu bị trễ**.
+- **Khi kết nối chập chờn**: công cụ vẫn lặp lại, phân biệt DNS/TCP/TLS/timeout/HTTP, lưu CSV **ngay sau từng phép thử**, không mất nhật ký đã ghi khi máy mất mạng hay chương trình bị đóng. Thử tạm chống Windows idle sleep trong giờ đo, tự khôi phục trạng thái khi kết thúc. Giữ máy có điện.
+- **Báo cáo** `BaoCaoMang/HopHDND-Mang-<timestamp>.{csv,html,json}`: P50/P95, tỷ lệ mẫu thành công, chuỗi mẫu lỗi liên tiếp, số đột biến độ trễ, đường thời gian có đánh dấu lỗi đỏ, lỗi theo từng khoảng 5 phút. Khi mất điện/cần dựng lại HTML, nhấp `XEM-BAO-CAO-CU.cmd` và nhập đường dẫn CSV.
+- **So host đúng cách**: CDN Edge không phải WebApp trên Cloudflare Pages; localhost là loopback, không phải tốc độ nhân viên từ xa. Thêm `-CloudflarePagesUrl` và `-PublicTunnelUrl` chỉ khi đã có hostname WebApp thật; đo tunnel từ **mạng ngoài** (máy nhân viên hoặc 4G). API HEAD có thể trả 401/403/404/405 bình thường, không chứng minh tài khoản hay query dữ liệu thành công. Không so sánh kết quả HTTP curl với thời gian first paint của browser nếu chưa đo `?startupMetrics=1`.
+- **Giới hạn bằng chứng**: mới kiểm tra cấu trúc file ZIP / kiểm tra tĩnh biểu đồ, **chưa chạy PowerShell một giờ trên máy Windows thật**, chưa có kết quả từ mạng người dùng. Không thay Rules, DNS, Firebase/Supabase hoặc production.
+
+Cú pháp tùy chọn (chạy từ thư mục đã giải nén):
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Do-Mang-HopHDND.ps1" -DurationMinutes 60 -SampleSeconds 30 -CloudflarePagesUrl "https://your-project.pages.dev/" -PublicTunnelUrl "https://your-domain.vn/"
+```
+
+---
 ## 26/10/2026 — Bộ công cụ đo đường mạng từ PC Windows / so sánh giải pháp host (read-only)
 
 Người vận hành yêu cầu đo từ **chính máy Windows có mạng chập chờn**, so sánh GitHub Pages hiện hành, Cloudflare Edge, Firebase RTDB/Auth, Supabase staging và host trên PC. Đã tạo bộ ZIP **`HopHDND_CongCu_DoMang_Host_Windows.zip`** trong cuộc trò chuyện làm việc (không phải một file đang có sẵn trên GitHub). Trong ZIP có `Do-Mang-HopHDND.ps1`, `DO-MANG-1-CLICK.cmd`, `HUONG-DAN.txt`. Lưu nguyên bản được người vận hành tải về trong kho công cụ nội bộ khi bàn giao; không khẳng định file đã được commit vào repo.
