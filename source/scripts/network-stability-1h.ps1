@@ -41,7 +41,7 @@ if ($SelfHostUrl.Trim()) {
 }
 # Use per-request async tasks so 5 targets are measured in PARALLEL, not serially.
 # Stopwatch stops when response HEADERS arrive: reliable first-response timing, not JS rendering.
-Add-Type -ReferencedAssemblies @("System.Net.Http") -TypeDefinition @'
+$probeCode = @'
 using System;
 using System.Diagnostics;
 using System.Net.Http;
@@ -78,6 +78,13 @@ public static class HopProbeRunner {
     }
 }
 '@
+if ($PSVersionTable.PSVersion.Major -le 5) {
+    # Windows PowerShell 5.1 / .NET Framework needs the HttpClient assembly explicitly.
+    Add-Type -ReferencedAssemblies @("System.Net.Http") -TypeDefinition $probeCode
+} else {
+    # PowerShell 7+ resolves framework reference assemblies automatically.
+    Add-Type -TypeDefinition $probeCode
+}
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $handler = [System.Net.Http.HttpClientHandler]::new()
 $handler.AllowAutoRedirect = $true
