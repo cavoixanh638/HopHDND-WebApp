@@ -71,6 +71,7 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
     </button>
     {savedDraft!==null&&savedDraft!==value&&<button type="button" className="button ghost" disabled={waiting}
       onClick={()=>beginEdit(savedDraft)} title="Nháp chỉ có trên máy này, chưa lưu vào Firebase">Khôi phục nháp chưa lưu</button>}
+    {waiting&&<small className="muted" role="status">Đang xác nhận quyền sửa ô…</small>}
     {error&&<small className="error-text" role="alert">{error}</small>}
   </span>;
   return <div className="inline-note-editor">
