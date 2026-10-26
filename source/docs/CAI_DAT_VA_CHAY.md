@@ -1,5 +1,11 @@
 # Cài đặt và chạy — HopHDND (local, gồm Pages 0.7.0 và legacy)
 
+### Chẩn đoán nếu kẹt “Đang tải bố cục đã lưu…”
+
+Trang có chế độ đo khởi động **không thay đổi dữ liệu**. Gắn `?startupMetrics=1` vào URL chưa có tham số, hoặc `&startupMetrics=1` nếu URL đã có tham số. Mở trang và xem bảng **Startup timing** / Chrome DevTools Console (lọc `[HopHDND startup]`). Ghi thời gian các stage `auth-checked`, `auth-signed-in`, `rt-db-connected`, `profile-received`, `source-selected`, `first-data-painted`; chụp riêng thông tin thời gian, không đưa token hay dữ liệu nghiệp vụ vào lỗi công khai. Nếu `profile-received` rất muộn, cần kiểm Auth/RTDB network/Rules; nếu nhận nhanh mà không có bảng, cần kiểm `layoutPending` và cache. Cơ chế an toàn hiện tại cố tình chờ cấu hình đã xác nhận; nút `Xem dữ liệu tạm (bố cục mặc định)` chỉ cho xem thử, không đồng nghĩa đã xác nhận cấu hình chung hoặc quyền ghi. Tuyệt đối không tự reset Firebase profile, xóa backup/rules hoặc chuyển sang nguồn khác để “chữa chậm” khi chưa đo.
+
+Tham chiếu chẩn đoán/trạng thái: [CURRENT_STATE](CURRENT_STATE.md). Khi tích hợp hai backend phải đo thời gian khởi tạo **riêng từng nguồn**, không buộc Supabase tab chờ Firebase profile nếu nguồn Supabase không dùng cấu hình đó và không mở sai quyền chỉnh sửa.
+
 ## 25/10/2026 — Chạy thử Firebase realtime trên Windows (PR #72; KHÔNG phải production)
 
 **Đã có script thật trong GitHub, không chỉ có hướng dẫn chat:** [`source/scripts/start-local-staging.ps1`](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/scripts/start-local-staging.ps1), và [hướng dẫn nghiệm thu hai trình duyệt](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/docs/operations/FIREBASE_LOCAL_MULTI_BROWSER_STAGING_2026-10-25.md). Script ở **branch** `feat/exclusive-cell-leases-admin-freeze-20261025` của PR #72; không nhầm với main, không trộn với code Supabase PR #75.
