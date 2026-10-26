@@ -380,20 +380,30 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
         </summary>
         <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-          <strong>Hiển thị gọn (cấu hình chung của admin)</strong>
-          <div className="compact-options-group-title">Gộp cột</div>
-          {COMPACT_OPTIONS.filter(option=>option.section==='merge').map(option=><label key={option.key}>
+          <strong>Gộp cột để xem gọn hơn</strong>
+          {COMPACT_OPTIONS.filter(option=>['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-          <div className="compact-options-group-title">Tên hiển thị</div>
-          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
-            <input type="checkbox" checked={compactDisplay[option.key]}
-              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-            <span>{option.label}<small>{option.detail}</small></span>
-          </label>)}
-          <p>Thay đổi lưu vào bố cục admin trên Firebase, áp dụng cho người xem; không sửa Excel.</p>
+          <details className="compact-more-options">
+            <summary>Các cách gộp khác <small>3 lựa chọn</small></summary>
+            {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
+              !['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
+              <input type="checkbox" checked={compactDisplay[option.key]}
+                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+              <span>{option.label}<small>{option.detail}</small></span>
+            </label>)}
+          </details>
+          <details className="compact-more-options">
+            <summary>Viết tắt tên <small>{COMPACT_OPTIONS.filter(option=>option.section==='name'&&compactDisplay[option.key]).length||'2 lựa chọn'}{COMPACT_OPTIONS.some(option=>option.section==='name'&&compactDisplay[option.key])?' đang bật':''}</small></summary>
+            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
+              <input type="checkbox" checked={compactDisplay[option.key]}
+                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+              <span>{option.label}<small>{option.detail}</small></span>
+            </label>)}
+          </details>
+          <p>Chỉ đổi cách hiển thị chung · không thay dữ liệu gốc.</p>
         </div>
       </details>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
