@@ -1,3 +1,9 @@
+## 26/10/2026 — Điều kiện nếu tự host trên máy Windows / đổi sang CDN khác
+
+Không đổi host để “khắc phục độ trễ Database” khi chỉ có benchmark giao diện. WebApp static host và Firebase/Supabase backend độc lập. Nếu chủ dự án lựa chọn pilot, phải có staging public URL/hostname tách production, xác thực domain Google/Firebase và RLS/ACL, SSL/TLS, kiểm tra không lộ thư mục local/secret/.env, caching/version cache bust, không chạy server Vite phát triển, không mở cổng RDP hoặc Firebase Emulator ra Internet. PC host yêu cầu Windows Service auto-start, nguồn điện/mạng, watchdog, UPS nếu cần, kế hoạch downtime/rollback về Pages. Tunnel public chỉ dành cho trang tĩnh đã build/test và được phép công khai hoặc bảo vệ bằng lớp kiểm soát truy cập. Cloudflare Pages static là đối chứng không phụ thuộc PC. Không deploy production/đổi DNS/đổi domain OAuth khi chưa có GO, không ảnh hưởng hai nhánh Database.
+
+---
+
 ## 25/10/2026 — VẬN HÀNH SONG SONG FIREBASE / SUPABASE (chưa triển khai; KHÔNG chạy cutover)
 
 Định hướng người dùng đã xác nhận: trong **cùng một WebApp** có thể chọn **Firebase RTDB hoặc Supabase PostgreSQL** theo tab, giữ cả hai. Không tự đồng bộ dữ liệu giữa chúng. Các nhánh thử nghiệm [PR #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72), [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73), [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) đều Draft; issue điều phối [#74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). **Production NO-GO.**
