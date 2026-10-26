@@ -6,6 +6,7 @@ param(
     [int]$IntervalSeconds = 5,
     [int]$TimeoutSeconds = 4,
     [string]$LocalUrl = "http://127.0.0.1:5173/pages.html",
+    [string]$LanUrl = "",
     [string]$SelfHostUrl = "",
     [string]$OutputRoot = (Join-Path ([Environment]::GetFolderPath("MyDocuments")) "HopHDND-NetworkReports")
 )
@@ -32,6 +33,9 @@ $targets = @(
     [pscustomobject]@{Name="supabase-staging-auth-health"; Url="https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/health"},
     [pscustomobject]@{Name="localhost-webapp"; Url=(Assert-SafeTarget $LocalUrl $true)}
 )
+if ($LanUrl.Trim()) {
+    $targets += [pscustomobject]@{Name="self-host-lan"; Url=(Assert-SafeTarget $LanUrl $true)}
+}
 if ($SelfHostUrl.Trim()) {
     $targets += [pscustomobject]@{Name="self-host-reachable-url"; Url=(Assert-SafeTarget $SelfHostUrl $false)}
 }
