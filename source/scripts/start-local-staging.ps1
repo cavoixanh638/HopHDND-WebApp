@@ -5,11 +5,15 @@ $ErrorActionPreference = "Stop"
 
 $source = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $repo = (Resolve-Path (Join-Path $source "..")).Path
-$expectedBranch = "feat/exclusive-cell-leases-admin-freeze-20261025"
+$allowedBranches = @(
+    "feat/exclusive-cell-leases-admin-freeze-20261025",
+    "integration/firebase-supabase-unified-20261026"
+)
 $currentBranch = (& git -C $repo rev-parse --abbrev-ref HEAD).Trim()
-if ($LASTEXITCODE -ne 0 -or $currentBranch -ne $expectedBranch) {
-    throw "Dang o sai branch: $currentBranch. Chi cho phep $expectedBranch."
+if ($LASTEXITCODE -ne 0 -or $currentBranch -notin $allowedBranches) {
+    throw "Dang o sai branch: $currentBranch. Chi cho phep PR #72 hoac unified PR #77."
 }
+Write-Host "QA branch: $currentBranch (staging/emulators only)" -ForegroundColor Cyan
 $firebase = Join-Path $source "node_modules\.bin\firebase.cmd"
 $config = Join-Path $source "firebase.staging.json"
 $seed = Join-Path $source "scripts\seed-local-staging.mjs"
