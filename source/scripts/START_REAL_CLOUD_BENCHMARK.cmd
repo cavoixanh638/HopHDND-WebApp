@@ -14,9 +14,9 @@ if not exist "node_modules\.bin\vite.cmd" (
 )
 echo.
 echo BENCHMARK CLOUD THUC -- CHI DOC, KHONG GHI DATABASE.
-echo Firebase: production -- Supabase: staging -- localhost: 5184
+echo Firebase: production -- Supabase: staging -- localhost: 8765
 echo.
 start "HopHDND BENCHMARK - close after finishing" cmd /k "npm run dev:benchcloud"
 timeout /t 4 /nobreak >nul
-start "" "http://127.0.0.1:5184/qa-benchmark.html"
+start "" "http://localhost:8765/qa-benchmark.html"
 echo Trang benchmark da duoc mo. Neu chua tai, nhan F5 trong trinh duyet.
