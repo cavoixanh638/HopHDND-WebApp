@@ -1,3 +1,17 @@
+## PHẠM VI TÍNH NĂNG CHUẨN — 25/10/2026
+[Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). WebApp sẽ là giao diện **duy nhất** để nhân viên nhập/xem/sửa/báo cáo, Firebase RTDB `hdnd/items` là nguồn chính. Chức năng mirror/Google Sheet là **quá trình chuyển đổi có thời hạn**; không có yêu cầu đồng bộ hai chiều hoặc định kỳ sau phát hành. Trong khi xây dựng, nhân viên được dùng Sheet hiện hành; không coi số dòng mirror cũ là tiêu chí chặn phát triển giao diện/Realtime Database.
+
+---
+
+## Phạm vi tính năng mới 25/10/2026 — chưa có trên website production
+- **Nguồn dữ liệu chính**: Firebase RTDB `hdnd/items` sau chuyển một lần từ mirror; mọi bảng báo cáo dùng một tập bản ghi, các ô sửa cập nhật sau server ACK và đồng bộ qua `onValue`.
+- **Sửa độc quyền từng ô**: bấm dropdown/soạn văn bản lấy lease trên server theo ID trường; thông báo từ chối nếu ô đã có người khác giữ. Chỉ người có quyền trường đó được xin khóa, kể cả khi mới đang chọn hoặc nhập. Không bị bỏ qua bằng popup, tab thứ hai hoặc tài khoản admin.
+- **Hạn sửa**: trạng thái 45 giây, tìm chọn 90 giây, text ngắn 2 phút, Ghi chú/Tiến độ hiện tại 5 phút, nội dung dài 10 phút; server giới hạn, nhắc giữ nháp/đối chiếu nếu hết hạn. Không tự ghi dropdown chưa chọn và văn bản IME chưa hoàn chỉnh.
+- **Chốt số liệu**: Tạm dừng khách độc lập với DRAINING/FROZEN. Chốt có ACK, hash readback; nút khẩn cấp giữ nháp không được xác nhận. Phiên bản dự thảo chưa có auto-freeze khi admin offline.
+- **Trạng thái**: mã nguồn PR #71/#72, Rules chưa triển khai và chưa nghiệm thu hai user trên production. [Điều kiện phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 ## 22/10/2026 — Tông xanh hoàn thành giống Bảng tổng hợp (PR #11)
 
 - Màu `done` trong Bảng dữ liệu và popup đổi từ xanh lá đậm/chữ trắng sang chính xác **nền `#D5F0DE`, chữ `#125B35`, viền `#91CFA8`** như Bảng tổng hợp. Chấm màu đi cùng chữ; nhãn có viền phân biệt với nền mint của ô có quyền sửa.

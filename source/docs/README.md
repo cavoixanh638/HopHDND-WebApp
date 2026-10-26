@@ -1,3 +1,24 @@
+## Điều hành hiện hành — QA Firebase + Supabase cùng WebApp (26/10/2026)
+
+PR #78 đã gộp mã vào [PR #77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) **ở nhánh Draft tích hợp, không phải production**, SHA merge `815291926da2ae001a0b4fec906c414db87e3872`. Giữ hai nguồn độc lập và lựa chọn theo tab; không đồng bộ ngầm. Quy tắc code và ownership ở [AGENTS](../AGENTS.md), hợp đồng adapter ở [ARCHITECTURE](ARCHITECTURE.md), tình trạng thực và những gate còn HOLD ở [CURRENT_STATE](CURRENT_STATE.md), các lệnh chạy Windows và đo mạng 60 phút/5 giây tại [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md), quy trình vận hành tại [VAN_HANH](VAN_HANH.md), bảng theo dõi duy nhất ở [WORKBOARD](WORKBOARD.md), bản kê SHA và đối chiếu tại [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
+
+---
+> **TRIỂN KHAI TIẾP 25/10/2026:** [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) là nhánh tính năng mới dựa trên PR #73: lựa chọn nguồn theo tab giữa Firebase chính, Firebase bản sao, Sheets và Supabase staging **chỉ đọc**, kiểm tra bảo vệ nháp/lease; Supabase anonymous preview cần `source/.env.local` gitignored (mẫu `source/.env.example`) và người quản trị bật Anonymous Sign-Ins trên **staging**. Chưa có Google OAuth / realtime native / ghi Supabase. [Trạng thái xác nhận](operations/SUPABASE_RELEASE_GATE_2026-10-25.md). **Không bỏ database nào**; production NO-GO.
+
+> **CHỈ ĐẠO MỚI NHẤT — CHẠY SONG SONG FIREBASE + SUPABASE, KHÔNG BỎ DATABASE NÀO (25/10/2026).** Chọn nguồn trong cùng WebApp, độc lập các thao tác đọc/ghi, không đồng bộ tự động, chưa thay production. [ADR sửa theo quyết định mới](decisions/SUPABASE_PRIMARY_2026-10-25.md) · [GO/NO-GO có bằng chứng Cloud](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [Nhiệm vụ tích hợp nguồn chọn](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). Những dòng “Supabase thay Firebase” bên dưới là mô tả kế hoạch cũ, không còn là quyết định của chủ dự án.
+
+> **TRA CỨU ĐÍCH SUPABASE (25/10/2026):** [Quyết định thay thế Firebase-only](decisions/SUPABASE_PRIMARY_2026-10-25.md) → [Kế hoạch kỹ thuật/giữ chức năng](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md) → [Một cổng GO/NO-GO duy nhất](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) → [migrations](../supabase/migrations/). Supabase đang ở **nhánh thử nghiệm, production NO-GO**; các dòng “Firebase là đích” phía dưới thuộc bản đã chốt trước 20:51 ngày 25/10 và nay đã được thay thế về quyết định công nghệ.
+
+## Hướng dẫn sao lưu production trước khi mở realtime — 25/10/2026
+[Hướng dẫn backup read-only trên Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Công cụ đã có trên nhánh PR #72 nhưng **chưa chạy lên dữ liệu thật**; không upload JSON/Rules thật lên GitHub.
+
+---
+
+## Hồ sơ hệ thống mới cần đọc trước khi phát hành (25/10/2026)
+**[Cổng phát hành Firebase chính, khóa ô, đóng băng — GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md)** là điểm vào vận hành chính thức cho PR #71/#72 (Draft). [Thiết kế khóa và đóng băng](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md) · [Quy trình thao tác](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md). Những mục nói “Sheets là nguồn chính” bên dưới thể hiện bản production cũ/lịch sử; đích dài hạn là Firebase `hdnd/items` sau migration được xác nhận. **Chưa deploy Firebase production.**
+
+---
+
 # Chỉ mục tài liệu dự án HopHDND
 
 Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x–0.7.0 mô tả mốc quá khứ có thể còn ví dụ A–P/16 cột; mọi việc đang sửa phải ưu tiên Excel A–O mới và các đoạn 19/10/2026 trong tài liệu nguồn chuẩn. Lịch sử chat đã archived chỉ truy xuất được một phần, không được coi là đã đối soát 100%.** [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.

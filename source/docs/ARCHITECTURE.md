@@ -1,3 +1,28 @@
+## 26/10/2026 — Tình trạng tích hợp hai backend (PR #77 Draft)
+
+PR #78 đã ghép mã Supabase PR #73/#75 vào nhánh Firebase-first của PR #77 bằng merge commit `815291926da2ae001a0b4fec906c414db87e3872`; đây là nhánh thử, chưa chuyển `main` hay WebApp production. Trong mỗi tab, `activeSource` phải khống chế repository, Auth/ACL, leases, audit, revision/CAS, freeze và phản hồi ACK. Firebase RTDB/Auth/Rules và Supabase PostgreSQL/Auth/RLS/RPC tách rời nhau; tuyệt đối không dùng Firebase token thay Supabase JWT, không ghi data khác nguồn, không fallback ngầm hay thay `hdnd/profile.dataSource` toàn cục khi người dùng chọn Supabase.
+
+Đổi nguồn bị chặn trong khi có draft, editor, lease, pending save/ACK, offline/recovery hoặc chưa xác minh cache; caches, bản nháp, listener và source key định danh backend/project/account/tab. Giữ đúng 15 cột A–O, 5 báo cáo, quyền ô và freeze của từng backend. Hiện có mã bộ chọn, Supabase migrations và CI synthetic, nhưng Supabase Cloud có 0 Auth users/0 Google identities và 6 cảnh báo anonymous SELECT: chưa chứng minh được Google OAuth, multi-user write hoặc Realtime E2E trên Cloud. Các mã nguồn ở [PR #77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77); trạng thái và cổng GO ở [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
+
+---
+> **CẬP NHẬT KIẾN TRÚC ƯU TIÊN — 25/10/2026:** Giữ cả Firebase RTDB và Supabase PostgreSQL, chọn nguồn theo tab trong cùng WebApp; không copy/sync ngầm và không bỏ bất kỳ database nào. [PR #75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) hiện triển khai bước 1: bộ chọn nguồn có guard nháp/lease, Supabase **staging read-only** qua anonymous Auth độc lập và polling 15 giây, không có viết Supabase hay native Realtime; OAuth Google và Supabase write pipeline còn HOLD. [Canonical status](operations/SUPABASE_RELEASE_GATE_2026-10-25.md). Các sơ đồ Firebase-only / Supabase-only dưới đây ghi nhận lịch sử, không thay quyết định mới.
+
+> **QUYẾT ĐỊNH ĐÍCH ƯU TIÊN (25/10/2026):** chuyển hệ thống lưu trữ và Auth tương lai sang **Supabase PostgreSQL**; UI React/báo cáo/chức năng giữ nguyên. Tài liệu nguồn chuẩn: [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md), [mapping Supabase](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md). Chi tiết Firebase/Google Sheets dưới đây mô tả **bản hiện hành/lịch sử và PR #71/#72**, không phải quyết định mới. Chưa có cutover production.
+
+## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)
+[Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md): tương lai `App → FirebaseRepository → hdnd/items` là **đường nghiệp vụ duy nhất** cho bảng/báo cáo/thay đổi. Không duy trì kết nối GViz/Excel/Sheets hoặc mirror thành nguồn sau chuyển. Công cụ nhập mirror của PR #71 chỉ hỗ trợ **nạp ban đầu một lần khi admin duyệt dữ liệu cuối cùng**. Nhân viên vẫn sử dụng Sheet hiện tại trong thời gian phát triển; không cần so Sheet và mirror liên tục để kiểm tra tính năng. Các cảnh báo 55/57 được chuyển sang lịch sử, **không chặn công việc kỹ thuật**.
+
+---
+
+## Kiến trúc đích 25/10/2026 — Firebase authoritative và phiên sửa độc quyền (DRAFT, chưa phát hành)
+- PR #71: `App → FirebaseRepository → hdnd/items` (realtime `onValue`, transactional CAS, 50 audit slots/record). Admin chọn `dataSource=primary` **sau** khi import mirror một lần, kiểm từng dòng và giá trị; chế độ này **không cần** link Sheets/GViz để đọc nghiệp vụ.
+- PR #72: `CellEditSessionManager` → `hdnd/editLocks/recordId/field` (lease token, tab session, expiredAt, kind); tất cả `ItemList`, `ReportDetailGrid`, dropdown, inline, input, modal phải giữ cùng khóa. Mọi ghi phải mang edit proof và bị server kiểm `permissions`, `freezeControl` và TTL.
+- Admin → `freezeControl` (OPEN/DRAINING/FROZEN) → `freezeReceipts/epoch` (số dòng + hash readback sau đóng băng). `editingLocked` trước đây chỉ dừng sửa của khách, không tương đương snapshot. Server rules ứng viên nằm ở `firebase/database.exclusive-candidate.rules.json`, không phải `database.rules.json` của Pages cũ.
+- **Giới hạn kiến trúc chưa nghiệm thu:** cơ chế tự chốt hết hạn trong PR #72 cần tab admin hoạt động; chưa có Cloud Function/background coordinator. Khi admin đóng tab ở DRAINING phải đăng nhập lại kiểm tra/hoàn tất; không hứa tự hoàn thành khi không ai online.
+- Nguồn chuẩn: [Quy trình chuyển nguồn/GO-NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); xem `docs/decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md` và `docs/operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md`.
+
+---
+
 # ARCHITECTURE — Kiến trúc ứng dụng
 
 > **Cách đọc:** phần “Pages 0.7.0 — Sheets là nguồn chính” đầu tiên là lựa chọn hiện hành; các phần có nhãn “đề xuất”, “legacy”, “giai đoạn” hoặc mô tả phiên bản trước là bối cảnh lịch sử, không phải bằng chứng triển khai thực tế. Schema/cột/ID chi tiết thuộc [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md); các thao tác build, rollback, khôi phục và ứng cứu thuộc [VAN_HANH](VAN_HANH.md). Trạng thái chạy thật tại [CURRENT_STATE](CURRENT_STATE.md).
@@ -369,3 +394,11 @@ Driver cloud tạo workbook giả, ghi có điều kiện If-Match rồi đọc 
 Office thử riêng đã có bằng chứng ETag phản ánh sửa trực tiếp, stale412 và ghép ô khác/đọc muộn. Trạng thái pending/committed của probe trong ScriptProperties chỉ dành tệp giả, không phải idempotency/audit sản xuất. ExistingCopyWorkbookProbe chỉ chuẩn bị target copy cố định, kiểm tên/private/MIME, rollback với ETag; manifest Drive rộng đã được người dùng chấp thuận và lưu vào dự án thử; Google OAuth mới đã được API xác nhận đủ trong dự án thử, app chính vẫn giữ nguyên quyền. Khi thành adapter vẫn phải có allowlist nguồn, quyền server, bản gốc từng trường, operation ID/backup/timeout/partial kết quả và luồng đọc nhất quán. Không dùng alias hoặc rowNumber làm định danh, không bật readOnly=false để đổi nhầm sourceKind thành demo.
 
 Dự án thử kiểm đủ drive/external_request bằng ScriptApp.requireScopes trước lấy token, lock hoặc HTTP; getAuthorizationInfo chỉ log trạng thái quyền. Hàm kiểm chỉ đọc đối chiếu tài khoản Drive với owner bằng boolean. Không coi việc function chạy được hoặc manifest đã lưu là bằng chứng mọi scope được cấp; không log token/authorization URL. Nếu thiếu consent, Google dừng để xin quyền thay vì gửi thao tác ghi.
+
+## KIẾN TRÚC MỤC TIÊU ĐƯỢC CẬP NHẬT — 26/10/2026: Firebase HOẶC Supabase theo tab
+
+**Lưu ý:** mọi mục "Firebase-only" ở bên dưới là **quyết định lịch sử**, đã được thay bởi yêu cầu giữ hai Database nhưng chỉ **một WebApp**. Backend đang chọn tại một tab quản lý độc lập list/subscribe/save/lease/auth/grants/audit/freeze; không chuyển `hdnd/profile.dataSource` global khi bấm nút chọn nguồn, không ghi kép/đồng bộ hai Database. Mỗi backend phải tự thực thi ACL/CAS/revision trên máy chủ; OAuth Google Firebase không cấp quyền Supabase và JWT Supabase không cấp quyền Firebase. Nếu còn nháp/khóa/saving/ACK chưa xong, nguồn không được chuyển. Dữ liệu trình duyệt và cache/draft phải namespace theo backend/project/identity.
+
+Tích hợp theo [PR #77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) từ Firebase #72 + Supabase #73/#75; xem [manifest SHA](operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json) và [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md). Nhánh hợp nhất đang kiểm thử; **không tuyên bố WebApp chính thức đã hỗ trợ hai backend**. Không loại bỏ Firebase, không dùng Sheets đồng bộ dài hạn.
+
+---

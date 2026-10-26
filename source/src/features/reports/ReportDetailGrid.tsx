@@ -19,6 +19,8 @@ import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
 import {ContentEditor} from '../items/ContentEditor';
 import {InlineNoteEditor} from '../items/InlineNoteEditor';
+import {LeaseTextInput} from '../items/LeaseTextInput';
+import type {CellLeaseUiManager} from '../../data/cell-edit-leases';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
@@ -33,6 +35,7 @@ type Props={
   readOnlyViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
+  leaseManager?:CellLeaseUiManager;
   onKeepDraft:()=>boolean;
   onHistory?:(item:Item)=>void;
   onCellHistory?:(item:Item,field:TextField)=>void;
@@ -45,7 +48,7 @@ type Props={
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
-  onUpdate,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
+  onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
@@ -57,6 +60,16 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const [sort,setSort]=useState<ColumnSort>(null);
   const [showAll,setShowAll]=useState(false);
   const [contentItem,setContentItem]=useState<{item:Item;field:'content'|'note'|'specificProgress'}|null>(null);
+  const openContent=(item:Item,field:'content'|'note'|'specificProgress')=>{
+    if(!leaseManager){setContentItem({item,field});return;}
+    void leaseManager.acquire(item.recordId,field,'long').then(()=>setContentItem({item,field}))
+      .catch(e=>setNotice(e instanceof Error?e.message:'Ô đã có người khác sửa.'));
+  };
+  const closeContent=()=>{
+    if(contentItem&&leaseManager&&!leaseManager.isPending(contentItem.item.recordId,contentItem.field))
+      void leaseManager.cancel(contentItem.item.recordId,contentItem.field);
+    setContentItem(null);
+  };
   const [presets,setPresets]=useState(()=>loadDetailPresets(sourceKey));
   const [selectedPreset,setSelectedPreset]=useState('');
   const [presetName,setPresetName]=useState('');
@@ -199,7 +212,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
     const field=key as TextField;
-    if(field==='note'||field==='specificProgress')return <InlineNoteEditor value={raw}
+    if(field==='note'||field==='specificProgress')return <InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field={field} value={raw}
       label={'Sửa '+(labelByKey.get(key)??field)+' · '+displayId(item)} onCommit={value=>{
         if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return false;
         onUpdate(item.recordId,{[field]:value});return true;
@@ -207,12 +220,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(field==='content')
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
-        onClick={()=>setContentItem({item,field})}>{raw||'—'}</button>;
+        onClick={()=>openContent(item,field)}>{raw||'—'}</button>;
     if(listLayout?.columns.find(c=>c.key===key)?.kind==='text')
-      return <input type="text" className="custom-cell-input" maxLength={1000}
-        aria-label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-        onChange={e=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:e.currentTarget.value});}}/>;
-    return <CellPicker label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
+      return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
+        label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
+        onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
+    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
       searchable={field==='specialist'} options={options(field,raw).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
         !value||catalog.specialistRooms[value]?.includes(item.room))}
@@ -386,13 +399,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     </div>
     {!readOnlyViewer&&contentItem&&<ContentEditor key={contentItem.item.recordId+':'+contentItem.field}
       sourceKey={sourceKey} item={contentItem.item} field={contentItem.field}
-      draftOnly sourceKind="google" onSave={value=>{
+      draftOnly={!leaseManager} sourceKind={leaseManager?'firebase':'google'} onSave={value=>{
         if(!editing||!popupMayEdit||!canEditCell(contentItem.item.recordId,contentItem.field)){
           setNotice('Ô này hiện không được cấp quyền sửa; nội dung chưa áp dụng.');
           return false;
         }
         onUpdate(contentItem.item.recordId,{[contentItem.field]:value});return true;
       }}
-      onClose={()=>setContentItem(null)}/>}
+      onClose={closeContent}/>}
   </Modal>;
 }

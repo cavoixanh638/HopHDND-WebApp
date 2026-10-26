@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: './',
-  optimizeDeps: { entries: mode.startsWith('pages')?['pages.html']:['index.html'] },
-  build: { cssCodeSplit: false, rolldownOptions: { ...(mode.startsWith('pages')?{input:'pages.html'}:{}),output: mode.startsWith('pages')?{}:{codeSplitting:false} } },
+  optimizeDeps: { entries: mode==='benchcloud'?['qa-benchmark.html']:mode.startsWith('pages')?['pages.html']:['index.html'] },
+  build: { cssCodeSplit: false, rolldownOptions: { ...(mode==='benchcloud'?{input:'qa-benchmark.html'}:mode.startsWith('pages')?{input:'pages.html'}:{}),output: mode.startsWith('pages')?{}:{codeSplitting:false} } },
   resolve: mode === 'preact'||mode.startsWith('pages') ? {
     alias: [
       { find: /^react-dom\/client$/, replacement: 'preact/compat/client' },

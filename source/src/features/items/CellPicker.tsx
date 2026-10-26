@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
+import type {CellLeaseUiManager,EditorKind} from '../../data/cell-edit-leases';
+import type {EditableField} from '../../../shared/types';
 import './cell-picker.css';
 
 type CellPickerProps = {
@@ -12,11 +14,18 @@ type CellPickerProps = {
   highlightQuery?: string;
   disabled?: boolean;
   onChange: (value: string) => void;
+  leaseManager?:CellLeaseUiManager;recordId?:string;field?:EditableField;editorKind?:EditorKind;
 };
 
-export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange }: CellPickerProps) {
+export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange, leaseManager,recordId,field,editorKind='status' }: CellPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [waiting,setWaiting]=useState(false);
+  const [leaseError,setLeaseError]=useState('');
+  const chosen=useRef(false);
+  const leaseProps=!!leaseManager&&!!recordId&&!!field;
+  const cancelUnused=()=>{if(leaseProps&&!chosen.current&& !leaseManager!.isPending(recordId!,field!))
+    void leaseManager!.cancel(recordId!,field!);};
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -41,14 +50,23 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const close = (restoreFocus = false) => {
     setOpen(false);
     setQuery('');
+    cancelUnused();
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
   const choose = (nextValue: string) => {
+    if(nextValue===value){chosen.current=false;close(true);return;}
+    chosen.current=true;
     onChange(nextValue);
     close(true);
   };
 
+  useEffect(()=>{
+    if(!leaseProps)return;
+    const forced=()=>close();
+    window.addEventListener('hdnd:drain-editors',forced);
+    return()=>window.removeEventListener('hdnd:drain-editors',forced);
+  },[leaseProps,recordId,field]);
   useEffect(() => {
     if (!open) return;
     const popover = popoverRef.current;
@@ -119,14 +137,25 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       ref={triggerRef}
       type="button"
       className="cell-value-button cell-picker-trigger"
-      disabled={disabled}
+      disabled={disabled||waiting}
       aria-label={displayValue?`${label}: ${value}`:label}
       aria-haspopup="dialog"
       aria-expanded={open}
-      onClick={() => { setQuery(''); setOpen(value => !value); }}
+      onClick={()=>{
+        setLeaseError('');
+        if(open){close();return;}
+        chosen.current=false;
+        if(!leaseProps){setQuery('');setOpen(true);return;}
+        setWaiting(true);
+        void leaseManager!.acquire(recordId!,field!,editorKind).then(()=>{
+          setQuery('');setOpen(true);
+        }).catch(error=>setLeaseError(error instanceof Error?error.message:'Ô đang được sửa ở phiên khác.'))
+          .finally(()=>setWaiting(false));
+      }}
     >
       <SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/>
     </button>
+    {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}
     {open && <div
       ref={popoverRef}
       className="cell-picker-popover"

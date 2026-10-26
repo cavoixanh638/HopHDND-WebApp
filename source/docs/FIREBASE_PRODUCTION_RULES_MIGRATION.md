@@ -1,3 +1,10 @@
+## Bản chuyển tiếp mới 25/10/2026: KHÔNG dùng candidate 16/10 để kích hoạt sửa độc quyền
+- Hướng dẫn dưới đây có hiệu lực với mô hình Sheets/read-only lịch sử. Đối với yêu cầu mới (Firebase là nguồn chính, khóa ô, DRAINING/FROZEN) xem [Cổng phát hành 25/10](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) và `../firebase/database.exclusive-candidate.rules.json`.
+- **Bản ứng viên mới chưa được triển khai.** Cần đối chiếu Rules thực trên Firebase Console ngay trước lần phát hành, không giả định Rules ngày 16/10 còn hiệu lực.
+- **Mọi lệnh deploy RTDB Rules đều có thể thay thế toàn bộ Rules** của instance. Không chạy CLI bằng `firebase.json` mặc định (trỏ `database.rules.json` khóa ghi); không merge ứng viên vào main trước chứng cứ backup/readback/kiểm thử và người có quyền xác nhận.
+
+---
+
 # HopHDND — cập nhật Firebase Rules từ bản đang chạy (16/10/2026)
 
 **Trạng thái:** FILE ỨNG VIÊN, chưa triển khai Firebase production. Không thay nguyên Rules từ `firebase/database.rules.json` vì file này **cố tình khóa `hdnd/items`** cho ứng dụng Pages chỉ xem Sheets, khác với Firebase Rules production hiện hữu.

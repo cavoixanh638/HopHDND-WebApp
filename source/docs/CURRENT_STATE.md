@@ -1,3 +1,121 @@
+## Trạng thái thực địa mới nhất — 26/10/2026: Supabase đã có 55 hồ sơ
+
+**GHI ĐÈ THÔNG TIN CŨ**: các đoạn phía dưới ghi Supabase staging “6 QA / chưa nạp” là **nhật ký lịch sử, không còn là trạng thái hiện tại**. Lần kiểm tra Supabase SQL mới nhất xác nhận **55 dòng có mã Firebase mirror, 0 dòng QA giả, 0 content rỗng, mọi revision=1**, PostgreSQL hoạt động ổn định; 1 Google identity đã khớp allowlist quản trị, tổng 4 Auth users / 2 Google identities. Vẫn **CHƯA XÁC NHẬN** SHA-256 song song với bản Firebase hiện thời trên trình duyệt, chưa đủ multi-user write/ACK/realtime QA, chưa phát hành trên main. RLS read hiện chỉ cho quản trị, nên không cho nhân viên đọc/sửa; đây là blocker trước production. Chi tiết về trách nhiệm vận hành và việc có thể giao cho AI qua GitHub/Supabase: [SUPABASE_LONG_TERM_OPERATIONS_20261026.md](operations/SUPABASE_LONG_TERM_OPERATIONS_20261026.md). Bộ chọn tự phục vụ và cập nhật hồ sơ theo WebApp sau GO, không cần AI cho mỗi lần chọn/sửa; thay đổi schema/RLS/Auth qua migration+QA/rollback, tuyệt đối không tự đồng bộ hai backend.
+
+---
+
+## ĐIỀU CHỈNH 26/10/2026 — BẮT BUỘC SAO CHÉP TRƯỚC KHI ĐO
+
+Sự cố ở trình duyệt thật: Firebase mirror đã đọc **55 dòng / 277,6 ms** nhưng Supabase hiển thị **0 dòng / 143,1 ms**; SHA khác, `isAdmin=false`. Đây **KHÔNG PHẢI benchmark**. Đã kiểm tra Cloud trực tiếp: Supabase staging **thực tế vẫn có 6 dòng QA**, và đã có Google identity xác minh, nhưng identity hiện có **không nằm trong allowlist quản trị** nên RLS che toàn bộ dòng. UI trước đó gọi dữ liệu Supabase dù `isAdmin=false`, khiến 0 dòng dễ bị nhầm là DB rỗng; và buộc kiểm trước mới cho nạp. Đã sửa trang QA theo thứ tự: **đăng nhập Firebase + chọn đúng Supabase Google admin → nút NẠP → xác nhận copy 55 dòng staging → đọc lại toàn bộ và hash → chỉ sau đó mới mở benchmark**. Đổi Google Supabase sẽ yêu cầu `prompt=select_account` để chọn đúng tài khoản trong trình duyệt có nhiều Gmail; không tự cấp quyền Google lạ. Nút đối chiếu độc lập bây giờ báo **KHÔNG CÓ QUYỀN ĐỌC**, không báo 0 dòng khi `isAdmin=false`. Không tự ghi Firebase, không bypass RLS, chưa hề sao chép dữ liệu thật; chỉ staging cloud giữ 6 QA chờ thao tác có xác thực và xác nhận của chủ dự án.
+
+Để nhận bản sửa trên máy Windows: GitHub Desktop → nhánh tích hợp #77 → Fetch/Pull → tắt terminal Vite cũ → chạy lại `source/scripts/START_REAL_CLOUD_BENCHMARK.cmd` → Ctrl+Shift+R. Đăng nhập Firebase Google, bấm **“Chọn lại tài khoản Google Supabase quản trị”** và chọn Gmail đã được cấp quyền (`cavoixanh638@gmail.com` theo cấu hình hiện tại), rồi bấm **“NẠP HỒ SƠ SANG SUPABASE STAGING”** và xác nhận. Khi màn hình xác minh cùng số dòng + SHA-256 thì mới bấm Bắt đầu đo. Nếu Supabase Google hiện ra account khác, đăng nhập lại đúng account; không thêm account mới vào ACL chỉ để vượt chặn.
+
+---
+
+## Sửa lỗi Chrome Illegal invocation — 26/10/2026
+
+Trong UI thử nghiệm tại `http://localhost:8765/qa-benchmark.html`, bước **Kiểm tra cùng dữ liệu** có thể hiển thị `Failed to execute 'fetch' on 'Window': Illegal invocation`. Nguyên nhân đã xác định: bản cũ lưu tham chiếu trần đến `window.fetch` và gọi như phương thức của instance `this.fetcher(...)`, làm mất receiver `Window`. Nhánh tích hợp PR #77 đã sửa mặc định Auth signup/refresh, RPC và REST thành wrapper `(input,init)=>globalThis.fetch(input,init)`; thêm test hồi quy mô phỏng Chrome receiver guard. Không thay đổi dữ liệu hoặc policy Cloud.
+
+**Khắc phục trên Windows:** trong GitHub Desktop, chọn đúng nhánh tích hợp PR #77, bấm **Fetch origin → Pull origin**, đóng cửa sổ terminal chạy benchmark bằng Ctrl+C, nhấp đúp `source/scripts/START_REAL_CLOUD_BENCHMARK.cmd` rồi ở Chrome nhấn Ctrl+Shift+R. Đăng nhập cả Firebase Google và **Supabase Google staging**; bấm Kiểm tra cùng dữ liệu. Nếu chưa xác thực Google trên Supabase, trạng thái quyền sẽ vẫn bị chặn, đây là một blocker khác với lỗi fetch. Chỉ bấm nạp dữ liệu khi đã thấy chính xác >=50 hồ sơ Firebase mirror và chứng thực admin Supabase; import có confirm, không ghi Firebase.
+
+## BỔ SUNG 26/10/2026 — NẠP MIRROR 55 HỒ SƠ THẬT VÀ SO SÁNH TỐC ĐỘ CLOUD
+
+Nhánh QA PR #77 đã bổ sung trang benchmark localhost:8765 và nút **“Sao chép đúng 55+ hồ sơ Firebase mirror sang Supabase staging”**. Xác nhận đường dẫn 55 hồ sơ Firebase là `hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344`, **không phải** `hdnd/items` (mốc backup trước đó là 0). Supabase staging hiện còn 6 bản ghi QA, **chưa có bằng chứng đã chép dữ liệu thật hoặc benchmark PASS**. Cần chủ dự án đăng nhập Google ở Firebase và Supabase trên trình duyệt Windows rồi chủ động xác nhận sao chép; không tự chạy nền.
+
+Quy trình chuẩn: [REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md](operations/REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md). Cloud staging đã có RLS admin-only và RPC nhập snapshot một lần có chặn dữ liệu hiện hữu. Firebase production/GitHub Pages main không thay đổi.
+
+---
+
+> **CẬP NHẬT 26/10/2026 (integration #77, KHÔNG PHẢI main):** Đã merge PR [#78](https://github.com/cavoixanh638/HopHDND-WebApp/pull/78) vào nhánh `integration/firebase-supabase-unified-20261026`, SHA `815291926da2ae001a0b4fec906c414db87e3872`. PR #77 vẫn Draft, không triển khai Pages/Firebase Rules/Supabase production, không nhập hoặc đồng bộ dữ liệu nghiệp vụ thật. Script QA Windows đã cập nhật nhánh tích hợp; công cụ đo mạng 60 phút/5 giây (GitHub Pages, Cloudflare baseline, RTDB, Supabase staging, localhost, tùy chọn LAN/HTTPS self-host) đã được thêm nhưng **chưa chạy thực địa**. Chờ CI trên HEAD tổng hợp, Google OAuth Supabase và E2E đa người, so thực nghiệm, backup/restore và GO. [Runbook và lệnh](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md). Các mô tả "chưa gộp" bên dưới là lịch sử.
+
+> **MỐC CẬP NHẬT ƯU TIÊN — 25/10/2026:** Chủ dự án yêu cầu GIỮ Firebase RTDB + Supabase PostgreSQL song song, lựa chọn nguồn khi chạy WebApp; không loại bỏ database nào, không đồng bộ giữa các backend, Google Sheet còn là nguồn tạm. Staging Supabase Free `uguhyunuzsdrkykqgdmq` đã có schema/RLS; 0 hồ sơ thật, 0 admin mặc định, cổng import đóng. **Chưa có bộ chọn UI hoạt động và Auth Supabase**; PR #73 tiếp tục Draft, production không đổi. [Theo dõi thực tế](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [Nhiệm vụ tích hợp](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
+
+## 25/10/2026 — Chủ dự án chọn Supabase thay Firebase (TRẠNG THÁI ĐÍCH, CHƯA LIVE)
+
+- [ADR Supabase](decisions/SUPABASE_PRIMARY_2026-10-25.md) **ưu tiên** so với lựa chọn Firebase-only trước đây. Mục tiêu: WebApp là nguồn thao tác duy nhất, mọi cấu hình, quyền, audit, khóa ô, đóng băng và dữ liệu chuyển về PostgreSQL khi đạt GO. Sheets là công cụ tạm của nhân viên khi WebApp chưa sẵn sàng.
+- Nhánh `feat/supabase-safe-migration-20261025`, tách từ PR #72; schema PostgreSQL/RPC và adapter/thử nghiệm được phát triển tách biệt. **Không có bằng chứng Supabase staging, CI SQL, OAuth, multiuser hay benchmark đã PASS; không chỉnh production Firebase/Pages.**
+- **Tài liệu vận hành và trạng thái thực tế duy nhất:** [SUPABASE_RELEASE_GATE_2026-10-25](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [kế hoạch chức năng](operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md). Các mục ngày trước ở dưới chỉ là lịch sử đã xác minh trong thời điểm tương ứng.
+
+---
+
+## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
+**Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
+
+Hiện PR #71/#72 vẫn Draft; production chưa cutover. Công việc ưu tiên là cơ chế Firebase primary, khóa độc quyền từng ô, quyền, freeze/ACK, phục hồi và kiểm thử staging. **Ngừng coi 55 hàng snapshot Firebase 23/10 vs 57 hàng ảnh cũ hoặc thời gian sửa Sheet 25/10 là blocker hoàn thiện app**. Một lần đối chiếu dữ liệu khởi tạo cuối cùng được thực hiện **khi chuẩn bị phát hành**, không phải từng bước lúc phát triển.
+
+Các kết quả kiểm kê mirror/Drive và cảnh báo lịch sử **bên dưới chỉ để lưu vết**, không chỉ đạo công việc kế tiếp. Không chỉnh sửa Google Sheet hay metadata/quyền chia sẻ bằng tự động hóa của dự án.
+
+---
+
+## 25/10/2026 — Đối chiếu live Firebase mirror với file Excel Drive đã kết nối
+- **Firebase live (người vận hành đọc read-only):** 1 mirror source/1 dataset, 55 hàng, 0 ID thêm, 0 ID xóa so với backup, `hdnd/items=0`. `syncedAt=2026-10-23T04:41:44.104873Z`; `sourceModifiedAt=2026-10-23T02:07:11.387Z`; `schemaVersion=1`. Mirror **chưa có bản phát hành mới sau 23/10**.
+- **Excel Drive nguồn được đọc trực tiếp, không ghi:** file ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, Office .xlsx, `modifiedTime=2026-10-25T04:22:14.272Z` (11:22 giờ VN). Nội dung tab theo dõi trích xuất có **55 dòng STT số**, chia nhóm 7 nội dung chuyên đề tháng 10 và 48 nội dung còn lại; đây là dấu hiệu số lượng **có thể vẫn khớp** mirror, nhưng chưa so từng `recordId` và 15 trường A–O. Việc file được sửa 25/10 không chứng minh nội dung nghiệp vụ nào đã đổi.
+- **Rà soát an ninh Drive:** metadata connector báo file Excel nguồn có phân quyền kiểu `anyone / writer` (liên kết có thể sửa), `allowFileDiscovery=false`. Đây là **rủi ro an toàn nguồn**, cần chủ sở hữu xác minh và thu hẹp quyền phù hợp trước khi chốt bản nhập. Không thay quyền tự động vì có thể tác động công việc hiện tại.
+- Số 57 trong một ảnh báo cáo cũ không đủ bằng chứng để kết luận thiếu hai hàng vì thời điểm và phạm vi tính có thể khác nhau. Cần đối chiếu danh sách ID, ngày sửa và quy tắc lọc trước GO.
+- **Trạng thái:** `MIRROR_LIVE_STALE`, `DRIVE_EXCEL_55_ROWS_READONLY`, `PRIMARY_EMPTY_AT_LIVE_CHECK`, `IDENTITY_AND_CELL_PARITY_NOT_VERIFIED`. **NO-GO** cho import và Rules deployment production.
+
+---
+
+## 25/10/2026 — Xác nhận metadata của bản mirror 55 dòng (đầu ra người vận hành)
+- Bản sao riêng tư `database-1.json` có **1 source / 1 dataset / 55 nội dung / 0 recordId trùng** như đã ghi.
+- `schemaVersion=1`; `syncedAt=2026-10-23T04:41:44.104873Z` (**11:41:44 ngày 23/10 giờ Việt Nam**); `sourceModifiedAt=2026-10-23T02:07:11.387Z` (**09:07:11 ngày 23/10 giờ Việt Nam**); `rows=55`. Đây là bản mirror cập nhật **23/10**, không phải kết quả đọc live ngày 25/10.
+- **Chưa được xác nhận:** `Mirror metadata valid` True/False (không xuất trong lời đáp), khớp cặp source/gid, SHA256 nguồn, từng trường trong 55 hàng, và bản live hiện hành. Không tự suy luận chênh lệch 57 (ảnh trước) vs 55 là lỗi mất dữ liệu; có thể do khác thời điểm/nguồn.
+- **Giữ NO-GO** cho migration và Rules deploy; ưu tiên đọc live chỉ đọc để đối chiếu mốc `syncedAt`, `rows`, ID và đích `hdnd/items` trước khi chạy thử import.
+
+---
+
+## 25/10/2026 — Kiểm kê chi tiết mirror (bằng chứng PowerShell do người vận hành cung cấp)
+- Trong bản sao riêng tư `database-1.json`: `Mirror sources=1`; `Mirror datasets=1`; `Total content rows=55`; `Duplicate record IDs=0`.
+- Giá trị `Mirror metadata valid` **chưa có trong đầu ra** (người vận hành gửi đến dòng lệnh trước khi có kết quả True/False). **Chưa được khẳng định** schema/timestamps/SHA/source của mirror đáp ứng tiêu chuẩn chuyển đổi.
+- **Rủi ro đối chiếu cần giải quyết:** ảnh giao diện trước đó thể hiện báo cáo `Tiến độ xin ý kiến Thành ủy (57 nội dung)`, nhưng bản sao chỉ có 55 bản ghi tổng. Có thể là khác mốc đồng bộ, khác nguồn dữ liệu hoặc sự không nhất quán. **Không chuyển 55 bản ghi lên Primary** trước khi chứng minh không thiếu nội dung; kiểm live mirror và nguồn mà giao diện sử dụng, so mã ID trên các nguồn.
+- Bước tiếp: xác nhận metadata True/False, chạy restore test trên Emulator **cách ly**, và trước khi migration phải lấy lại bản sao live/mốc đồng bộ, đối chiếu số dòng, ID đầy đủ, quyền, sau đó mới ra quyết định.
+
+---
+
+## 25/10/2026 — Kiểm kê nhánh dữ liệu trên bản sao RTDB (bằng chứng PowerShell do người vận hành gửi)
+- Bản sao `database-1.json` JSON hợp lệ: `hdnd` có dữ liệu; `hdnd/items` **0 bản ghi**; `hdnd/mirrors` **1 nguồn cấp cao nhất**; `hdnd/permissions` tồn tại; `hdnd/profile` tồn tại; `hdnd/profile.dataSource` không có giá trị hiển thị.
+- **Lưu ý:** Con số 1 là số khóa trực tiếp dưới `hdnd/mirrors`, **chưa chắc** là số bản sao tab/GID; phải kiểm tra các khóa con và số hàng `rows`. `items=0` chỉ chứng minh tại thời điểm backup, không khẳng định Database hiện tại vẫn rỗng. Giá trị `dataSource` trống không được suy đoán là `primary`.
+- **Chưa có quyền xem file nội bộ của người dùng**, chưa khôi phục emulator, chưa đối chiếu bản Rules Published. Không chuyển nguồn/ghi production. Bước kế: kiểm metadata mirror bằng script chỉ đọc (schema, số tab, tổng dòng, ID trùng, dấu thời gian) rồi thử restore cách ly, lấy lại trạng thái live ngay trước khi có quyết định migrate.
+
+---
+
+## 25/10/2026 — Bằng chứng người vận hành: hai bản DB + bản Rules JSON kiểm tra đạt (chưa GO)
+- Người vận hành trên Windows đã xác nhận cả ba file trong thư mục riêng tư trên máy (không upload lên GitHub): `database-1.json` **56.185 bytes**, `database-2.json` **56.185 bytes**, `rules-live.json` **24.497 bytes**. Cả ba `ConvertFrom-Json` thành công; file Rules có thuộc tính `rules`.
+- Hai bản Database SHA256 cùng bằng `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- File Rules (người vận hành chép từ Firebase Console) SHA256 bằng `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`.
+- **Phân loại chứng cứ:** `DATA_EXPORT_JSON_AND_MATCH=USER_REPORTED_PASS`; `RULES_FILE_JSON_AND_HASH=USER_REPORTED_PASS`. **Chưa** chứng minh file Rules thực sự khớp phiên bản Published tại thời điểm kiểm tra bằng readback độc lập. **Chưa** thử restore một bản backup lên môi trường cô lập hoặc chạy kiểm thử staging với hai tài khoản.
+- **Quyết định:** giữ PR #71/#72 Draft, chưa deploy Rules, chưa chuyển `dataSource=primary`, chưa merge hoặc ghi dữ liệu production. Tiếp theo: xem metadata backup không tiết lộ nội dung, so Rules hiện hành và candidate ở máy riêng tư, restore drill trên emulator.
+
+---
+
+## 25/10/2026 — Người vận hành đã thực hiện hai lượt sao lưu READ-ONLY RTDB (chứng cứ do người dùng cung cấp)
+- Firebase CLI của máy quản trị nhận đúng project `hophdnd-8b7b2`, instance `hophdnd-8b7b2-default-rtdb`.
+- Người vận hành đã chạy thành công `firebase database:get /` hai lần, xuất ra hai JSON riêng tư và `Get-FileHash -Algorithm SHA256` cho ra **cùng một digest** `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- **Phạm vi chứng cứ:** đầu ra PowerShell do người dùng cung cấp trong chat; trợ lý **không** có quyền đọc file gốc, chưa tự kiểm JSON, chưa xác minh Rules đang Published hoặc thử khôi phục. Không đánh dấu cổng sao lưu production là PASS hoàn chỉnh.
+- **Việc cần thực hiện tiếp:** kiểm định hai JSON là bản sao đầy đủ, lưu riêng bản Rules hiện hành từ Firebase Console ở chế độ **CHỈ ĐỌC**, tính hash Rules, tạo thêm bản bảo quản và thử khôi phục có kiểm soát trên môi trường khác. PR #71/#72 vẫn Draft; **HOLD/NO-GO đối với Rules deploy, migration và writes production**.
+
+---
+
+## 25/10/2026 — Công cụ sao lưu Firebase chỉ đọc được chuẩn bị (CHƯA CHẠY THẬT)
+- PR #72 bổ sung `source/scripts/firebase-production-readonly-backup.mjs`. Công cụ không chứa hành động ghi database; giới hạn cứng project `hophdnd-8b7b2` và instance `hophdnd-8b7b2-default-rtdb`, xuất hai lượt JSON so SHA-256, đối chiếu file Rules hiện hành do người quản trị tự lấy từ Console, và tạo manifest ở thư mục riêng tư ngoài GitHub.
+- **Chưa có quyền Firebase quản trị trong phiên ChatGPT, chưa xuất được Rules/Database thật, chưa có SHA production, chưa thử khôi phục, chưa chấp thuận phát hành.** Không gọi là đã backup hoặc deploy.
+- [Quy trình Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [cổng GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). GitHub chỉ kiểm tra cú pháp và fail-closed sai project (KHÔNG đọc production).
+
+---
+
+**Kiểm thử bổ sung 25/10:** [CI #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) **SUCCESS** tại exact code SHA `8391041abc727835b7d7ff8f3b12750de950d776`: gồm quyền xin khóa ô, hai tab cùng UID, quyền admin/tạm dừng khách, hard deadline DRAINING, chặn ghi sau deadline khi admin offline, Firebase Emulator và browser smoke giả lập. Đây là bằng chứng **mã staging**, không phải Firebase production. Rules và dữ liệu thật vẫn chưa được backup/đối chiếu/readback.
+
+
+## 25/10/2026 — Phát triển Firebase chính và khóa ô (KHÔNG PHẢI production)
+- **Production:** `main` vẫn `c85b16dd9b0ea3c02d2eae98d80985dc5d8de8f4` tại thời điểm lập biên bản. Dữ liệu chưa ghi realtime giữa tài khoản, nháp trình duyệt không là dữ liệu chính.
+- **PR #71:** [database-primary](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) vẫn **Draft**; nhập mirror một lần rồi chuyển `dataSource=primary`, không phụ thuộc link Google Sheets sau đó.
+- **PR #72:** [cell-leases/freeze](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) vẫn **Draft**, base là #71. Mã đã triển khai khóa ô per-field/per-tab, timeout, Firebase ACK, khôi phục nháp và OPEN/DRAINING/FROZEN cùng UI quản trị. Rules chuyên biệt **chỉ có trong source**, không ở production.
+- **Bằng chứng từng có:** CI [#40159751225](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40159751225) PASS tại SHA `527229b9919117c4ef012ce2a84fe73726895455`. Các lần bổ sung phân quyền/tài liệu **phải có CI PASS ở SHA cuối** và thử nghiệm staging trước merge; không dùng run cũ chứng minh head mới.
+- **Điểm chặn:** chưa có bản sao lưu có hash và phép thử khôi phục Database/Rules thật; chưa đối chiếu Rules production hiện tại; chưa có backend điều phối đóng băng khi tab admin đóng; chưa có nghiệm thu hai–ba phiên thật. **NO-GO** đối với chuyển nguồn/Rules/deploy production cho đến khi cổng phát hành đạt.
+- Điều hành/bàn giao/rollback: [Cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) và [Quy trình thử nghiệm](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).
+
+---
+
 ## 23/10/2026 — Cột cuối bù độ rộng, UBND trước VP, dữ liệu Tiến độ hiện tại và lịch sử 2 cột
 
 - **ID** mặc định 68px (trước 100px); cấu hình ID còn ở độ rộng mặc định cũ đúng `100`px sẽ được đưa về 68px khi đọc; độ rộng ID đã chỉnh khác 100 vẫn giữ. ID chỉ là mã tối đa 4 ký tự trong trường hợp điển hình; các mã dài vẫn có tooltip.
@@ -1028,3 +1146,31 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - Bảng Thành ủy và Bảng xây dựng NQ: có cột trạng thái trung gian, tiếp tục hiển thị Bước tiếp theo.
 - Bảng tổng hợp NQ+BC, Bảng ban hành NQ, Bảng ban hành BC: chỉ có ba trạng thái, bỏ chỉ số Bước tiếp theo dưới tiêu đề. Vẫn giữ nguồn, cột, tổng, tỷ lệ hoàn thành, popup và quyền.
 - Chrome smoke kiểm tra đúng 5 bảng, unit test đúng nhóm; độc lập với việc chuyển Firebase sang ghi realtime ở PR khác.
+
+
+## 25/10/2026 — Chốt kiến trúc Firebase là nguồn dữ liệu chính (thay phương án overlay)
+
+**Yêu cầu người dùng:** Excel/Google Sheets chỉ là nguồn ban đầu và bản dự phòng trong giai đoạn chuyển đổi. Sau khi hoạt động realtime ổn định, tất cả người dùng phải đọc/ghi trực tiếp dữ liệu nghiệp vụ trên Firebase Realtime Database mà không cần link Google Sheets.
+
+### Quyết định
+
+- **Nguồn chính:** /hdnd/items (bản ghi thật, revision và lịch sử). Cả admin và khách đã cấp quyền ghi đúng ô bằng giao dịch CAS, tự lưu sau 800ms và Firebase onValue chuyển mọi thay đổi tới các trình duyệt. Điều này dùng lại FirebaseRepository đã có, không tạo overlay nhị phân trên bản sao.
+- **Nguồn tạm:** /hdnd/mirrors/{spreadsheetId}/{gid} chỉ để nhập dữ liệu một lần; nhánh này vẫn bất biến và có thể tồn tại để đối chiếu/backup, không tham gia đọc hay ghi khi dataSource='primary'.
+- **Chuyển dữ liệu:** chỉ admin Google đã xác thực, kết nối và không còn bản nháp; từ bản sao Firebase đã xác nhận, kiểm tra schema và ID duy nhất, từ chối nếu /hdnd/items đã có bất kỳ bản ghi nào, dùng transaction CAS toàn bộ nhánh khi còn rỗng, xác nhận lại mọi giá trị và số dòng rồi mới cập nhật shared profile dataSource='primary'. Không thay đổi ID nội bộ có dạng spreadsheetId:gid:row:n vì quyền từng ô gắn ID đó đã được cấp; ID này trở thành định danh lịch sử, không được dùng để tải lại Sheet. Giữ displayCode lặp (ví dụ '-') hợp lệ.
+- **Thao tác:** tại trang tài khoản admin phải nhấn hai bước xác nhận chuyển dữ liệu. Tùy chọn 'primary' không được bật nếu dữ liệu chưa được khởi tạo. Không tự phát sinh bản sao trống, không ghi đè/mất bất cứ thay đổi đã có, không nhập lại tự động sau khi chuyển. Admin vẫn có thể chủ động xuất dữ liệu Excel theo mẫu để sao lưu.
+- **Phân quyền:** Security Rules production hiện vẫn khóa /hdnd/items. Phiên bản Rules mới và test Firebase Emulator là điều kiện bắt buộc trước deploy, còn GitHub Pages không tự triển khai Rules; công khai website trước khi triển khai Rules sẽ tạo giao diện cho phép nhập nhưng lưu bị Firebase từ chối. PR giữ DRAFT/HOLD cho tới khi có deployment được ủy quyền, backup Rules + Database và kiểm tra post-deploy.
+- **Không phụ thuộc link Excel:** dataSource='primary' khởi tạo FirebaseRepository trực tiếp, không tải GViz, không subscribe bản sao, không warmup mirror, không tự chuyển sang Excel nếu lỗi Firebase. Khi không kết nối được sẽ giữ bản đã đọc hoặc báo lỗi, không ghi ra local như thành công.
+- **Lịch sử:** FirebaseRepository đã có audit tối đa 50 giao dịch/record và bảo vệ xung đột ô, tái sử dụng thay vì mất lịch sử như phương án mirrorEdits. Khi lưu hoặc đồng bộ không được coi nháp/local là dữ liệu chung.
+- **Dữ liệu local trước chuyển đổi:** người dùng có bản nháp chưa ghi trên thiết bị (như ảnh 25/10). KHÔNG xóa hoặc âm thầm đưa bản nháp này vào Database chính. Xuất/đối chiếu bản nháp rồi mới áp dụng lại theo quyền sau khi chuyển; thông báo rõ. Giữ Theme2, nhóm báo cáo, trạng thái, bảng và phân quyền.
+
+**Trạng thái:** mã nguồn PR đang thử, chưa migrate hoặc thay đổi Rules hay Database thật, chưa được gọi là đã kích hoạt realtime trên HopHDND.
+
+## TRẠNG THÁI TÍCH HỢP — 26/10/2026: PR #77 CHỈ QA, production NO-GO
+
+Người dùng yêu cầu hợp nhất công việc luồng "Chuyển supabase" vào **một dự án HopHDND-WebApp**, dễ theo dõi và triển khai. Đã tạo nhánh `integration/firebase-supabase-unified-20261026`, PR [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) Draft, base Firebase PR #72 exact `259c36acaa3d35367459204fda81a58bff7abc32`; Supabase foundation PR #73 `66553279791cddec0039c54a0da194a8ec24d1c0` và selector PR #75 `afb10fe2e5371a81a54fa736ecac403bb7fe57b2` được khóa làm source input, chưa commit backend Supabase vào PR #77. Manifest: [manifest.json](operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json).
+
+CI [audit merge](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/audit-unified-backend-integration.yml) đã chạy phép thử `git merge --no-commit` trong runner read-only và báo **0 xung đột Git/text** tại exact input; **đó không phải là chứng cứ TypeScript/React/authorization đã PASS**. CI build/smoke tổng hợp đang là gate kế tiếp. Mục tiêu: một `activeSource` theo tab, Firebase/Supabase song song nhưng không đồng bộ tự động; Supabase Cloud staging `uguhyunuzsdrkykqgdmq` ACTIVE_HEALTHY với dữ liệu QA giả, không phải production. Supabase security advisor ngày 26/10/2026 có **6 WARN** anonymous-access; truy `pg_policies` read-only cho thấy **6 policy đều là SELECT** (1 locks_self lọc owner UID, 5 read cho authenticated UID), không có các WARN trực tiếp đối với INSERT/UPDATE/DELETE. Tuy nhiên, nếu bật Supabase anonymous Auth thì vai trò `authenticated` có thể bao gồm anonymous identity, nên cần xem đó có phải **chính sách đọc mong muốn** hay không; chưa tự sửa RLS.
+
+Không tự merge PR #72/#73/#75/#76, không deploy Pages/Rules/Supabase, không nhập bất kỳ hồ sơ nghiệp vụ nào trong giai đoạn tích hợp. Ghi mọi kết quả và conflict vào issue #74 / PR #77, cập nhật runbook và bản này theo exact head. Tài liệu Firebase-only cũ chỉ còn mang tính lịch sử.
+
+---

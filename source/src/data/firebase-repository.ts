@@ -4,6 +4,7 @@ import type { AuditEntry, EditableField, Item, Patch, SaveResult } from '../../s
 import type { Repository } from './repository';
 import { EDITABLE_FIELDS, validateChanges } from '../domain/items';
 import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
+import type {CellEditSessionManager} from './cell-edit-leases';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -24,14 +25,14 @@ export function canonicalPermissions(input:CellPermissions|null|undefined):strin
 export function samePermissions(a:CellPermissions|null|undefined,b:CellPermissions|null|undefined):boolean {
   return canonicalPermissions(a)===canonicalPermissions(b);
 }
-interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changesJson:string;oldValuesJson:string}
+interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changes?:Partial<Record<EditableField,string|boolean>>;oldValues?:Partial<Record<EditableField,string|boolean>>;changesJson?:string;oldValuesJson?:string}
 type StoredItem=Item & {operationId:string;updatedAt:number;updatedBy:string;history?:Record<string,FirebaseEvent>};
 export const firebaseAdmin=(user:Pick<User,'email'|'emailVerified'|'providerData'>|null)=>!!user&&user.email===FIREBASE_ADMIN_EMAIL&&user.emailVerified&&user.providerData.some(provider=>provider.providerId==='google.com');
 export const mayEdit=(permissions:CellPermissions,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true);
 export function validateFirebaseItem(value:unknown):Item {
   if(!value||typeof value!=='object')throw new Error('Dòng Firebase không hợp lệ.');
   const row=value as Item;
-  if(typeof row.recordId!=='string'||!/^[A-Za-z0-9_-]{1,100}$/.test(row.recordId)||typeof row.displayCode!=='string'||!row.displayCode||row.displayCode.length>100||!Number.isSafeInteger(row.stt)||row.stt<1||!Number.isSafeInteger(row.revision)||row.revision<1||!(row.archivedAt==null||typeof row.archivedAt==='string'))throw new Error('ID, STT hoặc phiên bản dòng Firebase không hợp lệ.');
+  if(typeof row.recordId!=='string'||!/^[A-Za-z0-9_:-]{1,200}$/.test(row.recordId)||typeof row.displayCode!=='string'||!row.displayCode||row.displayCode.length>100||!Number.isSafeInteger(row.stt)||row.stt<1||!Number.isSafeInteger(row.revision)||row.revision<1||!(row.archivedAt==null||typeof row.archivedAt==='string'))throw new Error('ID, STT hoặc phiên bản dòng Firebase không hợp lệ.');
   const changes=Object.fromEntries(EDITABLE_FIELDS.map(field=>[field,row[field]]));
   const issue=validateChanges(changes);if(issue)throw new Error(issue);
   return {recordId:row.recordId,displayCode:row.displayCode,stt:row.stt,revision:row.revision,archivedAt:row.archivedAt??null,...changes} as Item;
@@ -46,6 +47,8 @@ export class FirebaseRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly canDraft=true;
   readonly readOnly=false;
+  readonly subscribeInitial=true;
+  leaseManager?:CellEditSessionManager;
   checkAssignment?:(item:Item)=>string;
   constructor(readonly database:Database,private user:()=>User|null,private permissions:()=>CellPermissions,private readonly itemPath='hdnd/items'){}
   async list(){return rowsFrom((await get(ref(this.database,this.itemPath))).val());}
@@ -58,6 +61,8 @@ export class FirebaseRepository implements Repository {
         const user=this.user();if(!user)throw new Error('Chưa đăng nhập Firebase.');
         const issue=validateChanges(patch.changes);if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
+        if(this.leaseManager&&fields.some(field=>!this.leaseManager!.proof(patch.recordId,field)))
+          throw new Error('Mất khóa ô trước khi lưu. Bản nháp được giữ.');
         if(!fields.length||fields.some(field=>!(field in patch.baseValues)||!mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))throw new Error('Bạn chưa được phép sửa ô này.');
         let replay=false;
         const transaction=await runTransaction(ref(this.database,`${this.itemPath}/${patch.recordId}`),raw=>{
@@ -69,9 +74,29 @@ export class FirebaseRepository implements Repository {
           const conflict=fields.find(field=>current[field]!==patch.baseValues[field]);
           if(conflict){reason=`Ô ${conflict} hiện ở nguồn là “${String(current[conflict])}”; phần bạn nhập “${String(patch.changes[conflict])}” vẫn được giữ. Bỏ phần sửa để nhận dữ liệu nguồn hoặc đối chiếu trước khi nhập lại.`;return undefined;}
           if(fields.some(field=>field==='specialist'||field==='room')){const issue=this.checkAssignment?.({...current,...patch.changes});if(issue)throw new Error(issue);}
-          const next={...raw,...patch.changes,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
+          const editProofs={...(raw.editProofs??{})};
+          if(this.leaseManager)for(const field of fields)
+            editProofs[field]=this.leaseManager.proof(patch.recordId,field);
+          const next={...raw,...patch.changes,editProofs,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
+          // First-class audit values are validated by RTDB Rules against row
+          // before/after values. Opaque JSON strings cannot be validated.
+          const changed=fields.filter(field=>current[field]!==patch.changes[field]);
+          if(!changed.length){reason='Không có thay đổi dữ liệu mới cần lưu.';return undefined;}
+          const auditChanges=Object.fromEntries(changed.map(field=>[field,patch.changes[field]]));
+          const auditOldValues=Object.fromEntries(changed.map(field=>[field,current[field]]));
           const history:Record<string,FirebaseEvent>={...(raw.history??{})};
-          history[String(next.revision%50)]={operationId:patch.operationId,recordId:patch.recordId,at:serverTimestamp() as unknown as number,actor:user.uid,changesJson:JSON.stringify(patch.changes),oldValuesJson:JSON.stringify(patch.baseValues)};
+          history[String(next.revision%50)]=this.leaseManager?{
+            operationId:patch.operationId,recordId:patch.recordId,
+            at:serverTimestamp() as unknown as number,actor:user.uid,
+            changes:auditChanges,oldValues:auditOldValues
+          }:{
+            // Preserve the older Rules contract for non-primary/migration-only
+            // adapters. Exclusive primary Rules require structured audit values.
+            operationId:patch.operationId,recordId:patch.recordId,
+            at:serverTimestamp() as unknown as number,actor:user.uid,
+            changesJson:JSON.stringify(patch.changes),
+            oldValuesJson:JSON.stringify(patch.baseValues)
+          };
           return {...next,history};
         },{applyLocally:false});
         const item=transaction.snapshot.exists()?validateFirebaseItem(transaction.snapshot.val()):undefined;
@@ -84,7 +109,11 @@ export class FirebaseRepository implements Repository {
   }
   async history(recordId:string):Promise<AuditEntry[]>{
     const raw=(await get(ref(this.database,`${this.itemPath}/${recordId}/history`))).val()??{};
-    return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),changes:JSON.parse(event.changesJson),oldValues:JSON.parse(event.oldValuesJson)}));
+    return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({
+      operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),
+      changes:event.changes??JSON.parse(event.changesJson??'{}'),
+      oldValues:event.oldValues??JSON.parse(event.oldValuesJson??'{}')
+    }));
   }
   /** Explicit admin import only. Existing IDs are never silently overwritten. */
   async importItems(items:Item[]){

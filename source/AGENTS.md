@@ -1,3 +1,30 @@
+## 26/10/2026 — Hợp đồng phối hợp cho nhánh tích hợp #77
+
+**Chỉ đạo mới nhất:** một HopHDND WebApp hỗ trợ **hai nguồn độc lập** Firebase RTDB và Supabase PostgreSQL, chọn nguồn tại từng tab, không đồng bộ, ghi kép, fallback ngầm hoặc sửa cấu hình nguồn Firebase toàn cục khi đổi sang Supabase. Google Sheets/Excel chỉ là phương án tạm khi nhân viên còn nhập dữ liệu trước cutover; sau cutover được phê duyệt, thao tác vận hành duy nhất trên WebApp.
+
+- Firebase security/Google UID allowlist/per-cell lease/freeze thuộc PR #72; Supabase schema/RLS/RPC/Auth/Realtime thuộc PR #73 và PR #75; source chooser chung chịu trách nhiệm người tích hợp tại PR #77. **PR #78 đã merge vào nhánh tích hợp** tại SHA `815291926da2ae001a0b4fec906c414db87e3872`; KHÔNG có nghĩa đã merge vào main hay được phép deploy.
+- Giữ các vùng chung `App.tsx`, `use-workspace.ts`, `ItemList.tsx`, editor, lease manager, popup, reports và workflow dưới một đầu mối tích hợp; không chép nguyên file từ nhánh khác theo kiểu `--theirs`. Mỗi thay đổi phải kiểm đường ghi theo source và không mất Firebase logic bảo mật.
+- Mỗi nguồn dùng Auth/JWT, UID/grants/CAS/lease/ACK/audit/freeze riêng. Chặn đổi nguồn lúc có draft chưa ACK, editor hoặc lease, save đang gửi, offline/recovery và tải dữ liệu; namespace caches và listeners đúng backend+project+user/tab.
+- Trước GO: exact integrated HEAD phải qua TypeScript, unit/docs, browser, Firebase Auth+RTDB emulator và PostgreSQL RLS/RPC; xác thực độc lập 2–3 UID Google/anonymous trên Cloud, khóa cùng ô, nhận ACK đúng nguồn, bảo vệ 15 cột A–O và 5 báo cáo, backup/restore, đánh giá Free quotas, nguồn nhập đầu tiên và rollback không mất dữ liệu ACK.
+- Theo dõi tiến độ/mã SHA/CI/browser receipts trong [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74), `docs/CURRENT_STATE.md`, `docs/WORKBOARD.md` và [runbook tích hợp](docs/operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md). Windows launcher và monitor mạng 60 phút/5 giây nằm ở `source/scripts/`; chưa đo trên máy operator. Không tạo nhiều bảng điều phối cạnh tranh.
+
+---
+## QUYẾT ĐỊNH ĐIỀU PHỐI HIỆN HÀNH — 26/10/2026: MỘT WEBAPP, HAI BACKEND
+
+Chỉ đạo cập nhật thay thế phần "Firebase duy nhất" theo nghĩa kiến trúc đích bên dưới: WebApp vẫn là **một ứng dụng duy nhất**, nhưng giữ **cả Firebase RTDB và Supabase PostgreSQL**, có bộ chọn nguồn theo tab; dữ liệu hai nguồn độc lập, **KHÔNG đồng bộ tự động, KHÔNG ghi kép, KHÔNG fallback ngầm**. Không trở lại Google Sheets sau cutover; hiện dữ liệu công việc còn đang được nhân viên cập nhật tạm thời, chỉ nhập một lần khi admin duyệt.
+
+**Chỉ một PR tích hợp [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77)** nhận và giải quyết các thay đổi từ [Firebase #72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) và [Supabase #73/#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75). [Issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) là kênh điều hành; [manifest có SHA cố định](docs/operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json) và [runbook](docs/operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md) là chứng cứ. Không tự merge PR con, không chọn nguyên file “ours/theirs” để lấp conflict, không phê duyệt production chỉ vì CI riêng từng nhánh PASS. Mỗi thay đổi code phải cập nhật `CURRENT_STATE.md`, `ARCHITECTURE.md`, `WORKBOARD.md`, `VAN_HANH.md`, `CAI_DAT_VA_CHAY.md` phù hợp trong chính PR tích hợp. Quản lý phiên/lease, Auth/RLS, audit, cache và freeze **riêng từng backend**, giữ 15 cột/5 báo cáo. Production NO-GO tới khi nghiệm thu trên exact integration commit, nguồn dữ liệu cuối được duyệt, backup/rollback và user GO.
+
+---
+
+## Quy tắc phát triển mới 25/10/2026: Firebase primary và bảo toàn dữ liệu
+- PR #71/#72 là kiến trúc đích, **chưa được coi là đã deploy**. Muốn phát hành phải kiểm thử đúng exact head, sao lưu/đối chiếu Firebase Rules + RTDB thực, staging 2–3 tài khoản, phê duyệt GO/NO-GO theo `docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md`.
+- Không sửa/xóa/import đè `hdnd/items`; không tự chuyển `hdnd/profile/dataSource` nếu chưa xác minh dữ liệu. Excel chỉ là nguồn tạm và bản đối chiếu sau chuyển.
+- Bắt buộc bảo vệ mọi đường ghi nghiệp vụ bằng khóa theo ô `(recordId,field)`, quyền thực, expiry/fencing, CAS và chế độ chốt cả admin. Không bỏ qua do một button/nhánh popup. Đóng băng chỉ chốt các commit đã server ACK; nháp chưa ACK phải giữ.
+- Phân biệt `editingLocked` chỉ khóa khách với `FROZEN` chặn cả admin. DRAINING có thể tồn tại nếu tab admin đóng, không tự khẳng định snapshot đã chốt. Không triển khai Rules qua cấu hình firebase.json mặc định mà chưa xác nhận candidate.
+
+---
+
 # Hướng dẫn làm việc
 
 ## 23/10/2026 — Quy tắc kiểm soát bố cục và lịch sử

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>HopHDND · So sánh tốc độ hai Cloud thật</title>
+<style>
+:root{font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif;color:#193230;background:#f3f7f6}
+main{max-width:940px;margin:35px auto;padding:0 15px}h1{font-size:26px;margin:0 0 7px}
+p{margin:7px 0 14px}.muted{color:#536864}.panel{background:white;padding:18px 21px;border:1px solid #d4e4df;border-radius:12px;margin:15px 0}
+button{border:1px solid #0d6555;border-radius:8px;background:#096758;color:white;padding:10px 13px;cursor:pointer;margin:4px 5px 4px 0}
+button:disabled{opacity:.48;cursor:default}label{display:inline-block;margin-right:15px}
+select{padding:8px;border-radius:8px}pre{white-space:pre-wrap;word-break:break-word;background:#eff5f3;padding:12px;border-radius:7px;max-height:380px;overflow:auto}
+strong{font-weight:700}.danger{color:#a42a2a}.ok{color:#167446}
+table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #e0eae6;text-align:left}
+@media(max-width:600px){h1{font-size:21px}.panel{padding:12px}}
+</style></head>
+<body><main>
+<h1>So sánh tốc độ Firebase ↔ Supabase</h1>
+<p class="muted"><strong>Chỉ nạp bản sao vào Supabase staging sau khi bạn xác nhận; Firebase luôn chỉ đọc.</strong> Firebase mirror production và Supabase staging, chạy trên cùng trình duyệt/mạng. Không sử dụng Firebase emulator; không gọi Google Sheets.</p>
+<div class="panel">
+<h3>1. Sao chép 55+ hồ sơ thật vào Supabase trước khi đo</h3>
+<button id="firebase-login">Đăng nhập Google Firebase</button>
+<button id="supabase-google">Chọn lại tài khoản Google Supabase quản trị</button>
+<button id="import" disabled>NẠP HỒ SƠ SANG SUPABASE STAGING</button>
+<button id="check">Đối chiếu hai nguồn</button>
+<p class="muted"><strong>Chỉ tài khoản Google quản trị đã xác minh.</strong> Nút sao chép luôn hỏi xác nhận; chỉ ghi Supabase STAGING, không thay đổi Firebase. Nếu nguồn mới hơn 55 dòng, công cụ sẽ lấy đúng số dòng hiện tại. Dữ liệu nghiệp vụ thật sẽ được lưu vào Cloud Supabase sau khi xác nhận.</p>
+<pre id="state">Chưa đăng nhập / chưa kiểm tra.</pre>
+</div>
+<div class="panel">
+<h3>2. Đo tốc độ SAU KHI hai nguồn trùng đủ hồ sơ</h3>
+<label>Số lượt <select id="rounds"><option value="30">30 lượt (đo nhanh)</option><option value="100">100 lượt</option><option value="720">720 lượt · mỗi 5 giây (~1 giờ)</option></select></label>
+<button id="run" disabled>Bắt đầu đo</button>
+<button id="cancel" disabled>Ngừng đo</button>
+<button id="csv" disabled>Lưu CSV kết quả</button>
+<p id="progress" class="muted">Chỉ mở nút đo sau khi trùng số hồ sơ và SHA-256 toàn bộ nội dung. Thứ tự Firebase/Supabase đảo qua lại để giảm sai lệch.</p>
+<table><thead><tr><th>Chỉ số</th><th>Firebase mirror Cloud</th><th>Supabase Cloud</th></tr></thead><tbody>
+<tr><td>Lượt thành công</td><td id="fb-n">—</td><td id="sp-n">—</td></tr>
+<tr><td>Trung vị P50</td><td id="fb-p50">—</td><td id="sp-p50">—</td></tr>
+<tr><td>P95</td><td id="fb-p95">—</td><td id="sp-p95">—</td></tr>
+<tr><td>Tỷ lệ lỗi</td><td id="fb-errors">—</td><td id="sp-errors">—</td></tr>
+</tbody></table>
+</div>
+<p class="muted">Cảnh báo: đây là tốc độ đọc đủ danh sách qua Firebase REST Cloud (no-store) và Supabase REST (bao gồm JSON và kiểm tra dữ liệu), chưa phải so sánh thời gian vẽ toàn bộ WebApp hay tốc độ lưu ô. Phiên bản QA; không deploy lên trang nhân viên.</p>
+</main><script type="module" src="/src/qa/cloud-parity-benchmark.ts"></script></body></html>

@@ -55,7 +55,7 @@
             ".validate": "(newData.isBoolean()) && ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || newData.val() === data.val() || (root.child('hdnd/permissions/cells').child($id).child('isDropped').exists() ? root.child('hdnd/permissions/cells').child($id).child('isDropped').val() === true : (root.child('hdnd/permissions/rows').child($id).exists() ? root.child('hdnd/permissions/rows').child($id).val() === true : root.child('hdnd/permissions/columns/isDropped').val() === true)))"
           },
           "recordId": {
-            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,100}$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_:-]{1,200}$/)"
           },
           "displayCode": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"

@@ -1,3 +1,37 @@
+## 26/10/2026 — Mã Supabase đã ghép vào QA, công cụ đo mạng đã lưu trong repository
+
+Merge PR #78 tại `815291926da2ae001a0b4fec906c414db87e3872` **chỉ** cập nhật nhánh tích hợp PR #77 (Draft); main/WebApp Pages đang dùng, Firebase Rules, Supabase production và dữ liệu thật **không đổi**. Không tự chạy data cutover hoặc copy giữa hai database.
+
+Chạy bản thử Windows từ nhánh `integration/firebase-supabase-unified-20261026`: `npm ci` trong `source`, sau đó `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-staging.ps1`. Local WebApp là `http://127.0.0.1:5173/pages.html`, Firebase Auth+RTDB của project **emulator** `demo-hdnd`, không chạm Firebase production.
+
+Đã commit `source/scripts/network-stability-1h.ps1` cùng một-click `source/scripts/START_NETWORK_MONITOR_1H.cmd`. Mặc định **60 phút, cứ 5 giây, 720 lượt mỗi đích, timeout 4 giây**, thực hiện đồng thời GitHub Pages/Cloudflare baseline/Firebase RTDB/Supabase staging/localhost; thêm LAN tự host qua `-LanUrl` và HTTPS self-host qua `-SelfHostUrl`. Báo cáo riêng từng mẫu CSV, P50/P95/chuỗi lỗi trong CSV và HTML tại Documents/HopHDND-NetworkReports. **Công cụ đã vào mã, chưa có kết quả 60 phút đo thực trên máy người dùng**. Cloudflare endpoint này không phải WebApp Cloudflare đang deploy; localhost chỉ đo loopback. So đường mạng của nhân viên ở ngoài phải chạy máy bên ngoài, và benchmark UI/auth/ghi/Realtime cần làm riêng.
+
+Cloud Supabase staging hiện ACTIVE_HEALTHY/4 migrations/6 QA rows/0 auth users/0 Google identities; 6 WARN anonymous-access đều là SELECT policies cho role `authenticated`, có thể bao gồm đăng nhập khách anonymous. Chưa có phê duyệt mô hình khách đọc, không coi các cảnh báo đã giải quyết hoặc OAuth/Realtime production PASS. Chỉ chuyển GO sau xác minh quyền, staging 2–3 tài khoản, backup+restore, một bộ dữ liệu nguồn được phê duyệt, cutover và rollback giữ ACKed edits. Chi tiết [runbook tích hợp](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
+
+---
+> **VẬN HÀNH QA SONG SONG — 25/10/2026, ƯU TIÊN MỚI NHẤT:** **Không triển khai production**; giữ Firebase cùng Supabase và Excel tạm, chọn nguồn theo tab. Supabase Free staging `uguhyunuzsdrkykqgdmq` có 4 migrations, 6 dòng **QA giả lập**, 0 tài khoản admin tự cấp quyền và import gate đóng. Các thử nghiệm thực dùng publishable key tab-local/ `source/.env.local`, OAuth Google trên Dashboard riêng và người quản trị được xác minh bởi SQL, tuyệt đối không đưa secrets vào GitHub. Quyền ô, freeze và realtime của Supabase có mã nguồn + CI; chưa hoàn thành Cloud 3-user E2E. Trước cutover thật phải cleanup QA rows, backups/restore, so tốc độ cùng bộ dữ liệu, ký GO; Firebase không bị xóa. Toàn bộ lệnh, trình tự, blocker và rollback trong **[SUPABASE_RELEASE_GATE_2026-10-25.md](operations/SUPABASE_RELEASE_GATE_2026-10-25.md)**. Chỉ dẫn Firebase-only bên dưới là **lịch sử**, chỉ áp dụng khi nguồn đang được chọn là Firebase.
+
+## CHỈ DẪN VẬN HÀNH MỚI NHẤT — Firebase-only 25/10/2026
+[Quyết định dữ liệu](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Trước khi WebApp sẵn sàng, nhân viên cập nhật Sheet theo cách tạm; **không áp đặt yêu cầu mirror luôn mới** để tiếp tục lập trình. Tập trung backup Firebase/Rules và restore test demo; kiểm tình trạng nguồn khởi tạo chỉ **ngay trước cutover** sau khi mã/kiểm thử đủ điều kiện. Sau cutover, vô hiệu hóa luồng đồng bộ nhập Excel vào Firebase như nguồn live, mọi sửa và báo cáo chỉ qua WebApp/Firebase. Các bước rollback vẫn bảo vệ `hdnd/items` và không nhập lại Excel đè dữ liệu thật.
+
+---
+
+## Công cụ sao lưu Firebase trước phát hành 25/10/2026
+- Chạy từ `source/`: `node scripts/firebase-production-readonly-backup.mjs --help`. Hướng dẫn Windows và thông tin đầu vào (đúng project/instance, Rules export từ Console, thư mục backup riêng tư): [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
+- Đường dẫn backup bắt buộc nằm ngoài repo. Phải đạt `BACKUP_READONLY_OK` và so SHA hai lượt đọc; nếu thất bại dừng, không coi snapshot là hợp lệ. **Các file Rules phải được người vận hành tự xác nhận đúng Rules đang Publish.**
+- Script không cấp quyền Firebase và không tự kết nối Console bằng ChatGPT; cần Firebase CLI đã xác thực bởi quản trị dự án. Mọi bước GO/NO-GO/rollback theo [cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
+## Vận hành đợt chuyển nguồn/khóa ô — 25/10/2026 (HOLD)
+- **Chưa triển khai:** main/Pages và Firebase Rules production vẫn chưa chuyển theo #71/#72. PR Draft/CI thành công không đồng nghĩa dữ liệu đã được nhập hoặc chế độ sửa đã mở.
+- **Đầu mối phát hành:** [Checklist GO/NO-GO, backup Rules + RTDB, chuyển nguồn, nghiệm thu và rollback](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); [kịch bản DRAINING/FROZEN](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).
+- **Thứ tự an toàn:** bản sao Rules và toàn bộ RTDB + hash + thử đọc/khôi phục → kiểm tra Rules production mới nhất → emulator/2–3 account staging → chọn đúng candidate Rules → đọc lại Rules từ server → import mirror vào `hdnd/items` chỉ khi đích rỗng → xác nhận dữ liệu → chuyển shared profile `dataSource=primary` → thử ghi/khóa/chốt → ghi biên nhận.
+- **Không chạy** `firebase deploy --only database` từ cấu hình mặc định `source/firebase.json`; file này tham chiếu `firebase/database.rules.json` của bản Pages khóa ghi, **không** phải ứng viên `database.exclusive-candidate.rules.json`. CLI deployment ghi đè Rules hiện hành; nếu không có bản sao Rules thật và xác nhận candidate phải dừng.
+- **Rollback:** không được xóa `hdnd/items` khi đã có dữ liệu; khôi phục Rules đúng bản đã backup, đưa UI về chế độ an toàn và đối chiếu giá trị/nháp. Không công bố chốt số liệu khi chỉ ở trạng thái DRAINING.
+
+---
+
 ## BỘ MÀU LƯU RIÊNG V2 — Màu chữ tươi, nét mảnh 600 (22/10/2026)
 
 **Tên khôi phục chính thức:** **HopHDND — Màu chữ tươi, nét mảnh 600 — V2 (22/10/2026)**. Người dùng xác nhận “OK, lưu riêng các màu này”. V2 là **màu chữ trạng thái**, **không** thay nền/viền, điều khiển dropdown hay lịch sử.
@@ -295,3 +329,21 @@ Không tự coi hướng dẫn này là giấy phép triển khai production, th
 - **Mốc duyệt/khóa sửa:** sử dụng Firebase `hdndReviews` (admin-only) và `hdnd/control`. Khi đưa Rules mới vào production, lưu snapshot Rules đang chạy và thử emulator trước; không ghi đè toàn bộ Rules của project dùng chung. Rollback code **không tự xóa** mốc duyệt, trạng thái khóa hoặc khôi phục Google Sheets.
 - **Phạm vi khóa:** nút khóa trong WebApp chỉ chặn người không phải admin sửa thử trong ứng dụng. Muốn ngừng sửa trực tiếp file nguồn, cần quản lý quyền Google Sheets/Drive tại nguồn theo chính sách riêng.
 
+
+
+## 25/10/2026 — Chốt kiến trúc Firebase là nguồn dữ liệu chính (thay phương án overlay)
+
+**Yêu cầu người dùng:** Excel/Google Sheets chỉ là nguồn ban đầu và bản dự phòng trong giai đoạn chuyển đổi. Sau khi hoạt động realtime ổn định, tất cả người dùng phải đọc/ghi trực tiếp dữ liệu nghiệp vụ trên Firebase Realtime Database mà không cần link Google Sheets.
+
+### Quyết định
+
+- **Nguồn chính:** /hdnd/items (bản ghi thật, revision và lịch sử). Cả admin và khách đã cấp quyền ghi đúng ô bằng giao dịch CAS, tự lưu sau 800ms và Firebase onValue chuyển mọi thay đổi tới các trình duyệt. Điều này dùng lại FirebaseRepository đã có, không tạo overlay nhị phân trên bản sao.
+- **Nguồn tạm:** /hdnd/mirrors/{spreadsheetId}/{gid} chỉ để nhập dữ liệu một lần; nhánh này vẫn bất biến và có thể tồn tại để đối chiếu/backup, không tham gia đọc hay ghi khi dataSource='primary'.
+- **Chuyển dữ liệu:** chỉ admin Google đã xác thực, kết nối và không còn bản nháp; từ bản sao Firebase đã xác nhận, kiểm tra schema và ID duy nhất, từ chối nếu /hdnd/items đã có bất kỳ bản ghi nào, dùng transaction CAS toàn bộ nhánh khi còn rỗng, xác nhận lại mọi giá trị và số dòng rồi mới cập nhật shared profile dataSource='primary'. Không thay đổi ID nội bộ có dạng spreadsheetId:gid:row:n vì quyền từng ô gắn ID đó đã được cấp; ID này trở thành định danh lịch sử, không được dùng để tải lại Sheet. Giữ displayCode lặp (ví dụ '-') hợp lệ.
+- **Thao tác:** tại trang tài khoản admin phải nhấn hai bước xác nhận chuyển dữ liệu. Tùy chọn 'primary' không được bật nếu dữ liệu chưa được khởi tạo. Không tự phát sinh bản sao trống, không ghi đè/mất bất cứ thay đổi đã có, không nhập lại tự động sau khi chuyển. Admin vẫn có thể chủ động xuất dữ liệu Excel theo mẫu để sao lưu.
+- **Phân quyền:** Security Rules production hiện vẫn khóa /hdnd/items. Phiên bản Rules mới và test Firebase Emulator là điều kiện bắt buộc trước deploy, còn GitHub Pages không tự triển khai Rules; công khai website trước khi triển khai Rules sẽ tạo giao diện cho phép nhập nhưng lưu bị Firebase từ chối. PR giữ DRAFT/HOLD cho tới khi có deployment được ủy quyền, backup Rules + Database và kiểm tra post-deploy.
+- **Không phụ thuộc link Excel:** dataSource='primary' khởi tạo FirebaseRepository trực tiếp, không tải GViz, không subscribe bản sao, không warmup mirror, không tự chuyển sang Excel nếu lỗi Firebase. Khi không kết nối được sẽ giữ bản đã đọc hoặc báo lỗi, không ghi ra local như thành công.
+- **Lịch sử:** FirebaseRepository đã có audit tối đa 50 giao dịch/record và bảo vệ xung đột ô, tái sử dụng thay vì mất lịch sử như phương án mirrorEdits. Khi lưu hoặc đồng bộ không được coi nháp/local là dữ liệu chung.
+- **Dữ liệu local trước chuyển đổi:** người dùng có bản nháp chưa ghi trên thiết bị (như ảnh 25/10). KHÔNG xóa hoặc âm thầm đưa bản nháp này vào Database chính. Xuất/đối chiếu bản nháp rồi mới áp dụng lại theo quyền sau khi chuyển; thông báo rõ. Giữ Theme2, nhóm báo cáo, trạng thái, bảng và phân quyền.
+
+**Trạng thái:** mã nguồn PR đang thử, chưa migrate hoặc thay đổi Rules hay Database thật, chưa được gọi là đã kích hoạt realtime trên HopHDND.

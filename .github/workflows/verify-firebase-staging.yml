@@ -1,0 +1,39 @@
+name: Verify isolated Firebase staging
+on:
+  pull_request:
+    paths:
+      - "source/scripts/seed-local-staging.mjs"
+      - "source/firebase.staging.json"
+      - "source/src/data/**"
+      - "source/firebase/database.exclusive-candidate.rules.json"
+      - ".github/workflows/verify-firebase-staging.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  emulator-staging:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify fail-closed local emulator script
+        run: |
+          node --check scripts/seed-local-staging.mjs
+          if node scripts/seed-local-staging.mjs; then
+            echo "::error::Local-only staging seeder must refuse absent emulators."
+            exit 1
+          fi
+      - name: Seed synthetic primary rows under Auth and Database Emulator
+        run: npx firebase emulators:exec --project demo-hdnd --only database,auth --config firebase.staging.json "node scripts/seed-local-staging.mjs"

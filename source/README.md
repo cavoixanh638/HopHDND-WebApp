@@ -1,3 +1,17 @@
+> **YÊU CẦU HIỆN HÀNH 25/10/2026:** Firebase + Supabase phải chạy song song, người sử dụng có thể chọn nguồn trên WebApp, **không bỏ database nào**. Supabase Free Cloud staging đã được khởi tạo và áp dụng schema, chưa có frontend Auth/UI hay dữ liệu thật. Đọc [quyết định mới](docs/decisions/SUPABASE_PRIMARY_2026-10-25.md) · [cổng tiến độ](docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [tích hợp song song #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74). Dòng Supabase thay Firebase/Firebase-only bên dưới là ghi chép lịch sử.
+
+> **QUYẾT ĐỊNH MỚI 25/10/2026:** đích lâu dài của HopHDND là **WebApp + Supabase/PostgreSQL** (không phải Firebase); toàn bộ tính năng quyền sửa, lease, freeze, báo cáo được bảo toàn. Đọc [ADR Supabase](docs/decisions/SUPABASE_PRIMARY_2026-10-25.md), [kế hoạch](docs/operations/SUPABASE_MIGRATION_PLAN_2026-10-25.md), [GO/NO-GO](docs/operations/SUPABASE_RELEASE_GATE_2026-10-25.md). Đây là hướng lập trình, **không phải production đã cutover**. Nội dung Firebase-only phía dưới là lịch sử/mốc trước.
+
+## Chỉ đạo phạm vi 25/10/2026 — WebApp/Firebase là hệ thống duy nhất sau cutover
+Tài liệu có hiệu lực: [Firebase-only](docs/decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Nhân viên đang dùng file Sheet chỉ là **giai đoạn chuyển tiếp trong khi WebApp chưa hoàn thiện**. Sau cutover, tất cả xem/sửa/nhập và báo cáo **duy nhất qua WebApp**, `hdnd/items` là nguồn dữ liệu chính, không dùng đồng bộ Sheets lâu dài. Chỉ nhập dữ liệu khởi tạo **một lần khi phát hành**; các cảnh báo mirror 55/57 trước đây không phải blocker coding. PR #71/#72 đang Draft, production chưa kích hoạt.
+
+---
+
+## 25/10/2026 — Hướng phát triển Firebase nguồn chính (CHƯA PHÁT HÀNH)
+User đã chốt bỏ phụ thuộc Excel/Google Sheets sau thời kỳ nhập ban đầu. PR [#71](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) (Firebase `hdnd/items` là nguồn nghiệp vụ chính) và [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) (khóa ô per-user/tab, lưu ACK, DRAINING/FROZEN) đang **Draft**. **Main/Pages hiện hành chưa lưu sửa realtime vào Firebase chính**; không suy từ badge “Database” rằng ghi đã được bật. Triển khai Firebase production bắt buộc sao lưu và đối chiếu Rules hiện hành, import một lần, nghiệm thu nhiều tài khoản và rollback. Xem [cổng phát hành và điều kiện NO-GO](docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # Dashboard tổng hợp nội dung trình HĐND — dự án viết lại
 
 Ngày lập kế hoạch: **13/10/2026**. Theo dõi tình trạng thực tế tại [CURRENT_STATE.md](docs/CURRENT_STATE.md).
