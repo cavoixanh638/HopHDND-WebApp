@@ -1,3 +1,9 @@
+## ƯU TIÊN CAO NHẤT 26/10/2026 — CHỈ FIREBASE, DỪNG SUPABASE
+
+**[Quyết định mới nhất](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md):** chủ dự án yêu cầu tạm dừng mọi phát triển/tích hợp Supabase, giữ nguyên 55 bản ghi staging như dự phòng tĩnh, không xóa, không tự sync. PR #77/#73/#75 **PAUSED — không merge/deploy**. Chỉ phát triển WebApp Firebase trên chuỗi **PR #71 → PR #72**, kiểm thử Firebase emulator và release gate trước GO. Giao diện Firebase không phụ thuộc Supabase. Không thêm nhánh/luồng chat nếu không cần thiết. Nhiệm vụ còn lại: hoàn thiện/QA quyền, khóa ô, server ACK/realtime, freeze, backup/restore, UI, hiệu năng và nghiệm thu Firebase. Nhân viên tiếp tục nhập tạm Excel/Sheet cho đến cutover được duyệt; không xây sync lâu dài.
+
+---
+
 ## QUYẾT ĐỊNH ĐIỀU HÀNH MỚI NHẤT — 25/10/2026: CHỈ PHÁT TRIỂN FIREBASE-ONLY
 **[Quyết định kiến trúc ưu tiên](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md)**: nhân viên cập nhật Excel/Google Sheet chỉ trong thời gian chuyển tiếp; WebApp đích dùng **duy nhất Firebase RTDB `hdnd/items`** để xem/sửa/báo cáo. Sau cutover, không đọc/ghi nghiệp vụ từ Sheets và không có đồng bộ hai chiều. **DỪNG** chuỗi nhiệm vụ giám sát/chạy theo mirror 55 dòng vs ảnh cũ 57 dòng, mốc sửa Excel và quyền chia sẻ file Excel: đây chỉ là ghi nhận lịch sử, **không được coi là blocker phát triển**. Một lần kiểm tra dữ liệu khởi tạo sẽ được thực hiện **tại thời điểm cutover**, không phải trong vòng coding.
 
