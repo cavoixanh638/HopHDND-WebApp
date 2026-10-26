@@ -1,3 +1,11 @@
+## ĐIỀU CHỈNH 26/10/2026 — BẮT BUỘC SAO CHÉP TRƯỚC KHI ĐO
+
+Sự cố ở trình duyệt thật: Firebase mirror đã đọc **55 dòng / 277,6 ms** nhưng Supabase hiển thị **0 dòng / 143,1 ms**; SHA khác, `isAdmin=false`. Đây **KHÔNG PHẢI benchmark**. Đã kiểm tra Cloud trực tiếp: Supabase staging **thực tế vẫn có 6 dòng QA**, và đã có Google identity xác minh, nhưng identity hiện có **không nằm trong allowlist quản trị** nên RLS che toàn bộ dòng. UI trước đó gọi dữ liệu Supabase dù `isAdmin=false`, khiến 0 dòng dễ bị nhầm là DB rỗng; và buộc kiểm trước mới cho nạp. Đã sửa trang QA theo thứ tự: **đăng nhập Firebase + chọn đúng Supabase Google admin → nút NẠP → xác nhận copy 55 dòng staging → đọc lại toàn bộ và hash → chỉ sau đó mới mở benchmark**. Đổi Google Supabase sẽ yêu cầu `prompt=select_account` để chọn đúng tài khoản trong trình duyệt có nhiều Gmail; không tự cấp quyền Google lạ. Nút đối chiếu độc lập bây giờ báo **KHÔNG CÓ QUYỀN ĐỌC**, không báo 0 dòng khi `isAdmin=false`. Không tự ghi Firebase, không bypass RLS, chưa hề sao chép dữ liệu thật; chỉ staging cloud giữ 6 QA chờ thao tác có xác thực và xác nhận của chủ dự án.
+
+Để nhận bản sửa trên máy Windows: GitHub Desktop → nhánh tích hợp #77 → Fetch/Pull → tắt terminal Vite cũ → chạy lại `source/scripts/START_REAL_CLOUD_BENCHMARK.cmd` → Ctrl+Shift+R. Đăng nhập Firebase Google, bấm **“Chọn lại tài khoản Google Supabase quản trị”** và chọn Gmail đã được cấp quyền (`cavoixanh638@gmail.com` theo cấu hình hiện tại), rồi bấm **“NẠP HỒ SƠ SANG SUPABASE STAGING”** và xác nhận. Khi màn hình xác minh cùng số dòng + SHA-256 thì mới bấm Bắt đầu đo. Nếu Supabase Google hiện ra account khác, đăng nhập lại đúng account; không thêm account mới vào ACL chỉ để vượt chặn.
+
+---
+
 ## Sửa lỗi Chrome Illegal invocation — 26/10/2026
 
 Trong UI thử nghiệm tại `http://localhost:8765/qa-benchmark.html`, bước **Kiểm tra cùng dữ liệu** có thể hiển thị `Failed to execute 'fetch' on 'Window': Illegal invocation`. Nguyên nhân đã xác định: bản cũ lưu tham chiếu trần đến `window.fetch` và gọi như phương thức của instance `this.fetcher(...)`, làm mất receiver `Window`. Nhánh tích hợp PR #77 đã sửa mặc định Auth signup/refresh, RPC và REST thành wrapper `(input,init)=>globalThis.fetch(input,init)`; thêm test hồi quy mô phỏng Chrome receiver guard. Không thay đổi dữ liệu hoặc policy Cloud.
