@@ -14,18 +14,18 @@ table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px so
 </style></head>
 <body><main>
 <h1>So sánh tốc độ Firebase ↔ Supabase</h1>
-<p class="muted"><strong>Đọc Cloud thật — không ghi dữ liệu.</strong> Firebase mirror production và Supabase staging, chạy trên cùng trình duyệt/mạng. Không sử dụng Firebase emulator; không gọi Google Sheets.</p>
+<p class="muted"><strong>Chỉ nạp bản sao vào Supabase staging sau khi bạn xác nhận; Firebase luôn chỉ đọc.</strong> Firebase mirror production và Supabase staging, chạy trên cùng trình duyệt/mạng. Không sử dụng Firebase emulator; không gọi Google Sheets.</p>
 <div class="panel">
-<h3>1. Xác minh hai kết nối</h3>
+<h3>1. Sao chép 55+ hồ sơ thật vào Supabase trước khi đo</h3>
 <button id="firebase-login">Đăng nhập Google Firebase</button>
-<button id="supabase-google">Đăng nhập Google Supabase staging</button>
-<button id="check">Kiểm tra cùng dữ liệu</button>
-<button id="import" disabled>Sao chép đúng 55 hồ sơ từ Firebase mirror sang Supabase staging</button>
+<button id="supabase-google">Chọn lại tài khoản Google Supabase quản trị</button>
+<button id="import" disabled>NẠP HỒ SƠ SANG SUPABASE STAGING</button>
+<button id="check">Đối chiếu hai nguồn</button>
 <p class="muted"><strong>Chỉ tài khoản Google quản trị đã xác minh.</strong> Nút sao chép luôn hỏi xác nhận; chỉ ghi Supabase STAGING, không thay đổi Firebase. Nếu nguồn mới hơn 55 dòng, công cụ sẽ lấy đúng số dòng hiện tại. Dữ liệu nghiệp vụ thật sẽ được lưu vào Cloud Supabase sau khi xác nhận.</p>
 <pre id="state">Chưa đăng nhập / chưa kiểm tra.</pre>
 </div>
 <div class="panel">
-<h3>2. Đo trên tập dữ liệu giống hệt nhau</h3>
+<h3>2. Đo tốc độ SAU KHI hai nguồn trùng đủ hồ sơ</h3>
 <label>Số lượt <select id="rounds"><option value="30">30 lượt (đo nhanh)</option><option value="100">100 lượt</option><option value="720">720 lượt · mỗi 5 giây (~1 giờ)</option></select></label>
 <button id="run" disabled>Bắt đầu đo</button>
 <button id="cancel" disabled>Ngừng đo</button>
@@ -38,5 +38,5 @@ table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px so
 <tr><td>Tỷ lệ lỗi</td><td id="fb-errors">—</td><td id="sp-errors">—</td></tr>
 </tbody></table>
 </div>
-<p class="muted">Cảnh báo: đây là tốc độ đọc đủ danh sách qua Firebase SDK và Supabase REST (bao gồm JSON và kiểm tra dữ liệu), chưa phải so sánh thời gian vẽ toàn bộ WebApp hay tốc độ lưu ô. Phiên bản QA; không deploy lên trang nhân viên.</p>
+<p class="muted">Cảnh báo: đây là tốc độ đọc đủ danh sách qua Firebase REST Cloud (no-store) và Supabase REST (bao gồm JSON và kiểm tra dữ liệu), chưa phải so sánh thời gian vẽ toàn bộ WebApp hay tốc độ lưu ô. Phiên bản QA; không deploy lên trang nhân viên.</p>
 </main><script type="module" src="/src/qa/cloud-parity-benchmark.ts"></script></body></html>
