@@ -189,5 +189,9 @@ th { background:#e8eef4; }
     Write-Host "Samples: $rawCsv" -ForegroundColor Green
     Write-Host "Summary: $summaryCsv" -ForegroundColor Green
     Write-Host "HTML: $htmlFile" -ForegroundColor Green
-    if (Test-Path -LiteralPath $htmlFile) { Start-Process $htmlFile }
+    # Auto-open the HTML only on interactive Windows; headless CI/Linux still saves reports.
+    if ($env:OS -eq 'Windows_NT' -and [Environment]::UserInteractive -and (Test-Path -LiteralPath $htmlFile)) {
+        try { Start-Process -FilePath $htmlFile -ErrorAction Stop }
+        catch { Write-Warning "Report saved, but the browser could not open it. Open report.html manually." }
+    }
 }
