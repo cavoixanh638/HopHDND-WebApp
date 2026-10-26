@@ -1,3 +1,25 @@
+## 26/10/2026 — BẢN ĐỒ GỘP CODE VÀ TRUY VẾT HAI BACKEND
+
+**Trạng thái đã xác minh trên GitHub ngày 26/10:** PR #72 `259c36acaa3d35367459204fda81a58bff7abc32` (Firebase security/lease); PR #73 `66553279791cddec0039c54a0da194a8ec24d1c0` (Supabase foundation); PR #75 `afb10fe2e5371a81a54fa736ecac403bb7fe57b2` (source-selector, **base là nhánh #73**); PR #76 `docs/dual-backend-coordination-20261025` (docs). Các PR đều **Draft**, chưa có integration head được nghiệm thu. Thực tế `list_pr_changed_filenames`: #72 ↔ #73 có **7** đường dẫn trùng, #72 ↔ #75 có **14** đường dẫn trùng. Đừng dùng số liệu overlap cũ (11 file) để tính công hợp nhất. Hai PR xếp chồng có thể làm diff thay đổi khi base được rebase/merge; phải đo lại ngay tại integration.
+
+**Một bản phát hành = một commit tích hợp = một ma trận kết quả.** Không ghép PR #73 và PR #75 như hai PR độc lập vào `main` (vì #75 stacked), không merge #72 vào `main` chỉ để “lấy code”. Người tích hợp duy nhất dùng branch `integration/firebase-supabase-source-choice` bắt đầu từ **exact head mới nhất của PR #72** sau khi đóng băng phiên review, đưa vào **delta Supabase #73** trước, rồi **chỉ delta #75 so với base #73**; hợp nhất thủ công từng hunk của file trùng. Nếu việc tạo branch đó chưa thực hiện, phải giữ nguyên trạng thái “chưa tích hợp” thay vì ghi PASS. Chỉ merge PR/ghép branch bằng thao tác review được log và có commit SHA. Không tự động dùng `git merge -X theirs`, `git checkout --theirs` hay copy nguyên thư mục `src`.
+
+**Vùng tích hợp chung phải review trực tiếp**: `App.tsx`, `use-workspace.ts`, `ItemList.tsx`, `CellPicker.tsx`, `InlineNoteEditor.tsx`, `LeaseTextInput.tsx`, `ReportDetailGrid.tsx`, `cell-edit-leases.ts`, `verify-source.yml`, `ARCHITECTURE.md`/`WORKBOARD.md`. Các thay đổi quyền Google UID, Auth state, lease, audit, freeze đã được kiểm ở Firebase #72 phải được giữ khi thêm source chooser; không hồi quy thành anonymous writer. SQL migrations/RLS Supabase của #73/#75 **không** được lẫn vào Firebase Rules.
+
+**Backend contract (dùng khi giải quyết từng file trùng):** `sourceId=(kind, projectOrInstance, tenantOrAccount)`; mỗi tab duy trì `activeSourceId`, `authState`, `dataSnapshot`, `profile`, `permissions`, `lease`, `draft`, `pendingAck`, `audit` và `freeze` riêng; UI lấy toàn bộ từ đúng source adapter. Chuyển nguồn chỉ khi chưa có editor, lease, dirty draft, offline/pending ACK; chuyển nguồn không gây ghi Firebase `hdnd/profile.dataSource`, không tự copy/ghi hai nơi, không lấy dữ liệu nguồn A làm fallback cho B. Nếu Supabase chưa đủ RPC/Auth/Realtime thì khóa sửa rõ ràng và gắn nhãn `Supabase staging chỉ xem`, không trình bày như nguồn đã hoàn thiện.
+
+**Quy trình tích hợp và đóng dấu audit cho mỗi lượt:**
+1. Ghi `HEAD_72`, `HEAD_73`, `HEAD_75`, commit nền PR #75, commit tài liệu #76, và bảng kiểm danh sách file trùng vào cùng [issue #74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74); một owner quyết định conflict từng file.
+2. Commit 1: tiếp nhận #73 (schema/RLS, adapter Supabase, test), không sửa đường write Firebase; chạy Firebase tests + SQL tests.
+3. Commit 2: tiếp nhận delta #75 (selector, guard, UI và read-only preview); xử lý xung đột file chung; chạy build/TypeScript, UI/browser smoke, Auth+RTDB Emulator, Supabase SQL RLS/RPC.
+4. Commit 3+: hoàn thiện những tính năng Supabase còn thiếu (Google Auth đã xác minh, per-UID/role RLS, per-cell lease/CAS, server-ACK audit, freeze/drain, Realtime subscriptions), và test đa trình duyệt, đổi nguồn với draft/lease đang giữ, offline/reconnect, source isolation, 15 cột và 5 báo cáo. Một failing test phải giữ `HOLD`, không tắt test để qua CI.
+5. Chốt manifest JSON/tài liệu **không chứa secret hoặc dữ liệu công vụ**: `integration_head_sha`, `source_sha_72/73/75/76`, migrations checksums, RTDB Rules SHA256, Supabase RLS/RPC version, asset bundle SHA256, CI URLs/status, 2-browser test receipt, decision GO/NO-GO, backup/import plan. Ghi ở `CURRENT_STATE.md` + issue #74, không tạo một hệ workboard khác.
+6. Chỉ khi chủ dự án chấp thuận GO riêng, mới merge/publish exact integration commit, backup và import bộ dữ liệu được chốt, readback, cấp quyền người dùng và rollback giữ các chỉnh sửa ACK. Dự án chạy **một WebApp**, có thể chọn backend nhưng không có tính năng tự đồng bộ giữa hai kho.
+
+**Quy tắc thay đổi tài liệu liên tục:** commit nào đổi source chooser, Auth/ACL, database schema, local scripts, build/deploy hoặc storage đều phải đi kèm cập nhật **AGENTS/ARCHITECTURE/CURRENT_STATE/CAI_DAT_VA_CHAY/VAN_HANH** thích hợp trên cùng PR. PR docs #76 là hợp đồng nền để đồng bộ vào branch tích hợp, không đồng nghĩa đã chạy merge thực tế.
+
+---
+
 ## 25/10/2026 — Điểm phối hợp duy nhất, không mở thêm luồng phát triển
 
 | Luồng / PR | Vùng sở hữu | Không được làm | Điều kiện bàn giao |
