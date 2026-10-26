@@ -1,3 +1,9 @@
+## UI-COMPACT-4 — 27/10/2026
+
+**ĐÃ TRIỂN KHAI MÃ PR #72 / CHỜ NGHIỆM THU TRỰC QUAN:** thêm bốn cách gộp vào menu hiển thị gọn cho Danh sách; giữ lựa chọn 2-cột và hai chế độ viết tắt. Mã `compact-columns.ts` + `ItemList.tsx` + `item-preferences.ts` + `item-frame.css`: kiểm gộp không chồng, ẩn trường hợp lệ, hiển thị tên trường con, lọc dùng giá trị đầy đủ, editor theo từng trường và schema đọc bố cục Firebase cũ. Thêm unit test ở `compact-columns.test.ts` và `item-preferences.test.ts`. CI cần qua kiểm tra typecheck, unit, browser smoke/Firebase staging trên exact head; tiếp đó đánh giá thực tế trên desktop và màn hẹp (độ cao dòng, menu dropdown, ô sửa và focus). **Chưa deploy hoặc thay dữ liệu production.** [Đặc tả](FEATURES.md) · [Hướng dẫn thao tác](HUONG_DAN_SU_DUNG.md).
+
+---
+
 ## 27/10/2026 — QUAY LẠI HOÀN THIỆN UI; TẠM LƯU HOST LAN
 
 - **LAN-HOST-POC: PASS một bước:** chủ dự án xác nhận máy thứ hai trong mạng cơ quan đã mở được demo Windows trên host `:8787`; chưa phải IPlan/HopHDND thật, chưa có CSV đo 60 phút và không khẳng định sẵn sàng production. [Hồ sơ thử nghiệm](operations/LAN_HOST_PILOT_2026-10-27.md). Không tiếp tục phát triển host nếu chưa có chỉ đạo mới.
