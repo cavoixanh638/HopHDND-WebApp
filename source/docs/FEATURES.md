@@ -1,3 +1,17 @@
+## Gộp cột hiển thị trong Danh sách — 27/10/2026 (PR #72; chưa lên production)
+
+Trong menu **Gộp cột** của chế độ xem, admin có thể bật độc lập các **cách trình bày** sau. Hai tùy chọn cũ `Loại VB → Nội dung`, `Lãnh đạo UBND + VP`, `Phòng + Chuyên viên` được giữ, và có thêm **bốn** tổ hợp:
+1. **Loại VB + Sở → Nội dung**: giữ nội dung là dòng chính, loại VB nằm sát nội dung như trước, Sở chủ trì là dòng phụ gắn nhãn **Sở**; ẩn hai cột Loại VB và Sở riêng nếu đều đang hiện.
+2. **Cấp + Tiến độ Thành ủy**: gộp hai trường `partyLevel` và `progressParty` với nhãn **Cấp / Tiến độ**.
+3. **Xây dựng + Ban hành HĐND**: gộp `progressBuild` và `progressCouncil` với nhãn **Xây dựng / Ban hành**.
+4. **UBND + VP + Phòng + CV**: `ubndLeader`, `vpLeader`, `room`, `specialist` thành một ô bốn hàng có nhãn từng phần; giữ thứ tự **UBND → VP → Phòng → CV**.
+
+Các lựa chọn chồng nhau loại trừ hợp lý: gộp Loại VB + Sở thay gộp Loại VB đơn; gộp cả bốn người/đơn vị thay gộp 2+2. Khi tắt gộp, mọi cột gốc vẫn nguyên cấu hình và dữ liệu. Chỉ nhóm có **đủ cột thành viên đang hiển thị** mới được gộp. Tìm kiếm trong ô gộp dùng **toàn bộ giá trị gốc**, không dùng tên viết tắt; từng trường vẫn có editor riêng, quyền/lease riêng và ghi ACK riêng. Các bộ lọc theo cột gốc bị ẩn được xử lý để không lọc ngầm, ngoại trừ giao diện Phòng/CV cũ vẫn có hai ô lọc riêng. Trạng thái gộp là cấu hình xem Firebase của admin, **không sửa Excel, Supabase, RTDB items, báo cáo KPI hoặc Rules**.
+
+Giao diện menu chia hai nhóm **Gộp cột** và **Tên hiển thị**, nhãn ngắn, có mô tả một dòng, khung chọn tự cuộn trên màn nhỏ. Phần `compactDisplay` cũ khi đọc được mở rộng bằng bốn cờ mặc định `false` (không đặt lại gộp cũ); có test cho lựa chọn đè nhau, giá trị tìm kiếm đủ, 15 cột nguồn còn nguyên và điều kiện thiếu cột. Bản phát triển ở PR #72, không coi CI thay cho nghiệm thu bằng mắt.
+
+---
+
 ## PHẠM VI TÍNH NĂNG CHUẨN — 25/10/2026
 [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). WebApp sẽ là giao diện **duy nhất** để nhân viên nhập/xem/sửa/báo cáo, Firebase RTDB `hdnd/items` là nguồn chính. Chức năng mirror/Google Sheet là **quá trình chuyển đổi có thời hạn**; không có yêu cầu đồng bộ hai chiều hoặc định kỳ sau phát hành. Trong khi xây dựng, nhân viên được dùng Sheet hiện hành; không coi số dòng mirror cũ là tiêu chí chặn phát triển giao diện/Realtime Database.
 
