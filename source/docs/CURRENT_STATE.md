@@ -1,3 +1,9 @@
+## UI: Thêm 4 tùy chọn gộp cột — 27/10/2026 (Firebase PR #72)
+
+Đã sửa mã nguồn trên nhánh `feat/exclusive-cell-leases-admin-freeze-20261025`: **Loại VB + Sở vào Nội dung; Cấp + Tiến độ Thành ủy; Tiến độ trình HĐND xây dựng + ban hành; Lãnh đạo UBND + VP + Phòng + Chuyên viên**. Menu hiển thị chia nhóm `Gộp cột` / `Tên hiển thị`, giữ lựa chọn trước, tránh bật đè, không trộn các trường dữ liệu, nhãn rõ từng phần, tìm theo toàn bộ giá trị gốc và mỗi trường sửa theo quyền riêng. Bố cục Firebase lưu cũ được mở rộng bốn flag mới mặc định tắt. Đã bổ sung test và xử lý kéo cột theo độ rộng nguồn khi gộp. Đây là thay đổi UI; chưa triển khai website chính, chưa ghi RTDB production. [Đặc tả](FEATURES.md) · [Theo dõi test/UI](WORKBOARD.md).
+
+---
+
 ## KẾT QUẢ HOST LAN 27/10/2026 — ĐÃ KẾT NỐI LIÊN MÁY, QUAY LẠI UI
 
 Người dùng xác nhận demo tại `localhost:8787` đã được máy thứ hai trong LAN cơ quan truy cập thành công (PASS **khả năng kết nối giữa hai máy**). Chưa đo đủ 60 phút/5 giây, chưa kiểm chứng độ trễ từ máy thứ hai và chưa chạy HopHDND thật trên host LAN; giao diện 5 dòng `DEMO-*` chỉ là dữ liệu giả. Không suy ra SLA 100%, khả năng chạy offline của Firebase, hoặc an toàn triển khai production. [Biên bản và cách tái sử dụng](operations/LAN_HOST_PILOT_2026-10-27.md).
