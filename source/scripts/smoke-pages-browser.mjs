@@ -1704,7 +1704,7 @@ try{
     const popup=document.querySelector('.compact-columns-options');
     const rect=popup?.getBoundingClientRect();
     return {ok:!!popup&&popup.querySelectorAll('input[type="checkbox"]').length===9&&
-      popup.querySelectorAll('.compact-options-group-title').length===2&&
+      popup.querySelectorAll('.compact-more-options').length===2&&
       rect.left>=0&&rect.right<=innerWidth&&rect.height<=innerHeight,
       rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
@@ -1713,6 +1713,8 @@ try{
   writeFileSync('hophdnd-compact-desktop-pass.png',Buffer.from(groupShot.data,'base64'));
 
   const switchToLeaders=await evaluate(`(()=>{
+    const legacy=document.querySelector('.compact-more-options');
+    if(legacy)legacy.open=true;
     const boxes=[...document.querySelectorAll('.compact-columns-options label')];
     const leader=boxes.find(el=>el.textContent.includes('Lãnh đạo UBND + VP'));
     const input=leader?.querySelector('input');
