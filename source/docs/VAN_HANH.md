@@ -1,3 +1,10 @@
+## 26/10/2026 — Ngưỡng kiểm nghiệm độ ổn định hosting: cần theo dõi 1 giờ
+
+Người dùng yêu cầu đo từ máy Windows **liên tục 60 phút** vì kết nối mạng chập chờn. Bài test 10 lượt trước đó là chưa đủ. Bộ công cụ ZIP mới trong hội thoại chạy bằng `DO-MANG-1-CLICK.cmd`, lấy mẫu mục tiêu mỗi 30 giây/đích, CSV flush sau mỗi lần HTTP, báo cáo lỗi mạng theo phút, P50/P95, tỷ lệ sample thành công, chuỗi lỗi liên tiếp. Lệnh chi tiết trong [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md); trạng thái trong [CURRENT_STATE](CURRENT_STATE.md).
+
+**Quyết định chuyển host:** chỉ sau khi có ít nhất một báo cáo đầy đủ 60 phút lúc mạng chập chờn và báo cáo đối chiếu lúc mạng bình thường; cloud Pages thật cần dùng cùng một WebApp build; self-host từ máy chủ phải đo Cloudflare Tunnel **từ mạng nhân viên bên ngoài**, không căn cứ localhost hoặc Cloudflare Edge tuyến tham chiếu. Các bài HTTP này không thay phép đo JS/Auth/Database `startupMetrics=1`; không đổi DNS/hosting production vì một file báo cáo ngắn.
+
+---
 ## 26/10/2026 — Điều kiện nếu tự host trên máy Windows / đổi sang CDN khác
 
 Không đổi host để “khắc phục độ trễ Database” khi chỉ có benchmark giao diện. WebApp static host và Firebase/Supabase backend độc lập. Nếu chủ dự án lựa chọn pilot, phải có staging public URL/hostname tách production, xác thực domain Google/Firebase và RLS/ACL, SSL/TLS, kiểm tra không lộ thư mục local/secret/.env, caching/version cache bust, không chạy server Vite phát triển, không mở cổng RDP hoặc Firebase Emulator ra Internet. PC host yêu cầu Windows Service auto-start, nguồn điện/mạng, watchdog, UPS nếu cần, kế hoạch downtime/rollback về Pages. Tunnel public chỉ dành cho trang tĩnh đã build/test và được phép công khai hoặc bảo vệ bằng lớp kiểm soát truy cập. Cloudflare Pages static là đối chứng không phụ thuộc PC. Không deploy production/đổi DNS/đổi domain OAuth khi chưa có GO, không ảnh hưởng hai nhánh Database.
