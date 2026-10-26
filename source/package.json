@@ -17,7 +17,7 @@
     "build:pages": "npm run typecheck && vite build --mode pages --outDir dist-pages && node scripts/prepare-pages.mjs dist-pages",
     "build:pages:test": "npm run typecheck && vite build --mode pages-test --outDir dist-pages-test && node scripts/prepare-pages.mjs dist-pages-test",
     "test:firebase": "node scripts/test-firebase.mjs",
-    "dev:benchcloud": "vite --host 127.0.0.1 --port 5184 --strictPort --mode benchcloud",
+    "dev:benchcloud": "vite --host localhost --port 8765 --strictPort --mode benchcloud",
     "build:benchcloud": "npm run typecheck && vite build --mode benchcloud --outDir dist-benchcloud"
   },
   "dependencies": {
