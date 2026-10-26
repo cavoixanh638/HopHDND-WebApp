@@ -9,8 +9,8 @@ export interface ItemColumn {
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
-export type SharedCompactDisplay=Record<'typeInContent'|'leadersTogether'|'roomSpecialist'|'shortSpecialist'|'shortLeaders',boolean>;
-export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,leadersTogether:false,roomSpecialist:false,shortSpecialist:false,shortLeaders:false};
+export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders',boolean>;
+export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false};
 export interface ItemLayout {
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
   compactDisplay?:SharedCompactDisplay;
@@ -146,11 +146,17 @@ export function validateItemLayout(value:unknown):ItemLayout{
       textColor:rule.textColor,backgroundColor:rule.backgroundColor};
   });
   const compactSource=input.compactDisplay??EMPTY_COMPACT;
-  if(!compactSource||typeof compactSource!=='object'||Array.isArray(compactSource)||
-    (Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>typeof compactSource[key]!=='boolean'))
+  if(!compactSource||typeof compactSource!=='object'||Array.isArray(compactSource))
+    throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
+  // Older saved Firebase layouts predate four new grouping options. Missing
+  // NEW flags default to false; invalid values remain rejected, not coerced.
+  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether']);
+  if((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>
+    typeof compactSource[key]!=='boolean'&&
+    !(newOptions.has(key)&&compactSource[key]===undefined)))
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   const compactDisplay=Object.fromEntries((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[])
-    .map(key=>[key,compactSource[key]])) as SharedCompactDisplay;
+    .map(key=>[key,compactSource[key]??false])) as SharedCompactDisplay;
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
   return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay};
