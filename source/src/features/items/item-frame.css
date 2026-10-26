@@ -702,3 +702,28 @@
 .compact-type-suffix[data-kind='QPPL']{color:#9C4C2F}
 .compact-type-suffix[data-kind='BC']{color:#4B7752}
 .compact-type-suffix .compact-part,.compact-type-suffix .compact-part>span{color:inherit}
+
+
+/* Compact display: short groups, consistent tags and readable stacked values. */
+.compact-options-group-title {
+  padding:6px 3px 3px;
+  border-bottom:1px solid #e4ece7;
+  font-size:11px;
+  font-weight:800;
+  color:#406e58;
+  letter-spacing:.015em;
+}
+.compact-columns-options {max-height:min(75vh,560px);overflow-y:auto;overscroll-behavior:contain}
+.compact-content-group {display:grid;gap:5px;min-width:0}
+.compact-content-department {display:flex;align-items:flex-start;gap:6px;min-width:0;
+  color:#4b6358;font-size:11px;line-height:1.4;text-align:left}
+.compact-content-department>.compact-part {flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.compact-content-department .cell-picker-trigger {min-height:26px;padding:3px 7px;font-size:11px}
+.compact-pair-lines .compact-pair-tag {min-width:46px}
+.compact-type-suffix[data-kind="HC"] {color:#58776a}
+.compact-type-suffix[data-kind="QPPL"] {color:#7c5238}
+.compact-type-suffix[data-kind="BC"] {color:#496580}
+@media(max-width:650px) {
+  .compact-columns-options {width:min(340px,calc(100vw - 28px));}
+  .compact-pair-lines .compact-pair-tag {min-width:42px}
+}
