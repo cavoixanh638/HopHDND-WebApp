@@ -44,15 +44,15 @@ BEGIN
        OR coalesce(item->>'recordId','') NOT LIKE actual_prefix||'%'
        OR (item->>'recordId') !~ '^[-A-Za-z0-9_:]{1,200}$'
        OR length(coalesce(item->>'displayCode','')) NOT BETWEEN 1 AND 100
-       OR jsonb_typeof(item->'stt') <> 'number'
+       OR jsonb_typeof(item->'stt') IS DISTINCT FROM 'number'
        OR (item->>'stt') !~ '^[0-9]{1,9}$'
        OR (item->>'stt')::integer < 1
-       OR jsonb_typeof(item->'revision') <> 'number'
+       OR jsonb_typeof(item->'revision') IS DISTINCT FROM 'number'
        OR (item->>'revision') !~ '^[0-9]{1,9}$'
-       OR (item->>'documentKind') NOT IN ('NQ','BC','UNCLASSIFIED')
-       OR jsonb_typeof(item->'isDropped') <> 'boolean'
+       OR coalesce(item->>'documentKind','') NOT IN ('NQ','BC','UNCLASSIFIED')
+       OR jsonb_typeof(item->'isDropped') IS DISTINCT FROM 'boolean'
        OR (item ? 'archivedAt' AND item->'archivedAt' <> 'null'::jsonb AND jsonb_typeof(item->'archivedAt') <> 'string')
-       OR jsonb_typeof(item->'content') <> 'string'
+       OR jsonb_typeof(item->'content') IS DISTINCT FROM 'string'
        OR length(coalesce(item->>'content','')) < 1
     THEN RAISE EXCEPTION 'MIRROR_ROW_INVALID'; END IF;
     IF (SELECT count(*) FROM jsonb_each(item) AS field
@@ -67,7 +67,7 @@ BEGIN
       SELECT 1 FROM pg_catalog.unnest(ARRAY['department','type','partyLevel',
         'progressParty','progressBuild','progressCouncil','specialist',
         'room','vpLeader','ubndLeader','specificProgress','note']) k
-      WHERE jsonb_typeof(item->k) <> 'string'
+      WHERE jsonb_typeof(item->k) IS DISTINCT FROM 'string'
     ) THEN RAISE EXCEPTION 'MIRROR_FIELD_TYPE_INVALID'; END IF;
     IF (item ? 'partyMeeting' AND jsonb_typeof(item->'partyMeeting') <> 'string')
        OR (item ? 'examined' AND jsonb_typeof(item->'examined') <> 'string')
