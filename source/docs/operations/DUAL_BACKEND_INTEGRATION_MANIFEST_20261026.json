@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Single traceable integration branch for two selectable independent backends. NO production deployment.",
+  "status": "INTEGRATION_HOLD",
+  "sourceOfTruth": "GitHub PR #74 issue as coordination; this manifest pins technical commit inputs.",
+  "createdAt": "2026-10-26",
+  "integrationBranch": "integration/firebase-supabase-unified-20261026",
+  "integrationBase": {
+    "source": "Firebase PR #72",
+    "branch": "feat/exclusive-cell-leases-admin-freeze-20261025",
+    "commit": "259c36acaa3d35367459204fda81a58bff7abc32"
+  },
+  "supabaseFoundation": {
+    "source": "Supabase PR #73",
+    "branch": "feat/supabase-foundation-20261025",
+    "commit": "66553279791cddec0039c54a0da194a8ec24d1c0"
+  },
+  "supabaseSelector": {
+    "source": "Supabase PR #75 (stacks on #73)",
+    "branch": "feat/supabase-parallel-source-selector-20261025",
+    "commit": "afb10fe2e5371a81a54fa736ecac403bb7fe57b2"
+  },
+  "documentation": {
+    "source": "Canonical documentation PR #76",
+    "branch": "docs/dual-backend-coordination-20261025",
+    "commit": "d0762c09cf2f3f6a86f2997789829953bdcb9bdb",
+    "note": "Read current PR HEAD before porting; do not overwrite newer docs."
+  },
+  "targetEnvironment": {
+    "frontend": "Single HopHDND UI",
+    "backends": [
+      "firebase-rtdb",
+      "supabase-postgres"
+    ],
+    "activeBackendScope": "browser-tab",
+    "crossBackendSync": false,
+    "dualWrite": false,
+    "implicitFallback": false,
+    "stagingOnly": true
+  },
+  "mergePolicy": {
+    "owner": "single integration coordinator",
+    "noAutomaticConflictResolution": true,
+    "preserveLatestFirebaseSecurity": true,
+    "sharedFilesRequireReview": [
+      "source/src/app/App.tsx",
+      "source/src/state/use-workspace.ts",
+      "source/src/features/items/ItemList.tsx",
+      "source/src/data/cell-edit-leases.ts",
+      "source/src/features/items/CellPicker.tsx",
+      "source/src/features/items/InlineNoteEditor.tsx",
+      "source/src/features/items/LeaseTextInput.tsx",
+      "source/src/features/reports/ReportDetailGrid.tsx",
+      ".github/workflows/verify-source.yml"
+    ]
+  },
+  "requiredReleaseGates": [
+    "single-build-typecheck-and-browser-smoke",
+    "firebase-auth-and-rtdb-emulator",
+    "supabase-postgres-rls-rpc-security",
+    "supabase-auth-and-realtime-multiaccount",
+    "source-switch-draft-lock-ack-pending-guard",
+    "no-cross-database-data-or-credential-leak",
+    "same-15-columns-and-5-reports",
+    "snapshot-signed-one-time-import",
+    "read-only-production-backup-and-rollback",
+    "owner-explicit-production-go"
+  ]
+}
