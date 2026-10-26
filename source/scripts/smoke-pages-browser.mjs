@@ -1758,6 +1758,40 @@ try{
   if(!mobileGroups.ok)throw Error('Real ItemList compact 390px menu/table regression: '+JSON.stringify(mobileGroups));
   const mobileShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-mobile-pass.png',Buffer.from(mobileShot.data,'base64'));
+
+  // QA-only in-memory editor: one field of the merged Thành ủy cell must be
+  // independently editable without touching the other field or any backend.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel] .cell-picker-trigger')!==null",
+    'In-memory grouped source editor missing');
+  const editOpened=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key="partyLevel"]');
+    const triggers=cell?.querySelectorAll('.cell-picker-trigger');
+    if(!triggers||triggers.length!==2)return false;
+    triggers[0].click();return true;
+  })()`);
+  if(!editOpened)throw Error('Merged Thành ủy field must expose separate Cấp and Tiến độ controls');
+  await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
+    'Source field editor did not open');
+  const selected=await evaluate(`(()=>{
+    const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
+    const next=choices.find(b=>b.textContent?.trim()==='BTV');
+    if(!next)return false;next.click();return true;
+  })()`);
+  if(!selected)throw Error('Test option BTV missing from the real grouped CellPicker');
+  await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
+    'Field-level in-memory grouped edit did not update the selected source field');
+  const isolatedEdit=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key="partyLevel"]');
+    const values=[...cell?.querySelectorAll('.compact-pair-lines > div')??[]]
+      .map(div=>div.textContent?.trim()??'');
+    return {ok:values.length===2&&values[0].includes('BTV')&&
+      values[1].includes('Sở chưa trình'),
+      values};
+  })()`);
+  if(!isolatedEdit.ok)throw Error('Editing Cấp must not change Tiến độ: '+JSON.stringify(isolatedEdit));
+  console.log('COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
