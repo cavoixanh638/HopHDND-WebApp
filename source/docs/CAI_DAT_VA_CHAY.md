@@ -8,6 +8,29 @@ Trang có chế độ đo khởi động **không thay đổi dữ liệu**. G�
 
 Tham chiếu chẩn đoán/trạng thái: [CURRENT_STATE](CURRENT_STATE.md). Khi tích hợp hai backend phải đo thời gian khởi tạo **riêng từng nguồn**, không buộc Supabase tab chờ Firebase profile nếu nguồn Supabase không dùng cấu hình đó và không mở sai quyền chỉnh sửa.
 
+## 26/10/2026 — Bộ công cụ đo đường mạng từ PC Windows / so sánh giải pháp host (read-only)
+
+Người vận hành yêu cầu đo từ **chính máy Windows có mạng chập chờn**, so sánh GitHub Pages hiện hành, Cloudflare Edge, Firebase RTDB/Auth, Supabase staging và host trên PC. Đã tạo bộ ZIP **`HopHDND_CongCu_DoMang_Host_Windows.zip`** trong cuộc trò chuyện làm việc (không phải một file đang có sẵn trên GitHub). Trong ZIP có `Do-Mang-HopHDND.ps1`, `DO-MANG-1-CLICK.cmd`, `HUONG-DAN.txt`. Lưu nguyên bản được người vận hành tải về trong kho công cụ nội bộ khi bàn giao; không khẳng định file đã được commit vào repo.
+
+**Chạy:** giải nén và nhấp đúp `DO-MANG-1-CLICK.cmd` (10 lượt mỗi đích). Không cần Python/npm/Java/admin/API key. Chạy lại khi thấy mạng chậm và khi mạng bình thường, ở cùng máy, tránh các ứng dụng đang tải file. Báo cáo lưu trong thư mục `BaoCaoMang\HopHDND-Mang-yyyymmdd-hhmmss.{html,json}`; HTML tự mở, JSON cho phân tích theo từng lượt. Script dùng **Windows curl.exe** để đo DNS/TCP/TLS/TTFB/HTTP total, tỷ lệ lỗi, P50/P95; không tải nội dung ứng dụng vào báo cáo, không đăng nhập và không gửi bất kỳ write nào lên Firebase/Supabase.
+
+Các đích:
+- GitHub Pages thật `https://cavoixanh638.github.io/HopHDND-WebApp/`;
+- Cloudflare Edge `https://www.cloudflare.com/cdn-cgi/trace` (**chỉ kiểm tra tuyến Cloudflare, tuyệt đối không được công bố là tốc độ Cloudflare Pages của HopHDND**);
+- Firebase RTDB `https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app/.json` với **HEAD**; Firebase Auth `https://identitytoolkit.googleapis.com/` với HEAD;
+- Supabase staging `https://uguhyunuzsdrkykqgdmq.supabase.co/auth/v1/settings` với **HEAD**, không dùng publishable key/secret/JWT, không query dữ liệu; HTTP 401/403/404 trên nhóm HEAD có thể là phản hồi API bình thường và không tương đương thất bại kết nối;
+- localhost chỉ bind `127.0.0.1:18765`, trả HTTP synthetic ~64 KiB; **không phải cùng một WebApp và không đo đường của nhân viên từ Internet**.
+
+Để thử nghiệm công bằng hơn khi có các host thật:
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Do-Mang-HopHDND.ps1" -Rounds 10 -CloudflarePagesUrl "https://ten-du-an.pages.dev/" -PublicTunnelUrl "https://host-ten-mien-cua-ban.vn/"
+```
+Nếu đã chạy trang WebApp trên máy đó, thêm `-LocalWebAppUrl "http://127.0.0.1:5173/pages.html"`. **Không mở Vite dev server ra Internet**. Chỉ so sánh Cloudflare Pages khi đã triển khai **cùng build** trên Cloudflare; muốn đo nhân viên truy cập máy chủ qua Cloudflare Tunnel phải chạy từ **mạng khác** (4G hoặc máy nhân viên), không dùng loopback làm kết luận. Với WebApp, curl chỉ đo đường HTTP; cần đo `?startupMetrics=1` để đánh giá DOM, Firebase Auth và first-data-painted riêng.
+
+**Quyết định host/production chưa được phê duyệt.** Công cụ không đổi DNS, deploy Pages, mở firewall/tunnel hoặc thay Firebase/Supabase. Không gửi nội dung tài khoản/token hay JSON bản ghi trong báo cáo. Kết quả đo mới chỉ có sau khi người vận hành chạy tại máy của họ.
+
+---
+
 ## 25/10/2026 — Chạy thử Firebase realtime trên Windows (PR #72; KHÔNG phải production)
 
 **Đã có script thật trong GitHub, không chỉ có hướng dẫn chat:** [`source/scripts/start-local-staging.ps1`](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/scripts/start-local-staging.ps1), và [hướng dẫn nghiệm thu hai trình duyệt](https://github.com/cavoixanh638/HopHDND-WebApp/blob/feat/exclusive-cell-leases-admin-freeze-20261025/source/docs/operations/FIREBASE_LOCAL_MULTI_BROWSER_STAGING_2026-10-25.md). Script ở **branch** `feat/exclusive-cell-leases-admin-freeze-20261025` của PR #72; không nhầm với main, không trộn với code Supabase PR #75.
