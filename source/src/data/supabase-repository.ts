@@ -77,7 +77,8 @@ export class SupabaseRepository implements Repository {
   private async request<T>(relative:string,options:{method?:string;body?:unknown}={}):Promise<T> {
     const jwt=await this.connection.getAccessToken();
     if(!jwt)throw new Error('Chưa xác thực Supabase; không đọc/ghi dữ liệu.');
-    const http=this.connection.fetcher??fetch;
+    // Never pass a bare browser Window.fetch through another receiver: Chrome throws Illegal invocation.
+    const http=this.connection.fetcher??((input:RequestInfo|URL,init?:RequestInit)=>globalThis.fetch(input,init));
     const response=await http(this.base+relative,{
       method:options.method??'GET',
       headers:{
