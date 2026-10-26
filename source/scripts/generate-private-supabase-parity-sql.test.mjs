@@ -35,3 +35,12 @@ test('duplicated Firebase code, missing field, path mismatch are blocked',()=>{
   const d=sample();d['qa-private-3'].recordId='other';
   assert.throws(()=>convertFirebaseRows(d),/recordId/);
 });
+
+test('source mirror envelope with 55 Excel rows and revision zero is valid',()=>{
+  const a=Object.values(sample()).map(row=>({...row,revision:0}));
+  const mirror={schemaVersion:1,source:'1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp:60961344',sha256:'a'.repeat(64),rows:a};
+  const out=convertFirebaseRows(mirror);
+  assert.equal(out.length,55);
+  assert.equal(out[0].revision,1);
+  assert.throws(()=>convertFirebaseRows({...mirror,source:'OTHER'}),/source/);
+});
