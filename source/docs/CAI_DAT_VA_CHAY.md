@@ -8,6 +8,18 @@ Trang có chế độ đo khởi động **không thay đổi dữ liệu**. G�
 
 Tham chiếu chẩn đoán/trạng thái: [CURRENT_STATE](CURRENT_STATE.md). Khi tích hợp hai backend phải đo thời gian khởi tạo **riêng từng nguồn**, không buộc Supabase tab chờ Firebase profile nếu nguồn Supabase không dùng cấu hình đó và không mở sai quyền chỉnh sửa.
 
+## 26/10/2026 — Phân biệt local HTTP mẫu và WebApp chạy thật trên PC (bản ZIP bổ sung)
+
+Bản tool mới nhất trong hội thoại: `HopHDND_CongCu_DoMang_60Phut_5Giay_LocalWebApp_Windows.zip` thay bản `...Moi5Giay_Windows.zip`. **Phân biệt 2 mục tiêu local**:
+1. `local-synthetic` tại `http://127.0.0.1:18765/`: trang HTTP mẫu 64KB được công cụ dựng tự động; mục tiêu kiểm tra phần mềm phục vụ trang trên máy, **không phải WebApp HopHDND thật**.
+2. `local-webapp` tại `http://127.0.0.1:5173/pages.html`: **trang WebApp QA local thực** được công cụ tự phát hiện lúc bắt đầu bằng HTTP GET đọc trạng thái, tự đưa vào đo liên tục **nếu có HTTP 2xx**. Công cụ **không tự khởi động WebApp**. Để có mục tiêu này, mở cửa sổ PowerShell khác, chạy `source/scripts/start-local-staging.ps1` (trong đúng branch PR #72), đợi port 5173 mở được, rồi mới chạy `DO-MANG-1-CLICK.cmd`. Nếu WebApp chạy ở port khác, truyền `-LocalWebAppUrl 'http://127.0.0.1:PORT/pages.html'`. Nếu không chạy WebApp, công cụ in rõ `ACTUAL LOCAL WEBAPP: NOT MEASURED` và chỉ đo synthetic local.
+
+Bản mới giữ **60 phút, 5 giây/lượt, đo song song, timeout 4 giây**, ghi CSV theo từng phép đo và tạo HTML/JSON. Kết quả `local-webapp` qua HTTP ở Vite staging là đường PC→loopback, không phản ánh nhân viên từ xa, không là phép đo cùng production static build. So host cho người dùng thật phải build cùng một bản, dùng `-PublicTunnelUrl` và chạy test **từ mạng ngoài** (ví dụ điện thoại 4G), đồng thời kết hợp `?startupMetrics=1` để đo Auth/first paint. Không mở Vite Emulator/ports ra Internet.
+
+ZIP mới đã được kiểm tra CRC toàn bộ file trong container tạo gói, **chưa xác minh runtime PowerShell thật 60 phút trên máy người dùng**; không có thao tác Firebase/Supabase production hoặc deploy.
+
+---
+
 ## 26/10/2026 — Chu kỳ lấy mẫu 5 giây/lần, đo đồng thời các đích (bản cập nhật mới nhất)
 
 Theo yêu cầu cập nhật, thay bản 60 phút/30 giây bằng `HopHDND_CongCu_DoMang_LienTuc_60Phut_Moi5Giay_Windows.zip` (đính kèm hội thoại, **chưa commit mã công cụ vào GitHub**). Mặc định `-DurationMinutes 60 -SampleSeconds 5 -MaxProbeSeconds 4`, mỗi vòng khởi chạy `curl.exe` **song song** tới GitHub Pages, Cloudflare Edge tham chiếu, Firebase RTDB, Firebase Auth, Supabase staging và localhost giả lập; không đo tuần tự, tránh chu kỳ 5 giây bị trễ do cộng timeout từng host. Bình thường khoảng **720 mẫu/đích/giờ** (không cam kết tuyệt đối khi Windows quá tải hoặc mạng treo lâu); `CSV` được ghi ngay sau mỗi mẫu, `HTML/JSON` có thể tái tạo từ CSV. Bắt đầu bằng `DO-THU-2-PHUT.cmd` (2 phút/5 giây) hoặc chính thức `DO-MANG-1-CLICK.cmd` (60 phút/5 giây).
