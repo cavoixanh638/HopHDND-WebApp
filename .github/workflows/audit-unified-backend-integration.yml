@@ -10,6 +10,54 @@ on:
 permissions:
   contents: read
 jobs:
+  simulated-combined-source-qa:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Assemble exact Firebase+Supabase source in ephemeral runner
+        working-directory: .
+        env:
+          SUPABASE_SHA: afb10fe2e5371a81a54fa736ecac403bb7fe57b2
+        run: |
+          set -euo pipefail
+          git config user.name "HopHDND Integration Build (no deploy)"
+          git config user.email "integration@users.noreply.github.com"
+          git merge --no-commit --no-ff "$SUPABASE_SHA"
+          if test -n "$(git diff --name-only --diff-filter=U)"; then
+            echo "::error::Combined source has unresolved conflicts"
+            exit 1
+          fi
+      - name: Install pinned combined dependencies (local only)
+        run: npm ci
+      - name: Combined TypeScript + browser build
+        run: npm run build:pages:test
+      - name: Both source unit and security contract suites
+        run: npm test
+      - name: Firebase Auth and Database Emulator regressions
+        run: npm run test:firebase
+      - name: Preserve combined QA static bundle without publishing
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-backend-combined-qa-site
+          path: source/dist-pages-test/
+          if-no-files-found: error
+          retention-days: 14
   replay-and-conflict-audit:
     runs-on: ubuntu-latest
     steps:
