@@ -1,3 +1,13 @@
+## 26/10/2026 — Chu kỳ lấy mẫu 5 giây/lần, đo đồng thời các đích (bản cập nhật mới nhất)
+
+Theo yêu cầu cập nhật, thay bản 60 phút/30 giây bằng `HopHDND_CongCu_DoMang_LienTuc_60Phut_Moi5Giay_Windows.zip` (đính kèm hội thoại, **chưa commit mã công cụ vào GitHub**). Mặc định `-DurationMinutes 60 -SampleSeconds 5 -MaxProbeSeconds 4`, mỗi vòng khởi chạy `curl.exe` **song song** tới GitHub Pages, Cloudflare Edge tham chiếu, Firebase RTDB, Firebase Auth, Supabase staging và localhost giả lập; không đo tuần tự, tránh chu kỳ 5 giây bị trễ do cộng timeout từng host. Bình thường khoảng **720 mẫu/đích/giờ** (không cam kết tuyệt đối khi Windows quá tải hoặc mạng treo lâu); `CSV` được ghi ngay sau mỗi mẫu, `HTML/JSON` có thể tái tạo từ CSV. Bắt đầu bằng `DO-THU-2-PHUT.cmd` (2 phút/5 giây) hoặc chính thức `DO-MANG-1-CLICK.cmd` (60 phút/5 giây).
+
+**Cảnh báo phân tích:** timeout 4 giây có thể phân loại một host quá chậm thành `TIMEOUT` dù backend không hoàn toàn offline; đánh giá theo timestamp từng phép đo và lý do lỗi. Khoảng 5 giây là lịch lấy mẫu mục tiêu, **không phải bảo đảm phát hiện mọi mất gói 1–2 giây**. Localhost loopback chỉ là tốc độ phục vụ trên chính máy, không thể dùng để kết luận nhân viên truy cập máy đó qua Internet nhanh/ổn định hơn. Kết quả Cloudflare Edge tham chiếu không phải WebApp thật trên Cloudflare Pages. Script chưa được chạy thử đủ giờ trên máy Windows người vận hành; chỉ xác minh static nội dung và ZIP.
+
+**Mọi hướng dẫn ở bên dưới còn ghi 30 giây hoặc 120 mẫu/đích là thuộc phiên bản cũ, đã được thay thế bằng khối này.** Không tự triển khai, thay DNS, sửa Firewall, ghi Firebase/Supabase production.
+
+---
+
 ## 26/10/2026 — Chỉ đạo sửa công cụ thành kiểm tra mạng liên tục 60 phút
 
 **Thay ZIP 10 lượt bằng gói 60 phút**: `HopHDND_CongCu_DoMang_LienTuc_60Phut_Windows.zip` được tạo trong hội thoại, bao gồm PowerShell/CMD cho Windows, mục `DO-THU-2-PHUT.cmd` kiểm tra nhanh và `DO-MANG-1-CLICK.cmd` theo dõi **60 phút, chu kỳ mục tiêu 30 giây**. Chương trình ghi CSV theo từng phép đo, thống kê mất kết nối và thời gian tăng đột biến từng giai đoạn 5 phút; HTML/JSON có thể tái tạo từ CSV khi bị dừng. Không cần API key, không ghi DB. Nếu endpoint phản hồi chậm đến timeout, số vòng thực có thể thấp hơn 120; phải dựa vào **timestamp thực** trong CSV, không đánh đồng số mẫu với phút bị mất.
