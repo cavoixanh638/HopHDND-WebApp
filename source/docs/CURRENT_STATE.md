@@ -1,3 +1,18 @@
+## 26/10/2026 — Khảo sát dùng PC Windows tự host WebApp, so với host tĩnh cloud (chưa triển khai)
+
+Người dùng hỏi có thể dùng máy Windows cá nhân làm host để mọi người truy cập/sửa ổn định hơn. **Có thể**, nhưng WebApp hiện là frontend tĩnh `pages.html` + HTML/JS/CSS gọi Firebase/Supabase trực tiếp; máy cá nhân tự host chỉ thay **nơi phục vụ giao diện**, không thay Firebase Auth, Security Rules, Supabase RLS, API hoặc độ trễ dữ liệu. Một phiên đo Edge InPrivate có HTML TTFB 41ms nhưng HTML responseEnd 3369ms; không đủ kết luận host GitHub Pages lỗi hoặc PC nhanh hơn. Firebase 55 dòng đã đến trong 147ms sau kết nối.
+
+Các lựa chọn:
+- `Cloudflare Pages`: gói static free, CDN, tích hợp GitHub/preview PR; phù hợp nếu cần thử một host tĩnh khác mà PC không phải trực 24/7. Giữ Firebase/Supabase ở dịch vụ quản lý, không dùng same database production để kiểm thử ghi; bắt buộc xem xét `base`/asset paths, callback/auth allowed domains và deployment branch trước khi mở cho nhân viên. Không tự đồng bộ dữ liệu hai nguồn.
+- `PC Windows + Cloudflare Tunnel`: `cloudflared` outbound-only, không cần NAT, IP tĩnh hoặc port forwarding; dùng một web static production build server qua localhost, HTTPS qua hostname. Yêu cầu PC luôn bật, điện/mạng ổn định, Windows Service auto-start, backup, UPS, watchdog, cập nhật bảo mật, policy truy cập và reverse proxy cache. **Không phơi bày Vite dev server, Auth/RTDB emulator (ports 9099/9000), RDP 3389 hoặc secret Supabase**. Tunnel có thể chạy như QA nội bộ nhưng không thể tự làm realtime nhanh hơn hay độ sẵn sàng cao hơn GitHub Pages.
+- `Tailscale Serve`: LAN/tailnet-only, từng nhân viên phải tham gia tailnet; thích hợp nội bộ nhỏ có quản lý thiết bị. `Tailscale Funnel` public nhưng không dùng thay policy Firebase Auth/RLS. Không publish một host chứa dữ liệu công vụ nhạy cảm khi chưa được phép.
+
+**Đề xuất:** không chuyển production từ GitHub Pages sang PC trên cơ sở một lần đo; benchmark lặp 5 lần GitHub Pages vs Cloudflare Pages vs PC staging cùng bản build, giữ browser/network/thời điểm gần nhau, so p50/p95 HTML transfer, Auth sign-in, first valid paint và uptime. Nếu cloud static thắng rõ ràng, ưu tiên Pages cloud. Nếu thử PC, chỉ chạy site staging chứa 3 hàng giả qua tunnel, không có sản phẩm thật; review Firewall + domain authorization trước khi đưa người dùng vào. Tài liệu này chỉ là đánh giá kiến trúc, không tạo host, không triển khai hay ghi database.
+
+Tài liệu chính thức: https://developers.cloudflare.com/tunnel/ ; https://developers.cloudflare.com/pages/configuration/git-integration/ ; https://tailscale.com/docs/features/tailscale-serve .
+
+---
+
 ## 26/10/2026 — ĐÃ CÓ SỐ ĐO startupMetrics TRÊN WEBSITE THẬT (Edge InPrivate; 1 lượt)
 
 Người vận hành cung cấp ảnh `https://cavoixanh638.github.io/HopHDND-WebApp/?startupMetrics=1&utm_source=chatgpt.com`, Edge **InPrivate**; tab foreground. Bảng startup timing đọc từ `source/src/components/StartupTimingPanel.tsx` và `network-diagnostics.ts` của `main`, mốc tính từ navigationStart (ms):
