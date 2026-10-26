@@ -138,6 +138,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       type="button"
       className="cell-value-button cell-picker-trigger"
       disabled={disabled||waiting}
+      aria-busy={waiting}
       aria-label={displayValue?`${label}: ${value}`:label}
       aria-haspopup="dialog"
       aria-expanded={open}
@@ -155,6 +156,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     >
       <SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/>
     </button>
+    {waiting&&<small className="cell-picker-note cell-picker-feedback" role="status">Đang xác nhận quyền sửa ô…</small>}
     {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}
     {open && <div
       ref={popoverRef}
