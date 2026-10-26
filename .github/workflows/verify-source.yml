@@ -28,6 +28,15 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Build LIVE-CLOUD read-only benchmark separately (never deploy to production)
+        run: |
+          node --check scripts/generate-private-supabase-parity-sql.mjs
+          npm run build:benchcloud
+          test -s dist-benchcloud/qa-benchmark.html
+          if grep -q 'qa-private-1' dist-benchcloud/qa-benchmark.html; then
+            echo '::error::Benchmark bundle must never include fixture/business rows'
+            exit 1
+          fi
       - name: Verify standalone Supabase Google OAuth smoke page (offline, no credentials)
         run: node scripts/check-supabase-auth-smoke.mjs
       - name: Observe public Google OAuth provider setting on staging (optional network, no secrets)
