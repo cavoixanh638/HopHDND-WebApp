@@ -298,7 +298,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),compactDisplay)
+    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),nextLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY)
       .flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
     setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
     setShowAllSourceColumns(false);
@@ -434,8 +434,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         width:visualWidth(displayedColumns[displayedColumns.length-1].width),min:60,max:1600}}
       min={60} max={1600} label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
-        if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,width));
-        else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,width));
+        // Displayed width includes the group padding; the source field must not.
+        const extra=compactPairs.find(pair=>pair.anchor===column.key)?.extraWidth??0;
+        const sourceWidth=Math.max(60,width-extra);
+        if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,sourceWidth));
+        else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,sourceWidth));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
     ?<RoomSpecialistFilterCell key={column.key} items={items}
