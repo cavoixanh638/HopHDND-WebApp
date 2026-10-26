@@ -1,3 +1,5 @@
+**Bản xem thử UI (không có dữ liệu thật):** Trong PR #72, chạy `npm run build:compact:qa` dưới thư mục `source` để tạo trang kiểm thử `dist-compact-qa/compact-qa.html` (phục vụ qua HTTP server local); QA sử dụng `ItemList` thật với dữ liệu giả, tùy chọn bật sẵn cả 4 nhóm. Truy cập `?edit=1` để thử sửa *nội bộ trên trình duyệt* theo từng trường con, không ghi database. GitHub Actions [source #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40379091513) có artifact `hophdnd-browser-smoke-preview` chứa ảnh 1600px và 390px. Đây là **hướng dẫn thử cho người phát triển**, không phát hành bằng đường dẫn QA hoặc dùng thay ứng dụng HopHDND chính.
+
 ## Gộp cột — chọn cách hiển thị gọn (27/10/2026, bản đang phát triển)
 
 Trong **Danh sách các ND trình HĐND** ở chế độ xem, quản trị viên mở **Gộp cột**. Bật các tùy chọn phù hợp:
