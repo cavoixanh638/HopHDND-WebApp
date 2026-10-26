@@ -6,7 +6,7 @@ Người dùng xác nhận demo tại `localhost:8787` đã được máy thứ 
 
 ### Tiến độ UI Firebase PR #72 — 27/10/2026
 
-Đã chỉnh `src/features/items/CellPicker.tsx`, `InlineNoteEditor.tsx` và `cell-picker.css` để hiển thị phản hồi khi chờ cấp quyền sửa ô qua Firebase; nút chọn có `aria-busy`, thông báo dùng `role=status`. Đây là thay đổi UX cấp ô, **không** đổi quyền, lease, hợp đồng ghi, bảng báo cáo hoặc nguồn dữ liệu. Kiểm thử CI/browser mới là điều kiện kết luận PASS; chưa deploy production. [Theo dõi UI trong WORKBOARD](WORKBOARD.md).
+Đã chỉnh `src/features/items/CellPicker.tsx`, `InlineNoteEditor.tsx` và `cell-picker.css` để hiển thị phản hồi khi chờ cấp quyền sửa ô qua Firebase; nút chọn có `aria-busy`, thông báo dùng `role=status`. Đây là thay đổi UX cấp ô, **không** đổi quyền, lease, hợp đồng ghi, bảng báo cáo hoặc nguồn dữ liệu. Kiểm thử CI tại thay đổi UI **PASS**: [Verify HopHDND source #40372289275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40372289275) và [Verify isolated Firebase staging #40372289221](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40372289221). Đây là hồi quy tự động, chưa thay cho đánh giá trực quan trên Windows; chưa deploy production. [Theo dõi UI trong WORKBOARD](WORKBOARD.md).
 
 
 ---
