@@ -67,6 +67,20 @@ jobs:
           HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
       - name: Documentation checks
         run: npm run docs:check
+      - name: Parse and smoke-test the 60-minute Windows network monitor (one synthetic round only)
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $problems = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path './scripts/network-stability-1h.ps1').Path, [ref]$tokens, [ref]$problems) | Out-Null
+          if ($problems.Count -gt 0) { throw ($problems | Out-String) }
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path './scripts/start-local-staging.ps1').Path, [ref]$tokens, [ref]$problems) | Out-Null
+          if ($problems.Count -gt 0) { throw ($problems | Out-String) }
+          ./scripts/network-stability-1h.ps1 -Minutes 0.01 -IntervalSeconds 5 -TimeoutSeconds 4 -OutputRoot (Join-Path $env:RUNNER_TEMP 'hophdnd-net-smoke')
+          $csv = @(Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'hophdnd-net-smoke') -Filter summary.csv -Recurse)
+          if ($csv.Count -ne 1) { throw 'Missing network smoke report' }
+          if (@(Import-Csv -LiteralPath $csv[0].FullName).Count -lt 5) { throw 'Expected all five default targets' }
+          Write-Host 'Network monitor smoke PASS: one read-only round, 5 default targets (not a 60-minute benchmark)'
       - name: Firebase emulator tests
         run: npm run test:firebase
       - name: Build split, on-demand Pages artifact
