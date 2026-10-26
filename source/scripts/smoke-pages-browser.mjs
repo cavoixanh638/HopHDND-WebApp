@@ -8,12 +8,16 @@ import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const appRoot=resolve('dist-pages-test');
+const qaRoot=resolve('dist-compact-qa');
 const html=readFileSync(resolve(appRoot,'index.html'));
 const server=createServer((req,res)=>{
   try{
     const pathname=new URL(req.url??'/', 'http://127.0.0.1').pathname;
-    const file=pathname==='/'?resolve(appRoot,'index.html'):resolve(appRoot,'.'+pathname);
-    if(!file.startsWith(appRoot+'/')&&!file.startsWith(appRoot+'\\'))throw Error('Invalid path');
+    const qa=pathname.startsWith('/compact-qa/');
+    const root=qa?qaRoot:appRoot;
+    const localPath=qa?pathname.slice('/compact-qa'.length):pathname;
+    const file=localPath==='/'?resolve(root,qa?'compact-qa.html':'index.html'):resolve(root,'.'+localPath);
+    if(!file.startsWith(root+'/')&&!file.startsWith(root+'\\'))throw Error('Invalid path');
     const meta=statSync(file);
     if(!meta.isFile())throw Error('Not a file');
     const mime=file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
@@ -1655,6 +1659,106 @@ try{
   if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
+
+  // Open the real ItemList component in a standalone, synthetic-only QA mount.
+  // This is not the deployed admin user journey; it verifies actual production
+  // merged-cell JSX + CSS, filters and options without live credentials.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelector('[data-qa=compact-real-itemlist] .item-heading-row')!==null",
+    'Real ItemList compact QA did not mount');
+  const desktopGroups=await evaluate(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cols=[...document.querySelectorAll('.item-heading-row th')];
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')][0];
+    const anchor=key=>row?.querySelector('td[data-col-key="'+key+'"]');
+    const content=anchor('content'),party=anchor('partyLevel'),
+      council=anchor('progressBuild'),team=anchor('room');
+    const keys=cols.map(th=>th.getAttribute('data-column-key'));
+    const tagText=el=>[...el?.querySelectorAll('.compact-pair-tag')??[]].map(t=>t.textContent.trim());
+    const count=cols.length;
+    return {ok:count===8&&new Set(keys).size===8&&
+      !keys.some(k=>['type','department','progressParty','progressCouncil','ubndLeader','vpLeader','specialist'].includes(k))&&
+      !!content?.textContent.includes('Sở mẫu A')&&content.textContent.includes('QPPL')&&
+      !!party?.textContent.includes('Ban Chấp hành')&&
+      !!council?.textContent.includes('Sở chưa trình')&&
+      !!team?.textContent.includes('Phòng mẫu 1')&&
+      tagText(party).join('|')==='Cấp|Tiến độ'&&
+      tagText(council).join('|')==='Xây dựng|Ban hành'&&
+      tagText(team).join('|')==='UBND|VP|Phòng|CV'&&
+      !table.querySelector('.editable-cell')&&
+      !!document.querySelector('.compact-columns-menu'),
+      count,keys,teamTags:tagText(team),partyTags:tagText(party),
+      councilTags:tagText(council)};
+  })()`);
+  if(!desktopGroups.ok)throw Error('Real ItemList four-way compact desktop regression: '+JSON.stringify(desktopGroups));
+
+  // The menu belongs to the real ItemList, and conflicting options must not
+  // hide source data or leave a duplicate field.
+  const menuOpened=await evaluate(`(()=>{
+    const menu=document.querySelector('.compact-columns-menu');
+    if(!menu)return false;menu.open=true;return !!menu.querySelector('.compact-columns-options');
+  })()`);
+  if(!menuOpened)throw Error('Compact menu missing from admin QA layout');
+  const desktopMenu=await evaluate(`(()=>{
+    const popup=document.querySelector('.compact-columns-options');
+    const rect=popup?.getBoundingClientRect();
+    return {ok:!!popup&&popup.querySelectorAll('input[type="checkbox"]').length===9&&
+      popup.querySelectorAll('.compact-options-group-title').length===2&&
+      rect.left>=0&&rect.right<=innerWidth&&rect.height<=innerHeight,
+      rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
+  })()`);
+  if(!desktopMenu.ok)throw Error('Compact desktop menu geometry regression: '+JSON.stringify(desktopMenu));
+  const groupShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-desktop-pass.png',Buffer.from(groupShot.data,'base64'));
+
+  const switchToLeaders=await evaluate(`(()=>{
+    const boxes=[...document.querySelectorAll('.compact-columns-options label')];
+    const leader=boxes.find(el=>el.textContent.includes('Lãnh đạo UBND + VP'));
+    const input=leader?.querySelector('input');
+    if(!input)return false;input.click();return true;
+  })()`);
+  if(!switchToLeaders)throw Error('Legacy leader merge switch missing');
+  await eventually(`document.querySelectorAll('.item-heading-row th').length===10`,
+    'Switching from four-way team to leader pair should restore separate room and specialist');
+  const restored=await evaluate(`(()=>{
+    const cols=[...document.querySelectorAll('.item-heading-row th')].map(th=>th.dataset.columnKey);
+    return cols.includes('room')&&cols.includes('specialist')&&
+      cols.includes('vpLeader')&&!cols.includes('ubndLeader');
+  })()`);
+  if(!restored)throw Error('Legacy leader pair must restore room and specialist columns');
+  const switchBack=await evaluate(`(()=>{
+    const team=[...document.querySelectorAll('.compact-columns-options label')]
+      .find(el=>el.textContent.includes('UBND + VP + Phòng + CV'));
+    const input=team?.querySelector('input');
+    if(!input)return false;input.click();return true;
+  })()`);
+  if(!switchBack)throw Error('Four-way team merge switch missing');
+  await eventually(`document.querySelectorAll('.item-heading-row th').length===8`,
+    'Restoring four-way team merge after overlapping option failed');
+
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  const mobileGroups=await evaluate(`(()=>{
+    const menu=document.querySelector('.compact-columns-menu');
+    if(menu)menu.open=true;
+    const popup=document.querySelector('.compact-columns-options');
+    const frame=document.querySelector('.item-table-scroll');
+    const rect=popup?.getBoundingClientRect();
+    const body=document.scrollingElement;
+    const menuLabels=[...popup?.querySelectorAll('label')??[]];
+    return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
+      rect.height<innerHeight-40&&getComputedStyle(popup).overflowY==='auto'&&
+      menuLabels.length===9&&
+      !!frame&&frame.scrollWidth>frame.clientWidth&&
+      body.scrollWidth<=innerWidth+4,
+      innerWidth,menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
+      labels:menuLabels.length,tableScrollWidth:frame?.scrollWidth,viewportWidth:frame?.clientWidth,
+      bodyScrollWidth:body?.scrollWidth};
+  })()`);
+  if(!mobileGroups.ok)throw Error('Real ItemList compact 390px menu/table regression: '+JSON.stringify(mobileGroups));
+  const mobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-mobile-pass.png',Buffer.from(mobileShot.data,'base64'));
+  console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,desktopMenu,mobileGroups}));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
