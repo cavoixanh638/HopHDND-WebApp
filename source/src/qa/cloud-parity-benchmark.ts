@@ -4,9 +4,8 @@
  */
 import {initializeApp} from 'firebase/app';
 import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged} from 'firebase/auth';
-import {getDatabase} from 'firebase/database';
 import {firebaseConfig} from '../data/firebase-config';
-import {FirebaseMirrorRepository} from '../data/firebase-mirror-repository';
+import {mirrorPath,validateExcelMirror,type ExcelMirrorSnapshot} from '../data/firebase-mirror-repository';
 import {DEFAULT_SHEET_URL,parseSheetConfig} from '../data/sheet-config';
 import {HDND_SUPABASE_STAGING_PUBLIC,readSupabasePreviewConfig,SupabasePreviewRepository}
   from '../data/supabase-preview-source';
@@ -19,7 +18,8 @@ const say=(msg:string)=>{pick<HTMLElement>('state').textContent=msg;};
 const message=(error:unknown)=>error instanceof Error?error.message:String(error);
 const app=initializeApp(firebaseConfig,'hophdnd-qa-benchmark-firebase-production');
 const auth=getAuth(app);
-const firebase=new FirebaseMirrorRepository(getDatabase(app),parseSheetConfig(DEFAULT_SHEET_URL),()=>auth.currentUser?.uid??null,false,false);
+const mirrorSource=parseSheetConfig(DEFAULT_SHEET_URL);
+let lastMirror:ExcelMirrorSnapshot|null=null;
 const cfg=readSupabasePreviewConfig();
 if(!cfg||cfg.url!==HDND_SUPABASE_STAGING_PUBLIC.url)throw new Error('Chỉ chấp nhận Supabase STAGING cố định.');
 const supabase=new SupabasePreviewRepository(cfg);
@@ -37,9 +37,23 @@ async function digest(value:string){
   const sum=new Uint8Array(await crypto.subtle.digest('SHA-256',data));
   return [...sum].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
+async function fetchLiveFirebaseMirror():Promise<Item[]> {
+  const user=auth.currentUser;
+  if(!user)throw new Error('Chưa đăng nhập Google Firebase Cloud.');
+  // Explicit no-cache HTTPS read avoids Firebase SDK's local fallback:
+  // each benchmark sample must hit the Firebase production server.
+  const token=await user.getIdToken();
+  const url=new URL(firebaseConfig.databaseURL+'/'+mirrorPath(mirrorSource)+'.json');
+  url.searchParams.set('auth',token);
+  const response=await fetch(url.toString(),{cache:'no-store',method:'GET',redirect:'error'});
+  if(!response.ok)throw new Error('Firebase CLOUD HTTP '+response.status);
+  const raw:unknown=await response.json();
+  const confirmed=validateExcelMirror(raw,mirrorSource);
+  lastMirror=confirmed;
+  return confirmed.rows;
+}
 async function snap(source:Source){
-  if(source==='fb'&&!auth.currentUser)throw new Error('Chưa đăng nhập Google Firebase Cloud.');
-  return source==='fb'?firebase.list():supabase.list();
+  return source==='fb'?fetchLiveFirebaseMirror():supabase.list();
 }
 const pctl=pick<HTMLButtonElement>('run');
 const cancel=pick<HTMLButtonElement>('cancel');
@@ -131,7 +145,7 @@ importButton.onclick=()=>{void (async()=>{
     const access=await supabase.accessState();
     if(!access.isAdmin)throw new Error('Supabase chưa xác minh Google quản trị.');
     const rows=await snap('fb');
-    const mirrorSnapshot=firebase.snapshot;
+    const mirrorSnapshot=lastMirror;
     if(!mirrorSnapshot||rows.length!==lastFirebaseCount||rows.length<50 ||
       await digest(canonical(rows))!==lastFirebaseHash)
       throw new Error('Firebase mirror thay đổi sau lần xác minh; kiểm tra lại dữ liệu.');
