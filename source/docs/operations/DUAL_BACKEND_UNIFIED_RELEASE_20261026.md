@@ -35,6 +35,25 @@ Tài khoản Firebase và tài khoản Supabase có JWT khác nhau; nhân viên 
 4. Chỉ được ghi nếu server ACL của backend đã cho phép. Firebase nhân viên verified Google UID allowlist; Supabase RLS/RPC Auth độc lập. Không đưa Supabase `service_role`/secret/database password vào trình duyệt.
 5. Bố cục, bộ lọc, 15 cột A–O, lịch sử, bảng báo cáo phải đồng nhất về giao diện. Bố cục chung không thể vô tình làm ghi dữ liệu sang backend khác. **Dữ liệu hai backend không được giả định giống nhau** nếu chưa import riêng được duyệt.
 
+## Cập nhật thực thi 26/10/2026 — phép ghép CI đạt, bot push bị GitHub chặn
+
+- **PASS xác thực hai nguồn trên một cây mã ghép tạm:** GitHub Actions [run #40307556324](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40307556324) job `simulated-combined-source-qa`: merge exact Firebase 259c36ac + Supabase afb10fe2, `npm ci`, `npm run build:pages:test`, `npm test` và `npm run test:firebase` đều đạt; job này **không push mã**, không triển khai.
+- **Git merge branch #77 hiện không xung đột sau khi di chuyển các mục tài liệu mới xuống cuối tài liệu nguồn**, kiểm ở cùng run.
+- Thử dùng Actions tạo merge commit tự động tại [run #40307808561](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40307808561) đã qua audit/QA nhưng **GitHub từ chối push**: `refusing to allow a GitHub App to create or update workflow ... without workflows permission`. **Không coi mã đã merge lên remote**. Đã xóa job bot push để không lặp lỗi và không mở rộng quyền bot.
+- **Cách gộp thật an toàn:** dùng [script PowerShell](../../scripts/integrate-firebase-supabase-windows.ps1) trên Windows với quyền GitHub Desktop/user. Script tạo clone hoàn toàn mới, kiểm Firebase SHA là ancestor, merge 3 chiều Supabase SHA cố định, chạy TypeScript + unit + Firebase Emulator trước khi tạo merge commit và `git push` **chỉ vào Draft integration branch**. Không dùng `--force`, không checkout đè workspace QA nhân viên. Dừng và in conflict nếu có.
+
+```powershell
+# Chạy từ PowerShell; không chạy trong repo Firebase/Supabase đang làm dở
+git clone --branch integration/firebase-supabase-unified-20261026 https://github.com/cavoixanh638/HopHDND-WebApp.git "D:\HopHDND-Unified-Launcher"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\HopHDND-Unified-Launcher\source\scripts\integrate-firebase-supabase-windows.ps1" -Push
+```
+
+Nếu `D:\HopHDND-Unified-Launcher` đã tồn tại thì không clone đè: chạy `git -C "D:\HopHDND-Unified-Launcher" pull --ff-only` nếu working tree sạch và đúng branch, sau đó chạy PowerShell script. Nếu GitHub Credential Manager chưa cho phép cập nhật `.github/workflows`, lệnh push có thể bị từ chối; **không tự xin thêm quyền**. Đăng nhập/duyệt quyền GitHub Desktop theo chính sách tài khoản rồi chạy lại qua clone mới. **Không push hoặc deploy main/Rules/Postgres** trong script.
+
+Khi hiện `INTEGRATION_BRANCH_PUSH_PASS`, kiểm PR #77 có merge commit mới đủ hai parents, CI source/build/Firebase+Supabase/RLS chạy lại trên **đúng HEAD mới** và chỉ khi PASS mới tính đến người dùng test 2–3 browser accounts.
+
+---
+
 ## Cách ghép để không làm mất thay đổi
 
 - **Bước 1 (đã làm):** khóa manifest chính xác các head; lấy PR #72 làm base. GitHub Actions `audit-unified-backend-integration.yml` thử `git merge --no-commit --no-ff` PR #75 trong runner **chỉ để báo file xung đột**, không push/commit/deploy; lưu artifact `dual-backend-merge-audit`.
