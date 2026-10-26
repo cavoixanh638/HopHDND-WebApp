@@ -1700,7 +1700,7 @@ try{
     if(!menu)return false;menu.open=true;return !!menu.querySelector('.compact-columns-options');
   })()`);
   if(!menuOpened)throw Error('Compact menu missing from admin QA layout');
-  const desktopMenu=await evaluate(`(()=>{
+  const compactMenuDesktop=await evaluate(`(()=>{
     const popup=document.querySelector('.compact-columns-options');
     const rect=popup?.getBoundingClientRect();
     return {ok:!!popup&&popup.querySelectorAll('input[type="checkbox"]').length===9&&
@@ -1708,7 +1708,7 @@ try{
       rect.left>=0&&rect.right<=innerWidth&&rect.height<=innerHeight,
       rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
-  if(!desktopMenu.ok)throw Error('Compact desktop menu geometry regression: '+JSON.stringify(desktopMenu));
+  if(!compactMenuDesktop.ok)throw Error('Compact desktop menu geometry regression: '+JSON.stringify(compactMenuDesktop));
   const groupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-desktop-pass.png',Buffer.from(groupShot.data,'base64'));
 
@@ -1758,7 +1758,7 @@ try{
   if(!mobileGroups.ok)throw Error('Real ItemList compact 390px menu/table regression: '+JSON.stringify(mobileGroups));
   const mobileShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-mobile-pass.png',Buffer.from(mobileShot.data,'base64'));
-  console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,desktopMenu,mobileGroups}));
+  console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
