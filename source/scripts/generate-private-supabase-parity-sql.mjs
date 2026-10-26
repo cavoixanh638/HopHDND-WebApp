@@ -1,4 +1,4 @@
-/** LOCAL ONLY: Firebase /hdnd/items JSON -> guarded Supabase staging SQL.
+/** LOCAL ONLY: Firebase /hdnd/mirrors/<spreadsheetId>/<gid> JSON -> guarded Supabase staging SQL.
  * No network and NO storage of actual records on GitHub.
  * node scripts/generate-private-supabase-parity-sql.mjs <private-items.json> <private-staging.sql>
  */
@@ -16,8 +16,16 @@ const fail=msg=>{throw new Error(msg);};
 const ID=/^[A-Za-z0-9_:-]{1,200}$/;
 
 export function convertFirebaseRows(raw){
-  if(!raw||typeof raw!=='object'||Array.isArray(raw))fail('Phải xuất đúng đường dẫn /hdnd/items dạng JSON object.');
-  const entries=Object.entries(raw);
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))fail('Cần đối tượng JSON mirror Firebase.');
+  let entries;
+  if(Array.isArray(raw.rows)){
+    if(raw.schemaVersion!==1||
+       raw.source!=='1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp:60961344'||
+       !/^[a-f0-9]{64}$/.test(String(raw.sha256??'')))
+      fail('Sai Firebase mirror source/schema/sha256.');
+    entries=raw.rows.map(item=>[item?.recordId,item]);
+  }else entries=Object.entries(raw); // legacy private /hdnd/items input; must be 50+ rows
+
   if(entries.length<50||entries.length>1000)fail('Cần từ 50 đến 1000 dòng thực; nhận '+entries.length+'.');
   const codes=new Set(),stts=new Set();
   return entries.map(([id,row])=>{
@@ -26,7 +34,7 @@ export function convertFirebaseRows(raw){
     if(typeof row.displayCode!=='string'||!row.displayCode||row.displayCode.length>100||codes.has(row.displayCode))
       fail('displayCode trùng hoặc sai.');
     if(!Number.isSafeInteger(row.stt)||row.stt<1||stts.has(row.stt))fail('STT trùng hoặc sai.');
-    if(!Number.isSafeInteger(row.revision)||row.revision<1)fail('revision sai.');
+    if(!Number.isSafeInteger(row.revision)||row.revision<0)fail('revision sai.');
     if(row.archivedAt!=null&&(typeof row.archivedAt!=='string'||!Number.isFinite(Date.parse(row.archivedAt))))
       fail('archivedAt không hợp lệ.');
     const fields={};
@@ -46,7 +54,7 @@ export function convertFirebaseRows(raw){
     }
     codes.add(row.displayCode);stts.add(row.stt);
     return {record_id:id,display_code:row.displayCode,stt:row.stt,
-      revision:row.revision,archived_at:row.archivedAt??null,fields};
+      revision:Math.max(1,row.revision),archived_at:row.archivedAt??null,fields};
   }).sort((a,b)=>a.stt-b.stt||a.record_id.localeCompare(b.record_id));
 }
 export function generateSql(items){
