@@ -1,3 +1,17 @@
+## ĐIỀU PHỐI DUY NHẤT — 26/10/2026: INTEGRATION PR #77
+
+| Đơn vị công việc | Đầu vào cố định | Trách nhiệm |
+|---|---|---|
+| Firebase [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) | `259c36ac…` | Auth Google UID allowlist, RTDB Rules, leases, freeze, bản nháp và audit; giữ nguyên kiểm thử bảo mật |
+| Supabase [#73](https://github.com/cavoixanh638/HopHDND-WebApp/pull/73) | `66553279…` | SQL migrations/RLS/RPC, repository/permission, security PostgreSQL |
+| Supabase chooser [#75](https://github.com/cavoixanh638/HopHDND-WebApp/pull/75) | `afb10fe2…` | Chọn nguồn theo tab, auth/realtime Supabase, guard chuyển khi có draft/ACK |
+| **Tích hợp [#77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77)** | `manifest.json` | Một đầu mối ghép hunk file dùng chung, kiểm thử cùng build, quản lý phát hành/rollback |
+| Tài liệu [#76](https://github.com/cavoixanh638/HopHDND-WebApp/pull/76) | Theo exact head lúc cập nhật | Gộp hướng dẫn hệ thống vào PR tích hợp sau khi đối chiếu, không ghi đè code/docs mới |
+
+**Quy tắc:** PR #77 Draft/NO-GO đến khi tất cả gate trong [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md) đạt. CI riêng PR #72 hoặc #75 không thay cho CI tích hợp; không cherry-pick mà bỏ một nửa adapter, không deploy dữ liệu giả/production khi vẫn còn blocker. Mọi quyết định và bằng chứng giao việc nằm trong issue [#74](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74) để dễ truy vết.
+
+---
+
 ## QUYẾT ĐỊNH ĐIỀU HÀNH MỚI NHẤT — 25/10/2026: CHỈ PHÁT TRIỂN FIREBASE-ONLY
 **[Quyết định kiến trúc ưu tiên](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md)**: nhân viên cập nhật Excel/Google Sheet chỉ trong thời gian chuyển tiếp; WebApp đích dùng **duy nhất Firebase RTDB `hdnd/items`** để xem/sửa/báo cáo. Sau cutover, không đọc/ghi nghiệp vụ từ Sheets và không có đồng bộ hai chiều. **DỪNG** chuỗi nhiệm vụ giám sát/chạy theo mirror 55 dòng vs ảnh cũ 57 dòng, mốc sửa Excel và quyền chia sẻ file Excel: đây chỉ là ghi nhận lịch sử, **không được coi là blocker phát triển**. Một lần kiểm tra dữ liệu khởi tạo sẽ được thực hiện **tại thời điểm cutover**, không phải trong vòng coding.
 
