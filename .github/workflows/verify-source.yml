@@ -96,6 +96,8 @@ jobs:
           test "$(find dist -type f | wc -l)" -eq 1
       - name: Build Pages test artifact (isolated Firebase emulator configuration)
         run: npm run build:pages:test
+      - name: Build isolated real ItemList visual QA (no Firebase credentials)
+        run: npm run build:compact:qa
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
       - name: Preserve browser smoke screenshot (synthetic data only)
@@ -103,7 +105,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hophdnd-browser-smoke-preview
-          path: source/hophdnd-ui-smoke-pass.png
+          path: |
+            source/hophdnd-ui-smoke-pass.png
+            source/hophdnd-compact-desktop-pass.png
+            source/hophdnd-compact-mobile-pass.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure
