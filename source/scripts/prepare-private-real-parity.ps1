@@ -1,4 +1,4 @@
-# Read CURRENT 50+ actual rows through Firebase CLI and create PRIVATE staging SQL.
+# Read CURRENT 50+ actual rows through Firebase CLI (actual 55-row mirror) and create PRIVATE staging SQL.
 # NO production write, NO automatic Supabase SQL execution.
 param([string]$ExistingItemsJson = "")
 $ErrorActionPreference = "Stop"
@@ -11,12 +11,12 @@ if ($LASTEXITCODE -ne 0 -or $branch -ne "integration/firebase-supabase-unified-2
 $privateRoot = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "HopHDND-Private-QA"
 $folder = Join-Path $privateRoot ("parity-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
 New-Item -ItemType Directory -Force -Path $folder | Out-Null
-$items = if ($ExistingItemsJson) { (Resolve-Path -LiteralPath $ExistingItemsJson).Path } else { Join-Path $folder "firebase-live-items.json" }
+$items = if ($ExistingItemsJson) { (Resolve-Path -LiteralPath $ExistingItemsJson).Path } else { Join-Path $folder "firebase-live-mirror.json" }
 if (!$ExistingItemsJson) {
     $firebase = Join-Path $root "node_modules\.bin\firebase.cmd"
     if (!(Test-Path -LiteralPath $firebase)) { throw "Chay npm ci tai thu muc source truoc." }
     Write-Host "Tai 50+ dong THUC tu Firebase (CHI DOC)." -ForegroundColor Cyan
-    & $firebase database:get /hdnd/items --project hophdnd-8b7b2 --instance hophdnd-8b7b2-default-rtdb --output $items
+    & $firebase database:get /hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344 --project hophdnd-8b7b2 --instance hophdnd-8b7b2-default-rtdb --output $items
     if ($LASTEXITCODE -ne 0) { throw "Firebase CLI chua duoc cap quyen. Chay npx firebase login va thu lai." }
 }
 $out = Join-Path $folder "STAGING-PRIVATE-REAL-PARITY.sql"
