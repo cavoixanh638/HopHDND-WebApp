@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: './',
-  optimizeDeps: { entries: mode.startsWith('pages')?['pages.html']:['index.html'] },
-  build: { cssCodeSplit: false, rolldownOptions: { ...(mode.startsWith('pages')?{input:'pages.html'}:{}),output: mode.startsWith('pages')?{}:{codeSplitting:false} } },
-  resolve: mode === 'preact'||mode.startsWith('pages') ? {
+  optimizeDeps: { entries: mode==='compact-qa'?['compact-qa.html']:mode.startsWith('pages')?['pages.html']:['index.html'] },
+  build: { cssCodeSplit: false, rolldownOptions: { ...(mode==='compact-qa'?{input:'compact-qa.html'}:mode.startsWith('pages')?{input:'pages.html'}:{}),output: mode==='compact-qa'||mode.startsWith('pages')?{}:{codeSplitting:false} } },
+  resolve: mode === 'preact'||mode.startsWith('pages')||mode==='compact-qa' ? {
     alias: [
       { find: /^react-dom\/client$/, replacement: 'preact/compat/client' },
       { find: /^react-dom$/, replacement: 'preact/compat' },
