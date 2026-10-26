@@ -1,3 +1,9 @@
+## Kiểm thử UI nhóm gộp 27/10/2026 (Firebase-only PR #72)
+
+`src/features/items/compact-columns.ts`: tổ hợp nhóm và tìm theo giá trị đầy đủ; `src/features/items/ItemList.tsx`, `item-frame.css`: bốn nhóm gộp, menu thu gọn, editor từng trường; `src/data/item-preferences.ts`: cấu hình gộp tương thích Firebase cũ. `compact-qa.html` + `src/qa/compact-qa-main.tsx`: trang Vite QA **tách khỏi production**, gắn chính `ItemList` với dữ liệu mô phỏng không kết nối database; `scripts/smoke-pages-browser.mjs` kiểm Chrome desktop 1600px và mobile 390px, lựa chọn gộp đè nhau, trường sửa riêng, lưu ảnh trong artifact `hophdnd-browser-smoke-preview`. [CI source PASS #40380075664](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664). Không nhầm QA mock với kết quả xác minh 2 user Cloud/production.
+
+---
+
 ## Bản đồ mã cho Firebase primary và khóa ô — 25/10/2026
 - `src/data/firebase-primary-bootstrap.ts`: import mirror → bản ghi chính một lần, so sánh từng trường.
 - `src/data/firebase-repository.ts`: lưu, realtime subscription, revision/CAS, audit.
