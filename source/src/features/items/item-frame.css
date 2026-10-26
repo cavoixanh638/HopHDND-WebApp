@@ -727,3 +727,19 @@
   .compact-columns-options {width:min(340px,calc(100vw - 28px));}
   .compact-pair-lines .compact-pair-tag {min-width:42px}
 }
+
+/* Show the four commonly used merges immediately. Keep secondary options
+   discoverable without making a phone-height popup the default. */
+.compact-more-options{border-top:1px solid #e4ece7;margin-top:2px;padding-top:4px}
+.compact-more-options>summary{
+  display:flex;justify-content:space-between;gap:12px;align-items:center;
+  padding:8px 4px;font-size:12px;font-weight:750;cursor:pointer;color:#27604a;
+}
+.compact-more-options>summary small{font-size:11px;color:#718779;font-weight:500}
+.compact-more-options>summary:focus-visible{outline:2px solid #237f5c;outline-offset:2px}
+.compact-more-options>label{display:flex;gap:9px;align-items:flex-start;
+  padding:7px 4px;border-radius:5px;cursor:pointer;font-size:12px}
+.compact-more-options>label:hover{background:#f3f8f5}
+.compact-more-options input[type=checkbox]{margin-top:2px;accent-color:#287852;flex:none}
+.compact-more-options label span{display:grid;gap:3px;min-width:0;font-weight:650}
+.compact-more-options label small{font-size:11px;color:#6d8375;font-weight:400;line-height:1.35}
