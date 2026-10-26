@@ -149,6 +149,8 @@ export class SupabaseAnonymousPreviewAuth {
     this.storage.setItem(this.storageKey+':oauth_state',state);
     const target=new URL(this.config.url+'/auth/v1/authorize');
     target.searchParams.set('provider','google');
+    // Allow an explicit choice when Chrome has several cached Google accounts.
+    target.searchParams.set('prompt','select_account');
     target.searchParams.set('redirect_to',returnTo.toString());
     window.location.assign(target.toString());
   }
