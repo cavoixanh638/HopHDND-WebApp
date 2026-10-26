@@ -80,7 +80,7 @@ export class SupabaseAnonymousPreviewAuth {
   private blockedUntil=0;
   private lastAuthError='';
   constructor(private readonly config:SupabasePublicConfig,
-    private readonly fetcher:typeof fetch=fetch,
+    private readonly fetcher:typeof fetch=(input,init)=>globalThis.fetch(input,init),
     private readonly storage:Pick<Storage,'getItem'|'setItem'|'removeItem'>|null=
       typeof sessionStorage==='undefined'?null:sessionStorage){
     this.storageKey='hdnd.supabase.qa.session.v1:'+new URL(config.url).hostname;
@@ -216,7 +216,7 @@ export class SupabasePreviewRepository implements Repository {
   private readonly backing:SupabaseRepository;
   private readonly fetcher:typeof fetch;
   private readonly config:SupabasePublicConfig;
-  constructor(config:SupabasePublicConfig,fetcher:typeof fetch=fetch,
+  constructor(config:SupabasePublicConfig,fetcher:typeof fetch=(input,init)=>globalThis.fetch(input,init),
     storage?:Pick<Storage,'getItem'|'setItem'|'removeItem'>|null){
     this.config=config;this.fetcher=fetcher;
     this.auth=new SupabaseAnonymousPreviewAuth(config,fetcher,storage);
