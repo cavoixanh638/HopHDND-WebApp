@@ -14,12 +14,14 @@ table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px so
 </style></head>
 <body><main>
 <h1>So sánh tốc độ Firebase ↔ Supabase</h1>
-<p class="muted"><strong>Đọc Cloud thật — không ghi dữ liệu.</strong> Firebase production và Supabase staging, chạy trên cùng trình duyệt/mạng. Không sử dụng Firebase emulator; không gọi Google Sheets.</p>
+<p class="muted"><strong>Đọc Cloud thật — không ghi dữ liệu.</strong> Firebase mirror production và Supabase staging, chạy trên cùng trình duyệt/mạng. Không sử dụng Firebase emulator; không gọi Google Sheets.</p>
 <div class="panel">
 <h3>1. Xác minh hai kết nối</h3>
 <button id="firebase-login">Đăng nhập Google Firebase</button>
 <button id="supabase-google">Đăng nhập Google Supabase staging</button>
 <button id="check">Kiểm tra cùng dữ liệu</button>
+<button id="import" disabled>Sao chép đúng 55 hồ sơ từ Firebase mirror sang Supabase staging</button>
+<p class="muted"><strong>Chỉ tài khoản Google quản trị đã xác minh.</strong> Nút sao chép luôn hỏi xác nhận; chỉ ghi Supabase STAGING, không thay đổi Firebase. Nếu nguồn mới hơn 55 dòng, công cụ sẽ lấy đúng số dòng hiện tại. Dữ liệu nghiệp vụ thật sẽ được lưu vào Cloud Supabase sau khi xác nhận.</p>
 <pre id="state">Chưa đăng nhập / chưa kiểm tra.</pre>
 </div>
 <div class="panel">
@@ -29,7 +31,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px so
 <button id="cancel" disabled>Ngừng đo</button>
 <button id="csv" disabled>Lưu CSV kết quả</button>
 <p id="progress" class="muted">Chỉ mở nút đo sau khi trùng số hồ sơ và SHA-256 toàn bộ nội dung. Thứ tự Firebase/Supabase đảo qua lại để giảm sai lệch.</p>
-<table><thead><tr><th>Chỉ số</th><th>Firebase Cloud</th><th>Supabase Cloud</th></tr></thead><tbody>
+<table><thead><tr><th>Chỉ số</th><th>Firebase mirror Cloud</th><th>Supabase Cloud</th></tr></thead><tbody>
 <tr><td>Lượt thành công</td><td id="fb-n">—</td><td id="sp-n">—</td></tr>
 <tr><td>Trung vị P50</td><td id="fb-p50">—</td><td id="sp-p50">—</td></tr>
 <tr><td>P95</td><td id="fb-p95">—</td><td id="sp-p95">—</td></tr>
