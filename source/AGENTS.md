@@ -1,3 +1,9 @@
+## Chỉ thị hiện hành 26/10/2026 — Firebase-only; Supabase PAUSED
+
+**Quyết định bắt buộc:** [FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md](docs/decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Mọi yêu cầu phát triển tiếp theo chỉ dùng nhánh Firebase PR #71/#72; **không gộp PR #77 hoặc Supabase PR #73/#75**, không deploy Supabase/dual source, không ghi chép/sync thêm dữ liệu sang Supabase. Supabase staging giữ nguyên snapshot 55 dòng như một lựa chọn dự phòng tĩnh, **không phải backup realtime**. Chỉ khôi phục hướng Supabase khi chủ dự án yêu cầu rõ. Giữ release gates Firebase và không thay production nếu chưa GO.
+
+---
+
 ## Quy tắc phát triển mới 25/10/2026: Firebase primary và bảo toàn dữ liệu
 - PR #71/#72 là kiến trúc đích, **chưa được coi là đã deploy**. Muốn phát hành phải kiểm thử đúng exact head, sao lưu/đối chiếu Firebase Rules + RTDB thực, staging 2–3 tài khoản, phê duyệt GO/NO-GO theo `docs/operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md`.
 - Không sửa/xóa/import đè `hdnd/items`; không tự chuyển `hdnd/profile/dataSource` nếu chưa xác minh dữ liệu. Excel chỉ là nguồn tạm và bản đối chiếu sau chuyển.
