@@ -1,3 +1,5 @@
+> **Quyết định mới nhất 26/10/2026:** chỉ phát triển Firebase PR #71/#72; [tạm dừng Supabase, lưu nguyên trạng làm phương án dự phòng](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Không tích hợp/deploy PR #77 hay đồng bộ hai nguồn.
+
 ## Hướng dẫn sao lưu production trước khi mở realtime — 25/10/2026
 [Hướng dẫn backup read-only trên Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Công cụ đã có trên nhánh PR #72 nhưng **chưa chạy lên dữ liệu thật**; không upload JSON/Rules thật lên GitHub.
 
