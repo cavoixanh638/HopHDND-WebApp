@@ -19,7 +19,7 @@ KHÔNG lấy `hdnd/items`: bản sao lưu trước đó đã xác minh đường
 4. Bấm **Đăng nhập Google Firebase** và **Đăng nhập Google Supabase staging** (cùng tài khoản Google admin đã xác minh). Supabase OAuth dùng redirect riêng `http://localhost:8765/**`; nếu Dashboard chưa allowlist, thêm nó ở Authentication → URL Configuration. Nếu Google Cloud OAuth client có hạn chế origins, cho phép `http://localhost:8765`.
 5. Bấm **Kiểm tra cùng dữ liệu**. Nếu báo Firebase mirror 55+ và Supabase 6, bấm **Sao chép ... sang Supabase staging**, đọc xác nhận, bấm OK. Thao tác sẽ đọc lại live mirror để tránh snapshot đã thay đổi, gửi một lần lên RPC staging, đọc lại Supabase và kiểm SHA-256 toàn bộ 55+ hồ sơ. **Không ghi Firebase**.
 6. Bấm lại **Kiểm tra cùng dữ liệu**, rồi chọn 30, 100 hoặc **720 lượt, mỗi 5 giây**. Nhấn **Bắt đầu đo**. Sau khi có kết quả, nhấn **Lưu CSV**. So P50/P95 và tỷ lệ lỗi trên cùng dữ liệu. Tắt sleep PC, giữ tab mở, mạng ổn định. Khi so benchmark một giờ, tab nền làm dừng để tránh kết quả bị Chrome giảm tần suất.
-7. Đo ở cả mạng nhà và mạng nhân viên khi cần. Kết quả chỉ đo đọc danh sách qua Firebase SDK và Supabase REST, **không** đại diện cho tải bố cục / thời gian lưu có ACK hoặc Realtime.
+7. Đo ở cả mạng nhà và mạng nhân viên khi cần. Kết quả chỉ đo đọc danh sách qua Firebase REST GET no-store có Firebase ID token và Supabase REST, mỗi lượt bắt buộc gọi máy chủ, **không** đại diện cho tải bố cục / thời gian lưu có ACK hoặc Realtime.
 
 ## Giới hạn, các bước dự phòng
 
