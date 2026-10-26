@@ -1,4 +1,4 @@
-**Bản xem thử UI (không có dữ liệu thật):** Trong PR #72, chạy `npm run build:compact:qa` dưới thư mục `source` để tạo trang kiểm thử `dist-compact-qa/compact-qa.html` (phục vụ qua HTTP server local); QA sử dụng `ItemList` thật với dữ liệu giả, tùy chọn bật sẵn cả 4 nhóm. Truy cập `?edit=1` để thử sửa *nội bộ trên trình duyệt* theo từng trường con, không ghi database. GitHub Actions [source #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40379091513) có artifact `hophdnd-browser-smoke-preview` chứa ảnh 1600px và 390px. Đây là **hướng dẫn thử cho người phát triển**, không phát hành bằng đường dẫn QA hoặc dùng thay ứng dụng HopHDND chính.
+**Bản xem thử UI (không có dữ liệu thật):** Trong PR #72, chạy `npm run build:compact:qa` dưới thư mục `source` để tạo trang kiểm thử `dist-compact-qa/compact-qa.html` (phục vụ qua HTTP server local); QA sử dụng `ItemList` thật với dữ liệu giả, tùy chọn bật sẵn cả 4 nhóm. Truy cập `?edit=1` để thử sửa *nội bộ trên trình duyệt* theo từng trường con, không ghi database. GitHub Actions [source #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664) có artifact `hophdnd-browser-smoke-preview` chứa ảnh 1600px và 390px. Đây là **hướng dẫn thử cho người phát triển**, không phát hành bằng đường dẫn QA hoặc dùng thay ứng dụng HopHDND chính.
 
 ## Gộp cột — chọn cách hiển thị gọn (27/10/2026, bản đang phát triển)
 
@@ -8,7 +8,7 @@ Trong **Danh sách các ND trình HĐND** ở chế độ xem, quản trị viê
 - **Xây dựng + Ban hành HĐND**: hai bước tiến độ trình HĐND trong một ô.
 - **UBND + VP + Phòng + CV**: bốn thông tin người phụ trách trong một ô có nhãn ngắn.
 
-Các kiểu gộp nhỏ đã có vẫn giữ để lựa chọn khi không cần gộp tất cả. Bật gộp lớn sẽ tự tắt các kiểu gộp con trùng trường; tắt gộp lớn trả lại các cột gốc (nếu cột đó vẫn được thiết lập hiện). Có thể chọn **Viết tắt tên lãnh đạo/chuyên viên** riêng để tiết kiệm chiều ngang. Nhập tên đầy đủ vào ô tìm kiếm vẫn tra được người đó. Khi được phép sửa, bấm đúng dòng/trường bên trong ô gộp; không sửa lẫn tên Sở, cấp hay tiến độ khác. Thao tác gộp không thay dữ liệu nghiệp vụ; chỉ có hiệu lực trên WebApp khi admin lưu được bố cục vào Firebase.
+Các kiểu gộp nhỏ đã có nằm trong **Các cách gộp khác** (bấm để mở); hai tùy chọn viết tắt tên nằm trong **Viết tắt tên**. Các kiểu gộp nhỏ đã có vẫn giữ để lựa chọn khi không cần gộp tất cả. Bật gộp lớn sẽ tự tắt các kiểu gộp con trùng trường; tắt gộp lớn trả lại các cột gốc (nếu cột đó vẫn được thiết lập hiện). Có thể chọn **Viết tắt tên lãnh đạo/chuyên viên** riêng để tiết kiệm chiều ngang. Nhập tên đầy đủ vào ô tìm kiếm vẫn tra được người đó. Khi được phép sửa, bấm đúng dòng/trường bên trong ô gộp; không sửa lẫn tên Sở, cấp hay tiến độ khác. Thao tác gộp không thay dữ liệu nghiệp vụ; chỉ có hiệu lực trên WebApp khi admin lưu được bố cục vào Firebase.
 
 ---
 
