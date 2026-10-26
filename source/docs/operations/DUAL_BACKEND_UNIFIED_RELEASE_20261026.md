@@ -1,3 +1,11 @@
+## BỔ SUNG 26/10/2026 — NẠP MIRROR 55 HỒ SƠ THẬT VÀ SO SÁNH TỐC ĐỘ CLOUD
+
+Nhánh QA PR #77 đã bổ sung trang benchmark localhost:8765 và nút **“Sao chép đúng 55+ hồ sơ Firebase mirror sang Supabase staging”**. Xác nhận đường dẫn 55 hồ sơ Firebase là `hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344`, **không phải** `hdnd/items` (mốc backup trước đó là 0). Supabase staging hiện còn 6 bản ghi QA, **chưa có bằng chứng đã chép dữ liệu thật hoặc benchmark PASS**. Cần chủ dự án đăng nhập Google ở Firebase và Supabase trên trình duyệt Windows rồi chủ động xác nhận sao chép; không tự chạy nền.
+
+Quy trình chuẩn: [REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md](REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md). Cloud staging đã có RLS admin-only và RPC nhập snapshot một lần có chặn dữ liệu hiện hữu. Firebase production/GitHub Pages main không thay đổi.
+
+---
+
 ## CẬP NHẬT 26/10/2026 — PR #78 ĐÃ GỘP VÀO NHÁNH TÍCH HỢP (CHỈ STAGING)
 
 - **Đã làm:** [PR #78](https://github.com/cavoixanh638/HopHDND-WebApp/pull/78) gộp thành công vào `integration/firebase-supabase-unified-20261026`; merge SHA `815291926da2ae001a0b4fec906c414db87e3872`. Từ đây, các đoạn lịch sử nói "chưa gộp Supabase" chỉ phản ánh thời điểm trước commit này.
