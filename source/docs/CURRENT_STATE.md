@@ -1,3 +1,10 @@
+## 26/10/2026 — Chỉ đạo sửa công cụ thành kiểm tra mạng liên tục 60 phút
+
+**Thay ZIP 10 lượt bằng gói 60 phút**: `HopHDND_CongCu_DoMang_LienTuc_60Phut_Windows.zip` được tạo trong hội thoại, bao gồm PowerShell/CMD cho Windows, mục `DO-THU-2-PHUT.cmd` kiểm tra nhanh và `DO-MANG-1-CLICK.cmd` theo dõi **60 phút, chu kỳ mục tiêu 30 giây**. Chương trình ghi CSV theo từng phép đo, thống kê mất kết nối và thời gian tăng đột biến từng giai đoạn 5 phút; HTML/JSON có thể tái tạo từ CSV khi bị dừng. Không cần API key, không ghi DB. Nếu endpoint phản hồi chậm đến timeout, số vòng thực có thể thấp hơn 120; phải dựa vào **timestamp thực** trong CSV, không đánh đồng số mẫu với phút bị mất.
+
+**Trạng thái QA:** ZIP đã xác minh CRC/tính toàn vẹn và đồ thị JS qua Node syntax check. **Chưa thử vận hành đủ 60 phút trên máy người dùng**; không tuyên bố các host ổn định hay cải thiện. Chờ báo cáo HTML/CSV từ máy Windows để đo mạng. Cùng lúc có thể đo localhost nhưng đó không đại diện nhân viên dùng Cloudflare Tunnel từ Internet. File công cụ mới được đính kèm trong hội thoại chứ **chưa commit script lên repo**; tài liệu này ghi rõ ranh giới.
+
+---
 ## 26/10/2026 — Công cụ đo đường truyền đa đích từ chính máy Windows (đã tạo ZIP, CHƯA chạy tại PC)
 
 Đã tạo và cung cấp `HopHDND_CongCu_DoMang_Host_Windows.zip` qua cuộc trò chuyện: gồm `DO-MANG-1-CLICK.cmd`, `Do-Mang-HopHDND.ps1`, `HUONG-DAN.txt`. Gói đã kiểm tra được liệt kê đầy đủ và vượt kiểm tra toàn vẹn ZIP; **chưa có kiểm thử thực thi PowerShell trên Windows thật trong môi trường này**. Người dùng chỉ cần giải nén, double-click CMD, đo **10 lần mỗi đích**; báo cáo HTML/JSON ở thư mục `BaoCaoMang`. Không cần key/admin/Node/Python; script chỉ GET/HEAD (không ghi DB), server giả lập chỉ bind localhost TCP `127.0.0.1:18765`, dừng khi kết thúc.
