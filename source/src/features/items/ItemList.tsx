@@ -23,7 +23,7 @@ import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
@@ -93,7 +93,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
-  const compactHiddenKeys=compactPairs.filter(pair=>pair.hidden!=='specialist').map(pair=>pair.hidden).join('|');
+  const compactHiddenKeys=compactPairs.flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))).join('|');
   // Prevent a saved filter for a now-merged hidden field from silently filtering rows.
   useEffect(()=>{
     if(!compactHiddenKeys)return;
@@ -104,11 +104,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     });
   },[compactHiddenKeys]);
   const updateCompact=(option:CompactOption,checked:boolean)=>{
-    const next={...compactDisplay,[option]:checked};
+    const next=toggleCompactOption(compactDisplay,option,checked);
     if(!allowLayout)return;
     if(customizing)setLayout(previous=>({...previous,compactDisplay:next}));
     else void applyViewerLayout(previous=>({...previous,compactDisplay:next}));
-    const hidden=new Set<string>(activeCompactPairs(columns,next).filter(pair=>pair.hidden!=='specialist').map(pair=>pair.hidden));
+    const hidden=new Set<string>(activeCompactPairs(columns,next).flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
     setColumnFilters(prev=>{
       const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
       return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
@@ -208,28 +208,25 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     for(const item of items){
       const fields:Record<string,string>={};
       for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(filterValue(item,key));
-      for(const anchor of ['content','room','vpLeader'])
-        fields['merged:'+anchor]=normalizeSearch(
-          anchor==='content'?item.content+' '+item.type:
-          anchor==='room'?item.room+' '+item.specialist:
-          item.vpLeader+' '+item.ubndLeader);
+      for(const pair of compactPairs)
+        fields['merged:'+pair.anchor]=normalizeSearch(compactFilterText(item,pair.anchor,compactPairs));
       for(const column of activeLayout.columns)
         if(column.origin==='custom')
           fields[column.key]=normalizeSearch(column.values?.[customRowKey(item)]??'');
       result.set(item.recordId,fields);
     }
     return result;
-  },[items,activeLayout.columns,codeCounts]);
+  },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
   const filtered=useMemo(()=>{
-    const hidden=new Set<string>(compactPairs.map(pair=>pair.hidden));
-    const roomSpecialist=compactPairs.some(pair=>pair.anchor==='room'&&pair.hidden==='specialist');
+    const hidden=new Set<string>(compactPairs.flatMap(pair=>pair.hiddenFields));
+    const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
     const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.entries(columnFilters)
       .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)&&term.trim())
       .map(([key,term])=>({key,term:normalizeSearch(term)}));
     const roomTerm=roomSpecialist?(columnFilters.room??''):'';
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
-    const merged=compactPairs.flatMap(pair=>pair.anchor!=='room'&&columnFilters[pair.anchor]?.trim()
+    const merged=compactPairs.flatMap(pair=>pair.variant!=='roomSpecialist'&&columnFilters[pair.anchor]?.trim()
       ?[{key:'merged:'+pair.anchor,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
     const custom=Object.entries(columnFilters).flatMap(([key,term])=>
       term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom')
@@ -302,7 +299,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
     const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),compactDisplay)
-      .map(pair=>pair.hidden));
+      .flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
     setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
@@ -384,7 +381,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         </summary>
         <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
           <strong>Hiển thị gọn (cấu hình chung của admin)</strong>
-          {COMPACT_OPTIONS.map(option=><label key={option.key}>
+          <div className="compact-options-group-title">Gộp cột</div>
+          {COMPACT_OPTIONS.filter(option=>option.section==='merge').map(option=><label key={option.key}>
+            <input type="checkbox" checked={compactDisplay[option.key]}
+              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
+          <div className="compact-options-group-title">Tên hiển thị</div>
+          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
@@ -433,7 +437,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,width));
         else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,width));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.hidden==='specialist')
+  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
     ?<RoomSpecialistFilterCell key={column.key} items={items}
       room={columnFilters.room??''} person={columnFilters.specialist??''}
       onRoom={value=>setColumnFilters(previous=>({...previous,room:value}))}
@@ -450,21 +454,28 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
-          const extra=pair.hidden as TextField;
-          const anyEditable=editableField(item,key)||editableField(item,extra);
+          const anyEditable=pair.memberFields.some(field=>editableField(item,field));
           return <td key={column.key} data-col-key={column.key}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
             {key==='content'
-              ?<span className="compact-content-line">{compactField(item,'content')}
-                <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>(<SearchHighlight value={item.type||'—'} query={columnFilters.content}/>)</span>
-              </span>
+              ?<div className="compact-content-group">
+                <span className="compact-content-line">{compactField(item,'content')}
+                  <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>
+                    ({compactField(item,'type')})
+                  </span>
+                </span>
+                {pair.hiddenFields.includes('department')&&
+                  <div className="compact-content-department">
+                    <span className="compact-pair-tag">Sở</span>{compactField(item,'department')}
+                  </div>}
+              </div>
               :<div className="compact-pair-lines">
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'UBND':'Phòng'}</span>
-                  {compactField(item,key==='vpLeader'?'ubndLeader':key)}</div>
-                <div><span className="compact-pair-tag">{key==='vpLeader'?'VP':'CV'}</span>
-                  {compactField(item,key==='vpLeader'?'vpLeader':extra)}</div>
+                {pair.memberFields.map((field,index)=><div key={field}>
+                  <span className="compact-pair-tag">{pair.tags[index]}</span>
+                  {compactField(item,field)}
+                </div>)}
               </div>}
           </td>;
         }
