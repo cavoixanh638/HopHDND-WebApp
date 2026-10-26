@@ -1,3 +1,11 @@
+## BỔ SUNG 26/10/2026 — NẠP MIRROR 55 HỒ SƠ THẬT VÀ SO SÁNH TỐC ĐỘ CLOUD
+
+Nhánh QA PR #77 đã bổ sung trang benchmark localhost:8765 và nút **“Sao chép đúng 55+ hồ sơ Firebase mirror sang Supabase staging”**. Xác nhận đường dẫn 55 hồ sơ Firebase là `hdnd/mirrors/1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp/60961344`, **không phải** `hdnd/items` (mốc backup trước đó là 0). Supabase staging hiện còn 6 bản ghi QA, **chưa có bằng chứng đã chép dữ liệu thật hoặc benchmark PASS**. Cần chủ dự án đăng nhập Google ở Firebase và Supabase trên trình duyệt Windows rồi chủ động xác nhận sao chép; không tự chạy nền.
+
+Quy trình chuẩn: [REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md](operations/REAL_CLOUD_PARITY_IMPORT_AND_BENCHMARK_20261026.md). Cloud staging đã có RLS admin-only và RPC nhập snapshot một lần có chặn dữ liệu hiện hữu. Firebase production/GitHub Pages main không thay đổi.
+
+---
+
 > **CẬP NHẬT 26/10/2026 (integration #77, KHÔNG PHẢI main):** Đã merge PR [#78](https://github.com/cavoixanh638/HopHDND-WebApp/pull/78) vào nhánh `integration/firebase-supabase-unified-20261026`, SHA `815291926da2ae001a0b4fec906c414db87e3872`. PR #77 vẫn Draft, không triển khai Pages/Firebase Rules/Supabase production, không nhập hoặc đồng bộ dữ liệu nghiệp vụ thật. Script QA Windows đã cập nhật nhánh tích hợp; công cụ đo mạng 60 phút/5 giây (GitHub Pages, Cloudflare baseline, RTDB, Supabase staging, localhost, tùy chọn LAN/HTTPS self-host) đã được thêm nhưng **chưa chạy thực địa**. Chờ CI trên HEAD tổng hợp, Google OAuth Supabase và E2E đa người, so thực nghiệm, backup/restore và GO. [Runbook và lệnh](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md). Các mô tả "chưa gộp" bên dưới là lịch sử.
 
 > **MỐC CẬP NHẬT ƯU TIÊN — 25/10/2026:** Chủ dự án yêu cầu GIỮ Firebase RTDB + Supabase PostgreSQL song song, lựa chọn nguồn khi chạy WebApp; không loại bỏ database nào, không đồng bộ giữa các backend, Google Sheet còn là nguồn tạm. Staging Supabase Free `uguhyunuzsdrkykqgdmq` đã có schema/RLS; 0 hồ sơ thật, 0 admin mặc định, cổng import đóng. **Chưa có bộ chọn UI hoạt động và Auth Supabase**; PR #73 tiếp tục Draft, production không đổi. [Theo dõi thực tế](operations/SUPABASE_RELEASE_GATE_2026-10-25.md) · [Nhiệm vụ tích hợp](https://github.com/cavoixanh638/HopHDND-WebApp/issues/74).
