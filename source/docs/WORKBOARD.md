@@ -6,7 +6,7 @@
 
 ### Đã bắt đầu thực hiện UI trên PR #72
 
-- **UI-LEASE-FEEDBACK (mã đã commit, CI đang kiểm):** Trong `CellPicker` và `InlineNoteEditor`, khi đang chờ Firebase cấp quyền sửa, hiển thị trạng thái “Đang xác nhận quyền sửa ô…” (`role=status`) và nút chọn trạng thái có `aria-busy`. CSS chỉ bổ sung kiểu chữ phản hồi, không đổi palette Theme2, nghiệp vụ, quyền/RLS hay dữ liệu. Mục tiêu là loại bỏ cảm giác nút sửa bị treo khi mạng chậm; chưa tuyên bố đã QA bằng mắt trên Windows.
+- **UI-LEASE-FEEDBACK (CI PASS; chờ kiểm thử trực quan Windows):** Trong `CellPicker` và `InlineNoteEditor`, khi đang chờ Firebase cấp quyền sửa, hiển thị trạng thái “Đang xác nhận quyền sửa ô…” (`role=status`) và nút chọn trạng thái có `aria-busy`. CSS chỉ bổ sung kiểu chữ phản hồi, không đổi palette Theme2, nghiệp vụ, quyền/RLS hay dữ liệu. Mục tiêu là loại bỏ cảm giác nút sửa bị treo khi mạng chậm; chưa tuyên bố đã QA bằng mắt trên Windows.
 - **Tiếp theo:** rà giao diện desktop/mobile thực tế và tích hợp skill `ui-ux-pro-max` từ máy phát triển; ưu tiên các trạng thái có rủi ro mất nháp/khóa ô rồi tới bố cục báo cáo, danh sách và popup. Yêu cầu screenshot thực tế khi nghiệm thu; không tự thay UI bằng demo LAN.
 
 
