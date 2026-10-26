@@ -116,7 +116,7 @@ export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDi
 }
 export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:CompactDisplay):ItemColumn[]{
   const pairs=activeCompactPairs(columns,prefs);
-  const hidden=new Set(pairs.flatMap(pair=>pair.hiddenFields));
+  const hidden=new Set<string>(pairs.flatMap(pair=>pair.hiddenFields));
   return columns.filter(col=>!hidden.has(col.key)).map(col=>{
     const pair=pairs.find(p=>p.anchor===col.key);
     return pair?{...col,label:pair.label,width:Math.min(1600,col.width+pair.extraWidth)}:{...col};
