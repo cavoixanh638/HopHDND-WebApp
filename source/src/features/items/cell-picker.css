@@ -67,3 +67,9 @@
   outline: 2px solid var(--green);
   outline-offset: 1px;
 }
+
+/* Permission checks can take longer on unstable connections: show non-blocking feedback. */
+.cell-picker-feedback {
+  display: block;
+  margin: 3px 2px;
+}
