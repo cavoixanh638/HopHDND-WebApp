@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "purpose": "Single traceable integration branch for two selectable independent backends. NO production deployment.",
-  "status": "INTEGRATION_HOLD",
+  "status": "INTEGRATED_STAGING_QA_HOLD",
   "sourceOfTruth": "GitHub PR #74 issue as coordination; this manifest pins technical commit inputs.",
   "createdAt": "2026-10-26",
   "integrationBranch": "integration/firebase-supabase-unified-20261026",
@@ -24,7 +24,8 @@
     "source": "Canonical documentation PR #76",
     "branch": "docs/dual-backend-coordination-20261025",
     "commit": "d0762c09cf2f3f6a86f2997789829953bdcb9bdb",
-    "note": "Read current PR HEAD before porting; do not overwrite newer docs."
+    "note": "Read current PR HEAD before porting; do not overwrite newer docs.",
+    "latestObservedPr76Head": "3665557b3b7947c6ecb4cb7b6234b1f766db51c7"
   },
   "targetEnvironment": {
     "frontend": "Single HopHDND UI",
@@ -65,5 +66,46 @@
     "snapshot-signed-one-time-import",
     "read-only-production-backup-and-rollback",
     "owner-explicit-production-go"
-  ]
+  ],
+  "integrationMerge": {
+    "sourcePr": 78,
+    "targetPr": 77,
+    "mergedAt": "2026-10-26",
+    "mergeCommit": "815291926da2ae001a0b4fec906c414db87e3872",
+    "targetBranch": "integration/firebase-supabase-unified-20261026",
+    "deployedToMain": false,
+    "sourceHeadsReviewed": true,
+    "exactIntegratedHeadQa": "PENDING_NEW_COMMITS"
+  },
+  "networkDiagnostic": {
+    "source": "source/scripts/network-stability-1h.ps1",
+    "launcher": "source/scripts/START_NETWORK_MONITOR_1H.cmd",
+    "intervalSeconds": 5,
+    "durationMinutes": 60,
+    "targets": [
+      "github-pages",
+      "cloudflare-edge-baseline",
+      "firebase-rtdb-transport",
+      "supabase-staging-auth-health",
+      "localhost-webapp"
+    ],
+    "optionalTargets": [
+      "self-host-lan",
+      "self-host-reachable-url"
+    ],
+    "measuredOnUserWindows": false,
+    "result": null
+  },
+  "supabaseCloudSnapshot": {
+    "checkedAt": "2026-10-26",
+    "project": "uguhyunuzsdrkykqgdmq",
+    "status": "ACTIVE_HEALTHY",
+    "migrations": 4,
+    "syntheticRows": 6,
+    "authUsers": 0,
+    "googleIdentities": 0,
+    "securityAdvisoryWarnings": 6,
+    "warningPolicyOperations": "SELECT-only",
+    "noLiveUserE2E": true
+  }
 }
