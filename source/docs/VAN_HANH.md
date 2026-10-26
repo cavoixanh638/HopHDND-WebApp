@@ -1,3 +1,14 @@
+## 26/10/2026 — Mã Supabase đã ghép vào QA, công cụ đo mạng đã lưu trong repository
+
+Merge PR #78 tại `815291926da2ae001a0b4fec906c414db87e3872` **chỉ** cập nhật nhánh tích hợp PR #77 (Draft); main/WebApp Pages đang dùng, Firebase Rules, Supabase production và dữ liệu thật **không đổi**. Không tự chạy data cutover hoặc copy giữa hai database.
+
+Chạy bản thử Windows từ nhánh `integration/firebase-supabase-unified-20261026`: `npm ci` trong `source`, sau đó `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-staging.ps1`. Local WebApp là `http://127.0.0.1:5173/pages.html`, Firebase Auth+RTDB của project **emulator** `demo-hdnd`, không chạm Firebase production.
+
+Đã commit `source/scripts/network-stability-1h.ps1` cùng một-click `source/scripts/START_NETWORK_MONITOR_1H.cmd`. Mặc định **60 phút, cứ 5 giây, 720 lượt mỗi đích, timeout 4 giây**, thực hiện đồng thời GitHub Pages/Cloudflare baseline/Firebase RTDB/Supabase staging/localhost; thêm LAN tự host qua `-LanUrl` và HTTPS self-host qua `-SelfHostUrl`. Báo cáo riêng từng mẫu CSV, P50/P95/chuỗi lỗi trong CSV và HTML tại Documents/HopHDND-NetworkReports. **Công cụ đã vào mã, chưa có kết quả 60 phút đo thực trên máy người dùng**. Cloudflare endpoint này không phải WebApp Cloudflare đang deploy; localhost chỉ đo loopback. So đường mạng của nhân viên ở ngoài phải chạy máy bên ngoài, và benchmark UI/auth/ghi/Realtime cần làm riêng.
+
+Cloud Supabase staging hiện ACTIVE_HEALTHY/4 migrations/6 QA rows/0 auth users/0 Google identities; 6 WARN anonymous-access đều là SELECT policies cho role `authenticated`, có thể bao gồm đăng nhập khách anonymous. Chưa có phê duyệt mô hình khách đọc, không coi các cảnh báo đã giải quyết hoặc OAuth/Realtime production PASS. Chỉ chuyển GO sau xác minh quyền, staging 2–3 tài khoản, backup+restore, một bộ dữ liệu nguồn được phê duyệt, cutover và rollback giữ ACKed edits. Chi tiết [runbook tích hợp](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
+
+---
 > **VẬN HÀNH QA SONG SONG — 25/10/2026, ƯU TIÊN MỚI NHẤT:** **Không triển khai production**; giữ Firebase cùng Supabase và Excel tạm, chọn nguồn theo tab. Supabase Free staging `uguhyunuzsdrkykqgdmq` có 4 migrations, 6 dòng **QA giả lập**, 0 tài khoản admin tự cấp quyền và import gate đóng. Các thử nghiệm thực dùng publishable key tab-local/ `source/.env.local`, OAuth Google trên Dashboard riêng và người quản trị được xác minh bởi SQL, tuyệt đối không đưa secrets vào GitHub. Quyền ô, freeze và realtime của Supabase có mã nguồn + CI; chưa hoàn thành Cloud 3-user E2E. Trước cutover thật phải cleanup QA rows, backups/restore, so tốc độ cùng bộ dữ liệu, ký GO; Firebase không bị xóa. Toàn bộ lệnh, trình tự, blocker và rollback trong **[SUPABASE_RELEASE_GATE_2026-10-25.md](operations/SUPABASE_RELEASE_GATE_2026-10-25.md)**. Chỉ dẫn Firebase-only bên dưới là **lịch sử**, chỉ áp dụng khi nguồn đang được chọn là Firebase.
 
 ## CHỈ DẪN VẬN HÀNH MỚI NHẤT — Firebase-only 25/10/2026
