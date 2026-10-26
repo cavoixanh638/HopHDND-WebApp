@@ -1,3 +1,11 @@
+## 27/10/2026 — QUAY LẠI HOÀN THIỆN UI; TẠM LƯU HOST LAN
+
+- **LAN-HOST-POC: PASS một bước:** chủ dự án xác nhận máy thứ hai trong mạng cơ quan đã mở được demo Windows trên host `:8787`; chưa phải IPlan/HopHDND thật, chưa có CSV đo 60 phút và không khẳng định sẵn sàng production. [Hồ sơ thử nghiệm](operations/LAN_HOST_PILOT_2026-10-27.md). Không tiếp tục phát triển host nếu chưa có chỉ đạo mới.
+- **UI-PRIMARY: IN PROGRESS / ƯU TIÊN SỐ 1** — tiếp tục UI hiện hành trên Firebase-only PR #72 và giữ công năng Theme2, không phát sinh nhánh/luồng mới khi chưa cần. Rà theo thứ tự: (a) điều hướng Báo cáo tổng hợp / Danh sách và trạng thái chọn; (b) bảng 15 cột, bộ lọc, kéo cột, tooltip, popup chi tiết và phối màu; (c) trạng thái quyền/khóa ô/đã lưu/đang lưu/mất mạng và modal cảnh báo nháp; (d) responsive, bàn phím, tương phản màu, lỗi/loading; (e) browser smoke và kiểm chứng hồi quy trên Firebase emulator. Ưu tiên sửa **mã thật**, không thay bằng giao diện demo rời, không đụng Firebase Rules/dữ liệu production chỉ để làm UI.
+- **Điều kiện ghi DONE:** rà UI bằng browser trên desktop + màn hẹp; đối chiếu `FEATURES.md`, `AGENTS.md`, Theme2 và quyết định màu mới nhất; `npm run typecheck`, `npm test`, CI source/Firebase emulator PASS; tài liệu/ảnh QA mô tả đúng tính năng đã test; chỉ merge/deploy sau release gate và GO.
+
+---
+
 ## ƯU TIÊN CAO NHẤT 26/10/2026 — CHỈ FIREBASE, DỪNG SUPABASE
 
 **[Quyết định mới nhất](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md):** chủ dự án yêu cầu tạm dừng mọi phát triển/tích hợp Supabase, giữ nguyên 55 bản ghi staging như dự phòng tĩnh, không xóa, không tự sync. PR #77/#73/#75 **PAUSED — không merge/deploy**. Chỉ phát triển WebApp Firebase trên chuỗi **PR #71 → PR #72**, kiểm thử Firebase emulator và release gate trước GO. Giao diện Firebase không phụ thuộc Supabase. Không thêm nhánh/luồng chat nếu không cần thiết. Nhiệm vụ còn lại: hoàn thiện/QA quyền, khóa ô, server ACK/realtime, freeze, backup/restore, UI, hiệu năng và nghiệm thu Firebase. Nhân viên tiếp tục nhập tạm Excel/Sheet cho đến cutover được duyệt; không xây sync lâu dài.
