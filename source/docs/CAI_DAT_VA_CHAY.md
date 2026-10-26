@@ -1,3 +1,12 @@
+## Windows QA — một WebApp, Firebase + Supabase (26/10/2026)
+
+PR #78 đã merge **chỉ vào nhánh** `integration/firebase-supabase-unified-20261026` (commit `815291926da2ae001a0b4fec906c414db87e3872`), không merge `main`, không deploy Pages/Rules/DB. PR #77 vẫn Draft. Clone vào thư mục riêng (không thay clone nhân viên đang sử dụng), chạy `npm ci` trong `source`, sau đó chạy `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start-local-staging.ps1`. Cửa sổ này chạy Firebase Emulator `demo-hdnd`, WebApp tại `http://127.0.0.1:5173/pages.html`. Supabase là nguồn cloud staging độc lập, không được tự chuyển hoặc đồng bộ dữ liệu Firebase.
+
+Đo mạng bằng cách nhấp đúp `source\scripts\START_NETWORK_MONITOR_1H.cmd`, khi cửa sổ local staging vẫn chạy. Mỗi **5 giây trong 60 phút** lấy mẫu song song GitHub Pages, Cloudflare baseline, Firebase RTDB, Supabase staging và localhost (720 lượt/đích). Có thể bổ sung địa chỉ host tại nhà: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\network-stability-1h.ps1 -LanUrl 'http://IP-LAN:PORT/' -SelfHostUrl 'https://DOMAIN-THAT-EXISTS/'`. Mặc định localhost là `127.0.0.1:5173/pages.html`, thay bằng `-LocalUrl` nếu dùng cổng khác. Báo cáo `samples.csv`, `summary.csv`, `report.html` nằm dưới `Documents\HopHDND-NetworkReports`.
+
+Đây là script đã lưu trên GitHub **chưa được chạy trên máy người dùng**, không phải phép đo hoàn tất. Nếu chưa mở local WebApp mà localhost báo lỗi thì là thiếu dịch vụ tại cổng. Cloudflare baseline chỉ đo mạng Cloudflare, không đại diện cho một Cloudflare Worker/Pages HopHDND. Muốn so self-host từ máy nhân viên bên ngoài, phải thử từ một máy ngoài LAN. [Quy trình phát hành và gate](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md).
+
+---
 # Cài đặt và chạy — HopHDND (local, gồm Pages 0.7.0 và legacy)
 
 ## Bản GitHub Pages 0.7.0 — điểm bắt đầu hiện hành
