@@ -1,3 +1,13 @@
+## 26/10/2026 — Công cụ đo đường truyền đa đích từ chính máy Windows (đã tạo ZIP, CHƯA chạy tại PC)
+
+Đã tạo và cung cấp `HopHDND_CongCu_DoMang_Host_Windows.zip` qua cuộc trò chuyện: gồm `DO-MANG-1-CLICK.cmd`, `Do-Mang-HopHDND.ps1`, `HUONG-DAN.txt`. Gói đã kiểm tra được liệt kê đầy đủ và vượt kiểm tra toàn vẹn ZIP; **chưa có kiểm thử thực thi PowerShell trên Windows thật trong môi trường này**. Người dùng chỉ cần giải nén, double-click CMD, đo **10 lần mỗi đích**; báo cáo HTML/JSON ở thư mục `BaoCaoMang`. Không cần key/admin/Node/Python; script chỉ GET/HEAD (không ghi DB), server giả lập chỉ bind localhost TCP `127.0.0.1:18765`, dừng khi kết thúc.
+
+Đích đo: GitHub Pages thật; Cloudflare **Edge tuyến tham chiếu** (chưa có build HopHDND riêng trên Cloudflare Pages); Firebase RTDB/IdentityToolkit đường HEAD; Supabase Cloud **staging** HEAD; localhost synthetic ~64 KiB; và địa chỉ Cloudflare Pages/Cloudflare Tunnel WebApp thật tùy chọn khi đã có URL, qua tham số `-CloudflarePagesUrl`, `-PublicTunnelUrl`, `-LocalWebAppUrl`. Kết quả gồm DNS/TCP/TLS/TTFB/total, lỗi từng lần, P50 và P95. **Không được so sánh localhost với CDN như cùng điều kiện; không được coi Cloudflare Edge tham chiếu là kết quả Cloudflare Pages thật.** Muốn quyết định tự host cho nhân viên bên ngoài phải đo Cloudflare Tunnel **từ mạng ngoài** (4G hoặc thiết bị nhân viên), với cùng bản build. Đo curl không có JavaScript/Firebase SDK Auth/first paint: kết hợp với `?startupMetrics=1`.
+
+Thông tin hướng dẫn và cách diễn giải đã bổ sung tại [CAI_DAT_VA_CHAY](CAI_DAT_VA_CHAY.md). Đợi người vận hành cung cấp báo cáo để đánh giá; chưa có số liệu trực tiếp mới từ mạng người dùng và **không thay host production**.
+
+---
+
 ## 26/10/2026 — Khảo sát dùng PC Windows tự host WebApp, so với host tĩnh cloud (chưa triển khai)
 
 Người dùng hỏi có thể dùng máy Windows cá nhân làm host để mọi người truy cập/sửa ổn định hơn. **Có thể**, nhưng WebApp hiện là frontend tĩnh `pages.html` + HTML/JS/CSS gọi Firebase/Supabase trực tiếp; máy cá nhân tự host chỉ thay **nơi phục vụ giao diện**, không thay Firebase Auth, Security Rules, Supabase RLS, API hoặc độ trễ dữ liệu. Một phiên đo Edge InPrivate có HTML TTFB 41ms nhưng HTML responseEnd 3369ms; không đủ kết luận host GitHub Pages lỗi hoặc PC nhanh hơn. Firebase 55 dòng đã đến trong 147ms sau kết nối.
