@@ -1,3 +1,11 @@
+## KIẾN TRÚC MỤC TIÊU ĐƯỢC CẬP NHẬT — 26/10/2026: Firebase HOẶC Supabase theo tab
+
+**Lưu ý:** mọi mục "Firebase-only" ở bên dưới là **quyết định lịch sử**, đã được thay bởi yêu cầu giữ hai Database nhưng chỉ **một WebApp**. Backend đang chọn tại một tab quản lý độc lập list/subscribe/save/lease/auth/grants/audit/freeze; không chuyển `hdnd/profile.dataSource` global khi bấm nút chọn nguồn, không ghi kép/đồng bộ hai Database. Mỗi backend phải tự thực thi ACL/CAS/revision trên máy chủ; OAuth Google Firebase không cấp quyền Supabase và JWT Supabase không cấp quyền Firebase. Nếu còn nháp/khóa/saving/ACK chưa xong, nguồn không được chuyển. Dữ liệu trình duyệt và cache/draft phải namespace theo backend/project/identity.
+
+Tích hợp theo [PR #77](https://github.com/cavoixanh638/HopHDND-WebApp/pull/77) từ Firebase #72 + Supabase #73/#75; xem [manifest SHA](operations/DUAL_BACKEND_INTEGRATION_MANIFEST_20261026.json) và [runbook](operations/DUAL_BACKEND_UNIFIED_RELEASE_20261026.md). Nhánh hợp nhất đang kiểm thử; **không tuyên bố WebApp chính thức đã hỗ trợ hai backend**. Không loại bỏ Firebase, không dùng Sheets đồng bộ dài hạn.
+
+---
+
 ## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)
 [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md): tương lai `App → FirebaseRepository → hdnd/items` là **đường nghiệp vụ duy nhất** cho bảng/báo cáo/thay đổi. Không duy trì kết nối GViz/Excel/Sheets hoặc mirror thành nguồn sau chuyển. Công cụ nhập mirror của PR #71 chỉ hỗ trợ **nạp ban đầu một lần khi admin duyệt dữ liệu cuối cùng**. Nhân viên vẫn sử dụng Sheet hiện tại trong thời gian phát triển; không cần so Sheet và mirror liên tục để kiểm tra tính năng. Các cảnh báo 55/57 được chuyển sang lịch sử, **không chặn công việc kỹ thuật**.
 
