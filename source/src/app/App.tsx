@@ -36,7 +36,7 @@ import {CONFIG_EDITOR_URL} from '../data/shared-store';
 import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
-import {migrateMirrorToPrimary} from '../data/firebase-primary-bootstrap';
+import {bootstrapApprovedRowsToPrimary} from '../data/firebase-primary-bootstrap';
 import {CellEditSessionManager,type EditorKind} from '../data/cell-edit-leases';
 import {assertTransitionBaseline,type TransitionRowChange} from '../data/transition-import';
 import type {FirebaseController} from '../state/use-firebase';
@@ -232,6 +232,18 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       }
     }
     return confirmed;
+  };
+  // One-shot admin launch from an explicitly reviewed CURRENT Sheets/Excel snapshot.
+  // Never schedule this action or infer consent from an empty on-screen list.
+  const importInitialFirebaseRows=async(rows:Item[]):Promise<number>=>{
+    if(!firebase?.isAdmin||!firebase.user||!firebase.connected||
+      firebase.profile?.dataSource==='primary'||common.status!=='ready'||
+      firebase.freezeControl?.mode!=='OPEN')
+      throw new Error('Cần tài khoản quản trị, Firebase kết nối và chế độ mở sửa; chưa được ở nguồn chính.');
+    if(workspace.busy||workspace.protectedRecovery||Object.keys(workspace.drafts).length)
+      throw new Error('Còn nháp hoặc dữ liệu chưa xác nhận; không khởi tạo Firebase.');
+    const result=await bootstrapApprovedRowsToPrimary(firebase.database,firebase.user,rows);
+    return result.importedCount;
   };
   const saveData = async () => { const issue = workspace.workingItems.filter(item => {const changes=workspace.drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item => assignmentIssue(item,catalog)).find(Boolean); if(issue){setLayoutMessage(issue);return false;} return workspace.save(); };
   useEffect(()=>{
@@ -477,6 +489,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
       {page==='connection'&&isFirebase&&<FirebasePanel userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false}
+         initialSheetUrl={configured.url}
+         onInitialImport={selectedSource!=='primary'?importInitialFirebaseRows:undefined}
+         initialImportDisabled={workspace.busy||dirtyCount>0||workspace.protectedRecovery||!firebase!.connected||firebase!.freezeControl?.mode!=='OPEN'||common.status!=='ready'}
          transitionSheetUrl={configured.url}
          onTransitionApply={selectedSource==='primary'?applyTransition:undefined}
          transitionDisabled={workspace.busy||dirtyCount>0||workspace.protectedRecovery||!firebase!.connected||firebase!.freezeControl?.mode!=='OPEN'||common.status!=='ready'}
