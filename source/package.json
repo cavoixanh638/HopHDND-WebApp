@@ -17,7 +17,9 @@
     "build:pages": "npm run typecheck && vite build --mode pages --outDir dist-pages && node scripts/prepare-pages.mjs dist-pages",
     "build:pages:test": "npm run typecheck && vite build --mode pages-test --outDir dist-pages-test && node scripts/prepare-pages.mjs dist-pages-test",
     "build:compact:qa": "vite build --mode compact-qa --outDir dist-compact-qa",
-    "test:firebase": "node scripts/test-firebase.mjs"
+    "test:firebase": "node scripts/test-firebase.mjs",
+    "qa:firebase": "node scripts/firebase-functional-qa.mjs",
+    "qa:report": "node scripts/firebase-qa-report.mjs"
   },
   "dependencies": {
     "firebase": "13.0.0",
