@@ -569,7 +569,8 @@ try{
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-tabs.bottom;
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
-    return {ok:aligned&&gap<115&&!status&&!cardHeader,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader};
+    const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    return {ok:aligned&&gap<155&&!status&&!cardHeader&&!!localMenu,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const mainSectionCards=await evaluate(`(()=>{
@@ -1062,10 +1063,15 @@ try{
   console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
 
 
-  // Compact column layout is an ADMIN shared setting. Viewer must have no
-  // local control to diverge from the authoritative profile.
-  const compactGuestBlocked=await evaluate(`!document.querySelector('.compact-columns-menu')`);
-  if(!compactGuestBlocked)throw Error('Guest must not see or edit compact column options');
+  // Guest may change local-only grouping but must never receive admin layout controls.
+  const compactGuestSafe=await evaluate(`(()=>{
+    const guest=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    return !!guest&&guest.textContent.includes('Gộp cột')&&
+      !document.querySelector('.admin-column-arrange-hint')&&
+      !document.querySelector('.item-column-panel')&&
+      !document.querySelector('.status-palette-trigger');
+  })()`);
+  if(!compactGuestSafe)throw Error('Guest compact view must remain local-only');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
