@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
+import {DetailDashboard} from './DetailDashboard';
+import {DetailCompactTable} from './DetailCompactTable';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
@@ -70,6 +72,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
+  const [detailCompactMode,setDetailCompactMode]=useState(true);
+  const [dashboardSelection,setDashboardSelection]=useState<{title:string;ids:Set<string>}|null>(null);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -430,11 +434,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    {!customizing&&!permissionMode&&<DetailDashboard items={items} onSelect={(title,matched)=>setDashboardSelection({title,ids:new Set(matched.map(x=>x.recordId))})}/>}
+    {!customizing&&!permissionMode&&dashboardSelection&&<div className="notice" role="status">Đang xem: {dashboardSelection.title} · <button type="button" className="button ghost" onClick={()=>setDashboardSelection(null)}>Xóa lọc báo cáo</button></div>}
     {anonymousViewer&&compactOn&&!permissionMode&&<div className="guest-compact-menu-bar" role="group"
        aria-label="Cách hiển thị cột của tôi">{compactMenu}</div>}
     {!anonymousViewer&&<div className="card-header">
     <div className="item-header-actions">
       {compactMenu}
+      {!customizing&&!permissionMode&&<button type="button" className="button ghost" aria-pressed={!detailCompactMode} onClick={()=>setDetailCompactMode(value=>!value)}>{detailCompactMode?'Tùy chọn từng cột / Bảng cũ':'Xem bố cục gọn 6 cột'}</button>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
@@ -455,7 +462,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
-    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
+    {!customizing&&!permissionMode&&detailCompactMode?<DetailCompactTable items={rows.filter(item=>!dashboardSelection||dashboardSelection.ids.has(item.recordId))} onHistory={onCellHistory}/>:permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
       if(exitAfterPermissions.current){
         exitAfterPermissions.current=false;
