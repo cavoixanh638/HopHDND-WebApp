@@ -86,7 +86,7 @@ export function TransitionImportPanel({items,sheetUrl,disabled,onApply}:{
       <p className="muted">Mặc định chưa chọn hồ sơ nào. Chọn từng hồ sơ sau khi kiểm tra thay đổi. Tối đa 20 hồ sơ một lượt. Nếu ai đó sửa Firebase sau khi bạn xem trước, toàn bộ lượt cập nhật sẽ dừng tại hồ sơ bị xung đột.</p>
       <div className="table-wrap"><table className="data-table"><thead><tr><th>Chọn</th><th>Mã</th><th>Số trường đổi</th><th>Đối chiếu giá trị từng trường</th></tr></thead>
       <tbody>{preview.plan.changes.map(entry=><tr key={entry.recordId}><td><input aria-label={'Cập nhật '+entry.displayCode} type="checkbox" disabled={busy||disabled||!checked.includes(entry.recordId)&&checked.length>=20} checked={checked.includes(entry.recordId)}
-        onChange={e=>setChecked(prev=>e.currentTarget.checked?[...prev,entry.recordId]:prev.filter(id=>id!==entry.recordId))}/></td>
+        onChange={e=>{const enabled=e.currentTarget.checked;setChecked(prev=>enabled?[...prev,entry.recordId]:prev.filter(id=>id!==entry.recordId));}}/></td>
         <td>{entry.displayCode}</td><td>{entry.fields.length}</td><td><details><summary>Xem các trường thay đổi</summary>
           <ul>{entry.fields.map(field=><li key={field}><strong>{field}</strong><div>Firebase: {String(entry.baseline[field])}</div><div>Nguồn mới: {String(entry.source[field])}</div></li>)}</ul>
         </details></td></tr>)}</tbody></table></div>
