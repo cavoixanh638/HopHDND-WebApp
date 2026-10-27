@@ -109,6 +109,7 @@ jobs:
             source/hophdnd-ui-smoke-pass.png
             source/hophdnd-compact-desktop-pass.png
             source/hophdnd-compact-mobile-pass.png
+            source/hophdnd-compact-guest-pass.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure
