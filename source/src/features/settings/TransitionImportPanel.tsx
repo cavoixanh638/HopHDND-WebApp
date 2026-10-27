@@ -2,7 +2,8 @@ import {useMemo,useState} from 'react';
 import type {Item} from '../../../shared/types';
 import {parseSheetConfig} from '../../data/sheet-config';
 import {readSheet} from '../../data/sheets-repository';
-import {planTransitionImport,readTransitionalExcel,type TransitionPlan,type TransitionRowChange} from '../../data/transition-import';
+import {planTransitionImport,type TransitionPlan,type TransitionRowChange} from '../../data/transition-import';
+import {readTransitionalExcel} from '../../data/transition-excel';
 
 type SourcePreview={origin:'google'|'excel';name:string;receivedAt:number;plan:TransitionPlan;warnings:string[]};
 export function TransitionImportPanel({items,sheetUrl,disabled,onApply}:{
