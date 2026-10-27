@@ -42,6 +42,36 @@ export function readCompactDisplay(scope:string):CompactDisplay {
 export function writeCompactDisplay(scope:string,prefs:CompactDisplay):void {
   try{globalThis.localStorage?.setItem(keyFor(scope),JSON.stringify(prefs));}catch{}
 }
+/** View-only override, isolated from the shared Firebase layout and legacy per-file prefs.
+ * Return null when absent so an administrator's shared layout remains the default. */
+const personalCompactKey=(scope:string)=>'hdnd.viewer-compact.v1:'+scope;
+export function readPersonalCompactDisplay(scope:string):CompactDisplay|null {
+  try {
+    const raw=globalThis.localStorage?.getItem(personalCompactKey(scope));
+    if(!raw)return null;
+    const value:unknown=JSON.parse(raw);
+    if(!value||typeof value!=='object'||Array.isArray(value))return null;
+    const object=value as Record<string,unknown>;
+    const keys=Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[];
+    if(keys.some(key=>typeof object[key]!=='boolean'))return null;
+    return Object.fromEntries(keys.map(key=>[key,object[key]])) as CompactDisplay;
+  }catch{return null;}
+}
+export function writePersonalCompactDisplay(scope:string,prefs:CompactDisplay):boolean {
+  try {
+    if(!globalThis.localStorage)return false;
+    globalThis.localStorage.setItem(personalCompactKey(scope),JSON.stringify(prefs));
+    return true;
+  }catch{return false;}
+}
+export function clearPersonalCompactDisplay(scope:string):boolean {
+  try {
+    if(!globalThis.localStorage)return false;
+    globalThis.localStorage.removeItem(personalCompactKey(scope));
+    return true;
+  }catch{return false;}
+}
+
 /** Never abbreviate the underlying value, edit choice or search index. */
 export function abbreviateVietnameseName(name:string):string {
   const words=name.trim().split(/\s+/u).filter(Boolean);
