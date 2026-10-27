@@ -1,3 +1,24 @@
+**Bản xem thử UI (không có dữ liệu thật):** Trong PR #72, chạy `npm run build:compact:qa` dưới thư mục `source` để tạo trang kiểm thử `dist-compact-qa/compact-qa.html` (phục vụ qua HTTP server local); QA sử dụng `ItemList` thật với dữ liệu giả, tùy chọn bật sẵn cả 4 nhóm. Truy cập `?edit=1` để thử sửa *nội bộ trên trình duyệt* theo từng trường con, không ghi database. GitHub Actions [source #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664) có artifact `hophdnd-browser-smoke-preview` chứa ảnh 1600px và 390px. Đây là **hướng dẫn thử cho người phát triển**, không phát hành bằng đường dẫn QA hoặc dùng thay ứng dụng HopHDND chính.
+
+## Gộp cột — chọn cách hiển thị gọn (27/10/2026, bản đang phát triển)
+
+Trong **Danh sách các ND trình HĐND** ở chế độ xem, quản trị viên mở **Gộp cột**. Bật các tùy chọn phù hợp:
+- **Loại VB + Sở → Nội dung**: nội dung, loại văn bản, sở chủ trì cùng một ô.
+- **Cấp + Tiến độ Thành ủy**: hai thông tin xin ý kiến Thành ủy trong một ô.
+- **Xây dựng + Ban hành HĐND**: hai bước tiến độ trình HĐND trong một ô.
+- **UBND + VP + Phòng + CV**: bốn thông tin người phụ trách trong một ô có nhãn ngắn.
+
+Các kiểu gộp nhỏ đã có nằm trong **Các cách gộp khác** (bấm để mở); hai tùy chọn viết tắt tên nằm trong **Viết tắt tên**. Các kiểu gộp nhỏ đã có vẫn giữ để lựa chọn khi không cần gộp tất cả. Bật gộp lớn sẽ tự tắt các kiểu gộp con trùng trường; tắt gộp lớn trả lại các cột gốc (nếu cột đó vẫn được thiết lập hiện). Có thể chọn **Viết tắt tên lãnh đạo/chuyên viên** riêng để tiết kiệm chiều ngang. Nhập tên đầy đủ vào ô tìm kiếm vẫn tra được người đó. Khi được phép sửa, bấm đúng dòng/trường bên trong ô gộp; không sửa lẫn tên Sở, cấp hay tiến độ khác. Thao tác gộp không thay dữ liệu nghiệp vụ; chỉ có hiệu lực trên WebApp khi admin lưu được bố cục vào Firebase.
+
+---
+
+## Hướng dẫn dự kiến: khóa ô và chốt dữ liệu trên Firebase (25/10/2026, CHƯA MỞ)
+**Người sửa:** tại chế độ `Database chính` đã kích hoạt, bấm ô hoặc mở danh sách để xin quyền giữ ô. Khi người khác đang sửa sẽ thấy trạng thái khóa, không cố sửa bằng tab mới. Với dropdown, chỉ lựa chọn thực sự mới tạo thay đổi; Esc/đóng chưa chọn thì bỏ. Với Ghi chú/Tiến độ hiện tại, nhập văn bản rồi rời ô hoặc Ctrl+Enter; ứng dụng chỉ coi đã lưu sau khi Firebase xác nhận. Nếu có cảnh báo mất mạng, hết hạn hoặc chốt dữ liệu, **không đóng trang Ẩn danh** khi chưa sao chép/khôi phục nháp.
+**Admin:** chọn “Tạm dừng sửa của khách” để chỉ cho khách xem trong khi admin tiếp tục làm việc; chọn “Yêu cầu lưu rồi chốt” để ngừng nhận lượt sửa mới, đợi phiên đang sửa lưu có xác nhận, sau đó chuyển FROZEN. “Đóng băng ngay” dùng khi cần chốt gấp; bản nháp chưa ACK không tính vào mốc. Phải thấy trạng thái **Đã đóng băng** và biên nhận số dòng/hash mới coi là chốt. Nếu đóng tab trong khi DRAINING, đăng nhập lại để kiểm tra và hoàn tất — chưa có tự chốt máy chủ khi không có tab admin.
+**Khi mở lại:** không tự phát tán bản nháp cũ; người dùng xem giá trị mới nhất, đối chiếu rồi mới xác nhận lại. Những thao tác này **chưa có trên trang production**, vui lòng tiếp tục sử dụng hướng dẫn hiện hành bên dưới cho đến khi nghiệm thu. [Điều kiện phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 ## Điều chỉnh độ rộng và lịch sử Ghi chú/Tiến độ hiện tại (23/10/2026)
 
 - Cột **ID** mặc định chỉ 68px. Khi admin kéo rộng một cột, hệ thống **thu nhỏ đúng phần tăng tương ứng ở cột cuối cùng đang hiển thị**; khi thu hẹp một cột, phần giảm được **cộng vào cột cuối**. Các cột ở giữa giữ nguyên. Vì cột cuối làm nơi bù, không chỉnh trực tiếp mép ngoài của cột cuối. Khi một trong hai cột đạt giới hạn 60–1600px, phần kéo dừng; nếu bảng rộng hơn màn hình vẫn có thanh cuộn ngang.

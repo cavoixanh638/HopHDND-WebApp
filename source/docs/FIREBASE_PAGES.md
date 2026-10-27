@@ -1,3 +1,10 @@
+## Sơ đồ Firebase đích — 25/10/2026 (PR #71/#72, chưa chạy production)
+- `hdnd/items/{recordId}`: bản ghi chính độc lập Excel, CAS revision, event history. `hdnd/editLocks/{recordId}/{field}`: lease UID+tab token, TTL và quyền thực theo field. `hdnd/freezeControl`: trạng thái OPEN/DRAINING/FROZEN. `hdnd/freezeReceipts/{epoch}`: biên nhận đã chốt. `hdnd/permissions`: cấp quyền ô/hàng/cột. `hdnd/profile/dataSource=primary` được chọn **chỉ sau khi chuyển dữ liệu một lần và đối chiếu**.
+- `hdnd/mirrors` là tạm nhập/backup; việc link Google Sheets còn trong lịch sử không tạo yêu cầu phụ thuộc cho nguồn primary.
+- Rules ứng viên mới: [database.exclusive-candidate.rules.json](../firebase/database.exclusive-candidate.rules.json) — **KHÔNG được publish trực tiếp khi chưa rà Rules hiện hành và backup**. Bản `database.rules.json` mặc định của repo vẫn cố tình chặn ghi nghiệp vụ. Cổng phát hành: [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # Firebase Realtime Database trên GitHub Pages
 
 > **Phân ranh tài liệu:** File này chỉ mô tả Firebase Auth/RTDB, schema và nguyên tắc Rules. Quy trình backup, khôi phục, cập nhật Pages, quay về bản cũ và xử lý sự cố tập trung ở [VAN_HANH](VAN_HANH.md). Ánh xạ trường và ID Sheets xem [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). Các ví dụ cấu hình không xác nhận đã áp dụng Rules thật.

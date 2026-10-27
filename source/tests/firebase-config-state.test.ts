@@ -6,7 +6,7 @@ import {defaultReportLayout} from '../src/data/report-preferences';
 import {firebaseAdmin,mayEdit} from '../src/data/firebase-repository';
 const h=vi.hoisted(()=>{
   const slots:any[]=[];let cursor=0;let effects:(()=>void)[]=[];
-  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),popup:vi.fn().mockResolvedValue({}),popupResolver:{kind:'google-popup'},
+  return{auth:{currentUser:null as any},authChanged:null as any,listeners:new Map<string,any>(),profileRaw:null as any,get:vi.fn(),transaction:vi.fn(),anonymous:vi.fn().mockResolvedValue({}),popup:vi.fn().mockResolvedValue({}),persistence:vi.fn().mockResolvedValue(undefined),popupResolver:{kind:'google-popup'},
     state:(initial:any)=>{const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     ref:(v:any)=>{const i=cursor++;return slots[i]??(slots[i]={current:v});},
     effect:(fn:any,deps:any[])=>{const i=cursor++,old=slots[i];if(!old||deps.some((d,j)=>!Object.is(d,old.deps[j])))effects.push(()=>{old?.cleanup?.();slots[i]={deps,cleanup:fn()};});},
@@ -17,16 +17,16 @@ vi.mock('react',()=>({useState:h.state,useRef:h.ref,useEffect:h.effect}));
 vi.mock('firebase/app',()=>({initializeApp:()=>({})}));
 vi.mock('firebase/auth',()=>({getAuth:()=>h.auth,initializeAuth:()=>h.auth,
   indexedDBLocalPersistence:{},browserLocalPersistence:{},inMemoryPersistence:{},
-  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn()}));
+  connectAuthEmulator:vi.fn(),GoogleAuthProvider:class{},browserPopupRedirectResolver:h.popupResolver,onAuthStateChanged:(_auth:any,next:any)=>{h.authChanged=next;return vi.fn();},signInAnonymously:h.anonymous,signInWithPopup:h.popup,signOut:vi.fn(),setPersistence:h.persistence}));
 vi.mock('firebase/database',()=>({getDatabase:()=>({}),connectDatabaseEmulator:vi.fn(),ref:(_db:any,path:string)=>path,onValue:(path:string,next:any,error:any)=>{h.listeners.set(path,{next,error});return()=>h.listeners.delete(path);},get:h.get,runTransaction:h.transaction}));
 import {useFirebase} from '../src/state/use-firebase';
-const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]});
+const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@gmail.com':'guest@example.test',emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]});
 const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems(1)),reports:defaultReportLayout(),items:defaultItemLayout()});
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
-function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});}
+function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get('hdnd/editors').next({val:()=>({guest:true})});}
 function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
-beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockClear();});
+beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockReset().mockResolvedValue({});h.persistence.mockReset().mockResolvedValue(undefined);});
 afterEach(()=>h.dispose());
 describe('Firebase config controller remains independent of business data',()=>{
   it('loads the Google popup resolver only for an explicit login action',async()=>{
@@ -36,6 +36,19 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(h.popup).toHaveBeenCalledTimes(1);
     expect(h.popup.mock.calls[0][0]).toBe(h.auth);
     expect(h.popup.mock.calls[0][2]).toBe(h.popupResolver);
+  });
+  it('does not persist an anonymous user when Google popup is cancelled',async()=>{
+    const view=render();
+    h.popup.mockRejectedValueOnce(new Error('popup-closed-by-user'));
+    await expect(view.login()).rejects.toThrow('popup-closed-by-user');
+    expect(h.persistence).not.toHaveBeenCalled();
+  });
+  it('persists only a successful verified Google login',async()=>{
+    const view=render();
+    await view.login();
+    expect(h.popup).toHaveBeenCalledOnce();
+    expect(h.persistence).toHaveBeenCalledOnce();
+    expect(h.popup.mock.invocationCallOrder[0]).toBeLessThan(h.persistence.mock.invocationCallOrder[0]);
   });
   it('does not prefetch the mirror during source comparison so Excel and Database are measured fairly',()=>{
     vi.stubGlobal('window',{location:{search:'?startupMetrics=1&compareSource=database'}});
@@ -54,9 +67,18 @@ describe('Firebase config controller remains independent of business data',()=>{
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/editors','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
-    emit('hdnd/control',{revision:1,editingLocked:false});expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/control',{revision:1,editingLocked:false});
+    emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/editors',{guest:false});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/editors',{guest:true});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true);
+    emit('hdnd/freezeControl',{mode:'DRAINING',revision:2,epoch:1,actor:'admin',changedAt:2,deadline:62,closedAt:0});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/freezeControl',{mode:'OPEN',revision:3,epoch:1,actor:'admin',changedAt:3,deadline:0,closedAt:0});
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
   });
   it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
@@ -70,6 +92,19 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(update({revision:3,editingLocked:true})).toBeUndefined();
     expect(update({revision:2,editingLocked:true})).toMatchObject({revision:3,editingLocked:false});
     expect(render().editingLocked).toBe(false);
+  });
+  it('administrator grants and revokes Google employee UID through guarded CAS',async()=>{
+    login(true);
+    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/editors/employee123'?null:null}));
+    h.transaction.mockImplementation(async(path:string,fn:(value:unknown)=>unknown)=>{
+      expect(path).toBe('hdnd/editors/employee123');
+      const next=fn(null);
+      expect(next).toBe(true);
+      return {committed:true,snapshot:{val:()=>next}};
+    });
+    await render().saveEditorAccess('employee123',true);
+    expect(h.transaction).toHaveBeenCalledOnce();
+    await expect(render().saveEditorAccess('invalid uid!',true)).rejects.toThrow('UID');
   });
   it('denies guest config writes, even with direct handler calls',async()=>{
     login();emit('hdnd/profile',null);emit('hdnd/permissions',{columns:{note:true}});const state=render();

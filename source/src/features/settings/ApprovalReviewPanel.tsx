@@ -5,6 +5,7 @@ import type {FirebaseController,ReviewBaseline} from '../../state/use-firebase';
 import {approvalIdentityWarnings,compareApprovedSnapshot,snapshotFromItems} from '../../domain/approval-review';
 import {readSheet} from '../../data/sheets-repository';
 import {Modal} from '../../components/Modal';
+import {FreezeAdminPanel} from './FreezeAdminPanel';
 
 export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,onClose}:{
   source:SheetConfig;items:Item[];loadedAt:string;hasDrafts:boolean;firebase:FirebaseController;onClose:()=>void;
@@ -53,6 +54,13 @@ export function ApprovalReviewPanel({source,items,loadedAt,hasDrafts,firebase,on
     }catch(cause){setConfirm(false);setError(cause instanceof Error?cause.message:'Không thể phê duyệt. Bản mốc cũ được giữ.');}
     finally{setBusy(false);}
   };
+  if(firebase.profile?.dataSource==='primary')return <section className="card" aria-label="Quản trị chốt số liệu Firebase">
+    <div className="card-header"><div><h3>Quản trị và chốt số liệu</h3>
+      <p className="muted">Nguồn chính: Firebase. Chốt số liệu không đọc Google Sheets, chỉ ghi biên nhận dữ liệu đã được máy chủ xác nhận.</p></div>
+      <button type="button" className="button ghost" onClick={onClose}>Về tổng quan</button>
+    </div>
+    <FreezeAdminPanel firebase={firebase}/>
+  </section>;
   return <section className="card" aria-label="Thay đổi từ lần phê duyệt">
     <div className="card-header"><div><h3>Kiểm soát thay đổi và phê duyệt</h3>
       <p className="muted">Chỉ tài khoản quản trị. So sánh dữ liệu Google Sheets đang hiển thị với mốc đã duyệt gần nhất.</p></div>

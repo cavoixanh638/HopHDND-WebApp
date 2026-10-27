@@ -1,3 +1,12 @@
+## Định danh và metadata chỉnh sửa khi dùng Firebase chính — 25/10/2026
+- Khóa bản ghi nghiệp vụ là `recordId` ổn định, **không** phải số thứ tự, vị trí ô, mã ID đang hiển thị hoặc gid khi truy cập dữ liệu hằng ngày. ID cũ chuyển một lần có thể chứa dấu `:`; không đổi để tránh mất quyền từng ô.
+- Khóa duy nhất một ô: `(recordId, EditableField)` với `EditableField` từ `shared/types.ts`. Ô hiển thị gộp Phòng/CV hay UBND/VP gồm các **trường con khác nhau** và phải cấp khóa riêng khi đổi tương ứng.
+- `hdnd/items/{recordId}`: revision, operationId, updatedAt, updatedBy, history (vòng 50 sự kiện) và editProofs phục vụ máy chủ kiểm quyền sở hữu lease; không tự nhập các trường audit qua Excel.
+- `hdnd/editLocks/{recordId}/{field}`: uid, session, token, revision, kind, acquiredAt, expiresAt (tombstone hết hạn). `hdnd/freezeControl`: mode, epoch, revision, changedAt, deadline, closedAt; biên nhận `freezeReceipts/{epoch}` lưu rows/hash/actor/frozenAt/recordedAt.
+- Giá trị Ghi chú và Tiến độ hiện tại chỉ được coi là dữ liệu chung sau ACK; checkpoint trên trình duyệt không phải trường nghiệp vụ chính. [Điều kiện phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
+
+---
+
 # Từ điển dữ liệu HopHDND
 
 **Nguồn chuẩn thực thi:** [shared/types.ts](../shared/types.ts), [item-preferences.ts](../src/data/item-preferences.ts), [gviz-parser.ts](../src/data/gviz-parser.ts), [sheets-repository.ts](../src/data/sheets-repository.ts), [field-definitions.ts](../shared/field-definitions.ts), [reporting.ts](../src/domain/reporting.ts). Trang này mô tả **mã trên PR #3 tính đến 19/10/2026**; không khẳng định trang Pages gốc đã nhận mã mới. Mốc phát hành, bằng chứng và giới hạn xem [CURRENT_STATE](CURRENT_STATE.md).

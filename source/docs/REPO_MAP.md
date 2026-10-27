@@ -1,3 +1,21 @@
+## Kiểm thử UI nhóm gộp 27/10/2026 (Firebase-only PR #72)
+
+`src/features/items/compact-columns.ts`: tổ hợp nhóm và tìm theo giá trị đầy đủ; `src/features/items/ItemList.tsx`, `item-frame.css`: bốn nhóm gộp, menu thu gọn, editor từng trường; `src/data/item-preferences.ts`: cấu hình gộp tương thích Firebase cũ. `compact-qa.html` + `src/qa/compact-qa-main.tsx`: trang Vite QA **tách khỏi production**, gắn chính `ItemList` với dữ liệu mô phỏng không kết nối database; `scripts/smoke-pages-browser.mjs` kiểm Chrome desktop 1600px và mobile 390px, lựa chọn gộp đè nhau, trường sửa riêng, lưu ảnh trong artifact `hophdnd-browser-smoke-preview`. [CI source PASS #40380075664](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664). Không nhầm QA mock với kết quả xác minh 2 user Cloud/production.
+
+---
+
+## Bản đồ mã cho Firebase primary và khóa ô — 25/10/2026
+- `src/data/firebase-primary-bootstrap.ts`: import mirror → bản ghi chính một lần, so sánh từng trường.
+- `src/data/firebase-repository.ts`: lưu, realtime subscription, revision/CAS, audit.
+- `src/data/cell-edit-leases.ts`: chiếm/gia hạn/giải phóng khóa per-field, checkpoint bản nháp.
+- `src/data/freeze-control.ts`: trạng thái OPEN/DRAINING/FROZEN và giao dịch đổi chế độ.
+- `src/features/settings/FreezeAdminPanel.tsx`: UI chốt và biên nhận, hiện phụ thuộc tab admin đang online.
+- `src/features/items/{CellPicker,InlineNoteEditor,LeaseTextInput,ItemList}.tsx` và `src/features/reports/ReportDetailGrid.tsx`: các điểm mở trình sửa phải có khóa chung.
+- `firebase/database.exclusive-candidate.rules.json`: Rules staging ứng viên, chưa triển khai. `tests/exclusive-cell-freeze.test.ts`: test an ninh bằng Firebase Emulator.
+- Chốt phát hành/sao lưu/rollback: [GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). Không nhầm các path `source/` trên GitHub với `src/` khi chạy từ thư mục source.
+
+---
+
 # Bản đồ mã nguồn và quy tắc bố trí
 
 > **Bản sao GitHub:** một số ảnh bằng chứng trong tài liệu lịch sử chưa được đồng bộ vào `docs/assets/`. Tên tệp được giữ để tra cứu trên bản lưu gốc; không xem đường dẫn này là ảnh có sẵn hoặc bằng chứng đã kiểm trên website.

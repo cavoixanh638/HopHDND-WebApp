@@ -12,6 +12,7 @@ vi.mock('firebase/auth',()=>({
   getAuth:h.getAuth.mockImplementation(()=>h.auth),
   initializeAuth:h.getAuth.mockImplementation(()=>h.auth),
   indexedDBLocalPersistence:{},browserLocalPersistence:{},inMemoryPersistence:{},
+  setPersistence:vi.fn().mockResolvedValue(undefined),signOut:vi.fn().mockResolvedValue(undefined),
   signInAnonymously:h.signIn.mockImplementation(async()=>({user:{uid:'guest'}})),
   connectAuthEmulator:vi.fn()
 }));
@@ -44,8 +45,7 @@ describe('Firebase cold-start warmup',()=>{
     h.signIn.mockReturnValue(new Promise(resolve=>resolveSign=resolve));
     const boot=await import('../src/state/firebase-boot');
     const first=boot.startFirebaseWarmup();
-    await Promise.resolve();await Promise.resolve();
-    expect(h.signIn).toHaveBeenCalledTimes(1);
+    await vi.waitFor(()=>expect(h.signIn).toHaveBeenCalledTimes(1));
     const controllerAttempt=boot.ensureGuestAuth(h.auth as never);
     expect(h.signIn).toHaveBeenCalledTimes(1);
     resolveSign(undefined);

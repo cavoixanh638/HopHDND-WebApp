@@ -3,7 +3,8 @@ import {createDemoItems} from '../src/data/demo-items';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {normalizeSearch} from '../src/domain/search';
 import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,compactFilterText,
-  activeCompactPairs,compactVisibleColumns,readCompactDisplay,writeCompactDisplay}
+  activeCompactPairs,compactVisibleColumns,readCompactDisplay,writeCompactDisplay,toggleCompactOption,
+  readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay}
   from '../src/features/items/compact-columns';
 
 afterEach(()=>vi.unstubAllGlobals());
@@ -90,6 +91,60 @@ describe('Optional compact projection remains read-only presentation',()=>{
     vi.stubGlobal('localStorage',{getItem:(key:string)=>values.get(key)??null});
     expect(readCompactDisplay('old-merge').roomSpecialist).toBe(false);
   });
+  it('can display all four newly requested compact groups without losing source fields',()=>{
+    const source=defaultItemLayout().columns;
+    const prefs={...DEFAULT_COMPACT_DISPLAY,contentDetails:true,partyTogether:true,
+      councilTogether:true,teamTogether:true};
+    const groups=activeCompactPairs(source,prefs);
+    const shown=compactVisibleColumns(source,prefs);
+    expect(groups.map(g=>g.anchor)).toEqual(['content','partyLevel','progressBuild','room']);
+    expect(groups.flatMap(g=>g.hiddenFields)).toEqual([
+      'type','department','progressParty','progressCouncil','specialist','ubndLeader','vpLeader'
+    ]);
+    expect(shown).toHaveLength(8);
+    expect(source).toHaveLength(15);
+    expect(shown.find(c=>c.key==='content')?.label).toContain('Sở');
+    expect(shown.find(c=>c.key==='room')?.label).toContain('Lãnh đạo');
+    const item={...createDemoItems(1)[0],content:'Dự thảo',department:'Sở Y tế',type:'QPPL',
+      partyLevel:'Ban Thường vụ',progressParty:'Đã gửi ĐU',progressBuild:'Sở chưa trình',
+      progressCouncil:'VP đang thực hiện',ubndLeader:'PCT Trần Văn A',
+      vpLeader:'PCVP Nguyễn Văn B',room:'Phòng Tổng hợp',specialist:'Lê Minh H'};
+    for(const [anchor,expected] of [
+      ['content',['Dự thảo','Sở Y tế','QPPL']],
+      ['partyLevel',['Ban Thường vụ','Đã gửi ĐU']],
+      ['progressBuild',['Sở chưa trình','VP đang thực hiện']],
+      ['room',['PCT Trần Văn A','PCVP Nguyễn Văn B','Phòng Tổng hợp','Lê Minh H']]
+    ] as const){
+      const text=normalizeSearch(compactFilterText(item,anchor,groups));
+      for(const term of expected)expect(text).toContain(normalizeSearch(term));
+    }
+    expect(item.department).toBe('Sở Y tế');
+  });
+  it('resolves overlapping options without hiding an anchor or duplicating fields',()=>{
+    const old={...DEFAULT_COMPACT_DISPLAY,leadersTogether:true,roomSpecialist:true,
+      typeInContent:true};
+    const content=toggleCompactOption(old,'contentDetails',true);
+    expect(content.contentDetails).toBe(true);
+    expect(content.typeInContent).toBe(false);
+    const team=toggleCompactOption(content,'teamTogether',true);
+    expect(team.teamTogether).toBe(true);
+    expect(team.leadersTogether).toBe(false);
+    expect(team.roomSpecialist).toBe(false);
+    expect(activeCompactPairs(defaultItemLayout().columns,team).map(g=>g.anchor))
+      .toEqual(['content','room']);
+    const separate=toggleCompactOption(team,'roomSpecialist',true);
+    expect(separate.teamTogether).toBe(false);
+    expect(separate.roomSpecialist).toBe(true);
+    expect(activeCompactPairs(defaultItemLayout().columns,separate).map(g=>g.anchor))
+      .toEqual(['content','room']);
+  });
+  it('only merges new groups if every source column is visible',()=>{
+    const cols=defaultItemLayout().columns.filter(c=>c.key!=='vpLeader');
+    const prefs={...DEFAULT_COMPACT_DISPLAY,teamTogether:true,partyTogether:true};
+    const groups=activeCompactPairs(cols,prefs);
+    expect(groups.map(group=>group.anchor)).toEqual(['partyLevel']);
+    expect(compactVisibleColumns(cols,prefs).some(c=>c.key==='ubndLeader')).toBe(true);
+  });
   it('persists independent boolean choices per local source with safe fallback',()=>{
     const values=new Map<string,string>();
     vi.stubGlobal('localStorage',{getItem:(k:string)=>values.get(k)??null,
@@ -100,4 +155,42 @@ describe('Optional compact projection remains read-only presentation',()=>{
     values.set('hdnd.compact-display.v1:file-A','{invalid json');
     expect(readCompactDisplay('file-A')).toEqual(DEFAULT_COMPACT_DISPLAY);
   });
+  it('isolates browser-only viewing choices per Firebase UID and source without touching shared layout',()=>{
+    const values=new Map<string,string>();
+    const writes:string[]=[];
+    vi.stubGlobal('localStorage',{
+      getItem:(key:string)=>values.get(key)??null,
+      setItem:(key:string,value:string)=>{writes.push(key);values.set(key,value);},
+      removeItem:(key:string)=>{writes.push(key);values.delete(key);}
+    });
+    const a='viewer-compact:pages:primary:firebase-uid-A';
+    const b='viewer-compact:pages:primary:firebase-uid-B';
+    const otherSource='viewer-compact:pages:sheets:mock:firebase-uid-A';
+    expect(readPersonalCompactDisplay(a)).toBeNull();
+    const next=toggleCompactOption(DEFAULT_COMPACT_DISPLAY,'contentDetails',true);
+    expect(writePersonalCompactDisplay(a,next)).toBe(true);
+    expect(readPersonalCompactDisplay(a)).toEqual(next);
+    expect(readPersonalCompactDisplay(b)).toBeNull();
+    expect(readPersonalCompactDisplay(otherSource)).toBeNull();
+    expect(writes).toEqual(['hdnd.viewer-compact.v1:'+a]);
+    expect(defaultItemLayout().compactDisplay?.contentDetails).toBe(false);
+    expect(clearPersonalCompactDisplay(a)).toBe(true);
+    expect(readPersonalCompactDisplay(a)).toBeNull();
+  });
+  it('rejects corrupt browser-only prefs, and never requires Firebase/network access',()=>{
+    const map=new Map<string,string>([
+      ['hdnd.viewer-compact.v1:x','{"contentDetails":true}']
+    ]);
+    vi.stubGlobal('localStorage',{
+      getItem:(key:string)=>map.get(key)??null,
+      setItem:()=>{throw new Error('blocked');},
+      removeItem:()=>{throw new Error('blocked');}
+    });
+    expect(readPersonalCompactDisplay('x')).toBeNull();
+    expect(writePersonalCompactDisplay('x',DEFAULT_COMPACT_DISPLAY)).toBe(false);
+    expect(clearPersonalCompactDisplay('x')).toBe(false);
+    map.set('hdnd.viewer-compact.v1:x','not-json');
+    expect(readPersonalCompactDisplay('x')).toBeNull();
+  });
+
 });

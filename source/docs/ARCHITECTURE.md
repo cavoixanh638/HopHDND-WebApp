@@ -1,3 +1,17 @@
+## QUYẾT ĐỊNH KIẾN TRÚC ƯU TIÊN — Firebase duy nhất sau cutover (25/10/2026)
+[Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md): tương lai `App → FirebaseRepository → hdnd/items` là **đường nghiệp vụ duy nhất** cho bảng/báo cáo/thay đổi. Không duy trì kết nối GViz/Excel/Sheets hoặc mirror thành nguồn sau chuyển. Công cụ nhập mirror của PR #71 chỉ hỗ trợ **nạp ban đầu một lần khi admin duyệt dữ liệu cuối cùng**. Nhân viên vẫn sử dụng Sheet hiện tại trong thời gian phát triển; không cần so Sheet và mirror liên tục để kiểm tra tính năng. Các cảnh báo 55/57 được chuyển sang lịch sử, **không chặn công việc kỹ thuật**.
+
+---
+
+## Kiến trúc đích 25/10/2026 — Firebase authoritative và phiên sửa độc quyền (DRAFT, chưa phát hành)
+- PR #71: `App → FirebaseRepository → hdnd/items` (realtime `onValue`, transactional CAS, 50 audit slots/record). Admin chọn `dataSource=primary` **sau** khi import mirror một lần, kiểm từng dòng và giá trị; chế độ này **không cần** link Sheets/GViz để đọc nghiệp vụ.
+- PR #72: `CellEditSessionManager` → `hdnd/editLocks/recordId/field` (lease token, tab session, expiredAt, kind); tất cả `ItemList`, `ReportDetailGrid`, dropdown, inline, input, modal phải giữ cùng khóa. Mọi ghi phải mang edit proof và bị server kiểm `permissions`, `freezeControl` và TTL.
+- Admin → `freezeControl` (OPEN/DRAINING/FROZEN) → `freezeReceipts/epoch` (số dòng + hash readback sau đóng băng). `editingLocked` trước đây chỉ dừng sửa của khách, không tương đương snapshot. Server rules ứng viên nằm ở `firebase/database.exclusive-candidate.rules.json`, không phải `database.rules.json` của Pages cũ.
+- **Giới hạn kiến trúc chưa nghiệm thu:** cơ chế tự chốt hết hạn trong PR #72 cần tab admin hoạt động; chưa có Cloud Function/background coordinator. Khi admin đóng tab ở DRAINING phải đăng nhập lại kiểm tra/hoàn tất; không hứa tự hoàn thành khi không ai online.
+- Nguồn chuẩn: [Quy trình chuyển nguồn/GO-NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md); xem `docs/decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md` và `docs/operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md`.
+
+---
+
 # ARCHITECTURE — Kiến trúc ứng dụng
 
 > **Cách đọc:** phần “Pages 0.7.0 — Sheets là nguồn chính” đầu tiên là lựa chọn hiện hành; các phần có nhãn “đề xuất”, “legacy”, “giai đoạn” hoặc mô tả phiên bản trước là bối cảnh lịch sử, không phải bằng chứng triển khai thực tế. Schema/cột/ID chi tiết thuộc [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md); các thao tác build, rollback, khôi phục và ứng cứu thuộc [VAN_HANH](VAN_HANH.md). Trạng thái chạy thật tại [CURRENT_STATE](CURRENT_STATE.md).

@@ -37,6 +37,8 @@ import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
 import {migrateMirrorToPrimary} from '../data/firebase-primary-bootstrap';
+import {CellEditSessionManager,type EditorKind} from '../data/cell-edit-leases';
+import {assertTransitionBaseline,type TransitionRowChange} from '../data/transition-import';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
@@ -73,6 +75,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
         :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
     :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
+  const leaseManager=useMemo(()=>firebase&&selectedSource==='primary'&&!comparison
+    ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null)
+    :undefined,[firebase?.database,firebase?.user?.uid,selectedSource,comparison]);
+  useEffect(()=>()=>{if(leaseManager)void leaseManager.dispose();},[leaseManager]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
@@ -97,7 +103,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // gates. No provisional Excel request while the admin config is pending.
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
   const canStartSource=sourceReady&&compareReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
-  const workspace = useWorkspace(repository, sourceKey,canStartSource);
+  const workspace = useWorkspace(repository, sourceKey,canStartSource,leaseManager);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
   // Do not silently switch the protocol or bypass Firebase authentication.
@@ -159,18 +165,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     firebaseEditRevision.current=updated.revision;
     setLayoutMessage(next==='primary'?'Đã chuyển sang Firebase Database chính, cập nhật realtime.':next==='database'?'Đã chọn bản sao dữ liệu Excel trong Database.':'Đã chọn nguồn Excel dự phòng.');
   };
-  const bootstrapPrimary=async()=>{
-    if(!firebase?.isAdmin||!firebase.connected||common.status!=='ready'||!firebase.profile)
-      throw new Error('Cần tài khoản quản trị đã kết nối và cấu hình Firebase được xác nhận.');
-    if(comparison||dirtyCount>0||workspace.protectedRecovery)
-      throw new Error('Có dữ liệu đang sửa hoặc bản nháp cần đối chiếu. Không được tự động chuyển nguồn.');
-    const result=await migrateMirrorToPrimary(firebase.database,firebase.user,configured);
-    const verified=await new FirebaseRepository(firebase.database,()=>firebase.user,()=>firebase.permissions).list();
-    if(verified.length!==result.importedCount)throw new Error('Số dòng Database chưa khớp; chưa đổi nguồn.');
-    const updated=await firebase.common.save('dataSource','primary',firebase.profile.revision);
-    firebaseEditRevision.current=updated.revision;
-    setLayoutMessage(`Đã nhập và kiểm tra ${result.importedCount} nội dung trên Firebase chính. Từ nay không đọc dữ liệu từ link Excel trong chế độ này.`);
-  };
+  // Production migration is not exposed as a one-click UI operation:
+  // the historical Firebase mirror might be stale while staff are still
+  // making edits elsewhere. Use a final approved, frozen source and the
+  // documented operator cutover procedure only.
   const [sourceDiagnostic,setSourceDiagnostic]=useState('');
   const [viewerLabel,setViewerLabel]=useState('');
   useEffect(()=>{let active=true;setSourceDiagnostic('');setViewerLabel('');if(!isDemo&&isGoogleHost())void googleCall('getDashboardSourceStatus',configured).then(value=>{const v=value as {reason?:unknown;actorLabel?:unknown};if(active&&typeof v?.reason==='string')setSourceDiagnostic(v.reason);if(active&&typeof v?.actorLabel==='string')setViewerLabel(v.actorLabel);}).catch(()=>{});return()=>{active=false;};},[configured.url,isDemo]);
@@ -179,12 +177,83 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const storedCatalog = useMemo(()=>loadCatalog(sourceKey,workspace.items),[sourceKey,workspace.items]);
   const [catalogState,setCatalogState]=useState<{source:string;config:CatalogConfig}|null>(null);
   const catalog=useMemo(()=>common.config&&!isDemo?mergeCatalogItems(common.config.catalogs,workspace.items):catalogState?.source===sourceKey?catalogState.config:storedCatalog,[common.config,isDemo,workspace.items,catalogState,sourceKey,storedCatalog]);
-  if(repository instanceof FirebaseRepository)repository.checkAssignment=item=>assignmentIssue(item,catalog)??'';
+  if(repository instanceof FirebaseRepository){repository.checkAssignment=item=>assignmentIssue(item,catalog)??'';repository.leaseManager=leaseManager;}
   const saveCatalogConfig=async(next:CatalogConfig)=>{if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('catalogs',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('');return;}if(!isDemo&&!privateTest){await common.save('catalogs',next);setLayoutMessage('');}else{if(!saveCatalog(sourceKey,next))throw new Error('Không lưu được danh mục trên máy. Nháp được giữ.');setCatalogState({source:sourceKey,config:next});setLayoutMessage('');}};
+  // Manual transitional import: never runs during bootstrap or background polling.
+  // A source's displayCode is matched to an existing Firebase row; every changed
+  // field still needs its own server lease and normal CAS/audit write.
+  const applyTransition=async(entries:TransitionRowChange[]):Promise<number>=>{
+    if(!firebase?.isAdmin||!firebase.connected||!firebase.user||selectedSource!=='primary'||
+      !(repository instanceof FirebaseRepository)||!leaseManager||
+      firebase.freezeControl?.mode!=='OPEN'||common.status!=='ready')
+      throw new Error('Chỉ quản trị viên được cập nhật khi Firebase chính đang kết nối và mở sửa.');
+    if(workspace.busy||workspace.protectedRecovery||Object.keys(workspace.drafts).length)
+      throw new Error('Còn dữ liệu/nháp chưa lưu. Hãy xử lý xong trước khi cập nhật từ nguồn chuyển tiếp.');
+    if(entries.length<1||entries.length>20||new Set(entries.map(e=>e.recordId)).size!==entries.length)
+      throw new Error('Mỗi lần chỉ cập nhật 1–20 hồ sơ duy nhất đã đối chiếu.');
+    let confirmed=0;
+    for(const entry of entries){
+      const acquired:EditableField[]=[];
+      try{
+        if(!firebaseLive.current?.connected||firebaseLive.current?.freezeControl?.mode!=='OPEN')
+          throw new Error('Firebase mất kết nối hoặc đã khóa/chốt dữ liệu.');
+        const live=(await repository.list()).find(row=>row.recordId===entry.recordId);
+        if(!live)throw new Error('Hồ sơ không còn trên Firebase: '+entry.displayCode);
+        assertTransitionBaseline(entry,live);
+        for(const field of entry.fields){
+          const kind:EditorKind=field==='content'||field==='note'||field==='specificProgress'
+            ?'long':field==='specialist'?'search':field.startsWith('progress')?'status':'short';
+          await leaseManager.acquire(entry.recordId,field,kind);
+          acquired.push(field);
+        }
+        const patch:import('../../shared/types').Patch={
+          recordId:entry.recordId,sourceCode:entry.displayCode,
+          baseRevision:live.revision,operationId:crypto.randomUUID(),
+          baseValues:Object.fromEntries(entry.fields.map(field=>[field,live[field]])),
+          changes:Object.fromEntries(entry.fields.map(field=>[field,entry.source[field]]))
+        };
+        const result=(await repository.save([patch]))[0];
+        if(!result?.ok)throw new Error(result?.message??'Firebase không xác nhận thao tác.');
+        const check=(await repository.list()).find(row=>row.recordId===entry.recordId);
+        if(!check||check.revision<=live.revision||
+          entry.fields.some(field=>check[field]!==entry.source[field]))
+          throw new Error('Đã gửi dữ liệu nhưng chưa xác nhận được bản đọc lại từ Firebase.');
+        confirmed++;
+      }catch(error){
+        throw new Error('Dừng ở hồ sơ '+entry.displayCode+'. Đã cập nhật và đọc lại thành công '+
+          confirmed+' hồ sơ trước đó; KHÔNG tự thử lại. Lý do: '+
+          (error instanceof Error?error.message:'lỗi kết nối/khóa ô')+
+          '. Hãy đọc mới dữ liệu rồi đối chiếu lại các hồ sơ còn lại.');
+      }finally{
+        // Never leave locks on a failed batch. finish/cancel only remove our own locks.
+        for(const field of acquired){
+          try{await leaseManager.cancel(entry.recordId,field);}catch{}
+        }
+      }
+    }
+    return confirmed;
+  };
   const saveData = async () => { const issue = workspace.workingItems.filter(item => {const changes=workspace.drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item => assignmentIssue(item,catalog)).find(Boolean); if(issue){setLayoutMessage(issue);return false;} return workspace.save(); };
+  useEffect(()=>{
+    if(firebase?.freezeControl?.mode!=='DRAINING'||selectedSource!=='primary')return;
+    window.dispatchEvent(new Event('hdnd:drain-editors'));
+    const timer=window.setTimeout(()=>{void workspace.save();},1200);
+    return()=>window.clearTimeout(timer);
+  },[firebase?.freezeControl?.revision,selectedSource]);
   const updateDataDraft=(id:string,changes:Changes)=>{
+    if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
+      setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return;
+    }
+    if(leaseManager)Object.entries(changes).forEach(([field,value])=>{
+      leaseManager.preserveDraft(id,field as EditableField,value);
+      leaseManager.markPending(id,field as EditableField);
+    });
     if(firebase&&!firebase.isAdmin&&firebase.editingLocked){setLayoutMessage('Quản trị đã khóa chỉnh sửa trên WebApp. Bạn vẫn có thể xem và lọc dữ liệu.');return;}
-    if(firebase&&Object.keys(changes).some(field=>!firebase.canEdit(id,field as EditableField))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
+    if(firebase&&Object.keys(changes).some(field=>!(
+      firebase.canEdit(id,field as EditableField)||
+      (firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field as EditableField)&&
+       mayEdit(firebase.permissions,id,field as EditableField,firebase.isAdmin))
+    ))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
     workspace.update(id,changes);
   };
   const storedLayout = useMemo(() => loadReportLayout(sourceKey), [sourceKey]);
@@ -396,18 +465,22 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </>}
       {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
-      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} 
+      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&(!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={isFirebase} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} 
         onPersistViewerLayout={isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline);}
-          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>firebase!.canEdit(id,field) &&
-        (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} onHistory={(item)=>setHistory({item})}
+          :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={anonymousVisitor} permissions={isFirebase&&firebase!.isAdmin?firebase!.permissions:undefined} onSavePermissions={isFirebase&&firebase!.isAdmin?firebase!.savePermissions:undefined} onReloadPermissions={isFirebase&&firebase!.isAdmin?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>(firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field))) &&
+        (page!=='items'||mayEdit(firebase!.permissions,id,field,false)):undefined} allowLayout={isFirebase?canCustomize:true} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} leaseManager={leaseManager} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={page === 'items-customize'||page==='items-permissions'} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
-      {page==='connection'&&isFirebase&&<FirebasePanel dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={bootstrapPrimary} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
-      {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
+      {page==='connection'&&isFirebase&&<FirebasePanel userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
+      {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false}
+         transitionSheetUrl={configured.url}
+         onTransitionApply={selectedSource==='primary'?applyTransition:undefined}
+         transitionDisabled={workspace.busy||dirtyCount>0||workspace.protectedRecovery||!firebase!.connected||firebase!.freezeControl?.mode!=='OPEN'||common.status!=='ready'}
+         onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức. Hãy dùng cập nhật chuyển tiếp có đối chiếu khi Firebase đã được duyệt là nguồn chính.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
@@ -415,9 +488,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       selectedIds={selection.items.map(item=>item.recordId)}
       items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
-      readOnlyViewer={isFirebase&&!firebase!.isAdmin}
-      canEditCell={(id,field)=>!firebase||firebase.canEdit(id,field)&&mayEdit(firebase.permissions,id,field,false)}
-      onUpdate={updateDataDraft} onKeepDraft={workspace.keepDraft}
+      readOnlyViewer={isFirebase&&!firebase!.isAdmin&&!(selectedSource==='primary'&&guestMayEdit)}
+      canEditCell={(id,field)=>!firebase||((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
+      onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
       onHistory={anonymousVisitor?undefined:(item)=>setHistory({item})}
       onCellHistory={(item,field)=>setHistory({item,field})}
       onOpenFullList={()=>{setSelection(null);setPage('items');}}

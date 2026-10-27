@@ -8,12 +8,16 @@ import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const appRoot=resolve('dist-pages-test');
+const qaRoot=resolve('dist-compact-qa');
 const html=readFileSync(resolve(appRoot,'index.html'));
 const server=createServer((req,res)=>{
   try{
     const pathname=new URL(req.url??'/', 'http://127.0.0.1').pathname;
-    const file=pathname==='/'?resolve(appRoot,'index.html'):resolve(appRoot,'.'+pathname);
-    if(!file.startsWith(appRoot+'/')&&!file.startsWith(appRoot+'\\'))throw Error('Invalid path');
+    const qa=pathname.startsWith('/compact-qa/');
+    const root=qa?qaRoot:appRoot;
+    const localPath=qa?pathname.slice('/compact-qa'.length):pathname;
+    const file=localPath==='/'?resolve(root,qa?'compact-qa.html':'index.html'):resolve(root,'.'+localPath);
+    if(!file.startsWith(root+'/')&&!file.startsWith(root+'\\'))throw Error('Invalid path');
     const meta=statSync(file);
     if(!meta.isFile())throw Error('Not a file');
     const mime=file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
@@ -565,7 +569,8 @@ try{
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const gap=viewport.getBoundingClientRect().top-tabs.bottom;
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
-    return {ok:aligned&&gap<115&&!status&&!cardHeader,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader};
+    const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    return {ok:aligned&&gap<155&&!status&&!cardHeader&&!!localMenu,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const mainSectionCards=await evaluate(`(()=>{
@@ -1058,10 +1063,15 @@ try{
   console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
 
 
-  // Compact column layout is an ADMIN shared setting. Viewer must have no
-  // local control to diverge from the authoritative profile.
-  const compactGuestBlocked=await evaluate(`!document.querySelector('.compact-columns-menu')`);
-  if(!compactGuestBlocked)throw Error('Guest must not see or edit compact column options');
+  // Guest may change local-only grouping but must never receive admin layout controls.
+  const compactGuestSafe=await evaluate(`(()=>{
+    const guest=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    return !!guest&&guest.textContent.includes('Gộp cột')&&
+      !document.querySelector('.admin-column-arrange-hint')&&
+      !document.querySelector('.item-column-panel')&&
+      !document.querySelector('.status-palette-trigger');
+  })()`);
+  if(!compactGuestSafe)throw Error('Guest compact view must remain local-only');
   // The duplicate top search toolbar is intentionally removed; every column has its own filter.
   if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
@@ -1655,6 +1665,185 @@ try{
   if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
+
+  // Open the real ItemList component in a standalone, synthetic-only QA mount.
+  // This is not the deployed admin user journey; it verifies actual production
+  // merged-cell JSX + CSS, filters and options without live credentials.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelector('[data-qa=compact-real-itemlist] .item-heading-row')!==null",
+    'Real ItemList compact QA did not mount');
+  const desktopGroups=await evaluate(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cols=[...document.querySelectorAll('.item-heading-row th')];
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')][0];
+    const anchor=key=>row?.querySelector('td[data-col-key="'+key+'"]');
+    const content=anchor('content'),party=anchor('partyLevel'),
+      council=anchor('progressBuild'),team=anchor('room');
+    const keys=cols.map(th=>th.getAttribute('data-column-key'));
+    const tagText=el=>[...el?.querySelectorAll('.compact-pair-tag')??[]].map(t=>t.textContent.trim());
+    const count=cols.length;
+    return {ok:count===8&&new Set(keys).size===8&&
+      !keys.some(k=>['type','department','progressParty','progressCouncil','ubndLeader','vpLeader','specialist'].includes(k))&&
+      !!content?.textContent.includes('Sở mẫu A')&&content.textContent.includes('QPPL')&&
+      !!party?.textContent.includes('Ban Chấp hành')&&
+      !!council?.textContent.includes('Sở chưa trình')&&
+      !!team?.textContent.includes('Phòng mẫu 1')&&
+      tagText(party).join('|')==='Cấp|Tiến độ'&&
+      tagText(council).join('|')==='Xây dựng|Ban hành'&&
+      tagText(team).join('|')==='UBND|VP|Phòng|CV'&&
+      !table.querySelector('.editable-cell')&&
+      !!document.querySelector('.compact-columns-menu'),
+      count,keys,teamTags:tagText(team),partyTags:tagText(party),
+      councilTags:tagText(council)};
+  })()`);
+  if(!desktopGroups.ok)throw Error('Real ItemList four-way compact desktop regression: '+JSON.stringify(desktopGroups));
+
+  // The menu belongs to the real ItemList, and conflicting options must not
+  // hide source data or leave a duplicate field.
+  const menuOpened=await evaluate(`(()=>{
+    const menu=document.querySelector('.compact-columns-menu');
+    if(!menu)return false;menu.open=true;return !!menu.querySelector('.compact-columns-options');
+  })()`);
+  if(!menuOpened)throw Error('Compact menu missing from admin QA layout');
+  const compactMenuDesktop=await evaluate(`(()=>{
+    const popup=document.querySelector('.compact-columns-options');
+    const rect=popup?.getBoundingClientRect();
+    return {ok:!!popup&&popup.querySelectorAll('input[type="checkbox"]').length===9&&
+      popup.querySelectorAll('.compact-more-options').length===2&&
+      popup.querySelectorAll(':scope > label').length===4&&
+      [...popup.querySelectorAll('.compact-more-options')].every(group=>!group.open)&&
+      rect.left>=0&&rect.right<=innerWidth&&rect.height<510,
+      rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
+  })()`);
+  if(!compactMenuDesktop.ok)throw Error('Compact desktop menu geometry regression: '+JSON.stringify(compactMenuDesktop));
+  const groupShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-desktop-pass.png',Buffer.from(groupShot.data,'base64'));
+
+  const switchToLeaders=await evaluate(`(()=>{
+    const legacy=document.querySelector('.compact-more-options');
+    if(legacy)legacy.open=true;
+    const boxes=[...document.querySelectorAll('.compact-columns-options label')];
+    const leader=boxes.find(el=>el.textContent.includes('Lãnh đạo UBND + VP'));
+    const input=leader?.querySelector('input');
+    if(!input)return false;input.click();return true;
+  })()`);
+  if(!switchToLeaders)throw Error('Legacy leader merge switch missing');
+  await eventually(`document.querySelectorAll('.item-heading-row th').length===10`,
+    'Switching from four-way team to leader pair should restore separate room and specialist');
+  const restored=await evaluate(`(()=>{
+    const cols=[...document.querySelectorAll('.item-heading-row th')].map(th=>th.dataset.columnKey);
+    return cols.includes('room')&&cols.includes('specialist')&&
+      cols.includes('vpLeader')&&!cols.includes('ubndLeader');
+  })()`);
+  if(!restored)throw Error('Legacy leader pair must restore room and specialist columns');
+  const switchBack=await evaluate(`(()=>{
+    const team=[...document.querySelectorAll('.compact-columns-options label')]
+      .find(el=>el.textContent.includes('UBND + VP + Phòng + CV'));
+    const input=team?.querySelector('input');
+    if(!input)return false;input.click();return true;
+  })()`);
+  if(!switchBack)throw Error('Four-way team merge switch missing');
+  await eventually(`document.querySelectorAll('.item-heading-row th').length===8`,
+    'Restoring four-way team merge after overlapping option failed');
+
+  await evaluate("document.querySelector('.compact-more-options')?.removeAttribute('open')");
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  const mobileGroups=await evaluate(`(()=>{
+    const menu=document.querySelector('.compact-columns-menu');
+    if(menu)menu.open=true;
+    const popup=document.querySelector('.compact-columns-options');
+    const frame=document.querySelector('.item-table-scroll');
+    const rect=popup?.getBoundingClientRect();
+    const body=document.scrollingElement;
+    const menuLabels=[...popup?.querySelectorAll('label')??[]];
+    return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
+      rect.height<innerHeight-40&&getComputedStyle(popup).overflowY==='auto'&&
+      menuLabels.length===9&&
+      !!frame&&frame.scrollWidth>frame.clientWidth&&
+      body.scrollWidth<=innerWidth+4,
+      innerWidth,menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
+      labels:menuLabels.length,tableScrollWidth:frame?.scrollWidth,viewportWidth:frame?.clientWidth,
+      bodyScrollWidth:body?.scrollWidth};
+  })()`);
+  if(!mobileGroups.ok)throw Error('Real ItemList compact 390px menu/table regression: '+JSON.stringify(mobileGroups));
+  const mobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-mobile-pass.png',Buffer.from(mobileShot.data,'base64'));
+
+  // QA-only in-memory editor: one field of the merged Thành ủy cell must be
+  // independently editable without touching the other field or any backend.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel] .cell-picker-trigger')!==null",
+    'In-memory grouped source editor missing');
+  const editOpened=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key="partyLevel"]');
+    const triggers=cell?.querySelectorAll('.cell-picker-trigger');
+    if(!triggers||triggers.length!==2)return false;
+    triggers[0].click();return true;
+  })()`);
+  if(!editOpened)throw Error('Merged Thành ủy field must expose separate Cấp and Tiến độ controls');
+  await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
+    'Source field editor did not open');
+  const selected=await evaluate(`(()=>{
+    const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
+    const next=choices.find(b=>b.textContent?.trim()==='BTV');
+    if(!next)return false;next.click();return true;
+  })()`);
+  if(!selected)throw Error('Test option BTV missing from the real grouped CellPicker');
+  await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
+    'Field-level in-memory grouped edit did not update the selected source field');
+  const isolatedEdit=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key="partyLevel"]');
+    const values=[...cell?.querySelectorAll('.compact-pair-lines > div')??[]]
+      .map(div=>div.textContent?.trim()??'');
+    return {ok:values.length===2&&values[0].includes('BTV')&&
+      values[1].includes('Sở chưa trình'),
+      values};
+  })()`);
+  if(!isolatedEdit.ok)throw Error('Editing Cấp must not change Tiến độ: '+JSON.stringify(isolatedEdit));
+
+  // Browser-only personal compact view must not touch the Firebase shared layout.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("document.querySelector('.guest-compact-menu-bar .compact-columns-menu')!==null",
+    'Firebase guest compact menu missing');
+  if(await evaluate("document.querySelectorAll('.item-heading-row th').length")!==8)
+    throw Error('Guest must start with inherited 8-column layout');
+  const guestToggle=await evaluate(`(()=>{
+    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    menu.open=true;
+    const label=[...menu.querySelectorAll('label')].find(el=>el.textContent.includes('Loại VB + Sở → Nội dung'));
+    const box=label?.querySelector('input');if(!box||!box.checked)return false;
+    box.click();return true;
+  })()`);
+  if(!guestToggle)throw Error('Guest cannot toggle personal Content/Sở grouping');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===10",
+    'Guest disabling Content/Sở group must restore the two source columns');
+  const guestSaved=await evaluate(`(()=>{
+    const pref=JSON.parse(localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')||'null');
+    return !!pref&&pref.contentDetails===false&&pref.partyTogether&&pref.councilTogether&&pref.teamTogether;
+  })()`);
+  if(!guestSaved)throw Error('Guest preferences not saved locally by UID');
+  const guestScreenshot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestScreenshot.data,'base64'));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===10",
+    'Guest preference did not survive browser reload');
+  const guestReset=await evaluate(`(()=>{
+    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    if(!menu)return false;menu.open=true;
+    const reset=[...menu.querySelectorAll('button')].find(b=>b.textContent.includes('Khôi phục cách hiển thị chung'));
+    if(!reset)return false;reset.click();return true;
+  })()`);
+  if(!guestReset)throw Error('Guest reset control is missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===8",
+    'Guest reset must restore the unchanged shared layout');
+  if(!await evaluate("localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')===null"))
+    throw Error('Guest local reset did not clear isolated preference');
+  console.log('COMPACT_GUEST_LOCAL_ONLY_RELOAD_RESET_PASS');
+
+  console.log('COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
+  console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}

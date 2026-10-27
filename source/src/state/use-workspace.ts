@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Changes, Item, Patch } from '../../shared/types';
 import type { Repository } from '../data/repository';
 import { updateDraft } from '../domain/items';
+import type {CellEditSessionManager} from '../data/cell-edit-leases';
 import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-checkpoints';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {markStartup} from '../data/startup-timings';
 
-export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true) {
+export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true,leaseManager?:CellEditSessionManager) {
   const [items, setItems] = useState<Item[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Patch>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -136,6 +137,11 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
       if(!Array.isArray(results)||results.some(r=>!expected.has(r.recordId)||seen.has(r.recordId)||!seen.add(r.recordId)))throw new Error('Phản hồi lưu không khớp yêu cầu; nháp được giữ.');
       const saved = results.filter(result => result.ok && result.item&&result.item.recordId===result.recordId&&Object.entries(expected.get(result.recordId)!.changes).every(([key,value])=>result.item![key as keyof Item]===value));
       const confirmed = new Map(saved.map(result => [result.recordId, result.item!]));
+      if(leaseManager)for(const result of saved){
+        const patch=expected.get(result.recordId);
+        if(patch)for(const field of Object.keys(patch.changes))
+          void leaseManager.finish(result.recordId,field as import('../../shared/types').EditableField);
+      }
       setItems(previous => previous.map(item => {const next=confirmed.get(item.recordId);return next&&next.revision>=item.revision?next:item;}));
       setDrafts(previous => {
         const next={...previous};

@@ -156,3 +156,20 @@ describe('Quy tắc tô ô theo từ khóa',()=>{
     expect(()=>validateItemLayout(bad)).toThrow(/quy tắc/);
   });
 });
+
+describe('Legacy compact display settings',()=>{
+  it('accepts old Firebase layout flags and defaults new merge switches to off',()=>{
+    const old=defaultItemLayout();
+    old.compactDisplay={
+      typeInContent:true,leadersTogether:true,roomSpecialist:false,
+      shortSpecialist:false,shortLeaders:false,
+    } as NonNullable<typeof old.compactDisplay>;
+    const upgraded=validateItemLayout(old);
+    expect(upgraded.compactDisplay).toMatchObject({
+      typeInContent:true,leadersTogether:true,
+      contentDetails:false,partyTogether:false,councilTogether:false,teamTogether:false
+    });
+    const invalid={...old,compactDisplay:{...upgraded.compactDisplay,partyTogether:'yes'}};
+    expect(()=>validateItemLayout(invalid)).toThrow(/gộp cột/);
+  });
+});

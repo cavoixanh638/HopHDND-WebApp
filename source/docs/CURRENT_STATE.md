@@ -1,3 +1,147 @@
+## QUYẾT ĐỊNH GIAO THỜI — 27/10/2026: cho phép cập nhật thủ công từ Sheets/Excel sang Firebase
+
+Theo yêu cầu mới nhất của chủ dự án: **chưa ngừng sử dụng Google Sheets**, đồng thời phát triển một luồng cập nhật chủ động từ **Google Sheets hoặc Excel .xlsx** vào Firebase. Đây là ngoại lệ chuyển tiếp đối với kế hoạch Firebase-only, **không phải đồng bộ nền vĩnh viễn**, không khôi phục Supabase (vẫn PAUSED). Tài liệu chi tiết: [FIREBASE_TRANSITIONAL_GOOGLE_EXCEL_IMPORT_2026-10-27.md](operations/FIREBASE_TRANSITIONAL_GOOGLE_EXCEL_IMPORT_2026-10-27.md).
+
+Đã triển khai trên Firebase PR #72 (chưa phát hành): màn hình Nhập/Xuất Excel có mô-đun cập nhật chuyển tiếp dành riêng quản trị khi Firebase chính đã được kích hoạt và chế độ sửa OPEN; chọn link Sheets hoặc tệp Excel A–O / mẫu WebApp, **xem đối chiếu 13 trường văn bản** trước khi chọn 1–20 hồ sơ, xác nhận bằng cụm từ bắt buộc, đọc lại Firebase trước thao tác, chiếm khóa ô, ghi CAS/audit qua FirebaseRepository, đọc lại sau server ACK. Giữ nguyên dữ liệu nếu mã trùng/thiếu, source blank, hồ sơ mới chưa khớp, revision nguồn đổi; không thay ID/STT, status rút, xóa/thêm dòng hoặc thiết lập Rules. Không tự đọc Sheets ở màn hình chính hoặc đồng bộ theo lịch. XLSX được tách tải trễ, không đưa vào bundle khởi động chính.
+
+**TRẠNG THÁI PHÁT HÀNH: HOLD.** Chỉ mã trên PR #72; chưa merge main, chưa thay GitHub Pages production, chưa ghi RTDB production và chưa chứng minh Cloud staging nhiều tài khoản. UI tính năng không bật khi chế độ còn đọc Excel/mirror, tránh ghi vào Firebase-primary chưa được phê duyệt. Kiểm thử tự động sẽ được xác nhận theo exact SHA trong GitHub Actions trước GO.
+
+---
+
+## 27/10/2026 — BẢN HTML XEM THỬ GỘP CỘT, KHÔNG CẦN CÀI ĐẶT
+
+Theo yêu cầu chủ dự án “làm đến khi tôi xem được”, nhánh Firebase PR #72 bổ sung **bản giao diện tương tác độc lập** của chính `ItemList` bằng dữ liệu mô phỏng: `source/compact-qa.html` → Vite `dist-compact-qa` → `node scripts/package-compact-qa.mjs` → `dist-compact-qa/HopHDND_GopCot_XemThu.html` (một HTML đóng gói CSS/JS, không cần máy chủ, không có bộ kết nối Firebase, không sửa Cloud). GitHub Actions `verify-source.yml` sau khi **browser smoke PASS** sẽ tạo artifact `hophdnd-compact-interactive-offline` để chủ dự án tải tệp HTML và mở trực tiếp bằng Chrome/Edge; liên kết lấy từ trang Actions run tương ứng PR #72.
+
+- Bản xem thử dùng **tập dữ liệu giả**, có menu 4 lựa chọn gộp (15→8 cột) và các tùy chọn khác; mở `HopHDND_GopCot_XemThu.html` offline để thao tác, không yêu cầu GitHub Desktop, npm, tài khoản Google hay Firebase.
+- Ảnh chụp thực Chrome desktop/mobile và chế độ người xem trong artifact `hophdnd-browser-smoke-preview`. Lưu ý QA phiên offline mặc định là mô phỏng quản trị; `?guest=1` được dùng khi chạy trong QA server để kiểm tra chế độ khách. Không diễn giải preview thành app production.
+- Bản HTML **không được tự động deploy GitHub Pages chính thức**, không merge PR #71/#72, không thay đổi Supabase, Firebase production hay dữ liệu thật. Release gate Firebase vẫn NO-GO chờ nghiệm thu nhiều tài khoản và backup/Rules.
+
+---
+
+## BỔ SUNG UI FIREBASE — GỘP CỘT CÁ NHÂN CHO NGƯỜI XEM (27/10/2026)
+
+Theo yêu cầu tiếp tục làm **trực tiếp trên GitHub**, đã tách phần hiển thị của bốn nhóm gộp cột khỏi quyền ghi bố cục chung:
+
+- Trong **Firebase Danh sách**, quản trị viên có quyền và callback lưu bố cục chung vẫn dùng thao tác cũ (ghi Firebase khi được phép); người xem/khách Firebase không có quyền bố cục chung được bật menu **Gộp cột** dạng **local-only**. Chọn/bỏ chọn chỉ ảnh hưởng UI của người dùng đó và lưu trong `localStorage` theo Firebase UID + nguồn; **không gọi Firebase write, không mở rộng ACL/quyền ô/lease**. Có nút **Khôi phục cách hiển thị chung** xóa lớp lựa chọn cá nhân để trở lại cấu hình do quản trị ban hành.
+- Giới hạn qua prop `allowPersonalCompact={isFirebase}`: không thay đổi hành vi của nguồn Google/Supabase; Supabase PAUSED. `ItemList.tsx`, `App.tsx`, `compact-columns.ts`, `item-frame.css` và QA synthetic đã cập nhật. Khi UID/nguồn thay đổi, đọc lại cấu hình riêng, không dùng nhầm lựa chọn của tài khoản khác. Trình duyệt chặn `localStorage` thì thao tác còn tác dụng trong phiên và cảnh báo không lưu.
+- Thêm unit tests lỗi storage/phân tách UID, bổ sung smoke Chrome trên **ItemList thật** với dữ liệu mô phỏng: khách tắt gộp Nội dung/Sở (8→10 cột), tải lại trang giữ lựa chọn, bấm khôi phục (10→8 cột) và xóa local override. Artifact ảnh `hophdnd-compact-guest-pass.png` được lưu trong `hophdnd-browser-smoke-preview` khi CI đạt. Không có bước QA nào gửi dữ liệu nghiệp vụ lên Firebase.
+- **Chưa hợp nhất vào `main`, chưa deploy Pages/Rules/RTDB production.** Giữ nguyên Firebase PR #71/#72 Draft vì release gate còn yêu cầu kiểm thử đa tài khoản thực và backup/Rules. Chức năng mới đã commit nhưng nghiệm thu thực tế trên Windows chưa được xác nhận.
+
+---
+
+## CHECKPOINT UI GỘP CỘT — CI / BROWSER PASS (27/10/2026)
+
+Bản **QA trực quan cuối đã được xem bằng ảnh desktop/mobile** và chạy tự động Chrome trên **component `ItemList` thật** với dữ liệu giả, không có kết nối Firebase thật; không liên quan trang Pages production. [Run #40380075664](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664) **SUCCESS**, ghi `COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS` và `COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS`: 8 cột hiển thị với 4 kiểu gộp, bốn dòng UBND–VP–Phòng–CV đúng nhãn; menu 9 lựa chọn trong 2 nhóm, hình học desktop 1600px + màn hẹp 390px đạt, thử chuyển lựa chọn cũ/mới rồi khôi phục không mất cột; test chỉnh một trường con giữ nguyên trường con khác. **Screenshot** trong artifact `hophdnd-browser-smoke-preview` (desktop, mobile, screenshot chung). [Firebase Emulator staging #40380075707](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075707) **SUCCESS**.
+
+Menu sau khi rà ảnh: **4 lựa chọn mới hiển thị ngay**, các gộp cũ và viết tắt tên thu vào hai nhóm tùy mở. Popup từ 560px xuống **379px** trên Chrome 1600px và 390px, giữ các thao tác và dữ liệu nguồn. Ảnh PNG desktop/mobile đã được tải và kiểm tra trực quan trong phiên ChatGPT; ghi nhận vẫn chưa phải kiểm chứng trực tiếp trên máy Windows của chủ dự án.
+
+Kết quả này là **kiểm thử tự động Chrome trên Linux với dữ liệu mô phỏng**, chưa phải QA trực quan do người dùng xác nhận trên Windows, chưa phải Cloud multiuser E2E hoặc duyệt triển khai. Supabase PAUSED, không chỉnh cấu hình/dữ liệu, chỉ phát triển Firebase PR #72; frontend website chính và RTDB production nguyên trạng.
+
+---
+
+## UI: Thêm 4 tùy chọn gộp cột — 27/10/2026 (Firebase PR #72)
+
+Đã sửa mã nguồn trên nhánh `feat/exclusive-cell-leases-admin-freeze-20261025`: **Loại VB + Sở vào Nội dung; Cấp + Tiến độ Thành ủy; Tiến độ trình HĐND xây dựng + ban hành; Lãnh đạo UBND + VP + Phòng + Chuyên viên**. Menu hiển thị chia nhóm `Gộp cột` / `Tên hiển thị`, giữ lựa chọn trước, tránh bật đè, không trộn các trường dữ liệu, nhãn rõ từng phần, tìm theo toàn bộ giá trị gốc và mỗi trường sửa theo quyền riêng. Bố cục Firebase lưu cũ được mở rộng bốn flag mới mặc định tắt. Đã bổ sung test và xử lý kéo cột theo độ rộng nguồn khi gộp. **CI PASS:** [source #40376214201](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40376214201), [Firebase emulator #40376214430](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40376214430). Đây là thay đổi UI; chưa kiểm tra trực quan tại máy Windows, chưa triển khai website chính, chưa ghi RTDB production. [Đặc tả](FEATURES.md) · [Theo dõi test/UI](WORKBOARD.md).
+
+---
+
+## KẾT QUẢ HOST LAN 27/10/2026 — ĐÃ KẾT NỐI LIÊN MÁY, QUAY LẠI UI
+
+Người dùng xác nhận demo tại `localhost:8787` đã được máy thứ hai trong LAN cơ quan truy cập thành công (PASS **khả năng kết nối giữa hai máy**). Chưa đo đủ 60 phút/5 giây, chưa kiểm chứng độ trễ từ máy thứ hai và chưa chạy HopHDND thật trên host LAN; giao diện 5 dòng `DEMO-*` chỉ là dữ liệu giả. Không suy ra SLA 100%, khả năng chạy offline của Firebase, hoặc an toàn triển khai production. [Biên bản và cách tái sử dụng](operations/LAN_HOST_PILOT_2026-10-27.md).
+
+**Ưu tiên từ đây:** tạm lưu phương án LAN, **quay lại hoàn thiện UI WebApp HopHDND trên Firebase-only PR #72**. Không lấy mã trên nhánh Supabase và chưa tự deploy. Skill `ui-ux-pro-max` người dùng đã cài trên máy Windows, chỉ dùng hỗ trợ thiết kế khi chạy Codex; cần kiểm tra hiệu quả thực tế bằng ảnh/chạy browser và hồi quy.
+
+### Tiến độ UI Firebase PR #72 — 27/10/2026
+
+Đã chỉnh `src/features/items/CellPicker.tsx`, `InlineNoteEditor.tsx` và `cell-picker.css` để hiển thị phản hồi khi chờ cấp quyền sửa ô qua Firebase; nút chọn có `aria-busy`, thông báo dùng `role=status`. Đây là thay đổi UX cấp ô, **không** đổi quyền, lease, hợp đồng ghi, bảng báo cáo hoặc nguồn dữ liệu. Kiểm thử CI tại thay đổi UI **PASS**: [Verify HopHDND source #40372289275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40372289275) và [Verify isolated Firebase staging #40372289221](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40372289221). Đây là hồi quy tự động, chưa thay cho đánh giá trực quan trên Windows; chưa deploy production. [Theo dõi UI trong WORKBOARD](WORKBOARD.md).
+
+
+---
+
+## TRẠNG THÁI QUYẾT ĐỊNH MỚI 26/10/2026 — FIREBASE-ONLY
+
+[**Chỉ thị chính thức: Firebase-only, Supabase tạm dừng và giữ dự phòng**](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Phát triển tiếp trên Firebase PR #71 và #72; không tiếp tục nhánh tích hợp Firebase+Supabase PR #77 hay các PR Supabase #73/#75, không tự merge/deploy/copy/sync. Supabase staging hiện là bản sao cố định 55 hồ sơ của nguồn Firebase mirror, **không phải dữ liệu luôn mới**. Firebase production/WebApp đang phục vụ người dùng chưa được thay đổi bằng quyết định này; vẫn cần các kiểm thử/backup/Rules và phê duyệt phát hành. Các đoạn tài liệu cũ nói phát triển đồng thời 2 backend chỉ còn giá trị lịch sử.
+
+---
+
+## TRẠNG THÁI/PHẠM VI MỚI NHẤT — 25/10/2026
+**Nguồn chuẩn:** [Quyết định Firebase-only](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Người dùng đã khẳng định Google Sheet/Excel chỉ là công cụ nhân viên sử dụng **tạm thời khi WebApp chưa hoàn thiện**; sau khi bàn giao, mọi thao tác nhập/xem/sửa và báo cáo phải thực hiện **duy nhất trên WebApp**, lưu Firebase RTDB `hdnd/items`. **Không xây workflow đồng bộ Google Sheet lâu dài**.
+
+Hiện PR #71/#72 vẫn Draft; production chưa cutover. Công việc ưu tiên là cơ chế Firebase primary, khóa độc quyền từng ô, quyền, freeze/ACK, phục hồi và kiểm thử staging. **Ngừng coi 55 hàng snapshot Firebase 23/10 vs 57 hàng ảnh cũ hoặc thời gian sửa Sheet 25/10 là blocker hoàn thiện app**. Một lần đối chiếu dữ liệu khởi tạo cuối cùng được thực hiện **khi chuẩn bị phát hành**, không phải từng bước lúc phát triển.
+
+Các kết quả kiểm kê mirror/Drive và cảnh báo lịch sử **bên dưới chỉ để lưu vết**, không chỉ đạo công việc kế tiếp. Không chỉnh sửa Google Sheet hay metadata/quyền chia sẻ bằng tự động hóa của dự án.
+
+---
+
+## 25/10/2026 — Đối chiếu live Firebase mirror với file Excel Drive đã kết nối
+- **Firebase live (người vận hành đọc read-only):** 1 mirror source/1 dataset, 55 hàng, 0 ID thêm, 0 ID xóa so với backup, `hdnd/items=0`. `syncedAt=2026-10-23T04:41:44.104873Z`; `sourceModifiedAt=2026-10-23T02:07:11.387Z`; `schemaVersion=1`. Mirror **chưa có bản phát hành mới sau 23/10**.
+- **Excel Drive nguồn được đọc trực tiếp, không ghi:** file ID `1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp`, Office .xlsx, `modifiedTime=2026-10-25T04:22:14.272Z` (11:22 giờ VN). Nội dung tab theo dõi trích xuất có **55 dòng STT số**, chia nhóm 7 nội dung chuyên đề tháng 10 và 48 nội dung còn lại; đây là dấu hiệu số lượng **có thể vẫn khớp** mirror, nhưng chưa so từng `recordId` và 15 trường A–O. Việc file được sửa 25/10 không chứng minh nội dung nghiệp vụ nào đã đổi.
+- **Rà soát an ninh Drive:** metadata connector báo file Excel nguồn có phân quyền kiểu `anyone / writer` (liên kết có thể sửa), `allowFileDiscovery=false`. Đây là **rủi ro an toàn nguồn**, cần chủ sở hữu xác minh và thu hẹp quyền phù hợp trước khi chốt bản nhập. Không thay quyền tự động vì có thể tác động công việc hiện tại.
+- Số 57 trong một ảnh báo cáo cũ không đủ bằng chứng để kết luận thiếu hai hàng vì thời điểm và phạm vi tính có thể khác nhau. Cần đối chiếu danh sách ID, ngày sửa và quy tắc lọc trước GO.
+- **Trạng thái:** `MIRROR_LIVE_STALE`, `DRIVE_EXCEL_55_ROWS_READONLY`, `PRIMARY_EMPTY_AT_LIVE_CHECK`, `IDENTITY_AND_CELL_PARITY_NOT_VERIFIED`. **NO-GO** cho import và Rules deployment production.
+
+---
+
+## 25/10/2026 — Xác nhận metadata của bản mirror 55 dòng (đầu ra người vận hành)
+- Bản sao riêng tư `database-1.json` có **1 source / 1 dataset / 55 nội dung / 0 recordId trùng** như đã ghi.
+- `schemaVersion=1`; `syncedAt=2026-10-23T04:41:44.104873Z` (**11:41:44 ngày 23/10 giờ Việt Nam**); `sourceModifiedAt=2026-10-23T02:07:11.387Z` (**09:07:11 ngày 23/10 giờ Việt Nam**); `rows=55`. Đây là bản mirror cập nhật **23/10**, không phải kết quả đọc live ngày 25/10.
+- **Chưa được xác nhận:** `Mirror metadata valid` True/False (không xuất trong lời đáp), khớp cặp source/gid, SHA256 nguồn, từng trường trong 55 hàng, và bản live hiện hành. Không tự suy luận chênh lệch 57 (ảnh trước) vs 55 là lỗi mất dữ liệu; có thể do khác thời điểm/nguồn.
+- **Giữ NO-GO** cho migration và Rules deploy; ưu tiên đọc live chỉ đọc để đối chiếu mốc `syncedAt`, `rows`, ID và đích `hdnd/items` trước khi chạy thử import.
+
+---
+
+## 25/10/2026 — Kiểm kê chi tiết mirror (bằng chứng PowerShell do người vận hành cung cấp)
+- Trong bản sao riêng tư `database-1.json`: `Mirror sources=1`; `Mirror datasets=1`; `Total content rows=55`; `Duplicate record IDs=0`.
+- Giá trị `Mirror metadata valid` **chưa có trong đầu ra** (người vận hành gửi đến dòng lệnh trước khi có kết quả True/False). **Chưa được khẳng định** schema/timestamps/SHA/source của mirror đáp ứng tiêu chuẩn chuyển đổi.
+- **Rủi ro đối chiếu cần giải quyết:** ảnh giao diện trước đó thể hiện báo cáo `Tiến độ xin ý kiến Thành ủy (57 nội dung)`, nhưng bản sao chỉ có 55 bản ghi tổng. Có thể là khác mốc đồng bộ, khác nguồn dữ liệu hoặc sự không nhất quán. **Không chuyển 55 bản ghi lên Primary** trước khi chứng minh không thiếu nội dung; kiểm live mirror và nguồn mà giao diện sử dụng, so mã ID trên các nguồn.
+- Bước tiếp: xác nhận metadata True/False, chạy restore test trên Emulator **cách ly**, và trước khi migration phải lấy lại bản sao live/mốc đồng bộ, đối chiếu số dòng, ID đầy đủ, quyền, sau đó mới ra quyết định.
+
+---
+
+## 25/10/2026 — Kiểm kê nhánh dữ liệu trên bản sao RTDB (bằng chứng PowerShell do người vận hành gửi)
+- Bản sao `database-1.json` JSON hợp lệ: `hdnd` có dữ liệu; `hdnd/items` **0 bản ghi**; `hdnd/mirrors` **1 nguồn cấp cao nhất**; `hdnd/permissions` tồn tại; `hdnd/profile` tồn tại; `hdnd/profile.dataSource` không có giá trị hiển thị.
+- **Lưu ý:** Con số 1 là số khóa trực tiếp dưới `hdnd/mirrors`, **chưa chắc** là số bản sao tab/GID; phải kiểm tra các khóa con và số hàng `rows`. `items=0` chỉ chứng minh tại thời điểm backup, không khẳng định Database hiện tại vẫn rỗng. Giá trị `dataSource` trống không được suy đoán là `primary`.
+- **Chưa có quyền xem file nội bộ của người dùng**, chưa khôi phục emulator, chưa đối chiếu bản Rules Published. Không chuyển nguồn/ghi production. Bước kế: kiểm metadata mirror bằng script chỉ đọc (schema, số tab, tổng dòng, ID trùng, dấu thời gian) rồi thử restore cách ly, lấy lại trạng thái live ngay trước khi có quyết định migrate.
+
+---
+
+## 25/10/2026 — Bằng chứng người vận hành: hai bản DB + bản Rules JSON kiểm tra đạt (chưa GO)
+- Người vận hành trên Windows đã xác nhận cả ba file trong thư mục riêng tư trên máy (không upload lên GitHub): `database-1.json` **56.185 bytes**, `database-2.json` **56.185 bytes**, `rules-live.json` **24.497 bytes**. Cả ba `ConvertFrom-Json` thành công; file Rules có thuộc tính `rules`.
+- Hai bản Database SHA256 cùng bằng `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- File Rules (người vận hành chép từ Firebase Console) SHA256 bằng `7A391D5031DA4C6FA8CD73DC360F20E07973B664B6CCDB6528150D12411F589F`.
+- **Phân loại chứng cứ:** `DATA_EXPORT_JSON_AND_MATCH=USER_REPORTED_PASS`; `RULES_FILE_JSON_AND_HASH=USER_REPORTED_PASS`. **Chưa** chứng minh file Rules thực sự khớp phiên bản Published tại thời điểm kiểm tra bằng readback độc lập. **Chưa** thử restore một bản backup lên môi trường cô lập hoặc chạy kiểm thử staging với hai tài khoản.
+- **Quyết định:** giữ PR #71/#72 Draft, chưa deploy Rules, chưa chuyển `dataSource=primary`, chưa merge hoặc ghi dữ liệu production. Tiếp theo: xem metadata backup không tiết lộ nội dung, so Rules hiện hành và candidate ở máy riêng tư, restore drill trên emulator.
+
+---
+
+## 25/10/2026 — Người vận hành đã thực hiện hai lượt sao lưu READ-ONLY RTDB (chứng cứ do người dùng cung cấp)
+- Firebase CLI của máy quản trị nhận đúng project `hophdnd-8b7b2`, instance `hophdnd-8b7b2-default-rtdb`.
+- Người vận hành đã chạy thành công `firebase database:get /` hai lần, xuất ra hai JSON riêng tư và `Get-FileHash -Algorithm SHA256` cho ra **cùng một digest** `D9EF2CBA435AD2BC626D2864303BC770B6B010F0ECB1175460683ADDDFADC08D`.
+- **Phạm vi chứng cứ:** đầu ra PowerShell do người dùng cung cấp trong chat; trợ lý **không** có quyền đọc file gốc, chưa tự kiểm JSON, chưa xác minh Rules đang Published hoặc thử khôi phục. Không đánh dấu cổng sao lưu production là PASS hoàn chỉnh.
+- **Việc cần thực hiện tiếp:** kiểm định hai JSON là bản sao đầy đủ, lưu riêng bản Rules hiện hành từ Firebase Console ở chế độ **CHỈ ĐỌC**, tính hash Rules, tạo thêm bản bảo quản và thử khôi phục có kiểm soát trên môi trường khác. PR #71/#72 vẫn Draft; **HOLD/NO-GO đối với Rules deploy, migration và writes production**.
+
+---
+
+## 25/10/2026 — Công cụ sao lưu Firebase chỉ đọc được chuẩn bị (CHƯA CHẠY THẬT)
+- PR #72 bổ sung `source/scripts/firebase-production-readonly-backup.mjs`. Công cụ không chứa hành động ghi database; giới hạn cứng project `hophdnd-8b7b2` và instance `hophdnd-8b7b2-default-rtdb`, xuất hai lượt JSON so SHA-256, đối chiếu file Rules hiện hành do người quản trị tự lấy từ Console, và tạo manifest ở thư mục riêng tư ngoài GitHub.
+- **Chưa có quyền Firebase quản trị trong phiên ChatGPT, chưa xuất được Rules/Database thật, chưa có SHA production, chưa thử khôi phục, chưa chấp thuận phát hành.** Không gọi là đã backup hoặc deploy.
+- [Quy trình Windows](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md) và [cổng GO/NO-GO](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). GitHub chỉ kiểm tra cú pháp và fail-closed sai project (KHÔNG đọc production).
+
+---
+
+**Kiểm thử bổ sung 25/10:** [CI #40160812278](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40160812278) **SUCCESS** tại exact code SHA `8391041abc727835b7d7ff8f3b12750de950d776`: gồm quyền xin khóa ô, hai tab cùng UID, quyền admin/tạm dừng khách, hard deadline DRAINING, chặn ghi sau deadline khi admin offline, Firebase Emulator và browser smoke giả lập. Đây là bằng chứng **mã staging**, không phải Firebase production. Rules và dữ liệu thật vẫn chưa được backup/đối chiếu/readback.
+
+
+## 25/10/2026 — Phát triển Firebase chính và khóa ô (KHÔNG PHẢI production)
+- **Production:** `main` vẫn `c85b16dd9b0ea3c02d2eae98d80985dc5d8de8f4` tại thời điểm lập biên bản. Dữ liệu chưa ghi realtime giữa tài khoản, nháp trình duyệt không là dữ liệu chính.
+- **PR #71:** [database-primary](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) vẫn **Draft**; nhập mirror một lần rồi chuyển `dataSource=primary`, không phụ thuộc link Google Sheets sau đó.
+- **PR #72:** [cell-leases/freeze](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) vẫn **Draft**, base là #71. Mã đã triển khai khóa ô per-field/per-tab, timeout, Firebase ACK, khôi phục nháp và OPEN/DRAINING/FROZEN cùng UI quản trị. Rules chuyên biệt **chỉ có trong source**, không ở production.
+- **Bằng chứng từng có:** CI [#40159751225](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40159751225) PASS tại SHA `527229b9919117c4ef012ce2a84fe73726895455`. Các lần bổ sung phân quyền/tài liệu **phải có CI PASS ở SHA cuối** và thử nghiệm staging trước merge; không dùng run cũ chứng minh head mới.
+- **Điểm chặn:** chưa có bản sao lưu có hash và phép thử khôi phục Database/Rules thật; chưa đối chiếu Rules production hiện tại; chưa có backend điều phối đóng băng khi tab admin đóng; chưa có nghiệm thu hai–ba phiên thật. **NO-GO** đối với chuyển nguồn/Rules/deploy production cho đến khi cổng phát hành đạt.
+- Điều hành/bàn giao/rollback: [Cổng phát hành](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) và [Quy trình thử nghiệm](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md).
+
+---
+
 ## 23/10/2026 — Cột cuối bù độ rộng, UBND trước VP, dữ liệu Tiến độ hiện tại và lịch sử 2 cột
 
 - **ID** mặc định 68px (trước 100px); cấu hình ID còn ở độ rộng mặc định cũ đúng `100`px sẽ được đưa về 68px khi đọc; độ rộng ID đã chỉnh khác 100 vẫn giữ. ID chỉ là mã tối đa 4 ký tự trong trường hợp điển hình; các mã dài vẫn có tooltip.

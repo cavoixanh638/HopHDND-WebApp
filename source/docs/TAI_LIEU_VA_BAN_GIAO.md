@@ -1,3 +1,23 @@
+## BÀN GIAO SCOPE FIREBASE-ONLY — 25/10/2026
+Theo [quyết định kiến trúc](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md), PR #71/#72 chỉ được nghiệm thu khi WebApp sử dụng Firebase chính cho toàn bộ nghiệp vụ; không yêu cầu Google Sheet sau cutover. Nhân viên hiện còn làm trên Sheet là biện pháp chuyển tiếp, không phải mục tiêu kỹ thuật. Checklist bàn giao production cần có một lần chốt/import dữ liệu nhân viên đang làm, test khả năng khôi phục và chứng nhận Rules, không truy đuổi lịch sử snapshot 55/57 trong lúc code.
+
+---
+
+## Bổ sung hồ sơ bàn giao sao lưu Firebase 25/10/2026
+- Script: `source/scripts/firebase-production-readonly-backup.mjs`. Cách chạy an toàn, xử lý lỗi và chứng cứ: [FIREBASE_READONLY_BACKUP_HANDOFF](operations/FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md).
+- Quản trị Firebase phải xác nhận tài khoản/project, sao lưu Rules đang chạy và toàn bộ JSON, lưu bản riêng tư, cung cấp **chỉ hash và kết quả không nhạy cảm** để đối chiếu. Chưa có backup production thực tế tính đến phiên tài liệu này. Giữ PR #71/#72 Draft/NO-GO cho tới khi đủ bằng chứng.
+
+---
+
+## Bàn giao đợt kiến trúc Firebase chính/khóa ô 25/10/2026
+**Trạng thái bàn giao mã nguồn:** PR #71 + PR #72, đều **Draft**. Đã có mã nguồn, Rules ứng viên và test; chưa triển khai Database/Rules production, chưa bàn giao quyền chốt hoạt động thật.
+- Hồ sơ điều hành chuẩn: [GO/NO-GO Firebase primary](operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md), [quy trình đóng băng](operations/CELL_EDIT_FREEZE_EXECUTION_2026-10-25.md), [thiết kế quyết định](decisions/CELL_EDIT_EXCLUSIVITY_AND_FREEZE_2026-10-25.md).
+- Tài liệu nguồn: `SYSTEM.md`, `ARCHITECTURE.md`, `FIREBASE_PAGES.md`, `TU_DIEN_DU_LIEU.md`, `REPO_MAP.md`.
+- Kiểm thử/bàn giao: `KIEM_THU_VA_NGHIEM_THU.md`, `CURRENT_STATE.md`, `WORKBOARD.md`. Quy trình khôi phục/backup nằm tại `VAN_HANH.md`.
+- Người tiếp nhận cần bảo đảm trạng thái đúng exact SHA, Rules đang chạy và bản sao lưu trước khi gộp; không ghi data thật khi chưa có GO. Dữ liệu cá nhân, nháp và khóa bí mật không được đưa vào GitHub.
+
+---
+
 # Bộ tài liệu, tra cứu và bàn giao dự án
 
 > **Quyết định tinh gọn tài liệu (16/10/2026):** Bảng “Danh mục tài liệu phải bàn giao” bên dưới phản ánh **đề xuất gốc ngày 13/10**, không còn là chỉ thị tạo mỗi dòng thành một file riêng. Quy ước cập nhật và nguồn chuẩn nằm ở [docs/README](README.md). Hiện chỉ bổ sung [VAN_HANH](VAN_HANH.md) (gộp triển khai, quay lại, sao lưu, khôi phục, xử lý sự cố) và [TU_DIEN_DU_LIEU](TU_DIEN_DU_LIEU.md). Hướng dẫn quản trị gộp trong [HUONG_DAN_SU_DUNG](HUONG_DAN_SU_DUNG.md); lịch sử phiên bản trong [CURRENT_STATE](CURRENT_STATE.md); kế hoạch chuyển đổi cũ ở [KE_HOACH_VIET_LAI](KE_HOACH_VIET_LAI.md). Chỉ tách thêm nếu phát sinh nhu cầu thật, không tạo hồ sơ trùng lặp.
