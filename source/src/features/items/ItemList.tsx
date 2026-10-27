@@ -275,7 +275,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const executiveRows=filterByExecutiveStage(rows,executiveCards,executiveFilter).filter(item=>{
     const term=normalizeSearch(executiveSearch);
     if(!term)return true;
-    return [displayId(item),...EXCEL_COLUMN_KEYS.map(key=>String(item[key as keyof Item]??''))]
+    return activeLayout.columns.filter(column=>column.visible&&!column.removed)
+      .map(column=>column.key==='displayCode'?displayId(item):
+        column.origin==='custom'?(column.values?.[customRowKey(item)]??''):
+          String(item[column.key as keyof Item]??''))
       .some(value=>normalizeSearch(value).includes(term));
   });
   const executiveFields=new Set(activeLayout.columns.filter(column=>column.visible&&!column.removed).map(column=>column.key));
