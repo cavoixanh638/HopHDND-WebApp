@@ -1,6 +1,7 @@
 import {describe,expect,it} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
-import {assertTransitionBaseline,planTransitionImport,readTransitionalExcel} from '../src/data/transition-import';
+import {assertTransitionBaseline,planTransitionImport} from '../src/data/transition-import';
+import {readTransitionalExcel} from '../src/data/transition-excel';
 import {createExcel} from '../src/data/excel-transfer';
 
 const base=()=>createDemoItems(3).map((row,i)=>({...row,revision:i+1}));
