@@ -31,3 +31,20 @@ Không thể cho client khách đọc `hdnd/items` rồi “ẩn cột bằng Re
 4. Thực hiện backup và đối chiếu Rules published Cloud; chỉ deploy đồng thời khi publisher có sẵn snapshot, viewer đã kiểm thử và có kế hoạch chuyển đổi một lần. Nếu không, người xem có thể thấy bảng trống.
 
 **Trạng thái:** DRAFT/HOLD. Phần frontend khách đã thêm nhưng chưa nghiệm thu cùng publisher realtime; KHÔNG tự merge/release.  `main` hiện vẫn chứa UI cũ và Rules ứng viên từng lỡ cho raw public trong PR #82; **không đồng nghĩa Rules ấy đã publish Cloud**. Không tuyên bố khách chỉ nhìn được layout cho tới khi 4 bước trên hoàn tất.
+
+## 27/10/2026 — Đã bổ sung publisher server-side trên nhánh DRAFT (chưa deploy)
+
+Mã mới `source/functions/index.ts` sử dụng **Firebase Cloud Functions v2** (Realtime Database triggers). Tác vụ `onPrimaryItemWritten` theo dõi từng `hdnd/items/{recordId}`, `onAdminLayoutWritten` theo dõi bố cục admin `hdnd/profile`. Server luôn đọc lại **nguồn chính** và `profile.payload` đã lưu, kiểm tra `dataSource=primary`, lọc bỏ ô/cột bị ẩn, rồi ghi `hdnd/publicViews/current` bằng **Admin SDK**, không nhận payload từ trình duyệt. Khóa version `hdnd/publicViews/meta` chứa revision từng record **không công khai**; transaction parent tránh sự kiện đến muộn ghi đè dữ liệu mới. Quản trị viên có thể kích hoạt `republishPublicViewOnDemand` (Firebase Callable) khi cần xử lý sự cố trigger; token phải là Google đã xác minh đúng email admin.
+
+Các tệp: `source/functions/package.json`, `source/functions/tsconfig.json`, `source/firebase.functions-preview.json`, `source/src/data/public-view-watermark.ts`, `source/tests/public-view-watermark.test.ts`. CI `verify-source` đã thêm bước compile backend **không gọi production**. Cơ chế không phụ thuộc Google Sheets, mirror hay một tab admin còn mở. Không tạo khóa dịch vụ, không cấp quyền khách ghi projection.
+
+**Chưa nghiệm thu:** Cloud Functions thực tế cần môi trường Firebase project cho phép deploy Functions (có thể cần nâng cấp billing), kiểm thử event realtime, bootstrap bản công bố đầu tiên, test browser guest chỉ request projection, kiểm tra đồng bộ sau thay đổi layout và 2 UID; chưa deploy. `source/firebase.json` và Firebase Cloud Rules **không bị đổi**; tệp Functions riêng chỉ phục vụ release có phê duyệt. Chưa coi thiết kế này là đã hoạt động trên Cloud.
+
+**Thứ tự triển khai sau khi đã backup/RULES được duyệt:**
+1. Build và chạy test trên CI, kiểm tra backend `cd source/functions && npm install && npm run check && npm run build`.
+2. Quản trị viên xác minh Functions/billing, quyền service account, Rules hiện hành và rollback; dùng Firebase CLI trên máy được cấp quyền, `cd source && firebase deploy --only functions --config firebase.functions-preview.json --project hophdnd-8b7b2` **chỉ sau GO chính thức**.
+3. Sau khi nguồn `hdnd/items` đã được nghiệm thu và cấu hình `dataSource=primary`, kích hoạt/recheck snapshot, so khớp kpis/cột được công bố, xác minh không có ID/lịch sử/ô ẩn trong snapshot và private `meta` không đọc được.
+4. Phát hành frontend đọc projection cùng candidate Rules sau các test khách ẩn danh + nhân viên Google + admin trên môi trường cô lập. Thử khách qua Chrome DevTools và REST SDK không thể đọc `hdnd/items`, `mirrors`, `profile`, `permissions`; mất publisher phải báo lỗi/stale, không tự fallback về dữ liệu thô.
+5. Chốt GO/NO-GO riêng, backup và rollback có phương án. Không deploy Rules hay chuyển primary từ phiên ChatGPT này.
+
+**HOLD:** chưa có bằng chứng deploy Functions, browser QA ngoài emulator, hoặc Published Rules Cloud đúng mã. PR tiếp tục DRAFT cho đến khi cổng này đạt.
