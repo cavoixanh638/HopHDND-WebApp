@@ -480,7 +480,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
          transitionSheetUrl={configured.url}
          onTransitionApply={selectedSource==='primary'?applyTransition:undefined}
          transitionDisabled={workspace.busy||dirtyCount>0||workspace.protectedRecovery||!firebase!.connected||firebase!.freezeControl?.mode!=='OPEN'||common.status!=='ready'}
-         onImport={async()=>{throw new Error('Nhập hàng loạt chưa được phê duyệt; hãy dùng cập nhật chuyển tiếp có đối chiếu.');}} onClose={()=>setPage('overview')}/>}
+         onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức. Hãy dùng cập nhật chuyển tiếp có đối chiếu khi Firebase đã được duyệt là nguồn chính.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
