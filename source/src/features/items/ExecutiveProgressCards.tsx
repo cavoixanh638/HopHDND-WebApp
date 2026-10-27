@@ -37,8 +37,7 @@ export function buildExecutiveSummary(items: Item[], config: ReportConfig): Exec
     if (stage in buckets) buckets[stage as ExecutiveStage].push(item);
     else unclassified++;
   }
-  const counts = Object.fromEntries(EXECUTIVE_STAGES.map(stage => [stage, buckets[stage].length]))
-    as Record<ExecutiveStage, number>;
+  const counts = Object.fromEntries(EXECUTIVE_STAGES.map(stage => [stage, buckets[stage].length])) as Record<ExecutiveStage, number>;
   return {
     id: config.id, title: EXECUTIVE_TITLES[config.id] ?? config.title,
     total: report.total, completed: report.completedCount,
