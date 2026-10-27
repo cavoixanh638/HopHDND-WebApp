@@ -3,7 +3,8 @@ import {createDemoItems} from '../src/data/demo-items';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {normalizeSearch} from '../src/domain/search';
 import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,compactFilterText,
-  activeCompactPairs,compactVisibleColumns,readCompactDisplay,writeCompactDisplay,toggleCompactOption}
+  activeCompactPairs,compactVisibleColumns,readCompactDisplay,writeCompactDisplay,toggleCompactOption,
+  readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay}
   from '../src/features/items/compact-columns';
 
 afterEach(()=>vi.unstubAllGlobals());
@@ -154,4 +155,42 @@ describe('Optional compact projection remains read-only presentation',()=>{
     values.set('hdnd.compact-display.v1:file-A','{invalid json');
     expect(readCompactDisplay('file-A')).toEqual(DEFAULT_COMPACT_DISPLAY);
   });
+  it('isolates browser-only viewing choices per Firebase UID and source without touching shared layout',()=>{
+    const values=new Map<string,string>();
+    const writes:string[]=[];
+    vi.stubGlobal('localStorage',{
+      getItem:(key:string)=>values.get(key)??null,
+      setItem:(key:string,value:string)=>{writes.push(key);values.set(key,value);},
+      removeItem:(key:string)=>{writes.push(key);values.delete(key);}
+    });
+    const a='viewer-compact:pages:primary:firebase-uid-A';
+    const b='viewer-compact:pages:primary:firebase-uid-B';
+    const otherSource='viewer-compact:pages:sheets:mock:firebase-uid-A';
+    expect(readPersonalCompactDisplay(a)).toBeNull();
+    const next=toggleCompactOption(DEFAULT_COMPACT_DISPLAY,'contentDetails',true);
+    expect(writePersonalCompactDisplay(a,next)).toBe(true);
+    expect(readPersonalCompactDisplay(a)).toEqual(next);
+    expect(readPersonalCompactDisplay(b)).toBeNull();
+    expect(readPersonalCompactDisplay(otherSource)).toBeNull();
+    expect(writes).toEqual(['hdnd.viewer-compact.v1:'+a]);
+    expect(defaultItemLayout().compactDisplay?.contentDetails).toBe(false);
+    expect(clearPersonalCompactDisplay(a)).toBe(true);
+    expect(readPersonalCompactDisplay(a)).toBeNull();
+  });
+  it('rejects corrupt browser-only prefs, and never requires Firebase/network access',()=>{
+    const map=new Map<string,string>([
+      ['hdnd.viewer-compact.v1:x','{"contentDetails":true}']
+    ]);
+    vi.stubGlobal('localStorage',{
+      getItem:(key:string)=>map.get(key)??null,
+      setItem:()=>{throw new Error('blocked');},
+      removeItem:()=>{throw new Error('blocked');}
+    });
+    expect(readPersonalCompactDisplay('x')).toBeNull();
+    expect(writePersonalCompactDisplay('x',DEFAULT_COMPACT_DISPLAY)).toBe(false);
+    expect(clearPersonalCompactDisplay('x')).toBe(false);
+    map.set('hdnd.viewer-compact.v1:x','not-json');
+    expect(readPersonalCompactDisplay('x')).toBeNull();
+  });
+
 });
