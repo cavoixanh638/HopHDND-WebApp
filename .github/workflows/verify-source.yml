@@ -100,6 +100,16 @@ jobs:
         run: npm run build:compact:qa
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
+      - name: Package owner-clickable single HTML UI preview (synthetic only)
+        run: node scripts/package-compact-qa.mjs
+      - name: Upload standalone UI preview — download and double-click, no server needed
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-compact-interactive-offline
+          path: source/dist-compact-qa/HopHDND_GopCot_XemThu.html
+          if-no-files-found: error
+          retention-days: 14
       - name: Preserve browser smoke screenshot (synthetic data only)
         if: success()
         uses: actions/upload-artifact@v4
