@@ -23,7 +23,7 @@ import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
@@ -40,7 +40,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser' }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -53,6 +53,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     setContentItem(null);
   };
   const personalScope=layoutRecoveryScope(sourceKey);
+  // Display-only choices are scoped to the source and the current Firebase UID.
+  const viewerCompactScope=layoutRecoveryScope('viewer-compact:'+sourceKey+':'+viewerScope);
+  const [personalCompact,setPersonalCompact]=useState<CompactDisplay|null>(()=>
+    readPersonalCompactDisplay(viewerCompactScope));
+  const [compactStorageWarning,setCompactStorageWarning]=useState('');
   const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
@@ -78,7 +83,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
-  const compactDisplay=activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
+  // Only admin writes the shared Firebase layout; all other viewers get local preferences.
+  const shareCompact=allowLayout&&!!onPersistViewerLayout&&!anonymousViewer&&!personalViewActive;
+  const compactDisplay=customizing||shareCompact?activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY:
+    personalCompact??activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
   // The viewer already receives the exact first-frame width from App. Avoid
   // a post-paint callback that can override the saved CSS with stale values.
   useEffect(()=>{if(customizing)onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[customizing,activeLayout.frameWidth,onFrameWidthChange]);
@@ -105,9 +113,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[compactHiddenKeys]);
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next=toggleCompactOption(compactDisplay,option,checked);
-    if(!allowLayout)return;
-    if(customizing)setLayout(previous=>({...previous,compactDisplay:next}));
-    else void applyViewerLayout(previous=>({...previous,compactDisplay:next}));
+    if(customizing){
+      if(!allowLayout)return;
+      setLayout(previous=>({...previous,compactDisplay:next}));
+    }else if(shareCompact){
+      void applyViewerLayout(previous=>({...previous,compactDisplay:next}));
+    }else{
+      setPersonalCompact(next);
+      setCompactStorageWarning(writePersonalCompactDisplay(viewerCompactScope,next)?'':
+        'Trình duyệt không cho lưu lựa chọn. Tùy chọn vẫn có hiệu lực trong phiên đang mở.');
+    }
     const hidden=new Set<string>(activeCompactPairs(columns,next).flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
     setColumnFilters(prev=>{
       const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
@@ -342,6 +357,45 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
+  const compactMenu=compactOn&&!permissionMode&&(<details className="compact-columns-menu">
+        <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
+          {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
+            <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
+        </summary>
+        <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
+          <strong>Gộp cột để xem gọn hơn</strong>
+          {COMPACT_OPTIONS.filter(option=>['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
+            <input type="checkbox" checked={compactDisplay[option.key]}
+              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
+          <details className="compact-more-options">
+            <summary>Các cách gộp khác <small>3 lựa chọn</small></summary>
+            {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
+              !['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
+              <input type="checkbox" checked={compactDisplay[option.key]}
+                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+              <span>{option.label}<small>{option.detail}</small></span>
+            </label>)}
+          </details>
+          <details className="compact-more-options">
+            <summary>Viết tắt tên <small>{COMPACT_OPTIONS.filter(option=>option.section==='name'&&compactDisplay[option.key]).length||'2 lựa chọn'}{COMPACT_OPTIONS.some(option=>option.section==='name'&&compactDisplay[option.key])?' đang bật':''}</small></summary>
+            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
+              <input type="checkbox" checked={compactDisplay[option.key]}
+                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+              <span>{option.label}<small>{option.detail}</small></span>
+            </label>)}
+          </details>
+          <p>{shareCompact?'Quản trị: lưu bố cục dùng chung Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
+          {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
+          {!shareCompact&&personalCompact&&<button type="button" className="button ghost"
+            onClick={()=>{setPersonalCompact(null);setCompactStorageWarning(
+              clearPersonalCompactDisplay(viewerCompactScope)?'':
+              'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>
+            Khôi phục cách hiển thị chung
+          </button>}
+        </div>
+      </details>);
   return <section className="card item-list-card">
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
@@ -372,40 +426,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    {anonymousViewer&&compactOn&&!permissionMode&&<div className="guest-compact-menu-bar" role="group"
+       aria-label="Cách hiển thị cột của tôi">{compactMenu}</div>}
     {!anonymousViewer&&<div className="card-header">
     <div className="item-header-actions">
-      {compactOn&&!permissionMode&&allowLayout&&!!onPersistViewerLayout&&<details className="compact-columns-menu">
-        <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
-          {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
-            <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
-        </summary>
-        <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-          <strong>Gộp cột để xem gọn hơn</strong>
-          {COMPACT_OPTIONS.filter(option=>['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
-            <input type="checkbox" checked={compactDisplay[option.key]}
-              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-            <span>{option.label}<small>{option.detail}</small></span>
-          </label>)}
-          <details className="compact-more-options">
-            <summary>Các cách gộp khác <small>3 lựa chọn</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
-              !['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <details className="compact-more-options">
-            <summary>Viết tắt tên <small>{COMPACT_OPTIONS.filter(option=>option.section==='name'&&compactDisplay[option.key]).length||'2 lựa chọn'}{COMPACT_OPTIONS.some(option=>option.section==='name'&&compactDisplay[option.key])?' đang bật':''}</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <p>Chỉ đổi cách hiển thị chung · không thay dữ liệu gốc.</p>
-        </div>
-      </details>}
+      {compactMenu}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
