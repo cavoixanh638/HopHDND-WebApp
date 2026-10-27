@@ -125,7 +125,7 @@
             }
           }
         },
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
       },
       "permissions": {
         ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
@@ -240,7 +240,7 @@
             ".validate": "$id.matches(/^[A-Za-z0-9_:-]{1,200}$/) && newData.isBoolean()"
           }
         },
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
       },
       "profile": {
         ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
@@ -248,7 +248,7 @@
         "$other": {
           ".validate": "$other === 'revision' || $other === 'payload'"
         },
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
       },
       "control": {
         ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
@@ -256,7 +256,7 @@
         "$other": {
           ".validate": "$other === 'revision' || $other === 'editingLocked' || $other === 'changedAt'"
         },
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
       },
       "editLocks": {
         "$id": {
@@ -319,7 +319,7 @@
         "closedAt": {
           ".validate": "true"
         },
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
       },
       "freezeReceipts": {
         "$epoch": {
@@ -358,7 +358,13 @@
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"
       },
       "mirrors": {
-        ".read": true
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || (auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' && root.child('hdnd/editors').child(auth.uid).val() === true)"
+      },
+      "publicViews": {
+        "current": {
+          ".read": true,
+          ".write": false
+        }
       }
     },
     "hdndReviews": {
