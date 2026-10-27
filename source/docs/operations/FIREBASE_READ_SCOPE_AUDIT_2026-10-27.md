@@ -2,6 +2,18 @@
 
 **Phạm vi:** `hophdnd-8b7b2` / Rules ứng viên `source/firebase/database.exclusive-candidate.rules.json`. **Không phải Rules đang Publish**, chưa truy cập được nguồn Rules Cloud trong phiên GitHub.
 
+## CHÍNH SÁCH NGƯỜI DÙNG CHỐT THÊM — 27/10/2026
+
+**Mọi tài khoản, kể cả chưa đăng nhập, được phép xem các dữ liệu nghiệp vụ vào bất kỳ thời điểm nào.** Phạm vi đọc công khai gồm `hdnd/items` (cả nội dung và lịch sử trong các hàng), `hdnd/mirrors`, `hdnd/profile` (bố trí/cấu hình), `hdnd/permissions` (ma trận quyền sửa), `hdnd/control` và `hdnd/freezeControl`. Rules ứng viên đặt `.read: true` **chỉ trên các nhánh này**, không trên gốc `hdnd`. Quyền xem vẫn được giữ khi `editingLocked` hoặc `FROZEN`; hai trạng thái đó chỉ chặn sửa.
+
+**Tách quyền đọc nội bộ:** `hdnd/editors` (registry UID toàn bộ), `hdnd/editLocks` (danh sách khóa/token), `hdnd/freezeReceipts` (chứng từ chốt) chỉ admin đọc toàn bộ. Tài khoản Firebase bất kỳ chỉ đọc `hdnd/editors/{ownUID}`; chỉ Google allowlisted được đọc khóa ô cụ thể để chỉnh sửa. `hdndReviews` tiếp tục chỉ admin đọc.
+
+**Hệ quả phải hiểu rõ:** khi `.read: true` trên `hdnd/items`, *bất cứ ai có địa chỉ endpoint của database* đều có thể đọc dữ liệu bảng và lịch sử qua Firebase API, không chỉ người dùng đến từ trang GitHub Pages. Đây là cách thực hiện đúng yêu cầu dữ liệu được xem tự do; tuyệt đối không đặt hồ sơ bí mật/nhạy cảm cần giới hạn người đọc trong các nhánh công khai. Không thể vừa đảm bảo ai cũng đọc mà vừa giữ bí mật dữ liệu trong cùng nhánh.
+
+**Đối với phiên dùng chung một Google UID trên hai máy:** được phép theo yêu cầu chủ dự án; Rules định danh chung là một người về mặt quyền. Mã vẫn cố gắng khóa sửa từng tab bình thường, nhưng chia sẻ token/định danh sẽ không tạo sự cách ly pháp lý/tài khoản độc lập.
+
+---
+
 ## Phát hiện chính
 Bộ Rules ứng viên trước sửa cho phép `hdnd/.read = auth != null`. Vì WebApp dùng Firebase Anonymous Auth để xem danh sách, mọi khách ẩn danh đã đăng nhập cũng có thể `get(hdnd)` và đọc **toàn bộ** bản ghi, danh sách UID Google được cấp, quyền, token khóa ô của các phiên khác, cấu hình, mirror và biên nhận chốt. Cấm ghi **không** ngăn đọc.
 
