@@ -26,9 +26,9 @@ const other=await readdir(resolve(root,'assets'));
 if(other.length!==consumed.size||other.some(name=>!consumed.has('assets/'+name)))
   throw Error('Unexpected extra chunks or assets: '+other.filter(name=>!consumed.has('assets/'+name)).join(','));
 // Inspect markup only: compiled JS can legitimately contain "<script src" text.
-const markup=html.replace(/(<script\\b[^>]*>)[\\s\\S]*?<\\/script>/gi,'$1</script>')
-  .replace(/(<style\\b[^>]*>)[\\s\\S]*?<\\/style>/gi,'$1</style>');
-if(/<script\\b[^>]*\\bsrc\\s*=|<link\\b[^>]*\\brel="stylesheet"[^>]*\\bhref=/.test(markup))
+const markup=html.replace(/(<script\b[^>]*>)[\s\S]*?<\/script>/gi,'$1</script>')
+  .replace(/(<style\b[^>]*>)[\s\S]*?<\/style>/gi,'$1</style>');
+if(/<script\b[^>]*\bsrc\s*=|<link\b[^>]*\brel="stylesheet"[^>]*\bhref=/.test(markup))
   throw Error('QA HTML contains an external script or stylesheet');
 const name='HopHDND_GopCot_XemThu.html';
 await writeFile(resolve(root,name),html,'utf8');
