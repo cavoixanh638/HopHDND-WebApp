@@ -743,3 +743,18 @@
 .compact-more-options input[type=checkbox]{margin-top:2px;accent-color:#287852;flex:none}
 .compact-more-options label span{display:grid;gap:3px;min-width:0;font-weight:650}
 .compact-more-options label small{font-size:11px;color:#6d8375;font-weight:400;line-height:1.35}
+
+
+/* Guest/non-admin personal display menu, not an administrative editor. */
+.guest-compact-menu-bar{
+  position:relative;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  padding:4px 0 10px;
+  z-index:21;
+}
+.guest-compact-menu-bar .compact-columns-options{right:0;left:auto;}
+@media(max-width:650px){
+  .guest-compact-menu-bar .compact-columns-options{right:0;left:auto;width:min(340px,calc(100vw - 28px));}
+}
