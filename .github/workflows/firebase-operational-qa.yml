@@ -5,6 +5,10 @@ on:
     paths:
       - "source/src/data/**"
       - "source/src/state/**"
+      - "source/src/app/**"
+      - "source/src/features/**"
+      - "source/src/domain/**"
+      - "source/shared/**"
       - "source/firebase/**"
       - "source/tests/**"
       - "source/scripts/firebase-*"
@@ -15,6 +19,10 @@ on:
     paths:
       - "source/src/data/**"
       - "source/src/state/**"
+      - "source/src/app/**"
+      - "source/src/features/**"
+      - "source/src/domain/**"
+      - "source/shared/**"
       - "source/firebase/**"
       - "source/tests/**"
       - "source/scripts/firebase-*"
