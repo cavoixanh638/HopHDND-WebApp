@@ -45,6 +45,36 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     });
   });
   afterAll(async()=>env?.cleanup());
+  it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
+    const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
+    // Authenticated read-only viewing is an intentional current product policy.
+    for(const db of [visitor,staff,unknown]){
+      await assertFails(get(ref(db as never,'hdnd')));
+      await get(ref(db as never,'hdnd/items'));
+      await get(ref(db as never,'hdnd/profile'));
+      await get(ref(db as never,'hdnd/permissions'));
+      await get(ref(db as never,'hdnd/control'));
+      await get(ref(db as never,'hdnd/freezeControl'));
+      await get(ref(db as never,'hdnd/mirrors/example-sheet/example-gid'));
+      await assertFails(get(ref(db as never,'hdnd/editors')));
+      await assertFails(get(ref(db as never,'hdnd/editLocks')));
+      await assertFails(get(ref(db as never,'hdnd/freezeReceipts')));
+    }
+    // Staff can only discover THEIR membership; anonymous visitors see no other UID.
+    expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
+    await assertFails(get(ref(staff as never,'hdnd/editors/b')));
+    await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
+    expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
+    await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
+    await assertFails(get(ref(visitor as never,'hdnd/editLocks/r1/note')));
+    // An allowlisted editor must still read the exact lock node to perform CAS.
+    expect((await get(ref(staff as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    await get(ref(root as never,'hdnd/editors'));
+    await get(ref(root as never,'hdnd/editLocks'));
+    await get(ref(root as never,'hdnd/freezeReceipts'));
+    await assertFails(get(ref(root as never,'hdnd')));
+    await assertFails(get(ref(env.unauthenticatedContext().database() as never,'hdnd/items')));
+  });
   it('denies anonymous editor even when globally editable columns are true',async()=>{
     const anonymousDb=anonymous('anon-a');
     await assertFails(set(ref(anonymousDb as never,'hdnd/editLocks/r1/note'),{
