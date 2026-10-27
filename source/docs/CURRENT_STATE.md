@@ -1028,3 +1028,21 @@ Yêu cầu người dùng qua hai ảnh tiến độ ngày 24/10 và chốt nhã
 - Bảng Thành ủy và Bảng xây dựng NQ: có cột trạng thái trung gian, tiếp tục hiển thị Bước tiếp theo.
 - Bảng tổng hợp NQ+BC, Bảng ban hành NQ, Bảng ban hành BC: chỉ có ba trạng thái, bỏ chỉ số Bước tiếp theo dưới tiêu đề. Vẫn giữ nguồn, cột, tổng, tỷ lệ hoàn thành, popup và quyền.
 - Chrome smoke kiểm tra đúng 5 bảng, unit test đúng nhóm; độc lập với việc chuyển Firebase sang ghi realtime ở PR khác.
+
+
+## 25/10/2026 — Chốt kiến trúc Firebase là nguồn dữ liệu chính (thay phương án overlay)
+
+**Yêu cầu người dùng:** Excel/Google Sheets chỉ là nguồn ban đầu và bản dự phòng trong giai đoạn chuyển đổi. Sau khi hoạt động realtime ổn định, tất cả người dùng phải đọc/ghi trực tiếp dữ liệu nghiệp vụ trên Firebase Realtime Database mà không cần link Google Sheets.
+
+### Quyết định
+
+- **Nguồn chính:** /hdnd/items (bản ghi thật, revision và lịch sử). Cả admin và khách đã cấp quyền ghi đúng ô bằng giao dịch CAS, tự lưu sau 800ms và Firebase onValue chuyển mọi thay đổi tới các trình duyệt. Điều này dùng lại FirebaseRepository đã có, không tạo overlay nhị phân trên bản sao.
+- **Nguồn tạm:** /hdnd/mirrors/{spreadsheetId}/{gid} chỉ để nhập dữ liệu một lần; nhánh này vẫn bất biến và có thể tồn tại để đối chiếu/backup, không tham gia đọc hay ghi khi dataSource='primary'.
+- **Chuyển dữ liệu:** chỉ admin Google đã xác thực, kết nối và không còn bản nháp; từ bản sao Firebase đã xác nhận, kiểm tra schema và ID duy nhất, từ chối nếu /hdnd/items đã có bất kỳ bản ghi nào, dùng transaction CAS toàn bộ nhánh khi còn rỗng, xác nhận lại mọi giá trị và số dòng rồi mới cập nhật shared profile dataSource='primary'. Không thay đổi ID nội bộ có dạng spreadsheetId:gid:row:n vì quyền từng ô gắn ID đó đã được cấp; ID này trở thành định danh lịch sử, không được dùng để tải lại Sheet. Giữ displayCode lặp (ví dụ '-') hợp lệ.
+- **Thao tác:** tại trang tài khoản admin phải nhấn hai bước xác nhận chuyển dữ liệu. Tùy chọn 'primary' không được bật nếu dữ liệu chưa được khởi tạo. Không tự phát sinh bản sao trống, không ghi đè/mất bất cứ thay đổi đã có, không nhập lại tự động sau khi chuyển. Admin vẫn có thể chủ động xuất dữ liệu Excel theo mẫu để sao lưu.
+- **Phân quyền:** Security Rules production hiện vẫn khóa /hdnd/items. Phiên bản Rules mới và test Firebase Emulator là điều kiện bắt buộc trước deploy, còn GitHub Pages không tự triển khai Rules; công khai website trước khi triển khai Rules sẽ tạo giao diện cho phép nhập nhưng lưu bị Firebase từ chối. PR giữ DRAFT/HOLD cho tới khi có deployment được ủy quyền, backup Rules + Database và kiểm tra post-deploy.
+- **Không phụ thuộc link Excel:** dataSource='primary' khởi tạo FirebaseRepository trực tiếp, không tải GViz, không subscribe bản sao, không warmup mirror, không tự chuyển sang Excel nếu lỗi Firebase. Khi không kết nối được sẽ giữ bản đã đọc hoặc báo lỗi, không ghi ra local như thành công.
+- **Lịch sử:** FirebaseRepository đã có audit tối đa 50 giao dịch/record và bảo vệ xung đột ô, tái sử dụng thay vì mất lịch sử như phương án mirrorEdits. Khi lưu hoặc đồng bộ không được coi nháp/local là dữ liệu chung.
+- **Dữ liệu local trước chuyển đổi:** người dùng có bản nháp chưa ghi trên thiết bị (như ảnh 25/10). KHÔNG xóa hoặc âm thầm đưa bản nháp này vào Database chính. Xuất/đối chiếu bản nháp rồi mới áp dụng lại theo quyền sau khi chuyển; thông báo rõ. Giữ Theme2, nhóm báo cáo, trạng thái, bảng và phân quyền.
+
+**Trạng thái:** mã nguồn PR đang thử, chưa migrate hoặc thay đổi Rules hay Database thật, chưa được gọi là đã kích hoạt realtime trên HopHDND.

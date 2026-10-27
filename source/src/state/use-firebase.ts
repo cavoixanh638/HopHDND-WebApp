@@ -17,7 +17,7 @@ import {compareSourceFromSearch} from '../data/source-comparison';
 import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 
-export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'}
+export interface FirebaseProfile {catalogs:CatalogConfig;reports:ReportLayout[];items:ItemLayout;revision:number;dataSource?:'excel'|'database'|'primary'}
 export interface ReviewBaseline {revision:number;source:string;approvedAt:string;approvedBy:string;changedCount:number;snapshot:ReviewSnapshot;history:{revision:number;at:string;changedCount:number}[]}
 const reviewSource=(config:SheetConfig)=>config.spreadsheetId+':'+config.gid;
 function baselineFrom(raw:unknown,source:string):ReviewBaseline|null{
@@ -34,7 +34,7 @@ function profileFrom(raw:unknown):FirebaseProfile|null{
   if(raw==null)return null;
   const value=raw as FirebaseProfile;
   if(!Number.isSafeInteger(value.revision)||value.revision<1)throw new Error('Phiên bản bố trí Firebase không hợp lệ.');
-  if(value.dataSource!==undefined&&value.dataSource!=='excel'&&value.dataSource!=='database')throw new Error('Nguồn dữ liệu Firebase không hợp lệ.');
+  if(value.dataSource!==undefined&&value.dataSource!=='excel'&&value.dataSource!=='database'&&value.dataSource!=='primary')throw new Error('Nguồn dữ liệu Firebase không hợp lệ.');
   return {revision:value.revision,catalogs:validateCatalog(value.catalogs),reports:validateReportLayout(value.reports),items:validateItemLayout(value.items),dataSource:value.dataSource??'excel'};
 }
 const profileCacheKey='hdnd.confirmed-profile.v1:hophdnd-8b7b2';
@@ -82,7 +82,7 @@ export function useFirebase(){
       if(params.get('startupMetrics')==='1'&&params.get('mirrorWarmup')==='off')return;
     }
     const cached=loadConfirmedProfile();
-    if(cached?.dataSource==='excel')return;
+    if(cached?.dataSource!=='database')return;
     const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
     markStartup('mirror-warm-start','Song song cấu hình/quyền, chưa hiển thị');
     const release=warmMirrorStream(database,user.uid,mirrorPath(source));
@@ -93,7 +93,7 @@ export function useFirebase(){
     };
   },[user?.uid,database]);
   useEffect(()=>{
-    if(profileReady&&profile?.dataSource==='excel'){
+    if(profileReady&&profile?.dataSource!=='database'){
       stopMirrorWarmup.current?.();
       stopMirrorWarmup.current=null;
     }

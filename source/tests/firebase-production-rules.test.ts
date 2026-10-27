@@ -10,6 +10,8 @@ import type {User} from 'firebase/auth';
 import {FirebaseRepository,type CellPermissions} from '../src/data/firebase-repository';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
+import {migrateMirrorToPrimary} from '../src/data/firebase-primary-bootstrap';
+import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 import type {Changes,Item} from '../shared/types';
 
 const productionRules=JSON.parse(readFileSync('firebase/database.production-candidate.rules.json','utf8'));
@@ -41,6 +43,45 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     });
   });
   afterAll(async()=>env?.cleanup());
+
+  it('moves the verified mirror to primary exactly once, keeps IDs and grants, then serves realtime edits without Sheets',async()=>{
+    const source=parseSheetConfig(DEFAULT_SHEET_URL);
+    const recordId=source.spreadsheetId+':'+source.gid+':row:3';
+    const mirrored={...seed,recordId,displayCode:'NQ-X3',stt:3};
+    await env.withSecurityRulesDisabled(async context=>{
+      const db=context.database() as never;
+      await set(ref(db,'hdnd/items'),null);
+      await set(ref(db,'hdnd/mirrors/'+source.spreadsheetId+'/'+source.gid),{
+        schemaVersion:1,source:source.spreadsheetId+':'+source.gid,
+        syncedAt:'2026-10-25T00:00:00Z',sourceModifiedAt:'2026-10-24T23:00:00Z',
+        sha256:'a'.repeat(64),rows:[mirrored]
+      });
+      await set(ref(db,'hdnd/permissions/cells/'+recordId+'/note'),true);
+    });
+    await expect(migrateMirrorToPrimary(guest('viewer') as never,user('viewer'),source))
+      .rejects.toThrow(/quản trị/);
+    const migrated=await migrateMirrorToPrimary(admin() as never,user('verified-admin',true),source);
+    expect(migrated).toEqual({sourceCount:1,importedCount:1});
+    await expect(migrateMirrorToPrimary(admin() as never,user('verified-admin',true),source))
+      .rejects.toThrow(/đã có dữ liệu/);
+    const visitor=new FirebaseRepository(guest('viewer') as never,()=>user('viewer'),
+      ()=>({columns:{note:true}}));
+    const [item]=await visitor.list();
+    expect(item.recordId).toBe(recordId);
+    expect(item.displayCode).toBe('NQ-X3');
+    const saved=(await visitor.save([updateDraft(item,undefined,{note:'Lưu realtime vào Database chính'})!]))[0];
+    expect(saved.ok,saved.message).toBe(true);
+    expect((await visitor.list())[0].note).toBe('Lưu realtime vào Database chính');
+    expect((await get(ref(admin() as never,'hdnd/mirrors/'+source.spreadsheetId+'/'+source.gid))).val().rows[0].note)
+      .toBe(mirrored.note);
+  });
+
+  it('preserves a preexisting primary database and never overwrites it during migration',async()=>{
+    const source=parseSheetConfig(DEFAULT_SHEET_URL);
+    await expect(migrateMirrorToPrimary(admin() as never,user('verified-admin',true),source))
+      .rejects.toThrow(); // no mirror is loaded; no writes are allowed
+    expect((await get(ref(admin() as never,'hdnd/items/r1'))).exists()).toBe(true);
+  });
 
   it('preserves authenticated read and authorized existing-row edits before any lock is created',async()=>{
     const client=repo('editor');
