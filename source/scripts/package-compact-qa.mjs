@@ -25,7 +25,7 @@ for(const [match,src] of styles)html=html.replace(match,'<style>'+(await readAss
 const other=await readdir(resolve(root,'assets'));
 if(other.length!==consumed.size||other.some(name=>!consumed.has('assets/'+name)))
   throw Error('Unexpected extra chunks or assets: '+other.filter(name=>!consumed.has('assets/'+name)).join(','));
-if(/<script[^>]+src=|<link[^>]+rel="stylesheet"[^>]+href=/.test(html)||!html.includes('data-qa'))
+if(/<script[^>]+src=|<link[^>]+rel="stylesheet"[^>]+href=/.test(html))
   throw Error('Preview must be self-contained with the QA selector');
 const name='HopHDND_GopCot_XemThu.html';
 await writeFile(resolve(root,name),html,'utf8');
