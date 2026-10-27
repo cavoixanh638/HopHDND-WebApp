@@ -44,4 +44,27 @@ describe('Manual Sheets and Excel transition import preview',()=>{
     expect(parsed.items.map(row=>row.recordId)).toEqual(rows.map(row=>row.recordId));
     expect(planTransitionImport(parsed.items,rows).changes).toHaveLength(0);
   });
+  it('reads a current A–O operational Excel worksheet like Google Sheets',()=>{
+    const XLSXWorkbook=()=>import('xlsx');
+    return XLSXWorkbook().then(XLSX=>{
+      const headers=['ID','STT','NỘI DUNG TRÌNH','SỞ, NGÀNH CHỦ TRÌ',
+        'Loại VB (HC/QPPL/BC','Cấp Thành ủy cho ý kiến',
+        'Tiến độ xin ý kiến Thành ủy','Tiến độ trình HĐND xây dựng NQ',
+        'Tiến độ trình HĐND ban hành NQ/BC','Chuyên viên VPUB',
+        'Phòng chuyên môn','Lãnh đạo VP','Lãnh đạo UBND TP','Tiến độ hiện tại','Ghi chú'];
+      const row=['NQ88',88,'Nghị quyết thử nghiệm','Sở Tài chính','QPPL','BTV',
+        'Đã xin ý kiến','Sở chưa trình','Chưa ban hành','Lê Văn A',
+        'Phòng TH','PCVP A','PCT B','Đang xử lý','Ghi chú chuyển tiếp'];
+      const book=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([headers,row]),'Du lieu');
+      const bytes=XLSX.write(book,{type:'array',bookType:'xlsx'}) as ArrayBuffer;
+      const parsed=readTransitionalExcel(bytes);
+      expect(parsed.items).toHaveLength(1);
+      expect(parsed.items[0]).toMatchObject({
+        displayCode:'NQ88',content:'Nghị quyết thử nghiệm',
+        department:'Sở Tài chính',note:'Ghi chú chuyển tiếp'
+      });
+    });
+  });
+
 });
