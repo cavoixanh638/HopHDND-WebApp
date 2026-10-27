@@ -1,3 +1,12 @@
+## 27/10/2026 — AUTO-QA FIREBASE ĐÃ ĐƯA VÀO MAIN, 51 TESTS + KNOWN RISK
+
+- [PR #81](https://github.com/cavoixanh638/HopHDND-WebApp/pull/81) merged `d0e558510283f23013b62f84ab000ca4a4fcd2b2`. Exact HEAD PR kiểm thử [Firebase operational QA #40493383920](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493383920) **SUCCESS**: **51 PASS / 0 FAIL / 0 SKIP** với **1 known expected-failure** của shared Google UID lease-token replay, không tuyên bố đã khắc phục. [Verify HopHDND source #40493384261](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493384261) **SUCCESS**. Lượt tự động chạy trên main [Firebase operational QA #40493668600](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493668600) **SUCCESS**.
+- Bộ QA có thể chạy qua **GitHub Actions → Firebase operational QA — isolated multi-account test → Run workflow**, hoặc `cd source && npm run qa:firebase` trên môi trường Node+Java. Artifact `hophdnd-firebase-functional-qa` lưu báo cáo **HTML, Markdown, JSON, Vitest result**, tách riêng nhóm quyền, UID, locks, realtime, audit, freeze, import; xác định SHA-256 Rules ứng viên.
+- Workflow chạy khi thay đổi mã `source/src/data`, `state`, `app`, `features`, `domain`, `source/shared`, Rules, tests và scripts QA; không chạy vào Firebase production.
+- **HOLD production**: PASS Emulator và Github Pages không xác minh Rules Published của `hophdnd-8b7b2`, backup thực, hoặc kiểm thử 2 UID Google thật. Giới hạn replay chung UID và read scope `hdnd/.read=auth != null` phải có quyết định bảo mật riêng. Tài liệu [FIREBASE_FUNCTIONAL_QA_TOOL_2026-10-27.md](operations/FIREBASE_FUNCTIONAL_QA_TOOL_2026-10-27.md).
+
+---
+
 ## 27/10/2026 — Bộ kiểm thử chức năng Firebase độc lập đã bổ sung (PR #81)
 
 Theo yêu cầu “tự tạo công cụ test các tính năng”, thêm **QA một lệnh** `cd source && npm run qa:firebase` và workflow [Firebase operational QA](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/firebase-operational-qa.yml). Dùng Firebase Auth + RTDB Emulator `demo-hdnd` cô lập hoàn toàn khỏi `hophdnd-8b7b2`, 8 nhóm phân quyền, khóa ô, đồng bộ realtime, ghi CAS, audit, chốt dữ liệu, xác thực Google và khởi tạo nguồn. Tạo artifact **HTML/Markdown/JSON** với kết quả theo nhóm; giữ artifact kể cả thất bại. Bổ sung hồi quy thu hồi quyền khi UID đang giữ lease, và per-cell deny thắng quyền cột.
