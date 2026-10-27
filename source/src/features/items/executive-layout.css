@@ -36,6 +36,9 @@
 .executive-detail-total{font-size:13px;color:#64748b;font-weight:700;white-space:nowrap;}
 .executive-table-scroll{overflow-x:auto;overflow-y:auto;max-width:100%;max-height:min(70vh,800px);min-height:0;scrollbar-width:auto;scrollbar-gutter:stable;border:1px solid #dce4ed;border-radius:10px;}
 .executive-table{table-layout:fixed;border-collapse:separate;border-spacing:0;width:100%;min-width:1400px;font-size:13.5px;color:#0f172a;}
+/* Override the generic table.data-table font rule (higher specificity) reliably. */
+.executive-detail table.data-table.executive-table{font-size:14px;line-height:1.5;}
+
 .executive-table .executive-col-code{width:76px;}
 .executive-table .executive-col-content{width:29%;}
 .executive-table .executive-col-people{width:19%;}
