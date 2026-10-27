@@ -1,0 +1,52 @@
+name: Verify live Firebase public read permissions (GET only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-live-public-firebase-read.yml"
+permissions:
+  contents: read
+jobs:
+  cloud-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public and protected paths on real RTDB without credentials
+        shell: bash
+        env:
+          DB_URL: https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app
+        run: |
+          set -eu
+          echo '## Firebase Cloud GET-only audit' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Project hophdnd-8b7b2; unauthenticated GET requests. No record values or tokens are logged.' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '| Branch | Expected HTTP | Observed HTTP | Result |' >> "$GITHUB_STEP_SUMMARY"
+          echo '|---|---:|---:|---|' >> "$GITHUB_STEP_SUMMARY"
+          fail=0
+          for path in hdnd/items hdnd/mirrors hdnd/profile hdnd/permissions hdnd/control hdnd/freezeControl hdnd hdnd/editors hdnd/editLocks hdnd/freezeReceipts; do
+            case "$path" in
+              hdnd/items|hdnd/mirrors|hdnd/profile|hdnd/permissions|hdnd/control|hdnd/freezeControl) expected=200;;
+              *) expected=401;;
+            esac
+            # No auth header. --output /dev/null discards all response bytes.
+            set +e
+            got=$(curl --silent --show-error --location --max-time 20 --connect-timeout 8 --output /dev/null --write-out '%{http_code}' "$DB_URL/$path.json?shallow=true")
+            code=$?
+            set -e
+            if [ "$code" != 0 ]; then got="network-error-$code"; fi
+            case "$expected:$got" in
+              200:200|401:401|401:403) result=PASS;;
+              *) result=HOLD; fail=1;;
+            esac
+            echo "| \`$path\` | $expected | $got | $result |" >> "$GITHUB_STEP_SUMMARY"
+            echo "PUBLIC_READ_PROBE path=$path expected=$expected got=$got result=$result"
+          done
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$fail" -eq 0 ]; then
+            echo '**PUBLIC_READ_SCOPE_ON_CLOUD_PASS (GET-only).** This does not validate any edit/write Rules.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '**PUBLIC_READ_SCOPE_ON_CLOUD_HOLD.** Check current published RTDB Rules; do not infer migration or live editing readiness.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
