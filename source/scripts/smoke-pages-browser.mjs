@@ -1796,6 +1796,46 @@ try{
       values};
   })()`);
   if(!isolatedEdit.ok)throw Error('Editing Cấp must not change Tiến độ: '+JSON.stringify(isolatedEdit));
+
+  // Browser-only personal compact view must not touch the Firebase shared layout.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("document.querySelector('.guest-compact-menu-bar .compact-columns-menu')!==null",
+    'Firebase guest compact menu missing');
+  if(await evaluate("document.querySelectorAll('.item-heading-row th').length")!==8)
+    throw Error('Guest must start with inherited 8-column layout');
+  const guestToggle=await evaluate(`(()=>{
+    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    menu.open=true;
+    const label=[...menu.querySelectorAll('label')].find(el=>el.textContent.includes('Loại VB + Sở → Nội dung'));
+    const box=label?.querySelector('input');if(!box||!box.checked)return false;
+    box.click();return true;
+  })()`);
+  if(!guestToggle)throw Error('Guest cannot toggle personal Content/Sở grouping');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===10",
+    'Guest disabling Content/Sở group must restore the two source columns');
+  const guestSaved=await evaluate(`(()=>{
+    const pref=JSON.parse(localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')||'null');
+    return !!pref&&pref.contentDetails===false&&pref.partyTogether&&pref.councilTogether&&pref.teamTogether;
+  })()`);
+  if(!guestSaved)throw Error('Guest preferences not saved locally by UID');
+  const guestScreenshot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestScreenshot.data,'base64'));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===10",
+    'Guest preference did not survive browser reload');
+  const guestReset=await evaluate(`(()=>{
+    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
+    if(!menu)return false;menu.open=true;
+    const reset=[...menu.querySelectorAll('button')].find(b=>b.textContent.includes('Khôi phục cách hiển thị chung'));
+    if(!reset)return false;reset.click();return true;
+  })()`);
+  if(!guestReset)throw Error('Guest reset control is missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===8",
+    'Guest reset must restore the unchanged shared layout');
+  if(!await evaluate("localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')===null"))
+    throw Error('Guest local reset did not clear isolated preference');
+  console.log('COMPACT_GUEST_LOCAL_ONLY_RELOAD_RESET_PASS');
+
   console.log('COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
