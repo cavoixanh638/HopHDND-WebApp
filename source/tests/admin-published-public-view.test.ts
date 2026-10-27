@@ -46,6 +46,27 @@ describe('Materialized guest-facing projection (not a raw Firebase snapshot)',()
     const result=buildAdminPublishedPublicView(source);
     expect(JSON.stringify(result)).not.toContain('TOPSECRET_CUSTOM_CELL');
   });
+  it('uses admin shared merge rules without exposing extra raw source columns',()=>{
+    const source=baseline();
+    source.itemLayout.compactDisplay={
+      ...source.itemLayout.compactDisplay!,contentDetails:true,partyTogether:true,
+      councilTogether:true,teamTogether:true
+    };
+    const result=buildAdminPublishedPublicView(source);
+    const keys=result.columns.map(col=>col.key);
+    expect(keys).toContain('content');
+    expect(keys).not.toContain('department');
+    expect(keys).not.toContain('type');
+    expect(keys).not.toContain('progressParty');
+    expect(keys).not.toContain('progressCouncil');
+    expect(keys).not.toContain('ubndLeader');
+    expect(keys).not.toContain('vpLeader');
+    expect(keys).not.toContain('specialist');
+    expect(result.rows[0].cells.content).toContain(source.items[0].department);
+    expect(result.rows[0].cells.content).toContain(source.items[0].type);
+    expect(result.rows[0].cells.partyLevel).toContain('Tiến độ:');
+    expect(JSON.stringify(result)).not.toContain('SECRET_GUEST_MUST_NOT_READ');
+  });
   it('projects only active detail records',()=>{
     const source=baseline();
     source.items[1].isDropped=true;
