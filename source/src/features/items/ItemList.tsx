@@ -83,7 +83,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     if(import.meta.env.MODE!=='pages-test')return;
     const switchForLegacyQa=()=>{
       setShowExecutive(false);
-      setShowAllSourceColumns(false);
+      setShowAllSourceColumns(true); // test-only bypass of compact guest presentation, not present in production
     };
     window.addEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
     return()=>window.removeEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
