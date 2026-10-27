@@ -13,10 +13,12 @@ vi.mock('../src/state/use-recoverable-draft',()=>({
     unmatchedCheckpoint:null,restoreOldDraft:vi.fn(),discardOldDraft:vi.fn()})
 }));
 import {ItemList} from '../src/features/items/ItemList';
+import {ExecutiveDetailTable} from '../src/features/items/ExecutiveDetailTable';
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {CellHistoryAction} from '../src/components/CellHistoryAction';
-function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
+function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?
+  [v,...nodes(v.type===ExecutiveDetailTable?ExecutiveDetailTable(v.props):v.props?.children)]:[];}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
 function list(readOnly=false) {
   const items=createDemoItems(1),id=items[0].recordId;
@@ -77,13 +79,13 @@ describe('separate item layout save and data draft',()=>{
     const control=nodes(tree).find(node=>node.type==='button'&&node.props?.['aria-pressed']===false);
     expect(control).toBeUndefined();
   });
-  it('preserves saved column order and removes obsolete phantom history',()=>{
+  it('preserves saved column order in full source-column customization and removes obsolete phantom history',()=>{
     const items=createDemoItems(1);
     const old=defaultItemLayout();
     old.columns.reverse();
     old.columns.splice(4,0,{key:'history',label:'Lịch sử',width:100,visible:true});
     const tree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
-      readOnly:true,sourceKind:'google',customizing:false,sourceKey:'old-layout-excel-order',
+      readOnly:true,sourceKind:'google',customizing:true,sourceKey:'old-layout-excel-order',
       catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
