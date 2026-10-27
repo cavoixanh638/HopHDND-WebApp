@@ -1,3 +1,11 @@
+## 27/10/2026 — Bộ kiểm thử chức năng Firebase độc lập đã bổ sung (PR #81)
+
+Theo yêu cầu “tự tạo công cụ test các tính năng”, thêm **QA một lệnh** `cd source && npm run qa:firebase` và workflow [Firebase operational QA](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/firebase-operational-qa.yml). Dùng Firebase Auth + RTDB Emulator `demo-hdnd` cô lập hoàn toàn khỏi `hophdnd-8b7b2`, 8 nhóm phân quyền, khóa ô, đồng bộ realtime, ghi CAS, audit, chốt dữ liệu, xác thực Google và khởi tạo nguồn. Tạo artifact **HTML/Markdown/JSON** với kết quả theo nhóm; giữ artifact kể cả thất bại. Bổ sung hồi quy thu hồi quyền khi UID đang giữ lease, và per-cell deny thắng quyền cột.
+
+**Không coi PASS Emulator là Cloud GO.** Báo cáo ghi rõ Rules mới/cũ, SHA-256 candidate, known same-UID session replay và read scope, chưa kiểm chứng Published Rules/backup/cặp tài khoản Google thực; tool tự chặn khi nhầm credential/endpoint production. Quy trình: [FIREBASE_FUNCTIONAL_QA_TOOL_2026-10-27.md](operations/FIREBASE_FUNCTIONAL_QA_TOOL_2026-10-27.md). PR #81 còn chờ exact HEAD Actions trước khi merge. Các thay đổi không đụng giao diện Danh sách, Supabase hoặc Firebase dữ liệu thật.
+
+---
+
 ## 27/10/2026 — Kiểm tra trạng thái Firebase từ WebApp trực tiếp (PR #80 merged)
 
 **Đã hợp nhất [PR #80](https://github.com/cavoixanh638/HopHDND-WebApp/pull/80)** vào `main` tại `79ef349407d1d2258b0cde19b85cc2bccd420da7`. Kết quả kiểm thử [source + Chrome #40482172729](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40482172729) **PASS**, [Firebase staging #40482172707](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40482172707) **PASS**. Bản Pages chính thức phát hành theo quy trình CI; cần kiểm tra Actions build/Pages trước khi công bố trạng thái triển khai mới nhất.
