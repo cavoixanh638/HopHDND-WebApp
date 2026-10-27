@@ -75,6 +75,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
   const [showExecutive,setShowExecutive]=useState(true);
   const [qaLegacyView,setQaLegacyView]=useState(()=>
+    import.meta.env.MODE==='compact-qa'||
     import.meta.env.MODE==='pages-test'&&document.documentElement.dataset.hdndQaSourceView==='true');
   const [executiveSearch,setExecutiveSearch]=useState('');
   const [executiveFilter,setExecutiveFilter]=useState<ExecutiveFilter>(null);
