@@ -356,6 +356,9 @@
           ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com' || (auth != null && auth.uid === $uid)"
         },
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"
+      },
+      "mirrors": {
+        ".read": "auth != null"
       }
     },
     "hdndReviews": {
