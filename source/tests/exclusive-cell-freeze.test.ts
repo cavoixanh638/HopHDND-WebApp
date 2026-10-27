@@ -79,6 +79,27 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await managerA.cancel('r1','note');
     await managerA.dispose();
   });
+  it('QA permission guard: revoking Google UID mid-edit blocks server save even with a held lease',async()=>{
+    const editor=manager('a'),writer=repo('a',editor);
+    const [initial]=await writer.list();
+    await editor.acquire('r1','note','multiline');
+    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    const [result]=await writer.save([updateDraft(initial,undefined,{note:'revoked UID must not write'})!]);
+    expect(result.ok).toBe(false);
+    const after=(await writer.list())[0];
+    expect(after.note).toBe(initial.note);
+    expect(after.revision).toBe(initial.revision);
+    await editor.dispose();
+  });
+  it('QA permission guard: per-cell deny overrides a global column allow at the lock server',async()=>{
+    await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
+    const editor=manager('a');
+    await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
+    expect((await get(ref(guest('a') as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    await editor.acquire('r1','specificProgress','multiline');
+    expect(editor.proof('r1','specificProgress')).toBeTruthy();
+    await editor.cancel('r1','specificProgress');await editor.dispose();
+  });
   it('accepts approved one-time primary import under exclusive candidate Rules (no live Sheets)',async()=>{
     const source=parseSheetConfig(DEFAULT_SHEET_URL);
     const recordId=source.spreadsheetId+':'+source.gid+':row:3';
