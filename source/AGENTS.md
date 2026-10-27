@@ -1,3 +1,16 @@
+## PUBLISH CHECKPOINT 27/10/2026 — MAIN HAS FIREBASE-ONLY WEBAPP SOURCE, DATABASE CUTOVER STILL SEPARATE
+
+**Owner clarified that no employees are using the WebApp yet.** We are using the canonical GitHub Pages URL as a live UI-acceptance environment; no extra HTML download/standalone preview is necessary for routine UI review.
+
+- PR [#71](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) merged into `main` at `accde2681571e36b9548b21925fe9b2c82082236`; PR [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) merged at `c1696fa6a6b89e94013a5477fcd82650b3e343df`. PR #77 and all Supabase development stay PAUSED, not merged. 
+- GitHub Pages publish workflow [run #40474477483](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40474477483) passed; the generated root `index.html` now references `./assets/pages-DUfJ2eUZ.js`, `./assets/style-BLGoX-cX.css` and the Pages build commit `43eb9b31f2b5d0943d545324974f8549cfe568d2`. GitHub Pages dynamic deployment status must be checked separately. Canonical site: https://cavoixanh638.github.io/HopHDND-WebApp/.
+- **Important: code deployment is NOT Firebase data migration.** No production RTDB Rules publish, `hdnd/items` data import, profile `dataSource=primary` activation or user-role changes have been performed. Do not imply real-time employee editing is ready until the connected Firebase project has been independently checked. The existing source choice may still show Sheets/mirror and may be read-only.
+- Final Firebase production activation remains contingent on verifying the real project's published Rules and snapshot/backup; validated source dataset and exactly one import if empty; matching RTDB Rules deployment authorized by owner; admin/employee Google UID sign-in and proper rights; real two-account save/readback/lock/freeze smoke; rollback. The owner explicitly wants to operate the Pages app as an initial acceptance target and reports no staff data entry, which lowers cutover coordination needs but not security/consistency requirements.
+- Source now includes four compact merge options and a manual Sheets/Excel reconciliation UI, but the latter requires `primary` and authenticated admin; it is not a substitute for initial onboarding. Do not overwrite any existing records to initialize.
+- This checkpoint supersedes older PR status lines below only where they state the code is not merged or the WebApp HTML has not been published. Historical unresolved RTDB security limitations remain documented and must be separately accepted/resolved before live employee editing.
+
+---
+
 ## Chỉ thị hiện hành 26/10/2026 — Firebase-only; Supabase PAUSED
 
 **Quyết định bắt buộc:** [FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md](docs/decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Mọi yêu cầu phát triển tiếp theo chỉ dùng nhánh Firebase PR #71/#72; **không gộp PR #77 hoặc Supabase PR #73/#75**, không deploy Supabase/dual source, không ghi chép/sync thêm dữ liệu sang Supabase. Supabase staging giữ nguyên snapshot 55 dòng như một lựa chọn dự phòng tĩnh, **không phải backup realtime**. Chỉ khôi phục hướng Supabase khi chủ dự án yêu cầu rõ. Giữ release gates Firebase và không thay production nếu chưa GO.
