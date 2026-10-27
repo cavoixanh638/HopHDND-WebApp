@@ -55,7 +55,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await get(ref(db as never,'hdnd/publicViews/current'));
       for(const node of ['hdnd','hdnd/items','hdnd/mirrors','hdnd/profile',
         'hdnd/permissions','hdnd/control','hdnd/freezeControl',
-        'hdnd/editors','hdnd/editLocks','hdnd/freezeReceipts']){
+        'hdnd/editors','hdnd/editLocks','hdnd/freezeReceipts',
+        'hdnd/publicViews','hdnd/publicViews/meta']){
         await assertFails(get(ref(db as never,node)));
       }
     }
@@ -66,6 +67,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
         await get(ref(db as never,node));
       }
       await get(ref(db as never,'hdnd/publicViews/current'));
+      await assertFails(get(ref(db as never,'hdnd/publicViews/meta')));
       await assertFails(get(ref(db as never,'hdnd')));
     }
     expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
