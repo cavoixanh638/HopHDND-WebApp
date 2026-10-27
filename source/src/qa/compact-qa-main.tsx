@@ -36,7 +36,7 @@ function CompactVisualQa(){
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
         readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
-        customizing={false} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'}
+        customizing={false} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
