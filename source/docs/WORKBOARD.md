@@ -1,3 +1,13 @@
+## 27/10/2026 — PR #83: khách chỉ xem bản công bố theo layout quản trị (DRAFT/HOLD)
+
+**Quyết định mới nhất của chủ dự án thay thế phát biểu quá rộng ở PR #82:** Khách kể cả Google chưa được cấp quyền **chỉ đọc** hai tab (Báo cáo tổng hợp, Danh sách chi tiết) theo đúng cột, hàng, nhóm báo cáo và tùy chọn gộp mà admin đã công bố. Tuyệt đối không đọc raw `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/publicViews/meta`, token, UID, audit; không truy cập tùy chỉnh / nguồn Google Sheets/Excel. Nhân viên đã cấp quyền mới đọc raw để sửa theo phân quyền; cùng Google UID nhiều máy hợp lệ.
+
+**Đã có trên nhánh [PR #83](https://github.com/cavoixanh638/HopHDND-WebApp/pull/83) (chưa merge):** Rules candidate path-allowlist, guest UI riêng subscribe `hdnd/publicViews/current` và fail-closed khi chưa công bố, projection lọc ô/cột và áp dụng nhóm gộp chung admin, Cloud Functions v2 publisher theo dõi `hdnd/items/{recordId}` + `hdnd/profile`, snapshot transaction với private revision watermark chống event cũ ghi đè, recovery callable chỉ Google admin, unit/emulator tests và build publisher trong CI. [Thiết kế và release plan](operations/FIREBASE_GUEST_PUBLISHED_VIEW_ONLY_2026-10-27.md).
+
+**Chưa hoàn thành / tuyệt đối không khẳng định đã chạy thật:** nghiệm thu browser guest không đọc raw/GViz, nghiệm thu layout báo cáo tương ứng toàn bộ theme/cột, xác minh Cloud Functions + billing/service account/deploy thực tế, backup/đối chiếu Firebase Published Rules Cloud, phát hành snapshot đầu tiên, test hai tài khoản Google thật, cập nhật nguồn `primary` và chốt GO. CI chỉ kiểm mã và Firebase Emulator. `main`/Pages hiện chưa có #83; candidate Rules chưa publish production. **Không merge/deploy PR #83 chỉ vì CI PASS; phối hợp publisher + client + Rules và rollback trước release.**
+
+---
+
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
