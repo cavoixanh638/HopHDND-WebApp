@@ -1,9 +1,9 @@
-## 27/10/2026 — Danh sách chi tiết V2: UI compact 6 cột + 3 thẻ báo cáo (feature branch)
+## 27/10/2026 — UI DANH SÁCH CHI TIẾT V2 ĐÃ MERGE / GITHUB PAGES ĐÃ PHÁT HÀNH
 
 - Đặc tả chính: [EXECUTIVE_DETAIL_UI_V2_2026-10-27.md](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md).
-- Nhánh `feature/executive-detail-ui-20261027` xuất phát từ checkpoint `5db47f0` trước sửa UI, **chưa merge / chưa publish production**. Hai thành phần mới: `ExecutiveProgressCards` (tái sử dụng số liệu và status grouping của Báo cáo tổng hợp) và `ExecutiveDetailTable` (6 ô theo 4 cụm, mã NQ01/BC01, viết tắt CV, phòng trong ngoặc; giữ tiến độ hiện tại và ghi chú riêng). Bố cục gọn mặc định nhưng còn chế độ từng cột/đầy đủ Excel.
-- Thẻ báo cáo: Thành ủy có một ô Bước tiếp theo = 3 mốc giữa VP và TBKL; Xây dựng NQ có một ô Đã trình, chưa có QĐ; thanh màu đỏ → cam → xanh nhạt → xanh theo tiến độ. Cần lấy exact head CI sau PR, chưa khẳng định đạt QA.
-- **Bảo mật khách còn HOLD:** PR #83 DRAFT chưa merge, không đưa dữ liệu nguồn/items/mirrors/permissions cho khách. Không thay Firebase production hoặc quyền sửa ở nhánh UI này.
+- Nhánh `feature/executive-detail-ui-20261027` xuất phát từ checkpoint `5db47f0` trước sửa UI, **PR #84 đã MERGE vào main (`fa5e8d9`) và GitHub Pages deploy SUCCESS #40533214193**. Hai thành phần mới: `ExecutiveProgressCards` (tái sử dụng số liệu và status grouping của Báo cáo tổng hợp) và `ExecutiveDetailTable` (6 ô theo 4 cụm, mã NQ01/BC01, viết tắt CV, phòng trong ngoặc; giữ tiến độ hiện tại và ghi chú riêng). Bố cục gọn mặc định nhưng còn chế độ từng cột/đầy đủ Excel.
+- Thẻ báo cáo: Thành ủy có một ô Bước tiếp theo = 3 mốc giữa VP và TBKL; Xây dựng NQ có một ô Đã trình, chưa có QĐ; thanh màu đỏ → cam → xanh nhạt → xanh theo tiến độ. Exact head `88c3f38` đã đạt Verify source + Chrome + Firebase Emulator #40532768478 và Firebase operational QA #40532768475.
+- **Bảo mật khách còn HOLD:** PR #83 DRAFT chưa merge; backend production chưa được xác minh chỉ cho khách đọc các bảng đã công bố và chặn raw items/mirrors/profile/permissions. Ẩn dữ liệu trong frontend không thay thế Firebase Rules. PR #84 không thay Firebase production, quyền sửa hay dataSource.
 
 ---
 
