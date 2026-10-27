@@ -1,8 +1,8 @@
-## 27/10/2026 — Danh sách chi tiết V2 đang triển khai trên nhánh UI riêng
+## 27/10/2026 — UI Danh sách chi tiết V2 ĐÃ HOÀN THÀNH / GITHUB PAGES RELEASED
 
-- [Đặc tả UI, tiêu chí nghiệm thu, rollback](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md). Nhánh `feature/executive-detail-ui-20261027`; checkpoint `5db47f0`.
+- [Đặc tả UI, tiêu chí nghiệm thu, rollback](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md). PR [#84](https://github.com/cavoixanh638/HopHDND-WebApp/pull/84) đã merge commit `fa5e8d9`; checkpoint `5db47f0`.
 - Code: 3 thẻ + segmented bar cùng logic Bảng tổng hợp, bảng 6 cột/4 cụm, badge Loại VB, mã Excel, trách nhiệm viết tắt + phòng (ngoặc), 3 dòng tiến độ, 2 cột ghi chú tách. Bộ tùy chọn cột cũ được giữ.
-- QA: TypeScript, Vitest, build Pages, Firebase Emulator, Chrome; đối chiếu báo cáo, bấm lọc, editor CAS/lease, responsive. **Chưa được coi là phát hành xong cho tới khi CI exact head và browser xác nhận.**
+- QA: TypeScript, Vitest, build Pages, Firebase Emulator, Chrome; đối chiếu báo cáo, bấm lọc, editor CAS/lease, responsive. **ĐÃ ĐẠT:** exact feature head `88c3f38`, Verify source + Chrome + Emulator [#40532768478](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40532768478) SUCCESS; Firebase operational QA [#40532768475](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40532768475) SUCCESS; Pages deploy [#40533214193](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40533214193) SUCCESS. Đây là release UI, không phải Firebase Cloud Rules.
 - Việc tách riêng: PR #83/DRAFT và hardening guest backend, staging/production Firebase Rules, cutover dataSource, real 2-UID remain HOLD; không deploy theo UI.
 
 ---
