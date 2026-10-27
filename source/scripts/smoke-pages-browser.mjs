@@ -167,9 +167,16 @@ try{
   if(!executiveOk)throw Error('Executive six-column table or three report cards is missing');
   console.log('EXECUTIVE_LAYOUT_PASS');
   const executiveSwitchBack=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==='Tùy chọn từng cột');if(!b)return false;b.click();return true})()");
-  if(!executiveSwitchBack)throw Error('Legacy per-column source view switch missing');
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Legacy source-column view no longer works');
-  console.log('LEGACY_SOURCE_COLUMN_FALLBACK_PASS');
+  if(executiveSwitchBack){
+    await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Legacy source-column view no longer works');
+    console.log('LEGACY_SOURCE_COLUMN_FALLBACK_PASS');
+  }else{
+    // pages-test runs with a guest identity: raw Excel layout controls must NOT
+    // become available merely to satisfy a smoke assertion.
+    const guestRestricted=await evaluate("(()=>!!document.querySelector('.executive-table') && !document.querySelector('.source-column-visibility'))()");
+    if(!guestRestricted)throw Error('Guest exposed a source-column management control');
+    console.log('GUEST_COLUMN_RESTRICTION_PASS');
+  }
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
   const inkPoints=await evaluate(`(()=>{
