@@ -66,3 +66,72 @@ export async function migrateMirrorToPrimary(
   }
   return {sourceCount:rows.length,importedCount:Object.keys(raw).length};
 }
+
+/** Explicit admin-only first import from a freshly reviewed Google Sheets/Excel
+ * snapshot. Unlike the legacy mirror helper this does not trust cached mirror
+ * data. The ONLY server write is an empty-root -> full-root transaction.
+ * A second import can never silently overwrite existing items.
+ */
+export async function bootstrapApprovedRowsToPrimary(
+  database:Database,user:Pick<User,'uid'|'email'|'emailVerified'|'providerData'>|null,
+  sourceRows:readonly Item[]
+):Promise<PrimaryMigrationResult>{
+  if(!user||!firebaseAdmin(user))
+    throw new Error('Chỉ quản trị Google đã xác minh được khởi tạo Firebase chính.');
+  if(sourceRows.length<1||sourceRows.length>1000)
+    throw new Error('Nguồn phải có từ 1 đến 1.000 hồ sơ để kiểm tra ban đầu.');
+  const [control,freeze,existing]=await Promise.all([
+    get(ref(database,'hdnd/control')),
+    get(ref(database,'hdnd/freezeControl')),
+    get(ref(database,'hdnd/items'))
+  ]);
+  if(control.val()?.editingLocked===true)
+    throw new Error('Quản trị đang khóa sửa. Không khởi tạo cơ sở dữ liệu.');
+  const freezeMode=freeze.val()?.mode;
+  if(freezeMode&&freezeMode!=='OPEN')
+    throw new Error('Firebase đang trong trạng thái '+String(freezeMode)+'; không khởi tạo.');
+  if(existing.exists())
+    throw new Error('Firebase hdnd/items đã có dữ liệu; tuyệt đối không nhập chồng.');
+  const ids=new Set<string>(),codes=new Set<string>();
+  const rows=sourceRows.map(input=>{
+    const row=validateFirebaseItem({...input,revision:1,archivedAt:input.archivedAt??null});
+    if(/^(?:Dòng\\s+\\d+\\s*\\(thiếu mã\\)|Row\\s+\\d+)/iu.test(row.displayCode)||
+       !row.displayCode.trim()||row.displayCode.length>100)
+      throw new Error('Một hồ sơ thiếu mã định danh ổn định; không khởi tạo.');
+    if(ids.has(row.recordId)||codes.has(row.displayCode))
+      throw new Error('Trùng recordId hoặc mã hồ sơ '+row.displayCode+'; không khởi tạo.');
+    ids.add(row.recordId);codes.add(row.displayCode);
+    if(row.isDropped===true||row.archivedAt)
+      throw new Error('Bản nguồn có hồ sơ rút/lưu trữ. Phải kiểm tra và duyệt riêng: '+row.displayCode);
+    return row;
+  });
+  const payload=Object.fromEntries(rows.map(row=>{
+    const values=Object.fromEntries(EDITABLE_FIELDS.map(field=>[field,row[field]]));
+    return [row.recordId,{
+      recordId:row.recordId,displayCode:row.displayCode,stt:row.stt,revision:1,
+      ...values,operationId:crypto.randomUUID(),updatedAt:serverTimestamp(),
+      updatedBy:user.uid
+    }];
+  }));
+  const result=await runTransaction(ref(database,'hdnd/items'),current=>{
+    if(current!==null)return undefined;
+    return payload;
+  },{applyLocally:false});
+  if(!result.committed)
+    throw new Error('Dữ liệu chính đã tồn tại hoặc Rules không cho phép khởi tạo. Không nhập lại.');
+  const raw=(await get(ref(database,'hdnd/items'))).val();
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+    Object.keys(raw).length!==rows.length)
+    throw new Error('Sau khi ghi chưa đọc lại đúng số hồ sơ. KHÔNG tự thử nhập lại.');
+  for(const row of rows){
+    const item=raw[row.recordId];
+    if(!item)throw new Error('Thiếu hồ sơ '+row.displayCode+' sau khi đọc lại.');
+    const confirmed=validateFirebaseItem(item);
+    if(confirmed.revision!==1||confirmed.recordId!==row.recordId||
+      confirmed.displayCode!==row.displayCode||confirmed.stt!==row.stt||
+      EDITABLE_FIELDS.some(field=>confirmed[field]!==row[field]))
+      throw new Error('Dữ liệu Firebase đọc lại khác nguồn tại '+row.displayCode+
+        '. KHÔNG tự thử nhập lại.');
+  }
+  return {sourceCount:rows.length,importedCount:rows.length};
+}
