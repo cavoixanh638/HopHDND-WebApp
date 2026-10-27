@@ -8,7 +8,7 @@ import {updateDraft} from '../src/domain/items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
 import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
-import {migrateMirrorToPrimary} from '../src/data/firebase-primary-bootstrap';
+import {migrateMirrorToPrimary,bootstrapApprovedRowsToPrimary} from '../src/data/firebase-primary-bootstrap';
 import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
@@ -98,6 +98,43 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(imported.recordId).toBe(recordId);
     await expect(migrateMirrorToPrimary(admin() as never,actor('administrator',true),source))
       .rejects.toThrow(/đã có dữ liệu/);
+  });
+  it('one-time approved current Excel/Sheets snapshot initializes empty primary, reads back, never overwrites',async()=>{
+    const snapshot={...row,recordId:'1VzcGF_-dAS-6yanFk-xPQ2vbdcv9bDEp:60961344:row:4',displayCode:'NQ-CURRENT-01'};
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/items'),null);
+    });
+    const db=admin() as never;
+    const count=await bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[snapshot]);
+    expect(count).toEqual({sourceCount:1,importedCount:1});
+    const saved=(await get(ref(db,'hdnd/items/'+snapshot.recordId))).val();
+    expect(saved.recordId).toBe(snapshot.recordId);
+    expect(saved.note).toBe(snapshot.note);
+    expect(saved.revision).toBe(1);
+    await expect(bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[snapshot]))
+      .rejects.toThrow(/đã có dữ liệu/);
+    expect((await get(ref(db,'hdnd/items/'+snapshot.recordId))).val()).toEqual(saved);
+  });
+  it('approved initial bootstrap denies non-admin, duplicate business codes and closed freeze',async()=>{
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/items'),null);
+    });
+    const proposed={...row,recordId:'bootstrap-a',displayCode:'NQ-READY'};
+    await expect(bootstrapApprovedRowsToPrimary(guest('a') as never,actor('a'),[proposed]))
+      .rejects.toThrow(/Chỉ quản trị/);
+    await expect(bootstrapApprovedRowsToPrimary(admin() as never,actor('administrator',true),[
+      proposed,{...proposed,recordId:'bootstrap-b'}
+    ])).rejects.toThrow(/Trùng/);
+    expect((await get(ref(admin() as never,'hdnd/items'))).exists()).toBe(false);
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/freezeControl'),{
+        mode:'FROZEN',revision:1,epoch:1,actor:'administrator',
+        changedAt:Date.now(),deadline:0,closedAt:Date.now()
+      });
+    });
+    await expect(bootstrapApprovedRowsToPrimary(admin() as never,actor('administrator',true),[proposed]))
+      .rejects.toThrow(/FROZEN/);
+    expect((await get(ref(admin() as never,'hdnd/items'))).exists()).toBe(false);
   });
   it('only one of two different users (or two tabs same UID) can hold the same field',async()=>{
     const a=manager('a'),b=manager('b');
