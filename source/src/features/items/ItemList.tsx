@@ -4,7 +4,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { EXCEL_COLUMN_KEYS, cellHighlightStyle, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -35,13 +35,12 @@ import './item-frame.css';
 import './executive-layout.css';
 import { ExecutiveProgressCards, getExecutiveCards, filterByExecutiveStage, type ExecutiveFilter } from './ExecutiveProgressCards';
 import { ExecutiveDetailTable } from './ExecutiveDetailTable';
-import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {resizeWithLastColumn,trailingWidthBounds} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
-import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
+import {loadColorRules,itemColor,type ColorRule} from '../../data/list-views';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,reportConfigs=[],summaryItems }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;reportConfigs?:ReportConfig[];summaryItems?:Item[] }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
@@ -65,10 +64,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     setPersonalCompact(readPersonalCompactDisplay(viewerCompactScope));
     setCompactStorageWarning('');
   },[viewerCompactScope]);
-  const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
-  const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  // The deprecated personal display-template selector is removed. Always begin
+  // from the admin-shared layout, while keeping per-column filters and controls.
+  const [columnFilters,setColumnFilters]=useState<Record<string,string>>({});
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
-  const [personalViewActive,setPersonalViewActive]=useState(!!selectedView);
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
@@ -93,25 +92,22 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     window.addEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
     return()=>window.removeEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
   },[]);
-  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
+  const [colorRules]=useState<ColorRule[]>(()=>loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
-  // Admin customizations always start from the one Firebase shared layout.
-  // Personal saved views are viewing presets, never an alternative shared baseline.
-  const [applied, setApplied] = useState(() => {
-    const authoritative=initialLayout??loadItemLayout(sourceKey);
-    return !customizing&&selectedView?overlayPersonalLayout(authoritative,selectedView.layout):authoritative;
-  });
+  // The administrative layout is the sole baseline; deprecated personal
+  // templates are never silently applied from browser storage.
+  const [applied, setApplied] = useState(() => initialLayout??loadItemLayout(sourceKey));
   // The Firebase baseline must be the original *shared* layout when editing began,
   // not a local saved view nor the profile revision emitted after another write.
   const sharedBase=useRef<ItemLayout>(initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase.current;
-  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
+  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
-  const shareCompact=allowLayout&&!!onPersistViewerLayout&&!anonymousViewer&&!personalViewActive;
+  const shareCompact=allowLayout&&!!onPersistViewerLayout&&!anonymousViewer;
   const compactDisplay=customizing||shareCompact?activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY:
     personalCompact??activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
   // The viewer already receives the exact first-frame width from App. Avoid
@@ -321,7 +317,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
   const canViewerArrange=!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
-    !personalViewActive&&!showAllSourceColumns&&!locked;
+    !showAllSourceColumns&&!locked;
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout)=>{
     if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return;
     const baseline=initialLayout;
@@ -349,19 +345,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     }
     void applyViewerLayout(base=>({...base,columns:reorderByKey(base.columns,column=>column.key,from,to)}));
   };
-  const applyView=(view:SavedListView|null):boolean=>{
-    if(dirty||pendingData)return false;
-    const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),nextLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY)
-      .flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
-    setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
-    setShowAllSourceColumns(false);
-    setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
-    setColorRules(view?.colors??loadColorRules(personalScope));
-    setPersonalViewActive(!!view);
-    return true;
-  };
-  const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
@@ -486,7 +469,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
-        role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
+        role="status">{viewSaving?'Đang lưu cột…':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
       {allowLayout&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
@@ -499,7 +482,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
-     {allowLayout&&!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
