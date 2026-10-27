@@ -22,7 +22,9 @@ const catalog=catalogFromItems(items);
 function CompactVisualQa(){
   const [layout,setLayout]=useState<ItemLayout>(initial);
   const [records,setRecords]=useState(items);
-  const editing=new URLSearchParams(window.location.search).get('edit')==='1';
+  const params=new URLSearchParams(window.location.search);
+  const editing=params.get('edit')==='1';
+  const guest=params.get('guest')==='1';
   return <div className="app-shell imperial-sky-theme" data-qa="compact-real-itemlist">
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
       <h1 style={{fontSize:20,margin:0}}>HopHDND · Gộp cột (bản kiểm thử UI)</h1>
@@ -34,7 +36,7 @@ function CompactVisualQa(){
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
         readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
-        customizing={false} anonymousViewer={false}
+        customizing={false} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'}
         initialLayout={layout}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
@@ -45,7 +47,7 @@ function CompactVisualQa(){
         onSaveData={async()=>false}
         onDiscardData={()=>{}}
         onLayoutSaved={()=>{}}
-        onPersistViewerLayout={async(next)=>{
+        onPersistViewerLayout={guest?undefined:async(next)=>{
           const validated=validateItemLayout(next);
           setLayout(validated);return validated;
         }}
