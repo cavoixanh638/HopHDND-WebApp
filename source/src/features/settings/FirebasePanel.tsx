@@ -1,8 +1,11 @@
 import {useState} from 'react';
+import type {Database} from 'firebase/database';
+import {checkLiveFirebaseReadiness,type LiveFirebaseReadiness} from '../../data/firebase-live-readiness';
 import type {Item} from '../../../shared/types';
 import type {CellPermissions} from '../../data/firebase-repository';
 
 type Props = {
+  firebaseDatabase?:Database;
   userLabel:string;
   isAdmin:boolean;
   userUid:string;
@@ -24,12 +27,26 @@ type Props = {
 };
 
 /** Authentication only. Permission editing is now directly inside ItemList customization. */
-export function FirebasePanel({userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,dataSource='excel',onChangeDataSource,onBootstrapPrimary}:Props){
+export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,dataSource='excel',onChangeDataSource,onBootstrapPrimary}:Props){
   const [working,setWorking]=useState(false);
   const [error,setError]=useState('');
   const [confirmPrimary,setConfirmPrimary]=useState(false);
   const [notice,setNotice]=useState('');
   const [editorUid,setEditorUid]=useState('');
+  const [liveCheck,setLiveCheck]=useState<LiveFirebaseReadiness|null>(null);
+  const [liveChecking,setLiveChecking]=useState(false);
+  const [liveError,setLiveError]=useState('');
+  const inspectLive=async()=>{
+    if(!isAdmin||!connected||!firebaseDatabase||liveChecking)return;
+    setLiveCheck(null);setLiveError('');setLiveChecking(true);
+    try{
+      setLiveCheck(await checkLiveFirebaseReadiness(firebaseDatabase));
+    }catch(cause){
+      setLiveError('Không đọc được trạng thái Firebase từ máy chủ: '+
+        (cause instanceof Error?cause.message:'Lỗi kết nối hoặc quyền truy cập')+
+        '. Không coi phiên kiểm tra này là đạt.');
+    }finally{setLiveChecking(false);}
+  };
   const login=async()=>{setWorking(true);setError('');try{await onLogin();}catch(cause){setError(cause instanceof Error?cause.message:'Không đăng nhập được.');}finally{setWorking(false);}};
   const logout=async()=>{setWorking(true);setError('');try{await onLogout();}catch(cause){setError(cause instanceof Error?cause.message:'Không đăng xuất được.');}finally{setWorking(false);}};
   const isGuest=userLabel.startsWith('Khách ẩn danh');
@@ -70,6 +87,28 @@ export function FirebasePanel({userLabel,isAdmin,userUid,editorAuthorized,editor
           finally{setWorking(false);}
         }}>Thu hồi</button>
       </li>)}</ul>
+    </section>}
+    {isAdmin&&firebaseDatabase&&<section className="notice" aria-label="Kiểm tra vận hành Firebase">
+      <h3>Kiểm tra vận hành Firebase</h3>
+      <p className="muted">Đọc trực tiếp Firebase của website, không ghi dữ liệu hoặc thay quyền. Dùng trước khi chuyển sang nguồn chính và sau khi kiểm tra đăng nhập.</p>
+      <button type="button" className="button ghost" disabled={busy||liveChecking||!connected}
+        onClick={()=>void inspectLive()}>
+        {liveChecking?'Đang kiểm tra…':'Kiểm tra Firebase đang sử dụng'}
+      </button>
+      {liveError&&<p role="alert" className="error-text">{liveError}</p>}
+      {liveCheck&&<div role="status">
+        <p><strong>Đã đọc từ Firebase:</strong> {new Date(liveCheck.checkedAt).toLocaleString('vi-VN')}
+          {' '}· Nguồn dữ liệu: <strong>{liveCheck.source==='primary'?'Firebase chính':liveCheck.source==='database'?'Firebase mirror':liveCheck.source==='excel'?'Google Sheets/Excel':'Chưa xác định'}</strong></p>
+        <p>Hồ sơ Firebase chính: <strong>{liveCheck.primaryCount}</strong>
+          {' '}· Cấu hình: {liveCheck.profilePresent?'Có':'Chưa có'}
+          {' '}· Phân quyền ô: {liveCheck.permissionsPresent?'Có':'Chưa có'}
+          {' '}· Tài khoản nhân viên được cấp: {liveCheck.editorAccounts}</p>
+        <p>Khóa chỉnh sửa: {liveCheck.editingLocked?'Đang bật':'Không bật'}
+          {' '}· Chế độ chốt dữ liệu: {liveCheck.freezeMode}</p>
+        {liveCheck.problems.length?<ul>{liveCheck.problems.map(message=><li key={message}>{message}</li>)}</ul>
+          :<p>Những điều kiện dữ liệu kiểm tra được đều phù hợp. Cần xác nhận Rules đã publish và kiểm thử lưu bằng hai tài khoản trước khi sử dụng.</p>}
+        <p className="muted">Lưu ý: bảng trên chỉ xác nhận các dữ liệu đã đọc bằng tài khoản hiện tại. Nó không xác nhận Security Rules đang publish, khả năng ghi thực tế hay tình trạng sao lưu.</p>
+      </div>}
     </section>}
     {isAdmin&&onChangeDataSource&&<div className="card-header"><div><h3>Nguồn dữ liệu hiển thị</h3>
       <p className="muted">Firebase chính hoạt động độc lập với link Google Sheets và hỗ trợ lưu realtime. Bản sao Excel chỉ dùng để chuyển dữ liệu ban đầu hoặc dự phòng, không phải nguồn dữ liệu lâu dài.</p>
