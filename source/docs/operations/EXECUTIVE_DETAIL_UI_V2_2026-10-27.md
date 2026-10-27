@@ -41,3 +41,10 @@ Mỗi thẻ hiển thị tỷ lệ, hoàn thành/tổng, thanh phân đoạn nga
 
 ## Quy tắc rollback
 Trở về code trước sửa UI bằng SHA `a394d0bf2965acd8fcc3385c2293ed6949ef4224` hoặc nhánh checkpoint. Dữ liệu Firebase không thuộc commit UI nên không liên quan thao tác rollback frontend.
+
+## 27/10/2026 — phản hồi từ ảnh thực tế: UX hotfix
+- Phản hồi: ô nhãn trạng thái và chữ trong báo cáo quá nhỏ; hàng “Mẫu hiển thị cá nhân” chiếm diện tích; bảng chi tiết không cuộn dọc độc lập.
+- Chỉnh `executive-layout.css`: chữ ô trạng thái 12.5px, nội dung bảng 13.5px, tiêu đề rõ; giữ nguyên thứ tự/màu đỏ → cam → xanh nhạt → xanh; màn hình hẹp không xuống 9px.
+- Khung bảng `executive-table-scroll` dùng `max-height:min(70vh,800px)`, `overflow-x/y:auto`, thanh cuộn rõ, hai dòng header sticky theo trật tự để vẫn biết cột khi cuộn.
+- Trong `ItemList.tsx` bỏ hoàn toàn vùng “Mẫu hiển thị cá nhân” khỏi màn hình và ngừng âm thầm kích hoạt mẫu lưu cũ trong `localStorage`. Không xóa dữ liệu mẫu cũ; chỉ ngừng sử dụng. Giữ hiển thị gọn mặc định, chế độ từng cột, hiện đủ cột Excel, bộ lọc, cấu hình cột admin, màu dòng đã lưu, CAS/lease quyền sửa từng ô.
+- Regression `tests/executive-detail-hotfix.test.ts`; tiếp tục yêu cầu typecheck, full Vitest, browser smoke và Pages deployment status. Không động Firebase Rules hoặc dữ liệu production. 
