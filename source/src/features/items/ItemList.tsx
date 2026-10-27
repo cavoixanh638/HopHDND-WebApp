@@ -74,7 +74,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
   const [showExecutive,setShowExecutive]=useState(true);
-  const [qaLegacyView,setQaLegacyView]=useState(false);
+  const [qaLegacyView,setQaLegacyView]=useState(()=>
+    import.meta.env.MODE==='pages-test'&&document.documentElement.dataset.hdndQaSourceView==='true');
   const [executiveSearch,setExecutiveSearch]=useState('');
   const [executiveFilter,setExecutiveFilter]=useState<ExecutiveFilter>(null);
   // QA-only bridge for the long legacy Chrome smoke suite. The pages-test
@@ -83,6 +84,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   useEffect(()=>{
     if(import.meta.env.MODE!=='pages-test')return;
     const switchForLegacyQa=()=>{
+      document.documentElement.dataset.hdndQaSourceView='true'; // persists across mock tab remounts
       setQaLegacyView(true); // pages-test only: restore the ORIGINAL guest source layout for legacy QA
       setShowExecutive(false);
       setShowAllSourceColumns(false);
