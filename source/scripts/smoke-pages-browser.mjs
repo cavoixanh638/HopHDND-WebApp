@@ -166,6 +166,14 @@ try{
   const executiveOk=await evaluate("(()=>{const table=document.querySelector('.executive-table');return !!table && table.querySelectorAll('colgroup col').length===6 && document.querySelectorAll('.executive-report-card').length===3 && !!document.querySelector('.executive-progress-track')})()");
   if(!executiveOk)throw Error('Executive six-column table or three report cards is missing');
   console.log('EXECUTIVE_LAYOUT_PASS');
+  // Screenshot-reported regression: compact table must own a vertical scroll
+  // viewport and display readable text, not tiny labels or hidden template UI.
+  const executiveUx=await evaluate("(()=>{const box=document.querySelector('.executive-table-scroll');const card=document.querySelector('.executive-status span');const table=document.querySelector('.executive-table');if(!box||!card||!table)return null;const style=getComputedStyle(box);const before=box.scrollTop;box.scrollTop=200;const moved=box.scrollTop;box.scrollTop=before;return {overflowY:style.overflowY,overflowX:style.overflowX,maxHeight:style.maxHeight,clientHeight:box.clientHeight,scrollHeight:box.scrollHeight,scrollTop:moved,labelFont:parseFloat(getComputedStyle(card).fontSize),tableFont:parseFloat(getComputedStyle(table).fontSize),hasPersonalTemplate:!!document.querySelector('.list-view-box')};})()");
+  if(!executiveUx||executiveUx.overflowY!=='auto'||executiveUx.overflowX!=='auto'||
+    executiveUx.maxHeight==='none'||executiveUx.labelFont<12||executiveUx.tableFont<13||
+    executiveUx.hasPersonalTemplate||(executiveUx.scrollHeight>executiveUx.clientHeight+20&&executiveUx.scrollTop<1))
+    throw Error('Detail V2 readability / independent vertical scroll regression: '+JSON.stringify(executiveUx));
+  console.log('EXECUTIVE_SCROLL_READABILITY_PASS',JSON.stringify(executiveUx));
   const executiveSwitchBack=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==='Tùy chọn từng cột');if(!b)return false;b.click();return true})()");
   if(executiveSwitchBack){
     await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Legacy source-column view no longer works');
