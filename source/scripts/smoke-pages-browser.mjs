@@ -176,6 +176,11 @@ try{
     const guestRestricted=await evaluate("(()=>!!document.querySelector('.executive-table') && !document.querySelector('.source-column-visibility'))()");
     if(!guestRestricted)throw Error('Guest exposed a source-column management control');
     console.log('GUEST_COLUMN_RESTRICTION_PASS');
+    // The only way this test harness can visit the legacy view while logged in
+    // as a mock guest is a pages-test-only event (never present in production).
+    await evaluate("(()=>{window.dispatchEvent(new Event('hdnd:qa-source-column-view'));return true})()");
+    await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock legacy QA mode did not restore the Excel table');
+    console.log('ISOLATED_LEGACY_QA_VIEW_PASS');
   }
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
