@@ -26,8 +26,8 @@ Không thể cho client khách đọc `hdnd/items` rồi “ẩn cột bằng Re
 
 ## Chưa hoàn thành — không được merge vội
 1. **Trusted publisher** xuất snapshot server-side có quyền đọc raw, kiểm nguồn/bố cục đã xác nhận của admin và cập nhật khi nhân viên ghi hoặc admin thay layout. Nếu Cloud Functions cần billing chưa kích hoạt, cần quyết định cơ chế server phù hợp trước triển khai; không thể giả định Firebase RTDB Rules tự dựng projection.
-2. **Guest UI** dùng riêng projection (báo cáo tổng hợp + danh sách chi tiết), khóa chức năng tùy chỉnh và không tạo request GViz/RTDB raw trên trình duyệt khách. Giữ trải nghiệm và bố cục như admin công bố.
+2. **Guest UI** đã có đường riêng đọc projection và hai bảng, nhưng chưa có ảnh nghiệm thu với publisher thực; cần kiểm thử Chrome không gọi raw/GViz và hoàn thiện đồng nhất layout báo cáo, gộp cột.
 3. Test Chrome guest request interception assert **không có** `/hdnd/items`, `/hdnd/mirrors`, `hdnd/profile`, Sheets GViz, và không lộ dữ liệu ẩn qua payload; test hai UID + no-login + Rules Emulators.
 4. Thực hiện backup và đối chiếu Rules published Cloud; chỉ deploy đồng thời khi publisher có sẵn snapshot, viewer đã kiểm thử và có kế hoạch chuyển đổi một lần. Nếu không, người xem có thể thấy bảng trống.
 
-**Trạng thái:** DRAFT/HOLD. `main` hiện vẫn chứa UI cũ và Rules ứng viên từng lỡ cho raw public trong PR #82; **không đồng nghĩa Rules ấy đã publish Cloud**. Không tuyên bố khách chỉ nhìn được layout cho tới khi 4 bước trên hoàn tất.
+**Trạng thái:** DRAFT/HOLD. Phần frontend khách đã thêm nhưng chưa nghiệm thu cùng publisher realtime; KHÔNG tự merge/release.  `main` hiện vẫn chứa UI cũ và Rules ứng viên từng lỡ cho raw public trong PR #82; **không đồng nghĩa Rules ấy đã publish Cloud**. Không tuyên bố khách chỉ nhìn được layout cho tới khi 4 bước trên hoàn tất.
