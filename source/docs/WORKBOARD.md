@@ -1,3 +1,13 @@
+## 27/10/2026 — BẢN HTML XEM THỬ GỘP CỘT, KHÔNG CẦN CÀI ĐẶT
+
+Theo yêu cầu chủ dự án “làm đến khi tôi xem được”, nhánh Firebase PR #72 bổ sung **bản giao diện tương tác độc lập** của chính `ItemList` bằng dữ liệu mô phỏng: `source/compact-qa.html` → Vite `dist-compact-qa` → `node scripts/package-compact-qa.mjs` → `dist-compact-qa/HopHDND_GopCot_XemThu.html` (một HTML đóng gói CSS/JS, không cần máy chủ, không có bộ kết nối Firebase, không sửa Cloud). GitHub Actions `verify-source.yml` sau khi **browser smoke PASS** sẽ tạo artifact `hophdnd-compact-interactive-offline` để chủ dự án tải tệp HTML và mở trực tiếp bằng Chrome/Edge; liên kết lấy từ trang Actions run tương ứng PR #72.
+
+- Bản xem thử dùng **tập dữ liệu giả**, có menu 4 lựa chọn gộp (15→8 cột) và các tùy chọn khác; mở `HopHDND_GopCot_XemThu.html` offline để thao tác, không yêu cầu GitHub Desktop, npm, tài khoản Google hay Firebase.
+- Ảnh chụp thực Chrome desktop/mobile và chế độ người xem trong artifact `hophdnd-browser-smoke-preview`. Lưu ý QA phiên offline mặc định là mô phỏng quản trị; `?guest=1` được dùng khi chạy trong QA server để kiểm tra chế độ khách. Không diễn giải preview thành app production.
+- Bản HTML **không được tự động deploy GitHub Pages chính thức**, không merge PR #71/#72, không thay đổi Supabase, Firebase production hay dữ liệu thật. Release gate Firebase vẫn NO-GO chờ nghiệm thu nhiều tài khoản và backup/Rules.
+
+---
+
 ## BỔ SUNG UI FIREBASE — GỘP CỘT CÁ NHÂN CHO NGƯỜI XEM (27/10/2026)
 
 Theo yêu cầu tiếp tục làm **trực tiếp trên GitHub**, đã tách phần hiển thị của bốn nhóm gộp cột khỏi quyền ghi bố cục chung:
