@@ -97,9 +97,9 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       uid:'not-on-allowlist',session:crypto.randomUUID(),token:crypto.randomUUID(),
       revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
     }));
-    const baseline=(await get(ref(other as never,'hdnd/items/r1'))).val();
+    await assertFails(get(ref(other as never,'hdnd/items/r1')));
     await assertFails(update(ref(other as never,'hdnd/items/r1'),{
-      note:'UID without grant',revision:baseline.revision+1
+      note:'UID without grant',revision:2
     }));
   });
   it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
@@ -121,7 +121,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await set(ref(admin() as never,'hdnd/editors/a'),false);
     const [result]=await writer.save([updateDraft(initial,undefined,{note:'revoked UID must not write'})!]);
     expect(result.ok).toBe(false);
-    const after=(await writer.list())[0];
+    await assertFails(get(ref(guest('a') as never,'hdnd/items/r1')));
+    const after=(await get(ref(admin() as never,'hdnd/items/r1'))).val();
     expect(after.note).toBe(initial.note);
     expect(after.revision).toBe(initial.revision);
     await editor.dispose();
