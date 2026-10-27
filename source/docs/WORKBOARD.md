@@ -1,3 +1,12 @@
+## 27/10/2026 — Danh sách chi tiết V2 đang triển khai trên nhánh UI riêng
+
+- [Đặc tả UI, tiêu chí nghiệm thu, rollback](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md). Nhánh `feature/executive-detail-ui-20261027`; checkpoint `5db47f0`.
+- Code: 3 thẻ + segmented bar cùng logic Bảng tổng hợp, bảng 6 cột/4 cụm, badge Loại VB, mã Excel, trách nhiệm viết tắt + phòng (ngoặc), 3 dòng tiến độ, 2 cột ghi chú tách. Bộ tùy chọn cột cũ được giữ.
+- QA: TypeScript, Vitest, build Pages, Firebase Emulator, Chrome; đối chiếu báo cáo, bấm lọc, editor CAS/lease, responsive. **Chưa được coi là phát hành xong cho tới khi CI exact head và browser xác nhận.**
+- Việc tách riêng: PR #83/DRAFT và hardening guest backend, staging/production Firebase Rules, cutover dataSource, real 2-UID remain HOLD; không deploy theo UI.
+
+---
+
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
