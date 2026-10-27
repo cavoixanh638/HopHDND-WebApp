@@ -1,3 +1,16 @@
+## 27/10/2026 — CHỐT QUYỀN XEM CÔNG KHAI / PHÂN QUYỀN SỬA (PR #82 MERGED)
+
+**Chủ dự án yêu cầu:** *Lúc nào, tài khoản nào, kể cả chưa đăng nhập cũng được xem bảng; chỉ việc chỉnh sửa mới phải được cấp quyền*. Một UID Google sử dụng từ nhiều máy là hợp lệ, coi là một định danh quyền; không bắt các máy có Google UID khác nhau.
+
+- PR [#82](https://github.com/cavoixanh638/HopHDND-WebApp/pull/82) merged to main `014f79ff679484ee314e5ff387ac075075ac68d4`. Rules ứng viên `database.exclusive-candidate.rules.json` **bỏ `hdnd/.read` rộng**, thay bằng `.read:true` riêng tại `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl`. Tất cả hồ sơ (gồm history) truy cập được bằng Firebase API kể cả không đăng nhập; không lưu thông tin mật trong các nhánh công khai này.
+- `hdnd/editors` registry UID, `hdnd/editLocks` danh sách token và `hdnd/freezeReceipts` chỉ admin đọc toàn bộ. Người dùng thông thường chỉ lắng nghe `hdnd/editors/{ownUid}`; Google nhân viên được cấp quyền đọc khóa của ô cần sửa. `hdndReviews` chỉ admin.
+- **Không nhầm đọc với ghi**: cấp/cấm quyền chỉnh sửa, per-cell lease, CAS/audit, DRAINING/FROZEN vẫn bảo vệ thao tác ghi. Trạng thái chốt không chặn xem.
+- Exact HEAD PR #82 `abeddbff33c38bc0fe37911c437e2440d5167d3f`: [source + Chrome #40499068707](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499068707), [Firebase staging #40499068627](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499068627) và [Firebase QA #40499068597](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499068597) **SUCCESS**. Kiểm thêm khách không đăng nhập đọc được content và không được đọc UID/token.
+- **Chưa xác minh/publish bộ Rules lên Firebase Cloud `hophdnd-8b7b2`**: merge GitHub chỉ làm thay đổi code và ứng viên. Chưa có phiên Firebase CLI quản trị/kết nối production trong phiên này; mọi việc backup live, đối chiếu Published Rules, nghiệm thu hai Google UID và chuyển dataSource vẫn HOLD. Trang Pages tiếp tục hoạt động và chỉnh UI bình thường.
+- Chính sách và cảnh báo dữ liệu công khai chi tiết tại [FIREBASE_READ_SCOPE_AUDIT_2026-10-27.md](operations/FIREBASE_READ_SCOPE_AUDIT_2026-10-27.md).
+
+---
+
 ## 27/10/2026 — AUTO-QA FIREBASE ĐÃ ĐƯA VÀO MAIN, 51 TESTS + KNOWN RISK
 
 - [PR #81](https://github.com/cavoixanh638/HopHDND-WebApp/pull/81) merged `d0e558510283f23013b62f84ab000ca4a4fcd2b2`. Exact HEAD PR kiểm thử [Firebase operational QA #40493383920](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493383920) **SUCCESS**: **51 PASS / 0 FAIL / 0 SKIP** với **1 known expected-failure** của shared Google UID lease-token replay, không tuyên bố đã khắc phục. [Verify HopHDND source #40493384261](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493384261) **SUCCESS**. Lượt tự động chạy trên main [Firebase operational QA #40493668600](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40493668600) **SUCCESS**.
