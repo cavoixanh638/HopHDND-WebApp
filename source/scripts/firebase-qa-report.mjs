@@ -31,7 +31,8 @@ for(const file of results.testResults??[]){
     const name=String(t.fullName||t.title||'Unknown test');
     const status=t.status==='passed'?'PASS':t.status==='failed'?'FAIL':'SKIP';
     const groups=scenarios.filter(s=>s.terms.test(name)).map(s=>s.id);
-    tests.push({name,status,groups,knownRisk:name.includes(knownRisk)});
+    tests.push({name,status,groups,knownRisk:name.includes(knownRisk),
+      suite:String(file.name??'').split(/[\\/]/).at(-1)??'unknown'});
   }
 }
 const risks=tests.filter(t=>t.knownRisk);
@@ -44,6 +45,9 @@ const ledger=scenarios.map(s=>{
     failed:matching.filter(t=>t.status==='FAIL').length,skipped:matching.filter(t=>t.status==='SKIP').length};
 });
 const uncovered=ledger.filter(x=>x.total===0);
+const candidateCount=tests.filter(t=>t.suite==='exclusive-cell-freeze.test.ts').length;
+const legacyCount=tests.filter(t=>t.suite==='firebase-production-rules.test.ts'||t.suite==='firebase-emulator.test.ts').length;
+const authCount=tests.filter(t=>t.suite==='firebase-tab-auth.test.ts').length;
 const alerts=[
   'RULES CHƯA KIỂM CHỨNG: bộ kiểm thử nạp firebase/database.exclusive-candidate.rules.json trên Emulator, KHÔNG đọc Rules hiện hành trên Cloud.',
   'DATA CHƯA KIỂM CHỨNG: không đụng cơ sở dữ liệu hophdnd-8b7b2. Không chứng minh người dùng thật đã có quyền hoặc dữ liệu đã chuyển nguồn.',
@@ -58,6 +62,9 @@ const report={
   project:'demo-hdnd',
   candidateRulesSha256:sha,
   executableTests:tests.length,
+  candidateRulesTestCount:candidateCount,
+  legacyCompatibilityTestCount:legacyCount,
+  authTestCount:authCount,
   passed:passed.length,
   failed:failed.length,
   skipped:skipped.length,
@@ -82,6 +89,9 @@ const headings=[
   '| Project kiểm thử | '+report.project+' (Emulator) |',
   '| SHA-256 Rules ứng viên | '+sha+' |',
   '| Bài kiểm thử | '+tests.length+' |',
+  '| Rules ứng viên khóa ô hiện tại (exclusive-candidate) | '+candidateCount+' bài |',
+  '| Tương thích Rules cũ / ứng viên trước đó | '+legacyCount+' bài |',
+  '| Định danh Auth qua nhiều tab | '+authCount+' bài |',
   '| PASS / FAIL / SKIP | '+passed.length+' / '+failed.length+' / '+skipped.length+' |',
   '| Kiểm thử dự kiến THẤT BẠI do lỗ hổng đã biết | '+risks.length+' |',
   '| Firebase Cloud hiện hành | **CHƯA KIỂM CHỨNG** |',
@@ -91,9 +101,11 @@ const headings=[
   '|---|---:|---:|---:|---:|',
   ...ledger.map(x=>'| '+x.name+' | '+x.total+' | '+x.passed+' | '+x.failed+' | '+x.skipped+' |'),
   '',
+  '**Phạm vi Rules:** các bài trong `exclusive-cell-freeze.test.ts` dùng chính bộ Rules ứng viên khóa ô mới nhất. Các suite `firebase-emulator` và `firebase-production-rules` là kiểm thử tương thích Rules đời trước, không được cộng gộp để khẳng định tất cả là kiểm thử Rules mới.',
+  '',
   '## Bài kiểm thử chi tiết',
   ...tests.map(t=>'- '+(t.knownRisk?'⚠️ EXPECTED FAILURE / CHƯA KHẮC PHỤC':t.status)+
-    ' · '+t.name.replaceAll('|','/')),
+    ' · '+t.name.replaceAll('|','/')+' [`'+t.suite+'`]'),
   '',
   '## Những gì chưa được chứng minh',
   ...alerts.map(s=>'- '+s),
