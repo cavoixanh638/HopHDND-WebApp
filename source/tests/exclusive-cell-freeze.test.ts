@@ -194,7 +194,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const otherTab=manager('a');
     await expect(otherTab.acquire('r1','note','multiline')).rejects.toThrow();
     expect(await b.acquire('r1','specificProgress','multiline')).toBe(true);
-    expect(await activeEditLeaseCount(guest('a') as never)).toBe(2);
+    expect(await activeEditLeaseCount(admin() as never)).toBe(2);
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();await otherTab.dispose();
   });
