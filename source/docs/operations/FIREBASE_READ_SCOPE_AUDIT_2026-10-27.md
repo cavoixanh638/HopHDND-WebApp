@@ -1,46 +1,38 @@
 # Kiểm toán quyền đọc Firebase — 27/10/2026
 
-**Phạm vi:** `hophdnd-8b7b2` / Rules ứng viên `source/firebase/database.exclusive-candidate.rules.json`. **Không phải Rules đang Publish**, chưa truy cập được nguồn Rules Cloud trong phiên GitHub.
+**Dự án:** `hophdnd-8b7b2`, Realtime Database `hophdnd-8b7b2-default-rtdb`. **Đây là kiểm toán Rules ứng viên trên GitHub, CHƯA chứng minh đã publish Cloud.**
 
-## CHÍNH SÁCH NGƯỜI DÙNG CHỐT THÊM — 27/10/2026
+## Yêu cầu người dùng đã chốt
+- Mọi người, bất kỳ tài khoản nào hoặc chưa đăng nhập, **được xem toàn bộ nội dung bảng vào mọi thời điểm**; trạng thái `editingLocked`/`DRAINING`/`FROZEN` **chỉ hạn chế chỉnh sửa**, không hạn chế xem.
+- Chỉ người có quyền Google được duyệt mới sửa; admin mới cấp/thu hồi và quản trị. Một tài khoản Google dùng nhiều máy là cách sử dụng hợp lệ, được xem là một UID về phân quyền.
+- Thông tin kỹ thuật không phục vụ xem bảng (danh sách UID nhân viên, bộ token khóa ô, biên nhận chốt) không cần công khai.
 
-**Mọi tài khoản, kể cả chưa đăng nhập, được phép xem các dữ liệu nghiệp vụ vào bất kỳ thời điểm nào.** Phạm vi đọc công khai gồm `hdnd/items` (cả nội dung và lịch sử trong các hàng), `hdnd/mirrors`, `hdnd/profile` (bố trí/cấu hình), `hdnd/permissions` (ma trận quyền sửa), `hdnd/control` và `hdnd/freezeControl`. Rules ứng viên đặt `.read: true` **chỉ trên các nhánh này**, không trên gốc `hdnd`. Quyền xem vẫn được giữ khi `editingLocked` hoặc `FROZEN`; hai trạng thái đó chỉ chặn sửa.
+## Kết quả phát hiện
+Rules cũ `hdnd/.read="auth != null"` cho phép khách đã đăng nhập ẩn danh tải **toàn bộ gốc hdnd**, bao gồm registry UID và token khóa. Không thể dùng rule con để từ chối nếu đã cho phép tại cha do Rules RTDB thừa kế quyền đọc từ cha xuống con.
 
-**Tách quyền đọc nội bộ:** `hdnd/editors` (registry UID toàn bộ), `hdnd/editLocks` (danh sách khóa/token), `hdnd/freezeReceipts` (chứng từ chốt) chỉ admin đọc toàn bộ. Tài khoản Firebase bất kỳ chỉ đọc `hdnd/editors/{ownUID}`; chỉ Google allowlisted được đọc khóa ô cụ thể để chỉnh sửa. `hdndReviews` tiếp tục chỉ admin đọc.
+Rules ứng viên sau sửa **xóa quyền đọc tại gốc `hdnd`**. Gán `.read:true` riêng từng nhánh dữ liệu nghiệp vụ cần xem, kể cả người chưa đăng nhập. Các nhánh riêng tư hạn chế cấp đúng đường dữ liệu:
 
-**Hệ quả phải hiểu rõ:** khi `.read: true` trên `hdnd/items`, *bất cứ ai có địa chỉ endpoint của database* đều có thể đọc dữ liệu bảng và lịch sử qua Firebase API, không chỉ người dùng đến từ trang GitHub Pages. Đây là cách thực hiện đúng yêu cầu dữ liệu được xem tự do; tuyệt đối không đặt hồ sơ bí mật/nhạy cảm cần giới hạn người đọc trong các nhánh công khai. Không thể vừa đảm bảo ai cũng đọc mà vừa giữ bí mật dữ liệu trong cùng nhánh.
-
-**Đối với phiên dùng chung một Google UID trên hai máy:** được phép theo yêu cầu chủ dự án; Rules định danh chung là một người về mặt quyền. Mã vẫn cố gắng khóa sửa từng tab bình thường, nhưng chia sẻ token/định danh sẽ không tạo sự cách ly pháp lý/tài khoản độc lập.
-
----
-
-## Phát hiện chính
-Bộ Rules ứng viên trước sửa cho phép `hdnd/.read = auth != null`. Vì WebApp dùng Firebase Anonymous Auth để xem danh sách, mọi khách ẩn danh đã đăng nhập cũng có thể `get(hdnd)` và đọc **toàn bộ** bản ghi, danh sách UID Google được cấp, quyền, token khóa ô của các phiên khác, cấu hình, mirror và biên nhận chốt. Cấm ghi **không** ngăn đọc.
-
-## Chính sách sửa tối thiểu, tương thích WebApp
-| Đường dẫn | Khách đã xác thực ẩn danh | Google chưa được duyệt | Google UID nhân viên được duyệt | Google Admin |
+| Nhánh | Không đăng nhập | Tài khoản thường/ẩn danh | Google nhân viên được cấp quyền | Quản trị |
 |---|---|---|---|---|
-| `hdnd` (gốc) | Cấm | Cấm | Cấm | Cấm |
-| `hdnd/items` (bao gồm 50 sự kiện history/row) | Đọc | Đọc | Đọc | Đọc |
-| `hdnd/permissions`, `hdnd/profile`, `hdnd/control`, `hdnd/freezeControl` | Đọc | Đọc | Đọc | Đọc |
-| `hdnd/mirrors` | Đọc (để không phá chế độ chuyển tiếp) | Đọc | Đọc | Đọc |
-| `hdnd/editors` (danh sách toàn bộ UID) | Cấm | Cấm | Cấm | Đọc |
-| `hdnd/editors/{uid}` | Chỉ chính UID | Chỉ chính UID | Chỉ chính UID | Đọc |
-| `hdnd/editLocks` (danh sách tất cả khóa) | Cấm | Cấm | Cấm | Đọc |
-| `hdnd/editLocks/{row}/{field}` | Cấm | Cấm | Đọc nếu nằm trong allowlist Google | Đọc |
-| `hdnd/freezeReceipts` | Cấm | Cấm | Cấm | Đọc |
-| `hdndReviews` | Cấm | Cấm | Cấm | Đọc |
+| `hdnd` gốc | Cấm | Cấm | Cấm | Cấm |
+| `hdnd/items` (cả lịch sử trên hàng) | Xem | Xem | Xem | Xem |
+| `hdnd/mirrors` (nguồn Sheets chuyển tiếp) | Xem | Xem | Xem | Xem |
+| `hdnd/profile`, `hdnd/permissions` (chỉ quyền sửa), `hdnd/control`, `hdnd/freezeControl` | Xem | Xem | Xem | Xem |
+| `hdnd/editors` (tất cả UID nhân viên) | Cấm | Cấm | Cấm | Xem |
+| `hdnd/editors/{uid}` | Cấm | Xem bản thân khi đăng nhập | Xem bản thân | Xem |
+| `hdnd/editLocks` (toàn bộ token, phiên sửa) | Cấm | Cấm | Cấm | Xem |
+| `hdnd/editLocks/{row}/{field}` | Cấm | Cấm | Xem từng ô khi UID được cấp quyền | Xem |
+| `hdnd/freezeReceipts`, `hdndReviews` | Cấm | Cấm | Cấm | Xem |
 
-**Cảnh báo chính sách chưa thể tự quyết:** Người dùng chưa yêu cầu khóa quyền *xem hồ sơ*. Vì vậy vẫn cho phép các phiên Firebase Anonymous Auth đọc `hdnd/items`, bao gồm **history** và các trường nghiệp vụ. Đây là quyền đọc có chủ đích của UI hiện hành, nhưng **không thích hợp nếu hồ sơ là nội bộ/bí mật**. Nếu cần hạn chế cho tài khoản cơ quan, thay `items/.read` thành verified Google allowlist/admin và điều chỉnh trải nghiệm khách/bảng trống đồng thời. Không coi "đã thu hẹp registry/token" là đã bảo vệ toàn bộ nội dung nghiệp vụ.
+**Cảnh báo công khai:** Cho phép `.read:true` trên `hdnd/items` và `hdnd/mirrors` nghĩa là **ai biết địa chỉ Realtime Database đều có thể đọc qua API Firebase**, không cần truy cập trang GitHub Pages, bao gồm lịch sử chỉnh sửa và các trường nghiệp vụ. Không lưu dữ liệu cần giữ bí mật ở những nhánh này. Chính sách trên được thực hiện đúng yêu cầu chủ dự án, không đánh đồng quyền đọc công khai với quyền ghi.
 
-Cấm gốc `hdnd/.read` để chặn tải trọn cây không đồng nghĩa cấm các child đã được cho phép. Trong RTDB, quyền ở cha **được kế thừa xuống mọi con**, do đó không được để `hdnd/.read=auth!=null` rồi kỳ vọng hạn chế bằng rule con. `useFirebase` được sửa để người dùng thường chỉ lắng nghe `hdnd/editors/{ownUid}`, trong khi admin vẫn lắng nghe danh sách đầy đủ.
+## Tương thích UI, khóa ô và nhiều máy
+`useFirebase` đã sửa: admin theo dõi `hdnd/editors` chung; người dùng khác chỉ nghe `hdnd/editors/{own UID}`. Luồng xem bảng/nguồn mirror/profile/quyền và chốt vẫn đọc các nhánh công khai. Khóa ô từng field cần read token của field đó cho nhân viên được cấp quyền, chỉ admin đọc toàn bộ registry khóa. Nếu cùng UID trên hai máy thì việc đăng nhập hợp lệ và xem/sửa trong phạm vi quyền vẫn được chấp nhận, tuy nhiên hai phiên đó **không phải hai danh tính khác nhau** khi kiểm soát token.
 
-## Bằng chứng bắt buộc
-- Rules unit test `exclusive-cell-freeze.test.ts`: một khách ẩn danh, một Google chưa duyệt, Google đã cấp quyền và Google admin; thử đọc gốc, registry, token, own grant, màn hình dữ liệu và các nhánh cấu hình.
-- Hồi quy các test khóa ô, realtime, audit, freeze, import.
-- Mọi testcase không được chạy Firebase thật để "thử" chặn ghi/xóa.
-- Trước khi deploy Rules Cloud: backup/restore dữ liệu + Rules; so với published hiện hành qua lệnh `firebase database:get /.settings/rules --project hophdnd-8b7b2 --instance hophdnd-8b7b2-default-rtdb` (chỉ trên máy Firebase CLI đã đăng nhập); thẩm định các đường chưa biết trong live Rules trước khi thay toàn bộ.
-- Hai phiên tài khoản Google thật: xác minh admin xem được toàn bộ, nhân viên chỉ xem own UID, hai bên nhận realtime, khi bị thu hồi thì server chặn lưu. Không dùng chung UID để kiểm thử *hai nhân viên độc lập*; cùng UID trên nhiều máy vẫn là một identity và được người dùng chấp nhận vận hành.
+## Kiểm thử và bước phát hành còn thiếu
+- Firebase Emulator phải chứng minh khách không đăng nhập, Anonymous Auth, Google UID chưa cấp quyền và nhân viên cấp quyền đều đọc được nội dung; đều bị cấm ghi khi không có quyền. Cả 4 nhóm không được đọc gốc `hdnd`, danh sách UID hay token của người khác.
+- Hồi quy CAS, khóa ô, lưu, realtime, thu hồi quyền giữa lúc sửa, chốt và luồng nhập nguồn.
+- **Chưa có chứng cứ published Rules hiện đang chạy**: cần đọc read-only `/.settings/rules` qua Firebase CLI tài khoản quản trị, sao lưu/snapshot/khôi phục rồi mới phê duyệt triển khai Rules ứng viên. Chỉ merge GitHub không publish Firebase Rules.
+- Nghiệm thu 2 Google UID riêng biệt trên trang WebApp thật, kiểm tra đọc chung, cấp/cấm ghi, live readback/realtime, khi thu hồi quyền và sau FROZEN. Không thử xóa hoặc ghi dữ liệu thật ngoài hàng thử chuyên dụng được duyệt.
 
-**Tình trạng:** Đã chuẩn bị Rules + client + kiểm thử, **chưa thay Published Rules**, không thay Firebase profile, không nhập dữ liệu, không đổi Supabase. Release phải tách code main/Pages khỏi Rules Cloud.
-
+**HOLD Rules production:** không có thay đổi nào với Firebase Cloud từ PR kiểm toán này. Supabase vẫn tạm dừng.
