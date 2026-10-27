@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
+import type { Changes, Item, Patch, TextField, EditableField, ReportConfig } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
@@ -32,6 +32,9 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './executive-layout.css';
+import { ExecutiveProgressCards, getExecutiveCards, filterByExecutiveStage, type ExecutiveFilter } from './ExecutiveProgressCards';
+import { ExecutiveDetailTable } from './ExecutiveDetailTable';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
@@ -40,7 +43,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,reportConfigs=[],summaryItems }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;reportConfigs?:ReportConfig[];summaryItems?:Item[] }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -70,6 +73,26 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
+  const [showExecutive,setShowExecutive]=useState(true);
+  const [qaLegacyView,setQaLegacyView]=useState(()=>
+    import.meta.env.MODE==='compact-qa'||
+    import.meta.env.MODE==='pages-test'&&document.documentElement.dataset.hdndQaSourceView==='true');
+  const [executiveSearch,setExecutiveSearch]=useState('');
+  const [executiveFilter,setExecutiveFilter]=useState<ExecutiveFilter>(null);
+  // QA-only bridge for the long legacy Chrome smoke suite. The pages-test
+  // bundle uses fully mocked Sheets; this listener is excluded from production
+  // mode and is NOT a user-facing way to bypass guest-approved layouts.
+  useEffect(()=>{
+    if(import.meta.env.MODE!=='pages-test')return;
+    const switchForLegacyQa=()=>{
+      document.documentElement.dataset.hdndQaSourceView='true'; // persists across mock tab remounts
+      setQaLegacyView(true); // pages-test only: restore the ORIGINAL guest source layout for legacy QA
+      setShowExecutive(false);
+      setShowAllSourceColumns(false);
+    };
+    window.addEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
+    return()=>window.removeEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
+  },[]);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
@@ -102,6 +125,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
       :0);
   // Visual projection only; administrative configuration keeps every Excel source field.
+  const executiveMode=!customizing&&!showAllSourceColumns&&!qaLegacyView&&(anonymousViewer||showExecutive);
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
@@ -264,6 +288,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
   }),[filtered,columnSort,activeLayout,codeCounts]);
+  const executiveCards=getExecutiveCards(summaryItems??items,reportConfigs);
+  const executiveRows=filterByExecutiveStage(rows,executiveCards,executiveFilter).filter(item=>{
+    const term=normalizeSearch(executiveSearch);
+    if(!term)return true;
+    return activeLayout.columns.filter(column=>column.visible&&!column.removed)
+      .map(column=>column.key==='displayCode'?displayId(item):
+        column.origin==='custom'?(column.values?.[customRowKey(item)]??''):
+          String(item[column.key as keyof Item]??''))
+      .some(value=>normalizeSearch(value).includes(term));
+  });
+  const executiveFields=new Set(activeLayout.columns.filter(column=>column.visible&&!column.removed).map(column=>column.key));
   const cycleSort=(key:string)=>setColumnSort(current=>
     current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);
   // CellPicker option lists used to be sorted once PER CELL PER KEYSTROKE.
@@ -338,15 +373,20 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const original=item[field]||'—';
     const label=TEXT_FIELDS.find(entry=>entry.key===field)?.label??field;
     const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
-    const shortLeader=compactOn&&compactDisplay.shortLeaders&&
+    const shortLeader=(executiveMode||compactOn&&compactDisplay.shortLeaders)&&
       (field==='vpLeader'||field==='ubndLeader');
-    const shortPerson=compactOn&&compactDisplay.shortSpecialist&&field==='specialist';
+    const shortPerson=(executiveMode||compactOn&&compactDisplay.shortSpecialist)&&field==='specialist';
     return <span className={'compact-part'+(editable?' compact-part-editable':'')}
       aria-label={field==='specialist'&&!editable?item.specialist:undefined}>
       {editable
         ?field==='content'
           ?<button type="button" className="content-button" disabled={locked}
             onClick={()=>openContentForEdit(item,'content')}><SearchHighlight value={original} query={columnFilters.content}/></button>
+          :(field==='note'||field==='specificProgress')
+            ?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field={field}
+              value={item[field]} highlightQuery={columnFilters[field]}
+              label={displayId(item)+': '+label}
+              onCommit={value=>{if(!editable)return false;onUpdate(item.recordId,{[field]:value});return true;}}/>
           :kind==='text'
             ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={field} label={displayId(item)+': '+label}
               value={String(item[field]??'')} disabled={locked}
@@ -361,7 +401,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
-  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(<details className="compact-columns-menu">
+  const compactMenu=!executiveMode&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(<details className="compact-columns-menu">
         <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
           {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
             <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
@@ -401,6 +441,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         </div>
       </details>);
   return <section className="card item-list-card">
+    {executiveMode&&<ExecutiveProgressCards items={summaryItems??items} configs={reportConfigs}
+      selected={executiveFilter} onSelect={setExecutiveFilter}/>}
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -434,6 +476,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
        aria-label="Cách hiển thị cột của tôi">{compactMenu}</div>}
     {!anonymousViewer&&<div className="card-header">
     <div className="item-header-actions">
+      {!customizing&&!permissionMode&&<div className="executive-mode-controls" role="group" aria-label="Chế độ xem danh sách">
+        <button type="button" className={'button '+(executiveMode?'primary':'ghost')} aria-pressed={executiveMode}
+          onClick={()=>{setShowExecutive(true);setShowAllSourceColumns(false);}}>Bố cục gọn</button>
+        <button type="button" className={'button '+(!executiveMode?'primary':'ghost')} aria-pressed={!executiveMode}
+          onClick={()=>setShowExecutive(false)}>Tùy chọn từng cột</button>
+      </div>}
       {compactMenu}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
@@ -442,7 +490,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {allowLayout&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
-          onClick={()=>setShowAllSourceColumns(current=>!current)}>
+          onClick={()=>{setShowExecutive(false);setShowAllSourceColumns(current=>!current);}}>
           {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
         </button>
       </div>}
@@ -461,7 +509,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<>{executiveMode?<ExecutiveDetailTable items={executiveRows} visibleFields={executiveFields}
+      renderField={compactField} hasDraft={item=>!!drafts[item.recordId]} errorFor={item=>errors[item.recordId]}
+      query={executiveSearch} onQuery={setExecutiveSearch}/>:<div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
@@ -582,7 +632,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
-    </tbody></table></div></>}
+    </tbody></table></div>}</>}
     </div>
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={closeContentEditor} />}
     {customizing&&unmatchedCheckpoint&&<Modal title="Có thay đổi hiển thị cũ" onClose={onClose}><div className="modal-body"><p>Cách hiển thị đang giữ trên máy không khớp cách hiển thị dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cách hiển thị cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}

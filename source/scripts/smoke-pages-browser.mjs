@@ -162,7 +162,26 @@ try{
   // This test intentionally blocks real Firebase. Keep normal first paint gated,
   // then explicitly opt in to temporary source viewing for isolated Sheets checks.
   await evaluate("(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('Xem dữ liệu tạm'));button?.click();return true;})()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
+  await eventually("document.querySelector('.executive-table tbody')?.textContent?.includes('NQ01')===true",'Executive layout missing Mock Sheets row NQ01');
+  const executiveOk=await evaluate("(()=>{const table=document.querySelector('.executive-table');return !!table && table.querySelectorAll('colgroup col').length===6 && document.querySelectorAll('.executive-report-card').length===3 && !!document.querySelector('.executive-progress-track')})()");
+  if(!executiveOk)throw Error('Executive six-column table or three report cards is missing');
+  console.log('EXECUTIVE_LAYOUT_PASS');
+  const executiveSwitchBack=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==='Tùy chọn từng cột');if(!b)return false;b.click();return true})()");
+  if(executiveSwitchBack){
+    await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Legacy source-column view no longer works');
+    console.log('LEGACY_SOURCE_COLUMN_FALLBACK_PASS');
+  }else{
+    // pages-test runs with a guest identity: raw Excel layout controls must NOT
+    // become available merely to satisfy a smoke assertion.
+    const guestRestricted=await evaluate("(()=>!!document.querySelector('.executive-table') && !document.querySelector('.source-column-visibility'))()");
+    if(!guestRestricted)throw Error('Guest exposed a source-column management control');
+    console.log('GUEST_COLUMN_RESTRICTION_PASS');
+    // The only way this test harness can visit the legacy view while logged in
+    // as a mock guest is a pages-test-only event (never present in production).
+    await evaluate("(()=>{window.dispatchEvent(new Event('hdnd:qa-source-column-view'));return true})()");
+    await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock legacy QA mode did not restore the Excel table');
+    console.log('ISOLATED_LEGACY_QA_VIEW_PASS');
+  }
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
   const inkPoints=await evaluate(`(()=>{
