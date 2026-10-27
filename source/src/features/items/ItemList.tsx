@@ -76,6 +76,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [showExecutive,setShowExecutive]=useState(true);
   const [executiveSearch,setExecutiveSearch]=useState('');
   const [executiveFilter,setExecutiveFilter]=useState<ExecutiveFilter>(null);
+  // QA-only bridge for the long legacy Chrome smoke suite. The pages-test
+  // bundle uses fully mocked Sheets; this listener is excluded from production
+  // mode and is NOT a user-facing way to bypass guest-approved layouts.
+  useEffect(()=>{
+    if(import.meta.env.MODE!=='pages-test')return;
+    const switchForLegacyQa=()=>{
+      setShowExecutive(false);
+      setShowAllSourceColumns(false);
+    };
+    window.addEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
+    return()=>window.removeEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
+  },[]);
   const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
