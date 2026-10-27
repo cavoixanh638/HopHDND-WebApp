@@ -74,6 +74,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
   const [showExecutive,setShowExecutive]=useState(true);
+  const [qaLegacyView,setQaLegacyView]=useState(false);
   const [executiveSearch,setExecutiveSearch]=useState('');
   const [executiveFilter,setExecutiveFilter]=useState<ExecutiveFilter>(null);
   // QA-only bridge for the long legacy Chrome smoke suite. The pages-test
@@ -82,8 +83,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   useEffect(()=>{
     if(import.meta.env.MODE!=='pages-test')return;
     const switchForLegacyQa=()=>{
+      setQaLegacyView(true); // pages-test only: restore the ORIGINAL guest source layout for legacy QA
       setShowExecutive(false);
-      setShowAllSourceColumns(true); // test-only bypass of compact guest presentation, not present in production
+      setShowAllSourceColumns(false);
     };
     window.addEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
     return()=>window.removeEventListener('hdnd:qa-source-column-view',switchForLegacyQa);
@@ -120,7 +122,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
       :0);
   // Visual projection only; administrative configuration keeps every Excel source field.
-  const executiveMode=!customizing&&!showAllSourceColumns&&(anonymousViewer||showExecutive);
+  const executiveMode=!customizing&&!showAllSourceColumns&&!qaLegacyView&&(anonymousViewer||showExecutive);
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
