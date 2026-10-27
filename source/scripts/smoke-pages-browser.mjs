@@ -166,8 +166,8 @@ try{
   const executiveOk=await evaluate("(()=>{const table=document.querySelector('.executive-table');return !!table && table.querySelectorAll('colgroup col').length===6 && document.querySelectorAll('.executive-report-card').length===3 && !!document.querySelector('.executive-progress-track')})()");
   if(!executiveOk)throw Error('Executive six-column table or three report cards is missing');
   console.log('EXECUTIVE_LAYOUT_PASS');
-  const switchBack=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==='Tùy chọn từng cột');if(!b)return false;b.click();return true})()");
-  if(!switchBack)throw Error('Legacy per-column source view switch missing');
+  const executiveSwitchBack=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==='Tùy chọn từng cột');if(!b)return false;b.click();return true})()");
+  if(!executiveSwitchBack)throw Error('Legacy per-column source view switch missing');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Legacy source-column view no longer works');
   console.log('LEGACY_SOURCE_COLUMN_FALLBACK_PASS');
   // CSS-only hover: assert that the value's ink remains exactly unchanged
