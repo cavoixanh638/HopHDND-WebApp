@@ -37,7 +37,8 @@ import {SyncPanel} from '../features/settings/SyncPanel';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
 import {migrateMirrorToPrimary} from '../data/firebase-primary-bootstrap';
-import {CellEditSessionManager} from '../data/cell-edit-leases';
+import {CellEditSessionManager,type EditorKind} from '../data/cell-edit-leases';
+import {assertTransitionBaseline,type TransitionRowChange} from '../data/transition-import';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
 import {ApprovalReviewPanel} from '../features/settings/ApprovalReviewPanel';
@@ -178,6 +179,60 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const catalog=useMemo(()=>common.config&&!isDemo?mergeCatalogItems(common.config.catalogs,workspace.items):catalogState?.source===sourceKey?catalogState.config:storedCatalog,[common.config,isDemo,workspace.items,catalogState,sourceKey,storedCatalog]);
   if(repository instanceof FirebaseRepository){repository.checkAssignment=item=>assignmentIssue(item,catalog)??'';repository.leaseManager=leaseManager;}
   const saveCatalogConfig=async(next:CatalogConfig)=>{if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('catalogs',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('');return;}if(!isDemo&&!privateTest){await common.save('catalogs',next);setLayoutMessage('');}else{if(!saveCatalog(sourceKey,next))throw new Error('Không lưu được danh mục trên máy. Nháp được giữ.');setCatalogState({source:sourceKey,config:next});setLayoutMessage('');}};
+  // Manual transitional import: never runs during bootstrap or background polling.
+  // A source's displayCode is matched to an existing Firebase row; every changed
+  // field still needs its own server lease and normal CAS/audit write.
+  const applyTransition=async(entries:TransitionRowChange[]):Promise<number>=>{
+    if(!firebase?.isAdmin||!firebase.connected||!firebase.user||selectedSource!=='primary'||
+      !(repository instanceof FirebaseRepository)||!leaseManager||
+      firebase.freezeControl?.mode!=='OPEN'||common.status!=='ready')
+      throw new Error('Chỉ quản trị viên được cập nhật khi Firebase chính đang kết nối và mở sửa.');
+    if(workspace.busy||workspace.protectedRecovery||Object.keys(workspace.drafts).length)
+      throw new Error('Còn dữ liệu/nháp chưa lưu. Hãy xử lý xong trước khi cập nhật từ nguồn chuyển tiếp.');
+    if(entries.length<1||entries.length>20||new Set(entries.map(e=>e.recordId)).size!==entries.length)
+      throw new Error('Mỗi lần chỉ cập nhật 1–20 hồ sơ duy nhất đã đối chiếu.');
+    let confirmed=0;
+    for(const entry of entries){
+      const acquired:EditableField[]=[];
+      try{
+        if(!firebaseLive.current?.connected||firebaseLive.current?.freezeControl?.mode!=='OPEN')
+          throw new Error('Firebase mất kết nối hoặc đã khóa/chốt dữ liệu.');
+        const live=(await repository.list()).find(row=>row.recordId===entry.recordId);
+        if(!live)throw new Error('Hồ sơ không còn trên Firebase: '+entry.displayCode);
+        assertTransitionBaseline(entry,live);
+        for(const field of entry.fields){
+          const kind:EditorKind=field==='content'||field==='note'||field==='specificProgress'
+            ?'long':field==='specialist'?'search':field.startsWith('progress')?'status':'short';
+          await leaseManager.acquire(entry.recordId,field,kind);
+          acquired.push(field);
+        }
+        const patch:import('../../shared/types').Patch={
+          recordId:entry.recordId,sourceCode:entry.displayCode,
+          baseRevision:live.revision,operationId:crypto.randomUUID(),
+          baseValues:Object.fromEntries(entry.fields.map(field=>[field,live[field]])),
+          changes:Object.fromEntries(entry.fields.map(field=>[field,entry.source[field]]))
+        };
+        const result=(await repository.save([patch]))[0];
+        if(!result?.ok)throw new Error(result?.message??'Firebase không xác nhận thao tác.');
+        const check=(await repository.list()).find(row=>row.recordId===entry.recordId);
+        if(!check||check.revision<=live.revision||
+          entry.fields.some(field=>check[field]!==entry.source[field]))
+          throw new Error('Đã gửi dữ liệu nhưng chưa xác nhận được bản đọc lại từ Firebase.');
+        confirmed++;
+      }catch(error){
+        throw new Error('Dừng ở hồ sơ '+entry.displayCode+'. Đã cập nhật và đọc lại thành công '+
+          confirmed+' hồ sơ trước đó; KHÔNG tự thử lại. Lý do: '+
+          (error instanceof Error?error.message:'lỗi kết nối/khóa ô')+
+          '. Hãy đọc mới dữ liệu rồi đối chiếu lại các hồ sơ còn lại.');
+      }finally{
+        // Never leave locks on a failed batch. finish/cancel only remove our own locks.
+        for(const field of acquired){
+          try{await leaseManager.cancel(entry.recordId,field);}catch{}
+        }
+      }
+    }
+    return confirmed;
+  };
   const saveData = async () => { const issue = workspace.workingItems.filter(item => {const changes=workspace.drafts[item.recordId]?.changes;return changes&&('specialist' in changes||'room' in changes);}).map(item => assignmentIssue(item,catalog)).find(Boolean); if(issue){setLayoutMessage(issue);return false;} return workspace.save(); };
   useEffect(()=>{
     if(firebase?.freezeControl?.mode!=='DRAINING'||selectedSource!=='primary')return;
@@ -421,7 +476,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {(page==='source'||page === 'connection' && !isFirebase) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
       {page==='connection'&&isFirebase&&<FirebasePanel userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={firebase!.profile?.dataSource??'excel'} onChangeDataSource={changeDataSource} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
-      {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false} onImport={async()=>{throw new Error('Nhập dữ liệu chỉ mở khi có quyết định chuyển đổi chính thức.');}} onClose={()=>setPage('overview')}/>}
+      {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel items={workspace.items} isAdmin={firebase!.isAdmin} profile={{catalogs:catalog,reports:layout,items:itemLayout}} onSaveProfile={async value=>{await firebase!.common.save('all',value,firebaseEditRevision.current);firebaseEditRevision.current++;}} disabled={workspace.busy||dirtyCount>0||!firebase!.connected} importEnabled={false}
+         transitionSheetUrl={configured.url}
+         onTransitionApply={selectedSource==='primary'?applyTransition:undefined}
+         transitionDisabled={workspace.busy||dirtyCount>0||workspace.protectedRecovery||!firebase!.connected||firebase!.freezeControl?.mode!=='OPEN'||common.status!=='ready'}
+         onImport={async()=>{throw new Error('Nhập hàng loạt chưa được phê duyệt; hãy dùng cập nhật chuyển tiếp có đối chiếu.');}} onClose={()=>setPage('overview')}/>}
       </>}
     </main>
     {selection && <ReportDetailGrid key={sourceKey} title={selection.title}
