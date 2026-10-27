@@ -121,7 +121,7 @@ export function PublicGuestViewer({database,onLogin,authLabel,onLogout}:{
             {value.columns.map(column=><th key={column.key} style={{minWidth:column.width}}>{column.label}</th>)}
           </tr></thead><tbody>
             {visibleRows.map(({row,index})=><tr key={index}>
-              {value.columns.map(column=><td key={column.key}>{row.cells[column.key]??''}</td>)}
+              {value.columns.map(column=><td key={column.key} style={{whiteSpace:'pre-line'}}>{row.cells[column.key]??''}</td>)}
             </tr>)}
           </tbody></table></div>
           <p className="muted">Đang hiển thị {visibleRows.length} hồ sơ theo bố cục do quản trị viên công bố.</p>
