@@ -1,3 +1,14 @@
+## BỔ SUNG UI FIREBASE — GỘP CỘT CÁ NHÂN CHO NGƯỜI XEM (27/10/2026)
+
+Theo yêu cầu tiếp tục làm **trực tiếp trên GitHub**, đã tách phần hiển thị của bốn nhóm gộp cột khỏi quyền ghi bố cục chung:
+
+- Trong **Firebase Danh sách**, quản trị viên có quyền và callback lưu bố cục chung vẫn dùng thao tác cũ (ghi Firebase khi được phép); người xem/khách Firebase không có quyền bố cục chung được bật menu **Gộp cột** dạng **local-only**. Chọn/bỏ chọn chỉ ảnh hưởng UI của người dùng đó và lưu trong `localStorage` theo Firebase UID + nguồn; **không gọi Firebase write, không mở rộng ACL/quyền ô/lease**. Có nút **Khôi phục cách hiển thị chung** xóa lớp lựa chọn cá nhân để trở lại cấu hình do quản trị ban hành.
+- Giới hạn qua prop `allowPersonalCompact={isFirebase}`: không thay đổi hành vi của nguồn Google/Supabase; Supabase PAUSED. `ItemList.tsx`, `App.tsx`, `compact-columns.ts`, `item-frame.css` và QA synthetic đã cập nhật. Khi UID/nguồn thay đổi, đọc lại cấu hình riêng, không dùng nhầm lựa chọn của tài khoản khác. Trình duyệt chặn `localStorage` thì thao tác còn tác dụng trong phiên và cảnh báo không lưu.
+- Thêm unit tests lỗi storage/phân tách UID, bổ sung smoke Chrome trên **ItemList thật** với dữ liệu mô phỏng: khách tắt gộp Nội dung/Sở (8→10 cột), tải lại trang giữ lựa chọn, bấm khôi phục (10→8 cột) và xóa local override. Artifact ảnh `hophdnd-compact-guest-pass.png` được lưu trong `hophdnd-browser-smoke-preview` khi CI đạt. Không có bước QA nào gửi dữ liệu nghiệp vụ lên Firebase.
+- **Chưa hợp nhất vào `main`, chưa deploy Pages/Rules/RTDB production.** Giữ nguyên Firebase PR #71/#72 Draft vì release gate còn yêu cầu kiểm thử đa tài khoản thực và backup/Rules. Chức năng mới đã commit nhưng nghiệm thu thực tế trên Windows chưa được xác nhận.
+
+---
+
 ## CHECKPOINT UI GỘP CỘT — CI / BROWSER PASS (27/10/2026)
 
 Bản **QA trực quan cuối đã được xem bằng ảnh desktop/mobile** và chạy tự động Chrome trên **component `ItemList` thật** với dữ liệu giả, không có kết nối Firebase thật; không liên quan trang Pages production. [Run #40380075664](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664) **SUCCESS**, ghi `COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS` và `COMPACT_GROUPED_FIELD_EDIT_IN_MEMORY_PASS`: 8 cột hiển thị với 4 kiểu gộp, bốn dòng UBND–VP–Phòng–CV đúng nhãn; menu 9 lựa chọn trong 2 nhóm, hình học desktop 1600px + màn hẹp 390px đạt, thử chuyển lựa chọn cũ/mới rồi khôi phục không mất cột; test chỉnh một trường con giữ nguyên trường con khác. **Screenshot** trong artifact `hophdnd-browser-smoke-preview` (desktop, mobile, screenshot chung). [Firebase Emulator staging #40380075707](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075707) **SUCCESS**.
