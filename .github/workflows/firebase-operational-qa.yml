@@ -1,0 +1,71 @@
+name: Firebase operational QA — isolated multi-account test
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "source/src/data/**"
+      - "source/src/state/**"
+      - "source/firebase/**"
+      - "source/tests/**"
+      - "source/scripts/firebase-*"
+      - "source/package.json"
+      - ".github/workflows/firebase-operational-qa.yml"
+  push:
+    branches: [main]
+    paths:
+      - "source/src/data/**"
+      - "source/src/state/**"
+      - "source/firebase/**"
+      - "source/tests/**"
+      - "source/scripts/firebase-*"
+      - "source/package.json"
+      - ".github/workflows/firebase-operational-qa.yml"
+
+permissions:
+  contents: read
+concurrency:
+  group: operational-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  functional-qa:
+    name: Permissions, lock, realtime, audit, freeze & import
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Assert QA cannot run outside emulators
+        run: |
+          node --check scripts/firebase-functional-qa.mjs
+          node --check scripts/firebase-qa-report.mjs
+          if node scripts/firebase-functional-qa.mjs --inside; then
+            echo "::error::QA isolation guard incorrectly allowed non-emulator execution."
+            exit 1
+          fi
+      - name: Run full functional security matrix in isolated Auth + Database Emulator
+        run: npm run qa:firebase
+      - name: Keep human-readable and machine-readable test evidence, even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hophdnd-firebase-functional-qa
+          path: |
+            source/qa-results/firebase-qa-report.md
+            source/qa-results/firebase-qa-report.html
+            source/qa-results/firebase-qa-summary.json
+            source/qa-results/firebase-vitest.json
+          if-no-files-found: warn
+          retention-days: 30
