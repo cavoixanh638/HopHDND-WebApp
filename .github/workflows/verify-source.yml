@@ -59,6 +59,12 @@ jobs:
         run: |
           printf '%s\n' '{"hdnd":{"items":{"demo-1":{"recordId":"demo-1","note":"synthetic-only"}},"profile":{"dataSource":"primary"},"permissions":{"columns":{"note":true}}}}' > "$RUNNER_TEMP/hophdnd-demo-restore.json"
           HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
+      - name: Compile trusted publisher only (NO production connection or deployment)
+        run: |
+          npm --prefix functions install --ignore-scripts --no-audit --no-fund
+          npm --prefix functions run check
+          npm --prefix functions run build
+          test -s functions/lib/functions/index.js
       - name: Documentation checks
         run: npm run docs:check
       - name: Firebase emulator tests
