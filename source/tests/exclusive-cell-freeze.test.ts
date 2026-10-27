@@ -47,7 +47,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   afterAll(async()=>env?.cleanup());
   it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
     const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
-    // Authenticated read-only viewing is an intentional current product policy.
+    // Public viewing is the product policy: anonymous, unknown Google and no auth can read business rows.
     for(const db of [visitor,staff,unknown]){
       await assertFails(get(ref(db as never,'hdnd')));
       await get(ref(db as never,'hdnd/items'));
@@ -73,7 +73,16 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await get(ref(root as never,'hdnd/editLocks'));
     await get(ref(root as never,'hdnd/freezeReceipts'));
     await assertFails(get(ref(root as never,'hdnd')));
-    await assertFails(get(ref(env.unauthenticatedContext().database() as never,'hdnd/items')));
+    // Product policy: viewing business data is PUBLIC, even without Firebase
+    // Auth; only modifications and internal editor/token registry are restricted.
+    const publicDb=env.unauthenticatedContext().database();
+    for(const node of ['items','profile','permissions','control','freezeControl','mirrors']){
+      await get(ref(publicDb as never,'hdnd/'+node));
+    }
+    await assertFails(get(ref(publicDb as never,'hdnd')));
+    await assertFails(get(ref(publicDb as never,'hdnd/editors')));
+    await assertFails(get(ref(publicDb as never,'hdnd/editLocks')));
+    await assertFails(get(ref(publicDb as never,'hdnd/freezeReceipts')));
   });
   it('denies anonymous editor even when globally editable columns are true',async()=>{
     const anonymousDb=anonymous('anon-a');
