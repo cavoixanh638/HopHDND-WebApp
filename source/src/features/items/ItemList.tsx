@@ -58,6 +58,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [personalCompact,setPersonalCompact]=useState<CompactDisplay|null>(()=>
     readPersonalCompactDisplay(viewerCompactScope));
   const [compactStorageWarning,setCompactStorageWarning]=useState('');
+  useEffect(()=>{
+    setPersonalCompact(readPersonalCompactDisplay(viewerCompactScope));
+    setCompactStorageWarning('');
+  },[viewerCompactScope]);
   const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
@@ -357,7 +361,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
-  const compactMenu=compactOn&&!permissionMode&&(<details className="compact-columns-menu">
+  const compactMenu=compactOn&&!permissionMode&&!customizing&&(<details className="compact-columns-menu">
         <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
           {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
             <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
