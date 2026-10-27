@@ -1,3 +1,15 @@
+## FIREBASE LAUNCH PREPARATION — 27/10/2026: PR #79 merged, production backend still requires separate activation
+
+**Goal clarified by owner:** no employees are currently entering WebApp data. Use `main` and the canonical Pages URL for direct UI review; keep Google Sheets available as transitional source. Firebase-only. Supabase PAUSED.
+
+- PR [#71](https://github.com/cavoixanh638/HopHDND-WebApp/pull/71) and [#72](https://github.com/cavoixanh638/HopHDND-WebApp/pull/72) are already merged into main; **[#79](https://github.com/cavoixanh638/HopHDND-WebApp/pull/79) now merged** at `14166362684cd8220fde4e552bc1be0d6ffc008a`.
+- A genuine launch gap is closed in code: **approved first import** from fresh Google Sheets or Excel into **empty** `hdnd/items` (admin, checked snapshot, duplicate/invalid records blocked, explicit two-step confirmation, server empty-root transaction, per-record readback, never overwrites and never auto-switches `dataSource`). Kept separate from transitional updates on already-existing rows. No changes to standard list, reports or 4 compact columns. See [initialization checklist](operations/FIREBASE_FIRST_IMPORT_FROM_CURRENT_SOURCE_2026-10-27.md).
+- Exact tested feature head `00ce3e2bf5a7ae6dd078a001cb6c25b0f9c02b8e`: [source build + browser tests #40478916952](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40478916952) PASS; [isolated Firebase Emulator staging #40478916935](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40478916935) PASS. No production credentials/data were used in CI. Main Pages build/deployment must still be checked separately.
+- **Pending Firebase production access / Cloud checks:** authoritative read-only Rules/RTDB state, fresh private backup and emulator restore check, independently reviewed deployment of exact security rules, empty-root current approved source import, profile switch to `primary`, real two-user distinct Google UID/browser lock/save/realtime/freeze test and recorded release GO. Do not conclude these checks passed from browser or Emulator CI.
+- Avoid blanket root set/remove, recurring Sheets sync, silent data migration, permission expansion or premature Rules deploy. Without authenticated connection to `hophdnd-8b7b2`, the assistant cannot truthfully claim production Rules/data checks or writes.
+
+---
+
 ## PUBLISH CHECKPOINT 27/10/2026 — MAIN HAS FIREBASE-ONLY WEBAPP SOURCE, DATABASE CUTOVER STILL SEPARATE
 
 **Owner clarified that no employees are using the WebApp yet.** We are using the canonical GitHub Pages URL as a live UI-acceptance environment; no extra HTML download/standalone preview is necessary for routine UI review.
