@@ -108,7 +108,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
       :0);
   // Visual projection only; administrative configuration keeps every Excel source field.
-  const executiveMode=!customizing&&!permissionMode&&!showAllSourceColumns&&(anonymousViewer||showExecutive);
+  const executiveMode=!customizing&&!showAllSourceColumns&&(anonymousViewer||showExecutive);
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
