@@ -1,3 +1,13 @@
+## QUYẾT ĐỊNH GIAO THỜI — 27/10/2026: cho phép cập nhật thủ công từ Sheets/Excel sang Firebase
+
+Theo yêu cầu mới nhất của chủ dự án: **chưa ngừng sử dụng Google Sheets**, đồng thời phát triển một luồng cập nhật chủ động từ **Google Sheets hoặc Excel .xlsx** vào Firebase. Đây là ngoại lệ chuyển tiếp đối với kế hoạch Firebase-only, **không phải đồng bộ nền vĩnh viễn**, không khôi phục Supabase (vẫn PAUSED). Tài liệu chi tiết: [FIREBASE_TRANSITIONAL_GOOGLE_EXCEL_IMPORT_2026-10-27.md](operations/FIREBASE_TRANSITIONAL_GOOGLE_EXCEL_IMPORT_2026-10-27.md).
+
+Đã triển khai trên Firebase PR #72 (chưa phát hành): màn hình Nhập/Xuất Excel có mô-đun cập nhật chuyển tiếp dành riêng quản trị khi Firebase chính đã được kích hoạt và chế độ sửa OPEN; chọn link Sheets hoặc tệp Excel A–O / mẫu WebApp, **xem đối chiếu 13 trường văn bản** trước khi chọn 1–20 hồ sơ, xác nhận bằng cụm từ bắt buộc, đọc lại Firebase trước thao tác, chiếm khóa ô, ghi CAS/audit qua FirebaseRepository, đọc lại sau server ACK. Giữ nguyên dữ liệu nếu mã trùng/thiếu, source blank, hồ sơ mới chưa khớp, revision nguồn đổi; không thay ID/STT, status rút, xóa/thêm dòng hoặc thiết lập Rules. Không tự đọc Sheets ở màn hình chính hoặc đồng bộ theo lịch. XLSX được tách tải trễ, không đưa vào bundle khởi động chính.
+
+**TRẠNG THÁI PHÁT HÀNH: HOLD.** Chỉ mã trên PR #72; chưa merge main, chưa thay GitHub Pages production, chưa ghi RTDB production và chưa chứng minh Cloud staging nhiều tài khoản. UI tính năng không bật khi chế độ còn đọc Excel/mirror, tránh ghi vào Firebase-primary chưa được phê duyệt. Kiểm thử tự động sẽ được xác nhận theo exact SHA trong GitHub Actions trước GO.
+
+---
+
 ## 27/10/2026 — BẢN HTML XEM THỬ GỘP CỘT, KHÔNG CẦN CÀI ĐẶT
 
 Theo yêu cầu chủ dự án “làm đến khi tôi xem được”, nhánh Firebase PR #72 bổ sung **bản giao diện tương tác độc lập** của chính `ItemList` bằng dữ liệu mô phỏng: `source/compact-qa.html` → Vite `dist-compact-qa` → `node scripts/package-compact-qa.mjs` → `dist-compact-qa/HopHDND_GopCot_XemThu.html` (một HTML đóng gói CSS/JS, không cần máy chủ, không có bộ kết nối Firebase, không sửa Cloud). GitHub Actions `verify-source.yml` sau khi **browser smoke PASS** sẽ tạo artifact `hophdnd-compact-interactive-offline` để chủ dự án tải tệp HTML và mở trực tiếp bằng Chrome/Edge; liên kết lấy từ trang Actions run tương ứng PR #72.
