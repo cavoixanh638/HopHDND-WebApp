@@ -106,7 +106,11 @@ export function useFirebase(){
     if(!user)return;
     let active=true;
     const failed=(cause:Error)=>{markStartup('database-error','Lỗi kết nối hoặc phân quyền');if(active)setError(`Không đọc được Firebase: ${cause.message}. Kiểm tra Authentication và Database Rules.`);};
-    const stop=[onValue(ref(database,'hdnd/editors'),snap=>{if(!active)return;const raw=snap.val();setEditors(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{});setEditorsReady(true);},cause=>{if(active){setEditorsReady(false);setEditors({});}failed(cause);}),onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
+    const adminSession=firebaseAdmin(user);
+    // A staff member can read only their own enrollment flag. The full UID
+    // registry is reserved for admin and never sent to anonymous viewers.
+    const editorsPath=adminSession?'hdnd/editors':'hdnd/editors/'+user.uid;
+    const stop=[onValue(ref(database,editorsPath),snap=>{if(!active)return;const raw=snap.val();setEditors(adminSession?(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{}):{[user.uid]:raw===true});setEditorsReady(true);},cause=>{if(active){setEditorsReady(false);setEditors({});}failed(cause);}),onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
       if(!active)return;
       markStartup('control-received');
       const current=snap.val();

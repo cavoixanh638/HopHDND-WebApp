@@ -45,6 +45,45 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     });
   });
   afterAll(async()=>env?.cleanup());
+  it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
+    const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
+    // Public viewing is the product policy: anonymous, unknown Google and no auth can read business rows.
+    for(const db of [visitor,staff,unknown]){
+      await assertFails(get(ref(db as never,'hdnd')));
+      await get(ref(db as never,'hdnd/items'));
+      await get(ref(db as never,'hdnd/profile'));
+      await get(ref(db as never,'hdnd/permissions'));
+      await get(ref(db as never,'hdnd/control'));
+      await get(ref(db as never,'hdnd/freezeControl'));
+      await get(ref(db as never,'hdnd/mirrors/example-sheet/example-gid'));
+      await assertFails(get(ref(db as never,'hdnd/editors')));
+      await assertFails(get(ref(db as never,'hdnd/editLocks')));
+      await assertFails(get(ref(db as never,'hdnd/freezeReceipts')));
+    }
+    // Staff can only discover THEIR membership; anonymous visitors see no other UID.
+    expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
+    await assertFails(get(ref(staff as never,'hdnd/editors/b')));
+    await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
+    expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
+    await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
+    await assertFails(get(ref(visitor as never,'hdnd/editLocks/r1/note')));
+    // An allowlisted editor must still read the exact lock node to perform CAS.
+    expect((await get(ref(staff as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    await get(ref(root as never,'hdnd/editors'));
+    await get(ref(root as never,'hdnd/editLocks'));
+    await get(ref(root as never,'hdnd/freezeReceipts'));
+    await assertFails(get(ref(root as never,'hdnd')));
+    // Product policy: viewing business data is PUBLIC, even without Firebase
+    // Auth; only modifications and internal editor/token registry are restricted.
+    const publicDb=env.unauthenticatedContext().database();
+    for(const node of ['items','profile','permissions','control','freezeControl','mirrors']){
+      await get(ref(publicDb as never,'hdnd/'+node));
+    }
+    await assertFails(get(ref(publicDb as never,'hdnd')));
+    await assertFails(get(ref(publicDb as never,'hdnd/editors')));
+    await assertFails(get(ref(publicDb as never,'hdnd/editLocks')));
+    await assertFails(get(ref(publicDb as never,'hdnd/freezeReceipts')));
+  });
   it('denies anonymous editor even when globally editable columns are true',async()=>{
     const anonymousDb=anonymous('anon-a');
     await assertFails(set(ref(anonymousDb as never,'hdnd/editLocks/r1/note'),{
@@ -164,7 +203,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const otherTab=manager('a');
     await expect(otherTab.acquire('r1','note','multiline')).rejects.toThrow();
     expect(await b.acquire('r1','specificProgress','multiline')).toBe(true);
-    expect(await activeEditLeaseCount(guest('a') as never)).toBe(2);
+    expect(await activeEditLeaseCount(admin() as never)).toBe(2);
     await a.cancel('r1','note');await b.cancel('r1','specificProgress');
     await a.dispose();await b.dispose();await otherTab.dispose();
   });
