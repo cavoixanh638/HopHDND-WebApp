@@ -45,44 +45,42 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     });
   });
   afterAll(async()=>env?.cleanup());
-  it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
-    const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
-    // Public viewing is the product policy: anonymous, unknown Google and no auth can read business rows.
-    for(const db of [visitor,staff,unknown]){
-      await assertFails(get(ref(db as never,'hdnd')));
-      await get(ref(db as never,'hdnd/items'));
-      await get(ref(db as never,'hdnd/profile'));
-      await get(ref(db as never,'hdnd/permissions'));
-      await get(ref(db as never,'hdnd/control'));
-      await get(ref(db as never,'hdnd/freezeControl'));
-      await get(ref(db as never,'hdnd/mirrors/example-sheet/example-gid'));
-      await assertFails(get(ref(db as never,'hdnd/editors')));
-      await assertFails(get(ref(db as never,'hdnd/editLocks')));
-      await assertFails(get(ref(db as never,'hdnd/freezeReceipts')));
+  it('guest can fetch only admin-published view; never raw items, mirrors or layout',async()=>{
+    const people=[
+      env.unauthenticatedContext().database(),
+      anonymous('anon-public'),
+      guest('unknown-google')
+    ];
+    for(const db of people){
+      await get(ref(db as never,'hdnd/publicViews/current'));
+      for(const node of ['hdnd','hdnd/items','hdnd/mirrors','hdnd/profile',
+        'hdnd/permissions','hdnd/control','hdnd/freezeControl',
+        'hdnd/editors','hdnd/editLocks','hdnd/freezeReceipts',
+        'hdnd/publicViews','hdnd/publicViews/meta']){
+        await assertFails(get(ref(db as never,node)));
+      }
     }
-    // Staff can only discover THEIR membership; anonymous visitors see no other UID.
+    const staff=guest('a'),root=admin();
+    for(const db of [staff,root]){
+      for(const node of ['hdnd/items','hdnd/mirrors','hdnd/profile',
+        'hdnd/permissions','hdnd/control','hdnd/freezeControl']){
+        await get(ref(db as never,node));
+      }
+      await get(ref(db as never,'hdnd/publicViews/current'));
+      await assertFails(get(ref(db as never,'hdnd/publicViews/meta')));
+      await assertFails(get(ref(db as never,'hdnd')));
+    }
     expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
     await assertFails(get(ref(staff as never,'hdnd/editors/b')));
-    await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
-    expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
-    await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
-    await assertFails(get(ref(visitor as never,'hdnd/editLocks/r1/note')));
-    // An allowlisted editor must still read the exact lock node to perform CAS.
-    expect((await get(ref(staff as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    await assertFails(get(ref(staff as never,'hdnd/editors')));
+    await assertFails(get(ref(staff as never,'hdnd/editLocks')));
     await get(ref(root as never,'hdnd/editors'));
     await get(ref(root as never,'hdnd/editLocks'));
     await get(ref(root as never,'hdnd/freezeReceipts'));
-    await assertFails(get(ref(root as never,'hdnd')));
-    // Product policy: viewing business data is PUBLIC, even without Firebase
-    // Auth; only modifications and internal editor/token registry are restricted.
-    const publicDb=env.unauthenticatedContext().database();
-    for(const node of ['items','profile','permissions','control','freezeControl','mirrors']){
-      await get(ref(publicDb as never,'hdnd/'+node));
+    // Public projection cannot be changed by visitors, staff, or normal admin SDK.
+    for(const db of [...people,staff,root]){
+      await assertFails(set(ref(db as never,'hdnd/publicViews/current'),{schemaVersion:1}));
     }
-    await assertFails(get(ref(publicDb as never,'hdnd')));
-    await assertFails(get(ref(publicDb as never,'hdnd/editors')));
-    await assertFails(get(ref(publicDb as never,'hdnd/editLocks')));
-    await assertFails(get(ref(publicDb as never,'hdnd/freezeReceipts')));
   });
   it('denies anonymous editor even when globally editable columns are true',async()=>{
     const anonymousDb=anonymous('anon-a');
@@ -90,9 +88,9 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       uid:'anon-a',session:crypto.randomUUID(),token:crypto.randomUUID(),
       revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
     }));
-    const before=(await get(ref(anonymousDb as never,'hdnd/items/r1'))).val();
+    await assertFails(get(ref(anonymousDb as never,'hdnd/items/r1')));
     await assertFails(update(ref(anonymousDb as never,'hdnd/items/r1'),{
-      note:'Anonymous bypass',revision:before.revision+1
+      note:'Anonymous bypass',revision:2
     }));
   });
   it('denies unregistered Google employee even if global column permission allows note',async()=>{
@@ -101,9 +99,9 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       uid:'not-on-allowlist',session:crypto.randomUUID(),token:crypto.randomUUID(),
       revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
     }));
-    const baseline=(await get(ref(other as never,'hdnd/items/r1'))).val();
+    await assertFails(get(ref(other as never,'hdnd/items/r1')));
     await assertFails(update(ref(other as never,'hdnd/items/r1'),{
-      note:'UID without grant',revision:baseline.revision+1
+      note:'UID without grant',revision:2
     }));
   });
   it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
@@ -125,7 +123,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await set(ref(admin() as never,'hdnd/editors/a'),false);
     const [result]=await writer.save([updateDraft(initial,undefined,{note:'revoked UID must not write'})!]);
     expect(result.ok).toBe(false);
-    const after=(await writer.list())[0];
+    await assertFails(get(ref(guest('a') as never,'hdnd/items/r1')));
+    const after=(await get(ref(admin() as never,'hdnd/items/r1'))).val();
     expect(after.note).toBe(initial.note);
     expect(after.revision).toBe(initial.revision);
     await editor.dispose();
