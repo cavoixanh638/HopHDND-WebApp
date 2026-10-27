@@ -1,3 +1,14 @@
+## BỔ SUNG UI FIREBASE — GỘP CỘT CÁ NHÂN CHO NGƯỜI XEM (27/10/2026)
+
+Theo yêu cầu tiếp tục làm **trực tiếp trên GitHub**, đã tách phần hiển thị của bốn nhóm gộp cột khỏi quyền ghi bố cục chung:
+
+- Trong **Firebase Danh sách**, quản trị viên có quyền và callback lưu bố cục chung vẫn dùng thao tác cũ (ghi Firebase khi được phép); người xem/khách Firebase không có quyền bố cục chung được bật menu **Gộp cột** dạng **local-only**. Chọn/bỏ chọn chỉ ảnh hưởng UI của người dùng đó và lưu trong `localStorage` theo Firebase UID + nguồn; **không gọi Firebase write, không mở rộng ACL/quyền ô/lease**. Có nút **Khôi phục cách hiển thị chung** xóa lớp lựa chọn cá nhân để trở lại cấu hình do quản trị ban hành.
+- Giới hạn qua prop `allowPersonalCompact={isFirebase}`: không thay đổi hành vi của nguồn Google/Supabase; Supabase PAUSED. `ItemList.tsx`, `App.tsx`, `compact-columns.ts`, `item-frame.css` và QA synthetic đã cập nhật. Khi UID/nguồn thay đổi, đọc lại cấu hình riêng, không dùng nhầm lựa chọn của tài khoản khác. Trình duyệt chặn `localStorage` thì thao tác còn tác dụng trong phiên và cảnh báo không lưu.
+- Thêm unit tests lỗi storage/phân tách UID, bổ sung smoke Chrome trên **ItemList thật** với dữ liệu mô phỏng: khách tắt gộp Nội dung/Sở (8→10 cột), tải lại trang giữ lựa chọn, bấm khôi phục (10→8 cột) và xóa local override. Artifact ảnh `hophdnd-compact-guest-pass.png` được lưu trong `hophdnd-browser-smoke-preview` khi CI đạt. Không có bước QA nào gửi dữ liệu nghiệp vụ lên Firebase.
+- **Chưa hợp nhất vào `main`, chưa deploy Pages/Rules/RTDB production.** Giữ nguyên Firebase PR #71/#72 Draft vì release gate còn yêu cầu kiểm thử đa tài khoản thực và backup/Rules. Chức năng mới đã commit nhưng nghiệm thu thực tế trên Windows chưa được xác nhận.
+
+---
+
 ## XÁC MINH TRỰC TIẾP GITHUB — 27/10/2026: 4 nhóm gộp cột đã có trên PR #72, CHƯA PHÁT HÀNH
 
 - Đã đối chiếu trực tiếp nhánh `feat/exclusive-cell-leases-admin-freeze-20261025` với `main` trên GitHub. **4 tùy chọn thực sự có trong mã**: `contentDetails` (Loại VB + Sở/ngành → Nội dung), `partyTogether` (Cấp xin + tiến độ Thành ủy), `councilTogether` (Trình HĐND xây dựng + ban hành), `teamTogether` (Lãnh đạo UBND + Lãnh đạo VP + Phòng + Chuyên viên). Cụ thể: `src/features/items/compact-columns.ts`, `ItemList.tsx`, `data/item-preferences.ts`, `item-frame.css` và `tests/compact-columns.test.ts`. Mở cả bốn sẽ chiếu **15 cột gốc thành 8 cột hiển thị**, không hủy giá trị nguồn; bộ lọc trên cột gộp sử dụng giá trị nguyên gốc. Tùy chọn không tương thích tự tắt khi bật kiểu gộp thay thế.
