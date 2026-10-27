@@ -1,3 +1,13 @@
+## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
+
+**Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
+
+**Phân biệt:** WebApp có `ensureGuestAuth` tự đăng nhập Firebase Anonymous Auth ngầm, nên người dùng mở trang mà không tự đăng nhập Google vẫn **có thể được xem** theo Rules cũ `auth != null`. HTTP 401 trên truy vấn không auth **không chứng minh người dùng bình thường đang bị chặn xem**. Nó chứng minh Rules Cloud chưa cho phép *đọc trực tiếp không có Firebase Auth*. Cloud viewer hai UID thực chưa được thử.
+
+**Tình trạng:** PR #82 đã merge `main`, candidate Rules cho public reads đã qua Emulator + Chrome QA. Nhưng **không có quyền Firebase CLI production trong phiên ChatGPT/GitHub** để xác minh published Rules đầy đủ, sao lưu, deploy hay thử 2 Google UID thật. Chỉ dùng bộ lệnh `firebase-verify-published-rules.mjs`, `firebase-production-readonly-backup.mjs` trên máy đã đăng nhập đúng project để hoàn thành release. Không nhầm workflow GitHub Pages deploy với Rules deployment. [Cloud GET-only workflow](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/verify-live-public-firebase-read.yml) có thể bấm Run workflow sau khi Rules Cloud được duyệt và publish.
+
+---
+
 ## 27/10/2026 — CHỐT QUYỀN XEM CÔNG KHAI / PHÂN QUYỀN SỬA (PR #82 MERGED)
 
 **Chủ dự án yêu cầu:** *Lúc nào, tài khoản nào, kể cả chưa đăng nhập cũng được xem bảng; chỉ việc chỉnh sửa mới phải được cấp quyền*. Một UID Google sử dụng từ nhiều máy là hợp lệ, coi là một định danh quyền; không bắt các máy có Google UID khác nhau.
