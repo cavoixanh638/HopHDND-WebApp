@@ -1,3 +1,15 @@
+## 27/10/2026 — Kiểm tra trạng thái Firebase từ WebApp trực tiếp (PR #80 merged)
+
+**Đã hợp nhất [PR #80](https://github.com/cavoixanh638/HopHDND-WebApp/pull/80)** vào `main` tại `79ef349407d1d2258b0cde19b85cc2bccd420da7`. Kết quả kiểm thử [source + Chrome #40482172729](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40482172729) **PASS**, [Firebase staging #40482172707](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40482172707) **PASS**. Bản Pages chính thức phát hành theo quy trình CI; cần kiểm tra Actions build/Pages trước khi công bố trạng thái triển khai mới nhất.
+
+**Đường kiểm tra trực tiếp:** Mở https://cavoixanh638.github.io/HopHDND-WebApp/, đăng nhập tài khoản **Google quản trị** → **Tài khoản Firebase** → **Kiểm tra vận hành Firebase** → **Kiểm tra Firebase đang sử dụng**. Chỉ đọc 6 nhánh `hdnd/profile`, `hdnd/items`, `hdnd/permissions`, `hdnd/editors`, `hdnd/control`, `hdnd/freezeControl` trong Firebase instance đã cấu hình; hiển thị nguồn `excel/database/primary`, số hồ sơ thực, cấu hình, quyền, số UID được cấp, cờ khóa và chế độ chốt. **Không ghi database, không trả nội dung hồ sơ hoặc UID**, không báo Rules đã duyệt chỉ từ thao tác đọc.
+
+**Mục đích:** Loại bỏ phỏng đoán từ sao lưu 25/10 hoặc GitHub về `hdnd/items` hiện tại. Kiểm tra dự án Firebase **đã tồn tại** `hophdnd-8b7b2`, không tạo dịch vụ mới. Trạng thái Cloud thực tế chỉ có chứng cứ sau khi người dùng quản trị chạy kiểm tra trong trình duyệt. Nếu lỗi quyền/mạng, báo rõ, không coi là PASS.
+
+**Cổng cuối chưa xong:** (1) so sánh Rules production hiệu lực với Rules ứng viên, backup RTDB & Rules riêng tư và thử restore; (2) nếu `hdnd/items` trống, khởi tạo một lần từ nguồn Sheets/Excel đã duyệt theo [quy trình nhập đầu tiên](operations/FIREBASE_FIRST_IMPORT_FROM_CURRENT_SOURCE_2026-10-27.md); nếu có dữ liệu phải đối chiếu chứ không nhập đè; (3) chuyển `dataSource` sang `primary` qua quản trị sau xác minh; (4) thử 2 UID Google khác nhau trên 2 trình duyệt với quyền được cấp, khóa ô, ACK save, cập nhật realtime và cơ chế chốt. **CI Emulator không chứng minh Rules/sao lưu của môi trường production đang đạt**. Công việc chỉnh UI Danh sách và gộp cột vẫn có thể làm độc lập khi database chưa được kích hoạt.
+
+---
+
 ## FIREBASE LAUNCH PREPARATION — 27/10/2026: PR #79 merged, production backend still requires separate activation
 
 **Goal clarified by owner:** no employees are currently entering WebApp data. Use `main` and the canonical Pages URL for direct UI review; keep Google Sheets available as transitional source. Firebase-only. Supabase PAUSED.
