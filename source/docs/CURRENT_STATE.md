@@ -1,3 +1,7 @@
+## 29/10/2026 — Đang sửa bảng tự phủ chiều rộng khung (chưa phát hành)
+
+Nhánh `fix/table-fill-width-20261029` sửa khoảng trắng bên phải Danh sách khi tổng cột gộp nhỏ hơn khung đã chọn. Đo viewport bằng ResizeObserver, phân bổ phần dư cho cột chữ (ưu tiên Nội dung/Tiến độ), giữ ID/STT gọn và không tự ghi layout. Kéo cột vẫn chuyển pixel giữa cột chọn và cột cuối; cột tiến độ hẹp xếp trạng thái dưới nhãn để tránh xuống từng chữ. Giao diện Pages hiện hành vẫn là bản PR #90 dưới đây; chưa merge hoặc publish phần sửa này. Xem [bàn giao Lượt 017](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+
 ## 29/10/2026 — PR #90 đã merge và phát hành Pages
 
 Chủ dự án cho phép merge + tự publish Pages, không deploy Firebase/đổi dữ liệu. PR [#90](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90) merge `79f129b5352180dfdcf67d39f0ebf37f2e969321`; [publisher 40733434092](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434092) và [operational QA 40733434112](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434112) SUCCESS. Commit build `05bf7115c2db72e5bc04d963f184cbdc1990431e`, [Pages 40733623632](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733623632) SUCCESS. Browser trang chính đã dùng đúng asset mới, cột gộp và màu toàn khung R05 hiện đúng.

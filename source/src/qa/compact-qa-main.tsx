@@ -36,6 +36,14 @@ function CompactVisualQa(){
     if([1470,1550,1600].includes(cappedParty))base.columns=base.columns.map(c=>
       c.key==='partyLevel'?{...c,width:cappedParty}:c);
     if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
+    if(params.get('fit')==='1'){
+      // Reproduce the owner's small saved widths inside a wide selected frame.
+      const widths:Record<string,number>={displayCode:60,content:170,partyLevel:60,
+        specificProgress:150,room:230,note:60};
+      base.columns=base.columns.map(c=>({...c,width:widths[c.key]??c.width,
+        visible:c.key==='stt'?false:c.visible}));
+      if(params.get('frame')==='900')base.frameWidth=900;
+    }
     return base;
   });
   const [records,setRecords]=useState(()=>{
