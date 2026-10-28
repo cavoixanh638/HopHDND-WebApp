@@ -96,7 +96,7 @@ describe('R05: entire stage frames carry independent visual tones',()=>{
      pair:group,field:(key:TextField)=>String(example[key]??''),
      tone:(key:TextField)=>key==='progressCouncil'?undefined:'done',
    }));
-   expect(html.match(/data-progress-tone="neutral"/g)).toHaveLength(5);
+   expect(html.match(/data-progress-tone="neutral"/g)).toHaveLength(6);
    expect(html).not.toContain('data-progress-tone="done"');
  });
  it('keeps R03 per-field highlight without tinting a group or its siblings',()=>{
