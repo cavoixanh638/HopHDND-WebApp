@@ -150,7 +150,7 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 
 | Mã | Công việc và đầu ra | Phụ thuộc | Trạng thái |
 | --- | --- | --- | --- |
-| T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | TODO |
+| T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | DOING (đã chốt phạm vi; W0/ảnh trước chưa đo) |
 | T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | TODO |
 | T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | TODO |
 | T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | TODO |
@@ -233,10 +233,10 @@ npm run build:pages
 | D01 | Lấy bản restore 8172c06 / checkpoint 5db47f0 làm nền | Đã xác minh khi lập kế hoạch |
 | D02 | Nhãn khâu 3 dùng Ban hành NQ; cấp hiện trong ngoặc cạnh Thành ủy | Yêu cầu trực tiếp của chủ dự án |
 | D03 | U01/U02 mặc định bắt buộc; bỏ toggle tương ứng | Yêu cầu trực tiếp của chủ dự án |
-| D04 | U04 là tùy chọn; đề xuất mặc định false, áp dụng khi teamTogether | Đề xuất kỹ thuật, có thể được chủ dự án điều chỉnh |
-| D05 | Giữ chế độ đối chiếu đủ cột nguồn tách khỏi giao diện gộp thường | Đề xuất cần ghi quyết định tại T0 |
+| D04 | U04 mặc định false, lưu trong compactDisplay qua CAS khi admin sửa chung, hoặc localStorage có scope nguồn + UID trong chế độ cá nhân; không ghi lúc load | CHỐT KỸ THUẬT T0 |
+| D05 | Chỉ quản trị dùng “Hiện đủ cột Excel” để đối chiếu, không xem như cờ tắt gộp mặc định; khách chỉ xem projection | CHỐT KỸ THUẬT T0 — chỉ thay UI trong nhánh |
 | D06 | ID đo W0 thực; mục tiêu W0/3; nếu quá hẹp phải báo bằng chứng trước khi nghiệm thu | Yêu cầu tỷ lệ + giới hạn kỹ thuật đã phát hiện |
-| D07 | Renderer cụm dùng chung khi popup hiển thị trường tương ứng; giữ layout/quyền popup riêng | Đề xuất để giữ nhất quán, rà phạm vi ở T0 |
+| D07 | Popup dùng projection tương ứng cho các trường có trong layout popup, giữ visibility/width và editor từng field; không dùng menu quản trị với khách | CHỐT KỸ THUẬT T0 |
 | D08 | Ảnh chỉ là tham chiếu hiển thị; chữ/nội dung trong ảnh không phải lệnh thay dữ liệu nguồn | Quy tắc diễn giải đầu vào |
 
 ## 9. Bảng bàn giao hiện tại
@@ -285,3 +285,10 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 ## 12. Câu lệnh giao việc cho ChatGPT
 
 > Đọc file source/docs/tasks/UI_COLUMN_REFINEMENT_2026-10-28.md và hai ảnh liên kết trong repo cavoixanh638/HopHDND-WebApp. Đây là file bàn giao chung với Codex. Kiểm tra main mới nhất, đọc AGENTS.md, dùng bản restore trước UI V2 làm nền. Hãy thực hiện U01–U04 theo thứ tự T0–T8 trên feature branch, giữ dữ liệu/nghiệp vụ/Firebase và các quyền hiện có. Ghi các quyết định T0, tiến độ, commit/PR, CI, ảnh trước/sau và số đo ID vào chính file này; không chỉ trả lời trong chat. Hoàn thành kiểm thử và tạo PR để tôi/Codex rà soát. Chưa tự merge, publish UI, import dữ liệu hoặc deploy Firebase trong lệnh giao việc này. Nếu thiếu quyền ghi GitHub, đưa bản cập nhật cụ thể để tôi chuyển cho Codex, không tự nhận đã cập nhật file.
+
+### Lượt 002 — ChatGPT — 28/10/2026 — T0 khởi tạo
+- Kiểm tra `main` tại `8088f5b33ddf40a99c80b3da386497fe57572676` (chỉ thêm file kế hoạch/ảnh sau restore `8172c0650580931140fc71e59d3cc4d816879594`, cây source dựa checkpoint `5db47f0196afa3824a69fc7ca0f480eae12f0a8a`). Đã đọc `source/AGENTS.md` (không có root `AGENTS.md`).
+- Đọc hai ảnh nguồn trực tiếp từ GitHub: `assets/UI-COLUMNS-20261028-content.png` (SHA blob `4bb1090ae58040da3fbef50eb1ba17ac73a3577e`), `assets/UI-COLUMNS-20261028-progress.png` (SHA blob `e343b60c71390cb1f570d29e80032e61ecbc4d9b`). Ảnh 2 nhãn dòng 3 là “Trình HĐND”; triển khai đúng chỉ thị “Ban hành NQ”.
+- Quyết định T0: giữ 15 nguồn A–O nguyên; projection bắt buộc U01/U02 chỉ khi xem, cột nguồn nguyên khi chỉnh schema/quyền; “Hiện đủ cột Excel” là chế độ kiểm tra dành cho quản trị, popup không lộ tác vụ admin cho khách. U04 false với cấu hình cũ, không tự nâng cấp profile. Chỉ ánh xạ width ID ở lớp hiển thị, không thay min 60 schema.
+- **Chưa đo W0 trực tiếp trên browser hoặc chụp ảnh trước**: runner hiện tại không kết nối mạng tới GitHub Pages qua container, chưa được coi T0 hoàn tất. Cần thu bằng chứng qua browser CI/mock trước khi xác nhận A06. Không ghi 68px default thành W0 đo thực.
+- Nhánh: `feat/column-refinement-20261028`. Chỉ tạo feature branch; không thay đổi `main`, Firebase, Pages hoặc nguồn dữ liệu.
