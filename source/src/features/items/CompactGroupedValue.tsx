@@ -1,8 +1,17 @@
 import type {CSSProperties,ReactNode} from 'react';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
+import {normalizeSearch} from '../../domain/search';
 
 type MemberHighlight={color:string;backgroundColor:string}|undefined;
+/** R05 is presentation-only. Never reuse the report's completed bucket for
+ * a stage whose source explicitly says it is not required. */
+export function compactStageVisualTone(value:unknown,statusTone:string|undefined):string{
+ const normalized=normalizeSearch(String(value??'')).replace(/\\s+/gu,' ').trim();
+ if(/^(?:khong phai (?:trinh|xin y kien)|khong xin y kien)(?:$| )/u.test(normalized))
+   return 'neutral';
+ return statusTone??'neutral';
+}
 type Props={
  item:Item;pair:CompactPair;field:(key:TextField)=>ReactNode;
  tone:(key:TextField)=>string|undefined;editable?:(key:TextField)=>boolean;
@@ -49,7 +58,8 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    ];
    return <div className="compact-stages">
      {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>
-       <div className="compact-stage-row" key={stage.key}>
+       <div className="compact-stage-row" key={stage.key}
+         data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}>
          <span className="compact-stage-label">
            <span className="compact-stage-number">{stage.number}</span>
            <span>{stage.label}{stage.key==='progressParty'&&includes('partyLevel')&&
@@ -58,7 +68,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
                {' ('}{shown('partyLevel')}{')'}
              </span>}</span>
          </span>
-         {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={tone(stage.key)}
+         {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}
            {...memberAttributes(stage.key)}>{shown(stage.key)}</span>}
        </div>)}
    </div>;
