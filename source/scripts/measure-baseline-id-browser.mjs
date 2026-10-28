@@ -6,7 +6,6 @@ import {readFileSync,statSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
-import WebSocket from 'ws';
 
 const root=resolve(process.argv[2]??'dist-compact-qa');
 const output=resolve(process.argv[3]??'hophdnd-id-before-real.png');
@@ -59,9 +58,9 @@ try{
  }
  if(!tab)throw Error('Baseline Chrome CDP did not start');
  ws=new WebSocket(tab.webSocketDebuggerUrl);
- await new Promise((resolve,reject)=>{ws.once('open',resolve);ws.once('error',reject);});
- ws.on('message',buffer=>{
-  const m=JSON.parse(String(buffer));
+ await new Promise((resolve,reject)=>{ws.addEventListener('open',resolve,{once:true});ws.addEventListener('error',reject,{once:true});});
+ ws.addEventListener('message',ev=>{
+  const m=JSON.parse(ev.data);
   if(!m.id||!outstanding.has(m.id))return;
   const p=outstanding.get(m.id);outstanding.delete(m.id);
   m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result);
