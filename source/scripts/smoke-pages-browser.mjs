@@ -2474,8 +2474,8 @@ try{
       bottom:bounds.at(-1).bottom,tableTop:table.top,body:document.scrollingElement.scrollWidth,viewport:innerWidth};
   })()`);
   if(!fourMobile.ok)throw Error('Lượt 018 mobile stacked cards overflow: '+JSON.stringify(fourMobile));
-  const mobileShot=await send('Page.captureScreenshot',{format:'png'});
-  writeFileSync('hophdnd-l018-four-cards-mobile.png',Buffer.from(mobileShot.data,'base64'));
+  const l018MobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-four-cards-mobile.png',Buffer.from(l018MobileShot.data,'base64'));
   console.log('L018_GROUP_LABELS_AND_FOUR_CARDS_PASS',JSON.stringify({fourDesktop,filteredSummary,popupHeadings,fourMobile}));
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
 
