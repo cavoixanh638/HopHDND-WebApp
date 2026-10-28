@@ -1678,6 +1678,16 @@ try{
     throw Error('Cannot measure real ID column geometry');
   const beforeIdShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-id-before-simulated.png',Buffer.from(beforeIdShot.data,'base64'));
+  // Prior PR #90 version was 23px. This is a same-fixture DOM simulation for
+  // side-by-side visuals, NOT a historical screenshot/deployed Pages image.
+  await evaluate(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    table.querySelector('colgroup col:first-child').style.width='23px';
+    table.style.width=(parseFloat(window.__idMeasurement.table)+23-
+      parseFloat(window.__idMeasurement.col))+'px';
+  })()`);
+  const old23Shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-id-r04-before-23-simulated.png',Buffer.from(old23Shot.data,'base64'));
   const restoredId=await evaluate(`(()=>{
     const table=document.querySelector('.item-data-table');
     const col=table.querySelector('colgroup col:first-child');
