@@ -1926,14 +1926,14 @@ try{
   await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
     'R01 grouped CV filter absent before AND check');
   const addDepartment=await evaluate(`(()=>{
-    const select=document.querySelector('th[data-filter-key=department] select');
+    const select=document.querySelector('[data-filter-key=department] select');
     if(!select||![...select.options].some(x=>x.value==='Sở mẫu B'))return false;
     select.value='Sở mẫu B';select.dispatchEvent(new Event('change',{bubbles:true}));return true;
   })()`);
   if(!addDepartment)throw Error('R01 U01 source-level department filter missing');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
     'R01 staff + department AND did not exclude nonmatches');
-  await evaluate("document.querySelector('th[data-filter-key=department] .item-filter-clear')?.click()");
+  await evaluate("document.querySelector('[data-filter-key=department] .item-filter-clear')?.click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
     'R01 clearing department did not restore staff-only filter');
   await evaluate("document.querySelector('th[data-filter-key=room] .item-filter-clear')?.click()");
