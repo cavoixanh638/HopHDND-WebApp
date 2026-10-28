@@ -796,7 +796,7 @@ try{
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
       document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Lọc Nội dung"]')?.placeholder==='Tìm kiếm (không dấu)';
+      document.querySelector('input[aria-label="Lọc Nội dung"]')?.placeholder==='Nội dung';
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   // Guest footer and generic edit hint are intentionally removed. Use the
@@ -851,7 +851,7 @@ try{
   // Search without diacritics, highlight ALL occurrences inside the source
   // content cell without changing text or the underlying edit value.
   const began=Date.now();
-  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm cột Nội dung trình\\\"]')?.focus()");
+  await evaluate("document.querySelector('input[aria-label=\\\"Lọc Nội dung\\\"]')?.focus()");
   await send('Input.insertText',{text:'kiem thu'});
   await eventually("document.querySelector('.item-data-table tbody td[data-col-key=\\\"content\\\"] mark.item-search-match')?.textContent?.toLowerCase().includes('kiểm thử')===true",
     'Vietnamese search matches must be marked in visible contents');
