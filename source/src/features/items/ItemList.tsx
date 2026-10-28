@@ -21,6 +21,7 @@ import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell,filterValue} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
 import {CompactGroupFilterCell} from './CompactGroupFilterCell';
+import {CompactGroupedValue} from './CompactGroupedValue';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
@@ -453,7 +454,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,sourceWidth));
         else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,sourceWidth));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
+  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
+      (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
+    ?<CompactGroupFilterCell key={column.key} items={items}
+      fields={compactPairs.find(pair=>pair.anchor===column.key)!.memberFields}
+      values={columnFilters} onChange={(field,value)=>setColumnFilters(previous=>{
+        const next={...previous};if(value)next[field]=value;else delete next[field];return next;
+      })}/>
+    :compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
     ?<RoomSpecialistFilterCell key={column.key} items={items}
       room={columnFilters.room??''} person={columnFilters.specialist??''}
       onRoom={value=>setColumnFilters(previous=>({...previous,room:value}))}
@@ -475,24 +483,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
-            {key==='content'
-              ?<div className="compact-content-group">
-                <span className="compact-content-line">{compactField(item,'content')}
-                  <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>
-                    ({compactField(item,'type')})
-                  </span>
-                </span>
-                {pair.hiddenFields.includes('department')&&
-                  <div className="compact-content-department">
-                    <span className="compact-pair-tag">Sở</span>{compactField(item,'department')}
-                  </div>}
-              </div>
-              :<div className="compact-pair-lines">
-                {pair.memberFields.map((field,index)=><div key={field}>
-                  <span className="compact-pair-tag">{pair.tags[index]}</span>
-                  {compactField(item,field)}
-                </div>)}
-              </div>}
+            <CompactGroupedValue item={item} pair={pair}
+              field={field=>compactField(item,field)}
+              tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
+              cvRoomInline={compactDisplay.cvRoomInline}/>
           </td>;
         }
         if(column.origin==='custom'){
@@ -512,7 +506,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             :<SearchHighlight value={value||'—'} query={columnFilters[column.key]}/>}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
-          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}
            className={canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?'editable-cell':undefined}
