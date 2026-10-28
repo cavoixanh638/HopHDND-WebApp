@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Item} from '../../../shared/types';
 import type {CellPermissions} from '../../data/firebase-repository';
-import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,type CompactGroupLabels} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from './compact-columns';
 import {samePermissions} from '../../data/firebase-repository';
 import {validateCatalog,catalogFromItems} from '../../data/catalogs';
@@ -17,6 +17,7 @@ type Props={
   layout:ItemLayout;catalog?:CatalogConfig;items?:Item[];permissions?:CellPermissions;
   onChange:(next:ItemLayout)=>void;
   layoutDirty?:boolean;onSaveLayout?:()=>Promise<void>;
+  savedGroupLabels?:CompactGroupLabels;
   onSaveCatalog?:(next:CatalogConfig)=>Promise<void>;
   onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;
   onDirtyChange?:(dirty:boolean)=>void;
@@ -27,7 +28,7 @@ type Props={
  * one row per field, advanced properties only for the selected field.
  * Width changes are made exclusively by dragging the column border in-table.
  */
-export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage}:Props){
+export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={}}:Props){
   const [selected,setSelected]=useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
@@ -207,6 +208,10 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
                  onChange={event=>onChange({...layout,groupLabels:{
                    ...(layout.groupLabels??{}),[key]:event.currentTarget.value}})}/>
              </label>
+             <button type="button" className="button ghost" disabled={(layout.groupLabels?.[key]??'')===(savedGroupLabels[key]??'')}
+               onClick={()=>{const next={...(layout.groupLabels??{})};
+                 if(savedGroupLabels[key])next[key]=savedGroupLabels[key];else delete next[key];
+                 onChange({...layout,groupLabels:next});}}>Hủy</button>
              <button type="button" className="button ghost" disabled={!layout.groupLabels?.[key]}
                onClick={()=>{const next={...(layout.groupLabels??{})};delete next[key];
                  onChange({...layout,groupLabels:next});}}>Khôi phục tên mặc định</button>
