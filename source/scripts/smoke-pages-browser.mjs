@@ -1773,7 +1773,7 @@ try{
     return {ok:!!scroll&&scroll.scrollWidth>scroll.clientWidth&&
       root.scrollWidth<=innerWidth+4&&!!doc&&!!badge&&
       stage?.querySelectorAll('.compact-stage-row').length===3&&
-      !!id&&id.getBoundingClientRect().width<40&&
+      !!id&&Math.abs(id.getBoundingClientRect().width-52)<=1&&
       badge.getBoundingClientRect().width<=doc.getBoundingClientRect().width+2,
       viewport:innerWidth,idWidth:id?.getBoundingClientRect().width,
       scrollWidth:scroll?.scrollWidth,viewportWidth:scroll?.clientWidth,
@@ -1796,7 +1796,7 @@ try{
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
       labels.length===6&&viewport.scrollWidth>viewport.clientWidth&&
-      html.scrollWidth<=innerWidth+4&&!!id&&id.getBoundingClientRect().width<40,
+      html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
       idWidth:id?.getBoundingClientRect().width,
