@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: NEEDS_FIX — Codex đã rà PR #90 tại source `3194553441e3c3edd1d52c8c00ef8d38fb81f8c2`, tái hiện ba lỗi R01–R03. Chưa đủ điều kiện T9; xem mục 13 và bảng nhận xét.**
+> **Trạng thái: NEEDS_FIX — Codex tái-review source `c145b8f371cc6f2cb7569f7d55a389e951a1c841`: R01 và R03 VERIFIED; R02 đã sửa case ID cuối nhưng còn lỗi trần cột gộp 1600 px (Lượt 008). R04 chờ chủ dự án; T9 vẫn WAITING.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -151,14 +151,14 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | Mã | Công việc và đầu ra | Phụ thuộc | Trạng thái |
 | --- | --- | --- | --- |
 | T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | READY_FOR_REVIEW — W0 Chrome thực 68px trên 8172c065; quyết định D04–D07 và ảnh trước đã ghi |
-| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | READY_FOR_REVIEW — R02/R03 projection/hilight member đã có unit/browser Chromium xanh SHA bb395606 |
-| T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 màu từng field Hồ sơ và editor, popup Chromium đã pass |
+| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | NEEDS_FIX — Lượt 008: projection width và trần 1600 px trong renderer/helper chưa đồng nhất |
+| T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 được Codex xác nhận VERIFIED; các bằng chứng cũ giữ nguyên |
 | T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | READY_FOR_REVIEW — U02 ba dòng tiến độ + màu/permission, browser qua |
-| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | READY_FOR_REVIEW — R02 ID last ArrowRight/Left + drag + custom ID, total width bất biến; UX 23px chờ chủ dự án |
+| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | NEEDS_FIX — case ID cuối đã PASS; R02 còn lỗi khi cột gộp chạm trần 1600 px |
 | T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | READY_FOR_REVIEW — U04 false mặc định, local UID reload/reset, CI qua |
-| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — R01 staff full-member search/AND; R03 popup/hidden; browser pass |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — source CI 40667590073, staging 40667589950, Firebase QA 40667590460 success; 505 unit pass, 51 emulator pass |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | READY_FOR_REVIEW — đáp R01–R03 bằng commit, test và artifact ảnh; chờ Codex rà lại |
+| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — Codex tái kiểm R01 và màu từng field list/popup của R03 đạt |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | NEEDS_FIX — 40 test liên quan PASS; test biên trần cột gộp do reviewer bổ sung FAIL |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | NEEDS_FIX — đã tái-review, cần xử lý nốt R02 theo Lượt 008 |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -249,7 +249,7 @@ npm run build:pages
 | U03 | ChatGPT thực hiện | READY_FOR_REVIEW | W0 68px (restore 8172c065), W1 23px (d8ac9843), ratio 2,96:1; ảnh artifact 12802349921 | Chủ dự án xem khả năng đọc 23px |
 | U04 | ChatGPT thực hiện | READY_FOR_REVIEW | `d330ddc1`, `c81ac118`, UID reload/reset tại CI `40660234414` | Codex rà diff và UX |
 | Kiểm thử / ảnh / CI | ChatGPT thực hiện | READY_FOR_REVIEW | 3 workflow success d8ac9843; ảnh artifact 12802349921, demo 12803710651 | Chờ Codex review PR |
-| Rà diff và nghiệm thu kỹ thuật | Codex | NEEDS_FIX | Source 3194553441, mục 13, R01–R03 | ChatGPT sửa và cập nhật exact SHA mới |
+| Rà diff và nghiệm thu kỹ thuật | Codex | NEEDS_FIX | Source c145b8f, Lượt 008: R01/R03 VERIFIED, R02 còn case cap 1600 | ChatGPT sửa nốt R02 |
 | Nghiệm thu giao diện | Chủ dự án | WAITING | — | Xem bằng chứng trước/sau |
 
 Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX hoặc VERIFIED. DONE_DOCUMENTATION chỉ dùng cho hồ sơ; không dùng thay VERIFIED của chức năng. DEPLOYED và OWNER_ACCEPTED ghi riêng nếu có.
@@ -313,9 +313,9 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | Mã | Vị trí / vấn đề / ảnh hưởng | Yêu cầu sửa hoặc kiểm tra | Trả lời của bên thực hiện + commit | Kết quả rà lại |
 | --- | --- | --- | --- | --- |
 | R00 | Hồ sơ đã có PR #90 để rà | Đã kiểm source 3194553441 | Codex, lượt 005 / mục 13 | REVIEWED |
-| R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | `3780379` staff merged index; `b991ff2` AND U01; `bb39560` sửa selector test. Chromium R01 PASS (full CV/lãnh đạo UBND/VP/Phòng; có/không dấu, U04, AND), source CI 40667590073 | FIX_TESTED — chờ Codex tái-review, chưa tự đóng |
-| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | `f077053` + `2960dfe` physical width; `07974e3` unit; `48899dd` CDP keyboard/drag. Tổng 1533→1533px (ID last), custom 1552→1552px, group last 1533→1533; CI 40667590073 PASS | FIX_TESTED — chờ Codex tái-review, chưa tự đóng |
-| R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | FIX_TESTED — chờ Codex tái-review, chưa tự đóng |
+| R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | `3780379` staff merged index; `b991ff2` AND U01; `bb39560` sửa selector test. Chromium R01 PASS (full CV/lãnh đạo UBND/VP/Phòng; có/không dấu, U04, AND), source CI 40667590073 | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
+| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | `f077053` + `2960dfe` physical width; `07974e3` unit; `48899dd` CDP keyboard/drag. Tổng 1533→1533px (ID last), custom 1552→1552px, group last 1533→1533; CI 40667590073 PASS | NEEDS_FIX — ID cuối đạt; còn lỗi cap 1600 px, tổng 2813→2883; xem Lượt 008 |
+| R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23px đạt tỷ lệ nhưng mã bị tách dòng | Chủ dự án quyết định UX sau khi R02 sửa; không tự đổi 52–64px | Chờ quyết định chủ dự án | OWNER_DECISION |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
@@ -417,3 +417,84 @@ Vị trí: [ItemList.tsx:481–489](https://github.com/cavoixanh638/HopHDND-WebA
 - **R03:** `department` Sở mẫu A trong cụm có nền **rgb(204,0,0)**, chữ trắng; loại VB và Nội dung **không** bị nhuộm cùng màu. Wildcard cấp Thành ủy nền **rgb(18,52,86)**, tiến độ xây dựng theo rule nền **rgb(255,238,85)**. So với “Hiện đủ cột Excel” cùng rule đều đúng; trường Sở thật sự `visible:false` không lộ chữ hoặc màu; editor Sở khi có quyền giữ màu; popup dùng chung renderer hiển thị đúng màu trường con và **không** tô cả ô.
 - **Ảnh sau sửa, ảnh baseline trước và log CI:** [Artifact browser 12806049938 tại run #40667590073](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40667590073/artifacts/12806049938) gồm `hophdnd-review-r01-after.png`, `hophdnd-review-r02-after.png`, `hophdnd-review-r03-after.png` (đối chiếu với ảnh R01/R03 của Codex ở Lượt 005), và ảnh ID before-real/after, desktop/tablet/mobile từ vòng trước. Ảnh fixture/mock, không phải Pages production.
 - **Phạm vi bất biến:** không sửa `hdnd/items`, dữ liệu nguồn, logic 5 báo cáo, permission Rules, lease/fencing/CAS, Firebase production, Supabase hoặc file deploy. Ba R01–R03 đã **FIX_TESTED**; bảng review vẫn để Codex kiểm tra lại, không tự đánh dấu REVIEWED/CLOSED. T9 vẫn WAITING; PR #83 bảo mật độc lập.
+
+
+## 14. Lượt 008 — Codex tái-review R01–R03 — 28/10/2026
+
+**Source được kiểm:** `c145b8f371cc6f2cb7569f7d55a389e951a1c841`, PR #90, branch `feat/column-refinement-20261028`.
+**Kết luận:** R01 và R03 **VERIFIED** trong phạm vi tái kiểm; R02 **NEEDS_FIX** vì còn một trường hợp hợp lệ ở trần độ rộng cột gộp. R04 giữ **OWNER_DECISION**. T9 vẫn WAITING.
+
+### Bằng chứng độc lập và trạng thái CI
+
+- Đã đọc diff từ commit review trước `6f10f3e` tới source mới, các helper resize, renderer highlight và bộ lọc.
+- Xác minh **đúng HEAD c145b8f** có ba workflow SUCCESS: [Verify source #40667952017](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40667952017), [staging #40667952043](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40667952043), [operational QA #40667952021](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40667952021). Không chỉ dựa vào CI của source bb395606 được dẫn ở Lượt 007.
+- Codex chạy cục bộ 4 file test liên quan: `compact-columns.test.ts`, `item-save-flow.test.ts`, `trailing-column-width.test.ts`, `compact-group-highlights.test.tsx`: **40 test PASS**.
+- Một test reviewer bổ sung cho cap 1600 px **FAIL**: total thực mong đợi 2813 nhưng nhận 2883.
+- Browser chạy source checkout chính xác trên Windows, viewport 1280 px, fixture giả/local, không Firebase thật. Đây là kiểm thử độc lập bằng mã source; không tuyên bố đã tải và mở artifact Actions.
+
+### R01 — VERIFIED
+
+Đã gõ trên ô tìm của nhóm nhân sự, kết quả browser:
+- `Chuyên viên mẫu A` và `chuyen vien mau A` → **NQ01, NQ05**.
+- `PCVP Trần Văn B` và `PCT Nguyen Van C` → **NQ01**.
+- `Phong mau 2` → **NQ02, BC06**.
+- Tìm Chuyên viên mẫu A kết hợp Sở mẫu B → **0 hồ sơ**, đúng AND. Xóa lọc phục hồi dữ liệu.
+Đường `staffGroupTerms` dùng `merged:anchor` đã được phục hồi, U01/U02 giữ filter theo khóa nguồn.
+
+### R03 — VERIFIED
+
+Đã kiểm danh sách bằng fixture `highlight=1`:
+- Sở mẫu A nền **rgb(204,0,0)**, chữ **rgb(255,255,255)**.
+- Sở mẫu B không bị tô; vùng nội dung và `td` gộp vẫn nền trong suốt.
+- Rule wildcard tại cấp Thành ủy nền **rgb(18,52,86)**.
+Đã mở popup thật từ fixture `popup=1&highlight=1`: Sở mẫu A vẫn nền đỏ/chữ trắng, `td` gộp không bị nhuộm cả cụm. Kết hợp unit tests renderer về wildcard/field ẩn/U04/editor và diff truyền highlight theo field, có đủ bằng chứng đóng nhận xét R03 đã nêu. Đây không phải tuyên bố đã rà mọi cấu hình CSS/đường quyền trên production.
+
+### R02 — case ID cuối đã PASS, nhưng còn lỗi cap của cột gộp
+
+**Trường hợp cũ đã sửa đúng:**
+- Đưa ID về cuối bằng Alt+ArrowRight: Nội dung 440, ID 23, total 1533 px.
+- ArrowRight: Nội dung **443**, ID **20**, total **1533 px**.
+- ArrowLeft: Nội dung **433**, ID **30**, total **1533 px**.
+Không còn kéo ngược hoặc thay tổng như review trước.
+
+**Trường hợp còn lỗi — cấu hình hợp lệ, không cần thay schema:**
+1. Dùng layout đủ A–O bình thường, `teamTogether=true`, đặt width nguồn `partyLevel=1550` (trong giới hạn 60–1600).
+2. Nhóm tiến độ có extraWidth 130. Renderer `compactVisibleColumns` đang cap thành **1600 px**. Ghi chú cuối bảng **240 px**, total **2813 px**.
+3. Focus separator “Kéo ranh giới để đổi độ rộng cột Tiến độ 3 khâu”, nhấn **ArrowRight**.
+4. Kết quả browser độc lập: nhóm tiến độ vẫn **1600 px**, Ghi chú lại tăng thành **310 px**, total thành **2883 px** — tăng **70 px** dù bấm tăng cột Tiến độ.
+
+**Vị trí mã:**
+- [resize-last-column.ts:40–45](https://github.com/cavoixanh638/HopHDND-WebApp/blob/c145b8f371cc6f2cb7569f7d55a389e951a1c841/source/src/data/resize-last-column.ts#L40): `physicalWidth` và `physicalLimits` dùng sourceWidth + extraWidth, cho nhóm đạt 1730 px.
+- [compact-columns.ts:150](https://github.com/cavoixanh638/HopHDND-WebApp/blob/c145b8f371cc6f2cb7569f7d55a389e951a1c841/source/src/features/items/compact-columns.ts#L150): renderer lại dùng `Math.min(1600, sourceWidth + extraWidth)`.
+- [resize-last-column.ts:69–78](https://github.com/cavoixanh638/HopHDND-WebApp/blob/c145b8f371cc6f2cb7569f7d55a389e951a1c841/source/src/data/resize-last-column.ts#L69): commit lấy “before” 1680 thay vì width thực 1600; desired 1610 bị hiểu là giảm 70, bù sang Ghi chú.
+
+**Yêu cầu sửa tiếp:** dùng cùng một projection và cap trong renderer, preview, bounds và inverse/commit. Nếu nhóm đã chạm trần, tăng phải clamp/no-op hợp lệ; không bù pixel cho thay đổi không thực sự hiển thị. Kiểm cả nhóm làm target và nhóm làm cột cuối, source gần/qua ngưỡng cap (ví dụ 1470, 1550, 1600), cả ArrowLeft/Right và drag. Giữ schema, quyền và dữ liệu nguyên.
+
+**Test tối thiểu tái hiện (đã chạy FAIL trên c145b8f):**
+
+Chép tạm vào `source/tests/pr90-review-boundary.test.ts`, chạy `npm exec -- vitest run tests/pr90-review-boundary.test.ts`:
+
+```ts
+import {it,expect} from 'vitest';
+import {defaultItemLayout} from '../src/data/item-preferences';
+import {DEFAULT_COMPACT_DISPLAY,compactVisibleColumns,activeCompactPairs} from '../src/features/items/compact-columns';
+import {resizeProjectedWithLastColumn,projectedIdWidth} from '../src/data/resize-last-column';
+it('review R02: capped group resize keeps the actual projected total',()=>{
+  const layout=defaultItemLayout();
+  layout.columns=layout.columns.map(c=>c.key==='partyLevel'?{...c,width:1550}:c);
+  const prefs={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
+  const cols=compactVisibleColumns(layout.columns,prefs);
+  const extras=Object.fromEntries(activeCompactPairs(layout.columns,prefs).map(p=>[p.anchor,p.extraWidth]));
+  const renderedTotal=(value:typeof layout)=>compactVisibleColumns(value.columns,prefs)
+    .reduce((sum,c)=>sum+(c.key==='displayCode'?projectedIdWidth(c.width):c.width),0);
+  const target=cols.find(c=>c.key==='partyLevel')!;
+  const next=resizeProjectedWithLastColumn(layout,cols.map(c=>c.key),'partyLevel',target.width+10,extras,true);
+  expect(renderedTotal(next)).toBe(renderedTotal(layout));
+  expect(compactVisibleColumns(next.columns,prefs).find(c=>c.key==='note')!.width).toBeLessThanOrEqual(240);
+});
+```
+
+Kết quả reviewer: `AssertionError: expected 2883 to be 2813`.
+Fixture browser cục bộ mount **ItemList thật** với cùng layout đã tái hiện đúng các số trên, không sửa DOM để giả lập kết quả. Fixture/test reviewer chỉ phục vụ kiểm tra, chưa được commit vào mã ứng dụng.
+
+**Bàn giao tiếp:** ChatGPT sửa nốt R02 (không cần mở lại R01/R03 nếu không ảnh hưởng), cập nhật commit/CI và phép đo case cap; Codex rà vòng tiếp theo. Không tự đổi ID 23 px theo R04 và không chuyển T9 sang merge/publish.
