@@ -2053,6 +2053,142 @@ try{
   console.log('R03_GROUPED_HIGHLIGHT_LIST_POPUP_PASS',JSON.stringify({r03list,sourceColor,hiddenMember,editColor,popupColor}));
 
 
+
+  // Codex Lượt 013 / R05: verify the FULL stage frame (left number/label
+  // AND right status) is tinted. All fixtures are local synthetic ItemList.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr .compact-stage-row[data-progress-tone=office]')!==null",
+    'R05 multitone list fixture missing');
+  const stageFrames=(selector)=>evaluate(`(()=>{
+    const cell=document.querySelector('${selector}');
+    const stages=[...cell?.querySelectorAll('.compact-stage-row')??[]];
+    return stages.map(el=>{
+      const pill=el.querySelector('.compact-stage-state');
+      const css=getComputedStyle(el),p=getComputedStyle(pill);
+      const label=el.querySelector('.compact-stage-label').getBoundingClientRect();
+      const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
+      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
+        gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
+        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
+        numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
+    });
+  })()`);
+  const r05List=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
+  const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
+  const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
+  const target=[
+    {tone:'not-submitted',bg:'rgb(255, 241, 242)',border:'rgb(254, 205, 211)'},
+    {tone:'office',bg:'rgb(255, 251, 235)',border:'rgb(253, 230, 138)'},
+    {tone:'done',bg:'rgb(240, 253, 244)',border:'rgb(187, 247, 208)'}
+  ];
+  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
+      x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
+      x.pill!==x.bg&&x.labelFits&&x.stateFits)||
+    r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
+    r05Neutral[0].bg!=='rgb(248, 250, 252)'||
+    r05Neutral[0].border!=='rgb(203, 213, 225)'||
+    r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
+    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgb(248, 250, 252)')
+    throw Error('R05 entire-frame colors / neutral / independent stages: '+
+      JSON.stringify({r05List,r05Neutral,r05Unknown}));
+
+  // The "before" is an explicitly simulated CSS-only replay of the old
+  // near-white frame on the same checkout, NOT an old production screenshot.
+  await evaluate(`(()=>{
+    const style=document.createElement('style');style.id='r05-before-simulation';
+    style.textContent='.compact-stage-row{background:#fbfdfc!important;border-color:#e5e7eb!important}';
+    document.head.append(style);
+  })()`);
+  const r05Before=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-r05-before-white-simulated.png',Buffer.from(r05Before.data,'base64'));
+  await evaluate("document.querySelector('#r05-before-simulation').remove()");
+  const r05After=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-r05-after-multitone-list.png',Buffer.from(r05After.data,'base64'));
+  const r05Clip=await evaluate(`(()=>{
+    const r=document.querySelector('.item-data-table tbody tr:first-child td[data-col-key=partyLevel] .compact-stages').getBoundingClientRect();
+    return {x:Math.max(0,r.left),y:Math.max(0,r.top),width:r.width,height:r.height,scale:1};
+  })()`);
+  const r05Crop=await send('Page.captureScreenshot',{format:'png',clip:r05Clip});
+  writeFileSync('hophdnd-r05-after-list-stage-crop.png',Buffer.from(r05Crop.data,'base64'));
+
+  // R03 is still member-scoped; its custom yellow rule must not repaint
+  // the red ROW background of progressBuild in row 3.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&highlight=1'});
+  await eventually("document.querySelector('.compact-stage-state[data-highlighted=true]')!==null",
+    'R05 highlighted member fixture missing');
+  const r05Highlight=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
+    const stage=cell.querySelectorAll('.compact-stage-row')[1],pill=stage.querySelector('.compact-stage-state');
+    const first=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-level');
+    return {row:getComputedStyle(stage).backgroundColor,
+      pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
+      level:getComputedStyle(first).backgroundColor};
+  })()`);
+  if(r05Highlight.row!=='rgb(255, 241, 242)'||
+    r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
+    r05Highlight.level!=='rgb(18, 52, 86)')
+    throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
+
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&r05-palette=1'});
+  await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
+    'R05 custom palette fixture missing');
+  const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
+  if(r05Custom[1].bg==='rgb(255, 251, 235)'||
+    r05Custom[1].border==='rgb(253, 230, 138)'||
+    r05Custom[1].pill!=='rgb(252, 221, 160)'||
+    r05Custom[1].pillText!=='rgb(136, 68, 34)'||
+    r05Custom[0].bg!=='rgb(255, 241, 242)')
+    throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
+
+  // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&popup=1&highlight=1'});
+  await eventually("document.querySelector('.report-detail-grid .compact-stage-row')!==null",
+    'R05 real popup stage rows missing');
+  const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child td[data-col-key=partyLevel]');
+  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
+    x.border===target[i].border&&x.tone===target[i].tone))
+    throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
+  const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
+  const popupClip=await evaluate(`(()=>{
+    const r=document.querySelector('.report-detail-grid tbody tr:first-child td[data-col-key=partyLevel] .compact-stages').getBoundingClientRect();
+    return {x:Math.max(0,r.left),y:Math.max(0,r.top),width:r.width,height:r.height,scale:1};
+  })()`);
+  const popupStageShot=await send('Page.captureScreenshot',{format:'png',clip:popupClip});
+  writeFileSync('hophdnd-r05-after-popup-stage-crop.png',Buffer.from(popupStageShot.data,'base64'));
+
+  const r05Responsive=[];
+  for(const vw of [768,390]){
+    await send('Emulation.setDeviceMetricsOverride',{width:vw,height:900,deviceScaleFactor:1,mobile:false});
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1'});
+    await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
+      'R05 responsive fixture missing '+vw);
+    const samples=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
+    const geometry=await evaluate(`(()=>{
+      const stages=document.querySelector('.item-data-table tbody tr:first-child .compact-stages');
+      const row=stages?.querySelector('.compact-stage-row');
+      const label=row?.querySelector('.compact-stage-label')?.getBoundingClientRect();
+      const state=row?.querySelector('.compact-stage-state')?.getBoundingClientRect();
+      const frame=row?.getBoundingClientRect();
+      const id=document.querySelector('td[data-col-key=displayCode]');
+      return {stageWidth:frame?.width,sideBySide:!!label&&!!state&&state.top<label.bottom,
+        labelInFrame:!!label&&label.right<=frame.right+2,
+        stateInFrame:!!state&&state.right<=frame.right+2,
+        idWidth:id?.getBoundingClientRect().width,
+        bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
+    })()`);
+    if(!samples.every((x,i)=>x.bg===target[i].bg&&x.border===target[i].border&&
+      x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
+      geometry.idWidth!==52||geometry.bodyWidth>vw+5)
+      throw Error('R05 responsive colored stage overflows '+vw+' '+JSON.stringify({samples,geometry}));
+    const shot=await send('Page.captureScreenshot',{format:'png'});
+    writeFileSync('hophdnd-r05-after-'+vw+'px.png',Buffer.from(shot.data,'base64'));
+    r05Responsive.push({vw,geometry,colors:samples.map(x=>x.bg)});
+  }
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  console.log('R05_FULL_STAGE_FRAMES_LIST_POPUP_PALETTE_RESPONSIVE_PASS',
+    JSON.stringify({r05List,r05Neutral,r05Unknown,r05Highlight,r05Custom,r05Popup,r05Responsive}));
+
   // Review 005 / R02: REAL keyboard header reorders + separator key and
   // pointer drag on the physical projected widths, no source DOM overrides.
   const widthSnapshot=()=>evaluate(`(()=>{
