@@ -141,6 +141,13 @@ jobs:
             source/hophdnd-review-r02-after.png
             source/hophdnd-review-r02-cap-after.png
             source/hophdnd-review-r03-after.png
+            source/hophdnd-r05-before-white-simulated.png
+            source/hophdnd-r05-after-multitone-list.png
+            source/hophdnd-r05-after-list-stage-crop.png
+            source/hophdnd-r05-after-multitone-popup.png
+            source/hophdnd-r05-after-popup-stage-crop.png
+            source/hophdnd-r05-after-768px.png
+            source/hophdnd-r05-after-390px.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure
