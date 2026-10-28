@@ -108,7 +108,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Visual projection only; administrative configuration keeps every Excel source field.
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
-  const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
+  const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay,activeLayout.groupLabels):columns;
   // Preserve per-source filters even when projection hides their physical columns.
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next=toggleCompactOption(compactDisplay,option,checked);
