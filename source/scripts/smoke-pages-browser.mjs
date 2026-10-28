@@ -294,7 +294,7 @@ try{
       headings.includes('Tiến độ hiện tại')&&headings.includes('Ghi chú')&&
       !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
       !!doc?.querySelector('.compact-document-group')&&
-      !!stages?.querySelectorAll('.compact-stage-row').length===3&&
+      stages?.querySelectorAll('.compact-stage-row').length===3&&
       text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
       !document.querySelector('.source-column-visibility button'),
       keys,headings,stages:text.slice(0,180)};
