@@ -797,22 +797,48 @@
 .compact-document-content{min-width:0;font-size:13px;font-weight:650;white-space:pre-wrap;overflow-wrap:anywhere}
 .compact-document-content .content-button{white-space:normal;text-align:left;overflow-wrap:anywhere}
 .compact-stages{display:grid;gap:5px;min-width:0}
+/* R05: ONE softly tinted frame per stage (number, label, state), matching
+   the solid source-image fills. Custom palettes inherit their own light tint. */
 .compact-stage-row{
+  --stage-fill:#F8FAFC;--stage-border:#CBD5E1;
+  --stage-number-bg:#E2E8F0;--stage-number-text:#475569;
   display:grid;grid-template-columns:minmax(98px,44%) minmax(0,1fr);
-  align-items:start;gap:8px;min-width:0;padding:5px 7px;border:1px solid #e5e7eb;
-  border-radius:8px;background:#fbfdfc;text-align:left;
+  align-items:start;gap:8px;min-width:0;padding:5px 7px;
+  border:1px solid var(--stage-border);
+  border-radius:8px;background:var(--stage-fill);text-align:left;
+}
+.compact-stage-row[data-progress-tone="not-submitted"]{
+  --stage-fill:var(--hdnd-stage-not-submitted-bg,#FFF1F2);
+  --stage-border:var(--hdnd-stage-not-submitted-border,#FECDD3);
+  --stage-number-bg:#FFE4E6;--stage-number-text:#BE123C;
+}
+.compact-stage-row[data-progress-tone="office"]{
+  --stage-fill:var(--hdnd-stage-office-bg,#FFFBEB);
+  --stage-border:var(--hdnd-stage-office-border,#FDE68A);
+  --stage-number-bg:#FEF3C7;--stage-number-text:#92400E;
+}
+.compact-stage-row[data-progress-tone="done"]{
+  --stage-fill:var(--hdnd-stage-done-bg,#F0FDF4);
+  --stage-border:var(--hdnd-stage-done-border,#BBF7D0);
+  --stage-number-bg:#DCFCE7;--stage-number-text:#166534;
 }
 .compact-stage-label{display:flex;gap:6px;align-items:flex-start;min-width:0;
   color:#334155;font-weight:700;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
 .compact-stage-number{display:inline-grid;place-items:center;flex:none;min-width:20px;height:20px;
-  border-radius:50%;background:#e2e8f0;color:#334155;font-weight:800}
+  border-radius:50%;background:var(--stage-number-bg);color:var(--stage-number-text);font-weight:800}
 .compact-stage-level{font-weight:500;overflow-wrap:anywhere}
 .compact-stage-state{display:flex;min-width:0;align-items:flex-start;justify-content:flex-start;
   overflow-wrap:anywhere;word-break:normal;line-height:1.45}
 .compact-stage-state[data-progress-tone]{
-  --workflow-bg:#f2f6f9;--workflow-text:#426274;--workflow-border:#b7cbd6;
+  --workflow-bg:var(--hdnd-status-other-bg,#F2F6F9);
+  --workflow-text:var(--hdnd-status-other-text,#426274);--workflow-border:#CBD5E1;
   padding:3px 7px;border-radius:13px;border:1px solid var(--workflow-border);
   background:var(--workflow-bg);color:var(--workflow-text);font-size:12px;font-weight:650;
+}
+/* Not required is neutral in this view even when report aggregation groups
+   the same source label with terminal milestones. Unknown values stay neutral. */
+.compact-stage-state[data-progress-tone="neutral"]{
+  --workflow-bg:#E2E8F0;--workflow-text:#475569;--workflow-border:#CBD5E1;
 }
 .compact-stage-state[data-progress-tone="not-submitted"]{
   --workflow-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4);
