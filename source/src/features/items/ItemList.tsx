@@ -478,7 +478,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
-          const anyEditable=pair.memberFields.some(field=>editableField(item,field));
+          const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));
           return <td key={column.key} data-col-key={column.key}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
