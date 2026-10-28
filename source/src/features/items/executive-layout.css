@@ -93,3 +93,101 @@
  .executive-detail-toolbar{align-items:stretch;flex-direction:column;gap:4px;}
  .executive-detail-search{min-width:0;}
 }
+
+
+/* ============================================================================
+   UI/UX PRO MAX STYLING FOR EXECUTIVE DETAIL TABLE & PROGRESS CARDS
+   ============================================================================ */
+
+/* 1. ProMax Row State Left Indicators */
+.executive-table tbody tr[data-row-state="bottleneck"] > td:first-child {
+  box-shadow: inset 4px 0 0 #e11d48;
+}
+.executive-table tbody tr[data-row-state="bottleneck"] {
+  background: #fffdfd;
+}
+.executive-table tbody tr[data-row-state="done"] > td:first-child {
+  box-shadow: inset 4px 0 0 #16a34a;
+}
+.executive-table tbody tr[data-row-state="active"] > td:first-child {
+  box-shadow: inset 4px 0 0 #d97706;
+}
+.executive-table tbody tr[data-row-state="dropped"] {
+  opacity: 0.68;
+  background: #f8fafc;
+}
+
+/* 2. ProMax Code Badges */
+.executive-code-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+.executive-code-badge.kind-bc {
+  background: #f5f3ff;
+  color: #5b21b6;
+  border-color: #ddd6fe;
+}
+
+/* 3. ProMax Cluster Headers Enhanced */
+.executive-table .executive-clusters th {
+  letter-spacing: 0.05em;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+}
+.executive-table .executive-clusters th:nth-child(1) {
+  border-top: 4px solid #1e40af;
+  background: #f0f7ff;
+  color: #1e3a8a;
+}
+.executive-table .executive-clusters th:nth-child(2) {
+  border-top: 4px solid #0f766e;
+  background: #f0fdfa;
+  color: #115e59;
+}
+.executive-table .executive-clusters th:nth-child(3) {
+  border-top: 4px solid #b45309;
+  background: #fffbeb;
+  color: #92400e;
+}
+.executive-table .executive-clusters th:nth-child(4) {
+  border-top: 4px solid #4338ca;
+  background: #f5f3ff;
+  color: #3730a3;
+}
+
+/* 4. ProMax Flow Row & Micro-Pills */
+.executive-flow-row {
+  border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.executive-flow-row:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+
+/* 5. Smooth Scrollbar & Shadow for Table Wrap */
+.executive-table-scroll {
+  box-shadow: 0 4px 20px rgba(15,23,42,0.06);
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+}
+
+/* 6. ProMax Card Enhancements */
+.executive-report-card {
+  box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+  border: 1px solid #cbd5e1;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.executive-report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15,23,42,0.09);
+}
