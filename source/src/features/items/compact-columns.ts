@@ -2,28 +2,24 @@ import type {Item} from '../../../shared/types';
 import type {ItemColumn,SharedCompactDisplay} from '../../data/item-preferences';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
-export type CompactOption='typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders';
+export type CompactOption='typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline';
 export type CompactDisplay=SharedCompactDisplay;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
   typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,
-  leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,
+  leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,
 };
 export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;section:'merge'|'name'}[]=[
-  {key:'typeInContent',label:'Loại VB → Nội dung',detail:'Loại văn bản ở cuối nội dung',section:'merge'},
-  {key:'contentDetails',label:'Loại VB + Sở → Nội dung',detail:'Nội dung, loại VB và sở chủ trì trong một ô',section:'merge'},
-  {key:'partyTogether',label:'Cấp + Tiến độ Thành ủy',detail:'Giữ riêng cấp xin ý kiến và tiến độ',section:'merge'},
-  {key:'councilTogether',label:'Xây dựng + Ban hành HĐND',detail:'Hai bước tiến độ trong cùng một ô',section:'merge'},
   {key:'leadersTogether',label:'Lãnh đạo UBND + VP',detail:'UBND trên, VP dưới',section:'merge'},
   {key:'roomSpecialist',label:'Phòng + Chuyên viên',detail:'Phòng trên, chuyên viên dưới',section:'merge'},
-  {key:'teamTogether',label:'UBND + VP + Phòng + CV',detail:'Bốn thông tin, bốn dòng gọn',section:'merge'},
+  {key:'teamTogether',label:'UBND + VP + Phòng + CV',detail:'Bốn thông tin theo nhóm',section:'merge'},
+  {key:'cvRoomInline',label:'Chuyên viên và phòng cùng dòng',detail:'CV Tên chuyên viên (Tên phòng)',section:'merge'},
   {key:'shortSpecialist',label:'Viết tắt tên chuyên viên',detail:'Tên đầy đủ vẫn tìm được',section:'name'},
   {key:'shortLeaders',label:'Viết tắt tên lãnh đạo',detail:'Giữ nguyên chức danh',section:'name'},
 ];
 /** Group choices are exclusive only if they would consume the same visible column. */
 export function toggleCompactOption(prefs:CompactDisplay,option:CompactOption,checked:boolean):CompactDisplay {
   const next={...prefs,[option]:checked};
-  if(checked&&option==='contentDetails')next.typeInContent=false;
-  if(checked&&option==='typeInContent')next.contentDetails=false;
+  // Legacy U01/U02 flags are inert: the source groups are mandatory in ordinary views.
   if(checked&&option==='teamTogether'){next.leadersTogether=false;next.roomSpecialist=false;}
   if(checked&&(option==='leadersTogether'||option==='roomSpecialist'))next.teamTogether=false;
   return next;
@@ -53,8 +49,8 @@ export function readPersonalCompactDisplay(scope:string):CompactDisplay|null {
     if(!value||typeof value!=='object'||Array.isArray(value))return null;
     const object=value as Record<string,unknown>;
     const keys=Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[];
-    if(keys.some(key=>typeof object[key]!=='boolean'))return null;
-    return Object.fromEntries(keys.map(key=>[key,object[key]])) as CompactDisplay;
+    if(keys.some(key=>typeof object[key]!=='boolean'&&!(key==='cvRoomInline'&&object[key]===undefined)))return null;
+    return Object.fromEntries(keys.map(key=>[key,object[key]??false])) as CompactDisplay;
   }catch{return null;}
 }
 export function writePersonalCompactDisplay(scope:string,prefs:CompactDisplay):boolean {
@@ -98,21 +94,12 @@ export function abbreviateLeaderName(value:string):string {
 }
 /** A visual group of source fields; edits and RLS/lease remain per original field. */
 export type CompactPair={
-  anchor:'content'|'partyLevel'|'progressBuild'|'vpLeader'|'room';
-  hidden:'type'|'department'|'progressParty'|'progressCouncil'|'ubndLeader'|'specialist';
-  hiddenFields:readonly ('type'|'department'|'progressParty'|'progressCouncil'|'ubndLeader'|'vpLeader'|'specialist')[];
-  memberFields:readonly ('content'|'type'|'department'|'partyLevel'|'progressParty'|'progressBuild'|'progressCouncil'|'ubndLeader'|'vpLeader'|'room'|'specialist')[];
+  anchor:string; hidden:string; hiddenFields:readonly string[];memberFields:readonly string[];
   tags:readonly string[];label:string;extraWidth:number;variant:CompactOption;
 };
+/** These are optional staff-only presentation groups. U01/U02 are unconditional
+ * projections declared in activeCompactPairs; no saved flag can turn them off. */
 const PAIRS:Partial<Record<CompactOption,CompactPair>>={
-  typeInContent:{anchor:'content',hidden:'type',hiddenFields:['type'],
-    memberFields:['content','type'],tags:['','Loại VB'],label:'Nội dung trình (Loại VB)',extraWidth:0,variant:'typeInContent'},
-  contentDetails:{anchor:'content',hidden:'type',hiddenFields:['type','department'],
-    memberFields:['content','type','department'],tags:['','Loại VB','Sở'],label:'Nội dung / Loại VB / Sở',extraWidth:60,variant:'contentDetails'},
-  partyTogether:{anchor:'partyLevel',hidden:'progressParty',hiddenFields:['progressParty'],
-    memberFields:['partyLevel','progressParty'],tags:['Cấp','Tiến độ'],label:'Thành ủy: Cấp / Tiến độ',extraWidth:40,variant:'partyTogether'},
-  councilTogether:{anchor:'progressBuild',hidden:'progressCouncil',hiddenFields:['progressCouncil'],
-    memberFields:['progressBuild','progressCouncil'],tags:['Xây dựng','Ban hành'],label:'HĐND: Xây dựng / Ban hành',extraWidth:50,variant:'councilTogether'},
   leadersTogether:{anchor:'vpLeader',hidden:'ubndLeader',hiddenFields:['ubndLeader'],
     memberFields:['ubndLeader','vpLeader'],tags:['UBND','VP'],label:'Lãnh đạo UBND / VP',extraWidth:0,variant:'leadersTogether'},
   roomSpecialist:{anchor:'room',hidden:'specialist',hiddenFields:['specialist'],
@@ -128,21 +115,32 @@ export function compactTypeTone(value:string):'HC'|'QPPL'|'BC'|'other'{
   if(plain==='BC'||plain==='BAO CAO')return 'BC';
   return 'other';
 }
+/** A group contains only fields that are visible to the viewer. A removed/hidden
+ * source field is NEVER reintroduced by projection; if the anchor is absent,
+ * the first available member becomes the stable rendered anchor for this view. */
 export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDisplay):CompactPair[]{
-  const keys=new Set(columns.map(c=>c.key));
-  const selected:CompactOption[]=[
-    prefs.contentDetails?'contentDetails':'typeInContent',
-    'partyTogether','councilTogether',
-    ...(prefs.teamTogether?['teamTogether' as const]:['leadersTogether' as const,'roomSpecialist' as const])
-  ];
-  const hidden=new Set<string>();
-  return selected.flatMap(option=>{
+  const keys=new Set(columns.filter(c=>c.visible&&!c.removed).map(c=>c.key));
+  const mandatory=[
+    {variant:'contentDetails' as const,order:['type','department','content'],anchor:'content',
+      label:'Nội dung trình',tags:['Loại VB','Sở','Nội dung'],extraWidth:0},
+    {variant:'partyTogether' as const,order:['partyLevel','progressParty','progressBuild','progressCouncil'],
+      anchor:'partyLevel',label:'Tiến độ 3 khâu',tags:['Cấp','Thành ủy','Xây dựng NQ','Ban hành NQ'],extraWidth:130}
+  ].flatMap(def=>{
+    const memberFields=def.order.filter(key=>keys.has(key));
+    if(memberFields.length===0)return [];
+    const anchor=keys.has(def.anchor)?def.anchor:memberFields[0];
+    return [{anchor,hidden:memberFields.find(k=>k!==anchor)??anchor,
+      hiddenFields:memberFields.filter(k=>k!==anchor),memberFields,
+      tags:memberFields.map(k=>def.tags[def.order.indexOf(k)]),
+      label:def.label,extraWidth:def.extraWidth,variant:def.variant} satisfies CompactPair];
+  });
+  const selected=prefs.teamTogether?['teamTogether' as const]:['leadersTogether' as const,'roomSpecialist' as const];
+  const optional=selected.flatMap(option=>{
     const group=PAIRS[option];
     if(!group||!prefs[option]||group.memberFields.some(key=>!keys.has(key)))return [];
-    if(group.memberFields.some(key=>hidden.has(key)))return [];
-    for(const key of group.hiddenFields)hidden.add(key);
     return [group];
   });
+  return [...mandatory,...optional];
 }
 export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:CompactDisplay):ItemColumn[]{
   const pairs=activeCompactPairs(columns,prefs);
