@@ -1,3 +1,12 @@
+## 28/10/2026 — ĐÃ CHỐT MỐC BÀN GIAO GEMINI UI (TÀI LIỆU, KHÔNG THAY NGHIỆP VỤ)
+
+- **Nguồn bàn giao:** [GEMINI.md](../../GEMINI.md) và [GEMINI_UI_HANDOFF_2026-10-28.md](operations/GEMINI_UI_HANDOFF_2026-10-28.md). Snapshot code/UI trước commit docs: `c5cc9838c646af39d07b810233d6ea75065b7a25`; bản sau tài liệu theo nhánh `checkpoint/gemini-ui-handoff-2026-10-28`.
+- UI V2 đã merge PR #84, hotfix PR #86 merge `faf649b0f8597c563e7fd378c42ad54cfcc99d4b`. Đã sửa chữ trong các ô, bỏ “Mẫu hiển thị cá nhân”, giữ 3 thẻ tiến độ, 6 cột/4 cụm, chế độ từng cột và đủ 15 cột gốc, cuộn dọc với header sticky. [Publish #40540518313](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540518313), [Pages #40540517515](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540517515), [QA #40540518324](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540518324) đều SUCCESS trên `faf649b`. Workflow Pages-generated checkpoint gần nhất trước bàn giao `c5cc983` cũng deploy SUCCESS [#40540678823](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540678823).
+- **Chỉ bàn giao giao diện cho Gemini**: sửa TypeScript/CSS trên nhánh mới, giữ logic báo cáo và 15 cột nguồn, security CAS/lease, không sửa Firebase production. Các PR #73/#75/#77 Supabase PAUSED. **PR #83 bảo mật khách chỉ đọc bảng admin đã công bố vẫn DRAFT/HOLD, chưa verify/publish Cloud.** Không nhầm việc ẩn dữ liệu bằng CSS là quyền đọc được bảo vệ.
+- Không xác nhận đã commit các file chưa đẩy từ máy Windows người dùng: snapshot trên là **GitHub remote**, phải kiểm tra `git status` riêng trên từng máy nếu có thay đổi local.
+
+---
+
 ## 27/10/2026 — UI DANH SÁCH CHI TIẾT V2 ĐÃ MERGE / GITHUB PAGES ĐÃ PHÁT HÀNH
 
 - Đặc tả chính: [EXECUTIVE_DETAIL_UI_V2_2026-10-27.md](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md).
