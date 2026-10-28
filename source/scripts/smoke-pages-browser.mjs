@@ -1887,6 +1887,128 @@ try{
   console.log('GROUPED_STAGED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
 
+
+  // Review 005 / R01: type into the REAL grouped header (full source strings,
+  // including diacritics, while names displayed in the cells are abbreviated).
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?review-staff=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
+    'R01 staff fixture did not render');
+  const staffSearch=async(key,term,count)=>{
+    const found=await evaluate(`(()=>{
+      const input=document.querySelector('th[data-filter-key="${key}"] input');
+      if(!input)return false;input.focus();return true;
+    })()`);
+    if(!found)throw Error('R01 missing grouped staff input '+key);
+    await send('Input.insertText',{text:term});
+    await eventually(`document.querySelectorAll('.item-data-table tbody tr').length===${count}`,
+      'R01 did not find full group member '+term);
+    const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr')]
+      .map(x=>x.querySelector('td[data-col-key="displayCode"]')?.textContent.trim())`);
+    if(rows.length!==count)throw Error('R01 result count changed '+term);
+    await evaluate(`document.querySelector('th[data-filter-key="${key}"] .item-filter-clear')?.click()`);
+    await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
+      'R01 grouped staff clear did not restore rows');
+    return {term,count,ids:rows};
+  };
+  const r01=[];
+  r01.push(await staffSearch('room','Chuyên viên mẫu A',2));
+  r01.push(await staffSearch('room','Phong mau 2',2));
+  r01.push(await staffSearch('room','PCVP Trần Văn B',1));
+  r01.push(await staffSearch('room','PCT Nguyễn Văn C',1));
+  const toggleLeader=await evaluate(`(()=>{
+    const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
+    menu.open=true;
+    const label=[...menu.querySelectorAll('label')]
+      .find(x=>x.textContent.includes('Lãnh đạo UBND + VP'));
+    const input=label?.querySelector('input');if(!input)return false;input.click();return true;
+  })()`);
+  if(!toggleLeader)throw Error('R01 cannot test leadersTogether');
+  await eventually("!!document.querySelector('th[data-filter-key=vpLeader] input')",
+    'R01 leadersTogether did not project');
+  r01.push(await staffSearch('vpLeader','PCVP Tran Van B',1));
+  r01.push(await staffSearch('vpLeader','PCT Nguyen Van C',1));
+  const restoreTeam=await evaluate(`(()=>{
+    const label=[...document.querySelectorAll('.compact-columns-options label')]
+      .find(x=>x.textContent.includes('UBND + VP + Phòng + CV'));
+    const input=label?.querySelector('input');if(!input)return false;input.click();return true;
+  })()`);
+  if(!restoreTeam)throw Error('R01 team restore missing');
+  await eventually("!!document.querySelector('th[data-filter-key=room] input')",
+    'R01 team source header did not return');
+  const toggleInline=await evaluate(`(()=>{
+    const label=[...document.querySelectorAll('.compact-columns-options label')]
+      .find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
+    const input=label?.querySelector('input');if(!input)return false;input.click();return true;
+  })()`);
+  if(!toggleInline)throw Error('R01 U04 inline switch missing');
+  await eventually("!!document.querySelector('.compact-cv-room-line')",
+    'R01 U04 inline view not shown');
+  r01.push(await staffSearch('room','Chuyen vien mau A',2));
+  r01.push(await staffSearch('room','Phong mau 1',4));
+  console.log('R01_GROUP_STAFF_FULL_SEARCH_PASS',JSON.stringify(r01));
+
+  // Review 005 / R03: exact on-screen colors, not a snapshot of JS props.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1'});
+  await eventually("!!document.querySelector('.compact-document-department')",'R03 highlighted list missing');
+  const r03list=await evaluate(`(()=>{
+    const row=document.querySelectorAll('.item-data-table tbody tr');
+    const dept=row[0]?.querySelector('.compact-document-department');
+    const type=row[0]?.querySelector('.compact-document-badge');
+    const content=row[0]?.querySelector('.compact-document-content');
+    const level=row[0]?.querySelector('.compact-stage-level');
+    const stage=row[1]?.querySelectorAll('.compact-stage-state')[1];
+    const color=el=>el?{background:getComputedStyle(el).backgroundColor,
+      text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
+    const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    return {ok:d?.background==='rgb(204, 0, 0)'&&d.text==='rgb(255, 255, 255)'&&
+      t?.background!=='rgb(204, 0, 0)'&&c?.background!=='rgb(204, 0, 0)'&&
+      l?.background==='rgb(18, 52, 86)'&&p?.background==='rgb(255, 238, 85)'&&
+      p?.text==='rgb(0, 0, 0)',dept:d,type:t,content:c,level:l,progressBuild:p};
+  })()`);
+  if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
+  await evaluate(`[...document.querySelectorAll('.source-column-visibility button')]
+    .find(x=>x.textContent.includes('Hiện đủ cột Excel'))?.click()`);
+  await eventually("!!document.querySelector('td[data-col-key=department]')",
+    'R03 source comparison did not ungroup');
+  const sourceColor=await evaluate(`(()=>{
+    const td=document.querySelector('td[data-col-key=department]');
+    return getComputedStyle(td).backgroundColor;
+  })()`);
+  if(sourceColor!=='rgb(204, 0, 0)')
+    throw Error('R03 original source rule changed: '+sourceColor);
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&hide-dept=1'});
+  await eventually("!!document.querySelector('.compact-document-group')",
+    'R03 hidden member fixture missing');
+  const hiddenMember=await evaluate(`(()=>{
+    const doc=document.querySelector('.item-data-table td[data-col-key=content]');
+    return {hidden:!doc?.querySelector('.compact-document-department'),
+      red:!!doc?.querySelector('[data-highlighted=true][style*="CC0000"]')};
+  })()`);
+  if(!hiddenMember.hidden||hiddenMember.red)throw Error('R03 hidden department leaked: '+JSON.stringify(hiddenMember));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&edit=1'});
+  await eventually("!!document.querySelector('.compact-document-department .cell-picker-trigger')",
+    'R03 grouped editable field missing');
+  const editColor=await evaluate(`(()=>{
+    const button=document.querySelector('.compact-document-department .cell-picker-trigger');
+    return {background:getComputedStyle(button).backgroundColor,text:getComputedStyle(button).color};
+  })()`);
+  if(editColor.background!=='rgb(204, 0, 0)'||editColor.text!=='rgb(255, 255, 255)')
+    throw Error('R03 editable member lost rule: '+JSON.stringify(editColor));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&popup=1'});
+  await eventually("!!document.querySelector('.report-detail-grid .compact-document-department')",
+    'R03 popup renderer did not mount');
+  const popupColor=await evaluate(`(()=>{
+    const group=document.querySelector('.report-detail-grid .compact-document-department');
+    const color=getComputedStyle(group);
+    const td=group.closest('td'),parent=getComputedStyle(td);
+    return {bg:color.backgroundColor,fg:color.color,wholeCell:parent.backgroundColor,
+      hasGroup:!!group.closest('.compact-document-group')};
+  })()`);
+  if(popupColor.bg!=='rgb(204, 0, 0)'||popupColor.fg!=='rgb(255, 255, 255)'||
+    popupColor.wholeCell==='rgb(204, 0, 0)'||!popupColor.hasGroup)
+    throw Error('R03 popup member source rule missing/overpainted: '+JSON.stringify(popupColor));
+  console.log('R03_GROUPED_HIGHLIGHT_LIST_POPUP_PASS',JSON.stringify({r03list,sourceColor,hiddenMember,editColor,popupColor}));
+
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
