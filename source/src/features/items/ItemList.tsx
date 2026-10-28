@@ -37,7 +37,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
-import {resizeWithLastColumn,trailingWidthBounds} from '../../data/resize-last-column';
+import {projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -278,6 +278,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const visualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
     ?Math.round(Math.min(1600,Math.max(60,value))/3)
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
+  const projectedExtras=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,pair.extraWidth]));
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
   const tableWidth=compactPairs.length?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
@@ -452,17 +453,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
-    trailingWidthBounds(activeLayout,displayedColumns.map(col=>col.key),column.key)&&
+    projectedTrailingBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,projectedExtras,compactOn)&&
     <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
       compensator={{index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),min:60,max:1600}}
-      min={60} max={1600} label={column.label} onCommit={width=>{
+        width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),
+        min:compactOn&&displayedColumns.at(-1)?.key==='displayCode'?20:60+(projectedExtras[displayedColumns.at(-1)!.key]??0),
+        max:compactOn&&displayedColumns.at(-1)?.key==='displayCode'?533:1600+(projectedExtras[displayedColumns.at(-1)!.key]??0)}}
+      min={60+(projectedExtras[column.key]??0)} max={1600+(projectedExtras[column.key]??0)}
+      label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
-        // Displayed width includes the group padding; the source field must not.
-        const extra=compactPairs.find(pair=>pair.anchor===column.key)?.extraWidth??0;
-        const sourceWidth=Math.max(60,width-extra);
-        if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,sourceWidth));
-        else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,sourceWidth));
+        // Preview and commit use the SAME physical widths; ID raw width stays >=60.
+        if(customizing)setLayout(previous=>resizeProjectedWithLastColumn(previous,keys,column.key,width,projectedExtras,compactOn));
+        else void applyViewerLayout(base=>resizeProjectedWithLastColumn(base,keys,column.key,width,projectedExtras,compactOn));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
       (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
