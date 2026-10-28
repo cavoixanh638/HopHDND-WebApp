@@ -502,6 +502,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined}
       selectedIds={selection.items.map(item=>item.recordId)}
       items={workspace.workingItems} sourceKey={sourceKey} catalog={catalog} listLayout={itemLayout}
+       viewerCompactScope={isFirebase&&!firebase!.isAdmin?layoutRecoveryScope('viewer-compact:'+sourceKey+':'+(firebase!.user?.uid??'signed-out')):undefined}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&(!firebase||firebase.isAdmin||!firebase.editingLocked)}
       readOnlyViewer={isFirebase&&!firebase!.isAdmin&&!(selectedSource==='primary'&&guestMayEdit)}
       canEditCell={(id,field)=>!firebase||((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
