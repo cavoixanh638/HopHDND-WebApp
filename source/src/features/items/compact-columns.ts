@@ -1,5 +1,5 @@
 import type {Item} from '../../../shared/types';
-import type {ItemColumn,SharedCompactDisplay} from '../../data/item-preferences';
+import type {ItemColumn,SharedCompactDisplay,CompactGroupLabels} from '../../data/item-preferences';
 import {projectedGroupWidth} from '../../data/resize-last-column';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
@@ -143,12 +143,16 @@ export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDi
   });
   return [...mandatory,...optional];
 }
-export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:CompactDisplay):ItemColumn[]{
+/** Group title follows the stable variant, not a hidden/reordered anchor.
+ * Source columns and editor field names never inherit this display-only title. */
+export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:CompactDisplay,
+  groupLabels:CompactGroupLabels={}):ItemColumn[]{
   const pairs=activeCompactPairs(columns,prefs);
   const hidden=new Set<string>(pairs.flatMap(pair=>pair.hiddenFields));
   return columns.filter(col=>!hidden.has(col.key)).map(col=>{
     const pair=pairs.find(p=>p.anchor===col.key);
-    return pair?{...col,label:pair.label,width:projectedGroupWidth(col.width,pair.extraWidth)}:{...col};
+    return pair?{...col,label:groupLabels[pair.variant as keyof CompactGroupLabels]??pair.label,
+      width:projectedGroupWidth(col.width,pair.extraWidth)}:{...col};
   });
 }
 /** Search always indexes FULL strings of every source member in a merged cell. */
