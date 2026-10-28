@@ -64,13 +64,13 @@ describe('R02 upper-cap projection boundary / keyboard and pointer deltas',()=>{
       expect(total(left)).toBe(first);
     });
   }
-  it('ID 1/3 as last remains bounded and custom source width persists without rescaling',()=>{
+  it('R04 ID 52px-default projection: custom source last remains bounded without rescaling',()=>{
     const layout=defaultItemLayout();
     layout.columns=layout.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
     const keys=['content','displayCode'];
     const right=resizeProjectedWithLastColumn(layout,keys,'content',450,{},true);
-    expect(projectedIdWidth(right.columns.find(c=>c.key==='displayCode')!.width)).toBe(32);
-    expect(validateItemLayout(right).columns.find(c=>c.key==='displayCode')?.width).toBe(96);
+    expect(projectedIdWidth(right.columns.find(c=>c.key==='displayCode')!.width)).toBe(86);
+    expect(validateItemLayout(right).columns.find(c=>c.key==='displayCode')?.width).toBe(112);
     const again=resizeProjectedWithLastColumn(right,keys,'content',450,{},true);
     expect(again).toBe(right);
   });
