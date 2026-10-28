@@ -37,7 +37,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
-import {projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
+import {projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -457,9 +457,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
       compensator={{index:displayedColumns.length-1,
         width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),
-        min:compactOn&&displayedColumns.at(-1)?.key==='displayCode'?20:60+(projectedExtras[displayedColumns.at(-1)!.key]??0),
-        max:compactOn&&displayedColumns.at(-1)?.key==='displayCode'?533:1600+(projectedExtras[displayedColumns.at(-1)!.key]??0)}}
-      min={60+(projectedExtras[column.key]??0)} max={1600+(projectedExtras[column.key]??0)}
+        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,projectedExtras,compactOn)}}
+      {...projectedPhysicalLimits(column.key,projectedExtras,compactOn)}
       label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
         // Preview and commit use the SAME physical widths; ID raw width stays >=60.
