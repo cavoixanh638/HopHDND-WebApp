@@ -1905,6 +1905,10 @@ try{
     const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr')]
       .map(x=>x.querySelector('td[data-col-key="displayCode"]')?.textContent.trim())`);
     if(rows.length!==count)throw Error('R01 result count changed '+term);
+    if(term==='Chuyên viên mẫu A'){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-review-r01-after.png',Buffer.from(shot.data,'base64'));
+    }
     await evaluate(`document.querySelector('th[data-filter-key="${key}"] .item-filter-clear')?.click()`);
     await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
       'R01 grouped staff clear did not restore rows');
@@ -1987,6 +1991,8 @@ try{
       p?.text==='rgb(0, 0, 0)',dept:d,type:t,content:c,level:l,progressBuild:p};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
+  const r03shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-review-r03-after.png',Buffer.from(r03shot.data,'base64'));
   await evaluate(`[...document.querySelectorAll('.source-column-visibility button')]
     .find(x=>x.textContent.includes('Hiện đủ cột Excel'))?.click()`);
   await eventually("!!document.querySelector('td[data-col-key=department]')",
@@ -2107,6 +2113,8 @@ try{
     'R02 real pointer drag did not resize');
   const r02Drag=await widthSnapshot();
   assertSameTotal(r02Before,r02Drag,'R02 real pointer drag');
+  const r02shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=41",
