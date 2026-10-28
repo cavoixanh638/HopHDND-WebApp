@@ -484,7 +484,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
             <CompactGroupedValue item={item} pair={pair}
-              field={field=>compactField(item,field)}
+              field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
               cvRoomInline={compactDisplay.cvRoomInline}/>
           </td>;
