@@ -2479,6 +2479,60 @@ try{
   console.log('L018_GROUP_LABELS_AND_FOUR_CARDS_PASS',JSON.stringify({fourDesktop,filteredSummary,popupHeadings,fourMobile}));
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
 
+
+  // Real administrator UI: type, cancel, save with the existing layout
+  // persistence callback, remount from the saved synthetic snapshot and reset.
+  await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.group-label-editor summary')!==null",
+    'Lượt 018 admin group-name panel missing');
+  await evaluate("document.querySelector('.group-label-editor').open=true");
+  const adminNameFocus=await evaluate(`(()=>{
+    const el=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]');
+    if(!el)return false;el.focus();return document.activeElement===el;
+  })()`);
+  if(!adminNameFocus)throw Error('Lượt 018 admin title input not editable');
+  await send('Input.insertText',{text:'Tên khâu do quản trị đặt'});
+  await eventually("document.querySelector('input[aria-label=\"Tên nhóm gộp partyTogether\"]')?.value==='Tên khâu do quản trị đặt'",
+    'Lượt 018 group-title input lost draft');
+  await evaluate("document.querySelector('.group-label-editor button')?.click()");
+  const cancelled=await evaluate(`document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]')?.value`);
+  if(cancelled!=='')throw Error('Lượt 018 Hủy did not restore saved blank name '+cancelled);
+  await evaluate(`(()=>{
+    const el=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]');
+    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    setter.call(el,'Tên ba khâu sau lưu');el.dispatchEvent(new Event('input',{bubbles:true}));
+  })()`);
+  await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
+    'Lượt 018 shared Save not enabled after title edit');
+  await evaluate("document.querySelector('.column-save-button').click()");
+  await eventually("!!JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether",
+    'Lượt 018 synthetic CAS save did not persist group title');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
+  await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
+    'Lượt 018 shared group-title reload not shown');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1&popup=1'});
+  await eventually("[...document.querySelectorAll('.report-grid-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
+    'Lượt 018 popup did not inherit saved shared group title');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.group-label-editor summary')!==null",
+    'Lượt 018 admin group-title reload missing');
+  await evaluate("document.querySelector('.group-label-editor').open=true");
+  await evaluate(`(()=>{
+    const row=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]').closest('.group-label-editor-row');
+    [...row.querySelectorAll('button')].find(b=>b.textContent.includes('Khôi phục tên mặc định')).click();
+  })()`);
+  await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
+    'Lượt 018 default-title reset not detected as change');
+  await evaluate("document.querySelector('.column-save-button').click()");
+  await eventually("JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether===undefined",
+    'Lượt 018 reset did not remove only the group override');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
+  await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tiến độ 3 khâu'))",
+    'Lượt 018 default title failed after reset/reload');
+  await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
+  console.log('L018_GROUP_TITLE_ADMIN_SAVE_CANCEL_RELOAD_RESET_PASS');
+
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
