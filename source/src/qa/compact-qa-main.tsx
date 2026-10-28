@@ -23,7 +23,14 @@ const catalog=catalogFromItems(items);
 
 function CompactVisualQa(){
   const params=new URLSearchParams(window.location.search);
+  const adminLayoutQa=params.get('layout-admin')==='1';
   const [layout,setLayout]=useState<ItemLayout>(()=>{
+    if(adminLayoutQa||params.get('use-saved-layout')==='1'){
+      try{
+        const saved=localStorage.getItem('hdnd.qa.group-labels-synthetic');
+        if(saved)return validateItemLayout(JSON.parse(saved));
+      }catch{/* Invalid synthetic data is ignored without touching Firebase. */}
+    }
     const base={...initial,columns:initial.columns.map(c=>({...c}))};
     if(params.get('highlight')==='1')base.cellHighlights=[
       {id:'qa-department',field:'department',word:'Sở mẫu A',textColor:'#FFFFFF',backgroundColor:'#CC0000'},
@@ -89,7 +96,7 @@ function CompactVisualQa(){
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
         readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
-        customizing={false} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
+        customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
@@ -100,6 +107,11 @@ function CompactVisualQa(){
         onSaveData={async()=>false}
         onDiscardData={()=>{}}
         onLayoutSaved={()=>{}}
+        onPersistLayout={adminLayoutQa?async next=>{
+          const valid=validateItemLayout(next);
+          localStorage.setItem('hdnd.qa.group-labels-synthetic',JSON.stringify(valid));
+          setLayout(valid);return valid;
+        }:undefined}
         onPersistViewerLayout={guest?undefined:async(next)=>{
           const validated=validateItemLayout(next);
           setLayout(validated);return validated;
