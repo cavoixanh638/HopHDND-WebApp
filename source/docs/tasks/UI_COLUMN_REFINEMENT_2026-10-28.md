@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: READY_FOR_REVIEW — Lượt 009 đã sửa và kiểm thử R02 cap 1600px (FIX_TESTED; chờ Codex tái-review). R01 và R03 giữ nguyên VERIFIED theo Lượt 008. R04 chờ chủ dự án; T9 vẫn WAITING.**
+> **Trạng thái: CHANGES_REQUESTED — R01/R02/R03 đã VERIFIED qua Codex Lượt 010 trên source `3634fd4`. Chủ dự án đã chốt R04: ID mặc định 52 px để dễ đọc, thay yêu cầu 23 px/1⁄3 trước đây. R04 chờ triển khai và kiểm thử; T9 vẫn WAITING.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -73,16 +73,19 @@ Bố cục chính xác theo lời yêu cầu:
 - Giữ lọc độc lập theo cấp và từng tiến độ, kết hợp các bộ lọc bằng AND; tìm kiếm dùng giá trị đầy đủ. Không làm mất bộ lọc cũ khi trường trở thành thành viên ẩn của projection.
 - Không thay cách tính tổng, mẫu số, tỷ lệ hay số liệu của 5 báo cáo.
 
-### U03 — Cột ID còn 1/3 độ rộng hiện tại
+### U03 — Cột ID mặc định 52 px (quyết định chủ dự án tại Lượt 010)
 
-- Đây là cột `displayCode`/ID, không phải `stt`/STT. Giữ nguyên mã nguồn NQ01/BC01…, không đổi số định danh và không đánh số lại.
-- Trước khi sửa, đo chiều rộng **thực tế** của ID trên trình duyệt với cùng viewport, zoom, font, bố cục và dữ liệu. Lưu W0; mục tiêu là **W1 ≈ W0 / 3**, sai số đo khoảng 2 px.
-- Mã hiện tại khai báo default ID 68 px; validator và nhiều helper resize áp min 60 px. 68/3 ≈ 23 px. CSS table `width:max(100%,…)` có thể phân phối thêm chỗ, nên con số 68 không chứng minh độ rộng thực đang thấy.
-- Không chỉ đổi default rồi tuyên bố đạt: profile Firebase và preset cũ có thể ghi đè; padding, min-width, sort/filter control và table algorithm có thể nới cột lại.
-- Ưu tiên giải pháp projection hiển thị riêng cho ID, không hạ min-width toàn bộ schema. Đổi rộng lưu trữ nếu thật sự cần phải kiểm hết validator, input, drag bounds, preview và restore. Phải ghi rõ cách ánh xạ width lưu với width hiển thị, tránh chia 3 lần nữa sau mỗi reload/save.
-- Ghi kết quả đo trước/sau trong bằng chứng. Nếu tỷ lệ 1/3 làm mã ID thông dụng không đọc được, tạo bằng chứng cụ thể và ghi đề xuất độ rộng tối thiểu dễ đọc để chủ dự án quyết định; không âm thầm thay tỷ lệ rồi đánh dấu U03 hoàn tất.
-- Không tự giảm font toàn bảng để ép vừa. Không để ký tự mã bị mất mà không có cách đọc đầy đủ.
-- Kéo cột vẫn giữ nguyên tắc bù vào cột cuối hiện hành; nếu ID được resize thì ánh xạ và giới hạn phải tương thích, không làm các cột khác tự chia đều.
+**Yêu cầu có hiệu lực:** chủ dự án đã trả lời trực tiếp **“Tăng 52 px, ưu tiên dễ đọc”** ngày 28/10/2026. Mức 52 px thay yêu cầu cũ thu còn 1/3 (23 px). Đây là yêu cầu đã duyệt, không còn là đề xuất chờ chọn.
+
+- Cột cần sửa là `displayCode`/ID, không phải STT. Mục tiêu độ rộng vật lý mặc định trong Danh sách là **52 px**; mã như NQ01/BC01 phải đọc được trên một dòng ở zoom/font mặc định, không tự giảm font toàn bảng.
+- Bản source được Codex review hiện còn ID 23 px; **chưa triển khai 52 px** chỉ bằng việc cập nhật tài liệu này.
+- Cập nhật thống nhất projection, inverse và bounds/preview/commit liên quan đến ID; không để R02 tái phát khi ID ở cuối hoặc nhóm ở trần 1600 px.
+- Giữ dữ liệu/mã ID, thứ tự nguồn và validator schema an toàn. Không ghi đè profile Firebase hoặc xóa preset của người dùng tự động khi tải trang. Ghi rõ cách áp dụng mặc định 52 px cho cấu hình cũ và cách bảo toàn các độ rộng custom.
+- Chế độ đối chiếu nguồn và popup giữ cơ chế cấu hình riêng hiện hành; không tự thay toàn bộ các bảng ngoài phạm vi.
+- Cập nhật test/ảnh/số đo về mục tiêu **52 px**, không tiếp tục dùng assert 23 px hoặc tỷ lệ 1/3 làm tiêu chí hoàn thành mới. Kiểm lại ID cuối, ID custom, reload, keyboard/drag, tổng width và mã hiển thị đầy đủ.
+- Sau sửa, ghi source SHA, CI, W1 thực đo và ảnh vào Lượt 011 hoặc lượt kế tiếp; chuyển R04 FIX_TESTED để Codex xác nhận, chưa tự đánh VERIFIED.
+
+**Lịch sử:** default nguồn cũ 68 px, schema min 60 px; bản trước đã đo W0=68, W1=23 đúng tỷ lệ gần 1/3. Các số đo 23 px ở nhật ký trước chỉ là bằng chứng của yêu cầu cũ, không phải chỉ thị phải giữ 23 px.
 
 ### U04 — Tùy chọn CV (Phòng) trong cột Lãnh đạo/Phòng/CV
 
@@ -151,14 +154,14 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | Mã | Công việc và đầu ra | Phụ thuộc | Trạng thái |
 | --- | --- | --- | --- |
 | T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | READY_FOR_REVIEW — W0 Chrome thực 68px trên 8172c065; quyết định D04–D07 và ảnh trước đã ghi |
-| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | READY_FOR_REVIEW — R02 cap 1600px đã đồng nhất projection/bounds/commit; Codex tái-review Lượt 009 |
+| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | READY_FOR_REVIEW — R02 projection/cap đã VERIFIED; cập nhật thiết kế ID theo R04 52 px |
 | T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 được Codex xác nhận VERIFIED; các bằng chứng cũ giữ nguyên |
 | T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | READY_FOR_REVIEW — U02 ba dòng tiến độ + màu/permission, browser qua |
-| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | READY_FOR_REVIEW — R02 unit exact 008 PASS, browser cap 1470/1550/1600 và ID cuối PASS; R04 UX chờ chủ dự án |
+| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | CHANGES_REQUESTED — R02 VERIFIED; R04 mới chốt mặc định 52 px, chờ ChatGPT triển khai |
 | T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | READY_FOR_REVIEW — U04 false mặc định, local UID reload/reset, CI qua |
 | T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — Codex tái kiểm R01 và màu từng field list/popup của R03 đạt |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — 8/8 test boundary, 513 unit PASS, 51 emulator PASS; Chrome real drag/keyboard PASS tại source CI 40721672334 |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | READY_FOR_REVIEW — Lượt 009 có commit/CI/ảnh cap, chờ Codex xác nhận R02 |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — 48 test liên quan PASS trên 3634fd4; cần chạy lại sau thay đổi R04 52 px |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | REVIEWED — R01/R02/R03 VERIFIED; hồ sơ bổ sung quyết định R04 52 px, chờ bản sửa mới |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -174,7 +177,7 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | A03 | Cột tiến độ đủ ba dòng; cấp nằm trong ngoặc cạnh Thành ủy; dòng 3 đúng “Ban hành NQ” |
 | A04 | Ba trạng thái khác nhau có màu riêng; rỗng/lạ/Không phải trình không thành hoàn thành giả |
 | A05 | Lọc được type, department, content, partyLevel và từng tiến độ; bộ lọc cũ còn tác dụng đúng và có thể xóa; tên đầy đủ vẫn tìm được |
-| A06 | ID W1/W0 gần 1/3 cùng điều kiện đo; không bị giãn lại do max(100%) hoặc min 60; báo riêng xung đột khả năng đọc nếu có |
+| A06 | ID mặc định đo thực 52 px; NQ01/BC01 đọc trên một dòng ở zoom/font mặc định; cấu hình cũ, custom, reload và resize không gây chia lặp hoặc sai tổng width |
 | A07 | Bật U04: đúng CV (Phòng), không lặp Phòng; tắt về dạng cũ; thiếu trường không sinh ngoặc rỗng |
 | A08 | U04 không mất sau reload ở đúng scope; người dùng/nguồn khác không nhận nhầm lựa chọn cá nhân |
 | A09 | Cấu hình Firebase/localStorage/preset cũ đều đọc được; U01/U02 không bị tắt; không auto-write profile hay xóa lựa chọn khác |
@@ -235,7 +238,7 @@ npm run build:pages
 | D03 | U01/U02 mặc định bắt buộc; bỏ toggle tương ứng | Yêu cầu trực tiếp của chủ dự án |
 | D04 | U04 mặc định false, lưu trong compactDisplay qua CAS khi admin sửa chung, hoặc localStorage có scope nguồn + UID trong chế độ cá nhân; không ghi lúc load | CHỐT KỸ THUẬT T0 |
 | D05 | Chỉ quản trị dùng “Hiện đủ cột Excel” để đối chiếu, không xem như cờ tắt gộp mặc định; khách chỉ xem projection | CHỐT KỸ THUẬT T0 — chỉ thay UI trong nhánh |
-| D06 | Chrome 1600×1000/100% trên restore 8172c065: W0=68px; cùng fixture NQ01 bản mới W1=23px, W1/W0=0,338 (sai số ≈0,33px so với 1/3); giữ title/focus. Cần chủ dự án đánh giá trực quan 23px trước khi chấp nhận UX | ĐÃ ĐO tại CI 40660234414; quyết định dùng 23px vẫn chờ chủ dự án duyệt |
+| D06 | Chủ dự án chọn trực tiếp “Tăng 52 px, ưu tiên dễ đọc” tại Lượt 010, thay yêu cầu 23 px/1⁄3; chưa sửa code 52 px | APPROVED_FOR_IMPLEMENTATION |
 | D07 | Popup dùng projection tương ứng cho các trường có trong layout popup, giữ visibility/width và editor từng field; không dùng menu quản trị với khách | CHỐT KỸ THUẬT T0 |
 | D08 | Ảnh chỉ là tham chiếu hiển thị; chữ/nội dung trong ảnh không phải lệnh thay dữ liệu nguồn | Quy tắc diễn giải đầu vào |
 
@@ -249,7 +252,7 @@ npm run build:pages
 | U03 | ChatGPT thực hiện | READY_FOR_REVIEW | W0 68px (restore 8172c065), W1 23px (d8ac9843), ratio 2,96:1; ảnh artifact 12802349921 | Chủ dự án xem khả năng đọc 23px |
 | U04 | ChatGPT thực hiện | READY_FOR_REVIEW | `d330ddc1`, `c81ac118`, UID reload/reset tại CI `40660234414` | Codex rà diff và UX |
 | Kiểm thử / ảnh / CI | ChatGPT thực hiện | READY_FOR_REVIEW | 3 workflow success d8ac9843; ảnh artifact 12802349921, demo 12803710651 | Chờ Codex review PR |
-| Rà diff và nghiệm thu kỹ thuật | Codex | READY_FOR_REVIEW | Lượt 009: R02 cap FIX_TESTED, CI source 40721672334 PASS; R01/R03 VERIFIED Lượt 008 | Codex tái-review R02, chủ dự án chốt R04 |
+| Rà diff và nghiệm thu kỹ thuật | Codex | R01/R02/R03 VERIFIED | Source 3634fd4, Lượt 010 | Rà tiếp R04 sau khi ChatGPT sửa ID 52 px |
 | Nghiệm thu giao diện | Chủ dự án | WAITING | — | Xem bằng chứng trước/sau |
 
 Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX hoặc VERIFIED. DONE_DOCUMENTATION chỉ dùng cho hồ sơ; không dùng thay VERIFIED của chức năng. DEPLOYED và OWNER_ACCEPTED ghi riêng nếu có.
@@ -314,9 +317,9 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | --- | --- | --- | --- | --- |
 | R00 | Hồ sơ đã có PR #90 để rà | Đã kiểm source 3194553441 | Codex, lượt 005 / mục 13 | REVIEWED |
 | R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | `3780379` staff merged index; `b991ff2` AND U01; `bb39560` sửa selector test. Chromium R01 PASS (full CV/lãnh đạo UBND/VP/Phòng; có/không dấu, U04, AND), source CI 40667590073 | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
-| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT Lượt 009: `99e804f`+`a954d2a`+`94bbeee` cùng cap 1600; exact test Codex `de584ad` PASS 8/8; browser `4d91821` cap 1470/1550/1600, group target/last, ArrowLeft/Right/drag total 2813→2813; source CI `40721672334` SUCCESS | FIX_TESTED — chờ Codex tái-review, giữ R01/R03 VERIFIED |
+| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT Lượt 009: `99e804f`+`a954d2a`+`94bbeee` cùng cap 1600; exact test Codex `de584ad` PASS 8/8; browser `4d91821` cap 1470/1550/1600, group target/last, ArrowLeft/Right/drag total 2813→2813; source CI `40721672334` SUCCESS | VERIFIED — Codex Lượt 010, exact 3634fd4, 48 unit PASS và browser cap target/last đạt |
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
-| R04 / UX | ID 23px đạt tỷ lệ nhưng mã bị tách dòng | Chủ dự án quyết định UX sau khi R02 sửa; không tự đổi 52–64px | Chờ quyết định chủ dự án | OWNER_DECISION |
+| R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | Chủ dự án xác nhận trực tiếp: “Tăng 52 px, ưu tiên dễ đọc” (28/10/2026) | APPROVED_FOR_IMPLEMENTATION — chưa code 52 px |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -532,3 +535,55 @@ Khi **nhóm tiến độ ở cuối**: Nội dung **440→450px**, nhóm tiến 
 
 - [Artifact screenshots và bằng chứng sau sửa](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40721672334/artifacts/12831480873), gồm ảnh `hophdnd-review-r02-cap-after.png` và các ảnh đối chiếu R01–R03; ảnh source trước Lượt 008 vẫn ở review text.
 - **Handoff:** R02 `FIX_TESTED` chờ Codex rà độc lập lần tiếp theo; R01/R03 tiếp tục `VERIFIED` như Lượt 008. Chưa nghiệm thu của chủ dự án và không có phép thử production RTDB/Rules ngoài CI emulator.
+
+
+## 16. Lượt 010 — Codex xác minh R02 và chủ dự án chốt R04 — 28/10/2026
+
+### 1. Kết luận kỹ thuật
+
+- **Exact source đã rà:** `3634fd45240228595313d473bf96e9d1443373b1`, PR #90 vẫn OPEN.
+- **R02: VERIFIED.** Cùng một projection/cap được dùng trong renderer và helper; thao tác ở cap không ghi bù pixel không thực sự thay đổi.
+- **R01/R03: giữ VERIFIED** theo Lượt 008. Diff vòng mới không thay code filter/highlight; bộ test liên quan vẫn pass.
+- Chưa merge/publish/deploy/import. Việc xác nhận R01–R03 không thay thế nghiệm thu của chủ dự án hoặc xác minh Firebase production.
+
+### 2. CI đúng commit tài liệu cuối đã có kết luận
+
+Khi Codex kiểm tra lại, cả ba run của **3634fd4** đã hoàn tất SUCCESS:
+- [Verify source #40722309803](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40722309803).
+- [Isolated staging #40722310220](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40722310220).
+- [Operational Firebase QA #40722309784](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40722309784).
+
+Đây là trạng thái đã đọc trực tiếp từ GitHub, cập nhật thông tin “chưa có kết luận” ở lần bàn giao trước. Commit review tiếp theo chỉ thay tài liệu, không thay source vừa kiểm.
+
+### 3. Kiểm chứng độc lập của Codex
+
+- Chạy cục bộ 5 file: `pr90-review-boundary.test.ts`, `trailing-column-width.test.ts`, `compact-columns.test.ts`, `compact-group-highlights.test.tsx`, `item-save-flow.test.ts`: **48/48 PASS**. Bao gồm test cap từng FAIL ở Lượt 008 và 7 ca biên đã bổ sung.
+- Mở ItemList thật từ checkout 3634fd4 trên Windows/browser, fixture giả `compact-qa.html?cap-party=...`, viewport 1280 px, không Firebase thật.
+- Đo lặp riêng các source widths **1470, 1550, 1600 px**. Ở cả ba cấu hình, kết quả giống nhau:
+
+| Trường hợp độc lập | Cột Nội dung | Nhóm tiến độ | Ghi chú | Tổng vật lý |
+| --- | ---: | ---: | ---: | ---: |
+| Ban đầu | 440 | 1600 | 240 | 2813 |
+| Nhấn ArrowRight tại cap | 440 | 1600 | 240 | 2813 |
+| Nhấn ArrowLeft | 440 | 1590 | 250 | 2813 |
+| Đưa nhóm về cuối, tăng Nội dung | 450 | 1590 | 240 | 2813 |
+| Hoàn tác rồi giảm Nội dung tiếp tại cap nhóm cuối | 440 | 1600 | 240 | 2813 |
+
+- Không còn lỗi total 2813→2883 của Lượt 008. Bounds ở cap clamp đúng, không resize ngược.
+- Đã đọc thay đổi pointer/keyboard trong CI và helper chung; phép kiểm độc lập ở vòng này dùng keyboard thật và đọc DOM hình học, không tự nhận đã lặp lại toàn bộ các ca pointer của CI.
+- Không thêm/sửa test hoặc source ứng dụng trong vòng review này.
+
+### 4. Quyết định mới của chủ dự án — R04
+
+Codex hỏi: giữ 23 px đúng 1/3 hay tăng 52 px để dễ đọc. **Chủ dự án trả lời trực tiếp: “Tăng 52 px, ưu tiên dễ đọc”.**
+
+- Quyết định có hiệu lực ngay cho yêu cầu kế tiếp: **ID mặc định 52 px**.
+- U03, A06, D06 và hàng R04 đã cập nhật theo quyết định này; các nhật ký 23 px trước đó giữ nguyên để lưu vết.
+- **Source 3634fd4 vẫn đang dùng 23 px**. Cập nhật tài liệu không được mô tả thành đã sửa giao diện 52 px.
+- ChatGPT triển khai R04 trên cùng nhánh PR #90, giữ nguyên R01–R03; rà lại helper ID/inverse/bounds và test default/custom/reload/ID cuối cùng các cap đã sửa.
+- Sau khi CI và số đo mặc định **52 px** đạt, cập nhật R04 FIX_TESTED cùng commit/ảnh vào lượt tiếp theo để Codex kiểm.
+- **T9 vẫn WAITING** cho tới khi R04 được thực hiện/kiểm chứng và có chỉ thị phát hành phù hợp. Không tự merge hoặc deploy.
+
+**Câu lệnh chuyển cho ChatGPT:**
+
+> Đọc Lượt 010 trong file bàn giao. Codex đã xác nhận R01/R02/R03 VERIFIED. Chủ dự án chốt R04: tăng ID mặc định lên 52 px, ưu tiên đọc mã trên một dòng, thay yêu cầu cũ 23 px/1⁄3. Hãy thực hiện R04, cập nhật thống nhất projection/inverse/bounds và test để không tái phát lỗi resize; ghi source SHA, CI, số đo/ảnh 52 px vào Lượt 011. Chưa merge/publish/deploy/import.
