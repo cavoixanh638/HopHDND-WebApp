@@ -1,3 +1,16 @@
+## 28/10/2026 — HANDOFF GEMINI: ĐÓNG BĂNG BASELINE UI / CHỜ THIẾT KẾ MỚI
+
+- [x] UI hiện hành V2 và hotfix chữ/mẫu/scroll đã merge (PR #84/#86); GitHub Pages & Browser/Emulator QA PASS.
+- [x] Tạo `GEMINI.md`, đặc tả [GEMINI_UI_HANDOFF_2026-10-28.md](operations/GEMINI_UI_HANDOFF_2026-10-28.md), cập nhật chỉ mục, trạng thái, mốc rollback.
+- [x] Lưu mốc GitHub nguồn hiện tại `c5cc9838c646af39d07b810233d6ea75065b7a25` trước bàn giao tài liệu. Mốc đầy đủ sau merge docs: `checkpoint/gemini-ui-handoff-2026-10-28`.
+- [ ] **Gemini/UI**: clone, đọc GEMINI.md và hướng dẫn, thiết kế trước bản xem thử UI, không tự merge/deploy; phát triển nhánh riêng, chứng minh giữ 3 thẻ, 6 cột và 15 cột nguồn/tùy chọn.
+- [ ] **Gemini QA**: CI source/typecheck/unit/browser/emulator, UX desktop/mobile, scroll X/Y, tên ngắn/chữ rõ, không xuất hiện Mẫu hiển thị cá nhân; gửi PR, diff và ảnh mock để chủ dự án duyệt.
+- [ ] **Firebase SECURITY độc lập (PR #83 HOLD)**: trusted public-view projection, published RTDB Rules, backup, staging and distinct UID test; không được gộp vào UI redesign.
+- [ ] **Firebase cutover**: còn chờ kiểm tra production/backup/Rules, dữ liệu & quyền thực, phát hành có phê duyệt; không suy luận hoàn tất chỉ từ GitHub Pages.
+- [ ] Nếu người dùng còn file sửa trên Windows chưa đẩy, kiểm tra `git status` và đưa lên Git riêng trước khi chốt bàn giao local.
+
+---
+
 ## 27/10/2026 — UI Danh sách chi tiết V2 ĐÃ HOÀN THÀNH / GITHUB PAGES RELEASED
 
 - [Đặc tả UI, tiêu chí nghiệm thu, rollback](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md). PR [#84](https://github.com/cavoixanh638/HopHDND-WebApp/pull/84) đã merge commit `fa5e8d9`; checkpoint `5db47f0`.
