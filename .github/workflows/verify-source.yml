@@ -135,6 +135,8 @@ jobs:
             source/hophdnd-id-before-real.png
             source/hophdnd-id-before-simulated.png
             source/hophdnd-id-after.png
+            source/hophdnd-id-r04-before-23-simulated.png
+            source/hophdnd-id-r04-after-52px.png
             source/hophdnd-review-r01-after.png
             source/hophdnd-review-r02-after.png
             source/hophdnd-review-r02-cap-after.png
