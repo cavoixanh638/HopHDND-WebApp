@@ -2,6 +2,14 @@ import type {Item} from '../../../shared/types';
 import type {ItemColumn,SharedCompactDisplay,CompactGroupLabels} from '../../data/item-preferences';
 import {projectedGroupWidth} from '../../data/resize-last-column';
 
+/** Labels for stable group identities; user overrides live in ItemLayout.groupLabels. */
+export const COMPACT_GROUP_DEFAULT_LABELS={
+  contentDetails:'Nội dung trình',
+  partyTogether:'Tiến độ 3 khâu',
+  leadersTogether:'Lãnh đạo UBND / VP',
+  roomSpecialist:'Phòng chuyên môn / Chuyên viên',
+  teamTogether:'Lãnh đạo / Phòng / CV'
+} as const;
 /** Personal presentation preferences only. Never changes source columns or permissions. */
 export type CompactOption='typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline';
 export type CompactDisplay=SharedCompactDisplay;
