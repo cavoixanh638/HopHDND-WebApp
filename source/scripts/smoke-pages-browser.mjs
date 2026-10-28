@@ -1746,6 +1746,28 @@ try{
   await eventually("document.querySelectorAll('.item-heading-row th').length===7",
     'Restoring team must still preserve the mandatory document/stage groups');
 
+  await send('Emulation.setDeviceMetricsOverride',{width:768,height:1000,deviceScaleFactor:1,mobile:false});
+  const tabletGroups=await evaluate(`(()=>{
+    const scroll=document.querySelector('.item-table-scroll');
+    const doc=document.querySelector('.item-data-table td[data-col-key=content] .compact-document-group');
+    const stage=document.querySelector('.item-data-table td[data-col-key=partyLevel]');
+    const id=document.querySelector('.item-data-table td[data-col-key=displayCode]');
+    const root=document.scrollingElement;
+    const badge=doc?.querySelector('.compact-document-badge');
+    return {ok:!!scroll&&scroll.scrollWidth>scroll.clientWidth&&
+      root.scrollWidth<=innerWidth+4&&!!doc&&!!badge&&
+      stage?.querySelectorAll('.compact-stage-row').length===3&&
+      !!id&&id.getBoundingClientRect().width<40&&
+      badge.getBoundingClientRect().width<=doc.getBoundingClientRect().width+2,
+      viewport:innerWidth,idWidth:id?.getBoundingClientRect().width,
+      scrollWidth:scroll?.scrollWidth,viewportWidth:scroll?.clientWidth,
+      bodyScrollWidth:root?.scrollWidth};
+  })()`);
+  if(!tabletGroups.ok)throw Error('U01/U02/U03 768px viewport regression: '+JSON.stringify(tabletGroups));
+  const tabletShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-compact-tablet-pass.png',Buffer.from(tabletShot.data,'base64'));
+  console.log('COMPACT_TABLET_768_PASS',JSON.stringify(tabletGroups));
+
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
   const mobileGroups=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(menu)menu.open=true;
