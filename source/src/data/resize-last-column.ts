@@ -37,11 +37,17 @@ export const idSourceForPhysicalWidth=(physicalWidth:number)=>
   Math.min(1600,Math.max(60,Math.round(physicalWidth*3)));
 type Extras=Readonly<Record<string,number>>;
 const extraFor=(key:string,extras:Extras)=>extras[key]??0;
-const physicalWidth=(sourceWidth:number,key:string,extras:Extras,idCompact:boolean)=>
-  idCompact&&key==='displayCode'?projectedIdWidth(sourceWidth):sourceWidth+extraFor(key,extras);
-const physicalLimits=(key:string,extras:Extras,idCompact:boolean)=>{
-  if(idCompact&&key==='displayCode')return {min:20,max:projectedIdWidth(1600)};
-  const extra=extraFor(key,extras);return {min:60+extra,max:1600+extra};
+/** The SAME 1600px rendered cap as compactVisibleColumns. Source group widths
+ * above (1600-extra) are valid, but all project to the same physical width. */
+export const projectedGroupWidth=(sourceWidth:number,extraWidth:number)=>
+  Math.min(1600,sourceWidth+extraWidth);
+export const projectedPhysicalWidth=(sourceWidth:number,key:string,extras:Extras={},idCompact=true)=>
+  idCompact&&key==='displayCode'?projectedIdWidth(sourceWidth):
+  projectedGroupWidth(sourceWidth,extraFor(key,extras));
+export const projectedPhysicalLimits=(key:string,extras:Extras={},idCompact=true)=>{
+  if(idCompact&&key==='displayCode')return {min:projectedIdWidth(60),max:projectedIdWidth(1600)};
+  const extra=extraFor(key,extras);
+  return {min:60+extra,max:1600};
 };
 
 /** Same constraints used by the DOM drag preview AND the eventual CAS commit.
@@ -53,9 +59,9 @@ export function projectedTrailingBounds(layout:ItemLayout,keys:readonly string[]
   if(!last||last===target||!keys.includes(target))return null;
   const first=layout.columns.find(c=>c.key===target),tail=layout.columns.find(c=>c.key===last);
   if(!first||!tail)return null;
-  const total=physicalWidth(first.width,target,extras,idCompact)+
-    physicalWidth(tail.width,last,extras,idCompact);
-  const a=physicalLimits(target,extras,idCompact),z=physicalLimits(last,extras,idCompact);
+  const total=projectedPhysicalWidth(first.width,target,extras,idCompact)+
+    projectedPhysicalWidth(tail.width,last,extras,idCompact);
+  const a=projectedPhysicalLimits(target,extras,idCompact),z=projectedPhysicalLimits(last,extras,idCompact);
   const lower=Math.max(a.min,total-z.max),upper=Math.min(a.max,total-z.min);
   return lower<=upper?{min:lower,max:upper}:null;
 }
@@ -66,15 +72,20 @@ export function resizeProjectedWithLastColumn(layout:ItemLayout,keys:readonly st
   if(!bounds||!Number.isFinite(desiredPhysicalWidth))return layout;
   const last=keys[keys.length-1],first=layout.columns.find(c=>c.key===target)!;
   const tail=layout.columns.find(c=>c.key===last)!;
-  const before=physicalWidth(first.width,target,extras,idCompact);
-  const oldLast=physicalWidth(tail.width,last,extras,idCompact);
+  const before=projectedPhysicalWidth(first.width,target,extras,idCompact);
+  const oldLast=projectedPhysicalWidth(tail.width,last,extras,idCompact);
   const after=Math.round(Math.max(bounds.min,Math.min(bounds.max,desiredPhysicalWidth)));
   if(after===before)return layout;
+  // Do not commit when the *visible* width did not change (at a cap).
+  // For an over-cap source group, crossing below the cap can require a
+  // larger raw-width change; only the rendered delta is transferred.
   const newSourceWidth=after-extraFor(target,extras);
   const physicalLast=oldLast-(after-before);
   const newTailWidth=idCompact&&last==='displayCode'
     ?idSourceForPhysicalWidth(physicalLast):physicalLast-extraFor(last,extras);
-  if(newSourceWidth<60||newSourceWidth>1600||newTailWidth<60||newTailWidth>1600)return layout;
+  if(newSourceWidth<60||newSourceWidth>1600||newTailWidth<60||newTailWidth>1600||
+    projectedPhysicalWidth(newSourceWidth,target,extras,idCompact)!==after||
+    projectedPhysicalWidth(newTailWidth,last,extras,idCompact)!==physicalLast)return layout;
   return {...layout,columns:layout.columns.map(c=>c.key===target?{...c,width:newSourceWidth}:
     c.key===last?{...c,width:newTailWidth}:c)};
 }
