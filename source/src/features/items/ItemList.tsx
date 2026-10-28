@@ -482,7 +482,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
-    {!executiveMode&&!customizing&&<div className="pm-return-bar" style={{padding:'8px 14px',margin:'0 0 10px',background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'8px'}}>
+    {!executiveMode&&!customizing&&!qaLegacyView&&<div className="pm-return-bar" style={{padding:'8px 14px',margin:'0 0 10px',background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'8px'}}>
       <span style={{fontSize:'13px',fontWeight:700,color:'#0369A1'}}>Đang ở chế độ xem: Bảng đầy đủ 15 Cột Excel</span>
       <button type="button" className="button primary" style={{fontSize:'12.5px',minHeight:'32px'}} onClick={()=>{setShowExecutive(true);setShowAllSourceColumns(false);}}>← Quay lại Bảng Gọn ProMax</button>
     </div>}
