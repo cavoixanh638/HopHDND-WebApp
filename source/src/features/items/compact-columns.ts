@@ -1,5 +1,6 @@
 import type {Item} from '../../../shared/types';
 import type {ItemColumn,SharedCompactDisplay} from '../../data/item-preferences';
+import {projectedGroupWidth} from '../../data/resize-last-column';
 
 /** Personal presentation preferences only. Never changes source columns or permissions. */
 export type CompactOption='typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline';
@@ -147,7 +148,7 @@ export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:Compac
   const hidden=new Set<string>(pairs.flatMap(pair=>pair.hiddenFields));
   return columns.filter(col=>!hidden.has(col.key)).map(col=>{
     const pair=pairs.find(p=>p.anchor===col.key);
-    return pair?{...col,label:pair.label,width:Math.min(1600,col.width+pair.extraWidth)}:{...col};
+    return pair?{...col,label:pair.label,width:projectedGroupWidth(col.width,pair.extraWidth)}:{...col};
   });
 }
 /** Search always indexes FULL strings of every source member in a merged cell. */
