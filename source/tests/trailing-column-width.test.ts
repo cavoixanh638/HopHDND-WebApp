@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {defaultItemLayout,validateItemLayout} from '../src/data/item-preferences';
-import {resizeWithLastColumn,trailingWidthBounds} from '../src/data/resize-last-column';
+import {resizeWithLastColumn,trailingWidthBounds,projectedIdWidth,projectedTrailingBounds,
+  resizeProjectedWithLastColumn} from '../src/data/resize-last-column';
 import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY} from '../src/features/items/compact-columns';
 import {TEXT_FIELDS} from '../shared/field-definitions';
 
@@ -58,5 +59,59 @@ describe('Width transfers to trailing visible column, never the other columns',(
   it('Excel column N maps to textarea editor, not an invented or select field',()=>{
     expect(TEXT_FIELDS.find(c=>c.key==='specificProgress')?.editor).toBe('textarea');
     expect(TEXT_FIELDS.find(c=>c.key==='note')?.editor).toBe('textarea');
+  });
+});
+
+describe('R02: projected physical compensation when the 1/3-width ID is last',()=>{
+  const physical=(layout:ReturnType<typeof defaultItemLayout>,key:string,extra=0)=>
+    key==='displayCode'?projectedIdWidth(layout.columns.find(c=>c.key===key)!.width):
+      layout.columns.find(c=>c.key===key)!.width+extra;
+  it('ArrowRight at ID=68 clamps at real physical min20 without shrinking content or table',()=>{
+    const layout=defaultItemLayout(),keys=['content','stt','displayCode'];
+    const total=physical(layout,'content')+physical(layout,'stt')+physical(layout,'displayCode');
+    expect(projectedTrailingBounds(layout,keys,'content')).toEqual({min:60,max:443});
+    const right=resizeProjectedWithLastColumn(layout,keys,'content',450);
+    expect(physical(right,'content')).toBe(443);
+    expect(physical(right,'displayCode')).toBe(20);
+    expect(physical(right,'content')+physical(right,'stt')+physical(right,'displayCode')).toBe(total);
+    expect(validateItemLayout(right).columns.find(c=>c.key==='displayCode')!.width).toBe(60);
+    expect(right.columns.filter(c=>c.width!==layout.columns.find(z=>z.key===c.key)?.width)
+      .map(c=>c.key).sort()).toEqual(['content','displayCode']);
+    expect(right.tableWidth).toBe(layout.tableWidth);
+  });
+  it('ArrowLeft and pointer drag keep a one-column reservoir and preserve displayed total',()=>{
+    const layout=defaultItemLayout(),keys=['content','stt','displayCode'];
+    for(const delta of [-10,-20,1,20]){
+      const next=resizeProjectedWithLastColumn(layout,keys,'content',440+delta);
+      const before=physical(layout,'content')+physical(layout,'displayCode');
+      const after=physical(next,'content')+physical(next,'displayCode');
+      expect(after).toBe(before);
+      expect(physical(next,'stt')).toBe(physical(layout,'stt'));
+      expect(validateItemLayout(next)).toBeTruthy();
+    }
+  });
+  it('custom ID=125 and final grouped progress anchor use the correct physical bounds',()=>{
+    const custom=defaultItemLayout();
+    custom.columns=custom.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
+    const keys=['content','partyLevel','displayCode'];
+    const original=physical(custom,'content')+physical(custom,'displayCode');
+    const next=resizeProjectedWithLastColumn(custom,keys,'content',450);
+    expect(physical(next,'content')+physical(next,'displayCode')).toBe(original);
+    expect(physical(next,'displayCode')).toBe(32);
+    expect(validateItemLayout(next)).toBeTruthy();
+    const extras={partyLevel:130};
+    const groupLast=['content','partyLevel'];
+    const extended=resizeProjectedWithLastColumn(custom,groupLast,'content',470,extras);
+    expect(physical(extended,'content')+physical(extended,'partyLevel',130))
+      .toBe(physical(custom,'content')+physical(custom,'partyLevel',130));
+    expect(extended.columns.find(c=>c.key==='partyLevel')?.width).toBe(160);
+    expect(extended.columns.find(c=>c.key==='displayCode')?.width).toBe(125);
+  });
+  it('reloading a saved custom width maps the ID exactly once, not repeatedly',()=>{
+    const layout=defaultItemLayout();
+    const custom={...layout,columns:layout.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c)};
+    const loaded=validateItemLayout(custom);
+    expect(projectedIdWidth(loaded.columns.find(c=>c.key==='displayCode')!.width)).toBe(42);
+    expect(projectedIdWidth(validateItemLayout(loaded).columns.find(c=>c.key==='displayCode')!.width)).toBe(42);
   });
 });
