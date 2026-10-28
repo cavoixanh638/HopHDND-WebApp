@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: READY_FOR_OWNER_ACCEPTANCE — Codex xác minh R05 VERIFIED tại Lượt 015 trên HEAD `5e80a5c14c433b1e723925b079fb45bc129474a9`. R01–R05 VERIFIED; 59 test hồi quy độc lập PASS, màu toàn khung list/popup/palette/highlight đúng, ID 52 px; cả 3 workflow trên HEAD này SUCCESS. Chờ chủ dự án nghiệm thu hình thức. T9 WAITING; chưa merge/publish/deploy/import.**
+> **Trạng thái: PAGES_PUBLISHED — PR #90 đã merge `79f129b`; publisher và Pages SUCCESS, commit build `05bf711`. Chủ dự án cho phép merge + tự publish, không deploy Firebase/đổi dữ liệu. R01–R05 VERIFIED trong phạm vi review; live đã đúng asset và cột gộp. Cần theo dõi bố cục đang lưu: ID đo 46px (mặc định source test 52px), tiến độ 190px làm chữ xuống nhiều dòng; chưa sửa cấu hình. Xem Lượt 016.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -165,7 +165,7 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | VERIFIED trong phạm vi R05 — list/popup cùng màu; R03 highlight riêng từng field được giữ; Lượt 015 |
 | T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | VERIFIED trong phạm vi R05 — Codex chạy 59 test hồi quy PASS; kiểm browser 1280px, đối chiếu 3 CI SUCCESS trên HEAD 5e80a5c; xem Lượt 015 |
 | T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | VERIFIED — Codex ghi Lượt 015, ảnh và số đo độc lập; R01–R05 VERIFIED; chờ nghiệm thu chủ dự án |
-| T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
+| T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | PAGES_PUBLISHED — chủ dự án cho phép merge + auto Pages; publisher/deploy PASS; bố cục live cần xem tiếp (Lượt 016), không deploy Firebase/đổi dữ liệu |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
 
@@ -813,3 +813,25 @@ Như vậy, **vùng nền đã đo không có chuyển màu trái–phải**; c�
 Ảnh và computed style ở lượt này là bằng chứng browser độc lập từ source checkout tại desktop 1280px. Tablet 768px/mobile 390px dựa vào kiểm tra CI và hồ sơ Lượt 014; không ghi thành phép đo độc lập của Codex. Không tải ZIP artifact trong lượt này; không dùng kết quả staging/emulator để kết luận về cấu hình production.
 
 Lượt này chỉ cập nhật tài liệu và ảnh QA. Không merge PR #90, publish Pages, deploy Firebase, nhập dữ liệu, đổi dataSource hoặc thay dữ liệu production. CI nêu trên thuộc HEAD được review; commit tài liệu Lượt 015 là commit kế tiếp và phải có trạng thái CI riêng nếu được chạy.
+
+## 22. Lượt 016 — Codex merge và kiểm tra Pages — 29/10/2026
+
+**Ủy quyền mới:** chủ dự án trả lời trực tiếp “Merge và cho phép tự publish Pages; không deploy Firebase hay đổi dữ liệu”. Chỉ thị này thay trạng thái chờ merge/publish của các lượt trước; không cấp phép cutover, Firebase deploy hoặc sửa cấu hình/dữ liệu nghiệp vụ.
+
+### Merge và phát hành đã xác minh
+
+- Ba workflow trên HEAD cuối `1bd3270e3ae8f9b35d6ea6c11e7a62dc1906882b` đều SUCCESS: [source 40732521015](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40732521015), [staging emulator 40732520731](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40732520731), [operational QA 40732520624](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40732520624).
+- [PR #90](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90) **MERGED** bằng merge commit, expected HEAD được khóa đúng SHA trên. Merge SHA **`79f129b5352180dfdcf67d39f0ebf37f2e969321`**; không force hoặc xóa branch.
+- [Build and publish Pages 40733434092](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434092) **SUCCESS** trên merge SHA: typecheck, unit, Firebase emulator, docs/build và kiểm asset rồi xuất bản.
+- [Operational QA sau merge 40733434112](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434112) **SUCCESS**, môi trường emulator cô lập.
+- Commit build **`05bf7115c2db72e5bc04d963f184cbdc1990431e`** chỉ thêm/thay `index.html` và 4 asset có hash; không thay dữ liệu/Rules. [Pages deployment 40733623632](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733623632) **SUCCESS** trên commit này. Run Pages ngay sau merge 40733433521 bị hủy khi bản build mới thay thế, không phải bằng chứng phát hành cuối.
+
+### Browser trên trang chính — chỉ xem
+
+Mở [trang chính](https://cavoixanh638.github.io/HopHDND-WebApp/) và reload sau khi deployment hoàn tất. Script `assets/pages-D6jYiOU4.js`, CSS `assets/style-BVANlveR.css` khớp đúng `index.html` của commit build. Hai trang điều hướng mở được; Danh sách đã có `Nội dung trình`, `Tiến độ 3 khâu`, ba nhãn Thành ủy / Xây dựng NQ / Ban hành NQ và menu Tùy chọn người phụ trách. Khách không có nút editor tiến độ.
+
+Computed style live: khung chưa trình nền `#FFF1F2` / viền `#FECDD3`; không phải trình `#F8FAFC` / `#CBD5E1`; hoàn thành `#F0FDF4` / `#BBF7D0`. R05 đã xuất hiện trên trang chính.
+
+**Giới hạn cần theo dõi — bố cục đang lưu:** cột live đo ID **46px**, Nội dung **192px**, Tiến độ **190px**, Tiến độ hiện tại **170px**, Ghi chú **221px**, người phụ trách **168px**. Ảnh desktop cho thấy tên ID và trạng thái xuống nhiều dòng do cột hẹp. Không gọi đây là live ID 52px: 52px là mặc định đã kiểm trong fixture; hàm projection vẫn giữ/scales độ rộng tùy chỉnh (source 60 → 46px theo 52/68). Suy luận phù hợp với bố cục tùy chỉnh đang được áp dụng; lượt này không đọc trực tiếp cấu hình backend để quy nguyên nhân cho Firebase hay local cache. Chưa đổi layout/localStorage để ép số đo theo mặc định. R01–R05 giữ kết luận kiểm source trước đó, nhưng **chưa xác nhận độ dễ đọc của bố cục live hiện tại được chủ dự án chấp nhận**; có thể xử lý tiếp bằng nhiệm vụ bố cục riêng.
+
+Lượt này không deploy Firebase Rules/Functions, nhập/xóa/sửa dữ liệu nghiệp vụ, đổi dataSource hoặc thực hiện cutover. Chỉ merge, theo dõi workflow được cho phép, đọc trang và cập nhật hồ sơ phát hành. Commit tài liệu kế tiếp không thay asset/source; nếu tạo run Pages mới do cơ chế của repo thì phải phân biệt với build nguồn đã nêu.

@@ -1,3 +1,11 @@
+## 29/10/2026 — PR #90 đã merge và phát hành Pages
+
+Chủ dự án cho phép merge + tự publish Pages, không deploy Firebase/đổi dữ liệu. PR [#90](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90) merge `79f129b5352180dfdcf67d39f0ebf37f2e969321`; [publisher 40733434092](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434092) và [operational QA 40733434112](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733434112) SUCCESS. Commit build `05bf7115c2db72e5bc04d963f184cbdc1990431e`, [Pages 40733623632](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40733623632) SUCCESS. Browser trang chính đã dùng đúng asset mới, cột gộp và màu toàn khung R05 hiện đúng.
+
+**Theo dõi bố cục live:** ID đo 46px, Tiến độ 190px trên bố cục hiện dùng, chữ xuống nhiều dòng; mặc định 52px trong fixture không đồng nghĩa mọi layout tùy chỉnh đều 52px. Chưa đổi cấu hình, chưa kết luận chủ dự án nghiệm thu độ dễ đọc live. Chi tiết, CI và giới hạn ở [bàn giao Lượt 016](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md#22-lượt-016--codex-merge-và-kiểm-tra-pages--29102026). Không deploy Firebase, thay dữ liệu nghiệp vụ hoặc đổi nguồn.
+
+---
+
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
