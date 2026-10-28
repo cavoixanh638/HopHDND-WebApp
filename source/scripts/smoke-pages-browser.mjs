@@ -2403,6 +2403,7 @@ try{
     const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
     const nq=Number(document.querySelector('.item-summary-subcounts span:first-child strong')?.textContent);
     const bc=Number(document.querySelector('.item-summary-subcounts span:nth-child(2) strong')?.textContent);
+    const unclassified=Number(document.querySelector('[data-summary-card=total] .item-summary-unmatched strong')?.textContent??0);
     const stages=['party','build','nq'].map(k=>{
       const card=document.querySelector('[data-summary-card='+k+']');
       return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
@@ -2414,8 +2415,8 @@ try{
       headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
       headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
       headings.some(x=>x.includes('Nhóm phụ trách tùy chỉnh'))&&
-      total===nq+bc&&stages.map(x=>x.status).join(',')==='4,4,3',
-      total,nq,bc,regionWidth:region.width,summaryWidth:summary.width,
+      total===nq+bc+unclassified&&stages.map(x=>x.status).join(',')==='4,4,3',
+      total,nq,bc,unclassified,regionWidth:region.width,summaryWidth:summary.width,
       summaryBottom:summary.bottom,tableTop:table.top,headings,stages};
   })()`);
   if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
@@ -2444,7 +2445,7 @@ try{
   const popupHeadings=await evaluate(`[...document.querySelectorAll('.report-grid-heading-row th')].map(c=>c.textContent.trim())`);
   if(!popupHeadings.some(x=>x.includes('Hồ sơ tùy chỉnh'))||
       !popupHeadings.some(x=>x.includes('Ba khâu tùy chỉnh'))||
-      document.querySelector('.item-summary-grid'))
+      (await evaluate("document.querySelector('.item-summary-grid')!==null")))
     throw Error('Lượt 018 popup title fallback or unexpected KPI cards: '+JSON.stringify(popupHeadings));
   const popupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-l018-group-titles-popup.png',Buffer.from(popupShot.data,'base64'));
