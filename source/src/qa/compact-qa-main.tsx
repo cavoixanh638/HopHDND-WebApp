@@ -30,6 +30,10 @@ function CompactVisualQa(){
       {id:'qa-wildcard',field:'*',word:'Ban Chấp hành',textColor:'#FFFFFF',backgroundColor:'#123456'}
     ];
     if(params.get('custom-id')==='1')base.columns=base.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
+    // Codex 008: valid source width near/over (1600 - 130) grouped cap.
+    const cappedParty=Number(params.get('cap-party'));
+    if([1470,1550,1600].includes(cappedParty))base.columns=base.columns.map(c=>
+      c.key==='partyLevel'?{...c,width:cappedParty}:c);
     if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
     return base;
   });
