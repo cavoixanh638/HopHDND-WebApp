@@ -16,7 +16,7 @@ import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CompactGroupFilterCell} from '../items/CompactGroupFilterCell';
 import {CompactGroupedValue} from '../items/CompactGroupedValue';
-import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY} from '../items/compact-columns';
+import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY,readPersonalCompactDisplay} from '../items/compact-columns';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
@@ -34,6 +34,7 @@ type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
   catalog:CatalogConfig;
   listLayout?:ItemLayout;
+  viewerCompactScope?:string;
   allowDraft:boolean;
   readOnlyViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
@@ -50,7 +51,7 @@ type Props={
   onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,canEditCell,
   onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
@@ -92,7 +93,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   // projects visible source members into the same groups as the main list.
   const popupCompact=!settings&&!showAll;
   const popupSource=shownColumns.map(c=>({...c,label:labelByKey.get(c.key)??c.key}));
-  const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay};
+  const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
+    ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
   const popupPairs=popupCompact?activeCompactPairs(popupSource,popupPrefs):[];
   const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs):popupSource;
   const gridWidth=renderedColumns.reduce((sum,c)=>sum+c.width,0);
