@@ -2500,11 +2500,8 @@ try{
     'Lượt 018 Cancel did not restore last saved group name');
   const cancelled=await evaluate(`document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]')?.value`);
   if(cancelled!=='')throw Error('Lượt 018 Hủy did not restore saved blank name '+cancelled);
-  await evaluate(`(()=>{
-    const el=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]');
-    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
-    setter.call(el,'Tên ba khâu sau lưu');el.dispatchEvent(new Event('input',{bubbles:true}));
-  })()`);
+  await evaluate("document.querySelectorAll('.group-label-editor input')[1]?.focus()");
+  await send('Input.insertText',{text:'Tên ba khâu sau lưu'});
   await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
     'Lượt 018 shared Save not enabled after title edit');
   await evaluate("document.querySelector('.column-save-button').click()");
