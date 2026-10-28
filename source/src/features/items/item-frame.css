@@ -840,3 +840,23 @@
   .compact-stage-state{margin-left:26px}
   .compact-document-heading{gap:5px}
 }
+
+/* Review R03: a field highlight belongs to its member only, NEVER the
+   merged <td>.  Inherit through both read-only text and lease-safe editors. */
+.compact-highlight-member[data-highlighted="true"],
+.compact-document-badge[data-highlighted="true"],
+.compact-document-department[data-highlighted="true"],
+.compact-document-content[data-highlighted="true"],
+.compact-stage-level[data-highlighted="true"],
+.compact-stage-state[data-highlighted="true"],
+.compact-cv-room-name[data-highlighted="true"]{
+  border-radius:3px;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;
+}
+.item-data-table [data-highlighted="true"] .cell-picker-trigger,
+.item-data-table [data-highlighted="true"] .content-button,
+.report-detail-grid [data-highlighted="true"] .cell-picker-trigger,
+.report-detail-grid [data-highlighted="true"] .cell-value-button{
+  background-color:var(--member-highlight-bg)!important;
+  color:var(--member-highlight-text)!important;
+}
