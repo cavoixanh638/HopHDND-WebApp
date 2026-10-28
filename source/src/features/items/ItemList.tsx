@@ -25,7 +25,7 @@ import {CompactGroupedValue} from './CompactGroupedValue';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
