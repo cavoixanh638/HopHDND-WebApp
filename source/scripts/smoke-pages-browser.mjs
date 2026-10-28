@@ -240,12 +240,12 @@ try{
   const fullExcelColumns=await evaluate(`(()=>{
     const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.querySelector('.column-heading-label')?.textContent?.trim()??'');
     const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
-    return header.includes('Cấp Thành ủy cho ý kiến')&&
+    return header.includes('Tiến độ 3 khâu')&&header.includes('Nội dung trình')&&
       header.includes('Tiến độ hiện tại')&&header.includes('Ghi chú')&&
       !header.includes('Đã thẩm tra chưa')&&
       values.includes('Sở đang thực hiện')&&values.includes('Ghi chú nguồn O');
   })()`);
-  if(!fullExcelColumns)throw Error('Current 15-column E/F/G/N/O source values missing from viewer');
+  if(!fullExcelColumns)throw Error('Mandatory UI groups must retain all existing source values, N/O and no phantom columns');
 
   // Read-only anonymous viewers have the same TWO field-history actions as
   // administrators. Neither history action grants edit rights.
@@ -277,107 +277,61 @@ try{
     await eventually("!document.querySelector('dialog.modal[open]')",'History dialog did not close');
   }
   console.log('GUEST_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
-  const all15=await evaluate(`(()=>{
+  const groupedDefault=await evaluate(`(()=>{
     const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
       .map(el=>el.getAttribute('data-filter-key'));
     const headings=[...document.querySelectorAll('.item-heading-row th')]
-      .map(el=>el.querySelector('.column-heading-label')?.textContent??'');
-    const button=document.querySelector('.source-column-visibility button');
-    const expected=['displayCode','stt','content','department','type','partyLevel','progressParty',
-      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
-      'specificProgress','note'];
-    return keys.length===15&&JSON.stringify(keys)===JSON.stringify(expected)&&
-      !keys.includes('history')&&
-      !headings.some(x=>x.trim()==='Rút')&&headings.includes('Cấp Thành ủy cho ý kiến')&&headings.includes('Tiến độ hiện tại')&&
-      !headings.some(x=>x.includes('Trình / Rút'))&&
-      ['type','partyLevel','progressParty','progressBuild','progressCouncil','specificProgress','note']
-        .every(key=>keys.includes(key))&&
-      headings.includes('Loại VB')&&
-      !headings.some(x=>x.includes('Loại VB (HC/QPPL/BC)'))&&
-      headings.some(x=>x.includes('Tiến độ xin ý kiến Thành ủy'))&&
-      headings.some(x=>x.includes('Tiến độ trình HĐND xây dựng NQ'))&&
-      headings.some(x=>x.includes('Tiến độ trình HĐND ban hành NQ/BC'))&&
-      // Column visibility is an admin configuration, not a guest-side preference.
-       !button;
+      .map(el=>el.querySelector('.column-heading-label')?.textContent?.trim());
+    const expected=['displayCode','stt','type','department','content','partyLevel','progressParty',
+      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress','note'];
+    const row=document.querySelector('.item-data-table tbody tr');
+    const doc=row?.querySelector('td[data-col-key=content]');
+    const stages=row?.querySelector('td[data-col-key=partyLevel]');
+    const text=stages?.textContent??'';
+    return {ok:keys.length===15&&JSON.stringify(keys)===JSON.stringify(expected)&&
+      headings.length===10&&new Set(headings).size===10&&
+      headings.includes('Tiến độ 3 khâu')&&headings.includes('Nội dung trình')&&
+      headings.includes('Tiến độ hiện tại')&&headings.includes('Ghi chú')&&
+      !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
+      !!doc?.querySelector('.compact-document-group')&&
+      !!stages?.querySelectorAll('.compact-stage-row').length===3&&
+      text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
+      !document.querySelector('.source-column-visibility button'),
+      keys,headings,stages:text.slice(0,180)};
   })()`);
-  if(!all15)throw Error('Default Excel viewer must show all 15 source columns including E/F/G/N/O');
-
+  if(!groupedDefault.ok)throw Error('Required U01/U02 groups or original 15 source filters missing: '+JSON.stringify(groupedDefault));
+  console.log('MANDATORY_U01_U02_AND_FILTERS_PASS',JSON.stringify(groupedDefault));
+  
   const statusStyles=await evaluate(`(()=>{
-    const status=document.querySelector('.item-data-table tbody td[data-col-key=progressParty]');
-    const label=status?.querySelector('.workflow-status-value');
+    const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
     const input=document.querySelector('[data-filter-key=content] input');
     const selector=document.querySelector('[data-filter-key=type] select');
     const th=document.querySelector('.item-heading-row th');
-    if(!status||!label||!input||!selector||!th)return {ok:false,reason:'missing targets'};
-    const style=getComputedStyle(label),header=getComputedStyle(th);
-    const fontA=getComputedStyle(input).fontSize,fontB=getComputedStyle(selector).fontSize;
-    // Verify semantic colors and the editing hierarchy with inert mock DOM only.
-    // No Sheets/Firebase records or permissions are changed by this check.
-    const colors=['office','done'].map(tone=>{
-      const td=document.createElement('td');td.dataset.progressTone=tone;
-      const span=document.createElement('span');span.className='workflow-status-value';
-      span.textContent=tone;td.append(span);status.parentElement.append(td);
-      const styled=getComputedStyle(span);
-      const value={bg:styled.backgroundColor,fg:styled.color,weight:styled.fontWeight};
-      td.remove();return value;
+    if(!status||!input||!selector||!th)return {ok:false,reason:'missing real group controls'};
+    const tones=[...document.querySelectorAll('.compact-stage-state')].slice(0,3)
+      .map(el=>({tone:el.getAttribute('data-progress-tone'),background:getComputedStyle(el).backgroundColor,
+        color:getComputedStyle(el).color,text:el.textContent?.trim()}));
+    const colors=['not-submitted','office','done'].map(tone=>{
+      const element=document.createElement('span');
+      element.className='compact-stage-state';element.dataset.progressTone=tone;
+      element.textContent=tone;document.querySelector('.compact-stages').append(element);
+      const styles=getComputedStyle(element);
+      const result={background:styles.backgroundColor,color:styles.color};
+      element.remove();return result;
     });
-    const td=document.createElement('td');td.className='editable-cell';
-    const button=document.createElement('button');button.className='cell-picker-trigger';
-    button.textContent='Giá trị khác';td.append(button);status.parentElement.append(td);
-    const regularEditable=getComputedStyle(button);
-    const editStyle={bg:regularEditable.backgroundColor,fg:regularEditable.color,
-      weight:regularEditable.fontWeight,border:regularEditable.borderTopColor};
-    td.remove();
-    // Regression for the user's pink-pill screenshot: check EDITABLE dropdowns,
-    // not just the guest's read-only status badges. Test both grids in Chrome.
-    const editableStatuses=['item-data-table','report-detail-grid'].map(grid=>{
-      let table;
-      const row=grid==='item-data-table'?status.parentElement:(()=>{
-        table=document.createElement('table');table.className='report-detail-grid';
-        table.style.position='absolute';table.style.top='-10000px';
-        const body=table.appendChild(document.createElement('tbody'));
-        const tr=body.appendChild(document.createElement('tr'));
-        document.querySelector('.app-shell').appendChild(table);return tr;
-      })();
-      const values=['not-submitted','office','done'].map(tone=>{
-        const cell=document.createElement('td');
-        cell.className='editable-cell has-history-action';cell.dataset.progressTone=tone;
-        const trigger=document.createElement('button');
-        trigger.className='cell-value-button cell-picker-trigger';
-        trigger.type='button';trigger.textContent=tone;cell.appendChild(trigger);
-        const history=document.createElement('button');
-        history.type='button';history.className='cell-history-action';
-        cell.appendChild(history);row.appendChild(cell);
-        const style=getComputedStyle(trigger),h=getComputedStyle(history);
-        const result={background:style.backgroundColor,color:style.color,weight:style.fontWeight,
-          border:style.borderTopColor,historyOpacity:h.opacity,tag:trigger.tagName,
-          arrow:getComputedStyle(trigger,'::after').content};
-        cell.remove();return result;
-      });
-      if(table)table.remove();
-      return values;
-    });
-    const expectedStatusColors=[
-      ['rgb(255, 224, 228)','rgb(208, 0, 37)'],
-      ['rgb(254, 249, 195)','rgb(133, 77, 14)'],
-      ['rgb(213, 240, 222)','rgb(0, 122, 24)']];
-    const coloredEditableOk=editableStatuses.every(group=>group.every((entry,i)=>
-      entry.background===expectedStatusColors[i][0]&&entry.color===expectedStatusColors[i][1]&&
-      entry.weight==='600'&&entry.historyOpacity==='0.42'&&entry.tag==='BUTTON'&&entry.arrow==='""'));
-    return {ok:status.dataset.progressTone==='not-submitted'&&
-      label.textContent?.includes('Sở chưa trình')&&
-      style.backgroundColor==='rgb(255, 224, 228)'&&coloredEditableOk&&
-      colors[0].bg==='rgb(254, 249, 195)'&&colors[1].bg==='rgb(213, 240, 222)'&&
-      colors[0].fg==='rgb(133, 77, 14)'&&colors[0].weight==='600'&&
-      colors[1].fg==='rgb(0, 122, 24)'&&colors[1].weight==='600'&&
-      editStyle.bg==='rgb(242, 246, 249)'&&editStyle.fg==='rgb(66, 98, 116)'&&
-      editStyle.weight==='550'&&editStyle.border==='rgb(183, 203, 214)'&&
-      fontA==='15px'&&fontB==='15px'&&
-      header.backgroundColor==='rgb(239, 245, 249)',
-      colors,editStyle,editableStatuses,statusColor:style.backgroundColor,
-      fontA,fontB,header:header.backgroundColor};
+    return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
+      status.textContent?.includes('Sở chưa trình')&&
+      colors[0].background==='rgb(255, 224, 228)'&&
+      colors[1].background==='rgb(254, 249, 195)'&&
+      colors[2].background==='rgb(213, 240, 222)'&&
+      colors[0].color==='rgb(208, 0, 37)'&&
+      colors[1].color==='rgb(133, 77, 14)'&&
+      colors[2].color==='rgb(0, 122, 24)'&&
+      !!input&&!!selector&&
+      getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
+      tones,colors,header:getComputedStyle(th).backgroundColor};
   })()`);
-  if(!statusStyles.ok)throw Error('Workflow badges/header/filter typography regression: '+JSON.stringify(statusStyles));
+  if(!statusStyles.ok)throw Error('Grouped stage colors/header/filters regression: '+JSON.stringify(statusStyles));
 
   // Semantic report styling applies to both numeric totals and % completion.
   // Real CSS inheritance must not be replaced with a hardcoded color copy.
@@ -752,7 +706,7 @@ try{
   // Synthetic marked cell tests the one shared editing tooltip without granting
   // guest permissions or writing data; native title delay is not used.
   const instantEditCue=await evaluate(`(()=>{
-    const td=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="room"]');
     const hint=document.getElementById('edit-shared-tooltip');
     if(!td||!hint)return {ok:false,reason:'missing table cell or singleton'};
     td.classList.add('editable-cell');
@@ -773,7 +727,7 @@ try{
   // Emulate a visible history action without modifying guest permissions.
   // The shared hint should immediately switch its label and remain outside.
   const historyHint=await evaluate(`(()=>{
-    const td=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="room"]');
     const tip=document.getElementById('edit-shared-tooltip');
     if(!td||!tip)return false;
     const btn=document.createElement('button');
@@ -793,15 +747,16 @@ try{
   })()`);
   if(!historyHint)throw Error('Quick history tooltip must not obscure its action');
   const cellAlignment=await evaluate(`(()=>{
-    const regular=document.querySelector('.item-data-table tbody td[data-col-key="department"]');
-    const long=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
-    return !!regular&&!!long&&
-      getComputedStyle(regular).textAlign==='center'&&
-      getComputedStyle(regular).verticalAlign==='middle'&&
-      getComputedStyle(long).textAlign==='justify'&&
-      getComputedStyle(long).verticalAlign==='top';
+    const doc=document.querySelector('.item-data-table tbody td[data-col-key=content]');
+    const head=doc?.querySelector('.compact-document-heading');
+    const body=doc?.querySelector('.compact-document-content');
+    return !!doc&&!!head&&!!body&&
+      getComputedStyle(body).whiteSpace==='pre-wrap'&&
+      getComputedStyle(doc).verticalAlign==='top'&&
+      !!doc.querySelector('.compact-document-badge')&&
+      !!doc.querySelector('.compact-document-department');
   })()`);
-  if(!cellAlignment)throw Error('Column-key cell alignment regression');
+  if(!cellAlignment)throw Error('U01 document top-row/second-row styling regression');
 
   if(await evaluate("!!document.querySelector('.source-column-visibility button')"))
     throw Error('Guest must not change admin source column visibility');
@@ -841,7 +796,7 @@ try{
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
       document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]')?.placeholder==='Tìm kiếm (không dấu)';
+      document.querySelector('input[aria-label="Lọc Nội dung"]')?.placeholder==='Tìm kiếm (không dấu)';
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   // Guest footer and generic edit hint are intentionally removed. Use the
@@ -884,10 +839,10 @@ try{
       throw Error('List grid shifted while '+label+': '+JSON.stringify({tablePosition,result}));
   };
 
-  const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Tìm kiếm cột Nội dung trình"]');input?.focus();return !!input})()`);
+  const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Lọc Nội dung"]');input?.focus();return !!input})()`);
   if(!started)throw Error('Column filter UI is missing');
   await send('Input.insertText',{text:'Không khớp'});
-  await eventually("document.querySelector('input[aria-label=\"Tìm kiếm cột Nội dung trình\"]')?.value==='Không khớp'",'Direct column filter value not shown');
+  await eventually("document.querySelector('input[aria-label=\"Lọc Nội dung\"]')?.value==='Không khớp'",'Direct column filter value not shown');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",'Column filtering does not restrict the list');
   await assertStable('no matching rows');
   await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
@@ -941,7 +896,7 @@ try{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     const color=select?getComputedStyle(select).color:'';
     return {ok:!!select&&select.classList.contains('filter-placeholder')&&
-      color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Chọn để lọc',color};
+      color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Loại VB',color};
   })()`);
   if(!placeholderSelect.ok)throw Error('Category placeholder styling regression: '+JSON.stringify(placeholderSelect));
   // Focus the REAL sticky select through CDP after scrolling deep into the
@@ -1066,7 +1021,7 @@ try{
   // Guest may change local-only grouping but must never receive admin layout controls.
   const compactGuestSafe=await evaluate(`(()=>{
     const guest=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    return !!guest&&guest.textContent.includes('Gộp cột')&&
+    return !!guest&&guest.textContent.includes('Tùy chọn người phụ trách')&&
       !document.querySelector('.admin-column-arrange-hint')&&
       !document.querySelector('.item-column-panel')&&
       !document.querySelector('.status-palette-trigger');
