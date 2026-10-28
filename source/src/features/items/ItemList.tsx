@@ -20,6 +20,7 @@ import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell,filterValue} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
+import {CompactGroupFilterCell} from './CompactGroupFilterCell';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
@@ -105,16 +106,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
-  const compactHiddenKeys=compactPairs.flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))).join('|');
-  // Prevent a saved filter for a now-merged hidden field from silently filtering rows.
-  useEffect(()=>{
-    if(!compactHiddenKeys)return;
-    const hidden=new Set(compactHiddenKeys.split('|'));
-    setColumnFilters(prev=>{
-      const remaining=Object.entries(prev).filter(([key])=>!hidden.has(key));
-      return remaining.length===Object.keys(prev).length?prev:Object.fromEntries(remaining);
-    });
-  },[compactHiddenKeys]);
+  // Preserve per-source filters even when projection hides their physical columns.
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next=toggleCompactOption(compactDisplay,option,checked);
     if(customizing){
@@ -127,11 +119,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       setCompactStorageWarning(writePersonalCompactDisplay(viewerCompactScope,next)?'':
         'Trình duyệt không cho lưu lựa chọn. Tùy chọn vẫn có hiệu lực trong phiên đang mở.');
     }
-    const hidden=new Set<string>(activeCompactPairs(columns,next).flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
-    setColumnFilters(prev=>{
-      const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
-      return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
-    });
   };
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
@@ -237,16 +224,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return result;
   },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
   const filtered=useMemo(()=>{
-    const hidden=new Set<string>(compactPairs.flatMap(pair=>pair.hiddenFields));
+    const permitted=new Set(columns.map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
-    const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
     const ordinary=Object.entries(columnFilters)
-      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)&&term.trim())
+      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&permitted.has(key)&&term.trim())
       .map(([key,term])=>({key,term:normalizeSearch(term)}));
     const roomTerm=roomSpecialist?(columnFilters.room??''):'';
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
-    const merged=compactPairs.flatMap(pair=>pair.variant!=='roomSpecialist'&&columnFilters[pair.anchor]?.trim()
-      ?[{key:'merged:'+pair.anchor,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
+
     const custom=Object.entries(columnFilters).flatMap(([key,term])=>
       term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom')
         ?[{key,term:normalizeSearch(term)}]:[]);
@@ -256,7 +241,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       return ordinary.every(({key,term})=>values[key]?.includes(term))&&
         (!roomTerm||item.room===roomTerm)&&
         (!personTerm||values.specialist?.includes(personTerm))&&
-        merged.every(({key,term})=>values[key]?.includes(term))&&
         custom.every(({key,term})=>values[key]?.includes(term));
     });
   },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
@@ -279,8 +263,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return selected;
   };
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
-  const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width),0);
+  // Recompute from source layout exactly once: do not persist scaled ID widths.
+  const visualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
+    ?Math.round(Math.min(1600,Math.max(60,value))/3)
+    :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
+  const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
   const tableWidth=compactPairs.length?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
@@ -317,9 +304,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),nextLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY)
-      .flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
-    setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
+    setColumnFilters({...filters.columns});
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
@@ -361,45 +346,34 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
-  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(<details className="compact-columns-menu">
-        <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
-          {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
-            <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
-        </summary>
-        <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-          <strong>Gộp cột để xem gọn hơn</strong>
-          {COMPACT_OPTIONS.filter(option=>['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
+  const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
+    p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
+  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
+    (<details className="compact-columns-menu">
+      <summary aria-label="Tùy chọn gộp cột">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
+      <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
+        <strong>Hồ sơ và tiến độ 3 khâu luôn gộp khi xem</strong>
+        {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
+          (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
+          <input type="checkbox" checked={compactDisplay[option.key]}
+            onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+          <span>{option.label}<small>{option.detail}</small></span>
+        </label>)}
+        <details className="compact-more-options">
+          <summary>Viết tắt tên</summary>
+          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-          <details className="compact-more-options">
-            <summary>Các cách gộp khác <small>3 lựa chọn</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
-              !['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <details className="compact-more-options">
-            <summary>Viết tắt tên <small>{COMPACT_OPTIONS.filter(option=>option.section==='name'&&compactDisplay[option.key]).length||'2 lựa chọn'}{COMPACT_OPTIONS.some(option=>option.section==='name'&&compactDisplay[option.key])?' đang bật':''}</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <p>{shareCompact?'Quản trị: lưu bố cục dùng chung Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
-          {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
-          {!shareCompact&&personalCompact&&<button type="button" className="button ghost"
-            onClick={()=>{setPersonalCompact(null);setCompactStorageWarning(
-              clearPersonalCompactDisplay(viewerCompactScope)?'':
-              'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>
-            Khôi phục cách hiển thị chung
-          </button>}
-        </div>
-      </details>);
+        </details>
+        <p>{shareCompact?'Quản trị: lưu bố cục dùng chung qua Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
+        {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
+        {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
+          setPersonalCompact(null);setCompactStorageWarning(clearPersonalCompactDisplay(viewerCompactScope)?'':
+            'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
+      </div>
+    </details>);
   return <section className="card item-list-card">
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
@@ -439,7 +413,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
-      {allowLayout&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+      {allowLayout&&!anonymousViewer&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
@@ -461,16 +435,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
-    index<displayedColumns.length-1&&
+    index<displayedColumns.length-1&&column.key!=='displayCode'&&
     trailingWidthBounds(activeLayout,displayedColumns.map(col=>col.key),column.key)&&
-    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width)}
+    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
       compensator={{index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns[displayedColumns.length-1].width),min:60,max:1600}}
+        width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),min:60,max:1600}}
       min={60} max={1600} label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
         // Displayed width includes the group padding; the source field must not.
