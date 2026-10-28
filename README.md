@@ -1,5 +1,7 @@
 # HopHDND WebApp
 
+> **Handoff for Gemini UI work (28/10/2026):** start at [GEMINI.md](GEMINI.md), then read the [full UI redesign handoff](source/docs/operations/GEMINI_UI_HANDOFF_2026-10-28.md). Preserve business logic, Firebase security and source data. Start UI changes on a fresh branch from the documented checkpoint.
+
 GitHub Pages serves the generated **`index.html` at the repository root**. Source code, tests, configuration and documentation live under **`source/`**.
 
 When source changes reach `main`, [the publish workflow](.github/workflows/publish-pages.yml) runs TypeScript checks, unit tests, Firebase emulator tests, documentation checks and `npm run build:pages`, then commits a regenerated root `index.html` only if the build succeeds. Pull requests are checked by [verify-source](.github/workflows/verify-source.yml).
