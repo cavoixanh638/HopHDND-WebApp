@@ -98,6 +98,15 @@ jobs:
         run: npm run build:pages:test
       - name: Build isolated real ItemList visual QA (no Firebase credentials)
         run: npm run build:compact:qa
+      - name: Measure historical W0 on exact pre-UI-V2 restore (synthetic fixture, no deploy)
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/ui-columns-pre-ui-v2"
+          git fetch --no-tags --depth=1 origin 8172c0650580931140fc71e59d3cc4d816879594
+          git worktree add --detach "$base" 8172c0650580931140fc71e59d3cc4d816879594
+          (cd "$base/source" && npm ci --no-audit --no-fund && npm run build:compact:qa)
+          node scripts/measure-baseline-id-browser.mjs "$base/source/dist-compact-qa" hophdnd-id-before-real.png
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
       - name: Package owner-clickable single HTML UI preview (synthetic only)
@@ -121,6 +130,7 @@ jobs:
             source/hophdnd-compact-mobile-pass.png
             source/hophdnd-compact-tablet-pass.png
             source/hophdnd-compact-guest-pass.png
+            source/hophdnd-id-before-real.png
             source/hophdnd-id-before-simulated.png
             source/hophdnd-id-after.png
           if-no-files-found: error
