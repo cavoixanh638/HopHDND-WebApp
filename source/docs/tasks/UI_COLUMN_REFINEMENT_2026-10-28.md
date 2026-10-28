@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: CHANGES_REQUESTED — R01–R04 giữ VERIFIED trong phạm vi review trước. Chủ dự án phản hồi nền/viền cả khung tiến độ chưa giống ảnh; bổ sung R05 OPEN theo Lượt 013. Chưa sửa mã cho R05; T9 WAITING, chưa merge/publish/deploy/import.**
+> **Trạng thái: READY_FOR_REVIEW — R05 tô toàn khung tiến độ đã FIX_TESTED trong Lượt 014 trên source `46c7309bb7a0364159dc7976dbc1351fce120159`: 518 unit PASS, 8/8 R02 boundary PASS, 51 Firebase emulator PASS, Chrome list/popup/palette/highlight/responsive PASS; cả 3 workflow CI SUCCESS. R01–R04 giữ VERIFIED theo Codex; chờ Codex tái-review R05. T9 WAITING; chưa merge/publish/deploy/import.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -159,12 +159,12 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | READY_FOR_REVIEW — W0 Chrome thực 68px trên 8172c065; quyết định D04–D07 và ảnh trước đã ghi |
 | T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | VERIFIED — projection/cap/ID 52 px đã được Codex rà; không phát hiện hồi quy trong phạm vi kiểm |
 | T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 được Codex xác nhận VERIFIED; các bằng chứng cũ giữ nguyên |
-| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | NEEDS_FIX — R05: nền và viền cả khung từng khâu phải cùng tông như ảnh; pill đậm hơn |
+| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | READY_FOR_REVIEW — R05 từng khâu có nền đỏ/vàng/xám/xanh phủ toàn khung, viền cùng tông, pill đậm; CI 40730189707 PASS |
 | T4 | Làm ID mặc định 52px (thay 23px/1⁄3 theo quyết định Lượt 010), kiểm default/profile/preset, reload, layout, padding và resize | T0,T1 | VERIFIED — Codex Lượt 012: ID thực 52 px, NQ01 một dòng, default/custom/reload/ID-last đạt |
 | T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | READY_FOR_REVIEW — U04 false mặc định, local UID reload/reset, CI qua |
-| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | NEEDS_FIX — áp dụng R05 nhất quán list/popup qua renderer chung, giữ R03 highlight theo field |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | NEEDS_FIX — bổ sung kiểm computed background/border của cả stage-row và ảnh đối chiếu |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | CHANGES_REQUESTED — chủ dự án phản hồi màu cả khung; R01–R04 giữ VERIFIED, R05 OPEN |
+| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — R05 list/popup dùng chung renderer, R03 member-highlight còn đúng; browser Chrome PASS |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — source 46c7309: 518 unit PASS/52 skipped, R02 8/8, emulator 51 PASS/1 expected fail, Chrome R05 computed style/ảnh 1600/768/390 PASS |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | READY_FOR_REVIEW — Lượt 014 và mô tả PR ghi commit, CI, ảnh trước/sau + crop, trạng thái R05 FIX_TESTED chờ Codex |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -255,7 +255,7 @@ npm run build:pages
 | U03 | ChatGPT thực hiện / Codex xác minh | VERIFIED | ID 52 px thực, NQ01 một dòng, reload/default/custom/resize đạt; source d61399d, Lượt 012 | Chủ dự án nghiệm thu giao diện T9 |
 | U04 | ChatGPT thực hiện | READY_FOR_REVIEW | `d330ddc1`, `c81ac118`, UID reload/reset tại CI `40660234414` | Codex rà diff và UX |
 | Kiểm thử / ảnh / CI | ChatGPT thực hiện | READY_FOR_REVIEW | 3 workflow success d8ac9843; ảnh artifact 12802349921, demo 12803710651 | Chờ Codex review PR |
-| Rà diff và nghiệm thu kỹ thuật | Codex | R01–R04 VERIFIED; R05 OPEN | Lượt 013: màu cả khung tiến độ chưa đúng ảnh | ChatGPT sửa R05 rồi bổ sung ảnh/CI để Codex rà |
+| Rà diff và nghiệm thu kỹ thuật | Codex | R01–R04 VERIFIED; R05 FIX_TESTED | Source `46c7309` + 3 CI SUCCESS, Chromium list/popup, artifact 12833754588 | Codex tái-review R05; chủ dự án nghiệm thu UX trước phát hành |
 | Nghiệm thu giao diện | Chủ dự án | WAITING | — | Chủ dự án xem ảnh 23px trước (mô phỏng) và 52px sau; Codex rà R04 trước phát hành |
 
 Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX hoặc VERIFIED. DONE_DOCUMENTATION chỉ dùng cho hồ sơ; không dùng thay VERIFIED của chức năng. DEPLOYED và OWNER_ACCEPTED ghi riêng nếu có.
@@ -323,7 +323,7 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT Lượt 009: `99e804f`+`a954d2a`+`94bbeee` cùng cap 1600; exact test Codex `de584ad` PASS 8/8; browser `4d91821` cap 1470/1550/1600, group target/last, ArrowLeft/Right/drag total 2813→2813; source CI `40721672334` SUCCESS | VERIFIED — Codex Lượt 010, exact 3634fd4, 48 unit PASS và browser cap target/last đạt |
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | VERIFIED — Codex Lượt 012, source d61399d, ID 52 px một dòng; hồi quy resize PASS |
-| R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | Phản hồi trực tiếp của chủ dự án; Codex xác minh CSS/ảnh tại Lượt 013 | OPEN — chờ ChatGPT thực hiện |
+| R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | `be288d3`/`fb3f438` tone mỗi khâu + neutral UI; `d644b0d` palette vars; `4eb6f9a` CSS stage-row; `9aba4ec`/`7dd2286` unit; `0cdee04` QA fixture; `8fdeddac`/`46c7309` Chrome; `df60d07` ảnh artifact. 518 unit, 8 R02, 51 emulator PASS; 3 workflow success source 46c7309; ảnh 12833754588 | FIX_TESTED — chờ Codex tái-review; chưa nghiệm thu người dùng |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -733,3 +733,43 @@ Như vậy, **vùng nền đã đo không có chuyển màu trái–phải**; c�
 **Câu lệnh giao ChatGPT:**
 
 > Đọc Lượt 013 và R05 trong file bàn giao. Chủ dự án yêu cầu cả khung từng khâu tiến độ thành một khối màu như ảnh 2, không chỉ pill bên phải. Tô nền rất nhạt và viền cùng tông trên stage-row, pill đậm hơn; khung từng khâu có màu độc lập, Không phải trình trung tính. Ảnh gốc đo được nền phẳng, chưa cần gradient rõ. Giữ ID 52 px và R01–R04, highlight từng field, palette, quyền/lease và báo cáo. Bổ sung test computed background/border cả khung, ảnh trước/sau list/popup và CI; ghi lượt tiếp theo. Chưa merge/publish/deploy/import.
+
+## 20. Lượt 014 — ChatGPT hoàn thiện R05 theo phản hồi Lượt 013 — 28/10/2026
+
+**Phạm vi và trạng thái:** R05 **FIX_TESTED**, chuyển cho Codex kiểm tra độc lập; **R01/R02/R03/R04 giữ nguyên VERIFIED** theo các lượt trước. Không đổi ID mặc định 52px, data schema, workflow báo cáo, source statuses, quyền, lease/CAS/freeze. PR [#90](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90) vẫn OPEN, T9 WAITING; không merge/publish/deploy/import hoặc tự coi đã OWNER_ACCEPTED.
+
+### Đối chiếu ảnh gốc và giải pháp
+
+- Ảnh [Tiến độ 3 khâu gốc](assets/UI-COLUMNS-20261028-progress.png) trong Lượt 013 được Codex đọc pixel: nền **phẳng** đỏ `#FFF1F2`, vàng `#FFFBEB`, xám `#F8FAFC`, xanh `#F0FDF4` ở nhiều điểm x; **không** tạo gradient thật khi chưa có lệnh rõ.
+- **Toàn khung** `.compact-stage-row` gồm số thứ tự, tên khâu/cấp trình, vùng trống và pill đều nằm trên **cùng nền màu nhạt**, viền cùng tông. Nền pill đậm hơn khung, dot và chữ giữ tone; mỗi khâu chọn màu độc lập. Red: nền `#FFF1F2` viền `#FECDD3`; amber: `#FFFBEB`/`#FDE68A`; done: `#F0FDF4`/`#BBF7D0`; neutral/unknown: `#F8FAFC`/`#CBD5E1`. Số thứ tự dùng nền nhạt cùng họ màu.
+- `CompactGroupedValue` đánh dấu tone **tại từng frame và pill**, dùng chung trong ItemList và ReportDetailGrid. Riêng “Không phải trình”, “Không phải trình xây dựng NQ”, “Không phải xin ý kiến” được hiển thị **neutral** (UI only) kể cả khi `progressTone`/báo cáo phân loại theo bucket kết thúc; không sửa `progressTone`, `statusPaletteTone`, `aggregateReport` hay nghiệp vụ.
+- Palette cá nhân hiện tại được bảo toàn: nếu người dùng đổi swatch, CSS row màu nhạt tương ứng thông qua `statusPaletteCssVariables`, không lưu lại/migrate màu đã chọn. Highlight `cellHighlights` theo field từ R03 vẫn ưu tiên trong vùng `.compact-stage-level` hoặc `.compact-stage-state` của riêng field, **không** tô lan khung hay trường anh em. Editor/lease vẫn renderer và quyền gốc.
+
+### Commit thay đổi, kiểm thử
+
+- `be288d38583163e7c6544b0506dd95f5300df96e` + `fb3f4385b9305e8360af151594c00b0a4258640b` — renderer `CompactGroupedValue.tsx`: phân loại neutral chỉ cho stage UI và gắn `data-progress-tone` trên toàn khung.
+- `d644b0d06fe66c9a2bbe6c1041cabe8355d906c2` — `status-palettes.ts` cung cấp thêm biến màu nền/viền rất nhạt cho frame, khớp HEX ảnh khi palette mặc định, trộn cùng họ với palette tùy chỉnh.
+- `4eb6f9abab3f8c11f9d15ee18faf528fa56164be` — `item-frame.css` làm khung màu phẳng, viền theo tone, số thứ tự cùng tông, pill đậm hơn và neutral không giả hoàn thành.
+- `9aba4ec1fb361a4b20e198dfe536eca26eea685d`, `dcd896bce4dfaa03fb611d55b51d9db7534d2636`, `7dd2286e0e535990f2cf90a05c70895ff0086c7e` — unit regression cho màu gốc, palette tùy chỉnh, neutral/unknown, highlight từng field và editor.
+- `0cdee048e771b0bfddbad931c38df0a6032ce609` — fixture QA-only `?r05=1`, `?r05-palette=1`, `?highlight=1` cho ba tone/neutral/unknown và R03, list/popup; không đọc hoặc ghi Firebase.
+- `8fdeddac7a45e06576f044b55cd15f35452fe4d6` + `46c7309bb7a0364159dc7976dbc1351fce120159` — Chromium script đo **computed background/border của cả frame**, pill, số thứ tự, gradient none, vùng nhãn và state; kiểm list, popup, palette, highlight, tablet768, mobile390; sửa selector popup dựa trên rendered group thay vì giả định source anchor.
+- `df60d07aa61c59d3ae6c2bbebbf106dfbb262088` — workflow lưu ảnh R05 mới. Các commit test đỏ trung gian được giữ để audit; chỉ kết luận từ source SHA cuối PASS.
+
+### CI — đúng exact source commit
+
+**Exact tested source:** `46c7309bb7a0364159dc7976dbc1351fce120159` trên `feat/column-refinement-20261028`, PR #90.
+
+- [Verify HopHDND source #40730189707 — **SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40730189707): **518 unit PASS / 52 skipped**, test Codex R02 cap **8/8 PASS** (chạy riêng theo lệnh cũ), Firebase emulator **51 PASS / 1 expected fail**, typecheck/docs/build, Chrome browser smoke **PASS**.
+- [Verify isolated Firebase staging #40730189694 — **SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40730189694). [Operational Firebase QA multi-account #40730190022 — **SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40730190022). Cả 3 trên cùng source SHA và dataset giả, **không chứng minh security/Rules production**.
+
+### Chromium đo trực tiếp — màu khung, pill, popup, responsive
+
+- **Danh sách:** đỏ `rgb(255,241,242)` / border `rgb(254,205,211)` / pill `rgb(255,224,228)`; vàng `rgb(255,251,235)` / border `rgb(253,230,138)` / pill `rgb(254,249,195)`; xanh `rgb(240,253,244)` / border `rgb(187,247,208)` / pill `rgb(213,240,222)`. Cả ba nền đều `backgroundImage=none` (nền phẳng, như pixel ảnh).
+- **Neutral:** “Không phải xin ý kiến” và “Không phải trình” nền `rgb(248,250,252)`, viền `rgb(203,213,225)`, pill `rgb(226,232,240)`. Trạng thái nguồn chưa biết “Đang rà soát” trung tính, không tô xanh hoàn thành. Stage trong cùng hồ sơ có thể red/amber/green; row khác neutral/neutral/green.
+- **R03:** frame đỏ vẫn `rgb(255,241,242)` khi một progress field được highlight vàng `rgb(255,238,85)`; wildcard Cấp trình còn nền `rgb(18,52,86)` trên **đúng field**, không tô cả khung. Palette thử nghiệm office `#884422/#FCDDA0` đổi pill chính xác và frame pha nhạt cùng tông, khung đỏ khác không đổi.
+- **Popup thật:** tính computed màu ba khung **trùng đúng** bảng danh sách trên cùng fixture, không đổi cấu trúc field/permission. **Tablet 768px / mobile 390px:** khung vẫn đủ màu, nhãn + state nằm trong frame, không tràn body; ID **52px**. Các hồi quy R01 tìm tên đầy đủ/AND, R02 cap1600/ID-last resize và R03 list/popup/editor/field-highlight đều PASS.
+- [**Artifact ảnh/browser R05** — run #40730189707, artifact **12833754588**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40730189707/artifacts/12833754588). Các ảnh: `hophdnd-r05-before-white-simulated.png` (**mô phỏng CSS nền cũ trên cùng fixture**, KHÔNG phải ảnh production/historical); `hophdnd-r05-after-multitone-list.png`, `hophdnd-r05-after-list-stage-crop.png` (đủ nhãn trái và pill phải), `hophdnd-r05-after-multitone-popup.png`, `hophdnd-r05-after-popup-stage-crop.png`, `hophdnd-r05-after-768px.png`, `hophdnd-r05-after-390px.png`; và ảnh hồi quy R01–R04. Screenshot fixture synthetic/QA-only, **không deploy Pages**.
+
+### Bàn giao Codex và giới hạn
+
+**R05 FIX_TESTED — CHỜ CODEX REVIEW.** R01–R04 tiếp tục VERIFIED theo Lượt 012 và các vòng trước; không tự đánh dấu R05 VERIFIED hoặc OWNER_ACCEPTED. Codex kiểm `CompactGroupedValue.tsx` tone neutral UI-only, CSS row/circle/state, palette vars, computed list/popup, R03 field-specific override, ảnh crop, CI exact SHA và khả năng đọc tại tablet/mobile. **T9 vẫn WAITING**. Không merge, auto-merge, publish Pages, deploy Rules/Functions, import `hdnd/items`, đổi dataSource hoặc chạm dữ liệu production.
