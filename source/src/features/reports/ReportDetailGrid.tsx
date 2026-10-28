@@ -399,10 +399,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                 data-progress-tone={statusPaletteTone(c.key,item[c.key as DetailColumnKey],statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
-                style={cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
+                style={pair?undefined:cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
                 {pair?<CompactGroupedValue item={item} pair={pair}
                   field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&canEditCell(item.recordId,field)}
                   tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                  highlight={field=>cellHighlightStyle(item[field],field,listLayout?.cellHighlights)}
                   cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}
