@@ -137,6 +137,7 @@ jobs:
             source/hophdnd-id-after.png
             source/hophdnd-review-r01-after.png
             source/hophdnd-review-r02-after.png
+            source/hophdnd-review-r02-cap-after.png
             source/hophdnd-review-r03-after.png
           if-no-files-found: error
           retention-days: 7
