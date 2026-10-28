@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: CHANGES_REQUESTED — R01/R02/R03 đã VERIFIED qua Codex Lượt 010 trên source `3634fd4`. Chủ dự án đã chốt R04: ID mặc định 52 px để dễ đọc, thay yêu cầu 23 px/1⁄3 trước đây. R04 chờ triển khai và kiểm thử; T9 vẫn WAITING.**
+> **Trạng thái: READY_FOR_REVIEW — R01/R02/R03 VERIFIED theo Codex Lượt 010. R04 mặc định ID 52 px đã FIX_TESTED trong Lượt 011: 515 unit PASS, 51 Firebase emulator PASS, 8/8 R02 boundary PASS và Chrome đo ID 52 px một dòng ở desktop/tablet/mobile trên source `69a43b1b`; chờ Codex xác minh R04. T9 WAITING, không merge/publish/deploy.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -157,11 +157,11 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | READY_FOR_REVIEW — R02 projection/cap đã VERIFIED; cập nhật thiết kế ID theo R04 52 px |
 | T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 được Codex xác nhận VERIFIED; các bằng chứng cũ giữ nguyên |
 | T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | READY_FOR_REVIEW — U02 ba dòng tiến độ + màu/permission, browser qua |
-| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | CHANGES_REQUESTED — R02 VERIFIED; R04 mới chốt mặc định 52 px, chờ ChatGPT triển khai |
+| T4 | Làm ID mặc định 52px (thay 23px/1⁄3 theo quyết định Lượt 010), kiểm default/profile/preset, reload, layout, padding và resize | T0,T1 | READY_FOR_REVIEW — R04 52px đã đo Chromium desktop/tablet/mobile; R02 resize/cap giữ tổng; CI 40725552367 PASS, Codex xác minh R04 |
 | T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | READY_FOR_REVIEW — U04 false mặc định, local UID reload/reset, CI qua |
 | T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — Codex tái kiểm R01 và màu từng field list/popup của R03 đạt |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — 48 test liên quan PASS trên 3634fd4; cần chạy lại sau thay đổi R04 52 px |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | REVIEWED — R01/R02/R03 VERIFIED; hồ sơ bổ sung quyết định R04 52 px, chờ bản sửa mới |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | READY_FOR_REVIEW — R04 515 unit PASS/52 skipped, R02 exact boundary 8/8, Firebase emulator 51 PASS/1 expected fail, Chromium PASS; CI 40725552367 |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | READY_FOR_REVIEW — Lượt 011 ghi source SHA, 3 CI SUCCESS, browser đo 52px, 2 ảnh R04; chờ Codex xác minh R04 |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -238,7 +238,7 @@ npm run build:pages
 | D03 | U01/U02 mặc định bắt buộc; bỏ toggle tương ứng | Yêu cầu trực tiếp của chủ dự án |
 | D04 | U04 mặc định false, lưu trong compactDisplay qua CAS khi admin sửa chung, hoặc localStorage có scope nguồn + UID trong chế độ cá nhân; không ghi lúc load | CHỐT KỸ THUẬT T0 |
 | D05 | Chỉ quản trị dùng “Hiện đủ cột Excel” để đối chiếu, không xem như cờ tắt gộp mặc định; khách chỉ xem projection | CHỐT KỸ THUẬT T0 — chỉ thay UI trong nhánh |
-| D06 | Chủ dự án chọn trực tiếp “Tăng 52 px, ưu tiên dễ đọc” tại Lượt 010, thay yêu cầu 23 px/1⁄3; chưa sửa code 52 px | APPROVED_FOR_IMPLEMENTATION |
+| D06 | Chủ dự án chọn trực tiếp “Tăng 52 px, ưu tiên dễ đọc” tại Lượt 010, thay yêu cầu 23 px/1⁄3; đã sửa source R04 trên PR #90 | IMPLEMENTED_AND_TESTED — source 69a43b1b: 52px trên desktop/tablet/mobile, NQ01 một dòng; chờ Codex nghiệm thu |
 | D07 | Popup dùng projection tương ứng cho các trường có trong layout popup, giữ visibility/width và editor từng field; không dùng menu quản trị với khách | CHỐT KỸ THUẬT T0 |
 | D08 | Ảnh chỉ là tham chiếu hiển thị; chữ/nội dung trong ảnh không phải lệnh thay dữ liệu nguồn | Quy tắc diễn giải đầu vào |
 
@@ -249,11 +249,11 @@ npm run build:pages
 | Lập kế hoạch và khảo sát mã | Codex | DONE_DOCUMENTATION | Baseline 8172c06, diff/code đã đọc | Chủ dự án giao ChatGPT |
 | U01 | ChatGPT thực hiện | READY_FOR_REVIEW | `ca34ed14`, `c81ac118`, CI `40660234414` | Codex rà diff và UX |
 | U02 | ChatGPT thực hiện | READY_FOR_REVIEW | `ca34ed14`, `c81ac118`, CI `40660234414` | Codex rà diff và UX |
-| U03 | ChatGPT thực hiện | READY_FOR_REVIEW | W0 68px (restore 8172c065), W1 23px (d8ac9843), ratio 2,96:1; ảnh artifact 12802349921 | Chủ dự án xem khả năng đọc 23px |
+| U03 | ChatGPT thực hiện | FIX_TESTED — R04 mặc định 52px, chờ Codex xác minh | W0 restore 68px; W1 thực 52px (Chromium 1600/768/390), NQ01 một dòng; source 69a43b1b, CI 40725552367, artifact 12831479904 | Codex rà R04/UX; không tự đánh dấu VERIFIED |
 | U04 | ChatGPT thực hiện | READY_FOR_REVIEW | `d330ddc1`, `c81ac118`, UID reload/reset tại CI `40660234414` | Codex rà diff và UX |
 | Kiểm thử / ảnh / CI | ChatGPT thực hiện | READY_FOR_REVIEW | 3 workflow success d8ac9843; ảnh artifact 12802349921, demo 12803710651 | Chờ Codex review PR |
 | Rà diff và nghiệm thu kỹ thuật | Codex | R01/R02/R03 VERIFIED | Source 3634fd4, Lượt 010 | Rà tiếp R04 sau khi ChatGPT sửa ID 52 px |
-| Nghiệm thu giao diện | Chủ dự án | WAITING | — | Xem bằng chứng trước/sau |
+| Nghiệm thu giao diện | Chủ dự án | WAITING | — | Chủ dự án xem ảnh 23px trước (mô phỏng) và 52px sau; Codex rà R04 trước phát hành |
 
 Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX hoặc VERIFIED. DONE_DOCUMENTATION chỉ dùng cho hồ sơ; không dùng thay VERIFIED của chức năng. DEPLOYED và OWNER_ACCEPTED ghi riêng nếu có.
 
@@ -319,7 +319,7 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | `3780379` staff merged index; `b991ff2` AND U01; `bb39560` sửa selector test. Chromium R01 PASS (full CV/lãnh đạo UBND/VP/Phòng; có/không dấu, U04, AND), source CI 40667590073 | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT Lượt 009: `99e804f`+`a954d2a`+`94bbeee` cùng cap 1600; exact test Codex `de584ad` PASS 8/8; browser `4d91821` cap 1470/1550/1600, group target/last, ArrowLeft/Right/drag total 2813→2813; source CI `40721672334` SUCCESS | VERIFIED — Codex Lượt 010, exact 3634fd4, 48 unit PASS và browser cap target/last đạt |
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
-| R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | Chủ dự án xác nhận trực tiếp: “Tăng 52 px, ưu tiên dễ đọc” (28/10/2026) | APPROVED_FOR_IMPLEMENTATION — chưa code 52 px |
+| R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | FIX_TESTED — R04 chờ Codex tái-review, chủ dự án đã chọn 52px |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -587,3 +587,28 @@ Codex hỏi: giữ 23 px đúng 1/3 hay tăng 52 px để dễ đọc. **Chủ d
 **Câu lệnh chuyển cho ChatGPT:**
 
 > Đọc Lượt 010 trong file bàn giao. Codex đã xác nhận R01/R02/R03 VERIFIED. Chủ dự án chốt R04: tăng ID mặc định lên 52 px, ưu tiên đọc mã trên một dòng, thay yêu cầu cũ 23 px/1⁄3. Hãy thực hiện R04, cập nhật thống nhất projection/inverse/bounds và test để không tái phát lỗi resize; ghi source SHA, CI, số đo/ảnh 52 px vào Lượt 011. Chưa merge/publish/deploy/import.
+
+## 17. Lượt 011 — ChatGPT thực hiện R04 theo chủ dự án và Codex Lượt 010 — 28/10/2026
+
+**Trạng thái: R04 FIX_TESTED — chờ Codex rà lần cuối. R01/R02/R03 tiếp tục VERIFIED** (giữ nguyên nhận xét và trạng thái Lượt 008/010; không sửa code filter, highlight hoặc quy tắc cap nhóm). PR [#90](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90) vẫn OPEN/Ready for review, chưa merge. T9 WAITING.
+
+### Quyết định và thay đổi mã (nguồn 68 px → hiển thị mặc định 52 px)
+
+- Chủ dự án quyết định trực tiếp “Tăng 52 px, ưu tiên dễ đọc” tại Lượt 010; **52px thay mục tiêu 23px/1⁄3**. Nguồn Excel và layout đã lưu vẫn giữ ID mặc định raw **68px**; ở chế độ xem compact tính **`projectedIdWidth(raw)=Math.round(raw*52/68)`**. Đây là phép chiếu liên tục, đơn điệu; không thay schema/validator hay âm thầm ghi lại profile cũ. Khi bấm “Hiện đủ cột Excel” / chỉnh schema, width nguồn vẫn đúng raw để đối chiếu.
+- `497f87ea5bdf8b378c0ef7e81df274c10fdddbd2` — `resize-last-column.ts`: `ID_SOURCE_DEFAULT_WIDTH=68`, `ID_VIEW_DEFAULT_WIDTH=52`, `projectedIdWidth` và `idSourceForPhysicalWidth` chuyển đổi thuận/ngược cùng hệ số; min nguồn 60 thành min hiển thị 46; custom raw125 thành physical96. Giữ `projectedPhysicalLimits` và `resizeProjectedWithLastColumn` đồng bộ R02, không đổi phần bù nhóm cap1600.
+- `4b28c21e4d905931070b7b455705c724d42adbd0` — `ItemList.tsx` dùng helper chung cho width ID trong chế độ xem, không chia lại nhiều lần sau reload. `be03ef31d2e1d8c2f93aa8d3aa7af640ee883818` — CSS `.code` hiển thị một dòng tại 52px; mã dài có ellipsis nhưng vẫn có full `title`/`aria-label` và keyboard focus, tránh mất đường xem đầy đủ.
+- `bc2d7eaaeefe106322d01bef634e0e136b29047b` + `e8fd6bd36f4f0e673f3db59ab32588b75f77cb2a` — unit test default52/min46/custom96, nguồn/raw không đổi, reload không chia lặp, ID-last width reservoir, vẫn giữ nguyên **8 test Codex R02 boundary** (có 1 ca Codex gốc).
+- `11188b4599292172814c23d8294cacae8392a86f`, `cf8d332f0ff0fb9ac475e17f5d81cf0b7ac96885`, `1a4335ddc6d63df0dd620e8bd2b820b29db0cd4b`, `69a43b1b3e36eea5d1d3188097575415a10a68d2` — browser smoke đo trực tiếp width và dòng chữ NQ01, screenshot trước/sau, cập nhật test mobile/tablet 52±1px thay quy tắc 23px cũ. `bbd0d87e5835efb267023e1bbc4c039de444987a` — thêm ảnh R04 vào artifact Actions.
+
+### Kết quả kiểm thử có bằng chứng (exact source SHA)
+
+- **Source HEAD đã kiểm:** `69a43b1b3e36eea5d1d3188097575415a10a68d2` (commit mã + browser/test/workflow cuối trước ghi Lượt 011).
+- [Verify HopHDND source run #40725552367 — SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40725552367): **515 unit PASS / 52 skipped (567)**, reviewer R02 boundary **8/8 PASS** (chạy riêng), **51 Firebase emulator PASS / 1 expected fail**, typecheck/docs/build và Chromium smoke đều PASS.
+- [Verify isolated Firebase staging #40725552359 — SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40725552359). [Firebase operational QA multi-account #40725552555 — SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40725552555). Cả ba trên cùng SHA `69a43b1b`, dùng dữ liệu mô phỏng, không chứng minh tình trạng Firebase production.
+- **Đo DOM thực Chromium (1600×1000, DPR1):** W0 nguồn 68px (mô phỏng DOM cùng viewport, đồng thời baseline thực trên restore đã có từ T0); **W1=52px**, `NQ01`, `white-space:nowrap`, **1 line rect**, ô không overflow, `title="Mã gốc: NQ-MẪU-001"`, `aria-label="Mã hồ sơ NQ01"`, focusable. **Tablet 768px: ID 52px**; **mobile 390px: ID 52px**, cuộn ngang nằm trong bảng, không tràn body.
+- **R02 không hồi quy sau khi đổi phép chiếu:** khi ID là cột cuối, tổng bảng **1562→1562px**: Nội dung **440→446**, ID **52→46** (ArrowRight); ArrowLeft Nội dung **436**, ID **56**; drag Nội dung **441**, ID **51**; custom ID raw125 → width **96→86**, tổng **1606→1606px**. Khi nhóm tiến độ chạm trần 1600, source raw **1470/1550/1600**, ArrowRight tại cap là no-op, ArrowLeft đúng phần bù, drag trở lại cap; tổng vật lý **2842→2842px**, kể cả khi nhóm làm cột cuối.
+- **R01/R03 browser regression vẫn PASS:** tìm full tên CV/VP/UBND/Phòng kể cả không dấu và U04; tô màu theo nguồn cho Sở/tiến độ, editor và popup, giữ AND field.
+- [**Artifact ảnh/browser #12831479904**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40725552367/artifacts/12831479904): `hophdnd-id-r04-before-23-simulated.png` (**ảnh mô phỏng DOM width23 trên cùng fixture, không phải screenshot production**) và `hophdnd-id-r04-after-52px.png` (ảnh Chromium render thật), cùng `hophdnd-id-before-real.png` của checkpoint restore, desktop/tablet/mobile và ảnh hồi quy R01–R03. Có thể dùng để so sánh UX; mã nguồn không thay dữ liệu thật.
+- **Quá trình sửa test:** các run trước có test 23px/width<40 lỗi khi đổi yêu cầu; sau khi cập nhật kỳ vọng desktop + responsive, source `69a43b1b` và hai workflow Firebase final đều SUCCESS. Không xóa test chống hồi quy mà chỉ đổi kỳ vọng theo quyết định mới.
+
+**Cổng nghiệm thu:** R04 `FIX_TESTED`, yêu cầu Codex kiểm tra độc lập cả 52px/default-custom/reload và R02 ID-last trước khi kết luận VERIFIED. Không tự merge hoặc bật auto-merge; không publish GitHub Pages, deploy Firebase Rules/Functions, import `hdnd/items`, chuyển dataSource hay thay permissions. R01/R02/R03 vẫn VERIFIED; chủ dự án đã phê duyệt width 52px nhưng chưa ra lệnh phát hành.
