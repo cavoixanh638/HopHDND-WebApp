@@ -394,7 +394,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
-                data-progress-tone={statusPaletteTone(c.key,item[c.key],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                data-progress-tone={statusPaletteTone(c.key,item[c.key as DetailColumnKey],statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
