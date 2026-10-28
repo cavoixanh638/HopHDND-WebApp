@@ -1774,6 +1774,13 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel] .cell-picker-trigger')!==null",
     'Field-level staged editor missing');
+  const beforeStageEdit=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
+    return [...cell.querySelectorAll('.compact-stage-row')].map(x=>({
+      value:x.querySelector('.compact-stage-state')?.textContent?.trim()??'',
+      text:x.textContent?.trim()??''
+    }));
+  })()`);
   const editOpened=await evaluate(`(()=>{
     const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
     const first=cell?.querySelector('.compact-stage-level .cell-picker-trigger');
@@ -1794,9 +1801,14 @@ try{
   const isolatedEdit=await evaluate(`(()=>{
     const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
     const rows=[...cell.querySelectorAll('.compact-stage-row')].map(x=>x.textContent.trim());
+    const values=[...cell.querySelectorAll('.compact-stage-state')]
+      .map(x=>x.textContent?.trim()??'');
     return {ok:rows.length===3&&rows[0].includes('BTV')&&
-      rows[0].includes('Sở chưa trình')&&rows[1].includes('Sở chưa trình')&&
-      rows[2].includes('Sở chưa trình'),rows};
+      rows[0]!==${JSON.stringify(beforeStageEdit[0].text)}&&
+      rows[1]===${JSON.stringify(beforeStageEdit[1].text)}&&
+      rows[2]===${JSON.stringify(beforeStageEdit[2].text)}&&
+      values.every((value,i)=>value===${JSON.stringify(beforeStageEdit.map(x=>x.value))}[i]),
+      rows,values};
   })()`);
   if(!isolatedEdit.ok)throw Error('Source stage editors must not cross-write: '+JSON.stringify(isolatedEdit));
 
