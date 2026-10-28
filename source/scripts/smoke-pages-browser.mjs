@@ -501,7 +501,7 @@ try{
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
   const paletteCascade=await evaluate(`(()=>{
     const root=document.querySelector('.app-shell');
-    const sample=document.querySelector('.item-data-table tbody td[data-progress-tone="not-submitted"] .workflow-status-value');
+    const sample=document.querySelector('.item-data-table tbody td[data-col-key="partyLevel"] .compact-stage-state[data-progress-tone="not-submitted"]');
     if(!root||!sample)return {ok:false,reason:'missing table/status'};
     root.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
     root.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
