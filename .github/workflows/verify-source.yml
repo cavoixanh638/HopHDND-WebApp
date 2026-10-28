@@ -28,6 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Codex review 008 exact R02 1600px boundary reproduction
+        run: npm exec -- vitest run tests/pr90-review-boundary.test.ts
       - name: Validate production BACKUP READ-ONLY helper offline (no Firebase credentials)
         run: |
           node --check scripts/firebase-production-readonly-backup.mjs
