@@ -37,7 +37,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
-import {projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
+import {projectedIdWidth,projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -276,7 +276,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   // Recompute from source layout exactly once: do not persist scaled ID widths.
   const visualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
-    ?Math.round(Math.min(1600,Math.max(60,value))/3)
+    ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const projectedExtras=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,pair.extraWidth]));
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
