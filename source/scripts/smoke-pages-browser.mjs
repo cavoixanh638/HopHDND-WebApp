@@ -1687,10 +1687,11 @@ try{
     const w1=td.getBoundingClientRect().width;
     const idText=td.querySelector('.code');
     const css=getComputedStyle(idText);
+    const textRange=document.createRange();textRange.selectNodeContents(idText);
     return {w1,cellText:idText.textContent?.trim(),title:idText.getAttribute('title'),
       ariaLabel:idText.getAttribute('aria-label'),focusable:idText.tabIndex,
       overflow:td.scrollWidth>td.clientWidth+2,wrap:css.whiteSpace,
-      lines:Math.round(idText.getBoundingClientRect().height/parseFloat(css.lineHeight)),
+      lines:textRange.getClientRects().length,
       fullValue:idText.textContent?.trim(),textWidth:idText.scrollWidth};
   })()`);
   const afterIdShot=await send('Page.captureScreenshot',{format:'png'});
