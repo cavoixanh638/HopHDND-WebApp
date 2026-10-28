@@ -1,5 +1,7 @@
 # Danh sách chi tiết V2 — đặc tả và nghiệm thu (27/10/2026)
 
+> **ĐÍNH CHÍNH & BÀN GIAO 28/10:** Sau PR #86, khối **“Mẫu hiển thị cá nhân” đã bỏ** và không tự áp dụng saved personal presets; chỉ giữ **Bố cục gọn**, **Tùy chọn từng cột**, **Hiện đủ cột Excel**. Thay đổi cuộn/chữ đã publish. Chi tiết mới nhất và lệnh làm việc cho Gemini: [GEMINI_UI_HANDOFF_2026-10-28.md](GEMINI_UI_HANDOFF_2026-10-28.md). Những mục bên dưới nói còn mẫu cá nhân chỉ là mô tả V2 *trước hotfix*.
+
 ## Mốc an toàn
 - Baseline `main` trước chỉnh UI: `a394d0bf2965acd8fcc3385c2293ed6949ef4224`.
 - Commit checkpoint riêng: `5db47f0196afa3824a69fc7ca0f480eae12f0a8a`, branch `checkpoint/pre-ui-2026-10-27`.
