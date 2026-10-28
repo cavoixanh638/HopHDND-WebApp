@@ -30,6 +30,7 @@ function CompactVisualQa(){
       {id:'qa-wildcard',field:'*',word:'Ban Chấp hành',textColor:'#FFFFFF',backgroundColor:'#123456'}
     ];
     if(params.get('custom-id')==='1')base.columns=base.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
+    if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
     return base;
   });
   const [records,setRecords]=useState(()=>params.get('review-staff')==='1'?
