@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: PLAN_READY — Đã lập kế hoạch, CHƯA sửa mã ứng dụng.**
+> **Trạng thái: IN_PROGRESS — Đã viết mã trên feature branch, PR #90 DRAFT. Chưa nghiệm thu browser/ID, chưa merge hoặc deploy.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -151,14 +151,14 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | Mã | Công việc và đầu ra | Phụ thuộc | Trạng thái |
 | --- | --- | --- | --- |
 | T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | DOING (đã chốt phạm vi; W0/ảnh trước chưa đo) |
-| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | TODO |
-| T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | TODO |
-| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | TODO |
-| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | TODO |
-| T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | TODO |
-| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | TODO |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | TODO |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | TODO |
+| T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | DOING — mã projection/compatibility đã commit, đợi browser |
+| T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | DOING — U01 renderer/filter/editor đã commit, đợi browser |
+| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | DOING — U02 3 khâu, field palette/permission đã commit, đợi browser |
+| T4 | Làm ID 1/3, kiểm cả default/profile/preset, table layout, padding và resize | T0,T1 | DOING — ID view = width nguồn / 3; W0/W1 browser chưa nghiệm thu |
+| T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | DOING — U04 flag + checkbox + fallback đã commit, đợi browser |
+| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | DOING — popup/filter/cấu hình cũ đã nối, cần xác minh |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | DOING — typecheck, unit, docs, Firebase emulator đạt lượt 1; browser smoke đang sửa |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | DOING — PR #90 DRAFT và nhật ký; ảnh/ID và CI xanh chưa có |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -223,7 +223,7 @@ npm run build:pages
 - PR #83 về bảo mật khách phải giữ tách biệt; nhiệm vụ này không được mô tả là đã giải quyết giới hạn bảo mật đó.
 - Giữ auth, permission, lease/fencing, CAS/audit và freeze hiện có. Chỉ thông qua server ACK mới báo lưu thành công.
 - Bản build root index/assets do workflow sinh, không sửa tay thay cho TypeScript.
-- Giai đoạn người dùng yêu cầu ở cuộc trò chuyện này là **lập kế hoạch và tạo file giao việc**. Bên thực hiện bắt đầu code khi được chủ dự án giao; báo cáo bằng PR và bằng chứng. Quyền merge/publish cần căn cứ chỉ thị của chủ dự án ở phiên thực hiện.
+- Lệnh giao việc ngày 28/10/2026 đã **cho phép sửa mã, kiểm thử và tạo PR để rà soát**, nhưng **không cho phép merge, publish Pages, import dữ liệu hoặc deploy Firebase**. Bản kế hoạch lập trước đó không phải giới hạn của phiên triển khai hiện tại.
 - Khi cần quay lại, dùng commit/PR đảo thay đổi UI có kiểm tra; không reset lịch sử hoặc coi rollback code là restore dữ liệu.
 
 ## 8. Quyết định và điểm cần xác nhận trong khi thực hiện
@@ -244,11 +244,11 @@ npm run build:pages
 | Hạng mục | Người/bên phụ trách | Trạng thái | Commit / PR / bằng chứng | Việc kế tiếp |
 | --- | --- | --- | --- | --- |
 | Lập kế hoạch và khảo sát mã | Codex | DONE_DOCUMENTATION | Baseline 8172c06, diff/code đã đọc | Chủ dự án giao ChatGPT |
-| U01 | ChatGPT thực hiện | TODO | — | T0–T2 |
-| U02 | ChatGPT thực hiện | TODO | — | T0–T3 |
-| U03 | ChatGPT thực hiện | TODO | — | Đo W0 và rà min-width |
-| U04 | ChatGPT thực hiện | TODO | — | Flag, renderer, lưu scope |
-| Kiểm thử / ảnh / CI | ChatGPT thực hiện | TODO | — | Sau code |
+| U01 | ChatGPT thực hiện | DOING | `ca34ed14`, `c81ac118`, `83293b9e` | Kiểm browser và Codex |
+| U02 | ChatGPT thực hiện | DOING | `ca34ed14`, `c81ac118`, `694f2a81` | Kiểm trạng thái và quyền |
+| U03 | ChatGPT thực hiện | DOING | `0c44f2dd`, CI browser đang đo | Đo W0/W1, đánh giá mức đọc |
+| U04 | ChatGPT thực hiện | DOING | `d330ddc1`, `c81ac118`, `e7d1657a` | Reload/scope UID và QA |
+| Kiểm thử / ảnh / CI | ChatGPT thực hiện | DOING | CI `40658675833` unit/typecheck/emulator qua, browser cũ đỏ | Đạt toàn bộ CI và ảnh mới |
 | Rà diff và nghiệm thu kỹ thuật | Codex | WAITING | — | Đọc PR và nhật ký mới nhất |
 | Nghiệm thu giao diện | Chủ dự án | WAITING | — | Xem bằng chứng trước/sau |
 
@@ -263,6 +263,18 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 - Xác định default ID 68 px và min width 60 px cần xử lý cùng table layout thực.
 - Tạo kế hoạch, bảng tiêu chí và lưu hai ảnh làm tham chiếu GitHub.
 - **Chưa viết code chức năng, chưa chạy bộ test cho thay đổi mới, chưa triển khai giao diện mới.**
+
+### Lượt 003 — ChatGPT — 28/10/2026 — T1–T8 triển khai đang kiểm thử
+- **Branch/PR:** [PR #90 DRAFT](https://github.com/cavoixanh638/HopHDND-WebApp/pull/90), `feat/column-refinement-20261028`; base `8088f5b33ddf40a99c80b3da386497fe57572676`; không chỉnh `main`.
+- **T1/U01/U02:** `d330ddc1` + `ca34ed14` thêm flag mới tương thích, hai nhóm hiển thị bắt buộc bất kể cờ legacy; `b39c8c5` bộ lọc AND nguồn theo từng trường; `c81ac118` renderer dùng chung; `83293b9e`, `694f2a81` nối list/CSS; không đổi tên trường hay nội dung báo cáo.
+- **T4/U03:** `0c44f2dd` áp `Math.round(sourceWidth/3)` vào ID *chỉ trong view*, không sửa source validator min60; ID có title và keyboard focus, bỏ resize trực tiếp trên ID view. **Độ rộng hiển thị thực W0/W1 chưa xác nhận**; script đo mới phân biệt trước là mô phỏng DOM 68px, không phải ảnh lịch sử đã chụp.
+- **T5/U04:** checkbox chỉ lộ khi teamTogether có phòng+CV; flag false với cấu hình cũ; nguồn localStorage theo scope và UID hoặc CAS admin sẵn có. `2a13369b` giữ editor các trường rỗng.
+- **T6:** `671d4297` popup áp projection khi xem thông thường và vẫn dùng popup layout/permissions riêng; hai nhóm có filter tách biệt; không phát sinh API Firebase hay ghi dữ liệu.
+- **T7:** [CI Verify source lượt 40658675833](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40658675833): Typecheck/unit/docs check/Firebase emulator và các build đến bước browser smoke **qua**, browser smoke **đỏ** vì còn kỳ vọng 15 cột DOM cũ. Đã cập nhật kịch bản mới có kiểm đủ **15 khóa lọc nguồn** và bắt buộc U01/U02; chưa gọi toàn bộ CI xanh.
+- [Firebase operational QA lượt 40658345905](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40658345905) **success** và [staging isolated lượt 40658345837](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40658345837) **success** trên exact `4905a4b5f094c52fa0611fa5e23328dc71d22cb4`, không phải chứng cứ mọi commit sau đã qua.
+- **Ảnh:** ảnh tham chiếu trước là 2 PNG nguồn ở mục 2, không phải screenshot bản UI cũ; workflow upload PNG desktop/mobile/guest và ID DOM trước/sau đang được chỉnh, **chưa có bằng chứng screenshot thành công để dẫn**. Đích đo gồm 1600 và 390px; **768px chưa chứng minh**.
+- **Chưa xong:** E2E browser, W0 thực trước thay đổi, UX ID đọc ở mức 1/3, toàn bộ CI mới nhất, rà Codex. Mọi mục đều chưa xác nhận READY_FOR_REVIEW.
+- **Cần Codex rà:** field permission/lease trong renderer gộp, callback nội dung trường rỗng, popup giữ cấu hình riêng, tỷ lệ W0/W1 và phần browser smoke thay đổi. **Không merge, không deploy, không import, không publish.**
 
 ### Mẫu lượt tiếp theo
 - **Lượt / ngày giờ Việt Nam / bên thực hiện:**
