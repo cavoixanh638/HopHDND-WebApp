@@ -399,7 +399,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                 data-edit-hint={writable?'Bấm để sửa':undefined}
                 style={cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
                 {pair?<CompactGroupedValue item={item} pair={pair}
-                  field={field=>cell(item,field as DetailColumnKey)}
+                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&canEditCell(item.recordId,field)}
                   tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
                   cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
