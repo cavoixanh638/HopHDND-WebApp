@@ -199,7 +199,14 @@ try{
     return {x:box.left+box.width*.8,y:box.top+box.height/2};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',...reportHit});
-  await new Promise(resolve=>setTimeout(resolve,260));
+  // A wall-clock delay can expire before a throttled runner has painted the
+  // final transition frame. Keep the exact geometry/shadow assertions below;
+  // wait for the real CSS animations to finish instead of sampling mid-flight.
+  await eventually(`(()=>{
+    const td=document.querySelector('#report-cell-3d-probe td.report-clickable-cell');
+    return td?.matches(':hover')&&td.getAnimations({subtree:true}).every(a=>a.playState==='finished')&&
+      Math.abs(new DOMMatrixReadOnly(getComputedStyle(td).transform).m42+3)<.01;
+  })()`,'Report hover transition did not settle at its final position');
   const reportFullCell=await evaluate(`(()=>{
     const root=document.querySelector('#report-cell-3d-probe');
     const td=root.querySelector('td.report-clickable-cell'),button=td.querySelector('button'),
@@ -211,7 +218,11 @@ try{
       targetWidth:button.getBoundingClientRect().width,cellWidth:td.getBoundingClientRect().width};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:12,y:12});
-  await new Promise(resolve=>setTimeout(resolve,220));
+  await eventually(`(()=>{
+    const td=document.querySelector('#report-cell-3d-probe td.report-clickable-cell');
+    return !td.matches(':hover')&&td.getAnimations({subtree:true}).every(a=>a.playState==='finished')&&
+      Math.abs(new DOMMatrixReadOnly(getComputedStyle(td).transform).m42)<.01;
+  })()`,'Report hover transition did not reset');
   const reportReset=await evaluate(`new DOMMatrixReadOnly(getComputedStyle(
     document.querySelector('#report-cell-3d-probe td.report-clickable-cell')).transform).m42`);
   await evaluate("document.querySelector('#report-cell-3d-probe')?.remove()");

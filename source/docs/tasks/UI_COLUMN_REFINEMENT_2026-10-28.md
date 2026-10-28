@@ -856,6 +856,7 @@ Lượt này không deploy Firebase Rules/Functions, nhập/xóa/sửa dữ li�
 - Kéo chuột thật tại viewport mặc định 1280: trước Nội dung **236**, Ghi chú **82**; sau kéo trái 15px: Nội dung **221**, Ghi chú **97**; các cột khác giữ **46/256/344/194**, tổng bảng vẫn **1158px**. Kéo phải khi cột cuối đã ở min không vượt giới hạn.
 - Chọn khung **900px**: viewport cuộn **888px**, bảng **916px**, cuộn ngang vì tổng cột lớn hơn khung; nhãn/trạng thái xếp dọc, vùng trạng thái **151px**, không thành dải chữ đứng.
 - Mobile **390px**: body **375px** không tràn ngang viewport, vùng bảng **283px** cuộn trong khung, bảng **916px**; trạng thái còn vùng **125px**. Không ghi hoặc sửa dữ liệu thật.
+- CI source trên `eaa6f9b` dừng 2 lần tại phép đo hover báo cáo có sẵn: lấy mẫu giữa transition cho lift -2.56/-1.92 thay vì -3px. CSS hover/báo cáo không đổi trong PR. Bổ sung chờ hoạt ảnh CSS kết thúc trước khi lấy mẫu và reset; giữ nguyên toàn bộ assert cuối về hover, lift -3, shadow 8px/16px, badge đứng yên, ô trống và chiều rộng click. Không nới sai số, bỏ kiểm hoặc thay giao diện để làm test qua. Hai workflow Firebase giả lập của commit này SUCCESS; CI phải chạy lại trên HEAD có bản sửa timing.
 
 ### Bàn giao
 
