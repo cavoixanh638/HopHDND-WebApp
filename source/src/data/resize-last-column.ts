@@ -29,12 +29,17 @@ export function resizeWithLastColumn(layout:ItemLayout,visibleKeys:readonly stri
     c.key===last?{...c,width:c.width-delta}:c)};
 }
 
-/** View-only column projection. Raw Excel widths (including ID >=60) never
- * change on page load; 1/3 is applied once to the rendered physical ID.
- * Group extra widths affect only the rendered anchor, not the source field. */
-export const projectedIdWidth=(sourceWidth:number)=>Math.round(sourceWidth/3);
+/** Owner R04 (review 010): source default ID stays 68px; view default is
+ * 52px. The monotonic 52/68 projection also scales user-customized source
+ * widths, without touching persisted Firebase/localStorage layouts.
+ * A single inverse is used ONLY when ID is the trailing resize reservoir. */
+export const ID_SOURCE_DEFAULT_WIDTH=68;
+export const ID_VIEW_DEFAULT_WIDTH=52;
+export const projectedIdWidth=(sourceWidth:number)=>
+  Math.round(sourceWidth*ID_VIEW_DEFAULT_WIDTH/ID_SOURCE_DEFAULT_WIDTH);
 export const idSourceForPhysicalWidth=(physicalWidth:number)=>
-  Math.min(1600,Math.max(60,Math.round(physicalWidth*3)));
+  Math.min(1600,Math.max(60,
+    Math.round(physicalWidth*ID_SOURCE_DEFAULT_WIDTH/ID_VIEW_DEFAULT_WIDTH)));
 type Extras=Readonly<Record<string,number>>;
 const extraFor=(key:string,extras:Extras)=>extras[key]??0;
 /** The SAME 1600px rendered cap as compactVisibleColumns. Source group widths
@@ -51,7 +56,7 @@ export const projectedPhysicalLimits=(key:string,extras:Extras={},idCompact=true
 };
 
 /** Same constraints used by the DOM drag preview AND the eventual CAS commit.
- * If ID is the last reservoir it contributes its 20..533 PHYSICAL pixels;
+ * If ID is the last reservoir its bounds are projected from raw 60..1600;
  * the stored 60..1600px value is inverted only at commit. */
 export function projectedTrailingBounds(layout:ItemLayout,keys:readonly string[],target:string,
   extras:Extras={},idCompact=true):{min:number;max:number}|null{
