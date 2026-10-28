@@ -49,7 +49,8 @@ describe('Width transfers to trailing visible column, never the other columns',(
     const cols=compactVisibleColumns(layout.columns, prefs);
     expect(cols.find(c=>c.key==='room')?.width).toBe(170);
     expect(cols.find(c=>c.key==='vpLeader')?.width).toBe(170);
-    expect(activeCompactPairs(layout.columns,prefs).map(p=>p.extraWidth)).toEqual([0,0]);
+    expect(activeCompactPairs(layout.columns,prefs).filter(p=>p.variant==='roomSpecialist'||p.variant==='leadersTogether').map(p=>p.extraWidth)).toEqual([0,0]);
+    expect(activeCompactPairs(layout.columns,prefs).find(p=>p.variant==='partyTogether')?.extraWidth).toBe(130);
     expect(cols.find(c=>c.key==='vpLeader')?.label).toBe('Lãnh đạo UBND / VP');
     const narrow=resizeWithLastColumn(layout,cols.map(c=>c.key),'room',80);
     expect(narrow.columns.find(c=>c.key==='room')?.width).toBe(80);
