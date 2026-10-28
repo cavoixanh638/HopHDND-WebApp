@@ -2,7 +2,8 @@ import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'reac
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
-import {EXCEL_SOURCE_COLUMNS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
+import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
@@ -96,7 +97,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
     ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
   const popupPairs=popupCompact?activeCompactPairs(popupSource,popupPrefs):[];
-  const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs):popupSource;
+  const popupTitles={...listLayout?.groupLabels,...displayedLayout.groupLabels};
+  const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs,popupTitles):popupSource;
   const gridWidth=renderedColumns.reduce((sum,c)=>sum+c.width,0);
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
   const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
@@ -304,7 +306,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <span>px</span>
         <span className="muted">Nhấn Enter hoặc rời ô để xem trước; Lưu cấu hình cột để ghi nhớ. Không thay đổi từng lần gõ.</span>
       </div>
-      <div className="report-grid-settings-list">
+      <details className="report-grid-group-labels">
+         <summary>Đổi tên cột gộp trong popup</summary>
+         <p className="muted">Tên riêng cho popup; nếu chưa nhập, dùng tên nhóm từ Danh sách. Không đổi tên Excel hoặc nhãn trong ô.</p>
+         {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
+           <label className="field">{COMPACT_GROUP_DEFAULT_LABELS[key]}
+             <input type="text" maxLength={100} aria-label={'Tên nhóm popup '+key}
+               value={pending.groupLabels?.[key]??''}
+               placeholder={listLayout?.groupLabels?.[key]??COMPACT_GROUP_DEFAULT_LABELS[key]}
+               onChange={e=>setPending(prev=>({...prev,groupLabels:{...(prev.groupLabels??{}),[key]:e.currentTarget.value}}))}/>
+           </label>
+           <button type="button" className="button ghost" disabled={!pending.groupLabels?.[key]}
+             onClick={()=>setPending(prev=>{const next={...(prev.groupLabels??{})};delete next[key];return {...prev,groupLabels:next};})}>Khôi phục</button>
+         </div>)}
+       </details>
+       <div className="report-grid-settings-list">
         {pending.columns.map((c,index)=><div className="report-grid-settings-row" key={c.key}>
           <label><input type="checkbox" checked={c.visible}
             onChange={event=>patch(c.key,{visible:event.target.checked})}/> {labelByKey.get(c.key)}</label>
