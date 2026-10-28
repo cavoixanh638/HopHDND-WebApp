@@ -62,17 +62,17 @@ describe('Width transfers to trailing visible column, never the other columns',(
   });
 });
 
-describe('R02: projected physical compensation when the 1/3-width ID is last',()=>{
+describe('R02/R04: physical compensation when the readable 52px ID is last',()=>{
   const physical=(layout:ReturnType<typeof defaultItemLayout>,key:string,extra=0)=>
     key==='displayCode'?projectedIdWidth(layout.columns.find(c=>c.key===key)!.width):
       layout.columns.find(c=>c.key===key)!.width+extra;
-  it('ArrowRight at ID=68 clamps at real physical min20 without shrinking content or table',()=>{
+  it('ArrowRight at default 52px clamps at physical min46 without changing total',()=>{
     const layout=defaultItemLayout(),keys=['content','stt','displayCode'];
     const total=physical(layout,'content')+physical(layout,'stt')+physical(layout,'displayCode');
-    expect(projectedTrailingBounds(layout,keys,'content')).toEqual({min:60,max:443});
+    expect(projectedTrailingBounds(layout,keys,'content')).toEqual({min:60,max:446});
     const right=resizeProjectedWithLastColumn(layout,keys,'content',450);
-    expect(physical(right,'content')).toBe(443);
-    expect(physical(right,'displayCode')).toBe(20);
+    expect(physical(right,'content')).toBe(446);
+    expect(physical(right,'displayCode')).toBe(46);
     expect(physical(right,'content')+physical(right,'stt')+physical(right,'displayCode')).toBe(total);
     expect(validateItemLayout(right).columns.find(c=>c.key==='displayCode')!.width).toBe(60);
     expect(right.columns.filter(c=>c.width!==layout.columns.find(z=>z.key===c.key)?.width)
@@ -97,7 +97,7 @@ describe('R02: projected physical compensation when the 1/3-width ID is last',()
     const original=physical(custom,'content')+physical(custom,'displayCode');
     const next=resizeProjectedWithLastColumn(custom,keys,'content',450);
     expect(physical(next,'content')+physical(next,'displayCode')).toBe(original);
-    expect(physical(next,'displayCode')).toBe(32);
+    expect(physical(next,'displayCode')).toBe(86);
     expect(validateItemLayout(next)).toBeTruthy();
     const extras={partyLevel:130};
     const groupLast=['content','partyLevel'];
@@ -111,7 +111,33 @@ describe('R02: projected physical compensation when the 1/3-width ID is last',()
     const layout=defaultItemLayout();
     const custom={...layout,columns:layout.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c)};
     const loaded=validateItemLayout(custom);
-    expect(projectedIdWidth(loaded.columns.find(c=>c.key==='displayCode')!.width)).toBe(42);
-    expect(projectedIdWidth(validateItemLayout(loaded).columns.find(c=>c.key==='displayCode')!.width)).toBe(42);
+    expect(projectedIdWidth(loaded.columns.find(c=>c.key==='displayCode')!.width)).toBe(96);
+    expect(projectedIdWidth(validateItemLayout(loaded).columns.find(c=>c.key==='displayCode')!.width)).toBe(96);
+  });
+});
+
+describe('R04 owner choice: default ID 52px, source remains 68px',()=>{
+  it('maps default and custom widths monotonically, never rescales on reload',()=>{
+    const raw=defaultItemLayout();
+    expect(raw.columns.find(c=>c.key==='displayCode')!.width).toBe(68);
+    expect(projectedIdWidth(68)).toBe(52);
+    expect(projectedIdWidth(60)).toBe(46);
+    expect(projectedIdWidth(125)).toBe(96);
+    expect(projectedIdWidth(1600)).toBe(1224);
+    const custom={...raw,columns:raw.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c)};
+    const loaded=validateItemLayout(custom);
+    expect(loaded.columns.find(c=>c.key==='displayCode')!.width).toBe(125);
+    expect(projectedIdWidth(loaded.columns.find(c=>c.key==='displayCode')!.width)).toBe(96);
+    expect(projectedIdWidth(validateItemLayout(loaded).columns.find(c=>c.key==='displayCode')!.width)).toBe(96);
+  });
+  it('uses real physical delta at the minimum and inverts ID last only once',()=>{
+    const layout=defaultItemLayout(),keys=['content','displayCode'];
+    const start=440+projectedIdWidth(68);
+    const next=resizeProjectedWithLastColumn(layout,keys,'content',446);
+    expect(next.columns.find(c=>c.key==='content')!.width).toBe(446);
+    expect(projectedIdWidth(next.columns.find(c=>c.key==='displayCode')!.width)).toBe(46);
+    expect(next.columns.find(c=>c.key==='displayCode')!.width).toBe(60);
+    expect(446+projectedIdWidth(60)).toBe(start);
+    expect(resizeProjectedWithLastColumn(next,keys,'content',460)).toBe(next);
   });
 });
