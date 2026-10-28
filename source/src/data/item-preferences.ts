@@ -9,8 +9,8 @@ export interface ItemColumn {
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
-export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders',boolean>;
-export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false};
+export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>;
+export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false};
 export interface ItemLayout {
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
   compactDisplay?:SharedCompactDisplay;
@@ -150,7 +150,7 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   // Older saved Firebase layouts predate four new grouping options. Missing
   // NEW flags default to false; invalid values remain rejected, not coerced.
-  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether']);
+  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether','cvRoomInline']);
   if((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>
     typeof compactSource[key]!=='boolean'&&
     !(newOptions.has(key)&&compactSource[key]===undefined)))

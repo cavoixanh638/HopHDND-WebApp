@@ -15,8 +15,13 @@ vi.mock('../src/state/use-recoverable-draft',()=>({
 import {ItemList} from '../src/features/items/ItemList';
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
+import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
+import {CompactGroupFilterCell} from '../src/features/items/CompactGroupFilterCell';
 import {CellHistoryAction} from '../src/components/CellHistoryAction';
-function nodes(v:any):any[]{return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'?[v,...nodes(v.props?.children)]:[];}
+function nodes(v:any):any[]{
+  return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'
+    ?[v,...(v.type===CompactGroupedValue?nodes(CompactGroupedValue(v.props)):nodes(v.props?.children))]:[];
+}
 function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&typeof v==='object'?text(v.props?.children):typeof v==='string'?v:'';}
 function list(readOnly=false) {
   const items=createDemoItems(1),id=items[0].recordId;
@@ -87,9 +92,14 @@ describe('separate item layout save and data draft',()=>{
       catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
-    expect(keys).toEqual([...EXCEL_COLUMN_KEYS].reverse());
+    expect(keys).toEqual([...EXCEL_COLUMN_KEYS].reverse().filter(k=>
+      !['type','department','progressParty','progressBuild','progressCouncil'].includes(k)));
     expect(keys).not.toContain('history');
-    expect(nodes(tree).filter(n=>n.type?.name==='ColumnFilterCell').map(n=>n.props.field)).toEqual([...EXCEL_COLUMN_KEYS].reverse());
+    const compactFilters=nodes(tree).filter(n=>n.type===CompactGroupFilterCell);
+    expect(compactFilters.map(n=>n.props.fields)).toEqual(expect.arrayContaining([
+      ['type','department','content'],
+      ['partyLevel','progressParty','progressBuild','progressCouncil']
+    ]));
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
     const items=createDemoItems(1);

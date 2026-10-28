@@ -20,10 +20,12 @@ import type {ItemLayout} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell,filterValue} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
+import {CompactGroupFilterCell} from './CompactGroupFilterCell';
+import {CompactGroupedValue} from './CompactGroupedValue';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,compactTypeTone,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
@@ -35,7 +37,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
-import {resizeWithLastColumn,trailingWidthBounds} from '../../data/resize-last-column';
+import {projectedIdWidth,projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -105,16 +107,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay):columns;
-  const compactHiddenKeys=compactPairs.flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))).join('|');
-  // Prevent a saved filter for a now-merged hidden field from silently filtering rows.
-  useEffect(()=>{
-    if(!compactHiddenKeys)return;
-    const hidden=new Set(compactHiddenKeys.split('|'));
-    setColumnFilters(prev=>{
-      const remaining=Object.entries(prev).filter(([key])=>!hidden.has(key));
-      return remaining.length===Object.keys(prev).length?prev:Object.fromEntries(remaining);
-    });
-  },[compactHiddenKeys]);
+  // Preserve per-source filters even when projection hides their physical columns.
   const updateCompact=(option:CompactOption,checked:boolean)=>{
     const next=toggleCompactOption(compactDisplay,option,checked);
     if(customizing){
@@ -127,11 +120,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       setCompactStorageWarning(writePersonalCompactDisplay(viewerCompactScope,next)?'':
         'Trình duyệt không cho lưu lựa chọn. Tùy chọn vẫn có hiệu lực trong phiên đang mở.');
     }
-    const hidden=new Set<string>(activeCompactPairs(columns,next).flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
-    setColumnFilters(prev=>{
-      const entries=Object.entries(prev).filter(([key])=>!hidden.has(key));
-      return entries.length===Object.keys(prev).length?prev:Object.fromEntries(entries);
-    });
   };
   const [confirmExit,setConfirmExit] = useState(false);
   const [layoutError,setLayoutError] = useState('');
@@ -237,16 +225,23 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return result;
   },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
   const filtered=useMemo(()=>{
-    const hidden=new Set<string>(compactPairs.flatMap(pair=>pair.hiddenFields));
+    const permitted=new Set(columns.map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
-    const anchors=new Set<string>(compactPairs.map(pair=>pair.anchor));
+    // Staff headers search the FULL strings of every projected member.
+    // U01/U02 use independent source filters (AND), not group-wide OR.
+    const staffGroupKeys=new Set(compactPairs
+      .filter(p=>p.variant==='teamTogether'||p.variant==='leadersTogether')
+      .map(p=>p.anchor));
+    const staffGroupTerms=Object.entries(columnFilters)
+      .filter(([key,term])=>staffGroupKeys.has(key)&&term.trim())
+      .map(([key,term])=>({key:'merged:'+key,term:normalizeSearch(term)}));
     const ordinary=Object.entries(columnFilters)
-      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&!hidden.has(key)&&!anchors.has(key)&&term.trim())
+      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&permitted.has(key)&&
+        !staffGroupKeys.has(key)&&term.trim())
       .map(([key,term])=>({key,term:normalizeSearch(term)}));
     const roomTerm=roomSpecialist?(columnFilters.room??''):'';
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
-    const merged=compactPairs.flatMap(pair=>pair.variant!=='roomSpecialist'&&columnFilters[pair.anchor]?.trim()
-      ?[{key:'merged:'+pair.anchor,term:normalizeSearch(columnFilters[pair.anchor])}]:[]);
+
     const custom=Object.entries(columnFilters).flatMap(([key,term])=>
       term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom')
         ?[{key,term:normalizeSearch(term)}]:[]);
@@ -254,9 +249,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       const values=filterIndex.get(item.recordId);
       if(!values)return false;
       return ordinary.every(({key,term})=>values[key]?.includes(term))&&
+        staffGroupTerms.every(({key,term})=>values[key]?.includes(term))&&
         (!roomTerm||item.room===roomTerm)&&
         (!personTerm||values.specialist?.includes(personTerm))&&
-        merged.every(({key,term})=>values[key]?.includes(term))&&
         custom.every(({key,term})=>values[key]?.includes(term));
     });
   },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
@@ -279,8 +274,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return selected;
   };
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
-  const visualWidth=(value:number)=>Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width),0);
+  // Recompute from source layout exactly once: do not persist scaled ID widths.
+  const visualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
+    ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
+    :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
+  const projectedExtras=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,pair.extraWidth]));
+  const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
   const tableWidth=compactPairs.length?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
@@ -317,9 +316,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const applyView=(view:SavedListView|null):boolean=>{
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
-    const hidden=new Set<string>(activeCompactPairs(nextLayout.columns.filter(c=>c.visible&&!c.removed),nextLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY)
-      .flatMap(pair=>pair.hiddenFields.filter(key=>!(pair.variant==='roomSpecialist'&&key==='specialist'))));
-    setColumnFilters(Object.fromEntries(Object.entries(filters.columns).filter(([key])=>!hidden.has(key))));
+    setColumnFilters({...filters.columns});
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
@@ -361,45 +358,34 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
-  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(<details className="compact-columns-menu">
-        <summary aria-label="Tùy chọn gộp cột">Gộp cột <span aria-hidden="true">▾</span>
-          {COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length>0&&
-            <small className="compact-active-count">{COMPACT_OPTIONS.filter(option=>compactDisplay[option.key]).length}</small>}
-        </summary>
-        <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-          <strong>Gộp cột để xem gọn hơn</strong>
-          {COMPACT_OPTIONS.filter(option=>['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
+  const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
+    p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
+  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
+    (<details className="compact-columns-menu">
+      <summary aria-label="Tùy chọn gộp cột">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
+      <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
+        <strong>Hồ sơ và tiến độ 3 khâu luôn gộp khi xem</strong>
+        {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
+          (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
+          <input type="checkbox" checked={compactDisplay[option.key]}
+            onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+          <span>{option.label}<small>{option.detail}</small></span>
+        </label>)}
+        <details className="compact-more-options">
+          <summary>Viết tắt tên</summary>
+          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-          <details className="compact-more-options">
-            <summary>Các cách gộp khác <small>3 lựa chọn</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
-              !['contentDetails','partyTogether','councilTogether','teamTogether'].includes(option.key)).map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <details className="compact-more-options">
-            <summary>Viết tắt tên <small>{COMPACT_OPTIONS.filter(option=>option.section==='name'&&compactDisplay[option.key]).length||'2 lựa chọn'}{COMPACT_OPTIONS.some(option=>option.section==='name'&&compactDisplay[option.key])?' đang bật':''}</small></summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <p>{shareCompact?'Quản trị: lưu bố cục dùng chung Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
-          {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
-          {!shareCompact&&personalCompact&&<button type="button" className="button ghost"
-            onClick={()=>{setPersonalCompact(null);setCompactStorageWarning(
-              clearPersonalCompactDisplay(viewerCompactScope)?'':
-              'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>
-            Khôi phục cách hiển thị chung
-          </button>}
-        </div>
-      </details>);
+        </details>
+        <p>{shareCompact?'Quản trị: lưu bố cục dùng chung qua Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
+        {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
+        {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
+          setPersonalCompact(null);setCompactStorageWarning(clearPersonalCompactDisplay(viewerCompactScope)?'':
+            'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
+      </div>
+    </details>);
   return <section className="card item-list-card">
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
@@ -439,7 +425,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
-      {allowLayout&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+      {allowLayout&&!anonymousViewer&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
@@ -461,25 +447,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
-    index<displayedColumns.length-1&&
-    trailingWidthBounds(activeLayout,displayedColumns.map(col=>col.key),column.key)&&
-    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width)}
+    index<displayedColumns.length-1&&column.key!=='displayCode'&&
+    projectedTrailingBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,projectedExtras,compactOn)&&
+    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
       compensator={{index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns[displayedColumns.length-1].width),min:60,max:1600}}
-      min={60} max={1600} label={column.label} onCommit={width=>{
+        width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),
+        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,projectedExtras,compactOn)}}
+      {...projectedPhysicalLimits(column.key,projectedExtras,compactOn)}
+      label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
-        // Displayed width includes the group padding; the source field must not.
-        const extra=compactPairs.find(pair=>pair.anchor===column.key)?.extraWidth??0;
-        const sourceWidth=Math.max(60,width-extra);
-        if(customizing)setLayout(previous=>resizeWithLastColumn(previous,keys,column.key,sourceWidth));
-        else void applyViewerLayout(base=>resizeWithLastColumn(base,keys,column.key,sourceWidth));
+        // Preview and commit use the SAME physical widths; ID raw width stays >=60.
+        if(customizing)setLayout(previous=>resizeProjectedWithLastColumn(previous,keys,column.key,width,projectedExtras,compactOn));
+        else void applyViewerLayout(base=>resizeProjectedWithLastColumn(base,keys,column.key,width,projectedExtras,compactOn));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
-  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
+  {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
+      (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
+    ?<CompactGroupFilterCell key={column.key} items={items}
+      fields={compactPairs.find(pair=>pair.anchor===column.key)!.memberFields}
+      values={columnFilters} onChange={(field,value)=>setColumnFilters(previous=>{
+        const next={...previous};if(value)next[field]=value;else delete next[field];return next;
+      })}/>
+    :compactPairs.some(pair=>pair.anchor===column.key&&pair.variant==='roomSpecialist')
     ?<RoomSpecialistFilterCell key={column.key} items={items}
       room={columnFilters.room??''} person={columnFilters.specialist??''}
       onRoom={value=>setColumnFilters(previous=>({...previous,room:value}))}
@@ -496,29 +489,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
-          const anyEditable=pair.memberFields.some(field=>editableField(item,field));
+          const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));
           return <td key={column.key} data-col-key={column.key}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
-            style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
-            {key==='content'
-              ?<div className="compact-content-group">
-                <span className="compact-content-line">{compactField(item,'content')}
-                  <span className="compact-type-suffix" data-kind={compactTypeTone(item.type)}>
-                    ({compactField(item,'type')})
-                  </span>
-                </span>
-                {pair.hiddenFields.includes('department')&&
-                  <div className="compact-content-department">
-                    <span className="compact-pair-tag">Sở</span>{compactField(item,'department')}
-                  </div>}
-              </div>
-              :<div className="compact-pair-lines">
-                {pair.memberFields.map((field,index)=><div key={field}>
-                  <span className="compact-pair-tag">{pair.tags[index]}</span>
-                  {compactField(item,field)}
-                </div>)}
-              </div>}
+            style={undefined}>
+            <CompactGroupedValue item={item} pair={pair}
+              field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
+              tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
+              highlight={field=>cellHighlightStyle(item[field],field,activeLayout.cellHighlights)}
+              cvRoomInline={compactDisplay.cvRoomInline}/>
           </td>;
         }
         if(column.origin==='custom'){
@@ -538,7 +518,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             :<SearchHighlight value={value||'—'} query={columnFilters[column.key]}/>}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
-          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}
            className={canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?'editable-cell':undefined}

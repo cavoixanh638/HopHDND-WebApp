@@ -92,7 +92,17 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
     expect(css['--hdnd-status-done-text']).toBe('#007A18');
     expect(css['--hdnd-status-not-submitted-bg']).toBe('#FFE0E4');
     expect(css['--hdnd-status-other-bg']).toBe('#F2F6F9');
-    expect(Object.keys(css)).toHaveLength(8);
-    expect(Object.keys(css).every(key=>key.startsWith('--hdnd-status-'))).toBe(true);
+    expect(css['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F2');
+    expect(css['--hdnd-stage-office-bg']).toBe('#FFFBEB');
+    expect(css['--hdnd-stage-done-bg']).toBe('#F0FDF4');
+    expect(css['--hdnd-stage-done-border']).toBe('#BBF7D0');
+    const custom=statusPaletteCssVariables({...defaultStatusPalette(),
+      office:{text:'#884422',background:'#FCDDA0'}});
+    expect(custom['--hdnd-stage-office-bg']).toContain('#FCDDA0');
+    expect(custom['--hdnd-stage-office-border']).toContain('#884422');
+    expect(custom['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F2');
+    expect(Object.keys(css)).toHaveLength(14);
+    expect(Object.keys(css).every(key=>key.startsWith('--hdnd-status-')||
+      key.startsWith('--hdnd-stage-'))).toBe(true);
   });
 });

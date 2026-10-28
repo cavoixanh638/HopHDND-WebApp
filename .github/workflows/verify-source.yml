@@ -28,6 +28,8 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      - name: Codex review 008 exact R02 1600px boundary reproduction
+        run: npm exec -- vitest run tests/pr90-review-boundary.test.ts
       - name: Validate production BACKUP READ-ONLY helper offline (no Firebase credentials)
         run: |
           node --check scripts/firebase-production-readonly-backup.mjs
@@ -98,6 +100,15 @@ jobs:
         run: npm run build:pages:test
       - name: Build isolated real ItemList visual QA (no Firebase credentials)
         run: npm run build:compact:qa
+      - name: Measure historical W0 on exact pre-UI-V2 restore (synthetic fixture, no deploy)
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/ui-columns-pre-ui-v2"
+          git fetch --no-tags --depth=1 origin 8172c0650580931140fc71e59d3cc4d816879594
+          git worktree add --detach "$base" 8172c0650580931140fc71e59d3cc4d816879594
+          (cd "$base/source" && npm ci --no-audit --no-fund && npm run build:compact:qa)
+          node scripts/measure-baseline-id-browser.mjs "$base/source/dist-compact-qa" hophdnd-id-before-real.png
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
       - name: Package owner-clickable single HTML UI preview (synthetic only)
@@ -119,7 +130,24 @@ jobs:
             source/hophdnd-ui-smoke-pass.png
             source/hophdnd-compact-desktop-pass.png
             source/hophdnd-compact-mobile-pass.png
+            source/hophdnd-compact-tablet-pass.png
             source/hophdnd-compact-guest-pass.png
+            source/hophdnd-id-before-real.png
+            source/hophdnd-id-before-simulated.png
+            source/hophdnd-id-after.png
+            source/hophdnd-id-r04-before-23-simulated.png
+            source/hophdnd-id-r04-after-52px.png
+            source/hophdnd-review-r01-after.png
+            source/hophdnd-review-r02-after.png
+            source/hophdnd-review-r02-cap-after.png
+            source/hophdnd-review-r03-after.png
+            source/hophdnd-r05-before-white-simulated.png
+            source/hophdnd-r05-after-multitone-list.png
+            source/hophdnd-r05-after-list-stage-crop.png
+            source/hophdnd-r05-after-multitone-popup.png
+            source/hophdnd-r05-after-popup-stage-crop.png
+            source/hophdnd-r05-after-768px.png
+            source/hophdnd-r05-after-390px.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure

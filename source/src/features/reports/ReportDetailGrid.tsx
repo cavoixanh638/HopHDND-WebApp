@@ -14,6 +14,9 @@ import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
+import {CompactGroupFilterCell} from '../items/CompactGroupFilterCell';
+import {CompactGroupedValue} from '../items/CompactGroupedValue';
+import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY,readPersonalCompactDisplay} from '../items/compact-columns';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
@@ -31,6 +34,7 @@ type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
   catalog:CatalogConfig;
   listLayout?:ItemLayout;
+  viewerCompactScope?:string;
   allowDraft:boolean;
   readOnlyViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
@@ -47,7 +51,7 @@ type Props={
   onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,allowDraft,readOnlyViewer=false,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,canEditCell,
   onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
@@ -85,7 +89,15 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const displayedLayout=settings?pending:applied;
   const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>c.visible||showAll),
     [displayedLayout,showAll]);
-  const gridWidth=shownColumns.reduce((sum,c)=>sum+c.width,0);
+  // Popup retains its own source configuration; only the ordinary read view
+  // projects visible source members into the same groups as the main list.
+  const popupCompact=!settings&&!showAll;
+  const popupSource=shownColumns.map(c=>({...c,label:labelByKey.get(c.key)??c.key}));
+  const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
+    ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
+  const popupPairs=popupCompact?activeCompactPairs(popupSource,popupPrefs):[];
+  const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs):popupSource;
+  const gridWidth=renderedColumns.reduce((sum,c)=>sum+c.width,0);
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
   const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
   const visible=useMemo(()=>{
@@ -241,7 +253,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     <div className="report-grid-toolbar">
       <div className="report-grid-summary">
         <strong>{selectedIds.length} nội dung trong ô báo cáo</strong>
-        <span className="muted">Đang hiển thị {visible.length} nội dung · {shownColumns.length}/15 cột nguồn</span>
+        <span className="muted">Đang hiển thị {visible.length} nội dung · {renderedColumns.length}/15 cột nguồn</span>
         {inGroupDirty>0&&<span className="report-grid-draft">Có {inGroupDirty} nội dung đang sửa nháp</span>}
       </div>
       {!readOnlyViewer&&<div className="report-grid-actions">
@@ -352,41 +364,53 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     <div className="report-grid-scroll" role="region" tabIndex={0} aria-label="Bảng chi tiết các nội dung trong ô báo cáo">
       <table className="data-table report-detail-grid"
         style={{width:gridWidth+'px',minWidth:gridWidth+'px',tableLayout:'fixed'}}>
-        <colgroup>{shownColumns.map(c=><col key={c.key} style={{width:c.width+'px'}}/>)}</colgroup>
+        <colgroup>{renderedColumns.map(c=><col key={c.key} style={{width:c.width+'px'}}/>)}</colgroup>
         <thead>
-          <tr className="report-grid-heading-row">{shownColumns.map((c,index)=>
-            <ColumnHeader key={c.key} columnKey={c.key} sortLabel={labelByKey.get(c.key)}
+          <tr className="report-grid-heading-row">{renderedColumns.map((c,index)=>
+            <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
               sortDirection={sort?.key===c.key?sort.direction:null} onSort={editing?cycleSort:undefined}
-              disabled={!settings} previousKey={shownColumns[index-1]?.key}
-              nextKey={shownColumns[index+1]?.key} onMove={moveHeader}>
-              {labelByKey.get(c.key)}
+              disabled={!settings} previousKey={renderedColumns[index-1]?.key}
+              nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
+              {c.label}
               {!readOnlyViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
-                width={c.width} min={70} max={800} windowDragFallback
-                onCommit={width=>commitWidth(c.key,width)}/>}
+                width={c.width} min={70+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)}
+                max={800+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)} windowDragFallback
+                onCommit={width=>commitWidth(c.key as DetailColumnKey,width-(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0))}/>}
             </ColumnHeader>)}</tr>
-          <tr className="report-grid-filter-row">{shownColumns.map(c=>
-            <ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
+          <tr className="report-grid-filter-row">{renderedColumns.map(c=>popupPairs.some(pair=>pair.anchor===c.key&&
+              (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
+            ?<CompactGroupFilterCell key={c.key} items={subset}
+              fields={popupPairs.find(pair=>pair.anchor===c.key)!.memberFields}
+              values={filters} onChange={(field,value)=>setFilters(old=>{
+                const next={...old};if(value)next[field]=value;else delete next[field];return next;
+              })}/>
+            :<ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
               items={subset} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
                 const next={...old};if(value)next[c.key]=value;else delete next[c.key];return next;
               })}/>)}</tr>
         </thead>
         <tbody>
           {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
-            {shownColumns.map(c=>{const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
+            {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               canEditCell(item.recordId,c.key as TextField);
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
-                data-progress-tone={statusPaletteTone(c.key,item[c.key],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                data-progress-tone={statusPaletteTone(c.key,item[c.key as DetailColumnKey],statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
-                style={cellHighlightStyle(item[c.key],c.key,listLayout?.cellHighlights)}>{cell(item,c.key)}
+                style={pair?undefined:cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
+                {pair?<CompactGroupedValue item={item} pair={pair}
+                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&canEditCell(item.recordId,field)}
+                  tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                  highlight={field=>cellHighlightStyle(item[field],field,listLayout?.cellHighlights)}
+                  cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}
                 {c.key==='specialist'&&assignmentIssue(item,catalog)&&
               <small className="warning-text">{assignmentIssue(item,catalog)}</small>}</td>;})}
           </tr>)}
-          {!visible.length&&<tr><td colSpan={shownColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}
+          {!visible.length&&<tr><td colSpan={renderedColumns.length} className="empty">Không có nội dung phù hợp với bộ lọc.</td></tr>}
         </tbody>
       </table>
     </div>
