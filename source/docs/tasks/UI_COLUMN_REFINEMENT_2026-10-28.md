@@ -313,9 +313,9 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | Mã | Vị trí / vấn đề / ảnh hưởng | Yêu cầu sửa hoặc kiểm tra | Trả lời của bên thực hiện + commit | Kết quả rà lại |
 | --- | --- | --- | --- | --- |
 | R00 | Hồ sơ đã có PR #90 để rà | Đã kiểm source 3194553441 | Codex, lượt 005 / mục 13 | REVIEWED |
-| R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | Chờ ChatGPT ghi commit sửa | OPEN |
-| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | Chờ ChatGPT ghi commit sửa | OPEN |
-| R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | Chờ ChatGPT ghi commit sửa | OPEN |
+| R01 / P2 | ItemList.tsx:230–245 — bộ lọc nhóm người phụ trách chỉ tìm trường neo | Khôi phục tìm đủ tên lãnh đạo/CV/Phòng, giữ AND theo field U01/U02; bổ sung browser regression | ChatGPT: `3780379` sửa filter nhóm, `71c5d13`/`b991ff2` browser tìm full CV/UBND/VP/Phòng, U04 và AND. CI HEAD đang chạy | OPEN — chờ CI và Codex kiểm tra lại |
+| R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT: `f077053` helper width vật lý, `2960dfe` dùng chung preview/commit, `07974e3` unit và `48899dd` Chrome Alt+Arrow/drag/ID custom/nhóm cuối. CI HEAD đang chạy | OPEN — chờ CI và Codex kiểm tra lại |
+| R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | ChatGPT: `e6bb809` highlight từng member, `f3de2fe`+`b6c861e` list/popup, `fc4a574` CSS editor, `d6a8759` unit, `71c5d13` browser màu/ẩn/editor/popup. CI HEAD đang chạy | OPEN — chờ CI và Codex kiểm tra lại |
 | R04 / UX | ID 23px đạt tỷ lệ nhưng mã bị tách dòng | Chủ dự án quyết định UX sau khi R02 sửa; không tự đổi 52–64px | Chờ quyết định chủ dự án | OWNER_DECISION |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
@@ -398,3 +398,12 @@ Vị trí: [ItemList.tsx:481–489](https://github.com/cavoixanh638/HopHDND-WebA
 - Chưa nghiệm thu popup/full browser matrix độc lập ở mọi kích thước; cần bên thực hiện bổ sung test những lỗi trên và exact SHA mới để Codex rà lại.
 
 **Bàn giao cho ChatGPT:** sửa R01–R03 trên PR #90, giữ lịch sử các nhận xét, bổ sung test tái hiện và ghi commit/CI mới vào cột phản hồi. Chưa chuyển T9 sang triển khai khi các mục OPEN chưa đóng.
+
+### Lượt 006 — ChatGPT — 28/10/2026 — sửa review 005 (R01–R03), đang xác nhận CI
+
+- **Nhận xét nguồn:** Giữ nguyên toàn văn Lượt 005, cả ba R01/R02/R03 là P2 và R04 do chủ dự án quyết định. PR #90 vẫn cùng branch `feat/column-refinement-20261028`, không sửa main, không deploy.
+- **R01 đã commit:** `378037920e48099df7b88d2d049aaba383e9c02f` phân biệt bộ lọc nhóm nhân sự (dùng `merged:anchor` từ `compactFilterText`) và U01/U02 theo từng khóa source AND; không thay index text. `b991ff23c5dff3eb789d283c84fe41853cdec165` bổ sung Chromium gõ full tên CV/VP/UBND/Phòng, diacritics/no-diacritics, leadersTogether, bật U04 và ghép thêm filter Sở phải AND.
+- **R02 đã commit:** `f077053658a09d0dc04e5125453f3cb42cac158c` + `2960dfe3a7c2c9a88c9321c47bded3cc559c1513` thêm physical width projection khi ID cuối, ID raw vẫn min60. Preview clamp và commit `resizeProjectedWithLastColumn` dùng cùng domain; không resize trực tiếp ID. Test `07974e377211d4b55a8e290fe73c949631c802ec` bao gồm ArrowLeft/Right, pointer delta, group-last, ID custom125/reload. Browser `48899dd1840071e431c656fbbedc8d08e7aca6a8` thực hiện Alt+ArrowRight, keyboard và pointer real, đo tổng cột/trước–sau.
+- **R03 đã commit:** `e6bb8099092ff79def9a5e9d78dc5619a58f83f2`, `f3de2fe9f49e080e8fc3574ebec09c86ab4e7e1c`, `b6c861e94b86498c030d24845d88742042a6d911`, `fc4a5742ff2adb66a5f82dadf0a1c0c8de0e6216`: dùng `cellHighlightStyle(raw,field,...)` cho từng span/badge/3 trạng thái, editor và popup; không apply style của anchor lên toàn ô gộp. Test unit `d6a87592de1412b897e9a71dcf63aa1136a64139` cho field/wildcard/ưu tiên/hide/edit/U04. Browser `71c5d1312b9c411be9944640a0b07b1b5197e1a2` kiểm màu nguồn và màu gộp, hiển thị ẩn và popup.
+- **Fixture** chỉ được thêm trong `source/src/qa/compact-qa-main.tsx` qua query param QA và dữ liệu mock, không nằm trong production bundle.
+- **Đang chờ:** CI đầy đủ sau commit browser test mới nhất, số đo browser R02 cuối và kết quả R01/R03. Không coi code đã commit là VERIFIED. Sẽ ghi exact SHA, URL workflow, logs, ảnh khi CI hoàn tất; để Codex tái-review trước khi đóng R01–R03.
