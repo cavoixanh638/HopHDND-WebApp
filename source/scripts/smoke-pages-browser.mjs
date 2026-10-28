@@ -2143,6 +2143,88 @@ try{
   console.log('R02_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
+
+  // Codex 008 / R02: 1600px physical cap on a grouped source field.
+  // Check REAL keyboard and pointer, including when the capped group is last.
+  const r02Cap=[];
+  for(const sourceCap of [1470,1550,1600]){
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?cap-party='+sourceCap});
+    await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+      'R02 capped source fixture did not mount');
+    const before=await widthSnapshot();
+    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2813)>1)
+      throw Error('R02 cap baseline not 1600 / 2813: '+JSON.stringify({sourceCap,before}));
+    const focusCap=await evaluate(`(()=>{
+      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
+      if(!el)return false;el.focus();return document.activeElement===el;
+    })()`);
+    if(!focusCap)throw Error('R02 cap group cannot receive keyboard focus');
+    await realArrow('ArrowRight');
+    const atCap=await widthSnapshot();
+    assertSameTotal(before,atCap,'R02 cap ArrowRight source '+sourceCap);
+    if(atCap.party!==1600||atCap.widths[atCap.keys.indexOf('note')]!==240)
+      throw Error('R02 cap ArrowRight transferred hidden pixels: '+JSON.stringify(atCap));
+    await evaluate("document.querySelector('th[data-column-key=partyLevel] .column-resizer').focus()");
+    await realArrow('ArrowLeft');
+    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
+      'R02 cap ArrowLeft did not visibly shrink group');
+    const left=await widthSnapshot();
+    assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
+    if(left.party!==1590||left.widths[left.keys.indexOf('note')]!==250)
+      throw Error('R02 group target physical transfer mismatch: '+JSON.stringify(left));
+    const point=await evaluate(`(()=>{
+      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
+      el.scrollIntoView({block:'center',inline:'nearest'});
+      const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+    })()`);
+    if(point.x<0||point.x>1600)throw Error('R02 cap drag divider offscreen');
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+20,y:point.y,button:'left'});
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x+20,y:point.y,button:'left',clickCount:1});
+    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1599.5",
+      'R02 cap pointer drag did not clamp to physical max');
+    const drag=await widthSnapshot();
+    assertSameTotal(before,drag,'R02 cap pointer source '+sourceCap);
+    if(drag.party!==1600||drag.widths[drag.keys.indexOf('note')]!==240)
+      throw Error('R02 cap drag mismatch: '+JSON.stringify(drag));
+    if(sourceCap===1550){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-review-r02-cap-after.png',Buffer.from(shot.data,'base64'));
+    }
+
+    // Move grouped progress column to the last physical position; it now
+    // compensates for content (target) instead of Ghi chú (last).
+    await moveLast('partyLevel');
+    const lastBefore=await widthSnapshot();
+    if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
+    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
+    await realArrow('ArrowRight');
+    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
+      'R02 capped group last did not compensate');
+    const lastRight=await widthSnapshot();
+    assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
+    if(lastRight.content!==450||lastRight.party!==1590)
+      throw Error('R02 cap group-last ArrowRight values '+JSON.stringify(lastRight));
+    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
+    await realArrow('ArrowLeft');
+    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1600",
+      'R02 group last left did not restore cap');
+    const lastLeft=await widthSnapshot();
+    assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
+    if(lastLeft.content!==440||lastLeft.party!==1600)
+      throw Error('R02 cap group-last ArrowLeft values '+JSON.stringify(lastLeft));
+    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
+    await realArrow('ArrowLeft');
+    const lastAtCap=await widthSnapshot();
+    assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
+    if(lastAtCap.party!==1600||lastAtCap.content!==440)
+      throw Error('R02 group-last cap should not give phantom pixels '+JSON.stringify(lastAtCap));
+    r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
+  }
+  console.log('R02_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
+
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
