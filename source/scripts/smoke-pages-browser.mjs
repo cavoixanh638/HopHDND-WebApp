@@ -1915,6 +1915,27 @@ try{
   r01.push(await staffSearch('room','Phong mau 2',2));
   r01.push(await staffSearch('room','PCVP Trần Văn B',1));
   r01.push(await staffSearch('room','PCT Nguyễn Văn C',1));
+  // Combining a grouped staff search with an independent U01 Sở filter must
+  // remain AND, never a merged OR across unrelated source fields.
+  await evaluate("document.querySelector('th[data-filter-key=room] input')?.focus()");
+  await send('Input.insertText',{text:'Chuyên viên mẫu A'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
+    'R01 grouped CV filter absent before AND check');
+  const addDepartment=await evaluate(`(()=>{
+    const select=document.querySelector('th[data-filter-key=department] select');
+    if(!select||![...select.options].some(x=>x.value==='Sở mẫu B'))return false;
+    select.value='Sở mẫu B';select.dispatchEvent(new Event('change',{bubbles:true}));return true;
+  })()`);
+  if(!addDepartment)throw Error('R01 U01 source-level department filter missing');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
+    'R01 staff + department AND did not exclude nonmatches');
+  await evaluate("document.querySelector('th[data-filter-key=department] .item-filter-clear')?.click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
+    'R01 clearing department did not restore staff-only filter');
+  await evaluate("document.querySelector('th[data-filter-key=room] .item-filter-clear')?.click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
+    'R01 clearing second filter did not restore all rows');
+
   const toggleLeader=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
     menu.open=true;
