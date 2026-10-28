@@ -18,9 +18,9 @@ function StageCard({stage}: {stage:SummaryStage}){
       {stage.buckets.map(bucket=><div className={'item-summary-bucket item-summary-bucket-'+bucket.stage}
         key={bucket.stage}><span>{bucket.label}</span><strong>{bucket.count}</strong></div>)}
     </div>
-    {stage.unmatched>0&&<p className="item-summary-unmatched" role="note">
-      Chưa chuẩn hóa / ngoài nhóm: <strong>{stage.unmatched}</strong> (vẫn thuộc tổng {stage.total})
-    </p>}
+    <p className="item-summary-unmatched" role="note">
+      Chưa chuẩn hóa / ngoài nhóm: <strong>{stage.unmatched}</strong> (thuộc tổng {stage.total})
+    </p>
   </article>;
 }
 /** Rendered immediately above the MAIN ItemList table; never in report popups. */
@@ -34,9 +34,9 @@ export function ItemSummaryCards({items}:{items:Item[]}){
         <span>Nghị quyết <strong>{value.total.nq}</strong></span>
         <span>Báo cáo <strong>{value.total.bc}</strong></span>
       </p>
-      {value.total.unclassified>0&&<p className="item-summary-unmatched">
+      <p className="item-summary-unmatched">
         Chưa phân loại: <strong>{value.total.unclassified}</strong>
-      </p>}
+      </p>
     </article>
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}/>)}
   </section>;
