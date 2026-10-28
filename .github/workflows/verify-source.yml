@@ -120,6 +120,8 @@ jobs:
             source/hophdnd-compact-desktop-pass.png
             source/hophdnd-compact-mobile-pass.png
             source/hophdnd-compact-guest-pass.png
+            source/hophdnd-id-before-simulated.png
+            source/hophdnd-id-after.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure
