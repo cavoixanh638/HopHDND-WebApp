@@ -38,6 +38,8 @@ import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {projectedIdWidth,projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
+import {fitTableColumns} from '../../data/fit-table-columns';
+import {useElementWidth} from '../../components/useElementWidth';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
@@ -275,12 +277,30 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   };
   const aliasCounts = useMemo(()=>{const counts=new Map<string,number>();items.filter(item=>!isMissingDisplayCode(item.displayCode)).forEach(item=>counts.set(displayId(item),(counts.get(displayId(item))??0)+1));return counts;},[items]);
   // Recompute from source layout exactly once: do not persist scaled ID widths.
-  const visualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
+  const baseVisualWidth=(value:number,key?:string)=>key==='displayCode'&&!customizing&&!showAllSourceColumns
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
-  const projectedExtras=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,pair.extraWidth]));
+  const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
+  const baseWidths=displayedColumns.map(c=>({key:c.key,width:baseVisualWidth(c.width,c.key)}));
+  const fitWeights=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,
+    pair.variant==='contentDetails'||pair.variant==='partyTogether'?3:2]));
+  const weights:Record<string,number>={content:3,specificProgress:2,...fitWeights};
+  const fitGrowth=useRef<{signature:string;growth:Record<string,number>}|null>(null);
+  const fitSignature=JSON.stringify(baseWidths.map(c=>[c.key,weights[c.key]??1]));
+  const fittedWidths=fitTableColumns(baseWidths,
+    !customizing&&!showAllSourceColumns?Math.max(500,viewportWidth):0,weights,
+    fitGrowth.current?.signature===fitSignature?fitGrowth.current.growth:undefined);
+  fitGrowth.current={signature:fitSignature,growth:Object.fromEntries(baseWidths.map(c=>
+    [c.key,fittedWidths[c.key]-c.width]))};
+  const visualWidth=(value:number,key?:string)=>key&&fittedWidths[key]!==undefined
+    ?fittedWidths[key]:baseVisualWidth(value,key);
+  // Treat transient viewport expansion as a projection extra, so drag preview
+  // and source-width inverse transfer the SAME pixels to the last column.
+  const projectedExtras=Object.fromEntries(displayedColumns.map(c=>[c.key,
+    (compactPairs.find(pair=>pair.anchor===c.key)?.extraWidth??0)+
+    fittedWidths[c.key]-baseVisualWidth(c.width,c.key)]));
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
-  const tableWidth=compactPairs.length?Math.max(500,shownWidth):
+  const tableWidth=compactOn?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
@@ -447,7 +467,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}

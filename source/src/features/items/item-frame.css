@@ -796,7 +796,7 @@
 .compact-document-department{flex:1 1 140px;min-width:0;font-size:12px;overflow-wrap:anywhere}
 .compact-document-content{min-width:0;font-size:13px;font-weight:650;white-space:pre-wrap;overflow-wrap:anywhere}
 .compact-document-content .content-button{white-space:normal;text-align:left;overflow-wrap:anywhere}
-.compact-stages{display:grid;gap:5px;min-width:0}
+.compact-stages{display:grid;gap:5px;min-width:0;container-type:inline-size}
 /* R05: ONE softly tinted frame per stage (number, label, state), matching
    the solid source-image fills. Custom palettes inherit their own light tint. */
 .compact-stage-row{
@@ -824,6 +824,14 @@
 }
 .compact-stage-label{display:flex;gap:6px;align-items:flex-start;min-width:0;
   color:#334155;font-weight:700;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+/* A saved narrow column must not turn a status into a vertical letter strip.
+   Respond to the column itself, including a narrow column on a wide monitor. */
+@container (max-width:280px){
+  .compact-stage-row{grid-template-columns:minmax(0,1fr);gap:5px}
+}
+.item-data-table .item-heading-row th[data-column-key="displayCode"] .column-heading-label{
+  white-space:nowrap;
+}
 .compact-stage-number{display:inline-grid;place-items:center;flex:none;min-width:20px;height:20px;
   border-radius:50%;background:var(--stage-number-bg);color:var(--stage-number-text);font-weight:800}
 .compact-stage-level{font-weight:500;overflow-wrap:anywhere}

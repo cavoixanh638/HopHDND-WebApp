@@ -1,6 +1,8 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
+> **Công việc tiếp theo — Lượt 017:** Codex sửa tự dàn bảng theo khung trên nhánh `fix/table-fill-width-20261029`, chưa phát hành. Trạng thái PAGES_PUBLISHED bên dưới chỉ nói về PR #90.
+
 > **Trạng thái: PAGES_PUBLISHED — PR #90 đã merge `79f129b`; publisher và Pages SUCCESS, commit build `05bf711`. Chủ dự án cho phép merge + tự publish, không deploy Firebase/đổi dữ liệu. R01–R05 VERIFIED trong phạm vi review; live đã đúng asset và cột gộp. Cần theo dõi bố cục đang lưu: ID đo 46px (mặc định source test 52px), tiến độ 190px làm chữ xuống nhiều dòng; chưa sửa cấu hình. Xem Lượt 016.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
@@ -835,3 +837,29 @@ Computed style live: khung chưa trình nền `#FFF1F2` / viền `#FECDD3`; khô
 **Giới hạn cần theo dõi — bố cục đang lưu:** cột live đo ID **46px**, Nội dung **192px**, Tiến độ **190px**, Tiến độ hiện tại **170px**, Ghi chú **221px**, người phụ trách **168px**. Ảnh desktop cho thấy tên ID và trạng thái xuống nhiều dòng do cột hẹp. Không gọi đây là live ID 52px: 52px là mặc định đã kiểm trong fixture; hàm projection vẫn giữ/scales độ rộng tùy chỉnh (source 60 → 46px theo 52/68). Suy luận phù hợp với bố cục tùy chỉnh đang được áp dụng; lượt này không đọc trực tiếp cấu hình backend để quy nguyên nhân cho Firebase hay local cache. Chưa đổi layout/localStorage để ép số đo theo mặc định. R01–R05 giữ kết luận kiểm source trước đó, nhưng **chưa xác nhận độ dễ đọc của bố cục live hiện tại được chủ dự án chấp nhận**; có thể xử lý tiếp bằng nhiệm vụ bố cục riêng.
 
 Lượt này không deploy Firebase Rules/Functions, nhập/xóa/sửa dữ liệu nghiệp vụ, đổi dataSource hoặc thực hiện cutover. Chỉ merge, theo dõi workflow được cho phép, đọc trang và cập nhật hồ sơ phát hành. Commit tài liệu kế tiếp không thay asset/source; nếu tạo run Pages mới do cơ chế của repo thì phải phân biệt với build nguồn đã nêu.
+
+## 23. Lượt 017 — Codex sửa bảng tự phủ khung — 29/10/2026
+
+**Yêu cầu mới:** chủ dự án phản ánh bảng chỉ chiếm một phần khung đã chọn, bên phải trống trong khi trạng thái xuống từng chữ. Codex nhận thực hiện trực tiếp và tạo PR để xem trước; chưa merge/publish đợt sửa này. Base `3ae213b6de0e79722eec92722e7f7d6f14474483`, nhánh `fix/table-fill-width-20261029`.
+
+### Thay đổi
+
+- Danh sách thông thường đo chiều rộng viewport cuộn (đã trừ scrollbar dọc), tự cộng phần dư vào các cột chữ theo trọng số: Nội dung/Tiến độ 3, nhóm người phụ trách/Tiến độ hiện tại 2, các cột chữ còn lại 1. ID/STT không nhận phần dư. Nếu tổng cột vượt khung thì giữ kích thước và cuộn ngang, không ép co chữ.
+- Phần cộng do viewport chỉ ở bộ nhớ, không tự lưu Firebase/localStorage hoặc sửa layout nguồn. Khi người quản trị chủ động kéo, vẫn dùng CAS/rollback sẵn có và chỉ đổi cột kéo + cột cuối; phần cộng được giữ ổn định trong một lần chuyển pixel, kể cả cột ở cap 1600. Không reset config, quyền, lease, dữ liệu hoặc 5 báo cáo.
+- Cột tiến độ hẹp dùng container query theo chính chiều rộng cột để đặt trạng thái dưới nhãn; không phụ thuộc riêng breakpoint màn hình. Nền khung và pill R05 được giữ. Tiêu đề ID không tách I/D. Mặc định/custom ID và phép chiếu 52/68 giữ nguyên; không ép layout live 46px thành 52px trong nhiệm vụ này.
+- Không tự dàn khi chỉnh schema/bật đủ cột Excel. Popup chỉ nhận fallback trạng thái hẹp từ CSS renderer chung; chưa thay quy tắc width/resize riêng của popup.
+
+### Kiểm tra local với dữ liệu giả
+
+- Typecheck, **527 unit PASS / 52 skipped**, build Pages và docs check đều PASS local. CI exact SHA được báo tại PR sau khi commit. Kiểm thêm target/last và ID-last, cap1600, resize sau khi cột đã đạt cap nhờ tự dàn.
+- Browser fixture `compact-qa.html?fit=1&r05=1&edit=1` ở viewport 1440px: viewport bảng **1314px**, tổng bảng **1314px**, ID **46**, Nội dung **279**, Tiến độ **299**, người phụ trách **372**, Tiến độ hiện tại **222**, Ghi chú **96** px. Không còn vùng trắng bên phải trong viewport bảng. ID 46 là custom source 60 chiếu 52/68, không phải số đo của mặc định 52px.
+- Kéo chuột thật tại viewport mặc định 1280: trước Nội dung **236**, Ghi chú **82**; sau kéo trái 15px: Nội dung **221**, Ghi chú **97**; các cột khác giữ **46/256/344/194**, tổng bảng vẫn **1158px**. Kéo phải khi cột cuối đã ở min không vượt giới hạn.
+- Chọn khung **900px**: viewport cuộn **888px**, bảng **916px**, cuộn ngang vì tổng cột lớn hơn khung; nhãn/trạng thái xếp dọc, vùng trạng thái **151px**, không thành dải chữ đứng.
+- Mobile **390px**: body **375px** không tràn ngang viewport, vùng bảng **283px** cuộn trong khung, bảng **916px**; trạng thái còn vùng **125px**. Không ghi hoặc sửa dữ liệu thật.
+- CI source trên `eaa6f9b` dừng 2 lần tại phép đo hover báo cáo có sẵn: lấy mẫu giữa transition cho lift -2.56/-1.92 thay vì -3px. CSS hover/báo cáo không đổi trong PR. Bổ sung chờ hoạt ảnh CSS kết thúc trước khi lấy mẫu và reset; giữ nguyên toàn bộ assert cuối về hover, lift -3, shadow 8px/16px, badge đứng yên, ô trống và chiều rộng click. Không nới sai số, bỏ kiểm hoặc thay giao diện để làm test qua. Hai workflow Firebase giả lập của commit này SUCCESS; CI phải chạy lại trên HEAD có bản sửa timing.
+
+### Bàn giao
+
+Phần sửa được đưa vào PR riêng để kiểm CI và xem ảnh local. Source/browser PASS không đồng nghĩa Pages đã đổi; không merge, auto-merge, publish, deploy Firebase hoặc thay dữ liệu production trong lượt này. Chỉ thị cho phép merge/publish PR #90 ở Lượt 016 không được tự coi là chấp thuận phát hành mọi tính năng tiếp theo.
+
+![Bảng phủ hết khung desktop — fixture giả, chế độ sửa](assets/UI-TABLE-FILL-20261029-desktop.png)
