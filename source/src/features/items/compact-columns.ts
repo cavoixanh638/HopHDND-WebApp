@@ -158,22 +158,3 @@ export function compactFilterText(item:Item,key:string,pairs:readonly CompactPai
   const source=item as unknown as Record<string,unknown>;
   return members.map(field=>String(source[field]??'')).filter(Boolean).join(' ');
 }
-
-export type SemanticGroupId='identity'|'workflow'|'assignment'|'tracking';
-export interface SemanticGroupMeta {
-  id:SemanticGroupId;
-  shortLabel:string;
-  title:string;
-}
-export const SEMANTIC_GROUPS:Readonly<Record<SemanticGroupId,SemanticGroupMeta>>={
-  identity:{id:'identity',shortLabel:'Hồ sơ & Nội dung',title:'Định danh và nội dung văn bản'},
-  workflow:{id:'workflow',shortLabel:'Tiến độ 3 cấp',title:'Chuỗi tiến độ Thành ủy · Xây dựng · Ban hành'},
-  assignment:{id:'assignment',shortLabel:'Đơn vị & Phân công',title:'Sở chủ trì, Phòng, Chuyên viên và Lãnh đạo'},
-  tracking:{id:'tracking',shortLabel:'Diễn biến & Ghi chú',title:'Tiến độ hiện tại và ghi chú xử lý'},
-};
-export function columnSemanticGroup(key:string):SemanticGroupMeta {
-  if(['displayCode','stt','content','type'].includes(key))return SEMANTIC_GROUPS.identity;
-  if(['partyLevel','progressParty','progressBuild','progressCouncil'].includes(key))return SEMANTIC_GROUPS.workflow;
-  if(['department','room','specialist','vpLeader','ubndLeader'].includes(key))return SEMANTIC_GROUPS.assignment;
-  return SEMANTIC_GROUPS.tracking;
-}
