@@ -227,8 +227,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const filtered=useMemo(()=>{
     const permitted=new Set(columns.map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
+    // Staff headers search the FULL strings of every projected member.
+    // U01/U02 use independent source filters (AND), not group-wide OR.
+    const staffGroupKeys=new Set(compactPairs
+      .filter(p=>p.variant==='teamTogether'||p.variant==='leadersTogether')
+      .map(p=>p.anchor));
+    const staffGroupTerms=Object.entries(columnFilters)
+      .filter(([key,term])=>staffGroupKeys.has(key)&&term.trim())
+      .map(([key,term])=>({key:'merged:'+key,term:normalizeSearch(term)}));
     const ordinary=Object.entries(columnFilters)
-      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&permitted.has(key)&&term.trim())
+      .filter(([key,term])=>EXCEL_COLUMN_KEYS.includes(key)&&permitted.has(key)&&
+        !staffGroupKeys.has(key)&&term.trim())
       .map(([key,term])=>({key,term:normalizeSearch(term)}));
     const roomTerm=roomSpecialist?(columnFilters.room??''):'';
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
@@ -240,6 +249,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       const values=filterIndex.get(item.recordId);
       if(!values)return false;
       return ordinary.every(({key,term})=>values[key]?.includes(term))&&
+        staffGroupTerms.every(({key,term})=>values[key]?.includes(term))&&
         (!roomTerm||item.room===roomTerm)&&
         (!personTerm||values.specialist?.includes(personTerm))&&
         custom.every(({key,term})=>values[key]?.includes(term));
