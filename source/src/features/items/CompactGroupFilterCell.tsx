@@ -1,6 +1,6 @@
 import type {KeyboardEvent} from 'react';
 import type {Item} from '../../../shared/types';
-import {filterChoices,filterValue} from './ColumnFilterCell';
+import {filterChoices} from './ColumnFilterCell';
 import {preserveStickyFilterViewport} from './filter-scroll';
 
 /** Every source filter survives the visual grouping. Independent source filters
