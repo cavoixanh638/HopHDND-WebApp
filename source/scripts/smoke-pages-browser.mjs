@@ -532,10 +532,18 @@ try{
     const sort=stt?.querySelector('.column-sort-button');
     if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
-    const gap=viewport.getBoundingClientRect().top-tabs.bottom;
+    const cards=document.querySelector('.item-summary-grid');
+    const cardRect=cards?.getBoundingClientRect();
+    const gapBefore=cardRect?.top-tabs.bottom;
+    const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    return {ok:aligned&&gap<155&&!status&&!cardHeader&&!!localMenu,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
+    // Same strict no-extra-blank-space contract, now measured before and after
+    // the four explicitly requested summary cards instead of across their height.
+    return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
+      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!!localMenu,
+      aligned,gapBefore,gapAfter,cardHeight:cardRect?.height,
+      hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const mainSectionCards=await evaluate(`(()=>{
