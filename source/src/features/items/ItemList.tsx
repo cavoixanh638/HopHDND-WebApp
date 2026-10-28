@@ -482,6 +482,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
+    {!executiveMode&&!customizing&&!qaLegacyView&&<div className="pm-return-bar" style={{padding:'8px 14px',margin:'0 0 10px',background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'8px'}}>
+      <span style={{fontSize:'13px',fontWeight:700,color:'#0369A1'}}>Đang ở chế độ xem: Bảng đầy đủ 15 Cột Excel</span>
+      <button type="button" className="button primary" style={{fontSize:'12.5px',minHeight:'32px'}} onClick={()=>{setShowExecutive(true);setShowAllSourceColumns(false);}}>← Quay lại Bảng Gọn ProMax</button>
+    </div>}
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
@@ -493,7 +497,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       }
     }} disabled={locked}/>:<>{executiveMode?<ExecutiveDetailTable items={executiveRows} visibleFields={executiveFields}
       renderField={compactField} hasDraft={item=>!!drafts[item.recordId]} errorFor={item=>errors[item.recordId]}
-      query={executiveSearch} onQuery={setExecutiveSearch}/>:<div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+      query={executiveSearch} onQuery={setExecutiveSearch} onSwitchToSpreadsheet={()=>{setShowExecutive(false);setShowAllSourceColumns(true);}}/>:<div className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`max(100%, ${tableWidth}px)`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
