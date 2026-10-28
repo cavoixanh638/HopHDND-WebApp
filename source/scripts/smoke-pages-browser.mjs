@@ -2388,6 +2388,88 @@ try{
   }
   console.log('R02_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
 
+
+  // Lượt 018: real main-list cards and stable group titles, not report modal cards.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&r05=1'});
+  await eventually("document.querySelectorAll('.item-summary-grid [data-summary-card]').length===4",
+    'Lượt 018: four summary cards missing from main list');
+  const fourDesktop=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid > article')];
+    const summary=document.querySelector('.item-summary-grid').getBoundingClientRect();
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    const region=document.querySelector('.item-data-region').getBoundingClientRect();
+    const headings=[...document.querySelectorAll('.item-heading-row th')].map(c=>c.textContent.trim());
+    const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
+    const nq=Number(document.querySelector('.item-summary-subcounts span:first-child strong')?.textContent);
+    const bc=Number(document.querySelector('.item-summary-subcounts span:nth-child(2) strong')?.textContent);
+    const stages=['party','build','nq'].map(k=>{
+      const card=document.querySelector('[data-summary-card='+k+']');
+      return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
+        percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
+        width:card.getBoundingClientRect().width};
+    });
+    return {ok:cards.length===4&&cards.every(c=>Math.abs(c.getBoundingClientRect().top-cards[0].getBoundingClientRect().top)<2)&&
+      summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
+      headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
+      headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
+      headings.some(x=>x.includes('Nhóm phụ trách tùy chỉnh'))&&
+      total===nq+bc&&stages.map(x=>x.status).join(',')==='4,4,3',
+      total,nq,bc,regionWidth:region.width,summaryWidth:summary.width,
+      summaryBottom:summary.bottom,tableTop:table.top,headings,stages};
+  })()`);
+  if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
+  const fourDesktopShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-four-cards-desktop.png',Buffer.from(fourDesktopShot.data,'base64'));
+  // Verify filtering changes the *same* cards as the table, before any pagination.
+  const inputFocus=await evaluate(`(()=>{
+    const el=document.querySelector('[data-filter-key=displayCode] input');
+    if(!el)return false;el.focus();return document.activeElement===el;
+  })()`);
+  if(!inputFocus)throw Error('Lượt 018 ID filter missing');
+  await send('Input.insertText',{text:'NQ01'});
+  await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
+    'Lượt 018 summary total failed to follow ID column filter');
+  const filteredSummary=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
+    const total=Number(cards[0].querySelector('.item-summary-total-count').textContent);
+    const rows=document.querySelectorAll('.item-data-table tbody tr.color-row').length;
+    return {total,rows};
+  })()`);
+  if(filteredSummary.total!==1||filteredSummary.rows!==1)
+    throw Error('Lượt 018 summary/list filter scope differs: '+JSON.stringify(filteredSummary));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&popup=1'});
+  await eventually("document.querySelector('.report-detail-grid .compact-stages')!==null",
+    'Lượt 018 popup group missing');
+  const popupHeadings=await evaluate(`[...document.querySelectorAll('.report-grid-heading-row th')].map(c=>c.textContent.trim())`);
+  if(!popupHeadings.some(x=>x.includes('Hồ sơ tùy chỉnh'))||
+      !popupHeadings.some(x=>x.includes('Ba khâu tùy chỉnh'))||
+      document.querySelector('.item-summary-grid'))
+    throw Error('Lượt 018 popup title fallback or unexpected KPI cards: '+JSON.stringify(popupHeadings));
+  const popupShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-group-titles-popup.png',Buffer.from(popupShot.data,'base64'));
+
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&r05=1'});
+  await eventually("document.querySelectorAll('.item-summary-grid [data-summary-card]').length===4",
+    'Lượt 018 mobile cards missing');
+  const fourMobile=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid > article')];
+    const bounds=cards.map(x=>x.getBoundingClientRect());
+    const s=document.querySelector('.item-summary-grid').getBoundingClientRect();
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    return {ok:bounds.length===4&&bounds.every((r,i)=>r.width<=s.width+2&&
+      r.left>=s.left-1&&(i===0||r.top>=bounds[i-1].bottom-1))&&
+      bounds[3].bottom<table.top&&document.scrollingElement.scrollWidth<=innerWidth+4,
+      widths:bounds.map(r=>r.width),tops:bounds.map(r=>r.top),
+      bottom:bounds.at(-1).bottom,tableTop:table.top,body:document.scrollingElement.scrollWidth,viewport:innerWidth};
+  })()`);
+  if(!fourMobile.ok)throw Error('Lượt 018 mobile stacked cards overflow: '+JSON.stringify(fourMobile));
+  const mobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-four-cards-mobile.png',Buffer.from(mobileShot.data,'base64'));
+  console.log('L018_GROUP_LABELS_AND_FOUR_CARDS_PASS',JSON.stringify({fourDesktop,filteredSummary,popupHeadings,fourMobile}));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
