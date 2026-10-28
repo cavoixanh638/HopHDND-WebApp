@@ -4,20 +4,21 @@ import {compactTypeTone,type CompactPair} from './compact-columns';
 
 type Props={
  item:Item;pair:CompactPair;field:(key:TextField)=>ReactNode;
- tone:(key:TextField)=>string|undefined;cvRoomInline?:boolean;
+ tone:(key:TextField)=>string|undefined;editable?:(key:TextField)=>boolean;cvRoomInline?:boolean;
 };
 /** Single UI-only renderer for list/report drill-down. Source fields, editors,
  * access checks, leases and filters are supplied independently by each host. */
-export function CompactGroupedValue({item,pair,field,tone,cvRoomInline=false}:Props){
+export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,cvRoomInline=false}:Props){
  const includes=(key:string)=>pair.memberFields.includes(key);
  const shown=(key:TextField)=>field(key);
  if(pair.variant==='contentDetails'){
-   const header=includes('type')&&!!item.type||includes('department')&&!!item.department;
+   const header=includes('type')&&(!!item.type||editable('type'))||
+     includes('department')&&(!!item.department||editable('department'));
    return <div className="compact-document-group">
      {header&&<div className="compact-document-heading">
-       {includes('type')&&!!item.type&&<span className="compact-document-badge"
+       {includes('type')&&(!!item.type||editable('type'))&&<span className="compact-document-badge"
           data-kind={compactTypeTone(item.type)}>{shown('type')}</span>}
-       {includes('department')&&!!item.department&&
+       {includes('department')&&(!!item.department||editable('department'))&&
          <strong className="compact-document-department">{shown('department')}</strong>}
      </div>}
      {includes('content')&&<div className="compact-document-content">{shown('content')}</div>}
@@ -34,7 +35,7 @@ export function CompactGroupedValue({item,pair,field,tone,cvRoomInline=false}:Pr
        <div className="compact-stage-row" key={stage.key}>
          <span className="compact-stage-label">
            <span className="compact-stage-number">{stage.number}</span>
-           <span>{stage.label}{stage.key==='progressParty'&&includes('partyLevel')&&!!item.partyLevel&&
+           <span>{stage.label}{stage.key==='progressParty'&&includes('partyLevel')&&(!!item.partyLevel||editable('partyLevel'))&&
              <span className="compact-stage-level"> ({shown('partyLevel')})</span>}</span>
          </span>
          {includes(stage.key)&&<span className="compact-stage-state"
@@ -52,11 +53,11 @@ export function CompactGroupedValue({item,pair,field,tone,cvRoomInline=false}:Pr
      </div>)}
      <div className="compact-cv-room-line">
        <span className="compact-pair-tag">{item.specialist?'CV':'Phòng'}</span>
-       {item.specialist&&shown('specialist')}
-       {!!item.room&&<span className="compact-cv-room-name">
+       {(item.specialist||editable('specialist'))&&shown('specialist')}
+       {(!!item.room||editable('room'))&&<span className="compact-cv-room-name">
          {item.specialist?' (':''}{shown('room')}{item.specialist?')':''}
        </span>}
-       {!item.room&&!item.specialist&&shown('specialist')}
+       {!item.room&&!item.specialist&&!editable('specialist')&&!editable('room')&&shown('specialist')}
      </div>
    </div>;
  }
