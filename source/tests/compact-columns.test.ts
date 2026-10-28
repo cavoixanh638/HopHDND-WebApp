@@ -8,7 +8,7 @@ import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,co
   from '../src/features/items/compact-columns';
 
 afterEach(()=>vi.unstubAllGlobals());
-describe('Optional compact projection remains read-only presentation',()=>{
+describe('Mandatory document/stage projection and optional staff groups are read-only presentation',()=>{
   const all={...DEFAULT_COMPACT_DISPLAY,typeInContent:true,leadersTogether:true,
     roomSpecialist:true,shortSpecialist:true};
   it('does not remove or mutate the 15 Excel source columns',()=>{
@@ -16,21 +16,22 @@ describe('Optional compact projection remains read-only presentation',()=>{
     const pairs=activeCompactPairs(source,all);
     const displayed=compactVisibleColumns(source,all);
     expect(source).toHaveLength(15);
-    expect(displayed).toHaveLength(12);
-    expect(pairs.map(p=>p.hidden)).toEqual(['type','ubndLeader','specialist']);
-    expect(displayed.find(c=>c.key==='content')?.label).toContain('Loại VB');
+    expect(displayed).toHaveLength(8);
+    expect(pairs.map(p=>p.variant)).toEqual(['contentDetails','partyTogether','leadersTogether','roomSpecialist']);
+    expect(displayed.find(c=>c.key==='content')?.label).toBe('Nội dung trình');
     expect(displayed.find(c=>c.key==='vpLeader')?.label).toContain('UBND');
     expect(displayed.find(c=>c.key==='room')?.label).toBe('Phòng chuyên môn / Chuyên viên');
     expect(displayed.some(c=>c.key==='specialist')).toBe(false);
-    expect(displayed.some(c=>c.key==='department')).toBe(true);
+    expect(displayed.some(c=>c.key==='department')).toBe(false);
     expect(source.find(c=>c.key==='content')?.label).toBe('Nội dung trình');
-    expect(compactVisibleColumns(source,DEFAULT_COMPACT_DISPLAY)).toHaveLength(15);
+    expect(compactVisibleColumns(source,DEFAULT_COMPACT_DISPLAY)).toHaveLength(10);
   });
   it('only merges pairs when both source columns are shown',()=>{
     const columns=defaultItemLayout().columns.filter(c=>c.key!=='content');
     const projected=compactVisibleColumns(columns,all);
     expect(projected.some(c=>c.key==='type')).toBe(true);
-    expect(activeCompactPairs(columns,all).map(p=>p.hidden)).not.toContain('type');
+    expect(projected.some(c=>c.key==='department')).toBe(false);
+    expect(activeCompactPairs(columns,all).find(p=>p.variant==='contentDetails')?.anchor).toBe('type');
   });
   it('abbreviates displayed specialist but searches full unmodified original name',()=>{
     const item={...createDemoItems(1)[0],specialist:'Nguyễn Ngọc Hùng',
@@ -51,7 +52,7 @@ describe('Optional compact projection remains read-only presentation',()=>{
     const item={...createDemoItems(1)[0],
       vpLeader:'Nguyễn Ngọc Hùng',ubndLeader:'Trần Văn Quân'};
     expect(prefs.shortSpecialist).toBe(false);
-    expect(activeCompactPairs(defaultItemLayout().columns,prefs)).toHaveLength(0);
+    expect(activeCompactPairs(defaultItemLayout().columns,prefs).map(p=>p.variant)).toEqual(['contentDetails','partyTogether']);
     expect(abbreviateVietnameseName(item.vpLeader)).toBe('N.N.Hùng');
     expect(abbreviateVietnameseName(item.ubndLeader)).toBe('T.V.Quân');
     expect(normalizeSearch(item.vpLeader)).toContain('nguyen ngoc hung');
@@ -97,13 +98,13 @@ describe('Optional compact projection remains read-only presentation',()=>{
       councilTogether:true,teamTogether:true};
     const groups=activeCompactPairs(source,prefs);
     const shown=compactVisibleColumns(source,prefs);
-    expect(groups.map(g=>g.anchor)).toEqual(['content','partyLevel','progressBuild','room']);
+    expect(groups.map(g=>g.anchor)).toEqual(['content','partyLevel','room']);
     expect(groups.flatMap(g=>g.hiddenFields)).toEqual([
-      'type','department','progressParty','progressCouncil','specialist','ubndLeader','vpLeader'
+      'type','department','progressParty','progressBuild','progressCouncil','specialist','ubndLeader','vpLeader'
     ]);
-    expect(shown).toHaveLength(8);
+    expect(shown).toHaveLength(7);
     expect(source).toHaveLength(15);
-    expect(shown.find(c=>c.key==='content')?.label).toContain('Sở');
+    expect(shown.find(c=>c.key==='content')?.label).toBe('Nội dung trình');
     expect(shown.find(c=>c.key==='room')?.label).toContain('Lãnh đạo');
     const item={...createDemoItems(1)[0],content:'Dự thảo',department:'Sở Y tế',type:'QPPL',
       partyLevel:'Ban Thường vụ',progressParty:'Đã gửi ĐU',progressBuild:'Sở chưa trình',
@@ -111,8 +112,7 @@ describe('Optional compact projection remains read-only presentation',()=>{
       vpLeader:'PCVP Nguyễn Văn B',room:'Phòng Tổng hợp',specialist:'Lê Minh H'};
     for(const [anchor,expected] of [
       ['content',['Dự thảo','Sở Y tế','QPPL']],
-      ['partyLevel',['Ban Thường vụ','Đã gửi ĐU']],
-      ['progressBuild',['Sở chưa trình','VP đang thực hiện']],
+      ['partyLevel',['Ban Thường vụ','Đã gửi ĐU','Sở chưa trình','VP đang thực hiện']],
       ['room',['PCT Trần Văn A','PCVP Nguyễn Văn B','Phòng Tổng hợp','Lê Minh H']]
     ] as const){
       const text=normalizeSearch(compactFilterText(item,anchor,groups));
@@ -125,24 +125,24 @@ describe('Optional compact projection remains read-only presentation',()=>{
       typeInContent:true};
     const content=toggleCompactOption(old,'contentDetails',true);
     expect(content.contentDetails).toBe(true);
-    expect(content.typeInContent).toBe(false);
+    expect(content.typeInContent).toBe(true); // deprecated flag remains persisted but cannot split U01
     const team=toggleCompactOption(content,'teamTogether',true);
     expect(team.teamTogether).toBe(true);
     expect(team.leadersTogether).toBe(false);
     expect(team.roomSpecialist).toBe(false);
     expect(activeCompactPairs(defaultItemLayout().columns,team).map(g=>g.anchor))
-      .toEqual(['content','room']);
+      .toEqual(['content','partyLevel','room']);
     const separate=toggleCompactOption(team,'roomSpecialist',true);
     expect(separate.teamTogether).toBe(false);
     expect(separate.roomSpecialist).toBe(true);
     expect(activeCompactPairs(defaultItemLayout().columns,separate).map(g=>g.anchor))
-      .toEqual(['content','room']);
+      .toEqual(['content','partyLevel','room']);
   });
   it('only merges new groups if every source column is visible',()=>{
     const cols=defaultItemLayout().columns.filter(c=>c.key!=='vpLeader');
     const prefs={...DEFAULT_COMPACT_DISPLAY,teamTogether:true,partyTogether:true};
     const groups=activeCompactPairs(cols,prefs);
-    expect(groups.map(group=>group.anchor)).toEqual(['partyLevel']);
+    expect(groups.map(group=>group.anchor)).toEqual(['content','partyLevel']);
     expect(compactVisibleColumns(cols,prefs).some(c=>c.key==='ubndLeader')).toBe(true);
   });
   it('persists independent boolean choices per local source with safe fallback',()=>{
@@ -191,6 +191,36 @@ describe('Optional compact projection remains read-only presentation',()=>{
     expect(clearPersonalCompactDisplay('x')).toBe(false);
     map.set('hdnd.viewer-compact.v1:x','not-json');
     expect(readPersonalCompactDisplay('x')).toBeNull();
+  });
+
+  it('U01/U02 cannot be disabled by old saved flags or missing new flags',()=>{
+    const source=defaultItemLayout().columns;
+    const legacy={...DEFAULT_COMPACT_DISPLAY,typeInContent:false,contentDetails:false,
+      partyTogether:false,councilTogether:false};
+    expect(activeCompactPairs(source,legacy).map(p=>p.variant)).toEqual(['contentDetails','partyTogether']);
+    const allFalse=compactVisibleColumns(source,legacy);
+    expect(allFalse.some(c=>c.key==='department'||c.key==='type'||c.key==='progressBuild'||c.key==='progressCouncil')).toBe(false);
+    const hidden=source.map(c=>({...c,visible:c.key!=='type'&&c.key!=='progressParty'}));
+    const groups=activeCompactPairs(hidden,legacy);
+    expect(groups.find(p=>p.variant==='contentDetails')?.memberFields).toEqual(['department','content']);
+    expect(groups.find(p=>p.variant==='partyTogether')?.memberFields)
+      .toEqual(['partyLevel','progressBuild','progressCouncil']);
+    expect(groups.flatMap(p=>p.memberFields)).not.toContain('type');
+    expect(groups.flatMap(p=>p.memberFields)).not.toContain('progressParty');
+  });
+  it('U04 survives old personal settings and retains source/UID isolation',()=>{
+    const values=new Map<string,string>();
+    vi.stubGlobal('localStorage',{
+      getItem:(k:string)=>values.get(k)??null,setItem:(k:string,v:string)=>values.set(k,v)});
+    const a='uid-A:source-A',other='uid-B:source-A';
+    const old={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
+    delete (old as Partial<typeof old>).cvRoomInline;
+    values.set('hdnd.viewer-compact.v1:'+a,JSON.stringify(old));
+    expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(false);
+    const changed=toggleCompactOption(readPersonalCompactDisplay(a)!,'cvRoomInline',true);
+    expect(writePersonalCompactDisplay(a,changed)).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(true);
+    expect(readPersonalCompactDisplay(other)).toBeNull();
   });
 
 });
