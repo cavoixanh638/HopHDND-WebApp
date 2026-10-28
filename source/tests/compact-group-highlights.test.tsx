@@ -3,7 +3,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {createElement} from 'react';
 import {createDemoItems} from '../src/data/demo-items';
 import {cellHighlightStyle,defaultItemLayout,type CellHighlightRule} from '../src/data/item-preferences';
-import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
+import {CompactGroupedValue,compactStageVisualTone} from '../src/features/items/CompactGroupedValue';
 import {activeCompactPairs,DEFAULT_COMPACT_DISPLAY} from '../src/features/items/compact-columns';
 import type {Item,TextField} from '../shared/types';
 
@@ -69,5 +69,44 @@ describe('R03: grouped source fields retain independent highlight precedence',()
      expect(html).toMatch(/compact-(?:cv-room-name|highlight-member)[^>]*background-color:#CC0000/);
      expect(html).not.toMatch(/compact-stage-row[^>]*background-color:#CC0000/);
    }
+ });
+});
+
+describe('R05: entire stage frames carry independent visual tones',()=>{
+ it('applies source-specific tones to the whole frame, not just the pill',()=>{
+   const html=draw('partyTogether');
+   expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="not-submitted"/);
+   expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"/);
+   expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="done"/);
+   expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
+   expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"[^>]*>[\s\S]*?data-progress-tone="office"/);
+ });
+ it('never treats not-required or unknown stages as done in the UI',()=>{
+   expect(compactStageVisualTone('Không phải trình','done')).toBe('neutral');
+   expect(compactStageVisualTone('Không phải trình xây dựng NQ','done')).toBe('neutral');
+   expect(compactStageVisualTone('Không phải xin ý kiến','done')).toBe('neutral');
+   expect(compactStageVisualTone('Không xin ý kiến','done')).toBe('neutral');
+   expect(compactStageVisualTone('Đang rà soát',undefined)).toBe('neutral');
+   expect(compactStageVisualTone('Đã trình HĐND','done')).toBe('done');
+   expect(compactStageVisualTone('Sở chưa trình','not-submitted')).toBe('not-submitted');
+   const cols=defaultItemLayout().columns;
+   const group=activeCompactPairs(cols,DEFAULT_COMPACT_DISPLAY).find(p=>p.variant==='partyTogether')!;
+   const html=renderToStaticMarkup(createElement(CompactGroupedValue,{
+     item:{...example,progressParty:'Không phải xin ý kiến',progressBuild:'Không phải trình',progressCouncil:'Đang rà soát'},
+     pair:group,field:(key:TextField)=>String(example[key]??''),
+     tone:(key:TextField)=>key==='progressCouncil'?undefined:'done',
+   }));
+   expect(html.match(/data-progress-tone="neutral"/g)).toHaveLength(5);
+   expect(html).not.toContain('data-progress-tone="done"');
+ });
+ it('keeps R03 per-field highlight without tinting a group or its siblings',()=>{
+   const html=draw('partyTogether');
+   expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"/);
+   expect(html).toMatch(/compact-stage-level[^>]*background-color:#123456/);
+   expect(html).toMatch(/compact-stage-state[^>]*data-progress-tone="office"[^>]*background-color:#FFEE55/);
+   expect(html).not.toMatch(/compact-stage-row"[^>]*style="[^"]*background-color:#FFEE55/);
+   const editable=draw('partyTogether',rules,[],false,true);
+   expect(editable).toContain('cell-picker-trigger');
+   expect(editable).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"/);
  });
 });
