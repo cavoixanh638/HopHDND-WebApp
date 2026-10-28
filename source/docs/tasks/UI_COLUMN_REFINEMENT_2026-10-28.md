@@ -1,7 +1,7 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Trạng thái: READY_FOR_OWNER_ACCEPTANCE — R01/R02/R03/R04 đều VERIFIED trong phạm vi Codex review; ID mặc định 52 px đã được đo độc lập trên source `d61399d`. T9 WAITING để chủ dự án nghiệm thu/ra chỉ thị phát hành; chưa merge, publish Pages, deploy Firebase hoặc nhập dữ liệu.**
+> **Trạng thái: CHANGES_REQUESTED — R01–R04 giữ VERIFIED trong phạm vi review trước. Chủ dự án phản hồi nền/viền cả khung tiến độ chưa giống ảnh; bổ sung R05 OPEN theo Lượt 013. Chưa sửa mã cho R05; T9 WAITING, chưa merge/publish/deploy/import.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -72,6 +72,9 @@ Bố cục chính xác theo lời yêu cầu:
 - Cấp trình có editor riêng trong phần ngoặc khi được cấp quyền; ba tiến độ có editor/lease theo đúng ba khóa nguồn. Không có “quyền sửa cả nhóm”.
 - Giữ lọc độc lập theo cấp và từng tiến độ, kết hợp các bộ lọc bằng AND; tìm kiếm dùng giá trị đầy đủ. Không làm mất bộ lọc cũ khi trường trở thành thành viên ẩn của projection.
 - Không thay cách tính tổng, mẫu số, tỷ lệ hay số liệu của 5 báo cáo.
+
+
+**Bổ sung R05 (Lượt 013, phản hồi nghiệm thu của chủ dự án):** mỗi dòng khâu là một khối màu thống nhất từ số thứ tự/nhãn bên trái tới trạng thái bên phải. Nền toàn `.compact-stage-row` nhạt theo trạng thái, viền cùng tông; pill trạng thái đậm hơn. Không chỉ tô `.compact-stage-state`. Ba khâu có ba màu riêng, không tô một màu cho toàn cột chứa cả ba khâu. Ảnh tham chiếu đo được nền phẳng (đỏ #FFF1F2, vàng #FFFBEB, xám #F8FAFC, xanh #F0FDF4), chưa có bằng chứng cần gradient trái–phải; ưu tiên tái hiện ảnh. Xem đặc tả và tiêu chí R05 ở Lượt 013.
 
 ### U03 — Cột ID mặc định 52 px (quyết định chủ dự án tại Lượt 010)
 
@@ -156,12 +159,12 @@ Tên file hỗ trợ có thể thay đổi theo nhánh. Kiểm tra cây mã th�
 | T0 | Đọc main/AGENTS; ghi SHA bắt đầu; ảnh trước và W0 ID; chốt nút xem đủ cột, popup, width và scope lưu U04 | — | READY_FOR_REVIEW — W0 Chrome thực 68px trên 8172c065; quyết định D04–D07 và ảnh trước đã ghi |
 | T1 | Thiết kế projection U01/U02, compatibility cờ/preset và flag U04; ghi quyết định ngắn vào file này | T0 | VERIFIED — projection/cap/ID 52 px đã được Codex rà; không phát hiện hồi quy trong phạm vi kiểm |
 | T2 | Làm cột Hồ sơ theo ảnh 1, giữ filter/editor/quyền từng field; bỏ hai toggle cũ | T1 | READY_FOR_REVIEW — R03 được Codex xác nhận VERIFIED; các bằng chứng cũ giữ nguyên |
-| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | READY_FOR_REVIEW — U02 ba dòng tiến độ + màu/permission, browser qua |
+| T3 | Làm cụm Cấp + 3 tiến độ theo ảnh 2, nhãn Ban hành NQ; bỏ toggle liên quan | T1 | NEEDS_FIX — R05: nền và viền cả khung từng khâu phải cùng tông như ảnh; pill đậm hơn |
 | T4 | Làm ID mặc định 52px (thay 23px/1⁄3 theo quyết định Lượt 010), kiểm default/profile/preset, reload, layout, padding và resize | T0,T1 | VERIFIED — Codex Lượt 012: ID thực 52 px, NQ01 một dòng, default/custom/reload/ID-last đạt |
 | T5 | Làm checkbox CV (Phòng), flag compatibility, lưu đúng scope và renderer | T1 | READY_FOR_REVIEW — U04 false mặc định, local UID reload/reset, CI qua |
-| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | READY_FOR_REVIEW — Codex tái kiểm R01 và màu từng field list/popup của R03 đạt |
-| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | VERIFIED — 50 test liên quan chạy độc lập PASS; 3 workflow đúng d61399d SUCCESS; browser width/resize đạt |
-| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | VERIFIED — R01–R04 đã rà, Lượt 012 cập nhật bằng chứng và kết luận; chuyển chủ dự án nghiệm thu T9 |
+| T6 | Nối popup, preset và menu; xử lý ẩn/hiện/removed/custom columns, filter cũ | T2–T5 | NEEDS_FIX — áp dụng R05 nhất quán list/popup qua renderer chung, giữ R03 highlight theo field |
+| T7 | Typecheck, unit, Firebase Emulator, browser với dữ liệu giả; chụp và sửa lỗi thực thấy | T6 | NEEDS_FIX — bổ sung kiểm computed background/border của cả stage-row và ảnh đối chiếu |
+| T8 | Cập nhật docs, file trao đổi, PR có ảnh trước/sau và kết quả đúng SHA; Codex rà soát | T7 | CHANGES_REQUESTED — chủ dự án phản hồi màu cả khung; R01–R04 giữ VERIFIED, R05 OPEN |
 | T9 | Chủ dự án xem kết quả; triển khai theo phạm vi đã được giao, kiểm publish + Pages riêng | T8 | WAITING |
 
 Đề xuất một feature branch và một PR cho nhiệm vụ; chia commit theo T1–T6 để dễ rà và sửa. Tên nhánh gợi ý `feat/column-refinement-20261028`, kiểm tra chưa tồn tại trước khi tạo. Không reset/force-push main.
@@ -252,7 +255,7 @@ npm run build:pages
 | U03 | ChatGPT thực hiện / Codex xác minh | VERIFIED | ID 52 px thực, NQ01 một dòng, reload/default/custom/resize đạt; source d61399d, Lượt 012 | Chủ dự án nghiệm thu giao diện T9 |
 | U04 | ChatGPT thực hiện | READY_FOR_REVIEW | `d330ddc1`, `c81ac118`, UID reload/reset tại CI `40660234414` | Codex rà diff và UX |
 | Kiểm thử / ảnh / CI | ChatGPT thực hiện | READY_FOR_REVIEW | 3 workflow success d8ac9843; ảnh artifact 12802349921, demo 12803710651 | Chờ Codex review PR |
-| Rà diff và nghiệm thu kỹ thuật | Codex | R01/R02/R03/R04 VERIFIED | Lượt 008/010/012; kiểm cuối source d61399d | Chờ chủ dự án nghiệm thu/phát hành T9 |
+| Rà diff và nghiệm thu kỹ thuật | Codex | R01–R04 VERIFIED; R05 OPEN | Lượt 013: màu cả khung tiến độ chưa đúng ảnh | ChatGPT sửa R05 rồi bổ sung ảnh/CI để Codex rà |
 | Nghiệm thu giao diện | Chủ dự án | WAITING | — | Chủ dự án xem ảnh 23px trước (mô phỏng) và 52px sau; Codex rà R04 trước phát hành |
 
 Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX hoặc VERIFIED. DONE_DOCUMENTATION chỉ dùng cho hồ sơ; không dùng thay VERIFIED của chức năng. DEPLOYED và OWNER_ACCEPTED ghi riêng nếu có.
@@ -320,6 +323,7 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R02 / P2 | ItemList.tsx:446–455 — ID thu 1/3 được dùng làm cột bù nhưng min vẫn 60 và commit tính width nguồn | Giữ đúng chiều kéo và tổng width khi ID ở cuối; thống nhất miền width hiển thị/nguồn, thêm hồi quy | ChatGPT Lượt 009: `99e804f`+`a954d2a`+`94bbeee` cùng cap 1600; exact test Codex `de584ad` PASS 8/8; browser `4d91821` cap 1470/1550/1600, group target/last, ArrowLeft/Right/drag total 2813→2813; source CI `40721672334` SUCCESS | VERIFIED — Codex Lượt 010, exact 3634fd4, 48 unit PASS và browser cap target/last đạt |
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | VERIFIED — Codex Lượt 012, source d61399d, ID 52 px một dòng; hồi quy resize PASS |
+| R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | Phản hồi trực tiếp của chủ dự án; Codex xác minh CSS/ảnh tại Lượt 013 | OPEN — chờ ChatGPT thực hiện |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -671,3 +675,61 @@ Thông tin này cập nhật trạng thái “CI commit tài liệu đang kiểm
 - **R04:** VERIFIED — ID mặc định 52 px theo quyết định chủ dự án, source/custom/reload an toàn trong phạm vi kiểm.
 - **T9:** WAITING — chủ dự án xem giao diện và ra chỉ thị tiếp theo. Chưa merge/publish/deploy/import.
 - Không coi test Emulator/CI là kiểm chứng Rules, dữ liệu và nghiệm thu Firebase production. Phạm vi bảo mật PR #83 vẫn là hạng mục riêng đã có từ trước.
+
+
+## 19. Lượt 013 — Phản hồi nghiệm thu màu toàn khung tiến độ / R05 — 28/10/2026
+
+### Phản hồi và phần còn thiếu
+
+Chủ dự án phản hồi trực tiếp: **“màu sắc của cả khung chưa thành 1 khối như trong ảnh yêu cầu ban đầu. Hình như trong ảnh để màu gradient từ trái sang.”**
+
+Codex đối chiếu lại ảnh gốc và source tại `d8fe8d17bca4b052008a536e0934cd0f53d633bb`:
+- `.compact-stage-row` vẫn có nền gần trắng cố định `#fbfdfc`, viền xám `#e5e7eb`.
+- Chỉ `.compact-stage-state` nhận tone/màu, còn nhãn, số thứ tự và khoảng trống cùng khung không có nền màu theo trạng thái.
+- Đây là chi tiết đối chiếu hình ảnh **Codex đã bỏ sót trong vòng review trước**. R01–R04 vẫn giữ kết quả chức năng/bugfix đã xác minh; nghiệm thu hình thức bổ sung R05, không coi giao diện đã được chủ dự án chấp nhận.
+
+### Đối chiếu gradient bằng ảnh gốc
+
+Ảnh nguồn: [Ảnh 2 gốc](assets/UI-COLUMNS-20261028-progress.png), kích thước **421×310 px**.
+
+Đã đọc pixel trực tiếp bằng System.Drawing (chỉ đọc ảnh, không sửa ảnh):
+- Hàng đỏ, y=10 và y=38; x=40,100,180,260,390 đều **RGB(255,241,242) = #FFF1F2**.
+- Hàng vàng, y=166 và y=194; x=100,180,260 đều **#FFFBEB**.
+- Hàng xám “Không phải trình”, y=210 và y=238; x=100,180,260 đều **#F8FAFC**.
+- Hàng xanh, y=282; x=100,180,260 đều **#F0FDF4**.
+
+Như vậy, **vùng nền đã đo không có chuyển màu trái–phải**; cảm giác chuyển sắc chủ yếu do pill phía phải đậm hơn nền. Không có source CSS của ảnh để kết luận cơ chế dựng ban đầu, nhưng không cần tạo một gradient rõ để tái hiện hình ảnh đã cung cấp. Câu “hình như” được ghi nhận là giả thuyết thị giác, không tự chuyển thành lệnh bắt buộc gradient. Nếu sau khi xem bản sửa chủ dự án yêu cầu gradient thật, cập nhật chỉ thị đó riêng.
+
+### R05 — yêu cầu thực hiện
+
+1. **Đơn vị tô màu là từng khung khâu** `.compact-stage-row`, gồm số 1/2/3, tên khâu, cấp trong ngoặc và nhãn trạng thái. Mỗi khung phải nhìn thành một khối thống nhất.
+2. Phủ **nền màu rất nhạt** trên toàn chiều ngang khung; **viền cùng tông** nhẹ. Pill trạng thái phía phải giữ màu đậm hơn, dot và chữ tương ứng. Không để nửa trái nền trắng đứng tách khỏi pill.
+3. Màu ba khâu độc lập theo chính trạng thái của từng khâu. Ví dụ một hồ sơ có thể vàng / xám / xanh như ảnh; không lấy tone của một khâu để tô cả ba.
+4. Bản mặc định bám màu nền ảnh: đỏ `#FFF1F2`, vàng `#FFFBEB`, trung tính `#F8FAFC`, xanh `#F0FDF4`. Viền và pill cùng họ màu, tránh viền đen/xám làm khung tách rời.
+5. “Không phải trình” trong ảnh dùng **trung tính**, không tô như một kết quả hoàn thành. Nếu cần bổ sung ánh xạ ở lớp trình bày, chỉ đổi UI: không sửa giá trị nguồn, `aggregateReport`, mẫu số/tổng, cấu hình completed hay dữ liệu.
+6. Giữ cơ chế màu cá nhân/palette hiện hành. Không thay cả theme, font hoặc màu bảng ngoài các khung tiến độ. Không làm mất nhận biết trạng thái lạ/không áp dụng.
+7. **Giữ R03:** nền cơ sở của khung đi theo trạng thái; quy tắc `cellHighlights` của một field vẫn chỉ phủ vùng field đó theo thứ tự ưu tiên đang dùng. Không biến rule từ khóa của cấp/tiến độ thành lệnh tô cả cụm hoặc toàn hàng hồ sơ.
+8. Đồng nhất trong Danh sách và popup qua renderer chung. Giữ editor, quyền từng field, lease, CAS, freeze và ID 52 px.
+9. Không cần hiệu ứng động hoặc gradient trang trí cho phần này. Mục tiêu là khớp ảnh gốc, không thiết kế lại giao diện.
+
+### Vị trí mã dự kiến
+
+- `source/src/features/items/CompactGroupedValue.tsx`: hiện tone chỉ gắn trên span trạng thái; cần truyền được tone hiển thị cho khung của đúng stage, không cho cả nhóm.
+- `source/src/features/items/item-frame.css`: nền/viền từng stage-row và mức đậm của stage-state.
+- Helper trình bày nếu cần cho neutral/not-required; tránh sửa logic báo cáo để đổi màu.
+- `compact-group-highlights.test.tsx` và `smoke-pages-browser.mjs`: thêm kiểm khung và R03 regression, không chỉ kiểm pill.
+- Cập nhật bảng phản hồi R05, commit và ảnh trước/sau vào lượt tiếp theo.
+
+### Tiêu chí nghiệm thu R05
+
+- Cùng fixture có ba khâu khác tone: **khung** tương ứng được tô đỏ/vàng/xám/xanh đúng nhóm; đo computed background/border của stage-row, không chỉ stage-state.
+- Ảnh crop đủ cả khung (nhãn trái + pill phải), so cạnh ảnh gốc tại desktop; kiểm tablet/mobile không mất nền, pill không che nhãn.
+- “Không phải trình” là trung tính như ảnh, trạng thái chưa biết không bị đổi thành hoàn thành.
+- Nền khung và pill có độ phân biệt rõ nhưng vẫn cùng tông; đọc chữ dễ, giữ ID 52 px và bố cục hiện hành.
+- Highlight theo field và palette tùy chọn vẫn hoạt động, đặc biệt khi nguồn trùng từ khóa.
+- List/popup cùng màu, các test R01–R04 không hồi quy; CI đúng SHA và ảnh fixture giả.
+- **Trạng thái hiện tại: chưa sửa source R05.** Không gọi thay đổi tài liệu này là đã tô màu giao diện.
+
+**Câu lệnh giao ChatGPT:**
+
+> Đọc Lượt 013 và R05 trong file bàn giao. Chủ dự án yêu cầu cả khung từng khâu tiến độ thành một khối màu như ảnh 2, không chỉ pill bên phải. Tô nền rất nhạt và viền cùng tông trên stage-row, pill đậm hơn; khung từng khâu có màu độc lập, Không phải trình trung tính. Ảnh gốc đo được nền phẳng, chưa cần gradient rõ. Giữ ID 52 px và R01–R04, highlight từng field, palette, quyền/lease và báo cáo. Bổ sung test computed background/border cả khung, ảnh trước/sau list/popup và CI; ghi lượt tiếp theo. Chưa merge/publish/deploy/import.
