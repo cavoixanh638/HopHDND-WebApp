@@ -2144,14 +2144,14 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&popup=1&highlight=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stage-row')!==null",
     'R05 real popup stage rows missing');
-  const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child td[data-col-key=partyLevel]');
+  const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
     x.border===target[i].border&&x.tone===target[i].tone))
     throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
   const popupClip=await evaluate(`(()=>{
-    const r=document.querySelector('.report-detail-grid tbody tr:first-child td[data-col-key=partyLevel] .compact-stages').getBoundingClientRect();
+    const r=document.querySelector('.report-detail-grid tbody tr:first-child .compact-stages').getBoundingClientRect();
     return {x:Math.max(0,r.left),y:Math.max(0,r.top),width:r.width,height:r.height,scale:1};
   })()`);
   const popupStageShot=await send('Page.captureScreenshot',{format:'png',clip:popupClip});
