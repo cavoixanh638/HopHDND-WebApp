@@ -7,7 +7,7 @@ type MemberHighlight={color:string;backgroundColor:string}|undefined;
 /** R05 is presentation-only. Never reuse the report's completed bucket for
  * a stage whose source explicitly says it is not required. */
 export function compactStageVisualTone(value:unknown,statusTone:string|undefined):string{
- const normalized=normalizeSearch(String(value??'')).replace(/\\s+/gu,' ').trim();
+ const normalized=normalizeSearch(String(value??'')).replace(/\s+/gu,' ').trim();
  if(/^(?:khong phai (?:trinh|xin y kien)|khong xin y kien)(?:$| )/u.test(normalized))
    return 'neutral';
  return statusTone??'neutral';
