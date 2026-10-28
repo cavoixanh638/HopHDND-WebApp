@@ -1,25 +1,3 @@
-## 28/10/2026 — HANDOFF GEMINI: ĐÓNG BĂNG BASELINE UI / CHỜ THIẾT KẾ MỚI
-
-- [x] UI hiện hành V2 và hotfix chữ/mẫu/scroll đã merge (PR #84/#86); GitHub Pages & Browser/Emulator QA PASS.
-- [x] Tạo `GEMINI.md`, đặc tả [GEMINI_UI_HANDOFF_2026-10-28.md](operations/GEMINI_UI_HANDOFF_2026-10-28.md), cập nhật chỉ mục, trạng thái, mốc rollback.
-- [x] Lưu mốc GitHub nguồn hiện tại `c5cc9838c646af39d07b810233d6ea75065b7a25` trước bàn giao tài liệu. Mốc đầy đủ sau merge docs: `checkpoint/gemini-ui-handoff-2026-10-28`.
-- [ ] **Gemini/UI**: clone, đọc GEMINI.md và hướng dẫn, thiết kế trước bản xem thử UI, không tự merge/deploy; phát triển nhánh riêng, chứng minh giữ 3 thẻ, 6 cột và 15 cột nguồn/tùy chọn.
-- [ ] **Gemini QA**: CI source/typecheck/unit/browser/emulator, UX desktop/mobile, scroll X/Y, tên ngắn/chữ rõ, không xuất hiện Mẫu hiển thị cá nhân; gửi PR, diff và ảnh mock để chủ dự án duyệt.
-- [ ] **Firebase SECURITY độc lập (PR #83 HOLD)**: trusted public-view projection, published RTDB Rules, backup, staging and distinct UID test; không được gộp vào UI redesign.
-- [ ] **Firebase cutover**: còn chờ kiểm tra production/backup/Rules, dữ liệu & quyền thực, phát hành có phê duyệt; không suy luận hoàn tất chỉ từ GitHub Pages.
-- [ ] Nếu người dùng còn file sửa trên Windows chưa đẩy, kiểm tra `git status` và đưa lên Git riêng trước khi chốt bàn giao local.
-
----
-
-## 27/10/2026 — UI Danh sách chi tiết V2 ĐÃ HOÀN THÀNH / GITHUB PAGES RELEASED
-
-- [Đặc tả UI, tiêu chí nghiệm thu, rollback](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md). PR [#84](https://github.com/cavoixanh638/HopHDND-WebApp/pull/84) đã merge commit `fa5e8d9`; checkpoint `5db47f0`.
-- Code: 3 thẻ + segmented bar cùng logic Bảng tổng hợp, bảng 6 cột/4 cụm, badge Loại VB, mã Excel, trách nhiệm viết tắt + phòng (ngoặc), 3 dòng tiến độ, 2 cột ghi chú tách. Bộ tùy chọn cột cũ được giữ.
-- QA: TypeScript, Vitest, build Pages, Firebase Emulator, Chrome; đối chiếu báo cáo, bấm lọc, editor CAS/lease, responsive. **ĐÃ ĐẠT:** exact feature head `88c3f38`, Verify source + Chrome + Emulator [#40532768478](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40532768478) SUCCESS; Firebase operational QA [#40532768475](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40532768475) SUCCESS; Pages deploy [#40533214193](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40533214193) SUCCESS. Đây là release UI, không phải Firebase Cloud Rules.
-- Việc tách riêng: PR #83/DRAFT và hardening guest backend, staging/production Firebase Rules, cutover dataSource, real 2-UID remain HOLD; không deploy theo UI.
-
----
-
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.

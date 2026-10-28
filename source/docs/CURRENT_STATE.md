@@ -1,21 +1,3 @@
-## 28/10/2026 — ĐÃ CHỐT MỐC BÀN GIAO GEMINI UI (TÀI LIỆU, KHÔNG THAY NGHIỆP VỤ)
-
-- **Nguồn bàn giao:** [GEMINI.md](../../GEMINI.md) và [GEMINI_UI_HANDOFF_2026-10-28.md](operations/GEMINI_UI_HANDOFF_2026-10-28.md). Snapshot code/UI trước commit docs: `c5cc9838c646af39d07b810233d6ea75065b7a25`; bản sau tài liệu theo nhánh `checkpoint/gemini-ui-handoff-2026-10-28`.
-- UI V2 đã merge PR #84, hotfix PR #86 merge `faf649b0f8597c563e7fd378c42ad54cfcc99d4b`. Đã sửa chữ trong các ô, bỏ “Mẫu hiển thị cá nhân”, giữ 3 thẻ tiến độ, 6 cột/4 cụm, chế độ từng cột và đủ 15 cột gốc, cuộn dọc với header sticky. [Publish #40540518313](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540518313), [Pages #40540517515](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540517515), [QA #40540518324](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540518324) đều SUCCESS trên `faf649b`. Workflow Pages-generated checkpoint gần nhất trước bàn giao `c5cc983` cũng deploy SUCCESS [#40540678823](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40540678823).
-- **Chỉ bàn giao giao diện cho Gemini**: sửa TypeScript/CSS trên nhánh mới, giữ logic báo cáo và 15 cột nguồn, security CAS/lease, không sửa Firebase production. Các PR #73/#75/#77 Supabase PAUSED. **PR #83 bảo mật khách chỉ đọc bảng admin đã công bố vẫn DRAFT/HOLD, chưa verify/publish Cloud.** Không nhầm việc ẩn dữ liệu bằng CSS là quyền đọc được bảo vệ.
-- Không xác nhận đã commit các file chưa đẩy từ máy Windows người dùng: snapshot trên là **GitHub remote**, phải kiểm tra `git status` riêng trên từng máy nếu có thay đổi local.
-
----
-
-## 27/10/2026 — UI DANH SÁCH CHI TIẾT V2 ĐÃ MERGE / GITHUB PAGES ĐÃ PHÁT HÀNH
-
-- Đặc tả chính: [EXECUTIVE_DETAIL_UI_V2_2026-10-27.md](operations/EXECUTIVE_DETAIL_UI_V2_2026-10-27.md).
-- Nhánh `feature/executive-detail-ui-20261027` xuất phát từ checkpoint `5db47f0` trước sửa UI, **PR #84 đã MERGE vào main (`fa5e8d9`) và GitHub Pages deploy SUCCESS #40533214193**. Hai thành phần mới: `ExecutiveProgressCards` (tái sử dụng số liệu và status grouping của Báo cáo tổng hợp) và `ExecutiveDetailTable` (6 ô theo 4 cụm, mã NQ01/BC01, viết tắt CV, phòng trong ngoặc; giữ tiến độ hiện tại và ghi chú riêng). Bố cục gọn mặc định nhưng còn chế độ từng cột/đầy đủ Excel.
-- Thẻ báo cáo: Thành ủy có một ô Bước tiếp theo = 3 mốc giữa VP và TBKL; Xây dựng NQ có một ô Đã trình, chưa có QĐ; thanh màu đỏ → cam → xanh nhạt → xanh theo tiến độ. Exact head `88c3f38` đã đạt Verify source + Chrome + Firebase Emulator #40532768478 và Firebase operational QA #40532768475.
-- **Bảo mật khách còn HOLD:** PR #83 DRAFT chưa merge; backend production chưa được xác minh chỉ cho khách đọc các bảng đã công bố và chặn raw items/mirrors/profile/permissions. Ẩn dữ liệu trong frontend không thay thế Firebase Rules. PR #84 không thay Firebase production, quyền sửa hay dataSource.
-
----
-
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
