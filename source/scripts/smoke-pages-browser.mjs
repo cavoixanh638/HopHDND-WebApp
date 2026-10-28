@@ -2009,6 +2009,111 @@ try{
     throw Error('R03 popup member source rule missing/overpainted: '+JSON.stringify(popupColor));
   console.log('R03_GROUPED_HIGHLIGHT_LIST_POPUP_PASS',JSON.stringify({r03list,sourceColor,hiddenMember,editColor,popupColor}));
 
+
+  // Review 005 / R02: REAL keyboard header reorders + separator key and
+  // pointer drag on the physical projected widths, no source DOM overrides.
+  const widthSnapshot=()=>evaluate(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cols=[...table.querySelectorAll('colgroup > col')];
+    const keys=[...table.querySelectorAll('.item-heading-row th')].map(el=>el.dataset.columnKey);
+    const widths=cols.map(el=>el.getBoundingClientRect().width);
+    return {keys,widths,total:widths.reduce((a,b)=>a+b,0),
+      table:table.getBoundingClientRect().width,
+      content:widths[keys.indexOf('content')],id:widths[keys.indexOf('displayCode')],
+      party:widths[keys.indexOf('partyLevel')]};
+  })()`);
+  const realArrow=async(key,modifier=0)=>{
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key,code:key,
+      modifiers:modifier,windowsVirtualKeyCode:key==='ArrowRight'?39:37});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key,code:key,
+      modifiers:modifier,windowsVirtualKeyCode:key==='ArrowRight'?39:37});
+  };
+  const moveLast=async(key)=>{
+    for(let pass=0;pass<12;pass++){
+      const state=await widthSnapshot();
+      const current=state.keys.indexOf(key);
+      if(current===state.keys.length-1)return;
+      const focus=await evaluate(`(()=>{
+        const el=document.querySelector('th[data-column-key="${key}"]');
+        if(!el||el.tabIndex<0)return false;el.focus();return document.activeElement===el;
+      })()`);
+      if(!focus)throw Error('R02 cannot focus header for reorder '+key);
+      await realArrow('ArrowRight',1);
+      await eventually(`[...document.querySelectorAll('.item-heading-row th')]
+        .findIndex(x=>x.dataset.columnKey==='${key}')===${current+1}`,
+        'R02 Alt+Right did not move '+key);
+    }
+    throw Error('R02 failed to move '+key+' to last');
+  };
+  const assertSameTotal=(before,after,label)=>{
+    if(Math.abs(before.total-after.total)>1||Math.abs(before.table-after.table)>1)
+      throw Error(label+' changed physical total '+JSON.stringify({before,after}));
+  };
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    'R02 baseline list missing');
+  await moveLast('displayCode');
+  const r02Before=await widthSnapshot();
+  const focusResizer=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=content] .column-resizer');
+    if(!el)return false;el.focus();return document.activeElement===el;
+  })()`);
+  if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
+  await realArrow('ArrowRight');
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=20.5",
+    'R02 ArrowRight did not respect projected ID min');
+  const r02Right=await widthSnapshot();
+  assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
+  if(r02Right.content<r02Before.content||r02Right.id<20||r02Right.content>r02Before.content+4)
+    throw Error('R02 right arrow reversed content / overcompensated ID: '+JSON.stringify({r02Before,r02Right}));
+  await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
+  await realArrow('ArrowLeft');
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width>=29",
+    'R02 ArrowLeft did not return physical width');
+  const r02Left=await widthSnapshot();
+  assertSameTotal(r02Before,r02Left,'R02 ArrowLeft');
+  const dragStart=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=content] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  if(dragStart.x<0||dragStart.x>1600)throw Error('R02 draggable divider off-screen');
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...dragStart});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...dragStart,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:dragStart.x+5,y:dragStart.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:dragStart.x+5,y:dragStart.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>433",
+    'R02 real pointer drag did not resize');
+  const r02Drag=await widthSnapshot();
+  assertSameTotal(r02Before,r02Drag,'R02 real pointer drag');
+
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
+  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=41",
+    'R02 custom ID source width 125 not projected');
+  await moveLast('displayCode');
+  const customBefore=await widthSnapshot();
+  await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
+  await realArrow('ArrowRight');
+  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width<42",
+    'R02 custom ID physical compensator not updated');
+  const customAfter=await widthSnapshot();
+  assertSameTotal(customBefore,customAfter,'R02 custom ID');
+  if(customAfter.content<=customBefore.content||customAfter.id>=customBefore.id)
+    throw Error('R02 custom ID did not transfer physical pixels');
+
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",'R02 grouped fixture missing');
+  await moveLast('partyLevel');
+  const groupedBefore=await widthSnapshot();
+  await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
+  await realArrow('ArrowRight');
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>=450",
+    'R02 grouped last-column compensation did not move');
+  const groupedAfter=await widthSnapshot();
+  assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
+  console.log('R02_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
+    JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
+
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
