@@ -768,6 +768,12 @@
   overflow-wrap:anywhere;word-break:break-all;white-space:normal;
 }
 .item-data-table td[data-col-key="displayCode"]{padding-inline:1px;text-align:center}
+/* R04: 52px fits ordinary NQ01/BC01 on ONE line. Long custom codes remain
+   accessible via the unmodified full title, aria-label and keyboard focus. */
+.item-data-table td[data-col-key="displayCode"] .code{
+  display:block;width:100%;box-sizing:border-box;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;word-break:normal;
+}
 .item-data-table th[data-col-key="displayCode"] .column-heading-content{
   padding-inline:0;min-width:0;
 }
