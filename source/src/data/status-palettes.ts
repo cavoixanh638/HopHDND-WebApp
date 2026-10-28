@@ -94,9 +94,24 @@ export function statusPaletteTone(field:string,value:unknown,otherEnabled:boolea
   return otherEnabled&&['progressParty','progressBuild','progressCouncil','specificProgress'].includes(field)&&
     String(value??'').trim()?'other':null;
 }
+/** Row backgrounds faithfully match the source image with the default palette.
+ * A custom swatch gently tints its entire stage, without changing stored colors. */
+const stageColor=(current:StatusSwatch,base:StatusSwatch,exact:string)=>
+  current.text===base.text&&current.background===base.background?exact:
+    `color-mix(in srgb, ${current.background} 38%, white)`;
+const stageBorder=(current:StatusSwatch,base:StatusSwatch,exact:string)=>
+  current.text===base.text&&current.background===base.background?exact:
+    `color-mix(in srgb, ${current.text} 24%, white)`;
 /** Presentation only: vars cascade into the normal table AND the report modal. */
 export function statusPaletteCssVariables(colors:StatusPalette):Record<string,string>{
+  const base=defaultStatusPalette();
   return {
+    '--hdnd-stage-not-submitted-bg':stageColor(colors['not-submitted'],base['not-submitted'],'#FFF1F2'),
+    '--hdnd-stage-not-submitted-border':stageBorder(colors['not-submitted'],base['not-submitted'],'#FECDD3'),
+    '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFFBEB'),
+    '--hdnd-stage-office-border':stageBorder(colors.office,base.office,'#FDE68A'),
+    '--hdnd-stage-done-bg':stageColor(colors.done,base.done,'#F0FDF4'),
+    '--hdnd-stage-done-border':stageBorder(colors.done,base.done,'#BBF7D0'),
     '--hdnd-status-not-submitted-text':colors['not-submitted'].text,
     '--hdnd-status-not-submitted-bg':colors['not-submitted'].background,
     '--hdnd-status-office-text':colors.office.text,
