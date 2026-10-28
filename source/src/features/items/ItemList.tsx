@@ -494,10 +494,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           return <td key={column.key} data-col-key={column.key}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
-            style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>
+            style={undefined}>
             <CompactGroupedValue item={item} pair={pair}
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
+              highlight={field=>cellHighlightStyle(item[field],field,activeLayout.cellHighlights)}
               cvRoomInline={compactDisplay.cvRoomInline}/>
           </td>;
         }
