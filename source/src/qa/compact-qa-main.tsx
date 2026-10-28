@@ -32,7 +32,9 @@ function CompactVisualQa(){
     if(params.get('custom-id')==='1')base.columns=base.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
     return base;
   });
-  const [records,setRecords]=useState(items);
+  const [records,setRecords]=useState(()=>params.get('review-staff')==='1'?
+    items.map((item,index)=>index===0?{...item,
+      vpLeader:'PCVP Trần Văn B',ubndLeader:'PCT Nguyễn Văn C'}:item):items);
   const editing=params.get('edit')==='1';
   const guest=params.get('guest')==='1';
   return <div className="app-shell imperial-sky-theme" data-qa="compact-real-itemlist">
