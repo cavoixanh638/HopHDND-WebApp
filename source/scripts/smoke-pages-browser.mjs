@@ -2496,7 +2496,7 @@ try{
   await eventually("document.querySelector('input[aria-label=\"Tên nhóm gộp partyTogether\"]')?.value==='Tên khâu do quản trị đặt'",
     'Lượt 018 group-title input lost draft');
   await evaluate("document.querySelector('.group-label-editor button')?.click()");
-  await eventually("document.querySelector('input[aria-label=\\\"Tên nhóm gộp partyTogether\\\"]')?.value===''",
+  await eventually("document.querySelectorAll('.group-label-editor input')[1]?.value===''",
     'Lượt 018 Cancel did not restore last saved group name');
   const cancelled=await evaluate(`document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]')?.value`);
   if(cancelled!=='')throw Error('Lượt 018 Hủy did not restore saved blank name '+cancelled);
