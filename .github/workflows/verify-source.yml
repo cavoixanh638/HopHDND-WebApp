@@ -119,6 +119,7 @@ jobs:
             source/hophdnd-ui-smoke-pass.png
             source/hophdnd-compact-desktop-pass.png
             source/hophdnd-compact-mobile-pass.png
+            source/hophdnd-compact-tablet-pass.png
             source/hophdnd-compact-guest-pass.png
             source/hophdnd-id-before-simulated.png
             source/hophdnd-id-after.png
