@@ -1689,18 +1689,23 @@ try{
     const css=getComputedStyle(idText);
     return {w1,cellText:idText.textContent?.trim(),title:idText.getAttribute('title'),
       ariaLabel:idText.getAttribute('aria-label'),focusable:idText.tabIndex,
-      overflow:td.scrollWidth>td.clientWidth+2,wrap:css.whiteSpace};
+      overflow:td.scrollWidth>td.clientWidth+2,wrap:css.whiteSpace,
+      lines:Math.round(idText.getBoundingClientRect().height/parseFloat(css.lineHeight)),
+      fullValue:idText.textContent?.trim(),textWidth:idText.scrollWidth};
   })()`);
   const afterIdShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-id-after.png',Buffer.from(afterIdShot.data,'base64'));
   const idRatio=baselineId.w0/restoredId.w1;
   if(Math.abs(restoredId.w1-baselineId.w1)>1||
      baselineId.w0<60||baselineId.w0>72||
-     Math.abs(idRatio-3)>.22||restoredId.overflow||
-     !restoredId.cellText||restoredId.focusable!==0||!restoredId.ariaLabel)
-    throw Error('ID visual-only one-third width or readable focus/title contract: '+
+     Math.abs(restoredId.w1-52)>1||restoredId.overflow||
+     !restoredId.cellText||restoredId.focusable!==0||!restoredId.ariaLabel||
+     restoredId.wrap!=='nowrap'||restoredId.lines!==1||restoredId.cellText!=='NQ01')
+    throw Error('R04 ID 52px width, single-line and full title/focus contract: '+
       JSON.stringify({baselineId,restoredId,idRatio}));
-  console.log('ID_WIDTH_BROWSER_MOCK',JSON.stringify({baselineId,restoredId,ratio:idRatio.toFixed(2),
+  const r04Shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-id-r04-after-52px.png',Buffer.from(r04Shot.data,'base64'));
+  console.log('R04_ID_52PX_BROWSER',JSON.stringify({baselineId,restoredId,ratio:idRatio.toFixed(2),
     baselineMeaning:'DOM-only source-width reconstruction, not historical deployment'}));
 
   const menuOpened=await evaluate(`(()=>{
@@ -2087,15 +2092,15 @@ try{
   })()`);
   if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=20.5",
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
     'R02 ArrowRight did not respect projected ID min');
   const r02Right=await widthSnapshot();
   assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
-  if(r02Right.content<r02Before.content||r02Right.id<20||r02Right.content>r02Before.content+4)
+  if(r02Right.content<r02Before.content||r02Right.id<46||r02Right.content>r02Before.content+7)
     throw Error('R02 right arrow reversed content / overcompensated ID: '+JSON.stringify({r02Before,r02Right}));
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowLeft');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width>=29",
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width>=55",
     'R02 ArrowLeft did not return physical width');
   const r02Left=await widthSnapshot();
   assertSameTotal(r02Before,r02Left,'R02 ArrowLeft');
@@ -2117,13 +2122,13 @@ try{
   writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
-  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=41",
+  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
     'R02 custom ID source width 125 not projected');
   await moveLast('displayCode');
   const customBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width<42",
+  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width<96",
     'R02 custom ID physical compensator not updated');
   const customAfter=await widthSnapshot();
   assertSameTotal(customBefore,customAfter,'R02 custom ID');
@@ -2153,8 +2158,8 @@ try{
     await eventually("document.querySelectorAll('.item-heading-row th').length===7",
       'R02 capped source fixture did not mount');
     const before=await widthSnapshot();
-    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2813)>1)
-      throw Error('R02 cap baseline not 1600 / 2813: '+JSON.stringify({sourceCap,before}));
+    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2842)>1)
+      throw Error('R04/R02 cap baseline not 1600 / 2842: '+JSON.stringify({sourceCap,before}));
     const focusCap=await evaluate(`(()=>{
       const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
       if(!el)return false;el.focus();return document.activeElement===el;
