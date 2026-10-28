@@ -62,9 +62,14 @@ export function ExecutiveDetailTable({ items, visibleFields, renderField, hasDra
             <th scope="col">GHI CHÚ</th>
           </tr>
         </thead>
-        <tbody>{items.map(item => <tr key={item.recordId}>
+        <tbody>{items.map(item => {
+          const isBottleneck = (item.progressCouncil ?? '').includes('Sở chưa trình') || (item.progressParty ?? '').includes('Sở chưa trình');
+          const isDone = (item.progressCouncil ?? '').includes('Đã trình HĐND') || (item.progressCouncil ?? '').includes('Hoàn thành');
+          const rowState = item.isDropped ? 'dropped' : isBottleneck ? 'bottleneck' : isDone ? 'done' : 'active';
+          return <tr key={item.recordId} data-row-state={rowState}>
           <td data-col-key="displayCode" className="executive-code-cell">
-            <strong title={isMissingDisplayCode(item.displayCode)?undefined:'Mã gốc: '+item.displayCode}>
+            <strong className={'executive-code-badge' + (item.documentKind === 'BC' ? ' kind-bc' : '')}
+                    title={isMissingDisplayCode(item.displayCode)?undefined:'Mã gốc: '+item.displayCode}>
               {canShow('displayCode') ? displayId(item) : '—'}
             </strong>
             {hasDraft(item) && <span className="executive-draft">Chưa lưu</span>}
@@ -103,7 +108,7 @@ export function ExecutiveDetailTable({ items, visibleFields, renderField, hasDra
           </td>
           <td className="executive-update-cell">{field(item,'specificProgress') || <span className="executive-muted">—</span>}</td>
           <td className="executive-note-cell">{field(item,'note') || <span className="executive-muted">—</span>}</td>
-        </tr>)}
+        </tr>;})} 
         {!items.length && <tr><td colSpan={6} className="empty">Không có hồ sơ phù hợp bộ lọc.</td></tr>}
         </tbody>
       </table>
