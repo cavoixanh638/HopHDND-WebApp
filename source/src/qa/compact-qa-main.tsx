@@ -84,7 +84,9 @@ function CompactVisualQa(){
   const palette=defaultStatusPaletteStore();
   if(params.get('r05-palette')==='1')palette.active.office={
     text:'#884422',background:'#FCDDA0'};
-  return <div className="app-shell imperial-sky-theme" data-qa="compact-real-itemlist"
+  return <div className={'app-shell imperial-sky-theme'+
+    (params.get('app-shell')==='1'?' wide-table-page list-fit-page':'')}
+    data-qa="compact-real-itemlist"
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
       <h1 style={{fontSize:20,margin:0}}>HopHDND · Gộp cột (bản kiểm thử UI)</h1>
@@ -94,7 +96,7 @@ function CompactVisualQa(){
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey="compact-qa-synthetic-popup-only"
-        catalog={catalog} listLayout={layout} readOnlyViewer={true}
+        catalog={catalog} listLayout={layout} readOnlyViewer={params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
         allowDraft={false} canEditCell={()=>false} onUpdate={()=>{throw Error('QA read-only');}}
         onKeepDraft={()=>false} dirtyIds={new Set()} errors={{}} onClose={()=>{}}
