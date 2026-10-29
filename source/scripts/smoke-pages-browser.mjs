@@ -1505,12 +1505,16 @@ try{
           const grid=modal?.querySelector('.report-detail-grid');
           const cols=grid?.querySelectorAll('thead tr:first-child th').length??0;
           const rows=grid?.querySelectorAll('tbody tr').length??0;
-          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-actions,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.cell-value-button,.custom-cell-input');
+          // Guest may see one permitted-data edit toggle but NEVER the admin
+          // settings/presets/resize controls. No full login is needed.
+          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.custom-cell-input');
+          const toolbarButtons=[...(modal?.querySelectorAll('.report-grid-toolbar button')??[])];
+          const allowedActions=toolbarButtons.every(button=>button.textContent.trim()==='Chỉnh sửa nháp'||button.textContent.trim()==='Về chế độ xem');
           const history=['note','specificProgress'].map(key=>
             grid?.querySelector('tbody tr:first-child td[data-col-key="'+key+'"] button.cell-history-action'));
           const irrelevant=!!grid?.querySelector('tbody tr:first-child td[data-col-key="content"] button.cell-history-action');
           return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!forbidden&&
-            !modal.querySelector('.report-grid-toolbar button,.report-grid-toolbar input')&&
+            allowedActions&&!modal.querySelector('.report-grid-toolbar input')&&
             !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select')&&
             history.every(Boolean)&&!irrelevant,
             cols,rows,forbidden:!!forbidden,historyButtons:history.filter(Boolean).length,irrelevant};
