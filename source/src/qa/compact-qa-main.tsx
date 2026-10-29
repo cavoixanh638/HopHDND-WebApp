@@ -47,6 +47,13 @@ function CompactVisualQa(){
     const cappedParty=Number(params.get('cap-party'));
     if([1470,1550,1600].includes(cappedParty))base.columns=base.columns.map(c=>
       c.key==='partyLevel'?{...c,width:cappedParty}:c);
+    // Owner L019: exact reported neighbor order (progress then staff group).
+    if(params.get('progress-before-staff')==='1'){
+      const progress=base.columns.find(c=>c.key==='specificProgress')!;
+      const others=base.columns.filter(c=>c.key!=='specificProgress');
+      others.splice(others.findIndex(c=>c.key==='room'),0,progress);
+      base.columns=others;
+    }
     if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
     if(params.get('fit')==='1'){
       // Reproduce the owner's small saved widths inside a wide selected frame.
