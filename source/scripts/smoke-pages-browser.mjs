@@ -2416,8 +2416,9 @@ try{
   
   // Owner 29/10 screenshot: normal word spacing, a centered HC/department
   // heading and a full-height divider large enough to grab with a mouse.
+  // Use editable synthetic mode so the real InlineNoteEditor buttons exist.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
-    '/compact-qa/compact-qa.html?progress-before-staff=1'});
+    '/compact-qa/compact-qa.html?progress-before-staff=1&edit=1'});
   await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
     'L023 visible divider fixture missing');
   const textGeometry=await evaluate(`(()=>{
