@@ -362,7 +362,7 @@
       },
       "activeDataset": {
         ".read": "auth != null",
-        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && (root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/control/editingLocked').val() === true) && newData.exists() && (data.exists() ? newData.child('revision').val() === data.child('revision').val() + 1 : newData.child('revision').val() === 1) && newData.child('version').isString() && newData.child('operationId').isString() && ( (newData.child('version').val() !== 'legacy' && root.child('hdnd/datasetVersions').child(newData.child('version').val()).child('manifest/operationId').val() === newData.child('operationId').val() && root.child('hdnd/datasetBackups').child(newData.child('operationId').val()).exists()) || (newData.child('restoreBackupId').isString() && root.child('hdnd/datasetBackups').child(newData.child('restoreBackupId').val()).exists() && newData.child('version').val() === root.child('hdnd/datasetBackups').child(newData.child('restoreBackupId').val()).child('active/version').val()))",
+        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && (root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/control/editingLocked').val() === true) && newData.exists() && (data.exists() ? newData.child('revision').val() === data.child('revision').val() + 1 : newData.child('revision').val() === 1) && newData.child('version').isString() && newData.child('operationId').isString() && ( (newData.child('version').val() !== 'legacy' && root.child('hdnd/datasetVersions').child(newData.child('version').val()).child('manifest/operationId').val() === newData.child('operationId').val() && root.child('hdnd/datasetBackups').child(newData.child('operationId').val()).exists()) || (newData.child('restoreBackupId').isString() && root.child('hdnd/datasetBackups').child(newData.child('restoreBackupId').val()).exists() && (newData.child('version').val() === root.child('hdnd/datasetBackups').child(newData.child('restoreBackupId').val()).child('active/version').val() || (newData.child('version').val() === 'legacy' && !root.child('hdnd/datasetBackups').child(newData.child('restoreBackupId').val()).child('active').exists()))))",
         ".validate": "newData.hasChildren(['version','revision','operationId','digest','switchedAt','switchedBy']) && newData.child('version').isString() && newData.child('version').val().matches(/^(?:legacy|d_[a-f0-9]{32})$/) && newData.child('revision').isNumber() && newData.child('revision').val() > 0 && newData.child('operationId').isString() && newData.child('digest').isString() && newData.child('digest').val().matches(/^[a-f0-9]{64}$/) && newData.child('switchedBy').val() === auth.uid",
         "version": {
           ".validate": "newData.isString()"
@@ -518,7 +518,8 @@
           },
           "$other": {
             ".validate": "false"
-          }
+          },
+          ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')"
         }
       },
       "datasetEditLocks": {
