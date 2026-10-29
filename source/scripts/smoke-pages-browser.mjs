@@ -2797,6 +2797,7 @@ try{
   for(const {width,height,mode} of [
     {width:390,height:844,mode:'mobile'},
     {width:768,height:750,mode:'tablet'},
+    {width:1280,height:800,mode:'laptop'},
     {width:1280,height:600,mode:'short-desktop'}
   ]){
     await send('Emulation.setDeviceMetricsOverride',
