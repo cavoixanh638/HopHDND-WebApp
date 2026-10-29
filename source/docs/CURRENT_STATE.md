@@ -4,7 +4,7 @@ Khách vào web không cần đăng nhập Google; Firebase **Anonymous Auth** t
 
 **Thay thế Lượt 024:** dòng “anonymous view-only” không còn đúng với PR #92 candidate. Quyền sửa công khai có rủi ro spam/sửa ác ý trên các ô mở quyền; không xác định danh tính thật của khách. `source/firebase/database.exclusive-candidate.rules.json` được sửa, nhưng production Rules và dữ liệu thật giữ nguyên.
 
-**Code SHA:** `6525ae5350d6d2b58825142a9e4d5ccf7032d003`; [handoff L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). **PR #92 RELEASE HOLD**: chờ source CI/emulator/Chromium cuối, Codex security review và chủ dự án duyệt; chưa merge, Pages publish, Firebase deploy, import hoặc chỉnh dữ liệu production.
+**Code SHA:** `1d7190c1f0944359a8b154157912c9934c90683b` (khóa ô đòi bản ghi tồn tại); [handoff L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). **PR #92 RELEASE HOLD**: chờ source CI/emulator/Chromium cuối, Codex security review và chủ dự án duyệt; chưa merge, Pages publish, Firebase deploy, import hoặc chỉnh dữ liệu production.
 
 ---
 
