@@ -807,7 +807,8 @@ try{
     if(getComputedStyle(title).whiteSpace!=='normal')return false;
     const titleBottom=title.getBoundingClientRect().bottom,filterTop=filter.getBoundingClientRect().top;
     if(filterTop<titleBottom-3)return false;
-    if(getComputedStyle(document.querySelector('.item-sticky-search-controls')).position!=='sticky')return false;
+    // PR95 removes the obsolete specialist-wide control entirely.
+    if(document.querySelector('.item-sticky-search-controls'))return false;
     const before=title.getBoundingClientRect().top;
     if(scroll.scrollHeight<=scroll.clientHeight+30)return false;
     scroll.scrollTop=180;
