@@ -109,7 +109,7 @@ export function inspectBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:stri
         issues.push({sheet:sheetName,row:rowNumber,column:col(j),message:'Giá trị số nằm trong cột văn bản; chưa tự chuyển kiểu.'});
       if(typeof row[j]==='boolean'||row[j] instanceof Date)
         issues.push({sheet:sheetName,row:rowNumber,column:col(j),message:'Kiểu dữ liệu không phải văn bản theo nguồn.'});
-      if(typeof row[j]==='string'&&row[j]!==row[j].trim())
+      if(typeof row[j]==='string'&&(row[j] as string)!==(row[j] as string).trim())
         issues.push({sheet:sheetName,row:rowNumber,column:col(j),message:'Văn bản có khoảng trắng đầu/cuối; cần chuẩn hóa trong file trước khi nhập.'});
     }
     const kind=normalizeSearch(text(row[4]));

@@ -80,7 +80,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
   const [showAllSourceColumns,setShowAllSourceColumns]=useState(false);
-  const [colorRules,setColorRules]=useState<ColorRule[]>(selectedView?.colors??loadColorRules(personalScope));
+  const [colorRules,setColorRules]=useState<ColorRule[]>(loadColorRules(personalScope));
   const effectiveSourceKind = sourceKind ?? (readOnly ? 'google' : 'demo');
 
   // Admin customizations always start from the one Firebase shared layout.
