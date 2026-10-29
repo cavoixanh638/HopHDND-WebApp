@@ -9,7 +9,7 @@ import {normalizeSearch} from '../domain/search';
  * This is a read-only preflight parser: it never writes to Firebase.
  */
 export const BUSINESS_EXCEL_HEADERS = [
-  'Mã hồ sơ','STT','Nội dung trình','Sở, ngành','Loại văn bản',
+  'Mã hồ sơ','STT','Nội dung trình','Sở, ngành','Loại VB',
   'Cấp Thành ủy cho ý kiến','Tiến độ xin ý kiến Thành ủy',
   'Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ',
   'Chuyên viên','Phòng','Lãnh đạo Văn phòng','Lãnh đạo UBND',
