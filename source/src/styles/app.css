@@ -1017,21 +1017,22 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .item-data-table tbody td .content-button,
 .report-detail-grid tbody td .content-button {color:inherit;}
 
-/* Stable per-column cell alignment; source column position may be customized. */
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]),
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) {
+/* Stable per-column alignment, independent of custom ordering. Long prose
+   (including current progress) is NEVER included in the centered status cells. */
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]),
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) {
   text-align:center;
   vertical-align:middle;
 }
-.item-data-table tbody td:is([data-col-key="content"],[data-col-key="note"]),
-.report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="note"]) {
+.item-data-table tbody td:is([data-col-key="content"],[data-col-key="note"],[data-col-key="specificProgress"]),
+.report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="note"],[data-col-key="specificProgress"]) {
   text-align:left;
   vertical-align:top;
 }
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .cell-value-button,
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .cell-value-button,
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .custom-cell-input,
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .custom-cell-input {
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .cell-value-button,
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .cell-value-button,
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .custom-cell-input,
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .custom-cell-input {
   text-align:center;
 }
 
