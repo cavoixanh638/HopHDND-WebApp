@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
 import { get, onValue, ref, runTransaction } from 'firebase/database';
+import {DATASET_POINTER,activeVersion,permissionsPathFor,type ActiveDataset}
+  from '../data/versioned-dataset-replacement';
 import { firebaseAdmin, mayEdit, samePermissions, type CellPermissions } from '../data/firebase-repository';
 import type { ConfigSection } from '../data/shared-config';
 import { validateCatalog, type CatalogConfig } from '../data/catalogs';
@@ -51,6 +53,8 @@ export function useFirebase(){
   const {auth,database}=services;
   const [user,setUser]=useState<User|null>(null),[error,setError]=useState(''),[ready,setReady]=useState(false),[connected,setConnected]=useState(false);
   const [permissions,setPermissions]=useState<CellPermissions>({columns:{}});
+  const [activeDataset,setActiveDataset]=useState<ActiveDataset|null>(null);
+  const [activeDatasetReady,setActiveDatasetReady]=useState(false);
   const [editors,setEditors]=useState<Record<string,boolean>>({});
   const [editorsReady,setEditorsReady]=useState(false);
   const [profile,setProfile]=useState<FirebaseProfile|null>(loadConfirmedProfile),[busy,setBusy]=useState(false);
@@ -68,7 +72,7 @@ export function useFirebase(){
       if(next)hadAuthenticatedSession.current=true;
       markStartup('auth-checked');
       if(next)markStartup('auth-signed-in');
-      setUser(next);setReady(!!next);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditors({});setEditorsReady(false);setEditControl({ready:false,revision:0,editingLocked:true});setFreezeControl(null);
+      setUser(next);setReady(!!next);setActiveDataset(null);setActiveDatasetReady(false);setProfileReady(false);setPermissionsReady(false);setPermissions({columns:{}});setEditors({});setEditorsReady(false);setEditControl({ready:false,revision:0,editingLocked:true});setFreezeControl(null);
       if((!next||next.isAnonymous)&&!signing){signing=true;void ensureGuestAuth(auth).catch(cause=>setError(`Không đăng nhập ẩn danh được: ${cause.message}`)).finally(()=>{signing=false;});}
     },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
@@ -102,6 +106,25 @@ export function useFirebase(){
       stopMirrorWarmup.current=null;
     }
   },[profileReady,profile?.dataSource]);
+  // Active dataset is a separately observed pointer. Do NOT load a legacy
+  // item set speculatively while the pointer's initial snapshot is pending.
+  useEffect(()=>{
+    if(!user)return;
+    return onValue(ref(database,DATASET_POINTER),snap=>{
+      const raw=snap.val();
+      if(raw!==null && (typeof raw?.version!=='string'||
+        !/^(?:legacy|d_[a-f0-9]{32})$/.test(raw.version)||
+        !Number.isSafeInteger(raw.revision)||raw.revision<1)){
+        setActiveDatasetReady(false);
+        setError('Con trỏ phiên bản dữ liệu Firebase không hợp lệ. Đã khóa đọc/sửa để bảo vệ dữ liệu.');
+        return;
+      }
+      setActiveDataset(raw??null);setActiveDatasetReady(true);
+    },cause=>{
+      setActiveDatasetReady(false);
+      setError('Không xác nhận được phiên bản dữ liệu đang dùng: '+cause.message);
+    });
+  },[database,user?.uid]);
   useEffect(()=>{
     if(!user)return;
     let active=true;
@@ -110,7 +133,7 @@ export function useFirebase(){
     // A staff member can read only their own enrollment flag. The full UID
     // registry is reserved for admin and never sent to anonymous viewers.
     const editorsPath=adminSession?'hdnd/editors':'hdnd/editors/'+user.uid;
-    const stop=[onValue(ref(database,editorsPath),snap=>{if(!active)return;const raw=snap.val();setEditors(adminSession?(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{}):{[user.uid]:raw===true});setEditorsReady(true);},cause=>{if(active){setEditorsReady(false);setEditors({});}failed(cause);}),onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,'hdnd/permissions'),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
+    const stop=[onValue(ref(database,editorsPath),snap=>{if(!active)return;const raw=snap.val();setEditors(adminSession?(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{}):{[user.uid]:raw===true});setEditorsReady(true);},cause=>{if(active){setEditorsReady(false);setEditors({});}failed(cause);}),onValue(ref(database,'.info/connected'),snap=>{if(active){setConnected(snap.val()===true);if(snap.val()===true)markStartup('rt-db-connected');}}),onValue(ref(database,permissionsPathFor(activeVersion(activeDataset))),snap=>{if(!active)return;markStartup('permissions-received');const raw=snap.val();setPermissions({columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}});setPermissionsReady(true);},cause=>{if(active){setPermissionsReady(false);setPermissions({columns:{}});}failed(cause);}),onValue(ref(database,'hdnd/control'),snap=>{
       if(!active)return;
       markStartup('control-received');
       const current=snap.val();
@@ -118,7 +141,7 @@ export function useFirebase(){
     },cause=>{if(active)setEditControl({ready:false,revision:0,editingLocked:true});failed(cause);}),
     onValue(ref(database,'hdnd/profile'),snap=>{if(!active)return;markStartup('profile-received');try{const raw=snap.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setProfileReady(true);}catch(cause){setProfileReady(false);failed(cause as Error);}},cause=>{if(active)setProfileReady(false);failed(cause);})];
     return()=>{active=false;stop.forEach(unsubscribe=>unsubscribe());};
-  },[user?.uid,database]);
+  },[user?.uid,database,activeDataset?.version]);
   const admin=firebaseAdmin(user);
   const googleEditor=!!user&&!user.isAnonymous&&user.emailVerified&&
     user.providerData.some(provider=>provider.providerId==='google.com')&&
@@ -218,7 +241,7 @@ export function useFirebase(){
   /** Refresh just the permission branch, without touching unsaved layout work. */
   const refreshPermissions=async():Promise<CellPermissions>=>{
     if(!auth.currentUser||!connected)throw new Error('Chưa kết nối Firebase hoặc cần đăng nhập lại.');
-    const raw=(await get(ref(database,'hdnd/permissions'))).val() as CellPermissions|null;
+    const raw=(await get(ref(database,permissionsPathFor(activeVersion(activeDataset))))).val() as CellPermissions|null;
     const latest:CellPermissions={columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}};
     setPermissions(latest);setPermissionsReady(true);
     return latest;
@@ -228,7 +251,7 @@ export function useFirebase(){
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     saving.current=true;setBusy(true);
     try{
-    const rightsRef=ref(database,'hdnd/permissions');
+    const rightsRef=ref(database,permissionsPathFor(activeVersion(activeDataset)));
     // Read authoritative rights before CAS: RTDB transactions can first run
     // against an empty local cache, causing misleading conflict errors.
     const live=(await get(rightsRef)).val() as CellPermissions|null;
@@ -308,11 +331,11 @@ export function useFirebase(){
     }finally{saving.current=false;setBusy(false);}
   };
   const refresh=async()=>{
-    if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase; dữ liệu Sheets vẫn có thể đọc.');return;}
-    try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,'hdnd/permissions'))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
+    if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase. Dữ liệu vẫn giữ nguyên tại máy chủ.');return;}
+    try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,permissionsPathFor(activeVersion(activeDataset))))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
   };
-  return {database,user,ready,error,connected,permissions,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
-    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&mayEdit(permissions,id,field,admin),
+  return {database,user,ready,error,connected,activeDataset,activeDatasetReady,permissions,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
+    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&activeDatasetReady&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&mayEdit(permissions,id,field,admin),
     common:{config:profile,busy,message:error||(!ready?'Đang đăng nhập Firebase để đọc quyền và cấu hình…':!connected?'Mất kết nối Firebase; phần sửa thử vẫn giữ trên máy.':!profileReady?'Đang đọc cấu hình chung từ Firebase…':profile?'Danh mục và bố trí đang dùng chung qua Firebase.':'Chưa có bố trí chung; quản trị có thể lưu bố trí mặc định.'),status:error?'error':profileReady?'ready':'loading',refresh,save:saveProfile}};
 }
 export type FirebaseController=ReturnType<typeof useFirebase>;
