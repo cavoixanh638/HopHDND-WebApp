@@ -7,6 +7,7 @@ import {Modal} from '../../components/Modal';
 import {TransitionImportPanel} from './TransitionImportPanel';
 import {InitialFirebaseImportPanel} from './InitialFirebaseImportPanel';
 import type {TransitionRowChange} from '../../data/transition-import';
+import {BusinessExcelReviewPanel} from './BusinessExcelReviewPanel';
 export function ExcelTransferPanel({items,isAdmin,disabled,onImport,onClose,profile,onSaveProfile,importEnabled=true,transitionSheetUrl,onTransitionApply,transitionDisabled=true,initialSheetUrl,onInitialImport,initialImportDisabled=true}:{items:Item[];isAdmin:boolean;importEnabled?:boolean;transitionSheetUrl?:string;onTransitionApply?:(changes:TransitionRowChange[])=>Promise<number>;transitionDisabled?:boolean;initialSheetUrl?:string;onInitialImport?:(rows:Item[])=>Promise<number>;initialImportDisabled?:boolean;disabled:boolean;onImport:(items:Item[])=>Promise<void>;onClose:()=>void;profile:Omit<FirebaseProfile,'revision'>;onSaveProfile:(profile:Omit<FirebaseProfile,'revision'>)=>Promise<void>}){
   const [preview,setPreview]=useState<Item[]|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
   const [profilePending,setProfilePending]=useState(false),[confirmExit,setConfirmExit]=useState(false);
@@ -19,5 +20,5 @@ export function ExcelTransferPanel({items,isAdmin,disabled,onImport,onClose,prof
        initialSheetUrl={initialSheetUrl} disabled={initialImportDisabled||busy} onImport={onInitialImport}/>}
     {isAdmin&&transitionSheetUrl&&onTransitionApply&&<TransitionImportPanel items={items}
     sheetUrl={transitionSheetUrl} disabled={transitionDisabled||busy} onApply={onTransitionApply}/>}
-    <FirebaseProfileTransfer profile={profile} isAdmin={isAdmin} busy={disabled||busy} onSave={onSaveProfile} onPendingChange={setProfilePending}/>{confirmExit&&<Modal title="Bỏ bản xem trước chưa lưu?" onClose={()=>setConfirmExit(false)}><div className="modal-body"><p>Dữ liệu Excel hoặc cấu hình JSON đang xem trước chưa được lưu vào Firebase.</p></div><div className="modal-footer"><button className="button ghost" onClick={()=>setConfirmExit(false)}>Tiếp tục kiểm tra</button><button className="button danger" onClick={onClose}>Bỏ bản xem trước và thoát</button></div></Modal>}</section>;
+    {isAdmin&&<BusinessExcelReviewPanel current={items}/>}<FirebaseProfileTransfer profile={profile} isAdmin={isAdmin} busy={disabled||busy} onSave={onSaveProfile} onPendingChange={setProfilePending}/>{confirmExit&&<Modal title="Bỏ bản xem trước chưa lưu?" onClose={()=>setConfirmExit(false)}><div className="modal-body"><p>Dữ liệu Excel hoặc cấu hình JSON đang xem trước chưa được lưu vào Firebase.</p></div><div className="modal-footer"><button className="button ghost" onClick={()=>setConfirmExit(false)}>Tiếp tục kiểm tra</button><button className="button danger" onClick={onClose}>Bỏ bản xem trước và thoát</button></div></Modal>}</section>;
 }
