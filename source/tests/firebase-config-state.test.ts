@@ -81,6 +81,25 @@ describe('Firebase config controller remains independent of business data',()=>{
     emit('hdnd/freezeControl',{mode:'OPEN',revision:3,epoch:1,actor:'admin',changedAt:3,deadline:0,closedAt:0});
     h.listeners.get('hdnd/permissions').error(new Error('permission_denied'));expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
   });
+  it('lets a public anonymous Firebase visitor edit only granted fields without Google enrollment',()=>{
+    render();
+    h.auth.currentUser={uid:'public-guest',isAnonymous:true,email:null,emailVerified:false,providerData:[]};
+    h.authChanged(h.auth.currentUser);
+    render();
+    emit('hdnd/permissions',{columns:{note:true,content:false}});
+    emit('.info/connected',true);
+    emit('hdnd/control',{revision:1,editingLocked:false});
+    emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
+    const state=render();
+    expect(state.editorAuthorized).toBe(true);
+    expect(state.canEdit('sheet:42:row:3','note')).toBe(true);
+    expect(state.canEdit('sheet:42:row:3','content')).toBe(false);
+    emit('hdnd/permissions',{columns:{note:true},cells:{'sheet:42:row:3':{note:false}}});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    emit('hdnd/control',{revision:2,editingLocked:true});
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    expect(render().isAdmin).toBe(false);
+  });
   it('blocks guests when admin locks editing and uses a transaction to unlock',async()=>{
     login(true);emit('hdnd/control',{revision:2,editingLocked:true});
     const admin=render();expect(admin.editingLocked).toBe(true);

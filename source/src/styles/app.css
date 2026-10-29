@@ -1017,21 +1017,22 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .item-data-table tbody td .content-button,
 .report-detail-grid tbody td .content-button {color:inherit;}
 
-/* Stable per-column cell alignment; source column position may be customized. */
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]),
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) {
+/* Stable per-column alignment, independent of custom ordering. Long prose
+   (including current progress) is NEVER included in the centered status cells. */
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]),
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) {
   text-align:center;
   vertical-align:middle;
 }
-.item-data-table tbody td:is([data-col-key="content"],[data-col-key="note"]),
-.report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="note"]) {
+.item-data-table tbody td:is([data-col-key="content"],[data-col-key="note"],[data-col-key="specificProgress"]),
+.report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="note"],[data-col-key="specificProgress"]) {
   text-align:left;
   vertical-align:top;
 }
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .cell-value-button,
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .cell-value-button,
-.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .custom-cell-input,
-.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]) .custom-cell-input {
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .cell-value-button,
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .cell-value-button,
+.item-data-table tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .custom-cell-input,
+.report-detail-grid tbody td[data-col-key]:not([data-col-key="content"]):not([data-col-key="note"]):not([data-col-key="specificProgress"]) .custom-cell-input {
   text-align:center;
 }
 
@@ -2024,6 +2025,27 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     height:clamp(240px,48dvh,410px);max-height:none;flex:none;
   }
 }
+/* R06/P1 (Codex 020): four cards on narrow/short viewports can exceed
+   the remaining list-fit height. In that case the document MUST scroll to
+   reach the table; keep the table itself vertically/horizontally scrollable
+   for sticky headers and column filters. The desktop one-screen fit stays
+   unchanged whenever its content fits. */
+@media (max-width:980px), (max-height:850px) {
+  .app-shell.list-fit-page {
+    height:auto;min-height:100dvh;overflow:visible;
+  }
+  .app-shell.list-fit-page > main,
+  .app-shell.list-fit-page .item-list-card,
+  .app-shell.list-fit-page .item-list-card > .item-data-region {
+    flex:none;min-height:0;max-height:none;overflow:visible;
+  }
+  /* Match the specificity of the earlier wide-table-page:not(.settings-page)
+     height rule so this responsive cap is ACTUALLY applied (not only scroll). */
+  .app-shell.wide-table-page.list-fit-page .item-data-region .item-table-scroll {
+    flex:none;height:clamp(260px,48dvh,520px);min-height:260px;
+    max-height:none;overflow:auto;overscroll-behavior:contain;
+  }
+}
 @media print {
   .app-shell.list-fit-page {display:block;height:auto;min-height:0;overflow:visible;}
   .app-shell.list-fit-page > main,.app-shell.list-fit-page .item-list-card,
@@ -2068,23 +2090,31 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
 }
 
-/* Word-like justification applies only to three long-text DATA columns;
-   the final line remains left-aligned. Filters, titles, buttons in other
-   columns and any active textarea are deliberately left untouched. */
+/* Owner screenshot 29/10: long-text cells must have a straight left
+   edge. Justification expands spaces unpredictably in narrow columns and
+   looks like per-line indentation. Preserve actual source newlines only. */
 .item-data-table tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]),
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]) {
-  text-align:justify;text-align-last:left;
+  text-align:left;text-align-last:auto;
 }
 .item-data-table tbody td[data-col-key="content"]:not(.compact-merged-cell) .content-button,
 .item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger,
 .report-grid-modal .report-detail-grid tbody td[data-col-key="content"] .content-button,
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger {
   display:block!important;width:100%;max-width:100%;
-  text-align:justify;text-align-last:left;
+  text-align:left;text-align-last:auto;
   white-space:pre-wrap;
 }
 .item-data-table tbody td[data-col-key="content"].compact-merged-cell .compact-content-line {
-  display:block;text-align:justify;text-align-last:left;
+  display:block;text-align:left;text-align-last:auto;
+}
+/* Embedded editor and read-only merged content use the same paragraph
+   alignment; never spread source words across the available row width. */
+.item-data-table tbody td[data-col-key="content"].compact-merged-cell .compact-document-content,
+.report-grid-modal .report-detail-grid tbody td.compact-merged-cell .compact-document-content,
+.item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-entry,
+.report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-entry {
+  text-align:left;text-align-last:auto;
 }
 .item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea,
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea {

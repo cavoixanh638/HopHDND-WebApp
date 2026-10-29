@@ -1,3 +1,5 @@
+> **CẬP NHẬT THEO YÊU CẦU NGÀY 29/10/2026 — CANDIDATE, CHƯA DEPLOY:** Mục “Visitors cannot edit” bên dưới là chính sách cũ dành cho PR trước. Với PR #92 Lượt 025, khách Firebase Anonymous Auth **không cần Google login** có thể sửa **duy nhất các ô admin mở quyền**, khi source primary và thỏa server lease/freeze/permission. `hdnd/editors/{UID}` chỉ tiếp tục dành cho nhân viên Google xác thực. Đây là thay đổi security-sensitive: bất kỳ ai có link đều có thể ghi những ô được mở; phải kiểm emulator/security và được chủ dự án phê duyệt deploy Rules. [Lượt 025](../tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). Không sử dụng đoạn cũ như trạng thái sản phẩm đã publish.
+
 # HopHDND — vận hành WebApp Firebase realtime chỉ bằng tài khoản nhân viên
 
 **Trạng thái:** Candidate ready for emulator validation; production not yet deployed. This is the only intended post-cutover workflow (no continuous Sheets synchronization). Date 2026-10-25.

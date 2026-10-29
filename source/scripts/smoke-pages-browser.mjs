@@ -532,10 +532,18 @@ try{
     const sort=stt?.querySelector('.column-sort-button');
     if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
-    const gap=viewport.getBoundingClientRect().top-tabs.bottom;
+    const cards=document.querySelector('.item-summary-grid');
+    const cardRect=cards?.getBoundingClientRect();
+    const gapBefore=cardRect?.top-tabs.bottom;
+    const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    return {ok:aligned&&gap<155&&!status&&!cardHeader&&!!localMenu,aligned,gap,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
+    // Same strict no-extra-blank-space contract, now measured before and after
+    // the four explicitly requested summary cards instead of across their height.
+    return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
+      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!!localMenu,
+      aligned,gapBefore,gapAfter,cardHeight:cardRect?.height,
+      hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
   const mainSectionCards=await evaluate(`(()=>{
@@ -898,11 +906,11 @@ try{
       text:trigger.textContent};
     table.remove();return result;
   })()`);
-  if(highlightLayout.justify!=='justify'||highlightLayout.finalLine!=='left'||
+  if(highlightLayout.justify!=='left'||highlightLayout.finalLine!=='auto'||
     highlightLayout.numberWhitespace!=='nowrap'||highlightLayout.pieces!==1||
     !highlightLayout.text.includes('số 254 ngày'))
-    throw Error('Justified progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
-  console.log('JUSTIFY_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
+    throw Error('Left-aligned progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
+  console.log('LEFT_ALIGN_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
   const placeholderSelect=await evaluate(`(()=>{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     const color=select?getComputedStyle(select).color:'';
@@ -1497,12 +1505,16 @@ try{
           const grid=modal?.querySelector('.report-detail-grid');
           const cols=grid?.querySelectorAll('thead tr:first-child th').length??0;
           const rows=grid?.querySelectorAll('tbody tr').length??0;
-          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-actions,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.cell-value-button,.custom-cell-input');
+          // Guest may see one permitted-data edit toggle but NEVER the admin
+          // settings/presets/resize controls. No full login is needed.
+          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.custom-cell-input');
+          const toolbarButtons=[...(modal?.querySelectorAll('.report-grid-toolbar button')??[])];
+          const allowedActions=toolbarButtons.every(button=>button.textContent.trim()==='Chỉnh sửa nháp'||button.textContent.trim()==='Về chế độ xem');
           const history=['note','specificProgress'].map(key=>
             grid?.querySelector('tbody tr:first-child td[data-col-key="'+key+'"] button.cell-history-action'));
           const irrelevant=!!grid?.querySelector('tbody tr:first-child td[data-col-key="content"] button.cell-history-action');
           return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!forbidden&&
-            !modal.querySelector('.report-grid-toolbar button,.report-grid-toolbar input')&&
+            allowedActions&&!modal.querySelector('.report-grid-toolbar input')&&
             !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select')&&
             history.every(Boolean)&&!irrelevant,
             cols,rows,forbidden:!!forbidden,historyButtons:history.filter(Boolean).length,irrelevant};
@@ -2250,18 +2262,22 @@ try{
   })()`);
   if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
-    'R02 ArrowRight did not respect projected ID min');
+  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=310.5",
+    'L019 adjacent progress group did not shrink when content grew');
   const r02Right=await widthSnapshot();
   assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
-  if(r02Right.content<r02Before.content||r02Right.id<46||r02Right.content>r02Before.content+7)
-    throw Error('R02 right arrow reversed content / overcompensated ID: '+JSON.stringify({r02Before,r02Right}));
+  if(r02Right.content!==r02Before.content+10||
+    r02Right.party!==r02Before.party-10||r02Right.id!==r02Before.id)
+    throw Error('L019 neighbor-first changed wrong column: '+JSON.stringify({r02Before,r02Right}));
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowLeft');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width>=55",
-    'R02 ArrowLeft did not return physical width');
+  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=320",
+    'L019 ArrowLeft did not restore adjacent group width');
   const r02Left=await widthSnapshot();
-  assertSameTotal(r02Before,r02Left,'R02 ArrowLeft');
+  assertSameTotal(r02Before,r02Left,'L019 ArrowLeft');
+  if(r02Left.content!==r02Before.content||r02Left.party!==r02Before.party||
+    r02Left.id!==r02Before.id)
+    throw Error('L019 round-trip drag has width drift: '+JSON.stringify({r02Before,r02Left}));
   const dragStart=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -2275,9 +2291,39 @@ try{
   await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>433",
     'R02 real pointer drag did not resize');
   const r02Drag=await widthSnapshot();
-  assertSameTotal(r02Before,r02Drag,'R02 real pointer drag');
+  assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
+  if(r02Drag.content!==r02Before.content+5||
+    r02Drag.party!==r02Before.party-5||r02Drag.id!==r02Before.id)
+    throw Error('L019 pointer drag altered ID or trailing column: '+JSON.stringify({r02Before,r02Drag}));
   const r02shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
+
+  // Owner L019 explicit fallback: group adjacent reaches physical minimum
+  // before the last visible ID (52px default) begins to compensate.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    'L019 fallback baseline missing');
+  await moveLast('displayCode');
+  const fallbackBefore=await widthSnapshot();
+  const fallbackEdge=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=content] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...fallbackEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...fallbackEdge,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
+    'L019 fallback failed to use last ID after adjacent reached minimum');
+  const fallbackAfter=await widthSnapshot();
+  assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
+  if(fallbackAfter.content!==fallbackBefore.content+136||
+    fallbackAfter.party!==190||fallbackAfter.id!==46)
+    throw Error('L019 fallback exceeded min or skipped adjacent: '+
+      JSON.stringify({fallbackBefore,fallbackAfter}));
+  const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-adjacent-exhausted-fallback.png',Buffer.from(l019BeforeShot.data,'base64'));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
@@ -2286,12 +2332,13 @@ try{
   const customBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width<96",
-    'R02 custom ID physical compensator not updated');
+  await eventually("document.querySelector('.item-data-table td[data-col-key=partyLevel]')?.getBoundingClientRect().width<320",
+    'L019 custom-ID adjacent group did not give pixels');
   const customAfter=await widthSnapshot();
   assertSameTotal(customBefore,customAfter,'R02 custom ID');
-  if(customAfter.content<=customBefore.content||customAfter.id>=customBefore.id)
-    throw Error('R02 custom ID did not transfer physical pixels');
+  if(customAfter.content!==customBefore.content+10||
+    customAfter.party!==customBefore.party-10||customAfter.id!==customBefore.id)
+    throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===7",'R02 grouped fixture missing');
@@ -2303,9 +2350,174 @@ try{
     'R02 grouped last-column compensation did not move');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
-  console.log('R02_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
+  console.log('L019_ADJACENT_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
+
+
+  // Owner L019: exact screenshot order — Tiến độ hiện tại is immediately
+  // before the roomy Lãnh đạo / Phòng / CV group, with Ghi chú last.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    'L019 reported column order missing');
+  const reportedBefore=await widthSnapshot();
+  const progressIndex=reportedBefore.keys.indexOf('specificProgress');
+  if(progressIndex<0||reportedBefore.keys[progressIndex+1]!=='room'||
+    reportedBefore.keys.at(-1)!=='note')
+    throw Error('L019 fixture is not progress | staff | note: '+JSON.stringify(reportedBefore));
+  const reportBeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-progress-staff-before.png',Buffer.from(reportBeforeShot.data,'base64'));
+  const reportedEdge=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=specificProgress] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...reportedEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...reportedEdge,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:reportedEdge.x+50,y:reportedEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:reportedEdge.x+50,y:reportedEdge.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>="+
+    (reportedBefore.widths[progressIndex]+49.5),'L019 reported progress column not wider after pointer drag');
+  const reportedAfter=await widthSnapshot();
+  assertSameTotal(reportedBefore,reportedAfter,'L019 progress+staff exact sample');
+  if(reportedAfter.widths[progressIndex]!==reportedBefore.widths[progressIndex]+50||
+    reportedAfter.widths[progressIndex+1]!==reportedBefore.widths[progressIndex+1]-50||
+    reportedAfter.widths[reportedAfter.keys.indexOf('note')]!==
+      reportedBefore.widths[reportedBefore.keys.indexOf('note')])
+    throw Error('L019 reported neighbor was not compensated: '+
+      JSON.stringify({reportedBefore,reportedAfter}));
+  const reportAfterShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-progress-staff-after.png',Buffer.from(reportAfterShot.data,'base64'));
+  // Distinct from manual drag: widening the selected List frame allocates
+  // available width without a trailing white band; shrinking allows local
+  // horizontal scroll if source minimums exceed the frame.
+  const frameCases=[];
+  for(const frame of ['900','auto']){
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?fit=1'+(frame==='900'?'&frame=900':'')});
+    await eventually("document.querySelector('.item-table-scroll colgroup')!==null",
+      'L019 selected frame fixture '+frame+' missing');
+    const shape=await evaluate(`(()=>{
+      const wrap=document.querySelector('.item-table-scroll');
+      const cols=[...wrap.querySelectorAll('colgroup col')];
+      const widths=cols.map(x=>x.getBoundingClientRect().width);
+      const sum=widths.reduce((a,b)=>a+b,0);
+      const outer=wrap.getBoundingClientRect().width;
+      // The visible vertical scrollbar occupies 12px in CI Chromium.
+      // ResizeObserver fits against the actual content box, not border width.
+      return {viewport:wrap.clientWidth,outer,scrollbar:outer-wrap.clientWidth,
+        table:sum,id:widths[0],document:document.scrollingElement.scrollWidth,
+        windowWidth:innerWidth};
+    })()`);
+    if(shape.table+1<shape.viewport||shape.document>shape.windowWidth+5||
+      shape.id>53)
+      throw Error('L019 frame fill/ID regression '+frame+': '+JSON.stringify(shape));
+    frameCases.push({frame,...shape});
+  }
+  console.log('L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS',
+    JSON.stringify({reportedBefore,reportedAfter,frameCases}));
+  
+  // Owner 29/10 screenshot: normal word spacing, a centered HC/department
+  // heading and a full-height divider large enough to grab with a mouse.
+  // Use editable synthetic mode so the real InlineNoteEditor buttons exist.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1&edit=1'});
+  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
+    'L023 visible divider fixture missing');
+  const textGeometry=await evaluate(`(()=>{
+    const style=selector=>{const node=document.querySelector(selector);
+      return node?getComputedStyle(node):null;};
+    const badge=document.querySelector('.compact-document-badge');
+    const dept=document.querySelector('.compact-document-department');
+    const center=node=>node?(node.getBoundingClientRect().top+
+      node.getBoundingClientRect().bottom)/2:null;
+    return {
+      grip:document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+        .getBoundingClientRect().width,
+      progressAlign:style('td[data-col-key=specificProgress]')?.textAlign,
+      progressButtonAlign:style('td[data-col-key=specificProgress] .inline-note-trigger')?.textAlign,
+      noteAlign:style('td[data-col-key=note]')?.textAlign,
+      noteButtonAlign:style('td[data-col-key=note] .inline-note-trigger')?.textAlign,
+      contentAlign:style('.compact-document-content')?.textAlign,
+      headingAlign:style('.compact-document-heading')?.alignItems,
+      badgeY:center(badge),departmentY:center(dept)
+    };
+  })()`);
+  if(textGeometry.grip<13||textGeometry.progressAlign!=='left'||
+    textGeometry.progressButtonAlign!=='left'||textGeometry.noteAlign!=='left'||
+    textGeometry.noteButtonAlign!=='left'||textGeometry.contentAlign!=='left'||
+    textGeometry.headingAlign!=='center'||textGeometry.badgeY===null||
+    textGeometry.departmentY===null||
+    Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
+    throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
+  // Grouped Staff has 70px mandatory extra width (min physical 130px).
+  // Drag 250px: first 110px from Staff (240→130), then 140px from Note.
+  // The other physical widths stay put.
+  const wideBefore=await widthSnapshot();
+  const wideEdge=await evaluate(`(()=>{
+    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+      .getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...wideEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...wideEdge,
+    button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:wideEdge.x+250,y:wideEdge.y,
+    button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:wideEdge.x+250,y:wideEdge.y,
+    button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=449",
+    'L023 drag +250 stopped too early despite last-column fallback');
+  const wideAfter=await widthSnapshot();
+  assertSameTotal(wideBefore,wideAfter,'L023 owner wide drag');
+  const ix=wideBefore.keys.indexOf('specificProgress');
+  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+250||
+    wideAfter.widths[ix+1]!==130||
+    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-140||
+    wideAfter.id!==wideBefore.id)
+    throw Error('L023 adjacent→last fallback incorrect: '+JSON.stringify({wideBefore,wideAfter}));
+  console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
+    JSON.stringify({textGeometry,wideBefore,wideAfter}));
+
+  // Owner L023: anonymous/read-only viewers may resize a column ONLY in
+  // their live view; the shared layout is never written and reload resets it.
+  const guestResizeUrl='http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
+  await send('Page.navigate',{url:guestResizeUrl});
+  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
+    'L023 guest must have a local-only width divider');
+  const guestBefore=await widthSnapshot();
+  const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
+  const guestEdge=await evaluate(`(()=>{
+    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+      .getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...guestEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...guestEdge,
+    button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:guestEdge.x+120,y:guestEdge.y,
+    button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:guestEdge.x+120,y:guestEdge.y,
+    button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=319",
+    'L023 guest local width did not change');
+  const guestAfter=await widthSnapshot();
+  assertSameTotal(guestBefore,guestAfter,'L023 guest local-only');
+  const gi=guestBefore.keys.indexOf('specificProgress');
+  if(guestAfter.widths[gi]!==guestBefore.widths[gi]+120||
+    guestAfter.widths[gi+1]!==130||
+    guestAfter.widths.at(-1)!==guestBefore.widths.at(-1)-10||
+    storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
+    throw Error('L023 guest changed other widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+  await send('Page.navigate',{url:guestResizeUrl});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
+    'L023 guest remount missing');
+  const guestReload=await widthSnapshot();
+  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths))
+    throw Error('L023 guest edit was not session-only: '+JSON.stringify({guestBefore,guestReload}));
+  console.log('L023_GUEST_LOCAL_ONLY_RESIZE_NO_SHARED_WRITE_PASS',
+    JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
   // Check REAL keyboard and pointer, including when the capped group is last.
@@ -2334,8 +2546,11 @@ try{
       'R02 cap ArrowLeft did not visibly shrink group');
     const left=await widthSnapshot();
     assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
-    if(left.party!==1590||left.widths[left.keys.indexOf('note')]!==250)
-      throw Error('R02 group target physical transfer mismatch: '+JSON.stringify(left));
+    const nextAfterParty=left.keys[left.keys.indexOf('partyLevel')+1];
+    if(left.party!==1590||left.widths[left.keys.indexOf(nextAfterParty)]!==
+      before.widths[before.keys.indexOf(nextAfterParty)]+10||
+      left.widths[left.keys.indexOf('note')]!==240)
+      throw Error('L019 cap shrink must grow adjacent, not note: '+JSON.stringify(left));
     const point=await evaluate(`(()=>{
       const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
       el.scrollIntoView({block:'center',inline:'nearest'});
@@ -2364,30 +2579,496 @@ try{
     if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowRight');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
-      'R02 capped group last did not compensate');
+    const afterContentKey=lastBefore.keys[lastBefore.keys.indexOf('content')+1];
+    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width<="+
+      (lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10.0),
+      'L019 capped group last must remain unchanged while neighbor compensates');
     const lastRight=await widthSnapshot();
     assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
-    if(lastRight.content!==450||lastRight.party!==1590)
-      throw Error('R02 cap group-last ArrowRight values '+JSON.stringify(lastRight));
+    if(lastRight.content!==450||lastRight.party!==1600||
+      lastRight.widths[lastRight.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10)
+      throw Error('L019 cap group-last: adjacent must compensate before capped group '+JSON.stringify(lastRight));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1600",
-      'R02 group last left did not restore cap');
+    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width>="+
+      lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)],
+      'L019 group-last adjacent width not restored');
     const lastLeft=await widthSnapshot();
     assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
-    if(lastLeft.content!==440||lastLeft.party!==1600)
-      throw Error('R02 cap group-last ArrowLeft values '+JSON.stringify(lastLeft));
+    if(lastLeft.content!==440||lastLeft.party!==1600||
+      lastLeft.widths[lastLeft.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)])
+      throw Error('L019 cap group-last reverse must restore neighbor '+JSON.stringify(lastLeft));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
     const lastAtCap=await widthSnapshot();
     assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
-    if(lastAtCap.party!==1600||lastAtCap.content!==440)
-      throw Error('R02 group-last cap should not give phantom pixels '+JSON.stringify(lastAtCap));
+    if(lastAtCap.party!==1600||lastAtCap.content!==430||
+      lastAtCap.widths[lastAtCap.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]+10)
+      throw Error('L019 group-last uses adjacent and must not touch capped last '+JSON.stringify(lastAtCap));
     r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
   }
-  console.log('R02_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
+  console.log('L019_ADJACENT_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
 
+
+  // Lượt 018: real main-list cards and stable group titles, not report modal cards.
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&r05=1'});
+  await eventually("document.querySelectorAll('.item-summary-grid [data-summary-card]').length===4",
+    'Lượt 018: four summary cards missing from main list');
+  const fourDesktop=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid > article')];
+    const totalBounds=cards[0].getBoundingClientRect();
+    const workflowBounds=cards.slice(1).map(c=>c.getBoundingClientRect());
+    const summary=document.querySelector('.item-summary-grid').getBoundingClientRect();
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    const region=document.querySelector('.item-data-region').getBoundingClientRect();
+    const headings=[...document.querySelectorAll('.item-heading-row th')].map(c=>c.textContent.trim());
+    const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
+    const qppl=Number(document.querySelector('[data-summary-kind=qppl] strong')?.textContent);
+    const hc=Number(document.querySelector('[data-summary-kind=hc] strong')?.textContent);
+    const nqUnknown=Number(document.querySelector('[data-summary-kind=nq-unknown] strong')?.textContent??0);
+    const nq=qppl+hc+nqUnknown;
+    const bc=Number(document.querySelector('[data-summary-kind=bc] strong')?.textContent);
+    const unclassified=Number(document.querySelector('[data-summary-kind=unclassified] strong')?.textContent??0);
+    const stages=['party','build','nq'].map(k=>{
+      const card=document.querySelector('[data-summary-card='+k+']');
+      return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
+        percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
+        width:card.getBoundingClientRect().width};
+    });
+    // Owner: compact total is centered ABOVE the three-workflow row.
+    return {ok:cards.length===4&&totalBounds.width>0&&totalBounds.width<summary.width*.75&&
+      Math.abs(totalBounds.left+totalBounds.width/2-summary.left-summary.width/2)<2&&
+      cards[0].scrollWidth<=cards[0].clientWidth+1&&
+      totalBounds.bottom<workflowBounds[0].top&&workflowBounds.every(r=>
+        Math.abs(r.top-workflowBounds[0].top)<2&&Math.abs(r.width-workflowBounds[0].width)<2)&&
+      summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
+      headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
+      headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
+      headings.some(x=>x.includes('Nhóm phụ trách tùy chỉnh'))&&
+      total===nq+bc+unclassified&&stages.map(x=>x.status).join(',')==='4,4,3',
+      total,nq,bc,unclassified,regionWidth:region.width,summaryWidth:summary.width,
+      summaryBottom:summary.bottom,tableTop:table.top,headings,stages};
+  })()`);
+  if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
+  const fourDesktopShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-four-cards-desktop.png',Buffer.from(fourDesktopShot.data,'base64'));
+  // Clickable summary counts use live normalized report conditions. Counts
+  // retain column-filter context so another quick condition remains selectable.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1'});
+  await eventually("document.querySelectorAll('button.item-summary-bucket').length===11",
+    'Summary quick-filter buttons missing');
+  const summaryRows=()=>evaluate("document.querySelectorAll('.item-data-table tbody tr.color-row').length");
+  const originalSummaryRows=await summaryRows();
+  await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
+    'Party next must filter both post-VP records, not only one literal status');
+  const quickSummary=await evaluate(`({
+    selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
+    total:Number(document.querySelector('.item-summary-total-count').textContent),
+    result:document.querySelector('.item-summary-active-filter')?.textContent,
+    totalLabelBeforeCount:document.querySelector('.item-summary-total-lead h3').getBoundingClientRect().right<=
+      document.querySelector('.item-summary-total-count').getBoundingClientRect().left,
+    bucketHeight:document.querySelector('.item-summary-bucket').getBoundingClientRect().height
+  })`);
+  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2/7')||
+      !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
+    throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
+  // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
+  // fixture. Mobile layout must not wrap any stage LABEL or spill the cards.
+  const selectedDesktopShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-summary-filter-selected-desktop.png',
+    Buffer.from(selectedDesktopShot.data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:390,height:844,deviceScaleFactor:1,mobile:false});
+  const selectedMobile=await evaluate(`(()=>{
+    const grid=document.querySelector('.item-summary-grid');
+    const buttons=[...grid.querySelectorAll('.item-summary-bucket')];
+    const labels=buttons.map(b=>b.querySelector('span'));
+    const active=grid.querySelector('.item-summary-active-filter');
+    return {width:window.innerWidth,
+      cardOverflow:grid.scrollWidth>grid.clientWidth+1,
+      labelOverflow:labels.some(l=>l.scrollWidth>l.clientWidth+1),
+      multilineLabels:labels.some(l=>l.getBoundingClientRect().height>
+        parseFloat(getComputedStyle(l).lineHeight)*1.2),
+      maxButtonHeight:Math.max(...buttons.map(b=>b.getBoundingClientRect().height)),
+      selected:buttons.filter(b=>b.getAttribute('aria-pressed')==='true').length,
+      active:!!active,clear:!!active?.querySelector('button')
+    };
+  })()`);
+  if(selectedMobile.width!==390||selectedMobile.cardOverflow||
+      selectedMobile.labelOverflow||selectedMobile.multilineLabels||
+      selectedMobile.maxButtonHeight>58||selectedMobile.selected!==1||
+      !selectedMobile.active||!selectedMobile.clear)
+    throw Error('Mobile summary quick-filter layout regression: '+JSON.stringify(selectedMobile));
+  const selectedMobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-summary-filter-selected-mobile-390.png',
+    Buffer.from(selectedMobileShot.data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  console.log('SUMMARY_SELECTED_DESKTOP_MOBILE_SCREENSHOTS_PASS',JSON.stringify(selectedMobile));
+  await evaluate("document.querySelector('[data-summary-report=nq][data-summary-stage=source]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===3",
+    'Choosing a new summary condition must replace the previous quick condition');
+  await evaluate("document.querySelector('[data-summary-report=nq][data-summary-stage=source]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
+    'Second click did not clear summary filter');
+  await evaluate("document.querySelector('[data-summary-report=build][data-summary-stage=completed]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&!!document.querySelector('.item-data-table td.empty')",
+    'Zero-count summary condition must show an empty list');
+  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
+    'Clear summary filter failed');
+  await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=source]').focus()");
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  await eventually("document.querySelector('[data-summary-report=party][data-summary-stage=source]').getAttribute('aria-pressed')==='true'",
+    'Summary keyboard activation failed');
+  // Native button also supports Space. Toggling it off must remove the badge
+  // without removing any column filter; reselect for the next combined case.
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await eventually("!document.querySelector('.item-summary-active-filter')",
+    'Space must deactivate the selected summary button');
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await eventually("!!document.querySelector('.item-summary-active-filter')",
+    'Space must reactivate the selected summary button');
+  console.log('SUMMARY_QUICK_FILTER_TOGGLE_SWITCH_ZERO_KEYBOARD_PASS',JSON.stringify(quickSummary));
+
+  // Column filters intersect the quick condition; clearing the quick filter
+  // must preserve the existing column filter and summary base counts.
+  const inputFocus=await evaluate(`(()=>{
+    const el=document.querySelector('[data-filter-key=displayCode] input');
+    if(!el)return false;el.focus();return document.activeElement===el;
+  })()`);
+  if(!inputFocus)throw Error('Lượt 018 ID filter missing');
+  await send('Input.insertText',{text:'NQ01'});
+  await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
+    'Lượt 018 summary total failed to follow ID column filter');
+  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('[data-filter-key=displayCode] input').value==='NQ01'",
+    'Clearing summary condition must preserve the ID column filter');
+  const filteredSummary=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
+    const total=Number(cards[0].querySelector('.item-summary-total-count').textContent);
+    const rows=document.querySelectorAll('.item-data-table tbody tr.color-row').length;
+    return {total,rows};
+  })()`);
+  if(filteredSummary.total!==1||filteredSummary.rows!==1)
+    throw Error('Lượt 018 summary/list filter scope differs: '+JSON.stringify(filteredSummary));
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&popup=1'});
+  await eventually("document.querySelector('.report-detail-grid .compact-stages')!==null",
+    'Lượt 018 popup group missing');
+  const popupHeadings=await evaluate(`[...document.querySelectorAll('.report-grid-heading-row th')].map(c=>c.textContent.trim())`);
+  if(!popupHeadings.some(x=>x.includes('Hồ sơ tùy chỉnh'))||
+      !popupHeadings.some(x=>x.includes('Ba khâu tùy chỉnh'))||
+      (await evaluate("document.querySelector('.item-summary-grid')!==null")))
+    throw Error('Lượt 018 popup title fallback or unexpected KPI cards: '+JSON.stringify(popupHeadings));
+  const popupShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-group-titles-popup.png',Buffer.from(popupShot.data,'base64'));
+
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&r05=1'});
+  await eventually("document.querySelectorAll('.item-summary-grid [data-summary-card]').length===4",
+    'Lượt 018 mobile cards missing');
+  const fourMobile=await evaluate(`(()=>{
+    const cards=[...document.querySelectorAll('.item-summary-grid > article')];
+    const bounds=cards.map(x=>x.getBoundingClientRect());
+    const s=document.querySelector('.item-summary-grid').getBoundingClientRect();
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    return {ok:bounds.length===4&&bounds.every((r,i)=>r.width<=s.width+2&&
+      r.left>=s.left-1&&(i===0||r.top>=bounds[i-1].bottom-1))&&
+      bounds[3].bottom<table.top&&document.scrollingElement.scrollWidth<=innerWidth+4,
+      widths:bounds.map(r=>r.width),tops:bounds.map(r=>r.top),
+      bottom:bounds.at(-1).bottom,tableTop:table.top,body:document.scrollingElement.scrollWidth,viewport:innerWidth};
+  })()`);
+  if(!fourMobile.ok)throw Error('Lượt 018 mobile stacked cards overflow: '+JSON.stringify(fourMobile));
+  const l018MobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l018-four-cards-mobile.png',Buffer.from(l018MobileShot.data,'base64'));
+  console.log('L018_GROUP_LABELS_AND_FOUR_CARDS_PASS',JSON.stringify({fourDesktop,filteredSummary,popupHeadings,fourMobile}));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+
+
+  // R12: an admin must see a DIRECT header-rename entry in the normal
+  // list, not only a collapsed subpanel several screens into customization.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
+    'R12 admin list header rename shortcut missing');
+  await evaluate("document.querySelector('.group-label-shortcut').click()");
+  await eventually("!!document.querySelector('.group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')",
+    'R12 header rename dialog missing');
+  const quickNameFocus=await evaluate(`(()=>{
+    const input=document.querySelector('.group-label-quick-editor input[aria-label="Đổi tên cột gộp partyTogether"]');
+    input?.focus();return document.activeElement===input;
+  })()`);
+  if(!quickNameFocus)throw Error('R12 header title editor focus missing');
+  await send('Input.insertText',{text:'Tiến độ công việc 3 bước'});
+  await eventually("document.querySelector('.group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')?.value==='Tiến độ công việc 3 bước'",
+    'R12 header rename input lost controlled state');
+  await evaluate("document.querySelector('.group-label-quick-editor button[type=submit]').click()");
+  await eventually("document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim()==='Tiến độ công việc 3 bước'",
+    'R12 shared CAS rename did not update live table title');
+  const quickRename=await evaluate(`({
+    heading:document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim(),
+    modalOpen:!!document.querySelector('.group-label-quick-editor'),
+    originalSourceField:!!document.querySelector('td[data-col-key=progressBuild]')
+  })`);
+  if(quickRename.modalOpen)throw Error('R12 save did not close rename popup');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("!!document.querySelector('.guest-compact-menu-bar')",
+    'R12 guest layout failed to load');
+  if(await evaluate("!!document.querySelector('.group-label-shortcut')"))
+    throw Error('R12 guest received admin-only group-title edit control');
+  console.log('R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS',JSON.stringify(quickRename));
+
+  // Real administrator UI: type, cancel, save with the existing layout
+  // persistence callback, remount from the saved synthetic snapshot and reset.
+  await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.group-label-editor summary')!==null",
+    'Lượt 018 admin group-name panel missing');
+  await evaluate("document.querySelector('.group-label-editor').open=true");
+  const adminNameFocus=await evaluate(`(()=>{
+    const el=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]');
+    if(!el)return false;el.focus();return document.activeElement===el;
+  })()`);
+  if(!adminNameFocus)throw Error('Lượt 018 admin title input not editable');
+  await send('Input.insertText',{text:'Tên khâu do quản trị đặt'});
+  await eventually("document.querySelector('input[aria-label=\"Tên nhóm gộp partyTogether\"]')?.value==='Tên khâu do quản trị đặt'",
+    'Lượt 018 group-title input lost draft');
+  await evaluate("document.querySelectorAll('.group-label-editor-row')[1]?.querySelector('button')?.click()");
+  await eventually("document.querySelectorAll('.group-label-editor input')[1]?.value===''",
+    'Lượt 018 Cancel did not restore last saved group name');
+  const cancelled=await evaluate(`document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]')?.value`);
+  if(cancelled!=='')throw Error('Lượt 018 Hủy did not restore saved blank name '+cancelled);
+  await evaluate("document.querySelectorAll('.group-label-editor input')[1]?.focus()");
+  await send('Input.insertText',{text:'Tên ba khâu sau lưu'});
+  await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
+    'Lượt 018 shared Save not enabled after title edit');
+  await evaluate("document.querySelector('.column-save-button').click()");
+  await eventually("!!JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether",
+    'Lượt 018 synthetic CAS save did not persist group title');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
+  await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
+    'Lượt 018 shared group-title reload not shown');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1&popup=1'});
+  await eventually("[...document.querySelectorAll('.report-grid-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
+    'Lượt 018 popup did not inherit saved shared group title');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.group-label-editor summary')!==null",
+    'Lượt 018 admin group-title reload missing');
+  await evaluate("document.querySelector('.group-label-editor').open=true");
+  await evaluate(`(()=>{
+    const row=document.querySelector('input[aria-label="Tên nhóm gộp partyTogether"]').closest('.group-label-editor-row');
+    [...row.querySelectorAll('button')].find(b=>b.textContent.includes('Khôi phục tên mặc định')).click();
+  })()`);
+  await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
+    'Lượt 018 default-title reset not detected as change');
+  await evaluate("document.querySelector('.column-save-button').click()");
+  await eventually("JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether===undefined",
+    'Lượt 018 reset did not remove only the group override');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
+  await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tiến độ 3 khâu'))",
+    'Lượt 018 default title failed after reset/reload');
+  await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
+  console.log('L018_GROUP_TITLE_ADMIN_SAVE_CANCEL_RELOAD_RESET_PASS');
+
+
+  // Codex Lượt 020 R06/P1: this fixture MUST carry the actual App.tsx
+  // wide-table-page + list-fit-page shell, not just a standalone ItemList.
+  // Verify document scrolling to an actual data row and internal table scroll,
+  // not merely grid stacking or horizontal body overflow.
+  const r06Screens=[];
+  for(const {width,height,mode} of [
+    {width:390,height:844,mode:'mobile'},
+    {width:768,height:750,mode:'tablet'},
+    {width:1280,height:800,mode:'laptop'},
+    {width:1280,height:600,mode:'short-desktop'}
+  ]){
+    await send('Emulation.setDeviceMetricsOverride',
+      {width,height,deviceScaleFactor:1,mobile:false});
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?app-shell=1&r05=1'});
+    await eventually("document.querySelector('.app-shell.wide-table-page.list-fit-page .item-data-table tbody tr')!==null",
+      'R06 real App shell fixture missing '+mode);
+    const before=await evaluate(`(()=>{
+      const root=document.querySelector('.app-shell'),grid=document.querySelector('.item-summary-grid');
+      const table=document.querySelector('.item-table-scroll'),body=document.scrollingElement;
+      const row=document.querySelector('.item-data-table tbody tr:first-child');
+      const card=grid.getBoundingClientRect(),tb=table.getBoundingClientRect();
+      return {shell:root.className,viewport:innerHeight,bodyHeight:body.scrollHeight,
+        bodyClient:body.clientHeight,bodyOverflow:getComputedStyle(root).overflowY,
+        cardsHeight:card.height,cardsBottom:card.bottom,tableTop:tb.top,tableHeight:tb.height,
+        scrollMode:getComputedStyle(table).overflowY,
+        firstRow:row.getBoundingClientRect().top,bodyWidth:body.scrollWidth,screenWidth:innerWidth};
+    })()`);
+    // R06 follow-up: CSS for wide-table-page is more specific than the old
+    // list-fit rule; assert the 48dvh cap is really applied on each breakpoint.
+    const intendedHeight=Math.min(520,Math.max(260,height*0.48));
+    if(Math.abs(before.tableHeight-intendedHeight)>5)
+      throw Error('R06 responsive table-height override lost CSS specificity at '+
+        mode+': '+JSON.stringify({actual:before.tableHeight,intendedHeight}));
+    if(!before.shell.includes('wide-table-page')||!before.shell.includes('list-fit-page')||
+      before.tableHeight<260||before.bodyHeight<=height+120||
+      before.bodyWidth>width+5||before.scrollMode!=='auto')
+      throw Error('R06 P1: real list-fit App still clips table at '+mode+': '+JSON.stringify(before));
+    if(mode==='mobile'){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-r06-mobile-app-shell-top.png',Buffer.from(shot.data,'base64'));
+    }
+    const scrolled=await evaluate(`(()=>{
+      const table=document.querySelector('.item-table-scroll');
+      // This is an actual user-reachable document scroll, not a DOM transform.
+      table.scrollIntoView({block:'start'});
+      const row=document.querySelector('.item-data-table tbody tr:first-child');
+      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const tableRect=table.getBoundingClientRect();
+      const rowRect=row.getBoundingClientRect();
+      const filterRect=filter.getBoundingClientRect();
+      return {documentY:document.scrollingElement.scrollTop,tableTop:tableRect.top,
+        tableBottom:tableRect.bottom,rowTop:rowRect.top,rowBottom:rowRect.bottom,
+        filterTop:filterRect.top,filterBottom:filterRect.bottom,
+        rowVisible:rowRect.bottom>Math.max(0,tableRect.top)&&
+          rowRect.top<Math.min(innerHeight,tableRect.bottom),
+        tableHeight:tableRect.height};
+    })()`);
+    if(scrolled.documentY<50||!scrolled.rowVisible||
+      scrolled.tableTop>=height||scrolled.tableBottom<=0)
+      throw Error('R06 P1: cannot scroll to live table row '+mode+': '+JSON.stringify({before,scrolled}));
+    const internal=await evaluate(`(()=>{
+      const table=document.querySelector('.item-table-scroll');
+      const start=table.scrollTop;table.scrollTop+=180;
+      const heading=document.querySelector('.item-data-table .item-heading-row');
+      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const viewport=table.getBoundingClientRect();
+      return {start,end:table.scrollTop,scrollHeight:table.scrollHeight,
+        clientHeight:table.clientHeight,headingTop:heading.getBoundingClientRect().top,
+        filterTop:filter.getBoundingClientRect().top,viewportTop:viewport.top,
+        filterBottom:filter.getBoundingClientRect().bottom};
+    })()`);
+    if(internal.end<=internal.start||internal.scrollHeight<=internal.clientHeight||
+      internal.filterBottom<internal.viewportTop-3)
+      throw Error('R06 P1: sticky filter/internal table scroll regression '+mode+': '+JSON.stringify(internal));
+    if(mode==='mobile'){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-r06-mobile-app-shell-table-reachable.png',Buffer.from(shot.data,'base64'));
+    }
+    r06Screens.push({mode,before,scrolled,internal});
+  }
+  // Desktop with sufficient space retains the original one-screen flex layout.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1'});
+  await eventually("document.querySelector('.app-shell.list-fit-page .item-data-table tbody tr')!==null",
+    'R06 desktop App fixture missing');
+  const r06Desktop=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),body=document.scrollingElement;
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    return {shell:getComputedStyle(shell).overflowY,body:body.scrollHeight,
+      client:body.clientHeight,tableHeight:table.height,viewport:innerHeight};
+  })()`);
+  if(r06Desktop.body>r06Desktop.client+3||r06Desktop.tableHeight<250||
+    r06Desktop.shell!=='hidden')
+    throw Error('R06 desktop list-fit changed while enough room: '+JSON.stringify(r06Desktop));
+  console.log('R06_APP_SHELL_MOBILE_TABLE_REACHABLE_PASS',JSON.stringify({r06Screens,r06Desktop}));
+
+  // Codex Lượt 020 R07/P2: use real popup configuration input (not an
+  // injected localStorage value).  Verify immediately after save, reopening
+  // settings, closing/reopening modal via remount, and full reload.
+  await evaluate(`Object.keys(localStorage).filter(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
+    k.includes('compact-qa-synthetic-popup-only')).forEach(k=>localStorage.removeItem(k))`);
+  const r07Url='http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?group-title=1&popup=1&popup-settings=1';
+  await send('Page.navigate',{url:r07Url});
+  await eventually("document.querySelector('.report-grid-actions button[aria-expanded=false]')!==null",
+    'R07 popup configuration controls missing');
+  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"]')?.textContent.trim()`);
+  const openR07=async()=>{
+    await evaluate(`[...document.querySelectorAll('.report-grid-actions button')]
+      .find(b=>b.textContent.includes('Cấu hình popup / cột'))?.click()`);
+    await eventually("document.querySelector('.report-grid-group-labels summary')!==null",
+      'R07 config panel did not open');
+    await evaluate("document.querySelector('.report-grid-group-labels').open=true");
+  };
+  const inputR07=()=>evaluate(`document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]')?.value`);
+  const replaceR07=async(textValue)=>{
+    const focused=await evaluate(`(()=>{
+      const el=document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]');
+      if(!el)return false;el.focus();el.select();return document.activeElement===el;
+    })()`);
+    if(!focused)throw Error('R07 group-name input not focusable');
+    if(textValue)await send('Input.insertText',{text:textValue});
+    else{
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
+    }
+    await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value==="+JSON.stringify(textValue),
+      'R07 typed value was not reflected in controlled input');
+  };
+  const saveR07=async()=>{
+    await evaluate(`[...document.querySelectorAll('.report-grid-settings-footer button')]
+      .find(b=>b.textContent.includes('Lưu cấu hình cột'))?.click()`);
+    await eventually("document.querySelector('.report-grid-settings')===null",
+      'R07 popup settings failed to close after Save');
+  };
+  if((await popupTitle())!=='Ba khâu tùy chỉnh')
+    throw Error('R07 shared title baseline missing: '+await popupTitle());
+  await openR07();
+  await replaceR07('Tên popup riêng');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Tên popup riêng'",
+    'R07 popup override title not immediately rendered');
+  await openR07();
+  await replaceR07('   ');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 whitespace-only title did not immediately inherit shared name');
+  const r07Whitespace=await evaluate(`(()=>{
+    const key=Object.keys(localStorage).find(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
+      k.includes('compact-qa-synthetic-popup-only'));
+    const stored=key?JSON.parse(localStorage.getItem(key)):null;
+    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim(),
+      hasOverride:Object.prototype.hasOwnProperty.call(stored?.groupLabels??{},'partyTogether'),
+      storedName:stored?.groupLabels?.partyTogether};
+  })()`);
+  if(r07Whitespace.hasOverride||r07Whitespace.title!=='Ba khâu tùy chỉnh')
+    throw Error('R07 applied/persisted mismatch after whitespace Save: '+JSON.stringify(r07Whitespace));
+  const r07Shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-r07-popup-empty-save-fallback.png',Buffer.from(r07Shot.data,'base64'));
+  await openR07();
+  if((await inputR07())!=='')
+    throw Error('R07 reopen settings did not use normalized state after whitespace save');
+  await replaceR07('Tên riêng lần 2');
+  await saveR07();
+  await openR07();
+  // "Khôi phục" removes only the popup override, no shared field mutation.
+  await evaluate(`(()=>{
+    const el=document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]');
+    el.closest('.group-label-editor-row').querySelector('button').click();
+  })()`);
+  await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value===''",
+    'R07 reset did not clear popup-only title draft');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 restored title not visible after reset/save');
+  await openR07();
+  await replaceR07('Tên tạm để xóa');
+  await replaceR07('');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 empty-string title persisted in applied state');
+  await send('Page.navigate',{url:r07Url});
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 empty title did not survive popup remount/reload');
+  await openR07();
+  if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
+  console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
+  
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}

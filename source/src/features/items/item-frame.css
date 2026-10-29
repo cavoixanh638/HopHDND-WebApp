@@ -658,8 +658,9 @@
    vertical separator is the target; only an invisible 8px hit zone over it.
    On hover/focus accent that same line rather than painting a new control. */
 .item-data-table .item-heading-row th .column-resizer {
-  right:-4px;
-  width:8px;
+  /* Enlarge only the invisible hit area; the separator stays 1px. */
+  right:-7px;
+  width:14px;
   border:0;
   background:transparent;
   padding:0;
@@ -675,7 +676,7 @@
   outline:none;
 }
 .item-data-table .item-heading-row th .column-resizer:is(:hover,:focus-visible)::after {
-  content:"";position:absolute;right:3px;top:0;bottom:0;
+  content:"";position:absolute;right:6px;top:0;bottom:0;
   width:2px;background:#348768;pointer-events:none;
 }
 /* One merged Phòng/CV column has TWO full-size filter controls. Keep the
@@ -784,7 +785,7 @@
   width:100%;min-width:0;padding:2px 0;box-sizing:border-box;
 }
 .compact-document-group{display:grid;gap:5px;min-width:0;text-align:left;line-height:1.45}
-.compact-document-heading{display:flex;align-items:flex-start;gap:8px;min-width:0;flex-wrap:wrap}
+.compact-document-heading{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .compact-document-badge{
   display:inline-flex;align-items:center;min-width:0;max-width:100%;
   flex:none;border:1px solid #decafa;border-radius:5px;padding:2px 6px;
@@ -793,7 +794,7 @@
 .compact-document-badge[data-kind="HC"]{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
 .compact-document-badge[data-kind="BC"]{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
 .compact-document-badge .cell-picker-trigger{width:auto!important;min-height:24px;padding:1px 3px}
-.compact-document-department{flex:1 1 140px;min-width:0;font-size:12px;overflow-wrap:anywhere}
+.compact-document-department{display:flex;align-items:center;flex:1 1 120px;min-width:0;min-height:24px;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
 .compact-document-content{min-width:0;font-size:13px;font-weight:650;white-space:pre-wrap;overflow-wrap:anywhere}
 .compact-document-content .content-button{white-space:normal;text-align:left;overflow-wrap:anywhere}
 .compact-stages{display:grid;gap:5px;min-width:0;container-type:inline-size}
@@ -900,3 +901,83 @@
   background-color:var(--member-highlight-bg)!important;
   color:var(--member-highlight-text)!important;
 }
+
+
+/* UI-COLUMNS-20261029: Group title editor, not part of the Excel source schema. */
+.group-label-editor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.group-label-editor-row{display:flex;align-items:end;gap:8px;min-width:0}
+.group-label-editor-row .field{flex:1;min-width:0;font-size:12px}
+.group-label-editor-row input{width:100%;min-width:0;box-sizing:border-box}
+.group-label-editor-row .button{flex:none;white-space:normal}
+.report-grid-group-labels{margin:12px 0;padding:10px;border:1px solid #d9e6dd;border-radius:9px}
+.report-grid-group-labels .group-label-editor-row{margin:9px 0}
+
+/* Total is a compact overview ribbon; the three workflows share their own row.
+   All summaries use the SAME filtered source as the ItemList body. */
+.item-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;width:100%;max-width:100%;box-sizing:border-box;margin:6px 0 14px}
+.item-summary-card{--summary-accent:#16785a;display:flex;flex-direction:column;min-width:0;
+  container-type:inline-size;
+  box-sizing:border-box;padding:13px 12px 11px;background:#fbfefc;
+  border:1px solid #dcebe3;border-top:3px solid var(--summary-accent);border-radius:11px;
+  overflow-wrap:break-word;box-shadow:0 1px 3px #0f51321a}
+.item-summary-party{--summary-accent:#b45309;background:#fffdf8;border-color:#f1e1be}
+.item-summary-build{--summary-accent:#2563eb;background:#fcfdff;border-color:#dbe8fc}
+.item-summary-nq{--summary-accent:#169154;background:#fafffc;border-color:#cfeadd}
+.item-summary-total{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;
+  container-type:normal;justify-self:center;justify-content:center;width:fit-content;max-width:100%;
+  gap:12px 20px;padding:11px 16px;background:#f5fbf7;border:1px solid #cfe4d8;box-shadow:none}
+.item-summary-total-lead{display:flex;align-items:center;gap:12px;
+  padding-right:20px;border-right:1px solid #d5e7db}
+.item-summary-card h3{margin:0;color:#263f36;font-size:13px;font-weight:750;line-height:1.35}
+.item-summary-card-head{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.item-summary-percent{font-size:21px;font-weight:800;color:var(--summary-accent);white-space:nowrap}
+.item-summary-total-count{display:block;font-size:32px;color:#0b5645;
+  font-weight:800;line-height:1;margin:0}
+.item-summary-subcounts{display:flex;flex:0 1 auto;justify-content:flex-end;
+  flex-wrap:wrap;gap:8px;margin:0;font-size:12px}
+.item-summary-subcounts > span{display:flex;justify-content:space-between;align-items:center;
+  gap:12px;padding:6px 10px;border:1px solid #dcebe3;border-radius:7px;
+  background:#fff;color:#27624c;white-space:nowrap}
+.item-summary-subcounts strong{font-size:16px;font-variant-numeric:tabular-nums}
+.item-summary-total > .item-summary-unmatched{margin:0}
+.item-summary-fraction{margin:5px 0 8px;font-size:12px;color:#50665e}
+.item-summary-fraction strong{font-size:16px;color:#243d35}
+.item-summary-progress{height:7px;border-radius:12px;background:#e8eee9;overflow:hidden;margin:0 0 10px}
+.item-summary-progress span{display:block;height:100%;background:var(--summary-accent);border-radius:12px}
+.item-summary-buckets{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.item-summary-bucket{display:flex;flex-direction:column;justify-content:space-between;
+  align-items:center;gap:3px;box-sizing:border-box;flex:1 1 0;min-width:max-content;min-height:50px;
+  padding:5px 6px;border:1px solid #dce6df;border-radius:8px;cursor:pointer;font-family:inherit;
+  background:#f1f5f3;color:#3a5548;text-align:center;font-size:11px;line-height:1.35}
+.item-summary-bucket span{display:flex;align-items:center;justify-content:center;
+  min-width:0;min-height:1.35em;white-space:nowrap;overflow-wrap:normal;font-weight:650}
+.item-summary-bucket strong{font-size:18px;line-height:1.1;flex:none;
+  font-weight:800;font-variant-numeric:tabular-nums}
+.item-summary-bucket-source{background:#ffe0e4;color:#b2263d;border-color:#ffb7c3}
+.item-summary-bucket-office{background:#fff7c2;color:#875000;border-color:#f1d777}
+.item-summary-bucket-next{background:#e7f0ff;color:#1d4ed8;border-color:#bed2fa}
+.item-summary-bucket-completed{background:#d5f0de;color:#125b35;border-color:#91cfa8}
+.item-summary-bucket[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:1px}
+.item-summary-bucket[aria-pressed="true"] strong::after{content:' ✓';font-size:12px}
+.item-summary-bucket:focus-visible{outline:3px solid #145c73;outline-offset:2px}
+@media(hover:hover){.item-summary-bucket:hover{box-shadow:0 1px 4px #204b3833}}
+.item-summary-active-filter{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;
+  gap:8px 14px;padding:7px 10px;border:1px solid #cbdfe5;border-radius:8px;
+  color:#285567;background:#f0f7fa;font-size:12px}
+.item-summary-active-filter .button{margin-left:auto;padding:5px 9px;font-size:12px}
+.item-summary-unmatched{margin:8px 0 0;font-size:11px;color:#7f5030;
+  background:#fff8eb;border-radius:6px;padding:5px 7px}
+@media(max-width:980px){.item-summary-grid{grid-template-columns:minmax(0,1fr)}}
+/* A narrow selected frame must keep the four-stage labels readable too. */
+@container(max-width:360px){
+ .item-summary-bucket{flex-basis:calc(50% - 3px)}
+ .item-summary-nq .item-summary-bucket{flex-basis:0}
+}
+@media(max-width:560px){.item-summary-grid{grid-template-columns:minmax(0,1fr)}
+ .item-summary-card{padding:11px}
+ .item-summary-total{gap:10px}
+ .item-summary-total-lead{border-right:0;padding-right:0}
+ .item-summary-subcounts{justify-content:flex-start;gap:6px}
+ .item-summary-subcounts > span{gap:8px;padding:6px 8px}
+ .group-label-editor-row{flex-direction:column;align-items:stretch}}

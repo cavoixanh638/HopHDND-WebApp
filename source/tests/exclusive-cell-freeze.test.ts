@@ -24,6 +24,14 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   const admin=()=>env.authenticatedContext('administrator',adminClaims).database();
   const manager=(id:string,isAdmin=false)=>new CellEditSessionManager(
     (isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin));
+  const publicManager=(id:string)=>new CellEditSessionManager(
+    anonymous(id) as never,()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User));
+  const publicRepo=(id:string,session:CellEditSessionManager)=>{
+    const r=new FirebaseRepository(anonymous(id) as never,
+      ()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User),
+      ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
+    r.leaseManager=session;return r;
+  };
   const repo=(id:string,session:CellEditSessionManager,isAdmin=false)=>{
     const r=new FirebaseRepository((isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin),
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
@@ -66,7 +74,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
     expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
     await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
-    await assertFails(get(ref(visitor as never,'hdnd/editLocks/r1/note')));
+    expect((await get(ref(visitor as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
     // An allowlisted editor must still read the exact lock node to perform CAS.
     expect((await get(ref(staff as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
     await get(ref(root as never,'hdnd/editors'));
@@ -84,16 +92,54 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await assertFails(get(ref(publicDb as never,'hdnd/editLocks')));
     await assertFails(get(ref(publicDb as never,'hdnd/freezeReceipts')));
   });
-  it('denies anonymous editor even when globally editable columns are true',async()=>{
-    const anonymousDb=anonymous('anon-a');
-    await assertFails(set(ref(anonymousDb as never,'hdnd/editLocks/r1/note'),{
-      uid:'anon-a',session:crypto.randomUUID(),token:crypto.randomUUID(),
+  it('public anonymous visitor saves only granted cells through a lease with server audit',async()=>{
+    const id='anon-a',session=publicManager(id),writer=publicRepo(id,session),db=anonymous(id);
+    const [original]=await writer.list();
+    await session.acquire('r1','note','multiline');
+    const [saved]=await writer.save([updateDraft(original,undefined,{note:'Khách cập nhật ô được phép'})!]);
+    expect(saved.ok,saved.message).toBe(true);
+    const fresh=(await get(ref(db as never,'hdnd/items/r1'))).val();
+    expect(fresh.note).toBe('Khách cập nhật ô được phép');
+    expect(fresh.updatedBy).toBe(id);
+    expect(fresh.history[String(fresh.revision%50)].changes.note).toBe('Khách cập nhật ô được phép');
+    await session.finish('r1','note');await session.dispose();
+  });
+  it('public anonymous cannot bypass per-cell deny, lease or edit permission revocation',async()=>{
+    const id='anon-denied',db=anonymous(id),session=publicManager(id),writer=publicRepo(id,session);
+    const [before]=await writer.list();
+    await assertFails(set(ref(db as never,'hdnd/items'),{r1:{}}));
+    // A public granted COLUMN must not permit arbitrary lock spam for fake IDs.
+    await assertFails(set(ref(db as never,'hdnd/editLocks/nonexistent/note'),{
+      uid:id,session:crypto.randomUUID(),token:crypto.randomUUID(),
       revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
     }));
-    const before=(await get(ref(anonymousDb as never,'hdnd/items/r1'))).val();
-    await assertFails(update(ref(anonymousDb as never,'hdnd/items/r1'),{
-      note:'Anonymous bypass',revision:before.revision+1
-    }));
+    await assertFails(update(ref(db as never,'hdnd/items/r1'),{
+      note:'Forged direct write',revision:before.revision+1}));
+    await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
+    await expect(session.acquire('r1','note','multiline')).rejects.toThrow();
+    await assertFails(get(ref(db as never,'hdnd/editLocks/r1/note')));
+    const [denied]=await writer.save([updateDraft(before,undefined,{note:'Cố ghi ô bị chặn'})!]);
+    expect(denied.ok).toBe(false);
+    await session.acquire('r1','specificProgress','multiline');
+    await set(ref(admin() as never,'hdnd/permissions/cells/r1/specificProgress'),false);
+    const [revoked]=await writer.save([updateDraft(before,undefined,{specificProgress:'Quyền bị thu hồi'})!]);
+    expect(revoked.ok).toBe(false);
+    expect((await writer.list())[0].specificProgress).toBe(before.specificProgress);
+    await session.dispose();
+  });
+  it('locks out anonymous visitors whenever admin locks editing or freezes data',async()=>{
+    const id='anon-locked',session=publicManager(id),writer=publicRepo(id,session);
+    await set(ref(admin() as never,'hdnd/control'),{
+      revision:2,editingLocked:true,changedAt:new Date().toISOString()});
+    await expect(session.acquire('r1','note','multiline')).rejects.toThrow();
+    await set(ref(admin() as never,'hdnd/control'),{
+      revision:3,editingLocked:false,changedAt:new Date().toISOString()});
+    await setFreezeMode(admin() as never,actor('administrator',true),initialFreeze,'FROZEN',true);
+    await expect(session.acquire('r1','note','multiline')).rejects.toThrow();
+    const [baseline]=await writer.list();
+    const [failed]=await writer.save([updateDraft(baseline,undefined,{note:'Cấm ghi khi đã chốt'})!]);
+    expect(failed.ok).toBe(false);
+    await session.dispose();
   });
   it('denies unregistered Google employee even if global column permission allows note',async()=>{
     const other=guest('not-on-allowlist');

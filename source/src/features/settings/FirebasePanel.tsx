@@ -64,12 +64,12 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
     </div>
     <div className="card-header"><div>
       <h3>Quyền tài khoản</h3>
-      <p className="muted">Mã UID Firebase: <code>{userUid||'Chưa đăng nhập'}</code>. Nhân viên đăng nhập Google, gửi UID này cho quản trị để được cấp quyền sửa. Mỗi nhân viên sử dụng tài khoản Google riêng.</p>
-      <p className="muted">{isAdmin?'Quản trị toàn hệ thống':editorAuthorized?'Đã được cấp quyền tài khoản; phạm vi ô sửa tùy theo phân quyền.':'Chỉ được xem; chưa được cấp quyền sửa.'}</p>
+      <p className="muted">Mã UID Firebase: <code>{userUid||'Đang kết nối'}</code>. {isGuest?'Khách được xác thực ẩn danh tự động, không cần đăng nhập Google. Chỉ các ô quản trị đã cấp quyền mới được sửa.':'Nhân viên đăng nhập Google gửi UID cho quản trị nếu cần quyền sửa theo tài khoản.'}</p>
+      <p className="muted">{isAdmin?'Quản trị toàn hệ thống':isGuest?'Khách công khai: chỉ được sửa các ô mở quyền, không được thay bố cục hay cấp quyền.':editorAuthorized?'Tài khoản đã được duyệt; chỉ sửa các ô được cấp quyền.':'Chưa được duyệt UID nhân viên; chỉ được xem.'}</p>
     </div></div>
     {isAdmin&&<section className="notice" aria-label="Quản lý quyền nhân viên Google">
       <h3>Nhân viên được phép chỉnh sửa</h3>
-      <p>Chỉ các UID được bật ở đây mới có thể chiếm khóa ô và ghi dữ liệu. Quyền cột, dòng, ô vẫn được kiểm tra riêng. Không cấp quyền bằng tài khoản ẩn danh.</p>
+      <p>Danh sách UID chỉ dành cho nhân viên Google được phê duyệt riêng. Khách công khai không cần UID trong danh sách này; họ được chỉnh sửa những ô quản trị đã mở quyền tại bảng. Mọi lượt sửa vẫn phải có khóa ô và được Firebase Rules xác nhận.</p>
       <div className="top-actions">
         <input aria-label="UID Firebase nhân viên" type="text" value={editorUid} onChange={event=>setEditorUid(event.target.value.trim())} placeholder="Dán UID của nhân viên" disabled={busy||working}/>
         <button type="button" className="button primary" disabled={busy||working||!connected||!/^[A-Za-z0-9_-]{1,128}$/.test(editorUid)} onClick={async()=>{

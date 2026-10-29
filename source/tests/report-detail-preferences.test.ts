@@ -36,6 +36,26 @@ describe('Bảng chi tiết báo cáo — cấu hình cột riêng',()=>{
    expect([...storage.entries.keys()][0]).toContain('preview:custom-column-check:source-a');
    expect([...storage.entries.keys()][0]).not.toContain('item-layout');
  });
+ it('R07: whitespace, empty and reset popup title persist as missing override; other popup choices survive',()=>{
+   const storage=mockStorage();vi.stubGlobal('localStorage',storage);
+   vi.stubGlobal('location',{pathname:'/HopHDND-WebApp/qa/r07/'});
+   const base=defaultDetailGridPreferences();
+   const withName={...base,groupLabels:{partyTogether:'Tên riêng popup',
+     teamTogether:'Nhóm nhân sự riêng'}};
+   expect(saveDetailGridPreferences('r07',withName)).toBe(true);
+   const edited={...withName,groupLabels:{...withName.groupLabels,partyTogether:'   '}};
+   const normalized=validateDetailGridPreferences(edited);
+   expect(normalized.groupLabels).toEqual({teamTogether:'Nhóm nhân sự riêng'});
+   expect(saveDetailGridPreferences('r07',normalized)).toBe(true);
+   const persisted=loadDetailGridPreferences('r07');
+   expect(persisted).toEqual(normalized);
+   expect(persisted.groupLabels?.partyTogether).toBeUndefined();
+   expect(persisted.groupLabels?.teamTogether).toBe('Nhóm nhân sự riêng');
+   expect(validateDetailGridPreferences({...persisted,groupLabels:{partyTogether:''}}).groupLabels).toEqual({});
+   expect(validateDetailGridPreferences({...persisted,groupLabels:{partyTogether:'  Cột riêng  '}}).groupLabels?.partyTogether)
+     .toBe('Cột riêng');
+   expect(storage.entries.size).toBe(1);
+ });
  it('refuses duplicate, unknown, all hidden and invalid widths / broken saved data',()=>{
    const base=defaultDetailGridPreferences();
    expect(()=>validateDetailGridPreferences({...base,columns:base.columns.map(c=>({...c,visible:false}))})).toThrow('ít nhất một');

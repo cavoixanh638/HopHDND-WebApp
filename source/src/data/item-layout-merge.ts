@@ -1,4 +1,4 @@
-import {validateItemLayout,type ItemLayout} from './item-preferences';
+import {COMPACT_GROUP_LABEL_KEYS,validateItemLayout,type ItemLayout} from './item-preferences';
 
 export type LayoutConflictChoice = 'local'|'remote';
 export type LayoutConflictChoices = Record<string,LayoutConflictChoice>;
@@ -83,6 +83,11 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const compactDisplay=Object.fromEntries((Object.keys(base.compactDisplay??{}) as (keyof NonNullable<ItemLayout['compactDisplay']>)[]).map(key=>
     [key,merge(base.compactDisplay?.[key],edited.compactDisplay?.[key],remote.compactDisplay?.[key],
       `compactDisplay.${key}`,`gộp cột: ${key}`)])) as NonNullable<ItemLayout['compactDisplay']>;
+  const groupLabels=Object.fromEntries(COMPACT_GROUP_LABEL_KEYS.flatMap(key=>{
+    const value=merge(base.groupLabels?.[key],edited.groupLabels?.[key],remote.groupLabels?.[key],
+      `groupLabels.${key}`,`tên nhóm gộp: ${key}`);
+    return value?[[key,value]]:[];
+  }));
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels});
 }

@@ -23,18 +23,37 @@ const catalog=catalogFromItems(items);
 
 function CompactVisualQa(){
   const params=new URLSearchParams(window.location.search);
+  const adminLayoutQa=params.get('layout-admin')==='1';
   const [layout,setLayout]=useState<ItemLayout>(()=>{
+    if(adminLayoutQa||params.get('use-saved-layout')==='1'){
+      try{
+        const saved=localStorage.getItem('hdnd.qa.group-labels-synthetic');
+        if(saved)return validateItemLayout(JSON.parse(saved));
+      }catch{/* Invalid synthetic data is ignored without touching Firebase. */}
+    }
     const base={...initial,columns:initial.columns.map(c=>({...c}))};
     if(params.get('highlight')==='1')base.cellHighlights=[
       {id:'qa-department',field:'department',word:'Sở mẫu A',textColor:'#FFFFFF',backgroundColor:'#CC0000'},
       {id:'qa-status',field:'progressBuild',word:'Sở chưa trình',textColor:'#000000',backgroundColor:'#FFEE55'},
       {id:'qa-wildcard',field:'*',word:'Ban Chấp hành',textColor:'#FFFFFF',backgroundColor:'#123456'}
     ];
-    if(params.get('custom-id')==='1')base.columns=base.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
+    if(params.get('group-title')==='1')base.groupLabels={
+      contentDetails:'Hồ sơ tùy chỉnh',partyTogether:'Ba khâu tùy chỉnh',
+      teamTogether:'Nhóm phụ trách tùy chỉnh',leadersTogether:'Hai lãnh đạo tùy chỉnh',
+      roomSpecialist:'Phòng và CV tùy chỉnh'
+    };
+        if(params.get('custom-id')==='1')base.columns=base.columns.map(c=>c.key==='displayCode'?{...c,width:125}:c);
     // Codex 008: valid source width near/over (1600 - 130) grouped cap.
     const cappedParty=Number(params.get('cap-party'));
     if([1470,1550,1600].includes(cappedParty))base.columns=base.columns.map(c=>
       c.key==='partyLevel'?{...c,width:cappedParty}:c);
+    // Owner L019: exact reported neighbor order (progress then staff group).
+    if(params.get('progress-before-staff')==='1'){
+      const progress=base.columns.find(c=>c.key==='specificProgress')!;
+      const others=base.columns.filter(c=>c.key!=='specificProgress');
+      others.splice(others.findIndex(c=>c.key==='room'),0,progress);
+      base.columns=others;
+    }
     if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
     if(params.get('fit')==='1'){
       // Reproduce the owner's small saved widths inside a wide selected frame.
@@ -65,7 +84,9 @@ function CompactVisualQa(){
   const palette=defaultStatusPaletteStore();
   if(params.get('r05-palette')==='1')palette.active.office={
     text:'#884422',background:'#FCDDA0'};
-  return <div className="app-shell imperial-sky-theme" data-qa="compact-real-itemlist"
+  return <div className={'app-shell imperial-sky-theme'+
+    (params.get('app-shell')==='1'?' wide-table-page list-fit-page':'')}
+    data-qa="compact-real-itemlist"
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
       <h1 style={{fontSize:20,margin:0}}>HopHDND · Gộp cột (bản kiểm thử UI)</h1>
@@ -75,7 +96,7 @@ function CompactVisualQa(){
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey="compact-qa-synthetic-popup-only"
-        catalog={catalog} listLayout={layout} readOnlyViewer={true}
+        catalog={catalog} listLayout={layout} readOnlyViewer={params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
         allowDraft={false} canEditCell={()=>false} onUpdate={()=>{throw Error('QA read-only');}}
         onKeepDraft={()=>false} dirtyIds={new Set()} errors={{}} onClose={()=>{}}
@@ -84,7 +105,7 @@ function CompactVisualQa(){
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
         readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
-        customizing={false} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
+        customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
@@ -95,6 +116,11 @@ function CompactVisualQa(){
         onSaveData={async()=>false}
         onDiscardData={()=>{}}
         onLayoutSaved={()=>{}}
+        onPersistLayout={adminLayoutQa?async next=>{
+          const valid=validateItemLayout(next);
+          localStorage.setItem('hdnd.qa.group-labels-synthetic',JSON.stringify(valid));
+          setLayout(valid);return valid;
+        }:undefined}
         onPersistViewerLayout={guest?undefined:async(next)=>{
           const validated=validateItemLayout(next);
           setLayout(validated);return validated;

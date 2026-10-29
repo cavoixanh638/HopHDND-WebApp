@@ -10,10 +10,17 @@ export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
 export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>;
+/** Stable identities independent of the currently visible column/anchor. */
+export const COMPACT_GROUP_LABEL_KEYS=['contentDetails','partyTogether','leadersTogether',
+  'roomSpecialist','teamTogether'] as const;
+export type CompactGroupLabelKey=(typeof COMPACT_GROUP_LABEL_KEYS)[number];
+export type CompactGroupLabels=Partial<Record<CompactGroupLabelKey,string>>;
 export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false};
 export interface ItemLayout {
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
   compactDisplay?:SharedCompactDisplay;
+  /** Administrator-owned titles; never rename source Excel fields. */
+  groupLabels?:CompactGroupLabels;
   cellHighlights?:CellHighlightRule[];
 }
 const hexColor=/^#[0-9a-fA-F]{6}$/;
@@ -52,8 +59,23 @@ export const EXCEL_COLUMN_KEYS: readonly string[] = EXCEL_SOURCE_COLUMNS.map(col
 const expected=new Set<string>(EXCEL_COLUMN_KEYS);
 const oldUiOnly=new Set(['history','isDropped','partyMeeting','examined']);
 
+/** Also reused by popup preferences; reject unknown keys rather than silently
+ * creating unstable labels for arbitrary field names. Empty means reset. */
+export function validateCompactGroupLabels(value:unknown):CompactGroupLabels {
+ if(value===undefined)return {};
+ if(!value||typeof value!=='object'||Array.isArray(value))
+   throw Error('Tên nhóm gộp không hợp lệ.');
+ const out:CompactGroupLabels={};
+ for(const [key,text] of Object.entries(value)){
+   if(!(COMPACT_GROUP_LABEL_KEYS as readonly string[]).includes(key)||
+     typeof text!=='string'||text.length>100)
+     throw Error('Tên nhóm gộp không hợp lệ (tối đa 100 ký tự).');
+   if(text.trim())out[key as CompactGroupLabelKey]=text.trim();
+ }
+ return out;
+}
 export const defaultItemLayout=():ItemLayout=>({
-  tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},
+  tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},groupLabels:{}, 
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
   })),
@@ -157,9 +179,10 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   const compactDisplay=Object.fromEntries((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[])
     .map(key=>[key,compactSource[key]??false])) as SharedCompactDisplay;
+  const groupLabels=validateCompactGroupLabels(input.groupLabels);
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */

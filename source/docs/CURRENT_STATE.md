@@ -1,3 +1,50 @@
+## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
+
+Khách vào web không cần đăng nhập Google; Firebase **Anonymous Auth** tự xác thực nền. Admin bật quyền theo cột/dòng/ô, khách chỉ sửa những trường đã được mở quyền khi dùng Firebase **primary**, không bị khóa và có lease; khách không được sửa cấu hình/duyệt UID/chuyển nguồn. Popup guest giữ giao diện gọn nhưng hiện nút sửa ô được cấp. `hdnd/editors/{UID}` là luồng nhân viên Google riêng, không áp dụng cho khách ẩn danh.
+
+**Thay thế Lượt 024:** dòng “anonymous view-only” không còn đúng với PR #92 candidate. Quyền sửa công khai có rủi ro spam/sửa ác ý trên các ô mở quyền; không xác định danh tính thật của khách. `source/firebase/database.exclusive-candidate.rules.json` được sửa, nhưng production Rules và dữ liệu thật giữ nguyên.
+
+**Code SHA:** `1d7190c1f0944359a8b154157912c9934c90683b` (khóa ô đòi bản ghi tồn tại); [handoff L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). **PR #92 RELEASE HOLD**: chờ source CI/emulator/Chromium cuối, Codex security review và chủ dự án duyệt; chưa merge, Pages publish, Firebase deploy, import hoặc chỉnh dữ liệu production.
+
+---
+
+## 29/10/2026 — Lượt 024: R11 quyền sửa nhân viên và R12 đổi tên cột gộp, PR #92 HOLD
+
+- **R11:** quyền `permissions/columns|rows|cells` phải đi kèm Google nhân viên đã xác minh được admin duyệt `editors/{UID}`; anonymous vẫn **view-only** theo Rules. Phát hiện/đã sửa popup dùng `guestMayEdit` chỉ tính khách ẩn danh khiến **Google nhân viên hợp lệ bị read-only**. Admin main list được giữ override backend. Danh sách có thông báo theo lý do thiếu điều kiện quyền. Không nới Security Rules, không đổi Firebase dữ liệu/cấu hình. Không kiểm live UID của từng tài khoản trong lượt này.
+- **R12:** nút **Đổi tên cột gộp** ngay trong Danh sách (admin) mở modal 5 nhóm, Lưu qua CAS chung hoặc khôi phục mặc định; không đụng Excel/các trường gốc. Giữ đường cũ trong Quản lý cột và tên riêng popup.
+- **Code SHA** `2a7e03b1ca6c41ec2fd76647e4522c551b9a428c`. [Source #40821479615](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479615), [staging #40821479618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479618), [operational #40821479616](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479616); kiểm trạng thái tại run. [Bàn giao Lượt 024](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+- **NO RELEASE** PR #92: chờ CI cuối, Codex verify R11/R12 và R06–R10 trước khi chủ dự án chốt. Không merge, Pages publish, Firebase deploy hay import.
+
+---
+
+## 29/10/2026 — UI Lượt 023: kéo cột theo ảnh thật + căn chữ (PR #92 chưa phát hành)
+
+- **R08:** bật resize chỉ trong phiên xem cho khách và người không có quyền CAS shared; admin vẫn lưu bố cục dùng chung qua CAS. Vùng bắt vạch cột **14px**, window pointer fallback. Chromium fixture kéo `Tiến độ hiện tại 200→450`, nhóm nhân sự `240→130` (min group130), Ghi chú `240→100`, total1562; khách kéo 120px được nhưng không ghi shared layout.
+- **R09:** HC + Sở đồng tâm hàng, bỏ `align-items:flex-start`, giữ wrap khi không đủ không gian.
+- **R10:** loại rule `justify` và rule trạng thái căn giữa khỏi `specificProgress`; Nội dung/Tiến độ hiện tại/Ghi chú căn trái, xuống dòng theo nội dung, không thêm khoảng trống giữa từ. Chromium computed CSS xác nhận 5 nhánh căn trái.
+- **Code SHA `68a494fe8e1004cce5893fb0592abb684543ac81`**, [source CI #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [operational #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291). Trạng thái CI nguồn phải kiểm tại workflow, không tự suy ra PASS từ hai CI Firebase.
+- **HOLD:** PR #92 OPEN, chưa merge/publish/deploy; các sửa R08–R10 đang chờ CI cuối và Codex/owner chốt, R06/R07 vẫn chờ tái-review. Bản Pages live trước PR #92 chưa có thay đổi này. [Chi tiết Lượt 023](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+
+---
+
+## 29/10/2026 — U01–U04 / PR #92: Lượt 022 R06/R07 FIX_TESTED, chờ Codex tái-review
+
+- **R06/P1:** khung Danh sách trên mobile/tablet/chiều cao thấp đã có document scroll đến dòng bảng, table scroll nội bộ và sticky filter. Kiểm toán tiếp phát hiện selector width-page cũ lấn độ cao `48dvh`; sửa specificity commit `2105790250f4fcd2539a56c60d4031b326633530`, thêm assert computed height commit `c285ca648a63499450ed5a33900d971d912cd7ed`. Chromium thật trên fixture App `wide-table-page list-fit-page`: **390×844=405.109px**, **768×750=360px**, **1280×600=288px**; desktop đủ chỗ không đổi. Cuộn đến dòng, filter và scroll nội bảng PASS.
+- **R07/P2:** popup dùng cùng snapshot `validateDetailGridPreferences` cho lưu/áp dụng/pending; tên riêng xóa/chỉ khoảng trắng/Khôi phục sau Lưu lập tức kế thừa tên dùng chung, qua reload vẫn đúng. R07 PASS; không đổi dữ liệu nguồn/permission.
+- **L019 resize/CAS và R01–R05:** hồi quy `specificProgress 200→250 / nhân sự 240→190 / Ghi chú 240 / total1562` PASS, ID compact 52px; không thay thuật toán resize, CAS/rollback hay Firebase.
+- **Exact code SHA `c285ca6`:** [source #40815718404](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404), [staging #40815718256](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational QA #40815718231](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231) **đều SUCCESS**; 548 unit PASS/52 skipped, Chromium PASS. [Ảnh fixture giả mới #12872830259](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404/artifacts/12872830259).
+- **Cổng:** [PR #92](https://github.com/cavoixanh638/HopHDND-WebApp/pull/92) **OPEN, chưa merge/publish/deploy/import**. R06/R07 là `FIX_TESTED` **chưa phải Codex VERIFIED/OWNER_ACCEPTED**; chờ Codex đánh giá lại trên HEAD mới. Hồ sơ đầy đủ tại [Lượt 020–022](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+
+---
+
+## 29/10/2026 — Lượt 019: nguyên tắc kéo cột mới, PR #92 đang chờ Codex (chưa phát hành)
+
+Chủ dự án đã chốt: **khi đổi độ rộng vùng Danh sách**, bảng tự dàn theo khung để không có khoảng trắng thừa (nếu không đủ min thì cuộn ngang nội bộ); **khi kéo giữa cột A và B**, B là nơi bù trừ trước, chỉ phần vượt giới hạn của B mới sang **cột cuối**. Tổng độ rộng bảng giữ nguyên. Chiều rộng tự fit từ viewport, khi có thao tác kéo tay, được materialize một lần để cột B có thể thu nhỏ thực sự mà không đụng các cột khác về mặt hiển thị. ID compact mặc định 52px, raw 68px. Unit/Chromium đo con số nguồn giả và ảnh trước/sau được lưu trong file bàn giao Lượt 019. PR #92 **OPEN, chưa merge/publish**; mọi chỉ thị last-only ngày 23/10 áp dụng lịch sử trước lệnh mới.
+
+PR #91 đã được phép merge và publish riêng: merge `9389290495a902e204406053d30e587027296478`, publisher [#40740797364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740797364) SUCCESS; build commit `227ac03488442dda7b3b4e2020b7e4a2f4e21d84`, Pages deployment [#40740946000](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740946000) SUCCESS. PR #92 tách từ commit build này, chỉ để Codex rà; **không mang quyền publish của #91**. Không thay Firebase Rules/Functions, `hdnd/items`, nguồn dữ liệu hoặc Supabase.
+
+---
+
 ## 29/10/2026 — Đang sửa bảng tự phủ chiều rộng khung (chưa phát hành)
 
 Nhánh `fix/table-fill-width-20261029` sửa khoảng trắng bên phải Danh sách khi tổng cột gộp nhỏ hơn khung đã chọn. Đo viewport bằng ResizeObserver, phân bổ phần dư cho cột chữ (ưu tiên Nội dung/Tiến độ), giữ ID/STT gọn và không tự ghi layout. Kéo cột vẫn chuyển pixel giữa cột chọn và cột cuối; cột tiến độ hẹp xếp trạng thái dưới nhãn để tránh xuống từng chữ. Giao diện Pages hiện hành vẫn là bản PR #90 dưới đây; chưa merge hoặc publish phần sửa này. Xem [bàn giao Lượt 017](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).

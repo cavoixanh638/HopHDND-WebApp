@@ -1,7 +1,8 @@
 import {useEffect,useRef,useState} from 'react';
 import type {Item} from '../../../shared/types';
 import type {CellPermissions} from '../../data/firebase-repository';
-import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,type CompactGroupLabels} from '../../data/item-preferences';
+import {COMPACT_GROUP_DEFAULT_LABELS} from './compact-columns';
 import {samePermissions} from '../../data/firebase-repository';
 import {validateCatalog,catalogFromItems} from '../../data/catalogs';
 import {ColumnChoiceEditor} from './ColumnChoiceEditor';
@@ -16,6 +17,7 @@ type Props={
   layout:ItemLayout;catalog?:CatalogConfig;items?:Item[];permissions?:CellPermissions;
   onChange:(next:ItemLayout)=>void;
   layoutDirty?:boolean;onSaveLayout?:()=>Promise<void>;
+  savedGroupLabels?:CompactGroupLabels;
   onSaveCatalog?:(next:CatalogConfig)=>Promise<void>;
   onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;
   onDirtyChange?:(dirty:boolean)=>void;
@@ -26,7 +28,7 @@ type Props={
  * one row per field, advanced properties only for the selected field.
  * Width changes are made exclusively by dragging the column border in-table.
  */
-export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage}:Props){
+export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={}}:Props){
   const [selected,setSelected]=useState<string|null>(null);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
@@ -194,7 +196,30 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         </button>
       </div>
       {saveSuccess&&<p className="column-save-success" role="status">{saveSuccess}</p>}
-      {onSavePermissions&&exceptions>0&&<label className="column-rights-warning">
+      <details className="cell-highlights-editor group-label-editor">
+         <summary>Đổi tên cột gộp</summary>
+         <p className="muted">Tên nhóm chỉ thay tiêu đề gộp, không đổi tên trường Excel hoặc nhãn từng khâu. Chọn Lưu thay đổi để cập nhật cấu hình dùng chung.</p>
+         <div className="group-label-editor-grid">
+           {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
+             <label className="field">{COMPACT_GROUP_DEFAULT_LABELS[key]}
+               <input aria-label={'Tên nhóm gộp '+key} type="text" maxLength={100}
+                 value={layout.groupLabels?.[key]??''}
+                 placeholder={COMPACT_GROUP_DEFAULT_LABELS[key]}
+                 onChange={event=>onChange({...layout,groupLabels:{
+                   ...(layout.groupLabels??{}),[key]:event.currentTarget.value}})}/>
+             </label>
+             <button type="button" className="button ghost" disabled={(layout.groupLabels?.[key]??'')===(savedGroupLabels[key]??'')}
+               onClick={()=>{const next={...(layout.groupLabels??{})};
+                 if(savedGroupLabels[key])next[key]=savedGroupLabels[key];else delete next[key];
+                 onChange({...layout,groupLabels:next});}}>Hủy</button>
+             <button type="button" className="button ghost" disabled={!layout.groupLabels?.[key]}
+               onClick={()=>{const next={...(layout.groupLabels??{})};delete next[key];
+                 onChange({...layout,groupLabels:next});}}>Khôi phục tên mặc định</button>
+           </div>)}
+         </div>
+         <p className="muted">Để hủy thay đổi chưa lưu, rời chế độ chỉnh sửa và chọn bỏ nháp; tên đang lưu không bị thay đổi.</p>
+       </details>
+       {onSavePermissions&&exceptions>0&&<label className="column-rights-warning">
         <input type="checkbox" checked={clearExceptions} onChange={e=>setClearExceptions(e.currentTarget.checked)}/>
         Bỏ {exceptions} quyền riêng theo dòng/ô đã lưu trước đây khi lưu quyền cột. Nếu chưa xác nhận, các quyền riêng cũ vẫn được giữ.
       </label>}

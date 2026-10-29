@@ -148,6 +148,17 @@ jobs:
             source/hophdnd-r05-after-popup-stage-crop.png
             source/hophdnd-r05-after-768px.png
             source/hophdnd-r05-after-390px.png
+            source/hophdnd-l018-four-cards-desktop.png
+            source/hophdnd-summary-filter-selected-desktop.png
+            source/hophdnd-summary-filter-selected-mobile-390.png
+            source/hophdnd-l018-group-titles-popup.png
+            source/hophdnd-l018-four-cards-mobile.png
+            source/hophdnd-l019-adjacent-exhausted-fallback.png
+            source/hophdnd-l019-progress-staff-before.png
+            source/hophdnd-l019-progress-staff-after.png
+            source/hophdnd-r06-mobile-app-shell-top.png
+            source/hophdnd-r06-mobile-app-shell-table-reachable.png
+            source/hophdnd-r07-popup-empty-save-fallback.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure

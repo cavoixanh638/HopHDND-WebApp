@@ -94,3 +94,91 @@ export function resizeProjectedWithLastColumn(layout:ItemLayout,keys:readonly st
   return {...layout,columns:layout.columns.map(c=>c.key===target?{...c,width:newSourceWidth}:
     c.key===last?{...c,width:newTailWidth}:c)};
 }
+
+/** UI 019: physical pair-first transfer. The next visible column absorbs drag
+ * delta before the last displayed column is used as a fallback. Never ask the
+ * last column twice if it is also the adjacent one.
+ *
+ * The contract applies to both DOM preview and persisted CAS values.
+ */
+export type AdjacentCompensator={width:number;min:number;max:number};
+export type AdjacentTransfer={
+  target:number;adjacent:number;last?:number;min:number;max:number;
+};
+export function planAdjacentTransfer(current:number,desired:number,limits:{min:number;max:number},
+  adjacent:AdjacentCompensator,last?:AdjacentCompensator):AdjacentTransfer{
+  const spareShrink=Math.max(0,adjacent.width-adjacent.min)+
+    (last?Math.max(0,last.width-last.min):0);
+  const spareGrow=Math.max(0,adjacent.max-adjacent.width)+
+    (last?Math.max(0,last.max-last.width):0);
+  const min=Math.max(limits.min,current-spareGrow);
+  const max=Math.min(limits.max,current+spareShrink);
+  const target=Math.round(Math.max(min,Math.min(max,Number.isFinite(desired)?desired:current)));
+  const delta=target-current;
+  const adjacentDelta=delta>0
+    ?Math.min(delta,Math.max(0,adjacent.width-adjacent.min))
+    :Math.max(delta,-Math.max(0,adjacent.max-adjacent.width));
+  return {target,adjacent:adjacent.width-adjacentDelta,
+    ...(last?{last:last.width-(delta-adjacentDelta)}:{}),min,max};
+}
+
+/** The projected view may include auto-fit growth absent from the saved raw
+ * widths. At a manual resize, materialize that *already visible* growth once:
+ * otherwise a 600px-wide neighbor with raw width 60 could not give any room.
+ * Nonparticipating columns retain their exact rendered pixels. Subsequent
+ * viewport increases still expand normally; smaller viewports scroll inside.
+ */
+export function resizeProjectedWithAdjacent(layout:ItemLayout,keys:readonly string[],
+  target:string,desiredWidth:number,extras:Extras={},idCompact=true,
+  groupExtras:Extras={}):ItemLayout{
+  const index=keys.indexOf(target);
+  if(index<0||index>=keys.length-1||!Number.isFinite(desiredWidth))return layout;
+  const keyNext=keys[index+1],keyLast=keys.at(-1)!;
+  const get=(key:string)=>layout.columns.find(c=>c.key===key);
+  if(!get(target)||!get(keyNext)||!get(keyLast))return layout;
+  const old=(key:string)=>projectedPhysicalWidth(get(key)!.width,key,extras,idCompact);
+  const bounds=(key:string)=>projectedPhysicalLimits(key,groupExtras,idCompact);
+  const limits=bounds(target);
+  const beside={width:old(keyNext),...bounds(keyNext)};
+  const tail=keyNext===keyLast?undefined:{width:old(keyLast),...bounds(keyLast)};
+  const plan=planAdjacentTransfer(old(target),desiredWidth,limits,beside,tail);
+  if(plan.target===old(target))return layout;
+  const changed=new Map([[target,plan.target],[keyNext,plan.adjacent],
+    ...(tail?[[keyLast,plan.last!]]:[])] as [string,number][]);
+  const visible=new Set(keys);
+  const raw=(physical:number,key:string)=>idCompact&&key==='displayCode'
+    ?idSourceForPhysicalWidth(physical):physical-extraFor(key,groupExtras);
+  const columns=layout.columns.map(column=>{
+    if(!visible.has(column.key))return column;
+    const physical=changed.get(column.key)??old(column.key);
+    // Preserve a source over-cap group if neither it nor auto-fit growth moved;
+    // its exact raw width is still needed by historical R02 custom layouts.
+    const original=projectedPhysicalWidth(column.width,column.key,groupExtras,idCompact);
+    if(!changed.has(column.key)&&physical===original)return column;
+    const next=raw(physical,column.key);
+    if(!Number.isInteger(next)||next<60||next>1600||
+      projectedPhysicalWidth(next,column.key,groupExtras,idCompact)!==physical)
+      return null;
+    return {...column,width:next};
+  });
+  if(columns.some(c=>c===null))return layout;
+  return {...layout,columns:columns as ItemLayout['columns']};
+}
+
+/** Preview bounds use the physical rendered widths, not the saved raw widths
+ * plus auto-fit growth. Pass base group extras for accurate 60..1600 limits. */
+export function projectedAdjacentBounds(layout:ItemLayout,keys:readonly string[],
+  target:string,extras:Extras={},idCompact=true,groupExtras:Extras={}):
+  {min:number;max:number}|null {
+  const index=keys.indexOf(target);
+  if(index<0||index>=keys.length-1)return null;
+  const get=(key:string)=>layout.columns.find(c=>c.key===key);
+  const next=keys[index+1],last=keys.at(-1)!;
+  if(!get(target)||!get(next)||!get(last))return null;
+  const physical=(key:string)=>projectedPhysicalWidth(get(key)!.width,key,extras,idCompact);
+  const plan=planAdjacentTransfer(physical(target),physical(target),
+    projectedPhysicalLimits(target,groupExtras,idCompact),
+    {width:physical(next),...projectedPhysicalLimits(next,groupExtras,idCompact)},
+    next===last?undefined:{width:physical(last),...projectedPhysicalLimits(last,groupExtras,idCompact)});
+  return {min:plan.min,max:plan.max};
+}

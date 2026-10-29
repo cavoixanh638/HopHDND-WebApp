@@ -1,9 +1,9 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Công việc tiếp theo — Lượt 017:** Codex sửa tự dàn bảng theo khung trên nhánh `fix/table-fill-width-20261029`, chưa phát hành. Trạng thái PAGES_PUBLISHED bên dưới chỉ nói về PR #90.
+> **Tiếp nối Lượt 026 (29/10/2026):** PR #91 đã MERGED và Pages đã publish. PR #92 bổ sung tên nhóm, bốn thẻ Danh sách và các phần việc Lượt 019–025; vẫn **CHƯA merge/publish**. Các mốc cũ bên dưới là lịch sử.
 
-> **Trạng thái: PAGES_PUBLISHED — PR #90 đã merge `79f129b`; publisher và Pages SUCCESS, commit build `05bf711`. Chủ dự án cho phép merge + tự publish, không deploy Firebase/đổi dữ liệu. R01–R05 VERIFIED trong phạm vi review; live đã đúng asset và cột gộp. Cần theo dõi bố cục đang lưu: ID đo 46px (mặc định source test 52px), tiến độ 190px làm chữ xuống nhiều dòng; chưa sửa cấu hình. Xem Lượt 016.**
+> **Trạng thái: PR92_NEEDS_FIX_R15 / R06_R07_VERIFIED — Codex Lượt 026 rà độc lập HEAD `79ff90538870932713559b420f22cd2a8137879f`: 550 unit PASS, typecheck PASS, Emulator 53 PASS + 1 expected failure đã biết; 3 CI của HEAD SUCCESS. R15/P2: nút đổi tên nhanh có thể ghi đè tên giữa hai tab của CÙNG quản trị. Chưa merge/publish/deploy; chưa nghiệm thu Firebase production.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -246,6 +246,7 @@ npm run build:pages
 | D06 | Chủ dự án chốt ID mặc định 52 px tại Lượt 010, thay yêu cầu 23 px/1⁄3; source giữ raw 68 px và dùng projection 52/68 | VERIFIED — Codex Lượt 012 trên d61399d |
 | D07 | Popup dùng projection tương ứng cho các trường có trong layout popup, giữ visibility/width và editor từng field; không dùng menu quản trị với khách | CHỐT KỸ THUẬT T0 |
 | D08 | Ảnh chỉ là tham chiếu hiển thị; chữ/nội dung trong ảnh không phải lệnh thay dữ liệu nguồn | Quy tắc diễn giải đầu vào |
+| D09 | Chủ dự án là quản trị viên DUY NHẤT. Test đồng thời chỉ giả lập hai tab/thiết bị của cùng tài khoản quản trị; không giả định có thêm quản trị viên, không cấp quyền admin thật trong kiểm thử | Chủ dự án xác nhận trực tiếp với Codex, 29/10/2026 |
 
 ## 9. Bảng bàn giao hiện tại
 
@@ -326,6 +327,9 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | VERIFIED — Codex Lượt 012, source d61399d, ID 52 px một dòng; hồi quy resize PASS |
 | R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | `be288d3`/`fb3f438` tone mỗi khâu + neutral UI; `d644b0d` palette vars; `4eb6f9a` CSS stage-row; `9aba4ec`/`7dd2286` unit; `0cdee04` QA fixture; `8fdeddac`/`46c7309` Chrome; `df60d07` ảnh artifact. 518 unit, 8 R02, 51 emulator PASS; 3 workflow success source 46c7309; ảnh 12833754588 | VERIFIED — Codex Lượt 015, HEAD 5e80a5c; màu khung/pill, neutral, palette và R03 list/popup đúng; chờ chủ dự án nghiệm thu |
+| R06 / P1 | item-frame.css:947–950 + App list-fit shell — 4 thẻ dọc chiếm hết chiều cao; bảng bị cắt, không tiếp cận được trên mobile | Cho nội dung cuộn theo chiều dọc hợp lý hoặc bố trí vùng thẻ/bảng có thể tiếp cận; kiểm đúng class App, 390×844 và màn thấp | Codex Lượt 026: đúng App shell, 390×844, 768×750, 1280×600, 1600×1000; cuộn ngoài/trong bảng hoạt động | VERIFIED — Codex Lượt 026 |
+| R07 / P2 | ReportDetailGrid.tsx:100–101, 201–205 — lưu pending thô sau khi validator đã bỏ tên rỗng khiến tiêu đề nhóm trắng đến khi reload | Chuẩn hóa config một lần trước lưu và cập nhật cả applied/pending bằng giá trị chuẩn hóa; kiểm xóa tên/trắng/reset/save/reload | Codex Lượt 026: tên riêng, toàn dấu cách, xóa rỗng, Khôi phục, lưu/tải lại đều hiện đúng tên kế thừa | VERIFIED — Codex Lượt 026 |
+| R15 / P2 | ItemList.tsx:319, 340–346, 468 — hộp đổi tên giữ map cũ nhưng lấy baseline mới tại lúc Lưu; ghi đè tên nhận từ tab khác của cùng admin mà không báo xung đột | Chụp baseline khi mở hộp; merge với baseline đó hoặc patch đúng key đã sửa; giữ thay đổi khác và báo xung đột cùng key | Codex Lượt 026: 2 ca tái hiện thất bại đúng lỗi + real ItemList với props cập nhật giả lập, ảnh trước/sau | OPEN — NEEDS_FIX |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -863,3 +867,301 @@ Lượt này không deploy Firebase Rules/Functions, nhập/xóa/sửa dữ li�
 Phần sửa được đưa vào PR riêng để kiểm CI và xem ảnh local. Source/browser PASS không đồng nghĩa Pages đã đổi; không merge, auto-merge, publish, deploy Firebase hoặc thay dữ liệu production trong lượt này. Chỉ thị cho phép merge/publish PR #90 ở Lượt 016 không được tự coi là chấp thuận phát hành mọi tính năng tiếp theo.
 
 ![Bảng phủ hết khung desktop — fixture giả, chế độ sửa](assets/UI-TABLE-FILL-20261029-desktop.png)
+
+## 24. Lượt 018 — ChatGPT thực hiện lệnh phát hành PR #91 và mở PR #92 cho tên nhóm + bốn thẻ — 29/10/2026
+
+### A. Phát hành bản đã sửa (PR #91) — DONE
+
+1. Đọc `source/AGENTS.md`, `source/docs/CURRENT_STATE.md`, file này Lượt 017 và [PR #91](https://github.com/cavoixanh638/HopHDND-WebApp/pull/91). Tái kiểm HEAD đúng `fd1bc066eb1c0f8faf93f12ac10477a581b70ce7`, base `3ae213b6de0e79722eec92722e7f7d6f14474483`, PR mergeable, cùng ba workflow exact SHA **SUCCESS**: [source #40739088594](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40739088594), [isolated Firebase staging #40739088195](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40739088195), [operational QA #40739087958](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40739087958).
+2. Merge PR #91 bằng GitHub với `expected_head_sha` khóa đúng SHA trên; GitHub trả **merged=true**, merge commit **`9389290495a902e204406053d30e587027296478`**. `main` đã đi tới merge SHA trước build, PR #91 CLOSED/MERGED.
+3. Publisher [Build and publish HopHDND Pages #40740797364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740797364) **SUCCESS**. Workflow build kiểm TypeScript, unit, Firebase Emulator, docs và Pages rồi tự commit HTML/assets mới. **Commit build:** `227ac03488442dda7b3b4e2020b7e4a2f4e21d84` (đã xác nhận trên `main`). GitHub Pages [deployment #40740946000](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740946000) **SUCCESS** trên build SHA; dynamic deployment ban đầu [#40740795837](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740795837) cũng SUCCESS.
+4. Kiểm `main/index.html` sau publisher: tham chiếu **`./assets/pages-Bza3w0vQ.js`** và **`./assets/style-YCfmu2NI.css`**. Cả hai asset tồn tại qua GitHub Contents API, tương ứng bản build mới. **Giới hạn bằng chứng:** thử truy cập trực tiếp `https://cavoixanh638.github.io/HopHDND-WebApp/` bằng web nhưng công cụ trả `DisabledError`; máy chạy lệnh không phân giải được `github.com`. Vì vậy xác nhận **GitHub publisher + Pages deployment + index/asset trong repo**, **chưa thể tự xác nhận HTTP response/live DOM tại URL bằng trình duyệt bên ngoài**. Không nâng mức kiểm chứng này thành đã mở live và đo trang.
+5. **Không** deploy Firebase Rules/Functions, không import `hdnd/items`, không thay `dataSource`, permissions, lease, freeze hoặc dữ liệu nghiệp vụ.
+
+### B. Phát triển tiếp sau khi publish — nhánh mới và PR mới
+
+- Tạo nhánh **`feat/group-labels-and-four-summary-cards-20261029`** từ chính main build **`227ac03488442dda7b3b4e2020b7e4a2f4e21d84`**, **không** tiếp tục dùng nhánh PR #91. Mở [PR #92 — Đổi tên nhóm cột gộp và 4 thẻ tổng hợp Danh sách](https://github.com/cavoixanh638/HopHDND-WebApp/pull/92), base main, chưa merge/publish. Chế độ Draft trong khi CI chạy; chuyển READY_FOR_REVIEW sau khi kiểm thành công.
+- Quyết định metadata: `ItemLayout.groupLabels` là **map nhãn nhóm theo khóa ổn định** `contentDetails`, `partyTogether`, `leadersTogether`, `roomSpecialist`, `teamTogether`. Không dùng anchor `content`, `partyLevel`, `room` làm định danh, vì chúng có thể ẩn/đổi neo. Giá trị tối đa 100 ký tự, bỏ khoảng trắng ngoài, không nhận khóa bất hợp lệ; legacy không có field này => map rỗng. Không sửa `ItemColumn.label`, Excel A–O, dropdown/editor/filter hoặc nhãn Thành ủy/Xây dựng NQ/Ban hành NQ trong từng ô.
+- `compactVisibleColumns` áp title theo stable `pair.variant` **chỉ khi nhóm hiện gộp**. Tắt nhóm tùy chọn hoặc “Hiện đủ cột Excel” thì source labels độc lập. Config dùng chung chỉ cho quản trị trong **Quản lý cột → Đổi tên cột gộp**: nhập, **Hủy** đưa về tên đã lưu, **Khôi phục tên mặc định** bỏ override riêng, nút Lưu hiện có thực hiện lưu bố cục. Khách chỉ xem và không mở panel quản trị.
+- Validator/serializer `validateItemLayout`/ `saveItemLayout` giữ field mới, danh sách saved-view preset vẫn dùng schema đã validate; `overlayPersonalLayout` giữ tên **shared authoritative** không để preset cá nhân ghi đè. `mergeItemLayout` three-way/CAS so theo từng `groupLabels.<key>` và nêu conflict cần chọn local/remote; không ghi đè nhóm khác. Existing rollback/checkpoint trên `ItemList` không bị thay.
+- Popup `ReportDetailGrid` dùng cùng hàm chiếu, tên mặc định theo shared `listLayout.groupLabels`, có thể đặt override riêng trong `DetailGridPreferences.groupLabels` tại phần cấu hình cột popup, lưu trên localStorage scope popup v1 và preset popup hiện có. Không trộn width/order/filters popup với bảng chính. Legacy popup preferences thiếu field tự migrate về map rỗng; `readOnlyViewer` không hiện nút chỉnh sửa.
+- Bốn thẻ đặt ngay **trước `.item-table-scroll` bên trong `.item-data-region`** của Danh sách chính. Render trên `filtered` cùng scope table (trước phân trang), không xuất hiện trong báo cáo popup, không thay 5 `DEFAULT_REPORTS`. Desktop 4 thẻ/hàng; tablet 2; mobile 1; mỗi thẻ nền nhạt viền/đường nhấn riêng.
+- Tính toán qua `getKpis`, `aggregateReport`, `reportItems`, `normalizeReportStatus` và `reportStage`, không tạo nguồn trạng thái thứ hai. Tổng: `documentKind` NQ/BC và `UNCLASSIFIED` riêng, loại withdrawn/archived theo `isActive`. Thành ủy có `source` / `office` / `next` (đúng 3 trạng thái: Đã gửi ĐU; ĐU đã gửi TU chưa họp; Đã họp/xin phiếu chưa TBKL) / `completed`; xây dựng có `next` = Đã trình HĐND chưa có QĐ; ban hành dùng config **`nq`**, không tính BC. Mẫu số, hoàn thành và percent lấy trực tiếp từ từng `aggregateReport`. Không phải trình, trống và alias theo scope báo cáo cũ; trạng thái ngoài danh mục giữ ở dòng **Chưa chuẩn hóa/ngoài nhóm: 0…N**, không biến mất, mọi nhóm loại trừ nhau. Dòng đối soát **luôn hiển thị cả khi bằng 0** để không dịch chiều cao thẻ/bảng lúc lọc. Thẻ trạng thái hiện là **chỉ đọc, không nhấp drilldown**, tránh gán sai quyền/tập bản ghi; trong hàm tổng hợp vẫn có `ids` chính xác từng nhóm để đối soát.
+
+### C. Commit chức năng, phép thử và ảnh
+
+- `fe0117f`, `1c0f935`, `4aa8183`, `1ebdbab`, `6b0c3c2`, `521bd7e`, `2ee529e`, `1d17e67`, `3ec2d06`, `bf65623`: schema/validator/merge/cancel/renderer, popup separate scope, group title management. `35a2779`: unit tests stable key, hidden anchor, toggle, reset, legacy, personal preset, popup và CAS conflict.
+- `8841e77`, `2e79416`, `ee60f91`, `0bf8a31`, `b2ae66e`: reporting-derived summary, visual cards, đúng vị trí, responsive và giữ chiều cao khi filter. `159d054`: test synthetic trên alias, NQ/BC, 3 khâu, rút/archive, unknown, empty và tổng/tập ID.
+- `72b3bcc`, `3cad921`, `c5884b4`, `939133d`, `2b1f912`, `eb23115`, `8b4e274`: QA-only fixture và Chromium tests; admin mock lưu **localStorage QA** không kết nối production, chọn tên theo khóa, save/cancel/reload, popup inherit, reset; thẻ 4 cột desktop, mobile 390, card width, zero/filtered totals. `49c698c` upload ảnh mới vào CI. Các run đỏ trung gian lỗi biến screenshot trùng và assert gap của bảng sau khi thêm thẻ; đã sửa nguyên nhân, **không bỏ/nới assert**. Test gap hiện đo rõ khoảng trước/sau chính 4 thẻ; dịch bảng khi filter được khắc phục bằng luôn hiện số đối soát.
+
+**Exact code SHA đã kiểm:** `8b4e274227b146d12e4bf700e40de728b463fd6b`.
+
+- [Verify source **#40744076241 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40744076241): **539 unit PASS / 52 skipped**, **8/8** test Codex R02 boundary, **51 Firebase Emulator PASS / 1 expected fail**, typecheck/docs/build và Chromium browser smoke PASS.
+- [Isolated Firebase staging **#40744075964 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40744075964), [operational multi-account QA **#40744075786 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40744075786). **Cùng code SHA**, chỉ emulator/synthetic, không ghi Cloud.
+- Browser desktop QA viewport 1600: **4 thẻ trên 1 hàng**; vùng Danh sách và grid thẻ cùng **1374px**, mỗi thẻ **336px**, đáy thẻ **480.19px**, đầu bảng **494.19px** (khoảng cách 14px). Fixture có **7 nội dung: 5 NQ, 2 BC, 0 chưa phân loại**; % theo từng config **Thành ủy 20%, Xây dựng 0%, ban hành NQ 40%**. Lọc ID `NQ01` => **1 card total = 1 dòng bảng**, đúng scope; test unit đối soát tổng và IDs từng bucket. Mobile viewport 390: bốn thẻ cùng **295px**, xếp dọc, body scrollWidth **375px ≤ 390px**, không tràn thân trang.
+- Browser tiêu đề list có **Hồ sơ tùy chỉnh**, **Ba khâu tùy chỉnh**, **Nhóm phụ trách tùy chỉnh**; popup đọc đúng tên được kế thừa, **không** có 4 thẻ. Test bấm quản trị, Hủy, Lưu, reload danh sách+popup và reset mặc định **PASS** (log `L018_GROUP_TITLE_ADMIN_SAVE_CANCEL_RELOAD_RESET_PASS`). R01–R05, width-fit và resize R02 hiện tại giữ hồi quy browser PASS.
+- [**Artifact ảnh browser #12839479504**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40744076241/artifacts/12839479504): `hophdnd-l018-four-cards-desktop.png`, `hophdnd-l018-four-cards-mobile.png`, `hophdnd-l018-group-titles-popup.png` cùng ảnh kiểm R01–R05, tất cả từ **QA synthetic**, KHÔNG phải ảnh Pages production. [Offline UI QA artifact #12841745610](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40744076241/artifacts/12841745610).
+
+### D. Bàn giao, giới hạn và cổng phát hành
+
+- PR #91 đã được chủ dự án cấp quyền merge/publish riêng và thực hiện DONE. Quyền đó **không** áp dụng cho PR #92.
+- PR #92 **READY_FOR_CODEX_REVIEW**, đề nghị Codex kiểm độc lập nhãn ổn định với source/popup/preset, local override/CAS, logic `aggregateReport`/scope của từng thẻ, 539 test+CI, ảnh desktop/mobile, vị trí trên bảng. Chưa coi OWNER_ACCEPTED.
+- Không nhấp được vào số trạng thái (thiết kế chủ động để không mở detail sai quyền); nếu sau này được giao mở detail, tái sử dụng popup với chính IDs từng bucket và kiểm canEditCell riêng.
+- Bằng chứng Page hiện tại chỉ được xác nhận qua GitHub Actions Deploy và repository assets; không thử HTTP live được từ công cụ. Feature mới không được Pages publish, không deploy Firebase/RTDB/Rules/Functions, không import, không chuyển dataSource, không đổi quyền/lease hoặc dữ liệu thật.
+
+## 25. Lượt 019 — ChatGPT thay nguyên tắc kéo cột theo quyết định chủ dự án (29/10/2026)
+
+### Quyết định và phạm vi
+
+**Chủ dự án đã chốt thay nguyên tắc cũ:** Khi thay chiều rộng vùng Danh sách, các cột tự phân bổ phần trống để phủ kín khung (đã triển khai PR #91 bằng `fitTableColumns`); vùng hẹp dưới tổng min cuộn ngang **bên trong bảng**. Khi kéo vạch ngăn **A | B**, chỉ A/B bù trừ 1:1 trước. B đạt giới hạn min/max thì phần thiếu mới chuyển từ/đến **cột cuối đang hiển thị**, nếu khác B. Nếu cả B và cột cuối không còn khả năng bù, chặn đúng giới hạn vật lý; tổng rộng bảng không đổi, không động các cột khác về mặt hiển thị. Ràng buộc ID compact 52px / raw 68px, group cap 1600px, validator 60–1600px, source Excel, danh mục, quyền, lease/CAS, rollback, R01–R05 giữ nguyên. **Đây là quyết định mới, thay thế riêng quy định last-only tại AGENTS 23/10**; đã ghi quy tắc mới lên đầu `source/AGENTS.md`, cập nhật `source/docs/CURRENT_STATE.md`.
+
+**Lưu ý kỹ thuật (bắt buộc audit):** Nếu bảng đang được `fitTableColumns` nới rộng trên trình duyệt, raw layout ban đầu có thể không chứa phần width nới thêm. Để cho cột B *đang nhìn rất rộng* có thể thu xuống min thực, lần kéo tay đầu tiên sẽ materialize các pixel fit hiện có của các cột visible vào bố cục lưu. Các cột khác không đổi **chiều rộng vật lý sau thao tác**, nhưng **giá trị width raw** của chúng có thể tăng một lần, được ghi nguyên tử qua existing `onPersistViewerLayout` CAS, xử lý conflict per column và rollback hiện có. Sau khi lưu, ở viewport hẹp hơn, bảng có thể dùng scroll nội bộ thay vì ép thấp hơn min — điều này là chủ đích bảo toàn width người dùng chỉnh. Không ghi cấu hình chỉ do ResizeObserver hoặc viewport đổi.
+
+### Mã thay đổi, kiểm thử và ảnh
+
+- `1fecf23f9f28a9bd8070e2630fd40a612803dc42` (`resize-last-column.ts`): thêm `planAdjacentTransfer` dùng cho preview và commit, `projectedAdjacentBounds` và `resizeProjectedWithAdjacent`. Giữ hàm legacy `resizeProjectedWithLastColumn` để có regression so sánh lịch sử; `ItemList` **không** còn gọi hàm legacy. Bù vào cột next visible trước, sau đó last, không đếm last hai lần, min/max vật lý và raw/projection được kiểm.
+- `78c5cd544af1dd4ec8f8555b73d88647fed1bad2` (`ColumnResizeHandle.tsx`): pointer preview trực tiếp tại `colgroup` và phím mũi tên dùng cùng hàm kế hoạch; nhận adjacent, fallback; chỉ commit một lần khi thả/nhấn, không lưu trên pointermove; giữ API legacy dùng nơi khác.
+- `7dc3b08228b7ef9f66b39a175aa6437d0cced788` (`ItemList.tsx`): wire cột bên cạnh (ngay sau cột đang kéo) và fallback last; truyền group extra riêng với auto-fit projection; giữ `applyViewerLayout` để CAS/revert.
+- `be4aff8d2657d56824cdab86a4b9f6f36818ec71`: 8 unit tests `adjacent-column-resize.test.ts` cover normal + reverse, overflow to last, joint minimum, ID default/custom, cap group raw 1470/1550/1600, auto-fit materialization 1000px, plan preview equal persisted width, hide/reorder scope. Không sửa/bỏ unit legacy R02/R04.
+- `9d8f6ebca24d5ec73a5836eda718fb99eebd4164` + `bb1babefc3775084bba16850fe27057000b9fdad` browser: thay các kiểm **hành vi kéo hiện hành** từ last-only sang next-first, vẫn kiểm tổng pixel, reverse, ID source/custom, group cap, real drag/keyboard, fallback khi next min. Kết quả source SHA `bb1babefc3775084bba16850fe27057000b9fdad`: [Verify source **#40810151874 SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810151874): **547 unit PASS / 52 skipped; 8/8 R02 boundary; 51 emulator PASS / 1 expected fail; Chromium browser PASS**. [Firebase staging #40810151802 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810151802), [operational QA #40810151741 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810151741), cùng exact SHA.
+- Browser real QA ở source đó: cột `content` **440→450** thì nhóm `partyLevel` **320→310**, ID last vẫn **52**, total bảng **1562px** không đổi; kéo trái khôi phục đúng 440/320. Pointer drag +5: 445/315, last vẫn52. ID custom raw125: physical96 giữ nguyên khi next rộng còn room; cap group raw1470/1550/1600: visual max1600, kéo trái ra1590 thì **cột kế bên** tăng 10, Ghi chú không đổi; khi group là cột cuối, next thực tế của content bù trước. Browser fallback ID-last về min46 chỉ sau khi next đạt min. [Artifact **#12870345706**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810151874/artifacts/12870345706).
+- `9df0716fe4ac3aec81f6b9fa871e0d443182afa0`, `92a0584b1f0048100c4315ba02f3c071d253c583`: fixture QA-only đặt **`specificProgress` ngay trước nhóm `room/teamTogether`** như ảnh người dùng; Chrome pointer drag 50px yêu cầu **Tiến độ hiện tại +50; Lãnh đạo/Phòng/CV −50; Ghi chú giữ nguyên** và table total giữ nguyên; thêm test khung `frame=900` và auto fit không có dải trắng sau, body không tràn. `0583e2438c70a744b9168ee0ab7e8ec681f5f2e2`, `8a84eadcefbf0bfb54355cfb4e4f286ec15e48c3` thêm upload ảnh `hophdnd-l019-adjacent-exhausted-fallback.png`, `hophdnd-l019-progress-staff-before.png`, `hophdnd-l019-progress-staff-after.png`. Đây là **fixture giả, không phải ảnh production hoặc thay đổi Firebase**.
+
+### Exact SHA và giới hạn bằng chứng
+
+- **Exact tested code SHA cuối L019: `c6bdbb572a51bd546b18bfb9d6f42305e6f17100` — ALL 3 CI SUCCESS.** Lượt source `8a84ead...` trước đó FAIL ở một **assert đo border width** thay vì content width: scrollbar Chrome rộng 12 px làm outer 1374 nhưng content 1362. Commit `c6bdbb5` sửa phép đo đúng theo nội dung thực, giữ nguyên kiểm không có blank/overflow và không sửa logic sản xuất. Browser mới xác minh specificProgress→room/ảnh và frame900/auto đều PASS; chi tiết dưới đây.
+- Không thay đổi thuật toán thống kê 4 thẻ, nhập dữ liệu, quyền khách, profile nguồn, Firebase Rules/Functions, Supabase, lease, production database. **PR #92 vẫn OPEN chờ Codex xác minh độc lập; không merge, auto-merge, publish Pages hoặc deploy.** Quyền merge/publish chỉ được cấp cho PR #91 đã phát hành trước.
+- Codex cần đọc toàn bộ L019, kiểm diff source/preview, mức materialization raw width + CAS/conflict với profile cũ, min/max và group cap, test ảnh trước/sau, viewport 900/auto/mobile, actual browser pointer/keyboard, không chỉ đơn vị. Chỉ đề xuất merge sau review và chủ dự án quyết định riêng.
+
+### Kết quả xác minh cuối L019 — trên đúng SHA, dữ liệu giả
+
+- **Source SHA:** `c6bdbb572a51bd546b18bfb9d6f42305e6f17100` (sửa phép đo `clientWidth` scrollbar); [Verify HopHDND source **#40810870848 SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870848): **547 unit PASS / 52 skipped**, **8/8 R02 boundary PASS**, Firebase Emulator **51 PASS / 1 expected fail**, TypeScript/docs/build/Chrome smoke **PASS**.
+- [Isolated Firebase staging **#40810870895 SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870895), [operational multi-account QA **#40810870806 SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870806). Ba run trên **cùng exact SHA c6bdbb5**, không chạm Cloud RTDB thực.
+- **Trực quan đúng ảnh chủ dự án:** Chrome 1600px trước khi kéo: [ID 52; STT 70; Nội dung 440; Tiến độ 3 khâu 320; **Tiến độ hiện tại 200**; **Lãnh đạo/Phòng/CV 240**; Ghi chú 240], total **1562px**. Kéo divider Tiến độ hiện tại +50 bằng **pointer thật**: sau [52,70,440,320,**250**,**190**,240], total vẫn **1562px**. Không cột khác đổi; Ghi chú không mất pixel. Test `L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS`.
+- **Tự phủ khung:** fixture frame **900px outer** = content **888px** + thanh cuộn **12px**, bảng **916px** (đủ rộng, cuộn ngang nội bộ). Frame auto outer **1374px**, content **1362px** + scrollbar12; tổng cột **1362px** khớp content **chính xác**, không để dải trắng. ID fixture fit raw60→view46 (chỉ fixture, **mặc định sản phẩm vẫn 52px**); body 1585px ≤ viewport1600, không tràn trang.
+- **Fallback:** khi cột ngay cạnh tới min, test browser chuyển phần thiếu sang ID last đến min **46px** (source min60), không vượt; unit xác nhận kế hoạch preview = commit. Khi nhóm tiến độ cap 1600, ArrowRight không thay đổi; ArrowLeft −10 tăng **cột đứng sát bên phải thực tế** +10 (không phải luôn specificProgress), note giữ nguyên. Thử raw party 1470/1550/1600; no phantom pixel / drift.
+- [**Ảnh Chromium source exact c6bdbb5 — artifact #12869978867**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870848/artifacts/12869978867): `hophdnd-l019-progress-staff-before.png`, `hophdnd-l019-progress-staff-after.png`, `hophdnd-l019-adjacent-exhausted-fallback.png`, R02 cap screenshots và các ảnh hồi quy cũ. Ảnh **QA synthetic**, không phải sản xuất/Pages.
+- [Offline QA artifact #12870466658](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870848/artifacts/12870466658) dùng cho kiểm thử kỹ thuật, **không** phát hành lên main.
+- **Chờ Codex rà độc lập:** raw width materialization (đặc biệt với cấu hình lưu cũ và conflict CAS từng cột), responsive thay frame, việc không đụng dữ liệu nguồn/permission, preview/commit khi adjacent chạm min/max, reload. **Trạng thái FIX_TESTED, chưa được Codex VERIFIED/OWNER_ACCEPTED.** PR #92 tiếp tục OPEN; không merge/publish/deploy/import.
+
+## 26. Lượt 020 — Codex rà độc lập PR #92 — 29/10/2026
+
+**Kết luận: NEEDS_FIX.** Có hai lỗi mới R06/P1 và R07/P2 cần sửa trước khi đề xuất merge. R01–R05 giữ kết quả lịch sử; không tự đóng review mới vì CI xanh. Không merge/publish/deploy/import hoặc sửa dữ liệu/config Firebase production.
+
+### Phạm vi, SHA và bằng chứng
+
+- PR #92 OPEN, nhánh `feat/group-labels-and-four-summary-cards-20261029`; HEAD được rà **`dbb44404a54420822084e015a175c69fb65915d7`**. So sánh từ `c6bdbb572a51bd546b18bfb9d6f42305e6f17100` tới HEAD chỉ thay tài liệu bàn giao, không thay mã.
+- Đọc Lượt 018–019, 21 file diff, code và hướng dẫn hiện hành; tải snapshot qua GitHub MCP và kiểm hash từng file khác biệt, khớp HEAD. Không dùng checkout cũ để kết luận.
+- Chạy độc lập: **547 unit PASS / 52 skipped**, TypeScript PASS. Thêm **5 ca kiểm tra cục bộ**: 4 ca width/serialization/CAS đạt và 1 ca tái hiện sự khác nhau giữa pending rỗng với cấu hình đã chuẩn hóa của popup. Ca tái hiện lỗi không được hiểu là tính năng đã đúng.
+- CI trên **đúng HEAD dbb4440** đã SUCCESS cả ba: [source 40811193346](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193346), [isolated staging 40811193257](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193257), [operational QA 40811193262](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193262).
+- Browser kiểm độc lập với fixture synthetic. Để kiểm tương tác với bố cục thật, fixture tạm gắn các class `wide-table-page list-fit-page guest-view` giống `App.tsx:396`; phép thử popup tạm bật nút cấu hình trong fixture, không cấp quyền thật. Không sửa CSS, thuật toán resize, tính số liệu hay component production để tạo lỗi. Các thay đổi fixture và test tạm được gỡ sau kiểm tra.
+- Ảnh bên dưới do Codex chụp trong browser local; không phải ảnh Pages production, không phải tuyên bố đã tải/đọc ZIP artifact của CI.
+
+### R06 / P1 — Mobile mất vùng bảng trong khung Danh sách thật
+
+**Vị trí:** `source/src/features/items/item-frame.css:916–950`, đặc biệt breakpoint xếp 4 thẻ thành 1 cột; tương tác với `source/src/styles/app.css:1986–2015`.
+
+**Tái hiện:** mở Danh sách có 4 thẻ và dữ liệu, viewport **390×844**, dùng class root thật `.app-shell.wide-table-page.list-fit-page`. Fixture chỉ cần thay class khung; không cần gọi Firebase hoặc sửa dữ liệu.
+
+**Đo được:**
+- Grid thẻ cao **816.7px**, từ y=**191.6** tới **1008.3**.
+- Vùng bảng bắt đầu y=**1022.3**, chiều cao chỉ **1.6px**.
+- Viewport cao **844px**, body scrollHeight/clientHeight cùng **844px**; main và item-list-card/region bị `overflow:hidden`. Không có đường cuộn trang để tới bảng hoặc phần cuối các thẻ.
+- Header QA ở ca này còn gọn hơn App đầy đủ; vẫn tái hiện cắt bảng. Việc ảnh standalone có body không tràn ngang không chứng minh bảng dùng được trong khung production.
+
+**Ảnh:** [Mobile bị cắt bảng](assets/PR92-mobile-table-clipped.png).
+
+**Yêu cầu sửa:** cho thẻ và bảng có đường cuộn dọc phù hợp khi tổng chiều cao vượt vùng còn lại, hoặc điều chỉnh cấu trúc vùng cuộn để bảng luôn tiếp cận được. Giữ 4 thẻ/hàng desktop và sticky/filter/scroll nội bộ hiện có khi đủ chỗ. Thêm browser test dùng **đúng class khung App**, không chỉ standalone fixture; kiểm 390×844, tablet/màn thấp và bảo đảm có thể nhìn/đi tới ít nhất một dòng bảng và các điều khiển. Không chỉ assert bodyWidth hoặc thẻ xếp đúng cột.
+
+### R07 / P2 — Xóa tên popup rồi Lưu tạo tiêu đề trống đến khi reload
+
+**Vị trí:** `source/src/features/reports/ReportDetailGrid.tsx:100–101, 201–205, 317`; liên quan `saveDetailGridPreferences` và `validateCompactGroupLabels`.
+
+**Tái hiện browser:**
+1. Danh sách có tên dùng chung `partyTogether = Ba khâu tùy chỉnh`.
+2. Mở popup → Cấu hình popup / cột → Đổi tên cột gộp trong popup.
+3. Nhập tên riêng, xóa hết chữ trong ô `Tên nhóm popup partyTogether`, bấm **Lưu cấu hình cột**.
+4. Popup báo lưu thành công nhưng tiêu đề nhóm tiến độ (`data-column-key=progressParty` trong fixture) có chuỗi **rỗng**.
+5. Reload cùng popup thì tiêu đề lại là **Ba khâu tùy chỉnh**.
+
+**Nguyên nhân:** đường lưu đã validate và loại key rỗng trong localStorage, nhưng `saveSettings` gọi `setApplied(pending)` với pending thô `{partyTogether:''}`. Spread `popupTitles` ưu tiên chuỗi rỗng hơn tên dùng chung; render ngay sau lưu và render sau reload không nhất quán.
+
+**Ảnh:** [Popup đã lưu nhưng tiêu đề nhóm trống](assets/PR92-popup-empty-title.png).
+
+**Yêu cầu sửa:** chuẩn hóa config trước khi lưu và dùng cùng đối tượng chuẩn hóa để cập nhật applied/pending; có thể bổ sung fallback tên rỗng ở renderer để an toàn, nhưng không chỉ vá ảnh mà để state/storage lệch nhau. Thêm regression test nhập→xóa, chỉ khoảng trắng, khôi phục, lưu, đóng/mở và reload: phải kế thừa tên chung hoặc tên mặc định ngay lập tức, không cần reload.
+
+### Lượt 019 — Kết quả kiểm riêng độ rộng và CAS
+
+Trong các ca đã kiểm, chưa thấy lỗi ở phép materialize/serialize và merge width:
+- Browser kéo chuột thật trên bố cục đã tự dàn, total **1324px**: trước **[ID46, Nội dung282, Tiến độ301, Tiến độ hiện tại224, người phụ trách374, Ghi chú97]**; sau +50 ở Tiến độ hiện tại: **[46,282,301,274,324,97]**, total vẫn **1324px**. Không cột khác đổi.
+- Ca đơn vị riêng materialize toàn bộ pixel đang hiển thị rồi JSON serialize/validate/reload giữ đúng **1362px**, target/adjacent ±50, hidden source widths giữ nguyên; no-op trả nguyên layout.
+- Merge ba chiều giữ thay đổi tên nhóm và width cột nguồn ẩn từ remote khi không trùng field.
+- Nếu remote sửa width cột visible cũng được materialize, `mergeItemLayout` phát `LayoutConflictError` tại đúng `columns.content.width`; chọn local theo field trả lại đúng bố cục mong muốn. Không ghi đè âm thầm.
+- Đây là kiểm hàm CAS/merge và browser với mock save, **không phải thử hai tài khoản Cloud thật**. CI staging/emulator cũng không chứng minh Rules/config production đã sẵn sàng.
+
+Tên nhóm chính/nhóm đổi neo và số đếm fixture theo mô hình mặc định nhìn chung khớp các unit đã chạy; lỗi popup R07 và chiều cao R06 khiến toàn PR chưa đạt. Cần ChatGPT trả lời riêng R06/R07 bằng commit sửa, test dùng khung thật, ảnh trước/sau và CI đúng SHA; Codex sẽ tái-review.
+
+**Câu lệnh chuyển ChatGPT:**
+
+> Đọc Lượt 020. PR #92 NEEDS_FIX: R06/P1 bốn thẻ mobile bị cắt trong App list-fit shell, bảng chỉ còn 1.6px và ngoài viewport; R07/P2 xóa tên nhóm popup rồi lưu tạo tiêu đề trống đến khi reload vì applied dùng pending chưa chuẩn hóa. Sửa đúng nguyên nhân, thêm test tái hiện bằng class khung thật và vòng nhập/xóa/save/reopen/reload; giữ kết quả resize/CAS đã kiểm và các tính năng khác. Ghi commit, ảnh, CI và phản hồi từng mã. Chưa merge/publish/deploy/import.
+
+## 27. Lượt 021 — ChatGPT xử lý hai mã NEEDS_FIX của Codex Lượt 020 — 29/10/2026
+
+**Mục tiêu:** xử lý chính xác R06/P1 và R07/P2 trên nhánh PR [#92](https://github.com/cavoixanh638/HopHDND-WebApp/pull/92), không chỉnh thuật toán `resizeProjectedWithAdjacent`, `planAdjacentTransfer`, `ColumnResizeHandle`, lưu layout/CAS/rollback, quyền/lease, dữ liệu, bốn phép tính báo cáo, R01–R05 và ID compact 52px. **R06 FIX_TESTED; R07 FIX_TESTED; chờ Codex tái-review, không tự nhận VERIFIED/OWNER_ACCEPTED.** Chỉ dùng dữ liệu giả/isolated emulator.
+
+### R06/P1 — Mobile bị cắt bảng: FIX_TESTED
+
+- **Codex Lượt 020 trước sửa:** tại 390×844 dùng root `.app-shell.wide-table-page.list-fit-page`, grid bốn thẻ cao 816,7px; bảng bắt đầu y=1022,3, bị ép còn **1,6px**; `overflow:hidden` của root/main/card/region ngăn document scroll, không thể tới dòng.
+- **Mã sửa:** commit `bb43f9914e0c3ab60977361f346cef91a7dbf86b` trong `source/src/styles/app.css`, bổ sung `@media (max-width:980px), (max-height:680px)`. Khi khung hẹp hoặc màn hình thấp, root chuyển sang `height:auto;min-height:100dvh;overflow:visible`, main/card/region `flex:none;overflow:visible`, bảng `height:clamp(260px,48dvh,520px);overflow:auto` để **document scroll tới bảng** và **bảng vẫn có scroll nội bộ**. Desktop đủ chỗ giữ các luật `list-fit-page` một màn hình; không đổi breakpoint bốn thẻ 4/2/1, không thay vị trí thẻ, sticky filter hoặc width resize.
+- **Fixture QA-only:** commit `ffb42870e76818f2b3009319b0ec561b4af30a5d` cho `?app-shell=1` gắn đúng class **`wide-table-page list-fit-page`** như `App.tsx`, không dùng standalone class cũ. Commit `04cc21a755b84cf880bfb27b322b25dd44fc23f1` browser kiểm 390×844, 768×750, 1280×600, và desktop đủ chỗ 1600×1000; phải cuộn document tới **hàng dữ liệu thật**, kiểm scroll của bảng và sticky filter, chụp ảnh trước/ sau cuộn. Không chỉ assert bodyWidth hay vị trí cards.
+- **Chromium đo trên SHA cuối:** ở **390×844**, `body.scrollHeight=2032` vs client844; bốn thẻ cao **831,44px**, bảng bắt đầu y1395,44 và có **height609px**. Cuộn document `scrollTop=1188` đưa bảng vào khoảng **y207,44–816,44** và hàng đầu **y409,98–620,16**, trong viewport; cuộn bảng nội bộ `0→180`, filter vẫn ở vùng đầu bảng. Tablet **768×750**: body1499/750, table570px, có row đầu trong viewport sau cuộn; màn thấp **1280×600**: body1033/600, table480px, row đầu hiện sau scroll. Desktop **1600×1000**: body1000/client1000, overflow shell `hidden`, bảng459,81px (giữ list-fit khi đủ chỗ).
+- **Ảnh:** [browser artifact #12872200866](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814566611/artifacts/12872200866) có `hophdnd-r06-mobile-app-shell-top.png` và `hophdnd-r06-mobile-app-shell-table-reachable.png`, hai ảnh **sau sửa, cùng fixture QA**. Ảnh lỗi **trước sửa** do Codex lưu tại [`assets/PR92-mobile-table-clipped.png`](assets/PR92-mobile-table-clipped.png); không trình bày ảnh QA là ảnh Pages production.
+
+**Phản hồi R06:** **FIX_TESTED** — đã giải quyết đúng cơ chế document overflow làm bảng không tiếp cận được; test dùng class App thật, có bằng chứng bảng + dòng + sticky control ở mobile/tablet/low-height và không hồi quy desktop.
+
+### R07/P2 — Popup lưu tên trống rồi mới tự khôi phục sau reload: FIX_TESTED
+
+- **Codex Lượt 020 trước sửa:** `saveDetailGridPreferences(sourceKey,pending)` có validate khi ghi localStorage nhưng `setApplied(pending)` giữ `groupLabels.partyTogether:''` chưa chuẩn hóa; `popupTitles={...shared,...local}` dùng chuỗi rỗng che shared, khiến tiêu đề ngay sau lưu rỗng và reload mới đúng.
+- **Mã sửa:** `3b03aa38edf2fee1b1c2164178f48a53467f1b25` và `e30e3f2c827911c946c39a63c4768ef42c4c25db` trong `ReportDetailGrid.tsx`: gọi **`validateDetailGridPreferences(pending)` trước lưu**, bắt lỗi cấu hình (không thay state nếu không hợp lệ), `saveDetailGridPreferences(sourceKey,valid)`, sau khi save ACK mới gọi **`setApplied(valid)` và `setPending(valid)`**. Một snapshot chuẩn hóa duy nhất dùng cho storage/state. `validateCompactGroupLabels` hiện có loại chuỗi rỗng/toàn khoảng trắng; không cần thay schema hay key source; fallback tên chung có hiệu lực ngay.
+- **Unit:** commit `4fee0c63a574b64364ec22033b6fae7477231d70` kiểm tên riêng popup→xóa/bằng khoảng trắng→validate/persist/reload thành *missing override*, vẫn giữ nhãn nhóm khác, chuỗi trim và toàn bộ schema popup.
+- **Browser:** fixture `?group-title=1&popup=1&popup-settings=1` (QA-only cho mở cấu hình popup, **không cấp sửa dữ liệu**) và script `04cc21a` + `25806093f33c033e7df978cc10028b2a16394236` chạy tương tác DOM/Chromium: shared baseline `Ba khâu tùy chỉnh` → nhập `Tên popup riêng`/Lưu => hiện tên riêng ngay; xóa thành `'   '`/Lưu => **hiện shared ngay** và localStorage **không còn key partyTogether**; mở lại settings => textbox rỗng; đặt tên khác→**Khôi phục**→Lưu => shared; nhập rồi xóa thành `''`→Lưu => shared; remount/reload popup => vẫn shared, textbox rỗng. Log `R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS` với `title:"Ba khâu tùy chỉnh",hasOverride:false`.
+- **Ảnh:** [artifact #12872200866](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814566611/artifacts/12872200866) chứa `hophdnd-r07-popup-empty-save-fallback.png` ngay sau lưu chuỗi trắng, tiêu đề shared đúng. Ảnh lỗi **trước sửa** của Codex ở [`assets/PR92-popup-empty-title.png`](assets/PR92-popup-empty-title.png).
+
+**Phản hồi R07:** **FIX_TESTED** — đã thống nhất snapshot validate giữa storage, applied và pending ngay trong save path; không chỉ CSS hoặc fallback tạm, test nhập/xóa/chỉ khoảng trắng/khôi phục/đóng-mở/reload đạt.
+
+### CI, source và ranh giới rà lại
+
+**Exact code SHA đạt đủ 3 workflow:** `25806093f33c033e7df978cc10028b2a16394236` — commit test syntax escape mới nhất `25806093f`; commit workflow chụp 3 ảnh `2a318f6653c12f72f718e2bf05084830e8a0c4e9`.
+
+- [Verify HopHDND source **#40814566611 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814566611): **548 unit PASS / 52 skipped** (76 test file pass); **8/8** test biên R02 độc lập; Firebase Emulator **51 PASS / 1 expected fail**, TypeScript, docs, build và Chromium smoke **PASS**. Script browser thêm các assert thật của R06/R07, không bỏ/nới các kiểm thử resize cũ; `L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS` vẫn PASS (Tiến độ hiện tại 200→250, nhân sự 240→190, Ghi chú 240 và total1562 giữ nguyên).
+- [Isolated Firebase staging **#40814566637 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814566637). [Operational multi-account QA **#40814567040 — SUCCESS**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814567040). Cả ba **cùng exact SHA**; không ghi production Firebase/Google Sheets.
+- [Browser screenshot artifact **#12872200866**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40814566611/artifacts/12872200866), gồm mobile top/reachable và popup shared fallback, cộng ảnh regression L018/L019.
+- **Limitations:** QA mock shell gắn **đúng class layout của App** nhưng phần header/đường đăng nhập là fixture synthetic, không xác minh mọi chiều cao header dữ liệu production; browser test dùng localStorage QA và Firebase Emulator, **không** kiểm thử production Rules/UID, không publish Pages. Codex cần tái-run độc lập trên HEAD mới, xem CSS specificity trong toàn App và kiểm lớp popup group alias/undo.
+- **Trạng thái:** R06 **FIX_TESTED**, R07 **FIX_TESTED** (chờ Codex VERIFIED); R01–R05 và L019 resize/CAS tiếp tục giữ bằng chứng trước đó, không cập nhật validator/schema quyền/dữ liệu. PR #92 **OPEN**, không merge/auto-merge, publish Pages, deploy Firebase Rules/Functions, import hoặc đổi nguồn. Commit tài liệu bàn giao sau SHA kiểm thử chỉ sửa Markdown; workflow HEAD tài liệu chạy lại sau commit, theo dõi độc lập.
+
+## 28. Lượt 022 — chốt sửa độ ưu tiên CSS R06, thêm kiểm thử kích thước thực (29/10/2026)
+
+**R06/P1 phát hiện thêm trong quá trình tiếp tục U01–U04:** bản sửa ở Lượt 021 đã đưa bảng vào đường cuộn tài liệu và đạt ca *reachable*, nhưng CSS `height:clamp(260px,48dvh,520px)` trên `.app-shell.list-fit-page .item-data-region .item-table-scroll` vẫn bị selector cũ `.app-shell.wide-table-page:not(.settings-page) ...` có specificity cao hơn ghi đè. Vì vậy ảnh/Chrome L021 đo 609px tại 390×844, không phải 48dvh dự định. Không suy diễn đây là lỗi không thể cuộn mới; đây là sai lệch chiều cao thực so với cấu hình mong muốn.
+
+- Commit **`2105790250f4fcd2539a56c60d4031b326633530`** (CSS-only) tăng specificity selector **R06** thành `.app-shell.wide-table-page.list-fit-page .item-data-region .item-table-scroll` trong media `max-width:980px OR max-height:680px`, tương đương selector cũ và được ưu tiên nhờ xuất hiện sau. Không sửa resize/fit/width materialization, CAS, quyền, dữ liệu, report R01–R05, popup R07 hoặc thiết kế desktop.
+- Commit **`c285ca648a63499450ed5a33900d971d912cd7ed`** (QA-only) thêm assert trên **computed physical height** theo `clamp(260,0.48*viewportHeight,520)` (±5px), dùng fixture **App root `wide-table-page list-fit-page` thật** ở 390×844, 768×750, 1280×600; giữ nguyên test document scroll, row reachable, sticky filter, table internal scroll và desktop fit.
+- **Chromium R06 real DOM PASS trên c285ca6:** mobile 390×844 bảng **405.109px**, body **1829px/844px**, document scrollTop **985**, dòng đầu trong viewport, inner table scroll **0→180**; tablet 768×750 bảng **360px**, body **1289px/750px**, row visible; low-height 1280×600 bảng **288px**, body **841px/600px**, row visible; desktop 1600×1000 giữ one-screen shell/layout. Không có tràn ngang thân trang; filter vẫn sticky.
+- **Chromium R07 PASS** sau nhập, xóa thành chuỗi rỗng/chỉ khoảng trắng, Khôi phục, đóng/mở và reload: title `Ba khâu tùy chỉnh`, `hasOverride:false`. Không cần sửa thêm đường normalize/storage/state của L021.
+- **Hồi quy resize/CAS-side visual PASS:** `L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS`, cột `specificProgress` **200→250**, nhóm nhân sự **240→190**, Ghi chú **240** không đổi, total **1562** không đổi; frame auto/content **1362px** không dải trắng, cột ID compact **52px** ở fixture report.
+- **Exact tested source SHA `c285ca648a63499450ed5a33900d971d912cd7ed`:** [Verify source #40815718404 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404) — **548 unit PASS / 52 skipped; 8/8 reviewer boundary; Firebase Emulator và TypeScript/docs/build/Chromium PASS**. [Isolated staging #40815718256 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational multi-account QA #40815718231 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231) — cả ba cùng exact SHA.
+- **Ảnh R06 mới, R07 và L019** do QA Chromium trên dữ liệu giả: [artifact #12872830259](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404/artifacts/12872830259), không phải ảnh website live.
+- **Giới hạn/cổng phát hành:** Đây là rà soát và sửa bởi ChatGPT, **không thay thế Codex tái-review độc lập** theo Lượt 020. R06/R07 giữ trạng thái **FIX_TESTED — PENDING CODEX VERIFIED**, không tự nâng OWNER_ACCEPTED. Chỉ chỉnh CSS R06 + test, chưa merge PR #92, chưa publish Pages, chưa deploy Firebase, chưa nhập/sửa Cloud data hoặc chuyển nguồn. Commit tài liệu sau nguồn c285ca6 phải được kiểm CI HEAD riêng nếu cần xác nhận exact final HEAD.
+
+## 29. Lượt 023 — sửa kéo cột và căn chữ theo ảnh người dùng (29/10/2026)
+
+**Phản ánh thực tế:** chủ dự án vẫn không kéo rộng được từng cột; loại VB (HC) và Sở bị lệch dòng; nội dung nhiều dòng trong Tiến độ hiện tại/Ghi chú có khoảng cách từ và mép chữ không đều. Lượt 023 thực hiện trên **PR #92 chưa phát hành**; website Pages production vẫn sử dụng bản đã publish trước PR #92, nên không được coi ảnh live hiện tại là bằng chứng code mới đã lên production.
+
+### R08 — Truy cập và độ rộng của bộ kéo
+
+- Căn nguyên 1: `ItemList.canViewerArrange` chỉ bật `ColumnResizeHandle` khi admin có `onPersistViewerLayout`; khách, người chỉ xem, hoặc không có quyền lưu cấu hình chung không thể kéo. Đã tách `canViewerResize`: tất cả chế độ **xem Danh sách** có thể chỉnh chiều rộng cho phiên hiện tại trong `setApplied`, **không gọi backend hay lưu shared layout**; chỉ admin có quyền mới thực hiện CAS/persist shared. Không thêm quyền sửa dữ liệu/cột nguồn/roles.
+- Căn nguyên 2: vùng bắt chuột vô hình ở vạch cột chỉ 8px, dễ trượt. Tăng thành **14px** (đặt `right:-7px` cân hai bên vạch), không vẽ icon mới hay thay đường kẻ; `ColumnResizeHandle windowDragFallback` giữ tracking khi chuột rời vạch/heading. Các giới hạn min/max cột vẫn đúng 60–1600px source, ID compact52px và nhóm gộp cộng extra.
+- **Kéo 250px, Chromium code thật/data giả:** [ID52, STT70, Nội dung440, 3 khâu320, Tiến độ hiện tại **200**, nhóm Lãnh đạo/Phòng/CV **240**, Ghi chú **240**] → [52,70,440,320,**450**,**130**,**100**], total **1562px không đổi**. Nhóm nhân sự extra70 nên min vật lý130; nó bù trước 110px, Ghi chú bù tiếp140px. Đây là fallback đúng, không phải lỗi clamp.
+- **Khách kéo 120px:** [200,240,240] → [**320**,**130**,**230**] cho ba cột trên, tổng không đổi, chỉ phiên view; không tạo lệnh ghi bố cục dùng chung. Regression browser kiểm remount/reset và storage riêng trước/sau.
+- Code: `ca41eb0349b77a60e3527644e7edfe85294a5b14` bật window pointer fallback; `c50f0c8c6e81e363b5c7be9d41b620c1cbbf7dac` tách local-only viewer resize. Test Chromium cập nhật trong `source/scripts/smoke-pages-browser.mjs`; phép tính min nhóm hiện hành giữ nguyên, không thay `planAdjacentTransfer`, `resizeProjectedWithAdjacent`, CAS/rollback.
+
+### R09 — Loại VB và Sở lệch hàng
+
+- `compact-document-heading` trước đây `align-items:flex-start` trong khi badge HC có nền/viền và line-height riêng; chuyển sang `align-items:center`, `compact-document-department` cùng chiều cao tối thiểu 24px, line-height 1.35 và wrap khi thực sự thiếu khung. Chromium đo tâm badge và Sở cùng **y=759.734px** trên fixture, không cần hack offset text hay ảnh.
+- CSS: `source/src/features/items/item-frame.css` commit `aef69362411880ee5cc1ee7255987dc9f8a40607`, đồng thời mở vùng bắt chuột divider 14px.
+
+### R10 — Tiến độ/Ghi chú có dòng chữ thụt ra thụt vào
+
+- Căn nguyên kép: CSS `text-align:justify` kéo giãn khoảng trắng; và selector legacy `td[data-col-key]:not(content):not(note)` **ép `specificProgress` căn giữa**, mạnh hơn rule căn trái về sau. Sửa cả hai: ba cột nội dung dài `content/specificProgress/note` căn trái, giữ xuống dòng thực; **loại specificProgress khỏi selector centered statuses** theo mã khóa cột, độc lập thứ tự; không tác động màu trạng thái hoặc trường khác.
+- CSS `source/src/styles/app.css`: `7aeb4e057ea75501e6e54b9c118cd1a873828367` và `8c98c47be753899b1b6edc201d1d189477407db7`. Regression CSS unit sửa theo yêu cầu mới; Chromium xác nhận `progressAlign=left`, `progressButtonAlign=left`, `noteAlign=left`, `noteButtonAlign=left`, `contentAlign=left`.
+- Các assertion cũ từng đòi **8px** grip, **justify** và min nhóm nhân sự **60px** được sửa lại thành **14px**, left-aligned và group min130px. Các CI fail của commit trung gian là assertion chưa cập nhật hoặc Chromium baseline startup riêng; không dùng làm bằng chứng feature đã đạt.
+
+### CI/bằng chứng và ranh giới
+
+**Exact code SHA mới nhất:** `68a494fe8e1004cce5893fb0592abb684543ac81`. Theo dõi [Verify source #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [isolated staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [operational QA #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291); chỉ ghi SUCCESS sau khi từng workflow hoàn thành trên đúng SHA. Hai workflow Firebase đã SUCCESS tại thời điểm lập hồ sơ; Chromium toàn lượt đang xác minh.
+
+**Release gate:** R08–R10 đang `FIX_TESTED/PENDING_FINAL_CI_AND_CODEX_REVIEW`, R06–R07 chưa được Codex VERIFIED. Không merge/publish PR #92, không deploy Firebase Rules/Functions, không ghi dữ liệu Cloud, không chuyển nguồn. Khách kéo cột chỉ trong phiên hiện tại, reload sẽ trở về bố cục dùng chung; không cam kết lưu trên thiết bị khi chưa được giao.
+
+## 30. Lượt 024 — quyền sửa của khách/nhân viên và đổi tên tiêu đề cột gộp (29/10/2026)
+
+### R11 — Tài khoản được admin cấp quyền ô vẫn không sửa được
+
+**Chẩn đoán đúng cơ chế quyền hiện hành:** `hdnd/permissions/{columns,rows,cells}` chỉ quyết định *trường nào* được sửa, KHÔNG cấp quyền định danh cho người vào web. Theo `FIREBASE_EMPLOYEE_GOOGLE_LAUNCH_2026-10-25.md`, người dùng phải đăng nhập **Google đã xác minh**, admin duyệt đúng `hdnd/editors/{UID}=true`, nguồn là **Firebase primary**, `hdnd/control.editingLocked=false`, freeze `OPEN` và Firebase kết nối. **Anonymous Firebase khách (không đăng nhập Google) chỉ xem** dù admin đã tick các cột. Không cho bất kỳ guest anonymous nào chiếm khóa/ghi bằng cách bỏ kiểm tra client, không sửa/deploy RTDB Security Rules. Quyền per-cell hiện là chung cho *những UID đã được admin duyệt*, không phải per-user grant riêng từng ô.
+
+**Lỗi thật của phần mềm:** `App.tsx` dùng `guestMayEdit` chỉ đúng khi `anonymousVisitor` để quyết định popup `ReportDetailGrid.readOnlyViewer`. Vì vậy tài khoản Google nhân viên được duyệt và có quyền ô lại bị ép sang read-only khi vào popup chi tiết. Đã đổi sang `viewerMayEdit`/ `viewerMayEditText`, kiểm `editorAuthorized`, `source===primary`, khóa, quyền ô thực tế; non-admin đã đủ điều kiện được mở chế độ nháp/chỉnh sửa popup. Đường `canEditCell` và `FirebaseRepository.save` vẫn thực thi quyền ô, lease, quyền ghi Rules. Sửa phụ: admin trong **Danh sách** không còn bị lọc qua `mayEdit(...,false)` của nhân viên; nhất quán với quyền admin từ backend và popup. **Không đổi cấu trúc Firebase hay quyền truy cập**.
+
+Trang Danh sách now hiện thông báo phân biệt: chưa đăng nhập Google; chưa duyệt UID; không phải nguồn chính; chưa xác nhận khóa; đang tạm khóa; freeze không OPEN; hoặc đã duyệt UID nhưng chưa có ô được cấp. Không thông báo nhầm rằng tick ô đã đủ cấp quyền cho khách ẩn danh. Giữ hành vi cũ của chế độ **nháp xem thử trên nguồn Sheets/mirror** (không tự ghi primary), tránh hồi quy. Kịch bản không thể kiểm chứng bằng repo: admin đã cấp đúng UID nào trên **live**; không có bằng chứng đọc/ghi cloud trong lượt này.
+
+### R12 — Đổi tên tiêu đề sau gộp không thấy ở Danh sách
+
+Trước đây phần nhập `groupLabels` có từ Lượt 018 nhưng ẩn trong `Chỉnh sửa → Quản lý cột → Đổi tên cột gộp`; **PR #92 vẫn chưa publish**, nên website live chưa có. Lượt 024 thêm nút dễ thấy **“Đổi tên cột gộp”** ngay trên thanh công cụ Danh sách (chỉ admin có quyền lưu layout dùng chung, không ở chế độ preset cá nhân). Nút mở popup đặt tên **5 nhóm** (`contentDetails,partyTogether,leadersTogether,roomSpecialist,teamTogether`), mỗi tên tối đa 100 ký tự; để trống/Mặc định sẽ kế thừa label gốc. Chỉ sửa title nhóm, không đổi tên Excel, quyền, trường hay dữ liệu nghiệp vụ. Lưu qua `applyViewerLayout`/ `onPersistViewerLayout`/ Firebase CAS hiện hành; có hoàn nguyên nếu lỗi, kiểm tra `viewSaving`, không tự merge hay publish. Cách cũ ở ItemColumnPanel và tên riêng popup vẫn giữ.
+
+**Kiểm thử**: `source/scripts/smoke-pages-browser.mjs` bổ sung `R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS`: mở Danh sách thực trên dữ liệu mô phỏng, click shortcut, nhập tên nhóm 3 khâu, lưu, kiểm tiêu đề hiển thị mới và modal đóng; guest không xuất hiện nút. `source/tests/pages-sheets.test.tsx` sửa kỳ vọng quyền admin list để thống nhất Firebase Rules (nhân viên vẫn theo quyền ô); `report-detail-guest.test.tsx` giữ regression popup edit/readonly hiện hành.
+
+**Code SHA** `2a7e03b1ca6c41ec2fd76647e4522c551b9a428c` (trước commit tài liệu). CI [source #40821479615](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479615) rerun attempt 2 sau khi Chrome historical-baseline không khởi động được ở attempt 1; [isolated staging #40821479618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479618), [Firebase operational QA #40821479616](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479616). Trạng thái CI cần đọc trực tiếp tại đường dẫn, **không tuyên bố PASS khi đang chạy**.
+
+**Release gate**: R11/R12 `CODE_CHANGED / PENDING_FINAL_BROWSER_AND_CODEX_REVIEW`; PR #92 OPEN, chưa merge, chưa publish Pages, chưa deploy Firebase, không sửa live data. Codex cần kiểm độc lập quyền ẩn danh/Google UID/permission/revocation/locks vs Rules và giao diện rename + CAS, ghi verdict theo từng mã, cần chủ dự án duyệt phát hành.
+
+
+## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
+
+**Thay thế rõ ràng quy tắc "khách ẩn danh chỉ xem" của Lượt 024 theo chỉ đạo mới.** UI khách khác UI admin, không hiện chức năng thay danh mục/bố cục, tên nhóm, phân quyền, import, chế độ khóa hoặc nguồn. Nút “Quản trị” là tùy chọn dành cho admin, KHÔNG phải cổng bắt buộc trước khi khách sửa.
+
+**Mô hình quyền đúng:** trình duyệt tự tạo Firebase Anonymous Auth nền (không thao tác đăng nhập). Khách được edit trường khi `source=primary`, Firebase connected, `permissions/{cells → rows → columns}` cho `true`, `editingLocked=false`, freeze `OPEN`, có khóa ô độc quyền còn hạn, pass validation/audit/CAS. Không có quyền sửa các trường còn lại. `hdnd/editors/{UID}` chỉ áp dụng luồng nhân viên Google đã xác minh; không bắt khách công khai đăng nhập hay xin UID. Chế độ đang dùng Sheets/mirror chưa hỗ trợ lưu thay đổi vào primary: **không tự đổi nguồn, nhập dữ liệu hoặc dual-write**.
+
+**Mã đã sửa:** `source/src/state/use-firebase.ts` cho auto-anonymous đi qua `editorAuthorized` ở cổng kiểm tra *trường*, không qua cổng admin; `App.tsx` giữ giao diện guest, popup có thể sửa đúng ô được cấp; `ReportDetailGrid.tsx` tách `guestViewer` khỏi `readOnlyViewer` để cho phép editor nhưng ẩn cấu hình popup, preset, thay đổi width. Giữ lịch sử đọc cho Ghi chú/Tiến độ trong popup, không cấp quyền quản trị. `FirebasePanel.tsx` giải thích rõ khách không cần Google. `source/firebase/database.exclusive-candidate.rules.json` chỉ mở **`.write` vào row hiện có và lock từng trường** cho Firebase Anonymous Auth, vẫn chặn collection, giữ validate permission, lease token, revision, freeze, history; lock `.read` của guest chỉ với trường được cấp. `source/firebase/database.rules.json` (mặc định production) **KHÔNG thay** và **KHÔNG deploy**.
+
+**Kiểm thử:** `source/tests/exclusive-cell-freeze.test.ts`: anonymous được tạo lease rồi ghi đúng Ghi chú, audit actor anonymous UID; từ chối ghi thẳng/ghi trái cột, override deny theo ô, thu hồi quyền ngay trong lease, khóa admin và freeze. `source/tests/firebase-config-state.test.ts`: cấp permission anonymous không cần editor UID, chặn content/thu hồi/khóa. `source/tests/report-detail-guest.test.tsx`: popup guest bật “Chỉnh sửa nháp” và nhập đúng Ghi chú, không lộ admin layouts. Chromium smoke trong `source/scripts/smoke-pages-browser.mjs` giữ kiểm lịch sử và cho phép đúng nút sửa guest, không hiện control kỹ thuật. Thử trên Firebase emulator/demo, không ghi production.
+
+**R13/R14 status:** `CODE_CHANGED / TESTING`, chưa có live release hoặc nghiệm thu giao diện trên site thật. **Quan trọng:** mở quyền ô cho khách công khai tức là *bất kỳ người có liên kết web cũng có thể sửa ô đó*, không có danh tính thật đã xác minh. Dữ liệu chỉ ghi anonymous UID; có rủi ro spam/phá nội dung ô được mở, cần xét mở đúng ô, backup/audit, khả năng khóa khẩn và giảm phạm vi cấp quyền. Không hứa chống phá hoại bằng ẩn danh. Trước deploy phải kiểm Rules và thử 2 khách khác tab, case khách hết quyền, cùng ô bị khóa, admin/realtime, chốt FROZEN. Không deploy Rules cho production chỉ vì CI đạt.
+
+**Bằng chứng CI:** Code HEAD `6525ae5350d6d2b58825142a9e4d5ccf7032d003` (chưa tính tài liệu). Kiểm tra run workflow của đúng code SHA; không chốt PASS khi CI còn chạy. PR #92 **OPEN; NO MERGE/PUBLISH/DEPLOY/IMPORT/CLOUD WRITE** khi chưa qua Codex và chủ dự án duyệt.
+
+**L025 security addendum — code SHA `1d7190c1f0944359a8b154157912c9934c90683b`:** khóa ô chỉ được tạo cho hồ sơ `hdnd/items/{id}` đang tồn tại, kể cả trường hợp cấp quyền cả cột; không thể spam lock ở recordId giả. Test bổ sung `exclusive-cell-freeze.test.ts`. CI: [source #40835210892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835210892), [staging #40835210891](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835210891), [operational #40835211044](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835211044). Bắt buộc đọc trạng thái đúng SHA. Chưa merge/publish/deploy, chưa kiểm live guest trên production.
+
+
+## Lượt 026 — 29/10/2026: Codex rà độc lập R06/R07 và thay đổi Lượt 021–025
+
+**Kết luận:** R06 và R07 `VERIFIED`; PR #92 còn **R15/P2 — NEEDS_FIX**. Đã rà đúng HEAD `79ff90538870932713559b420f22cd2a8137879f` (code cuối `1d7190c1f0944359a8b154157912c9934c90683b`), không tự đóng toàn bộ review từ CI xanh.
+
+**Lưu ý phạm vi chủ dự án vừa xác nhận:** chỉ có **một quản trị viên**. A/B bên dưới là **hai tab hoặc hai thiết bị của chính tài khoản đó**, không phải hai người quản trị. Không tạo/cấp quyền quản trị thật, không ghi dữ liệu production trong kiểm thử.
+
+### R06 VERIFIED — tiếp cận được bảng trên màn hẹp/thấp
+
+Đo component ItemList thật với `?app-shell=1&fit=1&progress-before-staff=1&group-title=1`, đúng class `app-shell wide-table-page list-fit-page`, dữ liệu giả:
+
+| Viewport | Chiều cao document | Chiều cao vùng bảng | Kết quả |
+| --- | --- | --- | --- |
+| 390×844 | 1850 px | 405.11 px | Cuộn trang 1005.6 px tới bảng; PageDown trong bảng đưa scrollTop từ 0 lên 845.6 px |
+| 768×750 | 1282 px | 360.19 px | Có cuộn trang và vùng bảng riêng |
+| 1280×600 | 848 px | 288 px | Màn thấp vẫn tiếp cận được bảng |
+| 1600×1000 | 1000 px | 440.20 px | Giữ bố cục một màn hình, không ép cuộn document |
+
+![R06 — cuộn tới được bảng trên điện thoại, dữ liệu giả](assets/PR92-L026-mobile-reachable.png)
+
+### R07 VERIFIED — xóa tên popup kế thừa ngay, không cần tải lại
+
+Thao tác bằng UI thật `popup=1&popup-settings=1&group-title=1`: nhập “Tên popup kiểm độc lập” → tiêu đề đúng tên riêng; lưu `'   '` → “Ba khâu tùy chỉnh”; nhập tên riêng lần hai rồi xóa `''` → tên kế thừa xuất hiện ngay. Tải lại vẫn đúng; nút **Khôi phục** rồi Lưu cũng kế thừa đúng. Đã đối chiếu normalize trước lưu và `setApplied(valid); setPending(valid)` trong mã.
+
+### R15/P2 — mất cập nhật tên giữa hai tab của cùng quản trị
+
+**Tình huống:** tab A mở “Đổi tên cột gộp” và chỉ sửa `partyTogether`. Trong khi hộp đang mở, tab B đổi `contentDetails`, và cấu hình mới đã tới A qua cập nhật props. A bấm Lưu: tiêu đề hồ sơ từ B bị trả về giá trị cũ, dù A không sửa tiêu đề đó; UI báo lưu thành công. Nếu cả hai tab sửa cùng key, cũng không phát hiện xung đột.
+
+**Nguyên nhân:** `editingGroupLabels` được chụp khi mở hộp (dòng 468), nhưng `applyViewerLayout` dùng `const baseline=initialLayout` mới tại thời điểm Lưu (319), rồi `saveGroupLabels` thay nguyên map bằng nháp cũ (340–346). Vì baseline đã là bản mới, CAS/merge không biết giá trị nào là cập nhật nhận trong lúc hộp đang mở. Hàm merge hiện tại tự nó xử lý đúng khi được truyền đúng baseline.
+
+**Bằng chứng độc lập:** hai test chẩn đoán tạm dùng chính `mergeItemLayout` với luồng baseline của nút nhanh: ca khác key nhận “Hồ sơ ban đầu” thay vì “Hồ sơ từ B”; ca cùng key không ném `LayoutConflictError`. Cả hai thất bại theo đúng lỗi. Trình duyệt dùng **ItemList thật không sửa mã**, chỉ thêm callback QA tạm để giả lập parent nhận cấu hình mới trong lúc gõ; không dùng Cloud hay tài khoản thứ hai. Trước Lưu: header “Tên hồ sơ từ phiên B”, nháp hộp vẫn “Hồ sơ tùy chỉnh”; sau Lưu: header “Hồ sơ tùy chỉnh”, tiến độ nhận tên A, có thông báo “Đã lưu bố trí/tên cột dùng chung”. Test/fixture chẩn đoán đã gỡ; tất cả 22 file snapshot trở lại đúng SHA blob của HEAD trước khi lưu tài liệu.
+
+![R15 — trước lưu: nháp tên hồ sơ cũ trong hộp, cập nhật từ tab B đã tới bảng phía sau](assets/PR92-L026-R15-before-save.png)
+
+![R15 — sau lưu: tên hồ sơ bị trả về tên cũ, vẫn báo thành công](assets/PR92-L026-R15-after-save.png)
+
+**Yêu cầu ChatGPT sửa:** giữ baseline ổn định từ lúc mở hộp và truyền nó vào merge/CAS khi lưu, hoặc theo dõi patch từng key với giá trị gốc tương ứng. Giữ cập nhật khác key từ tab kia; cùng key đổi khác nhau phải báo xung đột và giữ nháp. Thêm ca hai tab của **cùng một admin**, cả khác key và cùng key, cộng ca hủy/đặt mặc định; không giải bằng ghi đè hoặc tắt kiểm CAS.
+
+### Các thay đổi khác đã đối chiếu và giới hạn kiểm tra
+
+- R08: handle thực tế 14 px; khách kéo Tiến độ hiện tại +120 px: 194→314, cột phụ trách 344→224, tổng vẫn 1158 px. ArrowRight tiếp tục +10/−10; reload trở lại 194/344. Khách không có nút đổi tên nhóm và không được truyền callback lưu layout chung. Đây là phép đo fixture dùng raw ID tùy chỉnh 60 px, không phải thử đổi mặc định ID 52 px.
+- Đã đọc diff căn badge/đoạn văn (R09/R10), tách điều kiện sửa ô khỏi cấu hình quản trị, nút đổi tên nhanh, anonymous authorization và candidate Rules (R11–R14). Quyền admin vẫn qua cổng admin riêng; candidate giữ grant từng field, lease, revision/audit, khóa và freeze. Các ca cho phép/thu hồi/deny/khóa/freeze của guest chạy trong Emulator. Chưa có bằng chứng đăng nhập/lưu/realtime trên production; không đánh đồng source test với nghiệm thu live.
+- Kiểm thử sau khi gỡ fixture chẩn đoán: **550 unit PASS**, 54 skip là các ca emulator chạy riêng; **TypeScript PASS**. Bộ Emulator demo-hdnd: **53 PASS + 1 expected failure đã biết**, exit 0. Runner fork lần đầu crash trên Windows; chạy lại worker threads thành công, không sửa mã sản phẩm.
+- Ca `it.fails('KNOWN BLOCKER: deny same-UID second tab replaying a visible foreign tab lease token')` vẫn tồn tại từ trước; **không tính là thuộc tính bảo mật đã sửa/PASS**. Hạn chế cùng UID/cùng token và các gate production tiếp tục giữ nguyên.
+- Ba CI trên HEAD đã rà đều SUCCESS: [source #40835446382](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446382), [Firebase staging #40835446368](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446368), [operational QA #40835446402](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446402). Commit tài liệu sau lượt này tạo CI riêng; không suy kết quả của lượt mới từ các run trên.
+
+**Phát hành:** PR #92 OPEN, chờ sửa R15 và Codex kiểm lại. Không merge/publish Pages, deploy Rules/Functions, đổi nguồn, nhập hoặc sửa dữ liệu production. Mô hình guest của Lượt 025 mới nằm trong code/candidate Rules; production mặc định chưa được đổi và chưa nghiệm thu. Commit của Codex chỉ chứa tài liệu và ảnh, không sửa mã sản phẩm.

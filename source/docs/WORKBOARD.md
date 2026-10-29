@@ -1,3 +1,48 @@
+## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
+
+| Mã | Trạng thái | Release gate |
+| --- | --- | --- |
+| **R13** | Đã sửa app + Rules candidate: guest anonymous (auto-auth, không đăng nhập Google) được sửa **chỉ ô admin bật**, cần server lease, audit, lock OPEN. Vẫn ngăn chỉnh cột/dòng không cấp, ghi thẳng, freeze. | Bằng chứng Emulator và Codex security, kiểm rủi ro khách công khai có thể sửa/ghi spam; chưa deploy Rules. |
+| **R14** | Guest UI khác admin: giữ layout tối giản và popup guest riêng, cho sửa đúng ô được phép; nút Quản trị chỉ tùy chọn. | Browser smoke, ảnh QA guest, chủ dự án nghiệm thu sau preview. |
+| **Nguồn dữ liệu** | Không chuyển Sheets/mirror sang Primary. | Chỉ khi nguồn primary chính thức mới ghi dữ liệu thật; tuyệt đối không dual-write hoặc import ngoài quy trình riêng. |
+| **Cổng PR #92** | Code SHA `1d7190c1`; [bàn giao L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | Chờ 3 CI + Codex review R13/R14, OWNER_ACCEPTED; NO MERGE/PUBLISH/DEPLOY. |
+
+---
+
+## 29/10/2026 — Lượt 024 PR #92: quyền khách + tiêu đề gộp (HOLD)
+
+| ID | Trạng thái | Kiểm soát tiếp |
+| --- | --- | --- |
+| **R11** | **CODE_CHANGED:** popup Google employee được duyệt UID không còn bị gắn nhãn read-only như khách ẩn danh; admin list override thống nhất Rules. Anonymous giữ view-only; hiển thị rõ điều kiện Google/UID/ô/nguồn/khóa/freeze. | Codex security review, test nhân viên Google và anonymous qua Rules trên emulator (không thử write production). Phải xác nhận trạng thái quyền live riêng, không suy từ mock. |
+| **R12** | **CODE_CHANGED:** shortcut **Đổi tên cột gộp** trong list admin; 5 labels, reset, lưu CAS; smoke Chromium có đường click. | Chromium PASS trên đúng HEAD và Codex UI/CAS review; hình ảnh/owner acceptance sau đó. |
+| **L024 CI** | [source #40821479615](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479615), [staging #40821479618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479618), [operational #40821479616](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479616). Code SHA `2a7e03b1`. | Chỉ kết luận theo kết quả từng workflow; source đã rerun vì Chrome baseline khởi động lỗi ở attempt 1. |
+| **Release gate** | PR #92 OPEN, thay đổi R06–R12 chưa merge/publish. | Không triển khai Firebase hoặc Pages khi chưa có phê duyệt riêng từ chủ dự án. |
+
+---
+
+## 29/10/2026 — Lượt 023: sửa UI theo ảnh chụp, chỉ PR #92 (RELEASE HOLD)
+
+| Mã | Đã xử lý | Cổng còn mở |
+| --- | --- | --- |
+| **R08** | Vạch resize 14px, window pointer fallback, khách/không-admin kéo local-only; admin CAS unchanged. Kéo +250px đạt tiến độ450, staff130, note100, total1562. | Verify source/Chromium exact code SHA `68a494fe`; Codex review; chủ dự án quyết định phát hành. |
+| **R09** | HC và Sở `align-items:center`, cùng centerY trong Chromium. | QA visual sau merge/publish (chưa thực hiện). |
+| **R10** | Bỏ justify và loại Tiến độ khỏi centered-status selector; Nội dung, Tiến độ, Ghi chú căn trái. | QA visual live sau phát hành (chưa thực hiện). |
+| **CI** | [source #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [Firebase QA #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291). | Phải kiểm result trên đúng SHA; staging + Firebase QA đã SUCCESS khi ghi. |
+| **Release** | Bằng chứng và quyết định ở [L023](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | **NO MERGE / NO PUBLISH** PR #92; chưa Codex VERIFIED/OWNER_ACCEPTED; không deploy production hay sửa dữ liệu. |
+
+---
+
+## 29/10/2026 — UI U01–U04, PR #92: chờ Codex xác minh độc lập (NO RELEASE)
+
+| Mã | Kết quả thực hiện | Còn phải hoàn thành |
+| --- | --- | --- |
+| **R06/P1** | **FIX_TESTED**: sửa mobile cắt bảng (L021) và specificity chiều cao responsive (L022). CI trên `c285ca6` GREEN, Chromium 390×844/768×750/1280×600 và desktop PASS. | Codex tái-review CSS/layout App thực tế + ảnh QA, xác nhận VERIFIED nếu đạt. |
+| **R07/P2** | **FIX_TESTED**: normalize tên popup, đồng bộ state/storage, regression nhập/xóa/chỉ khoảng trắng/reset/reload PASS. | Codex tái-review alias, save/undo/reload, xác nhận VERIFIED nếu đạt. |
+| **R01–R05, L019 resize/CAS** | Hồi quy đạt; `Tiến độ 200→250`, cột liền kề `240→190`, total `1562`, các cột khác không đổi. | Không sửa thuật toán đang đạt; Codex kiểm rủi ro materialize/CAS nếu cần trước nghiệm thu. |
+| **PR #92 release gate** | 3 workflow SUCCESS exact code SHA `c285ca648a63499450ed5a33900d971d912cd7ed`: [source](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404), [staging](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231). [Bàn giao L022](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | **HOLD**: chưa Codex VERIFIED, chưa OWNER_ACCEPTED; tuyệt đối không merge/publish Pages, deploy Firebase Rules/Functions hoặc nhập dữ liệu/đổi nguồn. |
+
+---
+
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.

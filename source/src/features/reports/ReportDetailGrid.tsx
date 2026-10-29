@@ -2,8 +2,9 @@ import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'reac
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
-import {EXCEL_SOURCE_COLUMNS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
-import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
+import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
+import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
+import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,validateDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
@@ -37,6 +38,7 @@ type Props={
   viewerCompactScope?:string;
   allowDraft:boolean;
   readOnlyViewer?:boolean;
+  guestViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   leaseManager?:CellEditSessionManager;
@@ -51,7 +53,7 @@ type Props={
   onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,guestViewer=false,canEditCell,
   onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
@@ -96,7 +98,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
     ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
   const popupPairs=popupCompact?activeCompactPairs(popupSource,popupPrefs):[];
-  const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs):popupSource;
+  const popupTitles={...listLayout?.groupLabels,...displayedLayout.groupLabels};
+  const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs,popupTitles):popupSource;
   const gridWidth=renderedColumns.reduce((sum,c)=>sum+c.width,0);
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
   const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
@@ -199,8 +202,14 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const saveSettings=()=>{
     if(readOnlyViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
-    if(!saveDetailGridPreferences(sourceKey,pending)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
-    setApplied(pending);setSettings(false);
+    // R07: storage *and* live state must use the SAME validated snapshot.
+    // Empty/whitespace-only overrides are deleted by the validator, allowing
+    // the shared group title to appear immediately, without a reload.
+    let valid:DetailGridPreferences;
+    try{valid=validateDetailGridPreferences(pending);}
+    catch(error){setNotice(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return;}
+    if(!saveDetailGridPreferences(sourceKey,valid)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
+    setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
   };
   const options=(field:TextField,current:string)=>{
@@ -257,28 +266,28 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         {inGroupDirty>0&&<span className="report-grid-draft">Có {inGroupDirty} nội dung đang sửa nháp</span>}
       </div>
       {!readOnlyViewer&&<div className="report-grid-actions">
-        <button type="button" className="button ghost" aria-pressed={showAll}
-          onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
-        <button type="button" className="button ghost" onClick={clearFilters}
-          disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
-        <label className="report-grid-quick-width">Rộng popup
+        {!guestViewer&&<button type="button" className="button ghost" aria-pressed={showAll}
+          onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>}
+        {!guestViewer&&<button type="button" className="button ghost" onClick={clearFilters}
+          disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>}
+        {!guestViewer&&<label className="report-grid-quick-width">Rộng popup
           <DeferredWidthInput label="Độ rộng toàn popup (px)"
             min={minDialogWidth} max={availableWidth}
             value={Math.min(displayedLayout.dialogWidth,availableWidth)}
             onCommit={changeDialogWidth}/>
           <span>px</span>
-        </label>
-        {!readOnlyViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
+        </label>}
+        {!guestViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
           store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
-        {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
+        {!guestViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
           onClick={()=>{if(editing)setSort(null);setEditing(!editing);}}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
-        {!readOnlyViewer&&onOpenFullList&&<button type="button" className="button ghost"
+        {!guestViewer&&onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>}
     </div>
-    {!readOnlyViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
+    {!readOnlyViewer&&!guestViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
       <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
         onChange={e=>loadPreset(e.target.value)}>
         <option value="">Mặc định</option>
@@ -291,7 +300,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         onClick={updatePreset}>Cập nhật mẫu</button>
         <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
     </div>}
-    {!readOnlyViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
+    {!readOnlyViewer&&!guestViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
         <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
@@ -304,7 +313,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <span>px</span>
         <span className="muted">Nhấn Enter hoặc rời ô để xem trước; Lưu cấu hình cột để ghi nhớ. Không thay đổi từng lần gõ.</span>
       </div>
-      <div className="report-grid-settings-list">
+      <details className="report-grid-group-labels">
+         <summary>Đổi tên cột gộp trong popup</summary>
+         <p className="muted">Tên riêng cho popup; nếu chưa nhập, dùng tên nhóm từ Danh sách. Không đổi tên Excel hoặc nhãn trong ô.</p>
+         {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
+           <label className="field">{COMPACT_GROUP_DEFAULT_LABELS[key]}
+             <input type="text" maxLength={100} aria-label={'Tên nhóm popup '+key}
+               value={pending.groupLabels?.[key]??''}
+               placeholder={listLayout?.groupLabels?.[key]??COMPACT_GROUP_DEFAULT_LABELS[key]}
+               onChange={e=>setPending(prev=>({...prev,groupLabels:{...(prev.groupLabels??{}),[key]:e.currentTarget.value}}))}/>
+           </label>
+           <button type="button" className="button ghost" disabled={!pending.groupLabels?.[key]}
+             onClick={()=>setPending(prev=>{const next={...(prev.groupLabels??{})};delete next[key];return {...prev,groupLabels:next};})}>Khôi phục</button>
+         </div>)}
+       </details>
+       <div className="report-grid-settings-list">
         {pending.columns.map((c,index)=><div className="report-grid-settings-row" key={c.key}>
           <label><input type="checkbox" checked={c.visible}
             onChange={event=>patch(c.key,{visible:event.target.checked})}/> {labelByKey.get(c.key)}</label>
@@ -345,7 +368,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <p className="muted">Màu của popup được tự lưu riêng trên trình duyệt khi thêm/xóa; cũng được lưu trong mẫu cá nhân. Không ảnh hưởng màu của Danh sách hoặc báo cáo.</p>
       </details>
     </section>}
-    {!readOnlyViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
+    {!readOnlyViewer&&!guestViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
       <strong>Cột của popup có thay đổi chưa lưu.</strong>
       <button type="button" className="button ghost" onClick={()=>setConfirmSettingsExit(false)}>Tiếp tục tùy chỉnh</button>
       <button type="button" className="button ghost" onClick={()=>{
@@ -372,7 +395,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
               {c.label}
-              {!readOnlyViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
+              {!readOnlyViewer&&!guestViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
                 width={c.width} min={70+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)}
                 max={800+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)} windowDragFallback
                 onCommit={width=>commitWidth(c.key as DetailColumnKey,width-(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0))}/>}

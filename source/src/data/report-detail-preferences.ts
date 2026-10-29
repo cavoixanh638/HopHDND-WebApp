@@ -1,16 +1,16 @@
-import {EXCEL_SOURCE_COLUMNS} from './item-preferences';
+import {EXCEL_SOURCE_COLUMNS,validateCompactGroupLabels,type CompactGroupLabels} from './item-preferences';
 import {layoutRecoveryScope} from './draft-checkpoints';
 
 /** Presentation-only settings for the drill-down grid. Never shared with
  * the main ItemList layout, report layout, Firebase or Excel workbook. */
 export type DetailColumnKey=(typeof EXCEL_SOURCE_COLUMNS)[number]['key'];
 export type DetailColumn={key:DetailColumnKey;visible:boolean;width:number};
-export interface DetailGridPreferences {version:1;columns:DetailColumn[];dialogWidth:number}
+export interface DetailGridPreferences {version:1;columns:DetailColumn[];dialogWidth:number;groupLabels?:CompactGroupLabels}
 const keys=new Set<string>(EXCEL_SOURCE_COLUMNS.map(c=>c.key));
 const keyFor=(source:string)=>'hdnd.report-detail-grid.v1:'+layoutRecoveryScope(source);
 export const defaultDetailGridPreferences=():DetailGridPreferences=>({
   version:1,
-  dialogWidth:1480,
+  dialogWidth:1480,groupLabels:{},
   columns:EXCEL_SOURCE_COLUMNS.map(c=>({
     key:c.key,visible:['displayCode','content','department','progressParty','progressBuild',
       'progressCouncil','specialist','room','specificProgress','note'].includes(c.key),width:Math.max(70,c.width)
@@ -36,7 +36,7 @@ export function validateDetailGridPreferences(value:unknown):DetailGridPreferenc
   const dialogWidth=v.dialogWidth===undefined?1480:v.dialogWidth;
   if(!Number.isInteger(dialogWidth)||dialogWidth<640||dialogWidth>2400)
     throw Error('Độ rộng toàn cửa sổ popup phải từ 640 đến 2400 px.');
-  return {version:1,columns,dialogWidth};
+  return {version:1,columns,dialogWidth,groupLabels:validateCompactGroupLabels(v.groupLabels)};
 }
 export function loadDetailGridPreferences(source:string):DetailGridPreferences{
   try{const raw=globalThis.localStorage?.getItem(keyFor(source));
