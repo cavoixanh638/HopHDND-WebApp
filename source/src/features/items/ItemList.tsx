@@ -34,7 +34,6 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
-import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeProjectedWithAdjacent} from '../../data/resize-last-column';
@@ -44,7 +43,7 @@ import {filterListBySummary,type SummarySelection} from '../../domain/item-summa
 import {useElementWidth} from '../../components/useElementWidth';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
-import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
+import {emptyListFilters,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
@@ -71,11 +70,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Retired personal presets cannot remain invisibly applied after the UI is
   // removed. Always boot from the authoritative shared layout, never a hidden
   // browser snapshot. Column filters remain an explicit in-table feature.
-  const selectedView=undefined;
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>({});
   const [summarySelection,setSummarySelection]=useState<SummarySelection|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
-  const [personalViewActive,setPersonalViewActive]=useState(false);
+  const personalViewActive=false;
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
@@ -134,7 +132,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [layoutConflicts,setLayoutConflicts] = useState<LayoutFieldConflict[]>([]);
   const [conflictChoices,setConflictChoices] = useState<LayoutConflictChoices>({});
   const [saveFeedback,setSaveFeedback] = useState('');
-  const [allSpecialists,setAllSpecialists] = useState(false);
+  const allSpecialists=false;
   const [saving,setSaving] = useState(false);
   const [viewSaving,setViewSaving]=useState(false);
   const [editingGroupLabels,setEditingGroupLabels]=useState<CompactGroupLabels|null>(null);
