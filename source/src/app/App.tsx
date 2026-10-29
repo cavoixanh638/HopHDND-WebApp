@@ -524,13 +524,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
        viewerCompactScope={isFirebase&&!firebase!.isAdmin?layoutRecoveryScope('viewer-compact:'+sourceKey+':'+(firebase!.user?.uid??'signed-out')):undefined}
       allowDraft={canEditDraft&&!workspace.protectedRecovery&&
         (!firebase||selectedSource==='primary'&&(!firebase.editingLocked||firebase.isAdmin))}
+      guestViewer={anonymousVisitor}
       readOnlyViewer={isFirebase&&!firebase!.isAdmin&&!viewerMayEditText}
       canEditCell={(id,field)=>!firebase||selectedSource==='primary'&&
         ((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
         mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
       onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
       onHistory={anonymousVisitor?undefined:(item)=>setHistory({item})}
-      onCellHistory={(item,field)=>setHistory({item,field})}
+      onCellHistory={anonymousVisitor?undefined:(item,field)=>setHistory({item,field})}
       onOpenFullList={()=>{setSelection(null);setPage('items');}}
       dirtyIds={new Set(Object.keys(workspace.drafts))} errors={workspace.errors}
       onClose={()=>setSelection(null)}/>}
