@@ -34,7 +34,11 @@ function same(a:unknown,b:unknown){return stableJson(a)===stableJson(b);}
 function stableJson(x:unknown):string{
   if(Array.isArray(x))return '['+x.map(stableJson).join(',')+']';
   if(x&&typeof x==='object')return '{'+Object.entries(x as NativeObject)
-    .filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b))
+    // RTDB drops null and empty object branches instead of storing them.
+    // Model their canonical server representation for candidate/backup parity.
+    .filter(([,v])=>v!==undefined&&v!==null&&
+      !(typeof v==='object'&&!Array.isArray(v)&&Object.keys(v as object).length===0))
+    .sort(([a],[b])=>a.localeCompare(b))
     .map(([k,v])=>JSON.stringify(k)+':'+stableJson(v)).join(',')+'}';
   return JSON.stringify(x);
 }
@@ -52,7 +56,9 @@ function assertOperation(operationId:string){
 }
 function safeRow(row:Item,newId:string,uid:string):Item&NativeObject{
   const r=validateFirebaseItem({...row,recordId:newId,revision:1,archivedAt:null});
-  return {...r,revision:1,operationId:'import_'+newId,updatedBy:uid,updatedAt:Date.now()};
+  const {archivedAt,...stored}=r;
+  return {...stored,...(archivedAt?{archivedAt}:{}),revision:1,
+    operationId:'import_'+newId,updatedBy:uid,updatedAt:Date.now()};
 }
 export function prepareCandidate(items:readonly Item[],operationId:string,uid:string):Record<string,unknown>{
   assertOperation(operationId);
