@@ -2038,7 +2038,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .app-shell.list-fit-page .item-list-card > .item-data-region {
     flex:none;min-height:0;max-height:none;overflow:visible;
   }
-  .app-shell.list-fit-page .item-data-region .item-table-scroll {
+  /* Match the specificity of the earlier wide-table-page:not(.settings-page)
+     height rule so this responsive cap is ACTUALLY applied (not only scroll). */
+  .app-shell.wide-table-page.list-fit-page .item-data-region .item-table-scroll {
     flex:none;height:clamp(260px,48dvh,520px);min-height:260px;
     max-height:none;overflow:auto;overscroll-behavior:contain;
   }
