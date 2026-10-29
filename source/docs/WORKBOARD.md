@@ -1,3 +1,14 @@
+## 29/10/2026 — UI U01–U04, PR #92: chờ Codex xác minh độc lập (NO RELEASE)
+
+| Mã | Kết quả thực hiện | Còn phải hoàn thành |
+| --- | --- | --- |
+| **R06/P1** | **FIX_TESTED**: sửa mobile cắt bảng (L021) và specificity chiều cao responsive (L022). CI trên `c285ca6` GREEN, Chromium 390×844/768×750/1280×600 và desktop PASS. | Codex tái-review CSS/layout App thực tế + ảnh QA, xác nhận VERIFIED nếu đạt. |
+| **R07/P2** | **FIX_TESTED**: normalize tên popup, đồng bộ state/storage, regression nhập/xóa/chỉ khoảng trắng/reset/reload PASS. | Codex tái-review alias, save/undo/reload, xác nhận VERIFIED nếu đạt. |
+| **R01–R05, L019 resize/CAS** | Hồi quy đạt; `Tiến độ 200→250`, cột liền kề `240→190`, total `1562`, các cột khác không đổi. | Không sửa thuật toán đang đạt; Codex kiểm rủi ro materialize/CAS nếu cần trước nghiệm thu. |
+| **PR #92 release gate** | 3 workflow SUCCESS exact code SHA `c285ca648a63499450ed5a33900d971d912cd7ed`: [source](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404), [staging](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231). [Bàn giao L022](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | **HOLD**: chưa Codex VERIFIED, chưa OWNER_ACCEPTED; tuyệt đối không merge/publish Pages, deploy Firebase Rules/Functions hoặc nhập dữ liệu/đổi nguồn. |
+
+---
+
 ## 27/10/2026 — ĐÃ KIỂM CHỨNG QUYỀN ĐỌC TRÊN FIREBASE CLOUD (GET-ONLY)
 
 **Bằng chứng thực tế:** GitHub Action [Verify live Firebase public read #40499847055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40499847055) gửi GET *không kèm credential* `?shallow=true` tới instance `hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app`, bỏ response body, chỉ lưu mã HTTP. **Sáu nhánh cần xem công khai `hdnd/items`, `hdnd/mirrors`, `hdnd/profile`, `hdnd/permissions`, `hdnd/control`, `hdnd/freezeControl` đều trả 401**, nên Rules đã publish Cloud **chưa cho phép unauthenticated direct API reads** như Rules ứng viên mới ở PR #82. Các nhánh registry/token `hdnd`, `hdnd/editors`, `hdnd/editLocks`, `hdnd/freezeReceipts` trả 401, đúng chính sách bảo vệ.
