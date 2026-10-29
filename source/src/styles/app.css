@@ -2089,23 +2089,31 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
 }
 
-/* Word-like justification applies only to three long-text DATA columns;
-   the final line remains left-aligned. Filters, titles, buttons in other
-   columns and any active textarea are deliberately left untouched. */
+/* Owner screenshot 29/10: long-text cells must have a straight left
+   edge. Justification expands spaces unpredictably in narrow columns and
+   looks like per-line indentation. Preserve actual source newlines only. */
 .item-data-table tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]),
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="content"],[data-col-key="specificProgress"],[data-col-key="note"]) {
-  text-align:justify;text-align-last:left;
+  text-align:left;text-align-last:auto;
 }
 .item-data-table tbody td[data-col-key="content"]:not(.compact-merged-cell) .content-button,
 .item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger,
 .report-grid-modal .report-detail-grid tbody td[data-col-key="content"] .content-button,
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-trigger {
   display:block!important;width:100%;max-width:100%;
-  text-align:justify;text-align-last:left;
+  text-align:left;text-align-last:auto;
   white-space:pre-wrap;
 }
 .item-data-table tbody td[data-col-key="content"].compact-merged-cell .compact-content-line {
-  display:block;text-align:justify;text-align-last:left;
+  display:block;text-align:left;text-align-last:auto;
+}
+/* Embedded editor and read-only merged content use the same paragraph
+   alignment; never spread source words across the available row width. */
+.item-data-table tbody td[data-col-key="content"].compact-merged-cell .compact-document-content,
+.report-grid-modal .report-detail-grid tbody td.compact-merged-cell .compact-document-content,
+.item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-entry,
+.report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-entry {
+  text-align:left;text-align-last:auto;
 }
 .item-data-table tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea,
 .report-grid-modal .report-detail-grid tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-textarea {
