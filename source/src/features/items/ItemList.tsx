@@ -4,7 +4,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -16,7 +16,7 @@ import {LayoutConflictResolver} from './LayoutConflictResolver';
 import {LayoutConflictError,type LayoutFieldConflict,type LayoutConflictChoices,type LayoutConflictChoice} from '../../data/item-layout-merge';
 import { Modal } from '../../components/Modal';
 import { orderValues } from '../../domain/catalog-order';
-import type {ItemLayout} from '../../data/item-preferences';
+import type {ItemLayout,CompactGroupLabels} from '../../data/item-preferences';
 import { ColumnHeader } from './ColumnHeader';
 import {ColumnFilterCell,filterValue} from './ColumnFilterCell';
 import {RoomSpecialistFilterCell} from './RoomSpecialistFilterCell';
@@ -25,7 +25,7 @@ import {CompactGroupedValue} from './CompactGroupedValue';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,COMPACT_GROUP_DEFAULT_LABELS,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
@@ -132,6 +132,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [allSpecialists,setAllSpecialists] = useState(false);
   const [saving,setSaving] = useState(false);
   const [viewSaving,setViewSaving]=useState(false);
+  const [editingGroupLabels,setEditingGroupLabels]=useState<CompactGroupLabels|null>(null);
+  const [groupLabelsError,setGroupLabelsError]=useState('');
   const viewSavingRef=useRef(false);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
@@ -312,13 +314,13 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // their current view; only authorized administrators use CAS to persist it.
   // Personal/anonymous viewers never call the shared Firebase writer.
   const canViewerResize=!customizing&&!showAllSourceColumns&&!permissionMode;
-  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout)=>{
-    if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return;
+  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout):Promise<boolean>=>{
+    if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return false;
     const baseline=initialLayout;
     let next:ItemLayout;
     try{next=validateItemLayout(transform(baseline));}
-    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return;}
-    if(JSON.stringify(next)===JSON.stringify(baseline))return;
+    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return false;}
+    if(JSON.stringify(next)===JSON.stringify(baseline))return true;
     viewSavingRef.current=true;setViewSaving(true);setLayoutError('');
     setSaveFeedback('Đang lưu vị trí/độ rộng cột dùng chung…');
     setApplied(next); // optimistic only; revert on any failure
@@ -326,12 +328,24 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       const confirmed=await onPersistViewerLayout(next,baseline);
       const valid=validateItemLayout(confirmed??next);
       setApplied(valid);sharedBase.current=valid;
-      setSaveFeedback('Đã lưu bố trí cột dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.');
+      setSaveFeedback('Đã lưu bố trí/tên cột dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.');
+      return true;
     }catch(error){
       setApplied(initialLayout);
       setLayoutError(saveIssue(error));
-      setSaveFeedback('Không lưu được vị trí/độ rộng. Đã hoàn lại bố trí trước thao tác.');
+      setSaveFeedback('Không lưu được thay đổi. Đã hoàn lại bố trí trước thao tác.');
+      return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
+  };
+  const saveGroupLabels=async()=>{
+    if(!editingGroupLabels||!canViewerArrange)return;
+    let labels:CompactGroupLabels;
+    try{labels=validateCompactGroupLabels(editingGroupLabels);}
+    catch(error){setGroupLabelsError(error instanceof Error?error.message:'Tên cột gộp không hợp lệ.');return;}
+    setGroupLabelsError('');
+    if(await applyViewerLayout(base=>({...base,groupLabels:labels})))
+      setEditingGroupLabels(null);
+    else setGroupLabelsError('Không lưu được tên cột dùng chung. Kiểm tra thông báo lỗi phía trên và thử lại.');
   };
   const moveColumn=(from:string,to:string)=>{
     if(customizing){if(locked||!allowLayout)return;
@@ -447,6 +461,13 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!anonymousViewer&&<div className="card-header">
     <div className="item-header-actions">
       {compactMenu}
+      {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
+        className="button ghost group-label-shortcut"
+        disabled={!canViewerArrange}
+        title={personalViewActive?'Đóng giao diện cá nhân để sửa tên cột dùng chung':!canViewerArrange?'Chờ bố cục dùng chung tải xong':'Đổi tiêu đề cột gộp, không đổi dữ liệu Excel'}
+        onClick={()=>{setGroupLabelsError('');setEditingGroupLabels({...activeLayout.groupLabels});}}>
+        Đổi tên cột gộp
+      </button>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
@@ -601,6 +622,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
+    {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={()=>{if(!viewSaving)setEditingGroupLabels(null);}}>
+      <form className="modal-body group-label-quick-editor" onSubmit={event=>{event.preventDefault();void saveGroupLabels();}}>
+        <p className="muted">Chỉ đổi tiêu đề các cột gộp. Không đổi dữ liệu, quyền sửa hoặc tên trường Excel. Bỏ trống để dùng tên mặc định.</p>
+        {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
+          <label className="field">{COMPACT_GROUP_DEFAULT_LABELS[key]}
+            <input type="text" maxLength={100} value={editingGroupLabels[key]??''}
+              aria-label={'Đổi tên cột gộp '+key}
+              placeholder={COMPACT_GROUP_DEFAULT_LABELS[key]}
+              disabled={viewSaving}
+              onChange={event=>setEditingGroupLabels(prev=>({...prev,[key]:event.currentTarget.value}))}/>
+          </label>
+          <button type="button" className="button ghost" disabled={viewSaving||!editingGroupLabels[key]}
+            onClick={()=>setEditingGroupLabels(prev=>{const next={...prev};delete next[key];return next;})}>
+            Mặc định
+          </button>
+        </div>)}
+        {groupLabelsError&&<p role="alert" className="error-text">{groupLabelsError}</p>}
+        <div className="modal-footer">
+          <button type="button" className="button ghost" disabled={viewSaving}
+            onClick={()=>setEditingGroupLabels(null)}>Hủy</button>
+          <button type="submit" className="button primary" disabled={viewSaving||!canViewerArrange}>
+            {viewSaving?'Đang lưu…':'Lưu tên cột dùng chung'}
+          </button>
+        </div>
+      </form>
+    </Modal>}
     {canEdit && contentItem && <ContentEditor key={`${contentItem.item.recordId}:${contentItem.field}`} sourceKey={sourceKey} item={contentItem.item} field={contentItem.field} sourceKind={effectiveSourceKind} draftOnly={draftOnly} onSave={value => onUpdate(contentItem.item.recordId, { [contentItem.field]:value })} onClose={closeContentEditor} />}
     {customizing&&unmatchedCheckpoint&&<Modal title="Có thay đổi hiển thị cũ" onClose={onClose}><div className="modal-body"><p>Cách hiển thị đang giữ trên máy không khớp cách hiển thị dùng chung hiện tại. Nạp để đối chiếu không ghi Google hoặc Excel.</p><p className="muted">Đã giữ trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ thay đổi trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cách hiển thị cũ</button><button className="button primary" onClick={()=>{if(unmatchedCheckpoint)setRestoredBase(unmatchedCheckpoint.base);restoreOldDraft();}}>Nạp phần sửa để đối chiếu</button></div></Modal>}
     {confirmExit&&<Modal title="Xử lý thay đổi trước khi về xem?" onClose={()=>{if(!locked)setConfirmExit(false);}}><div className="modal-body"><p>Phần bạn đang sửa chưa lưu. Giữ trên máy không ghi dữ liệu vào nguồn và không lưu cách hiển thị dùng chung.</p>{layoutError&&<p className="error-text">{layoutError}</p>}</div><div className="modal-footer"><button className="button ghost" disabled={locked} onClick={()=>setConfirmExit(false)}>Tiếp tục sửa</button><button className="button danger" disabled={locked||dataSaving} onClick={()=>{setLayout(applied);clearCheckpoint();onDiscardData();setConfirmExit(false);onClose();}}>Bỏ phần đang sửa và về xem</button>{cannotSaveData&&onKeepDraft?<button className="button primary" disabled={locked} onClick={()=>{if(onKeepDraft())onClose();}}>Giữ thay đổi trên máy và về xem</button>:<button className="button primary" disabled={locked||dataSaving} onClick={()=>{setConfirmExit(false);}} >Lưu riêng phần đang sửa trước khi về xem</button>}</div></Modal>}
