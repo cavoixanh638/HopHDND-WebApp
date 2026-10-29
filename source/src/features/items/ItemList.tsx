@@ -37,7 +37,7 @@ import './item-frame.css';
 import {ListViewTools} from './ListViewTools';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
-import {projectedIdWidth,projectedPhysicalLimits,projectedTrailingBounds,resizeProjectedWithLastColumn} from '../../data/resize-last-column';
+import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeProjectedWithAdjacent} from '../../data/resize-last-column';
 import {fitTableColumns} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
 import {useElementWidth} from '../../components/useElementWidth';
@@ -297,6 +297,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?fittedWidths[key]:baseVisualWidth(value,key);
   // Treat transient viewport expansion as a projection extra, so drag preview
   // and source-width inverse transfer the SAME pixels to the last column.
+  const groupExtras=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,pair.extraWidth]));
   const projectedExtras=Object.fromEntries(displayedColumns.map(c=>[c.key,
     (compactPairs.find(pair=>pair.anchor===c.key)?.extraWidth??0)+
     fittedWidths[c.key]-baseVisualWidth(c.width,c.key)]));
@@ -475,17 +476,25 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
-    projectedTrailingBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,projectedExtras,compactOn)&&
+    projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
+      projectedExtras,compactOn,groupExtras)&&
     <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
-      compensator={{index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns[displayedColumns.length-1].width,displayedColumns[displayedColumns.length-1].key),
-        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,projectedExtras,compactOn)}}
-      {...projectedPhysicalLimits(column.key,projectedExtras,compactOn)}
+      adjacent={{index:index+1,
+        width:visualWidth(displayedColumns[index+1].width,displayedColumns[index+1].key),
+        ...projectedPhysicalLimits(displayedColumns[index+1].key,groupExtras,compactOn)}}
+      fallback={index+1<displayedColumns.length-1?{
+        index:displayedColumns.length-1,
+        width:visualWidth(displayedColumns.at(-1)!.width,displayedColumns.at(-1)!.key),
+        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,groupExtras,compactOn)}:undefined}
+      {...projectedPhysicalLimits(column.key,groupExtras,compactOn)}
       label={column.label} onCommit={width=>{
         const keys=displayedColumns.map(col=>col.key);
-        // Preview and commit use the SAME physical widths; ID raw width stays >=60.
-        if(customizing)setLayout(previous=>resizeProjectedWithLastColumn(previous,keys,column.key,width,projectedExtras,compactOn));
-        else void applyViewerLayout(base=>resizeProjectedWithLastColumn(base,keys,column.key,width,projectedExtras,compactOn));
+        // Same pair-first transfer in preview and CAS commit. Bake viewport
+        // growth only upon an explicit drag, so a wide neighbor can shrink.
+        if(customizing)setLayout(previous=>resizeProjectedWithAdjacent(previous,keys,
+          column.key,width,projectedExtras,compactOn,groupExtras));
+        else void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
+          column.key,width,projectedExtras,compactOn,groupExtras));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
       (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
