@@ -68,11 +68,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     setPersonalCompact(readPersonalCompactDisplay(viewerCompactScope));
     setCompactStorageWarning('');
   },[viewerCompactScope]);
-  const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
-  const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  // Retired personal presets cannot remain invisibly applied after the UI is
+  // removed. Always boot from the authoritative shared layout, never a hidden
+  // browser snapshot. Column filters remain an explicit in-table feature.
+  const selectedView=undefined;
+  const [columnFilters,setColumnFilters]=useState<Record<string,string>>({});
   const [summarySelection,setSummarySelection]=useState<SummarySelection|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
-  const [personalViewActive,setPersonalViewActive]=useState(!!selectedView);
+  const [personalViewActive,setPersonalViewActive]=useState(false);
   // An ordinary viewer should immediately see every A–R source field. Saved
   // column settings remain available without a Firebase write.
   // A previously saved visible/hidden column selection wins on the first paint.
@@ -84,14 +87,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Personal saved views are viewing presets, never an alternative shared baseline.
   const [applied, setApplied] = useState(() => {
     const authoritative=initialLayout??loadItemLayout(sourceKey);
-    return !customizing&&selectedView?overlayPersonalLayout(authoritative,selectedView.layout):authoritative;
+    return authoritative;
   });
   // The Firebase baseline must be the original *shared* layout when editing began,
   // not a local saved view nor the profile revision emitted after another write.
   const sharedBase=useRef<ItemLayout>(initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase.current;
-  useEffect(()=>{if(initialLayout&&!customizing&&!loadActiveListView(personalScope))setApplied(initialLayout);},[initialLayout,customizing]);
+  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
@@ -532,10 +535,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
-     {allowLayout&&!anonymousViewer&&!customizing&&<ListViewTools sourceKey={personalScope} filters={{...emptyListFilters(),columns:columnFilters}} layout={activeLayout} colors={colorRules} onLoad={applyView} onColors={changeColorRules} disabled={locked||pendingData} customizing={customizing}/>}
-    <div className="item-sticky-search-controls">
-    {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
-    </div>
+    {/* Personal presets and the global-specialist checkbox have been retired.
+        Keep the room/specialist filter controls inside the data table. */}
     {!customizing&&!permissionMode&&<ItemSummaryCards items={columnFiltered}
       selection={summarySelection} onSelect={selectSummary}
       onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}/>}
