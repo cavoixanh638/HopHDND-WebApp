@@ -2399,8 +2399,11 @@ try{
       const cols=[...wrap.querySelectorAll('colgroup col')];
       const widths=cols.map(x=>x.getBoundingClientRect().width);
       const sum=widths.reduce((a,b)=>a+b,0);
-      return {viewport:wrap.getBoundingClientRect().width,table:sum,
-        id:widths[0],document:document.scrollingElement.scrollWidth,
+      const outer=wrap.getBoundingClientRect().width;
+      // The visible vertical scrollbar occupies 12px in CI Chromium.
+      // ResizeObserver fits against the actual content box, not border width.
+      return {viewport:wrap.clientWidth,outer,scrollbar:outer-wrap.clientWidth,
+        table:sum,id:widths[0],document:document.scrollingElement.scrollWidth,
         windowWidth:innerWidth};
     })()`);
     if(shape.table+1<shape.viewport||shape.document>shape.windowWidth+5||
