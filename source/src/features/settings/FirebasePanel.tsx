@@ -27,10 +27,9 @@ type Props = {
 };
 
 /** Authentication only. Permission editing is now directly inside ItemList customization. */
-export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,dataSource='excel',onChangeDataSource,onBootstrapPrimary}:Props){
+export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,_dataSource='excel'}:Props){
   const [working,setWorking]=useState(false);
   const [error,setError]=useState('');
-  const [confirmPrimary,setConfirmPrimary]=useState(false);
   const [notice,setNotice]=useState('');
   const [editorUid,setEditorUid]=useState('');
   const [liveCheck,setLiveCheck]=useState<LiveFirebaseReadiness|null>(null);
@@ -110,31 +109,11 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
         <p className="muted">Lưu ý: bảng trên chỉ xác nhận các dữ liệu đã đọc bằng tài khoản hiện tại. Nó không xác nhận Security Rules đang publish, khả năng ghi thực tế hay tình trạng sao lưu.</p>
       </div>}
     </section>}
-    {isAdmin&&onChangeDataSource&&<div className="card-header"><div><h3>Nguồn dữ liệu hiển thị</h3>
-      <p className="muted">Firebase chính hoạt động độc lập với link Google Sheets và hỗ trợ lưu realtime. Bản sao Excel chỉ dùng để chuyển dữ liệu ban đầu hoặc dự phòng, không phải nguồn dữ liệu lâu dài.</p>
-      <label className="field">Nguồn đọc bảng
-        <select aria-label="Nguồn đọc bảng" value={dataSource} disabled={busy||working} onChange={async e=>{
-          const next=e.target.value as 'excel'|'database'|'primary';setWorking(true);setError('');
-          try{await onChangeDataSource(next);setNotice(next==='primary'?'Đã kích hoạt Database chính.':'Đã đổi nguồn đọc dữ liệu.');}catch(cause){setError(cause instanceof Error?cause.message:'Không đổi được nguồn dữ liệu.');}
-          finally{setWorking(false);}
-        }}><option value="excel">Link Excel / Google Sheets (trực tiếp)</option><option value="database">Firebase Database (bản sao Excel, tạm thời)</option><option value="primary">Firebase Database chính (độc lập, realtime)</option></select>
-      </label>
-    </div></div>}
-    {isAdmin&&onBootstrapPrimary&&dataSource!=='primary'&&<div className="notice" role="group" aria-label="Chuyển dữ liệu một lần lên Database chính">
-      <strong>Chuyển sang Database chính (một lần)</strong>
-      <p>Hệ thống sẽ đọc bản sao đã xác nhận trong Firebase và ghi sang dữ liệu nghiệp vụ chính. Không đọc link Google Sheets, không ghi đè Database đã có dữ liệu. Chỉ sau khi kiểm tra đủ bản ghi mới chuyển nguồn hiển thị cho mọi người.</p>
-      {!confirmPrimary
-        ?<button type="button" className="button ghost" disabled={busy||working||!connected} onClick={()=>{setConfirmPrimary(true);setNotice('');}}>Chuẩn bị chuyển dữ liệu</button>
-        :<div className="top-actions">
-          <button type="button" className="button primary" disabled={busy||working||!connected} onClick={async()=>{
-            setWorking(true);setError('');setNotice('');
-            try{await onBootstrapPrimary();setNotice('Đã kiểm tra và chuyển dữ liệu. Database chính đang được kích hoạt.');setConfirmPrimary(false);}
-            catch(cause){setError(cause instanceof Error?cause.message:'Không xác nhận được dữ liệu Database chính.');}
-            finally{setWorking(false);}
-          }}>Xác nhận chuyển dữ liệu và kích hoạt realtime</button>
-          <button type="button" className="button ghost" disabled={busy||working} onClick={()=>setConfirmPrimary(false)}>Hủy</button>
-        </div>}
-    </div>}
-    <p className="muted">{dataSource==='primary'?'Dữ liệu chính nằm trên Firebase. Người có quyền sửa được tự động lưu vào Database, các phiên khác nhận thay đổi realtime. Excel chỉ dùng để xuất/nhập theo thao tác chủ động.':'Dữ liệu nguồn hiện chưa ghi trực tiếp trên Firebase chính. Các chỉnh sửa chỉ là bản nháp cục bộ cho đến khi quản trị chuyển nguồn an toàn.'}</p>
+    <p className="muted" role="status">
+      Nguồn dữ liệu vận hành duy nhất là Firebase Database. Excel chỉ được đọc khi quản trị viên chủ động
+      chọn file trong chức năng Nhập Excel. Không có chế độ chuyển lại Google Sheets.
+    </p>
+    <p className="muted">Đăng nhập Google của quản trị viên vẫn hoạt động độc lập với nguồn Excel.
+      Quyền ghi dữ liệu được Firebase Security Rules kiểm soát.</p>
   </section>;
 }
