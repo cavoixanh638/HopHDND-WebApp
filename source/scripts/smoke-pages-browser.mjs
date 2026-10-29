@@ -2620,6 +2620,8 @@ try{
     'Lượt 018: four summary cards missing from main list');
   const fourDesktop=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid > article')];
+    const totalBounds=cards[0].getBoundingClientRect();
+    const workflowBounds=cards.slice(1).map(c=>c.getBoundingClientRect());
     const summary=document.querySelector('.item-summary-grid').getBoundingClientRect();
     const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
     const region=document.querySelector('.item-data-region').getBoundingClientRect();
@@ -2637,7 +2639,10 @@ try{
         percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
         width:card.getBoundingClientRect().width};
     });
-    return {ok:cards.length===4&&cards.every(c=>Math.abs(c.getBoundingClientRect().top-cards[0].getBoundingClientRect().top)<2)&&
+    // Owner: overview total sits ABOVE an equally sized three-workflow row.
+    return {ok:cards.length===4&&Math.abs(totalBounds.width-summary.width)<2&&
+      totalBounds.bottom<workflowBounds[0].top&&workflowBounds.every(r=>
+        Math.abs(r.top-workflowBounds[0].top)<2&&Math.abs(r.width-workflowBounds[0].width)<2)&&
       summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
       headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
       headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&

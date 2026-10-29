@@ -28,8 +28,10 @@ export function ItemSummaryCards({items}:{items:Item[]}){
   const value=useMemo(()=>summarizeListItems(items),[items]);
   return <section className="item-summary-grid" aria-label="Bốn thẻ tổng hợp Danh sách nội dung">
     <article className="item-summary-card item-summary-total" data-summary-card="total">
-      <h3>Tổng số nội dung</h3>
-      <strong className="item-summary-total-count">{value.total.total}</strong>
+      <div className="item-summary-total-lead">
+        <h3>Tổng số nội dung</h3>
+        <strong className="item-summary-total-count">{value.total.total}</strong>
+      </div>
       <p className="item-summary-subcounts">
         <span data-summary-kind="qppl">NQ QPPL <strong>{value.total.qppl}</strong></span>
         <span data-summary-kind="hc">NQ HC <strong>{value.total.hc}</strong></span>

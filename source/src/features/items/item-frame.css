@@ -912,9 +912,9 @@
 .report-grid-group-labels{margin:12px 0;padding:10px;border:1px solid #d9e6dd;border-radius:9px}
 .report-grid-group-labels .group-label-editor-row{margin:9px 0}
 
-/* Four read-only summaries share the SAME filtered source as the ItemList body.
-   Sized to the selected data frame; never alters row layout or report popups. */
-.item-summary-grid{display:grid;grid-template-columns:minmax(140px,.35fr) repeat(3,minmax(0,1fr));
+/* Total is a compact overview ribbon; the three workflows share their own row.
+   All summaries use the SAME filtered source as the ItemList body. */
+.item-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;width:100%;max-width:100%;box-sizing:border-box;margin:6px 0 14px}
 .item-summary-card{--summary-accent:#16785a;display:flex;flex-direction:column;min-width:0;
   container-type:inline-size;
@@ -924,13 +924,22 @@
 .item-summary-party{--summary-accent:#b45309;background:#fffdf8;border-color:#f1e1be}
 .item-summary-build{--summary-accent:#2563eb;background:#fcfdff;border-color:#dbe8fc}
 .item-summary-nq{--summary-accent:#169154;background:#fafffc;border-color:#cfeadd}
+.item-summary-total{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;
+  gap:12px 20px;padding:11px 16px;background:#f5fbf7;border:1px solid #cfe4d8;box-shadow:none}
+.item-summary-total-lead{display:flex;align-items:center;gap:12px;
+  padding-right:20px;border-right:1px solid #d5e7db}
 .item-summary-card h3{margin:0;color:#263f36;font-size:13px;font-weight:750;line-height:1.35}
 .item-summary-card-head{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
 .item-summary-percent{font-size:21px;font-weight:800;color:var(--summary-accent);white-space:nowrap}
-.item-summary-total-count{display:block;font-size:32px;color:#0b5645;font-weight:800;line-height:1.35;margin-top:6px}
-.item-summary-subcounts{display:flex;flex-direction:column;gap:5px;margin:8px 0 0;font-size:12px}
+.item-summary-total-count{display:block;order:-1;font-size:32px;color:#0b5645;
+  font-weight:800;line-height:1;margin:0}
+.item-summary-subcounts{display:flex;flex:1 1 320px;justify-content:flex-end;
+  flex-wrap:wrap;gap:8px;margin:0;font-size:12px}
 .item-summary-subcounts > span{display:flex;justify-content:space-between;align-items:center;
-  gap:6px;padding:5px 7px;border-radius:7px;background:#edf7f1;color:#27624c;white-space:nowrap}
+  gap:12px;padding:6px 10px;border:1px solid #dcebe3;border-radius:7px;
+  background:#fff;color:#27624c;white-space:nowrap}
+.item-summary-subcounts strong{font-size:16px;font-variant-numeric:tabular-nums}
+.item-summary-total > .item-summary-unmatched{margin:0}
 .item-summary-fraction{margin:5px 0 8px;font-size:12px;color:#50665e}
 .item-summary-fraction strong{font-size:16px;color:#243d35}
 .item-summary-progress{height:7px;border-radius:12px;background:#e8eee9;overflow:hidden;margin:0 0 10px}
@@ -950,7 +959,7 @@
 .item-summary-bucket-completed{background:#d5f0de;color:#125b35;border-color:#91cfa8}
 .item-summary-unmatched{margin:8px 0 0;font-size:11px;color:#7f5030;
   background:#fff8eb;border-radius:6px;padding:5px 7px}
-@media(max-width:980px){.item-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:980px){.item-summary-grid{grid-template-columns:minmax(0,1fr)}}
 /* A narrow selected frame must keep the four-stage labels readable too. */
 @container(max-width:360px){
  .item-summary-bucket{flex-basis:calc(50% - 3px)}
@@ -958,4 +967,8 @@
 }
 @media(max-width:560px){.item-summary-grid{grid-template-columns:minmax(0,1fr)}
  .item-summary-card{padding:11px}
+ .item-summary-total{gap:10px}
+ .item-summary-total-lead{border-right:0;padding-right:0}
+ .item-summary-subcounts{justify-content:flex-start;gap:6px}
+ .item-summary-subcounts > span{gap:8px;padding:6px 8px}
  .group-label-editor-row{flex-direction:column;align-items:stretch}}

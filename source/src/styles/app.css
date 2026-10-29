@@ -2030,7 +2030,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    reach the table; keep the table itself vertically/horizontally scrollable
    for sticky headers and column filters. The desktop one-screen fit stays
    unchanged whenever its content fits. */
-@media (max-width:980px), (max-height:680px) {
+@media (max-width:980px), (max-height:850px) {
   .app-shell.list-fit-page {
     height:auto;min-height:100dvh;overflow:visible;
   }
