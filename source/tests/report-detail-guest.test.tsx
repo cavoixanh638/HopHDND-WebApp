@@ -63,6 +63,24 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(all.some(n=>n.props?.className==='cell-history-action')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
   });
+  it('lets an anonymous visitor edit granted popup cells without exposing admin layout controls',()=>{
+    const props={...testProps(),guestViewer:true,readOnlyViewer:false};
+    props.canEditCell=vi.fn((_id:string,field:string)=>field==='note');
+    hooks.begin();let tree=ReportDetailGrid(props);
+    expect(text(tree)).toContain('Chỉnh sửa nháp');
+    for(const term of ['Cấu hình popup / cột','Mẫu bảng popup','Hiện đủ cột Excel','Rộng popup']){
+      expect(text(tree)).not.toContain(term);
+    }
+    expect(nodes(tree).some(n=>n.type===ColumnResizeHandle)).toBe(false);
+    const edit=nodes(tree).find(n=>n.type==='button'&&text(n)==='Chỉnh sửa nháp');
+    expect(edit).toBeDefined();edit!.props.onClick();
+    hooks.begin();tree=ReportDetailGrid(props);
+    const fields=nodes(tree).filter(n=>n.type===InlineNoteEditor);
+    expect(fields).toHaveLength(2);
+    expect(fields[0].props.onCommit('Khách không đăng nhập Google')).toBe(true);
+    expect(props.onUpdate).toHaveBeenCalledWith(props.items[0].recordId,
+      {note:'Khách không đăng nhập Google'});
+  });
   it('keeps a separate edit mode for a signed-in user and refuses save after permission is revoked',()=>{
     const props={...testProps(),readOnlyViewer:false};
     let permitted=true;
