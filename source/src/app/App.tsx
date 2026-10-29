@@ -72,8 +72,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // ONLY the read-only source of rows. The actual saved source is untouched.
   // Firebase is the sole operating data source. The historical profile source
   // choice is ignored but NOT silently overwritten in production configuration.
-  const selectedSource=(versionedFirebase?'primary':comparison?compareSource:firebase?.profile?.dataSource)
-    as 'primary'|'database'|'excel'|undefined;
+  const selectedSource=(versionedFirebase?'primary':comparison?compareSource:firebase?.profile?.dataSource) as 'primary'|'database'|'excel'|undefined;
   const datasetVersion=activeVersion(firebase?.activeDataset??null);
   const primaryItemsPath=itemsPathFor(datasetVersion);
   const repository=useMemo<Repository>(()=>firebase
