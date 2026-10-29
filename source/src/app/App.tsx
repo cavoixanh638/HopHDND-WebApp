@@ -75,7 +75,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const selectedSource=(versionedFirebase?'primary':comparison?compareSource:firebase?.profile?.dataSource) as 'primary'|'database'|'excel'|undefined;
   const datasetVersion=activeVersion(firebase?.activeDataset??null);
   const primaryItemsPath=itemsPathFor(datasetVersion);
-  const repository=useMemo<Repository>(()=>firebase
+  const repository=useMemo<Repository>(()=>firebase && !firebase.database
+    ?browserRepository
+    :firebase
     ?selectedSource==='primary'&&!comparison
       ?new FirebaseRepository(firebase.database,
         ()=>firebaseLive.current?.user??null,
