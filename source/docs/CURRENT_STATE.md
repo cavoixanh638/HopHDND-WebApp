@@ -1,3 +1,12 @@
+## 29/10/2026 — Lượt 024: R11 quyền sửa nhân viên và R12 đổi tên cột gộp, PR #92 HOLD
+
+- **R11:** quyền `permissions/columns|rows|cells` phải đi kèm Google nhân viên đã xác minh được admin duyệt `editors/{UID}`; anonymous vẫn **view-only** theo Rules. Phát hiện/đã sửa popup dùng `guestMayEdit` chỉ tính khách ẩn danh khiến **Google nhân viên hợp lệ bị read-only**. Admin main list được giữ override backend. Danh sách có thông báo theo lý do thiếu điều kiện quyền. Không nới Security Rules, không đổi Firebase dữ liệu/cấu hình. Không kiểm live UID của từng tài khoản trong lượt này.
+- **R12:** nút **Đổi tên cột gộp** ngay trong Danh sách (admin) mở modal 5 nhóm, Lưu qua CAS chung hoặc khôi phục mặc định; không đụng Excel/các trường gốc. Giữ đường cũ trong Quản lý cột và tên riêng popup.
+- **Code SHA** `2a7e03b1ca6c41ec2fd76647e4522c551b9a428c`. [Source #40821479615](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479615), [staging #40821479618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479618), [operational #40821479616](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479616); kiểm trạng thái tại run. [Bàn giao Lượt 024](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+- **NO RELEASE** PR #92: chờ CI cuối, Codex verify R11/R12 và R06–R10 trước khi chủ dự án chốt. Không merge, Pages publish, Firebase deploy hay import.
+
+---
+
 ## 29/10/2026 — UI Lượt 023: kéo cột theo ảnh thật + căn chữ (PR #92 chưa phát hành)
 
 - **R08:** bật resize chỉ trong phiên xem cho khách và người không có quyền CAS shared; admin vẫn lưu bố cục dùng chung qua CAS. Vùng bắt vạch cột **14px**, window pointer fallback. Chromium fixture kéo `Tiến độ hiện tại 200→450`, nhóm nhân sự `240→130` (min group130), Ghi chú `240→100`, total1562; khách kéo 120px được nhưng không ghi shared layout.

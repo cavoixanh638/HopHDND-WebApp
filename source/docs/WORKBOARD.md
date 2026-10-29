@@ -1,3 +1,14 @@
+## 29/10/2026 — Lượt 024 PR #92: quyền khách + tiêu đề gộp (HOLD)
+
+| ID | Trạng thái | Kiểm soát tiếp |
+| --- | --- | --- |
+| **R11** | **CODE_CHANGED:** popup Google employee được duyệt UID không còn bị gắn nhãn read-only như khách ẩn danh; admin list override thống nhất Rules. Anonymous giữ view-only; hiển thị rõ điều kiện Google/UID/ô/nguồn/khóa/freeze. | Codex security review, test nhân viên Google và anonymous qua Rules trên emulator (không thử write production). Phải xác nhận trạng thái quyền live riêng, không suy từ mock. |
+| **R12** | **CODE_CHANGED:** shortcut **Đổi tên cột gộp** trong list admin; 5 labels, reset, lưu CAS; smoke Chromium có đường click. | Chromium PASS trên đúng HEAD và Codex UI/CAS review; hình ảnh/owner acceptance sau đó. |
+| **L024 CI** | [source #40821479615](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479615), [staging #40821479618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479618), [operational #40821479616](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40821479616). Code SHA `2a7e03b1`. | Chỉ kết luận theo kết quả từng workflow; source đã rerun vì Chrome baseline khởi động lỗi ở attempt 1. |
+| **Release gate** | PR #92 OPEN, thay đổi R06–R12 chưa merge/publish. | Không triển khai Firebase hoặc Pages khi chưa có phê duyệt riêng từ chủ dự án. |
+
+---
+
 ## 29/10/2026 — Lượt 023: sửa UI theo ảnh chụp, chỉ PR #92 (RELEASE HOLD)
 
 | Mã | Đã xử lý | Cổng còn mở |
