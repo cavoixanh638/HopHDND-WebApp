@@ -906,11 +906,11 @@ try{
       text:trigger.textContent};
     table.remove();return result;
   })()`);
-  if(highlightLayout.justify!=='justify'||highlightLayout.finalLine!=='left'||
+  if(highlightLayout.justify!=='left'||highlightLayout.finalLine!=='auto'||
     highlightLayout.numberWhitespace!=='nowrap'||highlightLayout.pieces!==1||
     !highlightLayout.text.includes('số 254 ngày'))
-    throw Error('Justified progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
-  console.log('JUSTIFY_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
+    throw Error('Left-aligned progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
+  console.log('LEFT_ALIGN_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
   const placeholderSelect=await evaluate(`(()=>{
     const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
     const color=select?getComputedStyle(select).color:'';
