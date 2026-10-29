@@ -2766,7 +2766,7 @@ try{
       await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
       await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
     }
-    await eventually("document.querySelector('input[aria-label=\\"Tên nhóm popup partyTogether\\"]')?.value==="+JSON.stringify(textValue),
+    await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value==="+JSON.stringify(textValue),
       'R07 typed value was not reflected in controlled input');
   };
   const saveR07=async()=>{
@@ -2810,7 +2810,7 @@ try{
     const el=document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]');
     el.closest('.group-label-editor-row').querySelector('button').click();
   })()`);
-  await eventually("document.querySelector('input[aria-label=\\"Tên nhóm popup partyTogether\\"]')?.value===''",
+  await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value===''",
     'R07 reset did not clear popup-only title draft');
   await saveR07();
   await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
