@@ -123,7 +123,10 @@ export function useFirebase(){
   const googleEditor=!!user&&!user.isAnonymous&&user.emailVerified&&
     user.providerData.some(provider=>provider.providerId==='google.com')&&
     editorsReady&&editors[user.uid]===true;
-  const editorAuthorized=admin||googleEditor;
+  // Firebase signs public visitors in anonymously behind the scenes; no
+  // Google sign-in/UID enrollment is required for admin-granted public cells.
+  // The server still checks field grants, lease, edit lock and freeze mode.
+  const editorAuthorized=admin||googleEditor||!!user?.isAnonymous;
   const saveEditorAccess=async(uid:string,approved:boolean)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected)throw new Error('Chỉ quản trị Google được cấp quyền nhân viên.');
     if(!/^[A-Za-z0-9_-]{1,128}$/.test(uid))throw new Error('UID nhân viên không hợp lệ.');
