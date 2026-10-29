@@ -1,3 +1,11 @@
+## 29/10/2026 — Lượt 019: nguyên tắc kéo cột mới, PR #92 đang chờ Codex (chưa phát hành)
+
+Chủ dự án đã chốt: **khi đổi độ rộng vùng Danh sách**, bảng tự dàn theo khung để không có khoảng trắng thừa (nếu không đủ min thì cuộn ngang nội bộ); **khi kéo giữa cột A và B**, B là nơi bù trừ trước, chỉ phần vượt giới hạn của B mới sang **cột cuối**. Tổng độ rộng bảng giữ nguyên. Chiều rộng tự fit từ viewport, khi có thao tác kéo tay, được materialize một lần để cột B có thể thu nhỏ thực sự mà không đụng các cột khác về mặt hiển thị. ID compact mặc định 52px, raw 68px. Unit/Chromium đo con số nguồn giả và ảnh trước/sau được lưu trong file bàn giao Lượt 019. PR #92 **OPEN, chưa merge/publish**; mọi chỉ thị last-only ngày 23/10 áp dụng lịch sử trước lệnh mới.
+
+PR #91 đã được phép merge và publish riêng: merge `9389290495a902e204406053d30e587027296478`, publisher [#40740797364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740797364) SUCCESS; build commit `227ac03488442dda7b3b4e2020b7e4a2f4e21d84`, Pages deployment [#40740946000](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40740946000) SUCCESS. PR #92 tách từ commit build này, chỉ để Codex rà; **không mang quyền publish của #91**. Không thay Firebase Rules/Functions, `hdnd/items`, nguồn dữ liệu hoặc Supabase.
+
+---
+
 ## 29/10/2026 — Đang sửa bảng tự phủ chiều rộng khung (chưa phát hành)
 
 Nhánh `fix/table-fill-width-20261029` sửa khoảng trắng bên phải Danh sách khi tổng cột gộp nhỏ hơn khung đã chọn. Đo viewport bằng ResizeObserver, phân bổ phần dư cho cột chữ (ưu tiên Nội dung/Tiến độ), giữ ID/STT gọn và không tự ghi layout. Kéo cột vẫn chuyển pixel giữa cột chọn và cột cuối; cột tiến độ hẹp xếp trạng thái dưới nhãn để tránh xuống từng chữ. Giao diện Pages hiện hành vẫn là bản PR #90 dưới đây; chưa merge hoặc publish phần sửa này. Xem [bàn giao Lượt 017](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
