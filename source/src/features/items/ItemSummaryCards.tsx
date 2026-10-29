@@ -21,6 +21,15 @@ function StageCard({stage,selection,onSelect}: {stage:SummaryStage;selection:Sum
         key={bucket.stage} data-summary-report={stage.id} data-summary-stage={bucket.stage}
         aria-label={'Lọc '+stage.title+': '+bucket.label+' ('+bucket.count+' nội dung)'}
         aria-pressed={selection?.report===stage.id&&selection?.stage===bucket.stage}
+        onKeyDown={event=>{
+          if(event.key!=='Enter'&&event.key!==' ')return;
+          if(event.repeat){event.preventDefault();return;}
+          // The explicit handler keeps keyboard activation deterministic in
+          // embedded/offline browsers. Suppress the native synthetic click so
+          // one key press never toggles the selection twice.
+          event.preventDefault();
+          onSelect({report:stage.id,stage:bucket.stage});
+        }}
         onClick={()=>onSelect({report:stage.id,stage:bucket.stage})}>
         <span>{bucket.label}</span><strong>{bucket.count}</strong>
       </button>)}
