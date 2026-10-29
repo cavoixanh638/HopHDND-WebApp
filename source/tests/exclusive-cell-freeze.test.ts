@@ -25,10 +25,10 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   const manager=(id:string,isAdmin=false)=>new CellEditSessionManager(
     (isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin));
   const publicManager=(id:string)=>new CellEditSessionManager(
-    anonymous(id) as never,()=>({uid:id,isAnonymous:true,providerData:[]} as User));
+    anonymous(id) as never,()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User));
   const publicRepo=(id:string,session:CellEditSessionManager)=>{
     const r=new FirebaseRepository(anonymous(id) as never,
-      ()=>({uid:id,isAnonymous:true,providerData:[]} as User),
+      ()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User),
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
     r.leaseManager=session;return r;
   };
