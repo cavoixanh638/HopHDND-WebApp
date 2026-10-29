@@ -2258,18 +2258,22 @@ try{
   })()`);
   if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
-    'R02 ArrowRight did not respect projected ID min');
+  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=310.5",
+    'L019 adjacent progress group did not shrink when content grew');
   const r02Right=await widthSnapshot();
   assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
-  if(r02Right.content<r02Before.content||r02Right.id<46||r02Right.content>r02Before.content+7)
-    throw Error('R02 right arrow reversed content / overcompensated ID: '+JSON.stringify({r02Before,r02Right}));
+  if(r02Right.content!==r02Before.content+10||
+    r02Right.party!==r02Before.party-10||r02Right.id!==r02Before.id)
+    throw Error('L019 neighbor-first changed wrong column: '+JSON.stringify({r02Before,r02Right}));
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowLeft');
-  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width>=55",
-    'R02 ArrowLeft did not return physical width');
+  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=320",
+    'L019 ArrowLeft did not restore adjacent group width');
   const r02Left=await widthSnapshot();
-  assertSameTotal(r02Before,r02Left,'R02 ArrowLeft');
+  assertSameTotal(r02Before,r02Left,'L019 ArrowLeft');
+  if(r02Left.content!==r02Before.content||r02Left.party!==r02Before.party||
+    r02Left.id!==r02Before.id)
+    throw Error('L019 round-trip drag has width drift: '+JSON.stringify({r02Before,r02Left}));
   const dragStart=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -2283,9 +2287,39 @@ try{
   await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>433",
     'R02 real pointer drag did not resize');
   const r02Drag=await widthSnapshot();
-  assertSameTotal(r02Before,r02Drag,'R02 real pointer drag');
+  assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
+  if(r02Drag.content!==r02Before.content+5||
+    r02Drag.party!==r02Before.party-5||r02Drag.id!==r02Before.id)
+    throw Error('L019 pointer drag altered ID or trailing column: '+JSON.stringify({r02Before,r02Drag}));
   const r02shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
+
+  // Owner L019 explicit fallback: group adjacent reaches physical minimum
+  // before the last visible ID (52px default) begins to compensate.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    'L019 fallback baseline missing');
+  await moveLast('displayCode');
+  const fallbackBefore=await widthSnapshot();
+  const fallbackEdge=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=content] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...fallbackEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...fallbackEdge,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
+    'L019 fallback failed to use last ID after adjacent reached minimum');
+  const fallbackAfter=await widthSnapshot();
+  assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
+  if(fallbackAfter.content!==fallbackBefore.content+136||
+    fallbackAfter.party!==190||fallbackAfter.id!==46)
+    throw Error('L019 fallback exceeded min or skipped adjacent: '+
+      JSON.stringify({fallbackBefore,fallbackAfter}));
+  const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-adjacent-exhausted-fallback.png',Buffer.from(l019BeforeShot.data,'base64'));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
@@ -2294,12 +2328,13 @@ try{
   const customBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width<96",
-    'R02 custom ID physical compensator not updated');
+  await eventually("document.querySelector('.item-data-table td[data-col-key=partyLevel]')?.getBoundingClientRect().width<320",
+    'L019 custom-ID adjacent group did not give pixels');
   const customAfter=await widthSnapshot();
   assertSameTotal(customBefore,customAfter,'R02 custom ID');
-  if(customAfter.content<=customBefore.content||customAfter.id>=customBefore.id)
-    throw Error('R02 custom ID did not transfer physical pixels');
+  if(customAfter.content!==customBefore.content+10||
+    customAfter.party!==customBefore.party-10||customAfter.id!==customBefore.id)
+    throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===7",'R02 grouped fixture missing');
@@ -2311,7 +2346,7 @@ try{
     'R02 grouped last-column compensation did not move');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
-  console.log('R02_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
+  console.log('L019_ADJACENT_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
 
@@ -2342,8 +2377,9 @@ try{
       'R02 cap ArrowLeft did not visibly shrink group');
     const left=await widthSnapshot();
     assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
-    if(left.party!==1590||left.widths[left.keys.indexOf('note')]!==250)
-      throw Error('R02 group target physical transfer mismatch: '+JSON.stringify(left));
+    if(left.party!==1590||left.widths[left.keys.indexOf('specificProgress')]!==210||
+      left.widths[left.keys.indexOf('note')]!==240)
+      throw Error('L019 cap shrink must grow adjacent, not note: '+JSON.stringify(left));
     const point=await evaluate(`(()=>{
       const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
       el.scrollIntoView({block:'center',inline:'nearest'});
@@ -2372,29 +2408,32 @@ try{
     if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowRight');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
-      'R02 capped group last did not compensate');
+    await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width<=190",
+      'L019 capped group last must remain unchanged while neighbor compensates');
     const lastRight=await widthSnapshot();
     assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
-    if(lastRight.content!==450||lastRight.party!==1590)
-      throw Error('R02 cap group-last ArrowRight values '+JSON.stringify(lastRight));
+    if(lastRight.content!==450||lastRight.party!==1600||
+      lastRight.widths[lastRight.keys.indexOf('specificProgress')]!==190)
+      throw Error('L019 cap group-last: adjacent must compensate before capped group '+JSON.stringify(lastRight));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1600",
-      'R02 group last left did not restore cap');
+    await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=200",
+      'L019 group-last adjacent width not restored');
     const lastLeft=await widthSnapshot();
     assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
-    if(lastLeft.content!==440||lastLeft.party!==1600)
-      throw Error('R02 cap group-last ArrowLeft values '+JSON.stringify(lastLeft));
+    if(lastLeft.content!==440||lastLeft.party!==1600||
+      lastLeft.widths[lastLeft.keys.indexOf('specificProgress')]!==200)
+      throw Error('L019 cap group-last reverse must restore neighbor '+JSON.stringify(lastLeft));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
     const lastAtCap=await widthSnapshot();
     assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
-    if(lastAtCap.party!==1600||lastAtCap.content!==440)
-      throw Error('R02 group-last cap should not give phantom pixels '+JSON.stringify(lastAtCap));
+    if(lastAtCap.party!==1600||lastAtCap.content!==430||
+      lastAtCap.widths[lastAtCap.keys.indexOf('specificProgress')]!==210)
+      throw Error('L019 group-last uses adjacent and must not touch capped last '+JSON.stringify(lastAtCap));
     r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
   }
-  console.log('R02_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
+  console.log('L019_ADJACENT_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
 
 
   // Lượt 018: real main-list cards and stable group titles, not report modal cards.
