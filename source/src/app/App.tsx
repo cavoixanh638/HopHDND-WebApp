@@ -67,14 +67,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // ONLY the read-only source of rows. The actual saved source is untouched.
   const selectedSource=firebase?'primary' as const:undefined;
   const repository=useMemo<Repository>(()=>firebase
-    ?selectedSource==='primary'&&!comparison
-      ?new FirebaseRepository(firebase.database,
-        ()=>firebaseLive.current?.user??null,
-        ()=>firebaseLive.current?.permissions??{columns:{}})
-      :selectedSource==='database'
-        ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
-        :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
+    ?new FirebaseRepository(firebase.database,
+      ()=>firebaseLive.current?.user??null,
+      ()=>firebaseLive.current?.permissions??{columns:{}})
+    :browserRepository,[firebase?.database,firebase?.user?.uid,browserRepository]);
   const leaseManager=useMemo(()=>firebase&&selectedSource==='primary'&&!comparison
     ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null)
     :undefined,[firebase?.database,firebase?.user?.uid,selectedSource,comparison]);
