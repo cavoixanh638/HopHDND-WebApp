@@ -92,8 +92,24 @@ export function datasetSignature(hdnd:unknown):string{
 }
 function verifyCandidate(actual:unknown,expected:Record<string,unknown>){
   const actualRows=readItems(actual),expectedRows=readItems(expected);
-  if(actualRows.length!==expectedRows.length||!same(actualRows,expectedRows))
-    throw new Error('Bản ứng viên đọc lại khác dữ liệu đã kiểm tra. Không được kích hoạt.');
+  if(actualRows.length!==expectedRows.length||!same(actualRows,expectedRows)){
+    // Surface only structural evidence, never the old/new business values.
+    const actualIds=new Set(actualRows.map(row=>row.recordId));
+    const expectedIds=new Set(expectedRows.map(row=>row.recordId));
+    const firstChanged=expectedRows.find(row=>{
+      const actual=actualRows.find(x=>x.recordId===row.recordId);
+      return !actual||!same(actual,row);
+    });
+    const mismatch=firstChanged&&actualRows.find(row=>row.recordId===firstChanged.recordId);
+    const fields=firstChanged&&mismatch?Object.keys(firstChanged)
+      .filter(field=>!same((firstChanged as unknown as NativeObject)[field],
+        (mismatch as unknown as NativeObject)[field])):[];
+    throw new Error('Bản ứng viên đọc lại khác dữ liệu đã kiểm tra: số hồ sơ '+
+      actualRows.length+'/'+expectedRows.length+', thiếu='+
+      [...expectedIds].filter(id=>!actualIds.has(id)).length+
+      ', dư='+[...actualIds].filter(id=>!expectedIds.has(id)).length+
+      ', trường lệch='+fields.join(',')+'. Không được kích hoạt.');
+  }
 }
 export function planAtomicSwap(hdnd:unknown,stage:DatasetStage):NativeObject{
   const current=objectOf(hdnd),already=objectOf(current.importState);
