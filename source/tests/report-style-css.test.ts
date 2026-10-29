@@ -212,9 +212,9 @@ describe('Data list workflow palette is synchronized with the actual report stag
 });
 
 describe('List border resize and room/CV filter controls',()=>{
-  it('uses an invisible 8px hit-zone exactly on the existing column separator, not another colored handle',()=>{
+  it('uses a centered invisible 14px hit-zone on the existing separator, not another colored handle',()=>{
     expect(frameCss).toContain('/* 23/10: no separate resizing icon');
-    expect(frameCss).toMatch(/\.item-data-table \.item-heading-row th \.column-resizer\s*\{[^}]*right:-4px;[^}]*width:8px;[^}]*border:0;[^}]*background:transparent;/s);
+    expect(frameCss).toMatch(/\.item-data-table \.item-heading-row th \.column-resizer\s*\{[^}]*right:-7px;[^}]*width:14px;[^}]*border:0;[^}]*background:transparent;/s);
     expect(frameCss).toContain('cursor:col-resize;');
     // Only the same line is accented when hovered; not a new icon.
     expect(frameCss).toContain('.column-resizer:is(:hover,:focus-visible)::after');
