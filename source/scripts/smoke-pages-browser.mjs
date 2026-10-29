@@ -2639,8 +2639,10 @@ try{
         percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
         width:card.getBoundingClientRect().width};
     });
-    // Owner: overview total sits ABOVE an equally sized three-workflow row.
-    return {ok:cards.length===4&&Math.abs(totalBounds.width-summary.width)<2&&
+    // Owner: compact total is centered ABOVE the three-workflow row.
+    return {ok:cards.length===4&&totalBounds.width>0&&totalBounds.width<summary.width*.75&&
+      Math.abs(totalBounds.left+totalBounds.width/2-summary.left-summary.width/2)<2&&
+      cards[0].scrollWidth<=cards[0].clientWidth+1&&
       totalBounds.bottom<workflowBounds[0].top&&workflowBounds.every(r=>
         Math.abs(r.top-workflowBounds[0].top)<2&&Math.abs(r.width-workflowBounds[0].width)<2)&&
       summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
