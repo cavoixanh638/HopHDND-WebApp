@@ -2502,7 +2502,8 @@ try{
   assertSameTotal(guestBefore,guestAfter,'L023 guest local-only');
   const gi=guestBefore.keys.indexOf('specificProgress');
   if(guestAfter.widths[gi]!==guestBefore.widths[gi]+120||
-    guestAfter.widths[gi+1]!==guestBefore.widths[gi+1]-120||
+    guestAfter.widths[gi+1]!==130||
+    guestAfter.widths.at(-1)!==guestBefore.widths.at(-1)-10||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
     throw Error('L023 guest changed other widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
