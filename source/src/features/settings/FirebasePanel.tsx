@@ -27,7 +27,7 @@ type Props = {
 };
 
 /** Authentication only. Permission editing is now directly inside ItemList customization. */
-export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,_dataSource='excel'}:Props){
+export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editorAuthorized,editors,onSaveEditorAccess,connected,busy,onLogin,onLogout,onOpenItemsCustomize,onClose,dataSource: _dataSource='excel'}:Props){
   const [working,setWorking]=useState(false);
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
