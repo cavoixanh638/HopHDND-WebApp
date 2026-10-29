@@ -2350,6 +2350,67 @@ try{
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
 
+
+  // Owner L019: exact screenshot order — Tiến độ hiện tại is immediately
+  // before the roomy Lãnh đạo / Phòng / CV group, with Ghi chú last.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1'});
+  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    'L019 reported column order missing');
+  const reportedBefore=await widthSnapshot();
+  const progressIndex=reportedBefore.keys.indexOf('specificProgress');
+  if(progressIndex<0||reportedBefore.keys[progressIndex+1]!=='room'||
+    reportedBefore.keys.at(-1)!=='note')
+    throw Error('L019 fixture is not progress | staff | note: '+JSON.stringify(reportedBefore));
+  const reportBeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-progress-staff-before.png',Buffer.from(reportBeforeShot.data,'base64'));
+  const reportedEdge=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=specificProgress] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...reportedEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...reportedEdge,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:reportedEdge.x+50,y:reportedEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:reportedEdge.x+50,y:reportedEdge.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>="+
+    (reportedBefore.widths[progressIndex]+49.5),'L019 reported progress column not wider after pointer drag');
+  const reportedAfter=await widthSnapshot();
+  assertSameTotal(reportedBefore,reportedAfter,'L019 progress+staff exact sample');
+  if(reportedAfter.widths[progressIndex]!==reportedBefore.widths[progressIndex]+50||
+    reportedAfter.widths[progressIndex+1]!==reportedBefore.widths[progressIndex+1]-50||
+    reportedAfter.widths[reportedAfter.keys.indexOf('note')]!==
+      reportedBefore.widths[reportedBefore.keys.indexOf('note')])
+    throw Error('L019 reported neighbor was not compensated: '+
+      JSON.stringify({reportedBefore,reportedAfter}));
+  const reportAfterShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-l019-progress-staff-after.png',Buffer.from(reportAfterShot.data,'base64'));
+  // Distinct from manual drag: widening the selected List frame allocates
+  // available width without a trailing white band; shrinking allows local
+  // horizontal scroll if source minimums exceed the frame.
+  const frameCases=[];
+  for(const frame of ['900','auto']){
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?fit=1'+(frame==='900'?'&frame=900':'')});
+    await eventually("document.querySelector('.item-table-scroll colgroup')!==null",
+      'L019 selected frame fixture '+frame+' missing');
+    const shape=await evaluate(`(()=>{
+      const wrap=document.querySelector('.item-table-scroll');
+      const cols=[...wrap.querySelectorAll('colgroup col')];
+      const widths=cols.map(x=>x.getBoundingClientRect().width);
+      const sum=widths.reduce((a,b)=>a+b,0);
+      return {viewport:wrap.getBoundingClientRect().width,table:sum,
+        id:widths[0],document:document.scrollingElement.scrollWidth,
+        windowWidth:innerWidth};
+    })()`);
+    if(shape.table+1<shape.viewport||shape.document>shape.windowWidth+5||
+      shape.id>53)
+      throw Error('L019 frame fill/ID regression '+frame+': '+JSON.stringify(shape));
+    frameCases.push({frame,...shape});
+  }
+  console.log('L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS',
+    JSON.stringify({reportedBefore,reportedAfter,frameCases}));
+  
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
   // Check REAL keyboard and pointer, including when the capped group is last.
   const r02Cap=[];
