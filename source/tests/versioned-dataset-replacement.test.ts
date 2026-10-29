@@ -13,7 +13,7 @@ import {
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const rules=JSON.parse(readFileSync('firebase/database.versioned-replacement-candidate.rules.json','utf8'));
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
-  firebase:{sign_in_provider:'google.com'}};
+  firebase:{sign_in_provider:'google.com' as const}};
 const adminUser={uid:'admin',email:claims.email,emailVerified:true,isAnonymous:false,
   providerData:[{providerId:'google.com'}]} as User;
 const row={...createDemoItems(1)[0],recordId:'r1',displayCode:'ID01',
