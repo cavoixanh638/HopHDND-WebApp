@@ -1049,3 +1049,32 @@ Tên nhóm chính/nhóm đổi neo và số đếm fixture theo mô hình mặc 
 - **Exact tested source SHA `c285ca648a63499450ed5a33900d971d912cd7ed`:** [Verify source #40815718404 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404) — **548 unit PASS / 52 skipped; 8/8 reviewer boundary; Firebase Emulator và TypeScript/docs/build/Chromium PASS**. [Isolated staging #40815718256 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational multi-account QA #40815718231 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231) — cả ba cùng exact SHA.
 - **Ảnh R06 mới, R07 và L019** do QA Chromium trên dữ liệu giả: [artifact #12872830259](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404/artifacts/12872830259), không phải ảnh website live.
 - **Giới hạn/cổng phát hành:** Đây là rà soát và sửa bởi ChatGPT, **không thay thế Codex tái-review độc lập** theo Lượt 020. R06/R07 giữ trạng thái **FIX_TESTED — PENDING CODEX VERIFIED**, không tự nâng OWNER_ACCEPTED. Chỉ chỉnh CSS R06 + test, chưa merge PR #92, chưa publish Pages, chưa deploy Firebase, chưa nhập/sửa Cloud data hoặc chuyển nguồn. Commit tài liệu sau nguồn c285ca6 phải được kiểm CI HEAD riêng nếu cần xác nhận exact final HEAD.
+
+## 29. Lượt 023 — sửa kéo cột và căn chữ theo ảnh người dùng (29/10/2026)
+
+**Phản ánh thực tế:** chủ dự án vẫn không kéo rộng được từng cột; loại VB (HC) và Sở bị lệch dòng; nội dung nhiều dòng trong Tiến độ hiện tại/Ghi chú có khoảng cách từ và mép chữ không đều. Lượt 023 thực hiện trên **PR #92 chưa phát hành**; website Pages production vẫn sử dụng bản đã publish trước PR #92, nên không được coi ảnh live hiện tại là bằng chứng code mới đã lên production.
+
+### R08 — Truy cập và độ rộng của bộ kéo
+
+- Căn nguyên 1: `ItemList.canViewerArrange` chỉ bật `ColumnResizeHandle` khi admin có `onPersistViewerLayout`; khách, người chỉ xem, hoặc không có quyền lưu cấu hình chung không thể kéo. Đã tách `canViewerResize`: tất cả chế độ **xem Danh sách** có thể chỉnh chiều rộng cho phiên hiện tại trong `setApplied`, **không gọi backend hay lưu shared layout**; chỉ admin có quyền mới thực hiện CAS/persist shared. Không thêm quyền sửa dữ liệu/cột nguồn/roles.
+- Căn nguyên 2: vùng bắt chuột vô hình ở vạch cột chỉ 8px, dễ trượt. Tăng thành **14px** (đặt `right:-7px` cân hai bên vạch), không vẽ icon mới hay thay đường kẻ; `ColumnResizeHandle windowDragFallback` giữ tracking khi chuột rời vạch/heading. Các giới hạn min/max cột vẫn đúng 60–1600px source, ID compact52px và nhóm gộp cộng extra.
+- **Kéo 250px, Chromium code thật/data giả:** [ID52, STT70, Nội dung440, 3 khâu320, Tiến độ hiện tại **200**, nhóm Lãnh đạo/Phòng/CV **240**, Ghi chú **240**] → [52,70,440,320,**450**,**130**,**100**], total **1562px không đổi**. Nhóm nhân sự extra70 nên min vật lý130; nó bù trước 110px, Ghi chú bù tiếp140px. Đây là fallback đúng, không phải lỗi clamp.
+- **Khách kéo 120px:** [200,240,240] → [**320**,**130**,**230**] cho ba cột trên, tổng không đổi, chỉ phiên view; không tạo lệnh ghi bố cục dùng chung. Regression browser kiểm remount/reset và storage riêng trước/sau.
+- Code: `ca41eb0349b77a60e3527644e7edfe85294a5b14` bật window pointer fallback; `c50f0c8c6e81e363b5c7be9d41b620c1cbbf7dac` tách local-only viewer resize. Test Chromium cập nhật trong `source/scripts/smoke-pages-browser.mjs`; phép tính min nhóm hiện hành giữ nguyên, không thay `planAdjacentTransfer`, `resizeProjectedWithAdjacent`, CAS/rollback.
+
+### R09 — Loại VB và Sở lệch hàng
+
+- `compact-document-heading` trước đây `align-items:flex-start` trong khi badge HC có nền/viền và line-height riêng; chuyển sang `align-items:center`, `compact-document-department` cùng chiều cao tối thiểu 24px, line-height 1.35 và wrap khi thực sự thiếu khung. Chromium đo tâm badge và Sở cùng **y=759.734px** trên fixture, không cần hack offset text hay ảnh.
+- CSS: `source/src/features/items/item-frame.css` commit `aef69362411880ee5cc1ee7255987dc9f8a40607`, đồng thời mở vùng bắt chuột divider 14px.
+
+### R10 — Tiến độ/Ghi chú có dòng chữ thụt ra thụt vào
+
+- Căn nguyên kép: CSS `text-align:justify` kéo giãn khoảng trắng; và selector legacy `td[data-col-key]:not(content):not(note)` **ép `specificProgress` căn giữa**, mạnh hơn rule căn trái về sau. Sửa cả hai: ba cột nội dung dài `content/specificProgress/note` căn trái, giữ xuống dòng thực; **loại specificProgress khỏi selector centered statuses** theo mã khóa cột, độc lập thứ tự; không tác động màu trạng thái hoặc trường khác.
+- CSS `source/src/styles/app.css`: `7aeb4e057ea75501e6e54b9c118cd1a873828367` và `8c98c47be753899b1b6edc201d1d189477407db7`. Regression CSS unit sửa theo yêu cầu mới; Chromium xác nhận `progressAlign=left`, `progressButtonAlign=left`, `noteAlign=left`, `noteButtonAlign=left`, `contentAlign=left`.
+- Các assertion cũ từng đòi **8px** grip, **justify** và min nhóm nhân sự **60px** được sửa lại thành **14px**, left-aligned và group min130px. Các CI fail của commit trung gian là assertion chưa cập nhật hoặc Chromium baseline startup riêng; không dùng làm bằng chứng feature đã đạt.
+
+### CI/bằng chứng và ranh giới
+
+**Exact code SHA mới nhất:** `68a494fe8e1004cce5893fb0592abb684543ac81`. Theo dõi [Verify source #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [isolated staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [operational QA #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291); chỉ ghi SUCCESS sau khi từng workflow hoàn thành trên đúng SHA. Hai workflow Firebase đã SUCCESS tại thời điểm lập hồ sơ; Chromium toàn lượt đang xác minh.
+
+**Release gate:** R08–R10 đang `FIX_TESTED/PENDING_FINAL_CI_AND_CODEX_REVIEW`, R06–R07 chưa được Codex VERIFIED. Không merge/publish PR #92, không deploy Firebase Rules/Functions, không ghi dữ liệu Cloud, không chuyển nguồn. Khách kéo cột chỉ trong phiên hiện tại, reload sẽ trở về bố cục dùng chung; không cam kết lưu trên thiết bị khi chưa được giao.
