@@ -2474,6 +2474,44 @@ try{
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
     JSON.stringify({textGeometry,wideBefore,wideAfter}));
 
+  // Owner L023: anonymous/read-only viewers may resize a column ONLY in
+  // their live view; the shared layout is never written and reload resets it.
+  const guestResizeUrl='http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
+  await send('Page.navigate',{url:guestResizeUrl});
+  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
+    'L023 guest must have a local-only width divider');
+  const guestBefore=await widthSnapshot();
+  const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
+  const guestEdge=await evaluate(`(()=>{
+    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+      .getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...guestEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...guestEdge,
+    button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:guestEdge.x+120,y:guestEdge.y,
+    button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:guestEdge.x+120,y:guestEdge.y,
+    button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=319",
+    'L023 guest local width did not change');
+  const guestAfter=await widthSnapshot();
+  assertSameTotal(guestBefore,guestAfter,'L023 guest local-only');
+  const gi=guestBefore.keys.indexOf('specificProgress');
+  if(guestAfter.widths[gi]!==guestBefore.widths[gi]+120||
+    guestAfter.widths[gi+1]!==guestBefore.widths[gi+1]-120||
+    storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
+    throw Error('L023 guest changed other widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+  await send('Page.navigate',{url:guestResizeUrl});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
+    'L023 guest remount missing');
+  const guestReload=await widthSnapshot();
+  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths))
+    throw Error('L023 guest edit was not session-only: '+JSON.stringify({guestBefore,guestReload}));
+  console.log('L023_GUEST_LOCAL_ONLY_RESIZE_NO_SHARED_WRITE_PASS',
+    JSON.stringify({guestBefore,guestAfter,guestReload}));
+
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
   // Check REAL keyboard and pointer, including when the capped group is last.
   const r02Cap=[];
