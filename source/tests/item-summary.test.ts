@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
-import {summarizeListItems} from '../src/domain/item-summary';
+import {summarizeListItems,filterListBySummary} from '../src/domain/item-summary';
 import {aggregateReport,DEFAULT_REPORTS,reportItems} from '../src/domain/reporting';
 import type {Item} from '../shared/types';
 
@@ -81,6 +81,32 @@ describe('Four list cards reuse report scopes and normalization',()=>{
      const allIds=[...card.buckets.flatMap(b=>b.ids),...card.unmatchedIds];
      expect(new Set(allIds).size).toBe(card.total);
    }
+ });
+ it('click filtering returns exactly the records counted in each of the eleven buckets',()=>{
+   for(const card of summarizeListItems(rows).stages)
+     for(const bucket of card.buckets)
+       expect(filterListBySummary(rows,{report:card.id,stage:bucket.stage}).map(row=>row.recordId))
+         .toEqual(bucket.ids);
+ });
+ it('quick filters normalize post-VP stages and respect NQ scope instead of matching substrings',()=>{
+   expect(filterListBySummary(rows,{report:'party',stage:'next'}).map(row=>row.recordId))
+     .toEqual(['nq3','nq4','nq5']);
+   expect(filterListBySummary(rows,{report:'build',stage:'next'}).map(row=>row.recordId))
+     .toEqual(['nq3']);
+   expect(filterListBySummary(rows,{report:'build',stage:'completed'}).map(row=>row.recordId))
+     .toEqual(['nq4','nq6']);
+   expect(filterListBySummary(rows,{report:'nq',stage:'completed'}).map(row=>row.recordId))
+     .toEqual(['nq3','nq4','nq5']);
+ });
+ it('quick filter intersects existing column results, handles zero and reflects changed source values',()=>{
+   const base=rows.filter(row=>row.recordId!=='nq4');
+   expect(filterListBySummary(base,{report:'party',stage:'next'}).map(row=>row.recordId))
+     .toEqual(['nq3','nq5']);
+   expect(filterListBySummary([],{report:'party',stage:'next'})).toEqual([]);
+   const updated=rows.map(row=>row.recordId==='nq3'?{...row,progressParty:'Đã có TBKL'}:row);
+   expect(filterListBySummary(updated,{report:'party',stage:'next'}).map(row=>row.recordId))
+     .toEqual(['nq4','nq5']);
+   expect(filterListBySummary(base,null)).toBe(base);
  });
  it('empty filtered results have zero totals, nullable percent and no NaN',()=>{
    const empty=summarizeListItems([]);

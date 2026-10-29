@@ -2656,7 +2656,48 @@ try{
   if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
   const fourDesktopShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-l018-four-cards-desktop.png',Buffer.from(fourDesktopShot.data,'base64'));
-  // Verify filtering changes the *same* cards as the table, before any pagination.
+  // Clickable summary counts use live normalized report conditions. Counts
+  // retain column-filter context so another quick condition remains selectable.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1'});
+  await eventually("document.querySelectorAll('button.item-summary-bucket').length===11",
+    'Summary quick-filter buttons missing');
+  const summaryRows=()=>evaluate("document.querySelectorAll('.item-data-table tbody tr.color-row').length");
+  const originalSummaryRows=await summaryRows();
+  await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
+    'Party next must filter both post-VP records, not only one literal status');
+  const quickSummary=await evaluate(`({
+    selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
+    total:Number(document.querySelector('.item-summary-total-count').textContent),
+    result:document.querySelector('.item-summary-active-filter')?.textContent,
+    totalLabelBeforeCount:document.querySelector('.item-summary-total-lead h3').getBoundingClientRect().right<=
+      document.querySelector('.item-summary-total-count').getBoundingClientRect().left,
+    bucketHeight:document.querySelector('.item-summary-bucket').getBoundingClientRect().height
+  })`);
+  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2/7')||
+      !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
+    throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
+  await evaluate("document.querySelector('[data-summary-report=nq][data-summary-stage=source]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===3",
+    'Choosing a new summary condition must replace the previous quick condition');
+  await evaluate("document.querySelector('[data-summary-report=nq][data-summary-stage=source]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
+    'Second click did not clear summary filter');
+  await evaluate("document.querySelector('[data-summary-report=build][data-summary-stage=completed]').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&!!document.querySelector('.item-data-table td.empty')",
+    'Zero-count summary condition must show an empty list');
+  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
+    'Clear summary filter failed');
+  await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=source]').focus()");
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  await eventually("document.querySelector('[data-summary-report=party][data-summary-stage=source]').getAttribute('aria-pressed')==='true'",
+    'Summary keyboard activation failed');
+  console.log('SUMMARY_QUICK_FILTER_TOGGLE_SWITCH_ZERO_KEYBOARD_PASS',JSON.stringify(quickSummary));
+
+  // Column filters intersect the quick condition; clearing the quick filter
+  // must preserve the existing column filter and summary base counts.
   const inputFocus=await evaluate(`(()=>{
     const el=document.querySelector('[data-filter-key=displayCode] input');
     if(!el)return false;el.focus();return document.activeElement===el;
@@ -2665,6 +2706,9 @@ try{
   await send('Input.insertText',{text:'NQ01'});
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
+  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('[data-filter-key=displayCode] input').value==='NQ01'",
+    'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
     const total=Number(cards[0].querySelector('.item-summary-total-count').textContent);

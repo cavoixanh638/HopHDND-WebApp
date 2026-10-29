@@ -40,6 +40,7 @@ import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeProjectedWithAdjacent} from '../../data/resize-last-column';
 import {fitTableColumns} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
+import {filterListBySummary,type SummarySelection} from '../../domain/item-summary';
 import {useElementWidth} from '../../components/useElementWidth';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
@@ -69,6 +70,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[viewerCompactScope]);
   const selectedView=allowLayout?loadListViews(personalScope).find(v=>v.id===loadActiveListView(personalScope)):undefined;
   const [columnFilters,setColumnFilters]=useState<Record<string,string>>(selectedView?.filters.columns??{});
+  const [summarySelection,setSummarySelection]=useState<SummarySelection|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const [personalViewActive,setPersonalViewActive]=useState(!!selectedView);
   // An ordinary viewer should immediately see every A–R source field. Saved
@@ -229,7 +231,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     }
     return result;
   },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
-  const filtered=useMemo(()=>{
+  const columnFiltered=useMemo(()=>{
     const permitted=new Set(columns.map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
     // Staff headers search the FULL strings of every projected member.
@@ -260,6 +262,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         custom.every(({key,term})=>values[key]?.includes(term));
     });
   },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
+  const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
+    filterListBySummary(columnFiltered,summarySelection),[columnFiltered,summarySelection,customizing,permissionMode]);
+  const selectSummary=(selection:SummarySelection)=>setSummarySelection(previous=>
+    previous?.report===selection.report&&previous?.stage===selection.stage?null:selection);
   const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
@@ -357,6 +363,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     if(dirty||pendingData)return false;
     const filters=view?.filters??emptyListFilters(),nextLayout=view?overlayPersonalLayout(initialLayout??loadItemLayout(sourceKey),view.layout):initialLayout??loadItemLayout(sourceKey);
     setColumnFilters({...filters.columns});
+    setSummarySelection(null);
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
@@ -488,7 +495,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     <div className="item-sticky-search-controls">
     {canEdit&&!anonymousViewer&&<label className="layout-visibility"><input type="checkbox" disabled={locked} checked={allSpecialists} onChange={event=>setAllSpecialists(event.target.checked)}/>Chọn chuyên viên toàn cơ quan</label>}
     </div>
-    {!customizing&&!permissionMode&&<ItemSummaryCards items={filtered}/>}
+    {!customizing&&!permissionMode&&<ItemSummaryCards items={columnFiltered}
+      selection={summarySelection} onSelect={selectSummary}
+      onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}/>}
     {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
       if(exitAfterPermissions.current){

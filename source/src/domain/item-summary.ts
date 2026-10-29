@@ -1,5 +1,5 @@
 import type {Item,ReportConfig} from '../../shared/types';
-import {DEFAULT_REPORTS,aggregateReport,getKpis,isActive,normalizeReportStatus} from './reporting';
+import {DEFAULT_REPORTS,aggregateReport,getKpis,isActive,normalizeReportStatus,reportItems} from './reporting';
 import {reportStage,type ReportStage} from './report-workflow';
 import {normalizeSearch} from './search';
 
@@ -10,6 +10,7 @@ export interface SummaryStage {
   id:'party'|'build'|'nq';title:string;total:number;complete:number;
   percent:number|null;buckets:SummaryBucket[];unmatched:number;unmatchedIds:string[];
 }
+export interface SummarySelection {report:SummaryStage['id'];stage:ReportStage}
 const definitions:Readonly<Record<SummaryStage['id'],{title:string;labels:readonly {stage:ReportStage;label:string}[]}>>={
   party:{title:'Trình Thành ủy',labels:[
     {stage:'source',label:'Sở chưa trình'},
@@ -46,6 +47,15 @@ function buildStage(items:Item[],id:SummaryStage['id']):SummaryStage {
   return {id,title:known.title,total:report.total,complete:report.completedCount,
     percent:report.percent,buckets,unmatched:unmatched.length,
     unmatchedIds:unmatched.map(item=>item.recordId)};
+}
+/** Apply the exact same scope and normalization as the selected count bucket.
+ * Keep the live condition, not a snapshot of IDs, so source updates are reflected. */
+export function filterListBySummary(items:Item[],selection:SummarySelection|null):Item[]{
+  if(!selection)return items;
+  const config=DEFAULT_REPORTS.find(report=>report.id===selection.report);
+  if(!config)return [];
+  return reportItems(items,config).filter(item=>
+    reportStage(normalizeReportStatus(item[config.statusField],config),config)===selection.stage);
 }
 export function summarizeListItems(items:Item[]){
   const total=getKpis(items);
