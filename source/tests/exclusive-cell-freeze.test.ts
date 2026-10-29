@@ -108,6 +108,11 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const id='anon-denied',db=anonymous(id),session=publicManager(id),writer=publicRepo(id,session);
     const [before]=await writer.list();
     await assertFails(set(ref(db as never,'hdnd/items'),{r1:{}}));
+    // A public granted COLUMN must not permit arbitrary lock spam for fake IDs.
+    await assertFails(set(ref(db as never,'hdnd/editLocks/nonexistent/note'),{
+      uid:id,session:crypto.randomUUID(),token:crypto.randomUUID(),
+      revision:1,kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+30000
+    }));
     await assertFails(update(ref(db as never,'hdnd/items/r1'),{
       note:'Forged direct write',revision:before.revision+1}));
     await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
