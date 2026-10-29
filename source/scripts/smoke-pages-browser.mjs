@@ -2671,6 +2671,12 @@ try{
         scrollMode:getComputedStyle(table).overflowY,
         firstRow:row.getBoundingClientRect().top,bodyWidth:body.scrollWidth,screenWidth:innerWidth};
     })()`);
+    // R06 follow-up: CSS for wide-table-page is more specific than the old
+    // list-fit rule; assert the 48dvh cap is really applied on each breakpoint.
+    const intendedHeight=Math.min(520,Math.max(260,height*0.48));
+    if(Math.abs(before.tableHeight-intendedHeight)>5)
+      throw Error('R06 responsive table-height override lost CSS specificity at '+
+        mode+': '+JSON.stringify({actual:before.tableHeight,intendedHeight}));
     if(!before.shell.includes('wide-table-page')||!before.shell.includes('list-fit-page')||
       before.tableHeight<260||before.bodyHeight<=height+120||
       before.bodyWidth>width+5||before.scrollMode!=='auto')
