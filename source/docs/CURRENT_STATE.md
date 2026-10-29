@@ -1,3 +1,13 @@
+## 29/10/2026 — UI Lượt 023: kéo cột theo ảnh thật + căn chữ (PR #92 chưa phát hành)
+
+- **R08:** bật resize chỉ trong phiên xem cho khách và người không có quyền CAS shared; admin vẫn lưu bố cục dùng chung qua CAS. Vùng bắt vạch cột **14px**, window pointer fallback. Chromium fixture kéo `Tiến độ hiện tại 200→450`, nhóm nhân sự `240→130` (min group130), Ghi chú `240→100`, total1562; khách kéo 120px được nhưng không ghi shared layout.
+- **R09:** HC + Sở đồng tâm hàng, bỏ `align-items:flex-start`, giữ wrap khi không đủ không gian.
+- **R10:** loại rule `justify` và rule trạng thái căn giữa khỏi `specificProgress`; Nội dung/Tiến độ hiện tại/Ghi chú căn trái, xuống dòng theo nội dung, không thêm khoảng trống giữa từ. Chromium computed CSS xác nhận 5 nhánh căn trái.
+- **Code SHA `68a494fe8e1004cce5893fb0592abb684543ac81`**, [source CI #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [operational #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291). Trạng thái CI nguồn phải kiểm tại workflow, không tự suy ra PASS từ hai CI Firebase.
+- **HOLD:** PR #92 OPEN, chưa merge/publish/deploy; các sửa R08–R10 đang chờ CI cuối và Codex/owner chốt, R06/R07 vẫn chờ tái-review. Bản Pages live trước PR #92 chưa có thay đổi này. [Chi tiết Lượt 023](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+
+---
+
 ## 29/10/2026 — U01–U04 / PR #92: Lượt 022 R06/R07 FIX_TESTED, chờ Codex tái-review
 
 - **R06/P1:** khung Danh sách trên mobile/tablet/chiều cao thấp đã có document scroll đến dòng bảng, table scroll nội bộ và sticky filter. Kiểm toán tiếp phát hiện selector width-page cũ lấn độ cao `48dvh`; sửa specificity commit `2105790250f4fcd2539a56c60d4031b326633530`, thêm assert computed height commit `c285ca648a63499450ed5a33900d971d912cd7ed`. Chromium thật trên fixture App `wide-table-page list-fit-page`: **390×844=405.109px**, **768×750=360px**, **1280×600=288px**; desktop đủ chỗ không đổi. Cuộn đến dòng, filter và scroll nội bảng PASS.
