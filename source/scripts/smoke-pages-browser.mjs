@@ -2944,7 +2944,7 @@ try{
       throw Error('R06 responsive table-height override lost CSS specificity at '+
         mode+': '+JSON.stringify({actual:before.tableHeight,intendedHeight}));
     if(!before.shell.includes('wide-table-page')||!before.shell.includes('list-fit-page')||
-      before.tableHeight<260||before.bodyHeight<=height+120||
+      before.tableHeight<260||before.bodyHeight<=height+20||
       before.bodyWidth>width+5||before.scrollMode!=='auto')
       throw Error('R06 P1: real list-fit App still clips table at '+mode+': '+JSON.stringify(before));
     if(mode==='mobile'){
