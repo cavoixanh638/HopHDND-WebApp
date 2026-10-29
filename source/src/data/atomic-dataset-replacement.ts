@@ -190,14 +190,20 @@ export class AtomicDatasetReplacement{
     let conflict='';
     try{
       const result=await runTransaction(ref(this.database,ROOT),current=>{
-        if(current===null)return undefined;
+        // RTDB client cache can be null on the first transaction callback
+        // despite an authoritative get() above. Return null to force a
+        // SERVER compare/retry instead of silently cancelling the CAS.
+        // Root .write rules reject absent/invalid vault so this never
+        // becomes a delete-then-insert migration.
+        if(current===null)return current;
         try{
           const planned=planAtomicSwap(current,stage);
           if(objectOf(current.importState).operationId===operationId)return undefined;
           return planned;
         }catch(cause){conflict=cause instanceof Error?cause.message:'Dữ liệu nguồn đã thay đổi.';return undefined;}
       },{applyLocally:false});
-      if(!result.committed&&conflict)throw Error(conflict);
+      if(!result.committed)throw Error(conflict||
+        'Máy chủ chưa xác nhận giao dịch thay toàn bộ; chưa có kết quả áp dụng.');
     }catch(cause){
       // A lost ACK can mean committed. READ the operation marker, don't retry.
       const check=await this.hdnd().catch(()=>null);
