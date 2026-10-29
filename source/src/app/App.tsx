@@ -57,8 +57,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [firebaseSourceSeed,setFirebaseSourceSeed]=useState<{url:string;snapshot:SheetSnapshot}|null>(null);
   // Explicit A/B URL: no administrator setting is saved or changed.
   const compareSource=compareSourceFromSearch(typeof window==='undefined'?'':window.location?.search??'');
-  // Retired: production must never compare against or download Google Sheets.
-  const comparison=false;
+  // Production controller exposes activeDatasetReady. Legacy test adapters
+  // without this capability retain their isolated mock-source behaviour.
+  // Public Firebase never starts a GViz comparison or Sheets download.
+  const versionedFirebase=!!firebase&&firebase.activeDatasetReady!==undefined;
+  const comparison=!versionedFirebase&&!!firebase&&compareSource!==null;
   // Bench-only opt-in: do not let an old session snapshot masquerade as a live data speedup.
   const benchNoCache=disableSessionCacheForBenchmark(typeof window==='undefined'?'':window.location?.search??'');
   const activeViewerUid=useRef<string|null>(null);
@@ -69,7 +72,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // ONLY the read-only source of rows. The actual saved source is untouched.
   // Firebase is the sole operating data source. The historical profile source
   // choice is ignored but NOT silently overwritten in production configuration.
-  const selectedSource=(firebase?'primary':undefined) as 'primary'|'database'|'excel'|undefined;
+  const selectedSource=(versionedFirebase?'primary':comparison?compareSource:firebase?.profile?.dataSource)
+    as 'primary'|'database'|'excel'|undefined;
   const datasetVersion=activeVersion(firebase?.activeDataset??null);
   const primaryItemsPath=itemsPathFor(datasetVersion);
   const repository=useMemo<Repository>(()=>firebase
@@ -93,7 +97,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = isFirebase?`pages:primary:${datasetVersion}`:isDemo?'demo':configured.url;
+  const sourceKey = versionedFirebase
+    ?datasetVersion==='legacy'?'pages:primary':`pages:primary:${datasetVersion}`
+    :comparison?`compare:${compareSource}:${configured.url}`
+    :isDemo?'demo':isFirebase&&selectedSource==='primary'?'pages:primary'
+    :isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
@@ -111,7 +119,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // gates. No provisional Excel request while the admin config is pending.
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
   const canStartSource=sourceReady&&compareReady&&
-    (!firebase||firebase.activeDatasetReady)&&
+    (!versionedFirebase||firebase!.activeDatasetReady)&&
     (repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource,leaseManager);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
