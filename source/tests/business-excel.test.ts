@@ -7,7 +7,7 @@ function file(sheets:{name:string;rows:unknown[][]}[]):Uint8Array{
   return new Uint8Array(XLSX.write(book,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
 }
 const row=(code='NQ001',stt=1)=>[code,stt,'Thông qua nghị quyết','Sở Tài chính','HC',
- 'Thành ủy','Đang xin ý kiến','Đã trình','Đang xử lý','Chuyên viên A',
+ 'Thành ủy','Sở chưa trình','Đã trình HĐND, chưa có QĐ','VP đang thực hiện','Chuyên viên A',
  'Phòng tổng hợp','Phó Chánh Văn phòng','Phó Chủ tịch','Chưa trình','Ghi chú'];
 describe('business A–O Excel must never silently import wrong sheet or malformed rows',()=>{
   it('has no technical fields in exported template',()=>{
@@ -49,6 +49,11 @@ describe('business A–O Excel must never silently import wrong sheet or malform
     const extras=[...row(),'Dữ liệu ngoài hợp đồng'];
     expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[[...BUSINESS_HEADERS],extras]}]),'Hồ sơ'))
       .toThrow('ngoài cột O');
+  });
+  it('reports the precise column when a business progress status is unrecognized',()=>{
+    const invalid=row();invalid[6]='Không biết trạng thái';
+    expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[[...BUSINESS_HEADERS],invalid]}]),'Hồ sơ'))
+      .toThrow('dòng 2, cột G: trạng thái chưa chuẩn hóa');
   });
   it('returns stable IDs regardless of spreadsheet order',()=>{
     const a=parseBusinessExcel(file([{name:'Data',rows:[[...BUSINESS_HEADERS],row('NQ1',1),row('BC2',2).map((v,i)=>i===4?'BC':v)]}]),'Data');
