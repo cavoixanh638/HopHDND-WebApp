@@ -1,3 +1,15 @@
+## 29/10/2026 — Lượt 023: sửa UI theo ảnh chụp, chỉ PR #92 (RELEASE HOLD)
+
+| Mã | Đã xử lý | Cổng còn mở |
+| --- | --- | --- |
+| **R08** | Vạch resize 14px, window pointer fallback, khách/không-admin kéo local-only; admin CAS unchanged. Kéo +250px đạt tiến độ450, staff130, note100, total1562. | Verify source/Chromium exact code SHA `68a494fe`; Codex review; chủ dự án quyết định phát hành. |
+| **R09** | HC và Sở `align-items:center`, cùng centerY trong Chromium. | QA visual sau merge/publish (chưa thực hiện). |
+| **R10** | Bỏ justify và loại Tiến độ khỏi centered-status selector; Nội dung, Tiến độ, Ghi chú căn trái. | QA visual live sau phát hành (chưa thực hiện). |
+| **CI** | [source #40820076288](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076288), [staging #40820076163](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076163), [Firebase QA #40820076291](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40820076291). | Phải kiểm result trên đúng SHA; staging + Firebase QA đã SUCCESS khi ghi. |
+| **Release** | Bằng chứng và quyết định ở [L023](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | **NO MERGE / NO PUBLISH** PR #92; chưa Codex VERIFIED/OWNER_ACCEPTED; không deploy production hay sửa dữ liệu. |
+
+---
+
 ## 29/10/2026 — UI U01–U04, PR #92: chờ Codex xác minh độc lập (NO RELEASE)
 
 | Mã | Kết quả thực hiện | Còn phải hoàn thành |
