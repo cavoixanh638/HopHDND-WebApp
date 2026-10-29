@@ -1,3 +1,15 @@
+## OWNER DIRECTIVE — 29/10/2026: Adjacent-first manual column resize (PR #92, Lượt 019)
+
+**This instruction supersedes only the 23/10 rule below requiring the last visible column to compensate every drag.** Keep all other restrictions and release gates unchanged.
+
+- When adjusting the selected List frame width: distribute spare horizontal space over flexible content/group columns so the table fills the available frame; do not invent empty trailing white space. If the minimum widths together exceed the frame, use the table's *internal* horizontal scroll, not whole-page overflow or overlapping text. Default displayed ID remains **52px** (raw source 68px).
+- When dragging a separator between two visible columns: transfer pixels **first from/to the immediate right-hand column**, one-for-one, in both pointer preview and final CAS commit. If that neighbor reaches its min/max, transfer *only the remaining delta* from/to the **last displayed column**, provided it is not the same neighbor. Clamp at combined capacity; never violate min/max or change total visible width.
+- An auto-fitted column may appear much wider than its saved raw baseline. The first explicit manual resize materializes that already-displayed auto-fit growth once, keeping nonparticipants visually unchanged and allowing the adjacent column to give pixels down to its true minimum. Never continually persist automatic viewport resizing or re-scale ID repeatedly; retained future responsiveness must be checked.
+- Preserve read-only viewer limits, shared-layout CAS/merge/rollback/freeze, R01–R05, stage tint, per-field highlighting, user group names and four summary cards. PR #92 only: **not authorized to merge or publish**. No Firebase Rules/Functions deploy, import, production DB write, Supabase or source switch. Codex independent review required.
+- Verify exact source SHA with typecheck, unit, Firebase Emulator, headless Chrome pointer/keyboard, last-reservoir fallback, 1600 cap, ID 52px, reordered/hidden groups, auto-fit and 900px/mobile viewport. Store screenshots and results in `docs/tasks/UI_COLUMN_REFINEMENT_2026-10-28.md` Lượt 019.
+
+---
+
 ## FIREBASE LAUNCH PREPARATION — 27/10/2026: PR #79 merged, production backend still requires separate activation
 
 **Goal clarified by owner:** no employees are currently entering WebApp data. Use `main` and the canonical Pages URL for direct UI review; keep Google Sheets available as transitional source. Firebase-only. Supabase PAUSED.
