@@ -2447,8 +2447,9 @@ try{
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
-  // Drag beyond the adjacent column's remaining 180px: take the first
-  // 180px from Staff, then 70px from Note. The other physical widths stay put.
+  // Grouped Staff has 70px mandatory extra width (min physical 130px).
+  // Drag 250px: first 110px from Staff (240→130), then 140px from Note.
+  // The other physical widths stay put.
   const wideBefore=await widthSnapshot();
   const wideEdge=await evaluate(`(()=>{
     const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
@@ -2468,8 +2469,8 @@ try{
   assertSameTotal(wideBefore,wideAfter,'L023 owner wide drag');
   const ix=wideBefore.keys.indexOf('specificProgress');
   if(wideAfter.widths[ix]!==wideBefore.widths[ix]+250||
-    wideAfter.widths[ix+1]!==60||
-    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-70||
+    wideAfter.widths[ix+1]!==130||
+    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-140||
     wideAfter.id!==wideBefore.id)
     throw Error('L023 adjacent→last fallback incorrect: '+JSON.stringify({wideBefore,wideAfter}));
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
