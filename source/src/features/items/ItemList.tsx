@@ -308,6 +308,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // merge/CAS logic always compares the original shared layout, not local presets.
   const canViewerArrange=!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
     !personalViewActive&&!showAllSourceColumns&&!locked;
+  // A visual column drag is not a shared-layout write. All viewers may resize
+  // their current view; only authorized administrators use CAS to persist it.
+  // Personal/anonymous viewers never call the shared Firebase writer.
+  const canViewerResize=!customizing&&!showAllSourceColumns&&!permissionMode;
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout)=>{
     if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return;
     const baseline=initialLayout;
@@ -474,7 +478,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
   disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
-  onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange)&&
+  onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
     projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
       projectedExtras,compactOn,groupExtras)&&
@@ -493,7 +497,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         // growth only upon an explicit drag, so a wide neighbor can shrink.
         if(customizing)setLayout(previous=>resizeProjectedWithAdjacent(previous,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
-        else void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
+        else if(canViewerArrange)void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
+          column.key,width,projectedExtras,compactOn,groupExtras));
+        else if(canViewerResize)setApplied(previous=>resizeProjectedWithAdjacent(previous,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
       }}/>}</ColumnHeader>)}</tr><tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
