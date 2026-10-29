@@ -9,6 +9,7 @@ import {FirebaseRepository} from '../src/data/firebase-repository';
 import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
 import {migrateMirrorToPrimary,bootstrapApprovedRowsToPrimary} from '../src/data/firebase-primary-bootstrap';
+import {AtomicDatasetReplacement} from '../src/data/atomic-dataset-replacement';
 import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
@@ -93,6 +94,39 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await assertFails(get(ref(publicDb as never,'hdnd/editors')));
     await assertFails(get(ref(publicDb as never,'hdnd/editLocks')));
     await assertFails(get(ref(publicDb as never,'hdnd/freezeReceipts')));
+  });
+  it('stages and atomically swaps a verified candidate, with private backup and generation isolation',async()=>{
+    const service=new AtomicDatasetReplacement(admin() as never,()=>actor('administrator',true));
+    const proposed={...createDemoItems()[0],displayCode:'NEW_QPPL_2026'};
+    const op='newdataset_2026_a';
+    const staged=await service.stage([proposed],'business.xlsx',op);
+    expect(staged.oldCount).toBe(1);
+    expect((await get(ref(anonymous('guest') as never,'hdnd/items/r1'))).exists()).toBe(true);
+    await assertFails(get(ref(anonymous('guest') as never,'hdnd/importVault/'+op)));
+    expect((await get(ref(admin() as never,'hdnd/importVault/'+op+'/backup/items/r1'))).exists()).toBe(true);
+    const result=await service.activate(op,'business.xlsx');
+    expect(result.confirmed).toBe(true);
+    const records=(await get(ref(admin() as never,'hdnd/items'))).val();
+    expect(Object.keys(records)).toHaveLength(1);
+    expect(records.r1).toBeUndefined();
+    expect((await get(ref(admin() as never,'hdnd/permissions/columns/note'))).val()).toBe(true);
+    expect(await service.status(op)).toBe('committed');
+    expect((await service.activate(op,'business.xlsx')).confirmed).toBe(true);
+  });
+  it('rejects stale two-tab activation and can stage/restore verified private backup',async()=>{
+    const service=new AtomicDatasetReplacement(admin() as never,()=>actor('administrator',true));
+    const a='newdataset_tab_a',b='newdataset_tab_b';
+    await service.stage([createDemoItems()[0]],'a.xlsx',a);
+    await service.stage([{...createDemoItems()[0],displayCode:'OTHER_CODE'}],'b.xlsx',b);
+    await service.activate(a,'a.xlsx');
+    await expect(service.activate(b,'b.xlsx')).rejects.toThrow();
+    const op='newdataset_restore_a';
+    await service.restore(a,op);
+    expect((await service.activate(op,'KHOI PHUC '+a)).confirmed).toBe(true);
+    const records=(await get(ref(admin() as never,'hdnd/items'))).val();
+    expect(Object.keys(records)).toHaveLength(1);
+    expect(Object.keys(records)[0]).toContain(op);
+    expect(Object.values(records)[0]).toMatchObject({displayCode:'NQ01'});
   });
   it('public anonymous visitor saves only granted cells through a lease with server audit',async()=>{
     const id='anon-a',session=publicManager(id),writer=publicRepo(id,session),db=anonymous(id);
