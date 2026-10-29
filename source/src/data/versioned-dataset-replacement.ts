@@ -28,6 +28,7 @@ export interface ActiveDataset {
   digest:string;
   switchedAt:number;
   switchedBy:string;
+  restoreBackupId?:string;
 }
 export interface ReplacementPlan {
   operationId:string;
@@ -269,7 +270,7 @@ export async function restoreDatasetBackup(database:Database,user:ApprovedUser,
   if(!current)throw new Error('Chưa có phiên thay thế đang hoạt động để khôi phục.');
   const pointer:ActiveDataset={version:oldVersion,revision:current.revision+1,
     operationId:restoreOperationId,digest:backup.previousDigest,
-    switchedAt:Date.now(),switchedBy:user.uid};
+    switchedAt:Date.now(),switchedBy:user.uid,restoreBackupId:backupOperationId};
   const result=await runTransaction(ref(database,DATASET_POINTER),raw=>{
     const latest=asPointer(raw);
     if(JSON.stringify(latest)!==JSON.stringify(current))return undefined;
