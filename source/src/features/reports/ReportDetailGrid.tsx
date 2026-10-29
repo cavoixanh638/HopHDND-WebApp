@@ -201,8 +201,14 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const saveSettings=()=>{
     if(readOnlyViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
-    if(!saveDetailGridPreferences(sourceKey,pending)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
-    setApplied(pending);setSettings(false);
+    // R07: storage *and* live state must use the SAME validated snapshot.
+    // Empty/whitespace-only overrides are deleted by the validator, allowing
+    // the shared group title to appear immediately, without a reload.
+    let valid:DetailGridPreferences;
+    try{valid=validateDetailGridPreferences(pending);}
+    catch(error){setNotice(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return;}
+    if(!saveDetailGridPreferences(sourceKey,valid)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
+    setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
   };
   const options=(field:TextField,current:string)=>{
