@@ -25,8 +25,7 @@ import {loadSelectedWebFont} from '../data/on-demand-fonts';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
-import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
-import {loadActiveListView,loadListViews} from '../data/list-views';
+import {loadItemLayout,saveItemLayout,type ItemLayout} from '../data/item-preferences';
 import {layoutRecoveryScope} from '../data/draft-checkpoints';
 import {readConfirmedPageWidths,rememberConfirmedPageWidths} from '../data/confirmed-page-widths';
 import type {LayoutConflictChoices} from '../data/item-layout-merge';
@@ -348,15 +347,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // viewport, while only the inner content region follows the selected tab width.
   // Calculate the exact first-frame width synchronously from the saved shared
   // profile AND any selected personal view. Never wait for the child effect.
-  const viewFrameWidth=useMemo(()=>{
-    if(!listPage)return itemLayout.frameWidth??'auto';
-    const scope=layoutRecoveryScope(sourceKey);
-    const activeId=loadActiveListView(scope);
-    const preset=activeId?loadListViews(scope).find(view=>view.id===activeId):undefined;
-    if(!canCustomize||!preset)return itemLayout.frameWidth??'auto';
-    try{return overlayPersonalLayout(itemLayout,preset.layout).frameWidth??'auto';}
-    catch{return itemLayout.frameWidth??'auto';}
-  },[itemLayout,sourceKey,listPage,canCustomize]);
+  const viewFrameWidth=itemLayout.frameWidth??'auto';
   // Cache only widths from an actually confirmed profile. This keeps the
   // header, tabs and loading placeholder at their last saved width on reload.
   // Without a prior profile, use a compact neutral loading shell rather than

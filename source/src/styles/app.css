@@ -2674,3 +2674,26 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
     transform:none!important;
   }
 }
+
+
+/* Compact navigation / more usable vertical space. Preserve keyboard focus,
+   strong active state and 14px+ labels even on small screens. */
+.app-shell > .topbar.compact-topbar {min-height:32px;padding:2px 0;}
+.app-shell > nav.nav-tabs.primary-section-switcher {
+  gap:8px;margin:2px auto 8px;min-height:0;
+}
+.app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card {
+  min-height:48px;padding:7px 12px;gap:8px;border-radius:10px;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-title {
+  font-size:14px;line-height:1.25;
+}
+.app-shell > nav.primary-section-switcher .primary-section-card .section-card-state {
+  padding:3px 5px;min-width:44px;font-size:10px;
+}
+@media(max-width:650px) {
+  .app-shell > nav.nav-tabs.primary-section-switcher {gap:6px;margin:2px auto 8px;}
+  .app-shell > nav.primary-section-switcher .primary-section-card {
+    min-height:44px;padding:6px 10px;
+  }
+}
