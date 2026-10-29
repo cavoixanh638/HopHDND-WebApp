@@ -3,7 +3,7 @@ Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20
 
 > **Tiếp nối Lượt 018 (29/10/2026):** PR #91 đã MERGED và Pages đã publish thành công; PR #92 tách từ main đã publish, chỉ chứa tên nhóm gộp và bốn thẻ Danh sách, **CHƯA merge/publish**. Các câu “chưa phát hành” ở Lượt 017 là thông tin lịch sử trước quyết định merge PR #91.
 
-> **Trạng thái: PR91_PAGES_PUBLISHED / PR92_READY_FOR_CODEX_REVIEW. Lượt 019: kéo liền kề trước, cột cuối dự phòng và tự phủ khung đã FIX_TESTED trên code SHA `c6bdbb572a51bd546b18bfb9d6f42305e6f17100`; 547 unit + 8 R02 boundary + 51 emulator + browser real PASS; cả 3 GitHub Actions SUCCESS. Chờ Codex review và chủ dự án GO riêng. PR #92 chưa merge/publish.**
+> **Trạng thái: PR91_PAGES_PUBLISHED / PR92_NEEDS_FIX — Codex Lượt 020 rà HEAD `dbb44404a54420822084e015a175c69fb65915d7`: R06/P1 bảng bị cắt trên mobile trong khung App thật; R07/P2 tên nhóm popup bị trống ngay sau lưu textbox rỗng. 547 unit và 3 CI trên HEAD này PASS; 4 ca độc lập về width/serialization/CAS PASS, nhưng chưa đủ điều kiện merge. R01–R05 giữ lịch sử VERIFIED. PR #92 chưa merge/publish; chờ sửa và tái-review.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -326,6 +326,8 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | VERIFIED — Codex Lượt 012, source d61399d, ID 52 px một dòng; hồi quy resize PASS |
 | R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | `be288d3`/`fb3f438` tone mỗi khâu + neutral UI; `d644b0d` palette vars; `4eb6f9a` CSS stage-row; `9aba4ec`/`7dd2286` unit; `0cdee04` QA fixture; `8fdeddac`/`46c7309` Chrome; `df60d07` ảnh artifact. 518 unit, 8 R02, 51 emulator PASS; 3 workflow success source 46c7309; ảnh 12833754588 | VERIFIED — Codex Lượt 015, HEAD 5e80a5c; màu khung/pill, neutral, palette và R03 list/popup đúng; chờ chủ dự án nghiệm thu |
+| R06 / P1 | item-frame.css:947–950 + App list-fit shell — 4 thẻ dọc chiếm hết chiều cao; bảng bị cắt, không tiếp cận được trên mobile | Cho nội dung cuộn theo chiều dọc hợp lý hoặc bố trí vùng thẻ/bảng có thể tiếp cận; kiểm đúng class App, 390×844 và màn thấp | Chờ ChatGPT sửa; xem số đo và ảnh Codex Lượt 020 | OPEN — NEEDS_FIX |
+| R07 / P2 | ReportDetailGrid.tsx:100–101, 201–205 — lưu pending thô sau khi validator đã bỏ tên rỗng khiến tiêu đề nhóm trắng đến khi reload | Chuẩn hóa config một lần trước lưu và cập nhật cả applied/pending bằng giá trị chuẩn hóa; kiểm xóa tên/trắng/reset/save/reload | Chờ ChatGPT sửa; browser và ca tái hiện Lượt 020 | OPEN — NEEDS_FIX |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -939,3 +941,64 @@ Phần sửa được đưa vào PR riêng để kiểm CI và xem ảnh local. 
 - [**Ảnh Chromium source exact c6bdbb5 — artifact #12869978867**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870848/artifacts/12869978867): `hophdnd-l019-progress-staff-before.png`, `hophdnd-l019-progress-staff-after.png`, `hophdnd-l019-adjacent-exhausted-fallback.png`, R02 cap screenshots và các ảnh hồi quy cũ. Ảnh **QA synthetic**, không phải sản xuất/Pages.
 - [Offline QA artifact #12870466658](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40810870848/artifacts/12870466658) dùng cho kiểm thử kỹ thuật, **không** phát hành lên main.
 - **Chờ Codex rà độc lập:** raw width materialization (đặc biệt với cấu hình lưu cũ và conflict CAS từng cột), responsive thay frame, việc không đụng dữ liệu nguồn/permission, preview/commit khi adjacent chạm min/max, reload. **Trạng thái FIX_TESTED, chưa được Codex VERIFIED/OWNER_ACCEPTED.** PR #92 tiếp tục OPEN; không merge/publish/deploy/import.
+
+## 26. Lượt 020 — Codex rà độc lập PR #92 — 29/10/2026
+
+**Kết luận: NEEDS_FIX.** Có hai lỗi mới R06/P1 và R07/P2 cần sửa trước khi đề xuất merge. R01–R05 giữ kết quả lịch sử; không tự đóng review mới vì CI xanh. Không merge/publish/deploy/import hoặc sửa dữ liệu/config Firebase production.
+
+### Phạm vi, SHA và bằng chứng
+
+- PR #92 OPEN, nhánh `feat/group-labels-and-four-summary-cards-20261029`; HEAD được rà **`dbb44404a54420822084e015a175c69fb65915d7`**. So sánh từ `c6bdbb572a51bd546b18bfb9d6f42305e6f17100` tới HEAD chỉ thay tài liệu bàn giao, không thay mã.
+- Đọc Lượt 018–019, 21 file diff, code và hướng dẫn hiện hành; tải snapshot qua GitHub MCP và kiểm hash từng file khác biệt, khớp HEAD. Không dùng checkout cũ để kết luận.
+- Chạy độc lập: **547 unit PASS / 52 skipped**, TypeScript PASS. Thêm **5 ca kiểm tra cục bộ**: 4 ca width/serialization/CAS đạt và 1 ca tái hiện sự khác nhau giữa pending rỗng với cấu hình đã chuẩn hóa của popup. Ca tái hiện lỗi không được hiểu là tính năng đã đúng.
+- CI trên **đúng HEAD dbb4440** đã SUCCESS cả ba: [source 40811193346](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193346), [isolated staging 40811193257](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193257), [operational QA 40811193262](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40811193262).
+- Browser kiểm độc lập với fixture synthetic. Để kiểm tương tác với bố cục thật, fixture tạm gắn các class `wide-table-page list-fit-page guest-view` giống `App.tsx:396`; phép thử popup tạm bật nút cấu hình trong fixture, không cấp quyền thật. Không sửa CSS, thuật toán resize, tính số liệu hay component production để tạo lỗi. Các thay đổi fixture và test tạm được gỡ sau kiểm tra.
+- Ảnh bên dưới do Codex chụp trong browser local; không phải ảnh Pages production, không phải tuyên bố đã tải/đọc ZIP artifact của CI.
+
+### R06 / P1 — Mobile mất vùng bảng trong khung Danh sách thật
+
+**Vị trí:** `source/src/features/items/item-frame.css:916–950`, đặc biệt breakpoint xếp 4 thẻ thành 1 cột; tương tác với `source/src/styles/app.css:1986–2015`.
+
+**Tái hiện:** mở Danh sách có 4 thẻ và dữ liệu, viewport **390×844**, dùng class root thật `.app-shell.wide-table-page.list-fit-page`. Fixture chỉ cần thay class khung; không cần gọi Firebase hoặc sửa dữ liệu.
+
+**Đo được:**
+- Grid thẻ cao **816.7px**, từ y=**191.6** tới **1008.3**.
+- Vùng bảng bắt đầu y=**1022.3**, chiều cao chỉ **1.6px**.
+- Viewport cao **844px**, body scrollHeight/clientHeight cùng **844px**; main và item-list-card/region bị `overflow:hidden`. Không có đường cuộn trang để tới bảng hoặc phần cuối các thẻ.
+- Header QA ở ca này còn gọn hơn App đầy đủ; vẫn tái hiện cắt bảng. Việc ảnh standalone có body không tràn ngang không chứng minh bảng dùng được trong khung production.
+
+**Ảnh:** [Mobile bị cắt bảng](assets/PR92-mobile-table-clipped.png).
+
+**Yêu cầu sửa:** cho thẻ và bảng có đường cuộn dọc phù hợp khi tổng chiều cao vượt vùng còn lại, hoặc điều chỉnh cấu trúc vùng cuộn để bảng luôn tiếp cận được. Giữ 4 thẻ/hàng desktop và sticky/filter/scroll nội bộ hiện có khi đủ chỗ. Thêm browser test dùng **đúng class khung App**, không chỉ standalone fixture; kiểm 390×844, tablet/màn thấp và bảo đảm có thể nhìn/đi tới ít nhất một dòng bảng và các điều khiển. Không chỉ assert bodyWidth hoặc thẻ xếp đúng cột.
+
+### R07 / P2 — Xóa tên popup rồi Lưu tạo tiêu đề trống đến khi reload
+
+**Vị trí:** `source/src/features/reports/ReportDetailGrid.tsx:100–101, 201–205, 317`; liên quan `saveDetailGridPreferences` và `validateCompactGroupLabels`.
+
+**Tái hiện browser:**
+1. Danh sách có tên dùng chung `partyTogether = Ba khâu tùy chỉnh`.
+2. Mở popup → Cấu hình popup / cột → Đổi tên cột gộp trong popup.
+3. Nhập tên riêng, xóa hết chữ trong ô `Tên nhóm popup partyTogether`, bấm **Lưu cấu hình cột**.
+4. Popup báo lưu thành công nhưng tiêu đề nhóm tiến độ (`data-column-key=progressParty` trong fixture) có chuỗi **rỗng**.
+5. Reload cùng popup thì tiêu đề lại là **Ba khâu tùy chỉnh**.
+
+**Nguyên nhân:** đường lưu đã validate và loại key rỗng trong localStorage, nhưng `saveSettings` gọi `setApplied(pending)` với pending thô `{partyTogether:''}`. Spread `popupTitles` ưu tiên chuỗi rỗng hơn tên dùng chung; render ngay sau lưu và render sau reload không nhất quán.
+
+**Ảnh:** [Popup đã lưu nhưng tiêu đề nhóm trống](assets/PR92-popup-empty-title.png).
+
+**Yêu cầu sửa:** chuẩn hóa config trước khi lưu và dùng cùng đối tượng chuẩn hóa để cập nhật applied/pending; có thể bổ sung fallback tên rỗng ở renderer để an toàn, nhưng không chỉ vá ảnh mà để state/storage lệch nhau. Thêm regression test nhập→xóa, chỉ khoảng trắng, khôi phục, lưu, đóng/mở và reload: phải kế thừa tên chung hoặc tên mặc định ngay lập tức, không cần reload.
+
+### Lượt 019 — Kết quả kiểm riêng độ rộng và CAS
+
+Trong các ca đã kiểm, chưa thấy lỗi ở phép materialize/serialize và merge width:
+- Browser kéo chuột thật trên bố cục đã tự dàn, total **1324px**: trước **[ID46, Nội dung282, Tiến độ301, Tiến độ hiện tại224, người phụ trách374, Ghi chú97]**; sau +50 ở Tiến độ hiện tại: **[46,282,301,274,324,97]**, total vẫn **1324px**. Không cột khác đổi.
+- Ca đơn vị riêng materialize toàn bộ pixel đang hiển thị rồi JSON serialize/validate/reload giữ đúng **1362px**, target/adjacent ±50, hidden source widths giữ nguyên; no-op trả nguyên layout.
+- Merge ba chiều giữ thay đổi tên nhóm và width cột nguồn ẩn từ remote khi không trùng field.
+- Nếu remote sửa width cột visible cũng được materialize, `mergeItemLayout` phát `LayoutConflictError` tại đúng `columns.content.width`; chọn local theo field trả lại đúng bố cục mong muốn. Không ghi đè âm thầm.
+- Đây là kiểm hàm CAS/merge và browser với mock save, **không phải thử hai tài khoản Cloud thật**. CI staging/emulator cũng không chứng minh Rules/config production đã sẵn sàng.
+
+Tên nhóm chính/nhóm đổi neo và số đếm fixture theo mô hình mặc định nhìn chung khớp các unit đã chạy; lỗi popup R07 và chiều cao R06 khiến toàn PR chưa đạt. Cần ChatGPT trả lời riêng R06/R07 bằng commit sửa, test dùng khung thật, ảnh trước/sau và CI đúng SHA; Codex sẽ tái-review.
+
+**Câu lệnh chuyển ChatGPT:**
+
+> Đọc Lượt 020. PR #92 NEEDS_FIX: R06/P1 bốn thẻ mobile bị cắt trong App list-fit shell, bảng chỉ còn 1.6px và ngoài viewport; R07/P2 xóa tên nhóm popup rồi lưu tạo tiêu đề trống đến khi reload vì applied dùng pending chưa chuẩn hóa. Sửa đúng nguyên nhân, thêm test tái hiện bằng class khung thật và vòng nhập/xóa/save/reopen/reload; giữ kết quả resize/CAS đã kiểm và các tính năng khác. Ghi commit, ảnh, CI và phản hồi từng mã. Chưa merge/publish/deploy/import.
