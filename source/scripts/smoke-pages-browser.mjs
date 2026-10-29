@@ -2414,6 +2414,66 @@ try{
   console.log('L019_PROGRESS_STAFF_ADJACENT_AND_FRAME_FILL_PASS',
     JSON.stringify({reportedBefore,reportedAfter,frameCases}));
   
+  // Owner 29/10 screenshot: normal word spacing, a centered HC/department
+  // heading and a full-height divider large enough to grab with a mouse.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?progress-before-staff=1'});
+  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
+    'L023 visible divider fixture missing');
+  const textGeometry=await evaluate(`(()=>{
+    const style=selector=>{const node=document.querySelector(selector);
+      return node?getComputedStyle(node):null;};
+    const badge=document.querySelector('.compact-document-badge');
+    const dept=document.querySelector('.compact-document-department');
+    const center=node=>node?(node.getBoundingClientRect().top+
+      node.getBoundingClientRect().bottom)/2:null;
+    return {
+      grip:document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+        .getBoundingClientRect().width,
+      progressAlign:style('td[data-col-key=specificProgress]')?.textAlign,
+      progressButtonAlign:style('td[data-col-key=specificProgress] .inline-note-trigger')?.textAlign,
+      noteAlign:style('td[data-col-key=note]')?.textAlign,
+      noteButtonAlign:style('td[data-col-key=note] .inline-note-trigger')?.textAlign,
+      contentAlign:style('.compact-document-content')?.textAlign,
+      headingAlign:style('.compact-document-heading')?.alignItems,
+      badgeY:center(badge),departmentY:center(dept)
+    };
+  })()`);
+  if(textGeometry.grip<13||textGeometry.progressAlign!=='left'||
+    textGeometry.progressButtonAlign!=='left'||textGeometry.noteAlign!=='left'||
+    textGeometry.noteButtonAlign!=='left'||textGeometry.contentAlign!=='left'||
+    textGeometry.headingAlign!=='center'||textGeometry.badgeY===null||
+    textGeometry.departmentY===null||
+    Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
+    throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
+  // Drag beyond the adjacent column's remaining 180px: take the first
+  // 180px from Staff, then 70px from Note. The other physical widths stay put.
+  const wideBefore=await widthSnapshot();
+  const wideEdge=await evaluate(`(()=>{
+    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
+      .getBoundingClientRect();
+    return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...wideEdge});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...wideEdge,
+    button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:wideEdge.x+250,y:wideEdge.y,
+    button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:wideEdge.x+250,y:wideEdge.y,
+    button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=449",
+    'L023 drag +250 stopped too early despite last-column fallback');
+  const wideAfter=await widthSnapshot();
+  assertSameTotal(wideBefore,wideAfter,'L023 owner wide drag');
+  const ix=wideBefore.keys.indexOf('specificProgress');
+  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+250||
+    wideAfter.widths[ix+1]!==60||
+    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-70||
+    wideAfter.id!==wideBefore.id)
+    throw Error('L023 adjacent→last fallback incorrect: '+JSON.stringify({wideBefore,wideAfter}));
+  console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
+    JSON.stringify({textGeometry,wideBefore,wideAfter}));
+
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
   // Check REAL keyboard and pointer, including when the capped group is last.
   const r02Cap=[];
