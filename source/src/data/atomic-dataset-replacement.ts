@@ -1,4 +1,4 @@
-import {get,ref,runTransaction,set,serverTimestamp,type Database} from 'firebase/database';
+import {get,ref,runTransaction,set,serverTimestamp,onValue,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
 import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
@@ -188,14 +188,21 @@ export class AtomicDatasetReplacement{
       (objectOf(raw.importVault)[operationId] as DatasetStage).candidate))
       throw Error('Ứng viên thay đổi; không áp dụng.');
     let conflict='';
+    // runTransaction() may start with an EMPTY CLIENT CACHE even after get().
+    // Never submit null as a first transaction attempt (a destructive write,
+    // denied by Rules). Keep an active onValue watcher to hydrate the root
+    // cache before the compare-and-swap, then remove it in finally.
+    const rootRef=ref(this.database,ROOT);
+    let stopRoot:()=>void=()=>{};
     try{
-      const result=await runTransaction(ref(this.database,ROOT),current=>{
-        // RTDB client cache can be null on the first transaction callback
-        // despite an authoritative get() above. Return null to force a
-        // SERVER compare/retry instead of silently cancelling the CAS.
-        // Root .write rules reject absent/invalid vault so this never
-        // becomes a delete-then-insert migration.
-        if(current===null)return current;
+      await new Promise<void>((resolve,reject)=>{
+        stopRoot=onValue(rootRef,snap=>{
+          if(snap.exists())resolve();
+          else reject(Error('Chưa có snapshot Firebase để so sánh nguyên tử.'));
+        },reject);
+      });
+      const result=await runTransaction(rootRef,current=>{
+        if(current===null)return undefined;
         try{
           const planned=planAtomicSwap(current,stage);
           if(objectOf(current.importState).operationId===operationId)return undefined;
@@ -218,6 +225,7 @@ export class AtomicDatasetReplacement{
       throw new Error('Trạng thái thao tác chưa xác định; KHÔNG gửi nhập lại. Tra cứu theo mã '+
         operationId+'. '+(cause instanceof Error?cause.message:'Mất kết nối.'));
     }
+    finally{stopRoot();}
     const verified=await this.hdnd();
     verifyCandidate(verified.items,stage.candidate);
     if(objectOf(verified.importState).operationId!==operationId)
