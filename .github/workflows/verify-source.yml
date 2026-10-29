@@ -151,6 +151,7 @@ jobs:
             source/hophdnd-l018-four-cards-desktop.png
             source/hophdnd-l018-group-titles-popup.png
             source/hophdnd-l018-four-cards-mobile.png
+            source/hophdnd-l019-adjacent-exhausted-fallback.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure
