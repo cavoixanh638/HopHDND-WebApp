@@ -658,8 +658,9 @@
    vertical separator is the target; only an invisible 8px hit zone over it.
    On hover/focus accent that same line rather than painting a new control. */
 .item-data-table .item-heading-row th .column-resizer {
-  right:-4px;
-  width:8px;
+  /* Enlarge only the invisible hit area; the separator stays 1px. */
+  right:-7px;
+  width:14px;
   border:0;
   background:transparent;
   padding:0;
@@ -675,7 +676,7 @@
   outline:none;
 }
 .item-data-table .item-heading-row th .column-resizer:is(:hover,:focus-visible)::after {
-  content:"";position:absolute;right:3px;top:0;bottom:0;
+  content:"";position:absolute;right:6px;top:0;bottom:0;
   width:2px;background:#348768;pointer-events:none;
 }
 /* One merged Phòng/CV column has TWO full-size filter controls. Keep the
@@ -784,7 +785,7 @@
   width:100%;min-width:0;padding:2px 0;box-sizing:border-box;
 }
 .compact-document-group{display:grid;gap:5px;min-width:0;text-align:left;line-height:1.45}
-.compact-document-heading{display:flex;align-items:flex-start;gap:8px;min-width:0;flex-wrap:wrap}
+.compact-document-heading{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .compact-document-badge{
   display:inline-flex;align-items:center;min-width:0;max-width:100%;
   flex:none;border:1px solid #decafa;border-radius:5px;padding:2px 6px;
@@ -793,7 +794,7 @@
 .compact-document-badge[data-kind="HC"]{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
 .compact-document-badge[data-kind="BC"]{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
 .compact-document-badge .cell-picker-trigger{width:auto!important;min-height:24px;padding:1px 3px}
-.compact-document-department{flex:1 1 140px;min-width:0;font-size:12px;overflow-wrap:anywhere}
+.compact-document-department{display:flex;align-items:center;flex:1 1 120px;min-width:0;min-height:24px;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
 .compact-document-content{min-width:0;font-size:13px;font-weight:650;white-space:pre-wrap;overflow-wrap:anywhere}
 .compact-document-content .content-button{white-space:normal;text-align:left;overflow-wrap:anywhere}
 .compact-stages{display:grid;gap:5px;min-width:0;container-type:inline-size}
