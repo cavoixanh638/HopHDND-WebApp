@@ -80,7 +80,9 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await get(ref(root as never,'hdnd/editors'));
     await get(ref(root as never,'hdnd/editLocks'));
     await get(ref(root as never,'hdnd/freezeReceipts'));
-    await assertFails(get(ref(root as never,'hdnd')));
+    // Only the sole Google admin can inspect the entire atomic import
+    // snapshot/backup. Public and employee clients still cannot read root.
+    await get(ref(root as never,'hdnd'));
     // Product policy: viewing business data is PUBLIC, even without Firebase
     // Auth; only modifications and internal editor/token registry are restricted.
     const publicDb=env.unauthenticatedContext().database();
