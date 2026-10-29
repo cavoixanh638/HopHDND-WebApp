@@ -478,7 +478,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
     projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
       projectedExtras,compactOn,groupExtras)&&
-    <ColumnResizeHandle columnIndex={index} width={visualWidth(column.width,column.key)}
+    <ColumnResizeHandle windowDragFallback columnIndex={index} width={visualWidth(column.width,column.key)}
       adjacent={{index:index+1,
         width:visualWidth(displayedColumns[index+1].width,displayedColumns[index+1].key),
         ...projectedPhysicalLimits(displayedColumns[index+1].key,groupExtras,compactOn)}}
