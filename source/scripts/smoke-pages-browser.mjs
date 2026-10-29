@@ -2692,6 +2692,38 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
 
 
+  // R12: an admin must see a DIRECT header-rename entry in the normal
+  // list, not only a collapsed subpanel several screens into customization.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
+    'R12 admin list header rename shortcut missing');
+  await evaluate("document.querySelector('.group-label-shortcut').click()");
+  await eventually("!!document.querySelector('.group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')",
+    'R12 header rename dialog missing');
+  const quickNameFocus=await evaluate(`(()=>{
+    const input=document.querySelector('.group-label-quick-editor input[aria-label="Đổi tên cột gộp partyTogether"]');
+    input?.focus();return document.activeElement===input;
+  })()`);
+  if(!quickNameFocus)throw Error('R12 header title editor focus missing');
+  await send('Input.insertText',{text:'Tiến độ công việc 3 bước'});
+  await eventually("document.querySelector('.group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')?.value==='Tiến độ công việc 3 bước'",
+    'R12 header rename input lost controlled state');
+  await evaluate("document.querySelector('.group-label-quick-editor button[type=submit]').click()");
+  await eventually("document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim()==='Tiến độ công việc 3 bước'",
+    'R12 shared CAS rename did not update live table title');
+  const quickRename=await evaluate(`({
+    heading:document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim(),
+    modalOpen:!!document.querySelector('.group-label-quick-editor'),
+    originalSourceField:!!document.querySelector('td[data-col-key=progressBuild]')
+  })`);
+  if(quickRename.modalOpen)throw Error('R12 save did not close rename popup');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
+  await eventually("!!document.querySelector('.guest-compact-menu-bar')",
+    'R12 guest layout failed to load');
+  if(await evaluate("!!document.querySelector('.group-label-shortcut')"))
+    throw Error('R12 guest received admin-only group-title edit control');
+  console.log('R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS',JSON.stringify(quickRename));
+
   // Real administrator UI: type, cancel, save with the existing layout
   // persistence callback, remount from the saved synthetic snapshot and reset.
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
