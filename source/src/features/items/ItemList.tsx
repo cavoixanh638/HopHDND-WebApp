@@ -631,7 +631,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
               aria-label={'Đổi tên cột gộp '+key}
               placeholder={COMPACT_GROUP_DEFAULT_LABELS[key]}
               disabled={viewSaving}
-              onChange={event=>setEditingGroupLabels(prev=>({...prev,[key]:event.currentTarget.value}))}/>
+              onChange={event=>{const value=event.currentTarget.value;
+                setEditingGroupLabels(prev=>({...prev,[key]:value}));}}/>
           </label>
           <button type="button" className="button ghost" disabled={viewSaving||!editingGroupLabels[key]}
             onClick={()=>setEditingGroupLabels(prev=>{const next={...prev};delete next[key];return next;})}>
