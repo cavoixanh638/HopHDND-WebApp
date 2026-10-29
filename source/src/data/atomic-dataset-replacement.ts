@@ -1,4 +1,4 @@
-import {get,ref,runTransaction,set,type Database} from 'firebase/database';
+import {get,ref,runTransaction,set,serverTimestamp,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
 import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
@@ -115,7 +115,7 @@ export function planAtomicSwap(hdnd:unknown,stage:DatasetStage):NativeObject{
   const current=objectOf(hdnd),already=objectOf(current.importState);
   if(already.operationId===stage.operationId){
     // Idempotent read-after-uncertain commit. Never apply a second time.
-    if(!same(current.items,stage.candidate))throw Error('Mã thao tác đã dùng nhưng dữ liệu không trùng; cần kiểm tra thủ công.');
+    if(!same(readItems(current.items),readItems(stage.candidate)))throw Error('Mã thao tác đã dùng nhưng dữ liệu không trùng; cần kiểm tra thủ công.');
     return current;
   }
   if(datasetSignature(current)!==stage.baselineSignature)
@@ -199,6 +199,11 @@ export class AtomicDatasetReplacement{
         try{
           const planned=planAtomicSwap(current,stage);
           if(objectOf(current.importState).operationId===operationId)return undefined;
+          // Row validation requires updatedAt === server 'now'. Stage data
+          // was prepared earlier, so resolve fresh SERVER timestamps within
+          // the atomic transaction. Readback compares all business fields.
+          planned.items=Object.fromEntries(Object.entries(stage.candidate)
+            .map(([id,row])=>[id,{...objectOf(row),updatedAt:serverTimestamp()}]));
           return planned;
         }catch(cause){conflict=cause instanceof Error?cause.message:'Dữ liệu nguồn đã thay đổi.';return undefined;}
       },{applyLocally:false});
@@ -208,7 +213,7 @@ export class AtomicDatasetReplacement{
       // A lost ACK can mean committed. READ the operation marker, don't retry.
       const check=await this.hdnd().catch(()=>null);
       if(check&&objectOf(check.importState).operationId===operationId&&
-        same(check.items,stage.candidate))
+        same(readItems(check.items),readItems(stage.candidate)))
         return {operationId,generation:operationId,count:stage.count,confirmed:true,status:'applied'};
       throw new Error('Trạng thái thao tác chưa xác định; KHÔNG gửi nhập lại. Tra cứu theo mã '+
         operationId+'. '+(cause instanceof Error?cause.message:'Mất kết nối.'));
