@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
 import type {Item} from '../../shared/types';
 import {parseGvizPayload} from './gviz-parser';
+import {STATUS_OPTIONS} from '../../shared/field-definitions';
+import {DEFAULT_REPORTS} from '../domain/reporting';
 
 /** Public business workbook A–O; intentionally NOT the internal recordId template. */
 export const BUSINESS_HEADERS=[
@@ -88,8 +90,23 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
       throw Error('Sheet "'+sheetName+'", dòng '+line+', cột B: STT phải là số nguyên dương.');
     if(!String(values[2]??'').trim())throw Error('Sheet "'+sheetName+'", dòng '+line+', cột C: thiếu nội dung trình.');
     const kind=normalized(values[4]);
-    if(!['hc','hanh chinh','qppl','nq','bc','bao cao'].includes(kind))
-      throw Error('Sheet "'+sheetName+'", dòng '+line+', cột E: Loại VB phải là HC, QPPL, NQ hoặc BC; đang có "'+values[4]+'".');
+    if(!['hc','hanh chinh','qppl','bc','bao cao'].includes(kind))
+      throw Error('Sheet "'+sheetName+'", dòng '+line+', cột E: Loại VB phải là HC, QPPL hoặc BC (NQ chung chưa xác định HC/QPPL); đang có "'+values[4]+'".');
+    const typed=kind==='bc'||kind==='bao cao'?'BC':'NQ';
+    if(/^BC/i.test(code)&&typed!=='BC'||/^(?:ID|NQ)/i.test(code)&&typed!=='NQ')
+      throw Error('Sheet "'+sheetName+'", dòng '+line+', cột E: loại văn bản mâu thuẫn với mã '+code+'.');
+    const checks:[number,'progressParty'|'progressBuild'|'progressCouncil',string][]=[
+      [6,'progressParty','G'],[7,'progressBuild','H'],[8,'progressCouncil','I']];
+    for(const [index,field,column] of checks){
+      const value=String(values[index]??'').trim();
+      const expected=new Set<string>([
+        ...STATUS_OPTIONS[field],...DEFAULT_REPORTS.filter(report=>report.statusField===field)
+          .flatMap(report=>report.columns)
+      ].map(normalized));
+      if(value&&!expected.has(normalized(value)))
+        throw Error('Sheet "'+sheetName+'", dòng '+line+', cột '+column+
+          ': trạng thái chưa chuẩn hóa "'+value+'". Hãy chọn một trạng thái nghiệp vụ hợp lệ, không tự đổi giá trị.');
+    }
     identifier(code,sheetName,line);
     checked.push(values);
   }
