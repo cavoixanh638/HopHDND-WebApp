@@ -6,6 +6,7 @@ import {inspectBusinessWorkbook,readBusinessWorkbook,createBusinessTemplate,
   compareBusinessImport,type BusinessReadResult,type ImportIssue} from '../../data/business-excel';
 import {AtomicDatasetReplacement,type StageReceipt} from '../../data/atomic-dataset-replacement';
 import {ItemSummaryCards} from '../items/ItemSummaryCards';
+import {summarizeListItems} from '../../domain/item-summary';
 
 type Props={
   items:Item[];isAdmin:boolean;disabled:boolean;onClose:()=>void;
@@ -70,11 +71,11 @@ export function ExcelTransferPanel({items,isAdmin,disabled,onClose,database,user
     finally{setBusy(false);}
   };
   const apply=async()=>{
-    if(!stage||!file||!enabled||!confirm||
+    if(!stage||!enabled||!confirm||
       typed!==`THAY TOAN BO ${stage.newCount}`||!service)return;
     setBusy(true);setError('');setNotice('');
     try{
-      const result=await service.activate(stage.operationId,file.name);
+      const result=await service.activate(stage.operationId,stage.fileName);
       if(!result.confirmed)throw Error('Máy chủ chưa xác nhận đầy đủ.');
       setNotice('ĐÃ XÁC NHẬN trên server và đọc lại đủ '+result.count+
         ' hồ sơ. Mã thao tác '+result.operationId+'. Bản sao lưu giữ riêng tư.');
@@ -91,12 +92,14 @@ export function ExcelTransferPanel({items,isAdmin,disabled,onClose,database,user
     finally{setBusy(false);}
   };
   const restore=async()=>{
-    if(!service||!restoreId.trim()||!enabled||!file)return;
+    if(!service||!restoreId.trim()||!enabled)return;
     setBusy(true);setError('');setStage(null);
     try{
       const newOp=crypto.randomUUID().replace(/-/g,'');
       const receipt=await service.restore(restoreId.trim(),newOp);
-      setStage(receipt);setFile({...file,name:'KHOI PHUC '+restoreId.trim()});
+      setStage(receipt);setFile(null);setSheet('Bản sao lưu');
+      setPreview({sheet:'Bản sao lưu',items:receipt.newPreview,issues:[],
+        statistics:summarizeListItems(receipt.newPreview)});
       setConfirm(false);setTyped('');
       setNotice('Bản sao lưu đã được tạo thành ứng viên KHÔI PHỤC. Chưa thay dữ liệu đang sử dụng; hãy xác nhận riêng.');
     }catch(cause){setError((cause as Error).message);}
@@ -153,9 +156,9 @@ export function ExcelTransferPanel({items,isAdmin,disabled,onClose,database,user
       {!stage&&<button className="button primary" disabled={busy||!enabled} onClick={()=>void dryRun()}>
         B. Tạo ứng viên, sao lưu riêng và kiểm tra đọc lại</button>}
     </section>}
-    {stage&&file&&<section className="notice" aria-label="Xác nhận thay toàn bộ">
+    {stage&&<section className="notice" aria-label="Xác nhận thay toàn bộ">
       <h3>C. Xác nhận thay toàn bộ sau khi thử nhập đạt</h3>
-      <p><strong>Tệp:</strong> {file.name} · <strong>Sheet:</strong> {sheet} ·
+      <p><strong>Nguồn:</strong> {stage.fileName} · <strong>Sheet:</strong> {sheet} ·
         Hồ sơ đang dùng: <strong>{stage.oldCount}</strong> · Hồ sơ mới: <strong>{stage.newCount}</strong></p>
       <p>Mã thao tác: <code>{stage.operationId}</code>. Bản sao lưu riêng tư đã đọc lại và đối chiếu.
         Những hồ sơ không có trong file mới sẽ rời tập hoạt động. Không tự nhập lại nếu mất mạng.</p>
@@ -175,7 +178,7 @@ export function ExcelTransferPanel({items,isAdmin,disabled,onClose,database,user
       <button className="button ghost" disabled={busy||!lookupId} onClick={()=>void lookup()}>Tra cứu trạng thái server</button>
       <label className="field">Mã bản sao lưu muốn khôi phục
         <input value={restoreId} onChange={event=>setRestoreId(event.currentTarget.value)}/></label>
-      <button className="button ghost" disabled={!enabled||busy||!restoreId||!file}
+      <button className="button ghost" disabled={!enabled||busy||!restoreId}
         onClick={()=>void restore()}>Tạo ứng viên khôi phục — chưa áp dụng</button>
     </details>}
     {!enabled&&<p className="notice">Cần tài khoản Google quản trị, kết nối Firebase và không có phần sửa chưa lưu. Không có quyền thì không thể tạo ứng viên hoặc thay dữ liệu.</p>}

@@ -24,7 +24,7 @@ export interface DatasetStage{
   baselineSignature:string;candidateSignature:string;createdAt:number;
   owner:string;count:number;fileName:string;candidateCodes:string[];
 }
-export type StageReceipt={operationId:string;count:number;oldCount:number;newCount:number;newPreview:Item[];changes:ReturnType<typeof compareBusinessImport>};
+export type StageReceipt={operationId:string;fileName:string;count:number;oldCount:number;newCount:number;newPreview:Item[];changes:ReturnType<typeof compareBusinessImport>};
 export type ReplaceReceipt={operationId:string;generation:string;count:number;confirmed:boolean;status:'applied'|'uncertain'};
 export const objectOf=(x:unknown):NativeObject=>x&&typeof x==='object'&&!Array.isArray(x)?x as NativeObject:{};
 const readItems=(val:unknown):Item[]=>Object.entries(objectOf(val))
@@ -174,7 +174,7 @@ export class AtomicDatasetReplacement{
     verifyCandidate(objectOf(written).candidate,candidate);
     if(datasetSignature(await this.hdnd())!==stage.baselineSignature)
       throw Error('Nguồn đổi sau khi sao lưu; ứng viên bị khóa. Hãy bắt đầu lại quy trình.');
-    return {operationId,count:newRows.length,oldCount:oldRows.length,newCount:newRows.length,
+    return {operationId,fileName,count:newRows.length,oldCount:oldRows.length,newCount:newRows.length,
       newPreview:newRows,changes:compareBusinessImport(oldRows,newRows)};
   }
   /** Server CAS on the full hdnd root: never delete-before-insert. */
@@ -227,7 +227,8 @@ export class AtomicDatasetReplacement{
   async status(operationId:string):Promise<'committed'|'staged'|'missing'>{
     assertAdmin(this.getUser());assertOperation(operationId);
     const hdnd=await this.hdnd();
-    if(objectOf(hdnd.importState).operationId===operationId)return 'committed';
+    if(objectOf(hdnd.importState).operationId===operationId||
+      objectOf(objectOf(hdnd.importOperations)[operationId]).status==='committed')return 'committed';
     return objectOf(hdnd.importVault)[operationId]?'staged':'missing';
   }
   async restore(savedOperationId:string,restoreOperationId:string){
