@@ -119,6 +119,9 @@ export function useFirebase(){
         setError('Con trỏ phiên bản dữ liệu Firebase không hợp lệ. Đã khóa đọc/sửa để bảo vệ dữ liệu.');
         return;
       }
+      // Never reuse old-generation grants before the new permissions stream
+      // resolves; server Rules also enforce the generation boundary.
+      setPermissions({columns:{}});setPermissionsReady(false);
       setActiveDataset(raw??null);setActiveDatasetReady(true);
     },cause=>{
       setActiveDatasetReady(false);
