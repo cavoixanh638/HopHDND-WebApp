@@ -591,6 +591,21 @@ try{
       labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+  const compactNavigation=await evaluate(`(()=>{
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const cards=[...(nav?.querySelectorAll('.primary-section-card')??[])];
+    return {count:cards.length,heights:cards.map(x=>x.getBoundingClientRect().height),
+      focusable:cards.every(x=>x.tagName==='BUTTON'&&!x.disabled),
+      active:cards.filter(x=>x.classList.contains('active')).length,
+      navGap:parseFloat(getComputedStyle(nav).rowGap)};
+  })()`);
+  if(compactNavigation.count!==2||compactNavigation.active!==1||
+      !compactNavigation.focusable||compactNavigation.heights.some(h=>h>72||h<42))
+    throw Error('PR95 compact navigation regression '+JSON.stringify(compactNavigation));
+  const compactNavigationShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-nav-compact-synthetic.png',
+    Buffer.from(compactNavigationShot.data,'base64'));
+  console.log('PR95_COMPACT_NAVIGATION_PASS',JSON.stringify(compactNavigation));
   console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
   console.log('PRIMARY_CARD_TABS_NO_ICONS_PASS',JSON.stringify({widths:mainSectionCards.widths,cardDepth:mainSectionCards.cardDepth,activeBadge:mainSectionCards.activeBadge}));
 
@@ -2656,6 +2671,21 @@ try{
   if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
   const fourDesktopShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-l018-four-cards-desktop.png',Buffer.from(fourDesktopShot.data,'base64'));
+  const pr95List=await evaluate(`(()=>{
+    const text=document.body.textContent??'';
+    return {presets:!!document.querySelector('.list-view-tools'),
+      personalName:text.includes('Mẫu hiển thị cá nhân')||text.includes('Tên mẫu mới')||
+        text.includes('Lưu mẫu mới'),
+      specialistToggle:text.includes('Chọn chuyên viên toàn cơ quan'),
+      colFilterCells:document.querySelectorAll('.item-column-filter-row th, .item-column-filter-row td').length,
+      summaryCards:document.querySelectorAll('[data-summary-card]').length};
+  })()`);
+  if(pr95List.presets||pr95List.personalName||pr95List.specialistToggle||
+    pr95List.summaryCards!==4||pr95List.colFilterCells<1)
+    throw Error('PR95 personal UI removal / column filters regression '+JSON.stringify(pr95List));
+  const pr95ListShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-list-compact-synthetic.png',Buffer.from(pr95ListShot.data,'base64'));
+  console.log('PR95_REMOVED_PERSONAL_PRESETS_RETAINED_COLUMN_FILTERS_PASS',JSON.stringify(pr95List));
   // Clickable summary counts use live normalized report conditions. Counts
   // retain column-filter context so another quick condition remains selectable.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1'});
