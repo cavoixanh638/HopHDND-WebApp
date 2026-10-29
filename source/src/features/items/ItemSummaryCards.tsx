@@ -14,9 +14,9 @@ function StageCard({stage}: {stage:SummaryStage}){
       aria-valuemax={100} aria-valuenow={pct}>
       <span style={{width:pct+'%'}}/>
     </div>
-    <div className="item-summary-buckets">
+    <div className="item-summary-buckets" role="list" aria-label={'Các công đoạn '+stage.title}>
       {stage.buckets.map(bucket=><div className={'item-summary-bucket item-summary-bucket-'+bucket.stage}
-        key={bucket.stage}><span>{bucket.label}</span><strong>{bucket.count}</strong></div>)}
+        key={bucket.stage} role="listitem"><span>{bucket.label}</span><strong>{bucket.count}</strong></div>)}
     </div>
     <p className="item-summary-unmatched" role="note">
       Chưa chuẩn hóa / ngoài nhóm: <strong>{stage.unmatched}</strong> (thuộc tổng {stage.total})
