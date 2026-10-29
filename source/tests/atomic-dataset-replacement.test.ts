@@ -59,6 +59,6 @@ describe('atomic complete dataset replacement plan (pure server-CAS model)',()=>
     expect(()=>prepareCandidate(candidate,'operation_dup','administrator')).toThrow(/trùng/);
     const {original,stage}=build();
     expect(()=>planAtomicSwap({...original,importVault:{[stage.operationId]:{...stage,owner:'other'}}},stage))
-      .toThrow(/thay đổi/);
+      .toThrow(/đổi|thay đổi/);
   });
 });

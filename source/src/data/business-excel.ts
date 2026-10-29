@@ -76,8 +76,7 @@ export function readBusinessWorkbook(input:ArrayBuffer|Uint8Array,sheetName?:str
     header:1,raw:true,defval:null,blankrows:true
   });
   const rowIndex=data.slice(0,10).findIndex(row=>Array.isArray(row)&&
-    normalize(row[2])===normalize(BUSINESS_HEADERS[2])&&
-    normalize(row[3])===normalize(BUSINESS_HEADERS[3]));
+    normalize(row[2])===normalize(BUSINESS_HEADERS[2]));
   if(rowIndex<0){
     issue(1,2,'Không tìm được dòng tiêu đề Nội dung trình / Sở, ngành tại C/D trong 10 dòng đầu.');
     return {sheet:name,items:[],issues,statistics:emptySummary()};
