@@ -72,7 +72,7 @@ describe('R15 group header two-tab editing regression',()=>{
     form(tree).props.onSubmit({preventDefault:()=>{}});await settle();
     expect(saver).toHaveBeenCalledTimes(1);
     expect(saver.mock.calls[0][1].groupLabels).toEqual(baseline.groupLabels);
-    expect(saver.mock.calls[0][0].groupLabels.partyTogether).toBe('Tab A');
+    expect(saver.mock.calls[0][0].groupLabels?.partyTogether).toBe('Tab A');
     tree=view(props);
     const resolver=nodes(tree).find(n=>n.type===LayoutConflictResolver);
     expect(resolver).toBeDefined();
