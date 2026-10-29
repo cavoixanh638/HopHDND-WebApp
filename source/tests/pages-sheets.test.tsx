@@ -231,7 +231,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.anonymousViewer).toBe(true);
   });
-  it('permits only granted columns in admin view while retaining full admin editing controls in customize mode',async()=>{
+  it('keeps the administrator override in both list and customize views; staff remain cell-grant scoped',async()=>{
     firebase.isAdmin=true;
     firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
     firebase.permissions={columns:{content:false,note:true,progressParty:true}};
@@ -242,7 +242,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.customizing).toBe(false);
     expect(list.props.canEditCell(id,'note')).toBe(true);
     expect(list.props.canEditCell(id,'progressParty')).toBe(true);
-    expect(list.props.canEditCell(id,'content')).toBe(false);
+    // Administrator access is broader than global guest/staff cell grants,
+    // consistently with the Firebase Rules admin override and popup behavior.
+    expect(list.props.canEditCell(id,'content')).toBe(true);
     const editList=nodes(open('Chỉnh sửa')).find(n=>n.type===ItemList);
     expect(editList.props.customizing).toBe(true);
     expect(editList.props.canEditCell(id,'content')).toBe(true);
