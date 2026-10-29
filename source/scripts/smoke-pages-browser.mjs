@@ -2643,6 +2643,191 @@ try{
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
   console.log('L018_GROUP_TITLE_ADMIN_SAVE_CANCEL_RELOAD_RESET_PASS');
 
+
+  // Codex Lượt 020 R06/P1: this fixture MUST carry the actual App.tsx
+  // wide-table-page + list-fit-page shell, not just a standalone ItemList.
+  // Verify document scrolling to an actual data row and internal table scroll,
+  // not merely grid stacking or horizontal body overflow.
+  const r06Screens=[];
+  for(const {width,height,mode} of [
+    {width:390,height:844,mode:'mobile'},
+    {width:768,height:750,mode:'tablet'},
+    {width:1280,height:600,mode:'short-desktop'}
+  ]){
+    await send('Emulation.setDeviceMetricsOverride',
+      {width,height,deviceScaleFactor:1,mobile:false});
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?app-shell=1&r05=1'});
+    await eventually("document.querySelector('.app-shell.wide-table-page.list-fit-page .item-data-table tbody tr')!==null",
+      'R06 real App shell fixture missing '+mode);
+    const before=await evaluate(`(()=>{
+      const root=document.querySelector('.app-shell'),grid=document.querySelector('.item-summary-grid');
+      const table=document.querySelector('.item-table-scroll'),body=document.scrollingElement;
+      const row=document.querySelector('.item-data-table tbody tr:first-child');
+      const card=grid.getBoundingClientRect(),tb=table.getBoundingClientRect();
+      return {shell:root.className,viewport:innerHeight,bodyHeight:body.scrollHeight,
+        bodyClient:body.clientHeight,bodyOverflow:getComputedStyle(root).overflowY,
+        cardsHeight:card.height,cardsBottom:card.bottom,tableTop:tb.top,tableHeight:tb.height,
+        scrollMode:getComputedStyle(table).overflowY,
+        firstRow:row.getBoundingClientRect().top,bodyWidth:body.scrollWidth,screenWidth:innerWidth};
+    })()`);
+    if(!before.shell.includes('wide-table-page')||!before.shell.includes('list-fit-page')||
+      before.tableHeight<260||before.bodyHeight<=height+120||
+      before.bodyWidth>width+5||before.scrollMode!=='auto')
+      throw Error('R06 P1: real list-fit App still clips table at '+mode+': '+JSON.stringify(before));
+    if(mode==='mobile'){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-r06-mobile-app-shell-top.png',Buffer.from(shot.data,'base64'));
+    }
+    const scrolled=await evaluate(`(()=>{
+      const table=document.querySelector('.item-table-scroll');
+      // This is an actual user-reachable document scroll, not a DOM transform.
+      table.scrollIntoView({block:'start'});
+      const row=document.querySelector('.item-data-table tbody tr:first-child');
+      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const tableRect=table.getBoundingClientRect();
+      const rowRect=row.getBoundingClientRect();
+      const filterRect=filter.getBoundingClientRect();
+      return {documentY:document.scrollingElement.scrollTop,tableTop:tableRect.top,
+        tableBottom:tableRect.bottom,rowTop:rowRect.top,rowBottom:rowRect.bottom,
+        filterTop:filterRect.top,filterBottom:filterRect.bottom,
+        rowVisible:rowRect.bottom>Math.max(0,tableRect.top)&&
+          rowRect.top<Math.min(innerHeight,tableRect.bottom),
+        tableHeight:tableRect.height};
+    })()`);
+    if(scrolled.documentY<50||!scrolled.rowVisible||
+      scrolled.tableTop>=height||scrolled.tableBottom<=0)
+      throw Error('R06 P1: cannot scroll to live table row '+mode+': '+JSON.stringify({before,scrolled}));
+    const internal=await evaluate(`(()=>{
+      const table=document.querySelector('.item-table-scroll');
+      const start=table.scrollTop;table.scrollTop+=180;
+      const heading=document.querySelector('.item-data-table .item-heading-row');
+      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const viewport=table.getBoundingClientRect();
+      return {start,end:table.scrollTop,scrollHeight:table.scrollHeight,
+        clientHeight:table.clientHeight,headingTop:heading.getBoundingClientRect().top,
+        filterTop:filter.getBoundingClientRect().top,viewportTop:viewport.top,
+        filterBottom:filter.getBoundingClientRect().bottom};
+    })()`);
+    if(internal.end<=internal.start||internal.scrollHeight<=internal.clientHeight||
+      internal.filterBottom<internal.viewportTop-3)
+      throw Error('R06 P1: sticky filter/internal table scroll regression '+mode+': '+JSON.stringify(internal));
+    if(mode==='mobile'){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-r06-mobile-app-shell-table-reachable.png',Buffer.from(shot.data,'base64'));
+    }
+    r06Screens.push({mode,before,scrolled,internal});
+  }
+  // Desktop with sufficient space retains the original one-screen flex layout.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1'});
+  await eventually("document.querySelector('.app-shell.list-fit-page .item-data-table tbody tr')!==null",
+    'R06 desktop App fixture missing');
+  const r06Desktop=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell'),body=document.scrollingElement;
+    const table=document.querySelector('.item-table-scroll').getBoundingClientRect();
+    return {shell:getComputedStyle(shell).overflowY,body:body.scrollHeight,
+      client:body.clientHeight,tableHeight:table.height,viewport:innerHeight};
+  })()`);
+  if(r06Desktop.body>r06Desktop.client+3||r06Desktop.tableHeight<250||
+    r06Desktop.shell!=='hidden')
+    throw Error('R06 desktop list-fit changed while enough room: '+JSON.stringify(r06Desktop));
+  console.log('R06_APP_SHELL_MOBILE_TABLE_REACHABLE_PASS',JSON.stringify({r06Screens,r06Desktop}));
+
+  // Codex Lượt 020 R07/P2: use real popup configuration input (not an
+  // injected localStorage value).  Verify immediately after save, reopening
+  // settings, closing/reopening modal via remount, and full reload.
+  await evaluate(`Object.keys(localStorage).filter(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
+    k.includes('compact-qa-synthetic-popup-only')).forEach(k=>localStorage.removeItem(k))`);
+  const r07Url='http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?group-title=1&popup=1&popup-settings=1';
+  await send('Page.navigate',{url:r07Url});
+  await eventually("document.querySelector('.report-grid-actions button[aria-expanded=false]')!==null",
+    'R07 popup configuration controls missing');
+  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"]')?.textContent.trim()`);
+  const openR07=async()=>{
+    await evaluate(`[...document.querySelectorAll('.report-grid-actions button')]
+      .find(b=>b.textContent.includes('Cấu hình popup / cột'))?.click()`);
+    await eventually("document.querySelector('.report-grid-group-labels summary')!==null",
+      'R07 config panel did not open');
+    await evaluate("document.querySelector('.report-grid-group-labels').open=true");
+  };
+  const inputR07=()=>evaluate(`document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]')?.value`);
+  const replaceR07=async(textValue)=>{
+    const focused=await evaluate(`(()=>{
+      const el=document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]');
+      if(!el)return false;el.focus();el.select();return document.activeElement===el;
+    })()`);
+    if(!focused)throw Error('R07 group-name input not focusable');
+    if(textValue)await send('Input.insertText',{text:textValue});
+    else{
+      await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
+      await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Backspace',code:'Backspace',windowsVirtualKeyCode:8});
+    }
+    await eventually("document.querySelector('input[aria-label=\\"Tên nhóm popup partyTogether\\"]')?.value==="+JSON.stringify(textValue),
+      'R07 typed value was not reflected in controlled input');
+  };
+  const saveR07=async()=>{
+    await evaluate(`[...document.querySelectorAll('.report-grid-settings-footer button')]
+      .find(b=>b.textContent.includes('Lưu cấu hình cột'))?.click()`);
+    await eventually("document.querySelector('.report-grid-settings')===null",
+      'R07 popup settings failed to close after Save');
+  };
+  if((await popupTitle())!=='Ba khâu tùy chỉnh')
+    throw Error('R07 shared title baseline missing: '+await popupTitle());
+  await openR07();
+  await replaceR07('Tên popup riêng');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Tên popup riêng'",
+    'R07 popup override title not immediately rendered');
+  await openR07();
+  await replaceR07('   ');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 whitespace-only title did not immediately inherit shared name');
+  const r07Whitespace=await evaluate(`(()=>{
+    const key=Object.keys(localStorage).find(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
+      k.includes('compact-qa-synthetic-popup-only'));
+    const stored=key?JSON.parse(localStorage.getItem(key)):null;
+    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim(),
+      hasOverride:Object.prototype.hasOwnProperty.call(stored?.groupLabels??{},'partyTogether'),
+      storedName:stored?.groupLabels?.partyTogether};
+  })()`);
+  if(r07Whitespace.hasOverride||r07Whitespace.title!=='Ba khâu tùy chỉnh')
+    throw Error('R07 applied/persisted mismatch after whitespace Save: '+JSON.stringify(r07Whitespace));
+  const r07Shot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-r07-popup-empty-save-fallback.png',Buffer.from(r07Shot.data,'base64'));
+  await openR07();
+  if((await inputR07())!=='')
+    throw Error('R07 reopen settings did not use normalized state after whitespace save');
+  await replaceR07('Tên riêng lần 2');
+  await saveR07();
+  await openR07();
+  // "Khôi phục" removes only the popup override, no shared field mutation.
+  await evaluate(`(()=>{
+    const el=document.querySelector('input[aria-label="Tên nhóm popup partyTogether"]');
+    el.closest('.group-label-editor-row').querySelector('button').click();
+  })()`);
+  await eventually("document.querySelector('input[aria-label=\\"Tên nhóm popup partyTogether\\"]')?.value===''",
+    'R07 reset did not clear popup-only title draft');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 restored title not visible after reset/save');
+  await openR07();
+  await replaceR07('Tên tạm để xóa');
+  await replaceR07('');
+  await saveR07();
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 empty-string title persisted in applied state');
+  await send('Page.navigate',{url:r07Url});
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+    'R07 empty title did not survive popup remount/reload');
+  await openR07();
+  if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
+  console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
+  
   console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
