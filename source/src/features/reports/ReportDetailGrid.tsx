@@ -38,6 +38,7 @@ type Props={
   viewerCompactScope?:string;
   allowDraft:boolean;
   readOnlyViewer?:boolean;
+  guestViewer?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   leaseManager?:CellEditSessionManager;
@@ -52,7 +53,7 @@ type Props={
   onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;
 };
 
-export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,canEditCell,
+export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,guestViewer=false,canEditCell,
   onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
@@ -265,28 +266,28 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         {inGroupDirty>0&&<span className="report-grid-draft">Có {inGroupDirty} nội dung đang sửa nháp</span>}
       </div>
       {!readOnlyViewer&&<div className="report-grid-actions">
-        <button type="button" className="button ghost" aria-pressed={showAll}
-          onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>
-        <button type="button" className="button ghost" onClick={clearFilters}
-          disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>
-        <label className="report-grid-quick-width">Rộng popup
+        {!guestViewer&&<button type="button" className="button ghost" aria-pressed={showAll}
+          onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>}
+        {!guestViewer&&<button type="button" className="button ghost" onClick={clearFilters}
+          disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>}
+        {!guestViewer&&<label className="report-grid-quick-width">Rộng popup
           <DeferredWidthInput label="Độ rộng toàn popup (px)"
             min={minDialogWidth} max={availableWidth}
             value={Math.min(displayedLayout.dialogWidth,availableWidth)}
             onCommit={changeDialogWidth}/>
           <span>px</span>
-        </label>
-        {!readOnlyViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
+        </label>}
+        {!guestViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
           store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
-        {!readOnlyViewer&&<button type="button" className="button ghost" aria-expanded={settings}
+        {!guestViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
           onClick={()=>{if(editing)setSort(null);setEditing(!editing);}}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
-        {!readOnlyViewer&&onOpenFullList&&<button type="button" className="button ghost"
+        {!guestViewer&&onOpenFullList&&<button type="button" className="button ghost"
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>}
     </div>
-    {!readOnlyViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
+    {!readOnlyViewer&&!guestViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
       <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
         onChange={e=>loadPreset(e.target.value)}>
         <option value="">Mặc định</option>
@@ -299,7 +300,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         onClick={updatePreset}>Cập nhật mẫu</button>
         <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
     </div>}
-    {!readOnlyViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
+    {!readOnlyViewer&&!guestViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
         <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
@@ -367,7 +368,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <p className="muted">Màu của popup được tự lưu riêng trên trình duyệt khi thêm/xóa; cũng được lưu trong mẫu cá nhân. Không ảnh hưởng màu của Danh sách hoặc báo cáo.</p>
       </details>
     </section>}
-    {!readOnlyViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
+    {!readOnlyViewer&&!guestViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
       <strong>Cột của popup có thay đổi chưa lưu.</strong>
       <button type="button" className="button ghost" onClick={()=>setConfirmSettingsExit(false)}>Tiếp tục tùy chỉnh</button>
       <button type="button" className="button ghost" onClick={()=>{
@@ -394,7 +395,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
               {c.label}
-              {!readOnlyViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
+              {!readOnlyViewer&&!guestViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
                 width={c.width} min={70+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)}
                 max={800+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)} windowDragFallback
                 onCommit={width=>commitWidth(c.key as DetailColumnKey,width-(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0))}/>}
