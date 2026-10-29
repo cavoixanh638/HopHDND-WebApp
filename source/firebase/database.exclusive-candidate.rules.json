@@ -359,6 +359,21 @@
       },
       "mirrors": {
         ".read": true
+      },
+      ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
+      ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && newData.child('importState/operationId').isString() && newData.child('importState/operationId').val() !== data.child('importState/operationId').val() && root.child('hdnd/importVault').child(newData.child('importState/operationId').val()).exists()",
+      "importVault": {
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
+        "$operationId": {
+          ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.exists() && newData.exists()",
+          ".validate": "$operationId.matches(/^[a-zA-Z0-9_-]{8,72}$/) && newData.hasChildren(['operationId','candidate','backup','baselineSignature','candidateSignature','createdAt','owner','count','fileName','candidateCodes']) && newData.child('operationId').val() === $operationId && newData.child('count').isNumber() && newData.child('count').val() > 0 && newData.child('count').val() <= 1000 && newData.child('owner').val() === auth.uid"
+        }
+      },
+      "importState": {
+        ".read": true
+      },
+      "importOperations": {
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')"
       }
     },
     "hdndReviews": {
