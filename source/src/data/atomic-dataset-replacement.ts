@@ -54,7 +54,7 @@ function assertAdmin(user:User|null):User{
 function assertOperation(operationId:string){
   if(!OP.test(operationId))throw new Error('Mã thao tác nhập không hợp lệ.');
 }
-function safeRow(row:Item,newId:string,uid:string):Item&NativeObject{
+function safeRow(row:Item,newId:string,uid:string):NativeObject{
   const r=validateFirebaseItem({...row,recordId:newId,revision:1,archivedAt:null});
   const {archivedAt,...stored}=r;
   return {...stored,...(archivedAt?{archivedAt}:{}),revision:1,
