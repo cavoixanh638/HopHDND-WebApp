@@ -32,6 +32,20 @@ describe('Four list cards reuse report scopes and normalization',()=>{
    expect(summary.total).toMatchObject({total:10,nq:8,bc:1,unclassified:1});
    expect(summary.total.nq+summary.total.bc+summary.total.unclassified).toBe(summary.total.total);
  });
+ it('splits active resolutions by type without reclassifying reports or unknown records',()=>{
+   const mixed=[make('qppl',{type:' QpPl '}),make('hc',{type:'HC'}),
+     make('hc-alias',{type:'Hành  chính'}),make('unknown-nq',{type:'Loại chưa xác định'}),
+     make('bc',{documentKind:'BC',type:'HC'}),
+     make('unclassified',{documentKind:'UNCLASSIFIED',type:'QPPL'}),
+     make('dropped',{type:'HC',isDropped:true}),
+     make('archived',{type:'QPPL',archivedAt:'2026-10-01'})];
+   const total=summarizeListItems(mixed).total;
+   expect(total).toMatchObject({total:6,nq:4,qppl:1,hc:2,bc:1,nqUnclassified:1,unclassified:1});
+   expect(total.qppl+total.hc+total.nqUnclassified+total.bc+total.unclassified).toBe(total.total);
+   expect(summarizeListItems(mixed.filter(row=>row.recordId==='hc')).total)
+     .toMatchObject({total:1,qppl:0,hc:1,bc:0,nqUnclassified:0,unclassified:0});
+   expect(mixed[0].type).toBe(' QpPl ');
+ });
  it('party next means exactly the three official post-VP pre-TBKL states',()=>{
    const m=summarizeListItems(rows).stages[0];
    const buckets=Object.fromEntries(m.buckets.map(b=>[b.stage,b.count]));

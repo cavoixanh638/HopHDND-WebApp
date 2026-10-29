@@ -1,6 +1,7 @@
 import type {Item,ReportConfig} from '../../shared/types';
-import {DEFAULT_REPORTS,aggregateReport,getKpis,normalizeReportStatus} from './reporting';
+import {DEFAULT_REPORTS,aggregateReport,getKpis,isActive,normalizeReportStatus} from './reporting';
 import {reportStage,type ReportStage} from './report-workflow';
+import {normalizeSearch} from './search';
 
 /** Exactly the existing report scopes, normalizer and completion denominator.
  * The four summary tiles are a read-only projection of those same records. */
@@ -47,7 +48,15 @@ function buildStage(items:Item[],id:SummaryStage['id']):SummaryStage {
     unmatchedIds:unmatched.map(item=>item.recordId)};
 }
 export function summarizeListItems(items:Item[]){
-  return {total:getKpis(items),stages:[
+  const total=getKpis(items);
+  let qppl=0,hc=0;
+  for(const item of items){
+    if(!isActive(item)||item.documentKind!=='NQ')continue;
+    const type=normalizeSearch(item.type).replace(/\s+/g,' ');
+    if(type==='qppl')qppl++;
+    else if(type==='hc'||type==='hanh chinh')hc++;
+  }
+  return {total:{...total,qppl,hc,nqUnclassified:total.nq-qppl-hc},stages:[
     buildStage(items,'party'),buildStage(items,'build'),buildStage(items,'nq')
   ]};
 }

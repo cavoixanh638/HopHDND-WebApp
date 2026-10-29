@@ -31,12 +31,16 @@ export function ItemSummaryCards({items}:{items:Item[]}){
       <h3>Tổng số nội dung</h3>
       <strong className="item-summary-total-count">{value.total.total}</strong>
       <p className="item-summary-subcounts">
-        <span>Nghị quyết <strong>{value.total.nq}</strong></span>
-        <span>Báo cáo <strong>{value.total.bc}</strong></span>
+        <span data-summary-kind="qppl">NQ QPPL <strong>{value.total.qppl}</strong></span>
+        <span data-summary-kind="hc">NQ HC <strong>{value.total.hc}</strong></span>
+        <span data-summary-kind="bc">Báo cáo <strong>{value.total.bc}</strong></span>
+        {value.total.nqUnclassified>0&&<span data-summary-kind="nq-unknown">
+          NQ chưa rõ loại <strong>{value.total.nqUnclassified}</strong>
+        </span>}
       </p>
-      <p className="item-summary-unmatched">
+      {value.total.unclassified>0&&<p className="item-summary-unmatched" data-summary-kind="unclassified">
         Chưa phân loại: <strong>{value.total.unclassified}</strong>
-      </p>
+      </p>}
     </article>
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}/>)}
   </section>;

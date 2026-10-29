@@ -2625,9 +2625,12 @@ try{
     const region=document.querySelector('.item-data-region').getBoundingClientRect();
     const headings=[...document.querySelectorAll('.item-heading-row th')].map(c=>c.textContent.trim());
     const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
-    const nq=Number(document.querySelector('.item-summary-subcounts span:first-child strong')?.textContent);
-    const bc=Number(document.querySelector('.item-summary-subcounts span:nth-child(2) strong')?.textContent);
-    const unclassified=Number(document.querySelector('[data-summary-card=total] .item-summary-unmatched strong')?.textContent??0);
+    const qppl=Number(document.querySelector('[data-summary-kind=qppl] strong')?.textContent);
+    const hc=Number(document.querySelector('[data-summary-kind=hc] strong')?.textContent);
+    const nqUnknown=Number(document.querySelector('[data-summary-kind=nq-unknown] strong')?.textContent??0);
+    const nq=qppl+hc+nqUnknown;
+    const bc=Number(document.querySelector('[data-summary-kind=bc] strong')?.textContent);
+    const unclassified=Number(document.querySelector('[data-summary-kind=unclassified] strong')?.textContent??0);
     const stages=['party','build','nq'].map(k=>{
       const card=document.querySelector('[data-summary-card='+k+']');
       return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
