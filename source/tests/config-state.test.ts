@@ -92,11 +92,11 @@ describe('real-source drafts and honest synchronization',()=>{
   it('accepts only acknowledged values and keeps a missing result as a draft',async()=>{
     const repo={readOnly:false,list:vi.fn().mockResolvedValue(rows),save:vi.fn().mockResolvedValue([{recordId:rows[0].recordId,ok:true,item:{...rows[0],note:'one',revision:1}}]),history:vi.fn()};workspace(repo);await settle();let state=workspace(repo);state.update(rows[0].recordId,{note:'one'});state.update(rows[1].recordId,{note:'two'});state=workspace(repo);await expect(state.save()).resolves.toBe(false);state=workspace(repo);expect(state.drafts[rows[0].recordId]).toBeUndefined();expect(state.drafts[rows[1].recordId]).toBeDefined();expect(state.items[0].note).toBe('one');
   });
-  it('refreshes a writable Google source every 60 seconds when no edits are pending',async()=>{
+  it('does not poll legacy Sheets after removing the online Sheets datasource',async()=>{
     const repo={sourceKind:'google',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue(rows),save:vi.fn(),history:vi.fn()};
     workspace(repo);await settle();expect(repo.list).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(60000);await settle();
-    expect(repo.list).toHaveBeenCalledTimes(2);
+    expect(repo.list).toHaveBeenCalledTimes(1);
   });
   it('trims Google edits, keeps checkpoint until the saved value is confirmed, and reports Excel destination',async()=>{
     const repo={sourceKind:'google',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue(rows),save:vi.fn(),history:vi.fn()};
