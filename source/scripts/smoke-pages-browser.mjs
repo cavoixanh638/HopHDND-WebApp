@@ -2677,6 +2677,39 @@ try{
   if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2/7')||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
+  // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
+  // fixture. Mobile layout must not wrap any stage LABEL or spill the cards.
+  const selectedDesktopShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-summary-filter-selected-desktop.png',
+    Buffer.from(selectedDesktopShot.data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:390,height:844,deviceScaleFactor:1,mobile:false});
+  const selectedMobile=await evaluate(`(()=>{
+    const grid=document.querySelector('.item-summary-grid');
+    const buttons=[...grid.querySelectorAll('.item-summary-bucket')];
+    const labels=buttons.map(b=>b.querySelector('span'));
+    const active=grid.querySelector('.item-summary-active-filter');
+    return {width:window.innerWidth,
+      cardOverflow:grid.scrollWidth>grid.clientWidth+1,
+      labelOverflow:labels.some(l=>l.scrollWidth>l.clientWidth+1),
+      multilineLabels:labels.some(l=>l.getBoundingClientRect().height>
+        parseFloat(getComputedStyle(l).lineHeight)*1.2),
+      maxButtonHeight:Math.max(...buttons.map(b=>b.getBoundingClientRect().height)),
+      selected:buttons.filter(b=>b.getAttribute('aria-pressed')==='true').length,
+      active:!!active,clear:!!active?.querySelector('button')
+    };
+  })()`);
+  if(selectedMobile.width!==390||selectedMobile.cardOverflow||
+      selectedMobile.labelOverflow||selectedMobile.multilineLabels||
+      selectedMobile.maxButtonHeight>58||selectedMobile.selected!==1||
+      !selectedMobile.active||!selectedMobile.clear)
+    throw Error('Mobile summary quick-filter layout regression: '+JSON.stringify(selectedMobile));
+  const selectedMobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-summary-filter-selected-mobile-390.png',
+    Buffer.from(selectedMobileShot.data,'base64'));
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  console.log('SUMMARY_SELECTED_DESKTOP_MOBILE_SCREENSHOTS_PASS',JSON.stringify(selectedMobile));
   await evaluate("document.querySelector('[data-summary-report=nq][data-summary-stage=source]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===3",
     'Choosing a new summary condition must replace the previous quick condition');
@@ -2694,6 +2727,16 @@ try{
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
   await eventually("document.querySelector('[data-summary-report=party][data-summary-stage=source]').getAttribute('aria-pressed')==='true'",
     'Summary keyboard activation failed');
+  // Native button also supports Space. Toggling it off must remove the badge
+  // without removing any column filter; reselect for the next combined case.
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await eventually("!document.querySelector('.item-summary-active-filter')",
+    'Space must deactivate the selected summary button');
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
+  await eventually("!!document.querySelector('.item-summary-active-filter')",
+    'Space must reactivate the selected summary button');
   console.log('SUMMARY_QUICK_FILTER_TOGGLE_SWITCH_ZERO_KEYBOARD_PASS',JSON.stringify(quickSummary));
 
   // Column filters intersect the quick condition; clearing the quick filter
