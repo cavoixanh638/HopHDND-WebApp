@@ -46,7 +46,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,loadListViews,loadActiveListView,loadColorRules,saveColorRules,itemColor,type SavedListView,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -135,6 +135,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [saving,setSaving] = useState(false);
   const [viewSaving,setViewSaving]=useState(false);
   const [editingGroupLabels,setEditingGroupLabels]=useState<CompactGroupLabels|null>(null);
+  // Immutable baseline captured when the rename dialog opens, not when Save is
+  // pressed. A second tab can refresh initialLayout while this draft is open.
+  const [groupLabelBaseline,setGroupLabelBaseline]=useState<ItemLayout|null>(null);
+  const [groupLabelConflicts,setGroupLabelConflicts]=useState<LayoutFieldConflict[]>([]);
+  const [groupLabelChoices,setGroupLabelChoices]=useState<LayoutConflictChoices>({});
   const [groupLabelsError,setGroupLabelsError]=useState('');
   const viewSavingRef=useRef(false);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
@@ -343,15 +348,51 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
-  const saveGroupLabels=async()=>{
-    if(!editingGroupLabels||!canViewerArrange)return;
-    let labels:CompactGroupLabels;
-    try{labels=validateCompactGroupLabels(editingGroupLabels);}
-    catch(error){setGroupLabelsError(error instanceof Error?error.message:'Tên cột gộp không hợp lệ.');return;}
-    setGroupLabelsError('');
-    if(await applyViewerLayout(base=>({...base,groupLabels:labels})))
-      setEditingGroupLabels(null);
-    else setGroupLabelsError('Không lưu được tên cột dùng chung. Kiểm tra thông báo lỗi phía trên và thử lại.');
+  const closeGroupLabelEditor=()=>{
+    if(viewSavingRef.current)return;
+    setEditingGroupLabels(null);setGroupLabelBaseline(null);
+    setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');
+  };
+  const openGroupLabelEditor=()=>{
+    if(!canViewerArrange)return;
+    const snapshot=validateItemLayout(initialLayout??activeLayout);
+    setGroupLabelBaseline(snapshot);
+    setEditingGroupLabels({...snapshot.groupLabels});
+    setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');
+  };
+  const saveGroupLabels=async(choices:LayoutConflictChoices={})=>{
+    if(!editingGroupLabels||!groupLabelBaseline||!canViewerArrange||
+      viewSavingRef.current||!onPersistViewerLayout)return;
+    let next:ItemLayout;
+    try{
+      next=validateItemLayout({...groupLabelBaseline,
+        groupLabels:validateCompactGroupLabels(editingGroupLabels)});
+    }catch(error){setGroupLabelsError(saveIssue(error));return;}
+    // No-op edits should not create unnecessary Firebase revisions or
+    // overwrite an edit made in another tab while this dialog was open.
+    if(JSON.stringify(next.groupLabels)===JSON.stringify(groupLabelBaseline.groupLabels)){
+      closeGroupLabelEditor();return;
+    }
+    viewSavingRef.current=true;setViewSaving(true);setGroupLabelsError('');
+    try{
+      // The Firebase transaction compares exactly this open-time snapshot to
+      // the latest remote layout. Disjoint keys merge; competing keys fail
+      // closed and require explicit choices (local vs Firebase) below.
+      const confirmed=await onPersistViewerLayout(next,groupLabelBaseline,choices);
+      const valid=validateItemLayout(confirmed??next);
+      setApplied(valid);sharedBase.current=valid;
+      setSaveFeedback('Đã lưu tên cột gộp dùng chung và hợp nhất các thay đổi không xung đột.');
+      setLayoutError('');
+      setGroupLabelConflicts([]);setGroupLabelChoices({});
+      setEditingGroupLabels(null);setGroupLabelBaseline(null);
+    }catch(error){
+      if(error instanceof LayoutConflictError){
+        setGroupLabelConflicts(error.conflicts);setGroupLabelChoices({});
+        setGroupLabelsError('Một tab khác đã đổi tên nhóm gộp. Chọn giá trị cần giữ cho từng tên xung đột; chưa có gì bị ghi đè.');
+      }else{
+        setGroupLabelsError(saveIssue(error));
+      }
+    }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
   const moveColumn=(from:string,to:string)=>{
     if(customizing){if(locked||!allowLayout)return;
@@ -472,7 +513,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         className="button ghost group-label-shortcut"
         disabled={!canViewerArrange}
         title={personalViewActive?'Đóng giao diện cá nhân để sửa tên cột dùng chung':!canViewerArrange?'Chờ bố cục dùng chung tải xong':'Đổi tiêu đề cột gộp, không đổi dữ liệu Excel'}
-        onClick={()=>{setGroupLabelsError('');setEditingGroupLabels({...activeLayout.groupLabels});}}>
+        onClick={openGroupLabelEditor}>
         Đổi tên cột gộp
       </button>}
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
@@ -631,7 +672,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
-    {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={()=>{if(!viewSaving)setEditingGroupLabels(null);}}>
+    {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={closeGroupLabelEditor}>
       <form className="modal-body group-label-quick-editor" onSubmit={event=>{event.preventDefault();void saveGroupLabels();}}>
         <p className="muted">Chỉ đổi tiêu đề các cột gộp. Không đổi dữ liệu, quyền sửa hoặc tên trường Excel. Bỏ trống để dùng tên mặc định.</p>
         {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
@@ -649,10 +690,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           </button>
         </div>)}
         {groupLabelsError&&<p role="alert" className="error-text">{groupLabelsError}</p>}
+        {groupLabelConflicts.length>0&&<LayoutConflictResolver
+          conflicts={groupLabelConflicts} choices={groupLabelChoices} busy={viewSaving}
+          onChoose={(field,choice)=>setGroupLabelChoices(current=>({...current,[field]:choice}))}
+          onConfirm={()=>void saveGroupLabels(groupLabelChoices)}
+          onCancel={()=>{setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');}}/>}
         <div className="modal-footer">
           <button type="button" className="button ghost" disabled={viewSaving}
-            onClick={()=>setEditingGroupLabels(null)}>Hủy</button>
-          <button type="submit" className="button primary" disabled={viewSaving||!canViewerArrange}>
+            onClick={closeGroupLabelEditor}>Hủy</button>
+          <button type="submit" className="button primary"
+            disabled={viewSaving||!canViewerArrange||groupLabelConflicts.length>0}>
             {viewSaving?'Đang lưu…':'Lưu tên cột dùng chung'}
           </button>
         </div>
