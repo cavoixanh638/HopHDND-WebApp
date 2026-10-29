@@ -409,7 +409,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     setShowAllSourceColumns(false);
     setApplied(nextLayout);setLayout(nextLayout);onFrameWidthChange?.(nextLayout.frameWidth??'auto');
     setColorRules(view?.colors??loadColorRules(personalScope));
-    setPersonalViewActive(!!view);
     return true;
   };
   const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
