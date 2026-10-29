@@ -236,6 +236,9 @@ export async function activateDatasetReplacement(
   const pointer:ActiveDataset={version:plan.version,revision:(plan.base?.revision??0)+1,
     operationId:plan.operationId,digest:plan.digest,switchedAt:Date.now(),switchedBy:user.uid};
   const result=await runTransaction(ref(database,DATASET_POINTER),raw=>{
+    // RTDB transaction callback may first run with an empty local cache.
+    // Returning undefined there cancels the transaction BEFORE server CAS.
+    if(raw===null&&plan.base!==null)return raw;
     const live=asPointer(raw);
     if(JSON.stringify(live)!==JSON.stringify(plan.base))return undefined;
     return pointer;
@@ -272,6 +275,7 @@ export async function restoreDatasetBackup(database:Database,user:ApprovedUser,
     operationId:restoreOperationId,digest:backup.previousDigest,
     switchedAt:Date.now(),switchedBy:user.uid,restoreBackupId:backupOperationId};
   const result=await runTransaction(ref(database,DATASET_POINTER),raw=>{
+    if(raw===null)return raw; // cold cache: request authoritative version
     const latest=asPointer(raw);
     if(JSON.stringify(latest)!==JSON.stringify(current))return undefined;
     return pointer;
