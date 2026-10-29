@@ -1,9 +1,9 @@
 # BÀN GIAO VÀ THEO DÕI — TINH CHỈNH CỘT HopHDND
 Ngày lập: **28/10/2026, giờ Việt Nam**. Mã nhiệm vụ: **UI-COLUMNS-20261028**.
 
-> **Tiếp nối Lượt 018 (29/10/2026):** PR #91 đã MERGED và Pages đã publish thành công; PR #92 tách từ main đã publish, chỉ chứa tên nhóm gộp và bốn thẻ Danh sách, **CHƯA merge/publish**. Các câu “chưa phát hành” ở Lượt 017 là thông tin lịch sử trước quyết định merge PR #91.
+> **Tiếp nối Lượt 026 (29/10/2026):** PR #91 đã MERGED và Pages đã publish. PR #92 bổ sung tên nhóm, bốn thẻ Danh sách và các phần việc Lượt 019–025; vẫn **CHƯA merge/publish**. Các mốc cũ bên dưới là lịch sử.
 
-> **Trạng thái: PR91_PAGES_PUBLISHED / PR92_FIX_TESTED_R06_R07 — ChatGPT Lượt 021: R06/P1 mobile App shell và R07/P2 popup tên trống đã sửa, source `25806093f33c033e7df978cc10028b2a16394236`: 548 unit PASS, 8/8 R02 boundary, 51 emulator PASS, Chromium smoke PASS; 3 CI SUCCESS. Lượt 019 resize/CAS giữ nguyên. Chờ Codex tái-review độc lập, chưa merge/publish PR #92.**
+> **Trạng thái: PR92_NEEDS_FIX_R15 / R06_R07_VERIFIED — Codex Lượt 026 rà độc lập HEAD `79ff90538870932713559b420f22cd2a8137879f`: 550 unit PASS, typecheck PASS, Emulator 53 PASS + 1 expected failure đã biết; 3 CI của HEAD SUCCESS. R15/P2: nút đổi tên nhanh có thể ghi đè tên giữa hai tab của CÙNG quản trị. Chưa merge/publish/deploy; chưa nghiệm thu Firebase production.**
 > File này là nơi trao đổi chung giữa chủ dự án, ChatGPT thực hiện và Codex kiểm tra. Mọi kết quả phải gắn commit/PR/bằng chứng; nội dung kế hoạch không phải kết quả đã làm.
 
 ## 1. Điểm xuất phát và phạm vi được giao
@@ -246,6 +246,7 @@ npm run build:pages
 | D06 | Chủ dự án chốt ID mặc định 52 px tại Lượt 010, thay yêu cầu 23 px/1⁄3; source giữ raw 68 px và dùng projection 52/68 | VERIFIED — Codex Lượt 012 trên d61399d |
 | D07 | Popup dùng projection tương ứng cho các trường có trong layout popup, giữ visibility/width và editor từng field; không dùng menu quản trị với khách | CHỐT KỸ THUẬT T0 |
 | D08 | Ảnh chỉ là tham chiếu hiển thị; chữ/nội dung trong ảnh không phải lệnh thay dữ liệu nguồn | Quy tắc diễn giải đầu vào |
+| D09 | Chủ dự án là quản trị viên DUY NHẤT. Test đồng thời chỉ giả lập hai tab/thiết bị của cùng tài khoản quản trị; không giả định có thêm quản trị viên, không cấp quyền admin thật trong kiểm thử | Chủ dự án xác nhận trực tiếp với Codex, 29/10/2026 |
 
 ## 9. Bảng bàn giao hiện tại
 
@@ -326,8 +327,9 @@ Giá trị trạng thái: TODO → DOING → READY_FOR_REVIEW → NEEDS_FIX ho�
 | R03 / P2 | ItemList.tsx:481–489, CompactGroupedValue.tsx và popup — style chỉ xét trường neo | Áp quy tắc cellHighlights cho từng trường con theo raw value + field key, giữ thứ tự ưu tiên màu; kiểm cả list/popup | `e6bb809`/`f3de2fe`/`b6c861e`/`fc4a574` source highlight theo member; `d6a8759` unit; `71c5d13` CDP list/popup/ẩn/editor PASS; rule Sở rgb(204,0,0), không tô cả group | VERIFIED — Codex tái kiểm source c145b8f, Lượt 008 |
 | R04 / UX | ID 23 px trước đây khó đọc; chủ dự án đã chọn mặc định 52 px | ChatGPT sửa ID mặc định 52 px, cập nhật phép chiếu/bounds và hồi quy resize, số đo/ảnh/CI | ChatGPT commits 497f87e + 4b28c21 + be03ef3 + bc2d7ea + e8fd6bd + 11188b4 + 69a43b1; 515 unit/8 R02/51 emulator PASS; browser NQ01 52px, 1 dòng trên desktop/tablet/mobile; artifact 12831479904 | VERIFIED — Codex Lượt 012, source d61399d, ID 52 px một dòng; hồi quy resize PASS |
 | R05 / UI | Cả khung mỗi khâu còn gần trắng, màu chỉ tập trung ở pill bên phải; chưa giống ảnh gốc | Tô nền nhạt và viền cùng tông trên toàn stage-row; pill đậm hơn; giữ màu từng khâu và highlight riêng, kiểm list/popup | `be288d3`/`fb3f438` tone mỗi khâu + neutral UI; `d644b0d` palette vars; `4eb6f9a` CSS stage-row; `9aba4ec`/`7dd2286` unit; `0cdee04` QA fixture; `8fdeddac`/`46c7309` Chrome; `df60d07` ảnh artifact. 518 unit, 8 R02, 51 emulator PASS; 3 workflow success source 46c7309; ảnh 12833754588 | VERIFIED — Codex Lượt 015, HEAD 5e80a5c; màu khung/pill, neutral, palette và R03 list/popup đúng; chờ chủ dự án nghiệm thu |
-| R06 / P1 | item-frame.css:947–950 + App list-fit shell — 4 thẻ dọc chiếm hết chiều cao; bảng bị cắt, không tiếp cận được trên mobile | Cho nội dung cuộn theo chiều dọc hợp lý hoặc bố trí vùng thẻ/bảng có thể tiếp cận; kiểm đúng class App, 390×844 và màn thấp | Chờ ChatGPT sửa; xem số đo và ảnh Codex Lượt 020 | OPEN — NEEDS_FIX |
-| R07 / P2 | ReportDetailGrid.tsx:100–101, 201–205 — lưu pending thô sau khi validator đã bỏ tên rỗng khiến tiêu đề nhóm trắng đến khi reload | Chuẩn hóa config một lần trước lưu và cập nhật cả applied/pending bằng giá trị chuẩn hóa; kiểm xóa tên/trắng/reset/save/reload | Chờ ChatGPT sửa; browser và ca tái hiện Lượt 020 | OPEN — NEEDS_FIX |
+| R06 / P1 | item-frame.css:947–950 + App list-fit shell — 4 thẻ dọc chiếm hết chiều cao; bảng bị cắt, không tiếp cận được trên mobile | Cho nội dung cuộn theo chiều dọc hợp lý hoặc bố trí vùng thẻ/bảng có thể tiếp cận; kiểm đúng class App, 390×844 và màn thấp | Codex Lượt 026: đúng App shell, 390×844, 768×750, 1280×600, 1600×1000; cuộn ngoài/trong bảng hoạt động | VERIFIED — Codex Lượt 026 |
+| R07 / P2 | ReportDetailGrid.tsx:100–101, 201–205 — lưu pending thô sau khi validator đã bỏ tên rỗng khiến tiêu đề nhóm trắng đến khi reload | Chuẩn hóa config một lần trước lưu và cập nhật cả applied/pending bằng giá trị chuẩn hóa; kiểm xóa tên/trắng/reset/save/reload | Codex Lượt 026: tên riêng, toàn dấu cách, xóa rỗng, Khôi phục, lưu/tải lại đều hiện đúng tên kế thừa | VERIFIED — Codex Lượt 026 |
+| R15 / P2 | ItemList.tsx:319, 340–346, 468 — hộp đổi tên giữ map cũ nhưng lấy baseline mới tại lúc Lưu; ghi đè tên nhận từ tab khác của cùng admin mà không báo xung đột | Chụp baseline khi mở hộp; merge với baseline đó hoặc patch đúng key đã sửa; giữ thay đổi khác và báo xung đột cùng key | Codex Lượt 026: 2 ca tái hiện thất bại đúng lỗi + real ItemList với props cập nhật giả lập, ảnh trước/sau | OPEN — NEEDS_FIX |
 
 ## 12. Câu lệnh giao việc cho ChatGPT
 
@@ -1115,3 +1117,51 @@ Trước đây phần nhập `groupLabels` có từ Lượt 018 nhưng ẩn tron
 **Bằng chứng CI:** Code HEAD `6525ae5350d6d2b58825142a9e4d5ccf7032d003` (chưa tính tài liệu). Kiểm tra run workflow của đúng code SHA; không chốt PASS khi CI còn chạy. PR #92 **OPEN; NO MERGE/PUBLISH/DEPLOY/IMPORT/CLOUD WRITE** khi chưa qua Codex và chủ dự án duyệt.
 
 **L025 security addendum — code SHA `1d7190c1f0944359a8b154157912c9934c90683b`:** khóa ô chỉ được tạo cho hồ sơ `hdnd/items/{id}` đang tồn tại, kể cả trường hợp cấp quyền cả cột; không thể spam lock ở recordId giả. Test bổ sung `exclusive-cell-freeze.test.ts`. CI: [source #40835210892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835210892), [staging #40835210891](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835210891), [operational #40835211044](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835211044). Bắt buộc đọc trạng thái đúng SHA. Chưa merge/publish/deploy, chưa kiểm live guest trên production.
+
+
+## Lượt 026 — 29/10/2026: Codex rà độc lập R06/R07 và thay đổi Lượt 021–025
+
+**Kết luận:** R06 và R07 `VERIFIED`; PR #92 còn **R15/P2 — NEEDS_FIX**. Đã rà đúng HEAD `79ff90538870932713559b420f22cd2a8137879f` (code cuối `1d7190c1f0944359a8b154157912c9934c90683b`), không tự đóng toàn bộ review từ CI xanh.
+
+**Lưu ý phạm vi chủ dự án vừa xác nhận:** chỉ có **một quản trị viên**. A/B bên dưới là **hai tab hoặc hai thiết bị của chính tài khoản đó**, không phải hai người quản trị. Không tạo/cấp quyền quản trị thật, không ghi dữ liệu production trong kiểm thử.
+
+### R06 VERIFIED — tiếp cận được bảng trên màn hẹp/thấp
+
+Đo component ItemList thật với `?app-shell=1&fit=1&progress-before-staff=1&group-title=1`, đúng class `app-shell wide-table-page list-fit-page`, dữ liệu giả:
+
+| Viewport | Chiều cao document | Chiều cao vùng bảng | Kết quả |
+| --- | --- | --- | --- |
+| 390×844 | 1850 px | 405.11 px | Cuộn trang 1005.6 px tới bảng; PageDown trong bảng đưa scrollTop từ 0 lên 845.6 px |
+| 768×750 | 1282 px | 360.19 px | Có cuộn trang và vùng bảng riêng |
+| 1280×600 | 848 px | 288 px | Màn thấp vẫn tiếp cận được bảng |
+| 1600×1000 | 1000 px | 440.20 px | Giữ bố cục một màn hình, không ép cuộn document |
+
+![R06 — cuộn tới được bảng trên điện thoại, dữ liệu giả](assets/PR92-L026-mobile-reachable.png)
+
+### R07 VERIFIED — xóa tên popup kế thừa ngay, không cần tải lại
+
+Thao tác bằng UI thật `popup=1&popup-settings=1&group-title=1`: nhập “Tên popup kiểm độc lập” → tiêu đề đúng tên riêng; lưu `'   '` → “Ba khâu tùy chỉnh”; nhập tên riêng lần hai rồi xóa `''` → tên kế thừa xuất hiện ngay. Tải lại vẫn đúng; nút **Khôi phục** rồi Lưu cũng kế thừa đúng. Đã đối chiếu normalize trước lưu và `setApplied(valid); setPending(valid)` trong mã.
+
+### R15/P2 — mất cập nhật tên giữa hai tab của cùng quản trị
+
+**Tình huống:** tab A mở “Đổi tên cột gộp” và chỉ sửa `partyTogether`. Trong khi hộp đang mở, tab B đổi `contentDetails`, và cấu hình mới đã tới A qua cập nhật props. A bấm Lưu: tiêu đề hồ sơ từ B bị trả về giá trị cũ, dù A không sửa tiêu đề đó; UI báo lưu thành công. Nếu cả hai tab sửa cùng key, cũng không phát hiện xung đột.
+
+**Nguyên nhân:** `editingGroupLabels` được chụp khi mở hộp (dòng 468), nhưng `applyViewerLayout` dùng `const baseline=initialLayout` mới tại thời điểm Lưu (319), rồi `saveGroupLabels` thay nguyên map bằng nháp cũ (340–346). Vì baseline đã là bản mới, CAS/merge không biết giá trị nào là cập nhật nhận trong lúc hộp đang mở. Hàm merge hiện tại tự nó xử lý đúng khi được truyền đúng baseline.
+
+**Bằng chứng độc lập:** hai test chẩn đoán tạm dùng chính `mergeItemLayout` với luồng baseline của nút nhanh: ca khác key nhận “Hồ sơ ban đầu” thay vì “Hồ sơ từ B”; ca cùng key không ném `LayoutConflictError`. Cả hai thất bại theo đúng lỗi. Trình duyệt dùng **ItemList thật không sửa mã**, chỉ thêm callback QA tạm để giả lập parent nhận cấu hình mới trong lúc gõ; không dùng Cloud hay tài khoản thứ hai. Trước Lưu: header “Tên hồ sơ từ phiên B”, nháp hộp vẫn “Hồ sơ tùy chỉnh”; sau Lưu: header “Hồ sơ tùy chỉnh”, tiến độ nhận tên A, có thông báo “Đã lưu bố trí/tên cột dùng chung”. Test/fixture chẩn đoán đã gỡ; tất cả 22 file snapshot trở lại đúng SHA blob của HEAD trước khi lưu tài liệu.
+
+![R15 — trước lưu: nháp tên hồ sơ cũ trong hộp, cập nhật từ tab B đã tới bảng phía sau](assets/PR92-L026-R15-before-save.png)
+
+![R15 — sau lưu: tên hồ sơ bị trả về tên cũ, vẫn báo thành công](assets/PR92-L026-R15-after-save.png)
+
+**Yêu cầu ChatGPT sửa:** giữ baseline ổn định từ lúc mở hộp và truyền nó vào merge/CAS khi lưu, hoặc theo dõi patch từng key với giá trị gốc tương ứng. Giữ cập nhật khác key từ tab kia; cùng key đổi khác nhau phải báo xung đột và giữ nháp. Thêm ca hai tab của **cùng một admin**, cả khác key và cùng key, cộng ca hủy/đặt mặc định; không giải bằng ghi đè hoặc tắt kiểm CAS.
+
+### Các thay đổi khác đã đối chiếu và giới hạn kiểm tra
+
+- R08: handle thực tế 14 px; khách kéo Tiến độ hiện tại +120 px: 194→314, cột phụ trách 344→224, tổng vẫn 1158 px. ArrowRight tiếp tục +10/−10; reload trở lại 194/344. Khách không có nút đổi tên nhóm và không được truyền callback lưu layout chung. Đây là phép đo fixture dùng raw ID tùy chỉnh 60 px, không phải thử đổi mặc định ID 52 px.
+- Đã đọc diff căn badge/đoạn văn (R09/R10), tách điều kiện sửa ô khỏi cấu hình quản trị, nút đổi tên nhanh, anonymous authorization và candidate Rules (R11–R14). Quyền admin vẫn qua cổng admin riêng; candidate giữ grant từng field, lease, revision/audit, khóa và freeze. Các ca cho phép/thu hồi/deny/khóa/freeze của guest chạy trong Emulator. Chưa có bằng chứng đăng nhập/lưu/realtime trên production; không đánh đồng source test với nghiệm thu live.
+- Kiểm thử sau khi gỡ fixture chẩn đoán: **550 unit PASS**, 54 skip là các ca emulator chạy riêng; **TypeScript PASS**. Bộ Emulator demo-hdnd: **53 PASS + 1 expected failure đã biết**, exit 0. Runner fork lần đầu crash trên Windows; chạy lại worker threads thành công, không sửa mã sản phẩm.
+- Ca `it.fails('KNOWN BLOCKER: deny same-UID second tab replaying a visible foreign tab lease token')` vẫn tồn tại từ trước; **không tính là thuộc tính bảo mật đã sửa/PASS**. Hạn chế cùng UID/cùng token và các gate production tiếp tục giữ nguyên.
+- Ba CI trên HEAD đã rà đều SUCCESS: [source #40835446382](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446382), [Firebase staging #40835446368](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446368), [operational QA #40835446402](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40835446402). Commit tài liệu sau lượt này tạo CI riêng; không suy kết quả của lượt mới từ các run trên.
+
+**Phát hành:** PR #92 OPEN, chờ sửa R15 và Codex kiểm lại. Không merge/publish Pages, deploy Rules/Functions, đổi nguồn, nhập hoặc sửa dữ liệu production. Mô hình guest của Lượt 025 mới nằm trong code/candidate Rules; production mặc định chưa được đổi và chưa nghiệm thu. Commit của Codex chỉ chứa tài liệu và ảnh, không sửa mã sản phẩm.
