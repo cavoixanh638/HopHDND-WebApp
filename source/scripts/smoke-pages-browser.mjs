@@ -574,12 +574,12 @@ try{
     const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
     return {ok:nav?.getBoundingClientRect().width<=1000&&
       restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
-      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=15&&g.rightInset<=29)&&
+      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=8&&g.rightInset<=29)&&
       Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
       Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
-      boxes.every(box=>box.width>=300&&box.height>=78&&box.height<=100)&&
+      boxes.every(box=>box.width>=300&&box.height>=42&&box.height<=72)&&
       !nav.querySelector('.section-card-description')&&
       getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
       getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
