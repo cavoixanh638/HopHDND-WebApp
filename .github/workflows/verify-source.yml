@@ -148,6 +148,8 @@ jobs:
             source/hophdnd-r05-after-popup-stage-crop.png
             source/hophdnd-r05-after-768px.png
             source/hophdnd-r05-after-390px.png
+            source/hophdnd-pr95-nav-compact-synthetic.png
+            source/hophdnd-pr95-list-compact-synthetic.png
             source/hophdnd-l018-four-cards-desktop.png
             source/hophdnd-summary-filter-selected-desktop.png
             source/hophdnd-summary-filter-selected-mobile-390.png
