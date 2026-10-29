@@ -38,7 +38,7 @@ describe('A–O business Excel import with no technical internal columns',()=>{
     expect(readBusinessWorkbook(workbook,'Cover').issues.length).toBeGreaterThan(0);
   });
   it('reports exact sheet, row and column for wrong header, duplicates, invalid stage, empty content and formula',()=>{
-    const head=[...BUSINESS_HEADERS];head[3]='Sai Sở';
+    const head:string[]=[...BUSINESS_HEADERS];head[3]='Sai Sở';
     const duplicated=row();duplicated[1]=2;
     const bad=row('ID02','unknown');bad[1]=3;bad[2]='';bad[6]='Tùy ý';
     const workbook=file({Data:[head,row(),duplicated,bad]});

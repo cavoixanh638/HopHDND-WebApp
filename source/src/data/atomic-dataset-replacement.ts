@@ -43,8 +43,8 @@ function fingerprint(x:unknown):string{
   for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;
   return s.length+':'+h.toString(16);
 }
-function assertAdmin(user:User|null){
-  if(!firebaseAdmin(user))throw new Error('Chỉ tài khoản Google quản trị đã xác minh được phép thay toàn bộ dữ liệu.');
+function assertAdmin(user:User|null):User{
+  if(!user||!firebaseAdmin(user))throw new Error('Chỉ tài khoản Google quản trị đã xác minh được phép thay toàn bộ dữ liệu.');
   return user;
 }
 function assertOperation(operationId:string){
