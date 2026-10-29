@@ -2377,7 +2377,9 @@ try{
       'R02 cap ArrowLeft did not visibly shrink group');
     const left=await widthSnapshot();
     assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
-    if(left.party!==1590||left.widths[left.keys.indexOf('specificProgress')]!==210||
+    const nextAfterParty=left.keys[left.keys.indexOf('partyLevel')+1];
+    if(left.party!==1590||left.widths[left.keys.indexOf(nextAfterParty)]!==
+      before.widths[before.keys.indexOf(nextAfterParty)]+10||
       left.widths[left.keys.indexOf('note')]!==240)
       throw Error('L019 cap shrink must grow adjacent, not note: '+JSON.stringify(left));
     const point=await evaluate(`(()=>{
@@ -2408,28 +2410,34 @@ try{
     if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowRight');
-    await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width<=190",
+    const afterContentKey=lastBefore.keys[lastBefore.keys.indexOf('content')+1];
+    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width<="+
+      (lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10.0),
       'L019 capped group last must remain unchanged while neighbor compensates');
     const lastRight=await widthSnapshot();
     assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
     if(lastRight.content!==450||lastRight.party!==1600||
-      lastRight.widths[lastRight.keys.indexOf('specificProgress')]!==190)
+      lastRight.widths[lastRight.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10)
       throw Error('L019 cap group-last: adjacent must compensate before capped group '+JSON.stringify(lastRight));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=200",
+    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width>="+
+      lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)],
       'L019 group-last adjacent width not restored');
     const lastLeft=await widthSnapshot();
     assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
     if(lastLeft.content!==440||lastLeft.party!==1600||
-      lastLeft.widths[lastLeft.keys.indexOf('specificProgress')]!==200)
+      lastLeft.widths[lastLeft.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)])
       throw Error('L019 cap group-last reverse must restore neighbor '+JSON.stringify(lastLeft));
     await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
     await realArrow('ArrowLeft');
     const lastAtCap=await widthSnapshot();
     assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
     if(lastAtCap.party!==1600||lastAtCap.content!==430||
-      lastAtCap.widths[lastAtCap.keys.indexOf('specificProgress')]!==210)
+      lastAtCap.widths[lastAtCap.keys.indexOf(afterContentKey)]!==
+        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]+10)
       throw Error('L019 group-last uses adjacent and must not touch capped last '+JSON.stringify(lastAtCap));
     r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
   }
