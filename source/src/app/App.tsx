@@ -335,8 +335,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const sourceLabel = comparison?(compareSource==='excel'?'Google Sheets/Excel · so sánh':'Firebase Database · so sánh'):isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='primary'?'Firebase Database · nguồn chính':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase · bản sao Excel':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
   const listPage=page==='items'||page==='items-customize'||page==='items-permissions';
   const anonymousVisitor=isFirebase&&!firebase!.isAdmin&&(!firebase!.user||firebase!.user.isAnonymous);
-  // A cell grant is not an identity grant. The anonymous visitor can never
-  // write: enrolled and verified Google employees must pass BOTH gates.
+  // The PUBLIC visitor receives automatic Firebase anonymous authentication.
+  // The visible guest UI stays separate from admin, but a granted field can
+  // be edited without Google login once server permissions/lease are ready.
   const viewerMayEdit=!comparison&&isFirebase&&selectedSource==='primary'&&
     !workspace.protectedRecovery&&!firebase!.editingLocked&&firebase!.editorAuthorized&&
     workspace.items.some(item=>TEXT_FIELDS.some(field=>firebase!.canEdit(item.recordId,field.key))||
@@ -403,7 +404,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       <div className="top-actions">
         <span className="version">Bản {isFirebase?'0.7.1':'0.6.2'}</span>
         {anonymousVisitor
-          ? <button type="button" className="button ghost guest-signin" onClick={()=>setPage('connection')}>Đăng nhập</button>
+          ? <button type="button" className="button ghost guest-signin" title="Chỉ cần khi truy cập quyền quản trị" onClick={()=>setPage('connection')}>Quản trị</button>
           : <details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
               <div className="options-popover" aria-label="Các nhóm cài đặt">
                 <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
@@ -473,16 +474,15 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {!anonymousVisitor&&warnings.length > 0 && <details className="notice source-warnings"><summary>{warnings.length} cảnh báo về dữ liệu nguồn</summary><ul>{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details>}
       {isFirebase&&!firebase!.isAdmin&&page==='items'&&(!viewerMayEdit||anonymousVisitor)&&
         <p className="guest-rights-hint" role="status">
-          {anonymousVisitor
-            ?'Khách ẩn danh chỉ được xem, kể cả khi quản trị đã đánh dấu cho phép sửa ô. Để sửa, hãy bấm Đăng nhập và dùng tài khoản Google nhân viên đã được quản trị cấp quyền UID.'
-            :!firebase!.connected?'Chưa kết nối Firebase. Chưa thể sửa ô.'
-            :selectedSource!=='primary'?'Nguồn hiện tại là Excel hoặc bản sao Firebase, chưa phải Database chính. Không thể lưu sửa ô vào nguồn chính.'
-            :!firebase!.editorAuthorized?'Tài khoản Google này chưa được quản trị duyệt UID chỉnh sửa. Vào Tài khoản và dữ liệu để xem UID và gửi cho quản trị.'
-            :!firebase!.controlReady?'Đang xác nhận chế độ chỉnh sửa từ Firebase.'
+          {!firebase!.connected?'Chưa kết nối Firebase; tạm thời chỉ xem, chưa thể lưu thay đổi.'
+            :selectedSource!=='primary'?'Nguồn hiện tại chưa phải Firebase chính. Có thể xem dữ liệu, nhưng chưa được ghi nội dung vào dữ liệu chính.'
+            :!firebase!.controlReady?'Đang xác nhận quyền chỉnh sửa từ Firebase.'
             :firebase!.editingLocked?'Quản trị đang tạm khóa chỉnh sửa.'
-            :firebase!.freezeControl?.mode!=='OPEN'?'Dữ liệu đang được chốt hoặc đang kiểm tra; hiện chưa thể chiếm khóa ô mới.'
-            :!viewerMayEdit?'UID đã được duyệt, nhưng chưa có ô được cấp quyền sửa trong dữ liệu đang xem. Hãy nhờ quản trị kiểm tra quyền cột, dòng hoặc ô.'
-            :''}
+            :firebase!.freezeControl?.mode!=='OPEN'?'Dữ liệu đang được chốt hoặc tạm khóa; chưa thể mở lượt sửa mới.'
+            :!firebase!.editorAuthorized?'Tài khoản Google này chưa được duyệt quyền UID chỉnh sửa.'
+            :!viewerMayEdit?'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem. Khách không cần đăng nhập; khi quản trị mở quyền ô, hãy chọn chính ô đó để sửa.'
+            :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
+            :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'}
         </p>}
       {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đang chờ đồng bộ`: `${dirtyCount} nội dung đang chờ lưu vào ${selectedSource==='primary'?'Firebase Database':isDemo?'dữ liệu mẫu':'nguồn hiện tại'}`}</strong><span> {selectedSource==='primary'?'Phần sửa đang được gửi lên Firebase. Chỉ khi máy chủ xác nhận thì mọi người mới thấy dữ liệu mới.':'Phần sửa hiện chỉ có trên trình duyệt; chưa cập nhật chung.'}</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ lưu nháp trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
       {page === 'overview' && <>
