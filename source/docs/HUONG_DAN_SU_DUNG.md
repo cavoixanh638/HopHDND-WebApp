@@ -1,3 +1,11 @@
+## Khách xem và sửa ô được cấp quyền (cấu hình đề xuất PR #92, chưa phát hành)
+
+Khách mở website không cần đăng nhập Google, giao diện khách chỉ gồm tính năng xem và sửa những ô mà quản trị đã cho phép. Firebase tự tạo phiên anonymous phía sau, khách không cần nhập UID hoặc mật khẩu. Ô chưa mở quyền vẫn chỉ xem, khách không có chức năng thay đổi cấu hình hay phân quyền. Trường hợp web vẫn đang hiển thị nguồn Excel/bản sao Firebase, nội dung chưa thể ghi vào Firebase chính; chỉ sau khi quản trị chuyển nguồn theo quy trình được duyệt thì dữ liệu sửa mới có thể được xác nhận từ máy chủ. Khách không được tự chuyển nguồn.
+
+Quản trị cấp quyền theo cột/dòng/ô trên giao diện quản lý, có thể thu hồi bất cứ lúc nào; bảo vệ bằng khóa sửa riêng từng ô và nhật ký. **Lưu ý:** quyền công khai không xác minh danh tính người sửa ngoài Firebase anonymous UID; chỉ nên mở ô phù hợp. Nút “Quản trị” chỉ phục vụ đăng nhập admin, không yêu cầu khách dùng. Tính năng là candidate trên PR #92, chưa có trên website chính thức.
+
+---
+
 **Bản xem thử UI (không có dữ liệu thật):** Trong PR #72, chạy `npm run build:compact:qa` dưới thư mục `source` để tạo trang kiểm thử `dist-compact-qa/compact-qa.html` (phục vụ qua HTTP server local); QA sử dụng `ItemList` thật với dữ liệu giả, tùy chọn bật sẵn cả 4 nhóm. Truy cập `?edit=1` để thử sửa *nội bộ trên trình duyệt* theo từng trường con, không ghi database. GitHub Actions [source #40379091513](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40380075664) có artifact `hophdnd-browser-smoke-preview` chứa ảnh 1600px và 390px. Đây là **hướng dẫn thử cho người phát triển**, không phát hành bằng đường dẫn QA hoặc dùng thay ứng dụng HopHDND chính.
 
 ## Gộp cột — chọn cách hiển thị gọn (27/10/2026, bản đang phát triển)

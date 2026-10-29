@@ -1,3 +1,13 @@
+## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
+
+Khách vào web không cần đăng nhập Google; Firebase **Anonymous Auth** tự xác thực nền. Admin bật quyền theo cột/dòng/ô, khách chỉ sửa những trường đã được mở quyền khi dùng Firebase **primary**, không bị khóa và có lease; khách không được sửa cấu hình/duyệt UID/chuyển nguồn. Popup guest giữ giao diện gọn nhưng hiện nút sửa ô được cấp. `hdnd/editors/{UID}` là luồng nhân viên Google riêng, không áp dụng cho khách ẩn danh.
+
+**Thay thế Lượt 024:** dòng “anonymous view-only” không còn đúng với PR #92 candidate. Quyền sửa công khai có rủi ro spam/sửa ác ý trên các ô mở quyền; không xác định danh tính thật của khách. `source/firebase/database.exclusive-candidate.rules.json` được sửa, nhưng production Rules và dữ liệu thật giữ nguyên.
+
+**Code SHA:** `6525ae5350d6d2b58825142a9e4d5ccf7032d003`; [handoff L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). **PR #92 RELEASE HOLD**: chờ source CI/emulator/Chromium cuối, Codex security review và chủ dự án duyệt; chưa merge, Pages publish, Firebase deploy, import hoặc chỉnh dữ liệu production.
+
+---
+
 ## 29/10/2026 — Lượt 024: R11 quyền sửa nhân viên và R12 đổi tên cột gộp, PR #92 HOLD
 
 - **R11:** quyền `permissions/columns|rows|cells` phải đi kèm Google nhân viên đã xác minh được admin duyệt `editors/{UID}`; anonymous vẫn **view-only** theo Rules. Phát hiện/đã sửa popup dùng `guestMayEdit` chỉ tính khách ẩn danh khiến **Google nhân viên hợp lệ bị read-only**. Admin main list được giữ override backend. Danh sách có thông báo theo lý do thiếu điều kiện quyền. Không nới Security Rules, không đổi Firebase dữ liệu/cấu hình. Không kiểm live UID của từng tài khoản trong lượt này.

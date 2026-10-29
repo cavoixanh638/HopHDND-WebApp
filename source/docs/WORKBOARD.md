@@ -1,3 +1,14 @@
+## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
+
+| Mã | Trạng thái | Release gate |
+| --- | --- | --- |
+| **R13** | Đã sửa app + Rules candidate: guest anonymous (auto-auth, không đăng nhập Google) được sửa **chỉ ô admin bật**, cần server lease, audit, lock OPEN. Vẫn ngăn chỉnh cột/dòng không cấp, ghi thẳng, freeze. | Bằng chứng Emulator và Codex security, kiểm rủi ro khách công khai có thể sửa/ghi spam; chưa deploy Rules. |
+| **R14** | Guest UI khác admin: giữ layout tối giản và popup guest riêng, cho sửa đúng ô được phép; nút Quản trị chỉ tùy chọn. | Browser smoke, ảnh QA guest, chủ dự án nghiệm thu sau preview. |
+| **Nguồn dữ liệu** | Không chuyển Sheets/mirror sang Primary. | Chỉ khi nguồn primary chính thức mới ghi dữ liệu thật; tuyệt đối không dual-write hoặc import ngoài quy trình riêng. |
+| **Cổng PR #92** | Code SHA `6525ae53`; [bàn giao L025](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md). | Chờ 3 CI + Codex review R13/R14, OWNER_ACCEPTED; NO MERGE/PUBLISH/DEPLOY. |
+
+---
+
 ## 29/10/2026 — Lượt 024 PR #92: quyền khách + tiêu đề gộp (HOLD)
 
 | ID | Trạng thái | Kiểm soát tiếp |
