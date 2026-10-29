@@ -4,7 +4,7 @@ import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
-import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,
+import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,validateDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
