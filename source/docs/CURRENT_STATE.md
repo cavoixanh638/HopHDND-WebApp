@@ -1,3 +1,13 @@
+## 29/10/2026 — U01–U04 / PR #92: Lượt 022 R06/R07 FIX_TESTED, chờ Codex tái-review
+
+- **R06/P1:** khung Danh sách trên mobile/tablet/chiều cao thấp đã có document scroll đến dòng bảng, table scroll nội bộ và sticky filter. Kiểm toán tiếp phát hiện selector width-page cũ lấn độ cao `48dvh`; sửa specificity commit `2105790250f4fcd2539a56c60d4031b326633530`, thêm assert computed height commit `c285ca648a63499450ed5a33900d971d912cd7ed`. Chromium thật trên fixture App `wide-table-page list-fit-page`: **390×844=405.109px**, **768×750=360px**, **1280×600=288px**; desktop đủ chỗ không đổi. Cuộn đến dòng, filter và scroll nội bảng PASS.
+- **R07/P2:** popup dùng cùng snapshot `validateDetailGridPreferences` cho lưu/áp dụng/pending; tên riêng xóa/chỉ khoảng trắng/Khôi phục sau Lưu lập tức kế thừa tên dùng chung, qua reload vẫn đúng. R07 PASS; không đổi dữ liệu nguồn/permission.
+- **L019 resize/CAS và R01–R05:** hồi quy `specificProgress 200→250 / nhân sự 240→190 / Ghi chú 240 / total1562` PASS, ID compact 52px; không thay thuật toán resize, CAS/rollback hay Firebase.
+- **Exact code SHA `c285ca6`:** [source #40815718404](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404), [staging #40815718256](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718256), [operational QA #40815718231](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718231) **đều SUCCESS**; 548 unit PASS/52 skipped, Chromium PASS. [Ảnh fixture giả mới #12872830259](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40815718404/artifacts/12872830259).
+- **Cổng:** [PR #92](https://github.com/cavoixanh638/HopHDND-WebApp/pull/92) **OPEN, chưa merge/publish/deploy/import**. R06/R07 là `FIX_TESTED` **chưa phải Codex VERIFIED/OWNER_ACCEPTED**; chờ Codex đánh giá lại trên HEAD mới. Hồ sơ đầy đủ tại [Lượt 020–022](tasks/UI_COLUMN_REFINEMENT_2026-10-28.md).
+
+---
+
 ## 29/10/2026 — Lượt 019: nguyên tắc kéo cột mới, PR #92 đang chờ Codex (chưa phát hành)
 
 Chủ dự án đã chốt: **khi đổi độ rộng vùng Danh sách**, bảng tự dàn theo khung để không có khoảng trắng thừa (nếu không đủ min thì cuộn ngang nội bộ); **khi kéo giữa cột A và B**, B là nơi bù trừ trước, chỉ phần vượt giới hạn của B mới sang **cột cuối**. Tổng độ rộng bảng giữ nguyên. Chiều rộng tự fit từ viewport, khi có thao tác kéo tay, được materialize một lần để cột B có thể thu nhỏ thực sự mà không đụng các cột khác về mặt hiển thị. ID compact mặc định 52px, raw 68px. Unit/Chromium đo con số nguồn giả và ảnh trước/sau được lưu trong file bàn giao Lượt 019. PR #92 **OPEN, chưa merge/publish**; mọi chỉ thị last-only ngày 23/10 áp dụng lịch sử trước lệnh mới.
