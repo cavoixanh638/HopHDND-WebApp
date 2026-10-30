@@ -795,10 +795,10 @@ try{
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const cards=document.querySelector('.item-summary-grid');
     const cardRect=cards?.getBoundingClientRect();
-    const gapBefore=cardRect?.top-tabs.bottom;
     const toolbar=document.querySelector('.list-filter-toolbar')?.getBoundingClientRect();
-    const gapAfter=toolbar?.top-(cardRect?.bottom??0);
-    const gapBelowToolbar=viewport.getBoundingClientRect().top-(toolbar?.bottom??0);
+    const gapBefore=(toolbar?.top??0)-tabs.bottom;
+    const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
+    const gapBelowToolbar=(cardRect?.top??0)-(toolbar?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
     // Same strict no-extra-blank-space contract, now measured before and after
