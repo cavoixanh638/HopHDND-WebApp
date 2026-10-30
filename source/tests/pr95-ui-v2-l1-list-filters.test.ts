@@ -52,6 +52,12 @@ describe('V2 L1 toolbar filters independently of other workers',()=>{
   it('supports field-only searches and custom values without overwriting Item source',()=>{
     const s={...newToolbarState(),search:'nq1',field:'displayCode'};
     expect(ids(filterToolbarRows(records,s))).toEqual(['nq1']);
+    // The user sees NQ01 but the original Excel code may be NQ-MẪU-001.
+    const formatted=mk('demo',{displayCode:'NQ-MẪU-001'});
+    expect(ids(filterToolbarRows([formatted],{...s,search:'NQ01'}))).toEqual(['demo']);
+    expect(ids(filterToolbarRows([formatted],{...s,field:'all',search:'NQ01'}))).toEqual(['demo']);
+    expect(ids(filterToolbarRows([formatted],{...s,search:'NQ-MAU-001'}))).toEqual(['demo']);
+
     expect(filterToolbarRows(records,{...s,field:'note'})).toEqual([]);
     const custom=(item:Item,field:string)=>item.recordId==='nq2'&&
       (field==='custom_alpha'||field==='*')?'Hồ sơ kiểm tra đặc biệt':'';
