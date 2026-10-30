@@ -23,7 +23,7 @@ const replacement=()=>createDemoItems(2).map((item,i)=>({...item,
 const seed=()=>({hdnd:{items:{legacy:initialRows[0]},
   datasetV2:{active:{generationId:'gen_seed_initial',operationId:'seed_op_000001',
     revision:1,rowCount:2,digest:'a'.repeat(64)},
-    generations:{gen_seed_initial:{items:Object.fromEntries(initialRows.map(row=>[row.recordId,row]))}},
+    generations:{gen_seed_initial:{items:Object.fromEntries(initialRows.map(row=>[row.recordId,{...row,operationId:'seed',updatedAt:1,updatedBy:'administrator'}]))}},
     permissions:{gen_seed_initial:{columns:{note:true}}},
     leases:{gen_seed_initial:{r1:{note:{token:'stale-lease'}}}}
   }}});
