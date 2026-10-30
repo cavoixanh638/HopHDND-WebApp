@@ -12,7 +12,7 @@ import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const rule=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
-  firebase:{sign_in_provider:'google.com'}};
+  firebase:{sign_in_provider:'google.com' as const}};
 const actor={uid:'administrator',email:claims.email,emailVerified:true,
   providerData:[{providerId:'google.com'}]} as User;
 const initialRows=createDemoItems(2).map((item,i)=>({...item,
