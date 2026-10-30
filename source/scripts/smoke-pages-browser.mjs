@@ -3612,8 +3612,16 @@ try{
         generations:Object.keys(v2?.generations??{})};
     };
     const stagedId=async side=>{
-      await clickText(side,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
-        'Ghi staging, đọc lại và sao lưu thử nghiệm');
+      // The App does not permit staging while the Firebase profile, current
+      // generation, in-flight workspace refresh or stale draft is unsettled.
+      // Wait for those guards rather than clicking a transient disabled UI.
+      const selector='section[aria-label="Thử nghiệm thế hệ Firebase"] button';
+      for(let i=0;i<100;i++){
+        if(await side.js(`[...document.querySelectorAll(${JSON.stringify(selector)})]
+          .some(x=>x.textContent?.includes('Ghi staging, đọc lại')&&!x.disabled)`))break;
+        await sleep(120);
+      }
+      await clickText(side,selector,'Ghi staging, đọc lại và sao lưu thử nghiệm');
       await side.until("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.includes(' V2 ')===true || document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.startsWith('THAY ')===true",
         'readback staging and confirmation');
       const text=await side.js("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent");
@@ -3787,18 +3795,67 @@ try{
     await enter(adminA,'input[aria-label="Xác nhận thay thế toàn bộ"]',replacement.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Chuyển thế hệ bằng CAS');
-    await assertUiCommitted('REPLACE',replacement.op);
-    const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
-    const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
-    if(Object.keys(replacementV2??{}).length!==2||
-      !Object.values(replacementV2).some(x=>x.content==='PR95 REPLACE nghị quyết'))
-      throw Error('Replacement generation did not contain new Excel rows');
-    console.log('BROWSER_EXCEL_REPLACEMENT_UI_CAS_PASS',JSON.stringify({
-      operationId:replacement.op,revision:replacementAfter.active.revision,
-      serverRows:Object.keys(replacementV2).length,backupVerified:true
-    }));
-    await takeShot('replacement');
-    await checkLiveListReport('REPLACEMENT','PR95 REPLACE nghị quyết','Sở QA REPLACE');
+    let replacementBlocked=null;
+    try{
+      await assertUiCommitted('REPLACE',replacement.op);
+      const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
+      const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
+      if(Object.keys(replacementV2??{}).length!==2||
+        !Object.values(replacementV2).some(x=>x.content==='PR95 REPLACE nghị quyết'))
+        throw Error('Replacement generation did not contain new Excel rows');
+      console.log('BROWSER_EXCEL_REPLACEMENT_UI_CAS_PASS',JSON.stringify({
+        operationId:replacement.op,revision:replacementAfter.active.revision,
+        serverRows:Object.keys(replacementV2).length,backupVerified:true
+      }));
+      await takeShot('replacement');
+    }catch(error){
+      const server=await operationCounts();
+      if(server.active?.operationId===replacement.op)throw error;
+      replacementBlocked=String(error);
+      console.error('BROWSER_EXCEL_REPLACEMENT_UI_BLOCKED',JSON.stringify({
+        operationId:replacement.op,reason:replacementBlocked,
+        noAutomaticRetry:true,active:server.active
+      }));
+      await takeShot('replacement-blocked');
+      // Independent restore test: build a fully tagged COMMITTED V2 fixture
+      // from the candidate already staged by the REAL Excel UI. A fixture PUT
+      // is not a successful UI replacement and must never be reported as one.
+      const raw=await ownerValue('/hdnd/datasetV2/candidates/'+replacement.op);
+      const backup=await ownerValue('/hdnd/datasetV2/backups/'+replacement.op);
+      if(typeof raw!=='string'||typeof backup!=='string')
+        throw Error('Cannot independently test restore: replacement candidate/backup absent');
+      const payload=JSON.parse(raw);
+      if(payload.manifest.operationId!==replacement.op||
+        Object.keys(payload.items??{}).length!==2)
+        throw Error('Cannot independently test restore: candidate readback malformed');
+      const source=await ownerValue('/hdnd/datasetV2');
+      const gen=payload.manifest.generationId,previous=source.active.generationId;
+      const items=Object.fromEntries(Object.entries(payload.items)
+        .map(([id,item])=>[id,{...item,operationId:replacement.op,
+          updatedAt:Date.now()-2000,updatedBy:adminIdentity[0].uid}]));
+      const synthetic={...source,
+        active:{generationId:gen,operationId:replacement.op,
+          revision:source.active.revision+1,rowCount:2,digest:payload.manifest.digest},
+        generations:{...source.generations,[gen]:{items}},
+        permissions:{...source.permissions,[gen]:{columns:{note:true}}},
+        operations:{...source.operations,[replacement.op]:{
+          status:'COMMITTED',from:previous,to:gen,at:Date.now()}}
+      };
+      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!seeded.ok)throw Error('Independent restore fixture could not be verified: '+seeded.status);
+      const fixture=await operationCounts();
+      if(fixture.active?.operationId!==replacement.op||
+        fixture.active?.revision!==replacementBefore.active.revision+1)
+        throw Error('Independent restore fixture active pointer mismatch');
+      console.log('BROWSER_EXCEL_SYNTHETIC_REPLACE_BASELINE_NOT_UI_CAS_PASS',
+        JSON.stringify({operationId:replacement.op,revision:fixture.active.revision,
+          fixtureOnly:true,replacementUiGate:'FAILED'}));
+    }
+    await checkLiveListReport(replacementBlocked?'SYNTHETIC_REPLACE_BASELINE':'REPLACEMENT',
+      'PR95 REPLACE nghị quyết','Sở QA REPLACE');
     await openTransfer(adminA);
     await enter(adminA,'input#v2-operation-lookup',replacement.op);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
@@ -3811,21 +3868,36 @@ try{
     const restoreBefore=await operationCounts();
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Khôi phục bằng CAS');
-    await assertUiCommitted('RESTORE',restoreOp);
-    const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
-    const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
-    if(Object.keys(restoredV2??{}).length!==2||
-      !Object.values(restoredV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
-      throw Error('Restored generation did not reproduce original Excel content');
-    console.log('BROWSER_EXCEL_RESTORE_UI_CAS_PASS',JSON.stringify({
-      operationId:restoreOp,revision:restoreAfter.active.revision,
-      serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
-    }));
-    await takeShot('restore');
-    await checkLiveListReport('RESTORE','PR95 INITIAL nghị quyết','Sở QA INITIAL');
-    if(initialBlocked)
-      throw Error('INITIAL_UI_CAS_NOT_COMMITTED (other replace/restore cases independent): '+
-        initialBlocked.slice(0,3500));
+    let restoreBlocked=null;
+    try{
+      await assertUiCommitted('RESTORE',restoreOp);
+      const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
+      const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
+      if(Object.keys(restoredV2??{}).length!==2||
+        !Object.values(restoredV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Restored generation did not reproduce original Excel content');
+      console.log('BROWSER_EXCEL_RESTORE_UI_CAS_PASS',JSON.stringify({
+        operationId:restoreOp,revision:restoreAfter.active.revision,
+        serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
+      }));
+      await takeShot('restore');
+      await checkLiveListReport('RESTORE','PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    }catch(error){
+      const server=await operationCounts();
+      restoreBlocked=String(error);
+      console.error('BROWSER_EXCEL_RESTORE_UI_BLOCKED',JSON.stringify({
+        operationId:restoreOp,reason:restoreBlocked,active:server.active,
+        noAutomaticRetry:true
+      }));
+      await takeShot('restore-blocked');
+    }
+    if(initialBlocked||replacementBlocked||restoreBlocked)
+      throw Error('PR95_REAL_EXCEL_UI_JOURNEY_INCOMPLETE '+JSON.stringify({
+        initial:initialBlocked?'BLOCKED':'PASS',
+        replacement:replacementBlocked?'BLOCKED':'PASS',
+        restore:restoreBlocked?'BLOCKED':'PASS',
+        fixtures:'disposable demo Emulator only; no skipped CAS marked PASS'
+      }));
   }finally{
     for(const t of adminTargets)t.socket.close();
     rmSync(adminE2eDir,{recursive:true,force:true,maxRetries:6,retryDelay:120});
