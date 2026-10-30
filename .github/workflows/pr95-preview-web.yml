@@ -73,7 +73,7 @@ jobs:
           echo "PR95_PREVIEW_MOBILE_BYTES $(wc -c < pr95-preview-mobile.png)"
           if ! grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt; then
             echo '::error::Real ItemList did not mount; showing first 800 chars of DOM'
-            node -e 'const fs=require("node:fs");const s=fs.readFileSync("pr95-preview-dom.txt","utf8");const i=s.indexOf("<div id=\\"root\\"");console.log("root snippet:",s.slice(i,i+1600));'
+            node -e 'const fs=require("node:fs");const s=fs.readFileSync("pr95-preview-dom.txt","utf8");const i=s.indexOf(`<div id="root"`);console.log("root snippet:",s.slice(i,i+1600));'
             exit 1
           fi
           if ! grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt; then
