@@ -1235,6 +1235,25 @@ try{
   await eventually("document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value===''",
     'V2 list reset did not clear department');
   console.log('V2_KIND_DEPARTMENT_DROPDOWN_PASS',JSON.stringify(kindOptions));
+  // Browser-level Escape guard: one bare Escape outside interactive controls
+  // clears AND filters; native Escape inside select was checked above.
+  const v2EscReady=await evaluate(`(()=>{
+    const select=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    document.querySelectorAll('details[open]').forEach(node=>node.open=false);
+    if(!select||select.options.length<2)return false;
+    select.value=select.options[1].value;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  })()`);
+  if(!v2EscReady)throw Error('V2 Escape browser setup unavailable');
+  await eventually("!!document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value",
+    'V2 Escape setup did not apply department filter');
+  await evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown',
+    {key:'Escape',code:'Escape',bubbles:true,cancelable:true}))`);
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value===''",
+    'V2 Escape outside controls must clear list conditions');
+  console.log('V2_ESC_NATIVE_CONTROL_AND_OUTSIDE_CLEAR_PASS');
+
 
   // An unsaved edit must not highlight the whole row in yellow or paint an
   // amber stripe in the detail popup. Explicit user row color rules are separate.
@@ -2973,6 +2992,13 @@ try{
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
     'Party next must filter both post-VP records, not only one literal status');
+  const v2NextRaw=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
+    .map(x=>x.textContent)`);
+  if(!v2NextRaw.some(x=>x.includes('Đã gửi ĐU'))||
+      !v2NextRaw.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
+    throw Error('V2 grouped next stage replaced original distinct row statuses: '+JSON.stringify(v2NextRaw));
+  console.log('V2_NEXT_BUCKET_RAW_LABELS_PRESERVED_PASS',JSON.stringify(v2NextRaw));
+
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
     total:Number(document.querySelector('.item-summary-total-count').textContent),
