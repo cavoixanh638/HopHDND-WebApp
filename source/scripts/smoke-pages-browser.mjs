@@ -1467,13 +1467,13 @@ try{
           .find(node=>node.querySelector('h3')?.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
         const table=section?.querySelector('table.report-table');
         const header=[...(table?.querySelectorAll('thead th')??[])];
-        const pending=header.find(el=>el.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
+        const pending=header.find(el=>el.textContent?.includes('Đã trình, chờ QĐ'));
         const total=table?.querySelector('tfoot td.report-total-col');
         const totalText=total?.querySelector('.count-drill > span')?.textContent?.trim() ??
           total?.querySelector('strong')?.textContent?.trim()??'';
         const rendered=section?.querySelector('.report-heading-count')?.textContent??'';
         const count=Number(rendered.match(/\\d+/)?.[0]??-1);
-        return {ok:!!pending&&pending.classList.contains('report-stage-intermediate')&&
+        return {ok:!!pending&&pending.classList.contains('report-stage-next')&&
           !header.some(el=>el.textContent?.trim()==='Không phải trình')&&
           !table?.querySelector('.report-stage-excluded')&&
           Number(totalText)===count,
