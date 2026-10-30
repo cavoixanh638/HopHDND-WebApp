@@ -18,6 +18,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const [staged,setStaged]=useState<Item[]|null>(null);
   const [confirm,setConfirm]=useState('');
   const [backupOperation,setBackupOperation]=useState('');
+  const [lookupOperation,setLookupOperation]=useState('');
   const [restoreId,setRestoreId]=useState('');
   const [restoreConfirm,setRestoreConfirm]=useState('');
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
@@ -48,8 +49,15 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     finally{setBusy(false);}
   };
   const check=async()=>{
-    if(!approval)return;
-    setMessage('Trạng thái máy chủ: '+await resolveDatasetOperation(database,approval.operationId));
+    if(!enabled)return;
+    const operationId=lookupOperation.trim()||approval?.operationId||'';
+    if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId)){
+      setMessage('Nhập mã operationId hợp lệ để tra cứu; không suy đoán trạng thái.');return;
+    }
+    setBusy(true);
+    try{setMessage('Trạng thái máy chủ ('+operationId+'): '+await resolveDatasetOperation(database,operationId));}
+    catch(e){setMessage(e instanceof Error?e.message:'Không xác minh được trạng thái máy chủ.');}
+    finally{setBusy(false);}
   };
   const restore=async()=>{
     if(!enabled||!user||!backupOperation)return;
@@ -88,9 +96,12 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       <button className="button danger" disabled={busy||stale||!enabled||
         confirm!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount}
         onClick={()=>void commit()}>Chuyển thế hệ bằng CAS</button>
-      <button className="button ghost" disabled={busy} onClick={()=>void check()}>
-        Tra cứu trạng thái operationId</button>
     </section>}
+    <div className="field"><label htmlFor="v2-operation-lookup">Tra cứu operationId (không tự gửi lại)</label>
+      <input id="v2-operation-lookup" value={lookupOperation} onChange={e=>setLookupOperation(e.currentTarget.value)}
+        placeholder={approval?.operationId??'Mã thao tác trước đó'} />
+      <button className="button ghost" disabled={busy||!enabled} onClick={()=>void check()}>Tra cứu trạng thái operationId</button>
+    </div>
     {backupOperation&&<section>
       <h4>Khôi phục từ backup riêng tư</h4>
       <p>Nhập mã thao tác khôi phục mới (12–80 ký tự), rồi xác nhận riêng.</p>

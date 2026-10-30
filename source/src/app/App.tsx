@@ -81,7 +81,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       ?new FirebaseRepository(firebase.database,
         ()=>firebaseLive.current?.user??null,
         ()=>firebaseLive.current?.permissions??{columns:{}},
-        'hdnd/datasetV2/generations/'+firebase.datasetActive.generationId+'/items')
+        'hdnd/datasetV2/generations/'+firebase.datasetActive.generationId+'/items',firebase.datasetActive)
       :firebase
         ?selectedSource==='primary'&&!comparison
           ?new FirebaseRepository(firebase.database,
@@ -99,15 +99,18 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         ()=>firebaseLive.current?.permissions??{columns:{}},
         firebase.datasetActive
           ?'hdnd/datasetV2/generations/'+firebase.datasetActive.generationId+'/items'
-          :'hdnd/items')
+          :'hdnd/items',firebase.datasetActive??undefined)
       :browserRepository,
     [firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,
+      firebase?.datasetActive?.operationId,firebase?.datasetActive?.revision,firebase?.datasetActive?.digest,
       selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed,
       legacySourceTests]);
   const leaseManager=useMemo(()=>firebase&&selectedSource==='primary'&&!comparison
     ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null,
         firebase.datasetActive?.generationId)
-    :undefined,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,selectedSource,comparison]);
+    :undefined,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,
+      firebase?.datasetActive?.operationId,firebase?.datasetActive?.revision,firebase?.datasetActive?.digest,
+      selectedSource,comparison]);
   useEffect(()=>()=>{if(leaseManager)void leaseManager.dispose();},[leaseManager]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
@@ -115,7 +118,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase&&firebase?.datasetActive?'pages:gen:'+firebase.datasetActive.generationId:
+  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase&&firebase?.datasetActive?'pages:gen:'+firebase.datasetActive.generationId+':'+firebase.datasetActive.operationId+':'+firebase.datasetActive.revision:
     isFirebase&&selectedSource==='primary'?'pages:primary':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
@@ -133,7 +136,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // Fair A/B: start both data requests only after exactly the same auth+profile
   // gates. No provisional Excel request while the admin config is pending.
   const compareReady=!comparison||(!!firebase?.user&&firebase.common.status==='ready'&&!!firebase.profile);
-  const canStartSource=sourceReady&&compareReady&&(repository.sourceKind!=='firebase'||!!firebase?.user);
+  // Never read hdnd/items while the V2 pointer is pending, invalid or denied.
+  const canStartSource=sourceReady&&compareReady&&(!firebase||firebase.datasetEpochReady!==false)&&
+    (repository.sourceKind!=='firebase'||!!firebase?.user);
   const workspace = useWorkspace(repository, sourceKey,canStartSource,leaseManager);
   // If a new visitor has no local snapshot and RTDB stalls, don't show an
   // indefinite blank loading state. Offer an explicit transport comparison.
@@ -496,6 +501,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </nav>}
       {isFirebase&&common.config&&common.status!=='ready'&&<p className="muted" role="status">Đang xem bố cục admin đã lưu gần nhất trên máy; quyền đổi cấu hình vẫn bị khóa tới khi Firebase xác nhận.</p>}
       {comparison&&<p className="notice" role="status">ĐANG SO SÁNH TỐC ĐỘ — {compareSource==='excel'?'đọc Excel trực tiếp qua Google Sheets GViz':'đọc Firebase Realtime Database'}. Dữ liệu chỉ xem; không thay nguồn mặc định admin đã lưu. Hai nguồn có thể có số dòng/thời điểm cập nhật khác nhau.</p>}
+      {isFirebase&&firebase!.datasetEpochReady===false&&<p className="notice" role="alert">Chưa xác minh được thế hệ Firebase đang hoạt động. Đã khóa đọc và lưu dữ liệu; không quay về nguồn cũ.</p>}
       {workspace.cachePending&&<p className="notice" role="status">Đang hiển thị bản dữ liệu lưu trong phiên trên thiết bị này. Chỉ xem; đang xác nhận bản mới nhất trên Firebase.</p>}
       {isFirebase&&repository instanceof FirebaseMirrorRepository&&repository.snapshot&&!workspace.cachePending&&<p className="muted" role="status">Nguồn Database · Đồng bộ Excel thành công: {new Date(repository.snapshot.syncedAt).toLocaleString('vi-VN')}{Date.now()-Date.parse(repository.snapshot.syncedAt)>120000?' · Bản sao có thể chậm cập nhật':''}</p>}
       {!anonymousVisitor&&!isDemo&&!privateTest&&common.status==='error'&&<p className="notice" role="alert">Không tải được danh mục và cách hiển thị: {common.message} <button className="button ghost" disabled={common.busy} onClick={()=>void common.refresh()}>Thử lại</button>{!isFirebase&&!isGoogleHost()&&editorUrl&&<> · <a href={editorUrl} target="_blank" rel="noreferrer">Mở trang cấu hình trên Google</a></>}</p>}{workspace.message && <p className="notice" role="alert">{workspace.message}</p>}
