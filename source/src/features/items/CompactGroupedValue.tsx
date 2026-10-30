@@ -59,6 +59,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    return <div className="compact-stages">
      {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>
        <div className="compact-stage-row" key={stage.key}
+         data-stage-field={stage.key}
          data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}>
          <span className="compact-stage-label">
            <span className="compact-stage-number">{stage.number}</span>
