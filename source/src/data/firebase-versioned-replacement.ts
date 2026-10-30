@@ -205,8 +205,8 @@ export async function restoreDatasetBackup(
   const baseRef=ref(database,DATASET_V2_PATH);
   const snap=(await get(baseRef)).val() as V2Snapshot;
   verifyActive(snap);
-  const backup=snap.backups?.[backupOperationId]?
-    JSON.parse(snap.backups[backupOperationId]) as V2Backup:undefined;
+  const backupJson=snap.backups?.[backupOperationId];
+  const backup=backupJson?JSON.parse(backupJson) as V2Backup:undefined;
   if(!backup||stable({active:backup.previous,items:backup.generation.items,
     permissions:JSON.parse(backup.permissionsJson),leases:JSON.parse(backup.leasesJson)})!==backup.baseline)
     throw Error('Backup không tồn tại hoặc không còn nguyên vẹn.');
