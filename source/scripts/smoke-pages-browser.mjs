@@ -3721,6 +3721,12 @@ try{
         'real file parsed/previewed');
     };
     const openTransfer=async side=>{
+      // V3 renders the gear for guests too. A Google SDK sign-in is not yet
+      // verified admin readiness: common profile, epoch and connected state
+      // must all have passed before any admin-only menu item is rendered.
+      // Wait for the *real* admin menu, never bypass or replace that guard.
+      await side.until("[...document.querySelectorAll('header.v3-shell-topbar .options-popover > button')].some(b=>b.textContent.trim()==='Tài khoản và dữ liệu')",
+        'verified V3 administrator tools (not the guest login menu)');
       await clickText(side,'.options-menu summary','⚙');
       await clickText(side,'.options-popover button','Tài khoản và dữ liệu');
       await side.until("document.querySelector('.settings-hub-tabs')!==null",'admin settings tabs');
