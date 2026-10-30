@@ -25,7 +25,10 @@ const expectedRules=JSON.parse(readFileSync(EXCLUSIVE_RULES_FILE,'utf8'));
 const rulesDigest=createHash('sha256').update(JSON.stringify(expectedRules)).digest('hex');
 // Firebase resolves the rules relative to its --config file: use an ABSOLUTE
 // source Rules path and a temporary isolated config; never change firebase.json.
-const emulatorConfigDir=mkdtempSync(join(tmpdir(),'pr95-browser-exclusive-rules-'));
+// The Firebase CLI determines its project root from the config location.
+// Put this runtime-only config UNDER source/, not /tmp/, to preserve the
+// existing project root while selecting the exclusive candidate Rules file.
+const emulatorConfigDir=mkdtempSync(join(resolve('.'),'.pr95-browser-exclusive-rules-'));
 const emulatorConfigFile=join(emulatorConfigDir,'firebase.json');
 writeFileSync(emulatorConfigFile,JSON.stringify({
   database:{rules:EXCLUSIVE_RULES_FILE},
@@ -129,7 +132,16 @@ async function startAndSeedFirebase(){
   if(!live.ok)throw Error('Cannot GET actual loaded Emulator Rules: HTTP '+live.status);
   const actualRules=await live.json();
   if(!isDeepStrictEqual(actualRules,expectedRules))
-    throw Error('L3-AUDIT-GAP-01: actual live Emulator Rules differ from exclusive-candidate');
+    throw Error('L3-AUDIT-GAP-01: actual live Emulator Rules differ from exclusive-candidate: '+
+      JSON.stringify({
+        expectedSha256:rulesDigest,
+        actualSha256:createHash('sha256').update(JSON.stringify(actualRules)).digest('hex'),
+        actualRootRead:actualRules?.rules?.['.read']??null,
+        actualHdndRead:actualRules?.rules?.hdnd?.['.read']??null,
+        actualV2Read:actualRules?.rules?.hdnd?.datasetV2?.['.read']??null,
+        configFile:emulatorConfigFile,
+        emulatorStartup:emulatorOutput.slice(-1200)
+      }));
   console.log('BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS',JSON.stringify({
     source:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
     actualRulesSha256:createHash('sha256').update(JSON.stringify(actualRules)).digest('hex'),
