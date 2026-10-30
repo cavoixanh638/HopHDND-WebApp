@@ -1,4 +1,4 @@
-import {get,ref,runTransaction,set,type Database} from 'firebase/database';
+import {get,ref,runTransaction,onValue,type Database,type DatabaseReference} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
 import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
@@ -25,6 +25,20 @@ export interface ReplacementApproval {
   fileName:string;
 }
 export type ReplacementOutcome={status:'committed'|'already-committed'|'unknown';operationId:string};
+/** Keep an active server listener while a parent RTDB transaction runs.
+ * A one-shot get() alone does not necessarily populate the SDK transaction cache.
+ */
+async function holdTransactionCache(location:DatabaseReference):Promise<()=>void>{
+  return new Promise((resolve,reject)=>{
+    let released=false;
+    const unsubscribe=onValue(location,snapshot=>{
+      if(released)return;
+      released=true;
+      if(!snapshot.exists()){unsubscribe();reject(Error('Không có tập dữ liệu trên server.'));return;}
+      resolve(unsubscribe);
+    },reject);
+  });
+}
 const adminGuard=(user:User|null)=>{
   if(!firebaseAdmin(user))throw Error('Chỉ tài khoản Google quản trị đã xác minh được thay dữ liệu.');
 };
@@ -152,9 +166,10 @@ export async function commitDatasetReplacement(
   // Warm the exact parent path immediately before running the CAS.
   const rootRef=ref(database,DATASET_V2_PATH);
   verifyActive((await get(rootRef)).val() as V2Snapshot);
+  const releaseCache=await holdTransactionCache(rootRef);
   let failure='';
   const result=await runTransaction(rootRef,raw=>{
-    if(raw===null)return undefined; // Cannot commit on a cold local null cache.
+    if(raw===null){failure='RTDB trả cache null dù đã đăng ký listener dữ liệu hiện hành.';return undefined;}
     const source=raw as V2Snapshot;
     try {
       verifyActive(source);
@@ -183,6 +198,7 @@ export async function commitDatasetReplacement(
       return next;
     }catch(error){failure=error instanceof Error?error.message:'Xung đột không rõ';return undefined;}
   },{applyLocally:false}).catch(error=>{failure=error instanceof Error?error.message:String(error);return null;});
+  releaseCache();
   const status=await resolveDatasetOperation(database,approval.operationId);
   if(status==='committed'){
     if(result?.committed){
