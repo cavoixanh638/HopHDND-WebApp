@@ -10,10 +10,6 @@ import {mergeItemLayout,type LayoutConflictChoices} from '../data/item-layout-me
 import type {SheetConfig} from '../data/sheet-config';
 import {markStartup} from '../data/startup-timings';
 import {clearSessionMirrors} from '../data/firebase-snapshot-cache';
-import {warmMirrorStream} from '../data/authenticated-mirror-stream';
-import {mirrorPath} from '../data/firebase-mirror-repository';
-import {DEFAULT_SHEET_URL,loadSheetConfig,parseSheetConfig} from '../data/sheet-config';
-import {compareSourceFromSearch} from '../data/source-comparison';
 import {getFirebaseServices,ensureGuestAuth} from './firebase-boot';
 import {serializeReviewSnapshot,validateReviewSnapshot,type ReviewSnapshot} from '../domain/approval-review';
 import {initialFreeze,watchFreeze,setFreezeMode,activeEditLeaseCount,type FreezeControl,type FreezeMode} from '../data/freeze-control';
@@ -62,7 +58,6 @@ export function useFirebase(){
   const [freezeControl,setFreezeControl]=useState<FreezeControl|null>(null);
   const saving=useRef(false);
   const hadAuthenticatedSession=useRef(false);
-  const stopMirrorWarmup=useRef<(()=>void)|null>(null);
   useEffect(()=>{
     let active=true,signing=false;
     const unsubscribe=onAuthStateChanged(auth,next=>{
@@ -76,35 +71,6 @@ export function useFirebase(){
     },cause=>{markStartup('auth-error','Firebase Auth không phản hồi hợp lệ');setError(cause.message);});
     return()=>{active=false;unsubscribe();};
   },[auth]);
-  // Data-first: issue the protected mirror read immediately after Auth.
-  // It runs alongside profile, permissions and editing-lock listeners, but
-  // remains invisible until a LIVE admin profile confirms Database is selected.
-  // If a cached profile explicitly says Excel, do not request the mirror.
-  useEffect(()=>{
-    if(!user)return;
-    // A/B mode must not give Database a prefetch head-start over GViz Excel.
-    if(typeof window!=='undefined'){
-      const params=new URLSearchParams(window.location?.search??'');
-      if(compareSourceFromSearch(window.location?.search??'')!==null)return;
-      if(params.get('startupMetrics')==='1'&&params.get('mirrorWarmup')==='off')return;
-    }
-    const cached=loadConfirmedProfile();
-    if(cached?.dataSource!=='database')return;
-    const source=loadSheetConfig()??parseSheetConfig(DEFAULT_SHEET_URL);
-    markStartup('mirror-warm-start','Song song cấu hình/quyền, chưa hiển thị');
-    const release=warmMirrorStream(database,user.uid,mirrorPath(source));
-    stopMirrorWarmup.current=release;
-    return()=>{
-      release();
-      if(stopMirrorWarmup.current===release)stopMirrorWarmup.current=null;
-    };
-  },[user?.uid,database]);
-  useEffect(()=>{
-    if(profileReady&&profile?.dataSource!=='database'){
-      stopMirrorWarmup.current?.();
-      stopMirrorWarmup.current=null;
-    }
-  },[profileReady,profile?.dataSource]);
   useEffect(()=>{
     if(!user)return;
     let active=true;
@@ -340,7 +306,7 @@ export function useFirebase(){
     }finally{saving.current=false;setBusy(false);}
   };
   const refresh=async()=>{
-    if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase; dữ liệu Sheets vẫn có thể đọc.');return;}
+    if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase; không xác nhận được dữ liệu nguồn chính.');return;}
     try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,'hdnd/permissions'))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
   };
   return {database,user,ready,error,connected,permissions:datasetActive?datasetPermissions:permissions,datasetActive,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
