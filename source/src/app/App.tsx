@@ -1,4 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
+import {get,ref} from 'firebase/database';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -406,6 +407,25 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       firebase!.canEdit(item.recordId,'isDropped'));
   const viewerMayEditText=viewerMayEdit&&workspace.items.some(item=>
     TEXT_FIELDS.some(field=>firebase!.canEdit(item.recordId,field.key)));
+  // Emulator-only diagnostic to distinguish live server permissions from the
+  // App's effective rights without ever granting frontend-only edit access.
+  if(import.meta.env.MODE==='pages-test'&&typeof window!=='undefined'&&
+    ['127.0.0.1','localhost'].includes(window.location.hostname)&&firebase){
+    const debug=window as Window & {
+      __pr95UiV2L3RightsProbe?:()=>unknown;
+      __pr95UiV2L3RightsRead?:()=>Promise<unknown>;
+    };
+    debug.__pr95UiV2L3RightsProbe=()=>({
+      isAdmin:firebase.isAdmin,userUid:firebase.user?.uid,epochReady:firebase.datasetEpochReady,
+      connected:firebase.connected,editingLocked:firebase.editingLocked,
+      editorAuthorized:firebase.editorAuthorized,freeze:firebase.freezeControl?.mode,
+      permissions:firebase.permissions,
+      canEditNote:firebase.canEdit('demo-0001','note'),source:selectedSource,
+      workspaceCachePending:workspace.cachePending,viewerMayEdit,page
+    });
+    debug.__pr95UiV2L3RightsRead=async()=>(await get(ref(firebase.database,
+      'hdnd/datasetV2/permissions/'+firebase.datasetActive?.generationId))).val();
+  }
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
   // Calculate the exact first-frame width synchronously from the saved shared
