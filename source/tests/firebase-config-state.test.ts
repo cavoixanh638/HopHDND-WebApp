@@ -24,7 +24,7 @@ const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@
 const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems(1)),reports:defaultReportLayout(),items:defaultItemLayout()});
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
-function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get(admin?'hdnd/editors':'hdnd/editors/guest').next({val:()=>admin?{guest:true}:true});}
+function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('hdnd/datasetV2/active').next({val:()=>null});h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get(admin?'hdnd/editors':'hdnd/editors/guest').next({val:()=>admin?{guest:true}:true});}
 function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
 beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockReset().mockResolvedValue({});h.persistence.mockReset().mockResolvedValue(undefined);});
 afterEach(()=>h.dispose());

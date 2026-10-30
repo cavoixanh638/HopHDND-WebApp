@@ -71,7 +71,8 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   useEffect(() => {
     // Never apply a checkpoint from a previous generation to reused IDs.
     if(previousSourceKey.current!==sourceKey){
-      if(previousSourceKey.current.startsWith('pages:gen:'))clearCheckpoint(`data:${previousSourceKey.current}`);
+      if(previousSourceKey.current.startsWith('pages:gen:')||previousSourceKey.current==='pages:primary')
+        clearCheckpoint(`data:${previousSourceKey.current}`);
       previousSourceKey.current=sourceKey;
       autoFailed.current='';
     }

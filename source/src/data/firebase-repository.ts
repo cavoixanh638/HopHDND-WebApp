@@ -83,11 +83,11 @@ export class FirebaseRepository implements Repository {
       if(stopped)return;
       activeSeen=true;
       valid=sameDatasetEpoch(snapshot.val(),this.expectedActive!);
-      if(!valid){rows=null;error(new Error('Con trỏ Firebase đã đổi; không hiển thị dữ liệu phiên cũ.'));}
+      if(!valid){rows=null;next([]);error(new Error('Con trỏ Firebase đã đổi; không hiển thị dữ liệu phiên cũ.'));}
       else publish();
-    },cause=>{valid=false;rows=null;if(!stopped)error(cause);});
+    },cause=>{valid=false;rows=null;if(!stopped){next([]);error(cause);}});
     const stopItems=onValue(ref(this.database,this.itemPath),snapshot=>{
-      if(stopped||!activeSeen||!valid)return;
+      if(stopped||(activeSeen&&!valid))return;
       try{rows=rowsFrom(snapshot.val());publish();}catch(cause){rows=null;error(cause as Error);}
     },cause=>{rows=null;if(!stopped)error(cause);});
     return()=>{stopped=true;stopPointer();stopItems();};
