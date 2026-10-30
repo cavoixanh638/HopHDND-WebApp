@@ -3,7 +3,7 @@ import {describe,expect,it} from 'vitest';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
-import {CellPicker} from '../src/features/items/CellPicker';
+import {CellPicker,cellPickerCanClear} from '../src/features/items/CellPicker';
 import {activeCompactPairs,DEFAULT_COMPACT_DISPLAY} from '../src/features/items/compact-columns';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {createDemoItems} from '../src/data/demo-items';
@@ -88,6 +88,42 @@ describe('PR95 UI V3 L2 single-frame grouped editors',()=>{
     expect(pickerSource).toContain("event.key === 'ArrowDown'");
     expect(pickerSource).not.toContain('Giá trị hiện tại “{value}” không khớp bộ lọc.');
     expect(pickerSource).not.toContain('${value} (giá trị hiện tại)');
-    expect(pickerSource).toContain("...(options.includes('') ? [{ value: '', label: '—' }] : []),");
+    expect(pickerSource).toContain("...(cellPickerCanClear(field,options) ? [{ value: '', label: '—' }] : []),");
+  });
+});
+
+
+describe('R-V3-01: optional non-status picker clear while status menus stay exact',()=>{
+  it('restores clear for VP/UBND leaders with List-like nonempty choices',()=>{
+    const listValues=['PCVP Trần Văn B','PCT Nguyễn Văn C'];
+    expect(listValues).not.toContain('');
+    expect(cellPickerCanClear('vpLeader',listValues)).toBe(true);
+    expect(cellPickerCanClear('ubndLeader',listValues)).toBe(true);
+  });
+  it('restores clear for optional assignments in List and popup regardless of catalog normalization',()=>{
+    for(const field of ['specialist','room','department','type'] as const){
+      expect(cellPickerCanClear(field,['Đã phân công'])).toBe(true);
+      expect(cellPickerCanClear(field,['','Đã phân công'])).toBe(true);
+    }
+    // No field identity: preserve backwards compatibility with an explicit
+    // empty custom-column choice; don't invent a new empty option otherwise.
+    expect(cellPickerCanClear(undefined,['','Một lựa chọn'])).toBe(true);
+    expect(cellPickerCanClear(undefined,['Một lựa chọn'])).toBe(false);
+  });
+  it('never adds a fake clear value to the four V3 catalogs, even if popup passes empty',()=>{
+    for(const field of ['partyLevel','progressParty','progressBuild','progressCouncil'] as const){
+      expect(cellPickerCanClear(field,['Sở chưa trình','Hoàn thành'])).toBe(false);
+      expect(cellPickerCanClear(field,['','Sở chưa trình','Hoàn thành'])).toBe(false);
+    }
+    expect(cellPickerCanClear('isDropped',['','Chưa rút','Đã rút'])).toBe(false);
+  });
+  it('keeps selection callback from chosen option and does not overwrite statuses',()=>{
+    expect(pickerSource).toContain('onClick={() => choose(option.value)}');
+    expect(pickerSource).toContain('onChange(nextValue)');
+    expect(pickerSource).toContain('aria-selected={value === option.value}');
+    expect(pickerSource).toContain("if(nextValue===value)");
+    expect(pickerSource).toContain("event.key === 'Escape'");
+    expect(pickerSource).toContain("...(selectedIsFilteredOut ? [{ value, label: value }] : []),");
+    expect(pickerSource).not.toContain(' (giá trị hiện tại)');
   });
 });
