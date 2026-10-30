@@ -52,7 +52,13 @@ jobs:
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$chrome"
-          uri="file://$(pwd)/dist-compact-qa/HopHDND_GopCot_XemThu.html"
+          # Serve the standalone preview over HTTP just as GitHub Pages will.
+          # A file:// module test can report an empty React root on headless Chrome.
+          node -e 'const http=require("node:http"),fs=require("node:fs");http.createServer((req,res)=>{if(req.url!=="/"){res.writeHead(404);res.end();return;}res.setHeader("Content-Type","text/html; charset=utf-8");res.end(fs.readFileSync("dist-compact-qa/HopHDND_GopCot_XemThu.html"));}).listen(41789,"127.0.0.1")' > pr95-preview-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          sleep 1
+          uri="http://127.0.0.1:41789/"
           flags=(--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu
             --disable-extensions --disable-background-networking --no-first-run
             --virtual-time-budget=4000)
@@ -67,7 +73,7 @@ jobs:
           echo "PR95_PREVIEW_MOBILE_BYTES $(wc -c < pr95-preview-mobile.png)"
           if ! grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt; then
             echo '::error::Real ItemList did not mount; showing first 800 chars of DOM'
-            head -c 800 pr95-preview-dom.txt
+            node -e 'const fs=require("node:fs");const s=fs.readFileSync("pr95-preview-dom.txt","utf8");const i=s.indexOf("<div id=\\"root\\"");console.log("root snippet:",s.slice(i,i+1600));'
             exit 1
           fi
           if ! grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt; then
@@ -82,12 +88,15 @@ jobs:
           test -s pr95-preview-mobile.png
           echo "PR95_PREVIEW_REAL_CHROME_DESKTOP_MOBILE_PASS"
       - name: Upload synthetic preview screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr95-web-preview-desktop-mobile
           path: |
             source/pr95-preview-desktop.png
             source/pr95-preview-mobile.png
+            source/pr95-preview-dom.txt
+            source/pr95-preview-server.log
           retention-days: 14
       - name: Publish ONLY preview/pr95/index.html to main Pages tree
         shell: bash
