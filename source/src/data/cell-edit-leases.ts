@@ -22,6 +22,17 @@ const validLease=(x:unknown):x is CellLease=>{
     y.revision>0&&Object.hasOwn(MAX_EDIT_MS,y.kind)&&
     Number.isFinite(y.acquiredAt)&&Number.isFinite(y.expiresAt);
 };
+/** Reject old-generation lease acquire/renew even for the SAME verified admin UID.
+ * Rules scope direct generation writes; a foreground tab must additionally
+ * fence its own operations against the server-authoritative active pointer.
+ * This method is deliberately not a cached local generation comparison.
+ */
+async function assertActiveLeaseGeneration(database:Database,generationId?:string){
+  if(!generationId)return;
+  const pointer=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+  if(pointer?.generationId!==generationId)
+    throw new Error('Thế hệ dữ liệu đã thay đổi; khóa ô của phiên cũ không còn hiệu lực.');
+}
 const serverTime=async(database:Database)=>{
   const offset=await new Promise<number>((resolve,reject)=>{
     // Firebase's .info nodes are local connection metadata and must be
@@ -39,6 +50,7 @@ const serverTime=async(database:Database)=>{
 export async function acquireCellLease(database:Database,user:User|null,session:string,
  id:string,field:EditableField,kind:EditorKind,generationId?:string):Promise<CellLease>{
   if(!user||!session)throw new Error('Chưa xác thực người sửa.');
+  await assertActiveLeaseGeneration(database,generationId);
   const freeze=await readFreeze(database);
   if(freeze.mode!=='OPEN')throw new Error('Hệ thống đang chuẩn bị chốt hoặc đã đóng băng dữ liệu.');
   const now=await serverTime(database),token=crypto.randomUUID();
@@ -58,13 +70,16 @@ export async function acquireCellLease(database:Database,user:User|null,session:
   // The mode may change between reading OPEN and the lock commit.
   // If DRAINING/FROZEN, release the newly obtained lock and fail closed.
   const state=await readFreeze(database);
-  if(state.mode!=='OPEN'){
+  let epochChanged=false;
+  try{await assertActiveLeaseGeneration(database,generationId);}catch{epochChanged=true;}
+  if(state.mode!=='OPEN'||epochChanged){
     await releaseCellLease(database,entry,id,field,generationId).catch(()=>{});
-    throw new Error('Quản trị đang chốt số liệu, không nhận thêm lượt sửa.');
+    throw new Error(epochChanged?'Thế hệ dữ liệu đã đổi khi xin khóa; phiên cũ bị vô hiệu hóa.':'Quản trị đang chốt số liệu, không nhận thêm lượt sửa.');
   }
   return entry;
 }
 export async function renewCellLease(database:Database,lease:CellLease,id:string,field:EditableField,generationId?:string){
+  await assertActiveLeaseGeneration(database,generationId);
   const now=await serverTime(database);
   if(now>=lease.acquiredAt+MAX_EDIT_MS[lease.kind])throw new Error('Đã hết thời gian sửa ô.');
   const control=await readFreeze(database);
@@ -79,6 +94,7 @@ export async function renewCellLease(database:Database,lease:CellLease,id:string
   },{applyLocally:false});
   if(!result.committed||result.snapshot.val()?.token!==lease.token)
     throw new Error('Khóa ô đã chuyển cho người khác.');
+  await assertActiveLeaseGeneration(database,generationId);
   return result.snapshot.val() as CellLease;
 }
 export async function releaseCellLease(database:Database,lease:CellLease,
