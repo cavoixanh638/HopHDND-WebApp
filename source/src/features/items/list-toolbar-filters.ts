@@ -82,11 +82,11 @@ export function shouldClearListOnEscape(event:KeyboardEvent,context:{
     !context.active||context.customizing||context.permissionMode||
     context.editorOpen||context.popupOpen)return false;
   const target=event.target;
-  if(target instanceof Element){
+  if(typeof Element!=='undefined'&&target instanceof Element){
     if(target.closest('input,textarea,select,[contenteditable="true"],[role="combobox"],[role="listbox"],[role="dialog"],dialog,[role="menu"],[role="menuitem"]'))return false;
   }
   // Includes native dialogs, custom modal backdrops and expanded popovers.
-  if(document.querySelector('dialog[open],[role="dialog"],[role="listbox"],[aria-modal="true"],details[open],.options-popover[open]'))
+  if(typeof document!=='undefined'&&document.querySelector('dialog[open],[role="dialog"],[role="listbox"],[aria-modal="true"],details[open],.options-popover[open]'))
     return false;
   return true;
 }
