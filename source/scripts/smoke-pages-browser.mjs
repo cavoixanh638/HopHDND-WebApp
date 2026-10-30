@@ -54,12 +54,17 @@ const emulatorsReady=async()=>{
     if(emulator?.exitCode!==null)
       throw Error('Isolated Firebase emulator exited early: '+emulatorOutput.slice(-3500));
     try{
-      const [db,auth]=await Promise.all([
-        fetch(EMULATOR_ROOT,{signal:AbortSignal.timeout(850)}),
-        fetch(EMULATOR_AUTH+'/emulator/v1/projects/'+EMULATOR_PROJECT+'/accounts',
-          {signal:AbortSignal.timeout(850)})
-      ]);
-      if(db.ok&&auth.ok)return;
+      // Firebase Emulator Hub is the authoritative ready/port registry.
+      // The Auth account-list REST route is not a general health endpoint.
+      const reply=await fetch('http://127.0.0.1:4400/emulators',
+        {signal:AbortSignal.timeout(850)});
+      if(reply.ok){
+        const available=await reply.json();
+        if(available?.auth?.port===9099&&available?.database?.port===9000&&
+          ['127.0.0.1','localhost'].includes(available.auth.host)&&
+          ['127.0.0.1','localhost'].includes(available.database.host))
+          return;
+      }
     }catch{}
     await sleep(250);
   }
