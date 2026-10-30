@@ -16,9 +16,9 @@ export const MAX_STATUS_PALETTES=20;
 const validHex=/^#[0-9a-f]{6}$/i;
 const color=(v:unknown)=>typeof v==='string'&&validHex.test(v)?v.toUpperCase():null;
 export const defaultStatusPalette=():StatusPalette=>({
-  'not-submitted':{text:'#D00025',background:'#FFE0E4'},
-  office:{text:'#854D0E',background:'#FEF9C3'},
-  done:{text:'#007A18',background:'#D5F0DE'},
+  'not-submitted':{text:'#B14052',background:'#FFF1F3'},
+  office:{text:'#805C22',background:'#FFF8E9'},
+  done:{text:'#346E48',background:'#EEF8F1'},
   other:{text:'#426274',background:'#F2F6F9'},
   otherEnabled:false,
 });
@@ -66,17 +66,9 @@ export function loadStatusPaletteStore(source:string):StatusPaletteStore{
   try{const raw=globalThis.localStorage?.getItem(keyFor(source));
     if(!raw)return defaultStatusPaletteStore();
     const store=validateStatusPaletteStore(JSON.parse(raw));
-    // Only migrate an untouched legacy office default in the *active* view.
-    // Explicit named presets (including Theme1) and user-picked colors stay
-    // bit-for-bit unchanged. Never rewrite localStorage during a read.
-    const original=defaultStatusPalette();
-    if(!store.activePresetId&&store.presets.length===0&&
-      store.active.office.text==='#B04700'&&store.active.office.background==='#FFE8B8'&&
-      store.active.otherEnabled===original.otherEnabled&&
-      (['not-submitted','done','other'] as const).every(group=>
-        store.active[group].text===original[group].text&&
-        store.active[group].background===original[group].background))
-      return {...store,active:{...store.active,office:{...defaultStatusPalette().office}}};
+    // V2 changes defaults for NEW sources only. An existing saved active
+    // palette (including a former default without named presets) is a user
+    // selection: NEVER silently recolor it or rewrite localStorage on read.
     return store;
   }catch{return defaultStatusPaletteStore();}
 }
@@ -106,12 +98,12 @@ const stageBorder=(current:StatusSwatch,base:StatusSwatch,exact:string)=>
 export function statusPaletteCssVariables(colors:StatusPalette):Record<string,string>{
   const base=defaultStatusPalette();
   return {
-    '--hdnd-stage-not-submitted-bg':stageColor(colors['not-submitted'],base['not-submitted'],'#FFF1F2'),
-    '--hdnd-stage-not-submitted-border':stageBorder(colors['not-submitted'],base['not-submitted'],'#FECDD3'),
-    '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFFBEB'),
-    '--hdnd-stage-office-border':stageBorder(colors.office,base.office,'#FDE68A'),
-    '--hdnd-stage-done-bg':stageColor(colors.done,base.done,'#F0FDF4'),
-    '--hdnd-stage-done-border':stageBorder(colors.done,base.done,'#BBF7D0'),
+    '--hdnd-stage-not-submitted-bg':stageColor(colors['not-submitted'],base['not-submitted'],'#FFF1F3'),
+    '--hdnd-stage-not-submitted-border':stageBorder(colors['not-submitted'],base['not-submitted'],'#EFD4DA'),
+    '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFF8E9'),
+    '--hdnd-stage-office-border':stageBorder(colors.office,base.office,'#EBDFC4'),
+    '--hdnd-stage-done-bg':stageColor(colors.done,base.done,'#EEF8F1'),
+    '--hdnd-stage-done-border':stageBorder(colors.done,base.done,'#D0E4D7'),
     '--hdnd-status-not-submitted-text':colors['not-submitted'].text,
     '--hdnd-status-not-submitted-bg':colors['not-submitted'].background,
     '--hdnd-status-office-text':colors.office.text,

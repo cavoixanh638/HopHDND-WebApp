@@ -629,10 +629,10 @@ table.data-table button:not(.column-sort-button),table.report-table button,
 /* Consistent meanings across ALL five techniques. Do not infer overdue from stage alone.
    Each semantic stage carries readable foreground/background, border and a strong header ink. */
 .report-surface {
- --source-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4);--source-ink:var(--hdnd-status-not-submitted-text,#7F1D30);--source-stroke:#E7A1AD;--source-solid:var(--hdnd-status-not-submitted-text,#9B1731);
- --office-bg:var(--hdnd-status-office-bg,#FEF9C3);--office-ink:var(--hdnd-status-office-text,#854D0E);--office-stroke:#E5CD70;--office-solid:var(--hdnd-status-office-text,#854D0E);
- --next-bg:#DCEBFD;--next-ink:#164C89;--next-stroke:#A1C6EF;--next-solid:#124E8C;
- --completed-bg:var(--hdnd-status-done-bg,#D5F0DE);--completed-ink:var(--hdnd-status-done-text,#125B35);--completed-stroke:#91CFA8;--completed-solid:var(--hdnd-status-done-text,#126442);
+ --source-bg:var(--hdnd-status-not-submitted-bg,#FFF1F3);--source-ink:var(--hdnd-status-not-submitted-text,#B14052);--source-stroke:var(--hdnd-stage-not-submitted-border,#EFD4DA);--source-solid:var(--hdnd-status-not-submitted-text,#B14052);
+ --office-bg:var(--hdnd-status-office-bg,#FFF8E9);--office-ink:var(--hdnd-status-office-text,#805C22);--office-stroke:var(--hdnd-stage-office-border,#EBDFC4);--office-solid:var(--hdnd-status-office-text,#805C22);
+ --next-bg:#F0F5FC;--next-ink:#3E6591;--next-stroke:#D7E2F0;--next-solid:#3E6591;
+ --completed-bg:var(--hdnd-status-done-bg,#EEF8F1);--completed-ink:var(--hdnd-status-done-text,#346E48);--completed-stroke:var(--hdnd-stage-done-border,#D0E4D7);--completed-solid:var(--hdnd-status-done-text,#346E48);
  --withdrawn-bg:#ECE8F5;--withdrawn-ink:#5B3B78;--withdrawn-stroke:#CEC0DB;--withdrawn-solid:#563583;
  --other-bg:#EBEFF2;--other-ink:#3D5261;--other-stroke:#CBD5DC;--other-solid:#405460;
 }
@@ -1393,15 +1393,15 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    intermediate workflow labels receive no semantic tone. */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
-  --workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30;
+  --workflow-bg:#FFF1F3;--workflow-border:#EFD4DA;--workflow-fg:#B14052;
 }
 .item-data-table tbody td[data-progress-tone="office"],
 .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-bg:#FEF9C3;--workflow-border:#E5CD70;--workflow-fg:#854D0E;
+  --workflow-bg:#FFF8E9;--workflow-border:#EBDFC4;--workflow-fg:#805C22;
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450;
+  --workflow-bg:#EEF8F1;--workflow-border:#D0E4D7;--workflow-fg:#346E48;
 }
 /* Snapshot-verified colored dropdowns: the edit-mode status button itself
    must retain the report-matched pink/amber/green fill, including hover and
@@ -1421,10 +1421,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value::before,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value::before {
-  background:#125B35;
+  background:var(--hdnd-status-done-text,#346E48);
 }
-/* Softer completed lettering (WCAG >= 4.5:1 on #D5F0DE).
-   Keep its small status dot stronger for immediate recognition. */
+/* V2 completion keeps a semantic status dot; custom user colors win. */
 .item-data-table tbody td[data-progress-tone="done"] .workflow-status-value,
 .report-detail-grid tbody td[data-progress-tone="done"] .workflow-status-value,
 .item-data-table tbody td.editable-cell[data-progress-tone="done"] :is(.cell-picker-trigger,.custom-cell-input),
@@ -1446,21 +1445,19 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .report-grid-modal .report-grid-filter-row input::placeholder {font-size:15px;}
 
-/* Optional ink-only refinement, 22/10/2026. Preserve the checkpoint's
-   EXACT status fills, borders, status dots, editing affordance and history UI.
-   V5: more vivid red/orange/true-green chroma at >=4.5:1 on unchanged fills; weight stays 600.
-   New variable deliberately differs from --workflow-fg (dots/focus borders). */
+/* V2 default lettering follows the saved user palette; dot, border, edit
+   affordance and history are preserved, text weight remains 600. */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
-  --workflow-text:#D00025;
+  --workflow-text:#B14052;
 }
 .item-data-table tbody td[data-progress-tone="office"],
 .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-text:#854D0E;
+  --workflow-text:#805C22;
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-text:#007A18;
+  --workflow-text:#346E48;
 }
 .item-data-table tbody td[data-progress-tone] .workflow-status-value,
 .report-detail-grid tbody td[data-progress-tone] .workflow-status-value,
@@ -1476,18 +1473,24 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    'Other' only gets a data-progress-tone when the user explicitly enables it. */
 .item-data-table tbody td[data-progress-tone="not-submitted"],
 .report-detail-grid tbody td[data-progress-tone="not-submitted"] {
-  --workflow-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4);
-  --workflow-text:var(--hdnd-status-not-submitted-text,#D00025);
+  --workflow-bg:var(--hdnd-status-not-submitted-bg,#FFF1F3);
+  --workflow-text:var(--hdnd-status-not-submitted-text,#B14052);
+  --workflow-fg:var(--hdnd-status-not-submitted-text,#B14052);
+  --workflow-border:var(--hdnd-stage-not-submitted-border,#EFD4DA);
 }
 .item-data-table tbody td[data-progress-tone="office"],
 .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-bg:var(--hdnd-status-office-bg,#FEF9C3);
-  --workflow-text:var(--hdnd-status-office-text,#854D0E);
+  --workflow-bg:var(--hdnd-status-office-bg,#FFF8E9);
+  --workflow-text:var(--hdnd-status-office-text,#805C22);
+  --workflow-fg:var(--hdnd-status-office-text,#805C22);
+  --workflow-border:var(--hdnd-stage-office-border,#EBDFC4);
 }
 .item-data-table tbody td[data-progress-tone="done"],
 .report-detail-grid tbody td[data-progress-tone="done"] {
-  --workflow-bg:var(--hdnd-status-done-bg,#D5F0DE);
-  --workflow-text:var(--hdnd-status-done-text,#007A18);
+  --workflow-bg:var(--hdnd-status-done-bg,#EEF8F1);
+  --workflow-text:var(--hdnd-status-done-text,#346E48);
+  --workflow-fg:var(--hdnd-status-done-text,#346E48);
+  --workflow-border:var(--hdnd-stage-done-border,#D0E4D7);
 }
 .item-data-table tbody td[data-progress-tone="other"],
 .report-detail-grid tbody td[data-progress-tone="other"] {
@@ -2416,17 +2419,17 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 /* Office palette is consciously softer than the red "Sở chưa trình".
    Read the selected user's CSS vars first, never erase other preset colors. */
 .app-shell.imperial-sky-theme .report-surface {
-  --office-bg:var(--hdnd-status-office-bg,#FEF9C3);
-  --office-ink:var(--hdnd-status-office-text,#854D0E);
-  --office-solid:var(--hdnd-status-office-text,#854D0E);
-  --office-stroke:#E5CD70;
+  --office-bg:var(--hdnd-status-office-bg,#FFF8E9);
+  --office-ink:var(--hdnd-status-office-text,#805C22);
+  --office-solid:var(--hdnd-status-office-text,#805C22);
+  --office-stroke:var(--hdnd-stage-office-border,#EBDFC4);
 }
 .app-shell.imperial-sky-theme .item-data-table tbody td[data-progress-tone="office"],
 .app-shell.imperial-sky-theme .report-detail-grid tbody td[data-progress-tone="office"] {
-  --workflow-bg:var(--hdnd-status-office-bg,#FEF9C3);
-  --workflow-text:var(--hdnd-status-office-text,#854D0E);
+  --workflow-bg:var(--hdnd-status-office-bg,#FFF8E9);
+  --workflow-text:var(--hdnd-status-office-text,#805C22);
   --workflow-fg:var(--workflow-text);
-  --workflow-border:#E5CD70;
+  --workflow-border:var(--hdnd-stage-office-border,#EBDFC4);
 }
 /* A completion percentage is an outcome: it should use the same green as
    the "Hoàn thành" state in each currently selected user palette. */
