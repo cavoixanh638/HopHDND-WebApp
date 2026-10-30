@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
-import {checkPointerSwap,createDatasetManifest,verifyCandidateReadback,
+import {checkPointerSwap,createDatasetManifest,verifyCandidateReadback,verifyCandidateServerReadback,
   type ActiveDatasetPointer} from '../src/data/dataset-replacement-integrity';
 
 const operation='import_20261030_0001';
@@ -54,4 +54,18 @@ describe('read-only generation integrity preflight',()=>{
     expect(()=>checkPointerSwap({...committed,operationId:'another_op_0001'},oldPointer,manifest))
       .toThrow('Generation ID');
   });
+  it('rejects RTDB staging key mismatches, extra rows and altered payloads',async()=>{
+    const list=rows(),manifest=await createDatasetManifest(list,operation);
+    const keyed=Object.fromEntries(list.map(row=>[row.recordId,row]));
+    await expect(verifyCandidateServerReadback(keyed,manifest)).resolves.toBeUndefined();
+    await expect(verifyCandidateServerReadback({...keyed,extra:list[0]},manifest))
+      .rejects.toThrow('Số hồ sơ staging');
+    await expect(verifyCandidateServerReadback(
+      Object.fromEntries(list.map((row,i)=>[i===0?'wrong-path':row.recordId,row])),manifest))
+      .rejects.toThrow('Khóa đường dẫn');
+    await expect(verifyCandidateServerReadback(
+      Object.fromEntries(list.map((row,i)=>[row.recordId,i===0?{...row,content:'changed'}:row])),manifest))
+      .rejects.toThrow('checksum');
+  });
+
 });
