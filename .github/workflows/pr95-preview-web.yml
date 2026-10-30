@@ -164,7 +164,11 @@ jobs:
           echo "PR95_PREVIEW_REAL_CHROME_DESKTOP_MOBILE_PASS"
       - name: Exercise ALL V2 demo panels, 5 reports, roles, rights and Excel with real Chrome
         working-directory: source
-        run: node scripts/pr95-preview-browser.mjs
+        run: |
+          # The Chrome journey verifies BOTH HTTP and file://. Materialize the
+          # same self-contained HTML that the dedicated PR job packages first.
+          node scripts/package-compact-qa.mjs
+          node scripts/pr95-preview-browser.mjs
       - name: Upload synthetic preview screenshots
         if: always()
         uses: actions/upload-artifact@v4
