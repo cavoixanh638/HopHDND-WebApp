@@ -7,8 +7,9 @@ export interface ReplacementPreview {
   oldCount:number;newCount:number;difference:ReplacementDifference;
   totals:ReturnType<typeof summarizeListItems>;
 }
+// Code is the business key; STT is a row-order index, not a content edit.
+// recordId/revision also belong to the generation, not to business equivalence.
 const comparable=(item:Item)=>JSON.stringify({
-  displayCode:item.displayCode,stt:item.stt,documentKind:item.documentKind,
   ...Object.fromEntries(EDITABLE_FIELDS.map(field=>[field,item[field]])),
   archivedAt:item.archivedAt??null,
 });
@@ -18,9 +19,10 @@ export function previewDatasetReplacement(oldRows:readonly Item[],newRows:readon
   const map=(rows:readonly Item[],name:string)=>{
     const codes=new Map<string,Item>(),ids=new Set<string>();
     for(const row of rows){
-      if(!row.displayCode?.trim()||!row.recordId||ids.has(row.recordId)||codes.has(row.displayCode))
+      const code=row.displayCode?.trim();
+      if(!code||!row.recordId?.trim()||ids.has(row.recordId)||codes.has(code))
         throw Error(name+': mã hồ sơ trống/trùng hoặc recordId trùng: '+row.displayCode);
-      ids.add(row.recordId);codes.set(row.displayCode,row);
+      ids.add(row.recordId);codes.set(code,row);
     }
     return codes;
   };
