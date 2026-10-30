@@ -166,7 +166,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     <h4>Thay dữ liệu theo thế hệ — chỉ Firebase Emulator</h4>
     <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
     <button className="button primary" disabled={busy||!enabled||
-      (operationView?.status==='unknown'&&approval?.operationId===lookupOperation)}
+      (operationView?.status==='unknown'&&
+        (submittedCommit===approval?.operationId||submittedRestore!==null))}
       onClick={()=>void stage()}>
       Ghi staging, đọc lại và sao lưu thử nghiệm</button>
     {approval&&staged&&<section aria-label="Xem trước dữ liệu staging">
