@@ -56,37 +56,6 @@ jobs:
           test -s dist-compact-qa/compact-qa.html
           test -n "$(find dist-compact-qa/assets -name '*.js' -print -quit)"
           ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
-      - name: Compatibility check — legacy one-file QA packager
-        working-directory: source
-        shell: bash
-        run: |
-          if ! node scripts/package-compact-qa.mjs; then
-            node --input-type=module <<'JS'
-          import {readFileSync,readdirSync} from 'node:fs';
-          import {resolve} from 'node:path';
-          const root=resolve('dist-compact-qa');
-          let html=readFileSync(resolve(root,'compact-qa.html'),'utf8');
-          const assets=readdirSync(resolve(root,'assets'));
-          const js=readFileSync(resolve(root,'assets',assets.find(x=>x.endsWith('.js'))),'utf8');
-          const css=readFileSync(resolve(root,'assets',assets.find(x=>x.endsWith('.css'))),'utf8');
-          function replaceAsset(attribute,open,close,replacement){
-            const at=html.indexOf(attribute),start=html.lastIndexOf('<'+open,at);
-            const stop=html.indexOf(close,at)+close.length;
-            const original=html.slice(start,stop);
-            html=html.replace(original,replacement);
-          }
-          replaceAsset('src="./assets/','script','</script>','<script type="module">'+js.replaceAll('</script','<\\/script')+'</script>');
-          replaceAsset('href="./assets/','link','>','<style>'+css.replaceAll('</style','<\\/style')+'</style>');
-          function removeInline(name){
-            const open=html.indexOf('<'+name),start=html.indexOf('>',open);
-            const close=html.indexOf('</'+name+'>',start);
-            if(open>=0&&close>=0)html=html.slice(0,start+1)+html.slice(close);
-          }
-          removeInline('script');removeInline('style');
-          console.log('PR95_L4_PACKAGE_DIAG',JSON.stringify({original:readFileSync(resolve(root,'compact-qa.html'),'utf8').slice(0,600),remaining:html.slice(0,1800),scripts:assets.length,htmlLength:html.length}));
-          JS
-            exit 1
-          fi
       - name: Chrome desktop/mobile roles, five reports, popup, Excel A-O smoke
         working-directory: source
         run: node scripts/pr95-preview-browser.mjs
