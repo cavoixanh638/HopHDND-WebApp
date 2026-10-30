@@ -101,7 +101,8 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
   const rows=rowsOf(book,sheetName),head=validateHeader(rows,sheetName),data=rows.slice(head+1);
   if(!data.length)throw Error('Sheet "'+sheetName+'": file không chứa hồ sơ.');
   const seen=new Map<string,number>(),checked:unknown[][]=[];
-  const lastDataIndex=data.findLastIndex(values=>values.some(cell=>String(cell??'').trim()));
+  const lastDataIndex=data.reduce((last,values,index)=>
+    values.some(cell=>String(cell??'').trim())?index:last,-1);
   for(let index=0;index<=lastDataIndex;index++){
     const values=data[index],line=head+index+2;
     if(values.every(cell=>!String(cell??'').trim()))
