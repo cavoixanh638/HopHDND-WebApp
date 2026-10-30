@@ -79,6 +79,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [summarySelection,setSummarySelection]=useState<SummarySelection|null>(null);
   const [kindSelection,setKindSelection]=useState<ListKind|null>(null);
   const [toolbar,setToolbar]=useState(newToolbarState);
+  const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
   // An ordinary viewer should immediately see every A–R source field. Saved
@@ -584,9 +585,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           <option value="">Tất cả Phòng</option>
           {exactChoices(items,'room').map(value=><option key={value} value={value}>{value}</option>)}
         </select>
-        <details className="list-filter-other">
+        <details className="list-filter-other"
+          onToggle={e=>setOtherFiltersOpen(e.currentTarget.open)}>
           <summary>Lọc khác <span aria-hidden="true">▾</span></summary>
-          <div className="list-filter-other-panel" role="group" aria-label="Các trường lọc chi tiết">
+          {otherFiltersOpen&&<div className="list-filter-other-panel" role="group" aria-label="Các trường lọc chi tiết">
             <label>Chọn trường tìm kiếm
               <select aria-label="Chọn trường tìm kiếm" value={toolbar.field}
                 onChange={e=>setToolbar(old=>({...old,field:e.currentTarget.value}))}>
@@ -603,7 +605,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
                 {exactChoices(items,key).map(value=><option key={value} value={value}>{value}</option>)}
               </select>
             </label>)}
-          </div>
+          </div>}
         </details>
         <button type="button" className="button ghost list-filter-clear"
           onClick={clearAllListFilters} disabled={!anyListFilter}
