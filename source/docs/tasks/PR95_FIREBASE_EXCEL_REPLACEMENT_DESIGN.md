@@ -71,3 +71,9 @@ Do not rely on admin-only UI visibility: **Rules must require the verified singl
 **Mandatory before removing DRAFT:** happy path, wrong headers/order, multiple sheets, zero rows, duplicate codes, missing values, status errors, interrupt candidate write, interrupt post-commit read, repeated operation ID, two admin tabs, old draft after replacement, stale edit lease, permission leak by reused code, backup+rollback verification, list/report/filter equality, browser read-only preview screenshots, full TypeScript/unit/Emulator/Chromium and Codex independent security review.
 
 No merge/publish, no Firebase Rules/Functions/Hosting deployment, no production source switching, no business-data edits, no public Excel/backup artifacts.
+
+## Implementation checkpoint — integrity guard module (2026-10-30)
+
+- Added `src/data/dataset-replacement-integrity.ts` and isolated Vitest coverage. Candidate manifests are SHA-256 over **fixed business field order**, sorted by record ID, independent of input order, including revision/archived flags; duplicate IDs/codes and nonfresh revisions are rejected. Readback mismatch aborts. A pure active-pointer CAS decision recognizes stale tabs and exact-idempotent replay.
+- **This is read-only preflight logic, NOT Firebase staging, backend validation, an atomic commit or rollback.** It deliberately exports no Firebase write action. Server-authoritative transaction/Rules, immutable generation lifecycle, private backup, user-scoped permissions and stale lease fencing remain mandatory blockers; client hashes alone confer no authority. Do not route app traffic or allow replace based on this module alone.
+- Gate: check this commit's source/Emulator/Chromium CI. Codex independent review remains outstanding. No production permissions or data touched.
