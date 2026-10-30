@@ -245,6 +245,8 @@ async function test(){
   // inspect the same genuine App after a harmless page reload. The final
   // acceptance still requires live grant/revoke and must not rely on reload.
   await guest.send('Page.reload',{ignoreCache:true});
+  await guest.until('!!document.querySelector(".nav-tabs.primary-section-switcher")','guest reloaded App');
+  await clickText(guest,'nav.primary-section-switcher button','Danh sách');
   await guest.until('!!document.querySelector(".item-data-table tbody")','guest reloaded list',20000);
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
