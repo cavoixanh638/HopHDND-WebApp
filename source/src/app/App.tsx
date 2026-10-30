@@ -1,5 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
-import {get,ref} from 'firebase/database';
+import {get,onValue,ref} from 'firebase/database';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -403,6 +403,21 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       source:selectedSource,workspaceCachePending:workspace.cachePending,viewerMayEdit
     });
   }
+  // Test-only second RTDB listener to distinguish a subscription lifecycle
+  // defect from a real Rules/guest-token denial; no production behavior.
+  useEffect(()=>{
+    if(import.meta.env.MODE!=='pages-test'||!firebase?.database||!firebase?.user||
+       !firebase.datasetActive||!['127.0.0.1','localhost'].includes(window.location.hostname))
+      return;
+    const where='hdnd/datasetV2/permissions/'+firebase.datasetActive.generationId;
+    return onValue(ref(firebase.database,where),snapshot=>{
+      (window as Window & {__pr95UiV2L3RightsWatch?:unknown}).__pr95UiV2L3RightsWatch={
+        exists:snapshot.exists(),value:snapshot.val(),path:where,at:Date.now()};
+    },error=>{
+      (window as Window & {__pr95UiV2L3RightsWatch?:unknown}).__pr95UiV2L3RightsWatch={
+        error:error.code??error.message,path:where,at:Date.now()};
+    });
+  },[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId]);
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
   // Calculate the exact first-frame width synchronously from the saved shared
