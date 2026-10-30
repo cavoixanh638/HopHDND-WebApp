@@ -211,8 +211,9 @@ try{
     if(data.id&&pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(Error(JSON.stringify(data.error))):p.resolve(data.result);return;}
     if(data.method==='Network.requestWillBeSent'){
       const url=String(data.params?.request?.url??'');
-      if(/docs\\.google\\.com\\/spreadsheets\\//.test(url)||
-        /hophdnd-8b7b2.*(?:firebaseio\\.com|firebasedatabase\\.app|googleapis\\.com)/.test(url))
+      if(url.includes('docs.google.com/spreadsheets/')||
+        (url.includes('hophdnd-8b7b2')&&
+          ['firebaseio.com','firebasedatabase.app','googleapis.com'].some(host=>url.includes(host))))
         forbiddenNetwork.push(url);
     }
   });
