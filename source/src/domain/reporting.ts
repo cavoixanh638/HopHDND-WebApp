@@ -1,14 +1,16 @@
 import type { GroupField, Item, ReportConfig } from '../../shared/types';
 import {normalizeSearch} from './search';
+import {canonicalStatus,isNotRequiredStatus} from './status-contract';
+export {PARTY_STATUS_ALIASES} from './status-contract';
 
-export const COUNCIL_STAGE_COLUMNS = ['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố'] as const;
+export const COUNCIL_STAGE_COLUMNS = ['Sở chưa trình','VP đang xử lý','Hoàn thành'] as const;
 export const DEFAULT_REPORTS: ReportConfig[] = [
   { id: 'party', title: 'Tiến độ xin ý kiến Thành ủy', source: 'party', statusField: 'progressParty',includeNotRequired:false,
-    columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL','Đã có TBKL'],
+    columns: ['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'],
     hiddenColumns:['Không phải trình'],completed:['Đã có TBKL'] },
   { id: 'build', title: 'Tiến độ trình HĐND xây dựng NQ', source: 'build', statusField: 'progressBuild',includeNotRequired:false,
-    columns: ['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'],
-    hiddenColumns:['Không phải trình'],completed:['Đã có QĐ chấp thuận'] },
+    columns: ['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'],
+    hiddenColumns:['Không phải trình'],completed:['Đã có QĐ'] },
   { id: 'council', title: 'Tiến độ các Nghị quyết và Báo cáo trình HĐND', source: 'council',
     statusField: 'progressCouncil', columns:[...COUNCIL_STAGE_COLUMNS],
     hiddenColumns:[],completed:['Đã trình HĐND thành phố'] },
@@ -19,54 +21,32 @@ export const DEFAULT_REPORTS: ReportConfig[] = [
 ];
 export const isActive = (item: Item) => !item.isDropped && !item.archivedAt;
 const canonical = (value: string) => value.trim().toLocaleLowerCase('vi');
-/** Preserve legacy records and saved aliases, but display the punctuation and
- * final milestone dictated by the current Excel workbook's Sheet2 legend. */
-export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
-  'ĐU đã gửi TU chưa họp':'ĐU đã gửi TU, chưa họp',
-  'Đã họp chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
-  'Đã họp, chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
-  'Đã họp/xin phiếu chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL',
-  'VP đang xử lý':'VP đang thực hiện',
-  'Không phải trình xin ý kiến Thành ủy':'Không phải trình',
-  'Không phải trình Thành ủy':'Không phải trình',
-  'Không phải xin ý kiến':'Không phải trình',
-  'Không xin ý kiến':'Không phải trình',
-};
-const partyAliasMap=new Map(Object.entries(PARTY_STATUS_ALIASES)
-  .map(([old,modern])=>[normalizeSearch(old),modern]));
-// Historic TU labels are no longer official. If they survive in a stale source,
-// flag as "Chưa chuẩn hóa" rather than silently declare TBKL issued.
-const councilAliases=new Map(Object.entries({
-  'Hoàn thành':'Đã trình HĐND thành phố',
-  'Đã trình HĐND':'Đã trình HĐND thành phố',
-  'Đã trình HĐND TP':'Đã trình HĐND thành phố',
-  'Đã trình HĐND thành phố':'Đã trình HĐND thành phố',
-}).map(([old,modern])=>[normalizeSearch(old),modern]));
+/** Map only proven field-scoped predecessor labels in memory. The
+ * original Excel/Item/history text is never changed or saved by reporting.
+ * Blank and ambiguous old labels stay unknown, not implicitly submitted/done.
+ */
 export function normalizeReportStatus(raw:string,config:ReportConfig):string{
-  const value=raw.trim()||'Sở chưa trình';
-  if(config.id==='build' && normalizeSearch(value)===normalizeSearch('Không phải trình xây dựng NQ'))return 'Không phải trình';
-  if(config.id==='party')
-    return partyAliasMap.get(normalizeSearch(value))??value;
-  if(['council','nq','bc'].includes(config.id))
-    return councilAliases.get(normalizeSearch(value))??value;
-  return value;
+  return canonicalStatus(config.statusField,raw);
 }
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
-  return items.filter(item => isActive(item) &&
-    !(['build','party'].includes(config.id)&&config.includeNotRequired!==true&&
-      normalizeSearch(normalizeReportStatus(item[config.statusField],config))===normalizeSearch('Không phải trình')) && (
-    config.source === 'all' ||
-    (config.source === 'party' && (
-      (!['khong','khong phai xin y kien','khong xin y kien'].includes(normalizeSearch(item.partyLevel)) &&
-        normalizeSearch(item.progressParty)!=='khong phai xin y kien') ||
-      (config.includeNotRequired===true && normalizeSearch(normalizeReportStatus(item.progressParty,config))===normalizeSearch('Không phải trình'))
-    )) ||
-    (config.source === 'build' && item.documentKind === 'NQ' &&
-      !!normalizeSearch(item.progressBuild)) ||
-    (config.source === 'council' && (item.documentKind === 'NQ'||item.documentKind === 'BC')) ||
-    (config.source === 'nq' && item.documentKind === 'NQ') ||
-    (config.source === 'bc' && item.documentKind === 'BC')
-  ));
+  return items.filter(item=>{
+    if(!isActive(item))return false;
+    const notRequired=isNotRequiredStatus(config.statusField,item[config.statusField]);
+    if(['party','build'].includes(config.id)&&config.includeNotRequired!==true&&notRequired)
+      return false;
+    switch(config.source){
+      case 'all':return true;
+      case 'party':
+        return config.includeNotRequired===true||
+          !isNotRequiredStatus('partyLevel',item.partyLevel);
+      case 'build':
+        return item.documentKind==='NQ'&&!!normalizeSearch(item.progressBuild);
+      case 'council':return item.documentKind==='NQ'||item.documentKind==='BC';
+      case 'nq':return item.documentKind==='NQ';
+      case 'bc':return item.documentKind==='BC';
+      default:return false;
+    }
+  });
 }
 export function aggregateReport(items: Item[], config: ReportConfig, group: GroupField) {
   const scoped = reportItems(items, config);
@@ -108,8 +88,8 @@ export function getKpis(items: Item[]) {
   for (const item of active) {
     const status = canonical(normalizeReportStatus(item.progressCouncil, council));
     if (status === canonical('Sở chưa trình')) pending++;
-    else if (status === canonical('VP đang thực hiện')) doing++;
-    else if (status === canonical('Đã trình HĐND thành phố')) completed++;
+    else if (status === canonical('VP đang xử lý')) doing++;
+    else if (status === canonical('Hoàn thành')) completed++;
     // Unrecognized states remain unclassified, never counted as completed.
   }
   return {
