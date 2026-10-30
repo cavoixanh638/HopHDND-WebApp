@@ -14,7 +14,7 @@ import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   resolveDatasetOperation,restoreDatasetBackup,prepareInitialDatasetActivation,
-  commitInitialDatasetActivation,DATASET_V2_PATH} from
+  commitInitialDatasetActivation,armEmulatorPostCommitCallerAckLoss,DATASET_V2_PATH} from
   '../src/data/firebase-versioned-replacement';
 
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
@@ -254,6 +254,53 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       });
     });
   }
+  it('proves server COMMITTED despite lost application completion on all 3 CAS APIs; lookup never replays',async()=>{
+    await setupFrozenLegacy();
+    const db=admin();
+    const first='pr95_loss_initial_0001';
+    const approval=await prepareInitialDatasetActivation(db,actor,replacement(),first,'first.xlsx');
+    armEmulatorPostCommitCallerAckLoss(db,first);
+    await expect(commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+first+' 2 2')).rejects.toThrow(
+      'PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    const active1=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
+    expect(active1).toMatchObject({operationId:first,revision:1});
+    expect(await resolveDatasetOperation(db,first)).toEqual({
+      operationId:first,status:'committed-active',generationId:'gen_'+first});
+    const second='pr95_loss_replace_001';
+    const rows2=replacement().map(row=>({...row,content:row.content+' second'}));
+    const next=await stageDatasetReplacement(db,actor,rows2,second,'second.xlsx');
+    armEmulatorPostCommitCallerAckLoss(db,second);
+    await expect(commitDatasetReplacement(db,actor,next,'THAY '+second+' 2 2'))
+      .rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    const active2=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
+    expect(active2).toMatchObject({operationId:second,revision:2});
+    expect(await resolveDatasetOperation(db,first)).toMatchObject({status:'committed-historical'});
+    expect(await resolveDatasetOperation(db,second)).toMatchObject({
+      status:'committed-active',generationId:'gen_'+second});
+    const third='pr95_loss_restore_001';
+    armEmulatorPostCommitCallerAckLoss(db,third);
+    await expect(restoreDatasetBackup(db,actor,second,third,active2,
+      'KHOI PHUC '+third)).rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    const active3=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
+    expect(active3).toMatchObject({operationId:third,revision:3});
+    expect(await resolveDatasetOperation(db,second)).toMatchObject({
+      status:'committed-historical'});
+    expect(await resolveDatasetOperation(db,third)).toMatchObject({
+      status:'committed-active',generationId:'gen_'+third});
+    const frozen=(await get(ref(db,DATASET_V2_PATH))).val();
+    expect(Object.keys(frozen.operations)).toHaveLength(3);
+    expect(Object.keys(frozen.generations)).toHaveLength(3);
+    expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(3);
+    // Only read-only status lookups after injected faults: no repeated runTransaction.
+    expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+first+'/status'))).val())
+      .toBe('COMMITTED');
+    expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+second+'/status'))).val())
+      .toBe('COMMITTED');
+    expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+third+'/status'))).val())
+      .toBe('COMMITTED');
+  },55000);
+
   it('activates populated FROZEN legacy via private backup, verified staging and first CAS',async()=>{
     await setupFrozenLegacy();
     const db=admin(),op='pr95_first_v2_0001';
