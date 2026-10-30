@@ -421,7 +421,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       editorAuthorized:firebase.editorAuthorized,freeze:firebase.freezeControl?.mode,
       permissions:firebase.permissions,
       canEditNote:firebase.canEdit('demo-0001','note'),source:selectedSource,
-      workspaceCachePending:workspace.cachePending,viewerMayEdit,page
+      workspaceCachePending:workspace.cachePending,workspaceBusy:workspace.busy,
+      commonBusy:common.busy,canEditDraft,
+      viewerMayEdit,page
     });
     debug.__pr95UiV2L3RightsRead=async()=>(await get(ref(firebase.database,
       'hdnd/datasetV2/permissions/'+firebase.datasetActive?.generationId))).val();
