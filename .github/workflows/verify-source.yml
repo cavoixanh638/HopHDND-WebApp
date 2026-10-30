@@ -109,7 +109,7 @@ jobs:
           git worktree add --detach "$base" 8172c0650580931140fc71e59d3cc4d816879594
           (cd "$base/source" && npm ci --no-audit --no-fund && npm run build:compact:qa)
           node scripts/measure-baseline-id-browser.mjs "$base/source/dist-compact-qa" hophdnd-id-before-real.png
-      - name: Browser smoke with mock Sheets and headless Chrome
+      - name: Browser smoke with Firebase Emulator and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
       - name: Package owner-clickable single HTML UI preview (synthetic only)
         run: node scripts/package-compact-qa.mjs
