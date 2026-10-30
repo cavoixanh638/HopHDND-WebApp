@@ -79,7 +79,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     active.rowCount!==approval.expected.rowCount||active.digest!==approval.expected.digest);
   const stage=async()=>{
     if(!enabled||!user)return;
-    setBusy(true);setMessage('');setOperationView(null);
+    setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
     setApproval(null);setStaged(null);setConfirm('');
     try{
       const operationId='excel_'+crypto.randomUUID().replaceAll('-','_');
@@ -108,8 +108,13 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       setOperationView(verified);
       if(verified.committed)setBackupOperation(approval.operationId);
     }catch(e){
-      setOperationView(presentDatasetOperation(null,approval.operationId));
-      setMessage('Không xác minh được kết quả ghi: '+
+      // L1 can throw when a valid COMMITTED operation becomes historical
+      // between the transaction and acknowledgment. One READ ONLY lookup
+      // distinguishes that successful historical commit from a genuine unknown.
+      const observed=await readOperationView(database,approval.operationId);
+      setOperationView(observed.committed?observed:presentDatasetOperation(null,approval.operationId));
+      if(observed.committed)setBackupOperation(approval.operationId);
+      else setMessage('Không xác minh được kết quả ghi: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự gửi lại thao tác.');
     }finally{setBusy(false);}
   };
@@ -117,9 +122,10 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     if(!enabled)return;
     const operationId=lookupOperation.trim()||approval?.operationId||'';
     if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId)){
+      setOperationView(null);
       setMessage('Nhập mã operationId hợp lệ để tra cứu; không suy đoán trạng thái.');return;
     }
-    setBusy(true);setMessage('');
+    setBusy(true);setMessage('');setOperationView(null);
     try{
       const observed=await readOperationView(database,operationId);
       setOperationView(observed);
@@ -142,8 +148,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       setOperationView(observed.status==='not-committed'
         ?presentDatasetOperation(null,restoreId):observed);
     }catch(e){
-      setOperationView(presentDatasetOperation(null,restoreId));
-      setMessage('Không xác minh được kết quả khôi phục: '+
+      const observed=await readOperationView(database,restoreId);
+      setOperationView(observed.committed?observed:presentDatasetOperation(null,restoreId));
+      if(!observed.committed)setMessage('Không xác minh được kết quả khôi phục: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự khôi phục lại.');
     }finally{setBusy(false);}
   };
@@ -187,7 +194,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
         aria-label="Mã khôi phục mới"/>
       <input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.currentTarget.value)}
         aria-label="Xác nhận khôi phục" placeholder="KHOI PHUC mã_khôi_phục"/>
-      <button className="button danger" disabled={busy||!enabled||restoreConfirm!=='KHOI PHUC '+restoreId}
+      <button className="button danger" disabled={busy||!enabled||
+        !/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||restoreConfirm!=='KHOI PHUC '+restoreId}
         onClick={()=>void restore()}>Khôi phục bằng CAS</button>
     </section>}
     {operationView&&<p className="notice" role={operationView.status==='unknown'?'alert':'status'}
