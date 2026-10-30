@@ -20,16 +20,16 @@ const API=ROOT+'/.settings/rules.json?ns='+PROJECT;
 const DATA=ROOT+'/.json?ns='+PROJECT;
 const owner={Authorization:'Bearer owner','Content-Type':'application/json'};
 const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
-const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const wait=(ms:number):Promise<void>=>new Promise(resolve=>setTimeout(resolve,ms));
 const legacy=createDemoItems(2).map((row,i)=>({...row,
   recordId:'legacy_'+(i+1),displayCode:'NQ0'+(i+1),
   revision:1,archivedAt:null,isDropped:false,operationId:'legacy_original',
   updatedAt:1,updatedBy:'test_admin'}));
-const rows=prefix=>createDemoItems(2).map((row,i)=>({...row,
+const rows=(prefix:string)=>createDemoItems(2).map((row,i)=>({...row,
   recordId:prefix+'_'+(i+1),displayCode:'NQ0'+(i+1),
   revision:1,archivedAt:null,isDropped:false,content:prefix+' mới '+i}));
 
-async function ownerRequest(url,body){
+async function ownerRequest(url:string,body?:unknown):Promise<any>{
   const response=await fetch(url,{method:body===undefined?'GET':'PUT',
     headers:owner,...body===undefined?{}:{body:JSON.stringify(body)},
     signal:AbortSignal.timeout(12000)});
@@ -39,7 +39,7 @@ async function ownerRequest(url,body){
 async function readServer(){
   return (await ownerRequest(DATA))?.hdnd?.datasetV2??null;
 }
-async function verifyState(operationId,revision,expectedCount){
+async function verifyState(operationId:string,revision:number,expectedCount:number){
   const state=await readServer();
   expect(state.active).toMatchObject({operationId,generationId:'gen_'+operationId,revision});
   expect(state.operations[operationId]).toMatchObject({status:'COMMITTED',to:'gen_'+operationId});
@@ -48,7 +48,7 @@ async function verifyState(operationId,revision,expectedCount){
   return state;
 }
 let count=0;
-async function makeClient(proxied){
+async function makeClient(proxied:boolean){
   const port=proxied?19000:9000;
   const app=initializeApp({apiKey:'demo-test-key',
     authDomain:PROJECT+'.firebaseapp.com',projectId:PROJECT,
@@ -63,17 +63,18 @@ async function makeClient(proxied){
   expect(user.emailVerified).toBe(true);
   return {db,user,auth,app};
 }
-async function cleanup(client){
+type TestClient=Awaited<ReturnType<typeof makeClient>>;
+async function cleanup(client:TestClient|null|undefined):Promise<void>{
   if(!client)return;
   try{goOffline(client.db);}catch{}
   try{await signOut(client.auth);}catch{}
   try{await deleteApp(client.app);}catch{}
 }
-async function committedStatus(client,operationId,status){
+async function committedStatus(client:TestClient,operationId:string,status:'committed-active'|'committed-historical'){
   const result=await resolveDatasetOperation(client.db,operationId);
   expect(result).toMatchObject({status,operationId,generationId:'gen_'+operationId});
 }
-function settleNoThrow(promise){
+function settleNoThrow(promise:Promise<unknown>){
   // A missing network ACK may leave the SDK in a reconnect/retry state.
   // No unhandled rejection; the independent observer is authoritative.
   const guarded=promise.then(value=>({type:'resolved',value}),
@@ -82,7 +83,7 @@ function settleNoThrow(promise){
 }
 
 describe.skipIf(!active)('PR95 true network server->SDK CAS ACK suppression',()=>{
-  let proxy;let client;
+  let proxy!:NetworkAckFaultProxy;let client!:TestClient;
   beforeAll(async()=>{
     const initial=await ownerRequest(API);
     if(JSON.stringify(initial)!==JSON.stringify(candidate)){
@@ -104,7 +105,7 @@ describe.skipIf(!active)('PR95 true network server->SDK CAS ACK suppression',()=
         changedAt:100,closedAt:100,deadline:0}}});
     client=await makeClient(true);
   },30000);
-  afterEach(async()=>{await cleanup(client);client=null;});
+  afterEach(async()=>{await cleanup(client);});
   afterAll(async()=>{if(proxy)await proxy.close();});
 
   it('drops actual server->SDK initial CAS response after independent COMMITTED observation',async()=>{
