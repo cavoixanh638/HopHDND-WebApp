@@ -3408,6 +3408,83 @@ try{
   await openR07();
   if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
+
+  // R-V3-03: real Chromium, actual ReportTable/ReportDetailGrid/CellPicker,
+  // using the existing FULL synthetic QA shell (no Firebase, Excel or credentials).
+  // The separate real-App Emulator workflow still owns server rights E2E.
+  const v3PopupUrl='http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?full=1';
+  await send('Page.navigate',{url:v3PopupUrl});
+  await eventually("document.querySelector('.pr95-full-preview[data-role=admin]')!==null",
+    'R-V3-03 full QA component not mounted');
+  const setPopupRole=async role=>{
+    const changed=await evaluate("(()=>{const el=document.querySelector('#pr95-role');if(!el)return false;el.value="+JSON.stringify(role)+";el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()");
+    if(!changed)throw Error('R-V3-03 QA role control missing');
+    await eventually("document.querySelector('.pr95-full-preview')?.dataset.role==="+JSON.stringify(role),
+      'R-V3-03 role transition missing');
+  };
+  const openSourceCouncil=async()=>{
+    const navigated=await evaluate("(()=>{const b=[...document.querySelectorAll('.pr95-preview-nav button')].find(x=>x.textContent.trim()==='Báo cáo tổng hợp');if(!b)return false;b.click();return true;})()");
+    if(!navigated)throw Error('R-V3-03 full report navigation missing');
+    await eventually("document.querySelectorAll('.pr95-full-preview .report-surface').length===5",
+      'R-V3-03 five real reports not mounted');
+    const opened=await evaluate("(()=>{const s=[...document.querySelectorAll('.pr95-full-preview .report-surface')].find(x=>x.querySelector('h3')?.textContent.includes('Tiến độ các Nghị quyết và Báo cáo trình HĐND'));const b=[...s?.querySelectorAll('tfoot .count-drill')??[]].find(x=>x.getAttribute('aria-label')?.startsWith('Tổng cộng · Sở chưa trình,'));if(!b)return false;b.click();return true;})()");
+    if(!opened)throw Error('R-V3-03 unfinished Council report drilldown missing');
+    await eventually("document.querySelector('dialog.report-detail-modal[open] .report-detail-grid tbody tr')!==null",
+      'R-V3-03 ReportDetailGrid did not mount');
+  };
+  const councilStageSel='dialog.report-detail-modal[open] .report-detail-grid tbody tr:first-child td[data-col-key=partyLevel] .compact-stage-row:last-child';
+  const stageValuesExpr="(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return [...row?.querySelectorAll('.compact-stage-row')??[]].map(x=>x.querySelector('.compact-stage-state')?.textContent.trim()??'');})()";
+  await setPopupRole('guest');
+  await openSourceCouncil();
+  const guestCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
+  if(guestCouncil.text!=='Sở chưa trình'||guestCouncil.picker||guestCouncil.button)
+    throw Error('R-V3-03 denied guest unexpectedly has editor: '+JSON.stringify(guestCouncil));
+  const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-guest-denied.png',Buffer.from(v3GuestShot.data,'base64'));
+  await setPopupRole('admin');
+  await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
+    'R-V3-03 role switch retained prior popup');
+  await openSourceCouncil();
+  const originalCouncilStages=await evaluate(stageValuesExpr);
+  if(originalCouncilStages.length!==3||originalCouncilStages[2]!=='Sở chưa trình')
+    throw Error('R-V3-03 unfinished council fixture missing: '+JSON.stringify(originalCouncilStages));
+  const editingStarted=await evaluate("(()=>{const b=[...document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-actions button')].find(x=>x.textContent.trim()==='Chỉnh sửa nháp');if(!b)return false;b.click();return true;})()");
+  if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
+  await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
+    'R-V3-03 authorized Council picker missing');
+  await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")?.click()");
+  await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
+    'R-V3-03 actual Council choices did not open');
+  const councilChoices=await evaluate("([...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].map(x=>({label:x.textContent.trim(),selected:x.getAttribute('aria-selected')==='true'})))");
+  if(!councilChoices.some(x=>x.label==='Hoàn thành')||
+      councilChoices.some(x=>x.label==='Đã trình HĐND thành phố'||x.label==='Bước tiếp theo')||
+      councilChoices.filter(x=>x.selected).length!==1||
+      !councilChoices.some(x=>x.label==='Sở chưa trình'&&x.selected))
+    throw Error('R-V3-03 Council choices incorrect: '+JSON.stringify(councilChoices));
+  const v3ChoiceShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-council-choices.png',Buffer.from(v3ChoiceShot.data,'base64'));
+  const clicked=await evaluate("(()=>{const b=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent.trim()==='Hoàn thành');if(!b)return false;b.click();return true;})()");
+  if(!clicked)throw Error('R-V3-03 cannot select canonical Hoàn thành');
+  await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+")?.textContent.trim()==='Hoàn thành'",
+    'R-V3-03 onUpdate did not apply Council completion');
+  const updatedCouncilStages=await evaluate(stageValuesExpr);
+  const patchNotice=await evaluate("(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return {draft:!!row?.querySelector('.report-grid-id small'),notice:[...document.querySelectorAll('.pr95-full-preview [role=status]')].some(x=>x.textContent?.includes('Đã sửa dữ liệu giả trong bộ nhớ'))};})()");
+  if(updatedCouncilStages.length!==3||
+     updatedCouncilStages[0]!==originalCouncilStages[0]||
+     updatedCouncilStages[1]!==originalCouncilStages[1]||
+     updatedCouncilStages[2]!=='Hoàn thành'||!patchNotice.draft||!patchNotice.notice)
+    throw Error('R-V3-03 canonical-only RAM patch failed: '+JSON.stringify({originalCouncilStages,updatedCouncilStages,patchNotice}));
+  const v3CompletedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-completed.png',Buffer.from(v3CompletedShot.data,'base64'));
+  await evaluate("(()=>{const b=[...document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-actions button')].find(x=>x.textContent.trim()==='Về chế độ xem');b?.click();})()");
+  await eventually("!document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")",
+    'R-V3-03 did not return to view mode');
+  const readAfter=await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+")?.textContent.trim()");
+  if(readAfter!=='Hoàn thành')throw Error('R-V3-03 canonical patch lost in read mode: '+readAfter);
+  console.log('UI_V3_L1_RV303_REAL_CHROME_GUEST_DENIED_ADMIN_CANONICAL_PATCH_PASS',
+    JSON.stringify({guestCouncil,originalCouncilStages,updatedCouncilStages,patchNotice,councilChoices,
+      realComponent:'ReportDetailGrid/CellPicker',storage:'synthetic RAM only',screenshots:3}));
+
   
   // L2 incremental REAL-Chromium two-tab witness. These are two separate
   // browser targets (not two Firebase SDK contexts). They validate the
