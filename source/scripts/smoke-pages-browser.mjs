@@ -3432,7 +3432,7 @@ try{
     await eventually("document.querySelector('dialog.report-detail-modal[open] .report-detail-grid tbody tr')!==null",
       'R-V3-03 ReportDetailGrid did not mount');
   };
-  const councilStageSel='dialog.report-detail-modal[open] .report-detail-grid tbody tr:first-child td[data-col-key=partyLevel] .compact-stage-row:last-child';
+  const councilStageSel='dialog.report-detail-modal[open] .report-detail-grid tbody tr:first-child td[data-col-key=progressParty] .compact-stage-row:last-child';
   const stageValuesExpr="(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return [...row?.querySelectorAll('.compact-stage-row')??[]].map(x=>x.querySelector('.compact-stage-state')?.textContent.trim()??'');})()";
   await setPopupRole('guest');
   await openSourceCouncil();
