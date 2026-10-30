@@ -119,6 +119,46 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
     }
   });
 
+  it('each exact report cell equals its independently enumerated drilldown set',()=>{
+    const rows=fixture();
+    const expectedCells:Record<string,Record<string,string[]>>={
+      party:{
+        'Sở chưa trình':['A','I','J','N'],'VP đang thực hiện':['B'],
+        'Đã gửi ĐU':['C'],'ĐU đã gửi TU, chưa họp':['D'],
+        'Đã họp/xin phiếu, chưa có TBKL':['E'],'Đã có TBKL':['F'],
+        'Chưa chuẩn hóa':['H'],
+      },
+      build:{
+        'Sở chưa trình':['A'],'VP đang thực hiện':['B'],
+        'Đã trình HĐND, chưa có QĐ':['C'],'Đã có QĐ chấp thuận':['D','F'],
+        'Chưa chuẩn hóa':['H'],
+      },
+      council:{
+        'Sở chưa trình':['A','F','I','M','N'],'VP đang thực hiện':['B'],
+        'Đã trình HĐND thành phố':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
+      },
+      nq:{
+        'Sở chưa trình':['A','F','M','N'],'VP đang thực hiện':['B'],
+        'Đã trình HĐND thành phố':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
+      },
+      bc:{'Sở chưa trình':['I']},
+    };
+    for(const config of DEFAULT_REPORTS){
+      const report=aggregateReport(rows,config,'department');
+      const group=report.rows.get('Sở thử');
+      const actual=Object.fromEntries([...(group??new Map())]
+        .map(([status,records])=>[status,codes(records)]));
+      expect(actual,config.id).toEqual(expectedCells[config.id]);
+      const all=[...(group?.values()??[])].flat();
+      expect(all).toHaveLength(report.total);
+      expect(new Set(all.map(item=>item.recordId)).size).toBe(report.total);
+      for(const [status,records] of group??[]){
+        expect(records.map(item=>item.recordId))
+          .toEqual(expectedCells[config.id][status].map(code=>'r-'+code));
+      }
+    }
+  });
+
   it('counts a blank Council status as source; blank construction is outside current scope',()=>{
     const rows=fixture();
     expect(codes(filterListBySummary(rows,{report:'nq',stage:'source'})))
