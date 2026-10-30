@@ -147,8 +147,13 @@ export async function commitDatasetReplacement(
   const backed=record(JSON.parse(backedJson));
   if(stable(backed.previous)!==stable(approval.expected)||backed.baseline!==approval.baseline)
     throw Error('Bản backup không đúng mốc phê duyệt.');
+  // Firebase SDK may first call a root transaction against an empty local
+  // cache, treating undefined as an immediate abort without querying server.
+  // Warm the exact parent path immediately before running the CAS.
+  const rootRef=ref(database,DATASET_V2_PATH);
+  verifyActive((await get(rootRef)).val() as V2Snapshot);
   let failure='';
-  const result=await runTransaction(ref(database,DATASET_V2_PATH),raw=>{
+  const result=await runTransaction(rootRef,raw=>{
     if(raw===null)return undefined; // Cannot commit on a cold local null cache.
     const source=raw as V2Snapshot;
     try {
