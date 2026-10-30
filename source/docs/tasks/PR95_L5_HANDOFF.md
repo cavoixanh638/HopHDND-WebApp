@@ -7,7 +7,7 @@
 - Repo: `cavoixanh638/HopHDND-WebApp`.
 - Required base: `01530a9ccedba021434626c1f717c2ac76fcaa64`.
 - Independent branch: `pr95/l5-report-filter-parity-20261030`.
-- Code/test commits: `4fc1f60665df36c99313d6576adfbfc16b807251`, `73263ad98396c3c6cc2a3e203ac2652dc088d349`.
+- Code/test commits: `4fc1f60665df36c99313d6576adfbfc16b807251`, `73263ad98396c3c6cc2a3e203ac2652dc088d349`, `4e005c92378ff7153fd8a933dbeb591232eae68a`.
 - Draft isolated CI-only PR: https://github.com/cavoixanh638/HopHDND-WebApp/pull/108 — NOT an approval to merge.
 - Changed source: `src/domain/reporting.ts`, `src/data/dataset-replacement-preview.ts`. No changes required in `src/domain/item-summary.ts` or `src/domain/report-workflow.ts`; their current scopes/grouping are asserted directly.
 - New tests: `tests/pr95-l5-report-filter-parity.test.ts`, `tests/pr95-l5-replacement-diff.test.ts`.
@@ -54,6 +54,7 @@ A–N are **synthetic** records. Each code has one distinct recordId. Department
 - Xây dựng: source `A`; office `B`; **Đã trình - chưa có QĐ** `C`; completed `D,F`; unmatched `H`.
 - Ban hành NQ: source `A,F,M,N`; office `B`; completed `C,D,G`; unmatched `E,H`.
 - Council report: 11 active NQ/BC, 3 completed, 27%; BC report: 1 active, 0 completed, 0%. `Chưa chuẩn hóa` column holds `E,H` in Council.
+- All official cells independently enumerated in the new status-cell test (same single test department): Thành ủy [Sở=A,I,J,N; VP=B; Đã gửi ĐU=C; ĐU gửi TU=D; Đã họp chưa TBKL=E; TBKL=F; unknown=H]; xây dựng [Sở=A; VP=B; chưa QĐ=C; có QĐ=D,F; unknown=H]; Council [Sở=A,F,I,M,N; VP=B; đã trình=C,D,G; unknown=E,H]; NQ Council [Sở=A,F,M,N; VP=B; đã trình=C,D,G; unknown=E,H]; BC [Sở=I]. Each group's cells partition the scoped records with unique recordIds.
 - Explicit `includeNotRequired=true`: Thành ủy admits `G` only (11 total); xây dựng admits `E,G` (8 total). Displaying a hidden column without toggling inclusion must not change the denominator.
 - Empty collection: all counts 0, percentages **null**, no NaN/Infinity, all bucket IDs empty.
 
@@ -74,7 +75,7 @@ Only **four new rows** feed the preview: NQ 3, BC 1, party total 4, build total 
 
 - Test files: `npm exec -- vitest run tests/pr95-l5-report-filter-parity.test.ts tests/pr95-l5-replacement-diff.test.ts`.
 - Full scope command (GitHub source verification): `npm run typecheck && npm test` (GitHub Actions installs exact locked dependencies before invoking both).
-- GitHub Actions exact code head `73263ad98396c3c6cc2a3e203ac2652dc088d349`: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41023327923. **Typecheck PASS; Unit tests PASS** observed on that run. The remainder of source pipeline has additional staging/build checks; independently verify final run conclusion rather than inferring from unit results.
+- GitHub Actions code head `73263ad98396c3c6cc2a3e203ac2652dc088d349`: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41023327923. **Typecheck PASS; Unit tests PASS** observed on that run. The additional cell-by-cell regression commit `4e005c92378ff7153fd8a933dbeb591232eae68a` is separately rechecked by PR CI; validate that exact run before accepting the updated regression set. The full source pipeline has other staging/build checks; verify its conclusion separately rather than inferring from unit tests.
 - Other automatically triggered Firebase workflows do not prove L5 Firebase integration. L5 did **not** run against production or use genuine rows.
 - Future source-only documentation commit will change the branch HEAD; source tests above were validated against the code/test head stated explicitly.
 
