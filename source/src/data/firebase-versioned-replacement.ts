@@ -232,8 +232,19 @@ export async function restoreDatasetBackup(
     permissions:JSON.parse(backup.permissionsJson),leases:JSON.parse(backup.leasesJson)})!==backup.baseline)
     throw Error('Backup không tồn tại hoặc không còn nguyên vẹn.');
   const fingerprint=stable(scoped(snap));
+  // A restored row belongs to a NEW generation. Reissue server-owned metadata
+  // instead of copying a historical updatedAt which current Rules reject.
+  // Preserve business fields and original audit history for provenance.
+  const restoredItems=Object.fromEntries(Object.entries(backup.generation.items)
+    .map(([id,row])=>[id,{...row,operationId:restoreOperationId,
+      updatedAt:serverTimestamp(),updatedBy:user!.uid}]));
   let failed='';
-  const result=await runTransaction(baseRef,current=>{
+  // Root transactions need an active listener: a standalone get() can leave
+  // an empty local transaction cache and silently abort the first attempt.
+  const releaseCache=await holdTransactionCache(baseRef);
+  let result:Awaited<ReturnType<typeof runTransaction>>|null=null;
+  try {
+    result=await runTransaction(baseRef,current=>{
     if(!current)return undefined;
     const state=current as V2Snapshot;
     if(stable(state.active)!==stable(expected)||stable(scoped(state))!==fingerprint||
@@ -244,14 +255,18 @@ export async function restoreDatasetBackup(
       failed='Backup bị thay đổi trong khi xác nhận.';return undefined;
     }
     return {...state,
-      generations:{...state.generations,[target]:{items:backup.generation.items}},
+      generations:{...state.generations,[target]:{items:restoredItems}},
       permissions:{...state.permissions,[target]:JSON.parse(backup.permissionsJson)??{columns:{}}},
       active:{generationId:target,operationId:restoreOperationId,
         revision:expected.revision+1,rowCount:Object.keys(backup.generation.items).length,
         digest:backup.previous.digest},
       operations:{...state.operations,[restoreOperationId]:{
         status:'COMMITTED',from:expected.generationId,to:target,at:Date.now()}}};
-  },{applyLocally:false}).catch(()=>null);
+    },{applyLocally:false}).catch(error=>{
+      failed=error instanceof Error?error.message:String(error);
+      return null;
+    });
+  } finally {releaseCache();}
   const status=await resolveDatasetOperation(database,restoreOperationId);
   if(status==='unknown')return {status:'unknown',operationId:restoreOperationId};
   if(status==='committed')
