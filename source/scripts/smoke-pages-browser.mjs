@@ -127,27 +127,46 @@ async function startAndSeedFirebase(){
     absoluteRulesPath:EXCLUSIVE_RULES_FILE,emulatorConfig:emulatorConfigFile,
     project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
   }));
-  const live=await fetch(EMULATOR_DB+'/.settings/rules.json?ns='+EMULATOR_NAMESPACE,{
-    headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
-  if(!live.ok)throw Error('Cannot GET actual loaded Emulator Rules: HTTP '+live.status);
-  const actualRules=await live.json();
-  if(!isDeepStrictEqual(actualRules,expectedRules))
-    throw Error('L3-AUDIT-GAP-01: actual live Emulator Rules differ from exclusive-candidate: '+
-      JSON.stringify({
-        expectedSha256:rulesDigest,
-        actualSha256:createHash('sha256').update(JSON.stringify(actualRules)).digest('hex'),
-        actualRootRead:actualRules?.rules?.['.read']??null,
-        actualHdndRead:actualRules?.rules?.hdnd?.['.read']??null,
-        actualV2Read:actualRules?.rules?.hdnd?.datasetV2?.['.read']??null,
-        configFile:emulatorConfigFile,
-        emulatorStartup:emulatorOutput.slice(-1200)
-      }));
-  console.log('BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS',JSON.stringify({
-    source:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
-    actualRulesSha256:createHash('sha256').update(JSON.stringify(actualRules)).digest('hex'),
-    verifiedFrom:'GET /.settings/rules.json with Authorization Bearer owner',
-    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
-  }));
+  // The demo database starts with open fallback Rules until its ruleset is
+  // explicitly installed. Install the EXACT unchanged candidate JSON into
+  // this disposable localhost-only emulator. This neither rewrites the
+  // checked-in file nor contacts/deploys to any production Firebase project.
+  const settings=EMULATOR_DB+'/.settings/rules.json?ns='+EMULATOR_NAMESPACE;
+  const adminHeaders={Authorization:'Bearer owner'};
+  const initial=await fetch(settings,{headers:adminHeaders,signal:AbortSignal.timeout(8000)});
+  if(!initial.ok)throw Error('Cannot inspect initial demo Emulator Rules: HTTP '+initial.status);
+  const startupRules=await initial.json();
+  if(!isDeepStrictEqual(startupRules,expectedRules)){
+    console.log('BROWSER_EXCLUSIVE_RULES_STARTUP_GAP_DETECTED',JSON.stringify({
+      actualSha256:createHash('sha256').update(JSON.stringify(startupRules)).digest('hex'),
+      candidateSha256:rulesDigest,
+      actualRootRead:startupRules?.rules?.['.read']??null,
+      note:'default Emulator rules do not prove exclusive-candidate loaded'
+    }));
+  }
+  const install=await fetch(settings,{
+    method:'PUT',headers:{...adminHeaders,'Content-Type':'application/json'},
+    body:JSON.stringify(expectedRules),signal:AbortSignal.timeout(8000)
+  });
+  if(!install.ok)throw Error('Cannot load unchanged exclusive Rules into isolated Emulator: HTTP '+
+    install.status+' '+(await install.text()).slice(0,280));
+  const assertLiveRules=async phase=>{
+    const live=await fetch(settings,{headers:adminHeaders,signal:AbortSignal.timeout(8000)});
+    if(!live.ok)throw Error('Cannot GET actual Emulator Rules ('+phase+'): '+live.status);
+    const actual=await live.json();
+    const actualSha=createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+    if(!isDeepStrictEqual(actual,expectedRules))
+      throw Error('L3-AUDIT-GAP-01: Rules changed/mismatch during '+phase+
+        ': expected='+rulesDigest+' actual='+actualSha);
+    console.log('BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS',JSON.stringify({
+      phase,source:'firebase/database.exclusive-candidate.rules.json',
+      candidateSha256:rulesDigest,actualRulesSha256:actualSha,
+      verifiedFrom:'live RTDB GET /.settings/rules.json with Authorization Bearer owner',
+      method:'PUT exact unchanged candidate into disposable demo Emulator only',
+      project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
+    }));
+  };
+  await assertLiveRules('before-auth-and-browser');
   const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
     'Content-Type':'application/json'
   },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
@@ -3334,6 +3353,7 @@ try{
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
   
   if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
+  await assertLiveRules('after-browser-smoke');
   console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
