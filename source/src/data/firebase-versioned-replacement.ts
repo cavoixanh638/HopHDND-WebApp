@@ -13,8 +13,8 @@ type V2Snapshot={
   generations:Record<string,{items:Record<string,Item>}>;
   permissions?:Record<string,unknown>;
   leases?:Record<string,unknown>;
-  candidates?:Record<string,{items:Record<string,Item>;manifest:DatasetGenerationManifest}>;
-  backups?:Record<string,V2Backup>;
+  candidates?:Record<string,string>;
+  backups?:Record<string,string>;
   operations?:Record<string,{status:string;from:string;to:string;at:number}>;
 };
 type V2Backup={previous:ActiveDatasetPointer;generation:{items:Record<string,Item>};
@@ -75,16 +75,18 @@ export async function stageDatasetReplacement(
   const preview=previewDatasetReplacement(oldRows,items);
   const candidateRef=ref(database,DATASET_V2_PATH+'/candidates/'+operationId);
   const payload={items:keyed(items),manifest};
+  const payloadJson=JSON.stringify(payload);
+  if(payloadJson.length>5000000)throw Error('Staging vượt giới hạn 5 MB; không ghi Firebase.');
   const existing=(await get(candidateRef)).val();
-  if(existing!==null&&stable(existing)!==stable(payload))
+  if(existing!==null&&existing!==payloadJson)
     throw Error('operationId đã dùng với file khác. Dừng để kiểm tra trước khi thử lại.');
   if(existing===null){
-    const inserted=await runTransaction(candidateRef,value=>value===null?payload:undefined,
+    const inserted=await runTransaction(candidateRef,value=>value===null?payloadJson:undefined,
       {applyLocally:false});
-    if(!inserted.committed&&stable(inserted.snapshot.val())!==stable(payload))
+    if(!inserted.committed&&inserted.snapshot.val()!==payloadJson)
       throw Error('Staging đã tồn tại với nội dung khác; không ghi đè.');
   }
-  const serverCandidate=record((await get(candidateRef)).val());
+  const serverCandidate=record(JSON.parse(String((await get(candidateRef)).val())));
   if(stable(serverCandidate.manifest)!==stable(manifest))
     throw Error('Manifest staging đọc lại khác bản được duyệt.');
   await verifyCandidateServerReadback(serverCandidate.items,manifest);
@@ -94,21 +96,23 @@ export async function stageDatasetReplacement(
     generation:{items:current.items},permissionsJson:stable(current.permissions),
     leasesJson:stable(current.leases),baseline};
   const backupRef=ref(database,DATASET_V2_PATH+'/backups/'+operationId);
+  const backupJson=JSON.stringify(backup);
+  if(backupJson.length>5000000)throw Error('Backup vượt 5 MB; dừng để lập bản lưu riêng.');
   const previousBackup=(await get(backupRef)).val();
-  if(previousBackup!==null&&stable(previousBackup)!==stable(backup))
+  if(previousBackup!==null&&previousBackup!==backupJson)
     throw Error('Đã có backup cho operationId nhưng dữ liệu gốc không trùng; dừng.');
   if(previousBackup===null){
-    const written=await runTransaction(backupRef,value=>value===null?backup:undefined,
+    const written=await runTransaction(backupRef,value=>value===null?backupJson:undefined,
       {applyLocally:false});
-    if(!written.committed&&stable(written.snapshot.val())!==stable(backup))
+    if(!written.committed&&written.snapshot.val()!==backupJson)
       throw Error('Backup đã tồn tại với dữ liệu khác; không ghi đè.');
   }
-  if(stable((await get(backupRef)).val())!==stable(backup))
+  if((await get(backupRef)).val()!==backupJson)
     throw Error('Không xác minh được backup riêng tư sau khi ghi vào Firebase.');
   return {operationId,manifest,expected:original.active,baseline,preview,fileName};
 }
 export async function readStagedDataset(database:Database,approval:ReplacementApproval):Promise<Item[]> {
-  const raw=record((await get(ref(database,DATASET_V2_PATH+'/candidates/'+approval.operationId))).val());
+  const raw=record(JSON.parse(String((await get(ref(database,DATASET_V2_PATH+'/candidates/'+approval.operationId))).val())));
   await verifyCandidateServerReadback(raw.items,approval.manifest);
   return Object.values(record(raw.items)) as Item[];
 }
@@ -134,11 +138,13 @@ export async function commitDatasetReplacement(
   adminGuard(user);
   if(confirmation!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount)
     throw Error('Xác nhận không khớp operationId và số lượng hồ sơ cũ/mới.');
-  const staged=record((await get(ref(database,DATASET_V2_PATH+'/candidates/'+approval.operationId))).val());
+  const stagedJson=String((await get(ref(database,DATASET_V2_PATH+'/candidates/'+approval.operationId))).val());
+  const staged=record(JSON.parse(stagedJson));
   if(stable(staged.manifest)!==stable(approval.manifest))
     throw Error('Staging đã bị thay đổi; không chấp nhận.');
   await verifyCandidateServerReadback(staged.items,approval.manifest);
-  const backed=record((await get(ref(database,DATASET_V2_PATH+'/backups/'+approval.operationId))).val());
+  const backedJson=String((await get(ref(database,DATASET_V2_PATH+'/backups/'+approval.operationId))).val());
+  const backed=record(JSON.parse(backedJson));
   if(stable(backed.previous)!==stable(approval.expected)||backed.baseline!==approval.baseline)
     throw Error('Bản backup không đúng mốc phê duyệt.');
   let failure='';
@@ -151,8 +157,8 @@ export async function commitDatasetReplacement(
       if(decision==='already-committed')return undefined;
       if(stable(scoped(source))!==approval.baseline)
         throw Error('Dữ liệu đang sử dụng đã bị sửa trong lúc duyệt, kể cả cùng thế hệ.');
-      if(stable(source.candidates?.[approval.operationId])!==stable(staged)||
-        stable(source.backups?.[approval.operationId])!==stable(backed))
+      if(source.candidates?.[approval.operationId]!==stagedJson||
+        source.backups?.[approval.operationId]!==backedJson)
         throw Error('Ứng viên hoặc backup đã thay đổi sau bước xác minh.');
       if(source.generations[approval.manifest.generationId])
         throw Error('Mã thế hệ ứng viên đã tồn tại; không ghi chồng.');
@@ -199,7 +205,8 @@ export async function restoreDatasetBackup(
   const baseRef=ref(database,DATASET_V2_PATH);
   const snap=(await get(baseRef)).val() as V2Snapshot;
   verifyActive(snap);
-  const backup=snap.backups?.[backupOperationId];
+  const backup=snap.backups?.[backupOperationId]?
+    JSON.parse(snap.backups[backupOperationId]) as V2Backup:undefined;
   if(!backup||stable({active:backup.previous,items:backup.generation.items,
     permissions:JSON.parse(backup.permissionsJson),leases:JSON.parse(backup.leasesJson)})!==backup.baseline)
     throw Error('Backup không tồn tại hoặc không còn nguyên vẹn.');
@@ -212,7 +219,7 @@ export async function restoreDatasetBackup(
       state.generations[target]||!state.backups?.[backupOperationId]){
       failed='Thế hệ hoặc dữ liệu đã thay đổi; không khôi phục trên dữ liệu mới.';return undefined;
     }
-    if(stable(state.backups[backupOperationId])!==stable(backup)){
+    if(state.backups[backupOperationId]!==snap.backups[backupOperationId]){
       failed='Backup bị thay đổi trong khi xác nhận.';return undefined;
     }
     return {...state,
