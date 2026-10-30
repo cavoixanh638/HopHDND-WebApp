@@ -1,6 +1,6 @@
 import type { ReportConfig } from '../../shared/types';
 import { DEFAULT_REPORTS } from '../domain/reporting';
-import {canonicalStatus,STATUS_ALIASES} from '../domain/status-contract';
+import {canonicalStatus} from '../domain/status-contract';
 
 /** Open-source families are loaded as web fonts; OS-proprietary families remain local-only. */
 export type TableFont =
@@ -136,7 +136,6 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     // Only presentation labels are migrated; source Excel cells are untouched.
     // Saved profiles from previous builds may include both superseded and new
     // columns. Collapse only recognized predecessor/successor pairs.
-    const legacy=STATUS_ALIASES[base.statusField];
     // Old column labels which are ambiguous are no longer inferred as a
     // finished milestone. Drop ONLY the obsolete report presentation column
     // and preserve its source Item/status for "Chưa chuẩn hóa" inspection.
