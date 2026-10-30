@@ -241,17 +241,26 @@ export function useFirebase(){
   /** Refresh just the permission branch, without touching unsaved layout work. */
   const refreshPermissions=async():Promise<CellPermissions>=>{
     if(!auth.currentUser||!connected)throw new Error('Chưa kết nối Firebase hoặc cần đăng nhập lại.');
-    const raw=(await get(ref(database,'hdnd/permissions'))).val() as CellPermissions|null;
+    const path=datasetActive?'hdnd/datasetV2/permissions/'+datasetActive.generationId:'hdnd/permissions';
+    const raw=(await get(ref(database,path))).val() as CellPermissions|null;
     const latest:CellPermissions={columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}};
-    setPermissions(latest);setPermissionsReady(true);
+    if(datasetActive)setDatasetPermissions(latest);
+    else setPermissions(latest);
+    setPermissionsReady(true);
     return latest;
   };
-  const savePermissions=async(next:CellPermissions,expected=permissions)=>{
+  const savePermissions=async(next:CellPermissions,expected=datasetActive?datasetPermissions:permissions)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady)throw new Error('Cần quản trị Google, kết nối mạng và quyền gốc để lưu quyền sửa.');
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     saving.current=true;setBusy(true);
     try{
-    const rightsRef=ref(database,'hdnd/permissions');
+    const rightsRef=ref(database,datasetActive?
+      'hdnd/datasetV2/permissions/'+datasetActive.generationId:'hdnd/permissions');
+    if(datasetActive){
+      const activeNow=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+      if(activeNow?.generationId!==datasetActive.generationId||activeNow?.revision!==datasetActive.revision)
+        throw Error('Thế hệ hoạt động đã thay đổi trước khi cấp quyền; phải đọc lại.');
+    }
     // Read authoritative rights before CAS: RTDB transactions can first run
     // against an empty local cache, causing misleading conflict errors.
     const live=(await get(rightsRef)).val() as CellPermissions|null;
@@ -335,7 +344,7 @@ export function useFirebase(){
     try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,'hdnd/permissions'))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
   };
   return {database,user,ready,error,connected,permissions:datasetActive?datasetPermissions:permissions,datasetActive,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
-    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&mayEdit(permissions,id,field,admin),
+    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&mayEdit(datasetActive?datasetPermissions:permissions,id,field,admin),
     common:{config:profile,busy,message:error||(!ready?'Đang đăng nhập Firebase để đọc quyền và cấu hình…':!connected?'Mất kết nối Firebase; phần sửa thử vẫn giữ trên máy.':!profileReady?'Đang đọc cấu hình chung từ Firebase…':profile?'Danh mục và bố trí đang dùng chung qua Firebase.':'Chưa có bố trí chung; quản trị có thể lưu bố trí mặc định.'),status:error?'error':profileReady?'ready':'loading',refresh,save:saveProfile}};
 }
 export type FirebaseController=ReturnType<typeof useFirebase>;
