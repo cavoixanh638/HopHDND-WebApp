@@ -13,19 +13,9 @@ import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   '../src/data/firebase-versioned-replacement';
 
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
-// TEMPORARY DIAGNOSTIC: identify whether nested generation row validation
-// rejects the parent-node CAS. Must revert before final PR review.
-const diagnostic=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
-const debugRows=diagnostic.rules.hdnd.datasetV2.generations['$generation'].items;
-function disableRowValidations(value:Record<string,unknown>){
-  for(const [key,node] of Object.entries(value)){
-    if(key==='.validate'&&node!==false&&node!=='false')value[key]='true';
-    else if(node&&typeof node==='object'&&!Array.isArray(node))
-      disableRowValidations(node as Record<string,unknown>);
-  }
-}
-disableRowValidations(debugRows);
-const rule=JSON.stringify(diagnostic);
+// Run the real, unmodified candidate rules; disabling validation would make
+// a green Emulator run meaningless for security acceptance.
+const rule=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
   firebase:{sign_in_provider:'google.com' as const}};
 const actor={uid:'administrator',email:claims.email,emailVerified:true,
