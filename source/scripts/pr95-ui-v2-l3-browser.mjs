@@ -241,7 +241,10 @@ async function test(){
     const granted=JSON.parse(grantedText);
     assert.equal(granted?.cells?.[ROW]?.note,true,'Anonymous readback must observe granted cell');
   }
-  // No page reload: the actual guest App must observe the live server grant.
+  // Re-select the actual List after rights are changed. This is an ordinary
+  // App tab click, NOT a page reload, cached fixture swap, or a permission bypass.
+  await clickText(guest,'nav.primary-section-switcher button','Danh sách');
+  // The already-mounted guest App must observe the server grant.
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
       return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
