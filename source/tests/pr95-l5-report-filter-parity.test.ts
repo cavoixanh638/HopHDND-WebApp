@@ -55,10 +55,10 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
       expect({total:stage.total,complete:stage.complete,percent:stage.percent})
         .toEqual({total:check.total,complete:check.complete,percent:check.percent});
       for(const bucket of stage.buckets){
-        const ids=check[bucket.stage as keyof typeof check];
+        const ids=(check as Record<string,unknown>)[bucket.stage] as readonly string[]|undefined;
         expect(ids,stage.id+':'+bucket.stage).toBeDefined();
-        expect(bucket.count).toBe((ids as readonly string[]).length);
-        expect(bucket.ids).toEqual((ids as readonly string[]).map(code=>'r-'+code));
+        expect(bucket.count).toBe(ids!.length);
+        expect(bucket.ids).toEqual(ids!.map(code=>'r-'+code));
         expect(codes(filterListBySummary(rows,{report:stage.id,stage:bucket.stage})))
           .toEqual(ids);
       }
