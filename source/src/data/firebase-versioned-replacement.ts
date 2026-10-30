@@ -96,6 +96,20 @@ const verifyActive=(snapshot:V2Snapshot)=>{
   if(!snapshot.active||!snapshot.generations?.[snapshot.active.generationId]?.items)
     throw Error('Chưa có thế hệ Firebase được khởi tạo và xác nhận; không thay thế.');
 };
+/** Legacy GViz parser may attach the historical P/Q helper columns to
+ * an A–O Excel row, even when neither field exists in the workbook.
+ * Those fields are NOT part of the immutable V2 Item schema (Rules $other
+ * denies them). Never silently drop actual values from an older workbook.
+ * Stage, hash, preview and commit the same V2-safe canonical payload.
+ */
+function v2CandidateRows(items:readonly Item[]):Item[]{
+  return items.map(item=>{
+    if((item.partyMeeting??'')!==''||(item.examined??'')!=='')
+      throw Error('Ứng viên còn dữ liệu P/Q legacy; phải xử lý riêng trước khi chuyển thế hệ V2.');
+    const {partyMeeting:_partyMeeting,examined:_examined,...v2}=item;
+    return v2;
+  });
+}
 const keyed=(items:readonly Item[]):Record<string,Item>=>Object.fromEntries(items.map(row=>[row.recordId,row]));
 /** Stage and backup are real Emulator/RTDB writes, not preview-only fakes.
  * A readback verifies all values before the returned approval can be used.
@@ -107,16 +121,17 @@ export async function stageDatasetReplacement(
   adminGuard(user);
   if(!/^[^\\/]{1,180}\.xlsx$/i.test(fileName))
     throw Error('Cần tên file Excel .xlsx hợp lệ để xác nhận.');
-  const manifest=await createDatasetManifest(items,operationId);
+  const candidateItems=v2CandidateRows(items);
+  const manifest=await createDatasetManifest(candidateItems,operationId);
   const root=ref(database,DATASET_V2_PATH);
   const original=record((await get(root)).val()) as unknown as V2Snapshot;
   verifyActive(original);
   const current=scoped(original);
   const baseline=stable(current);
   const oldRows=Object.values(current.items);
-  const preview=previewDatasetReplacement(oldRows,items);
+  const preview=previewDatasetReplacement(oldRows,candidateItems);
   const candidateRef=ref(database,DATASET_V2_PATH+'/candidates/'+operationId);
-  const payload={items:keyed(items),manifest};
+  const payload={items:keyed(candidateItems),manifest};
   const payloadJson=JSON.stringify(payload);
   if(payloadJson.length>5000000)throw Error('Staging vượt giới hạn 5 MB; không ghi Firebase.');
   const existing=(await get(candidateRef)).val();
@@ -214,14 +229,15 @@ export async function prepareInitialDatasetActivation(
   adminGuard(user);
   if(!/^[^\\/]{1,180}\.xlsx$/i.test(fileName))
     throw Error('Cần tên file Excel .xlsx hợp lệ.');
-  const manifest=await createDatasetManifest(items,operationId);
+  const candidateItems=v2CandidateRows(items);
+  const manifest=await createDatasetManifest(candidateItems,operationId);
   if((await get(ref(database,DATASET_V2_PATH+'/active'))).exists())
     throw Error('V2 đã có con trỏ hoạt động; không được khởi tạo lần thứ hai.');
   const snapshot=await legacyState(database);
   const baseline=await legacyHash({legacy:snapshot.legacy,freeze:snapshot.freeze});
-  const preview=previewDatasetReplacement(snapshot.rows,items);
+  const preview=previewDatasetReplacement(snapshot.rows,candidateItems);
   const candidateRef=ref(database,DATASET_V2_PATH+'/candidates/'+operationId);
-  const candidateJson=JSON.stringify({items:keyed(items),manifest});
+  const candidateJson=JSON.stringify({items:keyed(candidateItems),manifest});
   if(candidateJson.length>5000000)throw Error('Ứng viên lớn hơn 5 MB.');
   const candidateWrite=await runTransaction(candidateRef,raw=>
     raw===null?candidateJson:raw===candidateJson?undefined:undefined,

@@ -35,6 +35,17 @@ vi.mock('../src/data/firebase-versioned-replacement',()=>({
 vi.mock('../src/data/freeze-control',()=>({
   readFreeze:calls.freeze,activeEditLeaseCount:calls.leases
 }));
+// The L2 UI now prewarms an authoritative V2 parent before the first CAS.
+// This is a synthetic snapshot only; REAL Rules/backup readback are exercised
+// by the separate Emulator and browser suites.
+vi.mock('firebase/database',async importOriginal=>({
+  ...(await importOriginal<typeof import('firebase/database')>()),
+  ref:()=>({}),
+  get:async()=>({val:()=>({
+    candidates:{excel_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:'candidate'},
+    legacyBackups:{excel_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:'legacy backup'}
+  })})
+}));
 import {VersionedExcelReplacementPanel} from '../src/features/settings/VersionedExcelReplacementPanel';
 const operationId='excel_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const rows=createDemoItems(2);

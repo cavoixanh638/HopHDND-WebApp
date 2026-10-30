@@ -93,6 +93,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     active.rowCount!==(approval as ReplacementApproval).expected.rowCount||
     active.digest!==(approval as ReplacementApproval).expected.digest));
   const allowed=enabled&&readyForMutation;
+  const hasWorkbook=items.length>0&&/\.xlsx$/i.test(fileName);
   const frozen=async(requireFrozen:boolean):Promise<FreezeControl|null>=>{
     if(!requireFrozen)return null;
     const confirmed=await readFreeze(database);
@@ -105,7 +106,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const stage=async()=>{
     // Disabled controls alone are not a transaction fence. Also refuse a
     // forced handler invocation when previous CAS ACK is still UNKNOWN.
-    if(!allowed||!user||comparisonStale||
+    if(!allowed||!hasWorkbook||!user||comparisonStale||
       (operationView?.status==='unknown'&&
         (submittedCommit===approval?.operationId||submittedRestore!==null)))return;
     setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
@@ -142,6 +143,20 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
         if(!initialFreeze||latest?.revision!==initialFreeze.revision||
           latest.epoch!==initialFreeze.epoch)
           throw Error('Freeze revision/epoch đã thay đổi. Phê duyệt khởi tạo không còn hợp lệ.');
+      }
+      if(!('expected' in approval)){
+        // Warm the same V2 parent-node read used for the first-activation CAS.
+        // The browser SDK may otherwise run a transaction against a cold
+        // cached null even though the immutable private candidate and legacy
+        // backup have already been written. This read is NOT a substitute for
+        // backend freeze/epoch checks or Rules and does not commit anything.
+        const root=(await get(ref(database,'hdnd/datasetV2'))).val() as
+          {active?:unknown;candidates?:Record<string,string>;
+            legacyBackups?:Record<string,string>}|null;
+        if(!root||root.active||
+          typeof root.candidates?.[approval.operationId]!=='string'||
+          typeof root.legacyBackups?.[approval.operationId]!=='string')
+          throw Error('Không xác minh được gốc V2, staging và backup legacy trước CAS.');
       }
       const outcome='expected' in approval
         ?await commitDatasetReplacement(database,user,approval,confirm)
@@ -223,7 +238,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
     {!active&&<p role="status">Chỉ sử dụng sau khi quản trị đã chủ động đóng băng FROZEN ở mục Quản trị; không tự chốt dữ liệu hoặc kích hoạt V2.</p>}
     {!readyForMutation&&<p role="alert" className="notice">Còn bản nháp, thao tác đang chạy hoặc dữ liệu chưa được xác minh; không ghi staging/commit.</p>}
-    <button className="button primary" disabled={busy||!allowed||comparisonStale||
+    {!hasWorkbook&&<p className="muted">Để staging, chọn và kiểm tra file Excel A–O trước.
+      Tra cứu operationId và khôi phục đã xác minh vẫn khả dụng ngay cả khi chưa chọn file.</p>}
+    <button className="button primary" disabled={busy||!allowed||!hasWorkbook||comparisonStale||
       (operationView?.status==='unknown'&&
         (submittedCommit===approval?.operationId||submittedRestore!==null))}
       onClick={()=>void stage()}>

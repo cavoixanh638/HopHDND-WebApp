@@ -206,3 +206,46 @@ Trình duyệt Chrome với Auth Emulator/Rules thật vẫn phải chứng minh
 2. **Actual LOST ACK sau CAS đã ghi máy chủ, trước client nhận ACK**: hook/bộ thử fault một lần theo operationId ở backend/runner hoặc transport, chứng minh read-only resolve trả COMMITTED active hoặc historical, operation log chỉ có một commit, revision tăng đúng một lần; không dùng pre-CAS offline, cached-get hoặc permission denied làm bằng chứng giả.
 
 Cho đến khi L1 cung cấp harness và kiểm thử này PASS cùng L3 xác minh độc lập, hai hạng mục là **BLOCKED / NOT YET VERIFIED**. Browser UI/Emulator hiện tại không đủ bằng chứng cho GO. PR #95 và PR #104 giữ **DRAFT / NO-GO**, không merge main, deploy, publish hoặc chạm production.
+
+---
+
+## 11. L2 continuation — HÀNH TRÌNH EXCEL MỘT TAB Chrome thật, PR #105 (30/10/2026)
+
+### Checkpoint và phạm vi
+
+- Tiếp tục **nguyên vẹn** nhánh `pr95/l2-real-admin-browser-e2e-20261030` / **Draft PR #105**, checkpoint `df8a913e47346123d91bd9f3132fc545c692c8e3`, không reset/đổi nhánh/main merge.
+- Base L1 đã tích hợp §I: `01530a9ccedba021434626c1f717c2ac76fcaa64`. Luồng 2 nay chỉ **một** CDP Chrome target với Auth Emulator Google admin (SDK identity token thật, không fake User), đường UI Excel A–O → FROZEN legacy → V2 first activation → replacement → restore. Hai-tab, lease/repository/workspace, mất ACK mạng hoặc result fault **đã loại khỏi phạm vi này**.
+- Các file L2 thay đổi sau checkpoint: `source/scripts/smoke-pages-browser.mjs`, `source/src/features/settings/VersionedExcelReplacementPanel.tsx`, `source/src/features/settings/BusinessExcelReviewPanel.tsx`, `source/tests/pr95-app-initial-activation.test.tsx` và handoff này. Không sửa backend/Rules/runner/workflow hoặc production.
+- Browser script chạy trước đây các original assertions + exclusive candidate Rules trước/sau trong lượt PASS; phần mới **không** giảm phạm vi hoặc sửa nguồn Rules. Chỉ seed dữ liệu giả vào **disposable localhost demo Auth/RTDB Emulator**.
+
+### Chẩn đoán chính xác và cách xử lý UI
+
+1. **CI #41021473207:** lúc staging bị khóa, helper chụp ảnh bên trong exception lại timeout `Page.captureScreenshot`, che lỗi gốc. Đã đổi thành **log diagnostic ngay trước ảnh**, screenshot best effort có deadline riêng; lỗi gốc luôn được `throw`, không đổi thành lỗi ảnh. Không vô hiệu hóa `readyForMutation`.
+2. Script đợi nút staging được bật sau khi Auth/generation/nháp/profile xác nhận, rồi dùng nút thật. Thực hiện `DOM.setFileInputFiles` với workbook `.xlsx` A–O do Node XLSX tạo, chọn sheet `DATA_AO` qua DOM `change`, bấm `Kiểm tra toàn bộ file`, xem trước **2 dòng NQ90/BC91 + 5 Report previews**. Không gọi trực tiếp backend prepare/commit từ script.
+3. Panel lần đầu thực hiện **read-only prewarm gốc `hdnd/datasetV2`**, kiểm tra private `candidates/<op>` và `legacyBackups/<op>` tồn tại trước khi gọi backend CAS (không bỏ qua `freezeControl`, Rules, SHA-256 hay transaction). Test UI Vitest đã được cập nhật.
+4. Để tra cứu/restore sau khi điều hướng sang Danh sách/Báo cáo, phần `BusinessExcelReviewPanel` luôn cho mở **read-only `operationId` lookup** cả khi không chọn workbook; nút staging **khóa** nếu chưa validate file. Giữ nguyên `UNKNOWN` terminal no-retry.
+5. Browser đi đúng UI: bấm `Về chế độ xem` trước khi chọn tab Danh sách/Báo cáo (hai nút điều hướng được App cố ý disable lúc đang ở settings). Kiểm tra List row count, nội dung, 5 report tables/nhóm giá trị sau mỗi mốc.
+
+### Bằng chứng thực tế — phân biệt PASS và BLOCKED
+
+- **Google Auth Emulator trên một CDP target thật: PASS**, ví dụ `BROWSER_EXCEL_ADMIN_AUTH_PASS` tại Verify #41024834618.
+- **Excel upload / explicit sheet selection / A–O parser / 2-row List preview / 5 Report preview: PASS** trên Chrome thật.
+- **Initial legacy FROZEN → V2 từ UI: BLOCKED.** Sau bấm đúng chuỗi `KHOI TAO V2 <op> 2 2`, UI hiển thị `UNKNOWN`; owner server readback chứng minh `active=null`, `operations=[]`, `generations=[]`. Việc chụp ảnh hay cache warm-up không đổi kết quả. **KHÔNG được gọi là lost ACK sau commit**; server chưa có COMMITTED. Không auto retry operationId.
+- Để không giả mạo kết quả, script ghi rõ `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_NOT_INITIAL_UI_PASS` sau khi dùng privileged PUT tạo V2 *fixture riêng* từ candidate A–O đã validate/readback, chỉ để tiếp tục thử replace/restore. Không coi owner PUT là UI CAS.
+- **Live App List/Report trên independent V2 fixture: PASS**. `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_LIVE_LIST_REPORT_PASS`: 2 rows, 5 report tables, nhóm `Sở QA INITIAL`; dữ liệu hiện ra từ generation active.
+- **Replacement UI CAS: BLOCKED** trên #41024308782 và #41024834618: staging, private backup và preview file thứ hai đều thành công, nhưng `commitDatasetReplacement` bị `permission_denied`, UI `UNKNOWN`, owner RTDB vẫn active revision 1, không có generation/operation cho thao tác mới. Chạy lại fixture có `updatedAt`/`updatedBy`/`operationId` và scoped permission `note:true` cũng không sửa quyền parent CAS. Không tự retry.
+- **Restore UI CAS: BLOCKED** ở Verify #41025450698 trên fixture độc lập: sau khi tra cứu `operationId` trên panel không có file, UI đã xác minh backup riêng tư, hiển thị nút khôi phục, nhận chuỗi `KHOI PHUC restore_pr95_excel_ui_20261030` và gọi RESTORE thực, nhưng CAS trả **`permission_denied`**; `BROWSER_EXCEL_RESTORE_UI_BLOCKED`, server giữ pointer revision **2**, không có operation restore. Không retry. Hai nguồn fixture đều được gắn nhãn `...NOT_UI_CAS_PASS`; không gọi là khôi phục thành công.
+- **Bằng chứng CI/cause từ bước trước:** [Verify #41024308782](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41024308782) FAIL **chỉ browser**, xác nhận giao diện và server bằng log `BROWSER_EXCEL_INITIAL_UI_BLOCKED`, `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_LIVE_LIST_REPORT_PASS`, `REAL_UI_REPLACE_STATUS_NOT_CONFIRMED`; Typecheck/Unit/Rules Emulator không được bỏ.
+- **Bằng chứng cuối thực chạy mã tại `9726db11f111f09496b812f30cee9b0a8ed7e787`:** [Verify #41025450698](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41025450698) **FAIL tại Browser smoke**, không phải browser PASS. Log chốt `PR95_REAL_EXCEL_UI_JOURNEY_INCOMPLETE {\"initial\":\"BLOCKED\",\"replacement\":\"BLOCKED\",\"restore\":\"BLOCKED\"}`. Các bước Typecheck, Unit, Emulator và build riêng không thất bại; xem run để kiểm chứng từng bước. `Firebase operational QA` kiểm tra độc lập và CI trên HEAD docs-only cần đối chiếu riêng, không đồng nhất với giao diện E2E.
+
+### Ảnh và đường dẫn kiểm chứng
+
+- Script tạo `source/hophdnd-pr95-excel-initial-blocked.png`, `source/hophdnd-pr95-excel-*-list.png`, `source/hophdnd-pr95-excel-*-report.png`, `source/hophdnd-pr95-excel-replacement-blocked.png`, `source/hophdnd-pr95-excel-restore-blocked.png` / `restore.png` nếu đi được đến bước. Ảnh chụp từ **chính CDP target UI**.
+- Ảnh đã được **xác minh tồn tại trong artifact CI thật**, không chỉ lưu runner: [Verify #41025450698](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41025450698) → artifact **`hophdnd-browser-smoke-failure`** (GitHub artifact ID `12963856281`, kích thước 92.754 byte), là bản chụp màn UI **initial-blocked** qua `source/hophdnd-ui-smoke-failure.png`; catch cuối không ghi đè từ tab không liên quan. Không sửa `.github/workflows/verify-source.yml`.
+- Các screenshot tên `hophdnd-pr95-excel-*.png` khác hiện được tạo trên CI runner, **chưa được khai báo là upload artifacts bởi workflow L1**; không tuyên bố đã tải xuống/kiểm chứng những file chưa có artifact. Khi L1 muốn lưu trữ đầy đủ bộ ảnh cần bổ sung path upload vào runner thuộc L1.
+
+### Ranh giới và bàn giao
+
+- Blocker với bằng chứng cụ thể đã đăng [PR #105 comment #6518227906](https://github.com/cavoixanh638/HopHDND-WebApp/pull/105#issuecomment-6518227906). Dữ liệu A–O được chọn/staged qua App và private backup đã readback; **parent-node CAS RTDB thực tế bị từ chối / không COMMITTED** mặc dù suite backend Unit/Rules có ca synthetic PASS. L2 không sửa phần `firebase-versioned-replacement.ts` / exclusive Rules của L1, không nới Rules và không tạo production fallback.
+- Các phép thử vẫn ở trạng thái **NO-GO / unresolved** cho chuỗi đầy đủ. Giữ PR105, PR95 **Draft**, không merge main, publish, deploy, read/write/delete production.
+- **Đề nghị L1 xử lý sau khi nhận bàn giao (không chờ L1 mới chốt L2):** xác định tại tầng server Rules/transaction vì sao `commitInitialDatasetActivation` trả `unknown` khi **không có active/operation COMMITTED**, còn `commitDatasetReplacement` và `restoreDatasetBackup` trả `permission_denied` với Auth Emulator Google admin; kiểm tra parent-node CAS + nested validators trên A–O candidate. Không thể hạ Rules hoặc ghi đè pointer để tuyên bố UI PASS. Luồng 2 đã cung cấp log, ảnh và đúng operationId từng ca.
