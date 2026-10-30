@@ -38,6 +38,13 @@ describe('read-only generation integrity preflight',()=>{
     await expect(createDatasetManifest([{...rows()[0],isDropped:true}],operation))
       .rejects.toThrow('revision=1');
   });
+  it('refuses candidate rows carrying prior history, leases or edit proofs',async()=>{
+    const [first]=rows();
+    await expect(createDatasetManifest([{...first,history:{1:{actor:'old-user'}}} as typeof first],operation))
+      .rejects.toThrow('quyền/khóa/lịch sử');
+    await expect(createDatasetManifest([{...first,editProofs:{note:'old-lease'}} as typeof first],operation))
+      .rejects.toThrow('quyền/khóa/lịch sử');
+  });
   it('models one winning CAS, one stale tab and idempotent status check',async()=>{
     const manifest=await createDatasetManifest(rows(),operation);
     expect(checkPointerSwap(oldPointer,oldPointer,manifest)).toBe('ready');
