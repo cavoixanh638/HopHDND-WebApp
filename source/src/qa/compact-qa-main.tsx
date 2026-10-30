@@ -10,6 +10,7 @@ import {ItemList} from '../features/items/ItemList';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import '../styles/app.css';
+import {Pr95FullPreview} from './pr95-full-preview';
 
 const items=createDemoItems(8);
 const initial=defaultItemLayout();
@@ -130,4 +131,11 @@ function CompactVisualQa(){
   </div>;
 }
 
-createRoot(document.getElementById('root')!).render(<CompactVisualQa/>);
+// Preserve old QA URL fixtures unmodified. The unqualified /compact-qa.html
+// now exposes the complete two-tab, six-section V2 preview by default.
+const query=new URLSearchParams(window.location.search);
+const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
+  'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
+  'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings'];
+const legacy=query.get('legacy')==='1'||classicOnly.some(key=>query.has(key));
+createRoot(document.getElementById('root')!).render(legacy?<CompactVisualQa/>:<Pr95FullPreview/>);
