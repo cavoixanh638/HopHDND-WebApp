@@ -241,21 +241,17 @@ async function test(){
     const granted=JSON.parse(grantedText);
     assert.equal(granted?.cells?.[ROW]?.note,true,'Anonymous readback must observe granted cell');
   }
-  // Switch the ACTUAL App (not demo) into List after auth and rights changes.
-  // The guest's public landing view is overview; a CDP click is not proof of a
-  // React route transition until the App itself reports page=items.
-  for(let i=0;i<5;i++){
-    const route=await guest.evalJs('window.__pr95UiV2L3RightsProbe?.().page');
-    if(route==='items')break;
-    await clickText(guest,'nav.primary-section-switcher button','Danh sách');
-    await sleep(450);
-  }
+  // Wait for the guest's OWN Firebase SDK/controller permission witness.
+  // A separate REST owner read cannot authorize the browser's editor.
+  await guest.until('window.__pr95UiV2L3RightsProbe?.().canEditNote===true',
+    'guest Firebase permission controller acknowledges cell grant',16000);
+  step('GUEST_CONTROLLER_SERVER_GRANT_PASS',{
+    snapshot:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()')});
+  // Then navigate the actual App to the editable List. Never replace a
+  // React route check with a fixture or privileged test-only client write.
+  await clickText(guest,'nav.primary-section-switcher button','Danh sách');
   await guest.until('window.__pr95UiV2L3RightsProbe?.().page==="items"',
-    'real guest route is Danh sách before editing',6500);
-  step('GUEST_REAL_LIST_ROUTE_CONFIRMED',{page:'items',source:'actual App',
-    snapshot:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()'),
-    cell:await guest.evalJs('document.querySelector(\'.item-data-table tbody tr:first-child td[data-col-key="note"]\')?.className')});
-  // The already-mounted guest App must observe the server grant.
+    'real guest route Danh sách after permission update',6500);
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
       return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
