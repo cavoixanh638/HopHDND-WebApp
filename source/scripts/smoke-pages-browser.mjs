@@ -1941,7 +1941,7 @@ try{
     const docTop=doc?.querySelector('.compact-document-heading');
     const kind=docTop?.querySelector('.compact-document-badge');
     const department=docTop?.querySelector('.compact-document-department');
-    return {ok:columns.length===7&&new Set(columns).size===7&&
+    return {ok:columns.length===6&&new Set(columns).size===6&&
       columns.includes('content')&&columns.includes('partyLevel')&&columns.includes('room')&&
       !columns.some(k=>['type','department','progressParty','progressBuild','progressCouncil',
         'specialist','ubndLeader','vpLeader'].includes(k))&&
@@ -2058,7 +2058,7 @@ try{
     if(!checkbox)return false;checkbox.click();return true;
   })()`);
   if(!teamToggle)throw Error('Team merge switch missing');
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'Restoring team must still preserve the mandatory document/stage groups');
 
   await send('Emulation.setDeviceMetricsOverride',{width:768,height:1000,deviceScaleFactor:1,mobile:false});
@@ -2177,7 +2177,7 @@ try{
     const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
     const prefs=JSON.parse(localStorage.getItem(key)||'null');
     return {ok:prefs?.cvRoomInline===true&&prefs?.teamTogether===true&&
-      document.querySelectorAll('.item-heading-row th').length===7,
+      document.querySelectorAll('.item-heading-row th').length===6,
       inlineText:document.querySelector('.compact-cv-room-line')?.textContent?.slice(0,150)};
   })()`);
   if(!guestSaved.ok)throw Error('U04 guest localStorage scope or inline view regression: '+JSON.stringify(guestSaved));
@@ -2543,7 +2543,7 @@ try{
       throw Error(label+' changed physical total '+JSON.stringify({before,after}));
   };
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
   await moveLast('displayCode');
   const r02Before=await widthSnapshot();
@@ -2592,7 +2592,7 @@ try{
   // Owner L019 explicit fallback: group adjacent reaches physical minimum
   // before the last visible ID (52px default) begins to compensate.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 fallback baseline missing');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
@@ -2632,7 +2632,7 @@ try{
     throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",'R02 grouped fixture missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",'R02 grouped fixture missing');
   await moveLast('partyLevel');
   const groupedBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
@@ -2650,7 +2650,7 @@ try{
   // before the roomy Lãnh đạo / Phòng / CV group, with Ghi chú last.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?progress-before-staff=1'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 reported column order missing');
   const reportedBefore=await widthSnapshot();
   const progressIndex=reportedBefore.keys.indexOf('specificProgress');
@@ -2816,7 +2816,7 @@ try{
   for(const sourceCap of [1470,1550,1600]){
     await send('Page.navigate',{url:'http://127.0.0.1:'+port+
       '/compact-qa/compact-qa.html?cap-party='+sourceCap});
-    await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    await eventually("document.querySelectorAll('.item-heading-row th').length===6",
       'R02 capped source fixture did not mount');
     const before=await widthSnapshot();
     if(Math.abs(before.party-1600)>1||Math.abs(before.total-2842)>1)
