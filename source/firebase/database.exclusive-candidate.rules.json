@@ -435,13 +435,13 @@
                   ".validate": "newData.isString() && newData.val().length <= 100"
                 },
                 "operationId": {
-                  ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,100}$/) && newData.val() !== data.val()"
+                  ".validate": "((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.exists() && newData.val() === data.val()) || (newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,100}$/) && newData.val() !== data.val())"
                 },
                 "updatedAt": {
-                  ".validate": "newData.isNumber() && newData.val() === now"
+                  ".validate": "((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.exists() && newData.val() === data.val()) || (newData.isNumber() && newData.val() === now)"
                 },
                 "updatedBy": {
-                  ".validate": "newData.val() === auth.uid"
+                  ".validate": "((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.exists() && newData.val() === data.val()) || (newData.val() === auth.uid)"
                 },
                 "$other": {
                   ".validate": false
