@@ -134,6 +134,7 @@ export class CellEditSessionManager {
   }
   /** Recovery is a local checkpoint, NEVER a database acknowledgement. */
   preserveDraft(id:string,field:EditableField,value:unknown){
+    if(this.closed)return false;
     try{
       const storage=this.draftStorage();if(!storage)return false;
       storage.setItem(this.draftKey(id,field),JSON.stringify({savedAt:Date.now(),value}));
@@ -141,6 +142,7 @@ export class CellEditSessionManager {
     }catch{return false;}
   }
   recoverDraft(id:string,field:EditableField):string|null{
+    if(this.closed)return null;
     try{
       const raw=this.draftStorage()?.getItem(this.draftKey(id,field));
       const parsed=raw?JSON.parse(raw):null;
@@ -150,9 +152,9 @@ export class CellEditSessionManager {
   private clearDraft(id:string,field:EditableField){
     try{this.draftStorage()?.removeItem(this.draftKey(id,field));}catch{}
   }
-  has(id:string,field:EditableField){return this.held.has(this.key(id,field));}
-  isPending(id:string,field:EditableField){return this.held.get(this.key(id,field))?.pending===true;}
-  proof(id:string,field:EditableField){return this.held.get(this.key(id,field))?.lease.token??null;}
+  has(id:string,field:EditableField){return !this.closed&&this.held.has(this.key(id,field));}
+  isPending(id:string,field:EditableField){return !this.closed&&this.held.get(this.key(id,field))?.pending===true;}
+  proof(id:string,field:EditableField){return this.closed?null:this.held.get(this.key(id,field))?.lease.token??null;}
   error(id:string,field:EditableField){return this.failed.get(this.key(id,field))??null;}
   activeCount(){return this.held.size;}
   async acquire(id:string,field:EditableField,kind:EditorKind):Promise<boolean>{
@@ -169,6 +171,7 @@ export class CellEditSessionManager {
     this.held.set(key,entry);this.failed.delete(key);return true;
   }
   markPending(id:string,field:EditableField){
+    if(this.closed)throw new Error('Phiên sửa đã hết hiệu lực khi thay thế dữ liệu.');
     const entry=this.held.get(this.key(id,field));
     if(!entry)throw new Error('Chưa giữ khóa ô để lưu.');
     entry.pending=true;

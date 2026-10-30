@@ -102,12 +102,15 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           :'hdnd/items',firebase.datasetActive??undefined)
       :browserRepository,
     [firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,
+      firebase?.datasetActive?.operationId,firebase?.datasetActive?.revision,firebase?.datasetActive?.digest,
       selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed,
       legacySourceTests]);
   const leaseManager=useMemo(()=>firebase&&selectedSource==='primary'&&!comparison
     ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null,
         firebase.datasetActive?.generationId)
-    :undefined,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,selectedSource,comparison]);
+    :undefined,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,
+      firebase?.datasetActive?.operationId,firebase?.datasetActive?.revision,firebase?.datasetActive?.digest,
+      selectedSource,comparison]);
   useEffect(()=>()=>{if(leaseManager)void leaseManager.dispose();},[leaseManager]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
