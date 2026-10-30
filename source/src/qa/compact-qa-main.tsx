@@ -89,8 +89,8 @@ function CompactVisualQa(){
     data-qa="compact-real-itemlist"
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
-      <h1 style={{fontSize:20,margin:0}}>HopHDND · Gộp cột (bản kiểm thử UI)</h1>
-      <p className="muted" style={{margin:'4px 0 0'}}>Dữ liệu mô phỏng · không đăng nhập, không lưu Firebase</p>
+      <h1 style={{fontSize:20,margin:0}}>HopHDND · Danh sách nội dung trình HĐND</h1>
+      <p className="muted" style={{margin:'4px 0 0'}}>Bản xem thử · Dữ liệu giả — không đăng nhập, không kết nối Firebase/Google Sheets</p>
     </header>
     <main style={{maxWidth:1440,margin:'0 auto',padding:'14px'}}>
       {params.get('popup')==='1'?<ReportDetailGrid
