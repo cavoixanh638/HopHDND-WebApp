@@ -182,7 +182,15 @@ async function test(){
   assert.notEqual(admin.pageId,guest.pageId);
   await guest.until('!!document.querySelector(".guest-signin")','anonymous UI');
   await clickText(guest,'nav.primary-section-switcher button','Danh sách');
-  await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-MẪU-001")===true','real data row, not loading placeholder');
+  try{
+    await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-MẪU-001")===true','real data row, not loading placeholder');
+  }catch(error){
+    step('GUEST_APP_DIAGNOSTIC',{body:await guest.evalJs('document.body.textContent.slice(0,2500)'),
+      table:await guest.evalJs('document.querySelector(".item-data-table tbody")?.textContent?.slice(0,1000)'),
+      rows:await guest.evalJs('document.querySelectorAll(".item-data-table tbody tr").length'),
+      forbidden:guest.outbound});
+    throw error;
+  }
   const initial=await guest.evalJs(`(()=>{const cell=document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"]');
     return {noteEditable:!!cell?.classList.contains('editable-cell'),noteCellExists:!!cell,accountButton:!!document.querySelector('.guest-signin'),
       hiddenAdmin:!document.querySelector('.options-menu')};})()`);
