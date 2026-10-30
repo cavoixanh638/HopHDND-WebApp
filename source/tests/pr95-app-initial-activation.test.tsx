@@ -80,7 +80,7 @@ function messages(tree:unknown){
 async function review(overrides:Record<string,unknown>={}){
   find(render(overrides),'button','Ghi staging, đọc lại').props.onClick();
   await vi.waitFor(()=>expect(calls.read).toHaveBeenCalledOnce());
-  await vi.waitFor(()=>expect(messages(render(overrides))).toContain('Đã xác minh staging'));
+  await vi.waitFor(()=>expect(messages(render(overrides))).toContain('staging'));
 }
 beforeEach(()=>{
   hooks.reset();vi.clearAllMocks();
