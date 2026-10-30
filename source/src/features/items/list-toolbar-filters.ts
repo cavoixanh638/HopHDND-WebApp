@@ -4,6 +4,7 @@ import {displayId} from '../../domain/display-id';
 import {isActive} from '../../domain/reporting';
 import type {SummarySelection} from '../../domain/item-summary';
 import {filterListBySummary} from '../../domain/item-summary';
+import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
 
 export type ListKind='qppl'|'hc'|'bc'|'nq-unknown'|'unclassified';
 export type DetailKey='partyLevel'|'progressParty'|'progressBuild'|'progressCouncil'|
@@ -45,6 +46,8 @@ export function kindOf(item:Item):ListKind {
   if(value==='hc'||value==='hanh chinh')return 'hc';
   return 'nq-unknown';
 }
+const isWorkflowField=(key:string):key is StatusCatalogField=>
+  Object.prototype.hasOwnProperty.call(OFFICIAL_STATUS_CHOICES,key);
 export function filterToolbarRows(
   items:readonly Item[],state:ListToolbarState,
   customValue?:(item:Item,field:string)=>string
@@ -54,7 +57,9 @@ export function filterToolbarRows(
     // These are EXACT selected categories, not fuzzy substring matches.
     if(state.department&&item.department!==state.department)return false;
     if(state.room&&item.room!==state.room)return false;
-    if(DETAIL_FIELDS.some(({key})=>state.details[key]&&item[key]!==state.details[key]))
+    if(DETAIL_FIELDS.some(({key})=>state.details[key]&&
+      (isWorkflowField(key)?canonicalStatus(key,item[key])!==canonicalStatus(key,state.details[key]):
+        item[key]!==state.details[key])))
       return false;
     if(!needle)return true;
     const values=state.field==='all'
@@ -73,9 +78,18 @@ export const filterByChips=(items:Item[],kind:ListKind|null,stage:SummarySelecti
 export const hasToolbarFilters=(state:ListToolbarState):boolean=>
   !!(state.search.trim()||state.department||state.room||state.field!=='all'&&state.search.trim()||
     DETAIL_FIELDS.some(({key})=>state.details[key]));
-export const exactChoices=(items:readonly Item[],key:keyof Item):string[]=>
-  [...new Set(items.map(item=>String(item[key]??'')).filter(Boolean))]
+export const exactChoices=(items:readonly Item[],key:keyof Item):string[]=>{
+  if(isWorkflowField(key)){
+    const official=OFFICIAL_STATUS_CHOICES[key];
+    const observed=[...new Set(items.map(item=>canonicalStatus(key,item[key])).filter(Boolean))]
+      .filter(value=>!official.includes(value)).sort((a,b)=>a.localeCompare(b,'vi'));
+    // Unknown originals remain selectable for data-quality filtering, but
+    // recognized old labels never re-enter the official choice menu.
+    return [...official,...observed];
+  }
+  return [...new Set(items.map(item=>String(item[key]??'')).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,'vi'));
+};
 export function shouldClearListOnEscape(event:KeyboardEvent,context:{
   active:boolean;customizing:boolean;permissionMode:boolean;editorOpen:boolean;
   popupOpen:boolean
