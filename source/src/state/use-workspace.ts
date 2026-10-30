@@ -25,6 +25,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   const skipCheckpoint = useRef(false);
   const latestDraft = useRef({items,drafts}); latestDraft.current = {items,drafts};
   const [dataSource, setDataSource] = useState(repository);
+  const previousSourceKey=useRef(sourceKey);
   const dataSourceRef=useRef(dataSource);dataSourceRef.current=dataSource;
   const sourceRef = useRef(repository);
   sourceRef.current = repository;
@@ -68,6 +69,13 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     }
   }, [repository, sourceKey,canDraft]);
   useEffect(() => {
+    // Never apply a checkpoint from a previous generation to reused IDs.
+    if(previousSourceKey.current!==sourceKey){
+      if(previousSourceKey.current.startsWith('pages:gen:')||previousSourceKey.current==='pages:primary')
+        clearCheckpoint(`data:${previousSourceKey.current}`);
+      previousSourceKey.current=sourceKey;
+      autoFailed.current='';
+    }
     lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});setCachePending(false);
     setLoadedAt('');setMessage('');setAutosaveMessage('');
     skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
@@ -94,7 +102,9 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   }, [repository, refresh]);
   useEffect(()=>{
     if(!repository.subscribe||!canStartDatabase)return;
-    return repository.subscribe(rows=>{
+    let subscribed=true;
+    const stop=repository.subscribe(rows=>{
+      if(!subscribed)return;
       if(sourceRef.current!==repository)return;
       const signature=JSON.stringify(rows);
       if(lastRowsSignature.current!==signature||dataSourceRef.current!==repository){
@@ -106,7 +116,8 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         setLoadedAt(new Date().toLocaleString('vi-VN'));
         setBusy(false);
       }
-    },cause=>{if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
+    },cause=>{if(!subscribed)return;if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
+    return()=>{subscribed=false;stop();};
   },[repository,canStartDatabase]);
   const update = (recordId: string, changes: Changes) => {
     const item = items.find(i => i.recordId === recordId);
@@ -124,7 +135,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   };
   const discard = () => { protectedRecovery.current=false;skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage(''); setDrafts({}); setErrors({}); setMessage('Đã bỏ phần sửa trên máy. File nguồn không thay đổi.'); };
   const save = async () => {
-    if (busy || cachePending || saving.current||!canDraft) return false;
+    if (busy || cachePending || saving.current||!canDraft||!canStartDatabase||dataSource!==repository) return false;
     if (!Object.keys(drafts).length) return true;
     saving.current=true;setBusy(true);
     const requestRepository=repository;

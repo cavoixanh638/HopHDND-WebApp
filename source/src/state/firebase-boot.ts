@@ -39,6 +39,32 @@ function createServices(){
   if(emulator){
     connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
     connectDatabaseEmulator(database,'127.0.0.1',9000);
+    // PR95 real-Chromium two-tab harness: a test-only SDK Google Auth login.
+    // Only the pages-test build on a loopback origin may install this hook;
+    // production does not load the module or expose an admin shortcut.
+    if(typeof window!=='undefined'&&import.meta.env.MODE==='pages-test'&&
+      ['localhost','127.0.0.1'].includes(window.location.hostname)){
+      void import('./firebase-emulator-admin-auth').then(({signInAsEmulatorGoogleAdmin})=>{
+        const testing=window as Window & {
+          __pr95EmulatorGoogleAdminSignIn?:()=>Promise<{
+            uid:string;email:string|null;emailVerified:boolean;providerIds:string[]
+          }>
+        };
+        testing.__pr95EmulatorGoogleAdminSignIn=async()=>{
+          const user=await signInAsEmulatorGoogleAdmin(auth);
+          return {uid:user.uid,email:user.email,emailVerified:user.emailVerified,
+            providerIds:user.providerData.map(p=>p.providerId)};
+        };
+      });
+      void import('../data/firebase-versioned-replacement').then(
+        ({armEmulatorPostCommitCallerAckLoss})=>{
+          const testing=window as Window & {
+            __pr95EmulatorArmLostCallerAck?:(operationId:string)=>void
+          };
+          testing.__pr95EmulatorArmLostCallerAck=(operationId:string)=>
+            armEmulatorPostCommitCallerAckLoss(database,operationId);
+        });
+    }
   }
   markStartup('firebase-initialized');
   return {auth,database,emulator};

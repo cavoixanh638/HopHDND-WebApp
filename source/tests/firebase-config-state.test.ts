@@ -24,7 +24,7 @@ const user=(admin=false)=>({uid:admin?'admin':'guest',email:admin?'cavoixanh638@
 const profile=(revision=1)=>({revision,catalogs:catalogFromItems(createDemoItems(1)),reports:defaultReportLayout(),items:defaultItemLayout()});
 const stored=(revision=1)=>({revision,payload:JSON.stringify(profile(revision))});
 function render(){h.begin();const value=useFirebase();h.flush();return value;}
-function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get(admin?'hdnd/editors':'hdnd/editors/guest').next({val:()=>admin?{guest:true}:true});}
+function login(admin=false){render();h.auth.currentUser=user(admin);h.authChanged(h.auth.currentUser);render();h.listeners.get('hdnd/datasetV2/active').next({val:()=>null});h.listeners.get('.info/connected').next({val:()=>true});h.listeners.get(admin?'hdnd/editors':'hdnd/editors/guest').next({val:()=>admin?{guest:true}:true});}
 function emit(path:string,value:any){if(path==='hdnd/profile')h.profileRaw=value;h.listeners.get(path).next({val:()=>value});}
 beforeEach(()=>{h.reset();h.listeners.clear();h.auth.currentUser=null;h.profileRaw=null;h.get.mockReset();h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/profile'?h.profileRaw:null}));h.transaction.mockReset();h.popup.mockReset().mockResolvedValue({});h.persistence.mockReset().mockResolvedValue(undefined);});
 afterEach(()=>h.dispose());
@@ -67,7 +67,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/editors/guest','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/datasetV2/active','hdnd/editors/guest','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/control',{revision:1,editingLocked:false});
     emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
@@ -86,6 +86,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     h.auth.currentUser={uid:'public-guest',isAnonymous:true,email:null,emailVerified:false,providerData:[]};
     h.authChanged(h.auth.currentUser);
     render();
+    emit('hdnd/datasetV2/active',null); // Initial absence verified before legacy access.
     emit('hdnd/permissions',{columns:{note:true,content:false}});
     emit('.info/connected',true);
     emit('hdnd/control',{revision:1,editingLocked:false});
@@ -227,7 +228,7 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('refuses stale permissions without invoking a transaction or overwriting Firebase',async()=>{
     login(true);emit('hdnd/permissions',{columns:{note:true}});
     const state=render(),draft={columns:{note:false}};
-    h.get.mockResolvedValue({val:()=>({columns:{note:false}})});
+    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/datasetV2/active'?null:{columns:{note:false}}}));
     await expect(state.savePermissions(draft)).rejects.toThrow('đã thay đổi');
     expect(h.transaction).not.toHaveBeenCalled();
     expect(h.get).toHaveBeenCalledWith('hdnd/permissions');
@@ -235,7 +236,7 @@ describe('Firebase config controller remains independent of business data',()=>{
   it('saves normalized row and cell permissions against their original baseline',async()=>{
     login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
     const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
-    h.get.mockResolvedValue({val:()=>({columns:{note:true}})});
+    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/datasetV2/active'?null:{columns:{note:true}}}));
     h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
     await state.savePermissions(next);
     const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
