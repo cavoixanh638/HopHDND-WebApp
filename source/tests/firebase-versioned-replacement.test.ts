@@ -58,7 +58,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     const visible=(await get(ref(guest(),DATASET_V2_PATH+'/generations/gen_'+op+'/items'))).val();
     expect(Object.values(visible)).toHaveLength(2);
     await assertFails(set(ref(guest(),'hdnd/items/legacy'),initialRows[0]));
-    expect(await resolveDatasetOperation(db,op)).toBe('committed');
+    expect(await resolveDatasetOperation(db,op)).toEqual({status:'committed-active',operationId:op,generationId:'gen_'+op});
     const same=await commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2');
     expect(same.status).toBe('already-committed');
     const restore='restore_pr95_0001';
@@ -68,8 +68,8 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect(previous.r1.content).toBe(initialRows[0].content);
     expect((await get(ref(db,DATASET_V2_PATH+'/permissions/gen_'+restore+'/columns/note'))).val()).toBe(true);
     // The original commit is historical, but must never be falsely reported as uncommitted.
-    expect(await resolveDatasetOperation(db,op)).toBe('committed');
-    expect(await resolveDatasetOperation(db,restore)).toBe('committed');
+    expect(await resolveDatasetOperation(db,op)).toEqual({status:'committed-historical',operationId:op,generationId:'gen_'+op});
+    expect(await resolveDatasetOperation(db,restore)).toEqual({status:'committed-active',operationId:restore,generationId:'gen_'+restore});
     await assertFails(get(ref(guest(),DATASET_V2_PATH+'/backups/'+op)));
   },30000);
 
@@ -108,20 +108,20 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       .rejects.toThrow(/cùng thế hệ|đã thay đổi/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
-    expect(await resolveDatasetOperation(db,operation)).toBe('not-committed');
+    expect(await resolveDatasetOperation(db,operation)).toEqual({status:'not-committed',operationId:operation});
   },30000);
 
   it('does not call missing or inconsistent operation log entries uncommitted',async()=>{
     const db=admin();
     // A seeded active pointer without a matching operation log is ambiguous.
-    expect(await resolveDatasetOperation(db,'seed_op_000001')).toBe('unknown');
-    expect(await resolveDatasetOperation(db,'not_seen_ever_0001')).toBe('not-committed');
+    expect(await resolveDatasetOperation(db,'seed_op_000001')).toEqual({status:'unknown',operationId:'seed_op_000001'});
+    expect(await resolveDatasetOperation(db,'not_seen_ever_0001')).toEqual({status:'not-committed',operationId:'not_seen_ever_0001'});
     await env.withSecurityRulesDisabled(async ctx=>{
       await set(ref(ctx.database() as never,DATASET_V2_PATH+
         '/operations/corrupt_op_01'),{status:'COMMITTED',from:'gen_seed_initial',
         to:'gen_missing',at:1});
     });
-    expect(await resolveDatasetOperation(db,'corrupt_op_01')).toBe('unknown');
+    expect(await resolveDatasetOperation(db,'corrupt_op_01')).toEqual({status:'unknown',operationId:'corrupt_op_01'});
   },20000);
 
   it('two tabs use different operationIds: only first CAS wins',async()=>{
@@ -132,7 +132,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       .toBe('committed');
     await expect(commitDatasetReplacement(db,actor,b,'THAY pr95_import_0004 2 2'))
       .rejects.toThrow();
-    expect(await resolveDatasetOperation(db,'pr95_import_0004')).toBe('not-committed');
+    expect(await resolveDatasetOperation(db,'pr95_import_0004')).toEqual({status:'not-committed',operationId:'pr95_import_0004'});
   },30000);
 
   it('allows fresh generation-scoped lease edits but rejects writes to the old generation',async()=>{
