@@ -227,11 +227,20 @@ async function test(){
   assert.equal(p.cells?.[ROW]?.note,true);
   assert.equal(p.cells?.[OTHER]?.note,undefined);
   step('ADMIN_GRANT_SERVER_CAS_PASS',{path:PATH+'/permissions/'+GEN,cell:ROW+'/note'});
-  await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
-    return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
-      !a[0]?.querySelector('td[data-col-key="content"].editable-cell')&&
-      !a[1]?.querySelector('td[data-col-key="note"].editable-cell');})()`,
-  'guest exact permission appears');
+  try{
+    await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
+      return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
+        !a[0]?.querySelector('td[data-col-key="content"].editable-cell')&&
+        !a[1]?.querySelector('td[data-col-key="note"].editable-cell');})()`,
+      'guest exact permission appears');
+  }catch(err){
+    step('GUEST_GRANT_DIAGNOSTIC',{rows:await guest.evalJs(`[...document.querySelectorAll('.item-data-table tbody tr')].map(tr=>({
+      code:tr.textContent.slice(0,18),note:tr.querySelector('td[data-col-key="note"]')?.outerHTML.slice(0,360),
+      content:tr.querySelector('td[data-col-key="content"]')?.className}))`),
+      statuses:await guest.evalJs(`[...document.querySelectorAll('[role=status],[role=alert]')].map(x=>x.textContent.slice(0,150)).slice(0,15)`),
+      appClass:await guest.evalJs('document.querySelector(".app-shell")?.className')});
+    throw err;
+  }
   await capture(guest,'02-guest-note-only');
   // Real App note editor: acquire real lease, create draft, Save from UI.
   await guest.evalJs(`document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"] button.inline-note-trigger').click()`);
