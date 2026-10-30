@@ -2130,6 +2130,32 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel] .cell-picker-trigger')!==null",
     'Field-level staged editor missing');
+  // UI V3 L2: computed styles of the real mounted, independently editable group.
+  const v3Editable=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
+    const row=cell?.querySelector('[data-stage-field=progressBuild]');
+    const state=row?.querySelector('.compact-stage-state');
+    const button=state?.querySelector('button.cell-picker-trigger');
+    const level=cell?.querySelector('.compact-stage-level button.cell-picker-trigger');
+    if(!row||!state||!button||!level)return {ok:false,reason:'missing independently permitted editors'};
+    const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
+    const arrow=getComputedStyle(button,'::after');
+    return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
+      bs.backgroundColor==='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
+      bs.boxShadow==='none'&&bs.transform==='none'&&
+      arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
+      level!==button&&level.getAttribute('aria-haspopup')==='dialog',
+      rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
+      stateBorder:vs.borderTopWidth,buttonBackground:bs.backgroundColor,
+      buttonBorder:bs.borderTopWidth,buttonShadow:bs.boxShadow,
+      arrow:arrow.content,statusLabel:button.getAttribute('aria-label'),
+      levelLabel:level.getAttribute('aria-label')};
+  })()`);
+  if(!v3Editable.ok)throw Error('UI_V3_L2 single editable stage frame: '+JSON.stringify(v3Editable));
+  console.log('UI_V3_L2_SINGLE_EDITABLE_STAGE_CHROME_PASS',JSON.stringify(v3Editable));
+  const v3GrantedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-granted-desktop.png',Buffer.from(v3GrantedShot.data,'base64'));
   const beforeStageEdit=await evaluate(`(()=>{
     const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
     return [...cell.querySelectorAll('.compact-stage-row')].map(x=>({
@@ -2167,6 +2193,39 @@ try{
       rows,values};
   })()`);
   if(!isolatedEdit.ok)throw Error('Source stage editors must not cross-write: '+JSON.stringify(isolatedEdit));
+  // The status popover shows exactly options, not a duplicated field/record title.
+  const v3Opened=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel] [data-stage-field=progressBuild]');
+    const button=row?.querySelector('.compact-stage-state button.cell-picker-trigger');
+    if(!button)return false;button.click();return true;
+  })()`);
+  if(!v3Opened)throw Error('V3 status dropdown not available on granted field');
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-options [role=option]')",
+    'V3 status options did not open');
+  const v3Choices=await evaluate(`(()=>{
+    const p=document.querySelector('.cell-picker-popover:popover-open');
+    const children=[...p?.children??[]], choices=[...p?.querySelectorAll('.cell-picker-option')??[]];
+    const selected=choices.filter(x=>x.getAttribute('aria-selected')==='true');
+    const row=document.querySelector('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel] [data-stage-field=progressBuild]');
+    return {ok:p?.dataset.choicesOnly==='true'&&!!p.getAttribute('aria-label')&&
+      children.length===1&&children[0].classList.contains('cell-picker-options')&&
+      choices.length>=2&&selected.length===1&&
+      choices.every(x=>x.getAttribute('role')==='option')&&
+      p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
+      getComputedStyle(row).outlineStyle==='solid'&&
+      !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
+      optionCount:choices.length,selected:selected.map(x=>x.textContent?.trim()),
+      ariaLabel:p?.getAttribute('aria-label'),children:children.map(x=>x.className)};
+  })()`);
+  if(!v3Choices.ok)throw Error('UI_V3_L2 choices-only status dropdown: '+JSON.stringify(v3Choices));
+  const v3ChoicesShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-choices-only-dropdown.png',Buffer.from(v3ChoicesShot.data,'base64'));
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
+    'Escape must close the current picker');
+  console.log('UI_V3_L2_CHOICES_ONLY_KEYBOARD_PASS',JSON.stringify(v3Choices));
+
 
   // U04 is OFF until a guest explicitly enables it; source and UID isolation
   // survives reload, while shared default and all source values remain intact.
