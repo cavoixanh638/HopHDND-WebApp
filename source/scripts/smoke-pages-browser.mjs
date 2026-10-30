@@ -2301,6 +2301,14 @@ try{
     if(!button)return false;button.click();return true;
   })()`);
   if(!l2PopupMode)throw Error('R-V3-01 popup could not activate permitted edit mode');
+  // Popup defaults to a saved subset of source columns with leaders hidden.
+  // Reveal them through the real existing UI, not by changing user preferences.
+  const l2ShowPopupLeaders=await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('.report-grid-actions button')]
+      .find(x=>x.textContent.includes('Hiện đủ cột Excel'));
+    if(!button)return false;button.click();return true;
+  })()`);
+  if(!l2ShowPopupLeaders)throw Error('R-V3-01 popup cannot reveal optional leader columns');
   await eventually("[...document.querySelectorAll('.report-detail-grid tbody tr:first-child button.cell-picker-trigger')].some(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'))",
     'R-V3-01 popup VP leader not mounted');
   const l2PopupGrant=await evaluate(`(()=>{
@@ -2310,6 +2318,7 @@ try{
     const ubnd=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
     if(!leader||!ubnd||row.querySelector('.compact-stage-row .cell-picker-trigger'))
       return {ok:false,labels:buttons.map(x=>x.getAttribute('aria-label'))};
+    leader.scrollIntoView({block:'nearest',inline:'center'});
     leader.click();return {ok:true,leader:leader.getAttribute('aria-label')};
   })()`);
   if(!l2PopupGrant.ok)throw Error('R-V3-01 popup grants failed: '+JSON.stringify(l2PopupGrant));
