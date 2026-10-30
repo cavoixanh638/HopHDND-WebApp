@@ -179,3 +179,26 @@ Luồng 3 must not modify ANY preexisting files, including test runner/workflow,
 - Scope and cryptographic verification of private backup including per-row history, effective rights, locks and any external related data; rollback digest/permission and mutable generation isolation.
 - Final public hook/repository epoch/permission version and draft checkpoint persistence on epoch switch; test-only legacy source route removal without losing historical regression coverage.
 - Exact HEAD CI on SPLIT_BASE and each lane. 3 existing V2 Emulator permission_denied cases must be repaired with Rules fully enabled.
+
+## G. API-CHANGE-02 — AGREED contract after integrated split (2026-10-30)
+
+L2 acknowledged exact return shape and semantics at PR #95 comment https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6514617603.
+This section **supersedes only §C.5** and references to the old operation status. No other signatures changed:
+
+```ts
+resolveDatasetOperation(database:Database,operationId:string): Promise<{
+  status:'committed-active'|'committed-historical'|'not-committed'|'unknown';
+  operationId:string;
+  generationId?:string;
+}>
+```
+
+- `committed-active`: immutable server operation log states COMMITTED; verified generation exists and active pointer points to the same operation/generation.
+- `committed-historical`: verified immutable COMMITTED operation still exists but active pointer has advanced (including restore). Never report a historical commit as not-committed. If generationId is included it comes from the verified server log, not a guessed active generation.
+- `not-committed`: authoritative read succeeds but operation is absent and active pointer does not contradict that fact. No automatic retry is implied.
+- `unknown`: cannot determine server truth, including lost connection/permission, malformed or contradictory log, or active pointer with missing operation log; stop destructive action, retain operationId and check again.
+- `operationId` returned unchanged. No optimistic client proof or reuse of backup as success evidence.
+- `commitDatasetReplacement` and `restoreDatasetBackup` continue returning `ReplacementOutcome` (separate API); only a verified **currently active** matching operation is an operational confirmation. Historical status must not be presented as a new active swap.
+- Frontend display/status adaptation belongs to L2; independent Emulator race expectations belong to L3; L1 maintains backend and existing Emulator tests. Workers hand off exact commits. No Rules relaxation, no production switch.
+
+API-CHANGE-01 remains **UNDECIDED**: initial V2 activation over nonempty legacy `hdnd/items` needs a server-authoritative fence atomically covering legacy writes and the new pointer. Do NOT ship a naive cross-path client get + independent pointer CAS. Existing work is restricted to synthetic Emulator tests, PR Draft.
