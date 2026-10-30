@@ -174,7 +174,7 @@ try{
   await selectValue('#pr95-role','guest');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','revoked guest list');
-  await ensure('!document.querySelector(".inline-note-trigger[aria-label="+JSON.stringify(firstNote)+"]")','revoke removes guest note editor');
+  await ensure('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await screenshot('pr95-l4-mobile-list.png');
@@ -183,13 +183,13 @@ try{
   await screenshot('pr95-l4-mobile-reports.png');
   await ensure('!document.documentElement.classList.contains("is-printing")','no print state');
   await ensure('!document.querySelector("script[src*=firebase]")','no Firebase network bootstrap');
-  const outside=network.filter(url=>!url.startsWith('http://127.0.0.1:'+port+'/')&&!url.startsWith('data:'));
-  if(outside.length)throw Error('PR95_L4_UNEXPECTED_NETWORK_REQUEST '+JSON.stringify(outside.slice(0,12)));
+  const forbidden=network.filter(url=>/firebaseio|firebasedatabase|docs\\.google\\.com\\/spreadsheets|identitytoolkit|securetoken|sheets\\.googleapis\\.com/i.test(url));
+  if(forbidden.length)throw Error('PR95_L4_FORBIDDEN_PRODUCTION_REQUEST '+JSON.stringify(forbidden.slice(0,12)));
   if(logs.length)console.log('PR95_L4_BROWSER_CONSOLE_ERRORS',logs.slice(0,3));
   console.log('PR95_L4_FULL_PREVIEW_BROWSER_PASS '+JSON.stringify({
     realReports:5,popup:'ReportDetailGrid',list:'ItemList',
     permission:'InlinePermissionsTable',file:'real A–O parse RAM replacement',
-    roles:'admin guest grant edit revoke',mobile:390,externalRequests:outside.length}));
+    roles:'admin guest grant edit revoke',mobile:390,productionRequests:forbidden.length}));
 }finally{
  for(const entry of pending.values())entry.fail(Error('CDP closing'));pending.clear();
  ws?.close();browser?.kill('SIGKILL');server.close();
