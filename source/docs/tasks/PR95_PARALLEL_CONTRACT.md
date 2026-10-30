@@ -252,3 +252,31 @@ The current QA is an Emulator-only proof of this initial CAS workflow, not permi
 **L3 independent responsibility:** review each gate separately, distinguishing (a) two SDK Auth identities sharing UID, (b) two actual Chrome CDP target IDs, (c) genuine lease/save/CAS UI actions vs privileged fixture pointer writes, (d) SDK-to-app result loss vs network ACK loss. No production credentials, no Rules relaxation, no deployment.
 
 No merge main/hosting publish/Firebase deploy/production data actions; PR95 remains Draft.
+
+## J. NEW PARALLEL OWNERSHIP — L1 RTDB NETWORK ACK AND IDEMPOTENCY (2026-10-30)
+
+**Frozen common baseline:** `01530a9ccedba021434626c1f717c2ac76fcaa64`. Each lane works independently from this SHA. Preserve all existing files/behavior/API; coordinate only at final integration after all three separately hand off. L1 MUST NOT edit L2 shared browser smoke. Never merge PR95/main or deploy/publish/modify production.
+
+| Work package | Owner | Scope |
+| --- | --- | --- |
+| Real RTDB network ACK loss & idempotency | **L1** | `pr95/l1-network-ack-loss-idempotency-20261030`, Draft PR #107, standalone transparent WebSocket frame proxy, direct Firebase SDK/RTDB/Auth Emulator tests, dedicated runner/workflow, backend if needed; keep public API unchanged |
+| User workflow / two real Chrome admin tabs / stale drafts and leases | **L2** | Browser UI/test files only, use established API and test bootstrap without editing L1 proxy/backend |
+| Independent Rules/data/privacy/network/rollback audit | **L3** | Read-only code/CI audit and separately owned adversarial test files, independent conclusions |
+
+### L1 acceptance — actual server → SDK ACK must disappear
+
+The **old §I fault** `armEmulatorPostCommitCallerAckLoss` raises only after Firebase SDK has already received its transaction result. It is **application-layer completion loss**, not network ACK loss. Preserve its tests and name. The new L1 package uses **`scripts/pr95-network-ack-proxy.mjs`** (Node TCP/WebSocket proxy bound to `127.0.0.1:19000`) between the real Firebase SDK and the disposable RTDB Emulator at `127.0.0.1:9000`.
+
+For each `initial`, `replace`, `restore`, the proxy:
+1. Observes the *real* SDK WebSocket CAS request targeting `/hdnd/datasetV2`, containing the new active `generationId`, immutable `operations[operationId].status='COMMITTED'`, a numeric wire request ID and CAS hash.
+2. Forwards the CAS request unchanged to Emulator **under unchanged exclusive-candidate Rules**; observes the matching server `OK` WebSocket ACK frame.
+3. **Never forwards that target ACK frame to the SDK**. Independently reads **server state via a separate loopback owner REST connection, bypassing the faulted SDK and its cache**; insists on the exact active generation, operation COMMITTED, expected revision and materialized generation before closing the faulted wire. A dropped ACK without independent server commit is FAILURE, not PASS.
+4. Starts a separate Firebase SDK/Auth Emulator client, reads `resolveDatasetOperation(operationId)` via that client (not a cached-offline get), deliberately reconnects faulted SDK, retries **the same operationId**, and proves no extra `active.revision`, `generations` or `operations`. It also checks the prior operation is `committed-historical` after the next generation and that a reattempt is `already-committed`.
+
+Synthetic fixture only; Auth Emulator Google-provider SDK principal and server-enforced candidate Rules. Test data and privileged REST observer never touch production. The proxy's **wire-level** evidence is matched request ID, CAS hash, server response status, suppressed frame, and independent direct server snapshot. If no matching CAS/ACK is observed or server data cannot be proven, the test fails with `CHUA KIEM CHUNG`, not a misleading green outcome.
+
+**Files owned by L1:** `source/scripts/pr95-network-ack-proxy.mjs`, `source/scripts/pr95-network-ack-proxy.d.mts`, `source/scripts/run-pr95-network-ack-loss.mjs`, `source/tests/pr95-network-ack-loss.test.ts`, `.github/workflows/pr95-network-ack-loss.yml`, and this §J. No production API, `source/scripts/smoke-pages-browser.mjs`, or Auth/RTDB Rules changed. The standalone CI job is `PR95 RTDB network ACK loss - isolated Emulator` and explicitly fails if any of the three wire-level cases does not demonstrate the exact protocol.
+
+**Scope caveat:** The exercise suppresses a **server→SDK RTDB WebSocket application-protocol ACK frame** after the server has applied the CAS; it is not packet-level loss of all possible network transports, nor a proof about real production internet conditions. Other legitimate, unsolicited server updates may have reached a subscriber before the ACK frame; the fault specifically targets the CAS completion response. It cannot be replaced by an offline cached-get, `permission_denied`, an SDK mock, or the §I test-only application-result hook.
+
+**Current task state at contract authoring:** initial dedicated CI `#41022725043` at early worker SHA `f2bd0a60...` demonstrated all three wire-ACK cases PASS; source TypeScript checks on later worker commits must also pass before final handoff. Full integrated release remains HOLD until independently delivered L2 and L3 packages, not because documentation is pending.
