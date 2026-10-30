@@ -223,6 +223,32 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const googleCommon=useSharedConfig(configured,!firebase&&!isDemo&&!privateTest,editingPage);
   const common=firebase?firebase.common:googleCommon;
   const canCustomize=!comparison&&(isFirebase?!!firebase?.isAdmin&&common.status==='ready':isDemo||privateTest||(isGoogleHost()&&!!common.config));
+  // Only verified Firebase admin may enter configuration. Google sign-in by
+  // itself is not an administrator grant; guard both render and handlers.
+  const adminTools=canCustomize&&(!isFirebase||
+    (!!firebase?.isAdmin&&!!firebase.user&&firebase.connected&&firebase.datasetEpochReady));
+  const [gearLoginBusy,setGearLoginBusy]=useState(false);
+  const [gearLoginError,setGearLoginError]=useState('');
+  const settingsMenu=useRef<HTMLDetailsElement>(null);
+  const loginFromGear=async()=>{
+    if(!firebase||gearLoginBusy)return;
+    setGearLoginBusy(true);setGearLoginError('');
+    try{
+      await firebase.login();
+      setGearLoginError('Đã xác thực Google. Đang xác minh quyền quản trị qua Firebase.');
+    }catch(cause){setGearLoginError(cause instanceof Error?cause.message:'Không đăng nhập được.');}
+    finally{setGearLoginBusy(false);}
+  };
+  useEffect(()=>{
+    if(!adminTools){
+      settingsMenu.current?.removeAttribute('open');
+      if(page!=='overview'&&page!=='items'){
+        setPage('items');setEditorUnsaved(false);
+        setReportWidthPreview(null);setListFramePreview(null);
+      }
+      setSelection(null);setHistory(null);
+    }else setGearLoginError('');
+  },[adminTools,page]);
   const canEditDraft=!comparison&&(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
   const changeDataSource=async(next:'excel'|'database'|'primary')=>{
     if(comparison)throw new Error('Đang chạy phép thử tốc độ; không thay đổi nguồn admin.');
@@ -378,7 +404,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     else{if(!saveReportLayout(sourceKey,next))throw new Error('Không lưu được cách hiển thị trên máy. Nháp được giữ.');setLayoutState({source:sourceKey,layout:next});setLayoutMessage('');}
   };
   const openOptions = (next: Page, event: { currentTarget: HTMLElement }) => {
-    event.currentTarget.closest('.options-menu')?.removeAttribute('open');
+    settingsMenu.current?.removeAttribute('open');
+    if(!adminTools)return; // Stale controls cannot open private routes.
     if(editorUnsaved&&next!==page){setLayoutMessage('Có thay đổi chưa lưu. Hãy lưu hoặc bỏ phần đang chỉnh trước khi chuyển mục.');return;}
     if(isFirebase&&next==='source'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị được thay link Excel.');return;}
     if(isFirebase&&['items-customize','items-permissions','customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage('Chỉ tài khoản quản trị được thay đổi cấu hình nguồn và bố cục.');return;}
@@ -412,6 +439,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const sourceLabel = comparison?(compareSource==='excel'?'Google Sheets/Excel · so sánh':'Firebase Database · so sánh'):isDemo?'Dữ liệu mẫu':isFirebase&&firebase!.profile?.dataSource==='primary'?'Firebase Database · nguồn chính':isFirebase&&firebase!.profile?.dataSource==='database'?'Firebase · bản sao Excel':isFirebase?'Google Sheets/Excel':'Nguồn Excel';
   const listPage=page==='items'||page==='items-customize'||page==='items-permissions';
   const anonymousVisitor=isFirebase&&!firebase!.isAdmin&&(!firebase!.user||firebase!.user.isAnonymous);
+  const guestViewer=!adminTools;
   // The PUBLIC visitor receives automatic Firebase anonymous authentication.
   // The visible guest UI stays separate from admin, but a granted field can
   // be edited without Google login once server permissions/lease are ready.
@@ -512,18 +540,25 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
       :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'
     :null;
-  return <div className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
-    {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
+  return <div className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${guestViewer?'guest-view':''}`} style={frameStyle}>
+    {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar v3-shell-topbar">
       <div className="top-actions">
-        <span className="version">Bản {isFirebase?'0.7.1':'0.6.2'}</span>
-        {anonymousVisitor
-          ? <button type="button" className="button ghost guest-signin" title="Chỉ cần khi truy cập quyền quản trị" onClick={()=>setPage('connection')}>Quản trị</button>
-          : <details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
-              <div className="options-popover" aria-label="Các nhóm cài đặt">
-                <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
-                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
-              </div>
-            </details>}
+        <details ref={settingsMenu} className="options-menu v3-settings-menu">
+          <summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
+          <div className="options-popover" role="group" aria-label="Công cụ theo quyền tài khoản">
+            {adminTools?<>
+              <button type="button" onClick={event=>openOptions('items-customize',event)}>Tùy chỉnh cột và cách hiển thị</button>
+              <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
+              <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
+              <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
+              {isFirebase&&<button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>}
+            </>:<>
+              <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
+                onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':'Đăng nhập quản trị'}</button>
+              {gearLoginError&&<p className="v3-gear-status" role="status">{gearLoginError}</p>}
+            </>}
+          </div>
+        </details>
       </div>
     </header>
     <nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
