@@ -7,17 +7,39 @@ import {readFileSync,mkdtempSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
+import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
 
-// The pages-test Firebase bootstrap is pinned to demo-hdnd on loopback 9000/9099.
-// Run both emulators throughout the *entire* browser smoke, not only seeding.
-// Do not weaken the production project allowlist or install a GViz mock.
+// L3-AUDIT-GAP-01: the pages-test Firebase bootstrap is pinned to demo-hdnd
+// on loopback 9000/9099. A separate runtime-only Emulator config MUST load
+// the immutable exclusive-candidate Rules file rather than firebase.json's
+// old database.rules.json. Keep the original source Rules entirely unchanged.
+// Run the real Rules with both emulators for the full Chrome smoke.
 const EMULATOR_PROJECT='demo-hdnd';
 const EMULATOR_DB='http://127.0.0.1:9000';
 const EMULATOR_AUTH='http://127.0.0.1:9099';
 const EMULATOR_NAMESPACE='demo-hdnd';
 const EMULATOR_ROOT=EMULATOR_DB+'/.json?ns='+EMULATOR_NAMESPACE+'&auth=owner';
+const EXCLUSIVE_RULES_FILE=resolve('firebase/database.exclusive-candidate.rules.json');
+const expectedRules=JSON.parse(readFileSync(EXCLUSIVE_RULES_FILE,'utf8'));
+const rulesDigest=createHash('sha256').update(JSON.stringify(expectedRules)).digest('hex');
+// Firebase resolves the rules relative to its --config file: use an ABSOLUTE
+// source Rules path and a temporary isolated config; never change firebase.json.
+const emulatorConfigDir=mkdtempSync(join(tmpdir(),'pr95-browser-exclusive-rules-'));
+const emulatorConfigFile=join(emulatorConfigDir,'firebase.json');
+writeFileSync(emulatorConfigFile,JSON.stringify({
+  database:{rules:EXCLUSIVE_RULES_FILE},
+  emulators:{
+    database:{host:'127.0.0.1',port:9000},
+    auth:{host:'127.0.0.1',port:9099},
+    ui:{enabled:false},
+    singleProjectMode:true
+  }
+},null,2));
+const PRIVATE_MARKER='PR95_PRIVATE_EMULATOR_ONLY_NEVER_EXPOSE';
 const SMOKE_OPERATION='pr95_browser_smoke_20261030';
 const SMOKE_GENERATION='gen_'+SMOKE_OPERATION;
+const INACTIVE_GENERATION='gen_pr95_browser_inactive_20261030';
 const firebaseRows=[
   {displayCode:'NQ01',stt:1,content:'Nội dung kiểm thử smoke',
     department:'Sở kiểm thử',type:'QPPL',partyLevel:'BTV',
@@ -44,9 +66,17 @@ const firebaseRows=[
 const firebaseSeed={hdnd:{datasetV2:{
   active:{generationId:SMOKE_GENERATION,operationId:SMOKE_OPERATION,
     revision:1,rowCount:firebaseRows.length,digest:'a'.repeat(64)},
-  generations:{[SMOKE_GENERATION]:{items:Object.fromEntries(
-    firebaseRows.map(row=>[row.recordId,row]))}},
-  permissions:{[SMOKE_GENERATION]:{columns:{}}}
+  generations:{
+    [SMOKE_GENERATION]:{items:Object.fromEntries(firebaseRows.map(row=>[row.recordId,row]))},
+    [INACTIVE_GENERATION]:{items:{private_stale_row:{...firebaseRows[0],
+      recordId:'private_stale_row',displayCode:'SECRET_STALE',content:PRIVATE_MARKER}}}
+  },
+  permissions:{[SMOKE_GENERATION]:{columns:{}}},
+  candidates:{[SMOKE_OPERATION]:PRIVATE_MARKER+' candidate'},
+  backups:{[SMOKE_OPERATION]:PRIVATE_MARKER+' backup'},
+  legacyBackups:{[SMOKE_OPERATION]:PRIVATE_MARKER+' legacy backup'},
+  operations:{[SMOKE_OPERATION]:{
+    status:'COMMITTED',from:'legacy',to:SMOKE_GENERATION,at:Date.now()}}
 }}};
 let emulator=null,emulatorOutput='';
 const emulatorsReady=async()=>{
@@ -73,13 +103,27 @@ const emulatorsReady=async()=>{
 async function startAndSeedFirebase(){
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
-    '--project',EMULATOR_PROJECT,'--only','database,auth','--config','firebase.json'
+    '--project',EMULATOR_PROJECT,'--only','database,auth','--config',emulatorConfigFile
   ],{stdio:['ignore','pipe','pipe'],env:{...process.env,
     FIREBASE_CLI_EXPERIMENTS:'webframeworks',CI:'true'}});
   for(const stream of [emulator.stdout,emulator.stderr])
     stream?.on('data',chunk=>{emulatorOutput=(emulatorOutput+String(chunk)).slice(-8000);});
   emulator.on('error',error=>{emulatorOutput+=' SPAWN: '+error.message;});
   await emulatorsReady();
+  // A command-line config path alone is NOT evidence that the correct Rules
+  // loaded. Query the live emulator's settings, compare the entire Rules tree
+  // against the exact checked-in candidate, and log a reproducible hash.
+  const live=await fetch(EMULATOR_DB+'/.settings/rules.json?ns='+EMULATOR_NAMESPACE+'&auth=owner',
+    {signal:AbortSignal.timeout(8000)});
+  if(!live.ok)throw Error('Could not read actual Emulator Rules: HTTP '+live.status);
+  const loadedRules=await live.json();
+  if(!isDeepStrictEqual(loadedRules,expectedRules))
+    throw Error('L3-AUDIT-GAP-01: loaded Emulator Rules differ from exclusive-candidate Rules');
+  console.log('BROWSER_EXCLUSIVE_RULES_LOADED',JSON.stringify({
+    file:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
+    verifiedFrom:'live RTDB Emulator /.settings/rules.json',
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
+  }));
   const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
     'Content-Type':'application/json'
   },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
@@ -97,6 +141,54 @@ async function startAndSeedFirebase(){
     project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE,
     generationId:active.generationId,operationId:active.operationId,
     rowCount:Object.keys(rows).length,source:'REAL RTDB EMULATOR V2'}));
+  // Real anonymous Authentication Emulator ID token; no owner token for
+  // positive/negative authorization assertions. All paths have seeded data.
+  const login=await fetch(EMULATOR_AUTH+'/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-test-key',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({returnSecureToken:true}),signal:AbortSignal.timeout(8000)
+  });
+  if(!login.ok)throw Error('Guest Emulator Auth sign-in rejected: '+login.status);
+  const principal=await login.json();
+  if(typeof principal.idToken!=='string'||!principal.localId)
+    throw Error('Auth Emulator did not issue an anonymous guest token');
+  const request=async path=>{
+    const url=EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE+
+      '&auth='+encodeURIComponent(principal.idToken);
+    return fetch(url,{signal:AbortSignal.timeout(8000)});
+  };
+  const activeRead=await request('/hdnd/datasetV2/active');
+  if(!activeRead.ok||!isDeepStrictEqual(await activeRead.json(),firebaseSeed.hdnd.datasetV2.active))
+    throw Error('Anonymous guest cannot read actual active generation pointer');
+  const generationRead=await request('/hdnd/datasetV2/generations/'+SMOKE_GENERATION+'/items');
+  if(!generationRead.ok){
+    throw Error('Anonymous guest cannot read active generation items: HTTP '+generationRead.status);
+  }
+  const guestRows=await generationRead.json();
+  if(Object.keys(guestRows??{}).length!==firebaseRows.length||
+    guestRows?.pr95_smoke_001?.displayCode!=='NQ01')
+    throw Error('Anonymous guest active-generation readback does not match seed');
+  const deniedPaths=[
+    '/hdnd/datasetV2',
+    '/hdnd/datasetV2/candidates/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/backups/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/legacyBackups/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/operations/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/generations/'+INACTIVE_GENERATION+'/items',
+    '/hdnd/editors'
+  ];
+  for(const path of deniedPaths){
+    const denial=await request(path);
+    const responseBody=await denial.text();
+    if(denial.status!==401||!/permission denied/i.test(responseBody)||
+      responseBody.includes(PRIVATE_MARKER))
+      throw Error('Guest private RTDB read was not denied at '+path+
+        ': HTTP '+denial.status+' body='+responseBody.slice(0,200));
+  }
+  console.log('BROWSER_EXCLUSIVE_RULES_GUEST_READ_PASS',JSON.stringify({
+    principal:'anonymous Emulator Auth',generationId:SMOKE_GENERATION,
+    activeRead:true,visibleRows:Object.keys(guestRows).length,privatePathsDenied:deniedPaths.length,
+    checks:deniedPaths,loadedRulesSha256:rulesDigest
+  }));
 }
 
 const appRoot=resolve('dist-pages-test');
@@ -3221,4 +3313,5 @@ try{
   server.close();
   if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
   rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
+  rmSync(emulatorConfigDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
