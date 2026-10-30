@@ -3544,8 +3544,21 @@ try{
             notices:[...document.querySelectorAll('[role="alert"],[role="status"]')]
               .map(x=>x.innerText?.slice(0,160)).slice(-12)};
         })()`);
-        const shot=await side.call('Page.captureScreenshot',{format:'png'});
-        writeFileSync('hophdnd-pr95-admin-ui-blocker.png',Buffer.from(shot.data,'base64'));
+        console.error('PR95_ADMIN_UI_BLOCKER_DIAGNOSTIC',JSON.stringify({
+          tab:side.name,action:fragment,selector,...snapshot
+        }));
+        // Best effort only; a failing CDP screenshot must never obscure the
+        // original disabled button/state cause (the prior CI timed out here).
+        try{
+          const shot=await Promise.race([
+            side.call('Page.captureScreenshot',{format:'png'}),
+            sleep(2500).then(()=>null)
+          ]);
+          if(shot?.data)writeFileSync('hophdnd-pr95-admin-ui-blocker.png',
+            Buffer.from(shot.data,'base64'));
+        }catch(e){
+          console.warn('PR95_ADMIN_UI_SCREENSHOT_NONFATAL',String(e));
+        }
         throw Error(side.name+' cannot click '+fragment+' within '+selector+
           ' diagnostic='+JSON.stringify(snapshot));
       }
