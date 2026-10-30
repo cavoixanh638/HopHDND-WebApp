@@ -18,7 +18,7 @@ type V2Snapshot={
   operations?:Record<string,{status:string;from:string;to:string;at:number}>;
 };
 type V2Backup={previous:ActiveDatasetPointer;generation:{items:Record<string,Item>};
-  permissions:unknown;leases:unknown;baseline:string};
+  permissionsJson:string;leasesJson:string;baseline:string};
 export interface ReplacementApproval {
   operationId:string;manifest:DatasetGenerationManifest;
   expected:ActiveDatasetPointer;baseline:string;preview:ReplacementPreview;
@@ -91,8 +91,8 @@ export async function stageDatasetReplacement(
   // Capture everything tied to this generation, including permissions and leases;
   // it remains private and is never logged or committed to the repository.
   const backup:V2Backup={previous:current.active,
-    generation:{items:current.items},permissions:current.permissions,
-    leases:current.leases,baseline};
+    generation:{items:current.items},permissionsJson:stable(current.permissions),
+    leasesJson:stable(current.leases),baseline};
   const backupRef=ref(database,DATASET_V2_PATH+'/backups/'+operationId);
   const previousBackup=(await get(backupRef)).val();
   if(previousBackup!==null&&stable(previousBackup)!==stable(backup))
@@ -196,7 +196,7 @@ export async function restoreDatasetBackup(
   verifyActive(snap);
   const backup=snap.backups?.[backupOperationId];
   if(!backup||stable({active:backup.previous,items:backup.generation.items,
-    permissions:backup.permissions,leases:backup.leases})!==backup.baseline)
+    permissions:JSON.parse(backup.permissionsJson),leases:JSON.parse(backup.leasesJson)})!==backup.baseline)
     throw Error('Backup không tồn tại hoặc không còn nguyên vẹn.');
   const fingerprint=stable(scoped(snap));
   let failed='';
@@ -212,7 +212,7 @@ export async function restoreDatasetBackup(
     }
     return {...state,
       generations:{...state.generations,[target]:{items:backup.generation.items}},
-      permissions:{...state.permissions,[target]:backup.permissions??{columns:{}}},
+      permissions:{...state.permissions,[target]:JSON.parse(backup.permissionsJson)??{columns:{}}},
       active:{generationId:target,operationId:restoreOperationId,
         revision:expected.revision+1,rowCount:Object.keys(backup.generation.items).length,
         digest:backup.previous.digest},
