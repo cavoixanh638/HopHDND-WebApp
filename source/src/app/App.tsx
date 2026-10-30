@@ -464,8 +464,6 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           : <details className="options-menu"><summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
               <div className="options-popover" aria-label="Các nhóm cài đặt">
                 <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
-                {isFirebase&&firebase!.isAdmin&&<button type="button"
-                  onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa</button>}
                 <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
               </div>
             </details>}
