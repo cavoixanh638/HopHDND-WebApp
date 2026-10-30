@@ -1418,21 +1418,35 @@ try{
       })()`);
       if(!colorConsistency.ok)throw Error('Report status header/body/footer palette mismatch: '+
         JSON.stringify(colorConsistency));
-      // A report without intermediate stage must not show an empty
-      // "Bước tiếp theo" action chip; Party and Build retain that chip.
+      // Exact V3 summary-chip contract: only Party says "Bước tiếp theo";
+      // Build's pending QĐ and every completed stage have report-specific names.
+      // Check text, accessible name and button count together in real Chrome.
       const intermediateChips=await evaluate(`(()=>{
-        const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
-        const reports=titles.map(title=>{
-          const section=title.closest('.report-surface');
-          const labels=[...section.querySelectorAll('.report-flow-summary .report-stage-summary')]
-            .map(el=>el.textContent?.trim());
-          return {title:title.textContent?.trim(),labels,hasNext:labels.some(l=>l?.includes('Bước tiếp theo'))};
+        const expected=[
+          {title:'Tiến độ xin ý kiến Thành ủy',labels:['Sở chưa trình','VP đang xử lý','Bước tiếp theo','Đã có TBKL']},
+          {title:'Tiến độ trình HĐND xây dựng NQ',labels:['Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ']},
+          {title:'Tiến độ các Nghị quyết và Báo cáo trình HĐND',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+          {title:'Tiến độ trình HĐND ban hành NQ',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+          {title:'Tiến độ trình HĐND ban hành BC',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+        ];
+        const reports=[...document.querySelectorAll('.report-surface > .card-header h3')].map(title=>{
+          const reportTitle=title.textContent?.replace(/\\(\\d+ nội dung\\)\\s*$/u,'').trim()??'';
+          const spec=expected.find(value=>value.title===reportTitle);
+          const chips=[...title.closest('.report-surface').querySelectorAll('.report-flow-summary .report-stage-summary')]
+            .map(el=>({label:el.querySelector('span')?.textContent?.trim()??'',
+              count:Number(el.querySelector('strong')?.textContent??-1),
+              aria:el.getAttribute('aria-label'),tag:el.tagName}));
+          const labels=chips.map(value=>value.label);
+          return {title:reportTitle,labels,expected:spec?.labels,
+            ok:!!spec&&JSON.stringify(labels)===JSON.stringify(spec.labels)&&
+              chips.every(value=>value.tag==='BUTTON'&&Number.isInteger(value.count)&&
+                value.count>=0&&value.aria===
+                  reportTitle+' · '+value.label+': '+value.count+' nội dung. Bấm để xem chi tiết')};
         });
-        return {ok:reports.length===5&&reports.every(r=>
-          r.hasNext===(r.title.includes('xin ý kiến Thành ủy')||r.title.includes('xây dựng NQ'))),reports};
+        return {ok:reports.length===expected.length&&reports.every(value=>value.ok),reports};
       })()`);
-      if(!intermediateChips.ok)throw Error('Intermediate-stage chips mismatch: '+JSON.stringify(intermediateChips));
-      console.log('REPORT_STAGE_SUMMARIES_MATCH_COLUMNS_PASS');
+      if(!intermediateChips.ok)throw Error('R-V3-02 report-specific chip labels/aria mismatch: '+JSON.stringify(intermediateChips));
+      console.log('R_V3_02_REPORT_STAGE_LABELS_ARIA_PASS',JSON.stringify(intermediateChips.reports));
       const buildHeading=await evaluate(`(()=>{
         const title=[...document.querySelectorAll('.report-surface h3')]
           .find(node=>node.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
