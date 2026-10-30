@@ -3639,7 +3639,13 @@ try{
         ]);
         if(shot?.data){
           const file='hophdnd-pr95-excel-'+label+'.png';
-          writeFileSync(file,Buffer.from(shot.data,'base64'));
+          const bytes=Buffer.from(shot.data,'base64');
+          writeFileSync(file,bytes);
+          // Existing L1-owned workflow already uploads these two standard
+          // screenshot paths. Preserve the actual initial UNKNOWN screen as
+          // the failure artifact without modifying the workflow/runner.
+          if(label==='initial-blocked')writeFileSync('hophdnd-ui-smoke-failure.png',bytes);
+          if(label==='restore')writeFileSync('hophdnd-ui-smoke-pass.png',bytes);
           console.log('BROWSER_EXCEL_SCREENSHOT_SAVED',file);
         }else console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,'CDP timeout');
       }catch(e){console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,String(e));}
