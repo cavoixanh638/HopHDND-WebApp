@@ -796,14 +796,17 @@ try{
     const cards=document.querySelector('.item-summary-grid');
     const cardRect=cards?.getBoundingClientRect();
     const gapBefore=cardRect?.top-tabs.bottom;
-    const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
+    const toolbar=document.querySelector('.list-filter-toolbar')?.getBoundingClientRect();
+    const gapAfter=toolbar?.top-(cardRect?.bottom??0);
+    const gapBelowToolbar=viewport.getBoundingClientRect().top-(toolbar?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
     // Same strict no-extra-blank-space contract, now measured before and after
     // the four explicitly requested summary cards instead of across their height.
     return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
+      gapBelowToolbar>=0&&gapBelowToolbar<30&&
       cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!!localMenu,
-      aligned,gapBefore,gapAfter,cardHeight:cardRect?.height,
+      aligned,gapBefore,gapAfter,gapBelowToolbar,cardHeight:cardRect?.height,
       hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
@@ -2219,7 +2222,7 @@ try{
     if(rows.length!==count)throw Error('V2 R01 count mismatch '+term);
     if(term==='Chuyên viên mẫu A'){
       const shot=await send('Page.captureScreenshot',{format:'png'});
-      writeFileSync('hophdnd-v2-l1-staff-search-chrome.png',Buffer.from(shot.data,'base64'));
+      writeFileSync('hophdnd-review-r01-after.png',Buffer.from(shot.data,'base64'));
     }
     await evaluate("document.querySelector('.list-filter-clear')?.click()");
     await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
