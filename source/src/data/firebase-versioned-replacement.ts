@@ -130,25 +130,35 @@ export async function readStagedDataset(database:Database,approval:ReplacementAp
   await verifyCandidateServerReadback(raw.items,approval.manifest);
   return Object.values(record(raw.items)) as Item[];
 }
-/** Resolve an ambiguous lost-ACK state by operationId. Never blindly retry a set(). */
+/** Contract API-CHANGE-02, ACK by L2 at PR #95 comment 6514617603. */
+export interface DatasetOperationStatus {
+  status:'committed-active'|'committed-historical'|'not-committed'|'unknown';
+  operationId:string;
+  generationId?:string;
+}
+/** Read authoritative immutable operation log; no retries on network/ACK loss. */
 export async function resolveDatasetOperation(database:Database,operationId:string):
-  Promise<'committed'|'not-committed'|'unknown'> {
+  Promise<DatasetOperationStatus> {
+  const unknown:DatasetOperationStatus={status:'unknown',operationId};
+  if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId))return unknown;
   try {
     const snap=(await get(ref(database,DATASET_V2_PATH))).val() as V2Snapshot|null;
-    if(!snap)return 'unknown';
+    if(!snap?.active||!snap.generations)return unknown;
     const op=snap.operations?.[operationId];
-    // COMMITTED is a durable operation-log fact, not a claim that this
-    // generation must still be active after a later replace/restore.
-    if(op!==undefined){
-      if(op.status!=='COMMITTED'||op.to!=='gen_'+operationId||
-        !snap.generations?.[op.to]?.items||typeof op.from!=='string'||
-        typeof op.at!=='number'||!Number.isFinite(op.at))return 'unknown';
-      return 'committed';
+    if(op===undefined){
+      // Pointer without a matching log is not evidence of an uncommitted op.
+      return snap.active.operationId===operationId?unknown:
+        {status:'not-committed',operationId};
     }
-    // Active pointer without its matching committed log is an inconsistent
-    // server state: never tell a client it is safe to retry.
-    return snap.active?.operationId===operationId?'unknown':'not-committed';
-  }catch{return 'unknown';}
+    if(op.status!=='COMMITTED'||op.to!=='gen_'+operationId||
+      !snap.generations?.[op.to]?.items||typeof op.from!=='string'||!op.from||
+      op.from===op.to||typeof op.at!=='number'||!Number.isFinite(op.at))
+      return unknown;
+    if(snap.active.operationId===operationId&&snap.active.generationId!==op.to)
+      return unknown;
+    return {status:snap.active.operationId===operationId?'committed-active':
+      'committed-historical',operationId,generationId:op.to};
+  }catch{return unknown;}
 }
 /**
  * One parent-node server transaction makes both current-generation edits and
@@ -209,7 +219,8 @@ export async function commitDatasetReplacement(
   },{applyLocally:false}).catch(error=>{failure=error instanceof Error?error.message:String(error);return null;});
   releaseCache();
   const status=await resolveDatasetOperation(database,approval.operationId);
-  if(status==='committed'){
+  if(status.status==='committed-active'&&
+    status.generationId===approval.manifest.generationId){
     if(result?.committed){
       // A fresh server readback, not merely an acknowledged transaction.
       const items=(await get(ref(database,DATASET_V2_PATH+'/generations/'+approval.manifest.generationId+'/items'))).val();
@@ -219,7 +230,9 @@ export async function commitDatasetReplacement(
     }
     return {status:result?.committed?'committed':'already-committed',operationId:approval.operationId};
   }
-  if(status==='unknown')return {status:'unknown',operationId:approval.operationId};
+  if(status.status==='unknown')return {status:'unknown',operationId:approval.operationId};
+  if(status.status==='committed-historical')
+    throw Error('Thao tác đã COMMITTED trong lịch sử nhưng không còn là thế hệ đang hoạt động; không tự nhập lại.');
   throw Error(failure||'CAS không hoàn tất hoặc mốc dữ liệu đã thay đổi; không tự thử lại.');
 }
 /** No silent rollback: return the old generation as a NEW generation by CAS. */
@@ -277,8 +290,10 @@ export async function restoreDatasetBackup(
     });
   } finally {releaseCache();}
   const status=await resolveDatasetOperation(database,restoreOperationId);
-  if(status==='unknown')return {status:'unknown',operationId:restoreOperationId};
-  if(status==='committed')
+  if(status.status==='unknown')return {status:'unknown',operationId:restoreOperationId};
+  if(status.status==='committed-active'&&status.generationId===target)
     return {status:result?.committed?'committed':'already-committed',operationId:restoreOperationId};
+  if(status.status==='committed-historical')
+    throw Error('Khôi phục đã COMMITTED trong lịch sử nhưng hiện không còn hoạt động; không khôi phục lặp.');
   throw Error(failed||'Khôi phục không được chấp nhận; giữ nguyên thế hệ đang hoạt động.');
 }
