@@ -5,6 +5,9 @@ import {initializeTestEnvironment,assertFails,assertSucceeds,
 import {get,ref,set,update} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
+import {FirebaseRepository} from '../src/data/firebase-repository';
+import {CellEditSessionManager} from '../src/data/cell-edit-leases';
+import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   resolveDatasetOperation,restoreDatasetBackup,DATASET_V2_PATH} from
   '../src/data/firebase-versioned-replacement';
@@ -89,6 +92,34 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect(await resolveDatasetOperation(db,'pr95_import_0004')).toBe('not-committed');
   },30000);
 
+  it('allows fresh generation-scoped lease edits but rejects writes to the old generation',async()=>{
+    const db=admin(),operation='pr95_import_0005';
+    const approval=await stageDatasetReplacement(db,actor,replacement(),operation,'test.xlsx');
+    await commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2');
+    const active='gen_'+operation;
+    await assertSucceeds(set(ref(db,DATASET_V2_PATH+'/permissions/'+active+'/columns/note'),true));
+    const editorDb=env.authenticatedContext('editor-v2',
+      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
+    const editor={uid:'editor-v2',isAnonymous:true,email:null,emailVerified:false,
+      providerData:[]} as unknown as User;
+    const manager=new CellEditSessionManager(editorDb,()=>editor,active);
+    const repository=new FirebaseRepository(editorDb,()=>editor,
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/'+active+'/items');
+    repository.leaseManager=manager;
+    const before=(await repository.list())[0];
+    await manager.acquire(before.recordId,'note','multiline');
+    const save=(await repository.save([updateDraft(before,undefined,{note:'đổi đúng thế hệ'})!]))[0];
+    expect(save.ok,save.message).toBe(true);
+    await manager.finish(before.recordId,'note');
+    await manager.dispose();
+    const obsolete=new FirebaseRepository(editorDb,()=>editor,
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
+    const old=(await obsolete.list())[0];
+    const denied=(await obsolete.save([updateDraft(old,undefined,{note:'phiên cũ'})!]))[0];
+    expect(denied.ok).toBe(false);
+    expect((await get(ref(db,DATASET_V2_PATH+'/generations/gen_seed_initial/items/r1/note'))).val())
+      .toBe(initialRows[0].note);
+  },30000);
   it('never lets guests write staging, active pointer, generations or read backup',async()=>{
     const db=guest();
     for(const path of ['candidates/fake','active','generations/gen_seed_initial/items/r1','backups/fake']){
