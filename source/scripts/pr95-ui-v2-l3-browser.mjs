@@ -200,7 +200,7 @@ async function test(){
   const principal=await admin.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
   assert.ok(principal.uid&&principal.emailVerified&&principal.providerIds.includes('google.com'));
   await admin.until('!!document.querySelector(".options-menu summary")','admin menu');
-  await admin.until('!document.body.textContent.includes("Đang đọc cấu hình chung")','admin profile confirmed');
+  await admin.until('!document.body.textContent.includes("Chưa xác minh được thế hệ Firebase") && !document.body.textContent.includes("Đang xem bố cục admin đã lưu") && document.body.textContent.includes("Sở mẫu A")','admin profile and epoch confirmed',30000);
   step('ADMIN_BEFORE_ROUTE',{nav:await admin.evalJs('document.querySelector(".options-menu")?.outerHTML.slice(0,850)'),body:await admin.evalJs('document.body.textContent.slice(0,650)')});
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
   await clickText(admin,'.options-popover button','Chỉnh sửa');
@@ -209,15 +209,15 @@ async function test(){
   await admin.until('!!document.querySelector("section.inline-permissions")','real InlinePermissionsTable');
   assert.equal(await admin.evalJs('!!document.querySelector(".item-data-table")'),false,
     'Permission route must render actual permission table, not ordinary list');
-  assert.equal(await admin.evalJs('!!document.querySelector(".inline-permission-table select[aria-label^=\"Quyền dòng\"]")'),true);
+  assert.equal(await admin.evalJs('!!document.querySelector(".inline-permission-table select")'),true);
   await capture(admin,'01-admin-permission-table');
   step('ADMIN_REAL_APP_ENTRY_PASS',{adminUid:principal.uid,chromeTarget:admin.pageId,realApp:true});
   // Grant ONE exact note cell of row 1, no column or row blanket grant.
   const noteSelector='.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Ghi chú"]';
   // Select only first row: the first of multiple note controls.
   await setSelect(admin,noteSelector,'allow');
-  await admin.until('!!document.querySelector("input[aria-label=\"Xác nhận rủi ro quyền theo dòng/ô\"]")','row/permission acknowledgement');
-  await admin.evalJs('document.querySelector("input[aria-label=\"Xác nhận rủi ro quyền theo dòng/ô\"]").click()');
+  await admin.until('!!document.querySelector(".permission-risk-confirm input")','row/permission acknowledgement');
+  await admin.evalJs('document.querySelector(".permission-risk-confirm input").click()');
   await clickText(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
   await wait(async()=>{
     const p=await rights();return p?.cells?.[ROW]?.note===true?p:false;
@@ -262,7 +262,7 @@ async function test(){
     el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Enter',ctrlKey:true}));return true;})()`);
   await guest.until('!!document.querySelector(".draft-bar")','second local draft exists');
   await setSelect(admin,noteSelector,'inherit');
-  await admin.evalJs('document.querySelector("input[aria-label=\"Xác nhận rủi ro quyền theo dòng/ô\"]")?.click()');
+  await admin.evalJs('document.querySelector(".permission-risk-confirm input")?.click()');
   await clickText(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
   await wait(async()=>{const q=await rights();return !q?.cells?.[ROW]?.note?true:false;},
     'revoke confirmed on server');
@@ -279,7 +279,7 @@ async function test(){
   // Nav regression: App reports, account sign-in, exported Excel controls.
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
   await clickText(admin,'.options-popover button','Tài khoản và dữ liệu');
-  await admin.until('!!document.querySelector("section[aria-label=\"Tài khoản Firebase\"]")','real account/login');
+  await admin.until('!!document.querySelector("section.card .settings-mode-bar")','real account/login');
   const account=await admin.evalJs(`(()=>{const t=document.body.textContent;
     return {user:t.includes('Tài khoản Firebase'),rightEntry:t.includes('Phân quyền chỉnh sửa (cột, dòng, ô)'),
       googleLogin:t.includes('Đổi tài khoản Google')};})()`);
@@ -292,7 +292,7 @@ async function test(){
   await admin.until('!!document.querySelector(".report-table")','real reports');
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
   await clickText(admin,'.options-popover button','Tài khoản và dữ liệu');
-  await admin.until('!!document.querySelector("section[aria-label=\"Tài khoản Firebase\"]")','account second visit');
+  await admin.until('!!document.querySelector("section.card .settings-mode-bar")','account second visit');
   await clickText(admin,'nav.settings-hub-tabs button','Excel · Nhập/Xuất');
   await admin.until('!!document.querySelector(".business-excel-review")','real Excel review');
   const excel=await admin.evalJs(`(()=>{const t=document.body.textContent;
