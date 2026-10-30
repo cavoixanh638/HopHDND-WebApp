@@ -13,7 +13,7 @@ export function progressTone(field:string,value:unknown):ProgressTone|null {
   const label=field==='specificProgress'?normalize(value):
     normalize(canonicalStatus(field as 'progressParty'|'progressBuild'|'progressCouncil',value));
   if(label==='so chua trinh')return 'not-submitted';
-  if(['vp dang xu ly','dang o van phong','van phong dang thuc hien'].includes(label))
+  if(['vp dang xu ly','vp dang thuc hien','dang o van phong','van phong dang thuc hien'].includes(label))
     return 'office';
   if(field==='specificProgress'&&['hoan thanh','da hoan thanh'].includes(label))return 'done';
   if(field==='progressParty'&&label==='da co tbkl')return 'done';
