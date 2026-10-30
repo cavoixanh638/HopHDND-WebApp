@@ -1204,9 +1204,11 @@ try{
     selected?.click();
     return {keys,tooltip:label,pressed:selected?.getAttribute('aria-pressed')};
   })()`);
-  if(!['qppl','hc','bc','nq-unknown','unclassified'].every(k=>kindOptions.keys.includes(k))||
+  // PR95 UI V3 L4: exactly three visible kind chips, not the obsolete
+  // V2 unknown-kind buttons. Unknown source records remain in the true total.
+  if(kindOptions.keys.join(',')!=='qppl,hc,bc'||
       !kindOptions.tooltip?.includes('bấm lại để bỏ lọc'))
-    throw Error('V2 kind chips incomplete: '+JSON.stringify(kindOptions));
+    throw Error('V3 three kind chips invalid: '+JSON.stringify(kindOptions));
   await eventually("document.querySelector('button[data-summary-kind=qppl]')?.getAttribute('aria-pressed')==='true'",
     'QPPL kind chip selection failed');
   await evaluate("document.querySelector('button[data-summary-kind=qppl]')?.click()");
@@ -2939,10 +2941,13 @@ try{
     const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
     const qppl=Number(document.querySelector('[data-summary-kind=qppl] strong')?.textContent);
     const hc=Number(document.querySelector('[data-summary-kind=hc] strong')?.textContent);
-    const nqUnknown=Number(document.querySelector('[data-summary-kind=nq-unknown] strong')?.textContent??0);
-    const nq=qppl+hc+nqUnknown;
     const bc=Number(document.querySelector('[data-summary-kind=bc] strong')?.textContent);
-    const unclassified=Number(document.querySelector('[data-summary-kind=unclassified] strong')?.textContent??0);
+    const kindButtons=[...document.querySelectorAll('button[data-summary-kind]')]
+      .map(button=>button.getAttribute('data-summary-kind'));
+    // This synthetic QA fixture has only classified NQ/BC; real unknown
+    // source records remain included in total and are covered separately
+    // by the L4 zero/unknown render and filter parity regression.
+    const classified=qppl+hc+bc;
     const stages=['party','build','nq'].map(k=>{
       const card=document.querySelector('[data-summary-card='+k+']');
       return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
@@ -2959,8 +2964,9 @@ try{
       headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
       headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
       headings.some(x=>x.includes('Nhóm phụ trách tùy chỉnh'))&&
-      total===nq+bc+unclassified&&stages.map(x=>x.status).join(',')==='4,4,3',
-      total,nq,bc,unclassified,regionWidth:region.width,summaryWidth:summary.width,
+      kindButtons.join(',')==='qppl,hc,bc'&&total===classified&&
+      stages.map(x=>x.status).join(',')==='4,4,3',
+      total,qppl,hc,bc,classified,kindButtons,regionWidth:region.width,summaryWidth:summary.width,
       summaryBottom:summary.bottom,tableTop:table.top,headings,stages};
   })()`);
   if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
