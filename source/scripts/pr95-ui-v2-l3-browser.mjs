@@ -182,9 +182,9 @@ async function test(){
   assert.notEqual(admin.pageId,guest.pageId);
   await guest.until('!!document.querySelector(".guest-signin")','anonymous UI');
   await clickText(guest,'nav.primary-section-switcher button','Danh sách');
-  await guest.until('!!document.querySelector(".item-data-table tbody tr")','real data row');
+  await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-MẪU-001")===true','real data row, not loading placeholder');
   const initial=await guest.evalJs(`(()=>{const cell=document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"]');
-    return {noteEditable:cell?.classList.contains('editable-cell'),accountButton:!!document.querySelector('.guest-signin'),
+    return {noteEditable:!!cell?.classList.contains('editable-cell'),noteCellExists:!!cell,accountButton:!!document.querySelector('.guest-signin'),
       hiddenAdmin:!document.querySelector('.options-menu')};})()`);
   assert.equal(initial.noteEditable,false);assert.ok(initial.accountButton&&initial.hiddenAdmin);
   step('GUEST_INITIAL_DENIED_PASS',initial);
