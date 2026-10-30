@@ -72,6 +72,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const [restoreConfirm,setRestoreConfirm]=useState('');
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const [operationView,setOperationView]=useState<OperationView|null>(null);
+  // Terminal per-operation UI fence: a lost ACK never triggers a second write.
+  const [submittedCommit,setSubmittedCommit]=useState<string|null>(null);
+  const [submittedRestore,setSubmittedRestore]=useState<string|null>(null);
   const [baseline,setBaseline]=useState('');
   const now=datasetPreviewFingerprint(current);
   const stale=!!approval&&(baseline!==now||active.generationId!==approval.expected.generationId||
@@ -80,6 +83,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const stage=async()=>{
     if(!enabled||!user)return;
     setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
+    setSubmittedCommit(null);setSubmittedRestore(null);
     setApproval(null);setStaged(null);setConfirm('');
     try{
       const operationId='excel_'+crypto.randomUUID().replaceAll('-','_');
@@ -91,7 +95,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     finally{setBusy(false);}
   };
   const commit=async()=>{
-    if(!approval||!enabled||!user||stale)return;
+    if(!approval||!enabled||!user||stale||submittedCommit===approval.operationId)return;
+    setSubmittedCommit(approval.operationId);
     setBusy(true);setMessage('');setOperationView(null);
     setLookupOperation(approval.operationId);
     try{
@@ -134,7 +139,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     }finally{setBusy(false);}
   };
   const restore=async()=>{
-    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId))return;
+    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||
+      submittedRestore===restoreId)return;
+    setSubmittedRestore(restoreId);
     setBusy(true);setMessage('');setOperationView(null);
     setLookupOperation(restoreId);
     try{
@@ -157,7 +164,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   return <section className="card" aria-label="Thử nghiệm thế hệ Firebase">
     <h4>Thay dữ liệu theo thế hệ — chỉ Firebase Emulator</h4>
     <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
-    <button className="button primary" disabled={busy||!enabled} onClick={()=>void stage()}>
+    <button className="button primary" disabled={busy||!enabled||
+      (operationView?.status==='unknown'&&approval?.operationId===lookupOperation)}
+      onClick={()=>void stage()}>
       Ghi staging, đọc lại và sao lưu thử nghiệm</button>
     {approval&&staged&&<section aria-label="Xem trước dữ liệu staging">
       <p>Ứng viên {approval.manifest.generationId}: {staged.length} hồ sơ;
@@ -179,6 +188,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       <input value={confirm} onChange={e=>setConfirm(e.currentTarget.value)}
         aria-label="Xác nhận thay thế toàn bộ"/>
       <button className="button danger" disabled={busy||stale||!enabled||
+        submittedCommit===approval.operationId||
         confirm!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount}
         onClick={()=>void commit()}>Chuyển thế hệ bằng CAS</button>
     </section>}
@@ -194,7 +204,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
         aria-label="Mã khôi phục mới"/>
       <input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.currentTarget.value)}
         aria-label="Xác nhận khôi phục" placeholder="KHOI PHUC mã_khôi_phục"/>
-      <button className="button danger" disabled={busy||!enabled||
+      <button className="button danger" disabled={busy||!enabled||submittedRestore===restoreId||
         !/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||restoreConfirm!=='KHOI PHUC '+restoreId}
         onClick={()=>void restore()}>Khôi phục bằng CAS</button>
     </section>}
