@@ -67,7 +67,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     }finally{vi.unstubAllGlobals();}
   });
   it('subscribes to permissions/profile/control and fails closed until the editing lock arrives',()=>{
-    login();expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/control','hdnd/editors/guest','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    login();emit('hdnd/activeDataset',null);expect([...h.listeners.keys()].sort()).toEqual(['.info/connected','hdnd/activeDataset','hdnd/control','hdnd/editors/guest','hdnd/freezeControl','hdnd/permissions','hdnd/profile']);expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true}});expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     emit('hdnd/control',{revision:1,editingLocked:false});
     emit('hdnd/freezeControl',{mode:'OPEN',revision:1,epoch:0,actor:'admin',changedAt:1,deadline:0,closedAt:0});
@@ -85,7 +85,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     render();
     h.auth.currentUser={uid:'public-guest',isAnonymous:true,email:null,emailVerified:false,providerData:[]};
     h.authChanged(h.auth.currentUser);
-    render();
+    render();emit('hdnd/activeDataset',null);
     emit('hdnd/permissions',{columns:{note:true,content:false}});
     emit('.info/connected',true);
     emit('hdnd/control',{revision:1,editingLocked:false});
