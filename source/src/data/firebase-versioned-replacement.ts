@@ -25,6 +25,34 @@ export interface ReplacementApproval {
   fileName:string;
 }
 export type ReplacementOutcome={status:'committed'|'already-committed'|'unknown';operationId:string};
+/**
+ * PR95 TEST ONLY: one-shot lost completion at SDK -> application API boundary.
+ * The REAL Rules-authorized RTDB transaction has returned committed=true,
+ * but the caller receives no successful outcome. This is an application
+ * result/ack failure, NOT proof a server-to-SDK websocket ACK was dropped.
+ * Never enabled in production; demo project and local test build only.
+ */
+const pendingCallerAckLoss=new WeakMap<Database,Set<string>>();
+export function armEmulatorPostCommitCallerAckLoss(database:Database,operationId:string):void {
+  const mode=import.meta.env.MODE;
+  if((mode!=='test'&&mode!=='pages-test')||
+    !database.app.options.projectId?.startsWith('demo-hdnd')||
+    (typeof window!=='undefined'&&!['localhost','127.0.0.1'].includes(window.location.hostname))||
+    !/^[A-Za-z0-9_-]{12,80}$/.test(operationId))
+    throw Error('PR95 fault injection requires localhost demo Emulator test build.');
+  let ids=pendingCallerAckLoss.get(database);
+  if(!ids){ids=new Set();pendingCallerAckLoss.set(database,ids);}
+  ids.add(operationId);
+}
+function loseCallerAckAfterRealCommit(database:Database,operationId:string,committed:boolean):void {
+  if(!committed)return;
+  const ids=pendingCallerAckLoss.get(database);
+  if(!ids?.delete(operationId))return;
+  if(!ids.size)pendingCallerAckLoss.delete(database);
+  throw Error('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS: '+operationId+
+    ' — server COMMITTED, SDK acknowledged, app caller lost completion.');
+}
+
 /** Keep an active server listener while a parent RTDB transaction runs.
  * A one-shot get() alone does not necessarily populate the SDK transaction cache.
  */
@@ -293,6 +321,7 @@ export async function commitInitialDatasetActivation(
       reason=error instanceof Error?error.message:String(error);return null;
     });
   }finally{releaseCache();}
+  loseCallerAckAfterRealCommit(database,operationId,result?.committed===true);
   const state=await resolveDatasetOperation(database,operationId);
   if(state.status==='committed-active'&&state.generationId===manifest.generationId){
     if(result?.committed){
@@ -427,6 +456,7 @@ export async function commitDatasetReplacement(
     }catch(error){failure=error instanceof Error?error.message:'Xung đột không rõ';return undefined;}
   },{applyLocally:false}).catch(error=>{failure=error instanceof Error?error.message:String(error);return null;});
   releaseCache();
+  loseCallerAckAfterRealCommit(database,approval.operationId,result?.committed===true);
   const status=await resolveDatasetOperation(database,approval.operationId);
   if(status.status==='committed-active'&&
     status.generationId===approval.manifest.generationId){
@@ -498,6 +528,7 @@ export async function restoreDatasetBackup(
       return null;
     });
   } finally {releaseCache();}
+  loseCallerAckAfterRealCommit(database,restoreOperationId,result?.committed===true);
   const status=await resolveDatasetOperation(database,restoreOperationId);
   if(status.status==='unknown')return {status:'unknown',operationId:restoreOperationId};
   if(status.status==='committed-active'&&status.generationId===target)
