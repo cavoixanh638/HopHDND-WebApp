@@ -2045,7 +2045,7 @@ try{
     if(!checkbox)return false;checkbox.click();return true;
   })()`);
   if(!leaderToggle)throw Error('Leader pair switch missing');
-  await eventually("document.querySelectorAll('.item-heading-row th').length===9",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===8",
     'Switch to leader pair must restore room and specialist source columns');
   const leaderKeys=await evaluate(`[...document.querySelectorAll('.item-heading-row th')].map(x=>x.dataset.columnKey)`);
   if(!leaderKeys.includes('room')||!leaderKeys.includes('specialist')||
