@@ -238,7 +238,8 @@ async function exercise(){
   const bStale=await B.call('prepare','note','TAB-B STALE');
   const aLease=await A.call('acquire','note');
   assert.equal(aLease.uid,tabA.uid);
-  assert.equal(aLease.session,tabA.session);
+  // Lease manager owns a separate, private tabSession from the harness page id.
+  // Compare genuine server lease sessions across both targets after handoff.
   await checkDenied(B.call('acquire','note'),'same cell simultaneous lease');
   const renewed=await A.call('renew','note');
   assert.equal(renewed.token,aLease.token);
@@ -256,6 +257,7 @@ async function exercise(){
   assert.equal(released.expiresAt,0);
   const bLease=await B.call('acquire','note');
   assert.notEqual(bLease.token,aLease.token);
+  assert.notEqual(bLease.session,aLease.session,'Real lease sessions must differ even for same UID');
   const stale=await B.call('savePrepared',bStale.key);
   assert.equal(stale.ok,false,'Old baseValue must not silently overwrite latest note');
   await B.call('cancel','note');
