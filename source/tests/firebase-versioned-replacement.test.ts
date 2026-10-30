@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update} from 'firebase/database';
+import {get,ref,set,update,goOffline,goOnline} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
@@ -110,6 +110,22 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
     expect(await resolveDatasetOperation(db,operation)).toEqual({status:'not-committed',operationId:operation});
+  },30000);
+
+  it('reports UNKNOWN when the network is offline despite a cached COMMITTED operation',async()=>{
+    const db=admin(),op='pr95_offline_0001';
+    const approval=await stageDatasetReplacement(db,actor,replacement(),op,'test.xlsx');
+    expect((await commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2')).status)
+      .toBe('committed');
+    // Ensure the SDK has cached an authorized, successfully committed root.
+    expect((await get(ref(db,DATASET_V2_PATH+'/active/operationId'))).val()).toBe(op);
+    goOffline(db);
+    try{
+      // No live server proof: cached COMMITTED must NOT masquerade as
+      // a trustworthy response while transport is offline.
+      expect(await resolveDatasetOperation(db,op))
+        .toEqual({status:'unknown',operationId:op});
+    }finally{goOnline(db);}
   },30000);
 
   it('does not call missing or inconsistent operation log entries uncommitted',async()=>{
