@@ -30,8 +30,9 @@ export function presentDatasetOperation(raw:unknown,operationId:string):Operatio
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return unknown;
   const value=raw as {status?:unknown;operationId?:unknown;generationId?:unknown};
   if(value.operationId!==operationId||
-    (value.generationId!==undefined &&
-      (typeof value.generationId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(value.generationId))))
+    // In V2, an operation can only commit its immutable gen_<operationId>.
+    // A contradictory optional generationId is not reliable evidence of success.
+    (value.generationId!==undefined&&value.generationId!=='gen_'+operationId))
     return unknown;
   const generation=value.generationId?' — thế hệ '+value.generationId:'';
   if(value.status==='committed-active')

@@ -97,11 +97,11 @@ afterEach(()=>vi.unstubAllGlobals());
 
 describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=>{
   it('maps all four ACKed statuses without marking historic commits as failures',()=>{
-    const active=presentDatasetOperation({status:'committed-active',operationId,generationId:'gen_x'},operationId);
+    const active=presentDatasetOperation({status:'committed-active',operationId,generationId:'gen_'+operationId},operationId);
     expect(active.status).toBe('committed-active');
     expect(active.committed).toBe(true);
     expect(active.message).toContain('ĐANG HOẠT ĐỘNG');
-    const historic=presentDatasetOperation({status:'committed-historical',operationId,generationId:'gen_old'},operationId);
+    const historic=presentDatasetOperation({status:'committed-historical',operationId,generationId:'gen_'+operationId},operationId);
     expect(historic.status).toBe('committed-historical');
     expect(historic.committed).toBe(true);
     expect(historic.message).toContain('KHÔNG PHẢI thất bại');
@@ -116,6 +116,7 @@ describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=
     for(const wire of ['not-committed','committed','unknown',null,
       {status:'committed-active',operationId:'different'},
       {status:'committed-historical',operationId,generationId:4},
+      {status:'committed-historical',operationId,generationId:'gen_incorrect'},
       {status:'other',operationId}]){
       const view=presentDatasetOperation(wire,operationId);
       expect(view.status).toBe('unknown');
