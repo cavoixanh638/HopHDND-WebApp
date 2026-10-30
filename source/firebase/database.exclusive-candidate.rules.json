@@ -362,7 +362,7 @@
       },
       "datasetV2": {
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.child('active').exists() && newData.child('active/revision').val() === data.child('active/revision').val() + 1 && newData.child('active/generationId').isString() && newData.child('active/generationId').val() !== data.child('active/generationId').val() && newData.child('active/operationId').val() !== data.child('active/operationId').val() && !data.child('generations').child(newData.child('active/generationId').val()).exists() && newData.child('generations').child(newData.child('active/generationId').val()).child('items').exists() && newData.child('operations').child(newData.child('active/operationId').val()).child('status').val() === 'COMMITTED' && newData.child('operations').child(newData.child('active/operationId').val()).child('from').val() === data.child('active/generationId').val() && newData.child('operations').child(newData.child('active/operationId').val()).child('to').val() === newData.child('active/generationId').val()",
+        ".write": "((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.child('active').exists() && newData.child('active/revision').val() === data.child('active/revision').val() + 1 && newData.child('active/generationId').isString() && newData.child('active/generationId').val() !== data.child('active/generationId').val() && newData.child('active/operationId').val() !== data.child('active/operationId').val() && !data.child('generations').child(newData.child('active/generationId').val()).exists() && newData.child('generations').child(newData.child('active/generationId').val()).child('items').exists() && newData.child('operations').child(newData.child('active/operationId').val()).child('status').val() === 'COMMITTED' && newData.child('operations').child(newData.child('active/operationId').val()).child('from').val() === data.child('active/generationId').val() && newData.child('operations').child(newData.child('active/operationId').val()).child('to').val() === newData.child('active/generationId').val()) || ((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.child('active').exists() && !data.child('bootstrap').exists() && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/freezeControl/closedAt').val() > 0 && root.child('hdnd/freezeControl/revision').val() === newData.child('bootstrap/freezeRevision').val() && root.child('hdnd/freezeControl/epoch').val() === newData.child('bootstrap/freezeEpoch').val() && newData.child('bootstrap/operationId').val() === newData.child('active/operationId').val() && newData.child('bootstrap/legacyBaseline').isString() && newData.child('bootstrap/legacyBaseline').val().length === 64 && newData.child('active/revision').val() === 1 && newData.child('active/rowCount').val() > 0 && newData.child('active/generationId').val() === 'gen_' + newData.child('active/operationId').val() && !data.child('generations').child(newData.child('active/generationId').val()).exists() && !data.child('operations').child(newData.child('active/operationId').val()).exists() && data.child('candidates').child(newData.child('active/operationId').val()).exists() && data.child('legacyBackups').child(newData.child('active/operationId').val()).exists() && newData.child('generations').child(newData.child('active/generationId').val()).child('items').exists() && newData.child('operations').child(newData.child('active/operationId').val()).child('status').val() === 'COMMITTED' && newData.child('operations').child(newData.child('active/operationId').val()).child('from').val() === 'legacy' && newData.child('operations').child(newData.child('active/operationId').val()).child('to').val() === newData.child('active/generationId').val())",
         "active": {
           ".read": true,
           ".validate": "newData.hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('generationId').isString() && newData.child('operationId').isString() && newData.child('digest').isString() && newData.child('digest').val().length === 64 && newData.child('rowCount').isNumber() && newData.child('rowCount').val() > 0 && newData.child('rowCount').val() <= 1000 && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val()+1 : 1)"
@@ -572,6 +572,31 @@
               }
             },
             ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"
+          }
+        },
+        "legacyBackups": {
+          "$operation": {
+            ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+            ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && newData.exists() && (!data.exists() || (newData.isString() && newData.val() === data.val()))",
+            ".validate": "newData.isString() && newData.val().length <= 5000000 && (!data.exists() || newData.val() === data.val())"
+          }
+        },
+        "bootstrap": {
+          ".validate": "newData.hasChildren(['operationId','freezeRevision','freezeEpoch','legacyBaseline']) && (!data.exists() || (newData.child('operationId').val() === data.child('operationId').val() && newData.child('freezeRevision').val() === data.child('freezeRevision').val() && newData.child('freezeEpoch').val() === data.child('freezeEpoch').val() && newData.child('legacyBaseline').val() === data.child('legacyBaseline').val()))",
+          "operationId": {
+            ".validate": "newData.isString() && newData.val().length >= 12 && newData.val().length <= 80"
+          },
+          "freezeRevision": {
+            ".validate": "newData.isNumber() && newData.val() >= 1"
+          },
+          "freezeEpoch": {
+            ".validate": "newData.isNumber() && newData.val() >= 1"
+          },
+          "legacyBaseline": {
+            ".validate": "newData.isString() && newData.val().length === 64"
+          },
+          "$other": {
+            ".validate": false
           }
         }
       }
