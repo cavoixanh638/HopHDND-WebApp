@@ -51,14 +51,14 @@ describe('business A–O Excel must never silently import wrong sheet or malform
     }
   );
   it('rejects ambiguous generic headings and accepts only explicitly enumerated synonyms',()=>{
-    const ambiguous=[...BUSINESS_HEADERS];
+    const ambiguous:string[]=[...BUSINESS_HEADERS];
     ambiguous[7]='Trình';ambiguous[11]='Lãnh đạo';
     expect(()=>parseBusinessExcel(file([{name:'Sai',rows:[ambiguous,row()]}]),'Sai'))
       .toThrow('dòng 1, cột H');
-    const leader=[...BUSINESS_HEADERS];leader[11]='Lãnh đạo';
+    const leader:string[]=[...BUSINESS_HEADERS];leader[11]='Lãnh đạo';
     expect(()=>parseBusinessExcel(file([{name:'Sai',rows:[leader,row()]}]),'Sai'))
       .toThrow('dòng 1, cột L');
-    const aliases=[...BUSINESS_HEADERS];
+    const aliases:string[]=[...BUSINESS_HEADERS];
     aliases[7]='Trình HĐND xây dựng nghị quyết';
     aliases[8]='Trình HĐND ban hành nghị quyết';
     aliases[11]='Lãnh đạo Văn phòng';
