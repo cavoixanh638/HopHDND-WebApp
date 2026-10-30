@@ -125,6 +125,27 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect((await get(ref(db,DATASET_V2_PATH+'/generations/gen_seed_initial/items/r1/note'))).val())
       .toBe(initialRows[0].note);
   },30000);
+  it('rejects privileged direct pointer, operation-log and rogue-generation tampering',async()=>{
+    const db=admin();
+    // Even a verified admin cannot bypass the guarded root CAS by directly
+    // changing just the active pointer or authoring operation metadata.
+    await assertFails(update(ref(db,DATASET_V2_PATH+'/active'),
+      {revision:2,generationId:'gen_does_not_exist',
+        operationId:'forged_op_00001'}));
+    await assertFails(set(ref(db,DATASET_V2_PATH+'/operations/forged_op_00001'),
+      {status:'COMMITTED',from:'gen_seed_initial',to:'gen_does_not_exist',at:Date.now()}));
+    await assertFails(set(ref(db,DATASET_V2_PATH+
+      '/generations/gen_seed_initial/rogueMetadata'),{payload:'forged'}));
+    const op='pr95_tamper_0001';
+    const approval=await stageDatasetReplacement(db,actor,replacement(),op,'synthetic.xlsx');
+    expect((await commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2')).status)
+      .toBe('committed');
+    await assertFails(update(ref(db,DATASET_V2_PATH+'/operations/'+op),
+      {status:'FORGED'}));
+    await assertFails(update(ref(db,DATASET_V2_PATH+
+      '/generations/gen_seed_initial/items/r1'),{stt:999}));
+    expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(2);
+  },30000);
   it('never lets guests write staging, active pointer, generations or read backup',async()=>{
     const db=guest();
     for(const path of ['candidates/fake','active','generations/gen_seed_initial/items/r1','backups/fake']){
