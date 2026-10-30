@@ -546,18 +546,20 @@ try{
   }
   console.log('GUEST_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
   const groupedDefault=await evaluate(`(()=>{
-    const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
-      .map(el=>el.getAttribute('data-filter-key'));
     const headings=[...document.querySelectorAll('.item-heading-row th')]
       .map(el=>el.querySelector('.column-heading-label')?.textContent?.trim());
-    const expected=['displayCode','stt','type','department','content','partyLevel','progressParty',
-      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress','note'];
+    const search=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    const departments=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    const rooms=document.querySelector('select[aria-label="Lọc Phòng"]');
+    const advance=document.querySelector('details.list-filter-other');
+    const oldRow=document.querySelector('.item-column-filter-row');
+    const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const row=document.querySelector('.item-data-table tbody tr');
     const doc=row?.querySelector('td[data-col-key=content]');
     const stages=row?.querySelector('td[data-col-key=partyLevel]');
     const text=stages?.textContent??'';
-    return {ok:keys.length===15&&JSON.stringify(keys)===JSON.stringify(expected)&&
-      headings.length===10&&new Set(headings).size===10&&
+    return {ok:!!search&&!!departments&&!!rooms&&!!advance&&!oldRow&&!stt&&
+      headings.length===9&&new Set(headings).size===9&&
       headings.includes('Tiến độ 3 khâu')&&headings.includes('Nội dung trình')&&
       headings.includes('Tiến độ hiện tại')&&headings.includes('Ghi chú')&&
       !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
@@ -565,15 +567,17 @@ try{
       stages?.querySelectorAll('.compact-stage-row').length===3&&
       text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
       !document.querySelector('.source-column-visibility button'),
-      keys,headings,stages:text.slice(0,180)};
+      headings,stages:text.slice(0,180),toolbar:!!search,stt:!!stt};
   })()`);
-  if(!groupedDefault.ok)throw Error('Required U01/U02 groups or original 15 source filters missing: '+JSON.stringify(groupedDefault));
-  console.log('MANDATORY_U01_U02_AND_FILTERS_PASS',JSON.stringify(groupedDefault));
-  
+  if(!groupedDefault.ok)throw Error('V2 U01/U02 group projection or compact toolbar missing: '+JSON.stringify(groupedDefault));
+  console.log('V2_MANDATORY_GROUPS_TOOLBAR_NO_STT_PASS',JSON.stringify(groupedDefault));
+
+  // Only V2 filter selectors change here; the baseline palette RGB oracle is
+  // unchanged on independent L1 (L2 owns the later colors diff).
   const statusStyles=await evaluate(`(()=>{
     const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
-    const input=document.querySelector('[data-filter-key=content] input');
-    const selector=document.querySelector('[data-filter-key=type] select');
+    const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    const selector=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
     const th=document.querySelector('.item-heading-row th');
     if(!status||!input||!selector||!th)return {ok:false,reason:'missing real group controls'};
     const tones=[...document.querySelectorAll('.compact-stage-state')].slice(0,3)
@@ -786,8 +790,8 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const status=document.querySelector('.item-filter-status-slot');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
-    const sort=stt?.querySelector('.column-sort-button');
-    if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
+    const sort=document.querySelector('.item-heading-row .column-sort-button');
+    if(!topbar||!nav||!viewport||stt||sort)return {ok:false,reason:'Missing guest chrome, STT shown or sort incorrectly visible'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const cards=document.querySelector('.item-summary-grid');
     const cardRect=cards?.getBoundingClientRect();
@@ -968,25 +972,25 @@ try{
     const card=document.querySelector('.item-data-region .card-header');
     const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
     const headers=[...document.querySelectorAll('.item-heading-row th')];
-    const first=headers[0];
-    const label=first?.querySelector('.column-heading-label');
-    const filter=document.querySelector('.item-column-filter-row th');
+    const first=headers[0],label=first?.querySelector('.column-heading-label');
     const td=document.querySelector('.item-data-table tbody td');
-    const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
+    const toolbar=document.querySelector('.list-filter-toolbar');
+    const border=node=>node?getComputedStyle(node).borderRightWidth:null;
     return {ok:!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
-      !document.querySelector('.item-list-summary')&&
-      headers.length>=10&&
+      !document.querySelector('.item-list-summary')&&headers.length>=9&&!!toolbar&&
+      !document.querySelector('.item-column-filter-row')&&
+      !document.querySelector('th[data-column-key=stt]')&&
       getComputedStyle(label).textAlign==='center'&&
-      thinLine(first)==='1px'&&thinLine(filter)==='1px'&&thinLine(td)==='1px',
-      heading:title?.textContent,headers:headers.length,
+      border(first)==='1px'&&border(td)==='1px',
+      heading:title?.textContent,headers:headers.length,toolbar:!!toolbar,
       align:label?getComputedStyle(label).textAlign:null,
-      widths:[thinLine(first),thinLine(filter),thinLine(td)]};
+      widths:[border(first),border(td)]};
   })()`);
-  if(!listHeadingAndLines.ok)throw Error('List header or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
+  if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
   // Sorting is now edit-mode only. The viewer/anonymous guest must not
   // expose a sorting button or activate sort via the header itself.
   const viewerSortBlocked=await evaluate(`(()=>{
-    const header=document.querySelector('.item-heading-row th[data-column-key="stt"]');
+    const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
     header?.click();
     return !!header&&header.getAttribute('aria-sort')==='none'&&
       !header.querySelector('.column-sort-button');
@@ -1057,23 +1061,23 @@ try{
   if(visibleRows!==54)throw Error('All 54 Firebase V2 records should render without 50-row pagination, got '+visibleRows);
   if(await evaluate("!!document.querySelector('.pagination')"))throw Error('Legacy pagination controls should be removed');
   const sticky=await evaluate(`(()=>{
-    const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
-      filter=scroll?.querySelector('.item-column-filter-row th');
-    if(!scroll||!title||!filter)return false;
+    const scroll=document.querySelector('.item-table-scroll');
+    const title=scroll?.querySelector('.item-heading-row th');
+    const toolbar=document.querySelector('.list-filter-toolbar');
+    const search=toolbar?.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    if(!scroll||!title||!toolbar||!search)return false;
     if(getComputedStyle(scroll.querySelector('thead')).position!=='sticky')return false;
     if(getComputedStyle(title).whiteSpace!=='normal')return false;
-    const titleBottom=title.getBoundingClientRect().bottom,filterTop=filter.getBoundingClientRect().top;
-    if(filterTop<titleBottom-3)return false;
-    // PR95 removes the obsolete specialist-wide control entirely.
-    if(document.querySelector('.item-sticky-search-controls'))return false;
+    if(document.querySelector('.item-column-filter-row,.item-sticky-search-controls'))return false;
     const before=title.getBoundingClientRect().top;
     if(scroll.scrollHeight<=scroll.clientHeight+30)return false;
     scroll.scrollTop=180;
     const after=title.getBoundingClientRect().top;
     return scroll.scrollTop>=100&&Math.abs(before-after)<3&&
-      document.querySelectorAll('.item-column-filter-row input,.item-column-filter-row select').length>2;
+      !!document.querySelector('select[aria-label="Lọc Sở, ngành"]')&&
+      !!document.querySelector('select[aria-label="Lọc Phòng"]');
   })()`);
-  if(!sticky)throw Error('Sticky table header/filter/search and vertical scroll must work together');
+  if(!sticky)throw Error('V2 sticky table heading and compact toolbar scroll must work together');
   await eventually("document.querySelector('.guest-signin')!==null",'Anonymous viewer must have a simple login entry');
   const guestClean=await evaluate(`(()=>{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
@@ -1087,8 +1091,8 @@ try{
       !document.body.textContent?.includes('Dữ liệu tự cập nhật')&&
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
-      document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Lọc Nội dung"]')?.placeholder==='Nội dung';
+      document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.placeholder==='Tìm kiếm không dấu…'&&
+      !!document.querySelector('select[aria-label="Lọc Sở, ngành"]');
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   // Guest footer and generic edit hint are intentionally removed. Use the
@@ -1131,35 +1135,40 @@ try{
       throw Error('List grid shifted while '+label+': '+JSON.stringify({tablePosition,result}));
   };
 
-  const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Lọc Nội dung"]');input?.focus();return !!input})()`);
-  if(!started)throw Error('Column filter UI is missing');
+  const started=await evaluate(`(()=>{
+    const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    input?.focus();return !!input;
+  })()`);
+  if(!started)throw Error('V2 global search input missing');
   await send('Input.insertText',{text:'Không khớp'});
-  await eventually("document.querySelector('input[aria-label=\"Lọc Nội dung\"]')?.value==='Không khớp'",'Direct column filter value not shown');
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",'Column filtering does not restrict the list');
+  await eventually("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.value==='Không khớp'",
+    'Global search value not shown');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
+    'Global search must constrain table');
   await assertStable('no matching rows');
-  await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
-  await assertStable('clearing column search');
-  // Search without diacritics, highlight ALL occurrences inside the source
-  // content cell without changing text or the underlying edit value.
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Clearing global search did not restore the list');
+  await assertStable('clearing global search');
   const began=Date.now();
-  await evaluate("document.querySelector('input[aria-label=\\\"Lọc Nội dung\\\"]')?.focus()");
+  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.focus()");
   await send('Input.insertText',{text:'kiem thu'});
   await eventually("document.querySelector('.item-data-table tbody td[data-col-key=\\\"content\\\"] mark.item-search-match')?.textContent?.toLowerCase().includes('kiểm thử')===true",
-    'Vietnamese search matches must be marked in visible contents');
+    'V2 Unicode search highlighting missing');
   const marked=await evaluate(`(()=>{
     const content=[...document.querySelectorAll('.item-data-table tbody td[data-col-key="content"]')];
     const marks=content.flatMap(cell=>[...cell.querySelectorAll('mark.item-search-match')]);
     const source=content[0]?.textContent??'';
     return {matches:marks.length,count:content.length,first:marks[0]?.textContent,
-      fullTextPreserved:source.includes('Nội dung kiểm thử'),input:document.querySelector('[data-filter-key=content] input')?.value};
+      fullTextPreserved:source.includes('Nội dung kiểm thử'),
+      input:document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value};
   })()`);
   if(marked.matches<40||!marked.fullTextPreserved||marked.input!=='kiem thu')
-    throw Error('Search highlights must preserve Vietnamese text in all matching rows: '+JSON.stringify(marked));
-  console.log('CONTENT_SEARCH_MARKED_PASS',JSON.stringify({...marked,elapsedMs:Date.now()-began}));
-  await evaluate("document.querySelector('[data-filter-key=\\\"content\\\"] .item-filter-clear')?.click()");
+    throw Error('Global search must highlight and preserve Vietnamese source text: '+JSON.stringify(marked));
+  console.log('V2_CONTENT_SEARCH_MARKED_PASS',JSON.stringify({...marked,elapsedMs:Date.now()-began}));
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
   await eventually("document.querySelectorAll('.item-data-table mark.item-search-match').length===0",
-    'Clearing content search must remove every yellow mark');
+    'Clearing global search must clear yellow marks');
   const highlightLayout=await evaluate(`(()=>{
     const table=document.createElement('table');
     table.className='item-data-table';table.style.cssText='width:228px;table-layout:fixed;';
@@ -1184,55 +1193,45 @@ try{
     !highlightLayout.text.includes('số 254 ngày'))
     throw Error('Left-aligned progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
   console.log('LEFT_ALIGN_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
-  const placeholderSelect=await evaluate(`(()=>{
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
-    const color=select?getComputedStyle(select).color:'';
-    return {ok:!!select&&select.classList.contains('filter-placeholder')&&
-      color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Loại VB',color};
+  const kindOptions=await evaluate(`(()=>{
+    const buttons=[...document.querySelectorAll('button[data-summary-kind]')];
+    const keys=buttons.map(b=>b.getAttribute('data-summary-kind'));
+    const label=buttons[0]?.getAttribute('title');
+    const selected=buttons.find(b=>b.getAttribute('data-summary-kind')==='qppl');
+    selected?.click();
+    return {keys,tooltip:label,pressed:selected?.getAttribute('aria-pressed')};
   })()`);
-  if(!placeholderSelect.ok)throw Error('Category placeholder styling regression: '+JSON.stringify(placeholderSelect));
-  // Focus the REAL sticky select through CDP after scrolling deep into the
-  // grid. Opening a dropdown must not scroll all rows to the top.
-  const stickySelectPoint=await evaluate(`(()=>{
-    const grid=document.querySelector('.item-table-scroll');
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
-    if(!grid||!select)return null;
-    grid.scrollTop=320;
-    const r=select.getBoundingClientRect();
-    return {x:r.left+r.width/2,y:r.top+r.height/2,top:grid.scrollTop,
-      actual:document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.tagName};
-  })()`);
-  if(!stickySelectPoint||stickySelectPoint.top<200||stickySelectPoint.actual!=='SELECT')
-    throw Error('Sticky category dropdown not hittable when scrolled: '+JSON.stringify(stickySelectPoint));
-  await send('Input.dispatchMouseEvent',{type:'mousePressed',x:stickySelectPoint.x,
-    y:stickySelectPoint.y,button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:stickySelectPoint.x,
-    y:stickySelectPoint.y,button:'left',clickCount:1});
-  await sleep(70);
-  const afterOpenTop=await evaluate("document.querySelector('.item-table-scroll')?.scrollTop");
-  if(Math.abs(afterOpenTop-stickySelectPoint.top)>2)
-    throw Error('Opening sticky dropdown moved list rows: '+JSON.stringify({
-      before:stickySelectPoint.top,after:afterOpenTop}));
-  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-  await evaluate("document.querySelector('.item-table-scroll').scrollTop=0");
+  if(!['qppl','hc','bc','nq-unknown','unclassified'].every(k=>kindOptions.keys.includes(k))||
+      !kindOptions.tooltip?.includes('bấm lại để bỏ lọc'))
+    throw Error('V2 kind chips incomplete: '+JSON.stringify(kindOptions));
+  await eventually("document.querySelector('button[data-summary-kind=qppl]')?.getAttribute('aria-pressed')==='true'",
+    'QPPL kind chip selection failed');
+  await evaluate("document.querySelector('button[data-summary-kind=qppl]')?.click()");
+  await eventually("document.querySelector('button[data-summary-kind=qppl]')?.getAttribute('aria-pressed')==='false'",
+    'QPPL kind chip second click must clear only kind');
 
-  const selectedType=await evaluate(`(()=>{
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
-    if(!select||select.options.length<2)return false;
-    select.value=select.options[1].value;
-    select.dispatchEvent(new Event('change',{bubbles:true}));
+  // Real selected department dropdown must constrain exact string values.
+  const v2Department=await evaluate(`(()=>{
+    const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    if(!el||el.options.length<2)return false;
+    el.value=el.options[1].value;
+    el.dispatchEvent(new Event('change',{bubbles:true}));
     return true;
   })()`);
-  if(!selectedType)throw Error('Type dropdown filter missing');
-  await eventually("document.querySelector('[data-filter-key=type] select')?.classList.contains('selected-filter-value')===true",
-    'Type category filter did not apply');
+  if(!v2Department)throw Error('V2 department dropdown missing');
+  await eventually("document.querySelector('.list-filter-count')?.textContent.includes('kết quả')",
+    'V2 department count did not render');
+  // Escape inside dropdown keeps its native behavior and does not erase filters.
   await evaluate(`(()=>{
-    document.querySelector('[data-filter-key=type] select')?.dispatchEvent(
-      new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+    const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    el?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
   })()`);
-  await eventually("document.querySelector('[data-filter-key=type] select')?.value===''",
-    'Escape did not clear selected type');
+  if(!await evaluate("!!document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value"))
+    throw Error('Escape in dropdown wrongly cleared List filters');
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value===''",
+    'V2 list reset did not clear department');
+  console.log('V2_KIND_DEPARTMENT_DROPDOWN_PASS',JSON.stringify(kindOptions));
 
   // An unsaved edit must not highlight the whole row in yellow or paint an
   // amber stripe in the detail popup. Explicit user row color rules are separate.
@@ -1319,8 +1318,9 @@ try{
       !document.querySelector('.status-palette-trigger');
   })()`);
   if(!compactGuestSafe)throw Error('Guest compact view must remain local-only');
-  // The duplicate top search toolbar is intentionally removed; every column has its own filter.
-  if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
+  // V2 intentionally has one compact global toolbar and no duplicate column-header filters.
+  if(!await evaluate("!!document.querySelector('.list-filter-toolbar')&&!document.querySelector('.item-column-filter-row')"))
+    throw Error('V2 toolbar missing or duplicate full-width per-column filter row returned');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
     const selectors=['.topbar','.nav-tabs'];
@@ -2935,12 +2935,13 @@ try{
       personalName:text.includes('Mẫu hiển thị cá nhân')||text.includes('Tên mẫu mới')||
         text.includes('Lưu mẫu mới'),
       specialistToggle:text.includes('Chọn chuyên viên toàn cơ quan'),
-      colFilterCells:document.querySelectorAll('.item-column-filter-row th, .item-column-filter-row td').length,
+      toolbar:!!document.querySelector('.list-filter-toolbar input[aria-label="Tìm kiếm không dấu"]'),
+      legacyFilterRow:!!document.querySelector('.item-column-filter-row'),
       summaryCards:document.querySelectorAll('[data-summary-card]').length};
   })()`);
   if(pr95List.presets||pr95List.personalName||pr95List.specialistToggle||
-    pr95List.summaryCards!==4||pr95List.colFilterCells<1)
-    throw Error('PR95 personal UI removal / column filters regression '+JSON.stringify(pr95List));
+    pr95List.summaryCards!==4||!pr95List.toolbar||pr95List.legacyFilterRow)
+    throw Error('PR95 V2 compact toolbar/personal UI regression '+JSON.stringify(pr95List));
   const pr95ListShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-pr95-list-compact-synthetic.png',Buffer.from(pr95ListShot.data,'base64'));
   console.log('PR95_REMOVED_PERSONAL_PRESETS_RETAINED_COLUMN_FILTERS_PASS',JSON.stringify(pr95List));
@@ -3030,7 +3031,7 @@ try{
   // Column filters intersect the quick condition; clearing the quick filter
   // must preserve the existing column filter and summary base counts.
   const inputFocus=await evaluate(`(()=>{
-    const el=document.querySelector('[data-filter-key=displayCode] input');
+    const el=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
     if(!el)return false;el.focus();return document.activeElement===el;
   })()`);
   if(!inputFocus)throw Error('Lượt 018 ID filter missing');
@@ -3038,7 +3039,7 @@ try{
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
   await evaluate("document.querySelector('.item-summary-active-filter button').click()");
-  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('[data-filter-key=displayCode] input').value==='NQ01'",
+  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label=\\"Tìm kiếm không dấu\\"]').value==='NQ01'",
     'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
