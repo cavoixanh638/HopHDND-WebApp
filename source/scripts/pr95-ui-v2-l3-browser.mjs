@@ -82,7 +82,7 @@ async function seed(){
     datasetV2:{
       active:{generationId:GEN,operationId:OP,revision:1,rowCount:2,digest:'a'.repeat(64)},
       generations:{[GEN]:{items:values}},
-      permissions:{[GEN]:{columns:{}}}
+      permissions:{[GEN]:{columns:{note:false}}}
     }
   }};
   await ownerReq('', 'PUT',seed);
@@ -223,7 +223,7 @@ async function test(){
     const p=await rights();return p?.cells?.[ROW]?.note===true?p:false;
   },'server grants exact cell');
   let p=await rights();
-  assert.deepEqual(p.columns??{},{});assert.deepEqual(p.rows??{},{});
+  assert.deepEqual(p.columns??{},{note:false});assert.deepEqual(p.rows??{},{});
   assert.equal(p.cells?.[ROW]?.note,true);
   assert.equal(p.cells?.[OTHER]?.note,undefined);
   step('ADMIN_GRANT_SERVER_CAS_PASS',{path:PATH+'/permissions/'+GEN,cell:ROW+'/note'});
