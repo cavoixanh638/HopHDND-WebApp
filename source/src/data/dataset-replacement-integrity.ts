@@ -36,16 +36,18 @@ function checkManifest(manifest:DatasetGenerationManifest):void {
     !digestPattern.test(manifest.digest))
     throw Error('Manifest của tập dữ liệu ứng viên không hợp lệ.');
 }
+function rejectLegacyMetadata(input:unknown):void {
+  if(!input||typeof input!=='object')throw Error('Dòng ứng viên không phải đối tượng hợp lệ.');
+  const unsafe=['history','editProofs','permissions','leases','operationId','updatedBy','updatedAt'];
+  if(unsafe.some(key=>Object.prototype.hasOwnProperty.call(input,key)))
+    throw Error('Bản ứng viên chứa dấu vết quyền/khóa/lịch sử hoặc thao tác của thế hệ cũ.');
+}
 function normalizedRows(rows:readonly Item[]):unknown[][] {
   if(rows.length<1||rows.length>1000)
     throw Error('Bản ứng viên phải có từ 1 đến 1.000 hồ sơ.');
   const ids=new Set<string>(),codes=new Set<string>();
   const canonical=rows.map(input=>{
-    // Candidate rows are fresh business facts, never a transplant of legacy
-    // audit entries, leases, grants or operation proofs from a reused code.
-    const unsafe=['history','editProofs','permissions','leases','operationId','updatedBy','updatedAt'];
-    if(unsafe.some(key=>Object.prototype.hasOwnProperty.call(input,key)))
-      throw Error('Bản ứng viên chứa dấu vết quyền/khóa/lịch sử hoặc thao tác của thế hệ cũ.');
+    rejectLegacyMetadata(input);
     const row=validateFirebaseItem(input);
     if(row.revision!==1||row.isDropped||row.archivedAt)
       throw Error('Ứng viên phải có revision=1, không mang trạng thái rút/lưu trữ: '+row.displayCode);
@@ -96,6 +98,7 @@ export async function verifyCandidateServerReadback(
   if(entries.length!==manifest.rowCount)
     throw Error('Số hồ sơ staging đọc lại không khớp manifest: KHÔNG thay thế.');
   const rows=entries.map(([key,value])=>{
+    rejectLegacyMetadata(value);
     const item=validateFirebaseItem(value);
     if(item.recordId!==key)
       throw Error('Khóa đường dẫn staging và recordId khác nhau: '+key);
