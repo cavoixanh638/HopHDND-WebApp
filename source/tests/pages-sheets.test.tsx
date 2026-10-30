@@ -44,11 +44,11 @@ function open(label:string){button(render(),label).props.onClick({currentTarget:
 function respond(note?:string){const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];(window as any)[name](payload(note));}
 beforeEach(()=>{
   h.reset();vi.useFakeTimers();scripts=[];
-  vi.stubGlobal('window',{setTimeout:globalThis.setTimeout,setInterval:globalThis.setInterval,addEventListener:vi.fn(),removeEventListener:vi.fn()});
+  vi.stubGlobal('window',{setTimeout:globalThis.setTimeout,setInterval:globalThis.setInterval,clearTimeout:globalThis.clearTimeout,clearInterval:globalThis.clearInterval,addEventListener:vi.fn(),removeEventListener:vi.fn()});
   vi.stubGlobal('document',{hidden:false,addEventListener:vi.fn(),removeEventListener:vi.fn(),head:{append:(s:any)=>scripts.push(s)},createElement:()=>({src:'',remove:vi.fn()})});
   const storage=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
   h.common.mockReturnValue({config:null,status:'disabled',busy:false,message:'',refresh:vi.fn(),save:vi.fn()});
-  firebase={ready:true,user:{isAnonymous:true,uid:'guest'},isAdmin:false,datasetEpochReady:true,connected:true,permissions:{columns:{note:true}},profile:null,emulator:true,canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>mayEdit(firebase.permissions,id,field,firebase.isAdmin),common:{config:null,status:'ready',busy:false,message:'Firebase configuration',refresh:vi.fn(),save:vi.fn().mockResolvedValue({revision:1})},savePermissions:vi.fn(),login:vi.fn(),logout:vi.fn()} as unknown as FirebaseController;
+  firebase={ready:true,user:{isAnonymous:true,uid:'guest'},isAdmin:false,datasetEpochReady:true,connected:true,permissions:{columns:{note:true}},profile:null,emulator:true,canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>mayEdit(firebase.permissions,id,field,firebase.isAdmin),common:{config:null,status:'ready',busy:false,message:'Firebase configuration',refresh:vi.fn(),save:vi.fn().mockResolvedValue({revision:1})},savePermissions:vi.fn(),refreshPermissions:vi.fn().mockResolvedValue({columns:{note:true}}),login:vi.fn(),logout:vi.fn()} as unknown as FirebaseController;
 });
 afterEach(()=>{h.dispose();vi.useRealTimers();vi.unstubAllGlobals();});
 describe('Pages integrates Sheets content with Firebase administration',()=>{
