@@ -241,6 +241,11 @@ async function test(){
     const granted=JSON.parse(grantedText);
     assert.equal(granted?.cells?.[ROW]?.note,true,'Anonymous readback must observe granted cell');
   }
+  // Diagnostic control: if a live subscription misses the permission event,
+  // inspect the same genuine App after a harmless page reload. The final
+  // acceptance still requires live grant/revoke and must not rely on reload.
+  await guest.send('Page.reload',{ignoreCache:true});
+  await guest.until('!!document.querySelector(".item-data-table tbody")','guest reloaded list',20000);
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
       return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
