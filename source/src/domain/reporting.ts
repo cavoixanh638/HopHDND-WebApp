@@ -13,11 +13,11 @@ export const DEFAULT_REPORTS: ReportConfig[] = [
     hiddenColumns:['Không phải trình'],completed:['Đã có QĐ'] },
   { id: 'council', title: 'Tiến độ các Nghị quyết và Báo cáo trình HĐND', source: 'council',
     statusField: 'progressCouncil', columns:[...COUNCIL_STAGE_COLUMNS],
-    hiddenColumns:[],completed:['Đã trình HĐND thành phố'] },
+    hiddenColumns:[],completed:['Hoàn thành'] },
   { id: 'nq', title: 'Tiến độ trình HĐND ban hành NQ', source: 'nq', statusField: 'progressCouncil',
-    columns:[...COUNCIL_STAGE_COLUMNS],hiddenColumns:[],completed:['Đã trình HĐND thành phố'] },
+    columns:[...COUNCIL_STAGE_COLUMNS],hiddenColumns:[],completed:['Hoàn thành'] },
   { id: 'bc', title: 'Tiến độ trình HĐND ban hành BC', source: 'bc', statusField: 'progressCouncil',
-    columns:[...COUNCIL_STAGE_COLUMNS],hiddenColumns:[],completed:['Đã trình HĐND thành phố'] },
+    columns:[...COUNCIL_STAGE_COLUMNS],hiddenColumns:[],completed:['Hoàn thành'] },
 ];
 export const isActive = (item: Item) => !item.isDropped && !item.archivedAt;
 const canonical = (value: string) => value.trim().toLocaleLowerCase('vi');
