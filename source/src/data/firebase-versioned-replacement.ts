@@ -143,8 +143,19 @@ export interface DatasetOperationStatus {
 async function connectedForRead(database:Database):Promise<boolean>{
   try {
     return await new Promise<boolean>(resolve=>{
-      onValue(ref(database,'.info/connected'),snapshot=>resolve(snapshot.val()===true),
-        ()=>resolve(false),{onlyOnce:true});
+      let finished=false;
+      let stop=()=>{};
+      const finish=(connected:boolean)=>{
+        if(finished)return;
+        finished=true;clearTimeout(deadline);stop();resolve(connected);
+      };
+      // A newly initialized SDK first emits false while its websocket
+      // handshakes. Wait for a real true instead of mistaking it for offline.
+      const deadline=setTimeout(()=>finish(false),2500);
+      stop=onValue(ref(database,'.info/connected'),snapshot=>{
+        if(snapshot.val()===true)finish(true);
+      },()=>finish(false));
+      if(finished)stop();
     });
   }catch{return false;}
 }
