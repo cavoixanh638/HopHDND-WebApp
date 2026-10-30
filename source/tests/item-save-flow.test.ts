@@ -16,7 +16,7 @@ import {ItemList} from '../src/features/items/ItemList';
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
-import {CompactGroupFilterCell} from '../src/features/items/CompactGroupFilterCell';
+import {ColumnFilterCell} from '../src/features/items/ColumnFilterCell';
 import {DETAIL_FIELDS,SEARCH_FIELDS} from '../src/features/items/list-toolbar-filters';
 import {CellHistoryAction} from '../src/components/CellHistoryAction';
 function nodes(v:any):any[]{
@@ -119,10 +119,10 @@ describe('separate item layout save and data draft',()=>{
       readOnly:true,sourceKind:'google',customizing:true,sourceKey:'old-layout-edit-filters',
       catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
-    const editFilters=nodes(editTree).filter(n=>n.type===CompactGroupFilterCell);
-    expect(editFilters.map(n=>n.props.fields)).toEqual(expect.arrayContaining([
-      ['type','department','content'],
-      ['partyLevel','progressParty','progressBuild','progressCouncil']
+    const editFilters=nodes(editTree).filter(n=>n.type===ColumnFilterCell);
+    expect(editFilters.map(n=>n.props.field)).toEqual(expect.arrayContaining([
+      'type','department','content','partyLevel','progressParty',
+      'progressBuild','progressCouncil'
     ]));
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
