@@ -53,6 +53,8 @@ export function useFirebase(){
   const [profile,setProfile]=useState<FirebaseProfile|null>(loadConfirmedProfile),[busy,setBusy]=useState(false);
   const [datasetActive,setDatasetActive]=useState<ActiveDatasetPointer|null>(null);
   const [datasetPermissions,setDatasetPermissions]=useState<CellPermissions>({columns:{}});
+  const [rightsEpoch,setRightsEpoch]=useState<string|null>(null);
+  const sawV2=useRef(false);
   const [profileReady,setProfileReady]=useState(false),[permissionsReady,setPermissionsReady]=useState(false);
   const [editControl,setEditControl]=useState({ready:false,revision:0,editingLocked:true});
   const [freezeControl,setFreezeControl]=useState<FreezeControl|null>(null);
@@ -92,21 +94,25 @@ export function useFirebase(){
     if(!user){setDatasetActive(null);return;}
     const stop=onValue(ref(database,'hdnd/datasetV2/active'),snapshot=>{
       const raw=snapshot.val();
-      if(!raw){setDatasetActive(null);return;}
+      if(!raw){if(sawV2.current){setError('Mất con trỏ thế hệ Firebase; không trở về dữ liệu cũ.');return;}
+        setDatasetActive(null);return;}
       if(typeof raw.generationId!=='string'||!Number.isSafeInteger(raw.revision)||raw.revision<1||
         typeof raw.operationId!=='string'||!Number.isSafeInteger(raw.rowCount)){
         setDatasetActive(null);failedDataset();return;
       }
+      sawV2.current=true;
       setDatasetActive(raw as ActiveDatasetPointer);
-    },()=>{setDatasetActive(null);});
+    },()=>{setError('Không đọc được con trỏ thế hệ Firebase; khóa đường lưu.');});
     function failedDataset(){setError('Con trỏ tập dữ liệu Firebase không hợp lệ; dừng sửa.');}
     return()=>stop();
   },[user?.uid,database]);
   useEffect(()=>{
-    if(!user||!datasetActive){setDatasetPermissions({columns:{}});return;}
+    if(!user||!datasetActive){setDatasetPermissions({columns:{}});setRightsEpoch(null);return;}
+    setRightsEpoch(null);setDatasetPermissions({columns:{}});
     return onValue(ref(database,'hdnd/datasetV2/permissions/'+datasetActive.generationId),
-      snapshot=>{const raw=snapshot.val();setDatasetPermissions(raw&&typeof raw==='object'?raw:{columns:{}});},
-      ()=>setDatasetPermissions({columns:{}}));
+      snapshot=>{const raw=snapshot.val();setDatasetPermissions(raw&&typeof raw==='object'?raw:{columns:{}});
+        setRightsEpoch(datasetActive.generationId);},
+      ()=>{setRightsEpoch(null);setDatasetPermissions({columns:{}});});
   },[user?.uid,database,datasetActive?.generationId]);
   const admin=firebaseAdmin(user);
   const googleEditor=!!user&&!user.isAnonymous&&user.emailVerified&&
@@ -309,8 +315,8 @@ export function useFirebase(){
     if(!auth.currentUser||!connected){setError('Chưa kết nối Firebase; không xác nhận được dữ liệu nguồn chính.');return;}
     try{const [p,q]=await Promise.all([get(ref(database,'hdnd/profile')),get(ref(database,'hdnd/permissions'))]);const raw=p.val(),rules=q.val();const verified=raw?profileFrom({...JSON.parse(raw.payload),revision:raw.revision}):null;setProfile(verified);storeConfirmedProfile(verified);setPermissions({columns:rules?.columns??{},rows:rules?.rows??{},cells:rules?.cells??{}});setProfileReady(true);setPermissionsReady(true);setError('');}catch(cause){setProfileReady(false);setPermissionsReady(false);setError((cause as Error).message);}
   };
-  return {database,user,ready,error,connected,permissions:datasetActive?datasetPermissions:permissions,datasetActive,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
-    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&mayEdit(datasetActive?datasetPermissions:permissions,id,field,admin),
+  return {database,user,ready,error,connected,permissions:datasetActive?(rightsEpoch===datasetActive.generationId?datasetPermissions:{columns:{}}):permissions,datasetActive,editors,editorAuthorized,saveEditorAccess,profile,isAdmin:admin,emulator:services.emulator,login,logout,savePermissions,refreshPermissions,readReview,approveReview,saveEditingLock,updateFreeze,countEditingCells,freezeControl,editingLocked:!editControl.ready||editControl.editingLocked,controlReady:editControl.ready,
+    canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>ready&&connected&&permissionsReady&&editControl.ready&&freezeControl?.mode==='OPEN'&&editorAuthorized&&(!editControl.editingLocked||admin)&&(!datasetActive||rightsEpoch===datasetActive.generationId)&&mayEdit(datasetActive?datasetPermissions:permissions,id,field,admin),
     common:{config:profile,busy,message:error||(!ready?'Đang đăng nhập Firebase để đọc quyền và cấu hình…':!connected?'Mất kết nối Firebase; phần sửa thử vẫn giữ trên máy.':!profileReady?'Đang đọc cấu hình chung từ Firebase…':profile?'Danh mục và bố trí đang dùng chung qua Firebase.':'Chưa có bố trí chung; quản trị có thể lưu bố trí mặc định.'),status:error?'error':profileReady?'ready':'loading',refresh,save:saveProfile}};
 }
 export type FirebaseController=ReturnType<typeof useFirebase>;
