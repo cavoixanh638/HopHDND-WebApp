@@ -111,7 +111,7 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
     if(!code.trim())throw Error('Sheet "'+sheetName+'", dòng '+line+', cột A: thiếu mã hồ sơ.');
     if(code!==code.trim())
       throw Error('Sheet "'+sheetName+'", dòng '+line+', cột A: mã có khoảng trắng đầu/cuối; hãy sửa trong Excel, không tự cắt mã.');
-    const codeKey=code.normalize('NFC').toLocaleLowerCase('vi');
+    const codeKey=code.normalize('NFC');
     if(seen.has(codeKey))throw Error('Sheet "'+sheetName+'", dòng '+line+', cột A: mã "'+code+
       '" trùng dòng '+seen.get(codeKey)+'.');
     seen.set(codeKey,line);
