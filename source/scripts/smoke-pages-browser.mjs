@@ -3327,7 +3327,7 @@ try{
   await send('Page.navigate',{url:r07Url});
   await eventually("document.querySelector('.report-grid-actions button[aria-expanded=false]')!==null",
     'R07 popup configuration controls missing');
-  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"]')?.textContent.trim()`);
+  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"] .column-heading-label')?.textContent.trim()`);
   const openR07=async()=>{
     await evaluate(`[...document.querySelectorAll('.report-grid-actions button')]
       .find(b=>b.textContent.includes('Cấu hình popup / cột'))?.click()`);
@@ -3361,18 +3361,18 @@ try{
   await openR07();
   await replaceR07('Tên popup riêng');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Tên popup riêng'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Tên popup riêng'",
     'R07 popup override title not immediately rendered');
   await openR07();
   await replaceR07('   ');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 whitespace-only title did not immediately inherit shared name');
   const r07Whitespace=await evaluate(`(()=>{
     const key=Object.keys(localStorage).find(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
       k.includes('compact-qa-synthetic-popup-only'));
     const stored=key?JSON.parse(localStorage.getItem(key)):null;
-    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim(),
+    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim(),
       hasOverride:Object.prototype.hasOwnProperty.call(stored?.groupLabels??{},'partyTogether'),
       storedName:stored?.groupLabels?.partyTogether};
   })()`);
@@ -3394,16 +3394,16 @@ try{
   await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value===''",
     'R07 reset did not clear popup-only title draft');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 restored title not visible after reset/save');
   await openR07();
   await replaceR07('Tên tạm để xóa');
   await replaceR07('');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 empty-string title persisted in applied state');
   await send('Page.navigate',{url:r07Url});
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 empty title did not survive popup remount/reload');
   await openR07();
   if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
