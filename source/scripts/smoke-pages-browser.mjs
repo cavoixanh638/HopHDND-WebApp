@@ -3057,7 +3057,7 @@ try{
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
   await evaluate("document.querySelector('.item-summary-active-filter button').click()");
-  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label=\\"Tìm kiếm không dấu\\"]').value==='NQ01'",
+  await eventually(`!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
