@@ -1,4 +1,8 @@
 import {readFileSync} from 'node:fs';
+import {initializeApp,deleteApp} from 'firebase/app';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence,getIdTokenResult,signOut} from 'firebase/auth';
+import {getDatabase,connectDatabaseEmulator} from 'firebase/database';
+import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
@@ -43,6 +47,36 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await set(ref(ctx.database() as never),seed());
   });});
   afterAll(async()=>env.cleanup());
+
+  it('two independently initialized real Auth Emulator Google SDK sessions share verified admin UID and pass candidate Rules',async()=>{
+    const apps=[0,1].map(i=>initializeApp({
+      apiKey:'demo-test-key',authDomain:'demo-hdnd-v2.firebaseapp.com',
+      projectId:'demo-hdnd-v2',appId:'pr95-auth-emulator-'+i,
+      databaseURL:'https://demo-hdnd-v2.firebaseio.com'
+    },'pr95-google-auth-tab-'+i));
+    try {
+      const identities=await Promise.all(apps.map(async app=>{
+        const auth=initializeAuth(app,{persistence:inMemoryPersistence});
+        connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+        const db=getDatabase(app);
+        connectDatabaseEmulator(db,'127.0.0.1',9000);
+        const user=await signInAsEmulatorGoogleAdmin(auth);
+        const id=await getIdTokenResult(user,true);
+        expect(user.email).toBe('cavoixanh638@gmail.com');
+        expect(user.emailVerified).toBe(true);
+        expect(user.providerData.some(p=>p.providerId==='google.com')).toBe(true);
+        expect(id.signInProvider).toBe('google.com');
+        expect(id.claims.email_verified).toBe(true);
+        await assertSucceeds(get(ref(db,DATASET_V2_PATH)));
+        return {uid:user.uid,db,auth};
+      }));
+      expect(identities[0].uid).toBe(identities[1].uid);
+      const privatePath=DATASET_V2_PATH+'/permissions/gen_seed_initial';
+      await assertSucceeds(get(ref(identities[0].db,privatePath)));
+      await assertSucceeds(get(ref(identities[1].db,privatePath)));
+      for(const x of identities)await signOut(x.auth);
+    }finally{await Promise.all(apps.map(app=>deleteApp(app)));}
+  },30000);
 
   it('stages, reads back, backs up privately, commits atomically and restores by CAS',async()=>{
     const db=admin(),op='pr95_import_0001';
