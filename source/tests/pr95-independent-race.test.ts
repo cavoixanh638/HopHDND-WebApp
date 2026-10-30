@@ -2,9 +2,12 @@ import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {assertFails,assertSucceeds,initializeTestEnvironment,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update} from 'firebase/database';
+import {get,ref,set} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
+import {CellEditSessionManager} from '../src/data/cell-edit-leases';
+import {FirebaseRepository} from '../src/data/firebase-repository';
+import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,commitDatasetReplacement,readStagedDataset,
   restoreDatasetBackup,resolveDatasetOperation,DATASET_V2_PATH} from
   '../src/data/firebase-versioned-replacement';
@@ -85,16 +88,84 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     expect(await resolveDatasetOperation(a,other)).toBe('not-committed');
   },55000);
 
-  it('real post-review same-generation write invalidates an approved replacement',async()=>{
-    const a=tabA(),b=tabB(),op='l3_midreview_edit_001';
-    const approval=await stageDatasetReplacement(a,actor,next('Bản trước'),op,'synthetic.xlsx');
-    const recordPath=DATASET_V2_PATH+'/generations/gen_l3_initial/items/l3-original-0';
-    await assertSucceeds(update(ref(b,recordPath),{note:'Sửa sau duyệt',revision:2}));
-    await expect(commitDatasetReplacement(a,actor,approval,confirm(approval.operationId)))
-      .rejects.toThrow(/cùng thế hệ|đã thay đổi|CAS/i);
-    expect((await get(ref(a,DATASET_V2_PATH+'/active/generationId'))).val())
-      .toBe('gen_l3_initial');
-  },45000);
+  it('a legitimately leased and audited same-generation edit invalidates old approval',async()=>{
+    const adminDb=tabA(),op='l3_midreview_edit_001';
+    const approval=await stageDatasetReplacement(
+      adminDb,actor,next('Bản trước'),op,'synthetic.xlsx');
+    const generation=approval.expected.generationId;
+    expect(generation).toBe('gen_l3_initial');
+
+    // A non-admin editor exercises the ACTUAL Rules, not the admin write
+    // privilege. The seed grants only note in this active generation.
+    const editorDb=env.authenticatedContext('l3-midreview-editor',
+      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
+    const editor={uid:'l3-midreview-editor',isAnonymous:true,email:null,
+      emailVerified:false,providerData:[]} as unknown as User;
+    const manager=new CellEditSessionManager(editorDb,()=>editor,generation);
+    const rowsPath=DATASET_V2_PATH+'/generations/'+generation+'/items';
+    const recordPath=rowsPath+'/l3-original-0';
+    const repository=new FirebaseRepository(editorDb,()=>editor,
+      ()=>({columns:{note:true}}),rowsPath,approval.expected);
+    repository.leaseManager=manager;
+    const before=(await repository.list()).find(row=>row.recordId==='l3-original-0');
+    expect(before).toBeDefined();
+    const changedNote='Sửa sau duyệt bằng lease hợp lệ';
+    expect(before!.note).not.toBe(changedNote);
+
+    try {
+      // First prove an authorized lease and a REAL transactional edit under
+      // unchanged candidate Rules; a permission_denied here MUST FAIL the test.
+      expect(await manager.acquire(before!.recordId,'note','multiline')).toBe(true);
+      const lease=(await get(ref(editorDb,DATASET_V2_PATH+'/leases/'+generation+
+        '/'+before!.recordId+'/note'))).val();
+      expect(lease).toMatchObject({uid:editor.uid,kind:'multiline',revision:1});
+      expect(lease.token).toBe(manager.proof(before!.recordId,'note'));
+      expect(lease.expiresAt).toBeGreaterThan(lease.acquiredAt);
+
+      const patch=updateDraft(before!,undefined,{note:changedNote});
+      expect(patch).toBeDefined();
+      const [savedResult]=await repository.save([patch!]);
+      expect(savedResult.ok,savedResult.message).toBe(true);
+      expect(savedResult.item?.revision).toBe(before!.revision+1);
+
+      // Prove server-acknowledged value, lease proof, revision AND structured
+      // audit history; only after these assertions may stale approval be tested.
+      const persisted=(await get(ref(adminDb,recordPath))).val();
+      const history=persisted.history?.[String((before!.revision+1)%50)];
+      expect(persisted).toMatchObject({
+        recordId:before!.recordId,note:changedNote,revision:before!.revision+1,
+        operationId:patch!.operationId,updatedBy:editor.uid,
+        editProofs:{note:lease.token}
+      });
+      expect(persisted.updatedAt).toEqual(expect.any(Number));
+      expect(history).toMatchObject({
+        operationId:patch!.operationId,recordId:before!.recordId,
+        actor:editor.uid,changes:{note:changedNote},oldValues:{note:before!.note}
+      });
+      expect(history.at).toEqual(expect.any(Number));
+      expect(await repository.history(before!.recordId)).toEqual([
+        expect.objectContaining({
+          operationId:patch!.operationId,recordId:before!.recordId,
+          changes:{note:changedNote},oldValues:{note:before!.note}
+        })
+      ]);
+      expect((await get(ref(adminDb,DATASET_V2_PATH+'/active'))).val())
+        .toEqual(approval.expected);
+
+      await manager.finish(before!.recordId,'note');
+      // The data itself (not only the lease) changed within the SAME active
+      // generation while the pointer and reviewed approval remained unchanged.
+      expect((await repository.list()).find(row=>row.recordId===before!.recordId))
+        ?.note).toBe(changedNote);
+      await expect(commitDatasetReplacement(adminDb,actor,approval,confirm(op)))
+        .rejects.toThrow('Dữ liệu đang sử dụng đã bị sửa trong lúc duyệt, kể cả cùng thế hệ.');
+      expect((await get(ref(adminDb,DATASET_V2_PATH+'/active'))).val())
+        .toEqual(approval.expected);
+      expect((await get(ref(adminDb,recordPath+'/note'))).val()).toBe(changedNote);
+    } finally {
+      await manager.dispose();
+    }
+  },55000);
 
   it('same operationId cannot stage different payload or silently replay a second swap',async()=>{
     const db=tabA(),op='l3_duplicate_op_001';
