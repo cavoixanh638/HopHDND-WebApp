@@ -137,8 +137,17 @@ export async function resolveDatasetOperation(database:Database,operationId:stri
     const snap=(await get(ref(database,DATASET_V2_PATH))).val() as V2Snapshot|null;
     if(!snap)return 'unknown';
     const op=snap.operations?.[operationId];
-    return op?.status==='COMMITTED'&&snap.active.operationId===operationId
-      ?'committed':'not-committed';
+    // COMMITTED is a durable operation-log fact, not a claim that this
+    // generation must still be active after a later replace/restore.
+    if(op!==undefined){
+      if(op.status!=='COMMITTED'||op.to!=='gen_'+operationId||
+        !snap.generations?.[op.to]?.items||typeof op.from!=='string'||
+        typeof op.at!=='number'||!Number.isFinite(op.at))return 'unknown';
+      return 'committed';
+    }
+    // Active pointer without its matching committed log is an inconsistent
+    // server state: never tell a client it is safe to retry.
+    return snap.active?.operationId===operationId?'unknown':'not-committed';
   }catch{return 'unknown';}
 }
 /**
