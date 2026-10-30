@@ -1,5 +1,6 @@
 import type { ReportConfig } from '../../shared/types';
-import { DEFAULT_REPORTS, PARTY_STATUS_ALIASES } from '../domain/reporting';
+import { DEFAULT_REPORTS } from '../domain/reporting';
+import {canonicalStatus,STATUS_ALIASES} from '../domain/status-contract';
 
 /** Open-source families are loaded as web fonts; OS-proprietary families remain local-only. */
 export type TableFont =
@@ -135,20 +136,14 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     // Only presentation labels are migrated; source Excel cells are untouched.
     // Saved profiles from previous builds may include both superseded and new
     // columns. Collapse only recognized predecessor/successor pairs.
-    const PARTY_OLD:Readonly<Record<string,string>>={
-      ...PARTY_STATUS_ALIASES,
-      'TU đã cho ý kiến':'Đã có TBKL',
-      'Đã báo cáo TU':'Đã có TBKL',
-    };
-    const COUNCIL_OLD:Readonly<Record<string,string>>={
-      'Đã trình HĐND':'Đã trình HĐND thành phố',
-      'Hoàn thành':'Đã trình HĐND thành phố',
-      'Đã trình HĐND TP':'Đã trình HĐND thành phố',
-    };
-    const legacy=base.id==='party'?PARTY_OLD:['nq','bc','council'].includes(base.id)?COUNCIL_OLD:{};
-    const obsolete=base.id==='party'||['nq','bc','council'].includes(base.id)
-      ?new Set(['Sở xin rút']):new Set<string>();
-    const rename=(col:string)=>legacy[col]??col;
+    const legacy=STATUS_ALIASES[base.statusField];
+    // Old column labels which are ambiguous are no longer inferred as a
+    // finished milestone. Drop ONLY the obsolete report presentation column
+    // and preserve its source Item/status for "Chưa chuẩn hóa" inspection.
+    const obsolete=new Set(base.id==='party'
+      ?['Sở xin rút','TU đã cho ý kiến','Đã báo cáo TU']
+      :['nq','bc','council'].includes(base.id)?['Sở xin rút']:[]);
+    const rename=(col:string)=>canonicalStatus(base.statusField,col);
     const hiddenValues=row.hiddenColumns;
     if(typeof row.visible!=='boolean'||!Array.isArray(hiddenValues)||
       hiddenValues.some(col=>typeof col!=='string'||(!base.columns.includes(rename(col))&&!obsolete.has(col))))
@@ -166,7 +161,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     const rawOrder=row.columnOrder??base.columns;
     if(!Array.isArray(rawOrder)||rawOrder.some(col=>typeof col!=='string'))
       throw new Error('Thứ tự cột không hợp lệ.');
-    const hasOld=rawOrder.some(col=>Object.hasOwn(legacy,col)||obsolete.has(col));
+    const hasOld=rawOrder.some(col=>rename(col)!==col||obsolete.has(col));
     const order:string[]=[];
     const originals=new Map<string,string>();
     for(const original of rawOrder){
@@ -177,7 +172,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
       const previous=originals.get(col);
       if(previous!==undefined){
         const recognizedPair=previous!==original
-          &&(Object.hasOwn(legacy,previous)||Object.hasOwn(legacy,original));
+          &&(rename(previous)!==previous||rename(original)!==original);
         if(!recognizedPair)throw new Error('Thứ tự cột chứa trạng thái lạ hoặc bị trùng.');
         continue;
       }
@@ -186,8 +181,7 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     if(order.length!==base.columns.length){
       const missing=base.columns.filter(col=>!order.includes(col));
       const introducingNotRequired=['party','build'].includes(base.id)&&missing.length===1&&missing[0]==='Không phải trình';
-      if((!hasOld&&!introducingNotRequired)||(!['party','nq','bc','council'].includes(base.id)&&
-        !(base.id==='build'&&introducingNotRequired)))
+      if(!hasOld&&!introducingNotRequired)
         throw new Error('Thứ tự cột cần đủ các cột của bảng và không trùng.');
       for(const add of missing){
         const next=base.columns.slice(base.columns.indexOf(add)+1).find(col=>order.includes(col));
@@ -196,11 +190,21 @@ export function validateReportLayout(value: unknown): ReportLayout[] {
     }
     const rawWidths=row.columnWidths??{};
     if(!rawWidths||typeof rawWidths!=='object'||Array.isArray(rawWidths)||
-      Object.entries(rawWidths).some(([key,width])=>
-        !['__group','__total','__percent','Chưa chuẩn hóa',...base.columns].includes(key)||
-        !Number.isSafeInteger(width)||width<80||width>1200))
+      Object.keys(rawWidths).some(key=>
+        !['__group','__total','__percent','Chưa chuẩn hóa',...base.columns].includes(rename(key))&&
+        !obsolete.has(key)))
       throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
-    const columnWidths=Object.keys(rawWidths).length>0?{...rawWidths}:undefined;
+    if(Object.values(rawWidths).some(width=>
+      !Number.isSafeInteger(width)||width<80||width>1200))
+      throw new Error('Độ rộng cột báo cáo không hợp lệ (80–1200 px).');
+    const widths:Record<string,number>={};
+    // Prefer an explicit new key over its legacy alias on collisions.
+    for(const [key,width] of Object.entries(rawWidths).sort(([a],[b])=>
+      Number(a===rename(a))-Number(b===rename(b)))){
+      if(obsolete.has(key))continue;
+      widths[rename(key)]=width;
+    }
+    const columnWidths=Object.keys(widths).length>0?widths:undefined;
     if(['party','build'].includes(base.id)&&row.includeNotRequired!==undefined&&typeof row.includeNotRequired!=='boolean')
       throw new Error('Cách tính nội dung Không phải trình phải là Bao gồm hoặc Không bao gồm.');
     const notRequiredCountSetting=['party','build'].includes(base.id)?{includeNotRequired:row.includeNotRequired===true}:{};
