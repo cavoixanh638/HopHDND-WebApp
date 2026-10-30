@@ -2725,7 +2725,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card {
   height:50px;min-height:50px;padding:0 18px;
-  gap:8px;border-width:1.5px;border-radius:12px;
+  gap:8px;border-width:2px;border-radius:12px;
 }
 .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-title {
   font-size:16px;line-height:1.25;letter-spacing:0;
