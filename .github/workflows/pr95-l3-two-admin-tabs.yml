@@ -9,6 +9,8 @@ on:
       - "source/src/data/cell-edit-leases.ts"
       - "source/src/state/use-workspace.ts"
       - ".github/workflows/pr95-l3-two-admin-tabs.yml"
+      - "source/src/app/App.tsx"
+      - "source/src/state/use-firebase.ts"
   workflow_dispatch:
 
 permissions:

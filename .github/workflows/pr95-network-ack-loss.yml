@@ -7,6 +7,8 @@ on:
       - "source/tests/pr95-network-ack-loss.test.ts"
       - "source/src/data/firebase-versioned-replacement.ts"
       - ".github/workflows/pr95-network-ack-loss.yml"
+      - "source/src/app/App.tsx"
+      - "source/src/state/use-firebase.ts"
   workflow_dispatch:
 
 permissions:
