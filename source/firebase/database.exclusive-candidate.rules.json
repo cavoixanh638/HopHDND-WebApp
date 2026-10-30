@@ -362,7 +362,7 @@
       },
       "datasetV2": {
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && data.child('active').exists() && newData.child('active/revision').val() === data.child('active/revision').val() + 1",
+        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
         "active": {
           ".read": true,
           ".validate": "newData.hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('generationId').isString() && newData.child('operationId').isString() && newData.child('digest').isString() && newData.child('digest').val().length === 64 && newData.child('rowCount').isNumber() && newData.child('rowCount').val() > 0 && newData.child('rowCount').val() <= 1000 && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val()+1 : 1)"
