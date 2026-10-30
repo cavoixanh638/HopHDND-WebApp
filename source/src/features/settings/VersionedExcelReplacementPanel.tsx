@@ -9,6 +9,55 @@ import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   from '../../data/firebase-versioned-replacement';
 import type {ActiveDatasetPointer} from '../../data/dataset-replacement-integrity';
 
+/** UI-only presentation of the L1 ACKed API-CHANGE-02 contract. */
+export type OperationViewStatus =
+  'committed-active'|'committed-historical'|'not-committed'|'unknown';
+export interface OperationView {
+  status:OperationViewStatus;
+  message:string;
+  committed:boolean;
+}
+
+/**
+ * Accept the exact new L1 wire shape. A legacy string reply, mismatched ID,
+ * malformed payload or unexpected status is UNKNOWN, never "not committed".
+ * During independent branch work L1 may still expose the old string signature.
+ */
+export function presentDatasetOperation(raw:unknown,operationId:string):OperationView {
+  const unknown:OperationView={status:'unknown',committed:false,
+    message:'CHƯA RÕ TRẠNG THÁI thao tác '+operationId+
+      '. Không tự gửi lại thao tác. Tra cứu lại operationId sau khi máy chủ sẵn sàng.'};
+  if(!raw||typeof raw!=='object'||Array.isArray(raw))return unknown;
+  const value=raw as {status?:unknown;operationId?:unknown;generationId?:unknown};
+  if(value.operationId!==operationId||
+    (value.generationId!==undefined &&
+      (typeof value.generationId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(value.generationId))))
+    return unknown;
+  const generation=value.generationId?' — thế hệ '+value.generationId:'';
+  if(value.status==='committed-active')
+    return {status:'committed-active',committed:true,
+      message:'ĐÃ COMMIT THÀNH CÔNG — ĐANG HOẠT ĐỘNG: '+operationId+generation+'.'};
+  if(value.status==='committed-historical')
+    return {status:'committed-historical',committed:true,
+      message:'ĐÃ COMMIT THÀNH CÔNG TRONG LỊCH SỬ: '+operationId+generation+
+        '. Thao tác không còn là thế hệ đang hoạt động; KHÔNG PHẢI thất bại.'};
+  if(value.status==='not-committed')
+    return {status:'not-committed',committed:false,
+      message:'CHƯA GHI NHẬN COMMIT cho thao tác '+operationId+
+        '. Không tự gửi lại; đối chiếu staging và trạng thái máy chủ trước khi quyết định.'};
+  return unknown;
+}
+
+/** One read-only query, no retry. Read failures cannot prove non-commit. */
+export async function readOperationView(database:Database,operationId:string):Promise<OperationView>{
+  try {
+    const raw:unknown=await resolveDatasetOperation(database,operationId);
+    return presentDatasetOperation(raw,operationId);
+  } catch {
+    return presentDatasetOperation(null,operationId);
+  }
+}
+
 /** Explicitly opt-in during emulator QA only. No production action is exposed. */
 export function VersionedExcelReplacementPanel({database,user,items,current,
   fileName,reports,active,enabled}:{database:Database;user:User|null;items:readonly Item[];
@@ -22,13 +71,16 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const [restoreId,setRestoreId]=useState('');
   const [restoreConfirm,setRestoreConfirm]=useState('');
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  const [operationView,setOperationView]=useState<OperationView|null>(null);
   const [baseline,setBaseline]=useState('');
   const now=datasetPreviewFingerprint(current);
   const stale=!!approval&&(baseline!==now||active.generationId!==approval.expected.generationId||
-    active.revision!==approval.expected.revision);
+    active.operationId!==approval.expected.operationId||active.revision!==approval.expected.revision||
+    active.rowCount!==approval.expected.rowCount||active.digest!==approval.expected.digest);
   const stage=async()=>{
     if(!enabled||!user)return;
-    setBusy(true);setMessage('');setApproval(null);setStaged(null);setConfirm('');
+    setBusy(true);setMessage('');setOperationView(null);
+    setApproval(null);setStaged(null);setConfirm('');
     try{
       const operationId='excel_'+crypto.randomUUID().replaceAll('-','_');
       const result=await stageDatasetReplacement(database,user,items,operationId,fileName);
@@ -40,13 +92,26 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   };
   const commit=async()=>{
     if(!approval||!enabled||!user||stale)return;
-    setBusy(true);
+    setBusy(true);setMessage('');setOperationView(null);
+    setLookupOperation(approval.operationId);
     try{
       const outcome=await commitDatasetReplacement(database,user,approval,confirm);
-      if(outcome.status==='unknown')setMessage('CHƯA RÕ TRẠNG THÁI: tra cứu mã thao tác, không tự nhập lại.');
-      else{setMessage('Đã xác minh '+outcome.status+' trên Firebase Emulator.');setBackupOperation(approval.operationId);}
-    }catch(e){setMessage(e instanceof Error?e.message:'Giao dịch bị từ chối; không thử lại tự động.');}
-    finally{setBusy(false);}
+      if(outcome.status==='unknown'){
+        setOperationView(presentDatasetOperation(null,approval.operationId));
+        return; // Lost ACK: never send the commit again automatically.
+      }
+      const observed=await readOperationView(database,approval.operationId);
+      // If the commit API confirmed success but a status read disagrees, this is
+      // ambiguous, NOT proof of a failed commit. Never silently retry.
+      const verified=observed.status==='not-committed'
+        ?presentDatasetOperation(null,approval.operationId):observed;
+      setOperationView(verified);
+      if(verified.committed)setBackupOperation(approval.operationId);
+    }catch(e){
+      setOperationView(presentDatasetOperation(null,approval.operationId));
+      setMessage('Không xác minh được kết quả ghi: '+
+        (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự gửi lại thao tác.');
+    }finally{setBusy(false);}
   };
   const check=async()=>{
     if(!enabled)return;
@@ -54,20 +119,33 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId)){
       setMessage('Nhập mã operationId hợp lệ để tra cứu; không suy đoán trạng thái.');return;
     }
-    setBusy(true);
-    try{setMessage('Trạng thái máy chủ ('+operationId+'): '+await resolveDatasetOperation(database,operationId));}
-    catch(e){setMessage(e instanceof Error?e.message:'Không xác minh được trạng thái máy chủ.');}
-    finally{setBusy(false);}
+    setBusy(true);setMessage('');
+    try{
+      const observed=await readOperationView(database,operationId);
+      setOperationView(observed);
+      // Recovery after reload/lost ACK requires a fresh server confirmation.
+      if(observed.committed&&approval?.operationId===operationId)setBackupOperation(operationId);
+    }finally{setBusy(false);}
   };
   const restore=async()=>{
-    if(!enabled||!user||!backupOperation)return;
-    setBusy(true);
+    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId))return;
+    setBusy(true);setMessage('');setOperationView(null);
+    setLookupOperation(restoreId);
     try{
       const result=await restoreDatasetBackup(database,user,backupOperation,restoreId,
         active,restoreConfirm);
-      setMessage('Khôi phục '+result.status+'; xác minh bản dữ liệu mới trước khi phát hành.');
-    }catch(e){setMessage(e instanceof Error?e.message:'Khôi phục không thành công.');}
-    finally{setBusy(false);}
+      if(result.status==='unknown'){
+        setOperationView(presentDatasetOperation(null,restoreId));
+        return; // Do not blindly retry restore after an unknown acknowledgement.
+      }
+      const observed=await readOperationView(database,restoreId);
+      setOperationView(observed.status==='not-committed'
+        ?presentDatasetOperation(null,restoreId):observed);
+    }catch(e){
+      setOperationView(presentDatasetOperation(null,restoreId));
+      setMessage('Không xác minh được kết quả khôi phục: '+
+        (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự khôi phục lại.');
+    }finally{setBusy(false);}
   };
   return <section className="card" aria-label="Thử nghiệm thế hệ Firebase">
     <h4>Thay dữ liệu theo thế hệ — chỉ Firebase Emulator</h4>
@@ -112,6 +190,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       <button className="button danger" disabled={busy||!enabled||restoreConfirm!=='KHOI PHUC '+restoreId}
         onClick={()=>void restore()}>Khôi phục bằng CAS</button>
     </section>}
+    {operationView&&<p className="notice" role={operationView.status==='unknown'?'alert':'status'}
+      aria-label={'Trạng thái thao tác '+operationView.status}>{operationView.message}</p>}
     {message&&<p className="notice" role="status">{message}</p>}
   </section>;
 }
