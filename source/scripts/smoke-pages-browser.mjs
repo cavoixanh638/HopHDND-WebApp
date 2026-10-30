@@ -3534,7 +3534,21 @@ try{
           .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
         if(!el||el.disabled)return false;el.click();return true;
       })()`);
-      if(!clicked)throw Error(side.name+' cannot click '+fragment+' within '+selector);
+      if(!clicked){
+        const snapshot=await side.js(`(()=>{
+          const el=[...document.querySelectorAll(${JSON.stringify(selector)})]
+            .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          return {found:!!el,disabled:el?.disabled??null,
+            panelText:panel?.innerText?.slice(0,1000)??null,
+            notices:[...document.querySelectorAll('[role="alert"],[role="status"]')]
+              .map(x=>x.innerText?.slice(0,160)).slice(-12)};
+        })()`);
+        const shot=await side.call('Page.captureScreenshot',{format:'png'});
+        writeFileSync('hophdnd-pr95-admin-ui-blocker.png',Buffer.from(shot.data,'base64'));
+        throw Error(side.name+' cannot click '+fragment+' within '+selector+
+          ' diagnostic='+JSON.stringify(snapshot));
+      }
     };
     const enter=async(side,selector,value)=>{
       const focus=await side.js(`(()=>{
