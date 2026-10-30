@@ -56,11 +56,11 @@ jobs:
           flags=(--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu
             --disable-extensions --disable-background-networking --no-first-run
             --virtual-time-budget=4000)
-          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900 \
             --screenshot=pr95-preview-desktop.png "$uri" >/dev/null 2>/dev/null
-          timeout 45s "$chrome" "${flags[@]}" --window-size=390,844
+          timeout 45s "$chrome" "${flags[@]}" --window-size=390,844 \
             --screenshot=pr95-preview-mobile.png "$uri" >/dev/null 2>/dev/null
-          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900 \
             --dump-dom "$uri" > pr95-preview-dom.txt 2>/dev/null
           grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt
           grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt
