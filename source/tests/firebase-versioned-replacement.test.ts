@@ -9,7 +9,8 @@ import {FirebaseRepository} from '../src/data/firebase-repository';
 import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
-  resolveDatasetOperation,restoreDatasetBackup,DATASET_V2_PATH} from
+  resolveDatasetOperation,restoreDatasetBackup,prepareInitialDatasetActivation,
+  commitInitialDatasetActivation,DATASET_V2_PATH} from
   '../src/data/firebase-versioned-replacement';
 
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
@@ -204,6 +205,89 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       '/generations/gen_seed_initial/items/r1'),{stt:999}));
     expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(2);
   },30000);
+  async function setupFrozenLegacy(){
+    await env.withSecurityRulesDisabled(async ctx=>{
+      const db=ctx.database() as never;
+      await set(ref(db,DATASET_V2_PATH),null);
+      await set(ref(db,'hdnd/items'),Object.fromEntries(initialRows.map(row=>
+        [row.recordId,{...row,operationId:'legacy_seed_0001',
+          updatedAt:1,updatedBy:'administrator'}])));
+      await set(ref(db,'hdnd/permissions'),{columns:{note:true}});
+      await set(ref(db,'hdnd/editLocks'),null);
+      await set(ref(db,'hdnd/freezeControl'),{
+        mode:'FROZEN',revision:2,epoch:1,actor:'administrator',
+        changedAt:100,deadline:0,closedAt:100
+      });
+    });
+  }
+  it('activates populated FROZEN legacy via private backup, verified staging and first CAS',async()=>{
+    await setupFrozenLegacy();
+    const db=admin(),op='pr95_first_v2_0001';
+    await assertFails(set(ref(db,'hdnd/items/r2/note'),'Không được sửa khi FROZEN'));
+    await assertFails(set(ref(db,'hdnd/permissions/columns/note'),false));
+    const approval=await prepareInitialDatasetActivation(db,actor,replacement(),op,'new.xlsx');
+    expect(approval.legacyRowCount).toBe(2);
+    expect(approval.freezeRevision).toBe(2);
+    expect(approval.freezeEpoch).toBe(1);
+    expect(approval.legacyBaseline).toMatch(/^[0-9a-f]{64}$/);
+    const backupRef=ref(db,DATASET_V2_PATH+'/legacyBackups/'+op);
+    const privateBackup=(await get(backupRef)).val();
+    expect(typeof privateBackup).toBe('string');
+    expect(JSON.parse(privateBackup).legacy.items.r1.recordId).toBe('r1');
+    await assertFails(get(ref(guest(),DATASET_V2_PATH+'/legacyBackups/'+op)));
+    await assertFails(set(backupRef,'tampered'));
+    await assertFails(set(ref(db,DATASET_V2_PATH+'/active'),{
+      generationId:'gen_'+op,operationId:op,revision:1,rowCount:2,digest:'a'.repeat(64)
+    }));
+    expect((await get(ref(db,DATASET_V2_PATH+'/active'))).exists()).toBe(false);
+    const outcome=await commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+op+' 2 2');
+    expect(outcome.status).toBe('committed');
+    const pointer=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
+    expect(pointer).toMatchObject({generationId:'gen_'+op,operationId:op,
+      revision:1,rowCount:2,digest:approval.manifest.digest});
+    const rows=(await get(ref(guest(),DATASET_V2_PATH+
+      '/generations/gen_'+op+'/items'))).val();
+    expect(Object.keys(rows)).toHaveLength(2);
+    expect((await get(ref(db,DATASET_V2_PATH+'/permissions/gen_'+op+'/columns'))).val())
+      .toBeNull();
+    expect(await resolveDatasetOperation(db,op)).toEqual({
+      status:'committed-active',operationId:op,generationId:'gen_'+op
+    });
+    expect((await commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+op+' 2 2')).status).toBe('already-committed');
+    await assertFails(set(ref(db,'hdnd/items/r1/note'),'Không còn sửa legacy'));
+    await assertFails(set(ref(db,'hdnd/permissions/columns/note'),false));
+  },45000);
+  it('blocks first activation if freeze changes during review, even after refreeze',async()=>{
+    await setupFrozenLegacy();
+    const db=admin(),op='pr95_first_race_001';
+    const approval=await prepareInitialDatasetActivation(db,actor,replacement(),op,'new.xlsx');
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await update(ref(ctx.database() as never,'hdnd/freezeControl'),{
+        revision:4,epoch:2,closedAt:200
+      });
+    });
+    await expect(commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+op+' 2 2')).rejects.toThrow(/Legacy|đóng băng|thay đổi/);
+    expect((await get(ref(db,DATASET_V2_PATH+'/active'))).exists()).toBe(false);
+    // Unauthorized direct pointer writes cannot bypass the server freeze gate.
+    await assertFails(set(ref(db,DATASET_V2_PATH+'/active'),{
+      generationId:'gen_'+op,operationId:op,revision:1,rowCount:2,digest:'a'.repeat(64)
+    }));
+  },30000);
+  it('never activates legacy without real populated frozen source',async()=>{
+    const db=admin(),op='pr95_initial_bad_01';
+    await expect(prepareInitialDatasetActivation(db,actor,replacement(),op,'new.xlsx'))
+      .rejects.toThrow(/đóng băng|FROZEN/i);
+    await setupFrozenLegacy();
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,'hdnd/items'),null);
+    });
+    await expect(prepareInitialDatasetActivation(db,actor,replacement(),op,'new.xlsx'))
+      .rejects.toThrow(/Legacy|Cấu trúc/);
+    expect((await get(ref(db,DATASET_V2_PATH+'/active'))).exists()).toBe(false);
+  },25000);
   it('fences legacy rights and locks after V2 cutover and under preactivation FROZEN',async()=>{
     const db=admin(),legacyPermissions='hdnd/permissions/columns/note';
     // With V2 already active, even an admin tab must not mutate old ACL/leases.
