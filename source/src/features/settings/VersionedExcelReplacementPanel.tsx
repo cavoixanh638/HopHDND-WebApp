@@ -184,8 +184,13 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       // Legacy first activation has a DIFFERENT private legacyBackups path
       // and must never be offered as an ordinary V2 rollback candidate.
       if(observed.committed&&active){
-        const backup=(await get(ref(database,'hdnd/datasetV2/backups/'+operationId))).val();
-        if(typeof backup==='string'&&backup.length>0)setBackupOperation(operationId);
+        try{
+          const backup=(await get(ref(database,'hdnd/datasetV2/backups/'+operationId))).val();
+          if(typeof backup==='string'&&backup.length>0)setBackupOperation(operationId);
+          else setMessage('Không có backup V2 riêng tư cho mã này; không mở khôi phục.');
+        }catch{
+          setMessage('Chưa xác minh được backup riêng tư; không mở khôi phục khi thiếu quyền hoặc mạng.');
+        }
       }
     }finally{setBusy(false);}
   };
