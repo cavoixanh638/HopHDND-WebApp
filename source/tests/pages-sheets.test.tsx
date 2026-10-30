@@ -401,7 +401,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Giá trị lựa chọn')).toBe(false);
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Quyền chỉnh sửa')).toBe(false);
   });
-  it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
+  it('has verified-admin-only gear choices and keeps it visible across sections',async()=>{
     grantAdmin();render();respond();await settle();
     let tree=render();
     const menu=nodes(tree).find(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'));
@@ -419,11 +419,11 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type===ReportSettings)).toBe(true);
     tree=open('Tài khoản và dữ liệu');
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
     expect(nodes(tree).some(n=>n.type==='div'&&n.props?.className==='options-popover')).toBe(true);
     tree=open('Excel · Trích xuất');
     expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
   });
   it('blocks switching editing sections while a report draft is unsaved',async()=>{
     grantAdmin();render();respond();await settle();
