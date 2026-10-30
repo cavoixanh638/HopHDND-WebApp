@@ -110,12 +110,9 @@ async function startAndSeedFirebase(){
     stream?.on('data',chunk=>{emulatorOutput=(emulatorOutput+String(chunk)).slice(-8000);});
   emulator.on('error',error=>{emulatorOutput+=' SPAWN: '+error.message;});
   await emulatorsReady();
-  // RTDB's /.settings/rules.json may return HTTP 403 even for local owner.
-  // Therefore DO NOT falsely claim server-side byte readback. Instead assert
-  // the runtime-only config's *absolute* candidate path and SHA-256, then
-  // prove candidate-specific behavior with real anonymous RTDB auth below.
-  // Under firebase/database.rules.json the hdnd parent grants all signed-in
-  // guests broad .read, so all private-path denials below would FAIL.
+  // Management endpoint is admin-only: use Authorization Bearer owner
+  // (the ?auth=owner query alone returns HTTP 403 for /.settings/rules.json).
+  // NEVER PUT/overwrite any Rules. Require byte-equivalent JSON tree via GET.
   const config=JSON.parse(readFileSync(emulatorConfigFile,'utf8'));
   const original=JSON.parse(readFileSync(resolve('firebase.json'),'utf8'));
   if(config.database?.rules!==EXCLUSIVE_RULES_FILE||
@@ -124,10 +121,20 @@ async function startAndSeedFirebase(){
     throw Error('Candidate Rules Emulator configuration is not isolated');
   console.log('BROWSER_EXCLUSIVE_RULES_CONFIGURED',JSON.stringify({
     source:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
-    absoluteRulesPath:EXCLUSIVE_RULES_FILE,
-    emulatorConfig:emulatorConfigFile,
-    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE,
-    verification:'runtime Rules witness required before PASS'
+    absoluteRulesPath:EXCLUSIVE_RULES_FILE,emulatorConfig:emulatorConfigFile,
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
+  }));
+  const live=await fetch(EMULATOR_DB+'/.settings/rules.json?ns='+EMULATOR_NAMESPACE,{
+    headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
+  if(!live.ok)throw Error('Cannot GET actual loaded Emulator Rules: HTTP '+live.status);
+  const actualRules=await live.json();
+  if(!isDeepStrictEqual(actualRules,expectedRules))
+    throw Error('L3-AUDIT-GAP-01: actual live Emulator Rules differ from exclusive-candidate');
+  console.log('BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS',JSON.stringify({
+    source:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
+    actualRulesSha256:createHash('sha256').update(JSON.stringify(actualRules)).digest('hex'),
+    verifiedFrom:'GET /.settings/rules.json with Authorization Bearer owner',
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
   }));
   const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
     'Content-Type':'application/json'
@@ -194,14 +201,13 @@ async function startAndSeedFirebase(){
     activeRead:true,visibleRows:Object.keys(guestRows).length,privatePathsDenied:deniedPaths.length,
     checks:deniedPaths,configuredRulesSha256:rulesDigest
   }));
-  // Explicit provenance: this proves *effective* candidate-specific Rules in
-  // the running Emulator, not an unsupported byte dump from /.settings.
-   console.log('BROWSER_EXCLUSIVE_RULES_RUNTIME_WITNESS_PASS',JSON.stringify({
+  // Independent witness after exact byte-equivalent live Rules GET.
+  console.log('BROWSER_EXCLUSIVE_RULES_RUNTIME_WITNESS_PASS',JSON.stringify({
     source:'firebase/database.exclusive-candidate.rules.json',
     sha256:rulesDigest,guestReadActive:true,guestReadCurrentGeneration:true,
     deniedPrivatePaths:deniedPaths.length,
     contrast:'legacy firebase/database.rules.json grants hdnd/.read to authenticated guests',
-    method:'isolated config + live anonymous Auth/RTDB permission assertions'
+    method:'exact live Rules GET + isolated config + anonymous Auth/RTDB permission assertions'
   }));
 }
 
