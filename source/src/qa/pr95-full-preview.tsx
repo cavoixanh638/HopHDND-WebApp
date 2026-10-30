@@ -10,7 +10,7 @@ import {catalogFromItems} from '../data/catalogs';
 import {defaultItemLayout,validateItemLayout,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
-import {mayEdit,samePermissions,type CellPermissions} from '../data/firebase-repository';
+import type {CellPermissions} from '../data/firebase-repository';
 import {ItemList} from '../features/items/ItemList';
 import {ReportTable} from '../features/reports/ReportTable';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
@@ -31,11 +31,19 @@ const baseLayout=():ItemLayout=>{
       shortLeaders:true,shortSpecialist:true},
   });
 };
-/** Checks the same precedence as the real repository, without contacting it. */
+/** Mirrored business precedence in a QA-only pure function.
+ * This intentionally DOES NOT import the runtime Firebase adapter/SDK. */
 export const previewCanEdit=(role:Role,permissions:CellPermissions,id:string,field:EditableField):boolean=>
-  mayEdit(permissions,id,field,role==='admin');
+  role==='admin'||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true;
+const permissionSignature=(value:CellPermissions):string=>JSON.stringify([
+  ...Object.entries(value.columns??{}).map(([field,allowed])=>['c',field,allowed]),
+  ...Object.entries(value.rows??{}).map(([id,allowed])=>['r',id,allowed]),
+  ...Object.entries(value.cells??{}).flatMap(([id,cells])=>
+    Object.entries(cells).map(([field,allowed])=>['e',id,field,allowed])),
+].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
 export const previewPermissionSave=(current:CellPermissions,next:CellPermissions,expected:CellPermissions):CellPermissions=>{
-  if(!samePermissions(current,expected))throw Error('Quyền mô phỏng đã thay đổi; đọc lại trước khi lưu.');
+  if(permissionSignature(current)!==permissionSignature(expected))
+    throw Error('Quyền mô phỏng đã thay đổi; đọc lại trước khi lưu.');
   return {
     columns:{...next.columns},rows:{...next.rows},
     cells:Object.fromEntries(Object.entries(next.cells??{}).map(([id,fields])=>[id,{...fields}]))
