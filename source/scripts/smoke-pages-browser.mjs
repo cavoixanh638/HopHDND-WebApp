@@ -2273,13 +2273,20 @@ try{
   const l2ListClearShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v3-l2-clear-list.png',Buffer.from(l2ListClearShot.data,'base64'));
   await evaluate(`[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent?.trim()==='—')?.click()`);
-  await eventually("window.__l2LastPatch?.changes?.vpLeader===''&&document.querySelector('.item-data-table tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C')",
-    'R-V3-01 List clear must patch vpLeader exactly empty without changing UBND');
-  const l2ListPatch=await evaluate(`(()=>({
-    patch:window.__l2LastPatch,
-    stillAssignedUbnd:document.querySelector('.item-data-table tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C'),
-    statusEditors:document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row button.cell-picker-trigger').length
-  }))()`);
+  await eventually("window.__l2LastPatch?.changes?.vpLeader===''",
+    'R-V3-01 List clear must patch vpLeader exactly empty');
+  const l2ListPatch=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child');
+    const ubnd=[...row?.querySelectorAll('button.cell-picker-trigger')??[]]
+      .find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    return {patch:window.__l2LastPatch,
+      // Leaders are visually abbreviated in the compact List; the accessible
+      // button label must retain the complete underlying assignment.
+      stillAssignedUbnd:ubnd?.getAttribute('aria-label')?.includes('PCT Nguyễn Văn C'),
+      ubndLabel:ubnd?.getAttribute('aria-label'),
+      statusEditors:row?.querySelectorAll('.compact-stage-row button.cell-picker-trigger').length
+    };
+  })()`);
   if(l2ListPatch.statusEditors!==0||!l2ListPatch.stillAssignedUbnd)
     throw Error('R-V3-01 List changed unauthorized field: '+JSON.stringify(l2ListPatch));
   console.log('R_V3_01_LIST_OPTIONAL_LEADER_CLEAR_PASS',JSON.stringify({choice:l2ListClear,patch:l2ListPatch}));
