@@ -964,7 +964,8 @@ try{
       hover.color!==color||hover.titleSize<15||hover.titleSize>17)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
+  // V3 cards now start near the top. x=785,y=9 is over a card, NOT mouseleave.
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:3,y:105});
   await new Promise(resolve=>setTimeout(resolve,270));
   const navReset=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')]
     .every(el=>Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)<.25)`);
