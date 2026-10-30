@@ -11,7 +11,8 @@ import {startFirebaseWarmup} from './state/firebase-boot';
 import './styles/app.css';
 function FirebaseEntry(){
   const firebase=useFirebase();
-  // Sheets remains readable even if Auth/configuration is unavailable.
+  // Firebase is the only operational database. Authentication is mandatory
+  // in the background, but public guests sign in anonymously without a prompt.
   return <Suspense fallback={<p role="status">Đang mở công cụ quản trị…</p>}>
     <App firebase={firebase} TransferPanel={ExcelTransferPanel}/>
   </Suspense>;

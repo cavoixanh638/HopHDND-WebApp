@@ -1,6 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {DEFAULT_SHEET_URL,parseSheetConfig,saveSheetConfig} from '../src/data/sheet-config';
-import {mayEdit} from '../src/data/firebase-repository';
+import {FirebaseRepository,mayEdit} from '../src/data/firebase-repository';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {defaultReportLayout,withReportPageWidth,reportPageWidth} from '../src/data/report-preferences';
 import {catalogFromItems} from '../src/data/catalogs';
@@ -46,7 +46,8 @@ beforeEach(()=>{
   firebase={ready:true,user:{isAnonymous:true,uid:'guest'},isAdmin:false,connected:true,permissions:{columns:{note:true}},profile:null,emulator:true,canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>mayEdit(firebase.permissions,id,field,firebase.isAdmin),common:{config:null,status:'ready',busy:false,message:'Firebase configuration',refresh:vi.fn(),save:vi.fn().mockResolvedValue({revision:1})},savePermissions:vi.fn(),login:vi.fn(),logout:vi.fn()} as unknown as FirebaseController;
 });
 afterEach(()=>{h.dispose();vi.useRealTimers();vi.unstubAllGlobals();});
-describe('Pages integrates Sheets content with Firebase administration',()=>{
+// RETIRED: These legacy assertions exercise the removed Google Sheets operating mode.
+describe.skip('Pages integrates Sheets content with Firebase administration',()=>{
   it('tests direct Excel in a diagnostic URL without changing the admin Database source',async()=>{
     (window as any).location={search:'?startupMetrics=1&compareSource=excel'};
     const confirmed={revision:12,catalogs:catalogFromItems(createDemoItems(1)),
@@ -430,5 +431,25 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.isAdmin=true;render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
     open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
     const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
+  });
+});
+
+describe('Pages primary Firebase-only source',()=>{
+  it('subscribes to Firebase and never requests a Google Sheets URL despite legacy profile',()=>{
+    const rows=createDemoItems(2);
+    const sub=vi.spyOn(FirebaseRepository.prototype,'subscribe')
+      .mockImplementation(next=>{next(rows);return ()=>{};});
+    const getRows=vi.spyOn(FirebaseRepository.prototype,'list').mockResolvedValue(rows);
+    firebase.profile={revision:1,dataSource:'excel',catalogs:catalogFromItems(rows),
+      reports:defaultReportLayout(),items:defaultItemLayout()};
+    firebase.common.config=firebase.profile;
+    let tree=render();
+    expect(text(tree)).toContain('Báo cáo tổng hợp');
+    expect(scripts).toHaveLength(0);
+    expect(sub).toHaveBeenCalled();
+    tree=open('Danh sách các ND trình HĐND');
+    expect(nodes(tree).find(node=>node.type===ItemList)?.props.items).toHaveLength(2);
+    expect(scripts).toHaveLength(0);
+    sub.mockRestore();getRows.mockRestore();
   });
 });
