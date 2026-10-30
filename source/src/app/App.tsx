@@ -173,6 +173,27 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     return true;
   };
   const [page, setPage] = useState<Page>('overview');
+  // Guest permissions are server-owned, never inferred from the UI.
+  // Revalidate the scoped generation rights when an anonymous viewer opens
+  // the real List, and periodically while it stays open. This fail-closed
+  // fallback covers late grants/revokes even if an RTDB listener misses the
+  // transition from an initially absent permissions node. It cannot bypass
+  // backend Rules, freeze, or the generation fence.
+  useEffect(()=>{
+    if(!firebase||firebase.isAdmin||!firebase.user?.isAnonymous||
+      !firebase.datasetEpochReady||page!=='items')return;
+    let live=true;
+    const verify=()=>{
+      const current=firebaseLive.current;
+      if(!live||!current?.user?.isAnonymous||!current.connected||
+        !current.datasetEpochReady)return;
+      void current.refreshPermissions().catch(()=>{/* App keeps last denied rights; server Rules enforce writes. */});
+    };
+    verify();
+    const handle=window.setInterval(verify,3000);
+    return()=>{live=false;window.clearInterval(handle);};
+  },[page,firebase?.database,firebase?.user?.uid,
+    firebase?.datasetEpochReady,firebase?.datasetActive?.generationId,firebase?.isAdmin]);
   const [editorUnsaved,setEditorUnsaved]=useState(false);
   const [editorExitRequest,setEditorExitRequest]=useState(0);
   const [catalogField,setCatalogField]=useState<CatalogKey|undefined>(undefined);
