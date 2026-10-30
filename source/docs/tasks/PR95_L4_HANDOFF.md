@@ -21,7 +21,7 @@ Giữ API parser (các export và interface) và thư viện dùng chung. Không
 | E02 | Dòng trống ở giữa hồ sơ bị âm thầm bỏ | Chặn dòng vật lý; không tự bỏ/điền. Các hàng cuối hoàn toàn trống không thành hồ sơ. |
 | E03 | GViz parser trim() tất cả chuỗi làm mất khoảng trắng đầu/cuối | GViz chỉ kiểm phân loại và cấu trúc; trả lại chuỗi Excel nguyên bản cho 13 trường text, giữ dấu, newline, N = tiến độ, O = ghi chú. |
 | E04 | STT thập phân bị định dạng Excel làm tròn về số nguyên | Kiểm tra cả biểu diễn và giá trị số thô ở B; chỉ nhận số nguyên dương an toàn. |
-| E05 | Mã có khoảng trắng rìa bị cắt trước khi tạo ID; Unicode/case duplicate lọt | Chặn mã có khoảng trắng rìa; so trùng theo NFC và lowercase (chỉ dùng khóa tra cứu, không đổi giá trị), ID exact UTF-8 hex của code, không phụ thuộc thứ tự. |
+| E05 | Mã có khoảng trắng rìa bị cắt trước khi tạo ID; Unicode/case duplicate lọt | Chặn mã có khoảng trắng rìa; so trùng theo NFC (giữ phân biệt chữ hoa/thường theo hợp đồng; không đổi giá trị), ID exact UTF-8 hex của code, không phụ thuộc thứ tự. |
 | E06 | Dữ liệu cột P trở đi, công thức, Excel error cell không được chỉ tọa độ rõ | Chặn theo sheet, dòng, cột/ô, kể cả cached formula; không mở rộng A–O. |
 | E07 | Mã/nội dung thiếu, STT sai, trùng mã, trạng thái G/H/I ngoài danh mục | Chặn kèm vị trí và lý do, không tự sửa nghiệp vụ. |
 
