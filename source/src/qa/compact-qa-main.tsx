@@ -10,6 +10,7 @@ import {ItemList} from '../features/items/ItemList';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import '../styles/app.css';
+import {Pr95FullPreview} from './pr95-full-preview';
 
 const items=createDemoItems(8);
 const initial=defaultItemLayout();
@@ -130,4 +131,17 @@ function CompactVisualQa(){
   </div>;
 }
 
-createRoot(document.getElementById('root')!).render(<CompactVisualQa/>);
+// Preserve old QA URL fixtures unmodified. The unqualified /compact-qa.html
+// now exposes the complete two-tab, six-section V2 preview by default.
+const query=new URLSearchParams(window.location.search);
+const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
+  'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
+  'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings'];
+// The pre-existing source smoke hosts this fixture under /compact-qa/ and
+// checks the original read-only 8-row component. Do not change L1's runner or
+// undermine that regression suite. Public /preview/pr95/ and the root QA entry
+// continue to show the full V2 preview; ?full=1 always opts into it.
+const legacy=query.get('full')!=='1'&&(
+  query.get('legacy')==='1'||window.location.pathname.includes('/compact-qa/')||
+  classicOnly.some(key=>query.has(key)));
+createRoot(document.getElementById('root')!).render(legacy?<CompactVisualQa/>:<Pr95FullPreview/>);

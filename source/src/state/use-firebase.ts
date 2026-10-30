@@ -57,6 +57,9 @@ export function useFirebase(){
   const [datasetPermissions,setDatasetPermissions]=useState<CellPermissions>({columns:{}});
   const [rightsEpoch,setRightsEpoch]=useState<string|null>(null);
   const sawV2=useRef(false);
+  // Reject permission fetch completions from an obsolete user, active
+  // generation, or unverified epoch; never regrant after a source switch.
+  const permissionsRequestFence=useRef('');
   const [profileReady,setProfileReady]=useState(false),[permissionsReady,setPermissionsReady]=useState(false);
   const [editControl,setEditControl]=useState({ready:false,revision:0,editingLocked:true});
   const [freezeControl,setFreezeControl]=useState<FreezeControl|null>(null);
@@ -128,12 +131,17 @@ export function useFirebase(){
   },[user?.uid,database]);
   useEffect(()=>{
     if(!user||!datasetActive){setDatasetPermissions({columns:{}});setRightsEpoch(null);return;}
+    let active=true;
     setRightsEpoch(null);setDatasetPermissions({columns:{}});
-    return onValue(ref(database,'hdnd/datasetV2/permissions/'+datasetActive.generationId),
-      snapshot=>{const raw=snapshot.val();setDatasetPermissions(raw&&typeof raw==='object'?raw:{columns:{}});
+    const unsubscribe=onValue(ref(database,'hdnd/datasetV2/permissions/'+datasetActive.generationId),
+      snapshot=>{if(!active)return;const raw=snapshot.val();
+        setDatasetPermissions(raw&&typeof raw==='object'?raw:{columns:{}});
         setRightsEpoch(datasetActive.generationId);},
-      ()=>{setRightsEpoch(null);setDatasetPermissions({columns:{}});});
+      ()=>{if(!active)return;setRightsEpoch(null);setDatasetPermissions({columns:{}});});
+    return()=>{active=false;unsubscribe();};
   },[user?.uid,database,datasetActive?.generationId]);
+  permissionsRequestFence.current=(user?.uid??'signed-out')+'|'+
+    (datasetActive?.generationId??'legacy')+'|'+String(datasetEpochReady);
   const admin=firebaseAdmin(user);
   const googleEditor=!!user&&!user.isAnonymous&&user.emailVerified&&
     user.providerData.some(provider=>provider.providerId==='google.com')&&
@@ -232,14 +240,32 @@ export function useFirebase(){
   };
   /** Refresh just the permission branch, without touching unsaved layout work. */
   const refreshPermissions=async():Promise<CellPermissions>=>{
-    if(!auth.currentUser||!connected)throw new Error('Chưa kết nối Firebase hoặc cần đăng nhập lại.');
+    const uid=auth.currentUser?.uid;
+    const requestFence=permissionsRequestFence.current;
+    if(!uid||!connected||!datasetEpochReady||uid!==user?.uid)
+      throw new Error('Chưa xác nhận kết nối, phiên đăng nhập hoặc thế hệ dữ liệu.');
     const path=datasetActive?'hdnd/datasetV2/permissions/'+datasetActive.generationId:'hdnd/permissions';
-    const raw=(await get(ref(database,path))).val() as CellPermissions|null;
-    const latest:CellPermissions={columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}};
-    if(datasetActive)setDatasetPermissions(latest);
-    else setPermissions(latest);
-    setPermissionsReady(true);
-    return latest;
+    try{
+      const raw=(await get(ref(database,path))).val() as CellPermissions|null;
+      // An older promise must never write rights into a new auth/generation.
+      if(permissionsRequestFence.current!==requestFence||auth.currentUser?.uid!==uid)
+        throw new Error('Phiên đăng nhập hoặc thế hệ đã đổi trong khi đọc quyền; bỏ kết quả cũ.');
+      const latest:CellPermissions={columns:raw?.columns??{},rows:raw?.rows??{},cells:raw?.cells??{}};
+      if(datasetActive){
+        setDatasetPermissions(latest);
+        setRightsEpoch(datasetActive.generationId);
+      }else setPermissions(latest);
+      setPermissionsReady(true);
+      return latest;
+    }catch(cause){
+      // Transient denied/network errors must not leave a previously granted
+      // right active. The listener or next visible refresh can re-establish it.
+      if(permissionsRequestFence.current===requestFence&&auth.currentUser?.uid===uid){
+        if(datasetActive)setRightsEpoch(null);
+        else setPermissions({columns:{}});
+      }
+      throw cause;
+    }
   };
   const savePermissions=async(next:CellPermissions,expected=datasetActive?datasetPermissions:permissions)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady||!datasetEpochReady)throw new Error('Cần quản trị Google, kết nối mạng, quyền gốc và con trỏ thế hệ đã xác nhận để lưu quyền sửa.');

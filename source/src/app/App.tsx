@@ -1,4 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
+import {get,ref} from 'firebase/database';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -173,6 +174,41 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     return true;
   };
   const [page, setPage] = useState<Page>('overview');
+  // Guest permissions are server-owned, never inferred from the UI.
+  // Revalidate the scoped generation rights when an anonymous viewer opens
+  // the real List, and periodically while it stays open. This fail-closed
+  // fallback covers late grants/revokes even if an RTDB listener misses the
+  // transition from an initially absent permissions node. It cannot bypass
+  // backend Rules, freeze, or the generation fence.
+  useEffect(()=>{
+    if(!firebase||firebase.isAdmin||!firebase.user?.isAnonymous||
+      !firebase.datasetEpochReady||page!=='items')return;
+    let live=true,requestPending=false;
+    const expectedUid=firebase.user.uid;
+    const expectedGeneration=firebase.datasetActive?.generationId??null;
+    // The RTDB onValue listener remains authoritative. This conservative
+    // fallback checks only visible List sessions, never overlaps a request,
+    // and never continues after UID or dataset generation changes.
+    const verify=()=>{
+      const current=firebaseLive.current;
+      if(!live||requestPending||document.visibilityState==='hidden'||
+        !current?.user?.isAnonymous||current.user.uid!==expectedUid||
+        (current.datasetActive?.generationId??null)!==expectedGeneration||
+        !current.connected||!current.datasetEpochReady)return;
+      requestPending=true;
+      void current.refreshPermissions().catch(()=>{/* Refresh fails closed in the hook. */})
+        .finally(()=>{requestPending=false;});
+    };
+    verify();
+    const handle=window.setInterval(verify,3000);
+    const resume=()=>{if(document.visibilityState==='visible')verify();};
+    document.addEventListener('visibilitychange',resume);
+    return()=>{
+      live=false;window.clearInterval(handle);
+      document.removeEventListener('visibilitychange',resume);
+    };
+  },[page,firebase?.database,firebase?.user?.uid,
+    firebase?.datasetEpochReady,firebase?.datasetActive?.generationId,firebase?.isAdmin]);
   const [editorUnsaved,setEditorUnsaved]=useState(false);
   const [editorExitRequest,setEditorExitRequest]=useState(0);
   const [catalogField,setCatalogField]=useState<CatalogKey|undefined>(undefined);
@@ -346,6 +382,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(editorUnsaved&&next!==page){setLayoutMessage('Có thay đổi chưa lưu. Hãy lưu hoặc bỏ phần đang chỉnh trước khi chuyển mục.');return;}
     if(isFirebase&&next==='source'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị được thay link Excel.');return;}
     if(isFirebase&&['items-customize','items-permissions','customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage('Chỉ tài khoản quản trị được thay đổi cấu hình nguồn và bố cục.');return;}
+    // The permissions table is a separate ItemList instance. Do not unmount
+    // an unfinished business edit/recovery and accidentally discard its draft.
+    if(next==='items-permissions'&&(workspace.busy||workspace.protectedRecovery||Object.keys(workspace.drafts).length>0)){
+      setLayoutMessage('Hãy lưu, bỏ hoặc xử lý bản nháp dữ liệu trước khi mở phân quyền chỉnh sửa. Không có quyền nào bị thay đổi.');return;
+    }
     if(['customize','catalogs'].includes(next)&&!canCustomize){setLayoutMessage(isFirebase?'Cần đăng nhập Google quản trị và đọc được cấu hình chung.':'Chờ cấu hình chung tải xong hoặc mở trình chỉnh chung trên Google.');return;}
     if(next==='review'&&!firebase?.isAdmin){setLayoutMessage('Chỉ quản trị mới xem và phê duyệt mốc dữ liệu.');return;}if(isFirebase){firebaseEditRevision.current=firebase!.profile?.revision??0;}
     setReportWidthPreview(null);
@@ -380,6 +421,27 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       firebase!.canEdit(item.recordId,'isDropped'));
   const viewerMayEditText=viewerMayEdit&&workspace.items.some(item=>
     TEXT_FIELDS.some(field=>firebase!.canEdit(item.recordId,field.key)));
+  // Emulator-only diagnostic to distinguish live server permissions from the
+  // App's effective rights without ever granting frontend-only edit access.
+  if(import.meta.env.MODE==='pages-test'&&typeof window!=='undefined'&&
+    ['127.0.0.1','localhost'].includes(window.location.hostname)&&firebase){
+    const debug=window as Window & {
+      __pr95UiV2L3RightsProbe?:()=>unknown;
+      __pr95UiV2L3RightsRead?:()=>Promise<unknown>;
+    };
+    debug.__pr95UiV2L3RightsProbe=()=>({
+      isAdmin:firebase.isAdmin,userUid:firebase.user?.uid,epochReady:firebase.datasetEpochReady,
+      connected:firebase.connected,editingLocked:firebase.editingLocked,
+      editorAuthorized:firebase.editorAuthorized,freeze:firebase.freezeControl?.mode,
+      permissions:firebase.permissions,
+      canEditNote:firebase.canEdit('demo-0001','note'),source:selectedSource,
+      workspaceCachePending:workspace.cachePending,workspaceBusy:workspace.busy,
+      commonBusy:common.busy,canEditDraft,
+      viewerMayEdit,page
+    });
+    debug.__pr95UiV2L3RightsRead=async()=>(await get(ref(firebase.database,
+      'hdnd/datasetV2/permissions/'+firebase.datasetActive?.generationId))).val();
+  }
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
   // Calculate the exact first-frame width synchronously from the saved shared
@@ -488,7 +550,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <span>Chưa đọc được bố cục đã lưu từ Firebase. Không tự áp dụng cấu hình mặc định.</span>
         <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
       </div>:<>
-      {page!=='overview'&&page!=='items'&&<div className="page-heading"><div><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page==='connection'?(isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu'):page==='transfer'?'Nhập / Xuất Excel':page==='customize'?'Tùy chỉnh bảng báo cáo':'Quản lý cột'}</h1></div><span className="muted">{workspace.busy?'Đang đọc dữ liệu…':workspace.loadedAt?`Đọc thành công: ${workspace.loadedAt}`:'Chưa đọc được dữ liệu'}</span></div>}
+      {page!=='overview'&&page!=='items'&&<div className="page-heading"><div><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page==='connection'?(isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu'):page==='transfer'?'Nhập / Xuất Excel':page==='customize'?'Tùy chỉnh bảng báo cáo':page==='items-permissions'?'Phân quyền chỉnh sửa':'Quản lý cột'}</h1></div><span className="muted">{workspace.busy?'Đang đọc dữ liệu…':workspace.loadedAt?`Đọc thành công: ${workspace.loadedAt}`:'Chưa đọc được dữ liệu'}</span></div>}
       {(page==='connection'||page==='source')&&<div className="account-source-actions">
         <button type="button" className="button ghost" disabled={workspace.busy||common.busy}
           onClick={()=>{void workspace.refresh();void common.refresh();}}>Làm mới dữ liệu</button>
@@ -504,7 +566,12 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </div>}
       {!anonymousVisitor&&(['customize','items-customize','items-permissions','catalogs'].includes(page))&&<><nav className="settings-hub-tabs" aria-label="Nhóm chỉnh sửa chính">
         <button type="button" className={page==='customize'?'active':''} aria-current={page==='customize'?'page':undefined} onClick={event=>openOptions('customize',event)} disabled={!canCustomize}>Bảng thống kê</button>
-        <button type="button" className={page!=='customize'?'active':''} aria-current={page!=='customize'?'page':undefined} onClick={event=>openOptions('items-customize',event)}>Danh sách dữ liệu</button>
+        <button type="button" className={page==='items-customize'?'active':''} aria-current={page==='items-customize'?'page':undefined} onClick={event=>openOptions('items-customize',event)}>Danh sách dữ liệu</button>
+        {isFirebase&&firebase!.isAdmin&&<button type="button"
+          className={page==='items-permissions'?'active':''}
+          aria-current={page==='items-permissions'?'page':undefined}
+          disabled={!canCustomize}
+          onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa</button>}
         <button type="button" className="button ghost shared-view-exit" disabled={workspace.busy||common.busy} onClick={()=>setEditorExitRequest(value=>value+1)}>Về chế độ xem</button>
       </nav>
       </>}
@@ -535,7 +602,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </>}
       {page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
-      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined} permissionModeOnly={false} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&
+      {(page === 'items' || page === 'items-customize' || page==='items-permissions') && <ItemList key={`${sourceKey}:${page}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={canCustomize?updateStatusPaletteStore:undefined} permissionModeOnly={page==='items-permissions'} externalSectionTabs={true} onPersistCatalog={saveCatalogConfig} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&
           (!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={isFirebase} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={saveItemLayoutConfig} 
         onPersistViewerLayout={isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline,choices)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
@@ -547,7 +614,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page==='review'&&isFirebase&&firebase!.isAdmin&&<ApprovalReviewPanel source={configured} items={workspace.items} loadedAt={workspace.loadedAt} hasDrafts={dirtyCount>0||workspace.protectedRecovery} firebase={firebase!} onClose={()=>setPage('overview')}/>}
        {page==='sync'&&!isFirebase&&<SyncPanel source={configured} profile={{catalogs:catalog,reports:layout,items:itemLayout}} config={googleCommon.config} isHost={isGoogleHost()} busy={common.busy} onSave={async profile=>{await common.save('all',profile);}} onRefresh={()=>common.refresh(true)} onClose={()=>setPage('overview')}/>}
       {((!isFirebase||(legacySourceTests&&isFirebase))&&(page==='source'||page === 'connection'&&!isFirebase)) && <>{dirtyCount > 0 && <p className="notice">Lưu hoặc bỏ phần sửa trên máy trước khi đổi file nguồn.</p>}<ConnectionPanel onClose={()=>setPage('overview')} key={configured.url} initial={configured} onTest={testConnection} onConnect={connect} onDemo={() => { setRepository(new MockRepository(readWorkspaceRecovery('demo')?.items ?? createDemoItems())); setHistory(null); setSelection(null); }} disabled={workspace.busy || dirtyCount > 0} isDemo={isDemo} allowDemo={!isFirebase} /></>}
-      {page==='connection'&&isFirebase&&<FirebasePanel firebaseDatabase={firebase!.database} userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={legacySourceTests?firebase!.profile?.dataSource??'excel':'primary'} onChangeDataSource={legacySourceTests?changeDataSource:undefined} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>{firebaseEditRevision.current=firebase!.profile?.revision??0;setPage('items-customize');}} onClose={()=>setPage('overview')}/>}
+      {page==='connection'&&isFirebase&&<FirebasePanel firebaseDatabase={firebase!.database} userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={legacySourceTests?firebase!.profile?.dataSource??'excel':'primary'} onChangeDataSource={legacySourceTests?changeDataSource:undefined} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>openOptions('items-permissions',{currentTarget:document.body})} onClose={()=>setPage('overview')}/>}
       {page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel versioned={firebase!.emulator&&firebase!.isAdmin&&firebase!.datasetEpochReady?{
           database:firebase!.database,user:firebase!.user,active:firebase!.datasetActive,
           reports,enabled:true,

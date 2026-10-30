@@ -89,8 +89,9 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
   // Preview pending column changes while the settings panel is open.
   const displayedLayout=settings?pending:applied;
-  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>c.visible||showAll),
-    [displayedLayout,showAll]);
+  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll)&&
+    (c.key!=='stt'||showAll||settings)),
+    [displayedLayout,showAll,settings]);
   // Popup retains its own source configuration; only the ordinary read view
   // projects visible source members into the same groups as the main list.
   const popupCompact=!settings&&!showAll;
