@@ -74,6 +74,10 @@ const screenshot=async name=>{
 };
 async function waitFor(js,reason){
  for(let i=0;i<60;i++){try{if(await evaluate('Boolean('+js+')'))return;}catch{}await sleep(150);}
+ try{
+   console.log('PR95_V3_L5_WAIT_DIAGNOSTIC',await evaluate('JSON.stringify({title:document.title,url:location.href,root:document.getElementById("root")?.innerHTML.slice(0,3500),text:document.body.innerText?.slice(0,1200)})'));
+ }catch(diag){console.log('PR95_V3_L5_DIAG_FAILED',String(diag));}
+ console.log('PR95_V3_L5_CONSOLE_ERRORS',logs.slice(-8));
  throw Error('PR95_V3_L5_WAIT_TIMEOUT '+reason);
 }
 const logs=[];
