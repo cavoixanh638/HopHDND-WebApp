@@ -98,6 +98,10 @@ const api={
     return {generation,uid:lease.uid,session:lease.session,token:lease.token,
       revision:lease.revision,expiresAt:lease.expiresAt,acquiredAt:lease.acquiredAt};
   },
+  async rawRenew(lease:CellLease,field:EditableField,id=recordId,gen?:string){
+    const updated=await renewCellLease(database,lease,id,field,gen??await currentGeneration());
+    return {token:updated.token,revision:updated.revision};
+  },
   async renew(field:EditableField,id=recordId,gen?:string){
     const generation=gen??await currentGeneration();
     const {manager}=ensure(generation);
