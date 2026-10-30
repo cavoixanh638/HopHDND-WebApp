@@ -171,7 +171,7 @@ export async function commitDatasetReplacement(
           to:approval.manifest.generationId,at:Date.now()}}};
       return next;
     }catch(error){failure=error instanceof Error?error.message:'Xung đột không rõ';return undefined;}
-  },{applyLocally:false}).catch(()=>null);
+  },{applyLocally:false}).catch(error=>{failure=error instanceof Error?error.message:String(error);return null;});
   const status=await resolveDatasetOperation(database,approval.operationId);
   if(status==='committed'){
     if(result?.committed){
