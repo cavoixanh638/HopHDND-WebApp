@@ -238,6 +238,42 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.anonymousViewer).toBe(true);
   });
+  it('keeps guest Google login inside gear with no permission or settings shortcut',async()=>{
+    render();respond();await settle();
+    let tree=open('Danh sách các ND trình HĐND');
+    const login=button(tree,'Đăng nhập quản trị');
+    expect(nodes(tree).some(n=>n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    login.props.onClick();await settle();
+    expect(firebase.login).toHaveBeenCalledOnce();
+    tree=render();
+    expect(tree.props.className).not.toContain('settings-page');
+    expect(nodes(tree).some(n=>n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    const list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.allowLayout).toBe(false);
+    expect(list.props.canEditCell(list.props.items[0].recordId,'note')).toBe(true);
+  });
+  it('immediately closes admin editing routes on grant/profile/connection loss; keeps guest cell grants',async()=>{
+    grantAdmin();render();respond();await settle();
+    let tree=open('Chỉnh sửa');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing)).toBe(true);
+    firebase.isAdmin=false;
+    firebase.user={isAnonymous:false,uid:'nonadmin-google',email:'member@example.com'} as FirebaseController['user'];
+    tree=render();tree=render(); // simulated React effect: private page redirects
+    expect(nodes(tree).some(n=>n.type===ReportSettings||n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    const list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list).toBeDefined();
+    expect(list.props.anonymousViewer).toBe(true);
+    expect(list.props.allowLayout).toBe(false);
+    expect(list.props.onSavePermissions).toBeUndefined();
+    expect(list.props.onPersistLayout).toBeUndefined();
+    expect(list.props.canEditCell(list.props.items[0].recordId,'note')).toBe(true);
+    // Even an admin UID loses tool affordances when Firebase connection fails.
+    grantAdmin();tree=render();
+    firebase.connected=false;tree=render();
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(false);
+  });
   it('keeps the administrator override in both list and customize views; staff remain cell-grant scoped',async()=>{
     grantAdmin();
     firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
