@@ -136,14 +136,27 @@ export interface DatasetOperationStatus {
   operationId:string;
   generationId?:string;
 }
+/** RTDB get() can fall back to a previously cached snapshot when offline.
+ * Checking the local transport both before AND after get() avoids treating
+ * that cache as authoritative committed/not-committed server evidence.
+ */
+async function connectedForRead(database:Database):Promise<boolean>{
+  try {
+    return await new Promise<boolean>(resolve=>{
+      onValue(ref(database,'.info/connected'),snapshot=>resolve(snapshot.val()===true),
+        ()=>resolve(false),{onlyOnce:true});
+    });
+  }catch{return false;}
+}
 /** Read authoritative immutable operation log; no retries on network/ACK loss. */
 export async function resolveDatasetOperation(database:Database,operationId:string):
   Promise<DatasetOperationStatus> {
   const unknown:DatasetOperationStatus={status:'unknown',operationId};
   if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId))return unknown;
   try {
+    if(!await connectedForRead(database))return unknown;
     const snap=(await get(ref(database,DATASET_V2_PATH))).val() as V2Snapshot|null;
-    if(!snap?.active||!snap.generations)return unknown;
+    if(!await connectedForRead(database)||!snap?.active||!snap.generations)return unknown;
     const op=snap.operations?.[operationId];
     if(op===undefined){
       // Pointer without a matching log is not evidence of an uncommitted op.
