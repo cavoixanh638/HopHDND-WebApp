@@ -10,7 +10,7 @@ function workbook(sheets:Sheet[]):Uint8Array {
   return new Uint8Array(XLSX.write(book,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
 }
 function business(code='NQ41',order=1):unknown[]{
-  return [code,order,'Nội dung kiểm thử độc lập','Sở thử nghiệm','QPPL','Trình',
+  return [code,order,'Nội dung kiểm thử độc lập','Sở thử nghiệm','QPPL','BTV TU',
     'Sở chưa trình','Sở chưa trình','VP đang thực hiện',
     'CV A','Phòng A','Lãnh đạo VP A','Lãnh đạo UBND B','Chưa trình','Ghi chú riêng'];
 }
