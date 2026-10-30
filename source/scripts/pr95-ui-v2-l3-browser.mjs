@@ -291,8 +291,8 @@ async function test(){
     actorUid:row.updatedBy,auditOperation:row.history['2'].operationId});
   // Wait for React's original Save to settle (server ACK can precede the
   // visible app transition), then reopen the real List and note editor.
-  await guest.until('!window.__pr95UiV2L3RightsProbe?.().workspaceBusy &&
-    !document.querySelector(".draft-bar")','first save settled in UI',10000);
+  await guest.until(`!window.__pr95UiV2L3RightsProbe?.().workspaceBusy &&
+    !document.querySelector(".draft-bar")`,'first save settled in UI',10000);
   await clickText(guest,'nav.primary-section-switcher button','Danh sách');
   await guest.until('window.__pr95UiV2L3RightsProbe?.().page==="items"',
     'real guest list before second edit',6000);
