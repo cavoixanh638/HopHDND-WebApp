@@ -47,10 +47,10 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
     expect(loadStatusPaletteStore('source-named')).toEqual(named);
   });
   it('classifies equivalent completion per status field, with other opt-in only',()=>{
-    expect(statusPaletteTone('progressParty','Không phải xin ý kiến',false)).toBe('done');
+    expect(statusPaletteTone('progressParty','Không phải xin ý kiến',false)).toBeNull();
     expect(statusPaletteTone('progressParty','Đã có TBKL',false)).toBe('done');
     expect(statusPaletteTone('progressBuild','Đã có QĐ chấp thuận',false)).toBe('done');
-    expect(statusPaletteTone('progressBuild','Không phải trình',false)).toBe('done');
+    expect(statusPaletteTone('progressBuild','Không phải trình',false)).toBeNull();
     expect(statusPaletteTone('progressCouncil','Đã trình HĐND thành phố',false)).toBe('done');
     expect(statusPaletteTone('progressCouncil','Sở chưa trình',false)).toBe('not-submitted');
     expect(statusPaletteTone('specificProgress','Văn phòng đang thực hiện',false)).toBe('office');
