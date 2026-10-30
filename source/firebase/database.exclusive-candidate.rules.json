@@ -497,13 +497,13 @@
         "candidates": {
           "$operation": {
             ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-            ".validate": "newData.hasChildren(['items','manifest']) && (!data.exists() || newData.val() === data.val())"
+            ".validate": "newData.isString() && newData.val().length <= 5000000 && (!data.exists() || newData.val() === data.val())"
           }
         },
         "backups": {
           "$operation": {
             ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-            ".validate": "newData.hasChildren(['previous','generation','permissionsJson','leasesJson','baseline']) && (!data.exists() || newData.val() === data.val())"
+            ".validate": "newData.isString() && newData.val().length <= 5000000 && (!data.exists() || newData.val() === data.val())"
           }
         },
         "operations": {
