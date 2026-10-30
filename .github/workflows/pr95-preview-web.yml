@@ -15,6 +15,8 @@ on:
       - "source/src/qa/**"
       - "source/compact-qa.html"
       - "source/scripts/pr95-preview-browser.mjs"
+      - "source/scripts/package-compact-qa.mjs"
+      - "source/scripts/package-compact-qa.fixture.mjs"
       - "source/tests/pr95-ui-v2-l4-*.test.ts"
       - ".github/workflows/pr95-preview-web.yml"
   workflow_dispatch:
@@ -75,7 +77,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pr95-ui-v2-l4-desktop-mobile-synthetic
-          path: |\n            source/pr95-l4-*.png\n            source/dist-compact-qa/HopHDND_GopCot_XemThu.html
+          path: |
+            source/pr95-l4-*.png
+            source/dist-compact-qa/HopHDND_GopCot_XemThu.html
           if-no-files-found: warn
           retention-days: 14
   publish-preview:
