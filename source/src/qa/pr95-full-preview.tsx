@@ -159,35 +159,53 @@ export function Pr95FullPreview(){
   return <div className="app-shell imperial-sky-theme pr95-full-preview"
     data-qa="compact-real-itemlist" data-preview="pr95-l4-full" data-role={role}
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
-    <header className="topbar pr95-preview-header">
-      <div><h1>HopHDND · Bản xem thử V2</h1>
-        <p>Bản xem thử · Dữ liệu giả — không đăng nhập, không kết nối Firebase/Google Sheets</p></div>
-      <div className="pr95-preview-role">
-        <label htmlFor="pr95-role">Vai trò <strong>MÔ PHỎNG</strong></label>
-        <select id="pr95-role" aria-label="Vai trò mô phỏng" value={role}
-          onChange={event=>switchRole(event.currentTarget.value as Role)}>
-          <option value="admin">Quản trị (1 admin mô phỏng)</option>
-          <option value="guest">Khách ẩn danh mô phỏng</option>
-        </select>
+    <header className="pr95-preview-header">
+      <div className="pr95-preview-product" aria-label="HopHDND bản xem thử">
+        HopHDND <span>UI V3 · DEMO</span>
+      </div>
+      <nav className="nav-tabs primary-section-switcher pr95-preview-nav"
+        aria-label="Hai phần dữ liệu chính">
+        {nav.map(entry=><button key={entry.key} type="button"
+          className={'primary-section-card'+(page===entry.key?' active':'')}
+          aria-current={page===entry.key?'page':undefined}
+          onClick={()=>openPage(entry.key)}>
+          <span className="section-card-copy"><strong className="section-card-title">{entry.label}</strong></span>
+          {page===entry.key&&<span className="section-card-state">Đang xem</span>}
+        </button>)}
+      </nav>
+      <div className="pr95-preview-gear-zone" ref={gearZone}>
+        <button type="button" className="pr95-preview-gear" aria-label="Mở cài đặt demo"
+          aria-haspopup="true" aria-controls="pr95-preview-gear-menu" aria-expanded={menuOpen}
+          onClick={()=>setMenuOpen(open=>!open)}>⚙</button>
+        {menuOpen&&<div className="pr95-preview-gear-menu" id="pr95-preview-gear-menu"
+          aria-label={admin?'Công cụ quản trị mô phỏng':'Cài đặt khách'}>
+          {admin?<>
+            <div className="pr95-preview-menu-user"><strong>Quản trị viên mô phỏng</strong>
+              Không đăng nhập Google · chỉ dữ liệu giả</div>
+            {PREVIEW_ADMIN_TOOLS.map(tool=><button key={tool.key} type="button"
+              onClick={()=>openPage(tool.key)}>{tool.label}</button>)}
+            <div className="pr95-preview-menu-footer">
+              <button type="button" onClick={()=>switchRole('guest')}>Đăng xuất mô phỏng</button>
+            </div>
+          </>:<button type="button" onClick={()=>switchRole('admin')}>
+            Đăng nhập quản trị (mô phỏng)</button>}
+        </div>}
       </div>
     </header>
-    <div className="pr95-preview-safety" role="note">
-      <strong>CHỈ DEMO BỘ NHỚ.</strong> Không xác thực thật, không khóa lease/CAS server,
-      không lưu Firebase, không nạp dữ liệu thật. Quyền sửa chỉ minh họa trên cùng trang trình duyệt.
-    </div>
-    <nav className="pr95-preview-nav" aria-label="Điều hướng bản xem thử">
-      {nav.filter(entry=>admin||!['permissions','settings'].includes(entry.key)).map(entry=>
-        <button key={entry.key} type="button" aria-current={page===entry.key?'page':undefined}
-          onClick={()=>openPage(entry.key)}>{entry.label}</button>)}
-    </nav>
     <main className="pr95-preview-main">
-      <div className="pr95-preview-context">
-        <span>Vai trò: <strong>{admin?'Quản trị mô phỏng':'Khách mô phỏng'}</strong></span>
+      {admin&&<div className="pr95-preview-context" role="note">
+        <span>Quản trị <strong>MÔ PHỎNG</strong></span>
         <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
-        <span>Quyền theo ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
-        <span>Dữ liệu chỉ trong RAM · Lượt sửa khách: <strong data-testid="guest-edits">{guestEditCount}</strong></span>
-      </div>
-      {notice&&<p className="notice" role="status">{notice}</p>}
+        <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
+        <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
+      </div>}
+      <span data-testid="guest-edits" className="pr95-preview-qa-only" hidden>{guestEditCount}</span>
+      {notice&&<p className="notice pr95-preview-notice" role="status">{notice}</p>}
+      {dirtyIds.size>0&&<div className="pr95-preview-unsaved" role="status">
+        <span>{dirtyIds.size} hồ sơ đã sửa · Chưa xác nhận (RAM)</span>
+        <div><button type="button" onClick={discardRAM}>Bỏ thay đổi</button>
+          <button type="button" onClick={()=>void saveRAM()}>Lưu trong RAM</button></div>
+      </div>}
       {page==='reports'&&<section aria-label="Năm bảng báo cáo tổng hợp">
         <div className="pr95-preview-section-heading">
           <h2>Báo cáo tổng hợp</h2>
