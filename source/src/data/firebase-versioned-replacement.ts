@@ -125,6 +125,193 @@ export async function stageDatasetReplacement(
     throw Error('Không xác minh được backup riêng tư sau khi ghi vào Firebase.');
   return {operationId,manifest,expected:original.active,baseline,preview,fileName};
 }
+
+/**
+ * API-CHANGE-01 BACKEND-ONLY PROTOTYPE: no client may activate it until the
+ * signature/confirmation are ACKed and the emulator security suite passes.
+ * Freeze a populated legacy dataset using the existing admin freeze workflow
+ * BEFORE calling prepare; never freeze as an unannounced side effect here.
+ */
+export interface InitialActivationApproval {
+  operationId:string;manifest:DatasetGenerationManifest;
+  legacyBaseline:string;legacyRowCount:number;
+  freezeRevision:number;freezeEpoch:number;
+  preview:ReplacementPreview;fileName:string;
+}
+type LegacyFreezeEvidence={mode:string;revision:number;epoch:number;closedAt:number};
+type LegacyBackup={
+  legacy:{items:Record<string,unknown>;permissions:unknown;editLocks:unknown};
+  freeze:LegacyFreezeEvidence;baseline:string;manifest:DatasetGenerationManifest
+};
+const freezeEvidence=(input:unknown):LegacyFreezeEvidence=>{
+  const freeze=record(input) as unknown as LegacyFreezeEvidence;
+  if(freeze.mode!=='FROZEN'||!Number.isSafeInteger(freeze.revision)||
+    freeze.revision<1||!Number.isSafeInteger(freeze.epoch)||freeze.epoch<1||
+    !Number.isSafeInteger(freeze.closedAt)||freeze.closedAt<1)
+    throw Error('Phải đóng băng và xác nhận revision/epoch trên Firebase trước khi khởi tạo V2.');
+  return {mode:freeze.mode,revision:freeze.revision,
+    epoch:freeze.epoch,closedAt:freeze.closedAt};
+};
+const legacyState=async(database:Database)=>{
+  const [freeze,items,permissions,editLocks]=await Promise.all([
+    get(ref(database,'hdnd/freezeControl')),get(ref(database,'hdnd/items')),
+    get(ref(database,'hdnd/permissions')),get(ref(database,'hdnd/editLocks'))
+  ]);
+  const frozen=freezeEvidence(freeze.val());
+  const entries=record(items.val());
+  if(Object.keys(entries).length<1||Object.keys(entries).length>1000)
+    throw Error('Legacy phải có 1–1.000 hồ sơ trước khi khởi tạo thế hệ.');
+  const rows=Object.entries(entries).map(([key,value])=>{
+    const row=validateFirebaseItem(value);
+    if(row.recordId!==key)throw Error('Khóa legacy và recordId không khớp: '+key);
+    return row;
+  });
+  const second=freezeEvidence((await get(ref(database,'hdnd/freezeControl'))).val());
+  if(stable(second)!==stable(frozen))
+    throw Error('Trạng thái đóng băng thay đổi trong khi chụp dữ liệu legacy.');
+  return {legacy:{items:entries,permissions:permissions.val(),editLocks:editLocks.val()},
+    freeze:frozen,rows};
+};
+const legacyHash=async(value:unknown):Promise<string>=>{
+  if(!globalThis.crypto?.subtle)throw Error('Không có SHA-256 để xác minh backup legacy.');
+  const bytes=new TextEncoder().encode(stable(value));
+  const digest=new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes));
+  return Array.from(digest,b=>b.toString(16).padStart(2,'0')).join('');
+};
+/** Staging and backup are immutable private RTDB strings; neither changes active. */
+export async function prepareInitialDatasetActivation(
+  database:Database,user:User|null,items:readonly Item[],operationId:string,
+  fileName:string
+):Promise<InitialActivationApproval>{
+  adminGuard(user);
+  if(!/^[^\\/]{1,180}\\.xlsx$/i.test(fileName))
+    throw Error('Cần tên file Excel .xlsx hợp lệ.');
+  const manifest=await createDatasetManifest(items,operationId);
+  const v2Root=ref(database,DATASET_V2_PATH);
+  if((await get(ref(database,DATASET_V2_PATH+'/active'))).exists())
+    throw Error('V2 đã có con trỏ hoạt động; không được khởi tạo lần thứ hai.');
+  const snapshot=await legacyState(database);
+  const baseline=await legacyHash({legacy:snapshot.legacy,freeze:snapshot.freeze});
+  const preview=previewDatasetReplacement(snapshot.rows,items);
+  const candidateRef=ref(database,DATASET_V2_PATH+'/candidates/'+operationId);
+  const candidateJson=JSON.stringify({items:keyed(items),manifest});
+  if(candidateJson.length>5000000)throw Error('Ứng viên lớn hơn 5 MB.');
+  const candidateWrite=await runTransaction(candidateRef,raw=>
+    raw===null?candidateJson:raw===candidateJson?undefined:undefined,
+    {applyLocally:false});
+  if(!candidateWrite.committed&&candidateWrite.snapshot.val()!==candidateJson)
+    throw Error('operationId đã được dùng với ứng viên khác.');
+  const readback=record(JSON.parse(String((await get(candidateRef)).val())));
+  if(stable(readback.manifest)!==stable(manifest))
+    throw Error('Manifest trong staging không khớp.');
+  await verifyCandidateServerReadback(readback.items,manifest);
+  const sealed:LegacyBackup={legacy:snapshot.legacy,freeze:snapshot.freeze,
+    baseline,manifest};
+  const backupJson=stable(sealed);
+  if(backupJson.length>5000000)throw Error('Backup legacy lớn hơn 5 MB.');
+  const backupRef=ref(database,DATASET_V2_PATH+'/legacyBackups/'+operationId);
+  const stored=await runTransaction(backupRef,raw=>
+    raw===null?backupJson:undefined,{applyLocally:false});
+  if(!stored.committed&&stored.snapshot.val()!==backupJson)
+    throw Error('operationId đã có backup legacy khác; không ghi đè.');
+  if((await get(backupRef)).val()!==backupJson)
+    throw Error('Không đọc lại được backup legacy riêng tư.');
+  const confirmed=await legacyState(database);
+  if(await legacyHash({legacy:confirmed.legacy,freeze:confirmed.freeze})!==baseline)
+    throw Error('Legacy đã thay đổi sau khi staging; hủy phê duyệt.');
+  if((await get(ref(database,DATASET_V2_PATH+'/active'))).exists())
+    throw Error('Tab khác đã kích hoạt V2 trong khi lập backup.');
+  void v2Root; // No root write occurs during prepare.
+  return {operationId,manifest,legacyBaseline:baseline,
+    legacyRowCount:snapshot.rows.length,freezeRevision:snapshot.freeze.revision,
+    freezeEpoch:snapshot.freeze.epoch,preview,fileName};
+}
+/** First V2 pointer install: server Rules re-check freeze revision at COMMIT. */
+export async function commitInitialDatasetActivation(
+  database:Database,user:User|null,approval:InitialActivationApproval,
+  confirmation:string
+):Promise<ReplacementOutcome>{
+  adminGuard(user);
+  const {operationId,manifest}=approval;
+  if(confirmation!=='KHOI TAO V2 '+operationId+' '+approval.legacyRowCount+
+      ' '+approval.preview.newCount)
+    throw Error('Xác nhận khởi tạo V2 không khớp mã và số hồ sơ.');
+  if(approval.preview.oldCount!==approval.legacyRowCount||
+    approval.preview.newCount!==manifest.rowCount||
+    manifest.operationId!==operationId||manifest.generationId!=='gen_'+operationId)
+    throw Error('Phiếu phê duyệt khởi tạo V2 không nhất quán.');
+  const candidateJson=(await get(ref(database,DATASET_V2_PATH+
+    '/candidates/'+operationId))).val();
+  const backupJson=(await get(ref(database,DATASET_V2_PATH+
+    '/legacyBackups/'+operationId))).val();
+  if(typeof candidateJson!=='string'||typeof backupJson!=='string')
+    throw Error('Thiếu staging hoặc backup legacy đã xác minh.');
+  const candidate=record(JSON.parse(candidateJson));
+  const backup=record(JSON.parse(backupJson)) as unknown as LegacyBackup;
+  if(stable(candidate.manifest)!==stable(manifest)||
+    stable(backup.manifest)!==stable(manifest)||
+    backup.baseline!==approval.legacyBaseline||
+    backup.freeze.revision!==approval.freezeRevision||
+    backup.freeze.epoch!==approval.freezeEpoch)
+    throw Error('Bản xác minh ứng viên/backup không còn trùng phê duyệt.');
+  await verifyCandidateServerReadback(candidate.items,manifest);
+  if(await legacyHash({legacy:backup.legacy,freeze:backup.freeze})!==backup.baseline)
+    throw Error('Backup legacy không nguyên vẹn theo SHA-256.');
+  const live=await legacyState(database);
+  if(await legacyHash({legacy:live.legacy,freeze:live.freeze})!==approval.legacyBaseline)
+    throw Error('Legacy hoặc thời điểm đóng băng đã thay đổi; không kích hoạt V2.');
+  const rootRef=ref(database,DATASET_V2_PATH);
+  const releaseCache=await holdTransactionCache(rootRef);
+  let reason='';
+  let result:Awaited<ReturnType<typeof runTransaction>>|null=null;
+  try{
+    result=await runTransaction(rootRef,raw=>{
+      if(!raw){reason='Không còn staging/backup tại V2.';return undefined;}
+      const source=raw as Partial<V2Snapshot>&{
+        legacyBackups?:Record<string,string>;
+      };
+      if(source.active||source.generations?.[manifest.generationId]||
+        source.operations?.[operationId]||
+        source.candidates?.[operationId]!==candidateJson||
+        source.legacyBackups?.[operationId]!==backupJson){
+        reason='Đã có generation, operation hoặc staging/backup thay đổi.';return undefined;
+      }
+      const hydrated=Object.fromEntries(Object.entries(candidate.items as Record<string,Item>)
+        .map(([id,item])=>[id,{...item,operationId,
+          updatedAt:serverTimestamp(),updatedBy:user!.uid}]));
+      return {...source,
+        generations:{...(source.generations??{}),
+          [manifest.generationId]:{items:hydrated}},
+        permissions:{...(source.permissions??{}),
+          [manifest.generationId]:{columns:{}}},
+        active:{generationId:manifest.generationId,operationId,revision:1,
+          rowCount:manifest.rowCount,digest:manifest.digest},
+        bootstrap:{operationId,freezeRevision:approval.freezeRevision,
+          freezeEpoch:approval.freezeEpoch,legacyBaseline:approval.legacyBaseline},
+        operations:{...(source.operations??{}),[operationId]:{
+          status:'COMMITTED',from:'legacy',to:manifest.generationId,at:Date.now()}}
+      };
+    },{applyLocally:false}).catch(error=>{
+      reason=error instanceof Error?error.message:String(error);return null;
+    });
+  }finally{releaseCache();}
+  const state=await resolveDatasetOperation(database,operationId);
+  if(state.status==='committed-active'&&state.generationId===manifest.generationId){
+    if(result?.committed){
+      const rows=(await get(ref(database,DATASET_V2_PATH+
+        '/generations/'+manifest.generationId+'/items'))).val();
+      const pure=Object.fromEntries(Object.entries(record(rows)).map(
+        ([id,value])=>[id,validateFirebaseItem(value)]));
+      await verifyCandidateServerReadback(pure,manifest);
+    }
+    return {status:result?.committed?'committed':'already-committed',operationId};
+  }
+  if(state.status==='unknown')return {status:'unknown',operationId};
+  if(state.status==='committed-historical')
+    throw Error('Khởi tạo đã COMMITTED nhưng không còn là thế hệ hiện tại.');
+  throw Error(reason||'Khởi tạo V2 bị từ chối; giữ nguyên dữ liệu legacy.');
+}
+
 export async function readStagedDataset(database:Database,approval:ReplacementApproval):Promise<Item[]> {
   const raw=record(JSON.parse(String((await get(ref(database,DATASET_V2_PATH+'/candidates/'+approval.operationId))).val())));
   await verifyCandidateServerReadback(raw.items,approval.manifest);
