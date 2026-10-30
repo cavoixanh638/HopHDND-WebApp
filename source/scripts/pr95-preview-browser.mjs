@@ -183,7 +183,7 @@ try{
   await screenshot('pr95-l4-mobile-reports.png');
   await ensure('!document.documentElement.classList.contains("is-printing")','no print state');
   await ensure('!document.querySelector("script[src*=firebase]")','no Firebase network bootstrap');
-  const forbidden=network.filter(url=>/firebaseio|firebasedatabase|docs\\.google\\.com\\/spreadsheets|identitytoolkit|securetoken|sheets\\.googleapis\\.com/i.test(url));
+  const forbidden=network.filter(url=>['firebaseio','firebasedatabase','docs.google.com/spreadsheets','identitytoolkit','securetoken','sheets.googleapis.com'].some(fragment=>url.toLowerCase().includes(fragment)));
   if(forbidden.length)throw Error('PR95_L4_FORBIDDEN_PRODUCTION_REQUEST '+JSON.stringify(forbidden.slice(0,12)));
   if(logs.length)console.log('PR95_L4_BROWSER_CONSOLE_ERRORS',logs.slice(0,3));
   console.log('PR95_L4_FULL_PREVIEW_BROWSER_PASS '+JSON.stringify({
