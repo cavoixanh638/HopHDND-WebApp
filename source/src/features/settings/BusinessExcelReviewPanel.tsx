@@ -12,8 +12,8 @@ import {datasetPreviewFingerprint} from '../../data/dataset-preview-fingerprint'
 
 /** Step A only: no Firebase write is available in this component. */
 export function BusinessExcelReviewPanel({current,versioned}:{current:readonly Item[];
-  versioned?:{database:Database;user:User|null;active:ActiveDatasetPointer;
-    reports:readonly ReportConfig[];enabled:boolean}}){
+  versioned?:{database:Database;user:User|null;active?:ActiveDatasetPointer|null;
+    reports:readonly ReportConfig[];enabled:boolean;readyForMutation:boolean}}){
   const [file,setFile]=useState<{name:string;bytes:Uint8Array;inspection:BusinessExcelInspection}|null>(null);
   const [sheet,setSheet]=useState('');
   const [result,setResult]=useState<BusinessExcelResult|null>(null);
@@ -54,7 +54,7 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
   };
   return <section className="card business-excel-review">
     <h3>Kiểm tra file Excel nghiệp vụ (chưa áp dụng)</h3>
-    <p>Chỉ đọc file và lập bản xem trước; chưa tạo dữ liệu thử trên Firebase, chưa sao lưu và chưa có nút thay toàn bộ. Không dùng mẫu kỹ thuật recordId/documentKind.</p>
+    <p>Chọn sheet, xác minh toàn bộ cột A–O và xem trước trước khi ghi. Chỉ tài khoản quản trị trên Firebase Emulator mới được staging, kích hoạt, thay thế hoặc khôi phục; không dùng mẫu recordId kỹ thuật.</p>
     <button type="button" className="button ghost" onClick={download}>Tải mẫu Excel A–O</button>
     <label className="field">Chọn file .xlsx
       <input type="file" accept=".xlsx" onChange={e=>{
@@ -77,7 +77,7 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
       Dữ liệu hiện tại đã thay đổi sau khi kiểm tra Excel. Bản so sánh cũ không còn hiệu lực;
       hãy bấm “Kiểm tra toàn bộ file” để đối chiếu lại. Không áp dụng bản xem trước cũ.
     </p>}
-    {result&&comparison&&reviewedSnapshot===currentSnapshot&&<section aria-label="Bản xem trước chưa áp dụng">
+    {result&&comparison&&<section aria-label="Bản xem trước chưa áp dụng">
       <h4>Dữ liệu thử — chưa áp dụng</h4>
       <p><strong>{comparison.newCount}</strong> hồ sơ mới / {comparison.oldCount} đang sử dụng;
         NQ {comparison.totals.total.nq} (QPPL {comparison.totals.total.qppl}, HC {comparison.totals.total.hc}),
@@ -97,9 +97,11 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
       {versioned?<VersionedExcelReplacementPanel key={file?.name+':'+sheet+':'+reviewedSnapshot}
         database={versioned.database} user={versioned.user} active={versioned.active}
         reports={versioned.reports} enabled={versioned.enabled}
+        readyForMutation={versioned.readyForMutation}
+        comparisonStale={reviewedSnapshot!==currentSnapshot}
         fileName={file?.name??''} current={current} items={result.items}/>
-      :<p className="notice">Chưa có thế hệ Firebase hoạt động để staging an toàn;
-        không áp dụng bản Excel vào dữ liệu thực.</p>}
+      :<p className="notice">Chỉ hỗ trợ staging/kích hoạt qua Firebase Emulator trong phiên quản trị đã xác thực;
+        không áp dụng bản Excel vào production.</p>}
     </section>}
   </section>;
 }

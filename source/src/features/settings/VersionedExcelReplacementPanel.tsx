@@ -1,13 +1,16 @@
 import {useState} from 'react';
-import type {Database} from 'firebase/database';
+import {get,ref,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item,ReportConfig} from '../../../shared/types';
 import {ReportTable} from '../reports/ReportTable';
 import {datasetPreviewFingerprint} from '../../data/dataset-preview-fingerprint';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
-  resolveDatasetOperation,restoreDatasetBackup,type ReplacementApproval}
+  prepareInitialDatasetActivation,commitInitialDatasetActivation,
+  resolveDatasetOperation,restoreDatasetBackup,type ReplacementApproval,
+  type InitialActivationApproval}
   from '../../data/firebase-versioned-replacement';
 import type {ActiveDatasetPointer} from '../../data/dataset-replacement-integrity';
+import {activeEditLeaseCount,readFreeze,type FreezeControl} from '../../data/freeze-control';
 
 /** UI-only presentation of the L1 ACKed API-CHANGE-02 contract. */
 export type OperationViewStatus =
@@ -61,10 +64,14 @@ export async function readOperationView(database:Database,operationId:string):Pr
 
 /** Explicitly opt-in during emulator QA only. No production action is exposed. */
 export function VersionedExcelReplacementPanel({database,user,items,current,
-  fileName,reports,active,enabled}:{database:Database;user:User|null;items:readonly Item[];
+  fileName,reports,active,enabled,readyForMutation=true,comparisonStale=false}:{
+  database:Database;user:User|null;items:readonly Item[];
   current:readonly Item[];fileName:string;reports:readonly ReportConfig[];
-  active:ActiveDatasetPointer;enabled:boolean}){
-  const [approval,setApproval]=useState<ReplacementApproval|null>(null);
+  active?:ActiveDatasetPointer|null;enabled:boolean;
+  readyForMutation?:boolean;comparisonStale?:boolean;
+}){
+  const [approval,setApproval]=useState<ReplacementApproval|InitialActivationApproval|null>(null);
+  const [initialFreeze,setInitialFreeze]=useState<FreezeControl|null>(null);
   const [staged,setStaged]=useState<Item[]|null>(null);
   const [confirm,setConfirm]=useState('');
   const [backupOperation,setBackupOperation]=useState('');
@@ -78,30 +85,67 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const [submittedRestore,setSubmittedRestore]=useState<string|null>(null);
   const [baseline,setBaseline]=useState('');
   const now=datasetPreviewFingerprint(current);
-  const stale=!!approval&&(baseline!==now||active.generationId!==approval.expected.generationId||
-    active.operationId!==approval.expected.operationId||active.revision!==approval.expected.revision||
-    active.rowCount!==approval.expected.rowCount||active.digest!==approval.expected.digest);
+  const isInitial=!!approval&&!('expected' in approval);
+  const stale=!!approval&&(comparisonStale||baseline!==now||
+    (isInitial?!!active:!active||active.generationId!==(approval as ReplacementApproval).expected.generationId||
+    active.operationId!==(approval as ReplacementApproval).expected.operationId||
+    active.revision!==(approval as ReplacementApproval).expected.revision||
+    active.rowCount!==(approval as ReplacementApproval).expected.rowCount||
+    active.digest!==(approval as ReplacementApproval).expected.digest));
+  const allowed=enabled&&readyForMutation;
+  const frozen=async(requireFrozen:boolean):Promise<FreezeControl|null>=>{
+    if(!requireFrozen)return null;
+    const confirmed=await readFreeze(database);
+    if(confirmed.mode!=='FROZEN'||confirmed.revision<1||confirmed.epoch<1||
+      confirmed.closedAt<=0)throw Error('Phải Đóng băng (FROZEN) và nhận ACK Firebase trước khi kích hoạt V2.');
+    const activeLeases=await activeEditLeaseCount(database);
+    if(activeLeases>0)throw Error('Còn '+activeLeases+' lease đang hoạt động; dừng kích hoạt V2.');
+    return confirmed;
+  };
   const stage=async()=>{
-    if(!enabled||!user)return;
+    // Disabled controls alone are not a transaction fence. Also refuse a
+    // forced handler invocation when previous CAS ACK is still UNKNOWN.
+    if(!allowed||!user||comparisonStale||
+      (operationView?.status==='unknown'&&
+        (submittedCommit===approval?.operationId||submittedRestore!==null)))return;
     setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
     setSubmittedCommit(null);setSubmittedRestore(null);
-    setApproval(null);setStaged(null);setConfirm('');
+    setApproval(null);setStaged(null);setConfirm('');setInitialFreeze(null);
     try{
+      const freeze=await frozen(!active);
       const operationId='excel_'+crypto.randomUUID().replaceAll('-','_');
-      const result=await stageDatasetReplacement(database,user,items,operationId,fileName);
-      const serverItems=await readStagedDataset(database,result);
-      setApproval(result);setStaged(serverItems);setBaseline(now);
-      setMessage('Đã ghi staging, xác minh máy chủ và backup riêng tư. Chưa chuyển thế hệ.');
+      const result=active
+        ?await stageDatasetReplacement(database,user,items,operationId,fileName)
+        :await prepareInitialDatasetActivation(database,user,items,operationId,fileName);
+      const serverItems=await readStagedDataset(database,result as ReplacementApproval);
+      // The candidate/backup were independently read back by the backend.
+      // Re-check active legacy freeze before allowing first-time confirmation.
+      if(!active){
+        const latest=await frozen(true);
+        if(!latest||latest.revision!==freeze?.revision||latest.epoch!==freeze.epoch)
+          throw Error('Freeze revision/epoch đã đổi khi lập staging; không được kích hoạt.');
+      }
+      setInitialFreeze(freeze);setApproval(result);setStaged(serverItems);setBaseline(now);
+      setMessage(active?'Đã ghi staging, xác minh máy chủ và backup thế hệ riêng tư. Chưa thay dữ liệu.':
+        'Đã xác minh staging SHA-256, backup legacy riêng tư và trạng thái FROZEN; chưa kích hoạt V2.');
     }catch(e){setMessage(e instanceof Error?e.message:'Không tạo được staging và backup.');}
     finally{setBusy(false);}
   };
   const commit=async()=>{
-    if(!approval||!enabled||!user||stale||submittedCommit===approval.operationId)return;
+    if(!approval||!allowed||!user||stale||submittedCommit===approval.operationId)return;
     setSubmittedCommit(approval.operationId);
     setBusy(true);setMessage('');setOperationView(null);
     setLookupOperation(approval.operationId);
     try{
-      const outcome=await commitDatasetReplacement(database,user,approval,confirm);
+      if(!('expected' in approval)){
+        const latest=await frozen(true);
+        if(!initialFreeze||latest?.revision!==initialFreeze.revision||
+          latest.epoch!==initialFreeze.epoch)
+          throw Error('Freeze revision/epoch đã thay đổi. Phê duyệt khởi tạo không còn hợp lệ.');
+      }
+      const outcome='expected' in approval
+        ?await commitDatasetReplacement(database,user,approval,confirm)
+        :await commitInitialDatasetActivation(database,user,approval,confirm);
       if(outcome.status==='unknown'){
         setOperationView(presentDatasetOperation(null,approval.operationId));
         return; // Lost ACK: never send the commit again automatically.
@@ -112,14 +156,14 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       const verified=observed.status==='not-committed'
         ?presentDatasetOperation(null,approval.operationId):observed;
       setOperationView(verified);
-      if(verified.committed)setBackupOperation(approval.operationId);
+      if(verified.committed&&'expected' in approval)setBackupOperation(approval.operationId);
     }catch(e){
       // L1 can throw when a valid COMMITTED operation becomes historical
       // between the transaction and acknowledgment. One READ ONLY lookup
       // distinguishes that successful historical commit from a genuine unknown.
       const observed=await readOperationView(database,approval.operationId);
       setOperationView(observed.committed?observed:presentDatasetOperation(null,approval.operationId));
-      if(observed.committed)setBackupOperation(approval.operationId);
+      if(observed.committed&&'expected' in approval)setBackupOperation(approval.operationId);
       else setMessage('Không xác minh được kết quả ghi: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự gửi lại thao tác.');
     }finally{setBusy(false);}
@@ -135,12 +179,24 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     try{
       const observed=await readOperationView(database,operationId);
       setOperationView(observed);
-      // Recovery after reload/lost ACK requires a fresh server confirmation.
-      if(observed.committed&&approval?.operationId===operationId)setBackupOperation(operationId);
+      // Recovery after reload/lost ACK requires a server-verified COMMITTED
+      // operation AND an existing private V2 backup for that operation.
+      // Legacy first activation has a DIFFERENT private legacyBackups path
+      // and must never be offered as an ordinary V2 rollback candidate.
+      if(observed.committed&&active){
+        try{
+          const backup=(await get(ref(database,'hdnd/datasetV2/backups/'+operationId))).val();
+          if(typeof backup==='string'&&backup.length>0)setBackupOperation(operationId);
+          else setMessage('Không có backup V2 riêng tư cho mã này; không mở khôi phục.');
+        }catch{
+          setMessage('Chưa xác minh được backup riêng tư; không mở khôi phục khi thiếu quyền hoặc mạng.');
+        }
+      }
     }finally{setBusy(false);}
   };
   const restore=async()=>{
-    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||
+    if(!allowed||!active||!user||!backupOperation||
+      !/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||
       submittedRestore===restoreId)return;
     setSubmittedRestore(restoreId);
     setBusy(true);setMessage('');setOperationView(null);
@@ -163,9 +219,11 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     }finally{setBusy(false);}
   };
   return <section className="card" aria-label="Thử nghiệm thế hệ Firebase">
-    <h4>Thay dữ liệu theo thế hệ — chỉ Firebase Emulator</h4>
+    <h4>{active?'Thay dữ liệu theo thế hệ':'Kích hoạt V2 lần đầu từ legacy'} — chỉ Firebase Emulator</h4>
     <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
-    <button className="button primary" disabled={busy||!enabled||
+    {!active&&<p role="status">Chỉ sử dụng sau khi quản trị đã chủ động đóng băng FROZEN ở mục Quản trị; không tự chốt dữ liệu hoặc kích hoạt V2.</p>}
+    {!readyForMutation&&<p role="alert" className="notice">Còn bản nháp, thao tác đang chạy hoặc dữ liệu chưa được xác minh; không ghi staging/commit.</p>}
+    <button className="button primary" disabled={busy||!allowed||comparisonStale||
       (operationView?.status==='unknown'&&
         (submittedCommit===approval?.operationId||submittedRestore!==null))}
       onClick={()=>void stage()}>
@@ -185,28 +243,33 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
         sourceLabel="DỮ LIỆU THỬ — CHƯA ÁP DỤNG" onSelect={()=>{}}/>)}
       {stale&&<p role="alert" className="notice">Thế hệ hoặc dữ liệu đang dùng đã thay đổi;
         bản phê duyệt cũ bị vô hiệu hóa. Tạo staging mới, không nhập lại mã thao tác cũ.</p>}
-      <p>Nhập chính xác: <code>{'THAY '+approval.operationId+' '+approval.preview.oldCount+
+      <p>Nhập chính xác: <code>{(isInitial?'KHOI TAO V2 ':'THAY ')+approval.operationId+' '+
+        (isInitial?(approval as InitialActivationApproval).legacyRowCount:approval.preview.oldCount)+
         ' '+approval.preview.newCount}</code></p>
       <input value={confirm} onChange={e=>setConfirm(e.currentTarget.value)}
-        aria-label="Xác nhận thay thế toàn bộ"/>
-      <button className="button danger" disabled={busy||stale||!enabled||
+        aria-label={isInitial?'Xác nhận kích hoạt V2 lần đầu':'Xác nhận thay thế toàn bộ'}/>
+      <button className="button danger" disabled={busy||stale||!allowed||
         submittedCommit===approval.operationId||
-        confirm!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount}
-        onClick={()=>void commit()}>Chuyển thế hệ bằng CAS</button>
+        confirm!==(isInitial?'KHOI TAO V2 ':'THAY ')+approval.operationId+' '+
+          (isInitial?(approval as InitialActivationApproval).legacyRowCount:approval.preview.oldCount)+
+          ' '+approval.preview.newCount}
+        onClick={()=>void commit()}>{isInitial?'Kích hoạt V2 lần đầu bằng CAS':'Chuyển thế hệ bằng CAS'}</button>
     </section>}
     <div className="field"><label htmlFor="v2-operation-lookup">Tra cứu operationId (không tự gửi lại)</label>
       <input id="v2-operation-lookup" value={lookupOperation} onChange={e=>setLookupOperation(e.currentTarget.value)}
         placeholder={approval?.operationId??'Mã thao tác trước đó'} />
       <button className="button ghost" disabled={busy||!enabled} onClick={()=>void check()}>Tra cứu trạng thái operationId</button>
     </div>
-    {backupOperation&&<section>
+    {backupOperation&&active&&<section>
       <h4>Khôi phục từ backup riêng tư</h4>
-      <p>Nhập mã thao tác khôi phục mới (12–80 ký tự), rồi xác nhận riêng.</p>
+      <p>Backup của thao tác <code>{backupOperation}</code> đã được xác minh.
+        Nhập mã thao tác khôi phục mới (12–80 ký tự), rồi xác nhận riêng.
+        Kích hoạt V2 từ legacy không phải backup thay thế thế hệ thông thường.</p>
       <input value={restoreId} onChange={e=>setRestoreId(e.currentTarget.value)}
         aria-label="Mã khôi phục mới"/>
       <input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.currentTarget.value)}
         aria-label="Xác nhận khôi phục" placeholder="KHOI PHUC mã_khôi_phục"/>
-      <button className="button danger" disabled={busy||!enabled||submittedRestore===restoreId||
+      <button className="button danger" disabled={busy||!allowed||submittedRestore===restoreId||
         !/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||restoreConfirm!=='KHOI PHUC '+restoreId}
         onClick={()=>void restore()}>Khôi phục bằng CAS</button>
     </section>}
