@@ -126,3 +126,46 @@ https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41004145273
 - Tên bước workflow hiện vẫn là `Browser smoke with mock Sheets and headless Chrome` dù bên trong đã là Firebase-only; **đề nghị Luồng 1 đổi nhãn** thành `Browser smoke with real Firebase Emulators and headless Chrome` tại `.github/workflows/verify-source.yml` (ngoài ownership L2), chỉ sửa nhãn, không đổi test logic. Không bắt buộc đổi nhãn để CI PASS.
 
 **Handoff:** Luồng 1 review diff PR #102, chỉ cherry-pick/merge phần L2 script + tài liệu theo đúng ownership vào **nhánh tích hợp PR #95**, không main. Chạy toàn bộ CI tại HEAD tích hợp mới; worker-green `b5db6ab` không thay thế bằng chứng integrated HEAD. PR #95 giữ DRAFT; chưa sẵn sàng GO production cho đến khi toàn bộ release gates khác được chốt.
+---
+
+## 9. L3-AUDIT-GAP-01 — Browser smoke với EXACT exclusive-candidate Rules (30/10/2026)
+
+### Base, ownership và lệnh tích hợp
+
+- **Exact integrated base:** `4f1a5b14140f1ef4b706e535bbccc4eea4730939`. Branch L2 tiếp nối: `pr95/l2-exclusive-rules-browser-audit-20261030` (tạo mới, ban đầu đúng base, không reset các branch trước).
+- **Code SHA đã được CI kiểm chứng:** `95eb4928ae00837d99457775ee646b377b6dd683`.
+- **Draft worker PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/103
+- Chỉ sửa file Luồng 2 sở hữu `source/scripts/smoke-pages-browser.mjs`, và bổ sung phần 9 của `source/docs/tasks/PR95_L2_HANDOFF.md`. **KHÔNG sửa** `source/firebase/database.exclusive-candidate.rules.json`, `firebase.json` chính, backend, Rules khác, workflow/runner, project allowlist, production.
+- L1 là **duy nhất** tích hợp vào PR #95; không merge main, publish/deploy hoặc truy cập production.
+
+### Cách nạp Rules và vì sao cần xác minh 2 lần
+
+Script dùng một `firebase.json` thử nghiệm tạo *runtime* trong thư mục tạm tại `source/.pr95-browser-exclusive-rules-*`, khai báo `database.rules` là đường dẫn tuyệt đối tới **file exclusive-candidate Rules nguyên bản**. Chỉ chạy hai Emulators localhost `127.0.0.1:9000` (RTDB) và `127.0.0.1:9099` (Auth), project `demo-hdnd`. Emulators sống xuyên suốt phiên browser, dừng và xóa config tạm khi test kết thúc.
+
+**Phát hiện an toàn thực tế:** Firebase CLI khởi động demo RTDB với Rules mặc định `{".read":true,".write":true}` dù config thử nghiệm có trỏ file Rules ứng viên. Không được đánh dấu đạt chỉ vì Firebase CLI báo `All emulators ready`. Script kiểm tra Rules ban đầu bằng GET admin `/.settings/rules.json`, ghi log `BROWSER_EXCLUSIVE_RULES_STARTUP_GAP_DETECTED`, sau đó **nạp chính xác nội dung không sửa** của `firebase/database.exclusive-candidate.rules.json` vào **Emulator demo cục bộ duy nhất** bằng PUT `/.settings/rules.json` với `Authorization: Bearer owner`. Đây là bước cài đặt Rules cho **bộ mô phỏng tạm thời**, **không thay đổi file gốc, không deploy production và không nới Rules**. Owner Bearer chỉ sử dụng trên localhost để cài Rules và seed dữ liệu giả; không dùng cho guest assertions.
+
+Ngay sau khi nạp và **sau khi toàn bộ Chrome smoke hoàn tất**, script GET lại **Rules thực tế** trong Emulator với header admin, đối chiếu bằng `isDeepStrictEqual` toàn bộ JSON với file nguyên bản và SHA-256 của JSON. Nếu khác, test FAIL closed.
+
+**Rules source / live SHA-256 đã kiểm chứng cả 2 lần:** `3bb044daef1df129ca46478a70f1895fa76c9bd0400c5069afec5358bbe53ecc`.
+
+### Bằng chứng kiểm tra phân quyền thật và UI thật
+
+Script nạp 54 hồ sơ **giả** vào `hdnd/datasetV2/generations/gen_pr95_browser_smoke_20261030/items`, cùng `hdnd/datasetV2/active`, và các fixture dữ liệu riêng tư có marker để phân biệt với dữ liệu không tồn tại. Nó đọc lại seed bằng owner **chỉ sau khi Rules chính xác đã cài**.
+
+Một tài khoản ẩn danh **thật** được cấp token qua Auth Emulator; dùng token này (không phải owner token) qua REST RTDB để assert:
+- **Được đọc** `hdnd/datasetV2/active` và cả 54 hồ sơ của generation hiện hành, có `NQ01`.
+- **Bị từ chối HTTP 401 Permission denied** tại 7 đích có chủ ý: toàn bộ `datasetV2` parent; `candidates/<operation>`; `backups/<operation>`; `legacyBackups/<operation>`; `operations/<operation>`; `generations/<inactive>/items`; `hdnd/editors`. Không lộ marker dữ liệu riêng tư.
+- Kiểm thử này đặc trưng riêng của Rules ứng viên vì Rules cũ có `hdnd/.read: auth != null` cho người đã đăng nhập.
+
+Trình duyệt Chrome với Auth Emulator/Rules thật vẫn phải chứng minh hai tab UI chính: `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` **54 rows NQ01/NQ54**, `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` **5 tables** + tổng hợp giá trị thật từ fixture; và **toàn bộ các assertion UI/hành vi cũ** (hover, filter, lịch sử, resize, popup, responsive, screenshot). Không thêm GViz, không khôi phục Sheets, không bỏ assertion cũ.
+
+### Exact CI và trạng thái release
+
+**Code SHA `95eb4928ae00837d99457775ee646b377b6dd683`:**
+
+[Verify HopHDND source #41007003009](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41007003009) **SUCCESS**, gồm:
+- Typecheck PASS; Unit tests PASS; Firebase Emulator Rules/race PASS; Pages build PASS; browser smoke thực PASS; kiểm tra các tác vụ UI trước/sau PASS.
+- Log: `BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS` ở `before-auth-and-browser` và `after-browser-smoke` với SHA-256 cùng khớp; `BROWSER_EXCLUSIVE_RULES_GUEST_READ_PASS` (`visibleRows:54`, `privatePathsDenied:7`); `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` (`rows:54`); `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` (`tables:5`); `BROWSER_SMOKE_PASS`.
+- Các lần CI trước bị FAIL **có nguyên nhân cụ thể**: đọc management endpoint thiếu header (403); phát hiện Emulator chạy Rules mở; seed bằng query `auth=owner` bị Rules mới chặn. Đã sửa bằng cách **không nới Rules**: dùng Authorization Bearer header chỉ với Emulator demo, nạp đúng nguồn file và kiểm chứng lại 2 lần.
+
+**Kết luận giới hạn:** Đây là bằng chứng thực cho browser smoke đọc Danh sách/Báo cáo theo thế hệ dưới exclusive-candidate Rules và kiểm thử guest read/privacy. **Không phải** bằng chứng đầy đủ cho hai tab cùng sửa dữ liệu, stale draft/lease, mất ACK hoặc kích hoạt V2 lần đầu — các phần đó cần chứng cứ độc lập theo kế hoạch Luồng 1/3. PR #95 vẫn Draft, không publish/deploy/main merge/production.
