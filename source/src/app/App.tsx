@@ -1,4 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
+import {get,ref} from 'firebase/database';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
 import { GROUP_OPTIONS, TEXT_FIELDS } from '../../shared/field-definitions';
@@ -389,6 +390,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // This examines the REAL App FirebaseController, never fabricates grants.
   if(import.meta.env.MODE==='pages-test'&&typeof window!=='undefined'&&
     ['127.0.0.1','localhost'].includes(window.location.hostname)){
+    (window as Window & {__pr95UiV2L3RightsRead?:()=>Promise<unknown>}).__pr95UiV2L3RightsRead=async()=>({
+      currentGeneration:firebase?.datasetActive?.generationId,
+      server:(firebase?.database&&firebase.datasetActive?
+        (await get(ref(firebase.database,'hdnd/datasetV2/permissions/'+firebase.datasetActive.generationId))).val():null)
+    });
     (window as Window & {__pr95UiV2L3RightsProbe?:()=>unknown}).__pr95UiV2L3RightsProbe=()=>({
       isAdmin:firebase?.isAdmin,userUid:firebase?.user?.uid,epochReady:firebase?.datasetEpochReady,
       connected:firebase?.connected,editingLocked:firebase?.editingLocked,
