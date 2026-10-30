@@ -36,6 +36,35 @@ describe('business A–O Excel must never silently import wrong sheet or malform
     expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[[...BUSINESS_HEADERS]]}]),'Hồ sơ'))
       .toThrow('không chứa hồ sơ');
   });
+  it.each([[7,8,'H'],[11,12,'L']] as const)(
+    'blocks swapped business headers and values at %s/%s even with valid statuses',
+    (left,right,column)=>{
+      const header=[...BUSINESS_HEADERS],values=row();
+      // Both H and I statuses deliberately use legitimate overlapping values.
+      values[7]='Sở chưa trình';values[8]='VP đang thực hiện';
+      [header[left],header[right]]=[header[right],header[left]];
+      [values[left],values[right]]=[values[right],values[left]];
+      const input=file([{name:'Hồ sơ đảo',rows:[header,values]}]);
+      expect(inspectBusinessExcel(input).validSheets).toEqual([]);
+      expect(()=>parseBusinessExcel(input,'Hồ sơ đảo'))
+        .toThrow('Sheet "Hồ sơ đảo", dòng 1, cột '+column+': yêu cầu tiêu đề');
+    }
+  );
+  it('rejects ambiguous generic headings and accepts only explicitly enumerated synonyms',()=>{
+    const ambiguous=[...BUSINESS_HEADERS];
+    ambiguous[7]='Trình';ambiguous[11]='Lãnh đạo';
+    expect(()=>parseBusinessExcel(file([{name:'Sai',rows:[ambiguous,row()]}]),'Sai'))
+      .toThrow('dòng 1, cột H');
+    const leader=[...BUSINESS_HEADERS];leader[11]='Lãnh đạo';
+    expect(()=>parseBusinessExcel(file([{name:'Sai',rows:[leader,row()]}]),'Sai'))
+      .toThrow('dòng 1, cột L');
+    const aliases=[...BUSINESS_HEADERS];
+    aliases[7]='Trình HĐND xây dựng nghị quyết';
+    aliases[8]='Trình HĐND ban hành nghị quyết';
+    aliases[11]='Lãnh đạo Văn phòng';
+    aliases[12]='Lãnh đạo Ủy ban nhân dân';
+    expect(parseBusinessExcel(file([{name:'Đúng',rows:[aliases,row()]}]),'Đúng').count).toBe(1);
+  });
   it('rejects duplicate IDs, missing required text and unrecognized business types',()=>{
     expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[[...BUSINESS_HEADERS],row(),row()]}]),'Hồ sơ'))
       .toThrow('trùng dòng');
