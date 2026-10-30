@@ -112,7 +112,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const columns = activeLayout.columns
     .filter(column=>!column.removed&&(EXCEL_COLUMN_KEYS.includes(column.key)||column.origin==='custom')&&
       (column.visible||(!customizing&&showAllSourceColumns&&EXCEL_COLUMN_KEYS.includes(column.key)))&&
-      (column.key!=='stt'||showAllSourceColumns||customizing||permissionMode))
+      (column.key!=='stt'||showAllSourceColumns||customizing))
     .sort((a,b)=>!customizing&&showAllSourceColumns
       ?(EXCEL_COLUMN_KEYS.includes(a.key)?EXCEL_COLUMN_KEYS.indexOf(a.key):1000+activeLayout.columns.indexOf(a))-
        (EXCEL_COLUMN_KEYS.includes(b.key)?EXCEL_COLUMN_KEYS.indexOf(b.key):1000+activeLayout.columns.indexOf(b))
