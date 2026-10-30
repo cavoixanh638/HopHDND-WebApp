@@ -267,7 +267,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.allowLayout).toBe(false);
     expect(list.props.onSavePermissions).toBeUndefined();
     expect(list.props.onPersistLayout).toBeUndefined();
-    expect(list.props.canEditCell(list.props.items[0].recordId,'note')).toBe(true);
+    expect(list.props.canEditCell('synthetic-granted-row','note')).toBe(true);
     // Even an admin UID loses tool affordances when Firebase connection fails.
     grantAdmin();tree=render();
     firebase.connected=false;tree=render();
