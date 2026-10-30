@@ -29,7 +29,7 @@ describe('V2 L1 real summary chip HTML',()=>{
       kindSelection:null,visibleCount:2,
       onSelect:()=>{},onSelectKind:()=>{},onClear:()=>{}
     }));
-    expect((html.match(/class="item-summary-bucket /g)||[]).toHaveLength(11);
+    expect((html.match(/class="item-summary-bucket /g)||[])).toHaveLength(11);
     expect(html).toMatch(/data-summary-report="party" data-summary-stage="next"[^>]+aria-pressed="true"/);
     expect(html).toContain('Bấm để lọc Trình Thành ủy — Bước tiếp theo; bấm lại để bỏ lọc');
     expect(html).toContain('2/3 nội dung');
