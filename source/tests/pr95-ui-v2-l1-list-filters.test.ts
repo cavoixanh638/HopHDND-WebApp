@@ -89,6 +89,7 @@ describe('V2 L1 toolbar filters independently of other workers',()=>{
     expect(shouldClearListOnEscape(ev(),options)).toBe(true);
     expect(shouldClearListOnEscape(ev({defaultPrevented:true}),options)).toBe(false);
     expect(shouldClearListOnEscape(ev({isComposing:true}),options)).toBe(false);
+    expect(shouldClearListOnEscape(ev({repeat:true}),options)).toBe(false);
     expect(shouldClearListOnEscape(ev({key:'Enter'}),options)).toBe(false);
     expect(shouldClearListOnEscape(ev(),{...options,active:false})).toBe(false);
     expect(shouldClearListOnEscape(ev(),{...options,customizing:true})).toBe(false);
