@@ -106,3 +106,10 @@ No merge/publish, no Firebase Rules/Functions/Hosting deployment, no production 
 5. Independent Codex audit of the final exact HEAD and security proof; do not deploy Firebase Rules/Functions, publish, merge or use business data until release GO.
 
 **Security note:** Server Rules and client compare must jointly block stale writes; a green test of a pure function or a mocked Firebase source is not a substitute for the above. Keeping a functional emulator prototype is not production authorization.
+
+### Lượt 003 — 30/10/2026 — enforce real Rules during versioned replacement QA
+
+- Parser H/I & L/M now validates **position-specific, explicitly allowlisted normalized full headings** (current PR head before this checkpoint: `ccf27190`). Swapped header+values tests reject overlapping statuses and identify sheet/row/column.
+- Implementation in branch includes `src/data/firebase-versioned-replacement.ts`, with real RTDB writes to a V2 staging namespace, readback, private backup, parent-root transaction for pointer+rows, operationId lookup, restore and a V2 emulator test. **The isolated code is not yet the app's active repository.**
+- At `5fb5e60ae6789564cde93cd5f26b8fa8fa43bce7`, removed a temporary diagnostic that replaced nested generation-row `.validate` Rules with `true` in `tests/firebase-versioned-replacement.test.ts`. Every subsequent security test MUST use the unmodified Rules fixture. A PASS with validation disabled is invalid evidence.
+- **Not release-ready:** no verified Firebase-only app wiring; old `hdnd/items` clients are not yet conclusively fenced; generation-level reading/writing/reporting across the full UI is not proven; backup privacy and rollback require exact-HEAD emulator confirmation; failed/unknown commit and stale editors need complete QA. Keep PR Draft, no merge/publish/deploy/live database changes.
