@@ -2209,17 +2209,17 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'V3 guest reload missing');
-  const guestReload=await evaluate(`(()=>{
+  const guestCompactReload=await evaluate(`(()=>{
     const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
     return {inline:!!document.querySelector('.compact-cv-room-line'),
       menu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
       local:localStorage.getItem(key),
       source:localStorage.getItem('hdnd.qa.group-labels-synthetic')};
   })()`);
-  if(guestReload.inline||guestReload.menu||guestReload.local!==null||
-    guestReload.source!==guestInitial.sourceSaved)
-    throw Error('V3 guest reload persisted forbidden column customization: '+JSON.stringify({guestInitial,guestReload}));
-  console.log('V3_GUEST_SHARED_COLUMNS_NO_PRESETS_RELOAD_PASS',JSON.stringify({guestInitial,guestReload}));
+  if(guestCompactReload.inline||guestCompactReload.menu||guestCompactReload.local!==null||
+    guestCompactReload.source!==guestInitial.sourceSaved)
+    throw Error('V3 guest reload persisted forbidden column customization: '+JSON.stringify({guestInitial,guestCompactReload}));
+  console.log('V3_GUEST_SHARED_COLUMNS_NO_PRESETS_RELOAD_PASS',JSON.stringify({guestInitial,guestCompactReload}));
   console.log('GROUPED_STAGED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
 
