@@ -8,13 +8,32 @@ import { compareCatalogValues } from '../../domain/catalog-order';
 import { reportStage,reportStageLabels,type ReportStage } from '../../domain/report-workflow';
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
+import {canonicalStatus} from '../../domain/status-contract';
 
-/** Party middle milestones, pending build decision and non-applicable build NQ
- * share the same muted colors. Office, source and final states remain prominent. */
+/** Report-specific chip wording. These are presentation labels, NEVER Item
+ * statuses or a migration of legacy source cells. Custom report titles stay intact. */
+function stageLabel(config:ReportConfig,stage:ReportStage):string {
+  switch(stage){
+    case 'source':return 'Sở chưa trình';
+    case 'office':return 'VP đang xử lý';
+    case 'next':
+      return config.id==='party'?'Bước tiếp theo':
+        config.id==='build'?'Đã trình, chờ QĐ':'Trạng thái tiếp theo';
+    case 'completed':
+      return config.id==='party'?'Đã có TBKL':
+        config.id==='build'?'Đã có QĐ':
+        ['council','nq','bc'].includes(config.id)?'Hoàn thành':
+          config.completed[0]??reportStageLabels.completed;
+    default:return reportStageLabels[stage];
+  }
+}
+/** Muted report cells: ONLY intermediate Party/Build steps and applicable
+ * exclusions. Read aliases are normalized field-by-field; final states stay bold. */
 const quietPartyMilestones=new Set([
-  'Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL',
+  'Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL',
 ].map(normalizeSearch));
-const quietBuildMilestone=normalizeSearch('Đã trình HĐND, chưa có QĐ');
+const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ');
+const excludedMilestone=normalizeSearch('Không phải trình');
 
 export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; onColumnResize?:(column:string,width:number)=>void }) {
   const heading=()=>{
@@ -61,13 +80,14 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     const completed=[...cells.entries()].reduce((sum,[status,rows])=>sum+(isComplete(status)?rows.length:0),0);
     return {total,completed,percent:total?Math.round(completed/total*100):0};
   };
-  const emphasis=(status:string)=>emphasize
-    ?' report-stage-'+reportStage(status,config)
-      +((config.id==='party'&&quietPartyMilestones.has(normalizeSearch(status)))||
-          (config.id==='build'&&[quietBuildMilestone,normalizeSearch('Không phải trình')].includes(normalizeSearch(status)))||
-          (config.id==='party'&&normalizeSearch(status)===normalizeSearch('Không phải trình'))
-        ?' report-stage-intermediate':'')
-    :'';
+  const emphasis=(status:string)=>{
+    if(!emphasize)return '';
+    const canonical=normalizeSearch(canonicalStatus(config.statusField,status));
+    const quiet=(config.id==='party'&&quietPartyMilestones.has(canonical))||
+      (config.id==='build'&&canonical===quietBuildMilestone)||
+      (['party','build'].includes(config.id)&&canonical===excludedMilestone);
+    return ' report-stage-'+reportStage(status,config)+(quiet?' report-stage-intermediate':'');
+  };
   const widths=config.columnWidths??{};
   const columnWidth=(key:string,fallback:number)=>Math.min(1200,Math.max(80,widths[key]??fallback));
   const allColumnWidths=[columnWidth('__group',230),columnWidth('__total',146),
@@ -118,13 +138,15 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         {(['source','office','next','completed'] as const).filter(stage=>stage!=='next'||hasNextStage).map(stage=>{
           const entries=stageItems[stage];
           const className='report-stage-summary'+(emphasize?' report-stage-'+stage:'');
-          const contents=<><span>{reportStageLabels[stage]}</span><strong>{entries.length}</strong></>;
+          const label=stageLabel(config,stage);
+          const detailTitle=`${config.title} · ${label}`;
+          const contents=<><span>{label}</span><strong>{entries.length}</strong></>;
           return preview
             ?<span key={stage} className={className}>{contents}</span>
             :<button type="button" key={stage} className={className}
               disabled={entries.length===0}
-              aria-label={`${config.title} · ${reportStageLabels[stage]}: ${entries.length} nội dung. Bấm để xem chi tiết`}
-              onClick={()=>onSelect(`${config.title} · ${reportStageLabels[stage]}`,entries)}>
+              aria-label={`${detailTitle}: ${entries.length} nội dung. Bấm để xem chi tiết`}
+              onClick={()=>onSelect(detailTitle,entries)}>
               {contents}
             </button>;
         })}
