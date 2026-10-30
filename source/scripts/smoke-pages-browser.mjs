@@ -589,12 +589,12 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgb(255, 224, 228)'&&
-      colors[1].background==='rgb(254, 249, 195)'&&
-      colors[2].background==='rgb(213, 240, 222)'&&
-      colors[0].color==='rgb(208, 0, 37)'&&
-      colors[1].color==='rgb(133, 77, 14)'&&
-      colors[2].color==='rgb(0, 122, 24)'&&
+      colors[0].background==='rgb(255, 241, 243)'&&
+      colors[1].background==='rgb(255, 248, 233)'&&
+      colors[2].background==='rgb(238, 248, 241)'&&
+      colors[0].color==='rgb(177, 64, 82)'&&
+      colors[1].color==='rgb(128, 92, 34)'&&
+      colors[2].color==='rgb(52, 110, 72)'&&
       !!input&&!!selector&&
       getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
       tones,colors,header:getComputedStyle(th).backgroundColor};
@@ -622,12 +622,12 @@ try{
   if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
-    semanticCells.office.bg!=='rgb(254, 249, 195)'||
-    semanticCells.office.ink!=='rgb(133, 77, 14)')
+    semanticCells.office.bg!=='rgb(255, 248, 233)'||
+    semanticCells.office.ink!=='rgb(128, 92, 34)')
     throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
-  const expectedBorder={ 'report-stage-source':'rgb(208, 0, 37)',
-    'report-stage-office':'rgb(133, 77, 14)',
-    'report-stage-completed':'rgb(0, 122, 24)'};
+  const expectedBorder={ 'report-stage-source':'rgb(177, 64, 82)',
+    'report-stage-office':'rgb(128, 92, 34)',
+    'report-stage-completed':'rgb(52, 110, 72)'};
   for(const cell of semanticCells.statusCells){
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',
       x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
@@ -671,11 +671,11 @@ try{
     const outer=getComputedStyle(td),inner=getComputedStyle(button);
     return {ok:td.matches(':hover')&&!button.matches(':hover')&&
       outer.boxShadow==='none'&&outer.outlineStyle==='none'&&
-      inner.borderTopColor==='rgb(208, 0, 37)'&&
-      inner.boxShadow.includes('rgb(255, 224, 228)')&&
+      inner.borderTopColor==='rgb(177, 64, 82)'&&
+      inner.boxShadow.includes('rgb(255, 241, 243)')&&
       inner.boxShadow.includes('8px 16px')&&
       Math.abs(new DOMMatrixReadOnly(inner.transform).m42+3)<.25&&
-      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(208, 0, 37)',
+      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(177, 64, 82)',
       outerShadow:outer.boxShadow,outerOutline:outer.outlineStyle,
       innerBorder:inner.borderTopColor,innerShadow:inner.boxShadow,
       liftY:new DOMMatrixReadOnly(inner.transform).m42,
@@ -2373,9 +2373,9 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=[
-    {tone:'not-submitted',bg:'rgb(255, 241, 242)',border:'rgb(254, 205, 211)'},
-    {tone:'office',bg:'rgb(255, 251, 235)',border:'rgb(253, 230, 138)'},
-    {tone:'done',bg:'rgb(240, 253, 244)',border:'rgb(187, 247, 208)'}
+    {tone:'not-submitted',bg:'rgb(255, 241, 243)',border:'rgb(239, 212, 218)'},
+    {tone:'office',bg:'rgb(255, 248, 233)',border:'rgb(235, 223, 196)'},
+    {tone:'done',bg:'rgb(238, 248, 241)',border:'rgb(208, 228, 215)'}
   ];
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
       x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
@@ -2420,7 +2420,7 @@ try{
       pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
       level:getComputedStyle(first).backgroundColor};
   })()`);
-  if(r05Highlight.row!=='rgb(255, 241, 242)'||
+  if(r05Highlight.row!=='rgb(255, 241, 243)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgb(18, 52, 86)')
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
@@ -2429,11 +2429,11 @@ try{
   await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
-  if(r05Custom[1].bg==='rgb(255, 251, 235)'||
-    r05Custom[1].border==='rgb(253, 230, 138)'||
+  if(r05Custom[1].bg==='rgb(255, 248, 233)'||
+    r05Custom[1].border==='rgb(235, 223, 196)'||
     r05Custom[1].pill!=='rgb(252, 221, 160)'||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].bg!=='rgb(255, 241, 242)')
+    r05Custom[0].bg!=='rgb(255, 241, 243)')
     throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
