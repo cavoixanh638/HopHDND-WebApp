@@ -11,6 +11,10 @@ export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
   const [result,setResult]=useState<BusinessExcelResult|null>(null);
   const [comparison,setComparison]=useState<ReplacementPreview|null>(null);
   const [error,setError]=useState('');
+  // A snapshot may change via Firebase while an administrator reviews a file.
+  // A previously rendered comparison must never be mistaken for current data.
+  const currentSnapshot=JSON.stringify(current);
+  const [reviewedSnapshot,setReviewedSnapshot]=useState('');
   const download=()=>{
     const blob=new Blob([new Uint8Array(createBusinessExcelTemplate())],
       {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -34,7 +38,7 @@ export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
     try{
       const next=parseBusinessExcel(file.bytes,sheet);
       const difference=previewDatasetReplacement(current,next.items);
-      setResult(next);setComparison(difference);
+      setResult(next);setComparison(difference);setReviewedSnapshot(currentSnapshot);
     }catch(e){setError(e instanceof Error?e.message:'Excel có lỗi.');}
   };
   return <section className="card business-excel-review">
@@ -58,7 +62,11 @@ export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
       <button type="button" className="button primary" disabled={!sheet} onClick={examine}>Kiểm tra toàn bộ file</button>
     </>}
     {error&&<p className="notice" role="alert">{error}</p>}
-    {result&&comparison&&<section aria-label="Bản xem trước chưa áp dụng">
+    {result&&comparison&&reviewedSnapshot!==currentSnapshot&&<p className="notice" role="alert">
+      Dữ liệu hiện tại đã thay đổi sau khi kiểm tra Excel. Bản so sánh cũ không còn hiệu lực;
+      hãy bấm “Kiểm tra toàn bộ file” để đối chiếu lại. Không áp dụng bản xem trước cũ.
+    </p>}
+    {result&&comparison&&reviewedSnapshot===currentSnapshot&&<section aria-label="Bản xem trước chưa áp dụng">
       <h4>Dữ liệu thử — chưa áp dụng</h4>
       <p><strong>{comparison.newCount}</strong> hồ sơ mới / {comparison.oldCount} đang sử dụng;
         NQ {comparison.totals.total.nq} (QPPL {comparison.totals.total.qppl}, HC {comparison.totals.total.hc}),
