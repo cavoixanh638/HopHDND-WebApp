@@ -36,15 +36,16 @@ jobs:
           npm ci
           npm run typecheck
           npm exec -- vitest run tests/pr95-guest-rights-notice.test.ts
-      - name: Build REAL ItemList QA from synthetic records only
+      - name: Build REAL ItemList QA with separate JS/CSS assets
         working-directory: source
         run: |
           npm run build:compact:qa
-          node scripts/package-compact-qa.mjs
-          test -s dist-compact-qa/HopHDND_GopCot_XemThu.html
-          ! grep -F 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' dist-compact-qa/HopHDND_GopCot_XemThu.html
-          grep -q 'Bản xem thử' dist-compact-qa/HopHDND_GopCot_XemThu.html
-          ! grep -Eiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/HopHDND_GopCot_XemThu.html
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.js' -print -quit)"
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
+          grep -Rq 'Bản xem thử' dist-compact-qa/assets
+          ! grep -RFq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' dist-compact-qa/assets
+          ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
       - name: Real headless Chrome desktop and narrow viewport smoke
         working-directory: source
         shell: bash
@@ -52,13 +53,16 @@ jobs:
           set -euo pipefail
           chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$chrome"
-          # Serve the standalone preview over HTTP just as GitHub Pages will.
-          # A file:// module test can report an empty React root on headless Chrome.
-          node -e 'const http=require("node:http"),fs=require("node:fs");http.createServer((req,res)=>{if(req.url!=="/"){res.writeHead(404);res.end();return;}res.setHeader("Content-Type","text/html; charset=utf-8");res.end(fs.readFileSync("dist-compact-qa/HopHDND_GopCot_XemThu.html"));}).listen(41789,"127.0.0.1")' > pr95-preview-server.log 2>&1 &
+          # Use the actual Vite-built HTML + JS + CSS, not the old inline
+          # single-HTML packager (which could terminate a script tag early).
+          node_modules/.bin/vite preview --outDir dist-compact-qa --host 127.0.0.1 --port 41789 > pr95-preview-server.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          sleep 1
-          uri="http://127.0.0.1:41789/"
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:41789/compact-qa.html >/dev/null; then break; fi
+            sleep 1
+          done
+          uri="http://127.0.0.1:41789/compact-qa.html"
           flags=(--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu
             --disable-extensions --disable-background-networking --no-first-run
             --virtual-time-budget=4000)
@@ -98,32 +102,36 @@ jobs:
             source/pr95-preview-dom.txt
             source/pr95-preview-server.log
           retention-days: 14
-      - name: Publish ONLY preview/pr95/index.html to main Pages tree
+      - name: Publish ONLY preview/pr95 HTML and scoped assets to main Pages tree
         shell: bash
         run: |
           set -euo pipefail
-          test -s source/dist-compact-qa/HopHDND_GopCot_XemThu.html
+          test -s source/dist-compact-qa/compact-qa.html
+          test -n "$(find source/dist-compact-qa/assets -name '*.js' -print -quit)"
           git fetch --no-tags origin main
           dest="$RUNNER_TEMP/pr95-pages-preview"
           git worktree add --detach "$dest" origin/main
           test -f "$dest/.nojekyll"
-          mkdir -p "$dest/preview/pr95"
-          cp source/dist-compact-qa/HopHDND_GopCot_XemThu.html "$dest/preview/pr95/index.html"
-          git -C "$dest" add -- preview/pr95/index.html
+          mkdir -p "$dest/preview/pr95/assets"
+          cp source/dist-compact-qa/compact-qa.html "$dest/preview/pr95/index.html"
+          rsync -a --delete source/dist-compact-qa/assets/ "$dest/preview/pr95/assets/"
+          git -C "$dest" add -A -- preview/pr95
           changes="$(git -C "$dest" diff --cached --name-only)"
           if [ -z "$changes" ]; then
             echo "PR95_PREVIEW_ALREADY_PUBLISHED"
             exit 0
           fi
-          if [ "$changes" != 'preview/pr95/index.html' ]; then
-            echo "::error::Refusing any main changes outside preview/pr95/index.html: $changes"
-            exit 1
-          fi
-          test -f "$dest/index.html"
+          while IFS= read -r path; do
+            case "$path" in
+              preview/pr95/*) ;;
+              *) echo "::error::Refusing to stage outside preview/pr95: $path"; exit 1 ;;
+            esac
+          done <<< "$changes"
+          test -s "$dest/index.html"
           git -C "$dest" diff --quiet -- index.html assets .github/workflows
           git -C "$dest" config user.name 'github-actions[bot]'
           git -C "$dest" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$dest" commit -m 'docs(preview): publish PR95 isolated synthetic UI only'
+          git -C "$dest" commit -m 'docs(preview): publish isolated PR95 synthetic UI and scoped assets'
           git -C "$dest" push origin HEAD:main
-          echo "PR95_PREVIEW_PUBLISHED_PATH preview/pr95/index.html"
+          echo "PR95_PREVIEW_PUBLISHED_PATH preview/pr95/"
           echo "PR95_PREVIEW_URL https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
