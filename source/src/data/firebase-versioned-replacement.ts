@@ -219,7 +219,7 @@ export async function restoreDatasetBackup(
       state.generations[target]||!state.backups?.[backupOperationId]){
       failed='Thế hệ hoặc dữ liệu đã thay đổi; không khôi phục trên dữ liệu mới.';return undefined;
     }
-    if(state.backups[backupOperationId]!==snap.backups[backupOperationId]){
+    if(state.backups[backupOperationId]!==backupJson){
       failed='Backup bị thay đổi trong khi xác nhận.';return undefined;
     }
     return {...state,
