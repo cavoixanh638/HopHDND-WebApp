@@ -5,6 +5,7 @@ import {createServer} from 'node:http';
 import {readFileSync,writeFileSync,mkdtempSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve,extname} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {setTimeout as sleep} from 'node:timers/promises';
 import * as XLSX from 'xlsx';
 
@@ -181,6 +182,35 @@ try{
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','mobile reports');
   await screenshot('pr95-l4-mobile-reports.png');
+  // Open the packaged one-file HTML by file:// in *real Chrome*, without HTTP.
+  // This catches raw JS leaked into HTML, module/CORS failures, broken CSS and
+  // component bootstrap bugs that a simple grep of bundle bytes cannot see.
+  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+  const offlineUrl=pathToFileURL(join(root,'HopHDND_GopCot_XemThu.html')).href;
+  await send('Page.navigate',{url:offlineUrl});
+  await waitFor('document.querySelector("[data-preview=pr95-l4-full]") && document.querySelector(".item-data-table tbody tr")','offline file React mount');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===6','offline nav');
+  await ensure('!document.body.textContent.includes("function Rf(")','offline no raw compiled JavaScript');
+  await screenshot('pr95-l4-offline-desktop-list.png');
+  await clickText('Báo cáo tổng hợp');
+  await waitFor('document.querySelectorAll(".report-table").length===5','offline five real reports');
+  await screenshot('pr95-l4-offline-desktop-reports.png');
+  await clickText('Excel · Nhập / Xuất');
+  await waitFor('document.querySelector(".pr95-preview-excel input[type=file]")','offline Excel controls');
+  await clickText('Cài đặt');
+  await waitFor('document.querySelector("[aria-label=\\"Cài đặt demo\\"]")','offline settings');
+  await selectValue('#pr95-role','guest');
+  await waitFor('document.querySelector("[data-role=guest]")','offline guest toggle');
+  await ensure('!document.querySelector(".pr95-preview-nav button[aria-current=page]")?.textContent.includes("Phân quyền")','guest has no admin controls');
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await clickText('Danh sách các ND trình HĐND');
+  await waitFor('document.querySelector(".item-data-table")','offline guest list narrow');
+  await screenshot('pr95-l4-offline-mobile-guest.png');
+  await clickText('Báo cáo tổng hợp');
+  await waitFor('document.querySelectorAll(".report-table").length===5','offline mobile report');
+  await screenshot('pr95-l4-offline-mobile-reports.png');
+  console.log('PR95_L4_OFFLINE_FILE_CHROME_PASS '+JSON.stringify({
+    fileScheme:true,reactMount:true,reports:5,excel:true,settings:true,guest:true,desktop:1440,mobile:390}));
   await ensure('!document.documentElement.classList.contains("is-printing")','no print state');
   await ensure('!document.querySelector("script[src*=firebase]")','no Firebase network bootstrap');
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','docs.google.com/spreadsheets','identitytoolkit','securetoken','sheets.googleapis.com'].some(fragment=>url.toLowerCase().includes(fragment)));
