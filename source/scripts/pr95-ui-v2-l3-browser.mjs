@@ -253,7 +253,8 @@ async function test(){
       content:tr.querySelector('td[data-col-key="content"]')?.className}))`),
       statuses:await guest.evalJs(`[...document.querySelectorAll('[role=status],[role=alert]')].map(x=>x.textContent.slice(0,150)).slice(0,15)`),
       appClass:await guest.evalJs('document.querySelector(".app-shell")?.className'),
-      actualAppRights:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()')});
+      actualAppRights:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()'),
+      actualGuestSdkRead:await guest.evalJs('window.__pr95UiV2L3RightsRead?.().catch(error=>String(error))')});
     throw err;
   }
   await capture(guest,'02-guest-note-only');
