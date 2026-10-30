@@ -3356,6 +3356,112 @@ try{
   if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
   
+  // L2 incremental REAL-Chromium two-tab witness. These are two separate
+  // browser targets (not two Firebase SDK contexts). They validate the
+  // current active-generation List/Report after an owner-seeded pointer swap.
+  // This is READ-ONLY guest coverage; same-admin edit/lease/CAS + lost-ACK
+  // remain explicit L1 harness requests, never claim them from this fixture.
+  const twoTabConnections=[];
+  const debuggerPort=new URL(tab.webSocketDebuggerUrl).port;
+  async function makeUiTab(name){
+    const response=await fetch('http://127.0.0.1:'+debuggerPort+'/json/new?about:blank',
+      {method:'PUT',signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw Error('Could not create genuine Chrome tab '+name+': '+response.status);
+    const target=await response.json();
+    if(!target.id||!target.webSocketDebuggerUrl)throw Error('Tab '+name+' has no CDP target');
+    const socket=new WebSocket(target.webSocketDebuggerUrl);
+    await new Promise((done,fail)=>{
+      socket.addEventListener('open',done,{once:true});
+      socket.addEventListener('error',fail,{once:true});
+    });
+    const pendingTab=new Map();let tabSeq=0;
+    socket.addEventListener('message',event=>{
+      const data=JSON.parse(event.data),entry=pendingTab.get(data.id);
+      if(!entry)return;
+      pendingTab.delete(data.id);
+      data.error?entry.reject(Error(JSON.stringify(data.error))):entry.resolve(data.result);
+    });
+    const call=(method,params={})=>new Promise((resolve,reject)=>{
+      const id=++tabSeq;pendingTab.set(id,{resolve,reject});
+      socket.send(JSON.stringify({id,method,params}));
+      setTimeout(()=>{if(pendingTab.has(id)){pendingTab.delete(id);
+        reject(Error('Chrome tab '+name+' CDP timed out: '+method));}},16000);
+    });
+    const js=async expression=>{
+      const result=await call('Runtime.evaluate',{
+        expression,returnByValue:true,awaitPromise:true
+      });
+      if(result.exceptionDetails)throw Error('Chrome tab '+name+' JS error');
+      return result.result?.value;
+    };
+    const until=async(expression,meaning)=>{
+      for(let i=0;i<100;i++){
+        if(await js(expression))return;
+        await sleep(150);
+      }
+      throw Error('Two-tab '+name+' failed '+meaning);
+    };
+    twoTabConnections.push(socket);
+    await call('Page.enable');
+    await call('Runtime.enable');
+    await call('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
+    await until("document.querySelector('.nav-tabs')!==null",'App shell');
+    await js("(()=>{const x=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));x?.click();return !!x;})()");
+    await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+      'current-generation NQ01');
+    return {id:target.id,name,js,until,call,socket};
+  }
+  try{
+    const first=await makeUiTab('A'),second=await makeUiTab('B');
+    if(first.id===second.id)throw Error('Two-tab CDP returned the same target');
+    const newOp='pr95_browser_two_tab_epoch_20261030';
+    const newGen='gen_'+newOp;
+    const changed=firebaseRows.map((row,index)=>index===0
+      ?{...row,displayCode:'BC77',documentKind:'BC',
+        content:'Nội dung generation mới xác nhận ở hai tab',department:'Sở V2 thử nghiệm'}
+      :row);
+    const newer=Object.fromEntries(changed.map(row=>[row.recordId,row]));
+    const ownerHeaders={Authorization:'Bearer owner','Content-Type':'application/json'};
+    const putFixture=async(path,value)=>{
+      const result=await fetch(EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:ownerHeaders,body:JSON.stringify(value),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!result.ok)throw Error('Cannot stage two-tab Emulator fixture '+path+': '+result.status);
+    };
+    // Stage the immutable generation before flipping the active pointer,
+    // exactly as the source subscribers expect. A privileged fixture PUT is
+    // NOT a CAS test and is never described as one.
+    await putFixture('/hdnd/datasetV2/generations/'+newGen+'/items',newer);
+    await putFixture('/hdnd/datasetV2/permissions/'+newGen,{columns:{}});
+    await putFixture('/hdnd/datasetV2/active',{
+      generationId:newGen,operationId:newOp,revision:2,
+      rowCount:changed.length,digest:'b'.repeat(64)
+    });
+    await Promise.all([first,second].map(async side=>{
+      await side.until("document.querySelector('.item-data-table tbody')?.textContent?.includes('BC77')===true",
+        'new active-generation record BC77');
+      const view=await side.js(`(()=>{
+        const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+        return {rows:rows.length,newItem:rows.some(r=>r.textContent?.includes('BC77')&&
+          r.textContent?.includes('Nội dung generation mới xác nhận ở hai tab')),
+          oldItem:rows.some(r=>r.textContent?.includes('NQ01'))};
+      })()`);
+      if(view.rows!==54||!view.newItem||view.oldItem)
+        throw Error('Two-tab '+side.name+' stale List: '+JSON.stringify(view));
+      await side.js("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+      await side.until("document.querySelector('.report-table tbody')?.textContent?.includes('Sở V2 thử nghiệm')===true",
+        'Report from new active generation');
+    }));
+    console.log('BROWSER_TWO_REAL_TABS_READ_SWITCH_PASS',JSON.stringify({
+      distinctChromeTargets:true,firstTab:first.id,secondTab:second.id,
+      previousGeneration:SMOKE_GENERATION,nextGeneration:newGen,
+      currentRowsPerTab:54,reportedDepartment:'Sở V2 thử nghiệm',
+      scope:'guest List/Report epoch switch only, NOT admin write/lease/lost ACK'
+    }));
+  }finally{
+    for(const socket of twoTabConnections)socket.close();
+  }
   if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
   await verifyExclusiveRules('after-browser-smoke');
   console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
