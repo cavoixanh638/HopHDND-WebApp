@@ -44,7 +44,7 @@ Các lệnh cần chạy tại HEAD chính xác:
 
 ## Tình trạng kiểm thử / bằng chứng
 
-Bộ Vitest đã commit, nhưng **không được ghi PASS cho đến khi kết quả GitHub Actions tại exact HEAD được kiểm chứng**. DRAFT PR #109 dùng để kích hoạt Verify HopHDND source (Typecheck + Unit tests) trên workbook giả. Máy chạy L4 không có node_modules/xlsx/vitest trong container và không có npm registry; không khai báo giả local PASS. Không kiểm browser/Emulator, không chạm Firebase thật.
+**CI tại code head bdd393d0712ec86837890be47f4fe51c3201b839:** [Verify HopHDND source #41023913106](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41023913106) có bước **Typecheck SUCCESS** và bước **Unit tests SUCCESS** (gồm 24 ca test fixture L4 và 10 ca test business-excel hiện có). Trạng thái của các bước browser/Emulator sau đó không phải bằng chứng L4, và chưa được tuyên bố thành công toàn bộ workflow khi ghi nhận. Vòng trước [#41023773896](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41023773896) phát hiện bài hồi quy độc lập yêu cầu mã chỉ khác hoa/thường phải có ID riêng; đã sửa và chạy lại. DRAFT PR #109 chỉ kích hoạt CI trên workbook giả. Máy chạy L4 không có node_modules/xlsx/vitest trong container và không có npm registry, nên không tuyên bố local PASS. Không tự gọi browser/Emulator, không chạm Firebase thật.
 
 ## Giới hạn còn lại cho L1
 
