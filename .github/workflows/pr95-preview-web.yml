@@ -1,0 +1,107 @@
+name: PR95 isolated synthetic WEB preview (not production)
+on:
+  push:
+    branches:
+      - feat/firebase-excel-safe-replacement-and-list-compact-20261030
+    paths:
+      - source/src/app/App.tsx
+      - source/src/qa/compact-qa-main.tsx
+      - source/tests/pr95-guest-rights-notice.test.ts
+      - .github/workflows/pr95-preview-web.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pr95-synthetic-preview-only
+  cancel-in-progress: false
+
+jobs:
+  publish-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install and verify exactly scoped change
+        working-directory: source
+        run: |
+          npm ci
+          npm run typecheck
+          npm exec -- vitest run tests/pr95-guest-rights-notice.test.ts
+      - name: Build REAL ItemList QA from synthetic records only
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          node scripts/package-compact-qa.mjs
+          test -s dist-compact-qa/HopHDND_GopCot_XemThu.html
+          ! grep -F 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' dist-compact-qa/HopHDND_GopCot_XemThu.html
+          grep -q 'Bản xem thử' dist-compact-qa/HopHDND_GopCot_XemThu.html
+          ! grep -Eiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/HopHDND_GopCot_XemThu.html
+      - name: Real headless Chrome desktop and narrow viewport smoke
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$chrome"
+          uri="file://$(pwd)/dist-compact-qa/HopHDND_GopCot_XemThu.html"
+          flags=(--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu
+            --disable-extensions --disable-background-networking --no-first-run
+            --virtual-time-budget=4000)
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900
+            --screenshot=pr95-preview-desktop.png "$uri" >/dev/null 2>/dev/null
+          timeout 45s "$chrome" "${flags[@]}" --window-size=390,844
+            --screenshot=pr95-preview-mobile.png "$uri" >/dev/null 2>/dev/null
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900
+            --dump-dom "$uri" > pr95-preview-dom.txt 2>/dev/null
+          grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt
+          grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt
+          ! grep -Fq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' pr95-preview-dom.txt
+          test -s pr95-preview-desktop.png
+          test -s pr95-preview-mobile.png
+          echo "PR95_PREVIEW_REAL_CHROME_DESKTOP_MOBILE_PASS"
+      - name: Upload synthetic preview screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-web-preview-desktop-mobile
+          path: |
+            source/pr95-preview-desktop.png
+            source/pr95-preview-mobile.png
+          retention-days: 14
+      - name: Publish ONLY preview/pr95/index.html to main Pages tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s source/dist-compact-qa/HopHDND_GopCot_XemThu.html
+          git fetch --no-tags origin main
+          dest="$RUNNER_TEMP/pr95-pages-preview"
+          git worktree add --detach "$dest" origin/main
+          test -f "$dest/.nojekyll"
+          mkdir -p "$dest/preview/pr95"
+          cp source/dist-compact-qa/HopHDND_GopCot_XemThu.html "$dest/preview/pr95/index.html"
+          git -C "$dest" add -- preview/pr95/index.html
+          changes="$(git -C "$dest" diff --cached --name-only)"
+          if [ -z "$changes" ]; then
+            echo "PR95_PREVIEW_ALREADY_PUBLISHED"
+            exit 0
+          fi
+          if [ "$changes" != 'preview/pr95/index.html' ]; then
+            echo "::error::Refusing any main changes outside preview/pr95/index.html: $changes"
+            exit 1
+          fi
+          test -f "$dest/index.html"
+          git -C "$dest" diff --quiet -- index.html assets .github/workflows
+          git -C "$dest" config user.name 'github-actions[bot]'
+          git -C "$dest" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$dest" commit -m 'docs(preview): publish PR95 isolated synthetic UI only'
+          git -C "$dest" push origin HEAD:main
+          echo "PR95_PREVIEW_PUBLISHED_PATH preview/pr95/index.html"
+          echo "PR95_PREVIEW_URL https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
