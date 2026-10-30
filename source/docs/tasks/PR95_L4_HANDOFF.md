@@ -30,7 +30,7 @@ Giữ API parser (các export và interface) và thư viện dùng chung. Không
 - Tiêu đề A–O được khai báo literal, không tái sử dụng BUSINESS_HEADERS để xây dựng oracle. Kỳ vọng toàn bộ Item gồm A–O, ID, stt, kind, note, progress được viết độc lập.
 - Multi-sheet: Hướng dẫn, sheet lỗi, sheet hợp lệ; chọn sheet bắt buộc.
 - Đảo H/I và L/M; C/D thiếu/đảo, tiêu đề trùng, alias đã cho phép.
-- Dấu tiếng Việt; xuống dòng; khoảng trắng đầu/cuối ở text; mã 001, 0001, dạng numeric format 000; mã giống nhau NFC/NFD, chữ hoa/thường; ID ổn định khi đảo thứ tự dòng, không va chạm; mã quá 48 UTF-8 bytes bị chặn.
+- Dấu tiếng Việt; xuống dòng; khoảng trắng đầu/cuối ở text; mã 001, 0001, dạng numeric format 000; mã trùng NFC/NFD bị chặn, mã chỉ khác chữ hoa/thường có ID riêng; ID ổn định khi đảo thứ tự dòng, không va chạm; mã quá 48 UTF-8 bytes bị chặn.
 - Thiếu A/C, dòng trống giữa hồ sơ; STT 0, số âm, số thực, chữ, vượt an toàn Number, số thực bị format làm tròn; loại văn bản mâu thuẫn mã; trạng thái G/H/I không hợp lệ.
 - Công thức với cached result, ô lỗi t:e, cột ngoài P/Q/T.
 - Đúng 1.000 hồ sơ thành công; 1.001 lỗi; đúng 5 MiB đi qua size gate rồi phải qua decoder (bytes giả không hợp lệ); 5 MiB + 1 byte bị chặn; 0 byte bị chặn.
