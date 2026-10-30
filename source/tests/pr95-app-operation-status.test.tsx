@@ -81,7 +81,7 @@ async function reviewCandidate(){
   await vi.waitFor(()=>expect(api.stage).toHaveBeenCalledOnce());
   await vi.waitFor(()=>expect(notice(render())).toContain('Đã ghi staging'));
   control(render(),'input','Xác nhận thay thế toàn bộ').props.onChange({
-    currentTarget:{value:'THAY '+operationId+' 1 1}
+    currentTarget:{value:'THAY '+operationId+' 1 1'}
   });
 }
 beforeEach(()=>{
