@@ -103,5 +103,11 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
       :<p className="notice">Chỉ hỗ trợ staging/kích hoạt qua Firebase Emulator trong phiên quản trị đã xác thực;
         không áp dụng bản Excel vào production.</p>}
     </section>}
+    {versioned&&(!result||!comparison)&&
+      <VersionedExcelReplacementPanel key="operation-recovery-without-workbook"
+        database={versioned.database} user={versioned.user} active={versioned.active}
+        reports={versioned.reports} enabled={versioned.enabled}
+        readyForMutation={versioned.readyForMutation}
+        current={current} items={[]} fileName=""/>}
   </section>;
 }

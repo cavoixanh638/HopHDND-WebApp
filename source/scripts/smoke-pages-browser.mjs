@@ -9,6 +9,7 @@ import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
+import * as XLSX from 'xlsx';
 
 // L3-AUDIT-GAP-01: the pages-test Firebase bootstrap is pinned to demo-hdnd
 // on loopback 9000/9099. A separate runtime-only Emulator config MUST load
@@ -3363,7 +3364,7 @@ try{
   // remain explicit L1 harness requests, never claim them from this fixture.
   const twoTabConnections=[];
   const debuggerPort=new URL(tab.webSocketDebuggerUrl).port;
-  async function makeUiTab(name){
+  async function makeUiTab(name,{waitForList=true}={}){
     const response=await fetch('http://127.0.0.1:'+debuggerPort+'/json/new?about:blank',
       {method:'PUT',signal:AbortSignal.timeout(5000)});
     if(!response.ok)throw Error('Could not create genuine Chrome tab '+name+': '+response.status);
@@ -3406,9 +3407,11 @@ try{
     await call('Runtime.enable');
     await call('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
     await until("document.querySelector('.nav-tabs')!==null",'App shell');
-    await js("(()=>{const x=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));x?.click();return !!x;})()");
-    await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
-      'current-generation NQ01');
+    if(waitForList){
+      await js("(()=>{const x=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));x?.click();return !!x;})()");
+      await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+        'current-generation NQ01');
+    }
     return {id:target.id,name,js,until,call,socket};
   }
   try{
@@ -3462,11 +3465,462 @@ try{
   }finally{
     for(const socket of twoTabConnections)socket.close();
   }
+
+  // L2 Excel-only UI journey, ONE real Chrome tab authenticated through the
+  // Auth Emulator Google-provider SDK bridge. Other lanes own two-tab CAS
+  // and application/network ACK-loss investigations.
+  const adminE2eDir=mkdtempSync(join(tmpdir(),'pr95-admin-ui-e2e-'));
+  const adminTargets=[];
+  try{
+    const adminOwnerHeaders={Authorization:'Bearer owner','Content-Type':'application/json'};
+    const rootSeed={hdnd:{
+      items:Object.fromEntries(firebaseRows.slice(0,2).map(item=>[item.recordId,item])),
+      permissions:{columns:{}},
+      control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()},
+      freezeControl:{mode:'FROZEN',revision:1,epoch:1,actor:'pr95-seed',
+        changedAt:Date.now()-10000,deadline:0,closedAt:Date.now()-9000}
+    }};
+    const rootPut=await fetch(EMULATOR_ROOT,{
+      method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(rootSeed),
+      signal:AbortSignal.timeout(10000)
+    });
+    if(!rootPut.ok)throw Error('Cannot seed FROZEN legacy root in test Emulator: '+rootPut.status);
+    const adminA=await makeUiTab('Excel admin',{waitForList:false});
+    adminTargets.push(adminA);
+    const adminIdentity=[];
+    for(const side of adminTargets){
+      await side.until("typeof window.__pr95EmulatorGoogleAdminSignIn==='function'",
+        'Emulator Google-admin SDK hook');
+      const credentials=await side.js("window.__pr95EmulatorGoogleAdminSignIn()");
+      if(!credentials?.uid||credentials.email!=='cavoixanh638@gmail.com'||
+        !credentials.emailVerified||!credentials.providerIds?.includes('google.com'))
+        throw Error('Wrong Google Emulator SDK identity in '+side.name+': '+JSON.stringify(credentials));
+      adminIdentity.push({tabId:side.id,...credentials});
+      await side.until("document.querySelector('.options-menu summary[aria-label=\"Cài đặt\"]')!==null",
+        'authenticated admin settings');
+    }
+    console.log('BROWSER_EXCEL_ADMIN_AUTH_PASS',JSON.stringify({
+      targetId:adminA.id,identity:adminIdentity[0],
+      source:'real Auth Emulator SDK signInWithCredential',
+      notProductionGoogleLogin:true
+    }));
+    const headers=[
+      'Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
+      'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',
+      'Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ',
+      'Chuyên viên','Phòng','Lãnh đạo VP','Lãnh đạo UBND',
+      'Tiến độ hiện tại','Ghi chú'
+    ];
+    const makeXlsx=(name,variant)=>{
+      const workbook=XLSX.utils.book_new();
+      const sheet=XLSX.utils.aoa_to_sheet([headers,
+        ['NQ90',1,'PR95 '+variant+' nghị quyết','Sở QA '+variant,'QPPL',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant],
+        ['BC91',2,'PR95 '+variant+' báo cáo','Sở QA '+variant,'BC',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant]]);
+      XLSX.utils.book_append_sheet(workbook,sheet,'DATA_AO');
+      const file=join(adminE2eDir,name);
+      writeFileSync(file,XLSX.write(workbook,{type:'buffer',bookType:'xlsx'}));
+      return file;
+    };
+    const initialXlsx=makeXlsx('pr95-initial.xlsx','INITIAL');
+    const replaceXlsx=makeXlsx('pr95-replacement.xlsx','REPLACE');
+    const clickText=async(side,selector,fragment)=>{
+      const clicked=await side.js(`(()=>{
+        const el=[...document.querySelectorAll(${JSON.stringify(selector)})]
+          .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
+        if(!el||el.disabled)return false;el.click();return true;
+      })()`);
+      if(!clicked){
+        const snapshot=await side.js(`(()=>{
+          const el=[...document.querySelectorAll(${JSON.stringify(selector)})]
+            .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          return {found:!!el,disabled:el?.disabled??null,
+            panelText:panel?.innerText?.slice(0,1000)??null,
+            notices:[...document.querySelectorAll('[role="alert"],[role="status"]')]
+              .map(x=>x.innerText?.slice(0,160)).slice(-12)};
+        })()`);
+        console.error('PR95_ADMIN_UI_BLOCKER_DIAGNOSTIC',JSON.stringify({
+          tab:side.name,action:fragment,selector,...snapshot
+        }));
+        // Best effort only; a failing CDP screenshot must never obscure the
+        // original disabled button/state cause (the prior CI timed out here).
+        try{
+          const shot=await Promise.race([
+            side.call('Page.captureScreenshot',{format:'png'}),
+            sleep(2500).then(()=>null)
+          ]);
+          if(shot?.data)writeFileSync('hophdnd-pr95-admin-ui-blocker.png',
+            Buffer.from(shot.data,'base64'));
+        }catch(e){
+          console.warn('PR95_ADMIN_UI_SCREENSHOT_NONFATAL',String(e));
+        }
+        throw Error(side.name+' cannot click '+fragment+' within '+selector+
+          ' diagnostic='+JSON.stringify(snapshot));
+      }
+    };
+    const enter=async(side,selector,value)=>{
+      const focus=await side.js(`(()=>{
+        const el=document.querySelector(${JSON.stringify(selector)});
+        if(!el||el.disabled)return false;el.focus();el.select?.();return document.activeElement===el;
+      })()`);
+      if(!focus)throw Error(side.name+' cannot focus '+selector);
+      await side.call('Input.insertText',{text:value});
+      await side.until(`document.querySelector(${JSON.stringify(selector)})?.value===${JSON.stringify(value)}`,
+        'controlled input value '+selector);
+    };
+    const upload=async(side,filename)=>{
+      const {root}=await side.call('DOM.getDocument',{depth:1});
+      const {nodeId}=await side.call('DOM.querySelector',{
+        nodeId:root.nodeId,selector:'.business-excel-review input[type=file]'
+      });
+      if(!nodeId)throw Error(side.name+' no real business Excel file input');
+      await side.call('DOM.setFileInputFiles',{nodeId,files:[filename]});
+      await side.until("document.querySelector('.business-excel-review [role=status]')?.textContent?.includes('Đã chọn:')===true",
+        'A-O file selected');
+      await side.js(`(()=>{
+        const el=document.querySelector('.business-excel-review select');
+        if(!el)return false;const setter=Object.getOwnPropertyDescriptor(
+          HTMLSelectElement.prototype,'value').set;
+        setter.call(el,'DATA_AO');el.dispatchEvent(new Event('change',{bubbles:true}));return true;
+      })()`);
+      await side.until("document.querySelector('.business-excel-review select')?.value==='DATA_AO'",
+        'explicit workbook sheet selection');
+      await clickText(side,'.business-excel-review button','Kiểm tra toàn bộ file');
+      await side.until("document.querySelector('section[aria-label=\"Bản xem trước chưa áp dụng\"]')!==null",
+        'real file parsed/previewed');
+    };
+    const openTransfer=async side=>{
+      await clickText(side,'.options-menu summary','⚙');
+      await clickText(side,'.options-popover button','Tài khoản và dữ liệu');
+      await side.until("document.querySelector('.settings-hub-tabs')!==null",'admin settings tabs');
+      await clickText(side,'.settings-hub-tabs button','Excel · Nhập/Xuất');
+      await side.until("document.querySelector('.business-excel-review')!==null",
+        'business Excel importer visible');
+    };
+    const ownerValue=async path=>{
+      const response=await fetch(EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE,{
+        headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
+      if(!response.ok)throw Error('Cannot verify real Emulator server '+path+' HTTP '+response.status);
+      return response.json();
+    };
+    const operationCounts=async()=>{
+      const v2=await ownerValue('/hdnd/datasetV2');
+      return {active:v2?.active??null,
+        operations:Object.keys(v2?.operations??{}),
+        generations:Object.keys(v2?.generations??{})};
+    };
+    const stagedId=async side=>{
+      // The App does not permit staging while the Firebase profile, current
+      // generation, in-flight workspace refresh or stale draft is unsettled.
+      // Wait for those guards rather than clicking a transient disabled UI.
+      const selector='section[aria-label="Thử nghiệm thế hệ Firebase"] button';
+      for(let i=0;i<100;i++){
+        if(await side.js(`[...document.querySelectorAll(${JSON.stringify(selector)})]
+          .some(x=>x.textContent?.includes('Ghi staging, đọc lại')&&!x.disabled)`))break;
+        await sleep(120);
+      }
+      await clickText(side,selector,'Ghi staging, đọc lại và sao lưu thử nghiệm');
+      await side.until("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.includes(' V2 ')===true || document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.startsWith('THAY ')===true",
+        'readback staging and confirmation');
+      const text=await side.js("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent");
+      const op=text?.split(' ')[text.startsWith('THAY ')?1:3];
+      if(!/^excel_[A-Za-z0-9_]{12,80}$/.test(op))throw Error('Invalid UI staged operationId '+text);
+      return {text,op};
+    };
+    const verifyCommit=async(op,before,label)=>{
+      const after=await operationCounts();
+      const expectedRevision=(before.active?.revision??0)+1;
+      if(after.active?.operationId!==op||after.active.revision!==expectedRevision||
+        after.operations.filter(x=>x===op).length!==1||
+        after.operations.length!==before.operations.length+1||
+        after.generations.length!==before.generations.length+1)
+        throw Error(label+' did not commit exactly once on Emulator server: '+JSON.stringify({before,after}));
+      return after;
+    };
+    const takeShot=async(label)=>{
+      try{
+        const shot=await Promise.race([
+          adminA.call('Page.captureScreenshot',{format:'png'}),
+          sleep(3000).then(()=>null)
+        ]);
+        if(shot?.data){
+          const file='hophdnd-pr95-excel-'+label+'.png';
+          const bytes=Buffer.from(shot.data,'base64');
+          writeFileSync(file,bytes);
+          // Existing L1-owned workflow already uploads these two standard
+          // screenshot paths. Preserve the actual initial UNKNOWN screen as
+          // the failure artifact without modifying the workflow/runner.
+          if(label==='initial-blocked')writeFileSync('hophdnd-ui-smoke-failure.png',bytes);
+          if(label==='restore')writeFileSync('hophdnd-ui-smoke-pass.png',bytes);
+          console.log('BROWSER_EXCEL_SCREENSHOT_SAVED',file);
+        }else console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,'CDP timeout');
+      }catch(e){console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,String(e));}
+    };
+    const assertUiCommitted=async(label,operationId)=>{
+      let last=null;
+      for(let attempt=0;attempt<115;attempt++){
+        last=await adminA.js(`(()=>{
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          const statuses=[...document.querySelectorAll('p[aria-label^="Trạng thái thao tác"]')];
+          return {status:statuses.map(x=>x.innerText),messages:[...panel?.querySelectorAll('p[role="status"],p[role="alert"]')??[]].map(x=>x.innerText),
+            panel:panel?.innerText.slice(-1000)??null,
+            ready:!!panel,buttons:[...panel?.querySelectorAll('button')??[]].map(x=>({text:x.textContent.trim(),disabled:x.disabled}))};
+        })()`);
+        if(last.status.some(x=>x.includes('ĐÃ COMMIT')))return last;
+        // Other status values can be transient; allow the documented
+        // application to resolve operationId and render the final result.
+        await sleep(180);
+      }
+      const server=await operationCounts();
+      throw Error('REAL_UI_'+label+'_STATUS_NOT_CONFIRMED '+JSON.stringify({
+        operationId,ui:last,server
+      }));
+    };
+    await openTransfer(adminA);
+    await upload(adminA,initialXlsx);
+    await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Kích hoạt V2 lần đầu')===true",
+      'initial activation UI on FROZEN legacy');
+    const initial=await stagedId(adminA);
+    const initialBefore=await operationCounts();
+    await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Kích hoạt V2 lần đầu bằng CAS');
+    const checkLiveListReport=async(stage,expectedContent,expectedDepartment)=>{
+      // The application intentionally disables the main navigation while
+      // inside Excel settings. Use the visible "Về chế độ xem" UI action,
+      // rather than bypassing React's disabled tab buttons.
+      if(await adminA.js("document.querySelector('.nav-tabs button')?.disabled===true")){
+        await clickText(adminA,'.card-header button','Về chế độ xem');
+        await adminA.until("document.querySelector('.nav-tabs button')?.disabled===false",
+          stage+' leave Excel settings through real UI');
+      }
+      await clickText(adminA,'.nav-tabs button','Danh sách các ND trình HĐND');
+      await adminA.until(`document.querySelector('.item-data-table tbody')?.textContent?.includes(${JSON.stringify(expectedContent)})===true`,
+        stage+' current List records');
+      const list=await adminA.js(`(()=>{
+        const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+        return {count:rows.length,codes:rows.map(row=>row.textContent?.slice(0,150)),
+          content:document.querySelector('.item-data-table tbody')?.textContent??''};
+      })()`);
+      if(list.count!==2||!list.content.includes(expectedContent)||
+        !list.content.includes('NQ90')||!list.content.includes('BC91'))
+        throw Error('LIVE_LIST_'+stage+'_MISMATCH '+JSON.stringify(list));
+      await takeShot(stage.toLowerCase()+'-list');
+      await clickText(adminA,'.nav-tabs button','Báo cáo tổng hợp');
+      await adminA.until(`[...document.querySelectorAll('.report-table tbody')].some(x=>x.textContent?.includes(${JSON.stringify(expectedDepartment)}))`,
+        stage+' current Report totals');
+      const report=await adminA.js(`(()=>{
+        const tables=[...document.querySelectorAll('.report-table')];
+        return {tables:tables.length,rows:tables.map(t=>t.querySelectorAll('tbody tr').length),
+          groups:tables.map(t=>t.querySelector('tbody')?.textContent?.slice(0,230))};
+      })()`);
+      if(report.tables<1||!report.groups.some(x=>x?.includes(expectedDepartment))||
+        !report.groups.some(x=>x?.includes('2')))
+        throw Error('LIVE_REPORT_'+stage+'_MISMATCH '+JSON.stringify(report));
+      await takeShot(stage.toLowerCase()+'-report');
+      console.log('BROWSER_EXCEL_'+stage+'_LIVE_LIST_REPORT_PASS',JSON.stringify({
+        listRows:list.count,reportTables:report.tables,reportGroup:expectedDepartment,
+        expectedContent,source:'live Chrome App reading active RTDB generation'
+      }));
+    };
+    let initialBlocked=null;
+    let initialAfter=null;
+    try{
+      await assertUiCommitted('INITIAL',initial.op);
+      initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
+      const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
+      if(Object.keys(initialV2??{}).length!==2||
+        !Object.values(initialV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Initial generation not stored as parsed Excel business rows');
+      console.log('BROWSER_EXCEL_INITIAL_UI_CAS_PASS',JSON.stringify({
+        operationId:initial.op,revision:initialAfter.active.revision,
+        serverRows:Object.keys(initialV2).length,backupVerified:true
+      }));
+      await takeShot('initial');
+    }catch(error){
+      // This is an independent continuation fixture, NOT evidence that the
+      // user clicked and committed initial CAS. Never retry UNKNOWN.
+      const actual=await operationCounts();
+      if(actual.active)throw error;
+      initialBlocked=String(error);
+      console.error('BROWSER_EXCEL_INITIAL_UI_BLOCKED',JSON.stringify({
+        operationId:initial.op,cause:initialBlocked,active:null,
+        noAutomaticRetry:true
+      }));
+      await takeShot('initial-blocked');
+      const payload=await ownerValue('/hdnd/datasetV2/candidates/'+initial.op);
+      if(typeof payload!=='string')
+        throw Error('Cannot continue separate V2 replacement test: verified staged candidate absent');
+      const candidate=JSON.parse(payload);
+      if(candidate.manifest.operationId!==initial.op||
+        Object.keys(candidate.items??{}).length!==2)
+        throw Error('Initial UI staging is not a valid synthetic continuation fixture');
+      const source=await ownerValue('/hdnd/datasetV2');
+      const generationId=candidate.manifest.generationId;
+      const serverOwnedItems=Object.fromEntries(Object.entries(candidate.items)
+        .map(([id,item])=>[id,{...item,operationId:initial.op,
+          updatedAt:Date.now()-5000,updatedBy:adminIdentity[0].uid}]));
+      const synthetic={...source,
+        active:{generationId,operationId:initial.op,revision:1,
+          rowCount:2,digest:candidate.manifest.digest},
+        generations:{[generationId]:{items:serverOwnedItems}},
+        permissions:{[generationId]:{columns:{note:true}}},
+        operations:{[initial.op]:{status:'COMMITTED',from:'legacy',to:generationId,
+          at:Date.now()}},
+        bootstrap:{operationId:initial.op,freezeRevision:1,freezeEpoch:1,
+          legacyBaseline:'0'.repeat(64)}
+      };
+      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!seeded.ok)throw Error('Could not seed separate V2-only fixture: '+seeded.status);
+      initialAfter=await operationCounts();
+      if(initialAfter.active?.operationId!==initial.op)
+        throw Error('Independent replacement baseline readback failed');
+      console.log('BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_NOT_INITIAL_UI_PASS',
+        JSON.stringify({operationId:initial.op,revision:1,serverRows:2,
+          fixtureOnly:true,initialUiGate:'FAILED'}));
+    }
+    await checkLiveListReport(initialBlocked?'SYNTHETIC_V2_BASELINE':'INITIAL',
+      'PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    await openTransfer(adminA);
+    await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
+      'active V2 switched in UI');
+    await upload(adminA,replaceXlsx);
+    const replacement=await stagedId(adminA);
+    const replacementBefore=await operationCounts();
+    await enter(adminA,'input[aria-label="Xác nhận thay thế toàn bộ"]',replacement.text);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Chuyển thế hệ bằng CAS');
+    let replacementBlocked=null;
+    try{
+      await assertUiCommitted('REPLACE',replacement.op);
+      const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
+      const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
+      if(Object.keys(replacementV2??{}).length!==2||
+        !Object.values(replacementV2).some(x=>x.content==='PR95 REPLACE nghị quyết'))
+        throw Error('Replacement generation did not contain new Excel rows');
+      console.log('BROWSER_EXCEL_REPLACEMENT_UI_CAS_PASS',JSON.stringify({
+        operationId:replacement.op,revision:replacementAfter.active.revision,
+        serverRows:Object.keys(replacementV2).length,backupVerified:true
+      }));
+      await takeShot('replacement');
+    }catch(error){
+      const server=await operationCounts();
+      if(server.active?.operationId===replacement.op)throw error;
+      replacementBlocked=String(error);
+      console.error('BROWSER_EXCEL_REPLACEMENT_UI_BLOCKED',JSON.stringify({
+        operationId:replacement.op,reason:replacementBlocked,
+        noAutomaticRetry:true,active:server.active
+      }));
+      await takeShot('replacement-blocked');
+      // Independent restore test: build a fully tagged COMMITTED V2 fixture
+      // from the candidate already staged by the REAL Excel UI. A fixture PUT
+      // is not a successful UI replacement and must never be reported as one.
+      const raw=await ownerValue('/hdnd/datasetV2/candidates/'+replacement.op);
+      const backup=await ownerValue('/hdnd/datasetV2/backups/'+replacement.op);
+      if(typeof raw!=='string'||typeof backup!=='string')
+        throw Error('Cannot independently test restore: replacement candidate/backup absent');
+      const payload=JSON.parse(raw);
+      if(payload.manifest.operationId!==replacement.op||
+        Object.keys(payload.items??{}).length!==2)
+        throw Error('Cannot independently test restore: candidate readback malformed');
+      const source=await ownerValue('/hdnd/datasetV2');
+      const gen=payload.manifest.generationId,previous=source.active.generationId;
+      const items=Object.fromEntries(Object.entries(payload.items)
+        .map(([id,item])=>[id,{...item,operationId:replacement.op,
+          updatedAt:Date.now()-2000,updatedBy:adminIdentity[0].uid}]));
+      const synthetic={...source,
+        active:{generationId:gen,operationId:replacement.op,
+          revision:source.active.revision+1,rowCount:2,digest:payload.manifest.digest},
+        generations:{...source.generations,[gen]:{items}},
+        permissions:{...source.permissions,[gen]:{columns:{note:true}}},
+        operations:{...source.operations,[replacement.op]:{
+          status:'COMMITTED',from:previous,to:gen,at:Date.now()}}
+      };
+      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!seeded.ok)throw Error('Independent restore fixture could not be verified: '+seeded.status);
+      const fixture=await operationCounts();
+      if(fixture.active?.operationId!==replacement.op||
+        fixture.active?.revision!==replacementBefore.active.revision+1)
+        throw Error('Independent restore fixture active pointer mismatch');
+      console.log('BROWSER_EXCEL_SYNTHETIC_REPLACE_BASELINE_NOT_UI_CAS_PASS',
+        JSON.stringify({operationId:replacement.op,revision:fixture.active.revision,
+          fixtureOnly:true,replacementUiGate:'FAILED'}));
+    }
+    await checkLiveListReport(replacementBlocked?'SYNTHETIC_REPLACE_BASELINE':'REPLACEMENT',
+      'PR95 REPLACE nghị quyết','Sở QA REPLACE');
+    await openTransfer(adminA);
+    await enter(adminA,'input#v2-operation-lookup',replacement.op);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Tra cứu trạng thái operationId');
+    const restoreOp='restore_pr95_excel_ui_20261030';
+    await adminA.until("document.querySelector('input[aria-label=\"Mã khôi phục mới\"]')!==null",
+      'restore UI from saved replacement backup');
+    await enter(adminA,'input[aria-label="Mã khôi phục mới"]',restoreOp);
+    await enter(adminA,'input[aria-label="Xác nhận khôi phục"]','KHOI PHUC '+restoreOp);
+    const restoreBefore=await operationCounts();
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Khôi phục bằng CAS');
+    let restoreBlocked=null;
+    try{
+      await assertUiCommitted('RESTORE',restoreOp);
+      const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
+      const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
+      if(Object.keys(restoredV2??{}).length!==2||
+        !Object.values(restoredV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Restored generation did not reproduce original Excel content');
+      console.log('BROWSER_EXCEL_RESTORE_UI_CAS_PASS',JSON.stringify({
+        operationId:restoreOp,revision:restoreAfter.active.revision,
+        serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
+      }));
+      await takeShot('restore');
+      await checkLiveListReport('RESTORE','PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    }catch(error){
+      const server=await operationCounts();
+      restoreBlocked=String(error);
+      console.error('BROWSER_EXCEL_RESTORE_UI_BLOCKED',JSON.stringify({
+        operationId:restoreOp,reason:restoreBlocked,active:server.active,
+        noAutomaticRetry:true
+      }));
+      await takeShot('restore-blocked');
+    }
+    if(initialBlocked||replacementBlocked||restoreBlocked)
+      throw Error('PR95_REAL_EXCEL_UI_JOURNEY_INCOMPLETE '+JSON.stringify({
+        initial:initialBlocked?'BLOCKED':'PASS',
+        replacement:replacementBlocked?'BLOCKED':'PASS',
+        restore:restoreBlocked?'BLOCKED':'PASS',
+        fixtures:'disposable demo Emulator only; no skipped CAS marked PASS'
+      }));
+  }finally{
+    for(const t of adminTargets)t.socket.close();
+    rmSync(adminE2eDir,{recursive:true,force:true,maxRetries:6,retryDelay:120});
+  }
+
   if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
   await verifyExclusiveRules('after-browser-smoke');
   console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
-  try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
+  // Do not overwrite the actual Excel admin-screen failure already captured
+  // under the workflow's standard artifact path with an unrelated CDP tab.
+  let preservedExcelFailure=false;
+  try{preservedExcelFailure=statSync('hophdnd-ui-smoke-failure.png').isFile();}catch{}
+  if(!preservedExcelFailure){
+    try{if(ws?.readyState===WebSocket.OPEN){
+      const shot=await Promise.race([
+        send('Page.captureScreenshot',{format:'png'}),
+        sleep(2500).then(()=>null)
+      ]);
+      if(shot?.data)writeFileSync('hophdnd-ui-smoke-failure.png',
+        Buffer.from(shot.data,'base64'));
+    }}catch{}
+  }
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
 }finally{
   for(const p of pending.values())p.reject?.(Error('closing browser'));
