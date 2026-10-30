@@ -72,10 +72,10 @@ describe('PR95 L4: independent A–O business workbook contract',()=>{
       {name:'Lỗi',rows:[HEADINGS, [...sheetRow('NQ009'), 'P ngoài']]},
       {name:'Dữ liệu chuẩn',rows:[HEADINGS,sheetRow('001'),sheetRow('BC002',2,'BC')]},
     ]);
-    // Inspection is a header-shape scan, not a guarantee of row-level validity.
+    // Structural P-column faults are excluded during sheet discovery.
     expect(inspectBusinessExcel(bytes)).toEqual({
       sheetNames:['Hướng dẫn','Lỗi','Dữ liệu chuẩn'],
-      validSheets:['Lỗi','Dữ liệu chuẩn'],
+      validSheets:['Dữ liệu chuẩn'],
     });
     expect(()=>parseBusinessExcel(bytes,'')).toThrow('Phải chọn đúng sheet');
     expect(()=>parseBusinessExcel(bytes,'Không tồn tại')).toThrow('Phải chọn đúng sheet');
