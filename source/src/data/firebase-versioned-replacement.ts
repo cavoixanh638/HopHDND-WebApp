@@ -184,10 +184,9 @@ export async function prepareInitialDatasetActivation(
   fileName:string
 ):Promise<InitialActivationApproval>{
   adminGuard(user);
-  if(!/^[^\\/]{1,180}\\.xlsx$/i.test(fileName))
+  if(!/^[^\\/]{1,180}\.xlsx$/i.test(fileName))
     throw Error('Cần tên file Excel .xlsx hợp lệ.');
   const manifest=await createDatasetManifest(items,operationId);
-  const v2Root=ref(database,DATASET_V2_PATH);
   if((await get(ref(database,DATASET_V2_PATH+'/active'))).exists())
     throw Error('V2 đã có con trỏ hoạt động; không được khởi tạo lần thứ hai.');
   const snapshot=await legacyState(database);
@@ -221,7 +220,6 @@ export async function prepareInitialDatasetActivation(
     throw Error('Legacy đã thay đổi sau khi staging; hủy phê duyệt.');
   if((await get(ref(database,DATASET_V2_PATH+'/active'))).exists())
     throw Error('Tab khác đã kích hoạt V2 trong khi lập backup.');
-  void v2Root; // No root write occurs during prepare.
   return {operationId,manifest,legacyBaseline:baseline,
     legacyRowCount:snapshot.rows.length,freezeRevision:snapshot.freeze.revision,
     freezeEpoch:snapshot.freeze.epoch,preview,fileName};
