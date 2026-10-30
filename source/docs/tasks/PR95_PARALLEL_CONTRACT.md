@@ -202,3 +202,35 @@ resolveDatasetOperation(database:Database,operationId:string): Promise<{
 - Frontend display/status adaptation belongs to L2; independent Emulator race expectations belong to L3; L1 maintains backend and existing Emulator tests. Workers hand off exact commits. No Rules relaxation, no production switch.
 
 API-CHANGE-01 remains **UNDECIDED**: initial V2 activation over nonempty legacy `hdnd/items` needs a server-authoritative fence atomically covering legacy writes and the new pointer. Do NOT ship a naive cross-path client get + independent pointer CAS. Existing work is restricted to synthetic Emulator tests, PR Draft.
+
+## H. API-CHANGE-01 — backend prototype implemented; UI still HOLD (2026-10-30)
+
+Proposed (not yet L2 ACKed) backend-only exports in `src/data/firebase-versioned-replacement.ts`:
+
+```ts
+interface InitialActivationApproval {
+  operationId:string; manifest:DatasetGenerationManifest;
+  legacyBaseline:string; legacyRowCount:number;
+  freezeRevision:number; freezeEpoch:number;
+  preview:ReplacementPreview; fileName:string;
+}
+prepareInitialDatasetActivation(database:Database,user:User|null,
+  items:readonly Item[],operationId:string,fileName:string):
+  Promise<InitialActivationApproval>;
+commitInitialDatasetActivation(database:Database,user:User|null,
+  approval:InitialActivationApproval,confirmation:string):
+  Promise<ReplacementOutcome>;
+```
+
+Confirmation text (provisional, must be ACKed):
+`KHOI TAO V2 <operationId> <legacyRowCount> <newCount>`.
+
+**Implemented in candidate branch, not production:** admin must freeze legacy explicitly beforehand using existing `freezeControl`. `prepare` reads server-confirmed frozen revision/epoch, keyed legacy rows, permissions, and editLocks. It stages SHA-256 verified clean Excel items in the private `datasetV2/candidates/<operationId>` and preserves the complete raw legacy rows+ACL+locks in immutable private `datasetV2/legacyBackups/<operationId>`. Backup has its own SHA-256 stable baseline; no candidate generation inherits legacy rights or history from reused business codes.
+
+`commit` requires exact confirmation, compares immutable candidate/backup and legacy snapshot again while FROZEN, then attempts a single datasetV2 parent-node CAS from `active=null` to `revision=1`, new generation, private empty rights, `bootstrap` proof and an immutable COMMITTED operation. **RTDB Rules at the server** require `freezeControl.mode=FROZEN`, `closedAt>0` and **exact matching freeze revision/epoch** at the CAS instant, plus matching staged candidate, legacy backup and new operation record. Every legacy row/permission/lease write is denied during FROZEN; after V2 active even reopening freeze cannot revive legacy writes. The old legacy rows remain as a non-mutated backup/reference, not deleted.
+
+The current QA is an Emulator-only proof of this initial CAS workflow, not permission to activate real data. Exact tests are in the L1-owned `tests/firebase-versioned-replacement.test.ts`; do not bypass Rules, publish/deploy or expose button/UI without L2 ACK and independent L3 security review.
+
+**Still unverified:** true network ACK disappearance exactly at CAS boundary; multi-tab browser activation/reopen; deep rollback of legacy rights/history into a fresh V2 generation; full production Firebase-only runtime; handling legacy datasets above 1,000 rows; cross-source data parity and user acceptance. Rules cannot evaluate arbitrary JSON/SHA-256 themselves: checksum readback is enforced by backend client and immutability+freeze/CAS by server Rules. Never treat green CI as release authorization.
+
+**No cross-lane writes:** L2 owns App/state/browser and must ACK provisional interface before referencing these names. L3 owns its new tests. L1 owns backend Rules, existing Emulator test and this contract on integration branch.
