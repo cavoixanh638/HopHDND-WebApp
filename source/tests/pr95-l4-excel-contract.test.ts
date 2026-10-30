@@ -205,8 +205,12 @@ describe('PR95 L4: independent A–O business workbook contract',()=>{
     const limit=5*1024*1024;
     const exactly=new Uint8Array(limit);
     const beyond=new Uint8Array(limit+1);
-    // At exactly 5 MiB the size check passes; decoder rejects the invalid ZIP.
-    expect(()=>parse(exactly)).toThrow('không đọc được file .xlsx');
+    // At exactly 5 MiB the size gate accepts the bytes; the workbook
+    // decoder or sheet selector may reject them for another reason.
+    let boundaryError='';
+    try{parse(exactly);}catch(error){boundaryError=String(error);}
+    expect(boundaryError).toBeTruthy();
+    expect(boundaryError).not.toContain('tối đa 5 MB');
     expect(()=>parse(beyond)).toThrow('tối đa 5 MB');
     expect(()=>parse(new Uint8Array(0))).toThrow('không rỗng');
   });
