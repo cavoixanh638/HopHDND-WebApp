@@ -2838,8 +2838,8 @@ try{
     await eventually("document.querySelectorAll('.item-heading-row th').length===6",
       'R02 capped source fixture did not mount');
     const before=await widthSnapshot();
-    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2842)>1)
-      throw Error('R04/R02 cap baseline not 1600 / 2842: '+JSON.stringify({sourceCap,before}));
+    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2772)>1)
+      throw Error('R04/R02 V2 no-STT cap baseline not 1600 / 2772: '+JSON.stringify({sourceCap,before}));
     const focusCap=await evaluate(`(()=>{
       const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
       if(!el)return false;el.focus();return document.activeElement===el;
