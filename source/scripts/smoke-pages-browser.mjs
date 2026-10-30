@@ -772,16 +772,30 @@ try{
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
   const paletteCascade=await evaluate(`(()=>{
-    const root=document.querySelector('.app-shell');
     const sample=document.querySelector('.item-data-table tbody td[data-col-key="partyLevel"] .compact-stage-state[data-progress-tone="not-submitted"]');
-    if(!root||!sample)return {ok:false,reason:'missing table/status'};
-    root.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
-    root.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
-    const style=getComputedStyle(sample);
-    const ok=style.color==='rgb(161, 0, 34)'&&style.backgroundColor==='rgb(241, 203, 219)';
-    root.style.removeProperty('--hdnd-status-not-submitted-text');
-    root.style.removeProperty('--hdnd-status-not-submitted-bg');
-    return {ok,text:style.color,background:style.backgroundColor};
+    const frame=sample?.closest('.compact-stage-row');
+    if(!sample||!frame)return {ok:false,reason:'missing real grouped stage'};
+    // App may supply a nearer scoped palette than the outer app-shell. Edit the
+    // actual closest CSS-variable owner, then restore it without writing storage.
+    let owner=sample.parentElement;
+    while(owner&&!owner.style.getPropertyValue('--hdnd-status-not-submitted-text'))
+      owner=owner.parentElement;
+    owner??=document.querySelector('.app-shell');
+    if(!owner)return {ok:false,reason:'missing palette owner'};
+    const beforeText=owner.style.getPropertyValue('--hdnd-status-not-submitted-text');
+    const beforeBg=owner.style.getPropertyValue('--hdnd-status-not-submitted-bg');
+    owner.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
+    owner.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
+    const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
+    const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
+    const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
+    const ok=text==='rgb(161, 0, 34)'&&background==='rgba(0, 0, 0, 0)'&&
+      inherited==='#A10022'&&frameBackground!=='rgba(0, 0, 0, 0)';
+    if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
+    else owner.style.removeProperty('--hdnd-status-not-submitted-text');
+    if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
+    else owner.style.removeProperty('--hdnd-status-not-submitted-bg');
+    return {ok,text,background,frameBackground,inherited,owner:owner.className};
   })()`);
   if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
   const sortAndGuestLayout=await evaluate(`(()=>{
