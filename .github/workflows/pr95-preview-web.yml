@@ -62,17 +62,28 @@ jobs:
         run: |
           if ! node scripts/package-compact-qa.mjs; then
             node --input-type=module <<'JS'
-          import {readFileSync} from 'node:fs';
+          import {readFileSync,readdirSync} from 'node:fs';
           import {resolve} from 'node:path';
           const root=resolve('dist-compact-qa');
           let html=readFileSync(resolve(root,'compact-qa.html'),'utf8');
-          const scripts=[...html.matchAll(/<script\\s+type="module"\\s+[^>]*src="([^"]+)"[^>]*><\\/script>/g)];
-          const styles=[...html.matchAll(/<link\\s+[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
-          for(const [match,src] of scripts)html=html.replace(match,'<script type="module">'+readFileSync(resolve(root,src),'utf8').replace(/<\\/script/gi,'<\\\\/script')+'</script>');
-          for(const [match,src] of styles)html=html.replace(match,'<style>'+readFileSync(resolve(root,src),'utf8').replace(/<\\/style/gi,'<\\\\/style')+'</style>');
-          const markup=html.replace(/(<script\\b[^>]*>)[\\s\\S]*?<\\/script>/gi,'$1</script>').replace(/(<style\\b[^>]*>)[\\s\\S]*?<\\/style>/gi,'$1</style>');
-          const matches=[...markup.matchAll(/<script\\b[^>]*\\bsrc\\s*=|<link\\b[^>]*\\brel="stylesheet"[^>]*\\bhref=/g)];
-          console.log('PR95_L4_PACKAGE_DIAG',JSON.stringify({original:readFileSync(resolve(root,'compact-qa.html'),'utf8').slice(0,900),matches:matches.slice(0,6).map(x=>({index:x.index,context:markup.slice(Math.max(0,x.index-200),x.index+280)})),markupLength:markup.length,scripts:scripts.length,styles:styles.length}));
+          const assets=readdirSync(resolve(root,'assets'));
+          const js=readFileSync(resolve(root,'assets',assets.find(x=>x.endsWith('.js'))),'utf8');
+          const css=readFileSync(resolve(root,'assets',assets.find(x=>x.endsWith('.css'))),'utf8');
+          function replaceAsset(attribute,open,close,replacement){
+            const at=html.indexOf(attribute),start=html.lastIndexOf('<'+open,at);
+            const stop=html.indexOf(close,at)+close.length;
+            const original=html.slice(start,stop);
+            html=html.replace(original,replacement);
+          }
+          replaceAsset('src="./assets/','script','</script>','<script type="module">'+js.replaceAll('</script','<\\/script')+'</script>');
+          replaceAsset('href="./assets/','link','>','<style>'+css.replaceAll('</style','<\\/style')+'</style>');
+          function removeInline(name){
+            const open=html.indexOf('<'+name),start=html.indexOf('>',open);
+            const close=html.indexOf('</'+name+'>',start);
+            if(open>=0&&close>=0)html=html.slice(0,start+1)+html.slice(close);
+          }
+          removeInline('script');removeInline('style');
+          console.log('PR95_L4_PACKAGE_DIAG',JSON.stringify({original:readFileSync(resolve(root,'compact-qa.html'),'utf8').slice(0,600),remaining:html.slice(0,1800),scripts:assets.length,htmlLength:html.length}));
           JS
             exit 1
           fi
