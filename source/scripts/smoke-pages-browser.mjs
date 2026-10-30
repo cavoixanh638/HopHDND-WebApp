@@ -19,7 +19,9 @@ const EMULATOR_PROJECT='demo-hdnd';
 const EMULATOR_DB='http://127.0.0.1:9000';
 const EMULATOR_AUTH='http://127.0.0.1:9099';
 const EMULATOR_NAMESPACE='demo-hdnd';
-const EMULATOR_ROOT=EMULATOR_DB+'/.json?ns='+EMULATOR_NAMESPACE+'&auth=owner';
+const EMULATOR_ROOT=EMULATOR_DB+'/.json?ns='+EMULATOR_NAMESPACE;
+// Admin Bearer owner is used ONLY to install exact Rules and seed synthetic
+// localhost demo data. All guest assertions use genuine anonymous ID tokens.
 const EXCLUSIVE_RULES_FILE=resolve('firebase/database.exclusive-candidate.rules.json');
 const expectedRules=JSON.parse(readFileSync(EXCLUSIVE_RULES_FILE,'utf8'));
 const rulesDigest=createHash('sha256').update(JSON.stringify(expectedRules)).digest('hex');
@@ -169,11 +171,12 @@ async function startAndSeedFirebase(){
   };
   await verifyExclusiveRules('before-auth-and-browser');
   const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
-    'Content-Type':'application/json'
+    'Content-Type':'application/json',Authorization:'Bearer owner'
   },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
   if(!response.ok)throw Error('Could not seed isolated RTDB: HTTP '+response.status+
     ' '+(await response.text()).slice(0,500));
-  const readback=await fetch(EMULATOR_ROOT,{signal:AbortSignal.timeout(8000)});
+  const readback=await fetch(EMULATOR_ROOT,{
+    headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
   if(!readback.ok)throw Error('Could not read synthetic RTDB seed back');
   const actual=await readback.json();
   const active=actual?.hdnd?.datasetV2?.active;
