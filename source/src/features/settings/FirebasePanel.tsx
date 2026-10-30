@@ -52,7 +52,7 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
   const isGuest=userLabel.startsWith('Khách ẩn danh');
   return <section className="card" aria-label="Tài khoản Firebase">
     <div className="settings-mode-bar"><div><strong>Tài khoản Firebase</strong>
-      <p>Xác thực tài khoản tại đây. Quản trị phân quyền cột/dòng/ô ngay trên bảng Danh sách trong chế độ tùy chỉnh, không ở màn hình riêng.</p></div>
+      <p>Xác thực tài khoản tại đây. Quản trị chọn “Phân quyền chỉnh sửa” để cấp hoặc thu hồi quyền theo cột, dòng và ô. Quyền chỉ có hiệu lực sau khi Firebase xác nhận lưu.</p></div>
       <div className="top-actions"><button type="button" className="button ghost" onClick={onClose} disabled={busy||working}>Về chế độ xem</button></div>
     </div>
     <div className="card-header"><div><h3>Trạng thái đăng nhập</h3><p className="muted">{connected?'Đã kết nối Firebase':'Chưa kết nối Firebase'} · {userLabel||'Chưa xác định tài khoản'}</p></div></div>
@@ -60,7 +60,7 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
     <div className="top-actions">
       <button type="button" className="button primary" disabled={busy||working} onClick={()=>void login()}>{isAdmin?'Đổi tài khoản Google':'Đăng nhập Google nhân viên'}</button>
       {!isGuest&&<button type="button" className="button ghost" disabled={busy||working} onClick={()=>void logout()}>Đăng xuất</button>}
-      {isAdmin&&<button type="button" className="button primary" disabled={busy||working} onClick={onOpenItemsCustomize}>Mở tùy chỉnh Danh sách và phân quyền ô</button>}
+      {isAdmin&&<button type="button" className="button primary" disabled={busy||working} onClick={onOpenItemsCustomize}>Phân quyền chỉnh sửa (cột, dòng, ô)</button>}
     </div>
     <div className="card-header"><div>
       <h3>Quyền tài khoản</h3>

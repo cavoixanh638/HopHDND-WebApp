@@ -1,0 +1,46 @@
+name: PR95 UI V2 L3 - real App permissions (isolated)
+on:
+  pull_request:
+    paths:
+      - "source/src/app/App.tsx"
+      - "source/src/features/settings/FirebasePanel.tsx"
+      - "source/src/features/settings/ExcelTransferPanel.tsx"
+      - "source/scripts/pr95-ui-v2-l3-browser.mjs"
+      - ".github/workflows/pr95-ui-v2-l3-permissions.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-app-grant-guest-revoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install frozen dependencies
+        run: npm ci
+      - name: Build real Pages test App, not compact QA
+        run: npm run build:pages:test
+      - name: Verify isolated permissions script syntax
+        run: node --check scripts/pr95-ui-v2-l3-browser.mjs
+      - name: Real Chrome admin grants exact cell, guest edits, admin revokes; server audit
+        run: node scripts/pr95-ui-v2-l3-browser.mjs
+      - name: Preserve screenshots of real App with only synthetic data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-ui-v2-l3-real-app-screens
+          path: source/pr95-ui-v2-l3-artifacts/*.png
+          if-no-files-found: ignore
+          retention-days: 14
