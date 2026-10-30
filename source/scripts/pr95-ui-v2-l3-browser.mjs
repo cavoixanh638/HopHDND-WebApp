@@ -193,8 +193,11 @@ async function test(){
   assert.ok(principal.uid&&principal.emailVerified&&principal.providerIds.includes('google.com'));
   await admin.until('!!document.querySelector(".options-menu summary")','admin menu');
   await admin.until('!document.body.textContent.includes("Đang đọc cấu hình chung")','admin profile confirmed');
+  step('ADMIN_BEFORE_ROUTE',{nav:await admin.evalJs('document.querySelector(".options-menu")?.outerHTML.slice(0,850)'),body:await admin.evalJs('document.body.textContent.slice(0,650)')});
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
-  await clickText(admin,'.options-popover button','Phân quyền chỉnh sửa');
+  await clickText(admin,'.options-popover button','Chỉnh sửa');
+  await admin.until('!!document.querySelector("nav.settings-hub-tabs")','real edit settings tabs');
+  await clickText(admin,'nav.settings-hub-tabs button','Phân quyền chỉnh sửa');
   await admin.until('!!document.querySelector("section.inline-permissions")','real InlinePermissionsTable');
   assert.equal(await admin.evalJs('!!document.querySelector(".item-data-table")'),false,
     'Permission route must render actual permission table, not ordinary list');
@@ -293,7 +296,9 @@ async function test(){
   step('ACCOUNT_REPORT_EXCEL_APP_REGRESSION_PASS',{account,excel});
   // A data draft cannot be silently dropped by opening admin permissions.
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
-  await clickText(admin,'.options-popover button','Phân quyền chỉnh sửa');
+  await clickText(admin,'.options-popover button','Chỉnh sửa');
+  await admin.until('!!document.querySelector("nav.settings-hub-tabs")','admin settings second entry');
+  await clickText(admin,'nav.settings-hub-tabs button','Phân quyền chỉnh sửa');
   await admin.until('!!document.querySelector("section.inline-permissions")','admin rights entry again');
   const after=await ownerReq(PATH+'/generations/'+GEN+'/items/'+ROW);
   assert.equal(after.revision,2);
