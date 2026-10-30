@@ -1343,15 +1343,17 @@ try{
   console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
 
 
-  // Guest may change local-only grouping but must never receive admin layout controls.
+  // V3: anonymous and non-admin viewers MUST NOT receive any personal
+  // compact column menu or a stale layout write path, but can still sort.
   const compactGuestSafe=await evaluate(`(()=>{
-    const guest=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    return !!guest&&guest.textContent.includes('Tùy chọn người phụ trách')&&
-      !document.querySelector('.admin-column-arrange-hint')&&
-      !document.querySelector('.item-column-panel')&&
-      !document.querySelector('.status-palette-trigger');
+    const menu=document.querySelector('.guest-compact-menu-bar,.compact-columns-menu');
+    const sort=document.querySelector('.item-heading-row .column-sort-button');
+    return !menu&&!!sort&&!!document.querySelector('.list-filter-toolbar')&&
+      !document.querySelector('.admin-column-arrange-hint,.item-column-panel,.source-column-visibility')&&
+      !document.querySelector('.status-palette-trigger,.column-resizer');
   })()`);
-  if(!compactGuestSafe)throw Error('Guest compact view must remain local-only');
+  if(!compactGuestSafe)throw Error('V3 guest received admin-only column or layout controls');
+  console.log('V3_GUEST_NO_COMPACT_LAYOUT_CONTROLS_PASS');
   // V2 intentionally has one compact global toolbar and no duplicate column-header filters.
   if(!await evaluate("!!document.querySelector('.list-filter-toolbar')&&!document.querySelector('.item-column-filter-row')"))
     throw Error('V2 toolbar missing or duplicate full-width per-column filter row returned');
@@ -2185,56 +2187,39 @@ try{
   })()`);
   if(!isolatedEdit.ok)throw Error('Source stage editors must not cross-write: '+JSON.stringify(isolatedEdit));
 
-  // U04 is OFF until a guest explicitly enables it; source and UID isolation
-  // survives reload, while shared default and all source values remain intact.
+  // V3 replaces the old guest-local U04 toggle with the shared viewing
+  // layout. No source, viewer-UID or local preference can be written by guest.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("document.querySelector('.guest-compact-menu-bar .compact-columns-menu')!==null",
-    'Guest personal compact menu missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
+    'V3 guest shared projection missing');
   const guestInitial=await evaluate(`(()=>{
-    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    menu.open=true;
-    const label=[...menu.querySelectorAll('label')].find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
+    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
     return {columns:document.querySelectorAll('.item-heading-row th').length,
       hasInline:!!document.querySelector('.compact-cv-room-line'),
-      checkbox:label?.querySelector('input')?.checked??null};
+      localMenu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
+      localSaved:localStorage.getItem(key),
+      sourceSaved:localStorage.getItem('hdnd.qa.group-labels-synthetic'),
+      sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
   })()`);
-  if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.checkbox!==false)
-    throw Error('U04 must default off for guest and preserve 6 non-STT displayed columns: '+JSON.stringify(guestInitial));
-  const guestToggle=await evaluate(`(()=>{
-    const label=[...document.querySelectorAll('.guest-compact-menu-bar label')]
-      .find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
-    const checkbox=label?.querySelector('input');
-    if(!checkbox)return false;checkbox.click();return true;
-  })()`);
-  if(!guestToggle)throw Error('Guest cannot enable U04 inline CV/Phòng');
-  await eventually("document.querySelector('.item-data-table tbody tr .compact-cv-room-line')!==null",
-    'U04 inline staff rendering did not activate');
-  const guestSaved=await evaluate(`(()=>{
-    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
-    const prefs=JSON.parse(localStorage.getItem(key)||'null');
-    return {ok:prefs?.cvRoomInline===true&&prefs?.teamTogether===true&&
-      document.querySelectorAll('.item-heading-row th').length===6,
-      inlineText:document.querySelector('.compact-cv-room-line')?.textContent?.slice(0,150)};
-  })()`);
-  if(!guestSaved.ok)throw Error('U04 guest localStorage scope or inline view regression: '+JSON.stringify(guestSaved));
+  if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
+    guestInitial.localSaved!==null||!guestInitial.sortable)
+    throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("document.querySelector('.compact-cv-room-line')!==null",
-    'U04 personal option did not survive reload');
-  const resetGuest=await evaluate(`(()=>{
-    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    if(!menu)return false;menu.open=true;
-    const button=[...menu.querySelectorAll('button')]
-      .find(x=>x.textContent.includes('Khôi phục cách hiển thị chung'));
-    if(!button)return false;button.click();return true;
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
+    'V3 guest reload missing');
+  const guestReload=await evaluate(`(()=>{
+    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
+    return {inline:!!document.querySelector('.compact-cv-room-line'),
+      menu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
+      local:localStorage.getItem(key),
+      source:localStorage.getItem('hdnd.qa.group-labels-synthetic')};
   })()`);
-  if(!resetGuest)throw Error('Guest reset option missing');
-  await eventually("document.querySelector('.compact-cv-room-line')===null",
-    'Reset must restore shared U04=false');
-  if(!await evaluate("localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')===null"))
-    throw Error('Guest reset wrote to source or failed to clear local setting');
-  console.log('U04_GUEST_LOCAL_ONLY_RELOAD_RESET_PASS',JSON.stringify(guestSaved));
+  if(guestReload.inline||guestReload.menu||guestReload.local!==null||
+    guestReload.source!==guestInitial.sourceSaved)
+    throw Error('V3 guest reload persisted forbidden column customization: '+JSON.stringify({guestInitial,guestReload}));
+  console.log('V3_GUEST_SHARED_COLUMNS_NO_PRESETS_RELOAD_PASS',JSON.stringify({guestInitial,guestReload}));
   console.log('GROUPED_STAGED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
 
@@ -2807,43 +2792,38 @@ try{
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
     JSON.stringify({textGeometry,wideBefore,wideAfter}));
 
-  // Owner L023: anonymous/read-only viewers may resize a column ONLY in
-  // their live view; the shared layout is never written and reload resets it.
+  // V3: guest never receives resize handles or mutable column layout,
+  // even if the previous V2 guest-only local-width store exists.
   const guestResizeUrl='http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
   await send('Page.navigate',{url:guestResizeUrl});
-  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
-    'L023 guest must have a local-only width divider');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
+    'V3 guest table must remain viewable and sortable');
   const guestBefore=await widthSnapshot();
   const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
-  const guestEdge=await evaluate(`(()=>{
-    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
-      .getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  const noGuestResize=await evaluate(`(()=>{
+    const heading=document.querySelector('th[data-column-key=specificProgress]');
+    const sort=heading?.querySelector('.column-sort-button');
+    if(!heading||!sort||heading.querySelector('.column-resizer')||
+      document.querySelector('.source-column-visibility,.compact-columns-menu'))
+      return false;
+    sort.click();return true;
   })()`);
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...guestEdge});
-  await send('Input.dispatchMouseEvent',{type:'mousePressed',...guestEdge,
-    button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:guestEdge.x+120,y:guestEdge.y,
-    button:'left'});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:guestEdge.x+120,y:guestEdge.y,
-    button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=319",
-    'L023 guest local width did not change');
+  if(!noGuestResize)throw Error('Guest must sort but cannot resize or choose columns');
+  await eventually("document.querySelector('th[data-column-key=specificProgress]')?.getAttribute('aria-sort')==='ascending'",
+    'V3 guest sort failed');
   const guestAfter=await widthSnapshot();
-  assertSameTotal(guestBefore,guestAfter,'L023 guest local-only');
-  const gi=guestBefore.keys.indexOf('specificProgress');
-  if(guestAfter.widths[gi]!==guestBefore.widths[gi]+120||
-    guestAfter.widths[gi+1]!==130||
-    guestAfter.widths.at(-1)!==guestBefore.widths.at(-1)-10||
+  if(JSON.stringify(guestBefore.widths)!==JSON.stringify(guestAfter.widths)||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
-    throw Error('L023 guest changed other widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+    throw Error('V3 guest sort changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
-    'L023 guest remount missing');
+    'V3 guest remount missing');
   const guestReload=await widthSnapshot();
-  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths))
-    throw Error('L023 guest edit was not session-only: '+JSON.stringify({guestBefore,guestReload}));
-  console.log('L023_GUEST_LOCAL_ONLY_RESIZE_NO_SHARED_WRITE_PASS',
+  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths)||
+    await evaluate("!!document.querySelector('.column-resizer,.guest-compact-menu-bar,.compact-columns-menu')"))
+    throw Error('V3 guest private column UI returned after reload: '+JSON.stringify({guestBefore,guestReload}));
+  console.log('V3_GUEST_SORT_ONLY_NO_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
@@ -3169,8 +3149,10 @@ try{
   })`);
   if(quickRename.modalOpen)throw Error('R12 save did not close rename popup');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("!!document.querySelector('.guest-compact-menu-bar')",
-    'R12 guest layout failed to load');
+  await eventually("!!document.querySelector('.item-data-table')",
+    'R12 guest table failed to load');
+  if(await evaluate("!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu')"))
+    throw Error('R12 guest personal column menu unexpectedly present');
   if(await evaluate("!!document.querySelector('.group-label-shortcut')"))
     throw Error('R12 guest received admin-only group-title edit control');
   console.log('R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS',JSON.stringify(quickRename));
