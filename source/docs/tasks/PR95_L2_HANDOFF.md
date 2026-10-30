@@ -95,3 +95,34 @@ Ngày 2026-10-30. Phần này **bổ sung** cho bàn giao ban đầu ở trên; 
 ### Bàn giao tích hợp
 
 L1 kiểm tra **diff còn lại** giữa PR #95 integration branch hiện hành và PR nháp **#101**; chỉ áp dụng thay đổi trong 3 file L2 ở trên. Không cherry-pick toàn bộ commit cũ trong worker nếu phần trước đã được tích hợp bởi PR #100. Chạy `npm run typecheck`, `npm test`, `npm run test:firebase` (Rules thật), `npm run build:pages`, browser smoke; phân biệt lỗi L3/backend đã tồn tại với regressions do L2. Không merge main/publish/deploy.
+
+---
+
+## 8. L2 follow-up — Firebase-only Browser smoke sau tích hợp `143e34c05c6ec431eb2ebf80021045a2213e1d15`
+
+**Ngày 30/10/2026; đây là lượt tiếp nối độc lập, không reset nhánh L2 cũ.**
+- Branch: `pr95/l2-firebase-only-browser-smoke-20261030`, tạo tại đúng `143e34c05c6ec431eb2ebf80021045a2213e1d15`, xác nhận trước sửa 0 ahead/behind.
+- **Exact CI-tested code SHA:** `b5db6aba6bc4d5481fa42b032ac7ec53a3d1caf5`.
+- **L2 Draft worker PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/102 (chỉ tích hợp bởi Luồng 1).
+- **Only changed existing source:** `source/scripts/smoke-pages-browser.mjs`; mục 8 handoff này là thay đổi documentation L2 được phép. Không chỉnh backend/Rules/workflow/project allowlist, không publish/deploy/production.
+
+### Thay nguồn kiểm thử, KHÔNG làm yếu kiểm tra
+
+1. Bản trước intercept `docs.google.com/spreadsheets/*/gviz` trả bảng giả và bấm `Xem dữ liệu tạm`; lỗi ở Firebase-only vì ứng dụng không còn vận hành bằng Google Sheets. Đã bỏ **chỉ mock và thao tác chuyển nguồn**, không bỏ kiểm tra `NQ01` hoặc bộ assert giao diện cũ.
+2. Script khởi động Auth + RTDB emulators ngay trong phiên bằng `firebase emulators:start --project demo-hdnd --only database,auth --config firebase.json`, đợi Hub xác nhận port localhost `9099`/`9000`, chỉ kết thúc khi Chrome QA hoàn tất. Bản kiểm thử tự sở hữu vòng đời Emulator nên không cần sửa workflow/runner; chạy sau `npm run test:firebase` cũng dùng phiên Emulator mới.
+3. Dùng REST **owner token chỉ trên localhost demo Emulator** để nạp dữ liệu giả, readback kiểm tra đủ 54 rows và con trỏ `hdnd/datasetV2/active`, generation `gen_pr95_browser_smoke_20261030`. Các hồ sơ nằm trong đúng đường dẫn `hdnd/datasetV2/generations/<generationId>/items` mà `FirebaseRepository` của App đọc. Auth đăng nhập ẩn danh thật qua Emulator và RTDB Rules thật.
+4. Chrome xác nhận Danh sách có `NQ01`, `NQ54`, Ghi chú, đủ 54 rows, không bấm chế độ tạm; mở Báo cáo và xác nhận **5 report tables**, phòng ban `Sở kiểm thử` và nonzero counts (tổng hợp fixture). Quay lại Danh sách tiếp tục full regression UI. Chặn request `docs.google.com/spreadsheets` và Firebase production trong phiên.
+5. Toàn bộ script browser CDP test hơn ba nghìn dòng về bố cục, 52px ID, resize, hover, 15 filter, search, lịch sử của khách, popup, báo cáo, mobile và screenshot vẫn được thực thi, không skip vì thay nguồn.
+
+### Bằng chứng GitHub Actions / exact SHA
+
+**Verify HopHDND source #41004145273 = SUCCESS** tại chính `b5db6aba6bc4d5481fa42b032ac7ec53a3d1caf5`:
+https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41004145273
+
+- Typecheck **PASS**, unit tests **PASS**, Firebase Emulator Rules/race **PASS**, Pages builds/compatibility **PASS**, W0 historic measurement **PASS**, Browser smoke **PASS**, screenshots/previews generated. Không deploy.
+- Log có `FIREBASE_BROWSER_SEED_VERIFIED` `rowCount:54`, `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` `rows:54`, `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` `tables:5`, `GUEST_TWO_FIELD_HISTORY_PASS`, và cuối `BROWSER_SMOKE_PASS`.
+- Lượt CI trước `d94a...` FAIL do health-check Auth **trong test mới**, dù Emulator thực tế đã ready; L2 sửa dùng Emulator Hub, không thay đổi App hay Rules. Đây không phải lỗi cấu hình Firebase production.
+- Dòng `Sai Firebase project/instance` thuộc **negative backup-helper test** và test đó PASS. Không sửa project allowlist.
+- Tên bước workflow hiện vẫn là `Browser smoke with mock Sheets and headless Chrome` dù bên trong đã là Firebase-only; **đề nghị Luồng 1 đổi nhãn** thành `Browser smoke with real Firebase Emulators and headless Chrome` tại `.github/workflows/verify-source.yml` (ngoài ownership L2), chỉ sửa nhãn, không đổi test logic. Không bắt buộc đổi nhãn để CI PASS.
+
+**Handoff:** Luồng 1 review diff PR #102, chỉ cherry-pick/merge phần L2 script + tài liệu theo đúng ownership vào **nhánh tích hợp PR #95**, không main. Chạy toàn bộ CI tại HEAD tích hợp mới; worker-green `b5db6ab` không thay thế bằng chứng integrated HEAD. PR #95 giữ DRAFT; chưa sẵn sàng GO production cho đến khi toàn bộ release gates khác được chốt.
