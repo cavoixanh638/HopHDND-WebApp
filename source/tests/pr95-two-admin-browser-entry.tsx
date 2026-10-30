@@ -186,6 +186,9 @@ function WorkspaceProbe(){
   const repository=useMemo(()=>generation?ensure(generation).repository:fallback,
     [generation,active?.operationId,active?.revision]);
   const manager=useMemo(()=>generation?ensure(generation).manager:undefined,[generation]);
+  // Mirror App.tsx lease-manager lifecycle: old tab session is disposed on
+  // active generation change; local drafts remain but cannot cross the epoch.
+  useEffect(()=>()=>{if(manager)void manager.dispose();},[manager]);
   // Same source-key structure as production App.tsx, to prove generation fence.
   const sourceKey=active?'pages:gen:'+active.generationId+':'+active.operationId+':'+active.revision
     :'pages:primary';
