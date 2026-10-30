@@ -108,7 +108,7 @@ try{
   await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1'});
-  await waitFor('document.querySelector("[data-preview=pr95-v3-l5-full]")&&document.querySelector(".item-data-table tbody tr")','list default');
+  await waitFor('document.querySelector("[data-preview=pr95-l4-full]")&&document.querySelector(".item-data-table tbody tr")','list default');
   await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','exactly two wide cards');
   await ensure('document.querySelector("[data-role=guest]")','guest default');
   await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".pr95-preview-role")','guest no Excel or role toolbar');
@@ -220,7 +220,7 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   const offlineUrl=pathToFileURL(join(root,'HopHDND_GopCot_XemThu.html')).href;
   await send('Page.navigate',{url:offlineUrl});
-  await waitFor('document.querySelector("[data-preview=pr95-v3-l5-full]") && document.querySelector(".item-data-table tbody tr")','offline file React mount');
+  await waitFor('document.querySelector("[data-preview=pr95-l4-full]") && document.querySelector(".item-data-table tbody tr")','offline file React mount');
   await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','offline two-card nav');
   await ensure('!document.body.textContent.includes("function Rf(")','offline no raw compiled JavaScript');
   await ensure('document.querySelector("[data-role=guest]")','offline guest default');
