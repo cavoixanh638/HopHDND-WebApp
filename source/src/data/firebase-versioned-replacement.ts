@@ -1,7 +1,7 @@
 import {get,ref,runTransaction,set,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
-import {firebaseAdmin} from './firebase-repository';
+import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
 import {createDatasetManifest,verifyCandidateServerReadback,checkPointerSwap,
   type ActiveDatasetPointer,type DatasetGenerationManifest} from './dataset-replacement-integrity';
 import {previewDatasetReplacement,type ReplacementPreview} from './dataset-replacement-preview';
@@ -156,9 +156,12 @@ export async function commitDatasetReplacement(
         throw Error('Ứng viên hoặc backup đã thay đổi sau bước xác minh.');
       if(source.generations[approval.manifest.generationId])
         throw Error('Mã thế hệ ứng viên đã tồn tại; không ghi chồng.');
+      const hydrated=Object.fromEntries(Object.entries(staged.items as Record<string,Item>)
+        .map(([id,item])=>[id,{...item,operationId:approval.operationId,
+          updatedAt:Date.now(),updatedBy:user!.uid}]));
       const next:V2Snapshot={...source,
         generations:{...source.generations,
-          [approval.manifest.generationId]:{items:staged.items as Record<string,Item>}},
+          [approval.manifest.generationId]:{items:hydrated as Record<string,Item>}},
         permissions:{...source.permissions,[approval.manifest.generationId]:{columns:{}}},
         active:{generationId:approval.manifest.generationId,operationId:approval.operationId,
           revision:approval.expected.revision+1,rowCount:approval.manifest.rowCount,
@@ -174,7 +177,9 @@ export async function commitDatasetReplacement(
     if(result?.committed){
       // A fresh server readback, not merely an acknowledged transaction.
       const items=(await get(ref(database,DATASET_V2_PATH+'/generations/'+approval.manifest.generationId+'/items'))).val();
-      await verifyCandidateServerReadback(items,approval.manifest);
+      const pure=Object.fromEntries(Object.entries(record(items))
+        .map(([id,value])=>[id,validateFirebaseItem(value)]));
+      await verifyCandidateServerReadback(pure,approval.manifest);
     }
     return {status:result?.committed?'committed':'already-committed',operationId:approval.operationId};
   }
