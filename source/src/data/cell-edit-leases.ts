@@ -175,6 +175,9 @@ export class CellEditSessionManager {
   activeCount(){return this.held.size;}
   async acquire(id:string,field:EditableField,kind:EditorKind):Promise<boolean>{
     if(this.closed)throw new Error('Phiên sửa đã hết hiệu lực khi thay thế dữ liệu.');
+    // Existing in-memory lease is NOT authorization across an epoch change.
+    // Do this before the fast-path held.has() check.
+    await assertActiveLeaseGeneration(this.database,this.generationId);
     const key=this.key(id,field);
     if(this.held.has(key))return true;
     const lease=await acquireCellLease(this.database,this.viewer(),this.tabSession,id,field,kind,this.generationId);
