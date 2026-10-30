@@ -36,8 +36,11 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
       if(!/\.xlsx$/i.test(upload.name))throw Error('Chỉ chấp nhận tệp .xlsx.');
       const bytes=new Uint8Array(await upload.arrayBuffer());
       const inspection=inspectBusinessExcel(bytes);
-      if(!inspection.validSheets.length)throw Error('Không có sheet nào khớp cấu trúc bảng nghiệp vụ A–O.');
+      // Keep the workbook available even when every sheet has a malformed
+      // header. Selecting a sheet then reports its exact row and column.
       setFile({name:upload.name,bytes,inspection});
+      if(!inspection.validSheets.length)
+        setError('Chưa có sheet nào đúng tiêu đề A–O. Chọn sheet và bấm Kiểm tra để xem cột sai cụ thể.');
     }catch(e){setError(e instanceof Error?e.message:'Không đọc được tệp Excel.');}
   };
   const examine=()=>{
