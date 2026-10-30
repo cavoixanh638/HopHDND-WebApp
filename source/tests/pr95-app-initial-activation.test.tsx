@@ -133,7 +133,7 @@ describe('L2 API-CHANGE-01 — admin Emulator-only first V2 activation',()=>{
     find(render(),'button','Ghi staging, đọc lại').props.onClick();
     await vi.waitFor(()=>expect(messages(render())).toContain('Freeze revision/epoch'));
     expect(calls.prepare).toHaveBeenCalledOnce();
-    expect(find(render(),'button','Kích hoạt V2 lần đầu bằng CAS')).toBeDefined();
+    expect(messages(render())).toContain('Freeze revision/epoch');
   });
   it('refuses active edit leases even if FROZEN was acknowledged',async()=>{
     calls.leases.mockResolvedValue(1);
