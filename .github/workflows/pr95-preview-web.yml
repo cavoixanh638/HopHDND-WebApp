@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  pages: write
 
 concurrency:
   group: pr95-synthetic-preview-only
@@ -136,3 +137,44 @@ jobs:
           git -C "$dest" push origin HEAD:main
           echo "PR95_PREVIEW_PUBLISHED_PATH preview/pr95/"
           echo "PR95_PREVIEW_URL https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
+      - name: Request Pages build and verify PUBLIC preview without changing site settings
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/cavoixanh638/HopHDND-WebApp"
+          headers=(-H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json'
+            -H 'X-GitHub-Api-Version: 2026-03-10')
+          curl --fail --silent --show-error "${headers[@]}" "$api/pages" > "$RUNNER_TEMP/pr95-pages-config.json"
+          node -e '
+            const p=require(process.env.RUNNER_TEMP+"/pr95-pages-config.json");
+            if(p.source?.branch!=="main"||p.source?.path!=="/")
+              throw Error("Pages source mismatch; refuse site configuration change: "+JSON.stringify(p.source));
+            console.log("PR95_PAGES_SOURCE_UNCHANGED",JSON.stringify({source:p.source,build_type:p.build_type}));
+          '
+          # A GITHUB_TOKEN-originated push does not itself trigger a Pages build.
+          # Request the existing branch-source build; do not change Pages settings.
+          curl --fail --silent --show-error -X POST "${headers[@]}" "$api/pages/builds" > "$RUNNER_TEMP/pr95-pages-build.json"
+          echo "PR95_PAGES_BUILD_REQUESTED $(cat "$RUNNER_TEMP/pr95-pages-build.json")"
+          url="https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
+          verified=0
+          for attempt in {1..24}; do
+            code="$(curl -L -sS --max-time 15 -o "$RUNNER_TEMP/pr95-live.html" -w '%{http_code}' "$url" || true)"
+            if [ "$code" = 200 ] && grep -Fq 'HopHDND — Bản xem thử · Dữ liệu giả' "$RUNNER_TEMP/pr95-live.html"; then
+              verified=1
+              break
+            fi
+            echo "PR95_PAGES_PROPAGATING attempt=$attempt http=$code"
+            sleep 5
+          done
+          test "$verified" -eq 1 || { echo "::error::Public preview not yet serving correct HTML"; exit 1; }
+          script="$(grep -oE '\./assets/[^"]+\.js' "$RUNNER_TEMP/pr95-live.html" | head -1)"
+          style="$(grep -oE '\./assets/[^"]+\.css' "$RUNNER_TEMP/pr95-live.html" | head -1)"
+          test -n "$script" && test -n "$style"
+          for asset in "$script" "$style"; do
+            curl --fail --location --silent --show-error --max-time 20 "$url$asset" > "$RUNNER_TEMP/pr95-public-asset"
+            test -s "$RUNNER_TEMP/pr95-public-asset"
+            echo "PR95_LIVE_ASSET_200 $asset"
+          done
+          echo "PR95_PUBLIC_URL_VERIFIED_200 $url"
