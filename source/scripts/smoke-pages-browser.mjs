@@ -2240,6 +2240,99 @@ try{
     'Escape must close the current picker');
   console.log('UI_V3_L2_CHOICES_ONLY_KEYBOARD_PASS',JSON.stringify(v3Choices));
 
+  // R-V3-01: the real List strips '' from the catalog. The optional
+  // VP leader must STILL offer clear. All changes remain synthetic RAM.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&review-staff=1&clear-qa=1'});
+  await eventually("[...document.querySelectorAll('.item-data-table tbody tr:first-child .cell-picker-trigger')].some(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'))",
+    'R-V3-01: List VP leader trigger missing');
+  const l2ListGrant=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child');
+    const buttons=[...row?.querySelectorAll('button.cell-picker-trigger')??[]];
+    const leader=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'));
+    const ubnd=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    const status=row?.querySelector('.compact-stage-row .cell-picker-trigger');
+    if(!leader||!ubnd||status)return {ok:false,reason:'invalid field-specific grants',
+      buttons:buttons.map(x=>x.getAttribute('aria-label')),status:!!status};
+    leader.click();
+    return {ok:true,leader:leader.getAttribute('aria-label'),ubnd:ubnd.textContent?.trim()};
+  })()`);
+  if(!l2ListGrant.ok)throw Error('R-V3-01 List grant regression: '+JSON.stringify(l2ListGrant));
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')",
+    'R-V3-01 List leader picker did not open');
+  const l2ListClear=await evaluate(`(()=>{
+    const popup=document.querySelector('.cell-picker-popover:popover-open');
+    const options=[...popup?.querySelectorAll('.cell-picker-option')??[]];
+    const clear=options.find(x=>x.textContent?.trim()==='—'&&x.getAttribute('aria-selected')==='false');
+    return {ok:!!clear&&popup?.dataset.choicesOnly==='true'&&
+      options.some(x=>x.getAttribute('aria-selected')==='true')&&
+      !!popup.getAttribute('aria-label')&&
+      !popup.querySelector('h1,h2,h3,.cell-picker-note'),
+      labels:options.map(x=>x.textContent?.trim()),hasClear:!!clear};
+  })()`);
+  if(!l2ListClear.ok)throw Error('R-V3-01 List optional clear unavailable: '+JSON.stringify(l2ListClear));
+  const l2ListClearShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-clear-list.png',Buffer.from(l2ListClearShot.data,'base64'));
+  await evaluate(`[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent?.trim()==='—')?.click()`);
+  await eventually("window.__l2LastPatch?.changes?.vpLeader===''&&document.querySelector('.item-data-table tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C')",
+    'R-V3-01 List clear must patch vpLeader exactly empty without changing UBND');
+  const l2ListPatch=await evaluate(`(()=>({
+    patch:window.__l2LastPatch,
+    stillAssignedUbnd:document.querySelector('.item-data-table tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C'),
+    statusEditors:document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row button.cell-picker-trigger').length
+  }))()`);
+  if(l2ListPatch.statusEditors!==0||!l2ListPatch.stillAssignedUbnd)
+    throw Error('R-V3-01 List changed unauthorized field: '+JSON.stringify(l2ListPatch));
+  console.log('R_V3_01_LIST_OPTIONAL_LEADER_CLEAR_PASS',JSON.stringify({choice:l2ListClear,patch:l2ListPatch}));
+
+  // Real ReportDetailGrid (shared CellPicker): same permission & exact patch,
+  // with no need to alter production caller signatures or option catalogs.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?popup=1&popup-clear-qa=1&review-staff=1'});
+  await eventually("[...document.querySelectorAll('.report-grid-actions button')].some(x=>x.textContent.includes('Chỉnh sửa nháp'))",
+    'R-V3-01 Report popup edit mode missing');
+  const l2PopupMode=await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('.report-grid-actions button')].find(x=>x.textContent.includes('Chỉnh sửa nháp'));
+    if(!button)return false;button.click();return true;
+  })()`);
+  if(!l2PopupMode)throw Error('R-V3-01 popup could not activate permitted edit mode');
+  await eventually("[...document.querySelectorAll('.report-detail-grid tbody tr:first-child button.cell-picker-trigger')].some(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'))",
+    'R-V3-01 popup VP leader not mounted');
+  const l2PopupGrant=await evaluate(`(()=>{
+    const row=document.querySelector('.report-detail-grid tbody tr:first-child');
+    const buttons=[...row?.querySelectorAll('button.cell-picker-trigger')??[]];
+    const leader=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'));
+    const ubnd=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    if(!leader||!ubnd||row.querySelector('.compact-stage-row .cell-picker-trigger'))
+      return {ok:false,labels:buttons.map(x=>x.getAttribute('aria-label'))};
+    leader.click();return {ok:true,leader:leader.getAttribute('aria-label')};
+  })()`);
+  if(!l2PopupGrant.ok)throw Error('R-V3-01 popup grants failed: '+JSON.stringify(l2PopupGrant));
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')",
+    'R-V3-01 popup leader picker not open');
+  const l2PopupClear=await evaluate(`(()=>{
+    const pop=document.querySelector('.cell-picker-popover:popover-open');
+    const choices=[...pop?.querySelectorAll('.cell-picker-option')??[]];
+    return {ok:pop?.dataset.choicesOnly==='true'&&
+      choices.filter(x=>x.textContent?.trim()==='—').length===1&&
+      choices.some(x=>x.getAttribute('aria-selected')==='true')&&
+      !pop.querySelector('h1,h2,h3,.cell-picker-note'),
+      options:choices.map(x=>x.textContent?.trim()),aria:pop?.getAttribute('aria-label')};
+  })()`);
+  if(!l2PopupClear.ok)throw Error('R-V3-01 popup optional clear unavailable: '+JSON.stringify(l2PopupClear));
+  const l2PopupClearShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-clear-popup.png',Buffer.from(l2PopupClearShot.data,'base64'));
+  await evaluate(`[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent?.trim()==='—')?.click()`);
+  await eventually("window.__l2LastPatch?.changes?.vpLeader===''&&document.querySelector('.report-detail-grid tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C')",
+    'R-V3-01 popup clear must patch vpLeader empty, preserve UBND');
+  const l2PopupPatch=await evaluate(`(()=>({
+    patch:window.__l2LastPatch,
+    ubndIntact:document.querySelector('.report-detail-grid tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C'),
+    statusEditors:document.querySelectorAll('.report-detail-grid tbody tr:first-child .compact-stage-row button.cell-picker-trigger').length
+  }))()`);
+  if(!l2PopupPatch.ubndIntact||l2PopupPatch.statusEditors!==0)
+    throw Error('R-V3-01 popup leaked edit permission: '+JSON.stringify(l2PopupPatch));
+  console.log('R_V3_01_POPUP_OPTIONAL_LEADER_CLEAR_PASS',JSON.stringify({choice:l2PopupClear,patch:l2PopupPatch}));
+
+
 
   // U04 is OFF until a guest explicitly enables it; source and UID isolation
   // survives reload, while shared default and all source values remain intact.
