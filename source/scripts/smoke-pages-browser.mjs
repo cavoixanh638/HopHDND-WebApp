@@ -3644,6 +3644,26 @@ try{
         }else console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,'CDP timeout');
       }catch(e){console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,String(e));}
     };
+    const assertUiCommitted=async(label,operationId)=>{
+      let last=null;
+      for(let attempt=0;attempt<115;attempt++){
+        last=await adminA.js(`(()=>{
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          const statuses=[...document.querySelectorAll('p[aria-label^="Trạng thái thao tác"]')];
+          return {status:statuses.map(x=>x.innerText),messages:[...panel?.querySelectorAll('p[role="status"],p[role="alert"]')??[]].map(x=>x.innerText),
+            panel:panel?.innerText.slice(-1000)??null,
+            ready:!!panel,buttons:[...panel?.querySelectorAll('button')??[]].map(x=>({text:x.textContent.trim(),disabled:x.disabled}))};
+        })()`);
+        if(last.status.some(x=>x.includes('ĐÃ COMMIT')))return last;
+        // Other status values can be transient; allow the documented
+        // application to resolve operationId and render the final result.
+        await sleep(180);
+      }
+      const server=await operationCounts();
+      throw Error('REAL_UI_'+label+'_STATUS_NOT_CONFIRMED '+JSON.stringify({
+        operationId,ui:last,server
+      }));
+    };
     await openTransfer(adminA);
     await upload(adminA,initialXlsx);
     await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Kích hoạt V2 lần đầu')===true",
@@ -3653,8 +3673,7 @@ try{
     await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Kích hoạt V2 lần đầu bằng CAS');
-    await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
-      'initial CAS result from real UI');
+    await assertUiCommitted('INITIAL',initial.op);
     const initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
     const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
     if(Object.keys(initialV2??{}).length!==2||
@@ -3673,8 +3692,7 @@ try{
     await enter(adminA,'input[aria-label="Xác nhận thay thế toàn bộ"]',replacement.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Chuyển thế hệ bằng CAS');
-    await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
-      'replacement CAS result from real UI');
+    await assertUiCommitted('REPLACE',replacement.op);
     const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
     const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
     if(Object.keys(replacementV2??{}).length!==2||
@@ -3693,8 +3711,7 @@ try{
     const restoreBefore=await operationCounts();
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Khôi phục bằng CAS');
-    await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
-      'restore CAS result from real UI');
+    await assertUiCommitted('RESTORE',restoreOp);
     const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
     const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
     if(Object.keys(restoredV2??{}).length!==2||
