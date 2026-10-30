@@ -2162,8 +2162,8 @@ try{
       hasInline:!!document.querySelector('.compact-cv-room-line'),
       checkbox:label?.querySelector('input')?.checked??null};
   })()`);
-  if(guestInitial.columns!==7||guestInitial.hasInline||guestInitial.checkbox!==false)
-    throw Error('U04 must default off for guest and preserve 7 displayed columns: '+JSON.stringify(guestInitial));
+  if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.checkbox!==false)
+    throw Error('U04 must default off for guest and preserve 6 non-STT displayed columns: '+JSON.stringify(guestInitial));
   const guestToggle=await evaluate(`(()=>{
     const label=[...document.querySelectorAll('.guest-compact-menu-bar label')]
       .find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
