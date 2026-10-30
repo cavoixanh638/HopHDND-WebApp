@@ -8,6 +8,9 @@ import {normalizeSearch} from './search';
 export type StatusCatalogField=StatusField|'partyLevel';
 export const PARTY_LEVEL_ALIASES:Readonly<Record<string,string>>={
   'Ban Chấp hành':'BCH',
+  'Ban Chấp hành Thành ủy':'BCH',
+  'Ban Thường vụ Thành ủy':'BTV TU',
+  'Thường trực Thành ủy':'TTTU',
   'BTV':'BTV TU',
   'BTVTU':'BTV TU',
   'Không phải xin ý kiến':'Không phải trình',
