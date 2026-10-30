@@ -306,7 +306,12 @@ async function test(){
   p=await rights();assert.equal(p?.cells?.[ROW]?.note,undefined);
   await guest.until(`!document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"].editable-cell')`,
     'revocation updates live guest App');
-  await clickText(guest,'.draft-bar button','Lưu lại vào Firebase');
+  // A revocation may close the unsaved draft action immediately; if a Save
+  // button remains, actually attempt it. Both paths must leave server intact.
+  const staleSubmit=await guest.evalJs(`[...document.querySelectorAll('.draft-bar button')]
+    .some(button=>button.textContent?.includes('Lưu lại vào Firebase'))`);
+  if(staleSubmit)await clickText(guest,'.draft-bar button','Lưu lại vào Firebase');
+  else step('REVOKED_GUEST_SAVE_CONTROL_REMOVED_PASS',{staleSubmit:false});
   await sleep(550);
   row=await read();
   assert.equal(row.revision,2,'Revoked guest must not increment revision');
