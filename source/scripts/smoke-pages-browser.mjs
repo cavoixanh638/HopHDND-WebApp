@@ -3735,6 +3735,7 @@ try{
         operationId:initial.op,cause:initialBlocked,active:null,
         noAutomaticRetry:true
       }));
+      await takeShot('initial-blocked');
       const payload=await ownerValue('/hdnd/datasetV2/candidates/'+initial.op);
       if(typeof payload!=='string')
         throw Error('Cannot continue separate V2 replacement test: verified staged candidate absent');
