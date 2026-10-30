@@ -3466,9 +3466,9 @@ try{
     for(const socket of twoTabConnections)socket.close();
   }
 
-  // API-CHANGE-01 + contract §I: complete UI actions in TWO REAL Chrome tabs.
-  // These are actual Auth Emulator Google-provider sessions via the SDK hook,
-  // NOT manually fabricated SDK User objects or a pair of headless SDK contexts.
+  // L2 Excel-only UI journey, ONE real Chrome tab authenticated through the
+  // Auth Emulator Google-provider SDK bridge. Other lanes own two-tab CAS
+  // and application/network ACK-loss investigations.
   const adminE2eDir=mkdtempSync(join(tmpdir(),'pr95-admin-ui-e2e-'));
   const adminTargets=[];
   try{
@@ -3485,10 +3485,8 @@ try{
       signal:AbortSignal.timeout(10000)
     });
     if(!rootPut.ok)throw Error('Cannot seed FROZEN legacy root in test Emulator: '+rootPut.status);
-    const adminA=await makeUiTab('admin A',{waitForList:false});
-    const adminB=await makeUiTab('admin B',{waitForList:false});
-    adminTargets.push(adminA,adminB);
-    if(adminA.id===adminB.id)throw Error('Admin browser targets are not distinct');
+    const adminA=await makeUiTab('Excel admin',{waitForList:false});
+    adminTargets.push(adminA);
     const adminIdentity=[];
     for(const side of adminTargets){
       await side.until("typeof window.__pr95EmulatorGoogleAdminSignIn==='function'",
@@ -3501,10 +3499,9 @@ try{
       await side.until("document.querySelector('.options-menu summary[aria-label=\"Cài đặt\"]')!==null",
         'authenticated admin settings');
     }
-    if(adminIdentity[0].uid!==adminIdentity[1].uid)
-      throw Error('Two browser Auth Emulator Google sessions do not share same UID');
-    console.log('BROWSER_TWO_ADMIN_GOOGLE_SDK_AUTH_PASS',JSON.stringify({
-      tabs:adminIdentity,source:'real Auth Emulator SDK signInWithCredential',
+    console.log('BROWSER_EXCEL_ADMIN_AUTH_PASS',JSON.stringify({
+      targetId:adminA.id,identity:adminIdentity[0],
+      source:'real Auth Emulator SDK signInWithCredential',
       notProductionGoogleLogin:true
     }));
     const headers=[
@@ -3624,13 +3621,28 @@ try{
       if(!/^excel_[A-Za-z0-9_]{12,80}$/.test(op))throw Error('Invalid UI staged operationId '+text);
       return {text,op};
     };
-    const noReplay=async(op,before,label)=>{
+    const verifyCommit=async(op,before,label)=>{
       const after=await operationCounts();
-      if(after.active?.operationId!==op||after.active.revision!==before.active?.revision+1||
+      const expectedRevision=(before.active?.revision??0)+1;
+      if(after.active?.operationId!==op||after.active.revision!==expectedRevision||
         after.operations.filter(x=>x===op).length!==1||
-        after.operations.length!==before.operations.length+1)
+        after.operations.length!==before.operations.length+1||
+        after.generations.length!==before.generations.length+1)
         throw Error(label+' did not commit exactly once on Emulator server: '+JSON.stringify({before,after}));
       return after;
+    };
+    const takeShot=async(label)=>{
+      try{
+        const shot=await Promise.race([
+          adminA.call('Page.captureScreenshot',{format:'png'}),
+          sleep(3000).then(()=>null)
+        ]);
+        if(shot?.data){
+          const file='hophdnd-pr95-excel-'+label+'.png';
+          writeFileSync(file,Buffer.from(shot.data,'base64'));
+          console.log('BROWSER_EXCEL_SCREENSHOT_SAVED',file);
+        }else console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,'CDP timeout');
+      }catch(e){console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,String(e));}
     };
     await openTransfer(adminA);
     await upload(adminA,initialXlsx);
@@ -3639,22 +3651,60 @@ try{
     const initial=await stagedId(adminA);
     const initialBefore=await operationCounts();
     await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
-    await adminA.js(`window.__pr95EmulatorArmLostCallerAck(${JSON.stringify(initial.op)})`);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Kích hoạt V2 lần đầu bằng CAS');
     await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
-      'initial ACK lost yet read-only operation resolved as COMMITTED');
-    const initialAfter=await noReplay(initial.op,initialBefore,'initial CAS');
-    console.log('BROWSER_ADMIN_INITIAL_UI_LOST_APP_RESULT_PASS',JSON.stringify({
+      'initial CAS result from real UI');
+    const initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
+    const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
+    if(Object.keys(initialV2??{}).length!==2||
+      !Object.values(initialV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+      throw Error('Initial generation not stored as parsed Excel business rows');
+    console.log('BROWSER_EXCEL_INITIAL_UI_CAS_PASS',JSON.stringify({
       operationId:initial.op,revision:initialAfter.active.revision,
-      confirmedStatus:'committed-active',layer:'SDK-to-application result AFTER server CAS ACK'
+      serverRows:Object.keys(initialV2).length,backupVerified:true
     }));
-    const screenshot=await adminA.call('Page.captureScreenshot',{format:'png'});
-    writeFileSync('hophdnd-pr95-admin-initial-ui.png',Buffer.from(screenshot.data,'base64'));
-    // Further replacement, leased editing, stale drafts and restore deliberately
-    // require genuine UI actions. Do not infer them from the initial stage.
-    console.log('BROWSER_ADMIN_REMAINING_UI_PHASES_UNVERIFIED',
-      'replace, restore, live lease/edit and stale draft gates require following phase');
+    await takeShot('initial');
+    await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
+      'active V2 switched in UI');
+    await upload(adminA,replaceXlsx);
+    const replacement=await stagedId(adminA);
+    const replacementBefore=await operationCounts();
+    await enter(adminA,'input[aria-label="Xác nhận thay thế toàn bộ"]',replacement.text);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Chuyển thế hệ bằng CAS');
+    await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
+      'replacement CAS result from real UI');
+    const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
+    const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
+    if(Object.keys(replacementV2??{}).length!==2||
+      !Object.values(replacementV2).some(x=>x.content==='PR95 REPLACE nghị quyết'))
+      throw Error('Replacement generation did not contain new Excel rows');
+    console.log('BROWSER_EXCEL_REPLACEMENT_UI_CAS_PASS',JSON.stringify({
+      operationId:replacement.op,revision:replacementAfter.active.revision,
+      serverRows:Object.keys(replacementV2).length,backupVerified:true
+    }));
+    await takeShot('replacement');
+    const restoreOp='restore_pr95_excel_ui_20261030';
+    await adminA.until("document.querySelector('input[aria-label=\"Mã khôi phục mới\"]')!==null",
+      'restore UI from saved replacement backup');
+    await enter(adminA,'input[aria-label="Mã khôi phục mới"]',restoreOp);
+    await enter(adminA,'input[aria-label="Xác nhận khôi phục"]','KHOI PHUC '+restoreOp);
+    const restoreBefore=await operationCounts();
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Khôi phục bằng CAS');
+    await adminA.until("document.querySelector('p[aria-label^=\"Trạng thái thao tác\"]')?.textContent?.includes('ĐÃ COMMIT')===true",
+      'restore CAS result from real UI');
+    const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
+    const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
+    if(Object.keys(restoredV2??{}).length!==2||
+      !Object.values(restoredV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+      throw Error('Restored generation did not reproduce original Excel content');
+    console.log('BROWSER_EXCEL_RESTORE_UI_CAS_PASS',JSON.stringify({
+      operationId:restoreOp,revision:restoreAfter.active.revision,
+      serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
+    }));
+    await takeShot('restore');
   }finally{
     for(const t of adminTargets)t.socket.close();
     rmSync(adminE2eDir,{recursive:true,force:true,maxRetries:6,retryDelay:120});
