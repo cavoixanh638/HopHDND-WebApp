@@ -143,6 +143,20 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
           latest.epoch!==initialFreeze.epoch)
           throw Error('Freeze revision/epoch đã thay đổi. Phê duyệt khởi tạo không còn hợp lệ.');
       }
+      if(!('expected' in approval)){
+        // Warm the same V2 parent-node read used for the first-activation CAS.
+        // The browser SDK may otherwise run a transaction against a cold
+        // cached null even though the immutable private candidate and legacy
+        // backup have already been written. This read is NOT a substitute for
+        // backend freeze/epoch checks or Rules and does not commit anything.
+        const root=(await get(ref(database,'hdnd/datasetV2'))).val() as
+          {active?:unknown;candidates?:Record<string,string>;
+            legacyBackups?:Record<string,string>}|null;
+        if(!root||root.active||
+          typeof root.candidates?.[approval.operationId]!=='string'||
+          typeof root.legacyBackups?.[approval.operationId]!=='string')
+          throw Error('Không xác minh được gốc V2, staging và backup legacy trước CAS.');
+      }
       const outcome='expected' in approval
         ?await commitDatasetReplacement(database,user,approval,confirm)
         :await commitInitialDatasetActivation(database,user,approval,confirm);
