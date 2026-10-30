@@ -109,13 +109,13 @@ describe('V3 L3 official status contract, no source rewrites',()=>{
     rows.push(mk('archived',{archivedAt:'2026-10-01',progressParty:'Đã có TBKL'}));
     const original=JSON.stringify(rows);
     const report=aggregateReport(rows,DEFAULT_REPORTS[0],'department');
-    expect(report.total).toBe(10); // 11 statuses minus not-required; three inactive/level ineligible excluded
+    expect(report.total).toBe(10); // 11 statuses minus not-required, plus archived/dropped excluded
     expect(report.completedCount).toBe(1);
     expect(report.percent).toBe(10);
     const stage=summarizeListItems(rows).stages.find(s=>s.id==='party')!;
     expect(stage.buckets.find(b=>b.stage==='next')!.ids).toEqual(['n3','n4','n5','n7','n8']);
     expect(ids(filterListBySummary(rows,{report:'party',stage:'next'}))).toEqual(['n3','n4','n5','n7','n8']);
-    expect(stage.unmatchedIds).toEqual(['n9','n10']);
+    expect(stage.unmatchedIds).toEqual(['n9']); // blank old source counts as Sở chưa trình, not completed
     expect(JSON.stringify(rows)).toBe(original);
     expect(rows[8].progressParty).toBe('Đã họp/xin phiếu, chưa có TBKL');
     const notRequired={...DEFAULT_REPORTS[0],includeNotRequired:true};
