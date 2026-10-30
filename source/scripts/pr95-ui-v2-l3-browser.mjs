@@ -180,7 +180,7 @@ async function test(){
   const admin=await startChrome(url,'admin');
   const guest=await startChrome(url,'guest');
   assert.notEqual(admin.pageId,guest.pageId);
-  await guest.until('!!document.querySelector(".guest-signin")','anonymous UI');
+  await guest.until('!!document.querySelector(".v3-settings-menu .v3-gear-login")','anonymous V3 gear-only login');
   await clickText(guest,'nav.primary-section-switcher button','Danh sách');
   try{
     await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ01")===true','real data row, not loading placeholder');
@@ -192,8 +192,11 @@ async function test(){
     throw error;
   }
   const initial=await guest.evalJs(`(()=>{const cell=document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"]');
-    return {noteEditable:!!cell?.classList.contains('editable-cell'),noteCellExists:!!cell,accountButton:!!document.querySelector('.guest-signin'),
-      hiddenAdmin:!document.querySelector('.options-menu')};})()`);
+    return {noteEditable:!!cell?.classList.contains('editable-cell'),noteCellExists:!!cell,accountButton:!!document.querySelector('.v3-settings-menu .v3-gear-login'),
+      hiddenAdmin:!!document.querySelector('.v3-settings-menu')&&
+        ![...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+          .some(button=>button.textContent?.includes('Chỉnh sửa')||
+            button.textContent?.includes('Excel')||button.textContent?.includes('Phân quyền'))};})()`);
   assert.equal(initial.noteEditable,false);assert.ok(initial.accountButton&&initial.hiddenAdmin);
   step('GUEST_INITIAL_DENIED_PASS',initial);
   await admin.until('typeof window.__pr95EmulatorGoogleAdminSignIn==="function"','admin Auth hook');
