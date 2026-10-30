@@ -3673,6 +3673,36 @@ try{
     await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Kích hoạt V2 lần đầu bằng CAS');
+    const checkLiveListReport=async(stage,expectedContent,expectedDepartment)=>{
+      await clickText(adminA,'.nav-tabs button','Danh sách các ND trình HĐND');
+      await adminA.until(`document.querySelector('.item-data-table tbody')?.textContent?.includes(${JSON.stringify(expectedContent)})===true`,
+        stage+' current List records');
+      const list=await adminA.js(`(()=>{
+        const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+        return {count:rows.length,codes:rows.map(row=>row.textContent?.slice(0,150)),
+          content:document.querySelector('.item-data-table tbody')?.textContent??''};
+      })()`);
+      if(list.count!==2||!list.content.includes(expectedContent)||
+        !list.content.includes('NQ90')||!list.content.includes('BC91'))
+        throw Error('LIVE_LIST_'+stage+'_MISMATCH '+JSON.stringify(list));
+      await takeShot(stage.toLowerCase()+'-list');
+      await clickText(adminA,'.nav-tabs button','Báo cáo tổng hợp');
+      await adminA.until(`[...document.querySelectorAll('.report-table tbody')].some(x=>x.textContent?.includes(${JSON.stringify(expectedDepartment)}))`,
+        stage+' current Report totals');
+      const report=await adminA.js(`(()=>{
+        const tables=[...document.querySelectorAll('.report-table')];
+        return {tables:tables.length,rows:tables.map(t=>t.querySelectorAll('tbody tr').length),
+          groups:tables.map(t=>t.querySelector('tbody')?.textContent?.slice(0,230))};
+      })()`);
+      if(report.tables<1||!report.groups.some(x=>x?.includes(expectedDepartment))||
+        !report.groups.some(x=>x?.includes('2')))
+        throw Error('LIVE_REPORT_'+stage+'_MISMATCH '+JSON.stringify(report));
+      await takeShot(stage.toLowerCase()+'-report');
+      console.log('BROWSER_EXCEL_'+stage+'_LIVE_LIST_REPORT_PASS',JSON.stringify({
+        listRows:list.count,reportTables:report.tables,reportGroup:expectedDepartment,
+        expectedContent,source:'live Chrome App reading active RTDB generation'
+      }));
+    };
     let initialBlocked=null;
     let initialAfter=null;
     try{
@@ -3728,6 +3758,9 @@ try{
         JSON.stringify({operationId:initial.op,revision:1,serverRows:2,
           fixtureOnly:true,initialUiGate:'FAILED'}));
     }
+    await checkLiveListReport(initialBlocked?'SYNTHETIC_V2_BASELINE':'INITIAL',
+      'PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    await openTransfer(adminA);
     await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
       'active V2 switched in UI');
     await upload(adminA,replaceXlsx);
@@ -3747,6 +3780,11 @@ try{
       serverRows:Object.keys(replacementV2).length,backupVerified:true
     }));
     await takeShot('replacement');
+    await checkLiveListReport('REPLACEMENT','PR95 REPLACE nghị quyết','Sở QA REPLACE');
+    await openTransfer(adminA);
+    await enter(adminA,'input#v2-operation-lookup',replacement.op);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Tra cứu trạng thái operationId');
     const restoreOp='restore_pr95_excel_ui_20261030';
     await adminA.until("document.querySelector('input[aria-label=\"Mã khôi phục mới\"]')!==null",
       'restore UI from saved replacement backup');
@@ -3766,6 +3804,7 @@ try{
       serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
     }));
     await takeShot('restore');
+    await checkLiveListReport('RESTORE','PR95 INITIAL nghị quyết','Sở QA INITIAL');
     if(initialBlocked)
       throw Error('INITIAL_UI_CAS_NOT_COMMITTED (other replace/restore cases independent): '+
         initialBlocked.slice(0,3500));
