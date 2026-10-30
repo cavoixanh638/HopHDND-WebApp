@@ -124,10 +124,12 @@ export class CellEditSessionManager {
     return this.viewer()?.isAnonymous?globalThis.sessionStorage:globalThis.localStorage;
   }
   private draftKey(id:string,field:EditableField){
-    const epoch=this.generationId??'legacy';
+    if(!this.generationId)return this.viewer()?.isAnonymous
+      ?'hdnd.primary.unsaved-cell.tab.v2:'+id+':'+field
+      :'hdnd.primary.unsaved-cell.v1:'+this.viewer()?.uid+':'+id+':'+field;
     return this.viewer()?.isAnonymous
-      ?'hdnd.primary.unsaved-cell.tab.v3:'+epoch+':'+id+':'+field
-      :'hdnd.primary.unsaved-cell.v2:'+epoch+':'+this.viewer()?.uid+':'+id+':'+field;
+      ?'hdnd.primary.unsaved-cell.tab.v3:'+this.generationId+':'+id+':'+field
+      :'hdnd.primary.unsaved-cell.v2:'+this.generationId+':'+this.viewer()?.uid+':'+id+':'+field;
   }
   /** Recovery is a local checkpoint, NEVER a database acknowledgement. */
   preserveDraft(id:string,field:EditableField,value:unknown){
