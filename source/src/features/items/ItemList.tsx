@@ -539,8 +539,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    {anonymousViewer&&compactOn&&!permissionMode&&<div className="guest-compact-menu-bar" role="group"
-       aria-label="Cách hiển thị cột của tôi">{compactMenu}</div>}
+    {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
       {compactMenu}
