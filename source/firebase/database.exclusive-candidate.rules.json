@@ -517,6 +517,18 @@
             ".validate": "newData.hasChildren(['status','from','to','at']) && newData.child('status').val() === 'COMMITTED' && newData.child('from').isString() && newData.child('to').isString() && newData.child('at').isNumber() && ((data.exists() && newData.child('status').val() === data.child('status').val() && newData.child('from').val() === data.child('from').val() && newData.child('to').val() === data.child('to').val() && newData.child('at').val() === data.child('at').val()) || (!data.exists() && newData.child('at').val() >= now - 120000 && newData.child('at').val() <= now + 120000))",
             "$other": {
               ".validate": false
+            },
+            "status": {
+              ".validate": "newData.val() === 'COMMITTED'"
+            },
+            "from": {
+              ".validate": "newData.isString()"
+            },
+            "to": {
+              ".validate": "newData.isString()"
+            },
+            "at": {
+              ".validate": "newData.isNumber()"
             }
           }
         },
