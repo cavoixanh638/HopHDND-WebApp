@@ -82,6 +82,7 @@ const firebaseSeed={hdnd:{datasetV2:{
     status:'COMMITTED',from:'legacy',to:SMOKE_GENERATION,at:Date.now()}}
 }}};
 let emulator=null,emulatorOutput='';
+let verifyExclusiveRules=async()=>{throw Error('Exclusive Rules verifier not initialized');};
 const emulatorsReady=async()=>{
   for(let attempt=0;attempt<160;attempt++){
     if(emulator?.exitCode!==null)
@@ -150,7 +151,7 @@ async function startAndSeedFirebase(){
   });
   if(!install.ok)throw Error('Cannot load unchanged exclusive Rules into isolated Emulator: HTTP '+
     install.status+' '+(await install.text()).slice(0,280));
-  const assertLiveRules=async phase=>{
+  verifyExclusiveRules=async phase=>{
     const live=await fetch(settings,{headers:adminHeaders,signal:AbortSignal.timeout(8000)});
     if(!live.ok)throw Error('Cannot GET actual Emulator Rules ('+phase+'): '+live.status);
     const actual=await live.json();
@@ -166,7 +167,7 @@ async function startAndSeedFirebase(){
       project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
     }));
   };
-  await assertLiveRules('before-auth-and-browser');
+  await verifyExclusiveRules('before-auth-and-browser');
   const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
     'Content-Type':'application/json'
   },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
@@ -3353,7 +3354,7 @@ try{
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
   
   if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
-  await assertLiveRules('after-browser-smoke');
+  await verifyExclusiveRules('after-browser-smoke');
   console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
