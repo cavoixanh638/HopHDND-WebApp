@@ -78,7 +78,7 @@ export function shouldClearListOnEscape(event:KeyboardEvent,context:{
   active:boolean;customizing:boolean;permissionMode:boolean;editorOpen:boolean;
   popupOpen:boolean
 }):boolean {
-  if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||
+  if(event.key!=='Escape'||event.defaultPrevented||event.isComposing||event.repeat||
     !context.active||context.customizing||context.permissionMode||
     context.editorOpen||context.popupOpen)return false;
   const target=event.target;
