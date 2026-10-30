@@ -168,15 +168,18 @@ window.__pr95TwoAdmin=api;
 function WorkspaceProbe(){
   const [active,setActive]=useState<ActiveDatasetPointer|null>(null);
   const [authReady,setAuthReady]=useState(false);
+  useEffect(()=>auth.onAuthStateChanged(user=>setAuthReady(!!user&&!user.isAnonymous)),[]);
+  // Do not attach the protected V2 pointer listener before login: one
+  // unauthenticated PERMISSION_DENIED can permanently cancel that listener.
   useEffect(()=>{
-    const unsubAuth=auth.onAuthStateChanged(user=>setAuthReady(!!user&&!user.isAnonymous));
+    if(!authReady)return;
     const unsub=onValue(node(DATASET_V2_PATH+'/active'),snap=>{
       const raw=snap.val() as ActiveDatasetPointer|null;
       if(raw?.generationId)bindEpoch(raw);
       setActive(raw);
-    });
-    return()=>{unsubAuth();unsub();};
-  },[]);
+    },error=>{console.error('PR95_L3_ACTIVE_POINTER_DENIED',error);setActive(null);});
+    return()=>unsub();
+  },[authReady]);
   const generation=active?.generationId;
   const fallback=useMemo(()=>new FirebaseRepository(database,()=>auth.currentUser,
     ()=>({columns:{note:true,specificProgress:true}})),[]);
