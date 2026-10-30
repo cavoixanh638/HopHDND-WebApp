@@ -68,8 +68,10 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   it('rejects in-generation edits after review even if the active pointer is unchanged',async()=>{
     const db=admin(),op='pr95_import_0002';
     const approval=await stageDatasetReplacement(db,actor,replacement(),op,'test.xlsx');
-    await assertSucceeds(update(ref(db,DATASET_V2_PATH+'/generations/gen_seed_initial/items/r1'),
-      {note:'Thay đổi sau duyệt'}));
+    await env.withSecurityRulesDisabled(async context=>{
+      await update(ref(context.database() as never,DATASET_V2_PATH+'/generations/gen_seed_initial/items/r1'),
+        {note:'Thay đổi sau duyệt',revision:2});
+    });
     await expect(commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2'))
       .rejects.toThrow('cùng thế hệ');
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
