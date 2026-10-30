@@ -3673,17 +3673,61 @@ try{
     await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Kích hoạt V2 lần đầu bằng CAS');
-    await assertUiCommitted('INITIAL',initial.op);
-    const initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
-    const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
-    if(Object.keys(initialV2??{}).length!==2||
-      !Object.values(initialV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
-      throw Error('Initial generation not stored as parsed Excel business rows');
-    console.log('BROWSER_EXCEL_INITIAL_UI_CAS_PASS',JSON.stringify({
-      operationId:initial.op,revision:initialAfter.active.revision,
-      serverRows:Object.keys(initialV2).length,backupVerified:true
-    }));
-    await takeShot('initial');
+    let initialBlocked=null;
+    let initialAfter=null;
+    try{
+      await assertUiCommitted('INITIAL',initial.op);
+      initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
+      const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
+      if(Object.keys(initialV2??{}).length!==2||
+        !Object.values(initialV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Initial generation not stored as parsed Excel business rows');
+      console.log('BROWSER_EXCEL_INITIAL_UI_CAS_PASS',JSON.stringify({
+        operationId:initial.op,revision:initialAfter.active.revision,
+        serverRows:Object.keys(initialV2).length,backupVerified:true
+      }));
+      await takeShot('initial');
+    }catch(error){
+      // This is an independent continuation fixture, NOT evidence that the
+      // user clicked and committed initial CAS. Never retry UNKNOWN.
+      const actual=await operationCounts();
+      if(actual.active)throw error;
+      initialBlocked=String(error);
+      console.error('BROWSER_EXCEL_INITIAL_UI_BLOCKED',JSON.stringify({
+        operationId:initial.op,cause:initialBlocked,active:null,
+        noAutomaticRetry:true
+      }));
+      const payload=await ownerValue('/hdnd/datasetV2/candidates/'+initial.op);
+      if(typeof payload!=='string')
+        throw Error('Cannot continue separate V2 replacement test: verified staged candidate absent');
+      const candidate=JSON.parse(payload);
+      if(candidate.manifest.operationId!==initial.op||
+        Object.keys(candidate.items??{}).length!==2)
+        throw Error('Initial UI staging is not a valid synthetic continuation fixture');
+      const source=await ownerValue('/hdnd/datasetV2');
+      const generationId=candidate.manifest.generationId;
+      const synthetic={...source,
+        active:{generationId,operationId:initial.op,revision:1,
+          rowCount:2,digest:candidate.manifest.digest},
+        generations:{[generationId]:{items:candidate.items}},
+        permissions:{[generationId]:{columns:{}}},
+        operations:{[initial.op]:{status:'COMMITTED',from:'legacy',to:generationId,
+          at:Date.now()}},
+        bootstrap:{operationId:initial.op,freezeRevision:1,freezeEpoch:1,
+          legacyBaseline:'0'.repeat(64)}
+      };
+      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!seeded.ok)throw Error('Could not seed separate V2-only fixture: '+seeded.status);
+      initialAfter=await operationCounts();
+      if(initialAfter.active?.operationId!==initial.op)
+        throw Error('Independent replacement baseline readback failed');
+      console.log('BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_NOT_INITIAL_UI_PASS',
+        JSON.stringify({operationId:initial.op,revision:1,serverRows:2,
+          fixtureOnly:true,initialUiGate:'FAILED'}));
+    }
     await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
       'active V2 switched in UI');
     await upload(adminA,replaceXlsx);
@@ -3722,6 +3766,9 @@ try{
       serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
     }));
     await takeShot('restore');
+    if(initialBlocked)
+      throw Error('INITIAL_UI_CAS_NOT_COMMITTED (other replace/restore cases independent): '+
+        initialBlocked.slice(0,3500));
   }finally{
     for(const t of adminTargets)t.socket.close();
     rmSync(adminE2eDir,{recursive:true,force:true,maxRetries:6,retryDelay:120});
