@@ -122,7 +122,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
           throw Error('Freeze revision/epoch đã đổi khi lập staging; không được kích hoạt.');
       }
       setInitialFreeze(freeze);setApproval(result);setStaged(serverItems);setBaseline(now);
-      setMessage(active?'Đã xác minh staging và backup thế hệ riêng tư. Chưa thay dữ liệu.':
+      setMessage(active?'Đã ghi staging, xác minh máy chủ và backup thế hệ riêng tư. Chưa thay dữ liệu.':
         'Đã xác minh staging SHA-256, backup legacy riêng tư và trạng thái FROZEN; chưa kích hoạt V2.');
     }catch(e){setMessage(e instanceof Error?e.message:'Không tạo được staging và backup.');}
     finally{setBusy(false);}
