@@ -514,7 +514,7 @@
         "operations": {
           "$operation": {
             ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-            ".validate": "newData.hasChildren(['status','from','to','at']) && newData.child('status').val() === 'COMMITTED' && newData.child('from').isString() && newData.child('to').isString() && newData.child('at').isNumber() && ((data.exists() && newData.child('status').val() === data.child('status').val() && newData.child('from').val() === data.child('from').val() && newData.child('to').val() === data.child('to').val() && newData.child('at').val() === data.child('at').val()) || (!data.exists() && newData.parent().parent().child('active/operationId').val() === $operation && newData.child('from').val() === data.parent().parent().child('active/generationId').val() && newData.child('to').val() === newData.parent().parent().child('active/generationId').val() && newData.child('at').val() >= now - 120000 && newData.child('at').val() <= now + 120000))",
+            ".validate": "newData.hasChildren(['status','from','to','at']) && newData.child('status').val() === 'COMMITTED' && newData.child('from').isString() && newData.child('to').isString() && newData.child('at').isNumber() && ((data.exists() && newData.child('status').val() === data.child('status').val() && newData.child('from').val() === data.child('from').val() && newData.child('to').val() === data.child('to').val() && newData.child('at').val() === data.child('at').val()) || (!data.exists() && newData.child('at').val() >= now - 120000 && newData.child('at').val() <= now + 120000))",
             "$other": {
               ".validate": false
             }
