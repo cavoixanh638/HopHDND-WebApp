@@ -55,12 +55,19 @@ const capture=async name=>{
       width:Math.min(innerWidth,r.width+16),height:Math.min(innerHeight,r.height+16)};
   })()`);
   await sleep(70);
-  const shot=await send('Page.captureScreenshot',{format:'png',fromSurface:true,
-    clip:{x:rect.x,y:rect.y,width:Math.max(10,rect.width),height:Math.max(10,rect.height),scale:1}});
+  const isMobile=await evaluate('innerWidth<=600');
+  // On 390px screens the card occupies a much smaller area. Capture the real
+  // viewport after scrolling it into view rather than rejecting a valid, well-
+  // compressed clipped PNG by an arbitrary byte-size threshold.
+  const params=isMobile?{format:'png',fromSurface:true}:{format:'png',fromSurface:true,
+    clip:{x:rect.x,y:rect.y,width:Math.max(10,rect.width),height:Math.max(10,rect.height),scale:1}};
+  const shot=await send('Page.captureScreenshot',params);
   const bytes=Buffer.from(shot.data,'base64');
-  if(bytes.length<2000)throw Error('Chrome screenshot too small: '+name);
+  if(bytes.length<900||bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a')
+    throw Error('Invalid Chrome PNG: '+name+' ('+bytes.length+' bytes)');
   writeFileSync(name,bytes);
-  console.log('V3_L4_CHROME_IMAGE '+JSON.stringify({name,bytes:bytes.length,width:rect.width,height:rect.height}));
+  console.log('V3_L4_CHROME_IMAGE '+JSON.stringify({name,bytes:bytes.length,
+    width:rect.width,height:rect.height,fullMobileViewport:isMobile}));
 };
 const state=()=>evaluate(`(()=>{
   const section=document.querySelector('.item-summary-total');
