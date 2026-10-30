@@ -303,7 +303,7 @@ async function test(){
   await clickText(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
   await wait(async()=>{const q=await rights();return !q?.cells?.[ROW]?.note?true:false;},
     'revoke confirmed on server');
-  p=await rights();assert.equal(p.cells?.[ROW]?.note,undefined);
+  p=await rights();assert.equal(p?.cells?.[ROW]?.note,undefined);
   await guest.until(`!document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"].editable-cell')`,
     'revocation updates live guest App');
   await clickText(guest,'.draft-bar button','Lưu lại vào Firebase');
