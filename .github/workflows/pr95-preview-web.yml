@@ -62,9 +62,22 @@ jobs:
             --screenshot=pr95-preview-mobile.png "$uri" >/dev/null 2>/dev/null
           timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900 \
             --dump-dom "$uri" > pr95-preview-dom.txt 2>/dev/null
-          grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt
-          grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt
-          ! grep -Fq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' pr95-preview-dom.txt
+          echo "PR95_PREVIEW_DOM_BYTES $(wc -c < pr95-preview-dom.txt)"
+          echo "PR95_PREVIEW_DESKTOP_BYTES $(wc -c < pr95-preview-desktop.png)"
+          echo "PR95_PREVIEW_MOBILE_BYTES $(wc -c < pr95-preview-mobile.png)"
+          if ! grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt; then
+            echo '::error::Real ItemList did not mount; showing first 800 chars of DOM'
+            head -c 800 pr95-preview-dom.txt
+            exit 1
+          fi
+          if ! grep -Fq 'Bản xem thử · Dữ liệu giả' pr95-preview-dom.txt; then
+            echo '::error::Synthetic preview label not rendered'
+            exit 1
+          fi
+          if grep -Fq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' pr95-preview-dom.txt; then
+            echo '::error::Removed guest notice still visible'
+            exit 1
+          fi
           test -s pr95-preview-desktop.png
           test -s pr95-preview-mobile.png
           echo "PR95_PREVIEW_REAL_CHROME_DESKTOP_MOBILE_PASS"
