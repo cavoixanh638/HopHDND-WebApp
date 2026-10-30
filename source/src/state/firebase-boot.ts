@@ -56,6 +56,14 @@ function createServices(){
             providerIds:user.providerData.map(p=>p.providerId)};
         };
       });
+      void import('../data/firebase-versioned-replacement').then(
+        ({armEmulatorPostCommitCallerAckLoss})=>{
+          const testing=window as Window & {
+            __pr95EmulatorArmLostCallerAck?:(operationId:string)=>void
+          };
+          testing.__pr95EmulatorArmLostCallerAck=(operationId:string)=>
+            armEmulatorPostCommitCallerAckLoss(database,operationId);
+        });
     }
   }
   markStartup('firebase-initialized');
