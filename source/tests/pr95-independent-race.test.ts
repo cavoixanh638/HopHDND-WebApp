@@ -85,7 +85,9 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     expect(intended.has(active.generationId)).toBe(true);
     expect(active.revision).toBe(2);
     const other=active.operationId===approvalA.operationId?approvalB.operationId:approvalA.operationId;
-    expect(await resolveDatasetOperation(a,other)).toBe('not-committed');
+    expect(await resolveDatasetOperation(a,other)).toEqual({
+      status:'not-committed',operationId:other
+    });
   },55000);
 
   it('a legitimately leased and audited same-generation edit invalidates old approval',async()=>{
@@ -184,7 +186,9 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
       firebase:{sign_in_provider:'anonymous'}}).database() as never;
     // Permission denial is a real unreadable server response; this does NOT
     // simulate a dropped ACK or prove network-loss recovery.
-    expect(await resolveDatasetOperation(guest,'l3_unreadable_op_001')).toBe('unknown');
+    expect(await resolveDatasetOperation(guest,'l3_unreadable_op_001')).toEqual({
+      status:'unknown',operationId:'l3_unreadable_op_001'
+    });
   });
 
   it('historic COMMITTED operation remains resolvable after subsequent restore',async()=>{
@@ -195,7 +199,11 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     expect((await restoreDatasetBackup(db,actor,op,restoreOp,expected,
       'KHOI PHUC '+restoreOp)).status).toBe('committed');
     // This is a server log lookup, not a simulated lost network response.
-    expect(await resolveDatasetOperation(tabB(),op)).toBe('committed');
-    expect(await resolveDatasetOperation(tabB(),restoreOp)).toBe('committed');
+    expect(await resolveDatasetOperation(tabB(),op)).toEqual({
+      status:'committed-historical',operationId:op,generationId:'gen_'+op
+    });
+    expect(await resolveDatasetOperation(tabB(),restoreOp)).toEqual({
+      status:'committed-active',operationId:restoreOp,generationId:'gen_'+restoreOp
+    });
   },55000);
 });
