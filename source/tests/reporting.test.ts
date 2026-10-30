@@ -72,8 +72,8 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
     const buttons=flatten(root).filter(node=>node.type==='button'&&
       String(node.props.className??'').includes('report-stage-summary'));
     expect(buttons).toHaveLength(4);
-    const expected=[['Sở chưa trình',records[0]],['Văn phòng đang thực hiện',records[1]],
-      ['Bước tiếp theo',records[2]],['Đã hoàn thành',records[3]]] as const;
+    const expected=[['Sở chưa trình',records[0]],['VP đang xử lý',records[1]],
+      ['Đã trình, chờ QĐ',records[2]],['Đã có QĐ',records[3]]] as const;
     for(const [label,entry] of expected){
       const button=buttons.find(button=>button.props['aria-label'].includes(' · '+label+':'));
       expect(button).toBeDefined();
@@ -105,12 +105,15 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
       const stages=walk(root).filter(node=>node.props?.className?.includes('report-stage-summary')&&
         ['button','span'].includes(node.type));
       const labels=stages.map(stage=>walk(stage).find(n=>n.type==='span'&&!String(n.props.className??'').includes('report-stage'))?.props.children);
-      if(['party','build'].includes(config.id)){
+      if(config.id==='party'){
         expect(stages).toHaveLength(4);
-        expect(labels).toContain('Bước tiếp theo');
+        expect(labels).toEqual(['Sở chưa trình','VP đang xử lý','Bước tiếp theo','Đã có TBKL']);
+      }else if(config.id==='build'){
+        expect(stages).toHaveLength(4);
+        expect(labels).toEqual(['Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ']);
       }else{
         expect(stages).toHaveLength(3);
-        expect(labels).not.toContain('Bước tiếp theo');
+        expect(labels).toEqual(['Sở chưa trình','VP đang xử lý','Hoàn thành']);
       }
     }
   });
@@ -187,6 +190,8 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     const headers=flatten(flatten(root).find(x=>x.type==='thead')).filter(x=>x.type==='th');
     const find=(name:string)=>headers.find(x=>x.props.children?.props?.children===name);
     expect(find('Đã trình, chờ QĐ')?.props.className).toContain('report-stage-next');
+    expect(find('Đã trình, chờ QĐ')?.props.className).toContain('report-stage-intermediate');
+    expect(find('Đã có QĐ')?.props.className).toContain('report-stage-completed');
     expect(find('Đã có QĐ')?.props.className).not.toContain('report-stage-intermediate');
   });
   it('does not render an extra all-caps section kicker above the report name',()=>{
@@ -298,8 +303,10 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const heads=nodes(header).filter(n=>n.type==='th');
     const byName=(name:string)=>heads.find(n=>
       n.props.children===name||n.props.children?.props?.children===name);
-    for(const name of ['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL'])
+    for(const name of ['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL']){
       expect(byName(name)?.props.className).toContain('report-stage-next');
+      expect(byName(name)?.props.className).toContain('report-stage-intermediate');
+    }
     for(const name of ['Sở chưa trình','VP đang xử lý','Đã có TBKL'])
       expect(byName(name)?.props.className).not.toContain('report-stage-next');
     expect(byName('Đã có TBKL')?.props.className).toContain('report-stage-completed');
