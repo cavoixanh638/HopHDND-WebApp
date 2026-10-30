@@ -149,6 +149,9 @@ describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=
     expect(button.props.disabled).toBe(false);
     button.props.onClick();
     await vi.waitFor(()=>expect(notice(render())).toContain('CHƯA RÕ TRẠNG THÁI'));
+    const noRetry=control(render(),'button','Chuyển thế hệ bằng CAS');
+    expect(noRetry.props.disabled).toBe(true);
+    noRetry.props.onClick(); // Even forced handler calls cannot resend this operation.
     expect(api.commit).toHaveBeenCalledOnce();
     expect(api.resolve).not.toHaveBeenCalled();
     expect(api.restore).not.toHaveBeenCalled();
