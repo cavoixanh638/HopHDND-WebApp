@@ -99,7 +99,7 @@ describe('PR95 L4: independent A–O business workbook contract',()=>{
     const ids=(items:typeof forward)=>Object.fromEntries(items.map(x=>[x.displayCode,x.recordId]));
     expect(ids(forward)).toEqual(ids(backward));
     // Excel's numeric custom format "000" is also displayed/preserved as 001.
-    const formatted=workbook([{name:'Hồ sơ',rows:[HEADINGS,sheetRow(1)],
+    const formatted=workbook([{name:'Hồ sơ',rows:[HEADINGS,sheetRow('001')],
       change:ws=>{ws.A2={t:'n',v:1,z:'000'};},
     }]);
     expect(parse(formatted).items[0].displayCode).toBe('001');
