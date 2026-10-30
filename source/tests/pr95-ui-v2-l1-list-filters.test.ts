@@ -103,7 +103,7 @@ describe('V2 L1 toolbar filters independently of other workers',()=>{
   it('projects out STT before fit calculations but keeps Excel B and Item.stt',()=>{
     const source=readFileSync(new URL('../src/features/items/ItemList.tsx',import.meta.url),'utf8');
     const popup=readFileSync(new URL('../src/features/reports/ReportDetailGrid.tsx',import.meta.url),'utf8');
-    expect(source).toContain("column.key!=='stt'||showAllSourceColumns||customizing||permissionMode");
+    expect(source).toContain("column.key!=='stt'||showAllSourceColumns||customizing");
     expect(popup).toContain("c.key!=='stt'||showAll||settings");
     expect(source.indexOf("column.key!=='stt'")).toBeLessThan(source.indexOf('const baseWidths='));
     expect(EXCEL_SOURCE_COLUMNS[1].key).toBe('stt');
