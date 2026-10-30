@@ -916,29 +916,29 @@
    All summaries use the SAME filtered source as the ItemList body. */
 .item-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;width:100%;max-width:100%;box-sizing:border-box;margin:6px 0 14px}
-.item-summary-card{--summary-accent:#16785a;display:flex;flex-direction:column;min-width:0;
+.item-summary-card{--summary-accent:#789588;display:flex;flex-direction:column;min-width:0;
   container-type:inline-size;
-  box-sizing:border-box;padding:13px 12px 11px;background:#fbfefc;
-  border:1px solid #dcebe3;border-top:3px solid var(--summary-accent);border-radius:11px;
-  overflow-wrap:break-word;box-shadow:0 1px 3px #0f51321a}
-.item-summary-party{--summary-accent:#b45309;background:#fffdf8;border-color:#f1e1be}
-.item-summary-build{--summary-accent:#2563eb;background:#fcfdff;border-color:#dbe8fc}
-.item-summary-nq{--summary-accent:#169154;background:#fafffc;border-color:#cfeadd}
+  box-sizing:border-box;padding:13px 12px 11px;background:#fff;
+  border:1px solid #DCE5E0;border-top:3px solid #DCE5E0;border-radius:11px;
+  overflow-wrap:break-word;box-shadow:0 1px 3px #223d3310}
+.item-summary-party{--summary-accent:#A38A64}
+.item-summary-build{--summary-accent:#718AA2}
+.item-summary-nq{--summary-accent:#6C9581}
 .item-summary-total{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;
   container-type:normal;justify-self:center;justify-content:center;width:fit-content;max-width:100%;
-  gap:12px 20px;padding:11px 16px;background:#f5fbf7;border:1px solid #cfe4d8;box-shadow:none}
+  gap:12px 20px;padding:11px 16px;background:#fff;border:1px solid #DCE5E0;box-shadow:none}
 .item-summary-total-lead{display:flex;align-items:center;gap:12px;
-  padding-right:20px;border-right:1px solid #d5e7db}
+  padding-right:20px;border-right:1px solid #DCE5E0}
 .item-summary-card h3{margin:0;color:#263f36;font-size:13px;font-weight:750;line-height:1.35}
 .item-summary-card-head{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
-.item-summary-percent{font-size:21px;font-weight:800;color:var(--summary-accent);white-space:nowrap}
+.item-summary-percent{font-size:21px;font-weight:800;color:#526B64;white-space:nowrap}
 .item-summary-total-count{display:block;font-size:32px;color:#0b5645;
   font-weight:800;line-height:1;margin:0}
 .item-summary-subcounts{display:flex;flex:0 1 auto;justify-content:flex-end;
   flex-wrap:wrap;gap:8px;margin:0;font-size:12px}
 .item-summary-subcounts > span{display:flex;justify-content:space-between;align-items:center;
-  gap:12px;padding:6px 10px;border:1px solid #dcebe3;border-radius:7px;
-  background:#fff;color:#27624c;white-space:nowrap}
+  gap:12px;padding:6px 10px;border:1px solid #DCE5E0;border-radius:7px;
+  background:#fff;color:#425F55;white-space:nowrap}
 .item-summary-subcounts strong{font-size:16px;font-variant-numeric:tabular-nums}
 .item-summary-total > .item-summary-unmatched{margin:0}
 .item-summary-fraction{margin:5px 0 8px;font-size:12px;color:#50665e}
@@ -954,13 +954,40 @@
   min-width:0;min-height:1.35em;white-space:nowrap;overflow-wrap:normal;font-weight:650}
 .item-summary-bucket strong{font-size:18px;line-height:1.1;flex:none;
   font-weight:800;font-variant-numeric:tabular-nums}
-.item-summary-bucket-source{background:#ffe0e4;color:#b2263d;border-color:#ffb7c3}
-.item-summary-bucket-office{background:#fff7c2;color:#875000;border-color:#f1d777}
-.item-summary-bucket-next{background:#e7f0ff;color:#1d4ed8;border-color:#bed2fa}
-.item-summary-bucket-completed{background:#d5f0de;color:#125b35;border-color:#91cfa8}
-.item-summary-bucket[aria-pressed="true"]{outline:2px solid currentColor;outline-offset:1px}
-.item-summary-bucket[aria-pressed="true"] strong::after{content:' ✓';font-size:12px}
-.item-summary-bucket:focus-visible{outline:3px solid #145c73;outline-offset:2px}
+/* V2: soft semantic chips, matching current user-selected status presets.
+   The same selectors support the baseline button and future span/button types. */
+.item-summary-bucket[data-summary-stage="source"],
+.item-summary-bucket-source{
+  background:var(--hdnd-status-not-submitted-bg,#FFF1F3);
+  color:var(--hdnd-status-not-submitted-text,#B14052);
+  border-color:var(--hdnd-stage-not-submitted-border,#EFD4DA)}
+.item-summary-bucket[data-summary-stage="office"],
+.item-summary-bucket-office{
+  background:var(--hdnd-status-office-bg,#FFF8E9);
+  color:var(--hdnd-status-office-text,#805C22);
+  border-color:var(--hdnd-stage-office-border,#EBDFC4)}
+.item-summary-bucket[data-summary-stage="next"],
+.item-summary-bucket-next{background:#F0F5FC;color:#3E6591;border-color:#D7E2F0}
+.item-summary-bucket[data-summary-stage="completed"],
+.item-summary-bucket-completed{
+  background:var(--hdnd-status-done-bg,#EEF8F1);
+  color:var(--hdnd-status-done-text,#346E48);
+  border-color:var(--hdnd-stage-done-border,#D0E4D7)}
+/* Selected is a separate outline and check; it NEVER replaces status ink/fill. */
+.item-summary-bucket[aria-pressed="true"],
+.item-summary-subcounts > :is(span,button)[data-summary-kind][aria-pressed="true"]{
+  outline:2px solid #356C8B;outline-offset:1px}
+.item-summary-bucket[aria-pressed="true"] strong::after,
+.item-summary-subcounts > :is(span,button)[data-summary-kind][aria-pressed="true"] strong::after{
+  content:' ✓';font-size:12px;color:#356C8B}
+.item-summary-bucket:focus-visible,
+.item-summary-subcounts > button[data-summary-kind]:focus-visible{
+  outline:3px solid #356C8B;outline-offset:2px}
+/* Preserve baseline spans and style L1 button chips without changing their DOM. */
+.item-summary-subcounts > button[data-summary-kind]{
+  font:inherit;cursor:pointer;color:inherit}
+.item-summary-subcounts > :is(span,button)[data-summary-kind]{
+  background:#fff;border-color:#DCE5E0}
 @media(hover:hover){.item-summary-bucket:hover{box-shadow:0 1px 4px #204b3833}}
 .item-summary-active-filter{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;
   gap:8px 14px;padding:7px 10px;border:1px solid #cbdfe5;border-radius:8px;
