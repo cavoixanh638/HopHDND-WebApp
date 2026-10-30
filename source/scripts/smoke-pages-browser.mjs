@@ -3907,7 +3907,20 @@ try{
   await verifyExclusiveRules('after-browser-smoke');
   console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
-  try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
+  // Do not overwrite the actual Excel admin-screen failure already captured
+  // under the workflow's standard artifact path with an unrelated CDP tab.
+  let preservedExcelFailure=false;
+  try{preservedExcelFailure=statSync('hophdnd-ui-smoke-failure.png').isFile();}catch{}
+  if(!preservedExcelFailure){
+    try{if(ws?.readyState===WebSocket.OPEN){
+      const shot=await Promise.race([
+        send('Page.captureScreenshot',{format:'png'}),
+        sleep(2500).then(()=>null)
+      ]);
+      if(shot?.data)writeFileSync('hophdnd-ui-smoke-failure.png',
+        Buffer.from(shot.data,'base64'));
+    }}catch{}
+  }
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
 }finally{
   for(const p of pending.values())p.reject?.(Error('closing browser'));
