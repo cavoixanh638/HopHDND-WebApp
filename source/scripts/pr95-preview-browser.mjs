@@ -153,9 +153,9 @@ try{
   await waitFor('document.querySelector("[data-role=guest]")','guest switch');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','guest list');
-  await ensure('document.querySelectorAll(".inline-note-trigger[aria-label*=\"Ghi chú\"]").length>=1','guest granted note editor');
-  const firstNote=await evaluate('document.querySelector(".inline-note-trigger[aria-label*=\"Ghi chú\"]")?.getAttribute("aria-label")');
-  await interact('document.querySelector(".inline-note-trigger[aria-label*=\"Ghi chú\"]").click()');
+  await ensure('document.querySelectorAll(".inline-note-trigger[aria-label*=Ghi]").length>=1','guest granted note editor');
+  const firstNote=await evaluate('document.querySelector(".inline-note-trigger[aria-label*=Ghi]")?.getAttribute("aria-label")');
+  await interact('document.querySelector(".inline-note-trigger[aria-label*=Ghi]").click()');
   await waitFor('document.querySelector("textarea.inline-note-textarea")','guest textarea');
   await interact('const input=document.querySelector("textarea.inline-note-textarea");'+
     'const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;'+
