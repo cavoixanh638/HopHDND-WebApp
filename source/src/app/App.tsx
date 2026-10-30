@@ -435,6 +435,21 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     '--table-font-family':tableFontStack(getReportFont(layout)),
     '--table-font-size':`${getReportFontSize(layout)}px`,
     ...statusPaletteCssVariables(statusPaletteStore.active)} as CSSProperties;
+  // A lack of editable cells is normal for a read-only guest. Suppress only
+  // that informational banner (including its spacing); keep actual connectivity,
+  // freeze, authorization and permission notices unchanged.
+  const guestRightsNotice=isFirebase&&!firebase!.isAdmin&&page==='items'&&
+    (!viewerMayEdit||anonymousVisitor)
+    ?!firebase!.connected?'Chưa kết nối Firebase; tạm thời chỉ xem, chưa thể lưu thay đổi.'
+      :selectedSource!=='primary'?'Nguồn hiện tại chưa phải Firebase chính. Có thể xem dữ liệu, nhưng chưa được ghi nội dung vào dữ liệu chính.'
+      :!firebase!.controlReady?'Đang xác nhận quyền chỉnh sửa từ Firebase.'
+      :firebase!.editingLocked?'Quản trị đang tạm khóa chỉnh sửa.'
+      :firebase!.freezeControl?.mode!=='OPEN'?'Dữ liệu đang được chốt hoặc tạm khóa; chưa thể mở lượt sửa mới.'
+      :!firebase!.editorAuthorized?'Tài khoản Google này chưa được duyệt quyền UID chỉnh sửa.'
+      :!viewerMayEdit?null
+      :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
+      :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'
+    :null;
   return <div className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${anonymousVisitor?'guest-view':''}`} style={frameStyle}>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar">
       <div className="top-actions">
@@ -509,18 +524,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {workspace.protectedRecovery&&<p className="notice">Có thay đổi trên máy chưa khớp dữ liệu nguồn hiện tại. <button className="button ghost" onClick={()=>{const bundle=readWorkspaceRecovery(sourceKey);if(!bundle)return;const blob=new Blob([JSON.stringify({schemaVersion:1,source:configured,bundle},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='HDND_nhap_can_doi_chieu.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}}>Tải phần sửa trên máy để đối chiếu</button><button className="button danger" onClick={discard}>Bỏ phần sửa cũ trên máy</button></p>}
       {!anonymousVisitor&&workspace.autosaveMessage && <p className="muted" role="status">{workspace.autosaveMessage}</p>}{!anonymousVisitor&&layoutMessage && <p className="notice" role="status">{layoutMessage}</p>}
       {!anonymousVisitor&&warnings.length > 0 && <details className="notice source-warnings"><summary>{warnings.length} cảnh báo về dữ liệu nguồn</summary><ul>{warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul></details>}
-      {isFirebase&&!firebase!.isAdmin&&page==='items'&&(!viewerMayEdit||anonymousVisitor)&&
-        <p className="guest-rights-hint" role="status">
-          {!firebase!.connected?'Chưa kết nối Firebase; tạm thời chỉ xem, chưa thể lưu thay đổi.'
-            :selectedSource!=='primary'?'Nguồn hiện tại chưa phải Firebase chính. Có thể xem dữ liệu, nhưng chưa được ghi nội dung vào dữ liệu chính.'
-            :!firebase!.controlReady?'Đang xác nhận quyền chỉnh sửa từ Firebase.'
-            :firebase!.editingLocked?'Quản trị đang tạm khóa chỉnh sửa.'
-            :firebase!.freezeControl?.mode!=='OPEN'?'Dữ liệu đang được chốt hoặc tạm khóa; chưa thể mở lượt sửa mới.'
-            :!firebase!.editorAuthorized?'Tài khoản Google này chưa được duyệt quyền UID chỉnh sửa.'
-            :!viewerMayEdit?'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem. Khách không cần đăng nhập; khi quản trị mở quyền ô, hãy chọn chính ô đó để sửa.'
-            :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
-            :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'}
-        </p>}
+      {guestRightsNotice&&<p className="guest-rights-hint" role="status">{guestRightsNotice}</p>}
       {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đang chờ đồng bộ`: `${dirtyCount} nội dung đang chờ lưu vào ${selectedSource==='primary'?'Firebase Database':isDemo?'dữ liệu mẫu':'nguồn hiện tại'}`}</strong><span> {selectedSource==='primary'?'Phần sửa đang được gửi lên Firebase. Chỉ khi máy chủ xác nhận thì mọi người mới thấy dữ liệu mới.':'Phần sửa hiện chỉ có trên trình duyệt; chưa cập nhật chung.'}</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ lưu nháp trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
       {page === 'overview' && <>
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang thực hiện', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
