@@ -51,7 +51,7 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(css).toContain('report-style-compact .report-table :is(tbody,tfoot) td.report-stage-intermediate');
     expect(css).toContain('body.is-printing #print-target.report-surface.report-style-band .report-table thead th.report-stage-intermediate');
   });
-  it('renders Không phải trình exactly as faintly as Đã trình HĐND, chưa có QĐ',()=>{
+  it('renders Không phải trình as faintly as V3 Đã trình, chờ QĐ with alias-aware report classes',()=>{
     const muted=css.match(/\.report-surface \.report-stage-intermediate,\s*\.report-surface \.report-stage-excluded\s*\{([^}]*)\}/)?.[1];
     expect(muted).toBeDefined();
     expect(luminance(declaration(muted!,'stage-bg'))).toBeGreaterThan(0.96);
@@ -59,7 +59,16 @@ describe('Năm phong cách tô màu báo cáo', () => {
     // No later excluded override can restore its old, stronger background.
     expect(css).not.toContain('--stage-bg:#f0f3f6;--stage-ink:#4b6170');
     const component=readFileSync(new URL('../src/features/reports/ReportTable.tsx',import.meta.url),'utf8');
-    expect(component).toContain("normalizeSearch('Không phải trình')].includes(normalizeSearch(status))");
+    // V3 uses per-field canonicalStatus; the previous literal-source assertion
+    // would fail even though actual header/body/footer visual colors remain correct.
+    // The runtime oracle in pr95-ui-v3-l3-report-table-review.test.ts separately
+    // asserts stage + muted classes on all three rendered cell locations.
+    expect(component).toContain("canonicalStatus(config.statusField,status)");
+    expect(component).toContain("const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ')");
+    expect(component).toContain("const excludedMilestone=normalizeSearch('Không phải trình')");
+    expect(component).toContain("canonical===quietBuildMilestone");
+    expect(component).toContain("canonical===excludedMilestone");
+    expect(component).toContain("' report-stage-intermediate'");
     for(const style of ['classic','signal','compact','bars','band']){
       expect(css).toContain('.report-surface.report-style-'+style+' .report-table');
     }
