@@ -140,6 +140,10 @@ try{
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close popup');
 
+  await clickText('Tùy chỉnh cột và hiển thị');
+  await waitFor('document.querySelector(".column-manager")','real admin ItemColumnPanel');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','admin customizer does not add tab');
+  await screenshot('pr95-v3-l5-admin-columns.png');
   await clickText('Tài khoản');await waitFor('document.querySelector("[aria-label=\\"Tài khoản mô phỏng\\"]")','account panel');
   await clickText('Cài đặt');await waitFor('document.querySelector("[aria-label=\\"Cài đặt demo\\"]")','settings panel');
   await clickText('Excel · Nhập / Xuất');await waitFor('document.querySelector(".pr95-preview-excel")','Excel panel');
@@ -196,7 +200,18 @@ try{
     'input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));'+
     'input.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",ctrlKey:true,bubbles:true}))');
   await waitFor('document.querySelector("[data-testid=guest-edits]")?.textContent==="1"','guest edit RAM applied');
+  await ensure('document.querySelector(".pr95-preview-unsaved")','guest retains RAM Save/Cancel');
   await screenshot('pr95-v3-l5-desktop-guest-edited.png');
+  await clickText('Lưu trong RAM');
+  await waitFor('!document.querySelector(".pr95-preview-unsaved")','guest RAM save confirmed');
+  await clickText('Báo cáo tổng hợp');
+  await waitFor('document.querySelectorAll(".report-table").length===5','guest report access');
+  await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No guest drill");b.click()');
+  await waitFor('document.querySelector("dialog.report-grid-modal[open]")','guest popup');
+  await ensure('!document.querySelector("dialog.report-grid-modal .report-grid-presets")&&!document.querySelector("dialog.report-grid-modal .report-grid-settings")','guest popup no admin customizations');
+  await screenshot('pr95-v3-l5-guest-popup.png');
+  await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
+  await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','guest popup closed');
   await selectValue('#pr95-role','admin');
   await clickText('Phân quyền chỉnh sửa');
   await waitFor('document.querySelector(".inline-permission-table")','permission revoke');
