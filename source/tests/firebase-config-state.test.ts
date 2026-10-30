@@ -86,6 +86,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     h.auth.currentUser={uid:'public-guest',isAnonymous:true,email:null,emailVerified:false,providerData:[]};
     h.authChanged(h.auth.currentUser);
     render();
+    emit('hdnd/datasetV2/active',null); // Initial absence verified before legacy access.
     emit('hdnd/permissions',{columns:{note:true,content:false}});
     emit('.info/connected',true);
     emit('hdnd/control',{revision:1,editingLocked:false});

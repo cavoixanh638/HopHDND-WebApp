@@ -242,7 +242,7 @@ export function useFirebase(){
     return latest;
   };
   const savePermissions=async(next:CellPermissions,expected=datasetActive?datasetPermissions:permissions)=>{
-    if(!datasetEpochReady||!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady)throw new Error('Cần con trỏ thế hệ đã xác nhận, quản trị Google, kết nối mạng và quyền gốc để lưu quyền sửa.');
+    if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady||!datasetEpochReady)throw new Error('Cần quản trị Google, kết nối mạng, quyền gốc và con trỏ thế hệ đã xác nhận để lưu quyền sửa.');
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     saving.current=true;setBusy(true);
     try{
