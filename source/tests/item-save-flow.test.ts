@@ -17,6 +17,7 @@ import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
 import {CompactGroupFilterCell} from '../src/features/items/CompactGroupFilterCell';
+import {DETAIL_FIELDS,SEARCH_FIELDS} from '../src/features/items/list-toolbar-filters';
 import {CellHistoryAction} from '../src/components/CellHistoryAction';
 function nodes(v:any):any[]{
   return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'
@@ -93,10 +94,33 @@ describe('separate item layout save and data draft',()=>{
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
     expect(keys).toEqual([...EXCEL_COLUMN_KEYS].reverse().filter(k=>
-      !['type','department','progressParty','progressBuild','progressCouncil'].includes(k)));
+      !['stt','type','department','progressParty','progressBuild','progressCouncil'].includes(k)));
+    // STT remains Excel column B and the Item source value, not a view column.
+    expect(EXCEL_COLUMN_KEYS[1]).toBe('stt');
+    expect(items[0].stt).toBeGreaterThan(0);
+    expect(keys).not.toContain('stt');
     expect(keys).not.toContain('history');
-    const compactFilters=nodes(tree).filter(n=>n.type===CompactGroupFilterCell);
-    expect(compactFilters.map(n=>n.props.fields)).toEqual(expect.arrayContaining([
+    // V2 uses the single List toolbar rather than a second full table-filter row.
+    const controls=nodes(tree);
+    expect(controls.some(n=>n.props?.className==='list-filter-toolbar')).toBe(true);
+    expect(controls.some(n=>n.type==='input'&&n.props?.['aria-label']==='Tìm kiếm không dấu')).toBe(true);
+    for(const label of ['Lọc Sở, ngành','Lọc Phòng'])
+      expect(controls.some(n=>n.type==='select'&&n.props?.['aria-label']===label)).toBe(true);
+    expect(controls.some(n=>n.props?.className==='list-filter-other')).toBe(true);
+    expect(DETAIL_FIELDS.map(f=>f.key)).toEqual([
+      'partyLevel','progressParty','progressBuild','progressCouncil',
+      'specialist','vpLeader','ubndLeader'
+    ]);
+    expect(SEARCH_FIELDS.map(f=>f.key)).toEqual([
+      'all','displayCode','content','specificProgress','note'
+    ]);
+    // Existing source-level column filters are retained in the editing view.
+    const editTree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:true,sourceKey:'old-layout-edit-filters',
+      catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
+      onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
+    const editFilters=nodes(editTree).filter(n=>n.type===CompactGroupFilterCell);
+    expect(editFilters.map(n=>n.props.fields)).toEqual(expect.arrayContaining([
       ['type','department','content'],
       ['partyLevel','progressParty','progressBuild','progressCouncil']
     ]));
