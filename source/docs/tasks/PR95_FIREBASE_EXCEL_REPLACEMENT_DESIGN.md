@@ -84,3 +84,25 @@ No merge/publish, no Firebase Rules/Functions/Hosting deployment, no production 
 - `datasetPreviewFingerprint` normalizes list ordering while covering all editable fields, ID, code, STT, revision and archive status. The Excel review panel hides stale results and asks for a fresh check if the live visible dataset changes. Tests cover permutation neutrality and mutation/stale revision detection.
 - Security caveat: SHA-256 establishes integrity of inspected inputs only; it does **not** authenticate the source, establish private backups, authorize a write, ensure all rights/leases are generation-scoped or guarantee a server commit. No code path performs a real dataset replacement.
 - Pending independent Codex review: check field coverage and `validateFirebaseItem` semantics; verify no old client can write `hdnd/items` once generation switching is implemented; design emulator-backed Rules + transaction race, verified private backup/restore and per-generation authorization before any release.
+
+## Lượt 003 — implementation inventory (2026-10-30)
+
+**Current state: IN DEVELOPMENT / DRAFT / not release-ready. The code below is being exercised against isolated Emulator data only; no live import or deployment.**
+
+### Code implemented
+- `src/data/business-excel.ts`: strict, explicit H / I / L / M positional header allowlists, no generic `trinh` or `lanh dao` substring acceptance. `tests/business-excel.test.ts` swaps headings **and values**, with intentionally overlapping statuses, and checks exact sheet/heading row/column diagnostics.
+- `src/data/firebase-versioned-replacement.ts`: real RTDB admin-only Emulator candidate stage, immutable JSON candidate and private backup, independent readback+SHA, compare against active generation and **full same-generation snapshot** (rows/revisions/history/rights/leases), root generation CAS, operationId resolution, and new-generation rollback. Each operation is explicitly confirmed. A failed/inaccessible status is UNKNOWN and must not be automatically repeated.
+- `firebase/database.exclusive-candidate.rules.json`: experimental `hdnd/datasetV2` scopes (active pointer, candidates, private backups, generations, rights, leases), legacy item writes fenced when active V2 exists. **Not published**. The live deployed Rules are unchanged.
+- `src/data/cell-edit-leases.ts`: optional generation qualified lock paths and draft recovery keys; preserves unchanged legacy draft keys.
+- `src/state/use-firebase.ts` and `src/app/App.tsx`: detect active generation; route primary rows, reports, history, edits, drafts and lease manager through the active generation and its own grants. Legacy path still exists until Firebase-only cutover review.
+- `VersionedExcelReplacementPanel.tsx` integrated via the existing business Excel review: actual stage/readback, full list preview, report tables with current report definitions, typed commit, operation status probe, separate rollback. **Enabled only in Firebase Emulator**, not production.
+- `tests/firebase-versioned-replacement.test.ts` wired into `scripts/test-firebase.mjs`: actual Emulator transaction/Rules tests for happy-path, private backup, rollback, same-generation edits, two-tab collision, scoped leases and legacy fencing.
+
+### Release blockers, not to be relabeled PASS from unrelated CI
+1. Make **all** new Emulator integration cases PASS on exact HEAD; inspect CAS parent transaction and nested Rules validation behavior, unknown-status/no-network and restore readback.
+2. Audit generation write rules, detached v1 tab, grant/reuse/history and lease expiration with separate UID browsers.
+3. Finish removing legacy Sheets/mirror data routing and transition controls; keep Google Authentication. Make existing production database bootstrap/freeze state compatible with generation startup.
+4. End-to-end UI browser testing: select workbook, use named sheet, view real staged reports, no fallback, commit/rollback and new active pointer, refresh two browsers. Capture only synthetic screenshots.
+5. Independent Codex audit of the final exact HEAD and security proof; do not deploy Firebase Rules/Functions, publish, merge or use business data until release GO.
+
+**Security note:** Server Rules and client compare must jointly block stale writes; a green test of a pure function or a mocked Firebase source is not a substitute for the above. Keeping a functional emulator prototype is not production authorization.
