@@ -65,8 +65,13 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   firebaseLive.current=firebase;
   // A/B uses the same URL, Firebase auth and confirmed admin layout, changing
   // ONLY the read-only source of rows. The actual saved source is untouched.
-  const selectedSource=comparison?compareSource:firebase?.profile?.dataSource;
-  const repository=useMemo<Repository>(()=>firebase
+  const selectedSource=firebase?.datasetActive?'primary':comparison?compareSource:firebase?.profile?.dataSource;
+  const repository=useMemo<Repository>(()=>firebase?.datasetActive
+    ?new FirebaseRepository(firebase.database,
+        ()=>firebaseLive.current?.user??null,
+        ()=>firebaseLive.current?.permissions??{columns:{}},
+        'hdnd/datasetV2/generations/'+firebase.datasetActive.generationId+'/items')
+    :firebase
     ?selectedSource==='primary'&&!comparison
       ?new FirebaseRepository(firebase.database,
         ()=>firebaseLive.current?.user??null,
@@ -74,10 +79,11 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       :selectedSource==='database'
         ?new FirebaseMirrorRepository(firebase.database,configured,()=>activeViewerUid.current,!comparison,!comparison&&!benchNoCache)
         :new SheetsRepository(configured,firebaseSourceSeed?.url===configured.url?firebaseSourceSeed.snapshot:undefined,!comparison)
-    :browserRepository,[firebase?.database,firebase?.user?.uid,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
+    :browserRepository,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,selectedSource,comparison,benchNoCache,configured.url,browserRepository,firebaseSourceSeed]);
   const leaseManager=useMemo(()=>firebase&&selectedSource==='primary'&&!comparison
-    ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null)
-    :undefined,[firebase?.database,firebase?.user?.uid,selectedSource,comparison]);
+    ?new CellEditSessionManager(firebase.database,()=>firebaseLive.current?.user??null,
+        firebase.datasetActive?.generationId)
+    :undefined,[firebase?.database,firebase?.user?.uid,firebase?.datasetActive?.generationId,selectedSource,comparison]);
   useEffect(()=>()=>{if(leaseManager)void leaseManager.dispose();},[leaseManager]);
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
@@ -85,7 +91,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
-  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase&&selectedSource==='primary'?'pages:primary':isFirebase?`pages:sheets:${configured.url}`:configured.url;
+  const sourceKey = comparison?`compare:${compareSource}:${configured.url}`:isDemo?'demo':isFirebase&&firebase?.datasetActive?'pages:gen:'+firebase.datasetActive.generationId:
+    isFirebase&&selectedSource==='primary'?'pages:primary':isFirebase?`pages:sheets:${configured.url}`:configured.url;
   const [allowTemporaryLayout,setAllowTemporaryLayout]=useState(false);
   // A cached admin layout can paint immediately, but an unverified cached Excel
   // preference must NEVER trigger a GViz download while Firebase is still checking
