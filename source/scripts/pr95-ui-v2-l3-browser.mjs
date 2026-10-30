@@ -252,7 +252,9 @@ async function test(){
   }
   await guest.until('window.__pr95UiV2L3RightsProbe?.().page==="items"',
     'real guest route is Danh sách before editing',6500);
-  step('GUEST_REAL_LIST_ROUTE_CONFIRMED',{page:'items',source:'actual App'});
+  step('GUEST_REAL_LIST_ROUTE_CONFIRMED',{page:'items',source:'actual App',
+    snapshot:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()'),
+    cell:await guest.evalJs('document.querySelector(\'.item-data-table tbody tr:first-child td[data-col-key="note"]\')?.className')});
   // The already-mounted guest App must observe the server grant.
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
