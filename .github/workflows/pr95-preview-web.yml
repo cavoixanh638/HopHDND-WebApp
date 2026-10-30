@@ -6,6 +6,7 @@ on:
     paths:
       - source/src/app/App.tsx
       - source/src/qa/compact-qa-main.tsx
+      - source/compact-qa.html
       - source/tests/pr95-guest-rights-notice.test.ts
       - .github/workflows/pr95-preview-web.yml
   workflow_dispatch:
