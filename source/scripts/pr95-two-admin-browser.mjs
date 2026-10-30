@@ -307,6 +307,18 @@ async function exercise(){
   const operation='pr95_two_tabs_swap_0001';
   const staged=await A.call('stageNewGeneration',operation);
   assert.equal(staged.previous,gen);
+  // Exercise REAL useWorkspace draft state in Tab B (not only a manager's
+  // per-cell local recovery key). Commit immediately before its auto-save
+  // timer; any unexpected stale write must fail the generation fence.
+  const beforeWorkspace=await B.call('workspaceSnapshot');
+  assert.equal(beforeWorkspace.items,2,'Real workspace must load the old V2 generation');
+  await B.call('workspaceDraft',rowId,'note','UI UNSAVED DRAFT FROM OLD GEN');
+  const uiDraft=await sleepUntil(async()=>{
+    const snapshot=await B.call('workspaceSnapshot');
+    return snapshot.drafts===1?snapshot:false;
+  },'unsaved React workspace draft',600);
+  assert.ok(uiDraft.sourceKey.includes(gen));
+  step('OLD_WORKSPACE_DRAFT_CREATED',{sourceKey:uiDraft.sourceKey,drafts:uiDraft.drafts});
   const swapped=await A.call('commitStaged',staged.approval);
   assert.equal(swapped.status,'committed');
   const newGen='gen_'+operation;
@@ -320,6 +332,10 @@ async function exercise(){
   const newRowAfter=await request(base+'/generations/'+newGen+'/items/'+rowId);
   assert.deepEqual(newRowAfter,newRowBefore,
     'Stale old-gen edit must not touch active new-generation row');
+  // Even a direct call bypassing the closed SessionManager must be fenced
+  // by the NEW client-side server-active check in renewCellLease.
+  await checkDenied(B.call('rawRenew',oldLease,'note',rowId,gen),
+    'direct renewal of a stale generation lease');
   await checkDenied(B.call('renew','note',rowId,gen),'renew old inactive generation lease');
   await checkDenied(B.call('acquire','note',rowId,gen),'acquire old inactive generation lease');
   const boundNew=await B.call('attach');
@@ -335,7 +351,8 @@ async function exercise(){
   await checkRules('after-two-admin-targets');
   step('GENERATION_STALE_DRAFT_LEASE_FENCED_PASS',{oldGeneration:gen,newGeneration:newGen,
     oldLeaseToken:oldLease.token,activeRevision:pointer.revision,
-    newRowUnchanged:true,oldDraftNotRestored:true,oldTabSaveDenied:true});
+    newRowUnchanged:true,oldDraftNotRestored:true,oldTabSaveDenied:true,
+    oldWorkspaceDraftCleared:true,directStaleLeaseRenewalDenied:true});
   step('TWO_REAL_ADMIN_CHROME_TARGETS_PASS',{targetA:A.targetId,targetB:B.targetId,
     sharedAdminUid:tabA.uid,serverRowRevisionBeforeSwap:5,
     checkedServerHistories:4,activeGeneration:newGen,
