@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,goOffline,goOnline} from 'firebase/database';
+import {get,ref,set,update,goOffline,goOnline,serverTimestamp} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
@@ -258,6 +258,14 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       'KHOI TAO V2 '+op+' 2 2')).status).toBe('already-committed');
     await assertFails(set(ref(db,'hdnd/items/r1/note'),'Không còn sửa legacy'));
     await assertFails(set(ref(db,'hdnd/permissions/columns/note'),false));
+    // Even reopening the old freeze mode cannot resurrect legacy writers
+    // once V2 has an active pointer.
+    await assertSucceeds(update(ref(db,'hdnd/freezeControl'),{
+      mode:'OPEN',revision:3,epoch:1,actor:'administrator',
+      changedAt:serverTimestamp(),deadline:0,closedAt:0
+    }));
+    await assertFails(set(ref(db,'hdnd/items/r1/note'),'Không được hồi sinh legacy'));
+    await assertFails(set(ref(db,'hdnd/permissions/columns/note'),true));
   },45000);
   it('blocks first activation if freeze changes during review, even after refreeze',async()=>{
     await setupFrozenLegacy();
