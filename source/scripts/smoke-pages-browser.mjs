@@ -2148,10 +2148,10 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
     if(!next)return false;next.click();return true;
   })()`);
-  if(!selected)throw Error('QA BTV choice missing');
+  if(!selected)throw Error('QA BTV TU official choice missing');
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
     'Selecting staged Cấp value failed');
   const isolatedEdit=await evaluate(`(()=>{
