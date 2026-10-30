@@ -1,4 +1,4 @@
-// PR95 L4 ONLY. Local-built synthetic preview + real Chromium CDP.
+// PR95 UI V3 L5: local-built synthetic preview + real Chromium CDP.
 // No Firebase emulator, real network, auth, Google Sheets or deployment.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
@@ -45,14 +45,26 @@ const ensure=async(js,label)=>{
   if(!value)throw Error('PR95_L4_BROWSER_FAIL '+label);
 };
 const interact=async js=>evaluate('(()=>{'+js+';return true;})()');
-const clickText=async text=>interact(
-  'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()==='+JSON.stringify(text)+');'+
-  'if(!button)throw Error("Button missing: "+'+JSON.stringify(text)+');button.click()'
-);
-const selectValue=async(selector,value)=>interact(
-  'const input=document.querySelector('+JSON.stringify(selector)+');if(!input)throw Error("Select missing");'+
-  'input.value='+JSON.stringify(value)+';input.dispatchEvent(new Event("change",{bubbles:true}))'
-);
+const clickText=async text=>{
+  const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc',
+    'Phân quyền chỉnh sửa':'Phân quyền chỉnh sửa ô'}[text]??text;
+  return interact('const label='+JSON.stringify(alias)+';'+
+    'let button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()===label);'+
+    'if(!button){const gear=document.querySelector(".pr95-preview-gear");if(gear)gear.click();'+
+    'button=[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(x=>x.textContent?.trim()===label);}'+
+    'if(!button)throw Error("Button missing: "+label);button.click()');
+};
+const selectValue=async(selector,value)=>{
+  if(selector==='#pr95-role'){
+    if(!['guest','admin'].includes(value))throw Error('Bad simulated role');
+    const action=value==='guest'?'Đăng xuất mô phỏng':'Đăng nhập quản trị (mô phỏng)';
+    return interact('const gear=document.querySelector(".pr95-preview-gear");gear.click();'+
+      'const button=[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(x=>x.textContent?.trim()==='+JSON.stringify(action)+');'+
+      'if(!button)throw Error("Simulated role action missing");button.click()');
+  }
+  return interact('const input=document.querySelector('+JSON.stringify(selector)+');if(!input)throw Error("Select missing");'+
+    'input.value='+JSON.stringify(value)+';input.dispatchEvent(new Event("change",{bubbles:true}))');
+};
 const screenshot=async name=>{
   const result=await send('Page.captureScreenshot',{format:'png',fromSurface:true});
   const data=Buffer.from(result.data,'base64');
