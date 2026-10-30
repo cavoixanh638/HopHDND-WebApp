@@ -278,6 +278,10 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   },30000);
   it('never activates legacy without real populated frozen source',async()=>{
     const db=admin(),op='pr95_initial_bad_01';
+    await setupFrozenLegacy();
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,'hdnd/freezeControl/mode'),'OPEN');
+    });
     await expect(prepareInitialDatasetActivation(db,actor,replacement(),op,'new.xlsx'))
       .rejects.toThrow(/đóng băng|FROZEN/i);
     await setupFrozenLegacy();
