@@ -183,7 +183,7 @@ async function test(){
   await guest.until('!!document.querySelector(".guest-signin")','anonymous UI');
   await clickText(guest,'nav.primary-section-switcher button','Danh sách');
   try{
-    await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-MẪU-001")===true','real data row, not loading placeholder');
+    await guest.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ01")===true','real data row, not loading placeholder');
   }catch(error){
     step('GUEST_APP_DIAGNOSTIC',{body:await guest.evalJs('document.body.textContent.slice(0,2500)'),
       table:await guest.evalJs('document.querySelector(".item-data-table tbody")?.textContent?.slice(0,1000)'),
