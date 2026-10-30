@@ -31,6 +31,15 @@ Environment limitation for this lane: local runtime could not resolve `github.co
 
 The base candidate Rules file `source/firebase/database.exclusive-candidate.rules.json` is loaded **unchanged** by both new Emulator test suites. RulesTestEnvironment elevated `withSecurityRulesDisabled` is used **ONLY to insert synthetic seed fixtures**. Every test action uses a genuine SDK client under authenticated RTDB Rules, never a mocked database. Emulator suites are conditional on `FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000`; skipping them in ordinary `npm test` **does not count as PASS**.
 
+## CI evidence — exact tested worker commit
+
+- Test commit: `ebc3ffe27fdf90902bc6ce92de09ed8b4aeacab5`; Draft [worker PR #98](https://github.com/cavoixanh638/HopHDND-WebApp/pull/98), base integration only.
+- Verify source [run #40998007870](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40998007870): **FAILURE** in the existing V2 Firebase Emulator suite ONLY, reproducing the *same* three inherited `permission_denied` failures in `tests/firebase-versioned-replacement.test.ts` (3 failed, 55 passed, 1 expected fail). **Do not blame new L3 Emulator files; those are not in the runner.**
+- Earlier steps in that run: TypeScript typecheck **PASS**; Unit tests **PASS**, including `pr95-independent-parser.test.ts` **13/13 PASS**, `pr95-independent-generation.test.ts` **4/4 PASS**, and `pr95-independent-ui.test.tsx` **3/3 PASS**. These 20 are **pure/synthetic**, not RTDB authorization proofs.
+- Firebase operational QA isolated multi-account [run #40998007807](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/40998007807): **SUCCESS**, does not exercise the new V2 independent Rules/race tests or prove replace/restore.
+- New `pr95-independent-rules.test.ts` and `pr95-independent-race.test.ts`: **NOT RUN** under real Emulator because explicit `source/scripts/test-firebase.mjs` file list excludes them. This remains a required integration task for Luồng 1.
+- The current handoff-file update is documentation-only and may create a later SHA; the above results are tied strictly to the tested SHA above, not automatically transferred to a later HEAD.
+
 ## Defect register — reproduction, actual/expected, test
 
 ### L3-KNOWN-001 — 3 existing V2 permission_denied (KNOWN BASELINE)
@@ -69,7 +78,7 @@ The base candidate Rules file `source/firebase/database.exclusive-candidate.rule
 - Test: `pr95-independent-rules.test.ts` → same negative test.
 - Owner: Luồng 1.
 
-## Coverage inventory (committed; NOT YET EXECUTED)
+## Coverage inventory (pure tests executed by PR #98 CI; Emulator suites not executed)
 
 | Test file | Coverage and threat | Runtime |
 | --- | --- | --- |
