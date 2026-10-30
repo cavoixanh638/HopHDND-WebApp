@@ -2,11 +2,11 @@
  * Reuse baseline ItemList, ReportTable, ReportDetailGrid, InlinePermissionsTable
  * and real reporting domain. Never initialize Firebase/Google APIs here.
  */
-import {useMemo,useState,type CSSProperties} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
-import {catalogFromItems} from '../data/catalogs';
+import {catalogFromItems,validateCatalog,type CatalogConfig} from '../data/catalogs';
 import {defaultItemLayout,validateItemLayout,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
@@ -18,7 +18,18 @@ import {InlinePermissionsTable} from '../features/items/InlinePermissionsTable';
 import {Pr95PreviewExcel} from './pr95-preview-excel';
 import './pr95-full-preview.css';
 
-type Page='items'|'reports'|'permissions'|'excel'|'account'|'settings';
+type Page='items'|'reports'|'items-customize'|'permissions'|'excel'|'account'|'settings';
+type AdminPage=Exclude<Page,'items'|'reports'>;
+/** Pages are guarded in event handlers AND in rendering; role is synthetic only. */
+export const previewCanOpenPage=(role:Role,page:Page):boolean=>
+  role==='admin'||page==='items'||page==='reports';
+export const PREVIEW_ADMIN_TOOLS:readonly {key:AdminPage;label:string}[]=[
+  {key:'items-customize',label:'Tùy chỉnh cột và hiển thị'},
+  {key:'permissions',label:'Phân quyền chỉnh sửa ô'},
+  {key:'excel',label:'Excel · Nhập / Xuất'},
+  {key:'account',label:'Tài khoản và dữ liệu'},
+  {key:'settings',label:'Cài đặt báo cáo và màu sắc'},
+];
 type Role='admin'|'guest';
 type Drill={title:string;ids:string[]};
 const sourceKey='pr95-l4-preview-synthetic-only';
@@ -49,17 +60,20 @@ export const previewPermissionSave=(current:CellPermissions,next:CellPermissions
     cells:Object.fromEntries(Object.entries(next.cells??{}).map(([id,fields])=>[id,{...fields}]))
   };
 };
-const nav:readonly {key:Page;label:string}[]=[
+const nav:readonly {key:'items'|'reports';label:string}[]=[
   {key:'reports',label:'Báo cáo tổng hợp'},
   {key:'items',label:'Danh sách các ND trình HĐND'},
-  {key:'permissions',label:'Phân quyền chỉnh sửa'},
-  {key:'excel',label:'Excel · Nhập / Xuất'},
-  {key:'account',label:'Tài khoản'},
-  {key:'settings',label:'Cài đặt'},
 ];
 export function Pr95FullPreview(){
   const [items,setItems]=useState<Item[]>(()=>createDemoItems(27));
-  const [role,setRole]=useState<Role>('admin');
+  const [confirmedItems,setConfirmedItems]=useState<Item[]>(items);
+  // Explicit URL fixture for browser QA; default preview stays guest.
+  const [role,setRole]=useState<Role>(()=>typeof window!=='undefined'&&
+    new URLSearchParams(window.location.search).get('preview-role')==='admin'?'admin':'guest');
+  const [menuOpen,setMenuOpen]=useState(false);
+  const gearZone=useRef<HTMLDivElement|null>(null);
+  const [sessionScope]=useState(()=>Math.random().toString(36).slice(2));
+  const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(null);
   const [page,setPage]=useState<Page>('items');
   const [permissions,setPermissions]=useState<CellPermissions>(permissionsInitial);
   const [layout,setLayout]=useState<ItemLayout>(baseLayout);
@@ -70,8 +84,8 @@ export function Pr95FullPreview(){
   const [revision,setRevision]=useState(0);
   const [guestEditCount,setGuestEditCount]=useState(0);
   const [reportVariant,setReportVariant]=useState<'classic'|'compact'|'bars'>('classic');
-  const catalog=useMemo(()=>catalogFromItems(items),[items]);
-  const palette=useMemo(()=>defaultStatusPaletteStore(),[]);
+  const catalog=useMemo(()=>catalogOverride??catalogFromItems(items),[items,catalogOverride]);
+  const [palette,setPalette]=useState(defaultStatusPaletteStore);
   const configs=useMemo(()=>DEFAULT_REPORTS.map(report=>({...report,reportVariant})),[reportVariant]);
   const active=items.filter(isActive).length;
   const admin=role==='admin';
@@ -88,12 +102,57 @@ export function Pr95FullPreview(){
     if(!admin)setGuestEditCount(v=>v+1);
     setNotice('Đã sửa dữ liệu giả trong bộ nhớ. Tải lại trang sẽ trả về dữ liệu ban đầu.');
   };
-  const switchRole=(next:Role)=>{setRole(next);setDrill(null);setNotice('Đã chuyển vai trò mô phỏng; không đăng nhập Google hoặc Firebase.');if(next==='guest'&&(page==='permissions'||page==='settings'))setPage('items');};
-  const openPage=(next:Page)=>{if(!admin&&(next==='permissions'||next==='settings')){setNotice('Khách không được cấp quyền quản trị trong bản mô phỏng.');return;}setPage(next);setDrill(null);};
+  // Escape is handled before the list's own global filter shortcut when gear is open.
+  useEffect(()=>{
+    if(!menuOpen)return;
+    const outside=(event:PointerEvent)=>{
+      if(!gearZone.current?.contains(event.target as Node))setMenuOpen(false);
+    };
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key!=='Escape'||event.isComposing||event.defaultPrevented)return;
+      event.preventDefault();event.stopPropagation();setMenuOpen(false);
+      gearZone.current?.querySelector<HTMLButtonElement>('.pr95-preview-gear')?.focus();
+    };
+    document.addEventListener('pointerdown',outside,true);
+    document.addEventListener('keydown',escape,true);
+    return()=>{document.removeEventListener('pointerdown',outside,true);
+      document.removeEventListener('keydown',escape,true);};
+  },[menuOpen]);
+  const switchRole=(next:Role)=>{
+    setMenuOpen(false);setDrill(null);setRole(next);
+    if(next==='guest')setPage(previous=>previewCanOpenPage('guest',previous)?previous:'items');
+    setNotice('Đã chuyển sang '+(next==='admin'?'quản trị':'khách')+
+      ' MÔ PHỎNG — không đăng nhập Google/Firebase; không cấp quyền thật.');
+  };
+  const openPage=(next:Page)=>{
+    setMenuOpen(false);
+    if(!previewCanOpenPage(role,next)){
+      setNotice('Khách không được mở trang quản trị trong bản demo.');return;
+    }
+    setPage(next);setDrill(null);
+  };
+  const savePermissions=async(next:CellPermissions,expected:CellPermissions)=>{
+    setPermissions(old=>previewPermissionSave(old,next,expected));
+    setNotice('Đã cập nhật quyền giả trong RAM. Không gọi Rules hoặc Firebase.');
+  };
+  const saveLayout=async(next:ItemLayout)=>{
+    const checked=validateItemLayout(next);setLayout(checked);return checked;
+  };
+  const saveCatalog=async(next:CatalogConfig)=>{setCatalogOverride(validateCatalog(next));};
+  const saveRAM=async()=>{
+    setConfirmedItems(items);setDirtyIds(new Set());
+    setNotice('Đã xác nhận phần sửa trong RAM, không ghi lên hệ thống thật.');return true;
+  };
+  const discardRAM=()=>{
+    setItems(confirmedItems);setDirtyIds(new Set());
+    setNotice('Đã bỏ phần sửa chưa xác nhận trong RAM.');
+  };
   const onSelect=(title:string,entries:Item[])=>setDrill({title,ids:entries.map(item=>item.recordId)});
   const reset=()=>{
-    setItems(createDemoItems(27));setPermissions(permissionsInitial());
-    setDirtyIds(new Set());setLayout(baseLayout());setDrill(null);
+    const seed=createDemoItems(27);setItems(seed);setConfirmedItems(seed);
+    setPermissions(permissionsInitial());setCatalogOverride(null);
+    setDirtyIds(new Set());setLayout(baseLayout());setPalette(defaultStatusPaletteStore());
+    setReportVariant('classic');setDrill(null);setMenuOpen(false);
     setGuestEditCount(0);setRevision(v=>v+1);
     setNotice('Đã đặt lại hồ sơ và quyền mô phỏng trong bộ nhớ.');
   };
