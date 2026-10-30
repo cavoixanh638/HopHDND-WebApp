@@ -1,4 +1,4 @@
-import {get,ref,runTransaction,onValue,type Database,type DatabaseReference} from 'firebase/database';
+import {get,ref,runTransaction,onValue,serverTimestamp,type Database,type DatabaseReference} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
 import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
@@ -184,7 +184,7 @@ export async function commitDatasetReplacement(
         throw Error('Mã thế hệ ứng viên đã tồn tại; không ghi chồng.');
       const hydrated=Object.fromEntries(Object.entries(staged.items as Record<string,Item>)
         .map(([id,item])=>[id,{...item,operationId:approval.operationId,
-          updatedAt:Date.now(),updatedBy:user!.uid}]));
+          updatedAt:serverTimestamp(),updatedBy:user!.uid}]));
       const next:V2Snapshot={...source,
         generations:{...source.generations,
           [approval.manifest.generationId]:{items:hydrated as Record<string,Item>}},
