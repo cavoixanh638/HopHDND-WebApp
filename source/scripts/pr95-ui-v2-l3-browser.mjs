@@ -237,7 +237,8 @@ async function test(){
     'server confirmed real App guest edit');
   let row=await read();
   assert.equal(row.history['2'].changes.note,note);
-  assert.equal(row.history['2'].actor,await guest.evalJs('window.__pr95EmulatorGoogleAdminSignIn===undefined?null:null'));
+  assert.equal(row.history['2'].actor,row.updatedBy);
+  assert.ok(row.updatedBy&&row.updatedBy!==principal.uid,'Anonymous editor must not share admin UID');
   step('GUEST_EDIT_SERVER_HISTORY_PASS',{revision:row.revision,note:row.note,
     actorUid:row.updatedBy,auditOperation:row.history['2'].operationId});
   // Create an actual unsaved guest draft BEFORE admin revokes permission.
