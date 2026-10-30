@@ -1,11 +1,98 @@
 // Headless Chromium smoke against a locally served, built Pages TEST artifact.
-// GViz is intercepted with synthetic records; Firebase production is never contacted.
+// Real demo Firebase Auth + RTDB emulators serve synthetic versioned rows.
+// This script never touches production Firebase or Google Sheets.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
+
+// The pages-test Firebase bootstrap is pinned to demo-hdnd on loopback 9000/9099.
+// Run both emulators throughout the *entire* browser smoke, not only seeding.
+// Do not weaken the production project allowlist or install a GViz mock.
+const EMULATOR_PROJECT='demo-hdnd';
+const EMULATOR_DB='http://127.0.0.1:9000';
+const EMULATOR_AUTH='http://127.0.0.1:9099';
+const EMULATOR_NAMESPACE='demo-hdnd';
+const EMULATOR_ROOT=EMULATOR_DB+'/.json?ns='+EMULATOR_NAMESPACE+'&auth=owner';
+const SMOKE_OPERATION='pr95_browser_smoke_20261030';
+const SMOKE_GENERATION='gen_'+SMOKE_OPERATION;
+const firebaseRows=[
+  {displayCode:'NQ01',stt:1,content:'Nội dung kiểm thử smoke',
+    department:'Sở kiểm thử',type:'QPPL',partyLevel:'BTV',
+    progressParty:'Sở chưa trình',progressBuild:'Trình xây dựng NQ',
+    progressCouncil:'Đã trình HĐND',specialist:'Chuyên viên mẫu',
+    room:'Phòng mẫu',vpLeader:'PCVP Nguyễn Ngọc Hùng',
+    ubndLeader:'PCT Trần Văn Quân',specificProgress:'Sở đang thực hiện',
+    note:'Ghi chú nguồn O'},
+  // This is a genuine Firebase item, not a malformed empty Excel row:
+  // required content/displayCode are set to a dash, optional fields remain empty.
+  {displayCode:'—',stt:2,content:'—',department:'',type:'QPPL',
+    partyLevel:'',progressParty:'',progressBuild:'',progressCouncil:'',
+    specialist:'',room:'',vpLeader:'',ubndLeader:'',specificProgress:'',note:''},
+  ...Array.from({length:52},(_,i)=>({
+    displayCode:'NQ'+(i+3),stt:i+3,content:'Nội dung kiểm thử thêm '+(i+3),
+    department:'Sở kiểm thử',type:'QPPL',partyLevel:'',
+    progressParty:'',progressBuild:'',progressCouncil:'',
+    specialist:'',room:'',vpLeader:'',ubndLeader:'',specificProgress:'',note:''
+  }))
+].map((row,index)=>({
+  recordId:'pr95_smoke_'+String(index+1).padStart(3,'0'),
+  documentKind:'NQ',isDropped:false,revision:1,...row
+}));
+const firebaseSeed={hdnd:{datasetV2:{
+  active:{generationId:SMOKE_GENERATION,operationId:SMOKE_OPERATION,
+    revision:1,rowCount:firebaseRows.length,digest:'a'.repeat(64)},
+  generations:{[SMOKE_GENERATION]:{items:Object.fromEntries(
+    firebaseRows.map(row=>[row.recordId,row]))}},
+  permissions:{[SMOKE_GENERATION]:{columns:{}}}
+}}};
+let emulator=null,emulatorOutput='';
+const emulatorsReady=async()=>{
+  for(let attempt=0;attempt<160;attempt++){
+    if(emulator?.exitCode!==null)
+      throw Error('Isolated Firebase emulator exited early: '+emulatorOutput.slice(-3500));
+    try{
+      const [db,auth]=await Promise.all([
+        fetch(EMULATOR_ROOT,{signal:AbortSignal.timeout(850)}),
+        fetch(EMULATOR_AUTH+'/emulator/v1/projects/'+EMULATOR_PROJECT+'/accounts',
+          {signal:AbortSignal.timeout(850)})
+      ]);
+      if(db.ok&&auth.ok)return;
+    }catch{}
+    await sleep(250);
+  }
+  throw Error('Demo RTDB/Auth emulator never became ready: '+emulatorOutput.slice(-3500));
+};
+async function startAndSeedFirebase(){
+  emulator=spawn(process.execPath,[
+    'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
+    '--project',EMULATOR_PROJECT,'--only','database,auth','--config','firebase.json'
+  ],{stdio:['ignore','pipe','pipe'],env:{...process.env,
+    FIREBASE_CLI_EXPERIMENTS:'webframeworks',CI:'true'}});
+  for(const stream of [emulator.stdout,emulator.stderr])
+    stream?.on('data',chunk=>{emulatorOutput=(emulatorOutput+String(chunk)).slice(-8000);});
+  emulator.on('error',error=>{emulatorOutput+=' SPAWN: '+error.message;});
+  await emulatorsReady();
+  const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
+    'Content-Type':'application/json'
+  },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw Error('Could not seed isolated RTDB: HTTP '+response.status+
+    ' '+(await response.text()).slice(0,500));
+  const readback=await fetch(EMULATOR_ROOT,{signal:AbortSignal.timeout(8000)});
+  if(!readback.ok)throw Error('Could not read synthetic RTDB seed back');
+  const actual=await readback.json();
+  const active=actual?.hdnd?.datasetV2?.active;
+  const rows=actual?.hdnd?.datasetV2?.generations?.[SMOKE_GENERATION]?.items;
+  if(active?.operationId!==SMOKE_OPERATION||active?.generationId!==SMOKE_GENERATION||
+    Object.keys(rows??{}).length!==54||rows?.pr95_smoke_001?.displayCode!=='NQ01')
+    throw Error('Firebase seed server readback failed (generation/row mismatch)');
+  console.log('FIREBASE_BROWSER_SEED_VERIFIED',JSON.stringify({
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE,
+    generationId:active.generationId,operationId:active.operationId,
+    rowCount:Object.keys(rows).length,source:'REAL RTDB EMULATOR V2'}));
+}
 
 const appRoot=resolve('dist-pages-test');
 const qaRoot=resolve('dist-compact-qa');
@@ -91,6 +178,7 @@ let ws;
 let seq=0;
 const pending=new Map();
 let interceptError=null;
+const forbiddenNetwork=[];
 function send(method,params={}){
   return new Promise((resolve,reject)=>{
     const id=++seq;pending.set(id,{resolve,reject});
@@ -98,17 +186,6 @@ function send(method,params={}){
     setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(Error('CDP timeout: '+method));}},16000);
   });
 }
-const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),rows:[
-  {c:Array.from({length:15},(_,i)=>({v:({
-    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB',5:'Cấp Thành ủy cho ý kiến',
-    6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
-    8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
-  })[i]??''}))},
-  {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','PCVP Nguyễn Ngọc Hùng','PCT Trần Văn Quân','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
-  {c:['',2,'','','QPPL','','','','','','','','','',''].map(v=>({v}))},
-  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','',''].map(v=>({v}))}))
-]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
   if(res.exceptionDetails)throw Error('Evaluate error: '+JSON.stringify(res.exceptionDetails));
@@ -123,6 +200,7 @@ async function eventually(expression,why,tries=75){
   throw Error('Browser smoke failed: '+why);
 }
 try{
+  await startAndSeedFirebase();
   const tabs=await launchChrome();
   const tab=tabs.find(t=>t.type==='page');
   if(!tab)throw Error('Chrome did not open a page');
@@ -131,21 +209,17 @@ try{
   ws.addEventListener('message',ev=>{
     const data=JSON.parse(ev.data);
     if(data.id&&pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(Error(JSON.stringify(data.error))):p.resolve(data.result);return;}
-    if(data.method==='Fetch.requestPaused'){
-      try{
-        const url=new URL(data.params.request.url),handler=url.searchParams.get('tqx')?.split('responseHandler:')[1];
-        if(!handler||!/^[A-Za-z_][A-Za-z0-9_]*$/.test(handler))throw Error('Unexpected GViz callback');
-        const script=handler+'('+JSON.stringify(sourcePayload)+');';
-        void send('Fetch.fulfillRequest',{requestId:data.params.requestId,responseCode:200,
-          responseHeaders:[{name:'Content-Type',value:'application/javascript; charset=utf-8'}],
-          body:Buffer.from(script).toString('base64')}).catch(err=>{interceptError=err;});
-      }catch(err){interceptError=err;}
+    if(data.method==='Network.requestWillBeSent'){
+      const url=String(data.params?.request?.url??'');
+      if(/docs\\.google\\.com\\/spreadsheets\\//.test(url)||
+        /hophdnd-8b7b2.*(?:firebaseio\\.com|firebasedatabase\\.app|googleapis\\.com)/.test(url))
+        forbiddenNetwork.push(url);
     }
   });
   await send('Page.enable');
   await send('Runtime.enable');
+  await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
-  await send('Fetch.enable',{patterns:[{urlPattern:'*docs.google.com/spreadsheets/*/gviz/tq*',requestStage:'Request'}]});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
   // A genuine clean Chrome profile measures cold UI shell render on this runner;
@@ -159,10 +233,39 @@ try{
   console.log('COLD_CHROME_SHELL',JSON.stringify(cold));
   const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
-  // This test intentionally blocks real Firebase. Keep normal first paint gated,
-  // then explicitly opt in to temporary source viewing for isolated Sheets checks.
-  await evaluate("(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('Xem dữ liệu tạm'));button?.click();return true;})()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
+  // No temporary-source override. The actual App guest session must read the
+  // seeded V2 generation via FirebaseRepository and authenticated RTDB Rules.
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Firebase V2 row NQ01 did not render in the real List');
+  const firebaseList=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    return {rows:rows.length,hasFirst:rows.some(row=>row.textContent?.includes('NQ01')&&
+      row.textContent?.includes('Nội dung kiểm thử smoke')),
+      hasLast:rows.some(row=>row.textContent?.includes('NQ54')),
+      hasNote:rows.some(row=>row.textContent?.includes('Ghi chú nguồn O')),
+      isTemporary:document.body.textContent?.includes('Xem dữ liệu tạm')};
+  })()`);
+  if(firebaseList.rows!==54||!firebaseList.hasFirst||!firebaseList.hasLast||!firebaseList.hasNote)
+    throw Error('Firebase V2 rows missing in List: '+JSON.stringify(firebaseList));
+  if(forbiddenNetwork.length)throw Error('Production/Sheets request observed: '+JSON.stringify(forbiddenNetwork));
+  console.log('FIREBASE_ONLY_LIST_REAL_BROWSER_PASS',JSON.stringify(firebaseList));
+  // Verify the actual Report, not only an inserted CSS probe or a list fixture.
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+  await eventually("document.querySelector('.report-table tbody')?.textContent?.includes('Sở kiểm thử')===true",
+    'Real Report did not aggregate Firebase V2 seeded department');
+  const firebaseReport=await evaluate(`(()=>{
+    const tables=[...document.querySelectorAll('.report-surface .report-table')];
+    return {tables:tables.length,group:tables.some(table=>
+      table.querySelector('tbody')?.textContent?.includes('Sở kiểm thử')),
+      counts:tables.flatMap(table=>[...table.querySelectorAll('tbody button.count-drill')]
+        .map(button=>Number(button.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
+  })()`);
+  if(!firebaseReport.group||firebaseReport.counts.length===0)
+    throw Error('Firebase V2 seeded counts are absent from real Report: '+JSON.stringify(firebaseReport));
+  console.log('FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS',JSON.stringify(firebaseReport));
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1]?.click()");
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'List did not restore Firebase V2 rows after Report navigation');
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
   const inkPoints=await evaluate(`(()=>{
@@ -247,7 +350,7 @@ try{
       [...blank.querySelectorAll('td')].some(cell=>cell.textContent?.trim()==='—')&&
       !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
   })()`);
-  if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
+  if(!layoutAndBlanks)throw Error('List/card width diverged or valid blank Firebase fields are not shown as dash');
   const fullExcelColumns=await evaluate(`(()=>{
     const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.querySelector('.column-heading-label')?.textContent?.trim()??'');
     const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
@@ -797,7 +900,7 @@ try{
 
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
-  if(visibleRows!==54)throw Error('All 54 Sheets records should render without 50-row pagination, got '+visibleRows);
+  if(visibleRows!==54)throw Error('All 54 Firebase V2 records should render without 50-row pagination, got '+visibleRows);
   if(await evaluate("!!document.querySelector('.pagination')"))throw Error('Legacy pagination controls should be removed');
   const sticky=await evaluate(`(()=>{
     const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
@@ -3100,7 +3203,8 @@ try{
   if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
   
-  console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
+  if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
+  console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
   try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
@@ -3109,5 +3213,6 @@ try{
   if(ws)ws.close();
   if(chrome)chrome.kill('SIGKILL');
   server.close();
+  if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
   rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
