@@ -1,8 +1,7 @@
 import * as XLSX from 'xlsx';
 import type {Item} from '../../shared/types';
 import {parseGvizPayload} from './gviz-parser';
-import {STATUS_OPTIONS} from '../../shared/field-definitions';
-import {DEFAULT_REPORTS} from '../domain/reporting';
+import {isRecognizedStatus,type StatusCatalogField} from '../domain/status-contract';
 
 /** Public business workbook A–O; intentionally NOT the internal recordId template. */
 export const BUSINESS_HEADERS=[
@@ -128,15 +127,15 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
     const typed=kind==='bc'||kind==='bao cao'?'BC':'NQ';
     if(/^BC/i.test(code)&&typed!=='BC'||/^(?:ID|NQ)/i.test(code)&&typed!=='NQ')
       throw Error('Sheet "'+sheetName+'", dòng '+line+', cột E: loại văn bản mâu thuẫn với mã '+code+'.');
-    const checks:[number,'progressParty'|'progressBuild'|'progressCouncil',string][]=[
-      [6,'progressParty','G'],[7,'progressBuild','H'],[8,'progressCouncil','I']];
+    // F–I share the same official V3 + field-scoped legacy read aliases as
+    // dropdowns/reports. We only VALIDATE; source cells remain byte-for-byte
+    // text (including old spellings, spaces and Unicode) for the A–O import.
+    const checks:readonly (readonly [number,StatusCatalogField,string])[]=[
+      [5,'partyLevel','F'],[6,'progressParty','G'],
+      [7,'progressBuild','H'],[8,'progressCouncil','I']];
     for(const [index,field,column] of checks){
       const value=String(values[index]??'').trim();
-      const expected=new Set<string>([
-        ...STATUS_OPTIONS[field],...DEFAULT_REPORTS.filter(report=>report.statusField===field)
-          .flatMap(report=>report.columns)
-      ].map(normalized));
-      if(value&&!expected.has(normalized(value)))
+      if(value&&!isRecognizedStatus(field,value))
         throw Error('Sheet "'+sheetName+'", dòng '+line+', cột '+column+
           ': trạng thái chưa chuẩn hóa "'+value+'". Hãy chọn một trạng thái nghiệp vụ hợp lệ, không tự đổi giá trị.');
     }
