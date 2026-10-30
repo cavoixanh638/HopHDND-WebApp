@@ -1,4 +1,9 @@
 import {useState} from 'react';
+import type {Database} from 'firebase/database';
+import type {User} from 'firebase/auth';
+import type {ReportConfig} from '../../../shared/types';
+import type {ActiveDatasetPointer} from '../../data/dataset-replacement-integrity';
+import {VersionedExcelReplacementPanel} from './VersionedExcelReplacementPanel';
 import type {Item} from '../../../shared/types';
 import {createBusinessExcelTemplate,inspectBusinessExcel,parseBusinessExcel,
   type BusinessExcelInspection,type BusinessExcelResult} from '../../data/business-excel';
@@ -6,7 +11,9 @@ import {previewDatasetReplacement,type ReplacementPreview} from '../../data/data
 import {datasetPreviewFingerprint} from '../../data/dataset-preview-fingerprint';
 
 /** Step A only: no Firebase write is available in this component. */
-export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
+export function BusinessExcelReviewPanel({current,versioned}:{current:readonly Item[];
+  versioned?:{database:Database;user:User|null;active:ActiveDatasetPointer;
+    reports:readonly ReportConfig[];enabled:boolean}}){
   const [file,setFile]=useState<{name:string;bytes:Uint8Array;inspection:BusinessExcelInspection}|null>(null);
   const [sheet,setSheet]=useState('');
   const [result,setResult]=useState<BusinessExcelResult|null>(null);
@@ -84,7 +91,12 @@ export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
         <td>{row.department}</td><td>{row.specificProgress}</td>
       </tr>)}</tbody></table></div>
       {result.count>20&&<p>Đang xem 20/{result.count} hồ sơ; toàn bộ file đã được kiểm tra.</p>}
-      <p className="notice">Chưa thể áp dụng: cần hoàn tất kiểm tra staging, xác minh readback, backup riêng tư, xác nhận và cơ chế chuyển tập dữ liệu nguyên tử.</p>
+      {versioned?<VersionedExcelReplacementPanel key={file?.name+':'+sheet+':'+reviewedSnapshot}
+        database={versioned.database} user={versioned.user} active={versioned.active}
+        reports={versioned.reports} enabled={versioned.enabled}
+        fileName={file?.name??''} current={current} items={result.items}/>
+      :<p className="notice">Chưa có thế hệ Firebase hoạt động để staging an toàn;
+        không áp dụng bản Excel vào dữ liệu thực.</p>}
     </section>}
   </section>;
 }
