@@ -289,6 +289,15 @@ async function test(){
   assert.ok(row.updatedBy&&row.updatedBy!==principal.uid,'Anonymous editor must not share admin UID');
   step('GUEST_EDIT_SERVER_HISTORY_PASS',{revision:row.revision,note:row.note,
     actorUid:row.updatedBy,auditOperation:row.history['2'].operationId});
+  // Wait for React's original Save to settle (server ACK can precede the
+  // visible app transition), then reopen the real List and note editor.
+  await guest.until('!window.__pr95UiV2L3RightsProbe?.().workspaceBusy &&
+    !document.querySelector(".draft-bar")','first save settled in UI',10000);
+  await clickText(guest,'nav.primary-section-switcher button','Danh sách');
+  await guest.until('window.__pr95UiV2L3RightsProbe?.().page==="items"',
+    'real guest list before second edit',6000);
+  await guest.until('!!document.querySelector(\'.item-data-table tbody tr:first-child td[data-col-key="note"] button.inline-note-trigger\')',
+    'available note editor after save',6500);
   // Create an actual unsaved guest draft BEFORE admin revokes permission.
   await guest.evalJs(`document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="note"] button.inline-note-trigger').click()`);
   await guest.until('!!document.querySelector("textarea.inline-note-textarea")','second edit open');
