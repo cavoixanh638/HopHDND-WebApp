@@ -135,7 +135,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   };
   const discard = () => { protectedRecovery.current=false;skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage(''); setDrafts({}); setErrors({}); setMessage('Đã bỏ phần sửa trên máy. File nguồn không thay đổi.'); };
   const save = async () => {
-    if (busy || cachePending || saving.current||!canDraft) return false;
+    if (busy || cachePending || saving.current||!canDraft||!canStartDatabase||dataSource!==repository) return false;
     if (!Object.keys(drafts).length) return true;
     saving.current=true;setBusy(true);
     const requestRepository=repository;

@@ -58,12 +58,13 @@ describe('PR95 L2 active Firebase generation fencing',()=>{
     emit(path,{[row.recordId]:row});
     expect(next).not.toHaveBeenCalled();
     emit('hdnd/datasetV2/active',pointer);
-    emit(path,{[row.recordId]:row});
-    expect(next).toHaveBeenCalledOnce();
+    expect(next).toHaveBeenCalledOnce(); // First cached rows are released after epoch confirmation.
     emit('hdnd/datasetV2/active',{...pointer,operationId:'operation_test_other'});
     expect(error).toHaveBeenCalledOnce();
+    expect(next).toHaveBeenCalledTimes(2);
+    expect(next).toHaveBeenLastCalledWith([]); // Explicitly hide invalidated generation.
     emit(path,{[row.recordId]:row});
-    expect(next).toHaveBeenCalledOnce();
+    expect(next).toHaveBeenCalledTimes(2);
     stop();
     expect(io.listeners.size).toBe(0);
   });

@@ -248,11 +248,13 @@ export function useFirebase(){
     try{
     const rightsRef=ref(database,datasetActive?
       'hdnd/datasetV2/permissions/'+datasetActive.generationId:'hdnd/permissions');
-    if(datasetActive){
-      const activeNow=(await get(ref(database,'hdnd/datasetV2/active'))).val();
-      if(activeNow?.generationId!==datasetActive.generationId||activeNow?.revision!==datasetActive.revision||activeNow?.operationId!==datasetActive.operationId||activeNow?.digest!==datasetActive.digest||activeNow?.rowCount!==datasetActive.rowCount)
-        throw Error('Thế hệ hoạt động đã thay đổi trước khi cấp quyền; phải đọc lại.');
-    }
+    const activeNow=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+    if(datasetActive
+      ?activeNow?.generationId!==datasetActive.generationId||activeNow?.revision!==datasetActive.revision||
+       activeNow?.operationId!==datasetActive.operationId||activeNow?.digest!==datasetActive.digest||
+       activeNow?.rowCount!==datasetActive.rowCount
+      :activeNow!==null)
+      throw Error('Thế hệ hoạt động đã thay đổi trước khi cấp quyền; phải đọc lại.');
     // Read authoritative rights before CAS: RTDB transactions can first run
     // against an empty local cache, causing misleading conflict errors.
     const live=(await get(rightsRef)).val() as CellPermissions|null;
@@ -264,11 +266,13 @@ export function useFirebase(){
       if(!samePermissions({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}},expected))return undefined;
       return next;
     },{applyLocally:false});
-    if(datasetActive){
-      const activeAfter=(await get(ref(database,'hdnd/datasetV2/active'))).val();
-      if(activeAfter?.generationId!==datasetActive.generationId||activeAfter?.operationId!==datasetActive.operationId||activeAfter?.revision!==datasetActive.revision||activeAfter?.digest!==datasetActive.digest||activeAfter?.rowCount!==datasetActive.rowCount)
-        throw new Error('Thế hệ đã đổi khi đang lưu quyền. Trạng thái chưa chắc chắn, đọc lại; không tự thử lại.');
-    }
+    const activeAfter=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+    if(datasetActive
+      ?activeAfter?.generationId!==datasetActive.generationId||activeAfter?.operationId!==datasetActive.operationId||
+       activeAfter?.revision!==datasetActive.revision||activeAfter?.digest!==datasetActive.digest||
+       activeAfter?.rowCount!==datasetActive.rowCount
+      :activeAfter!==null)
+      throw new Error('Thế hệ đã đổi khi đang lưu quyền. Trạng thái chưa chắc chắn, đọc lại; không tự thử lại.');
     const confirmed=result.snapshot.val() as CellPermissions|null;
     if(!result.committed)
       throw new Error('Quyền đã được thay đổi ở phiên khác. Hãy đọc lại quyền và kiểm tra trước khi lưu tiếp.');
