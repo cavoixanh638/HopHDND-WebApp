@@ -41,18 +41,25 @@ function validateHeader(rows:unknown[][],name:string):number {
   const idx=headerIndex(rows);
   if(idx<0)throw Error('Sheet "'+name+'": không tìm thấy hàng tiêu đề, C=Nội dung trình và D=Sở, ngành.');
   const row=rows[idx];
-  const required:[number,string,string][]=[
-    [0,'Mã nội dung','ma'],[1,'STT','stt'],[2,'Nội dung trình','noi dung'],
-    [3,'Sở, ngành','so'],[4,'Loại VB','loai'],
-    [5,'Cấp cho ý kiến Thành ủy','cap'],[6,'Tiến độ xin ý kiến Thành ủy','tien do xin y kien'],
-    [7,'Trình HĐND xây dựng NQ','trinh'],[8,'Trình HĐND ban hành NQ','trinh'],
-    [9,'Chuyên viên','chuyen vien'],[10,'Phòng','phong'],
-    [11,'Lãnh đạo VP','lanh dao'],[12,'Lãnh đạo UBND','lanh dao'],
-    [13,'Tiến độ hiện tại','tien do hien tai'],[14,'Ghi chú','ghi chu']];
-  for(const [column,label,term] of required)
-    if(!normalized(row[column]).includes(term))
+  // Explicit allowlist per POSITION; never accept substring matches such as
+  // "trình" (H/I) or "lãnh đạo" (L/M). An accidental swap must fail even
+  // when the status values in both columns are otherwise valid.
+  const allowed:readonly (readonly string[])[]=[
+    ['Mã nội dung'],['STT'],['Nội dung trình'],['Sở, ngành'],['Loại VB'],
+    ['Cấp cho ý kiến Thành ủy'],['Tiến độ xin ý kiến Thành ủy'],
+    ['Trình HĐND xây dựng NQ','Trình HĐND xây dựng nghị quyết'],
+    ['Trình HĐND ban hành NQ','Trình HĐND ban hành nghị quyết'],
+    ['Chuyên viên'],['Phòng'],['Lãnh đạo VP','Lãnh đạo Văn phòng'],
+    ['Lãnh đạo UBND','Lãnh đạo Ủy ban nhân dân'],
+    ['Tiến độ hiện tại'],['Ghi chú']
+  ];
+  for(let column=0;column<allowed.length;column++){
+    const names=allowed[column];
+    if(!names.some(name=>normalized(row[column])===normalized(name)))
       throw Error('Sheet "'+name+'", dòng '+(idx+1)+', cột '+String.fromCharCode(65+column)+
-        ': yêu cầu tiêu đề "'+label+'"; đang có "'+String(row[column]??'')+'".');
+        ': yêu cầu tiêu đề "'+names[0]+'"'+(names.length>1?' (hoặc '+names.slice(1).join(', ')+')':'')+
+        '; đang có "'+String(row[column]??'')+'".');
+  }
   if(row.slice(15).some(value=>String(value??'').trim()))
     throw Error('Sheet "'+name+'", dòng '+(idx+1)+': có cột ngoài A–O; không tự đoán cấu trúc.');
   return idx;
