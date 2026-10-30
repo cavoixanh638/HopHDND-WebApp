@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import type {Database} from 'firebase/database';
+import {get,ref,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item,ReportConfig} from '../../../shared/types';
 import {ReportTable} from '../reports/ReportTable';
@@ -103,7 +103,11 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     return confirmed;
   };
   const stage=async()=>{
-    if(!allowed||!user||comparisonStale)return;
+    // Disabled controls alone are not a transaction fence. Also refuse a
+    // forced handler invocation when previous CAS ACK is still UNKNOWN.
+    if(!allowed||!user||comparisonStale||
+      (operationView?.status==='unknown'&&
+        (submittedCommit===approval?.operationId||submittedRestore!==null)))return;
     setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
     setSubmittedCommit(null);setSubmittedRestore(null);
     setApproval(null);setStaged(null);setConfirm('');setInitialFreeze(null);
@@ -152,14 +156,14 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       const verified=observed.status==='not-committed'
         ?presentDatasetOperation(null,approval.operationId):observed;
       setOperationView(verified);
-      if(verified.committed)setBackupOperation(approval.operationId);
+      if(verified.committed&&'expected' in approval)setBackupOperation(approval.operationId);
     }catch(e){
       // L1 can throw when a valid COMMITTED operation becomes historical
       // between the transaction and acknowledgment. One READ ONLY lookup
       // distinguishes that successful historical commit from a genuine unknown.
       const observed=await readOperationView(database,approval.operationId);
       setOperationView(observed.committed?observed:presentDatasetOperation(null,approval.operationId));
-      if(observed.committed)setBackupOperation(approval.operationId);
+      if(observed.committed&&'expected' in approval)setBackupOperation(approval.operationId);
       else setMessage('Không xác minh được kết quả ghi: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự gửi lại thao tác.');
     }finally{setBusy(false);}
@@ -175,8 +179,14 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     try{
       const observed=await readOperationView(database,operationId);
       setOperationView(observed);
-      // Recovery after reload/lost ACK requires a fresh server confirmation.
-      if(observed.committed&&approval?.operationId===operationId)setBackupOperation(operationId);
+      // Recovery after reload/lost ACK requires a server-verified COMMITTED
+      // operation AND an existing private V2 backup for that operation.
+      // Legacy first activation has a DIFFERENT private legacyBackups path
+      // and must never be offered as an ordinary V2 rollback candidate.
+      if(observed.committed&&active){
+        const backup=(await get(ref(database,'hdnd/datasetV2/backups/'+operationId))).val();
+        if(typeof backup==='string'&&backup.length>0)setBackupOperation(operationId);
+      }
     }finally{setBusy(false);}
   };
   const restore=async()=>{
@@ -247,7 +257,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     </div>
     {backupOperation&&active&&<section>
       <h4>Khôi phục từ backup riêng tư</h4>
-      <p>Nhập mã thao tác khôi phục mới (12–80 ký tự), rồi xác nhận riêng.</p>
+      <p>Backup của thao tác <code>{backupOperation}</code> đã được xác minh.
+        Nhập mã thao tác khôi phục mới (12–80 ký tự), rồi xác nhận riêng.
+        Kích hoạt V2 từ legacy không phải backup thay thế thế hệ thông thường.</p>
       <input value={restoreId} onChange={e=>setRestoreId(e.currentTarget.value)}
         aria-label="Mã khôi phục mới"/>
       <input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.currentTarget.value)}
