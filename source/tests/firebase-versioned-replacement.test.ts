@@ -97,7 +97,8 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     const repository=new FirebaseRepository(editorDb,()=>editor,
       ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
     repository.leaseManager=manager;
-    const original=(await repository.list())[0];
+    // r1 deliberately has malformed stale-lease fixture; r2 has no lease.
+    const original=(await repository.list()).find(row=>row.recordId==='r2')!;
     await manager.acquire(original.recordId,'note','multiline');
     const change=(await repository.save([updateDraft(original,undefined,
       {note:'Đã lưu hợp lệ trong lúc chờ phê duyệt'})!]))[0];
