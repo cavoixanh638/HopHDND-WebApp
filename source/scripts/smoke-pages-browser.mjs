@@ -2461,6 +2461,7 @@ try{
       const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
       return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
+        pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
         labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
         numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
     });
@@ -2475,7 +2476,8 @@ try{
   ];
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
       x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill===target[i].bg&&x.labelFits&&x.stateFits)||
+      x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'&&
+       x.labelFits&&x.stateFits)||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgb(248, 250, 252)'||
     r05Neutral[0].border!=='rgb(203, 213, 225)'||
@@ -2527,7 +2529,7 @@ try{
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   if(r05Custom[1].bg==='rgb(255, 248, 233)'||
     r05Custom[1].border==='rgb(235, 223, 196)'||
-    r05Custom[1].pill!=='rgb(252, 221, 160)'||
+    r05Custom[1].pill!=='rgba(0, 0, 0, 0)'||r05Custom[1].pillBorder!=='0px'||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
     r05Custom[0].bg!=='rgb(255, 241, 243)')
     throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
@@ -2538,7 +2540,8 @@ try{
     'R05 real popup stage rows missing');
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
-    x.border===target[i].border&&x.tone===target[i].tone))
+    x.border===target[i].border&&x.tone===target[i].tone&&
+     x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'))
     throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
