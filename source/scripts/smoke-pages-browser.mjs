@@ -2379,7 +2379,7 @@ try{
   ];
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
       x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill!==x.bg&&x.labelFits&&x.stateFits)||
+      x.pill===target[i].bg&&x.labelFits&&x.stateFits)||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgb(248, 250, 252)'||
     r05Neutral[0].border!=='rgb(203, 213, 225)'||
