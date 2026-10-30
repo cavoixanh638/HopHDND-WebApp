@@ -1874,13 +1874,21 @@ try{
       .map(selector=>document.querySelector(selector)?.getBoundingClientRect());
     const expected=Math.min(window.innerWidth-40,${width});
     const reference=all[2],nav=all[1],top=all[0];
+    const gear=document.querySelector('header.v3-shell-topbar .v3-settings-menu > summary')?.getBoundingClientRect();
+    // V3 intentionally uses a zero-height, full-width corner-gear header.
+    // Retain strict centering of the two wide cards relative to page content,
+    // while checking that the separate 34px gear stays in the right corner.
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
-      Math.abs(top.left-reference.left)<=2&&Math.abs(top.width-reference.width)<=2&&
+      Math.abs((top.left+top.right)/2-(reference.left+reference.right)/2)<=3&&
+      top.left>=0&&top.right<=window.innerWidth+1&&top.width>=nav.width&&
+      !!gear&&gear.width>=33&&gear.width<=35&&
+      gear.left>=nav.right&&gear.right>=top.right-40&&gear.right<=top.right+2&&
       nav.width<=1000&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
       shellClass:shell.className,activeTab:document.querySelector('.nav-tabs button[aria-current=page]')?.textContent?.trim(),
       mainCssWidth:getComputedStyle(document.querySelector('main')).width,
-      boxes:all.map(r=>r?{left:r.left,width:r.width}:null)};
+      boxes:all.map(r=>r?{left:r.left,width:r.width}:null),
+      gear:gear?{left:gear.left,right:gear.right,width:gear.width}:null};
   })()`);
   for(const customWidth of [850,1280]){
     const aligned=await alignedCustomWidth(customWidth);
