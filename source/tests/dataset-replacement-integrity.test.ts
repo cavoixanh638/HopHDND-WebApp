@@ -73,6 +73,9 @@ describe('read-only generation integrity preflight',()=>{
     await expect(verifyCandidateServerReadback(
       Object.fromEntries(list.map((row,i)=>[row.recordId,i===0?{...row,content:'changed'}:row])),manifest))
       .rejects.toThrow('checksum');
+    await expect(verifyCandidateServerReadback(
+      Object.fromEntries(list.map((row,i)=>[row.recordId,i===0?{...row,history:{0:{actor:'old'}}}:row])),manifest))
+      .rejects.toThrow('quyền/khóa/lịch sử');
   });
 
 });
