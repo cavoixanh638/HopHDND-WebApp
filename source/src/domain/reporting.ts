@@ -26,7 +26,9 @@ const canonical = (value: string) => value.trim().toLocaleLowerCase('vi');
  * Blank and ambiguous old labels stay unknown, not implicitly submitted/done.
  */
 export function normalizeReportStatus(raw:string,config:ReportConfig):string{
-  return canonicalStatus(config.statusField,raw);
+  // Legacy blank business cells were counted as "Sở chưa trình"; retain
+  // this NON-terminal denominator rule without changing source text.
+  return canonicalStatus(config.statusField,raw)||'Sở chưa trình';
 }
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
   return items.filter(item=>{
