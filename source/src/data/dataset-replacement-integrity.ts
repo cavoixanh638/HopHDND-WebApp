@@ -76,6 +76,28 @@ export async function verifyCandidateReadback(
   if(observed.rowCount!==manifest.rowCount||observed.digest!==manifest.digest)
     throw Error('Dữ liệu ứng viên đọc lại từ máy chủ khác checksum hoặc số dòng: KHÔNG thay thế.');
 }
+/**
+ * Verify a REAL keyed RTDB snapshot, not just an array assembled by the UI.
+ * The key must equal each row's recordId; missing/extra rows and altered
+ * business values fail closed before any pointer authorization.
+ */
+export async function verifyCandidateServerReadback(
+  payload:unknown,manifest:DatasetGenerationManifest
+):Promise<void>{
+  checkManifest(manifest);
+  if(!payload||typeof payload!=='object'||Array.isArray(payload))
+    throw Error('Đọc lại staging không phải đối tượng hồ sơ hợp lệ.');
+  const entries=Object.entries(payload);
+  if(entries.length!==manifest.rowCount)
+    throw Error('Số hồ sơ staging đọc lại không khớp manifest: KHÔNG thay thế.');
+  const rows=entries.map(([key,value])=>{
+    const item=validateFirebaseItem(value);
+    if(item.recordId!==key)
+      throw Error('Khóa đường dẫn staging và recordId khác nhau: '+key);
+    return item;
+  });
+  await verifyCandidateReadback(rows,manifest);
+}
 function validatePointer(pointer:ActiveDatasetPointer):void {
   checkOperationId(pointer.operationId);
   if(!pointer.generationId||!digestPattern.test(pointer.digest)||
