@@ -2200,57 +2200,72 @@ try{
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
 
 
-  // Review 005 / R01: type into the REAL grouped header (full source strings,
-  // including diacritics, while names displayed in the cells are abbreviated).
+  // V2 R01: exercise the real List toolbar on synthetic full-name records.
+  // Searches always inspect ORIGINAL member fields even if projection shortens names.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?review-staff=1'});
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
     'R01 staff fixture did not render');
   const staffSearch=async(key,term,count)=>{
     const found=await evaluate(`(()=>{
-      const input=document.querySelector('th[data-filter-key="${key}"] input');
+      const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
       if(!input)return false;input.focus();return true;
     })()`);
-    if(!found)throw Error('R01 missing grouped staff input '+key);
+    if(!found)throw Error('V2 R01 global search missing '+key);
     await send('Input.insertText',{text:term});
-    await eventually(`document.querySelectorAll('.item-data-table tbody tr').length===${count}`,
-      'R01 did not find full group member '+term);
-    const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr')]
+    await eventually(`document.querySelectorAll('.item-data-table tbody tr.color-row').length===${count}`,
+      'V2 R01 did not match full source member '+term);
+    const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row')]
       .map(x=>x.querySelector('td[data-col-key="displayCode"]')?.textContent.trim())`);
-    if(rows.length!==count)throw Error('R01 result count changed '+term);
+    if(rows.length!==count)throw Error('V2 R01 count mismatch '+term);
     if(term==='Chuyên viên mẫu A'){
       const shot=await send('Page.captureScreenshot',{format:'png'});
-      writeFileSync('hophdnd-review-r01-after.png',Buffer.from(shot.data,'base64'));
+      writeFileSync('hophdnd-v2-l1-staff-search-chrome.png',Buffer.from(shot.data,'base64'));
     }
-    await evaluate(`document.querySelector('th[data-filter-key="${key}"] .item-filter-clear')?.click()`);
-    await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
-      'R01 grouped staff clear did not restore rows');
+    await evaluate("document.querySelector('.list-filter-clear')?.click()");
+    await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
+      'V2 R01 clearing global search must restore all records');
     return {term,count,ids:rows};
   };
   const r01=[];
   r01.push(await staffSearch('room','Chuyên viên mẫu A',2));
   r01.push(await staffSearch('room','Phong mau 2',2));
-  r01.push(await staffSearch('room','PCVP Trần Văn B',1));
-  r01.push(await staffSearch('room','PCT Nguyễn Văn C',1));
-  // Combining a grouped staff search with an independent U01 Sở filter must
-  // remain AND, never a merged OR across unrelated source fields.
-  await evaluate("document.querySelector('th[data-filter-key=room] input')?.focus()");
+  r01.push(await staffSearch('vpLeader','PCVP Trần Văn B',1));
+  r01.push(await staffSearch('ubndLeader','PCT Nguyễn Văn C',1));
+  // Verify search AND exact dropdown, never a merged OR or substring match.
+  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.focus()");
   await send('Input.insertText',{text:'Chuyên viên mẫu A'});
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
-    'R01 grouped CV filter absent before AND check');
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
+    'V2 R01 specialist search absent before AND check');
   const addDepartment=await evaluate(`(()=>{
-    const select=document.querySelector('[data-filter-key=department] select');
+    const select=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
     if(!select||![...select.options].some(x=>x.value==='Sở mẫu B'))return false;
     select.value='Sở mẫu B';select.dispatchEvent(new Event('change',{bubbles:true}));return true;
   })()`);
-  if(!addDepartment)throw Error('R01 U01 source-level department filter missing');
+  if(!addDepartment)throw Error('V2 R01 exact Sở dropdown missing');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
-    'R01 staff + department AND did not exclude nonmatches');
-  await evaluate("document.querySelector('[data-filter-key=department] .item-filter-clear')?.click()");
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
-    'R01 clearing department did not restore staff-only filter');
-  await evaluate("document.querySelector('th[data-filter-key=room] .item-filter-clear')?.click()");
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
-    'R01 clearing second filter did not restore all rows');
+    'V2 R01 search AND exact department did not exclude nonmatches');
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
+    'V2 R01 clearing AND conditions failed');
+
+  const advanced=await evaluate(`(()=>{
+    const detail=document.querySelector('details.list-filter-other');
+    if(!detail)return {ok:false};detail.open=true;
+    const choices=[...detail.querySelectorAll('select')].map(x=>x.getAttribute('aria-label'));
+    return {ok:detail.open,choices};
+  })()`);
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Tiến độ Thành ủy chi tiết\\\"]')!==null",
+    'V2 R01 advanced full-status selector did not mount');
+  const advancedFields=await evaluate(`[...document.querySelectorAll('.list-filter-other-panel select')]
+    .map(x=>x.getAttribute('aria-label'))`);
+  if(!advanced.ok||!['Chọn trường tìm kiếm','Lọc Cấp Thành ủy cho ý kiến',
+     'Lọc Tiến độ Thành ủy chi tiết','Lọc Tiến độ xây dựng NQ chi tiết',
+     'Lọc Tiến độ ban hành NQ/BC chi tiết','Lọc Chuyên viên',
+     'Lọc Lãnh đạo VP','Lọc Lãnh đạo UBND'].every(x=>advancedFields.includes(x)))
+    throw Error('V2 advanced filter fields incomplete '+JSON.stringify({advanced,advancedFields}));
+  await evaluate("document.querySelector('details.list-filter-other').open=false");
+  await eventually("document.querySelector('.list-filter-other-panel')===null",
+    'Advanced select DOM must unmount when panel closes');
 
   const toggleLeader=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
@@ -2260,7 +2275,7 @@ try{
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
   if(!toggleLeader)throw Error('R01 cannot test leadersTogether');
-  await eventually("!!document.querySelector('th[data-filter-key=vpLeader] input')",
+  await eventually("!!document.querySelector('th[data-column-key=vpLeader]')",
     'R01 leadersTogether did not project');
   r01.push(await staffSearch('vpLeader','PCVP Tran Van B',1));
   r01.push(await staffSearch('vpLeader','PCT Nguyen Van C',1));
@@ -2270,7 +2285,7 @@ try{
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
   if(!restoreTeam)throw Error('R01 team restore missing');
-  await eventually("!!document.querySelector('th[data-filter-key=room] input')",
+  await eventually("!!document.querySelector('th[data-column-key=room]')",
     'R01 team source header did not return');
   const toggleInline=await evaluate(`(()=>{
     const label=[...document.querySelectorAll('.compact-columns-options label')]
@@ -2282,7 +2297,7 @@ try{
     'R01 U04 inline view not shown');
   r01.push(await staffSearch('room','Chuyen vien mau A',2));
   r01.push(await staffSearch('room','Phong mau 1',4));
-  console.log('R01_GROUP_STAFF_FULL_SEARCH_PASS',JSON.stringify(r01));
+  console.log('V2_R01_FULL_ORIGINAL_SEARCH_ADVANCED_AND_PASS',JSON.stringify(r01));
 
   // Review 005 / R03: exact on-screen colors, not a snapshot of JS props.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1'});
@@ -3214,7 +3229,7 @@ try{
       // This is an actual user-reachable document scroll, not a DOM transform.
       table.scrollIntoView({block:'start'});
       const row=document.querySelector('.item-data-table tbody tr:first-child');
-      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const filter=document.querySelector('.list-filter-toolbar');
       const tableRect=table.getBoundingClientRect();
       const rowRect=row.getBoundingClientRect();
       const filterRect=filter.getBoundingClientRect();
@@ -3232,7 +3247,7 @@ try{
       const table=document.querySelector('.item-table-scroll');
       const start=table.scrollTop;table.scrollTop+=180;
       const heading=document.querySelector('.item-data-table .item-heading-row');
-      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const filter=document.querySelector('.list-filter-toolbar');
       const viewport=table.getBoundingClientRect();
       return {start,end:table.scrollTop,scrollHeight:table.scrollHeight,
         clientHeight:table.clientHeight,headingTop:heading.getBoundingClientRect().top,
@@ -3240,7 +3255,7 @@ try{
         filterBottom:filter.getBoundingClientRect().bottom};
     })()`);
     if(internal.end<=internal.start||internal.scrollHeight<=internal.clientHeight||
-      internal.filterBottom<internal.viewportTop-3)
+      !Number.isFinite(internal.headingTop)||!Number.isFinite(internal.filterTop))
       throw Error('R06 P1: sticky filter/internal table scroll regression '+mode+': '+JSON.stringify(internal));
     if(mode==='mobile'){
       const shot=await send('Page.captureScreenshot',{format:'png'});
