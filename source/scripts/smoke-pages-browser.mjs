@@ -3751,11 +3751,14 @@ try{
         throw Error('Initial UI staging is not a valid synthetic continuation fixture');
       const source=await ownerValue('/hdnd/datasetV2');
       const generationId=candidate.manifest.generationId;
+      const serverOwnedItems=Object.fromEntries(Object.entries(candidate.items)
+        .map(([id,item])=>[id,{...item,operationId:initial.op,
+          updatedAt:Date.now()-5000,updatedBy:adminIdentity[0].uid}]));
       const synthetic={...source,
         active:{generationId,operationId:initial.op,revision:1,
           rowCount:2,digest:candidate.manifest.digest},
-        generations:{[generationId]:{items:candidate.items}},
-        permissions:{[generationId]:{columns:{}}},
+        generations:{[generationId]:{items:serverOwnedItems}},
+        permissions:{[generationId]:{columns:{note:true}}},
         operations:{[initial.op]:{status:'COMMITTED',from:'legacy',to:generationId,
           at:Date.now()}},
         bootstrap:{operationId:initial.op,freezeRevision:1,freezeEpoch:1,
