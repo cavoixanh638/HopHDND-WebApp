@@ -113,9 +113,18 @@ describe('PR95 L4: independent A–O business workbook contract',()=>{
       HEADINGS,sheetRow('NQ-é'),sheetRow('NQ-e\u0301',2),
     ]}]);
     expect(()=>parse(unicode)).toThrow('dòng 3, cột A');
+    const caseVariant=workbook([{name:'Hồ sơ',rows:[
+      HEADINGS,sheetRow('NQ-CODE'),sheetRow('nq-code',2),
+    ]}]);
+    expect(()=>parse(caseVariant)).toThrow('dòng 3, cột A');
     for(const code of [' NQ001','NQ001 ','\tNQ001']){
       expect(()=>parse(one(sheetRow(code)))).toThrow('dòng 2, cột A: mã có khoảng trắng');
     }
+  });
+
+  it('rejects a too-long UTF-8 code with precise A-cell error instead of hashing to a colliding ID',()=>{
+    expect(()=>parse(one(sheetRow('NQ'+('đ'.repeat(24))))))
+      .toThrow('Sheet "Hồ sơ", dòng 2, cột A: mã hồ sơ quá dài');
   });
 
   it('points to exact sheet/row/column for missing or duplicate headings',()=>{
