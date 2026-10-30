@@ -48,13 +48,13 @@ const interact=async js=>evaluate('(()=>{'+js+';return true;})()');
 const clickText=async text=>{
   const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc',
     'Phân quyền chỉnh sửa':'Phân quyền chỉnh sửa ô'}[text]??text;
-  const find='[...document.querySelectorAll("button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+')';
+  const find='[...document.querySelectorAll("button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+'||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith('+JSON.stringify(alias)+')))';
   if(!await evaluate('Boolean('+find+')')){
     await interact('const gear=document.querySelector(".pr95-preview-gear");if(!gear)throw Error("No gear");gear.click()');
     await waitFor('[...document.querySelectorAll(".pr95-preview-gear-menu button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+')','gear menu item '+alias);
   }
   return interact('const label='+JSON.stringify(alias)+';'+
-    'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()===label);'+
+    'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()===label||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith(label)));'+
     'if(!button)throw Error("Button missing: "+label);button.click()');
 };
 const selectValue=async(selector,value)=>{
