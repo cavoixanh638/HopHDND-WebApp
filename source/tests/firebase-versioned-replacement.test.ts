@@ -67,6 +67,9 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     const previous=(await get(ref(db,DATASET_V2_PATH+'/generations/gen_'+restore+'/items'))).val();
     expect(previous.r1.content).toBe(initialRows[0].content);
     expect((await get(ref(db,DATASET_V2_PATH+'/permissions/gen_'+restore+'/columns/note'))).val()).toBe(true);
+    // The original commit is historical, but must never be falsely reported as uncommitted.
+    expect(await resolveDatasetOperation(db,op)).toBe('committed');
+    expect(await resolveDatasetOperation(db,restore)).toBe('committed');
     await assertFails(get(ref(guest(),DATASET_V2_PATH+'/backups/'+op)));
   },30000);
 
@@ -81,6 +84,44 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       .rejects.toThrow('cùng thế hệ');
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
+  },20000);
+
+  it('rejects replacement after an authorized lease-backed edit in the same generation',async()=>{
+    const db=admin(),operation='pr95_valid_race_01';
+    const approval=await stageDatasetReplacement(db,actor,replacement(),operation,'test.xlsx');
+    const editorDb=env.authenticatedContext('concurrent-editor',
+      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
+    const editor={uid:'concurrent-editor',isAnonymous:true,email:null,
+      emailVerified:false,providerData:[]} as unknown as User;
+    const manager=new CellEditSessionManager(editorDb,()=>editor,'gen_seed_initial');
+    const repository=new FirebaseRepository(editorDb,()=>editor,
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
+    repository.leaseManager=manager;
+    const original=(await repository.list())[0];
+    await manager.acquire(original.recordId,'note','multiline');
+    const change=(await repository.save([updateDraft(original,undefined,
+      {note:'Đã lưu hợp lệ trong lúc chờ phê duyệt'})!]))[0];
+    expect(change.ok,change.message).toBe(true);
+    await manager.finish(original.recordId,'note');
+    await manager.dispose();
+    await expect(commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2'))
+      .rejects.toThrow(/cùng thế hệ|đã thay đổi/);
+    expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
+      .toBe('gen_seed_initial');
+    expect(await resolveDatasetOperation(db,operation)).toBe('not-committed');
+  },30000);
+
+  it('does not call missing or inconsistent operation log entries uncommitted',async()=>{
+    const db=admin();
+    // A seeded active pointer without a matching operation log is ambiguous.
+    expect(await resolveDatasetOperation(db,'seed_op_000001')).toBe('unknown');
+    expect(await resolveDatasetOperation(db,'not_seen_ever_0001')).toBe('not-committed');
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,DATASET_V2_PATH+
+        '/operations/corrupt_op_01'),{status:'COMMITTED',from:'gen_seed_initial',
+        to:'gen_missing',at:1});
+    });
+    expect(await resolveDatasetOperation(db,'corrupt_op_01')).toBe('unknown');
   },20000);
 
   it('two tabs use different operationIds: only first CAS wins',async()=>{
