@@ -32,7 +32,7 @@ describe('business A–O Excel must never silently import wrong sheet or malform
     expect(()=>parseBusinessExcel(new Uint8Array(),'Hồ sơ')).toThrow('không rỗng');
     const h=[...BUSINESS_HEADERS];[h[2],h[3]]=[h[3],h[2]];
     expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[h,row()]}]),'Hồ sơ'))
-      .toThrow('C=Nội dung trình');
+      .toThrow('Sheet "Hồ sơ", dòng 1, cột C: yêu cầu tiêu đề');
     expect(()=>parseBusinessExcel(file([{name:'Hồ sơ',rows:[[...BUSINESS_HEADERS]]}]),'Hồ sơ'))
       .toThrow('không chứa hồ sơ');
   });
