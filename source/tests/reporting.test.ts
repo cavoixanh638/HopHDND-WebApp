@@ -141,9 +141,9 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     expect(DEFAULT_REPORTS[1].title).toBe('Tiến độ trình HĐND xây dựng NQ');
     expect(DEFAULT_REPORTS[1].statusField).toBe('progressBuild');
     expect(DEFAULT_REPORTS[1].columns).toEqual([
-      'Không phải trình','Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận'
+      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'
     ]);
-    expect(DEFAULT_REPORTS[1].completed).toEqual(['Đã có QĐ chấp thuận']);
+    expect(DEFAULT_REPORTS[1].completed).toEqual(['Đã có QĐ']);
   });
   it('excludes non-applicable construction rows by default without modifying records',()=>{
     const states=['Không phải trình xây dựng NQ','Sở chưa trình','VP đang thực hiện',
@@ -173,11 +173,11 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
     expect(summary.total).toBe(9);
     expect(summary.completedCount).toBe(nq.completedCount+bc.completedCount);
     expect(summary.completedCount).toBe(3);
-    expect(summary.columns).toEqual(['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']);
+    expect(summary.columns).toEqual(['Sở chưa trình','VP đang xử lý','Hoàn thành']);
     expect(summary.unknown).toEqual([]);
-    expect(DEFAULT_REPORTS[3].columns).not.toContain('Hoàn thành');
-    expect(DEFAULT_REPORTS[4].columns).not.toContain('Hoàn thành');
-    expect(DEFAULT_REPORTS[2].completed).toEqual(['Đã trình HĐND thành phố']);
+    expect(DEFAULT_REPORTS[3].columns).toContain('Hoàn thành');
+    expect(DEFAULT_REPORTS[4].columns).toContain('Hoàn thành');
+    expect(DEFAULT_REPORTS[2].completed).toEqual(['Hoàn thành']);
   });
   it('marks the Excel H pending-decision column as quiet but final approval as prominent',()=>{
     const root=ReportTable({items:createDemoItems(5),config:DEFAULT_REPORTS[1],
@@ -186,8 +186,8 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
       v&&typeof v==='object'?[v,...flatten(v.props?.children)]:[];
     const headers=flatten(flatten(root).find(x=>x.type==='thead')).filter(x=>x.type==='th');
     const find=(name:string)=>headers.find(x=>x.props.children?.props?.children===name);
-    expect(find('Đã trình HĐND, chưa có QĐ')?.props.className).toContain('report-stage-intermediate');
-    expect(find('Đã có QĐ chấp thuận')?.props.className).not.toContain('report-stage-intermediate');
+    expect(find('Đã trình, chờ QĐ')?.props.className).toContain('report-stage-intermediate');
+    expect(find('Đã có QĐ')?.props.className).not.toContain('report-stage-intermediate');
   });
   it('does not render an extra all-caps section kicker above the report name',()=>{
     const root=ReportTable({items:createDemoItems(5),config:DEFAULT_REPORTS[1],group:'room',
@@ -298,12 +298,12 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const heads=nodes(header).filter(n=>n.type==='th');
     const byName=(name:string)=>heads.find(n=>
       n.props.children===name||n.props.children?.props?.children===name);
-    for(const name of ['Đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/xin phiếu, chưa có TBKL'])
+    for(const name of ['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL'])
       expect(byName(name)?.props.className).toContain('report-stage-intermediate');
-    for(const name of ['Sở chưa trình','VP đang thực hiện','Đã có TBKL'])
+    for(const name of ['Sở chưa trình','VP đang xử lý','Đã có TBKL'])
       expect(byName(name)?.props.className).not.toContain('report-stage-intermediate');
     expect(byName('Đã có TBKL')?.props.className).toContain('report-stage-completed');
-    expect(byName('VP đang thực hiện')?.props.className).toContain('report-stage-office');
+    expect(byName('VP đang xử lý')?.props.className).toContain('report-stage-office');
     const cells=nodes(table).filter(n=>n.type==='td'&&n.props.className?.includes('report-stage-intermediate'));
     expect(cells.length).toBeGreaterThan(0);
   });
@@ -488,16 +488,16 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     }
   });
   it('matches latest Excel Party milestone spelling, with TBKL as the sole completed state',()=>{
-    expect(DEFAULT_REPORTS[0].columns).toContain('ĐU đã gửi TU, chưa họp');
+    expect(DEFAULT_REPORTS[0].columns).toContain('ĐU gửi TU, chưa họp');
     expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã họp, chưa có TBKL');
-    expect(DEFAULT_REPORTS[0].columns).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(DEFAULT_REPORTS[0].columns).toContain('Đã xin ý kiến, chờ TBKL');
     expect(DEFAULT_REPORTS[0].columns).toContain('Đã có TBKL');
     expect(DEFAULT_REPORTS[0].columns).not.toContain('Đã báo cáo TU');
     expect(DEFAULT_REPORTS[0].completed).toEqual(['Đã có TBKL']);
     const base=createDemoItems(5).map(item=>({...item,partyLevel:'BTV TU',
       progressParty:'Sở chưa trình',isDropped:false,archivedAt:null}));
     base[0].progressParty='TU đã cho ý kiến';
-    base[1].progressParty='Đã báo cáo TU'; // legacy value, still counted as completed
+    base[1].progressParty='Đã báo cáo TU'; // ambiguous legacy value: unknown, never inferred completed
     base[2].progressParty='ĐU đã gửi TU chưa họp'; // legacy missing comma
     base[3].progressParty='Đã có TBKL';
     base[4].progressParty='Đã họp, chưa có TBKL'; // legacy comma spelling
@@ -509,8 +509,8 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const statuses=[...report.rows.values()].flatMap(cells=>[...cells.keys()]);
     expect(statuses).toContain('Đã có TBKL');
     expect(statuses).not.toContain('TU đã cho ý kiến');
-    expect(statuses).toContain('ĐU đã gửi TU, chưa họp');
-    expect(statuses).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(statuses).toContain('ĐU gửi TU, chưa họp');
+    expect(statuses).toContain('Đã xin ý kiến, chờ TBKL');
     expect(statuses).not.toContain('Đã họp, chưa có TBKL');
   });
   it('excludes rows marked Không in Excel party-level F or Không phải xin ý kiến in G',()=>{
@@ -538,12 +538,12 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
   });
   it('ẩn một cột không đổi tổng/tỷ lệ; giá trị lạ còn chi tiết', () => {
     const items = createDemoItems(3).map((item, i) => ({ ...item, documentKind: 'NQ' as const, progressCouncil: ['Hoàn thành', 'Sở chưa trình', 'Trạng thái mới'][i] }));
-    const config = { ...DEFAULT_REPORTS[3], hiddenColumns: ['Đã trình HĐND thành phố'] };
+    const config = { ...DEFAULT_REPORTS[3], hiddenColumns: ['Hoàn thành'] };
     const report = aggregateReport(items, config, 'department');
     expect(report.total).toBe(3);
     expect(report.percent).toBe(33);
     expect(report.hiddenCount).toBe(1);
-    expect(report.columns).not.toContain('Đã trình HĐND thành phố');
+    expect(report.columns).not.toContain('Hoàn thành');
     expect(report.unknown).toEqual(['Trạng thái mới']);
     expect([...report.rows.values()].flatMap(cells => [...cells.values()].flat()).length).toBe(3);
     expect(getKpis(items).completed).toBe(report.completedCount);
