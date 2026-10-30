@@ -139,7 +139,7 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
       },
       nq:{
         'Sở chưa trình':['A','F','M','N'],'VP đang xử lý':['B'],
-        'Đã trình HĐND thành phố':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
+        'Hoàn thành':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
       },
       bc:{'Sở chưa trình':['I']},
     };
