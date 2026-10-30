@@ -155,8 +155,8 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
       await manager.finish(before!.recordId,'note');
       // The data itself (not only the lease) changed within the SAME active
       // generation while the pointer and reviewed approval remained unchanged.
-      expect((await repository.list()).find(row=>row.recordId===before!.recordId))
-        ?.note).toBe(changedNote);
+      expect((await repository.list()).find(row=>row.recordId===before!.recordId)?.note)
+        .toBe(changedNote);
       await expect(commitDatasetReplacement(adminDb,actor,approval,confirm(op)))
         .rejects.toThrow('Dữ liệu đang sử dụng đã bị sửa trong lúc duyệt, kể cả cùng thế hệ.');
       expect((await get(ref(adminDb,DATASET_V2_PATH+'/active'))).val())
