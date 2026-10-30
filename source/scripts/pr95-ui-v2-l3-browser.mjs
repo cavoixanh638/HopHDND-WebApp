@@ -199,6 +199,7 @@ async function test(){
             button.textContent?.includes('Excel')||button.textContent?.includes('Phân quyền'))};})()`);
   assert.equal(initial.noteEditable,false);assert.ok(initial.accountButton&&initial.hiddenAdmin);
   step('GUEST_INITIAL_DENIED_PASS',initial);
+  await capture(guest,'00-v3-guest-list-corner-gear');
   await admin.until('typeof window.__pr95EmulatorGoogleAdminSignIn==="function"','admin Auth hook');
   const principal=await admin.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
   assert.ok(principal.uid&&principal.emailVerified&&principal.providerIds.includes('google.com'));
@@ -206,6 +207,24 @@ async function test(){
   await admin.until('!document.body.textContent.includes("Chưa xác minh được thế hệ Firebase") && !document.body.textContent.includes("Đang xem bố cục admin đã lưu") && document.body.textContent.includes("Sở mẫu A")','admin profile and epoch confirmed',30000);
   step('ADMIN_BEFORE_ROUTE',{nav:await admin.evalJs('document.querySelector(".options-menu")?.outerHTML.slice(0,850)'),body:await admin.evalJs('document.body.textContent.slice(0,650)')});
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
+  const v3Menu=await admin.evalJs(`(()=>{
+    const menu=document.querySelector('details.v3-settings-menu');
+    const actions=[...menu?.querySelectorAll('.options-popover > button')??[]]
+      .map(button=>button.textContent?.trim());
+    const gear=menu?.querySelector('summary')?.getBoundingClientRect();
+    const cards=[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')];
+    return {open:menu?.open,actions,gearWidth:gear?.width,
+      heights:cards.map(c=>c.getBoundingClientRect().height)};
+  })()`);
+  assert.deepEqual(v3Menu.actions,[
+    'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo',
+    'Tài khoản và dữ liệu','Nhập / Xuất Excel'
+  ]);
+  assert.equal(v3Menu.open,true);
+  assert.equal(v3Menu.gearWidth,34);
+  assert.ok(v3Menu.heights.every(height=>Math.abs(height-50)<1));
+  await capture(admin,'00-v3-admin-list-open-settings-gear');
+  step('V3_L1_REAL_ADMIN_GEAR_50PX_TABS_PASS',v3Menu);
   await clickText(admin,'.options-popover button','Chỉnh sửa');
   await admin.until('!!document.querySelector("nav.settings-hub-tabs")','real edit settings tabs');
   await clickText(admin,'nav.settings-hub-tabs button','Phân quyền chỉnh sửa');
