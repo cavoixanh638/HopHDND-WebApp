@@ -30,8 +30,9 @@ export function presentDatasetOperation(raw:unknown,operationId:string):Operatio
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return unknown;
   const value=raw as {status?:unknown;operationId?:unknown;generationId?:unknown};
   if(value.operationId!==operationId||
-    (value.generationId!==undefined &&
-      (typeof value.generationId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(value.generationId))))
+    // In V2, an operation can only commit its immutable gen_<operationId>.
+    // A contradictory optional generationId is not reliable evidence of success.
+    (value.generationId!==undefined&&value.generationId!=='gen_'+operationId))
     return unknown;
   const generation=value.generationId?' — thế hệ '+value.generationId:'';
   if(value.status==='committed-active')
@@ -72,6 +73,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   const [restoreConfirm,setRestoreConfirm]=useState('');
   const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const [operationView,setOperationView]=useState<OperationView|null>(null);
+  // Terminal per-operation UI fence: a lost ACK never triggers a second write.
+  const [submittedCommit,setSubmittedCommit]=useState<string|null>(null);
+  const [submittedRestore,setSubmittedRestore]=useState<string|null>(null);
   const [baseline,setBaseline]=useState('');
   const now=datasetPreviewFingerprint(current);
   const stale=!!approval&&(baseline!==now||active.generationId!==approval.expected.generationId||
@@ -79,7 +83,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     active.rowCount!==approval.expected.rowCount||active.digest!==approval.expected.digest);
   const stage=async()=>{
     if(!enabled||!user)return;
-    setBusy(true);setMessage('');setOperationView(null);
+    setBusy(true);setMessage('');setOperationView(null);setBackupOperation('');
+    setSubmittedCommit(null);setSubmittedRestore(null);
     setApproval(null);setStaged(null);setConfirm('');
     try{
       const operationId='excel_'+crypto.randomUUID().replaceAll('-','_');
@@ -91,7 +96,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     finally{setBusy(false);}
   };
   const commit=async()=>{
-    if(!approval||!enabled||!user||stale)return;
+    if(!approval||!enabled||!user||stale||submittedCommit===approval.operationId)return;
+    setSubmittedCommit(approval.operationId);
     setBusy(true);setMessage('');setOperationView(null);
     setLookupOperation(approval.operationId);
     try{
@@ -108,8 +114,13 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       setOperationView(verified);
       if(verified.committed)setBackupOperation(approval.operationId);
     }catch(e){
-      setOperationView(presentDatasetOperation(null,approval.operationId));
-      setMessage('Không xác minh được kết quả ghi: '+
+      // L1 can throw when a valid COMMITTED operation becomes historical
+      // between the transaction and acknowledgment. One READ ONLY lookup
+      // distinguishes that successful historical commit from a genuine unknown.
+      const observed=await readOperationView(database,approval.operationId);
+      setOperationView(observed.committed?observed:presentDatasetOperation(null,approval.operationId));
+      if(observed.committed)setBackupOperation(approval.operationId);
+      else setMessage('Không xác minh được kết quả ghi: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự gửi lại thao tác.');
     }finally{setBusy(false);}
   };
@@ -117,9 +128,10 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     if(!enabled)return;
     const operationId=lookupOperation.trim()||approval?.operationId||'';
     if(!/^[A-Za-z0-9_-]{12,80}$/.test(operationId)){
+      setOperationView(null);
       setMessage('Nhập mã operationId hợp lệ để tra cứu; không suy đoán trạng thái.');return;
     }
-    setBusy(true);setMessage('');
+    setBusy(true);setMessage('');setOperationView(null);
     try{
       const observed=await readOperationView(database,operationId);
       setOperationView(observed);
@@ -128,7 +140,9 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     }finally{setBusy(false);}
   };
   const restore=async()=>{
-    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId))return;
+    if(!enabled||!user||!backupOperation||!/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||
+      submittedRestore===restoreId)return;
+    setSubmittedRestore(restoreId);
     setBusy(true);setMessage('');setOperationView(null);
     setLookupOperation(restoreId);
     try{
@@ -142,15 +156,19 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       setOperationView(observed.status==='not-committed'
         ?presentDatasetOperation(null,restoreId):observed);
     }catch(e){
-      setOperationView(presentDatasetOperation(null,restoreId));
-      setMessage('Không xác minh được kết quả khôi phục: '+
+      const observed=await readOperationView(database,restoreId);
+      setOperationView(observed.committed?observed:presentDatasetOperation(null,restoreId));
+      if(!observed.committed)setMessage('Không xác minh được kết quả khôi phục: '+
         (e instanceof Error?e.message:'lỗi kết nối')+'. Không tự khôi phục lại.');
     }finally{setBusy(false);}
   };
   return <section className="card" aria-label="Thử nghiệm thế hệ Firebase">
     <h4>Thay dữ liệu theo thế hệ — chỉ Firebase Emulator</h4>
     <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
-    <button className="button primary" disabled={busy||!enabled} onClick={()=>void stage()}>
+    <button className="button primary" disabled={busy||!enabled||
+      (operationView?.status==='unknown'&&
+        (submittedCommit===approval?.operationId||submittedRestore!==null))}
+      onClick={()=>void stage()}>
       Ghi staging, đọc lại và sao lưu thử nghiệm</button>
     {approval&&staged&&<section aria-label="Xem trước dữ liệu staging">
       <p>Ứng viên {approval.manifest.generationId}: {staged.length} hồ sơ;
@@ -172,6 +190,7 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
       <input value={confirm} onChange={e=>setConfirm(e.currentTarget.value)}
         aria-label="Xác nhận thay thế toàn bộ"/>
       <button className="button danger" disabled={busy||stale||!enabled||
+        submittedCommit===approval.operationId||
         confirm!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount}
         onClick={()=>void commit()}>Chuyển thế hệ bằng CAS</button>
     </section>}
@@ -187,7 +206,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
         aria-label="Mã khôi phục mới"/>
       <input value={restoreConfirm} onChange={e=>setRestoreConfirm(e.currentTarget.value)}
         aria-label="Xác nhận khôi phục" placeholder="KHOI PHUC mã_khôi_phục"/>
-      <button className="button danger" disabled={busy||!enabled||restoreConfirm!=='KHOI PHUC '+restoreId}
+      <button className="button danger" disabled={busy||!enabled||submittedRestore===restoreId||
+        !/^[A-Za-z0-9_-]{12,80}$/.test(restoreId)||restoreConfirm!=='KHOI PHUC '+restoreId}
         onClick={()=>void restore()}>Khôi phục bằng CAS</button>
     </section>}
     {operationView&&<p className="notice" role={operationView.status==='unknown'?'alert':'status'}

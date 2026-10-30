@@ -97,11 +97,11 @@ afterEach(()=>vi.unstubAllGlobals());
 
 describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=>{
   it('maps all four ACKed statuses without marking historic commits as failures',()=>{
-    const active=presentDatasetOperation({status:'committed-active',operationId,generationId:'gen_x'},operationId);
+    const active=presentDatasetOperation({status:'committed-active',operationId,generationId:'gen_'+operationId},operationId);
     expect(active.status).toBe('committed-active');
     expect(active.committed).toBe(true);
     expect(active.message).toContain('ĐANG HOẠT ĐỘNG');
-    const historic=presentDatasetOperation({status:'committed-historical',operationId,generationId:'gen_old'},operationId);
+    const historic=presentDatasetOperation({status:'committed-historical',operationId,generationId:'gen_'+operationId},operationId);
     expect(historic.status).toBe('committed-historical');
     expect(historic.committed).toBe(true);
     expect(historic.message).toContain('KHÔNG PHẢI thất bại');
@@ -116,6 +116,7 @@ describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=
     for(const wire of ['not-committed','committed','unknown',null,
       {status:'committed-active',operationId:'different'},
       {status:'committed-historical',operationId,generationId:4},
+      {status:'committed-historical',operationId,generationId:'gen_incorrect'},
       {status:'other',operationId}]){
       const view=presentDatasetOperation(wire,operationId);
       expect(view.status).toBe('unknown');
@@ -149,6 +150,10 @@ describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=
     expect(button.props.disabled).toBe(false);
     button.props.onClick();
     await vi.waitFor(()=>expect(notice(render())).toContain('CHƯA RÕ TRẠNG THÁI'));
+    const noRetry=control(render(),'button','Chuyển thế hệ bằng CAS');
+    expect(noRetry.props.disabled).toBe(true);
+    expect(control(render(),'button','Ghi staging, đọc lại').props.disabled).toBe(true);
+    noRetry.props.onClick(); // Even forced handler calls cannot resend this operation.
     expect(api.commit).toHaveBeenCalledOnce();
     expect(api.resolve).not.toHaveBeenCalled();
     expect(api.restore).not.toHaveBeenCalled();
@@ -163,6 +168,39 @@ describe('L2 / API-CHANGE-02 operationId statuses — synthetic UI contract',()=
     expect(api.commit).toHaveBeenCalledOnce();
     expect(api.resolve).toHaveBeenCalledOnce();
     expect(control(render(),'button','Khôi phục bằng CAS')).toBeDefined();
+  });
+  it('a backend exception after historical COMMITTED triggers only a read-only status query',async()=>{
+    api.commit.mockRejectedValue(new Error('COMMITTED trong lịch sử; không nhập lại'));
+    api.resolve.mockResolvedValue({status:'committed-historical',
+      operationId,generationId:'gen_'+operationId});
+    await reviewCandidate();
+    control(render(),'button','Chuyển thế hệ bằng CAS').props.onClick();
+    await vi.waitFor(()=>expect(notice(render())).toContain('ĐÃ COMMIT THÀNH CÔNG TRONG LỊCH SỬ'));
+    expect(notice(render())).not.toContain('Không xác minh được kết quả ghi');
+    expect(api.resolve).toHaveBeenCalledOnce();
+    expect(api.commit).toHaveBeenCalledOnce();
+    expect(api.stage).toHaveBeenCalledOnce();
+    expect(api.restore).not.toHaveBeenCalled();
+  });
+  it('a restoration that becomes historical is not falsely shown as failed',async()=>{
+    const restorationId='restore_test_0001';
+    api.resolve.mockImplementation(async(_db:unknown,id:string)=>({
+      status:id===restorationId?'committed-historical':'committed-active',
+      operationId:id,generationId:'gen_'+id
+    }));
+    await reviewCandidate();
+    control(render(),'button','Chuyển thế hệ bằng CAS').props.onClick();
+    await vi.waitFor(()=>expect(notice(render())).toContain('ĐÃ COMMIT THÀNH CÔNG — ĐANG HOẠT ĐỘNG'));
+    api.restore.mockRejectedValue(new Error('Khôi phục đã COMMITTED trong lịch sử'));
+    control(render(),'input','Mã khôi phục mới').props.onChange({currentTarget:{value:restorationId}});
+    control(render(),'input','Xác nhận khôi phục').props.onChange({
+      currentTarget:{value:'KHOI PHUC '+restorationId}
+    });
+    control(render(),'button','Khôi phục bằng CAS').props.onClick();
+    await vi.waitFor(()=>expect(notice(render())).toContain('ĐÃ COMMIT THÀNH CÔNG TRONG LỊCH SỬ'));
+    expect(api.restore).toHaveBeenCalledOnce();
+    expect(api.resolve).toHaveBeenCalledTimes(2);
+    expect(api.commit).toHaveBeenCalledOnce();
   });
   it('stale old primitive status cannot be misreported as a failed commit',async()=>{
     api.resolve.mockResolvedValue('not-committed'); // pre-ACK L1 implementation
