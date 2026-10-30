@@ -3683,6 +3683,16 @@ try{
     await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Kích hoạt V2 lần đầu')===true",
       'initial activation UI on FROZEN legacy');
     const initial=await stagedId(adminA);
+    const initialCandidate=JSON.parse(await ownerValue('/hdnd/datasetV2/candidates/'+initial.op));
+    const initialRows=Object.values(initialCandidate.items??{});
+    if(initialRows.length!==2||
+      initialRows.some(row=>Object.hasOwn(row,'partyMeeting')||Object.hasOwn(row,'examined'))||
+      !initialRows.some(row=>row.content==='PR95 INITIAL nghị quyết'))
+      throw Error('V2 staging still contains legacy P/Q or did not preserve parsed A–O Excel content.');
+    console.log('BROWSER_EXCEL_AO_V2_PAYLOAD_CANONICAL_PASS',JSON.stringify({
+      operationId:initial.op,serverRows:initialRows.length,
+      keys:Object.keys(initialRows[0]),nonemptyLegacyDropped:false
+    }));
     const initialBefore=await operationCounts();
     await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
@@ -3740,51 +3750,15 @@ try{
       }));
       await takeShot('initial');
     }catch(error){
-      // This is an independent continuation fixture, NOT evidence that the
-      // user clicked and committed initial CAS. Never retry UNKNOWN.
-      const actual=await operationCounts();
-      if(actual.active)throw error;
-      initialBlocked=String(error);
+      const server=await operationCounts();
       console.error('BROWSER_EXCEL_INITIAL_UI_BLOCKED',JSON.stringify({
-        operationId:initial.op,cause:initialBlocked,active:null,
-        noAutomaticRetry:true
+        operationId:initial.op,cause:String(error),server,
+        noAutomaticRetry:true,noPrivilegedCasFallback:true
       }));
       await takeShot('initial-blocked');
-      const payload=await ownerValue('/hdnd/datasetV2/candidates/'+initial.op);
-      if(typeof payload!=='string')
-        throw Error('Cannot continue separate V2 replacement test: verified staged candidate absent');
-      const candidate=JSON.parse(payload);
-      if(candidate.manifest.operationId!==initial.op||
-        Object.keys(candidate.items??{}).length!==2)
-        throw Error('Initial UI staging is not a valid synthetic continuation fixture');
-      const source=await ownerValue('/hdnd/datasetV2');
-      const generationId=candidate.manifest.generationId;
-      const serverOwnedItems=Object.fromEntries(Object.entries(candidate.items)
-        .map(([id,item])=>[id,{...item,operationId:initial.op,
-          updatedAt:Date.now()-5000,updatedBy:adminIdentity[0].uid}]));
-      const synthetic={...source,
-        active:{generationId,operationId:initial.op,revision:1,
-          rowCount:2,digest:candidate.manifest.digest},
-        generations:{[generationId]:{items:serverOwnedItems}},
-        permissions:{[generationId]:{columns:{note:true}}},
-        operations:{[initial.op]:{status:'COMMITTED',from:'legacy',to:generationId,
-          at:Date.now()}},
-        bootstrap:{operationId:initial.op,freezeRevision:1,freezeEpoch:1,
-          legacyBaseline:'0'.repeat(64)}
-      };
-      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
-        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
-        signal:AbortSignal.timeout(8000)
-      });
-      if(!seeded.ok)throw Error('Could not seed separate V2-only fixture: '+seeded.status);
-      initialAfter=await operationCounts();
-      if(initialAfter.active?.operationId!==initial.op)
-        throw Error('Independent replacement baseline readback failed');
-      console.log('BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_NOT_INITIAL_UI_PASS',
-        JSON.stringify({operationId:initial.op,revision:1,serverRows:2,
-          fixtureOnly:true,initialUiGate:'FAILED'}));
+      throw error; // Real UI CAS only: never substitute a privileged fixture.
     }
-    await checkLiveListReport(initialBlocked?'SYNTHETIC_V2_BASELINE':'INITIAL',
+    await checkLiveListReport('INITIAL',
       'PR95 INITIAL nghị quyết','Sở QA INITIAL');
     await openTransfer(adminA);
     await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
@@ -3810,51 +3784,14 @@ try{
       await takeShot('replacement');
     }catch(error){
       const server=await operationCounts();
-      if(server.active?.operationId===replacement.op)throw error;
-      replacementBlocked=String(error);
       console.error('BROWSER_EXCEL_REPLACEMENT_UI_BLOCKED',JSON.stringify({
-        operationId:replacement.op,reason:replacementBlocked,
-        noAutomaticRetry:true,active:server.active
+        operationId:replacement.op,cause:String(error),server,
+        noAutomaticRetry:true,noPrivilegedCasFallback:true
       }));
       await takeShot('replacement-blocked');
-      // Independent restore test: build a fully tagged COMMITTED V2 fixture
-      // from the candidate already staged by the REAL Excel UI. A fixture PUT
-      // is not a successful UI replacement and must never be reported as one.
-      const raw=await ownerValue('/hdnd/datasetV2/candidates/'+replacement.op);
-      const backup=await ownerValue('/hdnd/datasetV2/backups/'+replacement.op);
-      if(typeof raw!=='string'||typeof backup!=='string')
-        throw Error('Cannot independently test restore: replacement candidate/backup absent');
-      const payload=JSON.parse(raw);
-      if(payload.manifest.operationId!==replacement.op||
-        Object.keys(payload.items??{}).length!==2)
-        throw Error('Cannot independently test restore: candidate readback malformed');
-      const source=await ownerValue('/hdnd/datasetV2');
-      const gen=payload.manifest.generationId,previous=source.active.generationId;
-      const items=Object.fromEntries(Object.entries(payload.items)
-        .map(([id,item])=>[id,{...item,operationId:replacement.op,
-          updatedAt:Date.now()-2000,updatedBy:adminIdentity[0].uid}]));
-      const synthetic={...source,
-        active:{generationId:gen,operationId:replacement.op,
-          revision:source.active.revision+1,rowCount:2,digest:payload.manifest.digest},
-        generations:{...source.generations,[gen]:{items}},
-        permissions:{...source.permissions,[gen]:{columns:{note:true}}},
-        operations:{...source.operations,[replacement.op]:{
-          status:'COMMITTED',from:previous,to:gen,at:Date.now()}}
-      };
-      const seeded=await fetch(EMULATOR_DB+'/hdnd/datasetV2.json?ns='+EMULATOR_NAMESPACE,{
-        method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(synthetic),
-        signal:AbortSignal.timeout(8000)
-      });
-      if(!seeded.ok)throw Error('Independent restore fixture could not be verified: '+seeded.status);
-      const fixture=await operationCounts();
-      if(fixture.active?.operationId!==replacement.op||
-        fixture.active?.revision!==replacementBefore.active.revision+1)
-        throw Error('Independent restore fixture active pointer mismatch');
-      console.log('BROWSER_EXCEL_SYNTHETIC_REPLACE_BASELINE_NOT_UI_CAS_PASS',
-        JSON.stringify({operationId:replacement.op,revision:fixture.active.revision,
-          fixtureOnly:true,replacementUiGate:'FAILED'}));
+      throw error; // A replace failure must not create a synthetic generation.
     }
-    await checkLiveListReport(replacementBlocked?'SYNTHETIC_REPLACE_BASELINE':'REPLACEMENT',
+    await checkLiveListReport('REPLACEMENT',
       'PR95 REPLACE nghị quyết','Sở QA REPLACE');
     await openTransfer(adminA);
     await enter(adminA,'input#v2-operation-lookup',replacement.op);
