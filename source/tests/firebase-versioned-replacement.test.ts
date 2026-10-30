@@ -1,4 +1,6 @@
 import {readFileSync} from 'node:fs';
+import * as XLSX from 'xlsx';
+import {BUSINESS_HEADERS,parseBusinessExcel} from '../src/data/business-excel';
 import {initializeApp,deleteApp} from 'firebase/app';
 import {initializeAuth,connectAuthEmulator,inMemoryPersistence,getIdTokenResult,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator} from 'firebase/database';
@@ -254,6 +256,72 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       });
     });
   }
+  it('real A–O parser payload is V2-safe and completes actual Rules CAS initial → replace → restore',async()=>{
+    const workbook=(variant:string)=>{
+      const book=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([
+        [...BUSINESS_HEADERS],
+        ['NQ90',1,'PR95 '+variant+' nghị quyết','Sở QA '+variant,'QPPL',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant],
+        ['BC91',2,'PR95 '+variant+' báo cáo','Sở QA '+variant,'BC',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant]
+      ]),'DATA_AO');
+      return parseBusinessExcel(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),'DATA_AO').items;
+    };
+    const firstRows=workbook('INITIAL'),secondRows=workbook('REPLACE');
+    expect(firstRows).toHaveLength(2);
+    expect(firstRows[0]).toMatchObject({
+      recordId:'x-4e513930',displayCode:'NQ90',
+      content:'PR95 INITIAL nghị quyết',documentKind:'NQ'
+    });
+    expect(firstRows[0]).toHaveProperty('partyMeeting','');
+    expect(firstRows[0]).toHaveProperty('examined','');
+    await setupFrozenLegacy();
+    const db=admin();
+    const op1='pr95_real_excel_first_01';
+    const prepared=await prepareInitialDatasetActivation(db,actor,firstRows,op1,'initial.xlsx');
+    const payload=JSON.parse(String((await get(ref(db,
+      DATASET_V2_PATH+'/candidates/'+op1))).val())) as {items:Record<string,Record<string,unknown>>};
+    for(const row of Object.values(payload.items)){
+      expect(row).not.toHaveProperty('partyMeeting');
+      expect(row).not.toHaveProperty('examined');
+    }
+    expect((await commitInitialDatasetActivation(db,actor,prepared,
+      'KHOI TAO V2 '+op1+' 2 2')).status).toBe('committed');
+    expect((await get(ref(db,DATASET_V2_PATH+'/active'))).val()).toMatchObject({
+      operationId:op1,revision:1});
+    const op2='pr95_real_excel_replace_01';
+    const staged=await stageDatasetReplacement(db,actor,secondRows,op2,'replace.xlsx');
+    expect((await commitDatasetReplacement(db,actor,staged,
+      'THAY '+op2+' 2 2')).status).toBe('committed');
+    const active=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
+    expect(active).toMatchObject({operationId:op2,revision:2});
+    const op3='pr95_real_excel_restore_01';
+    expect((await restoreDatasetBackup(db,actor,op2,op3,active,
+      'KHOI PHUC '+op3)).status).toBe('committed');
+    expect((await get(ref(db,DATASET_V2_PATH+'/active'))).val()).toMatchObject({
+      operationId:op3,revision:3});
+    const restored=(await get(ref(db,DATASET_V2_PATH+
+      '/generations/gen_'+op3+'/items'))).val();
+    expect(Object.values(restored)).toHaveLength(2);
+    expect(Object.values(restored).some((row:any)=>
+      row.content==='PR95 INITIAL nghị quyết')).toBe(true);
+    const snapshot=(await get(ref(db,DATASET_V2_PATH))).val();
+    expect(Object.keys(snapshot.operations)).toHaveLength(3);
+    expect(Object.keys(snapshot.generations)).toHaveLength(3);
+    expect(await resolveDatasetOperation(db,op1)).toMatchObject({
+      status:'committed-historical',operationId:op1});
+    expect(await resolveDatasetOperation(db,op3)).toMatchObject({
+      status:'committed-active',operationId:op3});
+  },60000);
+
+  it('refuses genuine legacy P/Q content rather than silently dropping business data',async()=>{
+    const invalid={...replacement()[0],partyMeeting:'Đã họp',examined:''};
+    await expect(stageDatasetReplacement(admin(),actor,[invalid],
+      'pr95_real_legacy_reject_01','unsafe.xlsx'))
+      .rejects.toThrow('P/Q legacy');
+  });
+
   it('proves server COMMITTED despite lost application completion on all 3 CAS APIs; lookup never replays',async()=>{
     await setupFrozenLegacy();
     const db=admin();
