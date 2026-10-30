@@ -107,7 +107,7 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
       office:{text:'#884422',background:'#FCDDA0'}});
     expect(custom['--hdnd-stage-office-bg']).toContain('#FCDDA0');
     expect(custom['--hdnd-stage-office-border']).toContain('#884422');
-    expect(custom['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F2');
+    expect(custom['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F3');
     expect(Object.keys(css)).toHaveLength(14);
     expect(Object.keys(css).every(key=>key.startsWith('--hdnd-status-')||
       key.startsWith('--hdnd-stage-'))).toBe(true);
