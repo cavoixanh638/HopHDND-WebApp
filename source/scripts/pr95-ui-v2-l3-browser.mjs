@@ -254,7 +254,8 @@ async function test(){
       statuses:await guest.evalJs(`[...document.querySelectorAll('[role=status],[role=alert]')].map(x=>x.textContent.slice(0,150)).slice(0,15)`),
       appClass:await guest.evalJs('document.querySelector(".app-shell")?.className'),
       actualAppRights:await guest.evalJs('window.__pr95UiV2L3RightsProbe?.()'),
-      actualGuestSdkRead:await guest.evalJs('window.__pr95UiV2L3RightsRead?.().catch(error=>String(error))')});
+      actualGuestSdkRead:await guest.evalJs('window.__pr95UiV2L3RightsRead?.().catch(error=>String(error))'),
+      secondListener:await guest.evalJs('window.__pr95UiV2L3RightsWatch')});
     throw err;
   }
   await capture(guest,'02-guest-note-only');
