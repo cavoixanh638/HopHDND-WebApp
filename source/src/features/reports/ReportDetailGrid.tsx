@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
-import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
+import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
@@ -28,6 +28,7 @@ import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
+import {popupFieldOptions} from './pr95-l1-popup-options';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
@@ -214,16 +215,6 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
   };
-  const options=(field:TextField,current:string)=>{
-    const optionsFromCatalog=(catalog.options as Partial<Record<TextField,string[]>>)[field]??[];
-    // Council completion is labelled exactly as the current Excel/HĐND report,
-    // not the obsolete generic "Hoàn thành" option in the older list editor.
-    const standard=field==='progressCouncil'
-      ?['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']
-      :(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
-    const safeCatalog=field==='progressCouncil'?optionsFromCatalog.filter(v=>v!=='Hoàn thành'||v===current):optionsFromCatalog;
-    return [...new Set(['',...safeCatalog,...standard,current])];
-  };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
     if(key==='displayCode')return <div className="report-grid-id">
@@ -249,7 +240,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
     return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-      searchable={field==='specialist'} options={options(field,raw).filter(value=>
+      searchable={field==='specialist'} options={popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
         !value||catalog.specialistRooms[value]?.includes(item.room))}
       onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
