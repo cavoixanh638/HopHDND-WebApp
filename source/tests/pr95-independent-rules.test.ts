@@ -94,6 +94,15 @@ describe.skipIf(!isEmulator)('PR95 L3 REAL RTDB Rules, independent adversarial s
       'stale write via guest'));
   });
 
+  it('must not accept admin mutation of inactive generation metadata or operation log',async()=>{
+    // Parent datasetV2 admin .write is insufficient as an epoch fence.
+    // These exact paths have no nested .validate in the base contract Rules.
+    await assertFails(set(ref(admin(),prefix+'/generations/gen_first/rogueMetadata'),
+      {injected:'from stale admin tab'}));
+    await assertFails(set(ref(admin(),prefix+'/operations/l3_second_operation/status'),
+      'FORGED'));
+  });
+
   it('reused displayCode cannot copy past generation rights, history or lease',async()=>{
     const db=guest();
     const current=(await get(ref(db,prefix+'/generations/gen_second/items/l3r0'))).val();
