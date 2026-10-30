@@ -5,6 +5,7 @@ import type { Repository } from './repository';
 import { EDITABLE_FIELDS, validateChanges } from '../domain/items';
 import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
 import type {CellEditSessionManager} from './cell-edit-leases';
+import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -43,6 +44,14 @@ function rowsFrom(value:unknown):Item[]{
   const rows=Object.entries(value).map(([id,value])=>{const item=validateFirebaseItem(value);if(item.recordId!==id)throw new Error('ID không khớp đường dẫn dữ liệu.');return item;});
   return rows.sort((a,b)=>a.stt-b.stt||a.recordId.localeCompare(b.recordId));
 }
+/** Compare the complete epoch, not merely the reused recordId/generationId. */
+export function sameDatasetEpoch(actual:unknown,expected:ActiveDatasetPointer):boolean{
+  if(!actual||typeof actual!=='object')return false;
+  const pointer=actual as Partial<ActiveDatasetPointer>;
+  return pointer.generationId===expected.generationId&&
+    pointer.operationId===expected.operationId&&pointer.revision===expected.revision&&
+    pointer.rowCount===expected.rowCount&&pointer.digest===expected.digest;
+}
 export class FirebaseRepository implements Repository {
   readonly sourceKind='firebase' as const;
   readonly canDraft=true;
@@ -50,14 +59,45 @@ export class FirebaseRepository implements Repository {
   readonly subscribeInitial=true;
   leaseManager?:CellEditSessionManager;
   checkAssignment?:(item:Item)=>string;
-  constructor(readonly database:Database,private user:()=>User|null,private permissions:()=>CellPermissions,private readonly itemPath='hdnd/items'){}
-  async list(){return rowsFrom((await get(ref(this.database,this.itemPath))).val());}
-  subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void){return onValue(ref(this.database,this.itemPath),snapshot=>{try{next(rowsFrom(snapshot.val()));}catch(cause){error(cause as Error);}},error);}
+  constructor(readonly database:Database,private user:()=>User|null,private permissions:()=>CellPermissions,
+    private readonly itemPath='hdnd/items',private readonly expectedActive?:ActiveDatasetPointer){}
+  private async assertEpoch():Promise<void>{
+    if(!this.expectedActive)return;
+    const current=(await get(ref(this.database,'hdnd/datasetV2/active'))).val();
+    if(!sameDatasetEpoch(current,this.expectedActive))
+      throw new Error('Thế hệ Firebase đã thay đổi; phiên đọc/sửa cũ bị vô hiệu hóa.');
+  }
+  async list(){
+    await this.assertEpoch();
+    const rows=rowsFrom((await get(ref(this.database,this.itemPath))).val());
+    await this.assertEpoch();
+    return rows;
+  }
+  subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void){
+    if(!this.expectedActive)return onValue(ref(this.database,this.itemPath),snapshot=>{
+      try{next(rowsFrom(snapshot.val()));}catch(cause){error(cause as Error);}
+    },error);
+    let valid=false,activeSeen=false,rows:Item[]|null=null,stopped=false;
+    const publish=()=>{if(!stopped&&valid&&rows!==null)next(rows);};
+    const stopPointer=onValue(ref(this.database,'hdnd/datasetV2/active'),snapshot=>{
+      if(stopped)return;
+      activeSeen=true;
+      valid=sameDatasetEpoch(snapshot.val(),this.expectedActive!);
+      if(!valid){rows=null;error(new Error('Con trỏ Firebase đã đổi; không hiển thị dữ liệu phiên cũ.'));}
+      else publish();
+    },cause=>{valid=false;rows=null;if(!stopped)error(cause);});
+    const stopItems=onValue(ref(this.database,this.itemPath),snapshot=>{
+      if(stopped||!activeSeen||!valid)return;
+      try{rows=rowsFrom(snapshot.val());publish();}catch(cause){rows=null;error(cause as Error);}
+    },cause=>{rows=null;if(!stopped)error(cause);});
+    return()=>{stopped=true;stopPointer();stopItems();};
+  }
   async save(patches:Patch[]):Promise<SaveResult[]>{
     const results:SaveResult[]=[];
     for(const patch of patches){
       let reason='Dữ liệu đã thay đổi; phần sửa của bạn vẫn được giữ để đối chiếu.';
       try{
+        await this.assertEpoch();
         const user=this.user();if(!user)throw new Error('Chưa đăng nhập Firebase.');
         const issue=validateChanges(patch.changes);if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
@@ -99,6 +139,7 @@ export class FirebaseRepository implements Repository {
           };
           return {...next,history};
         },{applyLocally:false});
+        await this.assertEpoch();
         const item=transaction.snapshot.exists()?validateFirebaseItem(transaction.snapshot.val()):undefined;
         if(!item)reason='Dòng đã bị xóa hoặc chưa có trong Firebase.';
         const confirmed=(transaction.committed||replay)&&item&&fields.every(field=>item[field]===patch.changes[field]);
@@ -108,7 +149,9 @@ export class FirebaseRepository implements Repository {
     return results;
   }
   async history(recordId:string):Promise<AuditEntry[]>{
+    await this.assertEpoch();
     const raw=(await get(ref(this.database,`${this.itemPath}/${recordId}/history`))).val()??{};
+    await this.assertEpoch();
     return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({
       operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),
       changes:event.changes??JSON.parse(event.changesJson??'{}'),
@@ -117,6 +160,7 @@ export class FirebaseRepository implements Repository {
   }
   /** Explicit admin import only. Existing IDs are never silently overwritten. */
   async importItems(items:Item[]){
+    if(this.expectedActive)throw new Error('Không nhập thêm qua API cũ khi V2 hoạt động; chỉ dùng staging có kiểm duyệt.');
     const user=this.user();if(!firebaseAdmin(user))throw new Error('Chỉ quản trị Google được nhập Excel.');
     const normalized=items.map(validateFirebaseItem),ids=new Set(normalized.map(item=>item.recordId));
     if(ids.size!==items.length||items.length>1000)throw new Error('ID trùng hoặc quá 1.000 dòng.');

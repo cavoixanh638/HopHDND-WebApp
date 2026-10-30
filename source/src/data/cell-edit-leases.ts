@@ -112,6 +112,7 @@ export type HeldLease={id:string;field:EditableField;lease:CellLease;pending:boo
 export class CellEditSessionManager {
   private readonly tabSession=crypto.randomUUID();
   private held=new Map<string,HeldLease>();
+  private closed=false;
   private failed=new Map<string,string>();
   constructor(private database:Database,private viewer:()=>User|null,
     private readonly generationId?:string){}
@@ -155,9 +156,11 @@ export class CellEditSessionManager {
   error(id:string,field:EditableField){return this.failed.get(this.key(id,field))??null;}
   activeCount(){return this.held.size;}
   async acquire(id:string,field:EditableField,kind:EditorKind):Promise<boolean>{
+    if(this.closed)throw new Error('Phiên sửa đã hết hiệu lực khi thay thế dữ liệu.');
     const key=this.key(id,field);
     if(this.held.has(key))return true;
     const lease=await acquireCellLease(this.database,this.viewer(),this.tabSession,id,field,kind,this.generationId);
+    if(this.closed){await releaseCellLease(this.database,lease,id,field,this.generationId).catch(()=>{});throw new Error('Thế hệ đã đổi khi xin khóa; phiên cũ bị vô hiệu hóa.');}
     const entry:HeldLease={id,field,lease,pending:false,renewTimer:setInterval(()=>{
       void renewCellLease(this.database,entry.lease,id,field,this.generationId).then(next=>{entry.lease=next;})
         .catch(e=>{this.failed.set(key,String(e));clearInterval(entry.renewTimer);
@@ -182,9 +185,10 @@ export class CellEditSessionManager {
     const key=this.key(id,field),entry=this.held.get(key);
     if(!entry)return;
     clearInterval(entry.renewTimer);this.held.delete(key);
-    await releaseCellLease(this.database,entry.lease,id,field);
+    await releaseCellLease(this.database,entry.lease,id,field,this.generationId);
   }
   async dispose(){
+    this.closed=true;
     const active=[...this.held.values()];
     this.held.clear();
     await Promise.allSettled(active.map(x=>{clearInterval(x.renewTimer);
