@@ -88,13 +88,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
   // Preview pending column changes while the settings panel is open.
-  const displayedLayout=settings?pending:applied;
-  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll)&&
-    (c.key!=='stt'||showAll||settings)),
-    [displayedLayout,showAll,settings]);
+  const displayedLayout=settings&&!guestViewer?pending:applied;
+  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll&&!guestViewer)&&
+    (c.key!=='stt'||showAll&&!guestViewer||settings&&!guestViewer)),
+    [displayedLayout,showAll,settings,guestViewer]);
   // Popup retains its own source configuration; only the ordinary read view
   // projects visible source members into the same groups as the main list.
-  const popupCompact=!settings&&!showAll;
+  const popupCompact=(!settings||guestViewer)&&(!showAll||guestViewer);
   const popupSource=shownColumns.map(c=>({...c,label:labelByKey.get(c.key)??c.key}));
   const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
     ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
@@ -119,7 +119,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
     // Window sizing is a viewing preference, not permission to edit data.
-    if(!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(guestViewer||readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -135,10 +135,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     });
   };
   const patch=(key:DetailColumnKey,changes:Partial<{visible:boolean;width:number}>)=>{
+    if(guestViewer||readOnlyViewer)return;
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
   };
   const commitWidth=(key:DetailColumnKey,width:number)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){patch(key,{width});return;}
     const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
     if(!saveDetailGridPreferences(sourceKey,next)){
@@ -148,7 +149,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setNotice('Đã giữ độ rộng cột của bảng popup trên trình duyệt.');
   };
   const moveHeader=(from:string,to:string)=>{
-    if(!settings)return;
+    if(guestViewer||readOnlyViewer||!settings)return;
     setPending(old=>({...old,columns:reorderByKey(old.columns,c=>c.key,from,to)}));
   };
   const closeSettings=()=>{
@@ -156,7 +157,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setSettings(false);
   };
   const toggleSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){closeSettings();return;}
     setPending(applied);setSettings(true);setNotice('');
   };
@@ -164,7 +165,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
   const clearFilters=()=>{setFilters({});setSort(null);};
   const loadPreset=(id:string)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     const next=presets.find(v=>v.id===id);
     if(next){
       setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
@@ -177,7 +178,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     }
   };
   const createPreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!presetName.trim()){setNotice('Nhập tên mẫu trước khi lưu.');return;}
     if(presets.length>=12){setNotice('Đã đạt tối đa 12 mẫu của bảng popup.');return;}
     const next:ReportDetailPreset={id:crypto.randomUUID(),name:presetName.trim().slice(0,60),
@@ -187,21 +188,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPresets(list);setSelectedPreset(next.id);setPresetName('');setNotice('Đã lưu mẫu popup cá nhân.');
   };
   const updatePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.map(v=>v.id===selectedPreset?{...v,layout:applied,filters,colors}:v);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không cập nhật được mẫu.');return;}
     setPresets(list);setNotice('Đã cập nhật mẫu cá nhân.');
   };
   const removePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.filter(v=>v.id!==selectedPreset);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không xóa được mẫu.');return;}
     setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
     // R07: storage *and* live state must use the SAME validated snapshot.
     // Empty/whitespace-only overrides are deleted by the validator, allowing
@@ -392,7 +393,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <thead>
           <tr className="report-grid-heading-row">{renderedColumns.map((c,index)=>
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
-              sortDirection={sort?.key===c.key?sort.direction:null} onSort={editing?cycleSort:undefined}
+              sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
               {c.label}
