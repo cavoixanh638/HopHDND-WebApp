@@ -9,9 +9,9 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
 const script=resolve(fileURLToPath(new URL('./package-compact-qa.mjs',import.meta.url)));
-const token=String.raw`$& $$ $\` $'`;
+const token=['$&','$$','$'+'`',"$'"].join(' ');
 const js=`window.__qaMetachars=${JSON.stringify(token)};window.__qaCloser="</ScRiPt>";`;
-const css=String.raw`:root{--qa-tokens:"$& $$ $\` $'";--qa-closer:"</StYlE>"}`;
+const css=`:root{--qa-tokens:${JSON.stringify(token)};--qa-closer:"</StYlE>"}`;
 const make=({scripts=1,styles=1,extraAsset=false,unsafe=false}={})=>{
   const tmp=mkdtempSync(join(tmpdir(),'pr95-l4-package-'));
   const dist=join(tmp,'dist-compact-qa'),assets=join(dist,'assets');
