@@ -491,7 +491,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {!anonymousVisitor&&(['connection','review','source','transfer','sync'].includes(page))&&<nav className="settings-hub-tabs" aria-label="Tài khoản và quản trị">
         <button className={page==='connection'?'active':''} onClick={event=>openOptions('connection',event)}>Tài khoản</button>
         {isFirebase&&firebase!.isAdmin&&<button className={page==='review'?'active':''} onClick={event=>openOptions('review',event)}>Quản trị</button>}
-        {isFirebase&&firebase!.isAdmin&&<>{legacySourceTests&&<button className={page==='source'?'active':''} onClick={event=>openOptions('source',event)}>Google Sheets</button>}<button className={page==='transfer'?'active':''} onClick={event=>openOptions('transfer',event)}>Excel · Nhập/Xuất</button></>}
+        {isFirebase&&firebase!.isAdmin&&<>{legacySourceTests&&<button className={page==='source'?'active':''} onClick={event=>openOptions('source',event)}>Google Sheets</button>}<button className={page==='transfer'?'active':''} onClick={event=>openOptions('transfer',event)}>{legacySourceTests?'Excel · Trích xuất':'Excel · Nhập/Xuất'}</button></>}
         {!isFirebase&&<button className={page==='sync'?'active':''} onClick={event=>openOptions('sync',event)}>Cấu hình chung</button>}
       </nav>}
       {isFirebase&&common.config&&common.status!=='ready'&&<p className="muted" role="status">Đang xem bố cục admin đã lưu gần nhất trên máy; quyền đổi cấu hình vẫn bị khóa tới khi Firebase xác nhận.</p>}
