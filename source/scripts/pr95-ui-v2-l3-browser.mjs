@@ -227,6 +227,20 @@ async function test(){
   assert.equal(p.cells?.[ROW]?.note,true);
   assert.equal(p.cells?.[OTHER]?.note,undefined);
   step('ADMIN_GRANT_SERVER_CAS_PASS',{path:PATH+'/permissions/'+GEN,cell:ROW+'/note'});
+  // Independent real anonymous Auth Emulator token, read EXACT active generation
+  // permission path; no owner credentials in guest rights assertion.
+  const anonLogin=await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-test-key',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({returnSecureToken:true})});
+  assert.ok(anonLogin.ok,'Anonymous Auth Emulator sign-in failed');
+  const anon=await anonLogin.json();
+  const scoped=await fetch(BASE+'/'+PATH+'/permissions/'+GEN+'.json?ns='+NS+
+    '&auth='+encodeURIComponent(anon.idToken));
+  const grantedText=await scoped.text();
+  step('ANONYMOUS_SCOPED_RIGHTS_SERVER_READ',{status:scoped.status,text:grantedText.slice(0,450)});
+  if(scoped.ok){
+    const granted=JSON.parse(grantedText);
+    assert.equal(granted?.cells?.[ROW]?.note,true,'Anonymous readback must observe granted cell');
+  }
   try{
     await guest.until(`(()=>{const a=[...document.querySelectorAll('.item-data-table tbody tr')];
       return !!a[0]?.querySelector('td[data-col-key="note"].editable-cell')&&
