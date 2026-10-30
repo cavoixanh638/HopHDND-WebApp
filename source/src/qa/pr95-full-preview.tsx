@@ -221,23 +221,29 @@ export function Pr95FullPreview(){
         {configs.map(config=><ReportTable key={config.id} items={items} config={config}
           group={group} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
       </section>}
-      {page==='items'&&<section aria-label="Danh sách hồ sơ demo">
-        <div className="pr95-preview-section-heading"><h2>Danh sách các ND trình HĐND</h2>
-          <span>Editor chỉ tác động lên state bộ nhớ · không lưu máy chủ</span></div>
-        <ItemList key={'preview-list-'+revision+'-'+role} items={items} drafts={{}} errors={{}}
+      {(page==='items'||(page==='items-customize'&&admin))&&<section aria-label="Danh sách hồ sơ demo">
+        <div className="pr95-preview-section-heading"><h2>{page==='items-customize'?'Tùy chỉnh Danh sách (RAM)':'Danh sách các ND trình HĐND'}</h2>
+          {admin&&<small>Chỉ áp dụng trong bản demo, không lưu máy chủ</small>}</div>
+        <ItemList key={'preview-list-'+revision+'-'+role+'-'+page} items={items} drafts={{}} errors={{}}
           busy={false} readOnly={false} sourceKind="demo" sourceKey={sourceKey}
           catalog={catalog} initialLayout={layout}
-          canEditDraft canEditCell={canEdit}
-          anonymousViewer={!admin} viewerScope={admin?'pr95-l4-admin':'pr95-l4-guest'}
-          allowPersonalCompact={!admin} allowLayout={admin}
+          canEditDraft canEditCell={canEdit} customizing={page==='items-customize'}
+          anonymousViewer={!admin} viewerScope={'pr95-v3-'+role+'-'+sessionScope}
+          allowPersonalCompact={false} allowLayout={admin}
+          permissions={admin?permissions:undefined}
+          onSavePermissions={admin?savePermissions:undefined}
+          onReloadPermissions={admin?async()=>permissions:undefined}
+          onPersistLayout={admin?saveLayout:undefined}
+          onPersistCatalog={admin?saveCatalog:undefined}
           statusPaletteStore={palette}
+          onStatusPaletteChange={admin?next=>{setPalette(next);return true;}:undefined}
           onUpdate={update} onHistory={()=>setNotice('Lịch sử server không mô phỏng; không có log Firebase.')}
           onCellHistory={()=>setNotice('Không có lịch sử server trong preview bộ nhớ.')}
-          onClose={()=>openPage('reports')}
-          onSaveData={async()=>{setNotice('Đã cập nhật trong bộ nhớ; không có ACK Firebase.');return true;}}
-          onDiscardData={()=>setNotice('Không có giao dịch Firebase để hủy.')}
+          onClose={()=>openPage('items')}
+          onSaveData={saveRAM}
+          onDiscardData={discardRAM}
           onLayoutSaved={setNotice}
-          onPersistViewerLayout={admin?async next=>{const checked=validateItemLayout(next);setLayout(checked);return checked;}:undefined}
+          onPersistViewerLayout={admin?saveLayout:undefined}
         />
       </section>}
       {page==='permissions'&&admin&&<section aria-label="Quyền chỉnh sửa mô phỏng">
@@ -254,13 +260,14 @@ export function Pr95FullPreview(){
           }}
           onReload={async()=>permissions} onBack={()=>openPage('items')}/>
       </section>}
-      {page==='excel'&&<Pr95PreviewExcel role={role} items={items} onReplace={next=>{
+      {page==='excel'&&admin&&<Pr95PreviewExcel role={role} items={items} onReplace={next=>{
         if(!admin){setNotice('Khách không được áp dụng dữ liệu demo.');return;}
-        setItems(next);setPermissions(permissionsInitial());setDirtyIds(new Set());
+        setItems(next);setConfirmedItems(next);setCatalogOverride(null);
+        setPermissions(permissionsInitial());setDirtyIds(new Set());
         setRevision(v=>v+1);setDrill(null);
         setNotice('Đã thay thế dữ liệu mô phỏng TRONG RAM; quyền cũ đã xóa, không có Firebase/backup.');
       }}/>}
-      {page==='account'&&<section className="card" aria-label="Tài khoản mô phỏng">
+      {page==='account'&&admin&&<section className="card" aria-label="Tài khoản mô phỏng">
         <h2>Tài khoản / Phiên truy cập</h2>
         <p><strong>{admin?'Quản trị mô phỏng duy nhất':'Khách mô phỏng'}</strong> — không có UID/Google token.
           Vai trò phía trên là nút thử giao diện, không cung cấp quyền vào hệ thống thật.</p>
@@ -289,6 +296,8 @@ export function Pr95FullPreview(){
         </label>
         <button type="button" className="button ghost" onClick={reset}>Khôi phục dữ liệu và quyền giả</button>
       </section>}
+      <footer className="pr95-preview-footnote">Dữ liệu giả · Chỉ lưu trong bộ nhớ
+        <span>Không đăng nhập hoặc kết nối Firebase/Google Sheets</span></footer>
     </main>
     {drill&&<ReportDetailGrid key={'pr95-popup-'+drill.title+'-'+role}
       title={drill.title} selectedIds={drill.ids} items={items}
@@ -297,6 +306,7 @@ export function Pr95FullPreview(){
       canEditCell={(id,field:TextField)=>canEdit(id,field)}
       onUpdate={update} onKeepDraft={()=>true} onClose={()=>setDrill(null)}
       onOpenFullList={()=>{setDrill(null);openPage('items');}}
-      dirtyIds={dirtyIds} errors={{}} statusPaletteStore={palette}/>}
+      dirtyIds={dirtyIds} errors={{}} statusPaletteStore={palette}
+      onStatusPaletteChange={admin?next=>{setPalette(next);return true;}:undefined}/>}
   </div>;
 }
