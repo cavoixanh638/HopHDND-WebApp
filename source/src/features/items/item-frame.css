@@ -841,9 +841,8 @@
 .compact-stage-state[data-progress-tone]{
   --workflow-bg:var(--hdnd-status-other-bg,#F2F6F9);
   --workflow-text:var(--hdnd-status-other-text,#426274);--workflow-border:#CBD5E1;
-  /* V3: the stage ROW is the sole default surface. The value is text, not a pill. */
-  padding:0;border:0;border-radius:0;background:transparent;
-  color:var(--workflow-text);font-size:12px;font-weight:650;
+  padding:3px 7px;border-radius:13px;border:1px solid var(--workflow-border);
+  background:var(--workflow-bg);color:var(--workflow-text);font-size:12px;font-weight:650;
 }
 /* Not required is neutral in this view even when report aggregation groups
    the same source label with terminal milestones. Unknown values stay neutral. */
@@ -1009,6 +1008,13 @@
  .item-summary-subcounts > span{gap:8px;padding:6px 8px}
  .group-label-editor-row{flex-direction:column;align-items:stretch}}
 
+
+/* Only grouped stages lose the legacy standalone status pill.
+   Other, deliberately independent cells keep their previously approved skin. */
+.compact-stage-row .compact-stage-state[data-progress-tone]{
+  padding:0;border:0;border-radius:0;background:transparent;
+  min-width:0;word-break:normal;overflow-wrap:break-word;
+}
 /* UI V3 L2: no nested pill/button/editor boxes inside a colored grouped stage.
    These rules intentionally override the historical 3D individual-button hover
    skin in app.css without changing that skin in unrelated standalone fields. */
