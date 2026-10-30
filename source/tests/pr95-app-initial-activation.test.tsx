@@ -167,6 +167,34 @@ describe('L2 API-CHANGE-01 — admin Emulator-only first V2 activation',()=>{
     find(render(),'button','Tra cứu trạng thái operationId').props.onClick();
     await vi.waitFor(()=>expect(calls.resolve).toHaveBeenCalledOnce());
   });
+  it('lost initial commit ACK is recovered read-only as historical COMMITTED, never retried',async()=>{
+    calls.activate.mockRejectedValue(new Error('ACK lost after server COMMITTED'));
+    calls.resolve.mockResolvedValue({status:'committed-historical',
+      operationId,generationId:'gen_'+operationId});
+    await review();
+    find(render(),'input','Xác nhận kích hoạt V2 lần đầu').props.onChange({
+      currentTarget:{value:'KHOI TAO V2 '+operationId+' 2 2'}
+    });
+    const button=find(render(),'button','Kích hoạt V2 lần đầu bằng CAS');
+    button.props.onClick();
+    await vi.waitFor(()=>expect(messages(render())).toContain('ĐÃ COMMIT THÀNH CÔNG TRONG LỊCH SỬ'));
+    expect(calls.activate).toHaveBeenCalledOnce();
+    expect(calls.resolve).toHaveBeenCalledOnce();
+    expect(calls.stage).not.toHaveBeenCalled();
+    expect(find(render(),'button','Kích hoạt V2 lần đầu bằng CAS').props.disabled).toBe(true);
+  });
+  it('freeze revision changed at final confirmation blocks first-activation CAS',async()=>{
+    await review();
+    find(render(),'input','Xác nhận kích hoạt V2 lần đầu').props.onChange({
+      currentTarget:{value:'KHOI TAO V2 '+operationId+' 2 2'}
+    });
+    calls.freeze.mockResolvedValueOnce({...frozen,revision:4});
+    calls.resolve.mockResolvedValue({status:'not-committed',operationId});
+    find(render(),'button','Kích hoạt V2 lần đầu bằng CAS').props.onClick();
+    await vi.waitFor(()=>expect(messages(render())).toContain('Không xác minh được kết quả ghi'));
+    expect(calls.activate).not.toHaveBeenCalled();
+    expect(calls.resolve).toHaveBeenCalledOnce();
+  });
   it('active V2 mode routes to replacement/restore, not prepare initial, without a freeze side effect',async()=>{
     await review({active});
     expect(calls.stage).toHaveBeenCalledOnce();
