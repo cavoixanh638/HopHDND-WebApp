@@ -3674,6 +3674,14 @@ try{
     await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
       'Kích hoạt V2 lần đầu bằng CAS');
     const checkLiveListReport=async(stage,expectedContent,expectedDepartment)=>{
+      // The application intentionally disables the main navigation while
+      // inside Excel settings. Use the visible "Về chế độ xem" UI action,
+      // rather than bypassing React's disabled tab buttons.
+      if(await adminA.js("document.querySelector('.nav-tabs button')?.disabled===true")){
+        await clickText(adminA,'.card-header button','Về chế độ xem');
+        await adminA.until("document.querySelector('.nav-tabs button')?.disabled===false",
+          stage+' leave Excel settings through real UI');
+      }
       await clickText(adminA,'.nav-tabs button','Danh sách các ND trình HĐND');
       await adminA.until(`document.querySelector('.item-data-table tbody')?.textContent?.includes(${JSON.stringify(expectedContent)})===true`,
         stage+' current List records');
