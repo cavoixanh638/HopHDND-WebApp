@@ -116,7 +116,10 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await manager.dispose();
     const obsolete=new FirebaseRepository(editorDb,()=>editor,
       ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
-    const old=(await obsolete.list())[0];
+    // An inactive generation is not readable by a non-admin. The stale tab
+    // keeps only its old in-memory snapshot, then attempts a forbidden save.
+    await assertFails(obsolete.list());
+    const old=initialRows[0];
     const denied=(await obsolete.save([updateDraft(old,undefined,{note:'phiên cũ'})!]))[0];
     expect(denied.ok).toBe(false);
     expect((await get(ref(db,DATASET_V2_PATH+'/generations/gen_seed_initial/items/r1/note'))).val())
