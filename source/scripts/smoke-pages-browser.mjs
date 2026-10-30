@@ -791,7 +791,7 @@ try{
     const status=document.querySelector('.item-filter-status-slot');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!nav||!viewport||stt||sort)return {ok:false,reason:'Missing guest chrome, STT shown or sort incorrectly visible'};
+    if(!topbar||!nav||!viewport||stt||!sort)return {ok:false,reason:'Missing V3 guest chrome, STT shown or guest sorting unavailable'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const cards=document.querySelector('.item-summary-grid');
     const cardRect=cards?.getBoundingClientRect();
@@ -805,7 +805,7 @@ try{
     // the four explicitly requested summary cards instead of across their height.
     return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
       gapBelowToolbar>=0&&gapBelowToolbar<30&&
-      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!!localMenu,
+      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!localMenu&&!!sort,
       aligned,gapBefore,gapAfter,gapBelowToolbar,cardHeight:cardRect?.height,
       hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
@@ -961,7 +961,7 @@ try{
         titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
     if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
-      hover.color!==color||hover.titleSize<18)
+      hover.color!==color||hover.titleSize<15||hover.titleSize>17)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
@@ -990,15 +990,23 @@ try{
       widths:[border(first),border(td)]};
   })()`);
   if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
-  // Sorting is now edit-mode only. The viewer/anonymous guest must not
-  // expose a sorting button or activate sort via the header itself.
-  const viewerSortBlocked=await evaluate(`(()=>{
+  // V3: every viewer sorts, without getting header drag/reorder rights.
+  const viewerSortEnabled=await evaluate(`(()=>{
     const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
-    header?.click();
-    return !!header&&header.getAttribute('aria-sort')==='none'&&
-      !header.querySelector('.column-sort-button');
+    const button=header?.querySelector('.column-sort-button');
+    if(!header||!button||header.classList.contains('column-movable'))return false;
+    button.click();return true;
   })()`);
-  if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
+  if(!viewerSortEnabled)throw Error('Guest must have sort but no column rearrange');
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='ascending'",
+    'Guest ascending view sort unavailable');
+  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='descending'",
+    'Guest descending view sort unavailable');
+  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='none'",
+    'Guest sort must reset without changing saved column layout');
+  console.log('V3_L1_GUEST_SORT_WITHOUT_LAYOUT_CONTROL_PASS');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
   // Synthetic marked cell tests the one shared editing tooltip without granting
@@ -1081,12 +1089,15 @@ try{
       !!document.querySelector('select[aria-label="Lọc Phòng"]');
   })()`);
   if(!sticky)throw Error('V2 sticky table heading and compact toolbar scroll must work together');
-  await eventually("document.querySelector('.guest-signin')!==null",'Anonymous viewer must have a simple login entry');
+  await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",'Anonymous viewer must have gear-only login');
   const guestClean=await evaluate(`(()=>{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
-    return !!document.querySelector('.guest-signin')&&
-      !document.querySelector('.options-menu')&&!document.querySelector('.list-view-box')&&
-      !!document.querySelector('.version')&&
+    const gear=document.querySelector('.v3-settings-menu');
+    const actions=[...gear?.querySelectorAll('.options-popover > button')??[]];
+    return !!gear&&actions.length===1&&actions[0].textContent.trim()==='Đăng nhập quản trị'&&
+      !document.querySelector('.guest-signin')&&!document.querySelector('.list-view-box')&&
+      !document.querySelector('.version')&&
+      !document.querySelector('.source-column-visibility,.compact-columns-menu,.status-palette-trigger,.column-resizer')&&
       !document.querySelector('.brand')&&!document.querySelector('.demo-banner')&&
       !document.querySelector('.settings-mode-bar')&&
       !document.querySelector('.app-footer')&&
@@ -1918,26 +1929,31 @@ try{
   })()`);
   if(!wideShell)throw Error('Site shell still capped on 2200px desktop display');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
-  const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
-  if(!guestOptions)throw Error('Guest must have login entry');
-  await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
-    'Guest login did not open account page');
-  const accountWidth=await evaluate(`(()=>{
-    const shell=document.querySelector('.app-shell');
-    const main=document.querySelector('main');
-    const top=document.querySelector('.topbar');
-    const tabs=document.querySelector('.nav-tabs');
-    if(!shell?.classList.contains('settings-page')||!main||!top||!tabs)
-      return {ok:false,reason:'Account settings frame missing'};
-    const m=main.getBoundingClientRect(),t=top.getBoundingClientRect(),n=tabs.getBoundingClientRect();
-    return {ok:Math.abs(m.width-1100)<3&&Math.abs(m.left-t.left)<3&&
-      Math.abs(m.width-t.width)<3&&n.width<=1000&&
-      Math.abs((n.left+n.right)/2-(m.left+m.right)/2)<3,
-      main:m.width,top:t.width,tabs:n.width};
+  // The guest must NEVER enter an account/settings page from a public UI
+  // action; login is only inside the small corner gear, without triggering
+  // real Google OAuth in the synthetic Chrome check.
+  const guestOptions=await evaluate(`(()=>{
+    const gear=document.querySelector('details.v3-settings-menu');
+    const summary=gear?.querySelector('summary[aria-label="Cài đặt"]');
+    if(!gear||!summary)return {ok:false};summary.click();
+    const links=[...gear.querySelectorAll('.options-popover > button')].map(x=>x.textContent?.trim());
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const tabs=[...nav?.querySelectorAll('.primary-section-card')??[]];
+    const gr=gear.getBoundingClientRect(),sr=summary.getBoundingClientRect();
+    return {ok:gear.open&&links.length===1&&links[0]==='Đăng nhập quản trị'&&
+      !document.querySelector('.settings-hub-tabs,.account-source-actions,.source-column-visibility')&&
+      !document.querySelector('.guest-signin')&&
+      !document.querySelector('.app-shell.settings-page')&&
+      tabs.length===2&&tabs.every(t=>Math.abs(t.getBoundingClientRect().height-50)<1)&&
+      sr.width===34&&sr.height===34&&
+      gr.right>innerWidth-85&&nav.getBoundingClientRect().top<75,
+      actions:links,gear:{right:gr.right,top:sr.top,width:sr.width,height:sr.height},
+      tabs:tabs.map(t=>t.getBoundingClientRect().height)};
   })()`);
-  if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
+  if(!guestOptions.ok)throw Error('V3 guest corner gear, two 50px tabs or admin guard failed: '+JSON.stringify(guestOptions));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
+  console.log('V3_L1_GUEST_NAV_GEAR_ADMIN_HIDDEN_PASS',JSON.stringify(guestOptions));
 
   // Open the real ItemList component in a standalone, synthetic-only QA mount.
   // This is not the deployed admin user journey; it verifies actual production
