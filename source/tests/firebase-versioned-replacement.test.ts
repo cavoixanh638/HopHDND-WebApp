@@ -204,6 +204,37 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       '/generations/gen_seed_initial/items/r1'),{stt:999}));
     expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(2);
   },30000);
+  it('fences legacy rights and locks after V2 cutover and under preactivation FROZEN',async()=>{
+    const db=admin(),legacyPermissions='hdnd/permissions/columns/note';
+    // With V2 already active, even an admin tab must not mutate old ACL/leases.
+    await assertFails(set(ref(db,legacyPermissions),true));
+    await assertFails(set(ref(db,'hdnd/editLocks/r1/note'),{
+      uid:'administrator',session:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      token:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',revision:1,
+      kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+20000
+    }));
+    // Build a synthetic PRE-activation legacy state with an acknowledged freeze.
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,DATASET_V2_PATH),null);
+      await set(ref(ctx.database() as never,'hdnd/freezeControl'),{
+        mode:'FROZEN',revision:7,epoch:2,actor:'administrator',
+        changedAt:1000,deadline:0,closedAt:1000
+      });
+    });
+    await assertFails(set(ref(db,legacyPermissions),true));
+    await assertFails(set(ref(db,'hdnd/editLocks/r1/note'),{
+      uid:'administrator',session:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      token:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',revision:1,
+      kind:'multiline',acquiredAt:Date.now(),expiresAt:Date.now()+20000
+    }));
+    // A cleared freeze without V2 activation restores ordinary legacy rights
+    // administration. This guard does not disable all admin work forever.
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,'hdnd/freezeControl/mode'),'OPEN');
+    });
+    await assertSucceeds(set(ref(db,legacyPermissions),true));
+  },25000);
+
   it('never lets guests write staging, active pointer, generations or read backup',async()=>{
     const db=guest();
     for(const path of ['candidates/fake','active','generations/gen_seed_initial/items/r1','backups/fake']){
