@@ -46,7 +46,8 @@ const cases:{
 const configFor=(id:ReportConfig['id'])=>DEFAULT_REPORTS.find(row=>row.id===id)!;
 const summary=(rendered:any)=>walk(rendered).filter(node=>
   node.type==='button'&&String(node.props?.className??'').startsWith('report-stage-summary'));
-const chipText=(chip:any)=>walk(chip).find(node=>node.type==='span')?.props?.children;
+const chipText=(chip:any)=>walk(chip).find(node=>node!==chip&&node.type==='span'&&
+  !String(node.props?.className??'').startsWith('report-stage-summary'))?.props?.children;
 const chipCount=(chip:any)=>walk(chip).find(node=>node.type==='strong')?.props?.children;
 
 describe('R-V3-02: report-context summary labels / aria / popup titles',()=>{
