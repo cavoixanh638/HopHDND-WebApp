@@ -87,8 +87,7 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
 
   it('real post-review same-generation write invalidates an approved replacement',async()=>{
     const a=tabA(),b=tabB(),op='l3_midreview_edit_001';
-    const approval=await stageDatasetReplacement(a,actor,next('Bản trước'),'synthetic'.repeat(2)+'_001','synthetic.xlsx');
-    // Stable operationId above is independent of this human-readable case ID.
+    const approval=await stageDatasetReplacement(a,actor,next('Bản trước'),op,'synthetic.xlsx');
     const recordPath=DATASET_V2_PATH+'/generations/gen_l3_initial/items/l3-original-0';
     await assertSucceeds(update(ref(b,recordPath),{note:'Sửa sau duyệt',revision:2}));
     await expect(commitDatasetReplacement(a,actor,approval,confirm(approval.operationId)))
@@ -108,6 +107,14 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     expect(repeat.status).toBe('already-committed');
     expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(2);
   },50000);
+
+  it('reports UNKNOWN if authenticated operation status cannot be read',async()=>{
+    const guest=env.authenticatedContext('l3-guest',{
+      firebase:{sign_in_provider:'anonymous'}}).database() as never;
+    // Permission denial is a real unreadable server response; this does NOT
+    // simulate a dropped ACK or prove network-loss recovery.
+    expect(await resolveDatasetOperation(guest,'l3_unreadable_op_001')).toBe('unknown');
+  });
 
   it('historic COMMITTED operation remains resolvable after subsequent restore',async()=>{
     const db=tabA(),op='l3_history_op_001',restoreOp='l3_restore_op_001';
