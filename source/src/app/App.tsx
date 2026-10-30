@@ -385,6 +385,18 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       firebase!.canEdit(item.recordId,'isDropped'));
   const viewerMayEditText=viewerMayEdit&&workspace.items.some(item=>
     TEXT_FIELDS.some(field=>firebase!.canEdit(item.recordId,field.key)));
+  // Local pages-test diagnostic only; not emitted by the production Pages build.
+  // This examines the REAL App FirebaseController, never fabricates grants.
+  if(import.meta.env.MODE==='pages-test'&&typeof window!=='undefined'&&
+    ['127.0.0.1','localhost'].includes(window.location.hostname)){
+    (window as Window & {__pr95UiV2L3RightsProbe?:()=>unknown}).__pr95UiV2L3RightsProbe=()=>({
+      isAdmin:firebase?.isAdmin,userUid:firebase?.user?.uid,epochReady:firebase?.datasetEpochReady,
+      connected:firebase?.connected,editingLocked:firebase?.editingLocked,
+      editorAuthorized:firebase?.editorAuthorized,freeze:firebase?.freezeControl?.mode,
+      permissions:firebase?.permissions,canEditNote:firebase?.canEdit('demo-0001','note'),
+      source:selectedSource,workspaceCachePending:workspace.cachePending,viewerMayEdit
+    });
+  }
   // Width is independent per tab. The outer page header/navigation always uses the
   // viewport, while only the inner content region follows the selected tab width.
   // Calculate the exact first-frame width synchronously from the saved shared
