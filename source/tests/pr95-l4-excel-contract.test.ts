@@ -116,7 +116,9 @@ describe('PR95 L4: independent A–O business workbook contract',()=>{
     const caseVariant=workbook([{name:'Hồ sơ',rows:[
       HEADINGS,sheetRow('NQ-CODE'),sheetRow('nq-code',2),
     ]}]);
-    expect(()=>parse(caseVariant)).toThrow('dòng 3, cột A');
+    const variants=parse(caseVariant).items;
+    expect(variants).toHaveLength(2);
+    expect(new Set(variants.map(item=>item.recordId)).size).toBe(2);
     for(const code of [' NQ001','NQ001 ','\tNQ001']){
       expect(()=>parse(one(sheetRow(code)))).toThrow('dòng 2, cột A: mã có khoảng trắng');
     }
