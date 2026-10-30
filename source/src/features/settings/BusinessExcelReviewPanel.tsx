@@ -3,6 +3,7 @@ import type {Item} from '../../../shared/types';
 import {createBusinessExcelTemplate,inspectBusinessExcel,parseBusinessExcel,
   type BusinessExcelInspection,type BusinessExcelResult} from '../../data/business-excel';
 import {previewDatasetReplacement,type ReplacementPreview} from '../../data/dataset-replacement-preview';
+import {datasetPreviewFingerprint} from '../../data/dataset-preview-fingerprint';
 
 /** Step A only: no Firebase write is available in this component. */
 export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
@@ -13,7 +14,7 @@ export function BusinessExcelReviewPanel({current}:{current:readonly Item[]}){
   const [error,setError]=useState('');
   // A snapshot may change via Firebase while an administrator reviews a file.
   // A previously rendered comparison must never be mistaken for current data.
-  const currentSnapshot=JSON.stringify(current);
+  const currentSnapshot=datasetPreviewFingerprint(current);
   const [reviewedSnapshot,setReviewedSnapshot]=useState('');
   const download=()=>{
     const blob=new Blob([new Uint8Array(createBusinessExcelTemplate())],
