@@ -226,6 +226,56 @@ try {
   await click('.list-active-filter-clear-all');
   await expectInventory(0,27,'clear all without changing row data');
 
+  // A real admin's source-header filter must remain effective after the
+  // selected progress field is physically hidden in the column manager.
+  // This is a layout DRAFT in RAM, never persisted or published.
+  await click('.pr95-preview-gear');
+  await waitFor("document.querySelector('.pr95-preview-gear-menu')",'customize navigation menu');
+  await evaluate(`(()=>{
+    const target=[...document.querySelectorAll('.pr95-preview-gear-menu button')]
+      .find(x=>x.textContent.includes('Tùy chỉnh cột và hiển thị'));
+    if(!target)throw Error('Customizing route missing');
+    target.click();
+  })()`);
+  await waitFor("document.querySelector('.column-manager-grid') && document.querySelector('.item-column-filter-row')",
+    'real ItemColumnPanel and source filter header in RAM');
+  const hiddenFilterSelector=await evaluate(`(()=>{
+    const options=['select[aria-label="Lọc Thành ủy"]',
+      'select[aria-label="Tìm kiếm cột Tiến độ xin ý kiến Thành ủy"]'];
+    return options.find(selector=>document.querySelector(selector))??null;
+  })()`);
+  assert(hiddenFilterSelector,'progressParty source selector absent');
+  const hasOption=await evaluate(`(()=>{
+    const select=document.querySelector(${JSON.stringify(hiddenFilterSelector)});
+    return [...select.options].some(opt=>opt.value==='Sở chưa trình');
+  })()`);
+  assert(hasOption,'canonical Thành ủy filter choice unavailable');
+  await setSelect(hiddenFilterSelector,'Sở chưa trình');
+  await waitFor("document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length===4",
+    '4 manually enumerated Party source IDs before hide');
+  const beforeHide=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))')]
+    .map(row=>row.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()??'')`);
+  await screenshot('pr95-v6-l4-admin-source-filter-before-hide.png');
+  await click('input[aria-label="Hiện cột Tiến độ xin ý kiến Thành ủy"]');
+  await waitFor("document.querySelector('input[aria-label=\"Hiện cột Tiến độ xin ý kiến Thành ủy\"]')?.checked===false",
+    'hide progressParty in draft layout');
+  await waitFor("document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length===4",
+    'hidden source filter remains applied after physical column removed');
+  const afterHide=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))')]
+    .map(row=>row.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()??'')`);
+  assert(JSON.stringify(beforeHide)===JSON.stringify(afterHide)&&beforeHide.length===4,
+    'hidden-column filter changed actual IDs '+JSON.stringify({beforeHide,afterHide}));
+  await screenshot('pr95-v6-l4-admin-source-filter-after-hide.png');
+  await evaluate(`(()=>{
+    const target=[...document.querySelectorAll('.pr95-preview-nav button')]
+      .find(x=>x.textContent.includes('Danh sách'));
+    if(!target)throw Error('Return to main List missing');
+    target.click();
+  })()`);
+  await waitFor("document.querySelector('.list-active-filters') && !document.querySelector('.column-manager-grid')",
+    'return to ordinary main List without saving layout');
+  await expectInventory(0,27,'normal list after unsaved hidden-column draft');
+
   // Guest switch: no admin-only leak or stale filter inventory after remount.
   await click('.pr95-preview-gear');
   await waitFor("document.querySelector('.pr95-preview-gear-menu')",'admin gear opened');
@@ -268,7 +318,8 @@ try {
     baselineRows:27,searchUnique:1,sixConditions:all.count,
     otherClosedCount:all.other,zeroResults:true,independentClear:true,
     escEditorSafe:true,keyboardSingleRemove:true,guestRole:true,
-    mobileWidth:390,mobileChips:geometry.chips.length,productionRequests:0,
+    mobileWidth:390,mobileChips:geometry.chips.length,hiddenColumnIds:beforeHide.length,
+    hiddenFilterPreserved:JSON.stringify(beforeHide)===JSON.stringify(afterHide),productionRequests:0,
     mobileGeometry:geometry
   }));
 }finally{
