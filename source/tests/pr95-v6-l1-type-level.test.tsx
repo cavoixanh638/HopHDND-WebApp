@@ -63,7 +63,8 @@ describe('UI V6 L1 party-level brackets',()=>{
     const html=renderToStaticMarkup(<CompactGroupedValue item={sample}
       pair={partyPair} tone={()=>undefined} editable={()=>false}
       field={key=>String(sample[key]??'')}/>);
-    expect(html).toContain('Thành ủy (');
+    const visibleText=html.replace(/<[^>]*>/g,'').replace(/<!--\\s*-->/g,'');
+    expect(visibleText).toContain('Thành ủy ('+sample.partyLevel+')');
     expect(html).toContain(sample.partyLevel);
     expect(html).toContain('Không phải trình');
     expect(html).toContain('data-progress-tone="neutral"');
