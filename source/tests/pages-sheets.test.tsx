@@ -20,6 +20,7 @@ vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('r
 vi.mock('../src/state/use-shared-config',()=>({useSharedConfig:h.common}));
 vi.mock('../src/data/google-bridge',()=>({isGoogleHost:()=>false,googleCall:vi.fn()}));
 import {App} from '../src/app/App';
+import {SummaryDiagnosticVisibilityProvider} from '../src/features/items/summary-diagnostic-visibility';
 import {ItemList} from '../src/features/items/ItemList';
 import {ReportSettings} from '../src/features/settings/ReportSettings';
 import {CatalogSettings} from '../src/features/catalogs/CatalogSettings';
@@ -31,7 +32,14 @@ function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&type
 const payload=(note='Nguồn Sheets')=>({status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[{c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]},{c:['NQ01',1,'Nội dung giả','Sở giả','QPPL','','','','','CV giả','Phòng giả','LĐ VP','LĐ UBND','',note,false].map(v=>({v}))}]}});
 const settle=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 let scripts:any[],firebase:FirebaseController;
-function render(){h.begin();const tree=App({firebase,TransferPanel:ExcelTransferPanel});h.flush();return tree;}
+function render(){
+  h.begin();const tree=App({firebase,TransferPanel:ExcelTransferPanel});h.flush();
+  // V5 L2 adds only a transparent React Context provider, not a DOM wrapper.
+  // Unwrap it in this hand-built element-tree harness so the ORIGINAL frame,
+  // width and permission assertions still target the exact same root <div>.
+  expect(tree.type).toBe(SummaryDiagnosticVisibilityProvider);
+  return tree.props.children;
+}
 function grantAdmin(){
   firebase.isAdmin=true;
   firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
