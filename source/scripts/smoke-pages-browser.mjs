@@ -997,18 +997,34 @@ try{
   console.log('LIST_VIEWPORT_FIT_PASS',JSON.stringify(fit));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
-    const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect();
-    return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width};
+    const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect(),
+      active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+    return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
+      bottom:g.bottom,activeHeight:active?.height??0,
+      gapBelowFilters:active?g.top-active.bottom:null};
   })()`);
+  // V6 L4: an active predicate creates a *real* filter-chip row. Its height
+  // pushes the table down while the viewport's bottom remains stationary.
+  // Assert that the ENTIRE movement is explained by the visible filter bar.
   const assertStable=async(label)=>{
     const result=await evaluate(`(()=>{
       const g=document.querySelector('.item-table-scroll').getBoundingClientRect(),
-        h=document.querySelector('.item-data-region').getBoundingClientRect();
-      return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width};
+        h=document.querySelector('.item-data-region').getBoundingClientRect(),
+        active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+      return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
+        bottom:g.bottom,activeHeight:active?.height??0,
+        gapBelowFilters:active?g.top-active.bottom:null};
     })()`);
-    if(Math.abs(result.top-tablePosition.top)>2||Math.abs(result.left-tablePosition.left)>2||
-       Math.abs(result.height-tablePosition.height)>2||Math.abs(result.width-tablePosition.width)>2)
-      throw Error('List grid shifted while '+label+': '+JSON.stringify({tablePosition,result}));
+    const filterGrowth=result.activeHeight-tablePosition.activeHeight;
+    if(Math.abs(result.top-tablePosition.top-filterGrowth)>2||
+       Math.abs(result.left-tablePosition.left)>2||
+       Math.abs(result.height-tablePosition.height+filterGrowth)>2||
+       Math.abs(result.bottom-tablePosition.bottom)>2||
+       Math.abs(result.width-tablePosition.width)>2||
+       (result.gapBelowFilters!==null&&tablePosition.gapBelowFilters!==null&&
+        Math.abs(result.gapBelowFilters-tablePosition.gapBelowFilters)>2))
+      throw Error('List grid shifted beyond active-filter height while '+label+': '+
+        JSON.stringify({tablePosition,result,filterGrowth}));
   };
 
   const started=await evaluate(`(()=>{
@@ -1097,8 +1113,10 @@ try{
     return true;
   })()`);
   if(!v2Department)throw Error('V2 department dropdown missing');
-  await eventually("document.querySelector('.list-filter-count')?.textContent.includes('kết quả')",
-    'V2 department count did not render');
+  // V6 L4 replaces the obsolete bare count with a scoped N / prefilter
+  // denominator and a specifically removable, selected Sở/ngành chip.
+  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.includes(' / ')",
+    'V6 department chip and before-filter denominator did not render');
   // Escape inside dropdown keeps its native behavior and does not erase filters.
   await evaluate(`(()=>{
     const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
@@ -3592,12 +3610,16 @@ try{
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
     total:Number(document.querySelector('.item-summary-total-count').textContent),
-    result:document.querySelector('.item-summary-active-filter')?.textContent,
+    result:document.querySelector('.list-active-filter-results')?.textContent,
+    selectedSummary:document.querySelector('.list-active-filters [data-active-filter-id=summary]')?.textContent,
     totalLabelBeforeCount:document.querySelector('.item-summary-total-lead h3').getBoundingClientRect().right<=
       document.querySelector('.item-summary-total-count').getBoundingClientRect().left,
     bucketHeight:document.querySelector('.item-summary-bucket').getBoundingClientRect().height
   })`);
-  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2/7')||
+  // Seven active-summary rows, eight source rows: the unified active bar counts
+  // all source rows before filters, unlike the historical B00 active-only card.
+  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 8')||
+      !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
   // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
@@ -3611,7 +3633,8 @@ try{
     const grid=document.querySelector('.item-summary-grid');
     const buttons=[...grid.querySelectorAll('.item-summary-bucket')];
     const labels=buttons.map(b=>b.querySelector('span'));
-    const active=grid.querySelector('.item-summary-active-filter');
+    // V6 L4: selected stage lives in the single filter bar outside the cards.
+    const active=document.querySelector('.list-active-filters [data-active-filter-id=summary]');
     return {width:window.innerWidth,
       cardOverflow:grid.scrollWidth>grid.clientWidth+1,
       labelOverflow:labels.some(l=>l.scrollWidth>l.clientWidth+1),
@@ -3642,7 +3665,7 @@ try{
   await evaluate("document.querySelector('[data-summary-report=build][data-summary-stage=completed]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&!!document.querySelector('.item-data-table td.empty')",
     'Zero-count summary condition must show an empty list');
-  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
     'Clear summary filter failed');
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=source]').focus()");
@@ -3654,11 +3677,11 @@ try{
   // without removing any column filter; reselect for the next combined case.
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
-  await eventually("!document.querySelector('.item-summary-active-filter')",
+  await eventually("!document.querySelector('.list-active-filters [data-active-filter-id=summary]')",
     'Space must deactivate the selected summary button');
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
-  await eventually("!!document.querySelector('.item-summary-active-filter')",
+  await eventually("!!document.querySelector('.list-active-filters [data-active-filter-id=summary]')",
     'Space must reactivate the selected summary button');
   console.log('SUMMARY_QUICK_FILTER_TOGGLE_SWITCH_ZERO_KEYBOARD_PASS',JSON.stringify(quickSummary));
 
@@ -3672,8 +3695,8 @@ try{
   await send('Input.insertText',{text:'NQ01'});
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
-  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
-  await eventually(`!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
+  await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
+  await eventually(`!document.querySelector('.list-active-filters [data-active-filter-id=summary]')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
