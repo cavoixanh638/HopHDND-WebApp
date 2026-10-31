@@ -52,7 +52,8 @@ describe('UI V4 L1 popup real editor callbacks with legacy source',()=>{
     expect(readOnly).toHaveLength(1);
     // Grouped read-only spans are resolved field-by-field against raw source.
     const staticText=content(CompactGroupedValue(readOnly[0].props as Parameters<typeof CompactGroupedValue>[0]));
-    for(const shown of ['BCH','VP đang xử lý','Đã trình, chờ QĐ','Hoàn thành'])
+    // The default popup hides partyLevel; its independent projection is covered by the List fixture.
+    for(const shown of ['VP đang xử lý','Đã trình, chờ QĐ','Hoàn thành'])
       expect(staticText).toContain(shown);
     expect(onUpdate).not.toHaveBeenCalled();
     const edit=nodes(tree).find(n=>n.type==='button'&&content(n)==='Chỉnh sửa nháp');
