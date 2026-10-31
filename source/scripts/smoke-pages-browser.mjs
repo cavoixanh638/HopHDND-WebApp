@@ -3619,16 +3619,24 @@ try{
   // The separate real-App Emulator workflow still owns server rights E2E.
   const v3PopupUrl='http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?full=1';
   await send('Page.navigate',{url:v3PopupUrl});
-  await eventually("document.querySelector('.pr95-full-preview[data-role=admin]')!==null",
-    'R-V3-03 full QA component not mounted');
+  // L5 full QA defaults to guest. Do NOT restore the obsolete role selector.
+  // Exercise the actual V3 gear controls for synthetic login/logout.
+  await eventually("document.querySelector('.pr95-full-preview[data-role=guest] .pr95-preview-gear')!==null",
+    'R-V3-03 L5 guest-default full QA component not mounted');
   const setPopupRole=async role=>{
-    const changed=await evaluate("(()=>{const el=document.querySelector('#pr95-role');if(!el)return false;el.value="+JSON.stringify(role)+";el.dispatchEvent(new Event('change',{bubbles:true}));return true;})()");
-    if(!changed)throw Error('R-V3-03 QA role control missing');
+    const current=await evaluate("document.querySelector('.pr95-full-preview')?.dataset.role");
+    if(current===role)return;
+    if(!['guest','admin'].includes(role))throw Error('R-V3-03 invalid synthetic role');
+    const label=role==='admin'?'Đăng nhập quản trị (mô phỏng)':'Đăng xuất mô phỏng';
+    const changed=await evaluate("(()=>{const gear=document.querySelector('.pr95-preview-gear');if(!gear)return false;if(!document.querySelector('.pr95-preview-gear-menu'))gear.click();const label="+JSON.stringify(label)+";const button=[...document.querySelectorAll('.pr95-preview-gear-menu button')].find(b=>b.textContent.trim()===label);if(!button)return false;button.click();return true;})()");
+    if(!changed)throw Error('R-V3-03 role change through V3 gear unavailable: '+label);
     await eventually("document.querySelector('.pr95-full-preview')?.dataset.role==="+JSON.stringify(role),
-      'R-V3-03 role transition missing');
+      'R-V3-03 gear role transition missing');
+    if(await evaluate("!!document.querySelector('#pr95-role,.pr95-preview-role')"))
+      throw Error('R-V3-03 obsolete role toolbar was restored');
   };
   const openSourceCouncil=async()=>{
-    const navigated=await evaluate("(()=>{const b=[...document.querySelectorAll('.pr95-preview-nav button')].find(x=>x.textContent.trim()==='Báo cáo tổng hợp');if(!b)return false;b.click();return true;})()");
+    const navigated=await evaluate("(()=>{const b=[...document.querySelectorAll('.pr95-preview-nav button')].find(x=>x.querySelector('.section-card-title')?.textContent.trim()==='Báo cáo tổng hợp');if(!b)return false;b.click();return true;})()");
     if(!navigated)throw Error('R-V3-03 full report navigation missing');
     await eventually("document.querySelectorAll('.pr95-full-preview .report-surface').length===5",
       'R-V3-03 five real reports not mounted');
@@ -3661,11 +3669,13 @@ try{
   await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
     'R-V3-03 actual Council choices did not open');
   const councilChoices=await evaluate("([...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].map(x=>({label:x.textContent.trim(),selected:x.getAttribute('aria-selected')==='true'})))");
-  if(!councilChoices.some(x=>x.label==='Hoàn thành')||
-      councilChoices.some(x=>x.label==='Đã trình HĐND thành phố'||x.label==='Bước tiếp theo')||
+  // Integrated L2 clear-policy + L3 authoritative catalog: *exactly* these
+  // three Council statuses, no empty/alias/legacy choice (unless raw is current).
+  const canonicalCouncilChoices=['Sở chưa trình','VP đang xử lý','Hoàn thành'];
+  if(JSON.stringify(councilChoices.map(x=>x.label))!==JSON.stringify(canonicalCouncilChoices)||
       councilChoices.filter(x=>x.selected).length!==1||
       !councilChoices.some(x=>x.label==='Sở chưa trình'&&x.selected))
-    throw Error('R-V3-03 Council choices incorrect: '+JSON.stringify(councilChoices));
+    throw Error('R-V3-03 integrated canonical Council options not EXACT: '+JSON.stringify(councilChoices));
   const v3ChoiceShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-pr95-v3-l1-popup-council-choices.png',Buffer.from(v3ChoiceShot.data,'base64'));
   const clicked=await evaluate("(()=>{const b=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent.trim()==='Hoàn thành');if(!b)return false;b.click();return true;})()");
