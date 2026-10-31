@@ -3,6 +3,7 @@
  * and real reporting domain. Never initialize Firebase/Google APIs here.
  */
 import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
+import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from './ui-reference-codes';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
@@ -71,6 +72,8 @@ export function Pr95FullPreview(){
   const [role,setRole]=useState<Role>(()=>typeof window!=='undefined'&&
     new URLSearchParams(window.location.search).get('preview-role')==='admin'?'admin':'guest');
   const [menuOpen,setMenuOpen]=useState(false);
+  const referenceRoot=useRef<HTMLDivElement|null>(null);
+  const [referenceCodesOn,setReferenceCodesOn]=useState(false);
   const gearZone=useRef<HTMLDivElement|null>(null);
   const [sessionScope]=useState(()=>Math.random().toString(36).slice(2));
   const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(null);
@@ -120,6 +123,7 @@ export function Pr95FullPreview(){
   },[menuOpen]);
   const switchRole=(next:Role)=>{
     setMenuOpen(false);setDrill(null);setRole(next);
+    if(next!=='admin')setReferenceCodesOn(false);
     if(next==='guest')setPage(previous=>previewCanOpenPage('guest',previous)?previous:'items');
     setNotice('Đã chuyển sang '+(next==='admin'?'quản trị':'khách')+
       ' MÔ PHỎNG — không đăng nhập Google/Firebase; không cấp quyền thật.');
@@ -152,20 +156,22 @@ export function Pr95FullPreview(){
     const seed=createDemoItems(27);setItems(seed);setConfirmedItems(seed);
     setPermissions(permissionsInitial());setCatalogOverride(null);
     setDirtyIds(new Set());setLayout(baseLayout());setPalette(defaultStatusPaletteStore());
-    setReportVariant('classic');setDrill(null);setMenuOpen(false);
+    setReportVariant('classic');setDrill(null);setMenuOpen(false);setReferenceCodesOn(false);
     setGuestEditCount(0);setRevision(v=>v+1);
     setNotice('Đã đặt lại hồ sơ và quyền mô phỏng trong bộ nhớ.');
   };
-  return <div className="app-shell imperial-sky-theme pr95-full-preview"
+  return <div ref={referenceRoot} className="app-shell imperial-sky-theme pr95-full-preview"
     data-qa="compact-real-itemlist" data-preview="pr95-l4-full" data-role={role}
+    data-ui-reference-active={admin&&referenceCodesOn?'true':undefined}
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
+    <UiReferenceOverlay enabled={admin&&referenceCodesOn} rootRef={referenceRoot}/>
     <header className="pr95-preview-header">
       <div className="pr95-preview-product" aria-label="HopHDND bản xem thử">
         HopHDND <span>UI V3 · DEMO</span>
       </div>
       <nav className="nav-tabs primary-section-switcher pr95-preview-nav"
         aria-label="Hai phần dữ liệu chính">
-        {nav.map(entry=><button key={entry.key} type="button"
+        {nav.map(entry=><button key={entry.key} data-ui-reference-nav={entry.key} type="button"
           className={'primary-section-card'+(page===entry.key?' active':'')}
           aria-current={page===entry.key?'page':undefined}
           onClick={()=>openPage(entry.key)}>
@@ -184,6 +190,15 @@ export function Pr95FullPreview(){
               Không đăng nhập Google · chỉ dữ liệu giả</div>
             {PREVIEW_ADMIN_TOOLS.map(tool=><button key={tool.key} type="button"
               onClick={()=>openPage(tool.key)}>{tool.label}</button>)}
+            <button type="button" className="ui-reference-toggle"
+              aria-pressed={referenceCodesOn}
+              onClick={()=>{setReferenceCodesOn(old=>!old);setMenuOpen(false);}}>
+              Hiện mã khu vực
+            </button>
+            {referenceCodesOn&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
+              {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
+              Trỏ vào ô để xem mã và ID đang hiển thị (dữ liệu giả).
+            </p>}
             <div className="pr95-preview-menu-footer">
               <button type="button" onClick={()=>switchRole('guest')}>Đăng xuất mô phỏng</button>
             </div>
