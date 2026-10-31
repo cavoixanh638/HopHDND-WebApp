@@ -28,8 +28,6 @@ const draw=(pair:typeof doc,grants:TextField[],item:Item=fixture)=>
     item,pair,tone:(k:TextField)=>k==='progressBuild'?'office':'neutral',
     editable:(k:TextField)=>grants.includes(k),
     field:(k:TextField)=>grants.includes(k)?
-      k==='type'?createElement('input',{className:'custom-cell-input',
-        'aria-label':'NQ02: type',defaultValue:String(item[k]??'')}):
       createElement(CellPicker,{field:k,recordId:item.recordId,
         label:'NQ02: '+k,value:String(item[k]??''),options:[String(item[k]??'')],
         onChange:()=>{}}):String(item[k]??''),
@@ -44,7 +42,7 @@ describe('PR95 UI V5 L3 — layout-only contract',()=>{
       expect(html).toContain('class="compact-document-badge"');
       expect(html).toContain('data-kind="QPPL"');
     }
-    expect(edit).toMatch(/compact-document-badge[^>]*>[\s\S]*?input[^>]*custom-cell-input/);
+    expect(edit).toMatch(/compact-document-badge[^>]*>[\s\S]*?button[^>]*cell-picker-trigger/);
     expect(view).not.toContain('cell-picker-trigger');
     expect(css).toContain('.compact-document-badge :is(button.cell-picker-trigger,input.custom-cell-input)');
     expect(css).toContain('border:0!important');
