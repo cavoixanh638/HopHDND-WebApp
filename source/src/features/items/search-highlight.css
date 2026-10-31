@@ -35,6 +35,15 @@
   word-break:normal;
   overflow-wrap:inherit;
 }
+/* Only an affected short numeric token is grouped: "25" inside "254" may
+   not create a break between mark and the unmarked "4". This is still an
+   ordinary INLINE span, not another flex/grid layout or a padded chip. */
+.item-search-flow .item-search-number {
+  display:inline;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+}
 /* A short number/ID hit (e.g. 254) must remain a single run. Long/multiple
    word matches keep normal line breaking inside the same text context. */
 .item-search-flow mark.item-search-match-atomic {
