@@ -277,7 +277,12 @@ try {
   const beforeSearch=await geometry(specialist,'searchable-before-filter');
   await evaluate('document.querySelector(".cell-picker-popover input[type=search]")?.focus()');
   await send('Input.insertText',{text:'khong-co-ket-qua-v5'});
-  await waitFor('!!document.querySelector(".cell-picker-popover .cell-picker-empty")','empty filtered choice');
+  // Search preserves a selected legacy/current choice plus the optional
+  // clear option even when there are zero matching catalogue entries.
+  await waitFor('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
+    'return p?.querySelector("input[type=search]")?.value==="khong-co-ket-qua-v5"&&'+
+    'p.querySelectorAll("[role=option]").length===2;})()',
+    'filtered choices retain only clear + original value');
   await sleep(160);
   const afterSearch=await geometry(specialist,'searchable-after-filter');
   assert(afterSearch.menu.height<beforeSearch.menu.height,
