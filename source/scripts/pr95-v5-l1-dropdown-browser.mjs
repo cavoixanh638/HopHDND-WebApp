@@ -193,6 +193,14 @@ try {
   // depend on re-playing a click or silently scrolling the target underneath.
   await evaluate('(()=>{const b='+leader+';b.scrollIntoView({block:"nearest",inline:"nearest"});})()');
   await actual(progress,true);
+  await sleep(250);
+  console.log('PR95_V5_L1_OPEN_DIAGNOSTIC '+JSON.stringify(await evaluate('(()=>{const b='+progress+';'+
+    'const p=document.querySelector(".cell-picker-popover");return {button:{expanded:b?.getAttribute("aria-expanded"),'+
+    'busy:b?.getAttribute("aria-busy"),disabled:b?.disabled,connected:b?.isConnected},'+
+    'popover:!!p,shown:p?.matches(":popover-open"),label:p?.getAttribute("aria-label"),'+
+    'focus:document.activeElement?.outerHTML?.slice(0,250),'+
+    'notes:[...document.querySelectorAll(".cell-picker-feedback,.error-text")].map(x=>x.textContent.trim()),'+
+    'table:document.querySelector(".item-table-scroll")?.getBoundingClientRect().toJSON()};})()')));
   await openPop('Tiến độ trình HĐND xây dựng NQ');
   const a=await geometry(progress,'main-status-before-handoff');
   await screenshot('pr95-v5-l1-main-status-open.png');
