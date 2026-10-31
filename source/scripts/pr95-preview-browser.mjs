@@ -432,6 +432,11 @@ try{
   await clickText('Phân quyền chỉnh sửa');
   await waitFor('document.querySelector(".inline-permission-table")','real permissions grid');
   await selectValue('select[aria-label*="Ghi chú"]','allow');
+  // Real React setCell() is batched after the native select change. Wait until
+  // the original mandatory row/individual-cell risk acknowledgment is actually
+  // mounted. The test still MUST check it and click it; no permission bypass.
+  await waitFor('document.querySelector(".permission-risk-confirm input[type=checkbox]")',
+    'per-cell permission risk acknowledgment after React commit');
   await interact('const cb=document.querySelector("input[aria-label=\\"Xác nhận rủi ro quyền theo dòng/ô\\"]");if(!cb)throw Error("Missing risk acknowledgement");cb.click()');
   await clickText('Lưu quyền chỉnh sửa');
   await waitFor('document.querySelector(".permission-save-status")?.textContent.includes("đã được lưu")','RAM grant saved');
