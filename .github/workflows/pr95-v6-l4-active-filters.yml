@@ -1,0 +1,53 @@
+name: PR95 UI V6 L4 — visible applied filters (NO PUBLISH)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pr95-v6-l4-active-filters.yml'
+      - 'source/src/features/items/ItemList.tsx'
+      - 'source/src/features/items/ItemSummaryCards.tsx'
+      - 'source/src/features/items/list-filter-toolbar.css'
+      - 'source/src/features/items/ActiveListFilters.tsx'
+      - 'source/src/features/items/pr95-v6-l4-active-filters.ts'
+      - 'source/tests/pr95-v6-l4-active-filters.test.tsx'
+      - 'source/scripts/pr95-v6-l4-browser.mjs'
+      - 'source/scripts/pr95-v3-l4-summary-browser.mjs'
+      - 'source/scripts/pr95-v5-l2-summary-preview-browser.mjs'
+      - 'source/scripts/smoke-pages-browser.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  active-filters:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install locked Node dependencies
+        working-directory: source
+        run: npm ci
+      - name: Full application TypeScript typecheck
+        working-directory: source
+        run: npm run typecheck
+      - name: Independent inventory / exact ID / React SSR / HC BC regression tests
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-v6-l4-active-filters.test.tsx tests/pr95-v5-l4-hc-bc-build.test.ts tests/pr95-l5-report-filter-parity.test.ts tests/reporting.test.ts
+      - name: Build real isolated synthetic Vite UI
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chromium interactive active-filter regression (27 demo records, no production)
+        working-directory: source
+        run: node scripts/pr95-v6-l4-browser.mjs
+      - name: Upload actual Chrome screenshots and QA proof (NO deploy)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v6-l4-active-filter-chrome
+          path: source/pr95-v6-l4-*.png
+          if-no-files-found: warn
+          retention-days: 14
