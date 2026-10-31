@@ -48,6 +48,7 @@ import {DETAIL_FIELDS,SEARCH_FIELDS,newToolbarState,filterToolbarRows,filterByCh
 import './list-filter-toolbar.css';
 import {useElementWidth} from '../../components/useElementWidth';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
+import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 
@@ -202,6 +203,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Any Firebase viewer (including the signed-in admin) may draft explicitly
   // granted cells in the ordinary list. Non-Firebase views stay read-only;
   // the per-cell checker still enforces the live permission and lock state.
+  const latestItems=useRef(items);
+  latestItems.current=items;
+  const guardBuildUpdate=(id:string,changes:Changes):void=>{
+    const latest=latestItems.current.find(entry=>entry.recordId===id);
+    if(latest&&rejectsBuildChange(latest,changes))return;
+    onUpdate(id,changes);
+  };
+  const buildLockedHint=(item:Item)=><span className="business-build-locked"
+    tabIndex={0} data-quick-tooltip={buildLockReason(item)??undefined}
+    aria-label={'Tiến độ xây dựng NQ: Không phải trình. '+buildLockReason(item)}>
+    Không phải trình
+  </span>;
   const canEdit = canEditDraft && !permissionMode && (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
   const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
@@ -239,10 +252,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const result=new Map<string,Record<string,string>>();
     for(const item of items){
       const fields:Record<string,string>={};
-      for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(statusFilterText(key,filterValue(item,key)));
+      for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(key==='progressBuild'?effectiveBuildStatus(item):statusFilterText(key,filterValue(item,key)));
       for(const pair of compactPairs)
-        fields['merged:'+pair.anchor]=normalizeSearch([compactFilterText(item,pair.anchor,compactPairs),
-          ...pair.memberFields.map(key=>statusDisplayValue(key,String(item[key as TextField]??'')))].join(' '));
+        fields['merged:'+pair.anchor]=normalizeSearch([compactFilterText(projectedBuildDisplayItem(item),pair.anchor,compactPairs),
+          ...pair.memberFields.map(key=>statusDisplayValue(key,effectiveItemField(item,key)))].join(' '));
       for(const column of activeLayout.columns)
         if(column.origin==='custom')
           fields[column.key]=normalizeSearch(column.values?.[customRowKey(item)]??'');
@@ -288,7 +301,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       if(key==='*')return activeLayout.columns.filter(col=>col.origin==='custom')
         .map(col=>col.values?.[customRowKey(item)]??'').join(' ')+' '+
         ['partyLevel','progressParty','progressBuild','progressCouncil']
-          .map(key=>statusDisplayValue(key,String(item[key as TextField]??''))).join(' ');
+          .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
     }),[columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts]);
@@ -456,17 +469,19 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
   const editableField=(item:Item,field:TextField)=>
-    canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,field));
+    canEdit&&!locked&&!(field==='progressBuild'&&buildLocked(item))&&
+      (!canEditCell||canEditCell(item.recordId,field));
   /** Source cells keep field-level permission and history when combined visually. */
   const compactField=(item:Item,field:TextField)=>{
     const editable=editableField(item,field);
     const rawValue=String(item[field]??'');
-    const original=statusReadOnlyValue(field,rawValue)||'—';
+    const original=statusReadOnlyValue(field,effectiveItemField(item,field))||'—';
     const label=TEXT_FIELDS.find(entry=>entry.key===field)?.label??field;
     const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
     const shortLeader=compactOn&&compactDisplay.shortLeaders&&
       (field==='vpLeader'||field==='ubndLeader');
     const shortPerson=compactOn&&compactDisplay.shortSpecialist&&field==='specialist';
+    if(field==='progressBuild'&&buildLocked(item))return <span className="compact-part">{buildLockedHint(item)}</span>;
     return <span className={'compact-part'+(editable?' compact-part-editable':'')}
       aria-label={field==='specialist'&&!editable?item.specialist:undefined}>
       {editable
@@ -480,7 +495,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={statusDisplayValue(field,rawValue)}
               displayValue={isStatusDisplayField(field)?statusDisplayValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
-              onChange={value=>{const next=statusEditSelection(field,rawValue,value);if(next!==null)onUpdate(item.recordId,{[field]:next});}}/>
+              onChange={value=>{const next=statusEditSelection(field,rawValue,value);if(next!==null)guardBuildUpdate(item.recordId,{[field]:next});}}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/>:original}
       {onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
@@ -688,10 +703,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={undefined}>
-            <CompactGroupedValue item={item} pair={pair}
+            <CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
-              tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
-              highlight={field=>cellHighlightStyle(item[field],field,activeLayout.cellHighlights)}
+              tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
+              highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,activeLayout.cellHighlights)}
               cvRoomInline={compactDisplay.cvRoomInline}/>
           </td>;
         }
@@ -723,12 +738,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(column.key==='partyMeeting'||column.key==='examined')
           return <td key={column.key} data-col-key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        const writable=canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,key));
+        const writable=editableField(item,key);
         return <td key={column.key} data-col-key={column.key}
-          data-progress-tone={statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)??undefined}
+          data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(item[key],column.key,activeLayout.cellHighlights)}>{canEdit&&(!canEditCell||canEditCell(item.recordId,key))?key==='content'?<button className="content-button" onClick={()=>openContentForEdit(item,'content')} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>:key==='note'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="note" value={item.note} highlightQuery={columnFilters.note}
+          style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='progressBuild'&&buildLocked(item)?buildLockedHint(item):writable?key==='content'?<button className="content-button" onClick={()=>openContentForEdit(item,'content')} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>:key==='note'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="note" value={item.note} highlightQuery={columnFilters.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{note:value});return true;
@@ -745,13 +760,13 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}
-    onChange={value=>{const next=statusEditSelection(key,item[key],value);if(next!==null)onUpdate(item.recordId,{[key]:next});}}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
+    onChange={value=>{const next=statusEditSelection(key,item[key],value);if(next!==null)guardBuildUpdate(item.recordId,{[key]:next});}}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
         ?<span title={item[key]} aria-label={item[key]}>{abbreviateLeaderName(item[key])||'—'}</span>
-      :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
-        ?<span className="workflow-status-value"><SearchHighlight value={statusReadOnlyValue(key,item[key])} query={columnFilters[key]}/></span>
-      :<SearchHighlight value={statusReadOnlyValue(key,item[key])||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
+      :statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)
+        ?<span className="workflow-status-value"><SearchHighlight value={statusReadOnlyValue(key,effectiveItemField(item,key))} query={columnFilters[key]}/></span>
+      :<SearchHighlight value={statusReadOnlyValue(key,effectiveItemField(item,key))||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
