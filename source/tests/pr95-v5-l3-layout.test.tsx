@@ -69,9 +69,13 @@ describe('PR95 UI V5 L3 — layout-only contract',()=>{
     }
   });
   it('retains one framed row, caret rail, rounded edit value and internal narrow scrolling',()=>{
-    expect(css).toContain('min-width:290px');
+    // UI6-R01 replaces the obsolete 160px label track. Shared intrinsic
+    // caption sizing + subgrid ensure no label can overlay a state cell.
+    expect(css).toContain('grid-template-columns:max-content minmax(166px,1fr)');
+    expect(css).toContain('grid-column:1 / -1');
+    expect(css).toContain('grid-template-columns:subgrid');
+    expect(css).toContain('column-gap:8px');
     expect(css).toContain('overflow-x:auto');
-    expect(css).toContain('grid-template-columns:160px minmax(0,1fr)');
     expect(css).toContain('border-radius:7px!important');
     expect(css).toContain('border-radius:0 7px 7px 0');
     expect(css).toContain('padding-top:5px');
