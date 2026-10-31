@@ -28,7 +28,7 @@ const props={
 const render=(enabled?:boolean)=>{
   const cards=createElement(ItemSummaryCards,props);
   return renderToStaticMarkup(enabled===undefined?cards:
-    createElement(SummaryDiagnosticVisibilityProvider,{enabled},cards));
+    createElement(SummaryDiagnosticVisibilityProvider,{enabled,children:cards}));
 };
 const summary=summarizeListItems(rows);
 const chipText=(html:string)=>[...html.matchAll(/data-summary-kind="([^"]+)"/g)].map(m=>m[1]);
