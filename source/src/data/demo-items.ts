@@ -6,8 +6,8 @@ const assignments = [
   { department: 'Sở mẫu C', room: 'Phòng mẫu 3', specialist: 'Chuyên viên mẫu C' },
   { department: 'Đơn vị mẫu D', room: 'Phòng mẫu 1', specialist: 'Chuyên viên mẫu D' },
 ];
-const councilStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Hoàn thành'];
-const partyStatuses = ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL'];
+const councilStatuses = ['Sở chưa trình', 'VP đang xử lý', 'Hoàn thành'];
+const partyStatuses = ['Sở chưa trình', 'VP đang xử lý', 'Đã gửi ĐU', 'ĐU gửi TU, chưa họp', 'Đã xin ý kiến, chờ TBKL', 'Đã có TBKL'];
 const contents = {
   nq: [
   'MẪU: Quy định chính sách hỗ trợ phát triển sản xuất nông nghiệp tại địa phương.',
@@ -21,6 +21,10 @@ const contents = {
   ],
 };
 
+/** Synthetic default data uses ONLY the current four official status menus.
+ * Legacy/ambiguous source samples belong in named regression fixtures, not here.
+ * Retain each original ordinal/phase cycle so count, IDs, and filters do not shift.
+ */
 export function createDemoItems(count = 24): Item[] {
   return Array.from({ length: Math.max(0, Math.floor(count)) }, (_, index) => {
     const ordinal = index + 1;
@@ -35,9 +39,9 @@ export function createDemoItems(count = 24): Item[] {
       content: contents[isReport ? 'bc' : 'nq'][Math.floor((ordinal - 1) / (isReport ? 3 : 1)) % (isReport ? contents.bc.length : contents.nq.length)],
       department: assignment.department,
       type: isReport ? 'Báo cáo' : ordinal % 2 ? 'QPPL' : 'HC',
-      partyLevel: ordinal % 5 === 0 ? 'Không phải xin ý kiến' : ['Ban Chấp hành', 'BTV', 'TTTU'][(ordinal - 1) % 3],
-      progressParty: ordinal % 5 === 0 ? 'Không phải xin ý kiến' : partyStatuses[(ordinal - 1) % partyStatuses.length],
-      progressBuild: ['Không phải trình xây dựng NQ', 'Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND, chưa có QĐ', 'Đã có QĐ chấp thuận'][(ordinal - 1) % 4],
+      partyLevel: ordinal % 5 === 0 ? 'Không phải trình' : ['BCH', 'BTV TU', 'TTTU'][(ordinal - 1) % 3],
+      progressParty: ordinal % 5 === 0 ? 'Không phải trình' : partyStatuses[(ordinal - 1) % partyStatuses.length],
+      progressBuild: ['Không phải trình', 'Sở chưa trình', 'VP đang xử lý', 'Đã trình, chờ QĐ', 'Đã có QĐ'][(ordinal - 1) % 4],
       progressCouncil: councilStatuses[(ordinal - 1) % councilStatuses.length],
       specialist: assignment.specialist,
       room: assignment.room,
