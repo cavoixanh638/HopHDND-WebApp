@@ -10,7 +10,7 @@ const hooks=vi.hoisted(()=>{
       return [slots[i],(next:any)=>{slots[i]=typeof next==='function'?next(slots[i]):next;}];},
     memo:(fn:any)=>fn()};
 });
-vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo,useEffect:()=>{}}));
+vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo,useRef:()=>({current:null}),useEffect:()=>{}}));
 import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
 import {CellPicker} from '../src/features/items/CellPicker';
