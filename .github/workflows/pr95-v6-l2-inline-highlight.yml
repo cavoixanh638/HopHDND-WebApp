@@ -23,6 +23,8 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -30,6 +32,8 @@ jobs:
           cache-dependency-path: source/package-lock.json
       - name: Install exact dependencies
         run: npm ci
+      - name: Validate existing highlight skill schema, references and verification commands
+        run: node scripts/pr95-v6-l2-validate-skill.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Search ranges and UI V6 L2 unit regressions

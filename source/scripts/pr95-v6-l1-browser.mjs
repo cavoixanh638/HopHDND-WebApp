@@ -106,6 +106,11 @@ const visit=async(params,width=1440,height=900)=>{
     'windowError:window.__v6L1BootError??null}))()')));
   await waitFor("!!document.querySelector('table.item-data-table tbody tr,table.report-detail-grid tbody tr')",
     'mounted REAL table');
+  const query=new URLSearchParams(params);
+  const evidenceLabel=[query.get('view')??'list',query.get('role')??'admin',
+    ...['highlight','split','narrow'].filter(key=>query.get(key)==='1'),width+'x'+height].join('-');
+  await captureScrollEvidence('pr95-v6-l1-'+evidenceLabel+'-initial-before-scroll.png',
+    query.get('view')==='popup'?'.report-detail-grid':'.item-data-table');
 };
 const testClick=async(js)=>{
   const coords=await evaluate('(()=>{const e='+js+';if(!e)return null;'+
@@ -208,6 +213,7 @@ const assertStageHitTargets=async(rootSelector,label)=>{
   assert(data&&data.length===6&&data.every(x=>x.independentTargets&&x.level.ok&&x.state.ok),
     'UI6-R01 hit regions must remain independent '+label+' '+JSON.stringify(data));
   console.log('UI6_R01_INDEPENDENT_HIT_TARGETS_PASS '+label+' '+JSON.stringify(data));
+  await captureScrollEvidence('pr95-v6-l1-'+label+'-after-field-scroll.png',rootSelector);
   return data;
 };
 const screenshotV6=async(name)=>{
@@ -216,6 +222,48 @@ const screenshotV6=async(name)=>{
   assert(data.length>4000,'invalid png '+name);
   writeFileSync(name,data);
   console.log('PR95_V6_L1_IMAGE '+JSON.stringify({name,bytes:data.length}));
+};
+// Read-only measurements: this helper never calls scrollIntoView, changes a
+// saved width or moves a scrollbar. Initial and reached-after-scroll evidence
+// must not be mistaken for all controls being simultaneously visible.
+const captureScrollEvidence=async(name,rootSelector)=>{
+  const state=await evaluate('('+function inspectInitialScroll(selector){
+    const root=document.querySelector(selector);
+    if(!root)return null;
+    const visibleRect=element=>{
+      if(!element)return null;
+      const r=element.getBoundingClientRect();
+      let left=Math.max(0,r.left),right=Math.min(innerWidth,r.right);
+      let top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
+      for(let ancestor=element.parentElement;ancestor;ancestor=ancestor.parentElement){
+        const css=getComputedStyle(ancestor),a=ancestor.getBoundingClientRect();
+        if(css.overflowX!=='visible'){left=Math.max(left,a.left);right=Math.min(right,a.right);}
+        if(css.overflowY!=='visible'){top=Math.max(top,a.top);bottom=Math.min(bottom,a.bottom);}
+      }
+      const width=Math.max(0,right-left),height=Math.max(0,bottom-top);
+      return {rect:r.toJSON(),visible:{left,top,width,height},
+        fullyVisible:width>=r.width-1&&height>=r.height-1};
+    };
+    const scrollState=element=>element?{
+      className:element.className,scrollLeft:element.scrollLeft,scrollTop:element.scrollTop,
+      clientWidth:element.clientWidth,scrollWidth:element.scrollWidth,
+      clientHeight:element.clientHeight,scrollHeight:element.scrollHeight,
+      overflowX:getComputedStyle(element).overflowX,rect:element.getBoundingClientRect().toJSON()
+    }:null;
+    return {viewport:{width:innerWidth,height:innerHeight},tableRows:root.querySelectorAll('tbody tr').length,
+      documentScroll:{left:document.scrollingElement.scrollLeft,top:document.scrollingElement.scrollTop},
+      tableViewport:scrollState(root.closest('.item-table-scroll,.report-grid-scroll')),
+      stages:[...root.querySelectorAll('.compact-stage-row[data-stage-field=progressParty]')]
+        .slice(0,6).map((row,index)=>({row:index,
+          caption:visibleRect(row.querySelector('.compact-stage-title')),
+          level:visibleRect(row.querySelector('.compact-stage-level')),
+          state:visibleRect(row.querySelector('.compact-stage-state')),
+          innerScroll:scrollState(row.closest('.compact-stages'))}))};
+  }.toString()+')('+JSON.stringify(rootSelector)+')');
+  assert(state&&state.tableRows>0,'missing scroll evidence '+name);
+  console.log('PR95_V6_L1_SCROLL_VISIBILITY_EVIDENCE '+JSON.stringify({name,...state,
+    interpretation:'Each visible rectangle belongs to this screenshot only; later scroll access is not simultaneous visibility.'}));
+  await screenshotV6(name);
 };
 try {
   const probe=createServer();
@@ -385,6 +433,7 @@ try {
   await evaluate('(()=>{const buttons=[...document.querySelectorAll(".report-grid-actions button")];'+
     'buttons.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','popup grouped level');
+  await captureScrollEvidence('pr95-v6-l1-popup-admin-1440-edit-initial-before-scroll.png','.report-detail-grid');
   const popLevels=await inspectLevels('.report-detail-grid','popup-admin-1440');
   await assertStageHitTargets('.report-detail-grid','popup-admin-1440');
   await evaluate('document.querySelector(".report-detail-grid tbody tr:nth-child(2) .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
@@ -412,6 +461,7 @@ try {
   await evaluate('(()=>{const b=[...document.querySelectorAll(".report-grid-actions button")];'+
     'b.find(x=>x.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','mobile grouped stage');
+  await captureScrollEvidence('pr95-v6-l1-popup-admin-390-edit-initial-before-scroll.png','.report-detail-grid');
   await inspectLevels('.report-detail-grid','popup-mobile-390');
   await assertStageHitTargets('.report-detail-grid','popup-mobile-390');
   await screenshotV6('pr95-v6-l1-popup-mobile-grouped-390.png');
