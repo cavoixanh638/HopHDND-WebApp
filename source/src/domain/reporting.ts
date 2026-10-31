@@ -2,6 +2,7 @@ import type { GroupField, Item, ReportConfig } from '../../shared/types';
 import {normalizeSearch} from './search';
 import {canonicalStatus,isNotRequiredStatus} from './status-contract';
 export {PARTY_STATUS_ALIASES} from './status-contract';
+import {effectiveBuildStatus,buildLocked} from './pr95-v5-l4-build-effective';
 
 export const COUNCIL_STAGE_COLUMNS = ['Sở chưa trình','VP đang xử lý','Hoàn thành'] as const;
 export const DEFAULT_REPORTS: ReportConfig[] = [
@@ -33,7 +34,7 @@ export function normalizeReportStatus(raw:string,config:ReportConfig):string{
 export function reportItems(items: Item[], config: ReportConfig): Item[] {
   return items.filter(item=>{
     if(!isActive(item))return false;
-    const notRequired=isNotRequiredStatus(config.statusField,item[config.statusField]);
+    const notRequired=isNotRequiredStatus(config.statusField,config.id==='build'?effectiveBuildStatus(item):item[config.statusField]);
     if(['party','build'].includes(config.id)&&config.includeNotRequired!==true&&notRequired)
       return false;
     switch(config.source){
@@ -42,7 +43,8 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
         return config.includeNotRequired===true||
           !isNotRequiredStatus('partyLevel',item.partyLevel);
       case 'build':
-        return item.documentKind==='NQ'&&!!normalizeSearch(item.progressBuild);
+        return (item.documentKind==='NQ'&&!!normalizeSearch(item.progressBuild))||
+          (config.includeNotRequired===true&&buildLocked(item));
       case 'council':return item.documentKind==='NQ'||item.documentKind==='BC';
       case 'nq':return item.documentKind==='NQ';
       case 'bc':return item.documentKind==='BC';
@@ -58,7 +60,7 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
   const known = new Map(config.columns.map(column => [canonical(column), column]));
   let completedCount = 0;
   for (const item of scoped) {
-    const raw = normalizeReportStatus(item[config.statusField],config);
+    const raw = normalizeReportStatus(config.id==='build'?effectiveBuildStatus(item):item[config.statusField],config);
     // Unknown Party source labels are NOT extra official milestones.
     // Unknown TU labels do NOT imply an issued TBKL or completion.
     const recognized=known.get(canonical(raw));
@@ -74,7 +76,7 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
   // A single explicit data-quality column avoids synthesizing phantom Excel stages.
   const extra=unknown.size?['Chưa chuẩn hóa']:[];
   const columns = [...config.columns, ...extra].filter(c => !config.hiddenColumns.includes(c));
-  const hiddenCount = scoped.filter(item => config.hiddenColumns.some(c => canonical(c) === canonical(normalizeReportStatus(item[config.statusField],config)))).length;
+  const hiddenCount = scoped.filter(item => config.hiddenColumns.some(c => canonical(c) === canonical(normalizeReportStatus(config.id==='build'?effectiveBuildStatus(item):item[config.statusField],config)))).length;
   return {
     items: scoped, rows, columns, unknown: [...unknown], hiddenCount,
     total: scoped.length, completedCount,
