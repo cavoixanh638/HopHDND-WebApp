@@ -41,6 +41,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const [leaseError,setLeaseError]=useState('');
   const chosen=useRef(false);
   const requestEpoch=useRef(0);
+  const pendingAcquire=useRef<Promise<void>|null>(null);
   const placementRef=useRef<(()=>void)|null>(null);
   const switchingPointer=useRef(false);
   const leaseProps=!!leaseManager&&!!recordId&&!!field;
@@ -83,7 +84,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     setOpen(false);
     setQuery('');
     setWaiting(false);
-    const release=cancelUnused();
+    // A may still be awaiting a server ACK. Its eventual lease must be
+    // canceled before another picker acquires the same record/field.
+    const inFlight=pendingAcquire.current;
+    const release=inFlight?inFlight.catch(()=>{}).then(()=>cancelUnused()):cancelUnused();
     releaseCellPickerClaim(triggerRef.current,release);
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus({preventScroll:true}));
     return release;
@@ -238,7 +242,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         setWaiting(true);
         // Claiming B synchronously closes A, then waits for A's safe lease
         // release. B still checks its own permission/lease before opening.
-        void claimCellPicker(trigger,()=>close()).then(async()=>{
+        const operation=claimCellPicker(trigger,()=>close()).then(async()=>{
           if(epoch!==requestEpoch.current)return;
           if(leaseProps)await leaseManager!.acquire(recordId!,field!,editorKind);
           if(epoch!==requestEpoch.current||!trigger.isConnected||externallyDisabledRef.current){
@@ -255,6 +259,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         }).finally(()=>{
           if(epoch===requestEpoch.current)setWaiting(false);
         });
+        pendingAcquire.current=operation;
+        void operation.then(()=>{if(pendingAcquire.current===operation)pendingAcquire.current=null;});
       }}
     >
       <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
@@ -293,6 +299,11 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
             onKeyDown={event => {
               if (event.key === 'ArrowDown') { event.preventDefault(); focusOption(index + 1); }
               else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(index - 1); }
+              else if (event.key === 'Enter' || event.key === ' ') {
+                // Avoid relying on native synthetic click ordering, and do
+                // not allow default activation to choose twice.
+                event.preventDefault();choose(option.value);
+              }
             }}
           >
             {option.label}
