@@ -245,8 +245,15 @@ try{
     'const member=document.querySelector("dialog.report-grid-modal .compact-stage-state[data-highlighted=true]");'+
     'member.removeAttribute("data-highlighted");member.style.removeProperty("--member-highlight-bg");member.style.removeProperty("--member-highlight-text")');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-restored',true);
+  // V5: the first Party drill can include HC/BC whose Build is correctly
+  // locked. Exercise the positive Build editor using the *real Build report*
+  // which only includes QPPL rows by default (no mocked grants or raw rewrites).
+  await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\\"Đóng cửa sổ\\\"]")?.click()');
+  await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close mixed-kind popup before QPPL Build editor test');
+  await interact('const b=document.querySelector("section[data-ui-reference-report=build] .count-drill");if(!b)throw Error("V5 QPPL Build drill absent");b.click()');
+  await waitFor('document.querySelector("dialog.report-grid-modal[open]")','QPPL-only Build report popup');
   await clickText('Chỉnh sửa nháp');
-  await waitFor('document.querySelector("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")','editable grouped popup stage');
+  await waitFor('document.querySelector("dialog.report-grid-modal .compact-stage-row[data-stage-field=progressBuild] button.cell-picker-trigger")','editable QPPL Build popup stage');
   const editableV4=await evaluate('(()=>{const rows=[...document.querySelectorAll("dialog.report-grid-modal .compact-stage-row")];'+
     'const metrics=rows.filter(r=>r.querySelector("button.cell-picker-trigger")).map(r=>{'+
     'const s=r.querySelector(".compact-stage-state"),b=s?.querySelector("button.cell-picker-trigger");'+
