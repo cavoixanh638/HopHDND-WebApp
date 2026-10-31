@@ -190,7 +190,10 @@ try{
     'popup field code incorrect: '+hoverPopup);
   await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
   await until('!document.querySelector("dialog.report-grid-modal[open]")','popup closed');
-  await until('document.body > [data-ui-reference-layer]','overlay back in body');
+  await until('document.body > [data-ui-reference-layer]','persistent body overlay after popup close');
+  await call('document.querySelector(\'.report-surface[data-ui-reference-report="party"] > .card-header\').scrollIntoView({block:"center"})');
+  await until('document.body > [data-ui-reference-layer] [data-ui-ref-code=R01]',
+    'recovered R01 marker after top-layer popup unmount');
   await gear();
   await toggle();
   await until('!document.querySelector("[data-ui-reference-layer]")','admin OFF cleanup');
