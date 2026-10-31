@@ -83,9 +83,28 @@ const assertV4StatusDisplay=async (scope,label,fullCatalog=false)=>{
     if(info.texts.some(t=>t.includes(old)))throw Error('UI_V4_L1_RAW_ALIAS_LEAK '+label+' '+old);
   }
   if(fullCatalog){
-    for(const current of ['BCH','BTV TU','VP đang xử lý','ĐU gửi TU, chưa họp','Đã trình, chờ QĐ']){
+    // V5: HC/BC default Build is effectively "Không phải trình". The
+    // intermediate milestone is *not* required to be seeded in the default
+    // dataset; a separate QPPL A–O fixture below proves it is preserved.
+    for(const current of ['BCH','BTV TU','VP đang xử lý','ĐU gửi TU, chưa họp','Không phải trình']){
       if(!info.texts.some(t=>t.includes(current)))throw Error('UI_V4_L1_CANONICAL_MISSING '+label+' '+current);
     }
+    const types=await evaluate(`(()=>{
+      const list=document.querySelector(".item-data-table");
+      if(!list)return [];
+      return [...list.querySelectorAll('tbody tr')].map(row=>{
+        const kind=row.querySelector('.compact-document-badge')?.textContent?.trim()??'';
+        const stage=row.querySelector('[data-stage-field=progressBuild]');
+        const state=stage?.querySelector('.compact-stage-state');
+        return {kind,value:state?.textContent?.trim()??'',locked:!!state?.querySelector('.business-build-locked'),
+          editor:!!state?.querySelector('button.cell-picker-trigger')};
+      }).filter(item=>item.kind==='HC'||item.kind==='Báo cáo');
+    })()`);
+    if(!types.length||types.some(x=>x.value!=='Không phải trình'||!x.locked||x.editor))
+      throw Error('UI_V5_DEFAULT_HC_BC_EFFECTIVE_BUILD_FAIL '+JSON.stringify(types));
+    console.log('UI_V5_DEFAULT_HC_BC_EFFECTIVE_BUILD_PASS '+JSON.stringify({
+      scoped:types.length,hc:types.filter(x=>x.kind==='HC').length,
+      bc:types.filter(x=>x.kind==='Báo cáo').length}));
   }
   console.log('UI_V4_L1_CANONICAL_DEFAULT_DEMO_PASS '+label+' '+JSON.stringify({stages:info.count}));
 };
@@ -292,7 +311,7 @@ try{
   // A–O sheet fixture is generated ONLY in Node memory; file enters the
   // browser File input, then the real parser and comparison domain run.
   const row=['NQ991',1,'MẪU: Nghị quyết kiểm thử L4','Sở mẫu A','QPPL','BTV',
-    'Sở chưa trình','Sở chưa trình','Sở chưa trình','CV giả','Phòng mẫu 1',
+    'Sở chưa trình','Đã trình, chờ QĐ','Sở chưa trình','CV giả','Phòng mẫu 1',
     'Lãnh đạo VP mẫu','Lãnh đạo UBND mẫu','Đang xử lý','Ghi chú chỉ demo'];
   const headings=['Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
     'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',
@@ -313,6 +332,64 @@ try{
   await clickText('Dùng dữ liệu này trong bản demo (RAM)');
   await clickText('Xác nhận thay dữ liệu RAM');
   await waitFor('document.querySelector(".pr95-preview-context")?.textContent.includes("Hồ sơ: 1")','memory replacement');
+  // V5 integration: explicit independent imported QPPL fixture, NOT a fake
+  // milestone injected into the default demo. Test displayed effective Build,
+  // exact canonical five options, selected status, Esc and same-value no-op.
+  await clickText('Danh sách các ND trình HĐND');
+  await waitFor('document.querySelector(".item-data-table tbody tr td[data-col-key=displayCode]")?.textContent?.includes("NQ991")',
+    'isolated imported QPPL row visible in real ItemList');
+  const qpplIntermediate=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ991');
+    const type=row?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const stage=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const editor=stage?.querySelector('button.cell-picker-trigger');
+    return {ok:!!row&&type==='QPPL'&&!!editor&&
+      stage.textContent?.trim()==='Đã trình, chờ QĐ'&&
+      !stage.querySelector('.business-build-locked'),
+      id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
+      type,value:stage?.textContent?.trim(),editor:!!editor};
+  })()`);
+  if(!qpplIntermediate.ok)throw Error('UI_V5_QPPL_IMPORTED_MILESTONE_MISSING '+JSON.stringify(qpplIntermediate));
+  const beforeQpplDirty=await evaluate('!!document.querySelector(".pr95-preview-unsaved")');
+  await interact('const row=[...document.querySelectorAll(".item-data-table tbody tr")].find(x=>'+
+    'x.querySelector("td[data-col-key=displayCode]")?.textContent?.trim()==="NQ991");'+
+    'const editor=row?.querySelector("[data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!editor)throw Error("QPPL milestone editor missing");editor.scrollIntoView({block:"center"});editor.click()');
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open .cell-picker-option")',
+    'QPPL intermediate Build dropdown open');
+  const qpplOptions=await evaluate(`(()=>{
+    const p=document.querySelector('.cell-picker-popover:popover-open');
+    const options=[...p?.querySelectorAll('[role=option]')??[]];
+    return {labels:options.map(x=>x.textContent?.trim()),
+      selected:options.filter(x=>x.getAttribute('aria-selected')==='true').map(x=>x.textContent?.trim()),
+      choicesOnly:p?.dataset.choicesOnly==='true'};
+  })()`);
+  const expectedQppl=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  if(!qpplOptions.choicesOnly||JSON.stringify(qpplOptions.labels)!==JSON.stringify(expectedQppl)||
+      JSON.stringify(qpplOptions.selected)!==JSON.stringify(['Đã trình, chờ QĐ']))
+    throw Error('UI_V5_QPPL_INTERMEDIATE_CANONICAL_PICKER_FAIL '+JSON.stringify(qpplOptions));
+  await screenshot('pr95-v5-integrated-qppl-intermediate-selected.png');
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await waitFor('!document.querySelector(".cell-picker-popover:popover-open")','QPPL ESC close');
+  await ensure('document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] .compact-stage-state")?.textContent?.trim()==="Đã trình, chờ QĐ"',
+    'QPPL Build unchanged after Esc');
+  await interact('const button=document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!button)throw Error("QPPL Build lost editor");button.click()');
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open [role=option][aria-selected=true]")',
+    'QPPL same-value option ready');
+  await interact('document.querySelector(".cell-picker-popover:popover-open [role=option][aria-selected=true]").click()');
+  await waitFor('!document.querySelector(".cell-picker-popover:popover-open")','QPPL no-op option closes');
+  await ensure('document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] .compact-stage-state")?.textContent?.trim()==="Đã trình, chờ QĐ"',
+    'QPPL Build unchanged after same-value option');
+  const afterQpplDirty=await evaluate('!!document.querySelector(".pr95-preview-unsaved")');
+  if(afterQpplDirty!==beforeQpplDirty)
+    throw Error('UI_V5_QPPL_SAME_VALUE_CREATED_DRAFT '+JSON.stringify({beforeQpplDirty,afterQpplDirty}));
+  console.log('UI_V5_IMPORTED_QPPL_INTERMEDIATE_ESC_NOOP_PASS '+JSON.stringify({
+    fixture:qpplIntermediate,choiceCount:qpplOptions.labels.length,
+    selected:qpplOptions.selected,noPatch:true}));
+
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','report after memory import');
 
