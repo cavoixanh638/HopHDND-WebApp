@@ -1,0 +1,44 @@
+/* UI V6 L2: one text formatting context even when a parent is flex/grid.
+   Without the single inline span, React's text/mark/text Fragment children
+   are separate anonymous flex/grid items and "ngân sách" can form columns.
+   This is a display-only wrapper: no input/normalizer/raw-data changes. */
+.item-search-flow {
+  display:inline;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+  flex-shrink:1;
+  white-space:inherit;
+  word-break:normal;
+  overflow-wrap:break-word;
+  font:inherit;
+  letter-spacing:inherit;
+  line-height:inherit;
+}
+/* The mark remains inline text, NOT a flex/grid item or padded badge.
+   Match ranges/Unicode text are owned by searchMatchRanges unchanged. */
+.item-search-flow mark.item-search-match {
+  display:inline;
+  padding:0;
+  margin:0;
+  border:0;
+  font:inherit;
+  letter-spacing:inherit;
+  line-height:inherit;
+  vertical-align:baseline;
+  color:inherit;
+  background:#FFE18B;
+  border-radius:2px;
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:inherit;
+}
+/* A short number/ID hit (e.g. 254) must remain a single run. Long/multiple
+   word matches keep normal line breaking inside the same text context. */
+.item-search-flow mark.item-search-match-atomic {
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+}
