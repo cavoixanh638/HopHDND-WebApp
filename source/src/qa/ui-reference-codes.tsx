@@ -125,7 +125,14 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     layer.className='ui-reference-layer';
     layer.dataset.uiReferenceLayer='';
     layer.setAttribute('aria-hidden','true');
+    // Keep the primary layer in <body> for the ENTIRE admin session.
+    // A dialog is a browser top-layer: its own secondary layer hosts markers
+    // while open, but unmounting the dialog can never destroy the body layer.
     document.body.appendChild(layer);
+    const popupLayer=document.createElement('div');
+    popupLayer.className='ui-reference-layer';
+    popupLayer.dataset.uiReferenceLayer='';
+    popupLayer.setAttribute('aria-hidden','true');
     const tags=new Map<string,HTMLSpanElement>();
     const hover=document.createElement('span');
     hover.className='ui-reference-hover';
@@ -176,8 +183,11 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       const dialog=root.querySelector<HTMLDialogElement>('dialog.report-grid-modal[open]');
       if(dialog!==activeDialog){
         activeDialog=dialog;
-        (activeDialog??document.body).appendChild(layer);
+        if(activeDialog)activeDialog.appendChild(popupLayer);
+        else popupLayer.remove();
       }
+      const targetLayer=activeDialog?popupLayer:layer;
+      if(hover.parentElement!==targetLayer)targetLayer.appendChild(hover);
       const matches=resolveUiReferenceAnchors(root).filter(item=>
         activeDialog?activeDialog.contains(item.element):!item.element.closest('dialog'));
       if(!same(anchors,matches))anchors=matches;
@@ -193,8 +203,8 @@ export function UiReferenceOverlay({enabled,rootRef}:{
         if(!span){
           span=document.createElement('span');span.className='ui-reference-tag';
           span.dataset.uiRefCode=item.code;span.textContent=item.code;
-          layer.appendChild(span);tags.set(item.code,span);
-        }
+          targetLayer.appendChild(span);tags.set(item.code,span);
+        }else if(span.parentElement!==targetLayer)targetLayer.appendChild(span);
         position(span,rect,occupied);
       }
       if(hover.textContent){
@@ -225,6 +235,8 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     const move=onMove as EventListener;
     root.addEventListener('pointermove',move,{passive:true});
     root.addEventListener('pointerleave',onMouseOut,{passive:true});
+    root.addEventListener('click',schedule,true);
+    document.addEventListener('close',schedule,true);
     document.addEventListener('scroll',schedule,true);
     window.addEventListener('resize',schedule,{passive:true});
     window.visualViewport?.addEventListener('resize',schedule,{passive:true});
@@ -235,11 +247,13 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       observer.disconnect();size.disconnect();
       root.removeEventListener('pointermove',move);
       root.removeEventListener('pointerleave',onMouseOut);
+      root.removeEventListener('click',schedule,true);
+      document.removeEventListener('close',schedule,true);
       document.removeEventListener('scroll',schedule,true);
       window.removeEventListener('resize',schedule);
       window.visualViewport?.removeEventListener('resize',schedule);
       window.visualViewport?.removeEventListener('scroll',schedule);
-      layer.remove();tags.clear();
+      layer.remove();popupLayer.remove();tags.clear();
     };
   },[enabled,rootRef]);
   return null;
