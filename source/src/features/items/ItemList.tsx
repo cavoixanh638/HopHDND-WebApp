@@ -25,7 +25,7 @@ import {CompactGroupedValue} from './CompactGroupedValue';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
-  compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,COMPACT_GROUP_DEFAULT_LABELS,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
+  compactVisibleColumns,compactFilterText,compactTypeTone,abbreviateVietnameseName,abbreviateLeaderName,COMPACT_GROUP_DEFAULT_LABELS,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from './status-display';
 import {LeaseTextInput} from './LeaseTextInput';
@@ -35,17 +35,21 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './pr95-v6-l3-page-layout.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeProjectedWithAdjacent} from '../../data/resize-last-column';
 import {fitTableColumns} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
-import type {SummarySelection} from '../../domain/item-summary';
+import {summarizeListItems,type SummarySelection} from '../../domain/item-summary';
 import {DETAIL_FIELDS,SEARCH_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
-  hasToolbarFilters,exactChoices,shouldClearListOnEscape,
+  exactChoices,shouldClearListOnEscape,
   type ListKind} from './list-toolbar-filters';
 import './list-filter-toolbar.css';
+import {ActiveListFilters} from './ActiveListFilters';
+import {activeListConditions,activeOtherFilterCount,removeActiveListCondition,
+  type ActiveListCondition} from './pr95-v6-l4-active-filters';
 import {useElementWidth} from '../../components/useElementWidth';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
@@ -265,7 +269,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
   const statusFilterItems=useMemo(()=>projectedStatusFilterRows(items),[items]);
   const columnFiltered=useMemo(()=>{
-    const permitted=new Set(columns.map(c=>c.key));
+    // Even a hidden configured source/custom column retains its existing AND filter.
+    const permitted=new Set(activeLayout.columns.filter(c=>!c.removed).map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
     // Staff headers search the FULL strings of every projected member.
     // U01/U02 use independent source filters (AND), not group-wide OR.
@@ -283,7 +288,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const personTerm=roomSpecialist?normalizeSearch(columnFilters.specialist??''):'';
 
     const custom=Object.entries(columnFilters).flatMap(([key,term])=>
-      term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom')
+      term.trim()&&activeLayout.columns.some(column=>column.key===key&&column.origin==='custom'&&!column.removed)
         ?[{key,term:normalizeSearch(term)}]:[]);
     return items.filter(item=>{
       const values=filterIndex.get(item.recordId);
@@ -308,9 +313,23 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
+  const summaryStagesForFilters=useMemo(()=>
+    summarySelection?summarizeListItems(toolbarBase).stages:[],
+    [summarySelection,toolbarBase]);
+  const activeConditions=useMemo(()=>activeListConditions({
+    toolbar,columnFilters,kindSelection,summarySelection,
+    columns:activeLayout.columns,summaryStages:summaryStagesForFilters
+  }),[toolbar,columnFilters,kindSelection,summarySelection,activeLayout.columns,summaryStagesForFilters]);
+  const otherActiveCount=activeOtherFilterCount(toolbar);
+  const removeOneCondition=(condition:ActiveListCondition)=>{
+    const next=removeActiveListCondition({toolbar,columnFilters,kindSelection,summarySelection},condition);
+    if(next.toolbar!==toolbar)setToolbar(next.toolbar);
+    if(next.columnFilters!==columnFilters)setColumnFilters(next.columnFilters);
+    if(next.kindSelection!==kindSelection)setKindSelection(next.kindSelection);
+    if(next.summarySelection!==summarySelection)setSummarySelection(next.summarySelection);
+  };
   const selectKind=(kind:ListKind)=>setKindSelection(old=>old===kind?null:kind);
-  const anyListFilter=hasToolbarFilters(toolbar)||!!kindSelection||!!summarySelection||
-    Object.values(columnFilters).some(Boolean);
+  const anyListFilter=activeConditions.length>0;
   const clearAllListFilters=()=>{
     setToolbar(newToolbarState());setColumnFilters({});
     setSummarySelection(null);setKindSelection(null);
@@ -488,7 +507,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         ?field==='content'
           ?<button type="button" className="content-button" disabled={locked}
             onClick={()=>openContentForEdit(item,'content')}><SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>
-          :kind==='text'&&!isStatusDisplayField(field)
+          :kind==='text'&&!isStatusDisplayField(field)&&field!=='type'
             ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={field} label={displayId(item)+': '+label}
               value={String(item[field]??'')} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
@@ -560,6 +579,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    {/* DOM/reading order: B00–B03, C01–C03, heading, F01–F05, active filters, table.
+        Preserve toolbarBase scope, state, selected filters and all callbacks. */}
+    {!customizing&&!permissionMode&&<>
+      <ItemSummaryCards items={toolbarBase}
+        selection={summarySelection} onSelect={selectSummary}
+        kindSelection={kindSelection} onSelectKind={selectKind}
+        onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
+        showFilterFooters={false}/>
+      <h2 className="item-list-page-title">Danh sách các ND trình HĐND</h2>
+    </>}
+    {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
@@ -591,28 +621,28 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
          Ordinary List uses compact AND toolbar, without a tall header row. */}
     {!customizing&&!permissionMode&&<>
       <div className="list-filter-toolbar" role="search" aria-label="Bộ lọc Danh sách">
-        <input className="list-filter-search" type="search"
+        <input className={'list-filter-search'+(toolbar.search.trim()?' is-filter-active':'')} data-filter-active={toolbar.search.trim()?'true':'false'} type="search"
           aria-label="Tìm kiếm không dấu" placeholder="Tìm kiếm không dấu…"
           value={toolbar.search}
           onChange={e=>setToolbar(old=>({...old,search:e.currentTarget.value}))}/>
-        <select className="list-filter-organisation" aria-label="Lọc Sở, ngành"
+        <select className={'list-filter-organisation'+(toolbar.department?' is-filter-active':'')} data-filter-active={toolbar.department?'true':'false'} aria-label="Lọc Sở, ngành"
           value={toolbar.department}
           onChange={e=>setToolbar(old=>({...old,department:e.currentTarget.value}))}>
           <option value="">Tất cả Sở/ngành</option>
           {exactChoices(items,'department').map(value=><option key={value} value={value}>{value}</option>)}
         </select>
-        <select className="list-filter-organisation" aria-label="Lọc Phòng"
+        <select className={'list-filter-organisation'+(toolbar.room?' is-filter-active':'')} data-filter-active={toolbar.room?'true':'false'} aria-label="Lọc Phòng"
           value={toolbar.room}
           onChange={e=>setToolbar(old=>({...old,room:e.currentTarget.value}))}>
           <option value="">Tất cả Phòng</option>
           {exactChoices(items,'room').map(value=><option key={value} value={value}>{value}</option>)}
         </select>
-        <details className="list-filter-other"
+        <details className="list-filter-other" data-filter-active={otherActiveCount>0?'true':'false'}
           onToggle={e=>setOtherFiltersOpen(e.currentTarget.open)}>
-          <summary>Lọc khác <span aria-hidden="true">▾</span></summary>
+          <summary>Lọc khác {otherActiveCount>0&&<strong className="list-filter-other-count" aria-label={otherActiveCount+' điều kiện lọc khác'}>{otherActiveCount}</strong>} <span aria-hidden="true">▾</span></summary>
           {otherFiltersOpen&&<div className="list-filter-other-panel" role="group" aria-label="Các trường lọc chi tiết">
             <label>Chọn trường tìm kiếm
-              <select aria-label="Chọn trường tìm kiếm" value={toolbar.field}
+              <select aria-label="Chọn trường tìm kiếm" className={toolbar.search.trim()&&toolbar.field!=='all'?'is-filter-active':undefined} value={toolbar.field}
                 onChange={e=>setToolbar(old=>({...old,field:e.currentTarget.value}))}>
                 {SEARCH_FIELDS.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}
                 {activeLayout.columns.filter(c=>c.origin==='custom'&&!c.removed).map(c=>
@@ -620,7 +650,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
               </select>
             </label>
             {DETAIL_FIELDS.map(({key,label})=><label key={key}>{label}
-              <select aria-label={'Lọc '+label} value={toolbar.details[key]}
+              <select aria-label={'Lọc '+label} className={toolbar.details[key]?'is-filter-active':undefined} value={toolbar.details[key]}
                 onChange={e=>setToolbar(old=>({...old,details:{...old.details,
                   [key]:e.currentTarget.value}}))}>
                 <option value="">Tất cả</option>
@@ -633,12 +663,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           onClick={clearAllListFilters} disabled={!anyListFilter}
           title="Xóa mọi bộ lọc Danh sách (Esc khi không ở trong ô nhập)">
           Xóa lọc · Esc</button>
-        <span className="list-filter-count" role="status">{filtered.length} kết quả</span>
       </div>
-      <ItemSummaryCards items={toolbarBase}
-        selection={summarySelection} onSelect={selectSummary}
-        kindSelection={kindSelection} onSelectKind={selectKind}
-        onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}/>
+      <ActiveListFilters conditions={activeConditions} visibleCount={filtered.length}
+        sourceCount={items.length} onRemove={removeOneCondition} onClearAll={clearAllListFilters}/>
     </>}
     {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
@@ -743,7 +770,18 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='progressBuild'&&buildLocked(item)?buildLockedHint(item):writable?key==='content'?<button className="content-button" onClick={()=>openContentForEdit(item,'content')} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>:key==='note'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="note" value={item.note} highlightQuery={columnFilters.note}
+          style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
+          ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
+            data-editable={writable?'true':undefined}
+            style={cellHighlightStyle(item.type,'type',activeLayout.cellHighlights)}>
+            {writable
+              ?<CellPicker leaseManager={leaseManager} recordId={item.recordId} field="type"
+                label={`${displayId(item)}: ${metadata.label}`} value={item.type}
+                options={options('type',item)} disabled={locked} highlightQuery={columnFilters.type}
+                onChange={next=>{if(next!==item.type)guardBuildUpdate(item.recordId,{type:next});}}/>
+              :<SearchHighlight value={item.type||'—'} query={columnFilters.type}/>}
+           </span>
+          :key==='progressBuild'&&buildLocked(item)?buildLockedHint(item):writable?key==='content'?<button className="content-button" onClick={()=>openContentForEdit(item,'content')} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>:key==='note'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="note" value={item.note} highlightQuery={columnFilters.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{note:value});return true;

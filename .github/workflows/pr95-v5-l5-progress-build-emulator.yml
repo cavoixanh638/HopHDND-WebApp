@@ -4,6 +4,10 @@ on:
     paths:
       - "source/src/data/firebase-repository.ts"
       - "source/src/data/pr95-v5-l5-progress-build-policy.ts"
+      - "source/src/app/App.tsx"
+      - "source/src/features/items/ItemList.tsx"
+      - "source/src/features/items/CompactGroupedValue.tsx"
+      - "source/src/features/reports/ReportDetailGrid.tsx"
       - "source/firebase/database.exclusive-candidate.rules.json"
       - "source/tests/pr95-v5-l5-progress-build-write-guard.test.ts"
       - ".github/workflows/pr95-v5-l5-progress-build-emulator.yml"
@@ -20,6 +24,8 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"

@@ -88,6 +88,13 @@ const audit=()=>js('('+function geometryV5(){
     const lineHeight=e=>parseFloat(getComputedStyle(e).lineHeight);
     const lr=l?l.top+Math.min(l.height,lineHeight(label||row))*.78:null;
     const vr=v?v.top+Math.min(v.height,lineHeight(button||state||row))*.78:null;
+    // UI6-R01: the content-sized caption can make the progress rail live
+    // beyond the stage's INTERNAL horizontal scroll viewport. Scroll its
+    // container to the progress end BEFORE checking both genuine hit edges.
+    // We do NOT waive either elementFromPoint assertion.
+    const stageScroll=button?.closest('.compact-stages');
+    if(button&&stageScroll&&stageScroll.scrollWidth>stageScroll.clientWidth)
+      stageScroll.scrollLeft=stageScroll.scrollWidth-stageScroll.clientWidth;
     const cr=button?.getBoundingClientRect();
     const css=button?getComputedStyle(button):null;
     const rail=button?getComputedStyle(button,'::before'):null;
@@ -205,17 +212,29 @@ try{
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   await verify('list-390-guest-readonly');
   await screenshot('pr95-v5-l3-list-390-guest.png');
+  // V6 removes the guest Reports route. Prove the denial first, then test
+  // readonly popup geometry as a separate, explicitly named admin VIEW case.
+  assert(await js('Boolean(document.querySelector("[data-role=guest] .item-data-table"))&&'+
+    '!document.querySelector(".pr95-preview-nav,.report-surface,dialog.report-grid-modal[open]")'),
+    'V6 guest stays on List without Reports navigation');
+  console.log('UI_V5_L3_V6_GUEST_REPORTS_DENIED_PASS');
+  await mouseClick('.pr95-preview-gear');
+  await until('[...document.querySelectorAll(".pr95-preview-gear-menu button")].some(b=>b.textContent.includes("Đăng nhập quản trị"))',
+    'actual synthetic sign-in control');
+  await call('[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(b=>b.textContent.includes("Đăng nhập quản trị")).click()');
+  await until('document.querySelector("[data-role=admin]")&&document.querySelectorAll(".pr95-preview-nav button").length===2',
+    'admin role and navigation after actual gear action');
   await nav('Báo cáo tổng hợp');
   await until('document.querySelector(".report-surface[data-ui-reference-report=party]")','Reports');
   await mouseClick('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
-  await until('document.querySelector("dialog.report-grid-modal[open] .compact-stages")','popup guest');
-  await verify('popup-390-guest-readonly');
-  await screenshot('pr95-v5-l3-popup-390-guest.png');
+  await until('document.querySelector("dialog.report-grid-modal[open] .compact-stages")','admin view-only popup');
+  assert(await js('!document.querySelector("dialog.report-grid-modal[open] .compact-stage-state button.cell-picker-trigger")'),
+    'admin popup is readonly until edit mode is explicitly enabled');
+  await verify('popup-390-admin-view-readonly');
+  await screenshot('pr95-v5-l3-popup-390-admin-view-readonly.png');
   await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
   await until('!document.querySelector("dialog.report-grid-modal[open]")','popup closed');
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:920,deviceScaleFactor:1,mobile:false});
-  await call('document.querySelector(".pr95-preview-gear").click()');
-  await call('[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(b=>b.textContent.includes("Đăng nhập quản trị")).click()');
   await until('document.querySelector("[data-role=admin]")','admin');
   await nav('Báo cáo tổng hợp');
   await until('document.querySelector(".report-surface[data-ui-reference-report=party]")','admin Reports');
@@ -269,7 +288,7 @@ try{
   const cloud=network.filter(s=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(s));
   assert(cloud.length===0,'unexpected production/cloud request '+JSON.stringify(cloud));
   console.log('UI_V5_L3_REAL_CHROME_PASS '+JSON.stringify({synthetic:true,main:true,popup:true,narrow:true,
-    guest:true,admin:true,noProductionRequests:true}));
+    guest:true,guestReportsDenied:true,popupRole:'admin view-only and explicit edit',admin:true,noProductionRequests:true}));
 }catch(e){
   console.error('UI_V5_L3_REAL_CHROME_FAIL',e);
   try{if(ws?.readyState===WebSocket.OPEN)await screenshot('pr95-v5-l3-failure.png');}catch{}

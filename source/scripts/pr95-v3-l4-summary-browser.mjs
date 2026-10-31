@@ -181,8 +181,9 @@ try{
   await click('bc');
   await waitFor("document.querySelector('[data-summary-kind=bc]').getAttribute('aria-pressed')==='true'",'selected for explicit clear');
   const clear=await evaluate(`(()=>{
-    const b=[...document.querySelectorAll('.item-summary-active-filter button')].find(x=>x.textContent.includes('Bỏ lọc loại'));
-    if(!b)return false;
+    // V6 L4 consolidates the former footer into an accessible one-X chip.
+    const b=document.querySelector('.list-active-filters [data-active-filter-id="kind"] button.list-active-filter-remove');
+    if(!b||!b.getAttribute('aria-label')?.includes('Bỏ điều kiện Loại VB'))return false;
     b.click();return true;
   })()`);
   assert(clear,'explicit clear-filter button works');
