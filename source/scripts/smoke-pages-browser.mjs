@@ -3217,12 +3217,16 @@ try{
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
     'Party next must filter both post-VP records, not only one literal status');
-  const v2NextRaw=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
+  // V4 L1: the 7-row synthetic SOURCE still contains the historic alias,
+  // but the filtered grouped VIEW must show canonical labels. Keep the exact
+  // two selected row IDs/counts, never migrate the source to satisfy this check.
+  const v4NextVisible=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
     .map(x=>x.textContent)`);
-  if(!v2NextRaw.some(x=>x.includes('Đã gửi ĐU'))||
-      !v2NextRaw.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
-    throw Error('V2 grouped next stage replaced original distinct row statuses: '+JSON.stringify(v2NextRaw));
-  console.log('V2_NEXT_BUCKET_RAW_LABELS_PRESERVED_PASS',JSON.stringify(v2NextRaw));
+  if(!v4NextVisible.some(x=>x.includes('Đã gửi ĐU'))||
+      !v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
+      v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
+    throw Error('UI V4 next bucket must preserve distinct source member IDs and show canonical labels: '+JSON.stringify(v4NextVisible));
+  console.log('UI_V4_L1_NEXT_BUCKET_CANONICAL_DISPLAY_IDS_PRESERVED_PASS',JSON.stringify(v4NextVisible));
 
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
