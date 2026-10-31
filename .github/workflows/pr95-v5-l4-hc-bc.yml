@@ -14,6 +14,7 @@ on:
       - 'source/src/data/demo-items.ts'
       - 'source/tests/pr95-v5-l4-hc-bc-build.test.ts'
       - 'source/scripts/pr95-v5-l4-browser.mjs'
+      - 'source/scripts/pr95-v5-l4-full-preview-regression.mjs'
   workflow_dispatch:
 
 permissions:
@@ -50,7 +51,7 @@ jobs:
         working-directory: source
         run: |
           node scripts/package-compact-qa.mjs
-          node scripts/pr95-preview-browser.mjs
+          node scripts/pr95-v5-l4-full-preview-regression.mjs
       - name: Keep real Chrome evidence (NO publish/deploy)
         if: always()
         uses: actions/upload-artifact@v4
