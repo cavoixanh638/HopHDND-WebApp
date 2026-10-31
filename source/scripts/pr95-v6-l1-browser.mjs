@@ -144,30 +144,70 @@ const detail=async(scope)=>{
     'nested type border '+JSON.stringify(data));
   return data;
 };
+// UI6-R01: a caption is NOT safe merely because the caret fits its brackets.
+// Geometry must separate the COMPLETE caption from the adjacent progress state.
 const inspectLevels=async(rootSelector,label)=>{
-  const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+');'+
+  const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+';'+
     'if(!root)return null;const rows=[...root.querySelectorAll(".compact-stage-row[data-stage-field=progressParty]")];'+
-    'return rows.slice(0,4).map(row=>{const title=row.querySelector(".compact-stage-title"),'+
+    'return rows.slice(0,7).map(row=>{const title=row.querySelector(".compact-stage-title"),'+
     'l=row.querySelector(".compact-stage-level"),button=l?.querySelector(".cell-picker-trigger"),'+
-    'open=l?.querySelector(".compact-stage-level-open"),close=l?.querySelector(".compact-stage-level-close");'+
-    'if(!l||!open||!close)return null;const lr=l.getBoundingClientRect(),o=open.getBoundingClientRect(),'+
-    'c=close.getBoundingClientRect(),br=button?.getBoundingClientRect();'+
+    'open=l?.querySelector(".compact-stage-level-open"),close=l?.querySelector(".compact-stage-level-close"),'+
+    'state=row.querySelector(".compact-stage-state"),group=row.closest(".compact-stages");'+
+    'if(!l||!open||!close||!state)return null;const lr=l.getBoundingClientRect(),o=open.getBoundingClientRect(),'+
+    'c=close.getBoundingClientRect(),br=button?.getBoundingClientRect(),sr=state.getBoundingClientRect(),'+
+    'tr=title.getBoundingClientRect(),captionRight=Math.max(tr.right,c.right);'+
     'let textRight=0;if(title.firstChild?.nodeType===Node.TEXT_NODE){const range=document.createRange();'+
     'range.selectNodeContents(title.firstChild);textRight=range.getBoundingClientRect().right;}'+
+    'const rights=[...group.querySelectorAll(".compact-stage-row .compact-stage-state")].map(e=>e.getBoundingClientRect().right);'+
     'return {text:title.textContent,level:l.textContent,open:o.left,close:c.left,'+
     'buttonRight:br?.right??null,buttonLeft:br?.left??null,margin:parseFloat(getComputedStyle(l).marginLeft),'+
-    'line:Math.round(lr.height),titleLine:Math.round(title.getBoundingClientRect().height),'+
+    'line:Math.round(lr.height),titleLine:Math.round(tr.height),'+
     'space:o.left-textRight,caretDisplay:button?getComputedStyle(button,"::after").display:null,'+
-    'buttonWidth:br?.width??null};});})()');
-  assert(data&&data.length>=3&&data.slice(0,3).every(x=>x&&x.text.includes('Thành ủy (')&&
+    'buttonWidth:br?.width??null,captionRight,stateLeft:sr.left,stateRight:sr.right,'+
+    'captionStateGap:sr.left-captionRight,stageRailSpread:Math.max(...rights)-Math.min(...rights),'+
+    'insideScroll:group.scrollWidth>group.clientWidth,groupWidth:group.clientWidth,groupScrollWidth:group.scrollWidth};});})()');
+  assert(data&&data.length>=6&&data.slice(0,3).every(x=>x&&x.text.includes('Thành ủy (')&&
     x.space>=4&&x.line<=30&&x.titleLine<=30),
     'party label spacing / one line '+label+' '+JSON.stringify(data));
+  assert(data.every(x=>x&&x.captionStateGap>=6&&x.stageRailSpread<=2),
+    'UI6-R01 caption must NOT overlap state and three progress rails align '+label+' '+JSON.stringify(data));
+  assert(data.some(x=>x.level.includes('Ban Thường vụ Thành ủy lưu từ dữ liệu Excel cũ')),
+    'UI6-R01 long legacy caption missing from actual DOM '+label);
+  assert(data.some(x=>x.level==='(BCH)')&&data.some(x=>x.level==='(BTV TU)')&&
+    data.some(x=>x.level==='(TTTU)'),
+    'UI6-R01 current level values missing '+label);
   for(const x of data){
-    if(!x)continue;
     if(x.buttonRight!==null)assert(x.buttonRight+1<=x.close,
       'party caret touches closing parenthesis '+label+' '+JSON.stringify(x));
   }
-  console.log('PR95_V6_L1_LEVEL_GEOMETRY '+label+' '+JSON.stringify(data));
+  console.log('UI6_R01_CAPTION_STATE_SEPARATION_PASS '+label+' '+JSON.stringify(data));
+  return data;
+};
+// Check actual pointer hit regions rather than inferring editability from DOM.
+// Scroll each field independently when saved widths require an inner scrollbar.
+const assertStageHitTargets=async(rootSelector,label)=>{
+  const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+');'+
+    'if(!root)return null;const rows=[...root.querySelectorAll(".compact-stage-row[data-stage-field=progressParty]")].slice(0,6);'+
+    'const hit=target=>{if(!target)return {ok:false,reason:"missing"};'+
+    'target.scrollIntoView({block:"nearest",inline:"center"});'+
+    'const r=target.getBoundingClientRect();let left=Math.max(1,r.left+1),right=Math.min(innerWidth-1,r.right-1),'+
+    'top=Math.max(1,r.top+1),bottom=Math.min(innerHeight-1,r.bottom-1);'+
+    'for(let a=target.parentElement;a&&a!==document.body;a=a.parentElement){'+
+    'const cs=getComputedStyle(a),ar=a.getBoundingClientRect();'+
+    'if(cs.overflowX!=="visible"){left=Math.max(left,ar.left+2);right=Math.min(right,ar.right-2);}'+
+    'if(cs.overflowY!=="visible"){top=Math.max(top,ar.top+2);bottom=Math.min(bottom,ar.bottom-2);}'+
+    '}if(right-left<3||bottom-top<3)return {ok:false,reason:"clipped",left,right,top,bottom};'+
+    'const x=(left+right)/2,y=(top+bottom)/2,found=document.elementFromPoint(x,y);'+
+    'return {ok:!!found&&(target===found||target.contains(found)),x,y,hit:found?.className?.toString().slice(0,120)};};'+
+    'return rows.map((row,i)=>{const level=row.querySelector(".compact-stage-level"),'+
+    'state=row.querySelector(".compact-stage-state"),'+
+    'levelTarget=level?.querySelector("button.cell-picker-trigger")||level,'+
+    'stateTarget=state?.querySelector("button.cell-picker-trigger")||state;'+
+    'return {row:i,level:hit(levelTarget),state:hit(stateTarget),'+
+    'independentTargets:!levelTarget?.contains(stateTarget)&&!stateTarget?.contains(levelTarget)};});})()');
+  assert(data&&data.length===6&&data.every(x=>x.independentTargets&&x.level.ok&&x.state.ok),
+    'UI6-R01 hit regions must remain independent '+label+' '+JSON.stringify(data));
+  console.log('UI6_R01_INDEPENDENT_HIT_TARGETS_PASS '+label+' '+JSON.stringify(data));
   return data;
 };
 const screenshotV6=async(name)=>{
