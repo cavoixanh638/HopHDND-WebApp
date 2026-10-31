@@ -1,0 +1,63 @@
+/* UI V6 / L3 — shell + List reading order only.
+   No change to filters, permissions, saved column widths, or stage palettes. */
+
+/* There is no guest primary navigation DOM. The small login gear remains
+   top-right and does not leave the old navigation's vertical spacer behind. */
+.app-shell.guest-view > .topbar.v3-shell-topbar {
+  box-sizing:border-box;
+  min-height:38px;
+  padding:3px 0 2px;
+  margin-bottom:0;
+}
+.app-shell.guest-view > .topbar.v3-shell-topbar > .top-actions {
+  margin-left:auto;
+  justify-content:flex-end;
+}
+.pr95-full-preview[data-role="guest"] .pr95-preview-header {
+  box-sizing:border-box;
+  height:46px;
+  min-height:46px;
+  padding:5px 14px;
+}
+.pr95-full-preview[data-role="guest"] .pr95-preview-gear-zone {
+  right:14px;
+  top:5px;
+}
+.pr95-full-preview[data-role="guest"] .pr95-preview-product {
+  left:14px;
+  top:15px;
+}
+
+/* A single semantic heading between the four summary cards and F01–F05.
+   Kept compact so the table is not displaced by a decorative banner. */
+.item-list-card .item-data-region > .item-list-page-title {
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  margin:8px 0 10px;
+  padding:3px 8px 7px;
+  border:0;
+  border-bottom:1px solid #d7e5e3;
+  border-radius:0;
+  background:transparent;
+  color:#234f5f;
+  font-size:clamp(16px,1.45vw,21px);
+  font-weight:750;
+  line-height:1.3;
+  letter-spacing:-.015em;
+  text-align:center;
+  overflow-wrap:normal;
+}
+.item-list-card .item-data-region > .item-summary-grid {
+  margin-bottom:4px;
+}
+.item-list-card .item-data-region > .card-header {
+  margin-top:0;
+}
+@media(max-width:620px){
+  .item-list-card .item-data-region > .item-list-page-title {
+    font-size:16px;
+    padding-inline:2px;
+    margin:6px 0 8px;
+  }
+}

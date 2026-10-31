@@ -175,7 +175,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     setStatusPaletteHolder({source:sourceKey,store:next});
     return true;
   };
-  const [page, setPage] = useState<Page>('overview');
+  // Guest/loading/unverified starts on the only public navigation destination.
+  // An authenticated admin may still open the report from the two admin tabs.
+  const [page, setPage] = useState<Page>('items');
   // Guest permissions are server-owned, never inferred from the UI.
   // Revalidate the scoped generation rights when an anonymous viewer opens
   // the real List, and periodically while it stays open. This fail-closed
@@ -250,7 +252,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   useEffect(()=>{
     if(!adminTools){
       settingsMenu.current?.removeAttribute('open');
-      if(page!=='overview'&&page!=='items'){
+      if(page!=='items'){
         setPage('items');setEditorUnsaved(false);
         setReportWidthPreview(null);setListFramePreview(null);
       }
@@ -581,7 +583,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         </details>
       </div>
     </header>
-    <nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
+    {adminTools&&<nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
       {([['overview','Báo cáo tổng hợp'],
         ['items','Danh sách các ND trình HĐND']] as const)
         .map(([key,title])=><button type="button" key={key} data-ui-reference-nav={key}
@@ -593,7 +595,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           </span>
           <span className="section-card-state" aria-hidden="true">Đang xem</span>
         </button>)}
-    </nav>
+    </nav>}
     <StartupTimingPanel/>
     {slowRealtime&&<div className="notice" role="alert">Firebase đang phản hồi chậm. Có thể do mạng hoặc giao thức kết nối. <button type="button" className="button ghost" onClick={retryWithLongPolling}>Thử kết nối tương thích</button> (sẽ tải lại trang; hãy lưu bản sửa trước khi thử).</div>}
     <main>

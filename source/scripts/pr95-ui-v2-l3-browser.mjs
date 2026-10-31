@@ -153,10 +153,23 @@ async function startChrome(url,role){
   };
   const until=async(js,label,ms=19000)=>wait(()=>evalJs(js),role+' '+label,ms);
   await send('Runtime.enable');await send('Page.enable');await send('Network.enable');
-  await until('!!document.querySelector(".nav-tabs.primary-section-switcher")','real App shell');
+  // V6 L3: guests and loading/unverified viewers have NO primary nav.
+  // The accessible gear is the stable App shell witness for both roles.
+  await until('!!document.querySelector(".v3-settings-menu summary")','real App shell');
   return {role,pageId:page.id,ws,send,evalJs,until,outbound};
 }
 async function clickText(tab,selector,needle){
+  if(tab.role==='guest'&&selector==='nav.primary-section-switcher button'&&needle==='Danh sách'){
+    // Guest does not have A01/A02. Validate the actual List route and
+    // no navigation instead of synthesizing a click or granting admin.
+    // Source/profile and layout arrive asynchronously after the shell.
+    // Wait for the actual List rather than pretending the first shell paint
+    // already contains a loaded table or requesting a vanished guest tab.
+    await tab.until('!!document.querySelector(".item-data-region")&&'+
+      '!document.querySelector("nav.primary-section-switcher")',
+      'guest List region present without primary navigation',30000);
+    return;
+  }
   const ok=await tab.evalJs(`(()=>{const list=[...document.querySelectorAll(${JSON.stringify(selector)})];const el=list.find(e=>e.textContent?.includes(${JSON.stringify(needle)}));if(!el)return false;el.click();return true;})()`);
   assert.ok(ok,'Not found '+tab.role+' button '+needle+' in '+selector);
 }
