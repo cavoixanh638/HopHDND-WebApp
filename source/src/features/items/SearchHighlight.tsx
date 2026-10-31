@@ -13,7 +13,7 @@ export function SearchHighlight({value,query}:{value:string;query?:string}){
   function renderMark(part:string,index:number){
     // Keep the *exact* searchMatchRanges offsets/substring; never normalize
     // source text just to make a highlighted mark fit a layout.
-    const atomic=/^\\S{1,24}$/u.test(part);
+    const atomic=/^\S{1,24}$/u.test(part);
     return <mark key={index} className={'item-search-match'+(atomic?' item-search-match-atomic':'')}>{part}</mark>;
   }
   /** Split only at the ORIGINAL UTF-16 match ranges. A nested numeric token
@@ -30,7 +30,7 @@ export function SearchHighlight({value,query}:{value:string;query?:string}){
     if(cursor<end)nodes.push(value.slice(cursor,end));
     return nodes;
   };
-  const numericRuns=[...value.matchAll(/\\p{N}+/gu)].map(match=>({
+  const numericRuns=[...value.matchAll(/\p{N}+/gu)].map(match=>({
     start:match.index,end:match.index+match[0].length,
     codePoints:[...match[0]].length
   })).filter(run=>
