@@ -72,6 +72,43 @@ const screenshot=async name=>{
   writeFileSync(name,data);
   console.log('PR95_V3_L5_SCREENSHOT '+name+' '+data.length);
 };
+
+/* R-V3-04/05: inspect the ACTUAL rendered Chrome rectangles/computed CSS.
+   These asserts supplement, never replace, keyboard/filter/permissions tests. */
+const inspectSummary=async(label,expected)=>{
+  const geometry=await evaluate('(()=>{const result={};for(const id of ["party","build","nq"]){'+
+    'const card=document.querySelector(".item-summary-"+id);if(!card)return null;'+
+    'const buckets=[...card.querySelectorAll(".item-summary-bucket")];'+
+    'const tops=buckets.map(b=>Math.round(b.getBoundingClientRect().top));'+
+    'const rows=[...new Set(tops)].map(t=>tops.filter(y=>y===t).length);'+
+    'const labels=buckets.map(b=>{const span=b.querySelector("span");const range=document.createRange();range.selectNodeContents(span);'+
+    'const text=range.getBoundingClientRect(),rect=b.getBoundingClientRect();return {label:span.textContent,fit:text.left>=rect.left+1&&text.right<=rect.right-1,top:Math.round(rect.top),width:Math.round(rect.width)};});'+
+    'result[id]={width:Math.round(card.getBoundingClientRect().width),rows,labels};}return result;})()');
+  if(!geometry)throw Error('R_V3_04_MISSING_SUMMARY '+label);
+  for(const id of ['party','build','nq']){
+    const found=geometry[id],want=expected[id];
+    if(JSON.stringify(found.rows)!==JSON.stringify(want))
+      throw Error('R_V3_04_BAD_BUCKET_ROWS '+label+' '+id+' '+JSON.stringify({want,found}));
+    if(found.labels.some(l=>!l.fit))
+      throw Error('R_V3_04_LABEL_OVERFLOW '+label+' '+id+' '+JSON.stringify(found.labels));
+  }
+  console.log('R_V3_04_SUMMARY_GEOMETRY_PASS '+label+' '+JSON.stringify(geometry));
+};
+const inspectGroupedReadOnly=async(scope,label,requireDone=false)=>{
+  const values=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(scope)+');if(!root)return null;'+
+    'return [...root.querySelectorAll(".compact-stage-row .compact-stage-state .workflow-status-value")].map(node=>{'+
+    'const css=getComputedStyle(node),member=getComputedStyle(node.closest(".compact-stage-state"));'+
+    'const dot=getComputedStyle(node,"::before");'+
+    'return {text:node.textContent.trim(),tone:node.closest(".compact-stage-row").dataset.progressTone,'+
+    'flat:["Top","Right","Bottom","Left"].every(x=>css["border"+x+"Width"]==="0px"&&css["padding"+x]==="0px"),'+
+    'transparent:css.backgroundColor==="rgba(0, 0, 0, 0)"||css.backgroundColor==="transparent",'+
+    'inherit:css.color===member.color,noSecondDot:dot.content==="none"||dot.display==="none"};});})()');
+  if(!values?.length||values.some(x=>!x.flat||!x.transparent||!x.inherit||!x.noSecondDot)||
+      (requireDone&&!values.some(x=>x.tone==='done')))
+    throw Error('R_V3_05_NESTED_READONLY_FAIL '+label+' '+JSON.stringify(values));
+  console.log('R_V3_05_GROUPED_READONLY_PASS '+label+' '+JSON.stringify({count:values.length,done:values.filter(x=>x.tone==='done').length,tones:[...new Set(values.map(x=>x.tone))]}));
+};
+
 async function waitFor(js,reason){
  for(let i=0;i<60;i++){try{if(await evaluate('Boolean('+js+')'))return;}catch{}await sleep(150);}
  try{
@@ -114,10 +151,18 @@ try{
   await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".pr95-preview-role")','guest no Excel or role toolbar');
   await ensure('!document.querySelector(".source-column-visibility")&&!document.querySelector(".compact-columns-menu")','guest no column controls');
   await ensure('![...document.querySelectorAll(".item-data-table .column-resizer")].some(x=>getComputedStyle(x).display!=="none")','guest no visible resize affordance');
+  await inspectSummary('1440-single-row',{party:[4],build:[4],nq:[3]});
+  await inspectGroupedReadOnly('.item-data-table','main-guest-default');
   await screenshot('pr95-v3-l5-guest-1440.png');
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false});
+  await inspectSummary('1280-paired',{party:[2,2],build:[2,2],nq:[3]});
   await screenshot('pr95-v3-l5-guest-1280.png');
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+  // A narrow embedded frame on a wide monitor also uses deliberate pairs.
+  await interact('document.querySelector(".item-summary-grid").style.maxWidth="960px"');
+  await inspectSummary('960-narrow-frame',{party:[2,2],build:[2,2],nq:[3]});
+  await screenshot('pr95-v3-l5-summary-narrow-frame.png');
+  await interact('document.querySelector(".item-summary-grid").style.removeProperty("max-width")');
   await interact('document.querySelector(".pr95-preview-gear").click()');
   await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===1','guest gear login only');
   await ensure('!document.querySelector(".pr95-preview-gear-menu")?.textContent.includes("Excel")','guest menu no Excel');
@@ -136,7 +181,44 @@ try{
   await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No drill");b.click()');
   await waitFor('document.querySelector("dialog.report-grid-modal[open]")','actual report popup');
   await ensure('document.querySelector("dialog.report-grid-modal .report-grid-toolbar")','real popup controls');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-default',true);
   await screenshot('pr95-v3-l5-desktop-popup.png');
+  // CSS-only test fixture: local custom palette variables (no persisted settings
+  // or source-row mutation), then an explicit one-member highlight.
+  await interact('const root=document.querySelector(".pr95-full-preview");'+
+    'root.style.setProperty("--hdnd-status-done-text","#14539A");'+
+    'root.style.setProperty("--hdnd-stage-done-bg","#E7F3FF");'+
+    'root.style.setProperty("--hdnd-stage-done-border","#94A8C9")');
+  await ensure('(()=>{const row=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done]");'+
+    'const member=row?.querySelector(".compact-stage-state"),inner=member?.querySelector(".workflow-status-value");'+
+    'return !!inner&&getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
+    'getComputedStyle(member).color==="rgb(20, 83, 154)"&&getComputedStyle(inner).color===getComputedStyle(member).color})()',
+    'custom palette per-stage text/frame, no nested pill');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-custom-palette',true);
+  await interact('const member=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done] .compact-stage-state");'+
+    'member.dataset.highlighted="true";member.style.setProperty("--member-highlight-bg","#FFF1AC");'+
+    'member.style.setProperty("--member-highlight-text","#714A12")');
+  await ensure('(()=>{const member=document.querySelector("dialog.report-grid-modal .compact-stage-state[data-highlighted=true]");'+
+    'const row=member.closest(".compact-stage-row"),inner=member.querySelector(".workflow-status-value");'+
+    'const other=[...row.parentElement.querySelectorAll(".compact-stage-row")].find(x=>x!==row);'+
+    'return !!other&&getComputedStyle(member).backgroundColor==="rgb(255, 241, 172)"&&'+
+    'getComputedStyle(inner).color==="rgb(113, 74, 18)"&&'+
+    'getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
+    'getComputedStyle(other).backgroundColor!==getComputedStyle(member).backgroundColor})()',
+    'one-member highlight does not repaint neighboring stage or outer frame');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-member-highlight',true);
+  await screenshot('pr95-v3-l5-desktop-popup-custom-highlight.png');
+  await interact('const root=document.querySelector(".pr95-full-preview");'+
+    'for(const v of ["--hdnd-status-done-text","--hdnd-stage-done-bg","--hdnd-stage-done-border"])root.style.removeProperty(v);'+
+    'const member=document.querySelector("dialog.report-grid-modal .compact-stage-state[data-highlighted=true]");'+
+    'member.removeAttribute("data-highlighted");member.style.removeProperty("--member-highlight-bg");member.style.removeProperty("--member-highlight-text")');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-restored',true);
+  await clickText('Chỉnh sửa nháp');
+  await waitFor('document.querySelector("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")','editable grouped popup stage');
+  await ensure('[...document.querySelectorAll("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")].every(b=>'+
+    'getComputedStyle(b).borderTopWidth==="0px"&&getComputedStyle(b).backgroundColor==="rgba(0, 0, 0, 0)")',
+    'editable grouped stage has one frame');
+  await screenshot('pr95-v3-l5-desktop-popup-editable.png');
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close popup');
 
@@ -209,6 +291,7 @@ try{
   await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No guest drill");b.click()');
   await waitFor('document.querySelector("dialog.report-grid-modal[open]")','guest popup');
   await ensure('!document.querySelector("dialog.report-grid-modal .report-grid-presets")&&!document.querySelector("dialog.report-grid-modal .report-grid-settings")','guest popup no admin customizations');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-guest-after-RAM-edit');
   await screenshot('pr95-v3-l5-guest-popup.png');
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','guest popup closed');
@@ -225,6 +308,7 @@ try{
   await ensure('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await inspectSummary('390-mobile',{party:[2,2],build:[2,2],nq:[3]});
   await screenshot('pr95-v3-l5-mobile-list.png');
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','mobile reports');
