@@ -4,6 +4,7 @@ import {createDemoItems} from '../src/data/demo-items';
 import {createLegacyDemoItemsForTests,legacyUnknownBlankFixtureForTests} from './fixtures/pr95-v4-l4-legacy-demo';
 import {OFFICIAL_STATUS_CHOICES,canonicalStatus,isRecognizedStatus} from '../src/domain/status-contract';
 import {catalogFromItems} from '../src/data/catalogs';
+import {cellHighlightStyle,type CellHighlightRule} from '../src/data/item-preferences';
 import {BUSINESS_HEADERS,parseBusinessExcel,inspectBusinessExcel} from '../src/data/business-excel';
 import {DEFAULT_REPORTS,aggregateReport,getKpis,reportItems,isActive} from '../src/domain/reporting';
 import {summarizeListItems,filterListBySummary,type SummarySelection} from '../src/domain/item-summary';
@@ -43,6 +44,24 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
     // Even the largest fixture retains unique, predictable technical IDs.
     expect(new Set(ids(rows)).size).toBe(count);
     expect(rows.every((r,i)=>r.stt===i+1)).toBe(true);
+  });
+
+  it('keeps a legacy wildcard highlight conditional on the ORIGINAL legacy text, never reinterprets BCH',()=>{
+    const canonical=createDemoItems(2),legacy=createLegacyDemoItemsForTests(2);
+    const oldWildcard:CellHighlightRule[]=[{id:'legacy-party',field:'*',
+      word:'Ban Chấp hành',textColor:'#FFFFFF',backgroundColor:'#123456'}];
+    const officeRule:CellHighlightRule[]=[{id:'current-build',field:'progressBuild',
+      word:'Sở chưa trình',textColor:'#000000',backgroundColor:'#FFEE55'}];
+    expect(canonical[0].partyLevel).toBe('BCH');
+    expect(legacy[0].partyLevel).toBe('Ban Chấp hành');
+    expect(cellHighlightStyle(canonical[0].partyLevel,'partyLevel',oldWildcard))
+      .toBeUndefined();
+    expect(cellHighlightStyle(legacy[0].partyLevel,'partyLevel',oldWildcard))
+      .toEqual({color:'#FFFFFF',backgroundColor:'#123456'});
+    expect(cellHighlightStyle(canonical[1].progressBuild,'progressBuild',officeRule))
+      .toEqual({color:'#000000',backgroundColor:'#FFEE55'});
+    expect(cellHighlightStyle(canonical[1].progressParty,'progressParty',officeRule))
+      .toBeUndefined();
   });
 
   it('keeps each ordinal status/meaning, including not-required and unfinished build, without adding done data',()=>{
