@@ -103,10 +103,10 @@ const audit=()=>js('('+function geometryV5(){
   const frame=scope.querySelector('.compact-stages');
   const docs=[...scope.querySelectorAll('.compact-document-badge[data-kind="QPPL"]')];
   const classification=docs.map(el=>{
-    const b=el.querySelector('button.cell-picker-trigger');
+    const b=el.querySelector('button.cell-picker-trigger,input.custom-cell-input');
     const c=getComputedStyle(el),bc=b&&getComputedStyle(b);
-    return {outerBorder:c.borderTopWidth,hasButton:!!b,
-      buttonBorder:bc?.borderTopWidth,buttonBackground:bc?.backgroundColor,
+    return {outerBorder:c.borderTopWidth,hasEditor:!!b,editorTag:b?.tagName,
+      editorBorder:bc?.borderTopWidth,editorBackground:bc?.backgroundColor,
       originalText:el.textContent.trim()};
   });
   const stageRows=visible.slice(0,9).map(collect);
@@ -131,8 +131,8 @@ const verify=async stage=>{
   }
   for(const c of x.classification){
     assert(c.outerBorder==='1px',stage+' QPPL one outer border');
-    if(c.hasButton)assert(c.buttonBorder==='0px'&&
-      (c.buttonBackground==='rgba(0, 0, 0, 0)'||c.buttonBackground==='transparent'),
+    if(c.hasEditor)assert(c.editorBorder==='0px'&&
+      (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
       stage+' QPPL no second button frame '+JSON.stringify(c));
   }
   const buttons=first.filter(x=>x.editable);
@@ -210,12 +210,12 @@ try{
   await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
   await until('!document.querySelector("dialog.report-grid-modal[open]")','admin popup closed');
   await nav('Danh sách');
-  await until('document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL] > button.cell-picker-trigger")',
+  await until('document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL] input.custom-cell-input")',
     'admin List real QPPL editor');
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   const editableList=await verify('list-1440-admin-editable');
-  assert(editableList.classification.some(x=>x.hasButton&&x.outerBorder==='1px'&&x.buttonBorder==='0px'),
-    'admin QPPL classification single border on real button');
+  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='INPUT'&&x.outerBorder==='1px'&&x.editorBorder==='0px'),
+    'admin QPPL classification single border on real LeaseTextInput');
   await screenshot('pr95-v5-l3-list-1440-admin.png');
   // Presentation-only color test: temporary CSS variables and a member highlight.
   // No edit callback, source mutation, layout setting or account write.
@@ -232,8 +232,8 @@ try{
     'doc.style.setProperty("--member-highlight-text","#714A12");'+
     'return {memberBackground:getComputedStyle(member).backgroundColor,'+
     'docBackground:getComputedStyle(doc).backgroundColor,'+
-    'docButtonBorder:getComputedStyle(doc.querySelector("button")).borderTopWidth,'+
-    'docButtonBackground:getComputedStyle(doc.querySelector("button")).backgroundColor};})()');
+    'docButtonBorder:getComputedStyle(doc.querySelector("input.custom-cell-input")).borderTopWidth,'+
+    'docButtonBackground:getComputedStyle(doc.querySelector("input.custom-cell-input")).backgroundColor};})()');
   assert(skin.memberBackground==='rgb(255, 241, 172)'&&
     skin.docBackground==='rgb(255, 241, 172)'&&
     skin.docButtonBorder==='0px'&&skin.docButtonBackground==='rgba(0, 0, 0, 0)',
