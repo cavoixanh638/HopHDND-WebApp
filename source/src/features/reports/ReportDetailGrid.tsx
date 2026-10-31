@@ -254,7 +254,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>openContent(item,field)}>{raw||'—'}</button>;
-    if(!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
+    if(field!=='type'&&!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&mayEditField(item,field))safeUpdate(item.recordId,{[field]:value});}}/>;
