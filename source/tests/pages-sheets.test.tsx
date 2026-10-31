@@ -16,7 +16,7 @@ const h=vi.hoisted(()=>{
     begin:()=>{cursor=0;},flush:()=>{const work=effects;effects=[];work.forEach(fn=>fn());},dispose:()=>slots.forEach(slot=>slot?.cleanup?.()),reset:()=>{slots.length=0;cursor=0;effects=[];},
   };
 });
-vi.mock('react',()=>({memo:(component:any)=>component,useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
+vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),memo:(component:any)=>component,useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
 vi.mock('../src/state/use-shared-config',()=>({useSharedConfig:h.common}));
 vi.mock('../src/data/google-bridge',()=>({isGoogleHost:()=>false,googleCall:vi.fn()}));
 import {App} from '../src/app/App';
