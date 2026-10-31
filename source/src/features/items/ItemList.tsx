@@ -35,6 +35,7 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './pr95-v6-l3-page-layout.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
@@ -560,6 +561,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    {/* DOM/reading order: B00–B03, C01–C03, heading, F01–F05, active filters, table.
+        Preserve toolbarBase scope, state, selected filters and all callbacks. */}
+    {!customizing&&!permissionMode&&<>
+      <ItemSummaryCards items={toolbarBase}
+        selection={summarySelection} onSelect={selectSummary}
+        kindSelection={kindSelection} onSelectKind={selectKind}
+        onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}/>
+      <h2 className="item-list-page-title">Danh sách các ND trình HĐND</h2>
+    </>}
+    {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
@@ -635,10 +646,6 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           Xóa lọc · Esc</button>
         <span className="list-filter-count" role="status">{filtered.length} kết quả</span>
       </div>
-      <ItemSummaryCards items={toolbarBase}
-        selection={summarySelection} onSelect={selectSummary}
-        kindSelection={kindSelection} onSelectKind={selectKind}
-        onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}/>
     </>}
     {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
       setPermissionMode(false);setPermissionDirty(false);setLayoutError("");

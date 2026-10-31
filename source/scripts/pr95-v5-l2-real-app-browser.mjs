@@ -161,10 +161,23 @@ async function startChrome(url,role){
   };
   const until=async(js,label,ms=19000)=>wait(()=>evalJs(js),role+' '+label,ms);
   await send('Runtime.enable');await send('Page.enable');await send('Network.enable');
-  await until('!!document.querySelector(".nav-tabs.primary-section-switcher")','real App shell');
+  // V6 L3: guests and loading/unverified viewers have NO primary nav.
+  // The accessible gear is the stable App shell witness for both roles.
+  await until('!!document.querySelector(".v3-settings-menu summary")','real App shell');
   return {role,pageId:page.id,ws,send,evalJs,until,outbound};
 }
 async function clickText(tab,selector,needle){
+  if(tab.role==='guest'&&selector==='nav.primary-section-switcher button'&&needle==='Danh sách'){
+    // Guest does not have A01/A02. Validate the actual List route and
+    // no navigation instead of synthesizing a click or granting admin.
+    // Source/profile and layout arrive asynchronously after the shell.
+    // Wait for the actual List rather than pretending the first shell paint
+    // already contains a loaded table or requesting a vanished guest tab.
+    await tab.until('!!document.querySelector(".item-data-region")&&'+
+      '!document.querySelector("nav.primary-section-switcher")',
+      'guest List region present without primary navigation',30000);
+    return;
+  }
   const ok=await tab.evalJs(`(()=>{const list=[...document.querySelectorAll(${JSON.stringify(selector)})];const el=list.find(e=>e.textContent?.includes(${JSON.stringify(needle)}));if(!el)return false;el.click();return true;})()`);
   assert.ok(ok,'Not found '+tab.role+' button '+needle+' in '+selector);
 }
@@ -479,7 +492,12 @@ async function test(){
     'admin Firebase account panel');
   await clickText(admin,'section[aria-label="Tài khoản Firebase"] button','Đăng xuất');
   await admin.until('!!document.querySelector(".v3-gear-login")','real Auth signout changes adminTools',16000);
-  await clickText(admin,'nav.primary-section-switcher button','Danh sách');
+  // Actual signout revokes admin navigation and returns to the public List.
+  // Do not call the helper with tab.role=admin: it denotes the browser
+  // target, NOT the now-signed-out Firebase principal.
+  await admin.until('!document.querySelector("nav.primary-section-switcher")&&'+
+    '!!document.querySelector(".item-data-region")',
+    'signed-out real App List without A01/A02',16000);
   await admin.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-UNKNOWN-QPPL")===true',
     'signed-out App still displays read-only source rows');
   const v5LoggedOut=await summarySnapshot(admin);

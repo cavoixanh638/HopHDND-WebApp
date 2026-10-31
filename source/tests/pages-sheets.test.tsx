@@ -48,7 +48,21 @@ function grantAdmin(){
 function button(tree:any,label:string){const result=nodes(tree).find(n=>n.type==='button'&&
   (text(n)===label||nodes(n).some(child=>child.props?.className==='section-card-title'&&text(child)===label)));
   expect(result,`button ${label}`).toBeDefined();return result;}
-function open(label:string){button(render(),label).props.onClick({currentTarget:{closest:()=>null}});return render();}
+function open(label:string){
+  const current=render();
+  // UI V6 L3: the verified guest starts directly on List and has no large
+  // navigation tile. Asking to open the already mounted List is a no-op;
+  // private navigation still needs an actual admin control.
+  if(label==='Danh sách các ND trình HĐND'){
+    const tile=nodes(current).find(n=>n.type==='button'&&n.props?.['data-ui-reference-nav']==='items');
+    // Guest, loading and unverified views have NO nav tile (even if a
+    // layout-loading placeholder is shown instead of the List). This is not
+    // a role bypass: clicking an already active admin List is equally a no-op.
+    if(!tile||tile.props['aria-current']==='page')return current;
+  }
+  button(current,label).props.onClick({currentTarget:{closest:()=>null}});
+  return render();
+}
 function respond(note?:string){const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];(window as any)[name](payload(note));}
 beforeEach(()=>{
   h.reset();vi.useFakeTimers();scripts=[];
@@ -126,15 +140,16 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     let tree=render();
     // A confirmed matching profile must remain visible during background fetch.
     expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
-    expect(tree.props.style['--page-content-width']).toBe('1240px');
+    expect(tree.props.style['--page-content-width']).toBe('1090px'); // V6 guest starts on List
     expect(scripts).toHaveLength(0); // layout cache is visible, but stale Excel is NOT fetched
     firebase.common.status='ready';
     tree=render();expect(scripts).toHaveLength(1);
     respond();await settle();
-    tree=render();expect(tree.props.style['--page-content-width']).toBe('1240px');
-    tree=open('Danh sách các ND trình HĐND');
-    expect(tree.props.style['--page-content-width']).toBe('1090px');
+    tree=render();expect(tree.props.style['--page-content-width']).toBe('1090px');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
+    grantAdmin();tree=render();
+    tree=open('Báo cáo tổng hợp');
+    expect(tree.props.style['--page-content-width']).toBe('1240px'); // admin report keeps original width
   });
   it('keeps last confirmed report width on the very first loading render, before Firebase has responded',async()=>{
     const source='pages:sheets:'+parseSheetConfig(DEFAULT_SHEET_URL).url;
@@ -142,7 +157,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
       JSON.stringify({schema:1,source,report:1380,list:970}));
     firebase.common.status='loading';firebase.common.config=null;
     let tree=render();
-    expect(tree.props.style['--page-content-width']).toBe('1380px');
+    expect(tree.props.style['--page-content-width']).toBe('970px'); // guest List loading
     expect(text(tree)).toContain('Đang tải bố cục đã lưu');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(false);
     tree=open('Danh sách các ND trình HĐND');
@@ -158,7 +173,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
       items:cols,catalogs:catalogFromItems(createDemoItems(1))};
     firebase.common.status='ready';
     tree=render();
-    expect(tree.props.style['--page-content-width']).toBe('1320px');
+    expect(tree.props.style['--page-content-width']).toBe('960px'); // V6 starts on List
     const source='pages:sheets:'+parseSheetConfig(DEFAULT_SHEET_URL).url;
     expect(JSON.parse(localStorage.getItem('hdnd.confirmed-widths.v1:'+source)??'null'))
       .toMatchObject({report:1320,list:960,schema:1});
@@ -240,7 +255,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='demo-banner')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='brand')).toBe(false);
-    expect(nodes(tree).filter(n=>n.type==='button'&&String(n.props.className).includes('primary-section-card'))).toHaveLength(2);
+    expect(nodes(tree).filter(n=>n.type==='button'&&String(n.props.className).includes('primary-section-card'))).toHaveLength(0); // guest has no A01/A02 DOM
     expect(text(tree)).not.toContain('GID');
     expect(text(tree)).not.toContain('Danh mục và bố trí:');
     const list=nodes(tree).find(n=>n.type===ItemList);
@@ -399,7 +414,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     };
     expect(reportPageWidth(firebase.common.config.reports)).toBe(2400);
     let tree=render();
-    expect(tree.props.style['--page-content-width']).toBe('2400px');
+    expect(tree.props.style['--page-content-width']).toBe('640px'); // guest/admin initial List
     respond();await settle();
     tree=open('Danh sách các ND trình HĐND');
     expect(tree.props.style['--page-content-width']).toBe('640px');

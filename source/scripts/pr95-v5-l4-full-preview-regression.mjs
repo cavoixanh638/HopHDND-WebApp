@@ -51,6 +51,10 @@ const ensure=async(js,label)=>{
 };
 const interact=async js=>evaluate('(()=>{'+js+';return true;})()');
 const clickText=async text=>{
+  // UI6-R02: a guest is already on List and never mounts A01/A02.
+  if(text==='Danh sách các ND trình HĐND' &&
+    await evaluate('Boolean(document.querySelector("[data-role=guest] .item-data-table"))&&'+
+      '!document.querySelector(".pr95-preview-nav")'))return true;
   const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc',
     'Phân quyền chỉnh sửa':'Phân quyền chỉnh sửa ô'}[text]??text;
   const find='[...document.querySelectorAll("button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+'||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith('+JSON.stringify(alias)+')))';
@@ -192,7 +196,13 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1'});
   await waitFor('document.querySelector("[data-preview=pr95-l4-full]")&&document.querySelector(".item-data-table tbody tr")','list default');
-  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','exactly two wide cards');
+  await ensure('!document.querySelector("[data-role=guest] .pr95-preview-nav")','V6 guest A01/A02 absent in DOM');
+  await ensure('document.querySelector("[data-role=guest] .pr95-preview-gear")','V6 guest gear retained');
+  await ensure(`(()=>{const s=document.querySelector(".item-summary-grid"),h=document.querySelector(".item-list-page-title"),f=document.querySelector(".list-filter-toolbar"),t=document.querySelector(".item-data-table");return !!s&&!!h&&!!f&&!!t&&
+    !!(s.compareDocumentPosition(h)&Node.DOCUMENT_POSITION_FOLLOWING)&&
+    !!(h.compareDocumentPosition(f)&Node.DOCUMENT_POSITION_FOLLOWING)&&
+    !!(f.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_FOLLOWING)&&
+    document.querySelectorAll(".item-list-page-title").length===1})()`,'V6 B–C–heading–F–table reading order');
   await ensure('document.querySelector("[data-role=guest]")','guest default');
   await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".pr95-preview-role")','guest no Excel or role toolbar');
   await ensure('!document.querySelector(".source-column-visibility")&&!document.querySelector(".compact-columns-menu")','guest no column controls');
@@ -218,6 +228,7 @@ try{
   await screenshot('pr95-v5-l4-regression-guest-gear.png');
   await clickText('Đăng nhập quản trị (mô phỏng)');
   await waitFor('document.querySelector("[data-role=admin]")','simulated admin login');
+  await ensure('document.querySelectorAll("[data-role=admin] .pr95-preview-nav .primary-section-card").length===2','V6 verified admin retains two navigation cards');
   await interact('document.querySelector(".pr95-preview-gear").click()');
   await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===7','admin five tools, reference toggle and logout');
   await screenshot('pr95-v5-l4-regression-admin-gear.png');
@@ -482,16 +493,24 @@ try{
   await screenshot('pr95-v5-l4-regression-desktop-guest-edited.png');
   await clickText('Lưu trong RAM');
   await waitFor('!document.querySelector(".pr95-preview-unsaved")','guest RAM save confirmed');
-  await clickText('Báo cáo tổng hợp');
-  await waitFor('document.querySelectorAll(".report-table").length===5','guest report access');
-  await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No guest drill");b.click()');
-  await waitFor('document.querySelector("dialog.report-grid-modal[open]")','guest popup');
-  await ensure('!document.querySelector("dialog.report-grid-modal .report-grid-presets")&&!document.querySelector("dialog.report-grid-modal .report-grid-settings")','guest popup no admin customizations');
-  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-guest-after-RAM-edit');
-  await screenshot('pr95-v5-l4-regression-guest-popup.png');
-  await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
-  await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','guest popup closed');
+  // UI6-R02: no guest Reports route. Exercise the SAME real readonly popup
+  // before editing, under the explicit synthetic admin viewer identity;
+  // never relabel an admin popup as a guest authorization PASS.
+  await ensure('!document.querySelector("[data-role=guest] .pr95-preview-nav")&&'+
+    '!document.querySelector(".report-surface")','V6 guest cannot navigate to Reports');
   await selectValue('#pr95-role','admin');
+  await waitFor('document.querySelector("[data-role=admin] .pr95-preview-nav")','admin nav restored');
+  await clickText('Báo cáo tổng hợp');
+  await waitFor('document.querySelectorAll(".report-table").length===5','admin Reports after guest RAM edit');
+  await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No drill");b.click()');
+  await waitFor('document.querySelector("dialog.report-grid-modal[open]")','admin view-only popup after guest edit');
+  await ensure('!document.querySelector("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")',
+    'admin popup must begin view-only, no implicit edit mode');
+  await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-admin-view-only-after-guest-RAM-edit');
+  await screenshot('pr95-v6-l3-admin-view-only-popup.png');
+  await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
+  await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','admin readonly popup closed');
+  console.log('UI6_R02_ADMIN_VIEW_ONLY_REPORT_POPUP_PASS');
   await clickText('Phân quyền chỉnh sửa');
   await waitFor('document.querySelector(".inline-permission-table")','permission revoke');
   await selectValue('select[aria-label*="Ghi chú"]','deny');
@@ -510,8 +529,11 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await inspectSummary('390-mobile',{party:[2,2],build:[2,2],nq:[3]});
   await screenshot('pr95-v5-l4-regression-mobile-list.png');
+  await ensure('!document.querySelector("[data-role=guest] .pr95-preview-nav")','V6 mobile guest navigation absent');
+  await selectValue('#pr95-role','admin');
+  await waitFor('document.querySelector("[data-role=admin] .pr95-preview-nav")','mobile admin navigation restored');
   await clickText('Báo cáo tổng hợp');
-  await waitFor('document.querySelectorAll(".report-table").length===5','mobile reports');
+  await waitFor('document.querySelectorAll(".report-table").length===5','mobile admin reports');
   await screenshot('pr95-v5-l4-regression-mobile-reports.png');
   // Open the packaged one-file HTML by file:// in *real Chrome*, without HTTP.
   // This catches raw JS leaked into HTML, module/CORS failures, broken CSS and
@@ -520,7 +542,7 @@ try{
   const offlineUrl=pathToFileURL(join(root,'HopHDND_GopCot_XemThu.html')).href;
   await send('Page.navigate',{url:offlineUrl});
   await waitFor('document.querySelector("[data-preview=pr95-l4-full]") && document.querySelector(".item-data-table tbody tr")','offline file React mount');
-  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','offline two-card nav');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===0','offline V6 guest no nav DOM');
   await ensure('!document.body.textContent.includes("function Rf(")','offline no raw compiled JavaScript');
   await ensure('document.querySelector("[data-role=guest]")','offline guest default');
   await screenshot('pr95-v5-l4-regression-offline-guest.png');
@@ -540,8 +562,11 @@ try{
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','offline guest list narrow');
   await screenshot('pr95-v5-l4-regression-offline-mobile-guest.png');
+  await ensure('!document.querySelector("[data-role=guest] .pr95-preview-nav")','offline mobile guest no report route');
+  await selectValue('#pr95-role','admin');
+  await waitFor('document.querySelector("[data-role=admin] .pr95-preview-nav")','offline mobile admin navigation');
   await clickText('Báo cáo tổng hợp');
-  await waitFor('document.querySelectorAll(".report-table").length===5','offline mobile report');
+  await waitFor('document.querySelectorAll(".report-table").length===5','offline mobile admin report');
   await screenshot('pr95-v5-l4-regression-offline-mobile-reports.png');
   console.log('PR95_V3_L5_OFFLINE_FILE_CHROME_PASS '+JSON.stringify({
     fileScheme:true,reactMount:true,reports:5,excel:true,settings:true,guest:true,desktop:1440,mobile:390}));
