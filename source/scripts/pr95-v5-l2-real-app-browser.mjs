@@ -492,7 +492,12 @@ async function test(){
     'admin Firebase account panel');
   await clickText(admin,'section[aria-label="Tài khoản Firebase"] button','Đăng xuất');
   await admin.until('!!document.querySelector(".v3-gear-login")','real Auth signout changes adminTools',16000);
-  await clickText(admin,'nav.primary-section-switcher button','Danh sách');
+  // Actual signout revokes admin navigation and returns to the public List.
+  // Do not call the helper with tab.role=admin: it denotes the browser
+  // target, NOT the now-signed-out Firebase principal.
+  await admin.until('!document.querySelector("nav.primary-section-switcher")&&'+
+    '!!document.querySelector(".item-data-region")',
+    'signed-out real App List without A01/A02',16000);
   await admin.until('document.querySelector(".item-data-table tbody")?.textContent?.includes("NQ-UNKNOWN-QPPL")===true',
     'signed-out App still displays read-only source rows');
   const v5LoggedOut=await summarySnapshot(admin);
