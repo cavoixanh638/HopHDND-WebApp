@@ -46,16 +46,25 @@ function show(target:HTMLElement,focus:boolean):void{
   hide();
   active=target;keyboard=focus;
   const text=target.getAttribute('data-quick-tooltip')||'Bấm để sửa';
-  const width=target.classList.contains('business-build-locked')?
-    Math.min(450,Math.max(220,window.innerWidth-24)):
+  const isLocked=target.classList.contains('business-build-locked');
+  const width=isLocked?Math.min(450,Math.max(160,window.innerWidth-24)):
     target.classList.contains('cell-history-action')?HISTORY_WIDTH:WIDTH;
   tooltip.textContent=text;
   tooltip.style.setProperty('--edit-tooltip-width',width+'px');
-  const pos=outsideCellTooltipPosition(target.getBoundingClientRect(),
-    window.innerWidth,window.innerHeight,width,HEIGHT);
-  tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+  // This longer explanation wraps and is measured AFTER entering the top
+  // layer. Existing short edit/history hints keep their original 26px geometry.
+  tooltip.style.height=isLocked?'auto':'26px';
+  tooltip.style.minHeight=isLocked?'34px':'';
+  tooltip.style.whiteSpace=isLocked?'normal':'nowrap';
+  tooltip.style.textAlign=isLocked?'left':'center';
   if(focus)target.setAttribute('aria-describedby',tooltip.id);
+  tooltip.style.visibility='hidden';
   tooltip.showPopover();
+  const height=isLocked?Math.max(HEIGHT,tooltip.getBoundingClientRect().height):HEIGHT;
+  const pos=outsideCellTooltipPosition(target.getBoundingClientRect(),
+    window.innerWidth,window.innerHeight,width,height);
+  tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+  tooltip.style.visibility='visible';
 }
 function over(event:PointerEvent):void{
   if(event.pointerType==='touch')return;
