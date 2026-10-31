@@ -16,7 +16,7 @@
   overflow:visible;
   z-index:2147483000;
   color:#29485e;
-  contain:layout style;
+  /* No contain/transform: fixed marker coordinates stay viewport-relative. */
 }
 .ui-reference-tag{
   position:fixed;
