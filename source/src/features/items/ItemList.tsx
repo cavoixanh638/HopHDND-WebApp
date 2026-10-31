@@ -35,6 +35,7 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './pr95-v6-l3-page-layout.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
