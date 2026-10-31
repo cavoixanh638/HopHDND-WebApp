@@ -40,6 +40,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
      {header&&<div className="compact-document-heading">
        {includes('type')&&(!!item.type||editable('type'))&&
          <span className="compact-document-badge" data-kind={compactTypeTone(item.type)}
+           data-editable={editable('type')?'true':undefined}
            {...memberAttributes('type')}>{shown('type')}</span>}
        {includes('department')&&(!!item.department||editable('department'))&&
          <strong className="compact-document-department" {...memberAttributes('department')}>
@@ -66,7 +67,9 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
            <span className="compact-stage-title">{stage.label}{stage.key==='progressParty'&&includes('partyLevel')&&
              (!!item.partyLevel||editable('partyLevel'))&&
              <span className="compact-stage-level" {...memberAttributes('partyLevel')}>
-               {' ('}{shown('partyLevel')}{')'}
+               <span className="compact-stage-level-open" aria-hidden="true">(</span>
+               {shown('partyLevel')}
+               <span className="compact-stage-level-close" aria-hidden="true">)</span>
              </span>}</span>
          </span>
          {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}
