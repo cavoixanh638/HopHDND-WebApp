@@ -41,7 +41,8 @@ export function createDemoItems(count = 24): Item[] {
       type: isReport ? 'Báo cáo' : ordinal % 2 ? 'QPPL' : 'HC',
       partyLevel: ordinal % 5 === 0 ? 'Không phải trình' : ['BCH', 'BTV TU', 'TTTU'][(ordinal - 1) % 3],
       progressParty: ordinal % 5 === 0 ? 'Không phải trình' : partyStatuses[(ordinal - 1) % partyStatuses.length],
-      progressBuild: ['Không phải trình', 'Sở chưa trình', 'VP đang xử lý', 'Đã trình, chờ QĐ', 'Đã có QĐ'][(ordinal - 1) % 4],
+      progressBuild: isReport || ordinal % 2 === 0 ? 'Không phải trình' :
+        ['Không phải trình', 'Sở chưa trình', 'VP đang xử lý', 'Đã trình, chờ QĐ', 'Đã có QĐ'][(ordinal - 1) % 4],
       progressCouncil: councilStatuses[(ordinal - 1) % councilStatuses.length],
       specialist: assignment.specialist,
       room: assignment.room,
