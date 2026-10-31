@@ -120,10 +120,14 @@ try {
 
   const focusTooltip=await evaluate(`(()=>{
     const target=document.querySelector('.item-data-table .business-build-locked');
-    target?.focus();return {focused:document.activeElement===target,
+    target?.focus({preventScroll:true});return {focused:document.activeElement===target,
       explanation:target?.getAttribute('data-quick-tooltip'),
       shown:!!document.querySelector('#edit-shared-tooltip:popover-open'),
-      description:target?.getAttribute('aria-describedby')};
+      exists:!!document.getElementById('edit-shared-tooltip'),
+      description:target?.getAttribute('aria-describedby'),
+      inTable:!!target?.closest('table.item-data-table'),
+      focusVisible:target?.matches(':focus-visible'),
+      html:document.querySelector('#edit-shared-tooltip')?.outerHTML.slice(0,220)};
   })()`);
   assert(focusTooltip.focused&&focusTooltip.shown&&focusTooltip.description==='edit-shared-tooltip',
     'keyboard explanation not accessible '+JSON.stringify(focusTooltip));
