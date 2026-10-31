@@ -65,6 +65,87 @@ const click=async selector=>{
 };
 const all=()=>js('[...document.querySelectorAll("[data-ui-ref-code]")].map(x=>({code:x.dataset.uiRefCode,hidden:x.hidden,rect:x.getBoundingClientRect().toJSON()}))');
 const noRef=()=>js('!document.querySelector("[data-ui-reference-layer], [data-ui-ref-code]")');
+
+// Independent R-V4-01 visual acceptance: count only ACTUALLY PAINTED markers.
+// Probe the glyph ranges and every visible clickable/arrow control under the
+// current dialog/main UI. A tag in the DOM with hidden=true is NOT a visible tag.
+const referenceVisualAudit=()=>js('('+function auditReferenceBadgeOcclusion(){
+  const dialog=document.querySelector('dialog.report-grid-modal[open]');
+  const root=dialog||document.querySelector('[data-preview="pr95-l4-full"]');
+  if(!root)throw Error('visual audit root missing');
+  const overlay=[...document.querySelectorAll('[data-ui-ref-code],[data-ui-reference-hover]')];
+  const printed=overlay.filter(el=>{
+    const cs=getComputedStyle(el),r=el.getBoundingClientRect();
+    return !el.hidden&&cs.display!=='none'&&cs.visibility==='visible'&&
+      r.width>0&&r.height>0&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&
+      (dialog?dialog.contains(el):!el.closest('dialog'));
+  });
+  const hidden=overlay.filter(el=>el.matches('[data-ui-ref-code]')&&!printed.includes(el))
+    .map(el=>({code:el.dataset.uiRefCode,reason:el.dataset.uiRefPlacement||'clipped'}));
+  const clip=(rect,element)=>{
+    let left=Math.max(0,rect.left),right=Math.min(innerWidth,rect.right);
+    let top=Math.max(0,rect.top),bottom=Math.min(innerHeight,rect.bottom);
+    for(let a=element.parentElement;a;a=a.parentElement){
+      const style=getComputedStyle(a);
+      if(/auto|scroll|hidden|clip/.test(style.overflowX+' '+style.overflowY)){
+        const r=a.getBoundingClientRect();
+        left=Math.max(left,r.left);right=Math.min(right,r.right);
+        top=Math.max(top,r.top);bottom=Math.min(bottom,r.bottom);
+      }
+      if(a===root)break;
+    }
+    return right>left&&bottom>top?{left,right,top,bottom}:null;
+  };
+  const content=[];
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const range=document.createRange();
+  while(walker.nextNode()){
+    const node=walker.currentNode,p=node.parentElement;
+    if(!node.textContent?.trim()||!p||p.closest('[data-ui-reference-layer],script,style,[hidden],[aria-hidden="true"]'))continue;
+    const style=getComputedStyle(p);
+    if(style.display==='none'||style.visibility!=='visible'||Number(style.opacity)===0)continue;
+    range.selectNodeContents(node);
+    for(const r of range.getClientRects()){
+      const clipped=clip(r,p);
+      if(clipped)content.push({rect:clipped,type:'text',snippet:node.textContent.trim().slice(0,24)});
+    }
+  }
+  for(const el of root.querySelectorAll('button,input,select,textarea,summary,svg,[role="button"],[role="combobox"],[class*="caret"],[class*="chevron"]')){
+    if(el.closest('[data-ui-reference-layer],[hidden],[aria-hidden="true"]'))continue;
+    const cs=getComputedStyle(el);
+    if(cs.display==='none'||cs.visibility!=='visible'||Number(cs.opacity)===0)continue;
+    const clipped=clip(el.getBoundingClientRect(),el);
+    if(clipped)content.push({rect:clipped,type:'control',snippet:(el.className?.baseVal||el.className||el.tagName).toString().slice(0,32)});
+  }
+  const intersects=(a,b)=>a.left<b.right-.4&&a.right>b.left+.4&&
+    a.top<b.bottom-.4&&a.bottom>b.top+.4;
+  const failures=[];
+  for(const tag of printed){
+    const rect=tag.getBoundingClientRect();
+    const box={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
+    for(const obj of content){
+      if(intersects(box,obj.rect)){
+        failures.push({code:tag.dataset.uiRefCode||'HOVER',type:obj.type,
+          content:obj.snippet,x:Math.round(rect.left),y:Math.round(rect.top)});
+        if(failures.length>=12)break;
+      }
+    }
+    if(failures.length>=12)break;
+  }
+  return {mode:dialog?'popup':'main',visible:printed.map(el=>el.dataset.uiRefCode||'HOVER'),
+    visibleCount:printed.length,hidden,hiddenCount:hidden.length,failures};
+}.toString()+')()');
+const verifyNoOcclusion=async stage=>{
+  await sleep(240);
+  const result=await referenceVisualAudit();
+  assert(!result.failures.length,'R-V4-01 visual overlap in '+stage+' '+JSON.stringify(result.failures));
+  console.log('R_V4_01_VISUAL_OCCLUSION_FREE '+stage+' '+JSON.stringify({
+    visibleCount:result.visibleCount,visible:result.visible,
+    suppressedCount:result.hiddenCount,suppressed:result.hidden
+  }));
+  return result;
+};
+
 const layerOk=()=>js('(()=>{const layer=document.querySelector("[data-ui-reference-layer]");return !!layer&&layer.getAttribute("aria-hidden")==="true"&&getComputedStyle(layer).pointerEvents==="none"&&[...layer.querySelectorAll("*")].every(node=>getComputedStyle(node).pointerEvents==="none")})()');
 const nav=async title=>call('const b=[...document.querySelectorAll(".pr95-preview-nav button")].find(b=>b.textContent?.includes('+JSON.stringify(title)+'));if(!b)throw Error("no nav");b.click()');
 const gear=()=>call('document.querySelector(".pr95-preview-gear").click()');
@@ -132,6 +213,8 @@ try{
     'reference mode changed source/table text');
   const hit=await js('(()=>{const e=document.querySelector("[data-summary-kind=qppl]");const r=e.getBoundingClientRect();const x=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return !!x?.closest("[data-summary-kind=qppl]")})()');
   assert(hit,'overlay must not cover clickable chip');
+  await verifyNoOcclusion('desktop-list');
+  await screenshot('pr95-v4-l3-r-v4-01-desktop-list.png');
   await screenshot('pr95-v4-l3-after-admin-list.png');
   await click('[data-summary-kind=qppl]');
   await until('document.querySelector("[data-summary-kind=qppl]").getAttribute("aria-pressed")==="true"',
@@ -153,6 +236,7 @@ try{
   const reordered=await js('(()=>{const t=document.querySelector(".item-data-table");const h=t.querySelector("th[data-column-key=note]");const before=[...t.querySelectorAll("thead th[data-column-key]")].map(x=>x.dataset.columnKey);if(!h)return null;h.focus();h.dispatchEvent(new KeyboardEvent("keydown",{key:"ArrowLeft",altKey:true,bubbles:true}));return before})()');
   assert(!!reordered,'Note column header required for reorder');
   await sleep(450);
+  await verifyNoOcclusion('desktop-reordered-list');
   const order=await js('[...document.querySelectorAll(".item-data-table thead th[data-column-key]")].map(x=>x.dataset.columnKey)');
   assert(order.includes('note')&&order.includes('specificProgress'),'reorder preserved semantic column keys');
   assert((await all()).some(a=>a.code==='L06'),'note reference retains code after reorder');
@@ -173,6 +257,7 @@ try{
   await until('document.querySelector("[data-ui-ref-code=R05]")','visible R05 after scroll');
   await call('document.querySelector(\'.report-surface[data-ui-reference-report="party"] > .card-header\').scrollIntoView({block:"center"})');
   await until('document.querySelector("[data-ui-ref-code=R01]")','R01 after return scroll');
+  await verifyNoOcclusion('desktop-reports');
   await screenshot('pr95-v4-l3-admin-reports.png');
   await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
   await until('document.querySelector("dialog.report-grid-modal[open]")','actual popup opened');
@@ -181,6 +266,8 @@ try{
   assert(await layerOk(),'popup overlay does not steal pointer/keyboard');
   const popup=await all();
   assert(popup.some(m=>m.code==='P00'),'P00 missing');
+  await verifyNoOcclusion('desktop-popup');
+  await screenshot('pr95-v4-l3-r-v4-01-desktop-popup.png');
   await screenshot('pr95-v4-l3-admin-popup.png');
   const popupCell=await js('(()=>{const cell=document.querySelector("dialog.report-grid-modal .report-detail-grid tbody td[data-col-key]");if(!cell)return null;cell.dispatchEvent(new PointerEvent("pointermove",{bubbles:true,pointerId:1}));return cell.dataset.colKey})()');
   assert(!!popupCell,'real popup cell exists');
@@ -216,7 +303,16 @@ try{
   await until('document.querySelector("[data-ui-ref-code=A01]")','mobile viewport marker');
   const mobile=await js('(()=>{const layer=document.querySelector("[data-ui-reference-layer]");return {width:innerWidth,hit:getComputedStyle(layer).pointerEvents,tagCount:layer.querySelectorAll("[data-ui-ref-code]").length}})()');
   assert(mobile.width===390&&mobile.hit==='none'&&mobile.tagCount>=3,'mobile overlay responsive');
+  await verifyNoOcclusion('mobile-list');
+  await screenshot('pr95-v4-l3-r-v4-01-mobile-list.png');
   await screenshot('pr95-v4-l3-mobile-admin.png');
+  await nav('Báo cáo tổng hợp');
+  await until('document.querySelector(".report-surface[data-ui-reference-report=party]")',
+    'mobile real report before popup');
+  await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
+  await until('document.querySelector("dialog.report-grid-modal[open]")','mobile popup opened');
+  await verifyNoOcclusion('mobile-popup');
+  await screenshot('pr95-v4-l3-r-v4-01-mobile-popup.png');
   const forbidden=network.filter(url=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(url));
   assert(!forbidden.length,'never contact cloud Firebase or Sheets '+JSON.stringify(forbidden));
   console.log('PR95_UI_V4_L3_REFERENCE_OVERLAY_CHROME_PASS '+JSON.stringify({
