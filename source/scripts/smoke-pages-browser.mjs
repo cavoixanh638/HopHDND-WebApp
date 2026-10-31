@@ -1876,39 +1876,36 @@ try{
         await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:pos.x,y:pos.y,button:'left',clickCount:1});
         await eventually("!!document.querySelector('dialog.report-detail-modal[open]')",
           'Full-cell corner click failed: '+selector);
-        // Guest popup is a table with column filters only, no technical toolbar actions.
+        // UI6-R02: Reports only after verified Emulator Google admin.
+        // This is ADMIN VIEW MODE, explicitly not a guest report popup.
+        // Keep readonly fields, column filters, history and count-click QA.
         const reportGrid=await evaluate(`(()=>{
           const modal=document.querySelector('dialog.report-detail-modal[open]');
           const grid=modal?.querySelector('.report-detail-grid');
           const cols=grid?.querySelectorAll('thead tr:first-child th').length??0;
           const rows=grid?.querySelectorAll('tbody tr').length??0;
-          // Guest may see one permitted-data edit toggle but NEVER the admin
-          // settings/presets/resize controls. No full login is needed.
-          const forbidden=modal?.querySelector('.report-grid-search,.report-grid-quick-width,.report-grid-presets,.column-resizer,.report-grid-settings,.custom-cell-input');
-          const toolbarButtons=[...(modal?.querySelectorAll('.report-grid-toolbar button')??[])];
-          const allowedActions=toolbarButtons.every(button=>button.textContent.trim()==='Chỉnh sửa nháp'||button.textContent.trim()==='Về chế độ xem');
+          const editing=!!grid?.querySelector('tbody button.cell-picker-trigger,tbody input.custom-cell-input');
           const history=['note','specificProgress'].map(key=>
             grid?.querySelector('tbody tr:first-child td[data-col-key="'+key+'"] button.cell-history-action'));
           const irrelevant=!!grid?.querySelector('tbody tr:first-child td[data-col-key="content"] button.cell-history-action');
-          return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!forbidden&&
-            allowedActions&&!modal.querySelector('.report-grid-toolbar input')&&
+          return {ok:!!modal&&cols>=6&&cols<16&&rows>=1&&!editing&&
             !!grid?.querySelector('.report-grid-filter-row input,.report-grid-filter-row select')&&
             history.every(Boolean)&&!irrelevant,
-            cols,rows,forbidden:!!forbidden,historyButtons:history.filter(Boolean).length,irrelevant};
+            cols,rows,editing,historyButtons:history.filter(Boolean).length,irrelevant};
         })()`);
-        if(!reportGrid.ok)throw Error('Anonymous report grid controls/history regression: '+JSON.stringify(reportGrid));
+        if(!reportGrid.ok)throw Error('Verified admin view-only report grid/history regression: '+JSON.stringify(reportGrid));
         if(selector==='.report-surface tbody td.report-clickable-cell:not(.report-total-col)'){
-          // Guest can inspect audit on these two fields even though the popup
-          // remains strictly read-only and has no editing controls.
+          // Verified admin in view mode can inspect audit without activating
+          // an editor; no guest authorization is claimed.
           await evaluate("document.querySelector('dialog.report-detail-modal[open] td[data-col-key=\\\"note\\\"] button.cell-history-action')?.click()");
           await eventually("!!document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"]')",
-            'Guest report history must open');
+            'Admin view-only report history must open');
           const historyTitle=await evaluate(`[...document.querySelectorAll('dialog.modal[open]')].map(el=>el.getAttribute('aria-label')).find(x=>x?.includes('Lịch sử sửa đổi'))`);
-          if(!historyTitle?.includes('Ghi chú'))throw Error('Guest popup opened wrong history field: '+historyTitle);
+          if(!historyTitle?.includes('Ghi chú'))throw Error('Admin view-only popup opened wrong history field: '+historyTitle);
           await evaluate("document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"] button[aria-label=\\\"Đóng cửa sổ\\\"]')?.click()");
           await eventually("!document.querySelector('dialog.modal[open][aria-label^=\\\"Lịch sử sửa đổi\\\"]')",
-            'Guest nested history did not close');
-          console.log('GUEST_REPORT_POPUP_HISTORY_PASS',historyTitle);
+            'Admin view-only nested history did not close');
+          console.log('UI6_R02_ADMIN_VIEW_ONLY_REPORT_POPUP_HISTORY_PASS',historyTitle);
         }
         if(selector!=='.report-surface tfoot td.report-total-col.report-clickable-cell'){
           await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
