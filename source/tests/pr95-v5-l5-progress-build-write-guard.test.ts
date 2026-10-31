@@ -265,8 +265,8 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     const w=harness(true);
     // Positive same payload against QPPL proves the test does not merely fail
     // on malformed audit, missing .write or missing lease.
-    const success=await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true));
-    expect(success.committed).toBe(true);
+    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true));
+    expect((await current(w.db,'qppl')).revision).toBe(2);
     for(const id of ['hc','bc']){
       const before=await current(w.db,id);
       await assertFails(directSdkEdit(w,id,'Đã có QĐ',true));
