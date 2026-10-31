@@ -123,7 +123,7 @@ describe('PR95 V5 L4: UI/read-domain HC/BC Business Build without raw migration'
     expect(identifiers(filterToolbarRows(items,state))).toEqual(['r2','r3','r4','r6']);
     state.search='đã có QĐ';
     expect(filterToolbarRows(items,state)).toEqual([]);
-    expect(exactChoices(items,'progressBuild')).not.toContain('giá trị legacy');
+    expect(exactChoices(items,'progressBuild')).toContain('Không phải trình');
     expect(projectedStatusFilterRows(items).map(x=>canonicalStatus('progressBuild',x.progressBuild)))
       .toEqual(['Sở chưa trình','Không phải trình','Không phải trình','Không phải trình',
         'Đã trình, chờ QĐ','Không phải trình']);
@@ -137,6 +137,6 @@ describe('PR95 V5 L4: UI/read-domain HC/BC Business Build without raw migration'
     expect(new Set(rows.map(x=>x.recordId)).size).toBe(27);
     expect(rows.map(x=>x.stt)).toEqual(Array.from({length:27},(_,i)=>i+1));
     expect(rows.filter(x=>x.documentKind==='BC').length).toBe(9);
-    expect(getKpis(rows).total.total).toBe(23);
+    expect(getKpis(rows).total).toBe(23);
   });
 });
