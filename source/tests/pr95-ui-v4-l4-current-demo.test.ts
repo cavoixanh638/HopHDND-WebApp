@@ -5,6 +5,7 @@ import {createLegacyDemoItemsForTests,legacyUnknownBlankFixtureForTests} from '.
 import {OFFICIAL_STATUS_CHOICES,canonicalStatus,isRecognizedStatus} from '../src/domain/status-contract';
 import {catalogFromItems} from '../src/data/catalogs';
 import {cellHighlightStyle,type CellHighlightRule} from '../src/data/item-preferences';
+import {effectiveBuildStatus} from '../src/domain/pr95-v5-l4-build-effective';
 import {BUSINESS_HEADERS,parseBusinessExcel,inspectBusinessExcel} from '../src/data/business-excel';
 import {DEFAULT_REPORTS,aggregateReport,getKpis,reportItems,isActive} from '../src/domain/reporting';
 import {summarizeListItems,filterListBySummary,type SummarySelection} from '../src/domain/item-summary';
@@ -58,8 +59,10 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
       .toBeUndefined();
     expect(cellHighlightStyle(legacy[0].partyLevel,'partyLevel',oldWildcard))
       .toEqual({color:'#FFFFFF',backgroundColor:'#123456'});
-    expect(cellHighlightStyle(canonical[1].progressBuild,'progressBuild',officeRule))
+    // The original yellow rule still matches a true legacy raw status; V5 HC defaults to not-required.
+    expect(cellHighlightStyle(legacy[1].progressBuild,'progressBuild',officeRule))
       .toEqual({color:'#000000',backgroundColor:'#FFEE55'});
+    expect(cellHighlightStyle(canonical[1].progressBuild,'progressBuild',officeRule)).toBeUndefined();
     expect(cellHighlightStyle(canonical[1].progressParty,'progressParty',officeRule))
       .toBeUndefined();
   });
@@ -69,13 +72,13 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
     expect(rows.map(item=>[item.partyLevel,item.progressParty,item.progressBuild,item.progressCouncil]))
       .toEqual([
         ['BCH','Sở chưa trình','Không phải trình','Sở chưa trình'],
-        ['BTV TU','VP đang xử lý','Sở chưa trình','VP đang xử lý'],
-        ['TTTU','Đã gửi ĐU','VP đang xử lý','Hoàn thành'],
-        ['BCH','ĐU gửi TU, chưa họp','Đã trình, chờ QĐ','Sở chưa trình'],
+        ['BTV TU','VP đang xử lý','Không phải trình','VP đang xử lý'],
+        ['TTTU','Đã gửi ĐU','Không phải trình','Hoàn thành'],
+        ['BCH','ĐU gửi TU, chưa họp','Không phải trình','Sở chưa trình'],
         ['Không phải trình','Không phải trình','Không phải trình','VP đang xử lý'],
-        ['TTTU','Đã có TBKL','Sở chưa trình','Hoàn thành'],
+        ['TTTU','Đã có TBKL','Không phải trình','Hoàn thành'],
         ['BCH','Sở chưa trình','VP đang xử lý','Sở chưa trình'],
-        ['BTV TU','VP đang xử lý','Đã trình, chờ QĐ','VP đang xử lý'],
+        ['BTV TU','VP đang xử lý','Không phải trình','VP đang xử lý'],
       ]);
     expect(rows[7].isDropped).toBe(true);
     expect(rows.every(item=>item.progressBuild!=='Đã có QĐ')).toBe(true);
@@ -87,7 +90,7 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
     for(let i=0;i<current.length;i++){
       expect(stableFields(current[i])).toEqual(stableFields(legacy[i]));
       for(const field of fields)
-        expect(canonicalStatus(field,legacy[i][field]),legacy[i].recordId+' '+field)
+        expect(canonicalStatus(field,field==='progressBuild'?effectiveBuildStatus(legacy[i]):legacy[i][field]),legacy[i].recordId+' '+field)
           .toBe(current[i][field]);
     }
     expect(ids(current)).toEqual(ids(legacy));
