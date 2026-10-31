@@ -21,6 +21,7 @@ import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY,readPer
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
+import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from '../items/status-display';
 import {ContentEditor} from '../items/ContentEditor';
 import {InlineNoteEditor} from '../items/InlineNoteEditor';
 import {LeaseTextInput} from '../items/LeaseTextInput';
@@ -88,6 +89,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     listLayout?.columns.find(col=>col.key===c.key)?.label??c.label])),[listLayout]);
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
+  const statusFilterItems=useMemo(()=>projectedStatusFilterRows(subset),[subset]);
   // Preview pending column changes while the settings panel is open.
   const displayedLayout=settings&&!guestViewer?pending:applied;
   const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll&&!guestViewer)&&
@@ -108,7 +110,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const visible=useMemo(()=>{
     return sortItems(subset.filter(item=>{
       return Object.entries(filters).every(([key,value])=>!value.trim()||
-        normalizeSearch(filterValue(item,key)).includes(normalizeSearch(value)));
+        normalizeSearch(statusFilterText(key,filterValue(item,key))).includes(normalizeSearch(value)));
     }),sort);
   },[subset,filters,sort]);
   // Explicitly separate guest read-only report viewing from list edit grants.
@@ -217,6 +219,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
+    const shown=statusReadOnlyValue(key as TextField,raw);
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
 
@@ -224,7 +227,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
     if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
-      return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
+      return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{shown}</span>:shown||'—';
     const field=key as TextField;
     if(field==='note'||field==='specificProgress')return <InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field={field} value={raw}
       label={'Sửa '+(labelByKey.get(key)??field)+' · '+displayId(item)} onCommit={value=>{
@@ -235,15 +238,17 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>openContent(item,field)}>{raw||'—'}</button>;
-    if(listLayout?.columns.find(c=>c.key===key)?.kind==='text')
+    if(!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
-    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-      searchable={field==='specialist'} options={popupFieldOptions(field,raw,catalog).filter(value=>
+    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={statusDisplayValue(field,raw)}
+      displayValue={isStatusDisplayField(field)?shown:undefined}
+      searchable={field==='specialist'} options={statusPickerValues(field,popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
-        !value||catalog.specialistRooms[value]?.includes(item.room))}
-      onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
+        !value||catalog.specialistRooms[value]?.includes(item.room)))}
+      onChange={value=>{if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return;
+        const next=statusEditSelection(field,raw,value);if(next!==null)onUpdate(item.recordId,{[field]:next});}}/>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
   const canClose=()=>{
@@ -395,13 +400,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             </ColumnHeader>)}</tr>
           <tr className="report-grid-filter-row">{renderedColumns.map(c=>popupPairs.some(pair=>pair.anchor===c.key&&
               (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
-            ?<CompactGroupFilterCell key={c.key} items={subset}
+            ?<CompactGroupFilterCell key={c.key} items={statusFilterItems}
               fields={popupPairs.find(pair=>pair.anchor===c.key)!.memberFields}
               values={filters} onChange={(field,value)=>setFilters(old=>{
                 const next={...old};if(value)next[field]=value;else delete next[field];return next;
               })}/>
             :<ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
-              items={subset} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
+              items={statusFilterItems} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
                 const next={...old};if(value)next[c.key]=value;else delete next[c.key];return next;
               })}/>)}</tr>
         </thead>
