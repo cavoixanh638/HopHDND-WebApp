@@ -17,8 +17,8 @@ export const UI_REFERENCE_LEGEND:readonly {prefix:string;meaning:string}[]=[
 
 type Area={code:string;selector:string};
 export const UI_REFERENCE_AREAS:readonly Area[]=[
-  {code:'A01',selector:'.primary-section-switcher .primary-section-card:first-child'},
-  {code:'A02',selector:'.primary-section-switcher .primary-section-card:nth-child(2)'},
+  {code:'A01',selector:'.primary-section-switcher [data-ui-reference-nav="overview"], .primary-section-switcher [data-ui-reference-nav="reports"]'},
+  {code:'A02',selector:'.primary-section-switcher [data-ui-reference-nav="items"]'},
   {code:'A03',selector:'.v3-settings-menu > summary, .pr95-preview-gear'},
   {code:'B00',selector:'.item-summary-card[data-summary-card="total"] .item-summary-total-lead'},
   {code:'B01',selector:'.item-summary-kind-chip[data-summary-kind="qppl"]'},
