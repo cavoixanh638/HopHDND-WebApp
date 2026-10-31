@@ -3884,6 +3884,11 @@ try{
   const guestCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
   if(guestCouncil.text!=='Sở chưa trình'||guestCouncil.picker||guestCouncil.button)
     throw Error('R-V3-03 denied guest unexpectedly has editor: '+JSON.stringify(guestCouncil));
+  const v4PopupReadonly=await evaluate("(()=>{const state=document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+");const wrapper=state?.querySelector('.workflow-status-value');return {ok:!!state&&!state.querySelector('button.cell-picker-trigger')&&!state.hasAttribute('data-editable')&&getComputedStyle(state,'::before').content==='none'&&(!wrapper||getComputedStyle(wrapper,'::before').content==='none'),stateDot:state?getComputedStyle(state,'::before').content:null,legacyDot:wrapper?getComputedStyle(wrapper,'::before').content:null};})()");
+  if(!v4PopupReadonly.ok)throw Error('UI V4 readonly popup status still has caret/dot: '+JSON.stringify(v4PopupReadonly));
+  const v4PopupReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-readonly.png',Buffer.from(v4PopupReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_READONLY_DOTLESS_PASS',JSON.stringify(v4PopupReadonly));
   const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-pr95-v3-l1-popup-guest-denied.png',Buffer.from(v3GuestShot.data,'base64'));
   await setPopupRole('admin');
@@ -3897,6 +3902,11 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='grid'&&br.height>=38&&st.borderTopWidth==='0px'&&st.boxShadow==='none'&&dot.content==='none'&&arrow.gridColumnStart==='2'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
+  const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_EDITABLE_CARET_HITBOX_PASS',JSON.stringify(v4PopupEditable));
   await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")?.click()");
   await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
     'R-V3-03 actual Council choices did not open');
