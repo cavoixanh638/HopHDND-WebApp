@@ -1001,7 +1001,7 @@
 @media(max-width:980px){.item-summary-grid{grid-template-columns:minmax(0,1fr)}}
 /* A 1280px/narrow desktop card and mobile use symmetrical 2x2, not 3+1.
    Council stays 3 across until its own labels no longer fit. */
-@container(max-width:405px){
+@container(max-width:380px){
  .item-summary-party .item-summary-buckets,
  .item-summary-build .item-summary-buckets{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
