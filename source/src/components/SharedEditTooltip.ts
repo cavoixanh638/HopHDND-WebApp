@@ -15,6 +15,8 @@ export function editTooltipPosition(rect:Pick<DOMRect,'left'|'right'|'top'|'bott
 }
 function fromTarget(target:EventTarget|null):HTMLElement|null{
   if(!(target instanceof Element))return null;
+  const locked=target.closest('.business-build-locked[data-quick-tooltip]');
+  if(locked instanceof HTMLElement&&locked.closest('table.item-data-table,table.report-detail-grid'))return locked;
   const history=target.closest('button.cell-history-action[data-quick-tooltip]');
   if(history instanceof HTMLButtonElement&&
     history.closest('table.item-data-table,table.report-detail-grid'))return history;
@@ -44,14 +46,25 @@ function show(target:HTMLElement,focus:boolean):void{
   hide();
   active=target;keyboard=focus;
   const text=target.getAttribute('data-quick-tooltip')||'Bấm để sửa';
-  const width=target.classList.contains('cell-history-action')?HISTORY_WIDTH:WIDTH;
+  const isLocked=target.classList.contains('business-build-locked');
+  const width=isLocked?Math.min(450,Math.max(160,window.innerWidth-24)):
+    target.classList.contains('cell-history-action')?HISTORY_WIDTH:WIDTH;
   tooltip.textContent=text;
   tooltip.style.setProperty('--edit-tooltip-width',width+'px');
-  const pos=outsideCellTooltipPosition(target.getBoundingClientRect(),
-    window.innerWidth,window.innerHeight,width,HEIGHT);
-  tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+  // This longer explanation wraps and is measured AFTER entering the top
+  // layer. Existing short edit/history hints keep their original 26px geometry.
+  tooltip.style.height=isLocked?'auto':'26px';
+  tooltip.style.minHeight=isLocked?'34px':'';
+  tooltip.style.whiteSpace=isLocked?'normal':'nowrap';
+  tooltip.style.textAlign=isLocked?'left':'center';
   if(focus)target.setAttribute('aria-describedby',tooltip.id);
+  tooltip.style.visibility='hidden';
   tooltip.showPopover();
+  const height=isLocked?Math.max(HEIGHT,tooltip.getBoundingClientRect().height):HEIGHT;
+  const pos=outsideCellTooltipPosition(target.getBoundingClientRect(),
+    window.innerWidth,window.innerHeight,width,height);
+  tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+  tooltip.style.visibility='visible';
 }
 function over(event:PointerEvent):void{
   if(event.pointerType==='touch')return;
@@ -66,16 +79,32 @@ function out(event:PointerEvent):void{
 }
 function focus(event:FocusEvent):void{
   const td=fromTarget(event.target);
-  if(td&&event.target instanceof Element&&event.target.matches(':focus-visible'))show(td,true);
+  if(td&&event.target instanceof Element&&
+    (event.target.matches(':focus-visible')||td.classList.contains('business-build-locked')))show(td,true);
 }
 function blur(event:FocusEvent):void{if(fromTarget(event.target)===active)hide();}
+/** Keep a keyboard-focused locked explanation legible while the browser
+ * scrolls the source cell into view; pointer hints retain hide-on-scroll.
+ * Reposition the ONE shared top-layer tooltip, never create row listeners. */
+function scrollTooltip():void{
+  if(keyboard&&active?.classList.contains('business-build-locked')&&
+    document.activeElement===active&&tooltip?.matches(':popover-open')){
+    const width=tooltip.getBoundingClientRect().width;
+    const height=tooltip.getBoundingClientRect().height;
+    const pos=outsideCellTooltipPosition(active.getBoundingClientRect(),
+      window.innerWidth,window.innerHeight,width,height);
+    tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+    return;
+  }
+  hide();
+}
 function attach():void{
   document.addEventListener('pointerover',over,true);
   document.addEventListener('pointerout',out,true);
   document.addEventListener('focusin',focus,true);
   document.addEventListener('focusout',blur,true);
   document.addEventListener('pointerdown',hide,true);
-  window.addEventListener('scroll',hide,true);
+  window.addEventListener('scroll',scrollTooltip,true);
   window.addEventListener('resize',hide);
 }
 function detach():void{
@@ -84,7 +113,7 @@ function detach():void{
   document.removeEventListener('focusin',focus,true);
   document.removeEventListener('focusout',blur,true);
   document.removeEventListener('pointerdown',hide,true);
-  window.removeEventListener('scroll',hide,true);
+  window.removeEventListener('scroll',scrollTooltip,true);
   window.removeEventListener('resize',hide);
 }
 export function mountSharedEditTooltip():()=>void{

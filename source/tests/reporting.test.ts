@@ -63,7 +63,7 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
   it('opens the four summary chips with exactly the records counted for each stage',()=>{
     const names=['Sở chưa trình','VP đang thực hiện','Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','Không phải trình','Lạ'];
     const records=createDemoItems(names.length).map((item,index)=>({...item,
-      isDropped:false,archivedAt:null,documentKind:'NQ' as const,progressBuild:names[index],
+      isDropped:false,archivedAt:null,documentKind:'NQ' as const,type:'QPPL',progressBuild:names[index],
       room:'Phòng kiểm thử'
     }));
     const onSelect=vi.fn();
@@ -120,7 +120,7 @@ describe('Kéo độ rộng và mở chi tiết số liệu',()=>{
   it('opens matching detail records from positive counts including group totals',()=>{
     const items=createDemoItems(5).map((item,i)=>({
       ...item,isDropped:false,archivedAt:null,documentKind:'NQ' as const,
-      room:'Một phòng',progressBuild:i===0?'Không phải trình xây dựng NQ':'Sở chưa trình',
+      room:'Một phòng',type:'QPPL',progressBuild:i===0?'Không phải trình xây dựng NQ':'Sở chưa trình',
     }));
     const onSelect=vi.fn();
     const rendered=ReportTable({items,config:{...DEFAULT_REPORTS[1],includeNotRequired:true,hiddenColumns:[]},group:'room',
@@ -153,7 +153,7 @@ describe('Bảng xây dựng NQ lấy dữ liệu từ Excel H',()=>{
       'Đã trình HĐND, chưa có QĐ','Đã có QĐ chấp thuận','','Đã có QĐ chấp thuận'];
     const items=createDemoItems(7).map((item,index)=>({...item,
       isDropped:false,archivedAt:null,documentKind:index===6?'BC' as const:'NQ' as const,
-      progressBuild:states[index],
+      type:index===6?'BC':'QPPL',progressBuild:states[index],
     }));
     const before=JSON.stringify(items);
     const report=aggregateReport(items,DEFAULT_REPORTS[1],'room');

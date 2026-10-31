@@ -3,7 +3,7 @@ import {createDemoItems} from '../src/data/demo-items';
 import {catalogFromItems} from '../src/data/catalogs';
 import {defaultItemLayout,EXCEL_COLUMN_KEYS} from '../src/data/item-preferences';
 const mock=vi.hoisted(()=>({dirty:false,markSaved:vi.fn()}));
-vi.mock('react',()=>({
+vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),
   useState:(initial:any)=>[typeof initial==='function'?initial():initial,vi.fn()],
   useRef:(initial:any)=>({current:initial}),useMemo:(fn:any)=>fn(),useEffect:vi.fn(),
 }));

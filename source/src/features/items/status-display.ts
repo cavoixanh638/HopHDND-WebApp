@@ -1,5 +1,6 @@
 import type {Item,TextField} from '../../../shared/types';
 import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
+import {effectiveBuildStatus} from '../../domain/pr95-v5-l4-build-effective';
 
 /** Pure presentation projection. Never mutate the raw Item, drafts, histories,
  * Excel, Firebase, leases or CAS baselines when an alias is merely displayed. */
@@ -32,7 +33,7 @@ export function projectedStatusFilterRows(items:readonly Item[]):Item[]{
   return items.map(item=>({...item,
     partyLevel:statusDisplayValue('partyLevel',item.partyLevel),
     progressParty:statusDisplayValue('progressParty',item.progressParty),
-    progressBuild:statusDisplayValue('progressBuild',item.progressBuild),
+    progressBuild:statusDisplayValue('progressBuild',effectiveBuildStatus(item)),
     progressCouncil:statusDisplayValue('progressCouncil',item.progressCouncil)
   }));
 }

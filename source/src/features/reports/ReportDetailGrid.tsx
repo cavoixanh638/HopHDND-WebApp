@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
@@ -13,6 +13,7 @@ import {Modal} from '../../components/Modal';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
+import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CompactGroupFilterCell} from '../items/CompactGroupFilterCell';
@@ -89,6 +90,20 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     listLayout?.columns.find(col=>col.key===c.key)?.label??c.label])),[listLayout]);
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
+  const latestItems=useRef(items);
+  latestItems.current=items;
+  const safeUpdate=(id:string,changes:Changes)=>{
+    const current=latestItems.current.find(entry=>entry.recordId===id);
+    if(current&&rejectsBuildChange(current,changes))return;
+    onUpdate(id,changes);
+  };
+  const mayEditField=(item:Item,field:TextField)=>
+    !(field==='progressBuild'&&buildLocked(item))&&canEditCell(item.recordId,field);
+  const lockedBuildHint=(item:Item)=><span className="business-build-locked"
+    tabIndex={0} data-quick-tooltip={buildLockReason(item)??undefined}
+    aria-label={'Tiến độ xây dựng NQ: Không phải trình. '+buildLockReason(item)}>
+    Không phải trình
+  </span>;
   const statusFilterItems=useMemo(()=>projectedStatusFilterRows(subset),[subset]);
   // Preview pending column changes while the settings panel is open.
   const displayedLayout=settings&&!guestViewer?pending:applied;
@@ -110,13 +125,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const visible=useMemo(()=>{
     return sortItems(subset.filter(item=>{
       return Object.entries(filters).every(([key,value])=>!value.trim()||
-        normalizeSearch(statusFilterText(key,filterValue(item,key))).includes(normalizeSearch(value)));
+        normalizeSearch(key==='progressBuild'?effectiveBuildStatus(item):statusFilterText(key,filterValue(item,key))).includes(normalizeSearch(value)));
     }),sort);
   },[subset,filters,sort]);
   // Explicitly separate guest read-only report viewing from list edit grants.
   const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
-  const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>canEditCell(item.recordId,field.key)));
+  const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>mayEditField(item,field.key)));
   const availableWidth=Math.min(2400,Math.max(640,
     (typeof window==='undefined'?1480:window.innerWidth||1480)-20));
   const minDialogWidth=Math.min(640,availableWidth);
@@ -219,20 +234,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
-    const shown=statusReadOnlyValue(key as TextField,raw);
+    const shown=statusReadOnlyValue(key as TextField,effectiveItemField(item,key));
+    if(key==='progressBuild'&&buildLocked(item))return lockedBuildHint(item);
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
 
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
-    if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
+    if(!editing||!popupMayEdit||!editableFields.has(key)||!mayEditField(item,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{shown}</span>:shown||'—';
     const field=key as TextField;
     if(field==='note'||field==='specificProgress')return <InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field={field} value={raw}
       label={'Sửa '+(labelByKey.get(key)??field)+' · '+displayId(item)} onCommit={value=>{
-        if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return false;
-        onUpdate(item.recordId,{[field]:value});return true;
+        if(!editing||!popupMayEdit||!mayEditField(item,field))return false;
+        safeUpdate(item.recordId,{[field]:value});return true;
       }}/>;
     if(field==='content')
       return <button type="button" className="cell-value-button"
@@ -241,14 +257,14 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-        onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
+        onChange={value=>{if(editing&&popupMayEdit&&mayEditField(item,field))safeUpdate(item.recordId,{[field]:value});}}/>;
     return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={statusDisplayValue(field,raw)}
       displayValue={isStatusDisplayField(field)?shown:undefined}
       searchable={field==='specialist'} options={statusPickerValues(field,popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
         !value||catalog.specialistRooms[value]?.includes(item.room)))}
       onChange={value=>{if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return;
-        const next=statusEditSelection(field,raw,value);if(next!==null)onUpdate(item.recordId,{[field]:next});}}/>;
+        const next=statusEditSelection(field,raw,value);if(next!==null)safeUpdate(item.recordId,{[field]:next});}}/>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
   const canClose=()=>{
@@ -413,18 +429,18 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <tbody>
           {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
-              canEditCell(item.recordId,c.key as TextField);
+              mayEditField(item,c.key as TextField);
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
-                data-progress-tone={statusPaletteTone(c.key,item[c.key as DetailColumnKey],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                data-progress-tone={c.key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(c.key,effectiveItemField(item,c.key),statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
-                style={pair?undefined:cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
-                {pair?<CompactGroupedValue item={item} pair={pair}
-                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&canEditCell(item.recordId,field)}
-                  tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
-                  highlight={field=>cellHighlightStyle(item[field],field,listLayout?.cellHighlights)}
+                style={pair?undefined:cellHighlightStyle(effectiveItemField(item,c.key),c.key,listLayout?.cellHighlights)}>
+                {pair?<CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
+                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&mayEditField(item,field)}
+                  tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
+                  highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,listLayout?.cellHighlights)}
                   cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}

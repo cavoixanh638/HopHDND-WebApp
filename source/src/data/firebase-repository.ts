@@ -6,6 +6,7 @@ import { EDITABLE_FIELDS, validateChanges } from '../domain/items';
 import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
 import type {CellEditSessionManager} from './cell-edit-leases';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
+import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-policy';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -113,6 +114,14 @@ export class FirebaseRepository implements Repository {
           if(raw.operationId===patch.operationId){replay=fields.every(field=>current[field]===patch.changes[field]);return undefined;}
           const conflict=fields.find(field=>current[field]!==patch.baseValues[field]);
           if(conflict){reason=`Ô ${conflict} hiện ở nguồn là “${String(current[conflict])}”; phần bạn nhập “${String(patch.changes[conflict])}” vẫn được giữ. Bỏ phần sửa để nhận dữ liệu nguồn hoặc đối chiếu trước khi nhập lại.`;return undefined;}
+          // V5 L5: the current server record wins over the type seen when an
+          // editor opened. Check the POST-PATCH type (including documentKind),
+          // before any new revision, editProof or audit entry is constructed.
+          // HC/BC legacy Build text is valid data when left unchanged.
+          if(violatesProgressBuildWritePolicy(current,patch.changes)){
+            reason='Loại VB HC/BC không phải trình xây dựng NQ nên trạng thái này không thể chỉnh sửa.';
+            return undefined;
+          }
           if(fields.some(field=>field==='specialist'||field==='room')){const issue=this.checkAssignment?.({...current,...patch.changes});if(issue)throw new Error(issue);}
           const editProofs={...(raw.editProofs??{})};
           if(this.leaseManager)for(const field of fields)

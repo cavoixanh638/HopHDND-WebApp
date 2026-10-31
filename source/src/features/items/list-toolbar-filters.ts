@@ -5,6 +5,7 @@ import {isActive} from '../../domain/reporting';
 import type {SummarySelection} from '../../domain/item-summary';
 import {filterListBySummary} from '../../domain/item-summary';
 import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
+import {effectiveBuildStatus,effectiveItemField} from '../../domain/pr95-v5-l4-build-effective';
 
 export type ListKind='qppl'|'hc'|'bc'|'nq-unknown'|'unclassified';
 export type DetailKey='partyLevel'|'progressParty'|'progressBuild'|'progressCouncil'|
@@ -58,15 +59,15 @@ export function filterToolbarRows(
     if(state.department&&item.department!==state.department)return false;
     if(state.room&&item.room!==state.room)return false;
     if(DETAIL_FIELDS.some(({key})=>state.details[key]&&
-      (isWorkflowField(key)?canonicalStatus(key,item[key])!==canonicalStatus(key,state.details[key]):
+      (isWorkflowField(key)?canonicalStatus(key,key==='progressBuild'?effectiveBuildStatus(item):item[key])!==canonicalStatus(key,state.details[key]):
         item[key]!==state.details[key])))
       return false;
     if(!needle)return true;
     const values=state.field==='all'
-      ?[displayId(item),...searchable.map(key=>String(item[key]??'')),...(customValue
+      ?[displayId(item),...searchable.map(key=>effectiveItemField(item,key)),...(customValue
         ?[customValue(item,'*')]:[])]
       :[...(state.field==='displayCode'?[displayId(item)]:[]),
-        state.field in item?String((item as unknown as Record<string,unknown>)[state.field]??''):
+        state.field in item?effectiveItemField(item,state.field):
         customValue?.(item,state.field)??''];
     return values.some(value=>normalizeSearch(value).includes(needle));
   });
@@ -81,7 +82,7 @@ export const hasToolbarFilters=(state:ListToolbarState):boolean=>
 export const exactChoices=(items:readonly Item[],key:keyof Item):string[]=>{
   if(isWorkflowField(key)){
     const official=OFFICIAL_STATUS_CHOICES[key];
-    const observed=[...new Set(items.map(item=>canonicalStatus(key,item[key])).filter(Boolean))]
+    const observed=[...new Set(items.map(item=>canonicalStatus(key,key==='progressBuild'?effectiveBuildStatus(item):item[key])).filter(Boolean))]
       .filter(value=>!official.includes(value)).sort((a,b)=>a.localeCompare(b,'vi'));
     // Unknown originals remain selectable for data-quality filtering, but
     // recognized old labels never re-enter the official choice menu.

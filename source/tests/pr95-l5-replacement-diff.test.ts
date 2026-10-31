@@ -34,7 +34,7 @@ describe('PR95 L5: business-code replacement is a complete new snapshot',()=>{
       total:4,nq:3,bc:1,unclassified:0,pending:4,doing:0,completed:0,
       qppl:0,hc:3,nqUnclassified:0,
     });
-    expect(result.totals.stages.map(x=>x.total)).toEqual([4,3,3]);
+    expect(result.totals.stages.map(x=>x.total)).toEqual([4,0,3]); // V5: NQ HC Build is not required, but raw snapshot stays identical
     expect(result.totals.stages.every(x=>x.buckets.flatMap(b=>b.ids)
       .every(id=>!id.includes('NQ004')))).toBe(true);
     expect(filterListBySummary(next,{report:'party',stage:'source'}).map(x=>x.displayCode))

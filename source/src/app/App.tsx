@@ -13,6 +13,7 @@ import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
   type StatusPaletteStore} from '../data/status-palettes';
 import { ItemList } from '../features/items/ItemList';
+import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
 import type { Repository } from '../data/repository';
@@ -547,7 +548,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
       :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'
     :null;
-  return <div ref={referenceRoot} data-ui-reference-active={referenceCodesVisible?'true':undefined}
+  // UI V5 L2: this is the verified adminTools gate, not edit permissions.
+  // Provider only passes context; it adds no DOM container or layout shift.
+  return <SummaryDiagnosticVisibilityProvider enabled={adminTools}><div ref={referenceRoot} data-ui-reference-active={referenceCodesVisible?'true':undefined}
     className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${guestViewer?'guest-view':''}`} style={frameStyle}>
     <UiReferenceOverlay enabled={referenceCodesVisible} rootRef={referenceRoot}/>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar v3-shell-topbar">
@@ -705,7 +708,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     {history && <HistoryDialog item={history.item} field={history.field} repository={repository} onClose={() => setHistory(null)} />}
     {confirmDiscard && <Modal title="Bỏ các thay đổi chưa lưu vào file nguồn?" onClose={() => setConfirmDiscard(false)}><div className="modal-body"><p>Phần chưa lưu của {workspace.protectedRecovery?'phần sửa cũ trên máy':`${dirtyCount} nội dung`} sẽ được bỏ. Dữ liệu trong file nguồn không bị thay đổi.</p></div><div className="modal-footer"><button className="button ghost" onClick={() => setConfirmDiscard(false)}>Tiếp tục sửa</button><button className="button danger" onClick={() => { workspace.discard(); setConfirmDiscard(false); }}>Bỏ các thay đổi</button></div></Modal>}
     {adminTools&&<footer className="app-footer">{'Dashboard HĐND · Một file HTML · '+sourceLabel}</footer>}
-  </div>;
+  </div></SummaryDiagnosticVisibilityProvider>;
 }
 
 
