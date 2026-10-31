@@ -2469,37 +2469,93 @@ try{
       rows,values};
   })()`);
   if(!isolatedEdit.ok)throw Error('Source stage editors must not cross-write: '+JSON.stringify(isolatedEdit));
-  // The status popover shows exactly options, not a duplicated field/record title.
-  const v3Opened=await evaluate(`(()=>{
-    const row=document.querySelector('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel] [data-stage-field=progressBuild]');
-    const button=row?.querySelector('.compact-stage-state button.cell-picker-trigger');
-    if(!button)return false;button.click();return true;
+  // V5 integration: do not use row 2 as a positive Build editor. In the
+  // genuine demo that record is NQ HC and MUST be locked for both admin and
+  // individually granted editors. BC is also denied. The QPPL positive has
+  // an explicit stable identity (NQ07), not a guessed table position.
+  const v5BusinessBuildLocks=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    const kind=row=>row.querySelector('.compact-document-badge')?.textContent?.trim()??'';
+    const id=row=>row.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()??'';
+    const check=type=>{
+      const found=rows.find(row=>kind(row)===type);
+      const state=found?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+      const hint=state?.querySelector('.business-build-locked');
+      return {kind:type,id:found&&id(found),ok:!!found&&!!hint&&
+        state.textContent?.trim()==='Không phải trình'&&
+        !state.querySelector('button.cell-picker-trigger')&&
+        hint.getAttribute('data-quick-tooltip')?.includes('không thể chỉnh sửa'),
+        value:state?.textContent?.trim(),locked:!!hint,
+        button:!!state?.querySelector('button.cell-picker-trigger')};
+    };
+    const hc=check('HC'),bc=check('Báo cáo');
+    const qppl=rows.find(row=>id(row)==='NQ07'&&kind(row)==='QPPL');
+    const build=qppl?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    return {ok:hc.ok&&bc.ok&&!!qppl&&!!build?.querySelector('button.cell-picker-trigger'),
+      hc,bc,qppl:{id:qppl&&id(qppl),kind:qppl&&kind(qppl),
+        build:build?.textContent?.trim(),editor:!!build?.querySelector('button.cell-picker-trigger')}};
   })()`);
-  if(!v3Opened)throw Error('V3 status dropdown not available on granted field');
+  if(!v5BusinessBuildLocks.ok)
+    throw Error('UI_V5_INTEGRATED_HC_BC_LOCK_QPPL_EDITOR_FAIL '+JSON.stringify(v5BusinessBuildLocks));
+  console.log('UI_V5_INTEGRATED_HC_BC_LOCK_QPPL_EDITOR_PASS',JSON.stringify(v5BusinessBuildLocks));
+  const v5LockedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v5-integrated-hc-bc-lock-qppl.png',Buffer.from(v5LockedShot.data,'base64'));
+  // Keep all legacy V3 choices-only/selected/keyboard/ESC checks; change
+  // ONLY the formerly invalid HC-positive oracle to an actual editable QPPL.
+  const v3Opened=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07'&&
+      x.querySelector('.compact-document-badge')?.textContent?.trim()==='QPPL');
+    const button=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger');
+    if(!button)return false;
+    button.scrollIntoView({block:'center',inline:'nearest'});
+    button.click();return true;
+  })()`);
+  if(!v3Opened)throw Error('V3 status dropdown not available on granted QPPL NQ07 field');
   await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-options [role=option]')",
-    'V3 status options did not open');
+    'V3 QPPL status options did not open');
   const v3Choices=await evaluate(`(()=>{
     const p=document.querySelector('.cell-picker-popover:popover-open');
     const children=[...p?.children??[]], choices=[...p?.querySelectorAll('.cell-picker-option')??[]];
     const selected=choices.filter(x=>x.getAttribute('aria-selected')==='true');
-    const row=document.querySelector('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel] [data-stage-field=progressBuild]');
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07'&&
+      x.querySelector('.compact-document-badge')?.textContent?.trim()==='QPPL');
+    const stage=row?.querySelector('[data-stage-field=progressBuild]');
+    const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+    const labels=choices.map(x=>x.textContent?.trim());
     return {ok:p?.dataset.choicesOnly==='true'&&!!p.getAttribute('aria-label')&&
+      p.getAttribute('aria-label').includes('NQ07')&&
       children.length===1&&children[0].classList.contains('cell-picker-options')&&
-      choices.length>=2&&selected.length===1&&
+      JSON.stringify(labels)===JSON.stringify(expected)&&selected.length===1&&
+      selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      getComputedStyle(row).outlineStyle==='solid'&&
+      getComputedStyle(stage).outlineStyle==='solid'&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
-      optionCount:choices.length,selected:selected.map(x=>x.textContent?.trim()),
+      id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
+      optionCount:choices.length,labels,selected:selected.map(x=>x.textContent?.trim()),
       ariaLabel:p?.getAttribute('aria-label'),children:children.map(x=>x.className)};
   })()`);
-  if(!v3Choices.ok)throw Error('UI_V3_L2 choices-only status dropdown: '+JSON.stringify(v3Choices));
+  if(!v3Choices.ok)throw Error('UI_V3_L2 choices-only QPPL status dropdown: '+JSON.stringify(v3Choices));
   const v3ChoicesShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v3-l2-choices-only-dropdown.png',Buffer.from(v3ChoicesShot.data,'base64'));
+  const v5BuildBeforeEsc=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state')?.textContent?.trim();
+  })()`);
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
   await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
-    'Escape must close the current picker');
+    'Escape must close the QPPL current picker');
+  const v5BuildAfterEsc=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state')?.textContent?.trim();
+  })()`);
+  if(v5BuildBeforeEsc!==v5BuildAfterEsc)
+    throw Error('UI_V5_INTEGRATION_ESC_MUTATED_QPPL_BUILD '+JSON.stringify({before:v5BuildBeforeEsc,after:v5BuildAfterEsc}));
   console.log('UI_V3_L2_CHOICES_ONLY_KEYBOARD_PASS',JSON.stringify(v3Choices));
 
   // R-V3-01: the real List strips '' from the catalog. The optional
