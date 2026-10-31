@@ -334,6 +334,10 @@ try{
   await waitFor('document.querySelector(".pr95-preview-context")?.textContent.includes("Hồ sơ: 27")','restore fixture');
   await clickText('Phân quyền chỉnh sửa');
   await waitFor('document.querySelector(".inline-permission-table")','real permissions grid');
+  // V5: a synthetic admin may grant Build to everyone, but the business
+  // eligibility rule still locks every HC and BC record for the guest.
+  await interact('const head=[...document.querySelectorAll(".inline-permission-table thead th")].find(x=>x.querySelector(".permission-header-title")?.textContent.includes("Xây dựng NQ"));'+
+    'const box=head?.querySelector("input[type=checkbox]");if(!box)throw Error("Build column missing");if(!box.checked)box.click()');
   await selectValue('select[aria-label*="Ghi chú"]','allow');
   await interact('const cb=document.querySelector("input[aria-label=\\"Xác nhận rủi ro quyền theo dòng/ô\\"]");if(!cb)throw Error("Missing risk acknowledgement");cb.click()');
   await clickText('Lưu quyền chỉnh sửa');
