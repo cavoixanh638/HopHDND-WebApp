@@ -13,6 +13,7 @@ import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/statu
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
 import type {CellPermissions} from '../data/firebase-repository';
 import {ItemList} from '../features/items/ItemList';
+import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import {ReportTable} from '../features/reports/ReportTable';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
 import {InlinePermissionsTable} from '../features/items/InlinePermissionsTable';
@@ -160,7 +161,8 @@ export function Pr95FullPreview(){
     setGuestEditCount(0);setRevision(v=>v+1);
     setNotice('Đã đặt lại hồ sơ và quyền mô phỏng trong bộ nhớ.');
   };
-  return <div ref={referenceRoot} className="app-shell imperial-sky-theme pr95-full-preview"
+  // Synthetic role is explicit and never reused to authorize a real App.
+  return <SummaryDiagnosticVisibilityProvider enabled={admin}><div ref={referenceRoot} className="app-shell imperial-sky-theme pr95-full-preview"
     data-qa="compact-real-itemlist" data-preview="pr95-l4-full" data-role={role}
     data-ui-reference-active={admin&&referenceCodesOn?'true':undefined}
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
@@ -323,5 +325,5 @@ export function Pr95FullPreview(){
       onOpenFullList={()=>{setDrill(null);openPage('items');}}
       dirtyIds={dirtyIds} errors={{}} statusPaletteStore={palette}
       onStatusPaletteChange={admin?next=>{setPalette(next);return true;}:undefined}/>}
-  </div>;
+  </div></SummaryDiagnosticVisibilityProvider>;
 }
