@@ -3154,7 +3154,16 @@ try{
     const classified=qppl+hc+bc;
     const stages=['party','build','nq'].map(k=>{
       const card=document.querySelector('[data-summary-card='+k+']');
-      return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
+      const buckets=[...card.querySelectorAll('.item-summary-bucket')];
+      const tops=buckets.map(button=>Math.round(button.getBoundingClientRect().top));
+      const rows=[...new Set(tops)].map(top=>tops.filter(value=>value===top).length);
+      const labelsFit=buckets.every(button=>{
+        const label=button.querySelector('span');
+        const range=document.createRange();range.selectNodeContents(label);
+        const text=range.getBoundingClientRect(),frame=button.getBoundingClientRect();
+        return text.left>=frame.left+1&&text.right<=frame.right-1;
+      });
+      return {key:k,status:buckets.length,rows,labelsFit,
         percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
         width:card.getBoundingClientRect().width};
     });
@@ -3163,7 +3172,13 @@ try{
       Math.abs(totalBounds.left+totalBounds.width/2-summary.left-summary.width/2)<2&&
       cards[0].scrollWidth<=cards[0].clientWidth+1&&
       totalBounds.bottom<workflowBounds[0].top&&workflowBounds.every(r=>
-        Math.abs(r.top-workflowBounds[0].top)<2&&Math.abs(r.width-workflowBounds[0].width)<2)&&
+        Math.abs(r.top-workflowBounds[0].top)<2)&&
+      // R-V3-04: the Build label is longer, so its deliberate 1.15fr track
+      // must fit without clipping. Preserve the balanced Party/Council widths.
+      Math.abs(workflowBounds[0].width-workflowBounds[2].width)<2&&
+      Math.abs(workflowBounds[1].width/workflowBounds[0].width-1.15)<.02&&
+      stages.every((stage,index)=>JSON.stringify(stage.rows)===
+        JSON.stringify(index===2?[3]:[4])&&stage.labelsFit)&&
       summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
       headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
       headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
