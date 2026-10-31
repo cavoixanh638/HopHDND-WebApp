@@ -475,7 +475,7 @@ async function test(){
   await admin.until('!!document.querySelector(".item-data-table")','admin list after permissions');
   await admin.evalJs('document.querySelector(".options-menu summary").click()');
   await clickText(admin,'.options-popover button','Tài khoản và dữ liệu');
-  await admin.until('!!document.querySelector("section[aria-label=\"Tài khoản Firebase\"]")',
+  await admin.until('!!document.querySelector(".card .settings-mode-bar")',
     'admin Firebase account panel');
   await clickText(admin,'section[aria-label="Tài khoản Firebase"] button','Đăng xuất');
   await admin.until('!!document.querySelector(".v3-gear-login")','real Auth signout changes adminTools',16000);
