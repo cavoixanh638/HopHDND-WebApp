@@ -198,11 +198,11 @@ try{
   await waitFor('document.querySelector("[data-preview=pr95-l4-full]")&&document.querySelector(".item-data-table tbody tr")','list default');
   await ensure('!document.querySelector("[data-role=guest] .pr95-preview-nav")','V6 guest A01/A02 absent in DOM');
   await ensure('document.querySelector("[data-role=guest] .pr95-preview-gear")','V6 guest gear retained');
-  await ensure('(()=>{const s=document.querySelector(".item-summary-grid"),h=document.querySelector(".item-list-page-title"),f=document.querySelector(".list-filter-toolbar"),t=document.querySelector(".item-data-table");return !!s&&!!h&&!!f&&!!t&&
+  await ensure(`(()=>{const s=document.querySelector(".item-summary-grid"),h=document.querySelector(".item-list-page-title"),f=document.querySelector(".list-filter-toolbar"),t=document.querySelector(".item-data-table");return !!s&&!!h&&!!f&&!!t&&
     !!(s.compareDocumentPosition(h)&Node.DOCUMENT_POSITION_FOLLOWING)&&
     !!(h.compareDocumentPosition(f)&Node.DOCUMENT_POSITION_FOLLOWING)&&
     !!(f.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_FOLLOWING)&&
-    document.querySelectorAll(".item-list-page-title").length===1})()','V6 B–C–heading–F–table reading order');
+    document.querySelectorAll(".item-list-page-title").length===1})()`,'V6 B–C–heading–F–table reading order');
   await ensure('document.querySelector("[data-role=guest]")','guest default');
   await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".pr95-preview-role")','guest no Excel or role toolbar');
   await ensure('!document.querySelector(".source-column-visibility")&&!document.querySelector(".compact-columns-menu")','guest no column controls');
