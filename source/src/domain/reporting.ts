@@ -44,7 +44,8 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
           !isNotRequiredStatus('partyLevel',item.partyLevel);
       case 'build':
         return (item.documentKind==='NQ'&&!!normalizeSearch(item.progressBuild))||
-          (config.includeNotRequired===true&&buildLocked(item));
+          (config.includeNotRequired===true&&
+            (item.documentKind==='NQ'||item.documentKind==='BC')&&buildLocked(item));
       case 'council':return item.documentKind==='NQ'||item.documentKind==='BC';
       case 'nq':return item.documentKind==='NQ';
       case 'bc':return item.documentKind==='BC';
