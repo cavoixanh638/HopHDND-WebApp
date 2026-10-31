@@ -259,8 +259,8 @@ try {
   // Natural menu height at a bottom-edge row; real event, not .click().
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:520,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?edit=1&review-staff=1'});
-  await waitFor('document.querySelector(".item-data-table tbody tr:last-child .compact-stage-row[data-stage-field=progressParty] button.cell-picker-trigger")','last-row status');
-  const bottom='document.querySelector(".item-data-table tbody tr:last-child .compact-stage-row[data-stage-field=progressParty] button.cell-picker-trigger")';
+  await waitFor('document.querySelector(".item-data-table tbody tr:last-child .compact-stage-row[data-stage-field=progressParty] .compact-stage-state button.cell-picker-trigger")','last-row status');
+  const bottom='document.querySelector(".item-data-table tbody tr:last-child .compact-stage-row[data-stage-field=progressParty] .compact-stage-state button.cell-picker-trigger")';
   await actual(bottom,true);
   await openPop('Tiến độ xin ý kiến Thành ủy');
   const bottomRect=await geometry(bottom,'bottom-edge-seven-choices');
