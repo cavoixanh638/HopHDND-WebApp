@@ -232,7 +232,8 @@ describe('separate item layout save and data draft',()=>{
     picker.onChange('Đã trình, chờ QĐ');
     expect(onUpdate).not.toHaveBeenCalled(); // same canonical selection
     picker.onChange('Đã có QĐ');
-    expect(onUpdate).toHaveBeenCalledExactlyOnceWith(item.recordId,{progressBuild:'Đã có QĐ'});
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(onUpdate).toHaveBeenCalledWith(item.recordId,{progressBuild:'Đã có QĐ'});
     expect(JSON.stringify(item)).toBe(before);
     const noGrant=nodes(ItemList({...props,canEditCell:()=>false}))
       .filter(node=>node.type===CellPicker&&node.props.field==='progressBuild');
