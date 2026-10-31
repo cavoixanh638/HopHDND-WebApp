@@ -1166,18 +1166,34 @@ try{
   console.log('LIST_VIEWPORT_FIT_PASS',JSON.stringify(fit));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
-    const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect();
-    return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width};
+    const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect(),
+      active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+    return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
+      bottom:g.bottom,activeHeight:active?.height??0,
+      gapBelowFilters:active?g.top-active.bottom:null};
   })()`);
+  // V6 L4: an active predicate creates a *real* filter-chip row. Its height
+  // pushes the table down while the viewport's bottom remains stationary.
+  // Assert that the ENTIRE movement is explained by the visible filter bar.
   const assertStable=async(label)=>{
     const result=await evaluate(`(()=>{
       const g=document.querySelector('.item-table-scroll').getBoundingClientRect(),
-        h=document.querySelector('.item-data-region').getBoundingClientRect();
-      return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width};
+        h=document.querySelector('.item-data-region').getBoundingClientRect(),
+        active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+      return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
+        bottom:g.bottom,activeHeight:active?.height??0,
+        gapBelowFilters:active?g.top-active.bottom:null};
     })()`);
-    if(Math.abs(result.top-tablePosition.top)>2||Math.abs(result.left-tablePosition.left)>2||
-       Math.abs(result.height-tablePosition.height)>2||Math.abs(result.width-tablePosition.width)>2)
-      throw Error('List grid shifted while '+label+': '+JSON.stringify({tablePosition,result}));
+    const filterGrowth=result.activeHeight-tablePosition.activeHeight;
+    if(Math.abs(result.top-tablePosition.top-filterGrowth)>2||
+       Math.abs(result.left-tablePosition.left)>2||
+       Math.abs(result.height-tablePosition.height+filterGrowth)>2||
+       Math.abs(result.bottom-tablePosition.bottom)>2||
+       Math.abs(result.width-tablePosition.width)>2||
+       (result.gapBelowFilters!==null&&tablePosition.gapBelowFilters!==null&&
+        Math.abs(result.gapBelowFilters-tablePosition.gapBelowFilters)>2))
+      throw Error('List grid shifted beyond active-filter height while '+label+': '+
+        JSON.stringify({tablePosition,result,filterGrowth}));
   };
 
   const started=await evaluate(`(()=>{
