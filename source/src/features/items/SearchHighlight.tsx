@@ -1,11 +1,15 @@
 import {searchMatchRanges} from '../../domain/search';
+import './search-highlight.css';
 
 /** Marks all occurrences visually while preserving the exact source text.
  * Only use for display text; never insert markup into editable input values. */
 export function SearchHighlight({value,query}:{value:string;query?:string}){
-  if(!query?.trim())return <>{value}</>;
+  // A single element is essential: Fragment text/mark/text children become
+  // separate anonymous flex/grid items in buttons and merged value controls.
+  // Both highlighted and plain values must have the exact same formatting box.
+  if(!query?.trim())return <span className="item-search-flow">{value}</span>;
   const ranges=searchMatchRanges(value,query);
-  if(!ranges.length)return <>{value}</>;
+  if(!ranges.length)return <span className="item-search-flow">{value}</span>;
   let cursor=0;
   const fragments:Array<string|ReturnType<typeof renderMark>>=[];
   function renderMark(part:string,index:number){
@@ -21,5 +25,5 @@ export function SearchHighlight({value,query}:{value:string;query?:string}){
     cursor=end;
   });
   if(cursor<value.length)fragments.push(value.slice(cursor));
-  return <>{fragments}</>;
+  return <span className="item-search-flow">{fragments}</span>;
 }
