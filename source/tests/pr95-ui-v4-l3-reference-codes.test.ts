@@ -32,7 +32,7 @@ describe('UI V4 L3 locked semantic codes — no source data / STT / physical ind
       'C03.1','C03.2','C03.3'
     ]);
     expect(codes.slice(-5)).toEqual(['R01','R02','R03','R04','R05']);
-    expect(requests.find(x=>x.includes('[data-summary-report="council"][data-summary-stage="completed"]'))).toBeTruthy();
+    expect(requests.find(x=>x.includes('[data-summary-report="nq"][data-summary-stage="completed"]'))).toBeTruthy();
     expect(requests.find(x=>x.includes('[data-ui-reference-report="nq"]'))).toBeTruthy();
     expect(requests.every(x=>!x.includes('textContent')&&!x.includes('NQ02')&&!x.includes('STT'))).toBe(true);
   });
