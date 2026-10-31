@@ -107,7 +107,11 @@ describe('PR95 V5 L4: UI/read-domain HC/BC Business Build without raw migration'
     expect(idsFor('Sở chưa trình')).toEqual(['r1']);
     expect(idsFor('Đã trình, chờ QĐ')).toEqual(['r5']);
     expect(reportStage('Không phải trình',configured)).toBe('excluded');
-    expect(report.items.every(x=>items.includes(x))).toBe(true);
+    expect(reportItems(items,configured).every(x=>items.includes(x))).toBe(true); // raw scope
+    expect(report.items.map(x=>x.progressBuild)).toEqual([
+      'Sở chưa trình','Không phải trình','Không phải trình','Không phải trình',
+      'Đã trình, chờ QĐ','Không phải trình'
+    ]); // report stage chips read snapshots; never written back
     expect(JSON.stringify(items)).toBe(rawSnapshot);
   });
   it('list advanced detail dropdown and exact source filters match effective values, not old raw',()=>{
