@@ -3559,12 +3559,14 @@ try{
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
     total:Number(document.querySelector('.item-summary-total-count').textContent),
-    result:document.querySelector('.item-summary-active-filter')?.textContent,
+    result:document.querySelector('.list-active-filter-results')?.textContent,
+    selectedSummary:document.querySelector('.list-active-filters [data-active-filter-id=summary]')?.textContent,
     totalLabelBeforeCount:document.querySelector('.item-summary-total-lead h3').getBoundingClientRect().right<=
       document.querySelector('.item-summary-total-count').getBoundingClientRect().left,
     bucketHeight:document.querySelector('.item-summary-bucket').getBoundingClientRect().height
   })`);
-  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2/7')||
+  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 7')||
+      !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
   // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
@@ -3578,7 +3580,8 @@ try{
     const grid=document.querySelector('.item-summary-grid');
     const buttons=[...grid.querySelectorAll('.item-summary-bucket')];
     const labels=buttons.map(b=>b.querySelector('span'));
-    const active=grid.querySelector('.item-summary-active-filter');
+    // V6 L4: selected stage lives in the single filter bar outside the cards.
+    const active=document.querySelector('.list-active-filters [data-active-filter-id=summary]');
     return {width:window.innerWidth,
       cardOverflow:grid.scrollWidth>grid.clientWidth+1,
       labelOverflow:labels.some(l=>l.scrollWidth>l.clientWidth+1),
@@ -3609,7 +3612,7 @@ try{
   await evaluate("document.querySelector('[data-summary-report=build][data-summary-stage=completed]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&!!document.querySelector('.item-data-table td.empty')",
     'Zero-count summary condition must show an empty list');
-  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
+  await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length==="+originalSummaryRows,
     'Clear summary filter failed');
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=source]').focus()");
@@ -3621,11 +3624,11 @@ try{
   // without removing any column filter; reselect for the next combined case.
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
-  await eventually("!document.querySelector('.item-summary-active-filter')",
+  await eventually("!document.querySelector('.list-active-filters [data-active-filter-id=summary]')",
     'Space must deactivate the selected summary button');
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space',windowsVirtualKeyCode:32});
-  await eventually("!!document.querySelector('.item-summary-active-filter')",
+  await eventually("!!document.querySelector('.list-active-filters [data-active-filter-id=summary]')",
     'Space must reactivate the selected summary button');
   console.log('SUMMARY_QUICK_FILTER_TOGGLE_SWITCH_ZERO_KEYBOARD_PASS',JSON.stringify(quickSummary));
 
@@ -3639,8 +3642,8 @@ try{
   await send('Input.insertText',{text:'NQ01'});
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
-  await evaluate("document.querySelector('.item-summary-active-filter button').click()");
-  await eventually(`!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
+  await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
+  await eventually(`!document.querySelector('.list-active-filters [data-active-filter-id=summary]')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
