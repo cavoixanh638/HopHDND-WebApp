@@ -1,4 +1,5 @@
 import {useEffect,useMemo, useRef, useState, useCallback } from 'react';
+import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from '../qa/ui-reference-codes';
 import {get,ref} from 'firebase/database';
 import type {CSSProperties,ComponentType,ComponentProps} from 'react';
 import type { Changes, EditableField, GroupField, Item, TextField } from '../../shared/types';
@@ -227,6 +228,12 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // itself is not an administrator grant; guard both render and handlers.
   const adminTools=canCustomize&&(!isFirebase||
     (!!firebase?.isAdmin&&!!firebase.user&&firebase.connected&&firebase.datasetEpochReady));
+  // Visual reference codes are per-view ephemeral state, not a Firebase or
+  // personal/shared profile preference. Default OFF, fail closed on role loss.
+  const referenceRoot=useRef<HTMLDivElement|null>(null);
+  const [referenceCodesOn,setReferenceCodesOn]=useState(false);
+  const referenceCodesVisible=adminTools&&referenceCodesOn;
+  useEffect(()=>{if(!adminTools)setReferenceCodesOn(false);},[adminTools]);
   const [gearLoginBusy,setGearLoginBusy]=useState(false);
   const [gearLoginError,setGearLoginError]=useState('');
   const settingsMenu=useRef<HTMLDetailsElement>(null);
@@ -540,7 +547,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
       :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'
     :null;
-  return <div className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${guestViewer?'guest-view':''}`} style={frameStyle}>
+  return <div ref={referenceRoot} data-ui-reference-active={referenceCodesVisible?'true':undefined}
+    className={`app-shell imperial-sky-theme ${listPage?'wide-table-page':''} ${page==='items'?'list-fit-page':''} ${editingPage?'settings-page':''} ${guestViewer?'guest-view':''}`} style={frameStyle}>
+    <UiReferenceOverlay enabled={referenceCodesVisible} rootRef={referenceRoot}/>
     {privateTest&&<p className="notice" role="status"><strong>BẢN THỬ · Bản sao Excel</strong> · Nút lưu chỉ ghi bản sao thử, không ghi file nhập liệu thật. Danh mục và cách hiển thị của bản thử giữ trên máy.</p>}<header className="topbar compact-topbar v3-shell-topbar">
       <div className="top-actions">
         <details ref={settingsMenu} className="options-menu v3-settings-menu">
@@ -552,6 +561,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
               <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
               <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
               {isFirebase&&<button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>}
+              <button type="button" className="ui-reference-toggle" aria-pressed={referenceCodesVisible}
+                onClick={()=>{setReferenceCodesOn(previous=>!previous);settingsMenu.current?.removeAttribute('open');}}>
+                Hiện mã khu vực
+              </button>
+              {referenceCodesVisible&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
+                {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
+                Trỏ vào ô để xem mã kèm ID nội dung.
+              </p>}
             </>:<>
               <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
                 onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':'Đăng nhập quản trị'}</button>
@@ -564,7 +581,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     <nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
       {([['overview','Báo cáo tổng hợp'],
         ['items','Danh sách các ND trình HĐND']] as const)
-        .map(([key,title])=><button type="button" key={key}
+        .map(([key,title])=><button type="button" key={key} data-ui-reference-nav={key}
           disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
           onClick={()=>{setListFramePreview(null);setPage(key);}}>
@@ -629,7 +646,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {guestRightsNotice&&<p className="guest-rights-hint" role="status">{guestRightsNotice}</p>}
       {dirtyCount > 0 && <div className="draft-bar"><div><strong>{anonymousVisitor?`${dirtyCount} nội dung đang chờ đồng bộ`: `${dirtyCount} nội dung đang chờ lưu vào ${selectedSource==='primary'?'Firebase Database':isDemo?'dữ liệu mẫu':'nguồn hiện tại'}`}</strong><span> {selectedSource==='primary'?'Phần sửa đang được gửi lên Firebase. Chỉ khi máy chủ xác nhận thì mọi người mới thấy dữ liệu mới.':'Phần sửa hiện chỉ có trên trình duyệt; chưa cập nhật chung.'}</span></div><div className="top-actions"><button className="button ghost" onClick={discard} disabled={workspace.busy}>Bỏ các thay đổi</button>{repository.readOnly&&<button className="button ghost" onClick={workspace.keepDraft} disabled={workspace.busy}>Giữ thay đổi trên máy</button>}<button className="button primary" onClick={() => void saveData()} disabled={workspace.busy||!!repository.readOnly} title={repository.readOnly?dataSaveHint:undefined}>{workspace.busy ? "Đang lưu…" : repository.readOnly?(isFirebase?"Chỉ lưu nháp trên máy":"Chưa thể lưu vào Excel"):isFirebase?"Lưu lại vào Firebase":isDemo?"Lưu vào dữ liệu mẫu":"Lưu dữ liệu vào Excel"}</button></div></div>}
       {page === 'overview' && <>
-        <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang thực hiện', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
+        <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang xử lý', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
         
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span></div>
         {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}

@@ -127,7 +127,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dá»
     document.body.classList.add('is-printing');
     try { window.print(); } finally { document.body.classList.remove('is-printing'); element.remove(); }
   };
-  return <section className={'card report-surface report-style-'+visualStyle} ref={ref}
+  return <section data-ui-reference-report={config.id}
+    className={'card report-surface report-style-'+visualStyle} ref={ref}
     style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
       '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
     <div className="card-header"><div><h3>{heading()} <span className="report-heading-count">({report.total} ná»™i dung)</span></h3></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>

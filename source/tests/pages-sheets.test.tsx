@@ -444,7 +444,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(menu).toBeDefined();
     const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
     expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual([
-      'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo','Tài khoản và dữ liệu','Nhập / Xuất Excel'
+      'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo','Tài khoản và dữ liệu','Nhập / Xuất Excel','Hiện mã khu vực'
     ]);
     expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(1);
     tree=open('Chỉnh sửa');

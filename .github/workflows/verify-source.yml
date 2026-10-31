@@ -144,6 +144,13 @@ jobs:
             source/hophdnd-r05-before-white-simulated.png
             source/hophdnd-v3-l2-clear-list.png
             source/hophdnd-v3-l2-clear-popup.png
+            source/hophdnd-v4-l2-before-css-replay-simulated.png
+            source/hophdnd-v4-l2-after-editable-desktop.png
+            source/hophdnd-v4-l2-after-readonly-desktop.png
+            source/hophdnd-v4-l2-after-editable-mobile-390.png
+            source/hophdnd-v4-l2-after-custom-palette.png
+            source/hophdnd-v4-l2-after-popup-readonly.png
+            source/hophdnd-v4-l2-after-popup-editable.png
             source/hophdnd-v3-l2-granted-desktop.png
             source/hophdnd-v3-l2-choices-only-dropdown.png
             source/hophdnd-r05-after-multitone-list.png

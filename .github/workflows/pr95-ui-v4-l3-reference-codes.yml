@@ -1,0 +1,51 @@
+name: PR95 UI V4 L3 — semantic reference codes (synthetic real Chrome)
+on:
+  pull_request:
+    paths:
+      - 'source/src/app/App.tsx'
+      - 'source/src/qa/pr95-full-preview.tsx'
+      - 'source/src/qa/ui-reference-codes.*'
+      - 'source/src/features/reports/ReportTable.tsx'
+      - 'source/scripts/pr95-v4-l3-reference-browser.mjs'
+      - 'source/tests/pr95-ui-v4-l3-reference-codes.test.ts'
+      - '.github/workflows/pr95-ui-v4-l3-reference-codes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-admin-only-codes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install frozen project dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck public component API
+        working-directory: source
+        run: npm run typecheck
+      - name: Test semantic registry and role guards
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-ui-v4-l3-reference-codes.test.ts tests/pages-sheets.test.tsx tests/pr95-ui-v3-l5-preview-shell.test.ts
+      - name: Build genuine ItemList/Report/Popup in-memory full preview
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real headless Chrome — toggle, click, hover ID, popup, reorder, scroll and logout
+        working-directory: source
+        run: node scripts/pr95-v4-l3-reference-browser.mjs
+      - name: Retain before/after/screenshots (NO publication)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-ui-v4-l3-reference-synthetic-chrome
+          path: source/pr95-v4-l3-*.png
+          if-no-files-found: warn
+          retention-days: 14

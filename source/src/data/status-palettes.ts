@@ -8,8 +8,8 @@ export interface NamedStatusPalette {id:string;name:string;colors:StatusPalette}
 export interface StatusPaletteStore {version:1;active:StatusPalette;activePresetId:string;presets:NamedStatusPalette[]}
 export const STATUS_PALETTE_GROUPS:readonly {key:StatusPaletteGroup;label:string;description:string}[]=[
   {key:'not-submitted',label:'Sở chưa trình',description:'Chờ sở, ngành gửi hồ sơ'},
-  {key:'office',label:'Văn phòng đang thực hiện',description:'Bao gồm VP đang thực hiện / Đang ở Văn phòng'},
-  {key:'done',label:'Hoàn thành và tương đương',description:'Theo từng cột: hoàn thành, đã có TBKL, không phải trình, đã trình HĐND…'},
+  {key:'office',label:'VP đang xử lý',description:'Bao gồm trạng thái VP đang xử lý trong các khâu theo dõi'},
+  {key:'done',label:'Hoàn thành theo khâu',description:'Thành ủy: Đã có TBKL; Xây dựng NQ: Đã có QĐ; Ban hành: Hoàn thành'},
   {key:'other',label:'Trạng thái khác',description:'Các trạng thái trung gian chưa thuộc ba nhóm trên'},
 ];
 export const MAX_STATUS_PALETTES=20;

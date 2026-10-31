@@ -73,6 +73,23 @@ const screenshot=async name=>{
   console.log('PR95_V3_L5_SCREENSHOT '+name+' '+data.length);
 };
 
+const assertV4StatusDisplay=async (scope,label,fullCatalog=false)=>{
+  const info=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(scope)+');'+
+    'if(!root)return null;const texts=[...root.querySelectorAll(".compact-stage-state,.compact-stage-level")]'+
+    '.map(e=>e.textContent.trim()).filter(Boolean);return {count:texts.length,texts};})()');
+  if(!info||info.count<3)throw Error('UI_V4_L1_MISSING_STAGES '+label);
+  for(const old of ['Ban Chấp hành','VP đang thực hiện','ĐU đã gửi TU, chưa họp',
+    'Đã họp/xin phiếu, chưa có TBKL','Đã trình HĐND, chưa có QĐ']){
+    if(info.texts.some(t=>t.includes(old)))throw Error('UI_V4_L1_RAW_ALIAS_LEAK '+label+' '+old);
+  }
+  if(fullCatalog){
+    for(const current of ['BCH','BTV TU','VP đang xử lý','ĐU gửi TU, chưa họp','Đã trình, chờ QĐ']){
+      if(!info.texts.some(t=>t.includes(current)))throw Error('UI_V4_L1_CANONICAL_MISSING '+label+' '+current);
+    }
+  }
+  console.log('UI_V4_L1_CANONICAL_DEFAULT_DEMO_PASS '+label+' '+JSON.stringify({stages:info.count}));
+};
+
 /* R-V3-04/05: inspect the ACTUAL rendered Chrome rectangles/computed CSS.
    These asserts supplement, never replace, keyboard/filter/permissions tests. */
 const inspectSummary=async(label,expected)=>{
@@ -158,6 +175,8 @@ try{
   await ensure('![...document.querySelectorAll(".item-data-table .column-resizer")].some(x=>getComputedStyle(x).display!=="none")','guest no visible resize affordance');
   await inspectSummary('1440-single-row',{party:[4],build:[4],nq:[3]});
   await inspectGroupedReadOnly('.item-data-table','main-guest-default',false,true);
+  await assertV4StatusDisplay('.item-data-table','main-guest-default-canonical',true);
+  await screenshot('pr95-v4-integrated-main-default-canonical.png');
   await screenshot('pr95-v3-l5-guest-1440.png');
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false});
   await inspectSummary('1280-paired',{party:[2,2],build:[2,2],nq:[3]});
@@ -175,7 +194,7 @@ try{
   await clickText('Đăng nhập quản trị (mô phỏng)');
   await waitFor('document.querySelector("[data-role=admin]")','simulated admin login');
   await interact('document.querySelector(".pr95-preview-gear").click()');
-  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===6','admin five tools and logout');
+  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===7','admin five tools, reference toggle and logout');
   await screenshot('pr95-v3-l5-admin-gear.png');
   await interact('document.querySelector(".pr95-preview-gear").click()');
 
@@ -187,6 +206,8 @@ try{
   await waitFor('document.querySelector("dialog.report-grid-modal[open]")','actual report popup');
   await ensure('document.querySelector("dialog.report-grid-modal .report-grid-toolbar")','real popup controls');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-default',true);
+  await assertV4StatusDisplay('dialog.report-grid-modal .report-detail-grid','popup-default-canonical');
+  await screenshot('pr95-v4-integrated-popup-default-canonical.png');
   await screenshot('pr95-v3-l5-desktop-popup.png');
   // CSS-only test fixture: local custom palette variables (no persisted settings
   // or source-row mutation), then an explicit one-member highlight.
@@ -220,9 +241,40 @@ try{
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-restored',true);
   await clickText('Chỉnh sửa nháp');
   await waitFor('document.querySelector("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")','editable grouped popup stage');
-  await ensure('[...document.querySelectorAll("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")].every(b=>'+
-    'getComputedStyle(b).borderTopWidth==="0px"&&getComputedStyle(b).backgroundColor==="rgba(0, 0, 0, 0)")',
-    'editable grouped stage has one frame');
+  const editableV4=await evaluate('(()=>{const rows=[...document.querySelectorAll("dialog.report-grid-modal .compact-stage-row")];'+
+    'const metrics=rows.filter(r=>r.querySelector("button.cell-picker-trigger")).map(r=>{'+
+    'const s=r.querySelector(".compact-stage-state"),b=s?.querySelector("button.cell-picker-trigger");'+
+    'if(!s||!b)return {ok:false};const v=getComputedStyle(b),br=b.getBoundingClientRect(),sr=s.getBoundingClientRect(),'+
+    'arrow=getComputedStyle(b,"::after"),rail=getComputedStyle(b,"::before"),dot=getComputedStyle(s,"::before");'+
+    'return {ok:s.dataset.editable==="true"&&v.display==="grid"&&v.borderTopWidth==="0px"&&v.boxShadow==="none"&&'+
+    'v.backgroundColor!=="rgba(0, 0, 0, 0)"&&br.height>=38&&Math.abs(br.width-sr.width)<1&&'+
+    'dot.content==="none"&&arrow.content==="\\\"\\\""&&arrow.gridColumnStart==="2"&&'+
+    'rail.content==="\\\"\\\""&&parseFloat(rail.width)>=33,'+
+    'right:br.right,fill:v.backgroundColor,stage:r.dataset.stageField};});'+
+    'const byStage=new Map();for(const m of metrics){if(!byStage.has(m.stage))byStage.set(m.stage,m.right);'+
+    'else if(Math.abs(byStage.get(m.stage)-m.right)>5)m.ok=false;}'+
+    'return {ok:metrics.length>0&&metrics.every(m=>m.ok),metrics};})()');
+  if(!editableV4.ok)throw Error('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_FAIL '+JSON.stringify(editableV4));
+  console.log('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_PASS '+JSON.stringify({count:editableV4.metrics.length}));
+  // Four real choices only, canonical selected/aria even when the source row
+  // still carries the historic alias; Escape must not create an edit patch.
+  await interact('const b=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!b)throw Error("V4 build picker missing");b.click()');
+  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V4 status dropdown');
+  const choices=await evaluate('(()=>{const root=document.querySelector(".cell-picker-popover[role=dialog]");'+
+    'const buttons=[...root.querySelectorAll("[role=option]")];'+
+    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim())};})()');
+  const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||choices.selected.length!==1)
+    throw Error('UI_V4_L1_PICKER_CHOICES_FAIL '+JSON.stringify(choices));
+  await ensure('!document.querySelector("dialog.report-grid-modal .cell-picker-popover [role=option]")?.textContent.includes("VP đang thực hiện")','no old menu presets');
+  const beforeDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
+  await screenshot('pr95-v4-integrated-canonical-picker.png');
+  await interact('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}))');
+  await waitFor('!document.querySelector(".cell-picker-popover[role=dialog]")','status Escape closes');
+  const afterDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
+  if(beforeDirty!==afterDirty)throw Error('UI_V4_L1_ESC_CREATED_PATCH');
+  console.log('UI_V4_L1_CANONICAL_PICKER_ESC_NO_PATCH_PASS '+JSON.stringify(choices));
   await screenshot('pr95-v3-l5-desktop-popup-editable.png');
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close popup');
@@ -310,7 +362,11 @@ try{
   await selectValue('#pr95-role','guest');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','revoked guest list');
-  await ensure('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
+  // React's synthetic role transition and the permissions snapshot resolve on
+  // separate frames. Re-test the SAME exact revoked cell, but wait until the
+  // read-only render has settled; do not weaken the permission assertion.
+  await waitFor('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
+  console.log('UI_V4_L1_REVOKED_GUEST_EDITOR_NOT_RENDERED_PASS '+JSON.stringify(firstNote));
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await inspectSummary('390-mobile',{party:[2,2],build:[2,2],nq:[3]});

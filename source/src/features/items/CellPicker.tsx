@@ -172,7 +172,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
           .finally(()=>setWaiting(false));
       }}
     >
-      <SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/>
+      <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
     </button>
     {waiting&&<small className="cell-picker-note cell-picker-feedback" role="status">Đang xác nhận quyền sửa ô…</small>}
     {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}

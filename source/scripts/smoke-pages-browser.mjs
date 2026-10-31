@@ -1105,6 +1105,16 @@ try{
   })()`);
   if(!sticky)throw Error('V2 sticky table heading and compact toolbar scroll must work together');
   await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",'Anonymous viewer must have gear-only login');
+  // UI V4 L3: guest and unauthenticated visitors never mount reference codes.
+  const guestReferenceDenied=await evaluate(`(()=>{
+    const root=document.querySelector('.app-shell');
+    return !root?.hasAttribute('data-ui-reference-active')&&
+      !document.querySelector('[data-ui-reference-layer]')&&
+      ![...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .some(button=>button.textContent?.trim()==='Hiện mã khu vực');
+  })()`);
+  if(!guestReferenceDenied)throw Error('UI V4 L3 guest reference codes must be absent');
+  console.log('PR95_UI_V4_L3_APP_GUEST_DEFAULT_OFF_PASS');
   const guestClean=await evaluate(`(()=>{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
     const gear=document.querySelector('.v3-settings-menu');
@@ -2199,8 +2209,8 @@ try{
     const arrow=getComputedStyle(button,'::after');
     return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
       vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
-      bs.backgroundColor==='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
-      bs.boxShadow==='none'&&bs.transform==='none'&&
+      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
+      bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
       level!==button&&level.getAttribute('aria-haspopup')==='dialog',
       rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
@@ -2211,6 +2221,215 @@ try{
   })()`);
   if(!v3Editable.ok)throw Error('UI_V3_L2 single editable stage frame: '+JSON.stringify(v3Editable));
   console.log('UI_V3_L2_SINGLE_EDITABLE_STAGE_CHROME_PASS',JSON.stringify(v3Editable));
+  // UI V4 L2: geometry of the ACTUAL built CompactGroupedValue and CellPicker.
+  // All three statuses are granted in this RAM-only QA; the separate
+  // readonly/grant-specific suite below checks absence of imaginary arrows.
+  const v4Geometry=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child td[data-col-key=partyLevel] .compact-stage-row')];
+    const computed=rows.map(row=>{
+      const state=row.querySelector('.compact-stage-state');
+      const button=state?.querySelector('button.cell-picker-trigger');
+      if(!state||!button)return {ok:false,stage:row.dataset.stageField,reason:'no granted button'};
+      const b=button.getBoundingClientRect(),s=state.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
+      const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
+      const cols=style.gridTemplateColumns.split(' ').map(parseFloat);
+      const track=cols.at(-1);
+      const caretX=b.right-parseFloat(style.paddingRight)-track/2;
+      const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
+      const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
+      return {ok:style.display==='grid'&&cols.length===2&&Math.abs(track-22)<1&&
+        b.height>=37.9&&Math.abs(b.width-s.width)<1&&
+        b.left>=frame.left-1&&b.right<=frame.right+1&&
+        style.borderTopWidth==='0px'&&style.boxShadow==='none'&&
+        style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+        dot.content==='none'&&dot.display==='none'&&
+        rail.content==='""'&&parseFloat(rail.width)>=33&&
+        arrow.content==='""'&&arrow.gridColumnStart==='2'&&
+        hit(leftX)&&hit(rightX),
+        stage:row.dataset.stageField,caretX,leftX,rightX,midY,
+        hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
+        fill:style.backgroundColor,ink:style.color,dot:dot.content,
+        arrowColumn:arrow.gridColumnStart,railWidth:rail.width};
+    });
+    const first=computed[0]?.caretX;
+    return {ok:computed.length===3&&computed.every(x=>x.ok)&&
+      computed.every(x=>Math.abs(x.caretX-first)<1.1),
+      stages:computed,caretSpan:computed.length?Math.max(...computed.map(x=>x.caretX))-
+        Math.min(...computed.map(x=>x.caretX)):null};
+  })()`);
+  if(!v4Geometry.ok)throw Error('UI_V4_L2 three-row fixed caret + full hitbox geometry: '+JSON.stringify(v4Geometry));
+  console.log('UI_V4_L2_CARET_RAIL_3_ROWS_HITBOX_PASS',JSON.stringify(v4Geometry));
+
+  // Same real component/viewport, baseline styling replayed *only in the DOM*
+  // for a side-by-side before/after illustration. This is explicitly NOT an
+  // historical deployment screenshot; the actual immutable baseline screenshot
+  // is independently available from Source run #41165414469.
+  await evaluate(`(()=>{
+    const style=document.createElement('style');style.id='ui-v4-l2-before-css-replay';
+    style.textContent=\`
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger{
+        display:inline-flex!important;min-height:0!important;height:auto!important;
+        padding:0!important;background:transparent!important;grid-template-columns:none!important;
+      }
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{content:none!important;display:none!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::after{grid-column:auto!important;margin-left:5px!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-progress-tone]::before{
+        content:""!important;display:block!important;flex:none;width:6px;height:6px;
+        margin:6px 5px 0 0;border-radius:50%;background:currentColor
+      }
+    \`;
+    document.head.append(style);
+  })()`);
+  const v4BeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-before-css-replay-simulated.png',Buffer.from(v4BeforeShot.data,'base64'));
+  await evaluate("document.querySelector('#ui-v4-l2-before-css-replay').remove()");
+  const v4AfterShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-desktop.png',Buffer.from(v4AfterShot.data,'base64'));
+
+  // Hit-testing uses actual CDP mouse events at both extreme ends of a
+  // status member. Clicking its label never forwards to an adjacent editor.
+  const v4HitStatus=async(stage,side)=>{
+    const row=v4Geometry.stages.find(x=>x.stage===stage);
+    if(!row)throw Error('missing stage for hit test '+stage);
+    const x=side==='left'?row.leftX:row.rightX,y=row.midY;
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',clickCount:1});
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});
+    await eventually("document.querySelector('.cell-picker-popover:popover-open')?.getAttribute('aria-label')?.includes("+
+      JSON.stringify(stage==='progressBuild'?'Tiến độ trình HĐND xây dựng NQ':stage==='progressParty'?'Tiến độ xin ý kiến Thành ủy':'Tiến độ trình HĐND ban hành NQ')+")",
+      'V4 '+stage+' '+side+' hit must open the own picker');
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
+      'V4 Escape must close '+stage+' without a patch');
+  };
+  await v4HitStatus('progressBuild','left');
+  await v4HitStatus('progressBuild','right');
+  await v4HitStatus('progressParty','right');
+  await v4HitStatus('progressCouncil','left');
+  const v4LeftLabel=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row');
+    const label=row?.querySelector('.compact-stage-label > span:last-child');
+    if(!label)return false;
+    const point=label.getBoundingClientRect();
+    const x=point.left+3,y=point.top+Math.min(5,point.height/2);
+    const node=document.elementFromPoint(x,y);
+    if(!node||node.closest('button.cell-picker-trigger'))return false;
+    node.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
+    return !document.querySelector('.cell-picker-popover:popover-open');
+  })()`);
+  if(!v4LeftLabel)throw Error('V4 stage label unexpectedly activated progress editor');
+  console.log('UI_V4_L2_INDEPENDENT_FIELD_EDGE_CLICKS_ESCAPE_PASS',
+    JSON.stringify({tested:['progressBuild left/right','progressParty right','progressCouncil left'],
+      labelClickNoPopover:v4LeftLabel,patched:false}));
+
+  const v4AfterEsc=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    return {noOpen:!document.querySelector('.cell-picker-popover:popover-open'),
+      values:states.map(x=>x.textContent.trim()),allClosed:[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger')].every(x=>x.getAttribute('aria-expanded')==='false')};
+  })()`);
+  if(!v4AfterEsc.noOpen||!v4AfterEsc.allClosed||
+    !v4AfterEsc.values.some(x=>x.includes('Sở chưa trình')))
+    throw Error('V4 Escape improperly changed an editor or field: '+JSON.stringify(v4AfterEsc));
+
+  // Visual and caret geometry at a narrow browser width, then at a saved
+  // narrow projected source column. Preserve all source fields and layout.
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 mobile status editors missing');
+  await evaluate(`document.querySelector('.item-data-table tbody tr:first-child .compact-stages').scrollIntoView({block:'center',inline:'center'})`);
+  const v4Mobile=await evaluate(`(()=>{
+    const stages=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const metrics=stages.map(row=>{
+      const state=row.querySelector('.compact-stage-state'),button=state?.querySelector('.cell-picker-trigger');
+      if(!button)return {ok:false,stage:row.dataset.stageField};
+      const b=button.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
+      const track=parseFloat(style.gridTemplateColumns.split(' ').at(-1));
+      return {stage:row.dataset.stageField,caret:b.right-parseFloat(style.paddingRight)-track/2,
+        ok:b.height>=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+          Math.abs(track-22)<1&&dot.content==='none'&&style.display==='grid',
+        width:b.width,height:b.height,frameWidth:frame.width,track};
+    });
+    return {ok:metrics.length===3&&metrics.every(x=>x.ok)&&
+      Math.max(...metrics.map(x=>x.caret))-Math.min(...metrics.map(x=>x.caret))<1.1,
+      viewport:innerWidth,metrics};
+  })()`);
+  if(!v4Mobile.ok)throw Error('UI V4 status caret alignment at 390px: '+JSON.stringify(v4Mobile));
+  const v4MobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-mobile-390.png',Buffer.from(v4MobileShot.data,'base64'));
+  console.log('UI_V4_L2_MOBILE_390_CARET_RAIL_PASS',JSON.stringify(v4Mobile));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&fit=1&frame=900'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 saved narrow-column status editors missing');
+  const v4Narrow=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const data=rows.map(row=>{
+      const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
+      const frame=row.getBoundingClientRect();
+      return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=38};
+    });
+    return {ok:data.length===3&&data.every(x=>x.ok)&&
+      Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
+  })()`);
+  if(!v4Narrow.ok)throw Error('UI V4 saved narrow status column overflow: '+JSON.stringify(v4Narrow));
+  console.log('UI_V4_L2_NARROW_SAVED_COLUMN_PASS',JSON.stringify(v4Narrow));
+
+  // Explicit palette override; the right caret rail uses currentColor and
+  // must not hardcode amber/green ink, repaint a sibling, or add a framed pill.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&r05=1&r05-palette=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office] .cell-picker-trigger')!==null",
+    'V4 custom-colored editable office state missing');
+  const v4Custom=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office]');
+    const member=row?.querySelector('.compact-stage-state'),button=member?.querySelector('button.cell-picker-trigger');
+    const other=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=not-submitted]');
+    if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
+    const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
+    return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
+      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
+      b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
+      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
+      customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
+  })()`);
+  if(!v4Custom.ok)throw Error('UI V4 custom status palette/arrow regression: '+JSON.stringify(v4Custom));
+  const v4CustomShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-custom-palette.png',Buffer.from(v4CustomShot.data,'base64'));
+  console.log('UI_V4_L2_CUSTOM_PALETTE_CARET_PASS',JSON.stringify(v4Custom));
+
+  // Readonly must never show a caret, pointer cursor or hover affordance.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state').length===3",
+    'V4 read-only real ItemList missing');
+  const v4Readonly=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    const rows=states.map(x=>({
+      button:x.querySelectorAll('.cell-picker-trigger').length,
+      editable:x.hasAttribute('data-editable'),
+      dot:getComputedStyle(x,'::before').content,
+      pseudoDisplay:getComputedStyle(x,'::before').display,
+      cursor:getComputedStyle(x).cursor
+    }));
+    return {ok:rows.length===3&&rows.every(x=>!x.button&&!x.editable&&x.dot==='none'&&
+      x.pseudoDisplay==='none'&&x.cursor!=='pointer'),rows};
+  })()`);
+  if(!v4Readonly.ok)throw Error('UI V4 readonly appears editable: '+JSON.stringify(v4Readonly));
+  const v4ReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-readonly-desktop.png',Buffer.from(v4ReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_READONLY_NO_CARET_DOT_PASS',JSON.stringify(v4Readonly));
+
+  // Re-mount the exact old editable fixture before the pre-existing field
+  // isolation and keyboard/lease regression suite resumes.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 restored edit fixture missing');
+
+
   const v3GrantedShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v3-l2-granted-desktop.png',Buffer.from(v3GrantedShot.data,'base64'));
   const beforeStageEdit=await evaluate(`(()=>{
@@ -2542,10 +2761,17 @@ try{
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    // V4 default demo stores BCH, not old "Ban Chấp hành". The QA wildcard
+    // deliberately still targets that LEGACY source string: it MUST NOT leak
+    // onto a new canonical label. Separate unit fixtures prove the same
+    // wildcard rule still highlights the actual legacy string.
+    const currentLevel=level?.textContent??'';
     return {ok:d?.background==='rgb(204, 0, 0)'&&d.text==='rgb(255, 255, 255)'&&
       t?.background!=='rgb(204, 0, 0)'&&c?.background!=='rgb(204, 0, 0)'&&
-      l?.background==='rgb(18, 52, 86)'&&p?.background==='rgb(255, 238, 85)'&&
-      p?.text==='rgb(0, 0, 0)',dept:d,type:t,content:c,level:l,progressBuild:p};
+      currentLevel.includes('BCH')&&
+      l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
+      p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,progressBuild:p};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
@@ -2665,11 +2891,16 @@ try{
     const first=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-level');
     return {row:getComputedStyle(stage).backgroundColor,
       pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
-      level:getComputedStyle(first).backgroundColor};
+      level:getComputedStyle(first).backgroundColor,
+      levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
+  // The R03 wildcard still targets the explicitly LEGACY "Ban Chấp hành".
+  // V4's new synthetic BCH cannot match that old source string. Keep exact
+  // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.row!=='rgb(255, 241, 243)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
-    r05Highlight.level!=='rgb(18, 52, 86)')
+    r05Highlight.level!=='rgba(0, 0, 0, 0)'||
+    !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&r05-palette=1'});
@@ -3217,12 +3448,16 @@ try{
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
     'Party next must filter both post-VP records, not only one literal status');
-  const v2NextRaw=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
+  // V4 L1: the 7-row synthetic SOURCE still contains the historic alias,
+  // but the filtered grouped VIEW must show canonical labels. Keep the exact
+  // two selected row IDs/counts, never migrate the source to satisfy this check.
+  const v4NextVisible=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
     .map(x=>x.textContent)`);
-  if(!v2NextRaw.some(x=>x.includes('Đã gửi ĐU'))||
-      !v2NextRaw.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
-    throw Error('V2 grouped next stage replaced original distinct row statuses: '+JSON.stringify(v2NextRaw));
-  console.log('V2_NEXT_BUCKET_RAW_LABELS_PRESERVED_PASS',JSON.stringify(v2NextRaw));
+  if(!v4NextVisible.some(x=>x.includes('Đã gửi ĐU'))||
+      !v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
+      v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
+    throw Error('UI V4 next bucket must preserve distinct source member IDs and show canonical labels: '+JSON.stringify(v4NextVisible));
+  console.log('UI_V4_L1_NEXT_BUCKET_CANONICAL_DISPLAY_IDS_PRESERVED_PASS',JSON.stringify(v4NextVisible));
 
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
@@ -3675,6 +3910,11 @@ try{
   const guestCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
   if(guestCouncil.text!=='Sở chưa trình'||guestCouncil.picker||guestCouncil.button)
     throw Error('R-V3-03 denied guest unexpectedly has editor: '+JSON.stringify(guestCouncil));
+  const v4PopupReadonly=await evaluate("(()=>{const state=document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+");const wrapper=state?.querySelector('.workflow-status-value');return {ok:!!state&&!state.querySelector('button.cell-picker-trigger')&&!state.hasAttribute('data-editable')&&getComputedStyle(state,'::before').content==='none'&&(!wrapper||getComputedStyle(wrapper,'::before').content==='none'),stateDot:state?getComputedStyle(state,'::before').content:null,legacyDot:wrapper?getComputedStyle(wrapper,'::before').content:null};})()");
+  if(!v4PopupReadonly.ok)throw Error('UI V4 readonly popup status still has caret/dot: '+JSON.stringify(v4PopupReadonly));
+  const v4PopupReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-readonly.png',Buffer.from(v4PopupReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_READONLY_DOTLESS_PASS',JSON.stringify(v4PopupReadonly));
   const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-pr95-v3-l1-popup-guest-denied.png',Buffer.from(v3GuestShot.data,'base64'));
   await setPopupRole('admin');
@@ -3688,6 +3928,11 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='grid'&&br.height>=38&&st.borderTopWidth==='0px'&&st.boxShadow==='none'&&dot.content==='none'&&arrow.gridColumnStart==='2'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
+  const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_EDITABLE_CARET_HITBOX_PASS',JSON.stringify(v4PopupEditable));
   await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")?.click()");
   await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
     'R-V3-03 actual Council choices did not open');
@@ -3871,6 +4116,45 @@ try{
       source:'real Auth Emulator SDK signInWithCredential',
       notProductionGoogleLogin:true
     }));
+    // V4 L3 tests the ACTUAL App with a verified Google-provider admin on
+    // local Auth + RTDB Emulators, independently from synthetic full preview.
+    await adminA.until("[...document.querySelectorAll('.v3-settings-menu .options-popover > button')].some(b=>b.textContent.trim()==='Hiện mã khu vực')",
+      'verified admin-only region toggle');
+    const referenceDefault=await adminA.js(`(()=>{
+      const button=[...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực');
+      return !!button&&button.getAttribute('aria-pressed')==='false'&&
+        !document.querySelector('[data-ui-reference-layer]')&&
+        !document.querySelector('[data-ui-reference-active]');
+    })()`);
+    if(!referenceDefault)throw Error('UI V4 L3 App admin reference codes must default OFF');
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!!document.querySelector('[data-ui-ref-code=A01]')",
+      'real App admin reference overlay');
+    const appCodes=await adminA.js(`(()=>{
+      const layer=document.querySelector('[data-ui-reference-layer]');
+      const codes=[...layer?.querySelectorAll('[data-ui-ref-code]')??[]].map(node=>node.dataset.uiRefCode);
+      return {codes,hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
+        nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
+          [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents==='none')};
+    })()`);
+    if(!appCodes.hasAdminToggle||!appCodes.nonblocking||
+      !['A01','A02','A03'].every(code=>appCodes.codes.includes(code)))
+      throw Error('UI V4 L3 App admin reference selectors/roles: '+JSON.stringify(appCodes));
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!document.querySelector('[data-ui-reference-layer]')",
+      'real App admin overlay fully unmounted after toggle');
+    console.log('PR95_UI_V4_L3_REAL_APP_ADMIN_ON_OFF_PASS',JSON.stringify({
+      codes:appCodes.codes,defaultHidden:referenceDefault,pointerEventsNone:appCodes.nonblocking,
+      emulatorOnly:true}));
     const headers=[
       'Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
       'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',

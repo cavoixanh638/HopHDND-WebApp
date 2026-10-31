@@ -27,6 +27,7 @@ import {StatusPaletteManager} from './StatusPaletteManager';
 import {COMPACT_OPTIONS,activeCompactPairs,
   compactVisibleColumns,compactFilterText,abbreviateVietnameseName,abbreviateLeaderName,COMPACT_GROUP_DEFAULT_LABELS,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
+import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from './status-display';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {activateEditableCell} from './activate-editable-cell';
@@ -238,9 +239,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const result=new Map<string,Record<string,string>>();
     for(const item of items){
       const fields:Record<string,string>={};
-      for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(filterValue(item,key));
+      for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(statusFilterText(key,filterValue(item,key)));
       for(const pair of compactPairs)
-        fields['merged:'+pair.anchor]=normalizeSearch(compactFilterText(item,pair.anchor,compactPairs));
+        fields['merged:'+pair.anchor]=normalizeSearch([compactFilterText(item,pair.anchor,compactPairs),
+          ...pair.memberFields.map(key=>statusDisplayValue(key,String(item[key as TextField]??'')))].join(' '));
       for(const column of activeLayout.columns)
         if(column.origin==='custom')
           fields[column.key]=normalizeSearch(column.values?.[customRowKey(item)]??'');
@@ -248,6 +250,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     }
     return result;
   },[items,activeLayout.columns,codeCounts,compactOn,compactDisplay,showAllSourceColumns]);
+  const statusFilterItems=useMemo(()=>projectedStatusFilterRows(items),[items]);
   const columnFiltered=useMemo(()=>{
     const permitted=new Set(columns.map(c=>c.key));
     const roomSpecialist=compactPairs.some(pair=>pair.variant==='roomSpecialist');
@@ -283,7 +286,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const toolbarBase=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterToolbarRows(columnFiltered,toolbar,(item,key)=>{
       if(key==='*')return activeLayout.columns.filter(col=>col.origin==='custom')
-        .map(col=>col.values?.[customRowKey(item)]??'').join(' ');
+        .map(col=>col.values?.[customRowKey(item)]??'').join(' ')+' '+
+        ['partyLevel','progressParty','progressBuild','progressCouncil']
+          .map(key=>statusDisplayValue(key,String(item[key as TextField]??''))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
     }),[columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts]);
@@ -330,8 +335,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const cached=optionCache.get(cacheKey);
     if(cached)return cached;
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
-    const selected=orderValues([...new Set([...list,item[field]])].filter(Boolean),list)
-      .filter(value=>field!=='specialist'||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room));
+    const selected=statusPickerValues(field,orderValues([...new Set([...list,item[field]])].filter(Boolean),list)
+      .filter(value=>field!=='specialist'||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room)));
     optionCache.set(cacheKey,selected);
     return selected;
   };
@@ -455,7 +460,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   /** Source cells keep field-level permission and history when combined visually. */
   const compactField=(item:Item,field:TextField)=>{
     const editable=editableField(item,field);
-    const original=item[field]||'—';
+    const rawValue=String(item[field]??'');
+    const original=statusReadOnlyValue(field,rawValue)||'—';
     const label=TEXT_FIELDS.find(entry=>entry.key===field)?.label??field;
     const kind=activeLayout.columns.find(c=>c.key===field)?.kind;
     const shortLeader=compactOn&&compactDisplay.shortLeaders&&
@@ -467,14 +473,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         ?field==='content'
           ?<button type="button" className="content-button" disabled={locked}
             onClick={()=>openContentForEdit(item,'content')}><SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>
-          :kind==='text'
+          :kind==='text'&&!isStatusDisplayField(field)
             ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={field} label={displayId(item)+': '+label}
               value={String(item[field]??'')} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
-            :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={item[field]}
-              displayValue={shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
+            :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={statusDisplayValue(field,rawValue)}
+              displayValue={isStatusDisplayField(field)?statusDisplayValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
-              onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
+              onChange={value=>{const next=statusEditSelection(field,rawValue,value);if(next!==null)onUpdate(item.recordId,{[field]:next});}}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/>:original}
       {onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
@@ -655,7 +661,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       }}/>}</ColumnHeader>)}</tr>{adminControls&&(customizing||permissionMode)&&<tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
       (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
-    ?<CompactGroupFilterCell key={column.key} items={items}
+    ?<CompactGroupFilterCell key={column.key} items={statusFilterItems}
       fields={compactPairs.find(pair=>pair.anchor===column.key)!.memberFields}
       values={columnFilters} onChange={(field,value)=>setColumnFilters(previous=>{
         const next={...previous};if(value)next[field]=value;else delete next[field];return next;
@@ -665,7 +671,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       room={columnFilters.room??''} person={columnFilters.specialist??''}
       onRoom={value=>setColumnFilters(previous=>({...previous,room:value}))}
       onPerson={value=>setColumnFilters(previous=>({...previous,specialist:value}))}/>
-    :<ColumnFilterCell key={column.key} field={column.key} label={column.label} items={items}
+    :<ColumnFilterCell key={column.key} field={column.key} label={column.label} items={statusFilterItems}
     getValue={compactPairs.some(pair=>pair.anchor===column.key)
       ?item=>compactFilterText(item,column.key,compactPairs)
       :column.origin==='custom'?(item)=>column.values?.[customRowKey(item)]??'':undefined}
@@ -730,22 +736,22 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{specificProgress:value});return true;
-    }}/>:column.kind==='text'
+    }}/>:column.kind==='text'&&!isStatusDisplayField(key)
   ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={key} label={`${displayId(item)}: ${column.label}`}
     maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>
-  :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={key} editorKind={key==='specialist'?'search':'status'} label={`${displayId(item)}: ${column.label}`} value={item[key]}
-    displayValue={compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
+  :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={key} editorKind={key==='specialist'?'search':'status'} label={`${displayId(item)}: ${column.label}`} value={statusDisplayValue(key,item[key])}
+    displayValue={isStatusDisplayField(key)?statusDisplayValue(key,item[key]):compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}
-    onChange={value=>onUpdate(item.recordId,{[key]:value})}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
+    onChange={value=>{const next=statusEditSelection(key,item[key],value);if(next!==null)onUpdate(item.recordId,{[key]:next});}}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
         ?<span title={item[key]} aria-label={item[key]}>{abbreviateLeaderName(item[key])||'—'}</span>
       :statusPaletteTone(key,item[key],statusPaletteStore?.active.otherEnabled??false)
-        ?<span className="workflow-status-value"><SearchHighlight value={item[key]} query={columnFilters[key]}/></span>
-      :<SearchHighlight value={item[key]||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
+        ?<span className="workflow-status-value"><SearchHighlight value={statusReadOnlyValue(key,item[key])} query={columnFilters[key]}/></span>
+      :<SearchHighlight value={statusReadOnlyValue(key,item[key])||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
           {onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
