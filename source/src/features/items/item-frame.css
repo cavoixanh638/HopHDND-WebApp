@@ -917,7 +917,7 @@
   gap:10px;width:100%;max-width:100%;box-sizing:border-box;margin:6px 0 14px}
 .item-summary-card{--summary-accent:#789588;display:flex;flex-direction:column;min-width:0;
   container-type:inline-size;
-  box-sizing:border-box;padding:10px 10px 8px;background:#fff;
+  box-sizing:border-box;padding:10px 6px 8px;background:#fff;
   border:1px solid #DCE5E0;border-top:3px solid #DCE5E0;border-radius:11px;
   overflow-wrap:break-word;box-shadow:0 1px 3px #223d3310}
 .item-summary-party{--summary-accent:#A38A64}
@@ -947,14 +947,16 @@
 /* R-V3-04: deterministic 4/4/3 columns; never orphan the fourth stage.
    The card itself is the container, so a narrow frame reflows as two pairs. */
 .item-summary-buckets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:5px;min-width:0;margin-top:auto}
+  gap:3px;min-width:0;margin-top:auto}
 .item-summary-nq .item-summary-buckets{grid-template-columns:repeat(3,minmax(0,1fr))}
 .item-summary-bucket{display:flex;flex-direction:column;justify-content:space-between;
   align-items:center;gap:3px;box-sizing:border-box;min-width:0;min-height:43px;
-  padding:4px 2px;border:1px solid #dce6df;border-radius:8px;cursor:pointer;font-family:inherit;
+  padding:4px 1px;border:1px solid #dce6df;border-radius:8px;cursor:pointer;font-family:inherit;
   background:#f1f5f3;color:#3a5548;text-align:center;font-size:11px;line-height:1.35}
 .item-summary-bucket span{display:flex;align-items:center;justify-content:center;
   min-width:0;min-height:1.35em;white-space:nowrap;overflow-wrap:normal;font-weight:650}
+/* Longest approved Build label stays at 11px; gentle tracking preserves one line. */
+.item-summary-build .item-summary-bucket[data-summary-stage="next"] span{letter-spacing:-.2px;font-weight:600}
 .item-summary-bucket strong{font-size:18px;line-height:1.1;flex:none;
   font-weight:800;font-variant-numeric:tabular-nums}
 /* V2: soft semantic chips, matching current user-selected status presets.
