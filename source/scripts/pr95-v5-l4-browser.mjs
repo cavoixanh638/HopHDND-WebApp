@@ -138,6 +138,29 @@ try {
     'keyboard explanation not accessible '+JSON.stringify(focusTooltip));
   await screenshot('pr95-v5-l4-keyboard-locked-tooltip.png');
 
+  // Explicit ungrouped A–O list mode must honor the *same* HC/BC rule,
+  // not just CompactGroupedValue. QPPL stays editable even with raw columns.
+  await click('.source-column-visibility button');
+  await waitFor("document.querySelector('td[data-col-key=progressBuild]')",'raw Excel H column');
+  const ungrouped=await evaluate(`(()=>{
+    return [...document.querySelectorAll('.item-data-table tbody tr')].map(row=>({
+      type:row.querySelector('td[data-col-key=type]')?.textContent?.trim()??'',
+      locked:!!row.querySelector('td[data-col-key=progressBuild] .business-build-locked'),
+      value:row.querySelector('td[data-col-key=progressBuild]')?.textContent?.trim()??'',
+      editor:!!row.querySelector('td[data-col-key=progressBuild] .cell-picker-trigger'),
+    }));
+  })()`);
+  assert(ungrouped.some(x=>x.type==='HC'||x.type==='Báo cáo'),'ungrouped HC/BC rows missing');
+  assert(ungrouped.filter(x=>x.type==='HC'||x.type==='Báo cáo')
+    .every(x=>x.locked&&x.value==='Không phải trình'&&!x.editor),
+    'unguarded raw Excel-H HC/BC Build '+JSON.stringify(ungrouped));
+  assert(ungrouped.filter(x=>x.type==='QPPL').some(x=>x.editor),
+    'unguarded raw Excel-H QPPL positive editor missing');
+  await screenshot('pr95-v5-l4-raw-excel-h-locked.png');
+  await click('.source-column-visibility button');
+  await waitFor("document.querySelector('td[data-col-key=partyLevel] .compact-stages')",
+    'grouped view restored after raw Excel-H proof');
+
   // Switch type in RAM: changing QPPL -> HC must immediately remove its Build editor.
   await click('.item-data-table tbody tr:first-child .compact-document-badge .cell-picker-trigger');
   await waitFor("document.querySelector('.cell-picker-options .cell-picker-option')",'type chooser');
