@@ -191,8 +191,9 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
     expect((html.match(/class="list-active-filter-remove"/g)??[])).toHaveLength(10);
     expect((html.match(/data-active-filter-id="/g)??[])).toHaveLength(10);
     expect(html).toContain('Cột phân công ẩn');
-    expect(html).not.toContain('customTracking');
-    expect(html).not.toContain('customRemoved');
+    // Stable machine IDs exist only in nonvisible data attributes for one-X removal.
+    expect(html).not.toContain('>customTracking<');
+    expect(html).not.toContain('>customRemoved<');
   });
   it('zero conditions stays visible but no fake Xóa tất cả action',()=>{
     const html=renderToStaticMarkup(<ActiveListFilters conditions={[]}
