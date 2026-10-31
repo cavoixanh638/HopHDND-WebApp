@@ -83,13 +83,28 @@ function focus(event:FocusEvent):void{
     (event.target.matches(':focus-visible')||td.classList.contains('business-build-locked')))show(td,true);
 }
 function blur(event:FocusEvent):void{if(fromTarget(event.target)===active)hide();}
+/** Keep a keyboard-focused locked explanation legible while the browser
+ * scrolls the source cell into view; pointer hints retain hide-on-scroll.
+ * Reposition the ONE shared top-layer tooltip, never create row listeners. */
+function scrollTooltip():void{
+  if(keyboard&&active?.classList.contains('business-build-locked')&&
+    document.activeElement===active&&tooltip?.matches(':popover-open')){
+    const width=tooltip.getBoundingClientRect().width;
+    const height=tooltip.getBoundingClientRect().height;
+    const pos=outsideCellTooltipPosition(active.getBoundingClientRect(),
+      window.innerWidth,window.innerHeight,width,height);
+    tooltip.style.transform=`translate3d(${pos.left}px,${pos.top}px,0)`;
+    return;
+  }
+  hide();
+}
 function attach():void{
   document.addEventListener('pointerover',over,true);
   document.addEventListener('pointerout',out,true);
   document.addEventListener('focusin',focus,true);
   document.addEventListener('focusout',blur,true);
   document.addEventListener('pointerdown',hide,true);
-  window.addEventListener('scroll',hide,true);
+  window.addEventListener('scroll',scrollTooltip,true);
   window.addEventListener('resize',hide);
 }
 function detach():void{
@@ -98,7 +113,7 @@ function detach():void{
   document.removeEventListener('focusin',focus,true);
   document.removeEventListener('focusout',blur,true);
   document.removeEventListener('pointerdown',hide,true);
-  window.removeEventListener('scroll',hide,true);
+  window.removeEventListener('scroll',scrollTooltip,true);
   window.removeEventListener('resize',hide);
 }
 export function mountSharedEditTooltip():()=>void{
