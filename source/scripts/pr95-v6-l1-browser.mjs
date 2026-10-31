@@ -104,7 +104,7 @@ const visit=async(params,width=1440,height=900)=>{
   console.log('PR95_V6_L1_BOOT_DIAG '+JSON.stringify(await evaluate('(()=>({root:!!document.querySelector("[data-qa=pr95-v6-l1]"),'+
     'tables:[...document.querySelectorAll("table")].map(t=>({className:t.className,rows:t.querySelectorAll("tbody tr").length})),rootText:document.body.textContent.slice(-1800),html:document.body.innerHTML.slice(-400),'+
     'windowError:window.__v6L1BootError??null}))()')));
-  await waitFor("document.querySelector('table.item-data-table tbody tr,table.report-detail-grid tbody tr')",
+  await waitFor("!!document.querySelector('table.item-data-table tbody tr,table.report-detail-grid tbody tr')",
     'mounted REAL table');
 };
 const testClick=async(js)=>{
@@ -249,7 +249,7 @@ try {
 
   const pickType='.item-data-table tbody tr:first-child .compact-document-badge button.cell-picker-trigger';
   await testClick('document.querySelector('+JSON.stringify(pickType)+')');
-  await waitFor('document.querySelector(".cell-picker-popover:popover-open")','type picker opened');
+  await waitFor('!!document.querySelector(".cell-picker-popover:popover-open")','type picker opened');
   const options=await evaluate('[...document.querySelectorAll(".cell-picker-popover:popover-open .cell-picker-option")].map(b=>({value:b.textContent.trim(),selected:b.getAttribute("aria-selected")}))');
   assert(options.some(x=>x.value==='—')&&options.some(x=>x.value==='QPPL'&&x.selected==='true'),
     'type optional clear & unchanged selection '+JSON.stringify(options));
@@ -278,7 +278,7 @@ try {
   await inspectLevels('.item-data-table','list-mixed-1280');
   await screenshotV6('pr95-v6-l1-list-mixed-grants-1280.png');
   await testClick('document.querySelector(".item-data-table tbody tr:first-child .compact-document-badge button.cell-picker-trigger")');
-  await waitFor('document.querySelector(".cell-picker-popover:popover-open")','granted type');
+  await waitFor('!!document.querySelector(".cell-picker-popover:popover-open")','granted type');
   await esc();
 
   await visit('view=list&role=admin&split=1',1440,900);
