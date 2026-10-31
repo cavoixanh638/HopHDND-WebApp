@@ -101,7 +101,7 @@ try {
       packet.error?job.fail(Error(JSON.stringify(packet.error))):job.done(packet.result);
     }
   });
-  await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
+  await send('Page.enable');await send('Runtime.enable');await send('Network.enable');await send('Page.bringToFront');
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1&preview-role=admin'});
   await waitFor("document.querySelector('[data-preview=pr95-l4-full][data-role=admin]') && document.querySelectorAll('.item-data-table tbody tr').length===27",
@@ -120,7 +120,12 @@ try {
 
   const focusTooltip=await evaluate(`(()=>{
     const target=document.querySelector('.item-data-table .business-build-locked');
-    target?.focus({preventScroll:true});return {focused:document.activeElement===target,
+    const beforeFocused=document.activeElement===target;
+    let focusEvent=false;
+    document.addEventListener('focusin',e=>{if(e.target===target)focusEvent=true;},{capture:true,once:true});
+    target?.blur();target?.focus({preventScroll:true});
+    return {beforeFocused,focusEvent,hasFocus:document.hasFocus(),
+      focused:document.activeElement===target,
       explanation:target?.getAttribute('data-quick-tooltip'),
       shown:!!document.querySelector('#edit-shared-tooltip:popover-open'),
       exists:!!document.getElementById('edit-shared-tooltip'),
