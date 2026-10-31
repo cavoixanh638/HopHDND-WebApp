@@ -1,0 +1,49 @@
+name: PR95 UI V6 L2 — inline safe search highlights (no deploy)
+on:
+  pull_request:
+    paths:
+      - 'source/src/features/items/SearchHighlight.tsx'
+      - 'source/src/features/items/search-highlight.css'
+      - 'source/src/styles/app.css'
+      - 'source/tests/pr95-v6-l2-*'
+      - 'source/scripts/pr95-v6-l2-*'
+      - 'source/skills/hophdnd-inline-search-highlight/**'
+      - '.github/workflows/pr95-v6-l2-inline-highlight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inline-highlight-geometry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exact dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Search ranges and UI V6 L2 unit regressions
+        run: npm exec -- vitest run tests/pr95-v6-l2-inline-search-highlight.test.tsx tests/search-highlight.test.tsx tests/search.test.ts
+      - name: Build genuine compact full-preview components without deploy
+        run: npm run build:compact:qa
+      - name: Real Chromium fixed-width glyph/line geometry and screenshot proof
+        run: node scripts/pr95-v6-l2-inline-highlight-browser.mjs
+      - name: Preserve real-browser before/after/mobile/popup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v6-l2-inline-highlight-real-chrome
+          path: |
+            source/pr95-v6-l2-*.png
+          if-no-files-found: warn
+          retention-days: 14
