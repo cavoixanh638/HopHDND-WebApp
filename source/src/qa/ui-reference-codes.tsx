@@ -26,7 +26,7 @@ export const UI_REFERENCE_AREAS:readonly Area[]=[
   {code:'B03',selector:'.item-summary-kind-chip[data-summary-kind="bc"]'},
   {code:'C01',selector:'.item-summary-card[data-summary-card="party"]'},
   {code:'C02',selector:'.item-summary-card[data-summary-card="build"]'},
-  {code:'C03',selector:'.item-summary-card[data-summary-card="council"]'},
+  {code:'C03',selector:'.item-summary-card[data-summary-card="nq"]'},
   {code:'F01',selector:'.list-filter-search'},
   {code:'F02',selector:'.list-filter-organisation[aria-label="Lọc Sở, ngành"]'},
   {code:'F03',selector:'.list-filter-organisation[aria-label="Lọc Phòng"]'},
@@ -50,7 +50,7 @@ export const UI_REFERENCE_AREAS:readonly Area[]=[
 const stages=[
   {report:'party',code:'C01',steps:['source','office','next','completed']},
   {report:'build',code:'C02',steps:['source','office','next','completed']},
-  {report:'council',code:'C03',steps:['source','office','completed']},
+  {report:'nq',code:'C03',steps:['source','office','completed']},
 ] as const;
 export const UI_REFERENCE_REPORT_IDS:Readonly<Record<string,string>>={
   party:'R01',build:'R02',council:'R03',nq:'R04',bc:'R05'
