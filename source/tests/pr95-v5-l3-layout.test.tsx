@@ -69,9 +69,9 @@ describe('PR95 UI V5 L3 — layout-only contract',()=>{
     }
   });
   it('retains one framed row, caret rail, rounded edit value and internal narrow scrolling',()=>{
-    expect(css).toContain('min-width:310px');
+    expect(css).toContain('min-width:326px');
     expect(css).toContain('overflow-x:auto');
-    expect(css).toContain('grid-template-columns:max-content minmax(138px,1fr)');
+    expect(css).toContain('grid-template-columns:160px minmax(138px,1fr)');
     expect(css).toContain('border-radius:7px!important');
     expect(css).toContain('border-radius:0 7px 7px 0');
     expect(css).toContain('padding-top:5px');
