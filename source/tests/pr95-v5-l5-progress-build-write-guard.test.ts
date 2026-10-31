@@ -123,10 +123,12 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     if(viaTransaction){
       return runTransaction(target,raw=>raw===null?raw:{...raw,...updateFields},{applyLocally:false});
     }
+    // Do not mix an ancestor path with a child path in one RTDB update().
+    const {editProofs,history,...flat}=updateFields;
     return update(target,{
-      ...updateFields,
-      ['editProofs/progressBuild']:w.session.proof(id,'progressBuild'),
-      ['history/'+(revision%50)]:updateFields.history[String(revision%50)]
+      ...flat,
+      ['editProofs/progressBuild']:editProofs.progressBuild,
+      ['history/'+(revision%50)]:history[String(revision%50)]
     });
   };
   beforeAll(async()=>{
