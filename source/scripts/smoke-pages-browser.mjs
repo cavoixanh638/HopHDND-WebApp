@@ -2943,24 +2943,34 @@ try{
   const r05Crop=await send('Page.captureScreenshot',{format:'png',clip:r05Clip});
   writeFileSync('hophdnd-r05-after-list-stage-crop.png',Buffer.from(r05Crop.data,'base64'));
 
-  // R03 is still member-scoped; its custom yellow rule must not repaint
-  // the red ROW background of progressBuild in row 3.
+  // R03 remains member-scoped. The old row 3 is BC and locked in V5;
+  // the explicit ?highlight=1 QPPL NQ07 fixture must retain its yellow
+  // Build member inside the red Sở chưa trình STAGE outer frame.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&highlight=1'});
   await eventually("document.querySelector('.compact-stage-state[data-highlighted=true]')!==null",
     'R05 highlighted member fixture missing');
   const r05Highlight=await evaluate(`(()=>{
-    const cell=document.querySelector('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
-    const stage=cell.querySelectorAll('.compact-stage-row')[1],pill=stage.querySelector('.compact-stage-state');
-    const first=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-level');
-    return {row:getComputedStyle(stage).backgroundColor,
-      pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    const qppl=rows.find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    const kind=qppl?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const cell=qppl?.querySelector('td[data-col-key=partyLevel]');
+    const stage=cell?.querySelectorAll('.compact-stage-row')[1],pill=stage?.querySelector('.compact-stage-state');
+    const first=rows[0]?.querySelector('.compact-stage-level');
+    const bc=rows.find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='BC03');
+    const bcBuild=bc?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const bcLocked=!!bcBuild?.querySelector('.business-build-locked')&&
+      bcBuild?.textContent?.trim()==='Không phải trình'&&
+      !bcBuild?.hasAttribute('data-highlighted');
+    return {kind,bcLocked,row:stage&&getComputedStyle(stage).backgroundColor,
+      pill:pill&&getComputedStyle(pill).backgroundColor,highlight:pill?.dataset.highlighted,
       level:getComputedStyle(first).backgroundColor,
       levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
   // The R03 wildcard still targets the explicitly LEGACY "Ban Chấp hành".
   // V4's new synthetic BCH cannot match that old source string. Keep exact
   // frame/pill/field rule checks; assert the unaffected label remains plain.
-  if(r05Highlight.row!=='rgb(255, 241, 243)'||
+  if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
+    r05Highlight.row!=='rgb(255, 241, 243)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
