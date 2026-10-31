@@ -35,7 +35,7 @@ const fixture=():Item[]=>[
 const codes=(items:Item[])=>items.map(row=>row.displayCode);
 const expected={
   party:{source:['A','I','J','N'],office:['B'],next:['C','D','E'],completed:['F'],unmatched:['H'],total:10,complete:1,percent:10},
-  build:{source:['A'],office:['B'],next:['C'],completed:['D','F'],unmatched:['H'],total:6,complete:2,percent:33},
+  build:{source:['A'],office:[],next:['C'],completed:['F'],unmatched:[],total:3,complete:1,percent:33},
   nq:{source:['A','F','M','N'],office:['B'],completed:['C','D','G'],unmatched:['E','H'],total:10,complete:3,percent:30},
 } as const;
 
@@ -101,15 +101,15 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
     const party=DEFAULT_REPORTS.find(r=>r.id==='party')!;
     const build=DEFAULT_REPORTS.find(r=>r.id==='build')!;
     expect(codes(reportItems(rows,party))).toEqual(['A','B','C','D','E','F','H','I','J','N']);
-    expect(codes(reportItems(rows,build))).toEqual(['A','B','C','D','F','H']);
+    expect(codes(reportItems(rows,build))).toEqual(['A','C','F']);
     expect(codes(reportItems(rows,{...party,includeNotRequired:true})))
       .toEqual(['A','B','C','D','E','F','G','H','I','J','M','N']);
     expect(codes(reportItems(rows,{...build,includeNotRequired:true})))
-      .toEqual(['A','B','C','D','E','F','G','H']);
+      .toEqual(['A','B','C','D','E','F','G','H','I','M','N']);
     expect(aggregateReport(rows,{...party,includeNotRequired:true,hiddenColumns:[]},'department')
       .rows.get('Sở thử')?.get('Không phải trình')?.map(x=>x.displayCode)).toEqual(['G']);
     expect(aggregateReport(rows,{...build,includeNotRequired:true,hiddenColumns:[]},'department')
-      .rows.get('Sở thử')?.get('Không phải trình')?.map(x=>x.displayCode)).toEqual(['E','G']);
+      .rows.get('Sở thử')?.get('Không phải trình')?.map(x=>x.displayCode)).toEqual(['B','D','E','G','H','I','M','N']);
     for(const report of DEFAULT_REPORTS){
       const scoped=reportItems(rows,report);
       expect(scoped.every(x=>x.displayCode!=='K'&&x.displayCode!=='L')).toBe(true);
@@ -129,9 +129,8 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
         'Chưa chuẩn hóa':['H'],
       },
       build:{
-        'Sở chưa trình':['A'],'VP đang xử lý':['B'],
-        'Đã trình, chờ QĐ':['C'],'Đã có QĐ':['D','F'],
-        'Chưa chuẩn hóa':['H'],
+        'Sở chưa trình':['A'],
+        'Đã trình, chờ QĐ':['C'],'Đã có QĐ':['F'],
       },
       council:{
         'Sở chưa trình':['A','F','I','M','N'],'VP đang xử lý':['B'],
