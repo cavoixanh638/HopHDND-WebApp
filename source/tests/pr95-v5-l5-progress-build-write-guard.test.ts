@@ -307,6 +307,8 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       expect(before.type).toBe(type);
       await assertFails(directSdkEdit(w,'hc','Đã có QĐ',i%2===1));
       expect(await current(w.db,'hc'),JSON.stringify(type)).toEqual(before);
+      // Release the legitimate lease before the other UID gets its turn.
+      await w.session.cancel('hc','progressBuild');
     }
     const untouched=await current(guest.db,'hc');
     expect(untouched.progressBuild).toBe('Đã trình HĐND, chưa có QĐ');
