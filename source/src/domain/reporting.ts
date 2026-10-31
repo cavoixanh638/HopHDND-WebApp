@@ -2,7 +2,7 @@ import type { GroupField, Item, ReportConfig } from '../../shared/types';
 import {normalizeSearch} from './search';
 import {canonicalStatus,isNotRequiredStatus} from './status-contract';
 export {PARTY_STATUS_ALIASES} from './status-contract';
-import {effectiveBuildStatus,buildLocked} from './pr95-v5-l4-build-effective';
+import {effectiveBuildStatus,buildLocked,projectedBuildDisplayItem} from './pr95-v5-l4-build-effective';
 
 export const COUNCIL_STAGE_COLUMNS = ['Sở chưa trình','VP đang xử lý','Hoàn thành'] as const;
 export const DEFAULT_REPORTS: ReportConfig[] = [
@@ -78,7 +78,8 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
   const columns = [...config.columns, ...extra].filter(c => !config.hiddenColumns.includes(c));
   const hiddenCount = scoped.filter(item => config.hiddenColumns.some(c => canonical(c) === canonical(normalizeReportStatus(config.id==='build'?effectiveBuildStatus(item):item[config.statusField],config)))).length;
   return {
-    items: scoped, rows, columns, unknown: [...unknown], hiddenCount,
+    items:config.id==='build'&&config.includeNotRequired===true?scoped.map(projectedBuildDisplayItem):scoped,
+    rows, columns, unknown: [...unknown], hiddenCount,
     total: scoped.length, completedCount,
     percent: scoped.length ? Math.round(completedCount / scoped.length * 100) : null,
   };
