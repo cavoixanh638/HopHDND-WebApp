@@ -1,0 +1,74 @@
+# HỒ SƠ TRI THỨC & BÀN GIAO HOPHDND — 31/10/2026
+
+**Phạm vi:** [cavoixanh638/HopHDND-WebApp](https://github.com/cavoixanh638/HopHDND-WebApp), PR #92/#95, các đợt UI V2–V6, hợp đồng luồng, tài liệu, việc đang làm/chờ nghiệm thu. **Thời điểm rà soát:** 31/10/2026 (UTC+7). Đây là hồ sơ tra cứu và chuyển giao; không phải lệnh merge/deploy hoặc kết luận production GO.
+
+**Nguồn chuẩn:** [SYSTEM](../SYSTEM.md) (nghiệp vụ/bất biến); [FEATURES](../FEATURES.md) (F01–F36); [TU_DIEN_DU_LIEU](../TU_DIEN_DU_LIEU.md) (A–O); [ARCHITECTURE](../ARCHITECTURE.md), [API](../API.md) (kiến trúc/giao tiếp); [REPO_MAP](../REPO_MAP.md) (đường dẫn); [VAN_HANH](../VAN_HANH.md), [Firebase release gate](../operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md) (vận hành/phát hành); [CURRENT_STATE](../CURRENT_STATE.md) (nhật ký trạng thái), [WORKBOARD](../WORKBOARD.md) (điều phối), [KIEM_THU_VA_NGHIEM_THU](../KIEM_THU_VA_NGHIEM_THU.md) (bằng chứng).
+
+Tài liệu này gom các mốc mới để AI mới đọc nhanh, không nhân bản toàn bộ các tài liệu nghiệp vụ dài hoặc xóa lịch sử. Trạng thái GitHub và CI là theo exact SHA ở thời điểm nêu trên; trước khi làm tiếp phải fetch lại HEAD mới. Không coi comment, demo giả hay CI Emulator là kết quả thử dữ liệu production.
+
+## 1. Các nguồn thực tế và tình trạng phát hành
+
+| Đường | Checkpoint | Kết luận đúng |
+| --- | --- | --- |
+| **main** | SHA **881b2b2d154a11b06bcc90dff78981bae7e3e90c** khi rà; [PR #92](https://github.com/cavoixanh638/HopHDND-WebApp/pull/92) đã merge. | App code PR95 chưa merge main; main có commit riêng cho preview V5. |
+| **PR #95** | [OPEN/Draft](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95); branch **feat/firebase-excel-safe-replacement-and-list-compact-20261030**, exact V5 HEAD **c79da8f34e0cb1f774cf1b73f5eff31b65b727f2**. | Đây là baseline V6 bất biến. Chưa tích hợp 5 worker V6 lên PR95. |
+| **Public synthetic preview V5** | [preview/pr95](https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/?v=c79da8f3), Pages commit **881b2b2…**, [publisher #41186965348](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41186965348), [Pages deployment #41187033610](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41187033610) đều SUCCESS. | Preview fixture, **không** phải import/replace/restore Firebase thật hoặc V6 preview. |
+| **V6** | 5 worker riêng đã bàn giao và Codex VERIFIED 2 lỗi R01/R02; 26/26 workflow ở **5 exact HEAD riêng** SUCCESS. | Chưa có bằng chứng candidate tích hợp hoàn chỉnh hoặc production nghiệm thu. |
+| **Production Firebase** | **HOLD** theo cổng [Firebase primary](../operations/FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md). | Không tự xác nhận published Rules, backup/restore, UID thật, dữ liệu Primary hoặc deploy. |
+
+**Ngoại lệ CI V5 không được che:** Trước promote nguồn V5, **15/15 workflows SUCCESS**, trong đó [Source #41186729429](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41186729429) và [L5 #41186729364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41186729364). Sau promote có **14 SUCCESS / 1 FAILURE**: [duplicate preview run #41186969724](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41186969724) bị lỗi Chrome CDP khởi động **trước UI assertions**, chưa rerun/sửa; publisher PUSH vẫn SUCCESS. [Codex kiểm chứng và nêu giới hạn](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6541516578).
+
+## 2. Lược đồ lịch sử đã làm và tài liệu nguồn
+
+- **PR92 / L019–L027:** cột gộp và tên nhóm, 4 thẻ summary, width/resize/CAS, guest grants, popup, giao diện gọn; đã merge main. [Hồ sơ UI_COLUMN_REFINEMENT](UI_COLUMN_REFINEMENT_2026-10-28.md) lưu lịch sử/ảnh và kiểm tra. Không tự phục hồi khối mẫu cá nhân mà PR95 đã bỏ.
+- **PR95 nền V2 Excel/Firebase:** gọn Danh sách, parser Excel **15 cột A–O** (N = specificProgress, O = note), chọn sheet, kiểm trùng/cột/công thức, xem diff trước ghi; staging, digest/readback/backup, FROZEN legacy first activation, atomic generation-pointer CAS, replacement, restore, operationId read-only recovery khi ACK không rõ, test ACK-loss real network và hai Chrome admin targets trong harness. [PR110 trial](https://github.com/cavoixanh638/HopHDND-WebApp/pull/110) và [PR95_ACCEPTANCE_PACKAGE](https://github.com/cavoixanh638/HopHDND-WebApp/blob/c79da8f34e0cb1f774cf1b73f5eff31b65b727f2/source/docs/tasks/PR95_ACCEPTANCE_PACKAGE.md). Emulator revision 1→2→3 là test fixture, không phải giao dịch production.
+- **UI V2:** [PR115 audit 42 tính năng](https://github.com/cavoixanh638/HopHDND-WebApp/pull/115), head **b3ac87a7925b1363f97b82cd813f0c4bf07319eb** — docs-only; bảo toàn parity/legacy không tự suy từ một demo.
+- **UI V3:** canonical 4 catalog status/aliases, khách/admin, report/filter/Excel parity; [PR122 guest-first synthetic](https://github.com/cavoixanh638/HopHDND-WebApp/pull/122), head **fb702c8c6426aae0ee48ec04f03ea577bcc8882f**. Navigation guest của V3 là lịch sử; **V6 đã thay yêu cầu**.
+- **UI V4:** trạng thái canonical, affordance và mã vùng semantic; [PR127 kiểm toán 15 điểm](https://github.com/cavoixanh638/HopHDND-WebApp/pull/127), head **8f83a95021fcfbc3d4a43ef3e4668a31b7fce1a3**; V5 frozen baseline **36ea9202a03b5905d411c36088d580266ad1d9c9**.
+- **UI V5 (5 worker):** [L1 PR133](https://github.com/cavoixanh638/HopHDND-WebApp/pull/133) one-click picker/placement/late-ACK fence; [L2 PR132](https://github.com/cavoixanh638/HopHDND-WebApp/pull/132) chỉ admin thấy C01–C03 unmatched; [L3 PR130](https://github.com/cavoixanh638/HopHDND-WebApp/pull/130) QPPL một khung/cấp Thành ủy và 3 stage; [L4 PR131](https://github.com/cavoixanh638/HopHDND-WebApp/pull/131) HC/BC Build hiệu lực; [L5 PR134](https://github.com/cavoixanh638/HopHDND-WebApp/pull/134) repository/Rules guard. Codex đã rà R-V5-01/R-V5-02; L2 ghép [PR135](https://github.com/cavoixanh638/HopHDND-WebApp/pull/135) và promote source PR95 V5; chỉ public synthetic preview được publish. [Hợp đồng V5](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6540459270).
+- **UI V6:** [hợp đồng/ownership cố định](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6541889465); 5 worker độc lập bắt đầu từ **c79da8f…**; chỉ **L2/L5** tạo skill. [Codex review + giao ghép cuối](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6544932225) là chỉ thị hiện hành.
+
+## 3. Bàn giao UI V6 — 5 exact SHA đã được chấp nhận
+
+| Luồng | Nội dung | PR / SHA | Trạng thái độc lập |
+| --- | --- | --- | --- |
+| **L1** | Loại VB có enum CellPicker, một khung, palette QPPL/HC/BC; Cấp trình và ngoặc/caret tách status bằng intrinsic track/subgrid, saved width/internal scroll, đúng quyền từng field. | [PR136](https://github.com/cavoixanh638/HopHDND-WebApp/pull/136) **33f751cd3827a5341110c449ac9e0329793d00eb** | UI6-R01 [VERIFIED](https://github.com/cavoixanh638/HopHDND-WebApp/pull/136#issuecomment-6544915844); **5/5 SUCCESS**. L1 trở thành **integrator duy nhất** cho candidate. |
+| **L2** | Highlight inline không bẻ chữ Unicode/whitespace/ID, không sửa raw, có skill. | [PR140](https://github.com/cavoixanh638/HopHDND-WebApp/pull/140) **2cbc3f75ae442f18ea92d39cd605641f817886d0** | **3/3 SUCCESS**; popup test có styled fixture dùng helper thật, không chứng minh caller popup cũ gọi highlighter. |
+| **L3** | Guest không còn 2 thẻ A01/A02; gear login nhỏ; admin giữ tabs + 5 reports; B→C→heading→F→filter bar→table đúng DOM, logout/readonly. | [PR137](https://github.com/cavoixanh638/HopHDND-WebApp/pull/137) **5e87c9f4b8b033e2a8270ca70f180f5b0882b953** | UI6-R02 [VERIFIED](https://github.com/cavoixanh638/HopHDND-WebApp/pull/137#issuecomment-6544916597); **10/10 SUCCESS**. |
+| **L4** | Active-filter inventory/chips, bỏ riêng/Xóa tất cả, AND, hidden columns/panel, denominator, 0 results, tránh hai footer. | [PR139](https://github.com/cavoixanh638/HopHDND-WebApp/pull/139) **e9a10d2b10c26574166f85f90b1b472d4b3bde70** | **6/6 SUCCESS**; source-before-filter 8 khác B00 active 7. |
+| **L5** | Chrome/Emulator picker baseline audit, controlled late-ACK, scroll/visual viewport, no source change nếu không tái hiện lỗi, có skill. | [PR138](https://github.com/cavoixanh638/HopHDND-WebApp/pull/138) **4f5d886d4b827b035bae97cfb6d131f3df2adde0** | **2/2 SUCCESS**; stub ACK không phải Firebase ACK, audit baseline không phải future candidate PASS. |
+
+**Tổng 26/26 SUCCESS là ở 5 nhánh, không phải V6 đã ghép.** Hai finding Codex R01/R02 đã VERIFIED sau khi L1/L3 sửa trên nhánh của mình. Skill nằm trong repo, **không được cài toàn cục**: [L2 hophdnd-inline-search-highlight](https://github.com/cavoixanh638/HopHDND-WebApp/blob/2cbc3f75ae442f18ea92d39cd605641f817886d0/source/skills/hophdnd-inline-search-highlight/SKILL.md) và [L5 hophdnd-cell-picker-regression](https://github.com/cavoixanh638/HopHDND-WebApp/blob/4f5d886d4b827b035bae97cfb6d131f3df2adde0/source/skills/hophdnd-cell-picker-regression/SKILL.md). L1/L3/L4 **không tạo skill**.
+
+## 4. Hợp đồng nghiệp vụ, kỹ thuật và UI không được phá
+
+**Dữ liệu/quyền**
+- Excel hiện hành đúng **A–O**. Cột **N specificProgress** là text tiến độ, **O note** là ghi chú; giữ ID/STT, Unicode, raw legacy, export/import, history; không tự thêm hoặc âm thầm truncate P/Q legacy. Ở V2 chỉ hai trường P/Q **rỗng** mới được canonicalize khỏi payload; P/Q có dữ liệu phải báo chặn.
+- Firebase-only sau cutover, Supabase PAUSED; Sheets chỉ chuyển tiếp trước nhập nguồn chính. Không nhập lại hoặc ghi đè dữ liệu production từ hồ sơ/demo. Phải có snapshot, backup, Quy tắc Rules live, tài khoản UID thật, readback/rollback và GO/NO-GO riêng.
+- Lease độc quyền theo từng ô, grant/revoke thực, tab/generation fence, draft khác server ACK, FROZEN/DRAINING, audit/CAS/operationId và no-blind-retry phải còn. User không đăng nhập Google có thể là anonymous guest đã Auth ngầm, nhưng **không** tự được quyền admin. UI ẩn controls không phải thay Security Rules.
+
+**Nghiệp vụ & trình bày**
+- Loại VB phân QPPL/HC/BC bằng alias đã xác nhận; unknown không được đoán là HC/QPPL. Với **HC/BC, progressBuild hiệu lực = “Không phải trình”** và khóa sửa cả admin; tooltip giải thích không phải trình xây dựng NQ. **Bảo toàn raw** lịch sử/cột H/Excel cũ, không autosave/migration hàng loạt chỉ do render. C02/report Build loại nhóm này khỏi mẫu số phải trình (hoặc đưa vào nhóm Không phải trình nếu admin bật includeNotRequired); không sửa công thức C01/C03 hay các báo cáo Council/NQ/BC.
+- Danh sách V6 theo thứ tự DOM **B00 + B01–B03 → C01–C03 → heading giữa → F01–F05 → active filter bar → table**; guest không có A01/A02/notice chuyển mô phỏng, vẫn có gear login; admin giữ công cụ/vào 5 report. Summary có **một invocation items=toolbarBase**, giữ **showFilterFooters=false** để tránh trùng chip.
+- Filter đang dùng phải hiển thị kể cả cột/panel ẩn: query và phạm vi, Sở/Phòng, Loại VB, trạng thái, filter khác/custom; bỏ một không bỏ điều kiện khác, phép AND/ID count đúng; sort và search scope không có query không phải filter giả. 0 results không được trông như dữ liệu trống mất dấu filter.
+- Loại VB một border, control và chiều cao như Sở, bảng màu riêng: QPPL **#F5F3FF/#5B21B6**, HC **#EFF6FF/#1D4ED8**, BC **#F1F5F9/#334155**; custom highlight giữ ưu tiên. Caption **Thành ủy (BCH/BTV TU/TTTU/Không phải trình)** nằm một dòng; partyLevel/editor/hitbox tách progressParty; khoảng hở thực 8px với state, cả ba progress caret cùng rail. Saved narrow dùng **cuộn nội bộ ô**, không ghi lại width.
+- Highlight chỉ hiển thị, giữ nguyên textContent/Unicode/normalizer/ID và inline formatting flow, không chẻ “ngân sách” thành cột hoặc sửa input/source. Picker 1-click A→B không lưu A; 3/5/7 options/scroll/zoom/mobile/popup, late ACK của picker cũ không hủy picker mới; close/Esc/no-op không tạo patch. Giữ dot số khâu/historical markers có ý nghĩa, không khôi phục status dot dư.
+
+## 5. Đang làm, còn thiếu, người nhận việc và ranh giới
+
+**Đang chờ integrator L1, không đánh dấu DONE:** Codex đã [giao một lượt ghép cuối](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6544932225). Lập candidate **riêng từ c79da8f34e0cb1f774cf1b73f5eff31b65b727f2**; chỉ lấy đúng 5 SHA §3, giữ worker branches cố định; merge/cherry-pick có ledger. Không push PR95/main.
+
+1. Hòa giải **ItemList.tsx** theo hunk: type editor L1 + vị trí Summary/heading L3 + filter/active bar và **showFilterFooters=false** L4; đừng ghi đè nguyên file theo worker cuối.
+2. Hòa giải **smoke-pages-browser.mjs** và shared QA: L1 scroll/hitbox, L3 guest/admin/auth/nav, L4 filter/count/geometry. Không đổi guest sang admin cho test, skip/xfail mới, tăng ngưỡng vô cớ hoặc fake dữ liệu. Đo F→bar→table theo DOM sau ghép.
+3. Kiểm **exact candidate**: typecheck/unit/boundaries/Auth+RTDB Emulator, full Source Verify/operational QA, cả năm V6 workflows, regression V3–V5 liên quan, real App role/login/logout/grant/revoke, five reports/popup, Excel A–O, two tabs/ACK-loss. Validate **hai skill** đúng script; L5 phải audit lại trên V6 candidate, không mượn pass baseline.
+4. Chụp ảnh thực **trước script scroll và sau scroll**, desktop 1440/1280, mobile 390, saved narrow; đo caption-vs-state/three caret/hitboxes, picker gap và one-click/lease, highlight “ngan sach”, active chips/hidden filters/0 results; không suy sau-scroll visibility là tất cả control hiện đồng thời.
+5. Mở **Draft PR candidate base PR95 feature**, ghi merge ledger, exact-head CI, source diff, ảnh/rect, blocker và giới hạn; bàn giao **READY_FOR_CODEX_REVIEW** chỉ sau khi tất cả CI đã kết thúc và không còn đỏ. Codex rà độc lập rồi mới quyết định giao promotion preview ở bước riêng.
+6. **Production vẫn HOLD**: không deploy Firebase Rules/Functions/Hosting, không đọc/ghi/import/replace/delete/restore real RTDB/Excel, không thay source/profile dữ liệu, không merge PR95/main hoặc publish V6 khi chưa được phê duyệt riêng.
+
+## 6. Gói tiếp nhận cho AI mới
+
+Trình tự: **[AGENTS](../../AGENTS.md) → tài liệu này → [WORKBOARD](../WORKBOARD.md) → [hợp đồng V6](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6541889465) → [Codex PR95 mới nhất](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6544932225)**. Khi task liên quan dữ liệu/quyền, đọc SYSTEM/TU_DIEN_DU_LIEU/ARCHITECTURE và Firebase gate ở đầu file; khi cần code dùng REPO_MAP và test hiện hành, không đoán.
+
+Bản bàn giao mỗi lần phải ghi: **mục tiêu, baseline, PR/branch, exact SHA, paths/hunks, workflow URL và conclusion đúng SHA, ảnh/log, kiểm production hay synthetic/Emulator, Codex finding/decision, việc tồn, người nhận, giới hạn GO/NO-GO**. Nguồn là PR/commit/test, không phải chỉ chat. Đừng upload secret, Firebase UID, credential, Excel/backup/ảnh có dữ liệu cá nhân thật vào repository public này.
+
+**Ngoài phạm vi:** CRM, HSE, hồ sơ cá nhân, văn bản hành chính, thông tin sức khỏe, tài sản hay các repo khác. Không lưu các thông tin đó vào dự án HopHDND công khai. Đây là snapshot theo ngày, không phải đồng bộ nền tự động.
