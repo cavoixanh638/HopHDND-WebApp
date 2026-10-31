@@ -74,10 +74,15 @@ const logout=()=>call('[...document.querySelectorAll(".pr95-preview-gear-menu bu
 try{
   const probe=createServer();await new Promise(ok=>probe.listen(0,'127.0.0.1',ok));
   const debug=probe.address().port;await new Promise(ok=>probe.close(ok));
+  const chromeStderr=[];
   browser=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage',
     '--disable-gpu','--disable-extensions','--disable-background-networking',
-    '--no-first-run','--remote-debugging-address=127.0.0.1','--remote-debugging-port='+debug,
-    '--user-data-dir='+profile,'about:blank'],{stdio:'ignore'});
+    '--no-first-run','--no-default-browser-check','--remote-allow-origins=*',
+    '--remote-debugging-address=127.0.0.1','--remote-debugging-port='+debug,
+    '--user-data-dir='+profile,'about:blank'],{
+      stdio:['ignore','ignore','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
+  browser.stderr.on('data',buf=>{if(chromeStderr.length<30)
+    chromeStderr.push(String(buf).slice(0,450));});
   let tab;
   for(let i=0;i<100;i++){
     try{
@@ -87,7 +92,8 @@ try{
     }catch{}
     await sleep(100);
   }
-  assert(!!tab,'Chrome CDP unavailable');
+  assert(!!tab,'Chrome CDP unavailable: executable='+chrome+
+    ' exit='+String(browser.exitCode)+' stderr='+JSON.stringify(chromeStderr.slice(-8)));
   ws=new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise((ok,fail)=>{ws.addEventListener('open',ok,{once:true});ws.addEventListener('error',fail,{once:true});});
   ws.addEventListener('message',event=>{
