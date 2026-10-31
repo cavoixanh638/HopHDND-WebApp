@@ -1180,13 +1180,13 @@
    whether read-only or containing a type editor. The nested real button keeps
    its click/keyboard semantics but has no second border, fill or shadow. */
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge:has(> button.cell-picker-trigger) {
+  .compact-document-badge:has(button.cell-picker-trigger, input.custom-cell-input) {
   padding:0;
   overflow:hidden;
   border-radius:7px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge > button.cell-picker-trigger {
+  .compact-document-badge :is(button.cell-picker-trigger,input.custom-cell-input) {
   display:inline-flex;
   box-sizing:border-box;
   width:100%!important;
@@ -1203,14 +1203,14 @@
   text-align:left;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge > button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]) {
+  .compact-document-badge :is(button.cell-picker-trigger,input.custom-cell-input):is(:hover,:focus-visible,[aria-expanded="true"]) {
   border:0!important;
   background:transparent!important;
   box-shadow:none!important;
   transform:none!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge:has(> button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])) {
+  .compact-document-badge:has(:is(button.cell-picker-trigger,input.custom-cell-input):is(:hover,:focus-visible,[aria-expanded="true"])) {
   outline:2px solid #356C8B;
   outline-offset:1px;
 }
@@ -1318,4 +1318,17 @@
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row{
     grid-template-columns:max-content minmax(138px,1fr);
   }
+}
+
+/* Loại VB uses LeaseTextInput in the real List, nested in .compact-part.
+   Its manager/lease/readOnly/error semantics remain untouched. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge input.custom-cell-input {
+  min-width:74px;
+  max-width:100%;
+  font:inherit;
+  line-height:1.3;
+  text-align:left;
+  outline:0;
+  box-shadow:none!important;
 }
