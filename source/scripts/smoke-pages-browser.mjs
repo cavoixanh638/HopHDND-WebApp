@@ -2199,8 +2199,8 @@ try{
     const arrow=getComputedStyle(button,'::after');
     return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
       vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
-      bs.backgroundColor==='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
-      bs.boxShadow==='none'&&bs.transform==='none'&&
+      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
+      bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
       level!==button&&level.getAttribute('aria-haspopup')==='dialog',
       rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
@@ -2211,6 +2211,109 @@ try{
   })()`);
   if(!v3Editable.ok)throw Error('UI_V3_L2 single editable stage frame: '+JSON.stringify(v3Editable));
   console.log('UI_V3_L2_SINGLE_EDITABLE_STAGE_CHROME_PASS',JSON.stringify(v3Editable));
+  // UI V4 L2: geometry of the ACTUAL built CompactGroupedValue and CellPicker.
+  // All three statuses are granted in this RAM-only QA; the separate
+  // readonly/grant-specific suite below checks absence of imaginary arrows.
+  const v4Geometry=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child td[data-col-key=partyLevel] .compact-stage-row')];
+    const computed=rows.map(row=>{
+      const state=row.querySelector('.compact-stage-state');
+      const button=state?.querySelector('button.cell-picker-trigger');
+      if(!state||!button)return {ok:false,stage:row.dataset.stageField,reason:'no granted button'};
+      const b=button.getBoundingClientRect(),s=state.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
+      const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
+      const cols=style.gridTemplateColumns.split(' ').map(parseFloat);
+      const track=cols.at(-1);
+      const caretX=b.right-parseFloat(style.paddingRight)-track/2;
+      const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
+      const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
+      return {ok:style.display==='grid'&&cols.length===2&&Math.abs(track-22)<1&&
+        b.height>=37.9&&Math.abs(b.width-s.width)<1&&
+        b.left>=frame.left-1&&b.right<=frame.right+1&&
+        style.borderTopWidth==='0px'&&style.boxShadow==='none'&&
+        style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+        dot.content==='none'&&dot.display==='none'&&
+        rail.content==='""'&&parseFloat(rail.width)>=33&&
+        arrow.content==='""'&&arrow.gridColumnStart==='2'&&
+        hit(leftX)&&hit(rightX),
+        stage:row.dataset.stageField,caretX,leftX,rightX,midY,
+        hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
+        fill:style.backgroundColor,ink:style.color,dot:dot.content,
+        arrowColumn:arrow.gridColumnStart,railWidth:rail.width};
+    });
+    const first=computed[0]?.caretX;
+    return {ok:computed.length===3&&computed.every(x=>x.ok)&&
+      computed.every(x=>Math.abs(x.caretX-first)<1.1),
+      stages:computed,caretSpan:computed.length?Math.max(...computed.map(x=>x.caretX))-
+        Math.min(...computed.map(x=>x.caretX)):null};
+  })()`);
+  if(!v4Geometry.ok)throw Error('UI_V4_L2 three-row fixed caret + full hitbox geometry: '+JSON.stringify(v4Geometry));
+  console.log('UI_V4_L2_CARET_RAIL_3_ROWS_HITBOX_PASS',JSON.stringify(v4Geometry));
+
+  // Same real component/viewport, baseline styling replayed *only in the DOM*
+  // for a side-by-side before/after illustration. This is explicitly NOT an
+  // historical deployment screenshot; the actual immutable baseline screenshot
+  // is independently available from Source run #41165414469.
+  await evaluate(`(()=>{
+    const style=document.createElement('style');style.id='ui-v4-l2-before-css-replay';
+    style.textContent=\`
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger{
+        display:inline-flex!important;min-height:0!important;height:auto!important;
+        padding:0!important;background:transparent!important;grid-template-columns:none!important;
+      }
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{content:none!important;display:none!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::after{grid-column:auto!important;margin-left:5px!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-progress-tone]::before{
+        content:""!important;display:block!important;flex:none;width:6px;height:6px;
+        margin:6px 5px 0 0;border-radius:50%;background:currentColor
+      }
+    \`;
+    document.head.append(style);
+  })()`);
+  const v4BeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-before-css-replay-simulated.png',Buffer.from(v4BeforeShot.data,'base64'));
+  await evaluate("document.querySelector('#ui-v4-l2-before-css-replay').remove()");
+  const v4AfterShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-desktop.png',Buffer.from(v4AfterShot.data,'base64'));
+
+  // Hit-testing uses actual CDP mouse events at both extreme ends of a
+  // status member. Clicking its label never forwards to an adjacent editor.
+  const v4HitStatus=async(stage,side)=>{
+    const row=v4Geometry.stages.find(x=>x.stage===stage);
+    if(!row)throw Error('missing stage for hit test '+stage);
+    const x=side==='left'?row.leftX:row.rightX,y=row.midY;
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',clickCount:1});
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});
+    await eventually("document.querySelector('.cell-picker-popover:popover-open')?.getAttribute('aria-label')?.includes("+
+      JSON.stringify(stage==='progressBuild'?'Tiến độ trình HĐND xây dựng NQ':stage==='progressParty'?'Tiến độ xin ý kiến Thành ủy':'Tiến độ trình HĐND ban hành NQ')+")",
+      'V4 '+stage+' '+side+' hit must open the own picker');
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
+      'V4 Escape must close '+stage+' without a patch');
+  };
+  await v4HitStatus('progressBuild','left');
+  await v4HitStatus('progressBuild','right');
+  await v4HitStatus('progressParty','right');
+  await v4HitStatus('progressCouncil','left');
+  const v4LeftLabel=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row');
+    const label=row?.querySelector('.compact-stage-label > span:last-child');
+    if(!label)return false;
+    const point=label.getBoundingClientRect();
+    const x=point.left+3,y=point.top+Math.min(5,point.height/2);
+    const node=document.elementFromPoint(x,y);
+    if(!node||node.closest('button.cell-picker-trigger'))return false;
+    node.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
+    return !document.querySelector('.cell-picker-popover:popover-open');
+  })()`);
+  if(!v4LeftLabel)throw Error('V4 stage label unexpectedly activated progress editor');
+  console.log('UI_V4_L2_INDEPENDENT_FIELD_EDGE_CLICKS_ESCAPE_PASS',
+    JSON.stringify({tested:['progressBuild left/right','progressParty right','progressCouncil left'],
+      labelClickNoPopover:v4LeftLabel,patched:false}));
+
   const v3GrantedShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v3-l2-granted-desktop.png',Buffer.from(v3GrantedShot.data,'base64'));
   const beforeStageEdit=await evaluate(`(()=>{
