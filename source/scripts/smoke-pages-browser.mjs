@@ -2543,7 +2543,7 @@ try{
   const v5BuildBeforeEsc=await evaluate(`(()=>{
     const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
       x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
-    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state')?.textContent?.trim();
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger')?.textContent?.trim();
   })()`);
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
@@ -2552,7 +2552,7 @@ try{
   const v5BuildAfterEsc=await evaluate(`(()=>{
     const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
       x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
-    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state')?.textContent?.trim();
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger')?.textContent?.trim();
   })()`);
   if(v5BuildBeforeEsc!==v5BuildAfterEsc)
     throw Error('UI_V5_INTEGRATION_ESC_MUTATED_QPPL_BUILD '+JSON.stringify({before:v5BuildBeforeEsc,after:v5BuildAfterEsc}));
