@@ -109,8 +109,16 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     repo.leaseManager=session;
     return {db,session,repo,uid};
   };
-  const current=async(db:Database,id:string)=>
-    (await get(ref(db,path+'/'+id))).val() as Item & {history?:Record<string,unknown>;operationId:string};
+  const legacyHarness=(admin=false):Harness=>{
+    const uid=admin?'admin':'guest',db=admin?adminDb():guestDb();
+    const session=new CellEditSessionManager(db,()=>actor(uid,admin));
+    sessions.add(session);
+    const repo=new FirebaseRepository(db,()=>actor(uid,admin),()=>allGrants);
+    repo.leaseManager=session;
+    return {db,session,repo,uid};
+  };
+  const current=async(db:Database,id:string,location=path)=>
+    (await get(ref(db,location+'/'+id))).val() as Item & {history?:Record<string,unknown>;operationId:string};
   const persist=async(w:Harness,id:string,changes:Changes,old?:Item)=>{
     for(const field of Object.keys(changes) as EditableField[])
       if(!w.session.has(id,field))
@@ -121,9 +129,10 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(patch).toBeDefined();
     return (await w.repo.save([patch]))[0];
   };
-  const directSdkEdit=async(w:Harness,id:string,nextBuild:string,viaTransaction=false)=>{
+  const directSdkEdit=async(w:Harness,id:string,nextBuild:string,
+    viaTransaction=false,location=path)=>{
     await w.session.acquire(id,'progressBuild','status');
-    const before=await current(w.db,id);
+    const before=await current(w.db,id,location);
     const revision=before.revision+1,operationId='v5l5_direct_'+crypto.randomUUID();
     const updateFields={
       progressBuild:nextBuild,revision,operationId,
@@ -134,7 +143,7 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
         changes:{progressBuild:nextBuild},oldValues:{progressBuild:before.progressBuild}
       }}
     };
-    const target=ref(w.db,path+'/'+id);
+    const target=ref(w.db,location+'/'+id);
     if(viaTransaction){
       return runTransaction(target,raw=>raw===null?raw:{...raw,...updateFields},{applyLocally:false});
     }
@@ -321,6 +330,54 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     const after=await current(guest.db,'hc');
     expect(after.progressBuild).toBe(untouched.progressBuild);
     expect((after.history as any)['2'].changes).toEqual({note:'Giữ cột H legacy'});
+  },60000);
+  it('R-V5-01 legacy fallback direct SDK: unicode HC/BC block, QPPL/unknown and unrelated note remain writable',async()=>{
+    // No V2 active pointer: prove the independent hdnd/items/$id validator
+    // enforces the exact same business guard, not only the V2 validator.
+    await env.clearDatabase();
+    const chosen=rows().filter(x=>['hc','baocao','qppl','unknown'].includes(x.recordId));
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never),{hdnd:{
+        items:Object.fromEntries(chosen.map(row=>{
+          const {archivedAt,...body}=row;
+          return [row.recordId,{...body,operationId:'initial',updatedAt:1,updatedBy:'admin'}];
+        })),
+        permissions:allGrants,
+        editors:{guest:true},
+        control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()}
+      }});
+    });
+    const w=legacyHarness(true),legacyPath='hdnd/items';
+    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true,legacyPath));
+    await assertSucceeds(directSdkEdit(w,'unknown','VP đang xử lý',false,legacyPath));
+    for(const [id,type,transact] of [
+      ['hc','\tHC\t',false],
+      ['hc','Ha\u0300nh chi\u0301nh',true],
+      ['hc','Hành\tchính',false],
+      ['baocao','Ba\u0301o ca\u0301o',true]
+    ] as const){
+      await env.withSecurityRulesDisabled(async ctx=>
+        set(ref(ctx.database() as never,legacyPath+'/'+id+'/type'),type));
+      const before=await current(w.db,id,legacyPath);
+      expect(buildNotRequiredForType(before)).toBe(true);
+      await assertFails(directSdkEdit(w,id,'Đã có QĐ',transact,legacyPath));
+      expect(await current(w.db,id,legacyPath)).toEqual(before);
+      await w.session.cancel(id,'progressBuild');
+    }
+    const old=await current(w.db,'hc',legacyPath);
+    const result=(await w.repo.save([updateDraft(old,undefined,
+      {note:'Sửa ghi chú HC; giữ Build cũ'})!]))[0];
+    // Acquire a real note lease for a normal audited edit in the fallback.
+    // Initial save has no note lease and must fail; it must not create history.
+    expect(result.ok).toBe(false);
+    await w.session.acquire('hc','note','multiline');
+    const accepted=(await w.repo.save([updateDraft(old,undefined,
+      {note:'Sửa ghi chú HC; giữ Build cũ'})!]))[0];
+    expect(accepted.ok,accepted.message).toBe(true);
+    const after=await current(w.db,'hc',legacyPath);
+    expect(after.progressBuild).toBe(old.progressBuild);
+    expect((after.history as any)[String(after.revision%50)].changes)
+      .toEqual({note:'Sửa ghi chú HC; giữ Build cũ'});
   },60000);
   it('REVOKE: stale client grant + acquired lease cannot write QPPL Build',async()=>{
     const w=harness(false,{columns:{progressBuild:true}}),admin=adminDb();
