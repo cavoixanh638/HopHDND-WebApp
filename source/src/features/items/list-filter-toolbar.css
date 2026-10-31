@@ -37,3 +37,90 @@
   .list-filter-toolbar .list-filter-other-panel{right:auto;left:0;
     grid-template-columns:minmax(0,1fr);width:min(340px,calc(100vw - 36px))}
 }
+
+
+/* V6 L4: one restrained ink/fill accent for active predicates, not workflow status. */
+.list-filter-toolbar input.is-filter-active,
+.list-filter-toolbar select.is-filter-active,
+.list-filter-toolbar .list-filter-other[data-filter-active="true"]>summary {
+  border-color:#285f87;background:#edf5fb;color:#173e5b;
+  box-shadow:inset 0 0 0 1px #285f87;
+}
+.list-filter-toolbar .list-filter-other-count {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:22px;height:22px;margin:0 3px;padding:0 5px;
+  border-radius:6px;background:#285f87;color:#fff;
+  font-size:12px;line-height:1;font-variant-numeric:tabular-nums;
+}
+.item-summary-kind-chip[aria-pressed="true"] {
+  color:#173e5b;background:#edf5fb;border-color:#285f87;
+  box-shadow:inset 0 0 0 1px #285f87;
+}
+.item-summary-bucket[aria-pressed="true"] {
+  outline:2px solid #285f87;outline-offset:1px;
+  box-shadow:0 0 0 1px #fff;
+}
+/* Source/custom header controls also show the selection without changing
+   source status palettes or the renderer's original text. */
+.item-data-table .item-column-filter-row .item-filter-input-wrap:has(.item-filter-clear)>select,
+.item-data-table .item-column-filter-row .item-filter-input-wrap:has(.item-filter-clear)>input {
+  border-color:#285f87;background:#edf5fb;color:#173e5b;
+  box-shadow:inset 0 0 0 1px #285f87;
+}
+.list-filter-toolbar input:focus-visible,
+.list-filter-toolbar select:focus-visible,
+.list-filter-toolbar .list-filter-other>summary:focus-visible,
+.list-active-filters button:focus-visible{
+  outline:2px solid #245f94;outline-offset:2px;
+}
+
+.list-active-filters {
+  display:flex;flex-direction:column;gap:6px;
+  margin:2px 0 9px;padding:9px 11px;min-width:0;
+  border:1px solid #d7e4ee;border-radius:9px;
+  background:var(--surface,#fff);color:inherit;
+}
+.list-active-filters.has-active-filters{border-color:#9fbdd3}
+.list-active-filter-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.list-active-filter-heading>strong{font-size:13px;color:#244967;white-space:nowrap}
+.list-active-filter-results{font-size:12px;color:var(--muted,#5b6b75);font-variant-numeric:tabular-nums}
+.list-active-filter-results strong{font-size:13px;color:#244967}
+.list-active-filter-clear-all {
+  margin-left:auto;min-height:31px;padding:4px 10px;
+  border:1px solid #8aaec9;border-radius:7px;background:#f0f6fb;
+  color:#215173;font:600 12px/1.3 inherit;cursor:pointer;
+}
+.list-active-filter-clear-all:hover{background:#e0effa;border-color:#285f87}
+.list-active-filter-chips{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}
+.list-active-filter-chip {
+  display:inline-flex;align-items:stretch;max-width:100%;min-width:0;
+  border:1px solid #9fbdd3;border-radius:7px;background:#edf5fb;
+  font:500 12px/1.4 inherit;color:#244967;
+}
+.list-active-filter-chip-label{padding:6px 6px 6px 9px;white-space:nowrap;font-weight:700}
+.list-active-filter-chip-value{padding:6px 7px 6px 0;min-width:0;
+  max-width:min(36vw,360px);overflow-wrap:anywhere;white-space:normal;color:#142f44}
+.list-active-filter-remove {
+  align-self:stretch;display:inline-flex;align-items:center;justify-content:center;
+  min-width:31px;min-height:31px;margin:0;padding:0 5px;
+  border:0;border-left:1px solid #b6cddd;border-radius:0 6px 6px 0;
+  background:transparent;color:#244967;cursor:pointer;
+  font:bold 20px/1 system-ui,sans-serif;
+}
+.list-active-filter-remove:hover{background:#d9e9f5;color:#163d5e}
+.list-active-filter-idle{margin:0;color:var(--muted,#65717c);font-size:12px}
+.list-active-filter-empty {
+  display:flex;align-items:center;flex-wrap:wrap;gap:4px;
+  margin:1px 0 0;font-size:12px;color:#8a3f22;
+}
+.list-active-filter-empty button{
+  padding:2px 6px;border:1px solid #9fbdd3;border-radius:5px;
+  background:#f0f6fb;color:#215173;font:600 12px/1.4 inherit;cursor:pointer;
+}
+@media(max-width:700px) {
+  .list-active-filters{padding:8px;margin-bottom:8px}
+  .list-active-filter-results{order:3;flex-basis:100%}
+  .list-active-filter-clear-all{margin-left:auto}
+  .list-active-filter-chip-value{max-width:min(45vw,225px)}
+  .list-active-filter-chip{max-width:100%}
+}
