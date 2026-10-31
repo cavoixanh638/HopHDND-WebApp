@@ -275,18 +275,51 @@ try{
     'return {ok:metrics.length>0&&metrics.every(m=>m.ok),metrics};})()');
   if(!editableV4.ok)throw Error('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_FAIL '+JSON.stringify(editableV4));
   console.log('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_PASS '+JSON.stringify({count:editableV4.metrics.length}));
-  // Four real choices only, canonical selected/aria even when the source row
-  // still carries the historic alias; Escape must not create an edit patch.
-  await interact('const b=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-stage-field=progressBuild] button.cell-picker-trigger");'+
-    'if(!b)throw Error("V4 build picker missing");b.click()');
-  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V4 status dropdown');
+  // V5 integration: the first report drill can now contain only HC/BC,
+  // whose Build fields are *correctly locked*. Inspect that protection
+  // instead of requiring an invalid HC/BC editor. Keep keyboard/aria and
+  // choices-only coverage on the editable Party stage in that same popup;
+  // the separate imported QPPL Build fixture below checks EXACT five
+  // Build choices, intermediate selection, Escape and same-value no-op.
+  const popupPicker=await evaluate(`(()=>{
+    const grid=document.querySelector('dialog.report-grid-modal .report-detail-grid');
+    const build=[...grid?.querySelectorAll('[data-stage-field=progressBuild]')??[]];
+    const buildButton=build.map(x=>x.querySelector('.compact-stage-state button.cell-picker-trigger')).find(Boolean);
+    let field='progressBuild',button=buildButton;
+    const locked=build.map(x=>({
+      locked:!!x.querySelector('.business-build-locked'),
+      value:x.querySelector('.compact-stage-state')?.textContent?.trim(),
+      editable:!!x.querySelector('button.cell-picker-trigger')
+    }));
+    if(!button){
+      if(!build.length||locked.some(x=>!x.locked||x.value!=='Không phải trình'||x.editable))
+        return {ok:false,reason:'unexpected noneditable Build without HC/BC lock',locked};
+      field='progressParty';
+      button=grid?.querySelector('[data-stage-field=progressParty] .compact-stage-state button.cell-picker-trigger');
+    }
+    if(!button)return {ok:false,reason:'no editable status even for Party',locked};
+    button.scrollIntoView({block:'center',inline:'nearest'});
+    const selected=button.textContent?.trim();
+    button.click();
+    return {ok:true,field,selected,buildLocked:!buildButton,lockedCount:locked.filter(x=>x.locked).length};
+  })()`);
+  if(!popupPicker.ok)throw Error('UI_V5_POPUP_STATUS_PICKER_MISSING '+JSON.stringify(popupPicker));
+  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V5 popup status dropdown');
   const choices=await evaluate('(()=>{const root=document.querySelector(".cell-picker-popover[role=dialog]");'+
     'const buttons=[...root.querySelectorAll("[role=option]")];'+
-    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim())};})()');
-  const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
-  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||choices.selected.length!==1)
-    throw Error('UI_V4_L1_PICKER_CHOICES_FAIL '+JSON.stringify(choices));
-  await ensure('!document.querySelector("dialog.report-grid-modal .cell-picker-popover [role=option]")?.textContent.includes("VP đang thực hiện")','no old menu presets');
+    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim()),'+
+    'rolesOk:buttons.every(b=>b.getAttribute("role")==="option"),'+
+    'choicesOnly:root.dataset.choicesOnly==="true",header:!!root.querySelector("h1,h2,h3,.cell-picker-note,.cell-picker-search")};})()');
+  const expectedBuild=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  const expectedParty=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+    'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'];
+  const expected=popupPicker.field==='progressBuild'?expectedBuild:expectedParty;
+  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||
+      choices.selected.length!==1||choices.selected[0]!==popupPicker.selected||
+      !choices.rolesOk||!choices.choicesOnly||choices.header)
+    throw Error('UI_V5_POPUP_STATUS_CHOICES_FAIL '+JSON.stringify({popupPicker,choices,expected}));
+  console.log('UI_V5_POPUP_EFFECTIVE_LOCK_AND_PICKER_PASS '+JSON.stringify({popupPicker,choices}));
+
   const beforeDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
   await screenshot('pr95-v4-integrated-canonical-picker.png');
   await interact('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}))');
