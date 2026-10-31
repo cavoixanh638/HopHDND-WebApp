@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
+import {CompactGroupedValue,compactStageVisualTone} from '../src/features/items/CompactGroupedValue';
 import {activeCompactPairs,compactTypeTone,DEFAULT_COMPACT_DISPLAY} from '../src/features/items/compact-columns';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {CellPicker,cellPickerCanClear} from '../src/features/items/CellPicker';
@@ -57,6 +57,20 @@ describe('UI V6 L1 party-level brackets',()=>{
       expect(html).toContain('aria-label="Cấp Thành ủy"');
       expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
     });
+  it('UI6-R01 preserves legacy long partyLevel and nonrequired source status',()=>{
+    const sample={...item,partyLevel:'Ban Thường vụ Thành ủy lưu từ dữ liệu Excel cũ',
+      progressParty:'Không phải trình'};
+    const html=renderToStaticMarkup(<CompactGroupedValue item={sample}
+      pair={partyPair} tone={()=>undefined} editable={()=>false}
+      field={key=>String(sample[key]??'')}/>);
+    expect(html).toContain('Thành ủy (');
+    expect(html).toContain(sample.partyLevel);
+    expect(html).toContain('Không phải trình');
+    expect(html).toContain('data-progress-tone="neutral"');
+    expect(compactStageVisualTone(sample.progressParty,'done')).toBe('neutral');
+    expect(sample.partyLevel).toBe('Ban Thường vụ Thành ủy lưu từ dữ liệu Excel cũ');
+    expect(html).not.toContain('cell-picker-trigger');
+  });
   it('does not make a read-only level into a control',()=>{
     const html=renderToStaticMarkup(<CompactGroupedValue item={item}
       pair={partyPair} tone={()=>undefined}
