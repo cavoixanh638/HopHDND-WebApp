@@ -2813,7 +2813,13 @@ try{
     const type=row[0]?.querySelector('.compact-document-badge');
     const content=row[0]?.querySelector('.compact-document-content');
     const level=row[0]?.querySelector('.compact-stage-level');
-    const stage=row[1]?.querySelectorAll('.compact-stage-state')[1];
+    // R03 is now on an isolated QPPL positive: HC row 2 Build is locked.
+    const stage=row[6]?.querySelectorAll('.compact-stage-state')[1];
+    const qpplKind=row[6]?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const hcBuild=row[1]?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const hcLocked=!!hcBuild?.querySelector('.business-build-locked')&&
+      hcBuild.textContent?.trim()==='Không phải trình'&&
+      !hcBuild.querySelector('[data-highlighted=true]');
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
@@ -2826,8 +2832,9 @@ try{
       t?.background!=='rgb(204, 0, 0)'&&c?.background!=='rgb(204, 0, 0)'&&
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
+      qpplKind==='QPPL'&&hcLocked&&
       p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
-      dept:d,type:t,content:c,level:l,levelValue:currentLevel,progressBuild:p};
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
