@@ -862,7 +862,9 @@
   --workflow-text:var(--hdnd-status-done-text,#007A18);--workflow-border:#91cfa8;
 }
 .compact-stage-state[data-progress-tone]::before{
-  content:"";flex:none;width:6px;height:6px;margin:6px 5px 0 0;border-radius:50%;background:currentColor;
+  /* V4 L2: the status dot is no longer an affordance. Stage numbers,
+     report counts, history and pending indicators are intentionally untouched. */
+  content:none;display:none;
 }
 .compact-stage-state .compact-part{min-width:0;flex:1 1 auto;overflow-wrap:break-word;word-break:normal}
 .compact-stage-state .cell-picker-trigger{
@@ -1083,4 +1085,88 @@
 }
 @media(max-width:620px){
   .compact-stage-row .compact-stage-state{margin-left:0}
+}
+
+/* UI V4 L2 — the OUTER stage row remains the one and only framed surface.
+   Status edits fill the entire value column; long legacy/canonical labels
+   wrap to the left of a fixed 22px caret track, not around the caret.
+   This is scoped to the grouped status member, not partyLevel or other fields. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"]{
+  display:flex;align-self:stretch;align-items:stretch;min-width:0;width:100%;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger{
+  --v4-caret-track:22px;
+  display:grid!important;grid-template-columns:minmax(0,1fr) var(--v4-caret-track);
+  align-items:center;justify-content:stretch;column-gap:7px;
+  position:relative;isolation:isolate;
+  box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+  min-height:38px;height:100%;
+  padding:5px 6px 5px 9px!important;margin:0!important;
+  border:0!important;border-radius:3px;
+  color:inherit!important;
+  background:color-mix(in srgb,currentColor 6%,transparent)!important;
+  box-shadow:none!important;transform:none!important;
+  text-align:left;white-space:normal;
+  overflow-wrap:break-word;word-break:normal;
+  cursor:pointer;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger .cell-picker-value-text{
+  grid-column:1;min-width:0;max-width:100%;
+  overflow-wrap:break-word;word-break:normal;
+  position:relative;z-index:1;
+}
+/* A softly shaded rail is NOT an inner border/pill. Its x coordinate and
+   width stay fixed for all three rows in a grouped status column. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{
+  content:"";display:block;position:absolute;pointer-events:none;
+  inset:0 0 0 auto;width:34px;
+  border:0;border-radius:0 3px 3px 0;
+  background:color-mix(in srgb,currentColor 8%,transparent);
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:not(:disabled)::after{
+  content:"";display:block;grid-column:2;
+  justify-self:center;align-self:center;position:relative;z-index:1;
+  width:7px;height:7px;margin:0!important;flex:none;
+  border:0;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  background:none;transform:translateY(-2px) rotate(45deg);
+  pointer-events:none;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border:0!important;outline:0!important;box-shadow:none!important;
+  transform:none!important;
+  background:color-mix(in srgb,currentColor 13%,transparent)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
+  background:color-mix(in srgb,currentColor 12%,transparent);
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:disabled{
+  cursor:default;background:transparent!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:disabled::before,
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:disabled::after{
+  content:none;display:none;
+}
+/* Read-only status is flat and inert, including legacy popup wrapper dots.
+   No field in a sibling stage obtains a button or hover affordance. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state:not([data-editable="true"])::before,
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  .compact-stage-state .workflow-status-value::before{
+  content:none!important;display:none!important;
+}
+@media(prefers-reduced-motion:reduce){
+  :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+    .compact-stage-state[data-editable="true"] button.cell-picker-trigger{
+    transition:none!important;
+  }
 }
