@@ -1255,7 +1255,7 @@ try{
     const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
     const noIcons=nav.querySelectorAll('.section-card-icon').length===0;
     const activeBadge=!!selected&&getComputedStyle(selected.querySelector('.section-card-state')).backgroundColor!=='rgba(0, 0, 0, 0)';
-    const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
+    const cardDepth=!!activeStyle?.boxShadow.includes('3px 10px')&&!!idleStyle?.boxShadow.includes('2px 6px');
     return {ok:nav?.getBoundingClientRect().width<=1000&&
       restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
       geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=8&&g.rightInset<=29)&&
@@ -1380,8 +1380,8 @@ try{
         color:style.color,shadow:style.boxShadow,
         titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
-    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
-      hover.color!==color||hover.titleSize<15||hover.titleSize>17)
+    if(!hover.hover||Math.abs(hover.liftY+2)>.25||!hover.shadow.includes('7px 13px')||
+      hover.color!==color||Math.abs(hover.titleSize-14)>.25)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
   // V3 cards now start near the top. x=785,y=9 is over a card, NOT mouseleave.
