@@ -1,0 +1,85 @@
+name: PR95 V6 L5 — real cell-picker browser audit and reusable skill (NO publish)
+on:
+  pull_request:
+    paths:
+      - 'source/skills/hophdnd-cell-picker-regression/**'
+      - 'source/scripts/pr95-v6-l5-*'
+      - '.github/workflows/pr95-v6-l5-picker-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  picker-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned dependencies
+        working-directory: source
+        run: npm ci
+      - name: Validate skill frontmatter, actual references and scaffold placeholders
+        working-directory: source
+        run: node scripts/pr95-v6-l5-validate-skill.mjs
+      - name: Typecheck and picker choices/focus/placement unit regressions
+        working-directory: source
+        run: |
+          npm run typecheck
+          npx vitest run tests/pr95-v5-l1-dropdown.test.tsx tests/cell-picker-lazy.test.tsx
+      - name: Build REAL List/ReportDetailGrid with synthetic fixture
+        working-directory: source
+        run: npm run build:compact:qa
+      - name: REAL Chrome CDP pointer/keyboard, anchored menu, popup, search, mobile
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/pr95-v5-l1-dropdown-browser.mjs | tee pr95-v6-l5-main-chrome.log
+      - name: Real mounted React with controlled late ACK, unmount, fence, listener count
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/pr95-v5-l1-race-browser.mjs | tee pr95-v6-l5-race-chrome.log
+      - name: Real Chrome scroll reposition, clipped anchor and visualViewport pinch
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/pr95-v6-l5-scroll-browser.mjs | tee pr95-v6-l5-scroll-chrome.log
+      - name: Machine-check real screenshots + rect/gap/events/patch and retain evidence
+        working-directory: source
+        env:
+          PR95_V6_L5_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >
+          node scripts/pr95-v6-l5-picker-audit.mjs
+          pr95-v6-l5-main-chrome.log
+          pr95-v6-l5-race-chrome.log
+          pr95-v6-l5-scroll-chrome.log
+      - name: Independently exercise real Auth + RTDB Emulator lease/permission/CAS regressions
+        working-directory: source
+        run: npm run test:firebase
+      - name: Keep exact-head Chrome PNGs, raw logs and evidence (NEVER published)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v6-l5-real-chrome-picker-audit
+          path: |
+            source/pr95-v5-l1-*.png
+            source/pr95-v6-l5-*.log
+            source/pr95-v6-l5-*.json
+            source/pr95-v6-l5-*.png
+          if-no-files-found: warn
+          retention-days: 14
