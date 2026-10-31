@@ -58,7 +58,7 @@ function App(){
       sourceKind="demo" sourceKey="pr95-v6-l1-synthetic"
       catalog={catalog} initialLayout={layout}
       readOnly={role==='readonly'} canEditDraft={role!=='readonly'}
-      canEditCell={writable} anonymousViewer={role==='mixed'}
+      customizing={split} canEditCell={writable} anonymousViewer={role==='mixed'}
       viewerScope="v6-l1-qa-only" allowPersonalCompact={false}
       statusPaletteStore={palette}
       onUpdate={update} onHistory={()=>{}} onClose={()=>{}}
