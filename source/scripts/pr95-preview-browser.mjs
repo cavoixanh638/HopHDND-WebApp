@@ -175,7 +175,7 @@ try{
   await clickText('Đăng nhập quản trị (mô phỏng)');
   await waitFor('document.querySelector("[data-role=admin]")','simulated admin login');
   await interact('document.querySelector(".pr95-preview-gear").click()');
-  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===6','admin five tools and logout');
+  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===7','admin five tools, reference toggle and logout');
   await screenshot('pr95-v3-l5-admin-gear.png');
   await interact('document.querySelector(".pr95-preview-gear").click()');
 
