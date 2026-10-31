@@ -279,6 +279,7 @@ try {
   assert(dept&&Math.abs(types[0].frame.height-dept.h)<=5,
     'type/Sở height mismatch '+JSON.stringify({type:types[0],dept}));
   const lv=await inspectLevels('.item-data-table','list-admin-1440');
+  await assertStageHitTargets('.item-data-table','list-admin-1440');
   assert(lv[0].level==='(BCH)'&&lv[1].level==='(BTV TU)'&&lv[2].level==='(TTTU)',
     'BCH/BTV TU/TTTU changed '+JSON.stringify(lv));
   const rails=await evaluate('(()=>[...document.querySelectorAll(".item-data-table tbody tr:first-child .compact-stage-row .compact-stage-state button.cell-picker-trigger")].map(b=>Math.round(b.getBoundingClientRect().right)))()');
@@ -316,6 +317,7 @@ try {
   const readonly=await detail(typeRow(1));
   assert(!readonly.editable,'readonly still editable');
   const readonlyLevels=await inspectLevels('.item-data-table','list-readonly-1280');
+  await assertStageHitTargets('.item-data-table','list-readonly-1280');
   assert(readonlyLevels.slice(0,3).every(x=>x.buttonRight===null),
     'readonly level editor unexpectedly exists');
   await screenshotV6('pr95-v6-l1-list-readonly-1280.png');
@@ -330,6 +332,13 @@ try {
     !mixed[2].type&&!mixed[2].level,
     'mixed grants leak across field '+JSON.stringify(mixed));
   await inspectLevels('.item-data-table','list-mixed-1280');
+  await assertStageHitTargets('.item-data-table','list-mixed-1280');
+  await evaluate('document.querySelector(".item-data-table tbody tr:nth-child(2) .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await screenshotV6('pr95-v6-l1-ui6-r01-mixed-bvt-tu-state-separated-1280.png');
+  await evaluate('document.querySelector(".item-data-table tbody tr:nth-child(5) .compact-stage-state")?.scrollIntoView({block:"nearest",inline:"center"})');
+  const notRequired=await evaluate('[...document.querySelectorAll(".item-data-table .compact-stage-state")].some(e=>e.textContent?.includes("Không phải trình"))');
+  assert(notRequired,'UI6-R01 nonrequired status must appear in real List');
+  await screenshotV6('pr95-v6-l1-ui6-r01-khong-phai-trinh-1280.png');
   await screenshotV6('pr95-v6-l1-list-mixed-grants-1280.png');
   await testClick('document.querySelector(".item-data-table tbody tr:first-child .compact-document-badge button.cell-picker-trigger")');
   await waitFor('!!document.querySelector(".cell-picker-popover:popover-open")','granted type');
@@ -344,6 +353,7 @@ try {
   // even when the stage group uses its horizontal inner scroll fallback.
   await visit('view=list&role=admin&narrow=1',1280,760);
   await inspectLevels('.item-data-table','list-saved-narrow-1280');
+  await assertStageHitTargets('.item-data-table','list-saved-narrow-1280');
   const narrowScroll=await evaluate('(()=>{const s=document.querySelector(".item-data-table tbody tr:first-child .compact-stages");'+
     'return {client:s?.clientWidth,scroll:s?.scrollWidth,overflow:getComputedStyle(s).overflowX};})()');
   assert(narrowScroll&&narrowScroll.scroll>=narrowScroll.client,
@@ -354,6 +364,7 @@ try {
 
   await visit('view=list&role=admin',390,844);
   await inspectLevels('.item-data-table','list-mobile-390');
+  await assertStageHitTargets('.item-data-table','list-mobile-390');
   await screenshotV6('pr95-v6-l1-list-mobile-390.png');
   await evaluate('document.querySelector(".item-data-table tbody tr:first-child .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
   await sleep(120);
@@ -364,6 +375,8 @@ try {
     'return {badge:!!td?.querySelector(".compact-document-badge"),'+
     'typeEditable:!!td?.querySelector(".compact-document-badge .cell-picker-trigger")};})()');
   assert(!pRead.typeEditable,'popup readonly type unexpectedly editable '+JSON.stringify(pRead));
+  await inspectLevels('.report-detail-grid','popup-readonly-1440');
+  await assertStageHitTargets('.report-detail-grid','popup-readonly-1440');
   await screenshotV6('pr95-v6-l1-popup-readonly-1440.png');
 
   await visit('view=popup&role=admin',1440,900);
@@ -373,6 +386,11 @@ try {
     'buttons.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','popup grouped level');
   const popLevels=await inspectLevels('.report-detail-grid','popup-admin-1440');
+  await assertStageHitTargets('.report-detail-grid','popup-admin-1440');
+  await evaluate('document.querySelector(".report-detail-grid tbody tr:nth-child(2) .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await screenshotV6('pr95-v6-l1-ui6-r01-popup-bvt-tu-state-separated-1440.png');
+  await evaluate('document.querySelector(".report-detail-grid tbody tr:nth-child(5) .compact-stage-state")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await screenshotV6('pr95-v6-l1-ui6-r01-popup-khong-phai-trinh-1440.png');
   const popupGroupedType=await detail('.report-detail-grid tbody tr:first-child .compact-document-badge');
   assert(popupGroupedType.editable&&popupGroupedType.allBorders===0,
     'popup grouped Loại VB has double border '+JSON.stringify(popupGroupedType));
@@ -395,6 +413,7 @@ try {
     'b.find(x=>x.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','mobile grouped stage');
   await inspectLevels('.report-detail-grid','popup-mobile-390');
+  await assertStageHitTargets('.report-detail-grid','popup-mobile-390');
   await screenshotV6('pr95-v6-l1-popup-mobile-grouped-390.png');
   await evaluate('document.querySelector(".report-detail-grid tbody tr:first-child .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
   await sleep(120);
@@ -413,7 +432,8 @@ try {
     threeKinds:['QPPL','HC','BC'],legacy:true,levels:['BCH','BTV TU','TTTU'],
     main:true,popup:true,readonly:true,admin:true,mixed:true,separate:true,
     desktop:1440,medium:1280,mobile:390,narrow:true,noPatch:true,
-    stageRails:rails,productionRequests:0
+    stageRails:rails,ui6R01:true,captionStateGapAsserted:true,independentHitTargets:true,
+    nonrequiredScreenshot:true,productionRequests:0
   }));
 }finally {
   for(const job of pending.values())job.reject(Error('Chrome closing'));
