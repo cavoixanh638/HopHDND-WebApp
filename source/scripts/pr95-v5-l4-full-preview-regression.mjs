@@ -88,9 +88,28 @@ const assertV4StatusDisplay=async (scope,label,fullCatalog=false)=>{
     if(info.texts.some(t=>t.includes(old)))throw Error('UI_V4_L1_RAW_ALIAS_LEAK '+label+' '+old);
   }
   if(fullCatalog){
+    // V5: HC/BC default Build is effectively "Không phải trình". The
+    // intermediate milestone is *not* required to be seeded in the default
+    // dataset; a separate QPPL A–O fixture below proves it is preserved.
     for(const current of ['BCH','BTV TU','VP đang xử lý','ĐU gửi TU, chưa họp','Không phải trình']){
       if(!info.texts.some(t=>t.includes(current)))throw Error('UI_V4_L1_CANONICAL_MISSING '+label+' '+current);
     }
+    const types=await evaluate(`(()=>{
+      const list=document.querySelector(".item-data-table");
+      if(!list)return [];
+      return [...list.querySelectorAll('tbody tr')].map(row=>{
+        const kind=row.querySelector('.compact-document-badge')?.textContent?.trim()??'';
+        const stage=row.querySelector('[data-stage-field=progressBuild]');
+        const state=stage?.querySelector('.compact-stage-state');
+        return {kind,value:state?.textContent?.trim()??'',locked:!!state?.querySelector('.business-build-locked'),
+          editor:!!state?.querySelector('button.cell-picker-trigger')};
+      }).filter(item=>item.kind==='HC'||item.kind==='Báo cáo');
+    })()`);
+    if(!types.length||types.some(x=>x.value!=='Không phải trình'||!x.locked||x.editor))
+      throw Error('UI_V5_DEFAULT_HC_BC_EFFECTIVE_BUILD_FAIL '+JSON.stringify(types));
+    console.log('UI_V5_DEFAULT_HC_BC_EFFECTIVE_BUILD_PASS '+JSON.stringify({
+      scoped:types.length,hc:types.filter(x=>x.kind==='HC').length,
+      bc:types.filter(x=>x.kind==='Báo cáo').length}));
   }
   console.log('UI_V4_L1_CANONICAL_DEFAULT_DEMO_PASS '+label+' '+JSON.stringify({stages:info.count}));
 };
@@ -269,18 +288,51 @@ try{
     'return {ok:metrics.length>0&&metrics.every(m=>m.ok),metrics};})()');
   if(!editableV4.ok)throw Error('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_FAIL '+JSON.stringify(editableV4));
   console.log('UI_V4_L2_EDITABLE_SINGLE_FRAME_TONAL_RAIL_PASS '+JSON.stringify({count:editableV4.metrics.length}));
-  // Four real choices only, canonical selected/aria even when the source row
-  // still carries the historic alias; Escape must not create an edit patch.
-  await interact('const b=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-stage-field=progressBuild] button.cell-picker-trigger");'+
-    'if(!b)throw Error("V4 build picker missing");b.click()');
-  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V4 status dropdown');
+  // V5 integration: the first report drill can now contain only HC/BC,
+  // whose Build fields are *correctly locked*. Inspect that protection
+  // instead of requiring an invalid HC/BC editor. Keep keyboard/aria and
+  // choices-only coverage on the editable Party stage in that same popup;
+  // the separate imported QPPL Build fixture below checks EXACT five
+  // Build choices, intermediate selection, Escape and same-value no-op.
+  const popupPicker=await evaluate(`(()=>{
+    const grid=document.querySelector('dialog.report-grid-modal .report-detail-grid');
+    const build=[...grid?.querySelectorAll('[data-stage-field=progressBuild]')??[]];
+    const buildButton=build.map(x=>x.querySelector('.compact-stage-state button.cell-picker-trigger')).find(Boolean);
+    let field='progressBuild',button=buildButton;
+    const locked=build.map(x=>({
+      locked:!!x.querySelector('.business-build-locked'),
+      value:x.querySelector('.compact-stage-state')?.textContent?.trim(),
+      editable:!!x.querySelector('button.cell-picker-trigger')
+    }));
+    if(!button){
+      if(!build.length||locked.some(x=>!x.locked||x.value!=='Không phải trình'||x.editable))
+        return {ok:false,reason:'unexpected noneditable Build without HC/BC lock',locked};
+      field='progressParty';
+      button=grid?.querySelector('[data-stage-field=progressParty] .compact-stage-state button.cell-picker-trigger');
+    }
+    if(!button)return {ok:false,reason:'no editable status even for Party',locked};
+    button.scrollIntoView({block:'center',inline:'nearest'});
+    const selected=button.textContent?.trim();
+    button.click();
+    return {ok:true,field,selected,buildLocked:!buildButton,lockedCount:locked.filter(x=>x.locked).length};
+  })()`);
+  if(!popupPicker.ok)throw Error('UI_V5_POPUP_STATUS_PICKER_MISSING '+JSON.stringify(popupPicker));
+  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V5 popup status dropdown');
   const choices=await evaluate('(()=>{const root=document.querySelector(".cell-picker-popover[role=dialog]");'+
     'const buttons=[...root.querySelectorAll("[role=option]")];'+
-    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim())};})()');
-  const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
-  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||choices.selected.length!==1)
-    throw Error('UI_V4_L1_PICKER_CHOICES_FAIL '+JSON.stringify(choices));
-  await ensure('!document.querySelector("dialog.report-grid-modal .cell-picker-popover [role=option]")?.textContent.includes("VP đang thực hiện")','no old menu presets');
+    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim()),'+
+    'rolesOk:buttons.every(b=>b.getAttribute("role")==="option"),'+
+    'choicesOnly:root.dataset.choicesOnly==="true",header:!!root.querySelector("h1,h2,h3,.cell-picker-note,.cell-picker-search")};})()');
+  const expectedBuild=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  const expectedParty=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+    'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'];
+  const expected=popupPicker.field==='progressBuild'?expectedBuild:expectedParty;
+  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||
+      choices.selected.length!==1||choices.selected[0]!==popupPicker.selected||
+      !choices.rolesOk||!choices.choicesOnly||choices.header)
+    throw Error('UI_V5_POPUP_STATUS_CHOICES_FAIL '+JSON.stringify({popupPicker,choices,expected}));
+  console.log('UI_V5_POPUP_EFFECTIVE_LOCK_AND_PICKER_PASS '+JSON.stringify({popupPicker,choices}));
+
   const beforeDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
   await screenshot('pr95-v5-l4-integrated-canonical-picker.png');
   await interact('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}))');
@@ -305,7 +357,7 @@ try{
   // A–O sheet fixture is generated ONLY in Node memory; file enters the
   // browser File input, then the real parser and comparison domain run.
   const row=['NQ991',1,'MẪU: Nghị quyết kiểm thử L4','Sở mẫu A','QPPL','BTV',
-    'Sở chưa trình','Sở chưa trình','Sở chưa trình','CV giả','Phòng mẫu 1',
+    'Sở chưa trình','Đã trình, chờ QĐ','Sở chưa trình','CV giả','Phòng mẫu 1',
     'Lãnh đạo VP mẫu','Lãnh đạo UBND mẫu','Đang xử lý','Ghi chú chỉ demo'];
   const headings=['Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
     'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',
@@ -326,6 +378,63 @@ try{
   await clickText('Dùng dữ liệu này trong bản demo (RAM)');
   await clickText('Xác nhận thay dữ liệu RAM');
   await waitFor('document.querySelector(".pr95-preview-context")?.textContent.includes("Hồ sơ: 1")','memory replacement');
+  // V5 integration: explicit independent imported QPPL fixture, NOT a fake
+  // milestone injected into the default demo. Test displayed effective Build,
+  // exact canonical five options, selected status, Esc and same-value no-op.
+  await clickText('Danh sách các ND trình HĐND');
+  await waitFor('document.querySelector(".item-data-table tbody tr td[data-col-key=displayCode]")?.textContent?.includes("NQ991")',
+    'isolated imported QPPL row visible in real ItemList');
+  const qpplIntermediate=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ991');
+    const type=row?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const stage=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const editor=stage?.querySelector('button.cell-picker-trigger');
+    return {ok:!!row&&type==='QPPL'&&!!editor&&
+      stage.textContent?.trim()==='Đã trình, chờ QĐ'&&
+      !stage.querySelector('.business-build-locked'),
+      id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
+      type,value:stage?.textContent?.trim(),editor:!!editor};
+  })()`);
+  if(!qpplIntermediate.ok)throw Error('UI_V5_QPPL_IMPORTED_MILESTONE_MISSING '+JSON.stringify(qpplIntermediate));
+  const beforeQpplDirty=await evaluate('!!document.querySelector(".pr95-preview-unsaved")');
+  await interact('const row=[...document.querySelectorAll(".item-data-table tbody tr")].find(x=>'+
+    'x.querySelector("td[data-col-key=displayCode]")?.textContent?.trim()==="NQ991");'+
+    'const editor=row?.querySelector("[data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!editor)throw Error("QPPL milestone editor missing");editor.scrollIntoView({block:"center"});editor.click()');
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open .cell-picker-option")',
+    'QPPL intermediate Build dropdown open');
+  const qpplOptions=await evaluate(`(()=>{
+    const p=document.querySelector('.cell-picker-popover:popover-open');
+    const options=[...p?.querySelectorAll('[role=option]')??[]];
+    return {labels:options.map(x=>x.textContent?.trim()),
+      selected:options.filter(x=>x.getAttribute('aria-selected')==='true').map(x=>x.textContent?.trim()),
+      choicesOnly:p?.dataset.choicesOnly==='true'};
+  })()`);
+  const expectedQppl=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  if(!qpplOptions.choicesOnly||JSON.stringify(qpplOptions.labels)!==JSON.stringify(expectedQppl)||
+      JSON.stringify(qpplOptions.selected)!==JSON.stringify(['Đã trình, chờ QĐ']))
+    throw Error('UI_V5_QPPL_INTERMEDIATE_CANONICAL_PICKER_FAIL '+JSON.stringify(qpplOptions));
+  await screenshot('pr95-v5-integrated-qppl-intermediate-selected.png');
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await waitFor('!document.querySelector(".cell-picker-popover:popover-open")','QPPL ESC close');
+  await ensure('document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] .compact-stage-state")?.textContent?.trim()==="Đã trình, chờ QĐ"',
+    'QPPL Build unchanged after Esc');
+  await interact('const button=document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!button)throw Error("QPPL Build lost editor");button.click()');
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open [role=option][aria-selected=true]")',
+    'QPPL same-value option ready');
+  await interact('document.querySelector(".cell-picker-popover:popover-open [role=option][aria-selected=true]").click()');
+  await waitFor('!document.querySelector(".cell-picker-popover:popover-open")','QPPL no-op option closes');
+  await ensure('document.querySelector(".item-data-table tbody tr [data-stage-field=progressBuild] .compact-stage-state")?.textContent?.trim()==="Đã trình, chờ QĐ"',
+    'QPPL Build unchanged after same-value option');
+  const afterQpplDirty=await evaluate('!!document.querySelector(".pr95-preview-unsaved")');
+  if(afterQpplDirty!==beforeQpplDirty)
+    throw Error('UI_V5_QPPL_SAME_VALUE_CREATED_DRAFT '+JSON.stringify({beforeQpplDirty,afterQpplDirty}));
+  console.log('UI_V5_IMPORTED_QPPL_INTERMEDIATE_ESC_NOOP_PASS '+JSON.stringify({
+    fixture:qpplIntermediate,choiceCount:qpplOptions.labels.length,
+    selected:qpplOptions.selected,noPatch:true}));
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','report after memory import');
 
