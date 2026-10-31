@@ -141,41 +141,122 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     layer.appendChild(hover);
     let activeDialog:HTMLDialogElement|null=null;
     let disposed=false,frame=0,anchors:UiReferenceAnchor[]=[];
-    const clipRect=(element:Element):DOMRect|null=>{
+    type Box={left:number;top:number;width:number;height:number};
+    const overlap=(a:Box,b:Box,pad=2)=>a.left<b.left+b.width+pad&&
+      a.left+a.width+pad>b.left&&a.top<b.top+b.height+pad&&
+      a.top+a.height+pad>b.top;
+    // Clip text and controls to their REAL scroll viewport, not their
+    // unconstrained DOM rectangles (important for horizontally scrolled tables).
+    const clip=(r:Box,element:Element):Box|null=>{
+      let top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.top+r.height);
+      let left=Math.max(0,r.left),right=Math.min(innerWidth,r.left+r.width);
+      for(let a=element.parentElement;a;a=a.parentElement){
+        const css=getComputedStyle(a);
+        if(/auto|scroll|hidden|clip/.test(css.overflowX+' '+css.overflowY)){
+          const bounds=a.getBoundingClientRect();
+          top=Math.max(top,bounds.top);bottom=Math.min(bottom,bounds.bottom);
+          left=Math.max(left,bounds.left);right=Math.min(right,bounds.right);
+        }
+        if(a===root)break;
+      }
+      if(right-left<1||bottom-top<1)return null;
+      return {left,top,width:right-left,height:bottom-top};
+    };
+    const clipRect=(element:Element):Box|null=>{
       const r=element.getBoundingClientRect();
       if(r.width<6||r.height<6)return null;
-      let top=Math.max(0,r.top),bottom=Math.min(innerHeight,r.bottom);
-      let left=Math.max(0,r.left),right=Math.min(innerWidth,r.right);
-      // Hidden table cells may have a large off-screen bounding rectangle
-      // inside scroll containers: intersect all clipping ancestors.
-      for(let ancestor=element.parentElement;ancestor&&ancestor!==root.parentElement;
-        ancestor=ancestor.parentElement){
-        const css=getComputedStyle(ancestor);
-        if(/auto|scroll|hidden|clip/.test(css.overflowX+css.overflowY)){
-          const b=ancestor.getBoundingClientRect();
-          top=Math.max(top,b.top);bottom=Math.min(bottom,b.bottom);
-          left=Math.max(left,b.left);right=Math.min(right,b.right);
-        }
-        if(ancestor===root)break;
-      }
-      if(right-left<6||bottom-top<6)return null;
-      return new DOMRect(left,top,right-left,bottom-top);
+      const visible=clip(r,element);
+      return visible&&visible.width>=6&&visible.height>=6?visible:null;
     };
-    const position=(span:HTMLElement,r:DOMRect,occupied:{x:number;y:number}[])=>{
-      const width=span.offsetWidth||39,height=span.offsetHeight||17;
-      // Prefer outside the left/right border of the referenced element.
-      const candidates=[
-        {x:r.left-width-3,y:r.top+2},
-        {x:r.right+3,y:r.top+2},
-        {x:r.left+2,y:r.top-height-3},
-        {x:r.left+2,y:r.bottom+3},
+    // R-V4-01: DOM text and actual controls are obstacles, not just other
+    // reference tags. Range rects protect glyphs, numbers and visible IDs;
+    // buttons/inputs/SVG/carets protect interaction and arrow surfaces.
+    const contentObstacles=(scope:Element):Box[]=>{
+      const boxes:Box[]=[];
+      const walker=document.createTreeWalker(scope,NodeFilter.SHOW_TEXT);
+      const range=document.createRange();
+      while(walker.nextNode()){
+        const node=walker.currentNode;
+        if(!node.textContent?.trim())continue;
+        const parent=node.parentElement;
+        if(!parent||parent.closest('[data-ui-reference-layer],script,style,[hidden],[aria-hidden="true"]'))continue;
+        const css=getComputedStyle(parent);
+        if(css.display==='none'||css.visibility!=='visible'||Number(css.opacity)===0)continue;
+        range.selectNodeContents(node);
+        for(const r of range.getClientRects()){
+          if(!r.width||!r.height)continue;
+          const clipped=clip(r,parent);
+          if(clipped)boxes.push(clipped);
+        }
+      }
+      range.detach();
+      for(const el of scope.querySelectorAll(
+        'button,input,select,textarea,summary,[role="button"],[role="combobox"],svg,'+
+        '.cell-picker-caret,[class*="caret"],[class*="chevron"]')){
+        if(el.closest('[data-ui-reference-layer],[hidden],[aria-hidden="true"]'))continue;
+        // A nested icon is already protected by its enclosing control.
+        if(el.matches('svg')&&el.closest('button,[role="button"]'))continue;
+        const css=getComputedStyle(el);
+        if(css.display==='none'||css.visibility!=='visible'||Number(css.opacity)===0)continue;
+        const rect=clipRect(el);
+        if(rect)boxes.push(rect);
+      }
+      return boxes;
+    };
+    const measure=(span:HTMLElement)=>{
+      // hidden=true makes offsetWidth zero: measure the actual font, including
+      // mobile breakpoints, before testing any position.
+      span.hidden=false;
+      span.style.left='-10000px';span.style.top='-10000px';
+      const r=span.getBoundingClientRect();
+      return {width:r.width||39,height:r.height||17};
+    };
+    const fits=(candidate:Box,blocked:readonly Box[],placed:readonly Box[])=>
+      candidate.left>=3&&candidate.top>=3&&
+      candidate.left+candidate.width<=innerWidth-3&&
+      candidate.top+candidate.height<=innerHeight-3&&
+      !blocked.some(r=>overlap(candidate,r))&&!placed.some(r=>overlap(candidate,r,4));
+    const position=(span:HTMLElement,r:Box,blocked:readonly Box[],placed:Box[])=>{
+      const {width,height}=measure(span);
+      // All candidates lie COMPLETELY outside their own anchor. If every
+      // location touches another region's content, suppress the badge.
+      const points=[
+        {left:r.left-width-4,top:r.top+2},
+        {left:r.left+r.width+4,top:r.top+2},
+        {left:r.left+2,top:r.top-height-4},
+        {left:r.left+r.width-width-2,top:r.top-height-4},
+        {left:r.left+2,top:r.top+r.height+4},
+        {left:r.left+r.width-width-2,top:r.top+r.height+4},
+        {left:r.left-width-4,top:r.top+r.height-height-2},
+        {left:r.left+r.width+4,top:r.top+r.height-height-2},
       ];
-      const valid=candidates.find(p=>p.x>=3&&p.x+width<innerWidth-3&&p.y>=3&&
-        p.y+height<innerHeight-3&&!occupied.some(q=>
-          Math.abs(p.x-q.x)<width+4&&Math.abs(p.y-q.y)<height+4));
-      if(!valid){span.hidden=true;return;}
-      span.hidden=false;span.style.left=valid.x+'px';span.style.top=valid.y+'px';
-      occupied.push(valid);
+      const found=points.map(p=>({...p,width,height})).find(candidate=>
+        fits(candidate,blocked,placed));
+      if(!found){span.hidden=true;span.dataset.uiRefPlacement='suppressed';return;}
+      span.style.left=found.left+'px';span.style.top=found.top+'px';
+      span.dataset.uiRefPlacement='visible';
+      placed.push(found);
+    };
+    const positionHover=(blocked:readonly Box[],placed:Box[])=>{
+      if(!hover.textContent){hover.hidden=true;return;}
+      const {width,height}=measure(hover);
+      const points:Box[]=[];
+      // Find a true empty gutter: this is diagnostic information, never a
+      // floating label allowed to obscure somebody else's text or caret.
+      for(const y of [6,innerHeight-height-6,Math.round(innerHeight/2-height/2)]){
+        for(let x=6;x+width<=innerWidth-6;x+=Math.max(20,Math.round(width/2)))
+          points.push({left:x,top:y,width,height});
+        points.push({left:innerWidth-width-6,top:y,width,height});
+      }
+      for(let y=25;y+height<innerHeight-6;y+=Math.max(28,height+7)){
+        for(const x of [6,innerWidth-width-6])
+          points.push({left:x,top:y,width,height});
+      }
+      const found=points.find(p=>fits(p,blocked,placed));
+      if(!found){hover.hidden=true;return;}
+      hover.style.left=found.left+'px';hover.style.top=found.top+'px';
+      hover.style.right='auto';hover.style.bottom='auto';
+      hover.hidden=false;
     };
     const redraw=()=>{
       frame=0;
@@ -195,22 +276,28 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       for(const [key,element] of tags){
         if(!activeCodes.has(key)){element.remove();tags.delete(key);}
       }
-      const occupied:{x:number;y:number}[]=[];
-      for(const item of matches){
+      const blocked=contentObstacles(activeDialog??root);
+      const occupied:Box[]=[];
+      // Prefer the broad semantic areas to dense neighboring bucket/chip
+      // labels. Suppressed tags remain in the DOM (hidden), never mistaken
+      // for visible markers by diagnostics.
+      const ordered=[...matches].sort((a,b)=>{
+        const priority=(code:string)=>/^C0[123]\.\d+$/.test(code)?3:
+          /^B0[123]$/.test(code)?2:/^[LP]0[1-6]$/.test(code)?1:0;
+        return priority(a.code)-priority(b.code);
+      });
+      for(const item of ordered){
         const rect=clipRect(item.element);
         let span=tags.get(item.code);
-        if(!rect){if(span)span.hidden=true;continue;}
+        if(!rect){if(span){span.hidden=true;span.dataset.uiRefPlacement='clipped';}continue;}
         if(!span){
           span=document.createElement('span');span.className='ui-reference-tag';
           span.dataset.uiRefCode=item.code;span.textContent=item.code;
           targetLayer.appendChild(span);tags.set(item.code,span);
         }else if(span.parentElement!==targetLayer)targetLayer.appendChild(span);
-        position(span,rect,occupied);
+        position(span,rect,blocked,occupied);
       }
-      if(hover.textContent){
-        hover.hidden=false;
-        hover.style.right='10px';hover.style.bottom='10px';
-      }else hover.hidden=true;
+      positionHover(blocked,occupied);
     };
     const schedule=()=>{
       if(!disposed&&!frame)frame=requestAnimationFrame(redraw);
