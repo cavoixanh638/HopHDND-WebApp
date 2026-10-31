@@ -1238,8 +1238,8 @@
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row {
   box-sizing:border-box;
   width:100%;
-  min-width:326px;
-  grid-template-columns:160px minmax(138px,1fr);
+  min-width:290px;
+  grid-template-columns:160px minmax(0,1fr);
   align-items:start;
   gap:7px;
 }
@@ -1303,7 +1303,7 @@
    stage label from its progress value: internal scroll is the fallback. */
 @media(max-width:620px) {
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row {
-    grid-template-columns:160px minmax(138px,1fr);
+    grid-template-columns:160px minmax(0,1fr);
   }
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-state {
     margin-left:0;
@@ -1311,7 +1311,7 @@
 }
 @container(max-width:280px){
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row{
-    grid-template-columns:160px minmax(138px,1fr);
+    grid-template-columns:160px minmax(0,1fr);
   }
 }
 
