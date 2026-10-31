@@ -53,14 +53,21 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/pr95-v5-l1-race-browser.mjs | tee pr95-v6-l5-race-chrome.log
+      - name: Real Chrome scroll reposition, clipped anchor and visualViewport pinch
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/pr95-v6-l5-scroll-browser.mjs | tee pr95-v6-l5-scroll-chrome.log
       - name: Machine-check real screenshots + rect/gap/events/patch and retain evidence
         working-directory: source
         env:
-          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR95_V6_L5_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: >
           node scripts/pr95-v6-l5-picker-audit.mjs
           pr95-v6-l5-main-chrome.log
           pr95-v6-l5-race-chrome.log
+          pr95-v6-l5-scroll-chrome.log
       - name: Independently exercise real Auth + RTDB Emulator lease/permission/CAS regressions
         working-directory: source
         run: npm run test:firebase
@@ -73,5 +80,6 @@ jobs:
             source/pr95-v5-l1-*.png
             source/pr95-v6-l5-*.log
             source/pr95-v6-l5-*.json
+            source/pr95-v6-l5-*.png
           if-no-files-found: warn
           retention-days: 14
