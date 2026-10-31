@@ -346,6 +346,14 @@ try{
   await waitFor('document.querySelector("[data-role=guest]")','guest switch');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','guest list');
+  await ensure('(()=>{const rows=[...document.querySelectorAll(".item-data-table tbody tr")];'+
+    'const noBuild=rows.filter(x=>["HC","Báo cáo"].includes(x.querySelector(".compact-document-badge")?.textContent?.trim()));'+
+    'const qppl=rows.filter(x=>x.querySelector(".compact-document-badge")?.textContent?.trim()==="QPPL");'+
+    'return noBuild.length>0&&noBuild.every(x=>{const stage=x.querySelector(".compact-stage-row[data-stage-field=progressBuild]");'+
+    'return !!stage?.querySelector(".business-build-locked")&&!stage?.querySelector(".cell-picker-trigger")})&&'+
+    'qppl.some(x=>!!x.querySelector(".compact-stage-row[data-stage-field=progressBuild] .cell-picker-trigger"))})()',
+    'V5 guest HC/BC must stay locked even with full Build grant, while QPPL stays editable');
+  await screenshot('pr95-v5-l4-regression-guest-build-grant-locked.png');
   await ensure('document.querySelectorAll(".inline-note-trigger[aria-label*=Ghi]").length>=1','guest granted note editor');
   const firstNote=await evaluate('document.querySelector(".inline-note-trigger[aria-label*=Ghi]")?.getAttribute("aria-label")');
   await interact('document.querySelector(".inline-note-trigger[aria-label*=Ghi]").click()');
