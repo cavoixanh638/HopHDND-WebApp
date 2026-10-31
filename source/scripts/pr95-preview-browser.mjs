@@ -73,6 +73,23 @@ const screenshot=async name=>{
   console.log('PR95_V3_L5_SCREENSHOT '+name+' '+data.length);
 };
 
+const assertV4StatusDisplay=async (scope,label,fullCatalog=false)=>{
+  const info=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(scope)+');'+
+    'if(!root)return null;const texts=[...root.querySelectorAll(".compact-stage-state,.compact-stage-level")]'+
+    '.map(e=>e.textContent.trim()).filter(Boolean);return {count:texts.length,texts};})()');
+  if(!info||info.count<3)throw Error('UI_V4_L1_MISSING_STAGES '+label);
+  for(const old of ['Ban Chấp hành','VP đang thực hiện','ĐU đã gửi TU, chưa họp',
+    'Đã họp/xin phiếu, chưa có TBKL','Đã trình HĐND, chưa có QĐ']){
+    if(info.texts.some(t=>t.includes(old)))throw Error('UI_V4_L1_RAW_ALIAS_LEAK '+label+' '+old);
+  }
+  if(fullCatalog){
+    for(const current of ['BCH','BTV TU','VP đang xử lý','ĐU gửi TU, chưa họp','Đã trình, chờ QĐ']){
+      if(!info.texts.some(t=>t.includes(current)))throw Error('UI_V4_L1_CANONICAL_MISSING '+label+' '+current);
+    }
+  }
+  console.log('UI_V4_L1_LEGACY_READONLY_CANONICAL_PASS '+label+' '+JSON.stringify({stages:info.count}));
+};
+
 /* R-V3-04/05: inspect the ACTUAL rendered Chrome rectangles/computed CSS.
    These asserts supplement, never replace, keyboard/filter/permissions tests. */
 const inspectSummary=async(label,expected)=>{
@@ -158,6 +175,8 @@ try{
   await ensure('![...document.querySelectorAll(".item-data-table .column-resizer")].some(x=>getComputedStyle(x).display!=="none")','guest no visible resize affordance');
   await inspectSummary('1440-single-row',{party:[4],build:[4],nq:[3]});
   await inspectGroupedReadOnly('.item-data-table','main-guest-default',false,true);
+  await assertV4StatusDisplay('.item-data-table','main-guest-source-legacy',true);
+  await screenshot('pr95-v3-l5-v4-l1-legacy-main.png');
   await screenshot('pr95-v3-l5-guest-1440.png');
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false});
   await inspectSummary('1280-paired',{party:[2,2],build:[2,2],nq:[3]});
@@ -187,6 +206,8 @@ try{
   await waitFor('document.querySelector("dialog.report-grid-modal[open]")','actual report popup');
   await ensure('document.querySelector("dialog.report-grid-modal .report-grid-toolbar")','real popup controls');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-default',true);
+  await assertV4StatusDisplay('dialog.report-grid-modal .report-detail-grid','popup-guest-alias');
+  await screenshot('pr95-v3-l5-v4-l1-legacy-popup.png');
   await screenshot('pr95-v3-l5-desktop-popup.png');
   // CSS-only test fixture: local custom palette variables (no persisted settings
   // or source-row mutation), then an explicit one-member highlight.
@@ -223,6 +244,25 @@ try{
   await ensure('[...document.querySelectorAll("dialog.report-grid-modal .compact-stage-row button.cell-picker-trigger")].every(b=>'+
     'getComputedStyle(b).borderTopWidth==="0px"&&getComputedStyle(b).backgroundColor==="rgba(0, 0, 0, 0)")',
     'editable grouped stage has one frame');
+  // Four real choices only, canonical selected/aria even when the source row
+  // still carries the historic alias; Escape must not create an edit patch.
+  await interact('const b=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-stage-field=progressBuild] button.cell-picker-trigger");'+
+    'if(!b)throw Error("V4 build picker missing");b.click()');
+  await waitFor('document.querySelector(".cell-picker-popover[role=dialog]")','V4 status dropdown');
+  const choices=await evaluate('(()=>{const root=document.querySelector(".cell-picker-popover[role=dialog]");'+
+    'const buttons=[...root.querySelectorAll("[role=option]")];'+
+    'return {labels:buttons.map(b=>b.textContent.trim()),selected:buttons.filter(b=>b.getAttribute("aria-selected")==="true").map(b=>b.textContent.trim())};})()');
+  const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+  if(JSON.stringify(choices.labels)!==JSON.stringify(expected)||choices.selected.length!==1)
+    throw Error('UI_V4_L1_PICKER_CHOICES_FAIL '+JSON.stringify(choices));
+  await ensure('!document.querySelector("dialog.report-grid-modal .cell-picker-popover [role=option]")?.textContent.includes("VP đang thực hiện")','no old menu presets');
+  const beforeDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
+  await screenshot('pr95-v3-l5-v4-l1-canonical-picker.png');
+  await interact('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}))');
+  await waitFor('!document.querySelector(".cell-picker-popover[role=dialog]")','status Escape closes');
+  const afterDirty=await evaluate('document.querySelectorAll("dialog.report-grid-modal .report-grid-id small").length');
+  if(beforeDirty!==afterDirty)throw Error('UI_V4_L1_ESC_CREATED_PATCH');
+  console.log('UI_V4_L1_CANONICAL_PICKER_ESC_NO_PATCH_PASS '+JSON.stringify(choices));
   await screenshot('pr95-v3-l5-desktop-popup-editable.png');
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close popup');
