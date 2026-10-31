@@ -3565,7 +3565,9 @@ try{
       document.querySelector('.item-summary-total-count').getBoundingClientRect().left,
     bucketHeight:document.querySelector('.item-summary-bucket').getBoundingClientRect().height
   })`);
-  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 7')||
+  // Seven active-summary rows, eight source rows: the unified active bar counts
+  // all source rows before filters, unlike the historical B00 active-only card.
+  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 8')||
       !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
