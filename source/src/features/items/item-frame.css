@@ -1316,15 +1316,112 @@
   }
 }
 
-/* Loại VB uses LeaseTextInput in the real List, nested in .compact-part.
-   Its manager/lease/readOnly/error semantics remain untouched. */
+
+/* UI V6 / L1. Loại VB is an actual enum CellPicker, never a fake text caret.
+   The type member (not the table cell) owns exactly one visual frame.
+   All three swatches are document-kind colors, NOT progress-status tones. */
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge input.custom-cell-input {
-  min-width:74px;
-  max-width:100%;
-  font:inherit;
-  line-height:1.3;
+  :is(.compact-document-badge,.pr95-v6-type-cell) {
+  --type-bg:#F1F5F9;
+  --type-border:#94A3B8;
+  --type-ink:#334155;
+  display:inline-flex;align-items:center;
+  box-sizing:border-box;
+  min-height:30px;min-width:0;max-width:100%;
+  border:1px solid var(--type-border);
+  border-radius:7px;
+  padding:3px 8px;
+  font-size:12px;font-weight:700;line-height:1.35;
+  color:var(--type-ink);background:var(--type-bg);
   text-align:left;
-  outline:0;
-  box-shadow:none!important;
 }
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell)[data-kind="QPPL"]{
+  --type-bg:#F5F3FF;--type-border:#C4B5FD;--type-ink:#5B21B6;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell)[data-kind="HC"]{
+  --type-bg:#EFF6FF;--type-border:#93C5FD;--type-ink:#1D4ED8;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell)[data-kind="BC"]{
+  --type-bg:#F1F5F9;--type-border:#94A3B8;--type-ink:#334155;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell)[data-editable="true"]{
+  padding:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell) .compact-part{
+  display:inline-flex;align-items:center;min-width:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell) button.cell-picker-trigger{
+  display:inline-flex!important;align-items:center;justify-content:flex-start;
+  box-sizing:border-box;
+  width:auto!important;max-width:100%;
+  min-height:28px;margin:0!important;padding:4px 8px!important;
+  gap:7px;line-height:1.35;
+  border:0!important;border-radius:6px!important;
+  background:transparent!important;box-shadow:none!important;
+  color:inherit!important;font:inherit;text-align:left;
+  transform:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell) button.cell-picker-trigger::after{
+  display:block;flex:none;margin-left:3px;border-color:currentColor;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell):has(button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])){
+  border-color:#64748B;outline:2px solid #A5B4FC;outline-offset:1px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  :is(.compact-document-badge,.pr95-v6-type-cell)[data-highlighted="true"]{
+  background:var(--member-highlight-bg)!important;
+  color:var(--member-highlight-text)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .pr95-v6-type-cell[style*="background"]{
+  border-color:currentColor;
+}
+/* Popup merged content/type wrapper already owns the type border.
+   Flatten the nested per-field wrapper, including custom-highlight state. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge .pr95-v6-type-cell{
+  min-height:0;padding:0;border:0!important;border-radius:0;
+  background:transparent!important;color:inherit!important;outline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge .pr95-v6-type-cell .cell-picker-trigger{
+  min-height:28px;
+}
+/* Level read-only text/caret sits between TWO independent bracket spans.
+   Scope narrowly: do not move the three progress-status caret rails. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-title .compact-stage-level{
+  display:inline-flex;align-items:center;gap:3px;
+  min-width:max-content;margin-left:8px;
+  white-space:nowrap;overflow-wrap:normal;word-break:normal;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-level :is(.compact-stage-level-open,.compact-stage-level-close){
+  display:inline-block;flex:none;line-height:1.35;white-space:nowrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-level .compact-part{
+  display:inline-flex;align-items:center;flex:none;min-width:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-level button.cell-picker-trigger{
+  display:inline-flex!important;align-items:center!important;
+  width:auto!important;max-width:none;min-width:0;
+  min-height:24px;margin:0!important;padding:0 2px!important;
+  flex:none;gap:6px;white-space:nowrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-level button.cell-picker-trigger::after{
+  display:block;flex:none;margin-left:2px;margin-right:2px;
+  border-color:currentColor;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-level button.cell-picker-trigger:disabled::after{display:none}
