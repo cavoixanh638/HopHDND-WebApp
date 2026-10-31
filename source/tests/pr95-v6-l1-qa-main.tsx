@@ -6,6 +6,7 @@ import {createRoot} from 'react-dom/client';
 import {createDemoItems} from '../src/data/demo-items';
 import {catalogFromItems} from '../src/data/catalogs';
 import {defaultItemLayout} from '../src/data/item-preferences';
+import {defaultDetailGridPreferences,saveDetailGridPreferences} from '../src/data/report-detail-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../src/data/status-palettes';
 import {ItemList} from '../src/features/items/ItemList';
 import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
@@ -31,6 +32,16 @@ layout.compactDisplay={...layout.compactDisplay!,contentDetails:!split,partyToge
 layout.tableWidth=2100;
 if(highlight)layout.cellHighlights=[{id:'v6type',field:'type',word:'QPPL',
   textColor:'#FFFFFF',backgroundColor:'#663399'}];
+// The regular popup intentionally hides Excel Loại VB / Cấp trình by default.
+ // This isolated fixture explicitly reveals them through the existing
+ // presentation preferences, then tests their REAL grouped rendering.
+ // Never touches an actual user's saved layout or production data.
+if(view==='popup'){
+  const popupLayout=defaultDetailGridPreferences();
+  popupLayout.columns=popupLayout.columns.map(column=>({...column,
+    visible:column.visible||column.key==='type'||column.key==='partyLevel'}));
+  saveDetailGridPreferences('pr95-v6-l1-popup-only',popupLayout);
+}
 const palette=defaultStatusPaletteStore();
 const patches:{id:string;changes:object}[]=[];
 const writable=(id:string,field:EditableField)=>role==='admin'||
