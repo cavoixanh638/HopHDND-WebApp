@@ -12,6 +12,7 @@ on:
       - 'source/scripts/pr95-v6-l4-browser.mjs'
       - 'source/scripts/pr95-v3-l4-summary-browser.mjs'
       - 'source/scripts/pr95-v5-l2-summary-preview-browser.mjs'
+      - 'source/scripts/smoke-pages-browser.mjs'
   workflow_dispatch:
 permissions:
   contents: read
