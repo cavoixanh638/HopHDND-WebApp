@@ -4020,20 +4020,34 @@ try{
   const councilStageSel='dialog.report-detail-modal[open] .report-detail-grid tbody tr:first-child td[data-col-key=progressParty] .compact-stage-row:last-child';
   const stageValuesExpr="(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return [...row?.querySelectorAll('.compact-stage-row')??[]].map(x=>x.querySelector('.compact-stage-state')?.textContent.trim()??'');})()";
   await setPopupRole('guest');
+  // UI6-R02: guest cannot open Reports; assert true DOM-level denial, not
+  // fake guest permission or a privileged report masquerading as guest PASS.
+  const v6GuestDenied=await evaluate(`(()=>{
+    const root=document.querySelector('.pr95-full-preview[data-role=guest]');
+    return !!root&&!root.querySelector('.pr95-preview-nav,.report-surface')&&
+      !!root.querySelector('.pr95-preview-gear')&&
+      !!root.querySelector('.item-data-table');
+  })()`);
+  if(!v6GuestDenied)throw Error('V6 synthetic guest unexpectedly received Report navigation');
+  const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v6-l3-no-guest-reports.png',Buffer.from(v3GuestShot.data,'base64'));
+  console.log('UI6_R02_SYNTHETIC_GUEST_REPORT_DENIED_PASS');
+
+  // The actual ReportDetailGrid/CellPicker readonly fixture now runs as
+  // verified SYNTHETIC ADMIN in *view mode*, explicitly not guest.
+  await setPopupRole('admin');
   await openSourceCouncil();
-  const guestCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
-  if(guestCouncil.text!=='Sở chưa trình'||guestCouncil.picker||guestCouncil.button)
-    throw Error('R-V3-03 denied guest unexpectedly has editor: '+JSON.stringify(guestCouncil));
+  const readonlyCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
+  if(readonlyCouncil.text!=='Sở chưa trình'||readonlyCouncil.picker||!readonlyCouncil.button)
+    throw Error('R-V3-03 admin VIEW-ONLY Council unexpectedly editable: '+JSON.stringify(readonlyCouncil));
   const v4PopupReadonly=await evaluate("(()=>{const state=document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+");const wrapper=state?.querySelector('.workflow-status-value');return {ok:!!state&&!state.querySelector('button.cell-picker-trigger')&&!state.hasAttribute('data-editable')&&getComputedStyle(state,'::before').content==='none'&&(!wrapper||getComputedStyle(wrapper,'::before').content==='none'),stateDot:state?getComputedStyle(state,'::before').content:null,legacyDot:wrapper?getComputedStyle(wrapper,'::before').content:null};})()");
   if(!v4PopupReadonly.ok)throw Error('UI V4 readonly popup status still has caret/dot: '+JSON.stringify(v4PopupReadonly));
   const v4PopupReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v4-l2-after-popup-readonly.png',Buffer.from(v4PopupReadonlyShot.data,'base64'));
-  console.log('UI_V4_L2_POPUP_READONLY_DOTLESS_PASS',JSON.stringify(v4PopupReadonly));
-  const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
-  writeFileSync('hophdnd-pr95-v3-l1-popup-guest-denied.png',Buffer.from(v3GuestShot.data,'base64'));
-  await setPopupRole('admin');
+  console.log('UI6_R02_ADMIN_VIEW_ONLY_POPUP_READONLY_DOTLESS_PASS',JSON.stringify(v4PopupReadonly));
+  await evaluate("document.querySelector('dialog.report-detail-modal .modal-header button')?.click()");
   await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
-    'R-V3-03 role switch retained prior popup');
+    'R-V3-03 readonly popup close before independent editable reopen');
   await openSourceCouncil();
   const originalCouncilStages=await evaluate(stageValuesExpr);
   if(originalCouncilStages.length!==3||originalCouncilStages[2]!=='Sở chưa trình')
@@ -4078,8 +4092,8 @@ try{
     'R-V3-03 did not return to view mode');
   const readAfter=await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+")?.textContent.trim()");
   if(readAfter!=='Hoàn thành')throw Error('R-V3-03 canonical patch lost in read mode: '+readAfter);
-  console.log('UI_V3_L1_RV303_REAL_CHROME_GUEST_DENIED_ADMIN_CANONICAL_PATCH_PASS',
-    JSON.stringify({guestCouncil,originalCouncilStages,updatedCouncilStages,patchNotice,councilChoices,
+  console.log('UI6_R02_GUEST_REPORT_DENIED_ADMIN_READONLY_AND_CANONICAL_PATCH_PASS',
+    JSON.stringify({guestReportDenied:v6GuestDenied,readonlyCouncil,originalCouncilStages,updatedCouncilStages,patchNotice,councilChoices,
       realComponent:'ReportDetailGrid/CellPicker',storage:'synthetic RAM only',screenshots:3}));
 
   
