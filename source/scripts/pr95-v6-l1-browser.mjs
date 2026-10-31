@@ -100,6 +100,10 @@ const visit=async(params,width=1440,height=900)=>{
   });
   await waitFor("document.querySelector('[data-qa=pr95-v6-l1]')&&window.__v6L1",
     'new V6 page');
+  await sleep(250);
+  console.log('PR95_V6_L1_BOOT_DIAG '+JSON.stringify(await evaluate('(()=>({root:!!document.querySelector("[data-qa=pr95-v6-l1]"),'+
+    'tables:document.querySelectorAll("table").length,html:document.body.innerHTML.slice(0,700),'+
+    'windowError:window.__v6L1BootError??null}))()')));
   await waitFor("document.querySelector('table.item-data-table tbody tr,table.report-detail-grid tbody tr')",
     'mounted REAL table');
 };
@@ -210,6 +214,8 @@ try {
   ws.addEventListener('message',event=>{
     const message=JSON.parse(event.data);
     if(message.method==='Network.requestWillBeSent')network.push(message.params.request.url);
+    if(message.method==='Runtime.exceptionThrown')
+      console.log('PR95_V6_L1_JS_EXCEPTION '+JSON.stringify(message.params.exceptionDetails));
     if(message.id&&pending.has(message.id)){
       const job=pending.get(message.id);pending.delete(message.id);
       message.error?job.reject(Error(JSON.stringify(message.error))):job.resolve(message.result);
