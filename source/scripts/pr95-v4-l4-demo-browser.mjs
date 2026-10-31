@@ -98,18 +98,24 @@ try {
     '--no-first-run','--no-default-browser-check',
     '--remote-debugging-address=127.0.0.1','--remote-debugging-port='+debugPort,
     '--user-data-dir='+profile,'about:blank'
-  ],{stdio:'ignore',env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
+  ],{stdio:['ignore','ignore','pipe']});
+  let chromeStderr='',chromeSpawnError='';
+  browser.stderr.on('data',chunk=>{chromeStderr=(chromeStderr+String(chunk)).slice(-3000);});
+  browser.on('error',error=>{chromeSpawnError=String(error);});
   let tab=null;
-  for(let i=0;i<90;i++){
+  for(let i=0;i<160;i++){
     try{
       const response=await fetch('http://127.0.0.1:'+debugPort+'/json/list',
-        {signal:AbortSignal.timeout(700)});
+        {signal:AbortSignal.timeout(850)});
       tab=(await response.json()).find(item=>item.type==='page');
       if(tab)break;
     }catch{}
-    await sleep(100);
+    if(browser.exitCode!==null)break;
+    await sleep(150);
   }
-  assert(!!tab,'Chrome debugger started');
+  assert(!!tab,'Chrome debugger started '+JSON.stringify({
+    command:executable,exitCode:browser.exitCode,spawnError:chromeSpawnError,
+    stderr:chromeStderr.slice(-1800)}));
   ws=new WebSocket(tab.webSocketDebuggerUrl);
   await new Promise((done,fail)=>{
     ws.addEventListener('open',done,{once:true});
