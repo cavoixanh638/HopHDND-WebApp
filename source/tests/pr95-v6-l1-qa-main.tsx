@@ -22,8 +22,11 @@ const highlight=params.get('highlight')==='1';
 const original=createDemoItems(8).map((item,index)=>({
   ...item,
   type:['QPPL','HC','Báo cáo','Loại VB legacy không thuộc danh mục'][index%4],
-  partyLevel:['BCH','BTV TU','TTTU','Ban Chấp hành Thành ủy'][index%4],
-  progressParty:'Sở chưa trình',
+  partyLevel:index===5?'Ban Thường vụ Thành ủy lưu từ dữ liệu Excel cũ'
+    :['BCH','BTV TU','TTTU','Ban Chấp hành Thành ủy'][index%4],
+  progressParty:index===4?'Không phải trình'
+    :index===5?'Đang tổng hợp hồ sơ để xin ý kiến cấp có thẩm quyền'
+    :'Sở chưa trình',
   department:'Sở mẫu '+['A','B','C','D'][index%4]
 }));
 const catalog=catalogFromItems(original);
