@@ -149,7 +149,8 @@ try {
   const reportInfo=await evaluate(`(()=>{
     const tables=[...document.querySelectorAll('table.report-table')];
     return tables.map(table=>({
-      old:/VP đang thực hiện|ĐU đã gửi TU|Đã họp\/xin phiếu|Đã trình HĐND, chưa có QĐ/.test(table.textContent),
+      old:['VP đang thực hiện','ĐU đã gửi TU','Đã họp/xin phiếu',
+        'Đã trình HĐND, chưa có QĐ'].some(value=>table.textContent.includes(value)),
       columns:[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim())
     }));
   })()`);
