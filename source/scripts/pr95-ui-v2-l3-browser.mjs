@@ -218,7 +218,7 @@ async function test(){
   })()`);
   assert.deepEqual(v3Menu.actions,[
     'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo',
-    'Tài khoản và dữ liệu','Nhập / Xuất Excel'
+    'Tài khoản và dữ liệu','Nhập / Xuất Excel','Hiện mã khu vực'
   ]);
   assert.equal(v3Menu.open,true);
   assert.equal(v3Menu.gearWidth,34);
