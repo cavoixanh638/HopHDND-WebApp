@@ -1,0 +1,56 @@
+name: PR95 UI V4 L4 — canonical DEMO data only (NO publish)
+on:
+  pull_request:
+    paths:
+      - 'source/src/data/demo-items.ts'
+      - 'source/tests/pr95-ui-v4-l4-current-demo.test.ts'
+      - 'source/tests/fixtures/pr95-v4-l4-legacy-demo.ts'
+      - 'source/scripts/pr95-v4-l4-demo-browser.mjs'
+      - '.github/workflows/pr95-v4-l4-canonical-demo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v4-default-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck official source and baseline component public APIs
+        working-directory: source
+        run: npm run typecheck
+      - name: Canonical fixture, isolated legacy and unchanged ID/count/filter tests
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-ui-v4-l4-current-demo.test.ts tests/item-summary.test.ts tests/catalogs.test.ts tests/pr95-ui-v2-l4-preview.test.ts
+      - name: Build REAL synthetic preview with unchanged components
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.js' -print -quit)"
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
+      - name: Actual Chrome UI V4 L4 main / five reports / popup screenshots
+        working-directory: source
+        run: node scripts/pr95-v4-l4-demo-browser.mjs
+      - name: Full synthetic preview Chrome Excel A–O and in-RAM roles regression
+        working-directory: source
+        run: node scripts/pr95-preview-browser.mjs
+      - name: Preserve REAL Chrome screenshots for this exact HEAD (NO publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-ui-v4-l4-canonical-demo-real-chrome
+          path: |
+            source/pr95-v4-l4-*.png
+            source/pr95-l4-*.png
+          if-no-files-found: warn
+          retention-days: 14
