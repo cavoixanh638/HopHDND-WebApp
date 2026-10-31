@@ -2672,11 +2672,16 @@ try{
     const first=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-level');
     return {row:getComputedStyle(stage).backgroundColor,
       pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
-      level:getComputedStyle(first).backgroundColor};
+      level:getComputedStyle(first).backgroundColor,
+      levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
+  // The R03 wildcard still targets the explicitly LEGACY "Ban Chấp hành".
+  // V4's new synthetic BCH cannot match that old source string. Keep exact
+  // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.row!=='rgb(255, 241, 243)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
-    r05Highlight.level!=='rgb(18, 52, 86)')
+    r05Highlight.level!=='rgba(0, 0, 0, 0)'||
+    !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&r05-palette=1'});
