@@ -241,6 +241,13 @@ try{
   },exact);
   assert(editor.matched&&editor.clickable&&editor.picker&&editor.sourceChildCount===1,
     'real admin content button and CellPicker use one flow; '+JSON.stringify(editor));
+  // Capture a second REAL React component clone in the admin document so
+  // it remains available after switching views without page navigation.
+  await browserFn(beginFixture,exact);
+  assert(await browserFn(setQuery,'ngan sach')==='ngan sach','admin actual search input');
+  await waitFor("document.querySelector('.item-data-table .compact-document-content mark.item-search-match')?.textContent==='ngân sách'",
+    'admin actual highlighted content before popup route');
+  await browserFn(saveHighlighted,exact,'ngan sach');
   // The list's existing read-only and editable cell pickers retain their hitbox.
   const pickerOpen=await browserFn(function(){
     const b=document.querySelector('.item-data-table .compact-stage-row button.cell-picker-trigger');
@@ -292,9 +299,7 @@ try{
       matches:content.querySelectorAll('mark').length,width:line.getBoundingClientRect().width,
       markDisplay:style?.display,source:content.textContent};
   });
-  // A fresh page load clears window.__v6L2, so re-create the fixed-width
-  // popup fixture using the *same React component output* from current page
-  // if necessary; explicit evidence scope prevents falsely claiming a live hit.
+  // The clone is from the actual admin React render, not hand-authored HTML.
   if(!popup.ok)throw Error('PR95_V6_L2_POPUP_CONTEXT_FAIL '+JSON.stringify(popup));
   await capture('pr95-v6-l2-popup-styled-fixture-1440.png');
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','identitytoolkit','securetoken','docs.google.com/spreadsheets']
