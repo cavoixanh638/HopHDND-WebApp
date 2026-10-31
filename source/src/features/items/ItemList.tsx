@@ -762,7 +762,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
       onUpdate(item.recordId,{specificProgress:value});return true;
-    }}/>:column.kind==='text'&&!isStatusDisplayField(key)&&key!=='type'
+    }}/>:column.kind==='text'&&!isStatusDisplayField(key)
   ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={key} label={`${displayId(item)}: ${column.label}`}
     maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>
