@@ -4098,10 +4098,10 @@ try{
 
   
   // L2 incremental REAL-Chromium two-tab witness. These are two separate
-  // browser targets (not two Firebase SDK contexts). They validate the
-  // current active-generation List/Report after an owner-seeded pointer swap.
-  // This is READ-ONLY guest coverage; same-admin edit/lease/CAS + lost-ACK
-  // remain explicit L1 harness requests, never claim them from this fixture.
+  // browser targets (not two Firebase SDK contexts): guest List and then
+  // VERIFIED Emulator Google-admin Reports after an owner-seeded pointer swap.
+  // This is READ-ONLY epoch coverage; same-admin edit/lease/CAS + lost-ACK
+  // remain separate explicit harness requests, never claimed by this fixture.
   const twoTabConnections=[];
   const debuggerPort=new URL(tab.webSocketDebuggerUrl).port;
   async function makeUiTab(name,{waitForList=true}={}){
@@ -4146,11 +4146,12 @@ try{
     await call('Page.enable');
     await call('Runtime.enable');
     await call('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
-    await until("document.querySelector('.nav-tabs')!==null",'App shell');
+    // UI6-R02 guest App shell has a corner login gear, not A01/A02.
+    await until("document.querySelector('.v3-settings-menu summary')!==null",'App gear shell');
     if(waitForList){
-      await js("(()=>{const x=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));x?.click();return !!x;})()");
-      await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
-        'current-generation NQ01');
+      await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true&&"+
+        "!document.querySelector('nav.primary-section-switcher')",
+        'guest current-generation NQ01 without navigation');
     }
     return {id:target.id,name,js,until,call,socket};
   }
@@ -4192,15 +4193,28 @@ try{
       })()`);
       if(view.rows!==54||!view.newItem||view.oldItem)
         throw Error('Two-tab '+side.name+' stale List: '+JSON.stringify(view));
-      await side.js("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+      // Report is never a guest route in V6. Sign in through the original
+      // pages-test real Auth Emulator SDK hook for a VERIFIED Google admin,
+      // then require both nav cards and the report of the switched epoch.
+      await side.until("typeof window.__pr95EmulatorGoogleAdminSignIn==='function'",
+        'real Emulator admin SDK hook');
+      const credentials=await side.js("window.__pr95EmulatorGoogleAdminSignIn()");
+      if(credentials?.email!=='cavoixanh638@gmail.com'||
+        !credentials?.emailVerified||!credentials?.providerIds?.includes('google.com'))
+        throw Error('Two-tab Report requires verified Emulator Google admin: '+side.name);
+      await side.until("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card').length===2",
+        'verified admin two navigation cards');
+      await side.js("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0].click()");
       await side.until("document.querySelector('.report-table tbody')?.textContent?.includes('Sở V2 thử nghiệm')===true",
-        'Report from new active generation');
+        'verified admin Report from new active generation');
+      const tables=await side.js("document.querySelectorAll('.report-surface .report-table').length");
+      if(tables!==5)throw Error('Two-tab verified admin Reports count '+tables);
     }));
     console.log('BROWSER_TWO_REAL_TABS_READ_SWITCH_PASS',JSON.stringify({
       distinctChromeTargets:true,firstTab:first.id,secondTab:second.id,
       previousGeneration:SMOKE_GENERATION,nextGeneration:newGen,
       currentRowsPerTab:54,reportedDepartment:'Sở V2 thử nghiệm',
-      scope:'guest List/Report epoch switch only, NOT admin write/lease/lost ACK'
+      scope:'guest List epoch switch then verified Emulator Google admin Reports; NOT admin write/lease/lost ACK'
     }));
   }finally{
     for(const socket of twoTabConnections)socket.close();
