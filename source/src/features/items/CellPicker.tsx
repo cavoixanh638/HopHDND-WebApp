@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {claimCellPicker,releaseCellPickerClaim} from './pr95-v5-l1-picker-coordinator';
+import {placeCellPicker, type PickerViewport} from './pr95-v5-l1-picker-placement';
 import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-leases';
@@ -38,9 +40,15 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const [waiting,setWaiting]=useState(false);
   const [leaseError,setLeaseError]=useState('');
   const chosen=useRef(false);
+  const requestEpoch=useRef(0);
+  const placementRef=useRef<(()=>void)|null>(null);
+  const switchingPointer=useRef(false);
   const leaseProps=!!leaseManager&&!!recordId&&!!field;
-  const cancelUnused=()=>{if(leaseProps&&!chosen.current&& !leaseManager!.isPending(recordId!,field!))
-    void leaseManager!.cancel(recordId!,field!);};
+  const cancelUnused=():Promise<void>=>{
+    if(leaseProps&&!chosen.current&&!leaseManager!.isPending(recordId!,field!))
+      return leaseManager!.cancel(recordId!,field!);
+    return Promise.resolve();
+  };
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -65,11 +73,16 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     ...filteredOptions.filter(option => option !== '').map(option => ({ value: option, label: option })),
   ] : [];
 
-  const close = (restoreFocus = false) => {
+  const close = (restoreFocus = false):Promise<void> => {
+    requestEpoch.current++;
+    switchingPointer.current=false;
     setOpen(false);
     setQuery('');
-    cancelUnused();
-    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
+    setWaiting(false);
+    const release=cancelUnused();
+    releaseCellPickerClaim(triggerRef.current,release);
+    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus({preventScroll:true}));
+    return release;
   };
 
   const choose = (nextValue: string) => {
@@ -81,69 +94,118 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
 
   useEffect(()=>{
     if(!leaseProps)return;
-    const forced=()=>close();
+    const forced=()=>{void close();};
     window.addEventListener('hdnd:drain-editors',forced);
     return()=>window.removeEventListener('hdnd:drain-editors',forced);
   },[leaseProps,recordId,field]);
+  // A popup may unmount during a role revoke, navigation or data generation
+  // switch. Do not allow a late lease ACK to resurrect that editor.
+  useEffect(()=>()=>{requestEpoch.current++;releaseCellPickerClaim(
+    triggerRef.current,cancelUnused());},[]);
   useEffect(() => {
     if (!open) return;
     const popover = popoverRef.current;
     const trigger = triggerRef.current;
     if (!popover || !trigger) return;
+    let frame=0;
 
-    const placePopover = () => {
-      const rect = trigger.getBoundingClientRect();
-      const viewportWidth = document.documentElement.clientWidth;
-      const viewportHeight = document.documentElement.clientHeight;
-      const width = Math.max(1, Math.min(Math.max(rect.width, 260), viewportWidth - 16, 360));
-      const left = Math.max(8, Math.min(rect.left, viewportWidth - width - 8));
-      const maxHeight = Math.max(120, Math.min(360, viewportHeight - 16));
-      const below = viewportHeight - rect.bottom - 8;
-      const top = below >= Math.min(maxHeight, 180) || rect.top < maxHeight + 8
-        ? Math.min(rect.bottom + 4, viewportHeight - 8 - maxHeight)
-        : Math.max(8, rect.top - maxHeight - 4);
-      popover.style.left = `${left}px`;
-      popover.style.top = `${top}px`;
-      popover.style.width = `${width}px`;
-      popover.style.maxHeight = `${maxHeight}px`;
+    const placePopover=()=>{
+      if (!popover.isConnected || !trigger.isConnected) return;
+      const rect=trigger.getBoundingClientRect();
+      const vv=window.visualViewport;
+      const viewport:PickerViewport={
+        left:vv?.offsetLeft??0,top:vv?.offsetTop??0,
+        width:vv?.width??document.documentElement.clientWidth,
+        height:vv?.height??document.documentElement.clientHeight
+      };
+      // A scrolled-away table cell cannot retain a floating editor.
+      const scrollbox=trigger.closest('.item-table-scroll,.report-grid-scroll');
+      const clip=scrollbox?.getBoundingClientRect();
+      const insideViewport=rect.right>viewport.left+4&&
+        rect.left<viewport.left+viewport.width-4&&
+        rect.bottom>viewport.top+4&&rect.top<viewport.top+viewport.height-4;
+      const insideTable=!clip||(rect.right>clip.left+2&&rect.left<clip.right-2&&
+        rect.bottom>clip.top+2&&rect.top<clip.bottom-2);
+      if(!insideViewport||!insideTable){void close();return;}
+      // Compute the natural rendered height, NOT the former 360px cap.
+      // This also recomputes after searchable option lists shrink.
+      popover.style.maxHeight='none';
+      const borders=parseFloat(getComputedStyle(popover).borderTopWidth||'0')+
+        parseFloat(getComputedStyle(popover).borderBottomWidth||'0');
+      const natural=Math.ceil(popover.scrollHeight+borders);
+      const next=placeCellPicker(rect,natural,viewport);
+      popover.style.left=next.left+'px';
+      popover.style.top=next.top+'px';
+      popover.style.width=next.width+'px';
+      popover.style.maxHeight=next.maxHeight+'px';
+      popover.dataset.placement=next.side;
     };
-
+    const schedulePlace=()=>{
+      if(frame)cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(()=>{frame=0;placePopover();});
+    };
+    placementRef.current=schedulePlace;
     if (!popover.matches(':popover-open')) popover.showPopover();
     placePopover();
     const onOutsidePointer = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && (popover.contains(target) || trigger.contains(target))) return;
-      close();
+      // Leave a real pointer sequence for the NEXT picker; its onClick
+      // transfers the lease before it opens. Closing here destroys the
+      // pointer's click target in certain table/popup layouts.
+      const peer=target instanceof Element?target.closest('button.cell-picker-trigger'):null;
+      if(peer instanceof HTMLButtonElement&&!peer.disabled){
+        switchingPointer.current=true;
+        return;
+      }
+      void close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        close(true);
+        void close(true);
       }
     };
     const focusFirstOption = () => {
       const current = visibleOptions.findIndex(option => option.value === value);
-      optionRefs.current[current >= 0 ? current : 0]?.focus();
+      optionRefs.current[current >= 0 ? current : 0]?.focus({preventScroll:true});
     };
 
     document.addEventListener('pointerdown', onOutsidePointer, true);
     document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', placePopover);
-    window.addEventListener('scroll', placePopover, true);
-    requestAnimationFrame(() => {
-      placePopover();
-      if (searchable) searchRef.current?.focus();
+    window.addEventListener('resize', schedulePlace);
+    window.addEventListener('scroll', schedulePlace, true);
+    window.visualViewport?.addEventListener('resize',schedulePlace);
+    window.visualViewport?.addEventListener('scroll',schedulePlace);
+    const observer=typeof ResizeObserver==='function'
+      ?new ResizeObserver(schedulePlace):null;
+    const list=popover.querySelector('.cell-picker-options');
+    if(list)observer?.observe(list);
+    observer?.observe(trigger);
+    const firstFocus=requestAnimationFrame(() => {
+      if (searchable) searchRef.current?.focus({preventScroll:true});
       else focusFirstOption();
+      schedulePlace();
     });
 
     return () => {
+      cancelAnimationFrame(firstFocus);
+      if(frame)cancelAnimationFrame(frame);
+      if(placementRef.current===schedulePlace)placementRef.current=null;
+      observer?.disconnect();
       document.removeEventListener('pointerdown', onOutsidePointer, true);
       document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', placePopover);
-      window.removeEventListener('scroll', placePopover, true);
+      window.removeEventListener('resize', schedulePlace);
+      window.removeEventListener('scroll', schedulePlace, true);
+      window.visualViewport?.removeEventListener('resize',schedulePlace);
+      window.visualViewport?.removeEventListener('scroll',schedulePlace);
       if (popover.matches(':popover-open')) popover.hidePopover();
     };
   }, [open]);
+  useEffect(()=>{
+    if(!open)return;
+    placementRef.current?.();
+  },[open,query,visibleOptions.length]);
 
   const focusOption = (index: number) => {
     const next = Math.max(0, Math.min(index, visibleOptions.length - 1));
@@ -162,14 +224,31 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       aria-expanded={open}
       onClick={()=>{
         setLeaseError('');
-        if(open){close();return;}
+        if(open){void close();return;}
+        const trigger=triggerRef.current;
+        if(!trigger||disabled||waiting)return;
         chosen.current=false;
-        if(!leaseProps){setQuery('');setOpen(true);return;}
+        const epoch=++requestEpoch.current;
         setWaiting(true);
-        void leaseManager!.acquire(recordId!,field!,editorKind).then(()=>{
+        // Claiming B synchronously closes A, then waits for A's safe lease
+        // release. B still checks its own permission/lease before opening.
+        void claimCellPicker(trigger,()=>close()).then(async()=>{
+          if(epoch!==requestEpoch.current)return;
+          if(leaseProps)await leaseManager!.acquire(recordId!,field!,editorKind);
+          if(epoch!==requestEpoch.current||!trigger.isConnected||trigger.disabled){
+            if(leaseProps&&!leaseManager!.isPending(recordId!,field!))
+              await leaseManager!.cancel(recordId!,field!);
+            return;
+          }
           setQuery('');setOpen(true);
-        }).catch(error=>setLeaseError(error instanceof Error?error.message:'Ô đang được sửa ở phiên khác.'))
-          .finally(()=>setWaiting(false));
+        }).catch(error=>{
+          if(epoch===requestEpoch.current){
+            releaseCellPickerClaim(trigger);
+            setLeaseError(error instanceof Error?error.message:'Ô đang được sửa ở phiên khác.');
+          }
+        }).finally(()=>{
+          if(epoch===requestEpoch.current)setWaiting(false);
+        });
       }}
     >
       <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
@@ -185,7 +264,9 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       aria-label={label}
       onBlur={() => requestAnimationFrame(() => {
         const popover = popoverRef.current;
-        if (popover && !popover.contains(document.activeElement)) close();
+        if (popover && !popover.contains(document.activeElement)&&
+            document.activeElement!==triggerRef.current&&!switchingPointer.current)
+          void close();
       })}
     >
       {searchable && <label className="cell-picker-search">Tìm lựa chọn<input ref={searchRef} type="search" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
