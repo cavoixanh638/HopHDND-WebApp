@@ -216,9 +216,11 @@ try {
   await setSelect('select[aria-label="Lọc Sở, ngành"]','Sở mẫu A');
   await setSelect('select[aria-label="Lọc Phòng"]','Phòng mẫu 1');
   await expectInventory(2,7,'keyboard X preconditions'); // 27 demo, A room1 => 7 rows
-  await evaluate("document.querySelector('[data-active-filter-id=department] button').focus()");
-  await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  const focus=await evaluate("(()=>{const button=document.querySelector('[data-active-filter-id=department] button');button.focus({preventScroll:true});return {focus:document.activeElement===button,hasFocus:document.hasFocus(),tag:document.activeElement?.tagName}})()");
+  assert(focus.focus,'keyboard remove button could not receive focus '+JSON.stringify(focus));
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+  console.log('PR95_V6_L4_KEYBOARD_DIAGNOSTIC '+JSON.stringify({focus,after:await inventory()}));
   condition=await expectInventory(1,13,'keyboard Enter removes only department');
   assert(condition.ids[0]==='room','keyboard removed wrong chip '+JSON.stringify(condition));
   await click('.list-active-filter-clear-all');
