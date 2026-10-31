@@ -45,6 +45,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   // A canceled editing cycle owns ONE release Promise. Its late ACK must
   // finish before another picker on the same field may acquire a lease.
   const pendingRelease=useRef<Promise<void>|null>(null);
+  const claimedInCycle=useRef(false);
   const placementRef=useRef<(()=>void)|null>(null);
   const switchingPointer=useRef(false);
   const leaseProps=!!leaseManager&&!!recordId&&!!field;
@@ -57,6 +58,9 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     // Share the same fence across close, unmount and stale callbacks.
     // A second cleanup must never cancel B's newly acquired same-field lease.
     if(pendingRelease.current)return pendingRelease.current;
+    // An unused sibling/popup picker must never cancel a lease opened by B
+    // on the same record/field after A's unmount.
+    if(!claimedInCycle.current)return Promise.resolve();
     const inFlight=pendingAcquire.current;
     const release=inFlight?inFlight.catch(()=>{}).then(cancelUnused):cancelUnused();
     pendingRelease.current=release;
@@ -255,6 +259,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         const trigger=triggerRef.current;
         if(!trigger||disabled||waiting)return;
         chosen.current=false;
+        claimedInCycle.current=true;
         pendingRelease.current=null; // new claim, old fence stays in coordinator
         const epoch=++requestEpoch.current;
         setWaiting(true);
