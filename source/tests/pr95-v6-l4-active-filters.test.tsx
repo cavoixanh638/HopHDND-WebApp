@@ -179,6 +179,28 @@ describe('PR95 UI V6 L4 — each chip removes just its own predicate',()=>{
   });
 });
 describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
+  it('Enter and Space call one-X exactly once, suppress repeated keys and native extra clicks',()=>{
+    const onRemove=vi.fn(),onClearAll=vi.fn();
+    const condition=inventory(configured())[0];
+    const root=ActiveListFilters({conditions:[condition],visibleCount:1,sourceCount:27,
+      onRemove,onClearAll});
+    const nodes=(v:any):any[]=>Array.isArray(v)?v.flatMap(nodes):
+      v&&typeof v==='object'&&'type' in v?[v,...nodes(v.props?.children)]:[];
+    const button=nodes(root).find(x=>x.type==='button'&&
+      x.props.className==='list-active-filter-remove');
+    expect(button).toBeDefined();
+    const prevented=vi.fn();
+    button.props.onKeyDown({key:'Enter',repeat:false,preventDefault:prevented});
+    expect(onRemove).toHaveBeenCalledExactlyOnceWith(condition);
+    button.props.onKeyDown({key:'Enter',repeat:true,preventDefault:prevented});
+    expect(onRemove).toHaveBeenCalledTimes(1);
+    button.props.onKeyDown({key:' ',repeat:false,preventDefault:prevented});
+    expect(onRemove).toHaveBeenCalledTimes(2);
+    expect(prevented).toHaveBeenCalledTimes(3);
+    button.props.onKeyDown({key:'Tab',repeat:false,preventDefault:prevented});
+    expect(onRemove).toHaveBeenCalledTimes(2);
+    expect(prevented).toHaveBeenCalledTimes(3);
+  });
   it('renders each active condition as an independent keyboard button, counts X/source and clears zero results',()=>{
     const conditions=inventory(configured());
     const onRemove=vi.fn(),onClearAll=vi.fn();
