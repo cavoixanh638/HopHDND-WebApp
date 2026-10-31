@@ -1177,12 +1177,11 @@
    a second focus/click surface. The merged cell scrolls internally when narrow. */
 
 /* The existing .compact-document-badge owns the ONE outline for QPPL/HC/BC,
-   whether read-only or containing a type editor. The nested real button keeps
+   whether read-only or containing a type editor. The nested input/button keeps
    its click/keyboard semantics but has no second border, fill or shadow. */
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-badge:has(button.cell-picker-trigger, input.custom-cell-input) {
   padding:0;
-  overflow:hidden;
   border-radius:7px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
@@ -1220,7 +1219,7 @@
   color:var(--member-highlight-text)!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-badge[data-highlighted="true"] > button.cell-picker-trigger {
+  .compact-document-badge[data-highlighted="true"] :is(button.cell-picker-trigger,input.custom-cell-input) {
   background:transparent!important;
   color:inherit!important;
 }
