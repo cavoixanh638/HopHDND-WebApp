@@ -343,13 +343,39 @@ try {
   const mobile=await geometry(progress,'mobile-390-status');
   await screenshot('pr95-v5-l1-mobile-390-status.png');
   await key('Escape',27);
+
+  // Mobile 390px also exercises the REAL report popup instead of treating
+  // List-only screenshots as proof of mobile popup positioning.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?popup=1&popup-clear-qa=1&review-staff=1'});
+  await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
+    'mobile popup edit action');
+  await evaluate('(()=>{const actions=[...document.querySelectorAll(".report-grid-actions button")];'+
+    'actions.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();'+
+    'actions.find(b=>b.textContent.includes("Hiện đủ cột Excel"))?.click();})()');
+  await waitFor('!!'+popupFirst('Lãnh đạo VP'),'mobile popup granted leader');
+  const mPopupTarget=await evaluate('(()=>{const cell='+popupFirst('Lãnh đạo VP')+';'+
+    'const scroll=document.querySelector(".report-grid-scroll");'+
+    'scroll.scrollIntoView({block:"center",inline:"nearest"});scroll.scrollTop=0;'+
+    'cell.scrollIntoView({block:"nearest",inline:"center"});'+
+    'const r=cell.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;'+
+    'return {rect:r.toJSON(),x,y,visible:document.elementFromPoint(x,y)?.closest("button.cell-picker-trigger")===cell,'+
+    'scrollTop:scroll.scrollTop,scrollLeft:scroll.scrollLeft};})()');
+  assert(mPopupTarget.visible,'390 mobile popup target must be visible for real click '+JSON.stringify(mPopupTarget));
+  await actual(popupFirst('Lãnh đạo VP'));
+  await openPop('Lãnh đạo VP');
+  const mobilePopup=await geometry(popupFirst('Lãnh đạo VP'),'mobile-390-popup');
+  await screenshot('pr95-v5-l1-mobile-390-popup.png');
+  await key('Escape',27);
+  assert(!await evaluate('window.__l2LastPatch'),'mobile popup Escape changed source');
+  console.log('PR95_V5_L1_MOBILE_POPUP_PASS '+JSON.stringify(mobilePopup));
+
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','identitytoolkit',
     'securetoken','docs.google.com/spreadsheets','sheets.googleapis.com']
     .some(fragment=>url.toLowerCase().includes(fragment)));
   assert(forbidden.length===0,'production endpoint contacted '+JSON.stringify(forbidden));
   console.log('PR95_V5_L1_REAL_CHROME_PASS '+JSON.stringify({
     pointerHandoffs:2,popupHandoffs:1,main:true,popup:true,bottom:bottomRect,
-    searchBefore:beforeSearch,searchAfter:afterSearch,mobile,
+    searchBefore:beforeSearch,searchAfter:afterSearch,mobile,mobilePopup,
     enterTabEscape:true,permissionGrant:true,productionRequests:0
   }));
 }finally {
