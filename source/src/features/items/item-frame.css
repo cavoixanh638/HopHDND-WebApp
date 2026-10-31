@@ -1227,7 +1227,15 @@
 /* At narrow saved widths keep both semantic labels intact and use horizontal
    scrolling INSIDE the merged cell. Do not force a wider table or a global
    viewport minimum; the member field buttons remain separate. */
+/* UI6-R01: all three stage rows must share the same intrinsic label
+   track. The longest partyLevel (including legacy values + caret + brackets)
+   sizes the FIRST column, while progress states have their own min track.
+   When a saved column is narrow, scroll INSIDE the merged cell, not across
+   the status hit target and not by rewriting user column widths. */
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stages {
+  display:grid;
+  grid-template-columns:max-content minmax(166px,1fr);
+  column-gap:8px;
   min-width:0;
   max-width:100%;
   overflow-x:auto;
@@ -1237,11 +1245,12 @@
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row {
   box-sizing:border-box;
+  grid-column:1 / -1;
+  grid-template-columns:subgrid;
   width:100%;
-  min-width:290px;
-  grid-template-columns:160px minmax(0,1fr);
+  min-width:0;
   align-items:start;
-  gap:7px;
+  column-gap:8px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-label {
@@ -1304,7 +1313,7 @@
    stage label from its progress value: internal scroll is the fallback. */
 @media(max-width:620px) {
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row {
-    grid-template-columns:160px minmax(0,1fr);
+    grid-template-columns:subgrid;
   }
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-state {
     margin-left:0;
@@ -1312,7 +1321,7 @@
 }
 @container(max-width:280px){
   :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row{
-    grid-template-columns:160px minmax(0,1fr);
+    grid-template-columns:subgrid;
   }
 }
 
