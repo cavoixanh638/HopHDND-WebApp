@@ -6,6 +6,7 @@ on:
       - 'source/src/features/items/cell-picker.css'
       - 'source/src/features/items/pr95-v5-l1-*'
       - 'source/tests/pr95-v5-l1-*'
+      - 'source/pr95-v5-l1-*'
       - 'source/scripts/pr95-v5-l1-*'
       - '.github/workflows/pr95-v5-l1-dropdown.yml'
   workflow_dispatch:
@@ -38,6 +39,9 @@ jobs:
       - name: REAL Chrome pointerdown/up/click, dropdown/keyboard/bottom/mobile/popup
         working-directory: source
         run: node scripts/pr95-v5-l1-dropdown-browser.mjs
+      - name: R-V5-02 real mounted React popup unmount / controlled late ACK in Chrome
+        working-directory: source
+        run: node scripts/pr95-v5-l1-race-browser.mjs
       - name: Retain V5 L1 genuine Chrome screenshots without publication
         if: always()
         uses: actions/upload-artifact@v4

@@ -42,6 +42,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const chosen=useRef(false);
   const requestEpoch=useRef(0);
   const pendingAcquire=useRef<Promise<void>|null>(null);
+  // A canceled editing cycle owns ONE release Promise. Its late ACK must
+  // finish before another picker on the same field may acquire a lease.
+  const pendingRelease=useRef<Promise<void>|null>(null);
+  const claimedInCycle=useRef(false);
   const placementRef=useRef<(()=>void)|null>(null);
   const switchingPointer=useRef(false);
   const leaseProps=!!leaseManager&&!!recordId&&!!field;
@@ -49,6 +53,18 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     if(leaseProps&&!chosen.current&&!leaseManager!.isPending(recordId!,field!))
       return leaseManager!.cancel(recordId!,field!);
     return Promise.resolve();
+  };
+  const releaseAfterAcquire=():Promise<void>=>{
+    // Share the same fence across close, unmount and stale callbacks.
+    // A second cleanup must never cancel B's newly acquired same-field lease.
+    if(pendingRelease.current)return pendingRelease.current;
+    // An unused sibling/popup picker must never cancel a lease opened by B
+    // on the same record/field after A's unmount.
+    if(!claimedInCycle.current)return Promise.resolve();
+    const inFlight=pendingAcquire.current;
+    const release=inFlight?inFlight.catch(()=>{}).then(cancelUnused):cancelUnused();
+    pendingRelease.current=release;
+    return release;
   };
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Waiting disables this button temporarily: only external revoke/lock
@@ -86,8 +102,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     setWaiting(false);
     // A may still be awaiting a server ACK. Its eventual lease must be
     // canceled before another picker acquires the same record/field.
-    const inFlight=pendingAcquire.current;
-    const release=inFlight?inFlight.catch(()=>{}).then(()=>cancelUnused()):cancelUnused();
+    const release=releaseAfterAcquire();
     releaseCellPickerClaim(triggerRef.current,release);
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus({preventScroll:true}));
     return release;
@@ -110,7 +125,13 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   // switch. Do not allow a late lease ACK to resurrect that editor.
   useEffect(()=>{
     const element=triggerRef.current;
-    return()=>{requestEpoch.current++;releaseCellPickerClaim(element,cancelUnused());};
+    return()=>{
+      requestEpoch.current++;
+      // If popup unmounts before acquire ACK, cancel() must run AFTER ACK.
+      // Reuse close's release (if any), not a second cancel that could revoke
+      // the next picker after the global coordinator has handed off.
+      releaseCellPickerClaim(element,releaseAfterAcquire());
+    };
   },[]);
   useEffect(() => {
     if (!open) return;
@@ -238,6 +259,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         const trigger=triggerRef.current;
         if(!trigger||disabled||waiting)return;
         chosen.current=false;
+        claimedInCycle.current=true;
+        pendingRelease.current=null; // new claim, old fence stays in coordinator
         const epoch=++requestEpoch.current;
         setWaiting(true);
         // Claiming B synchronously closes A, then waits for A's safe lease
@@ -245,9 +268,11 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         const operation=claimCellPicker(trigger,()=>close()).then(async()=>{
           if(epoch!==requestEpoch.current)return;
           if(leaseProps)await leaseManager!.acquire(recordId!,field!,editorKind);
-          if(epoch!==requestEpoch.current||!trigger.isConnected||externallyDisabledRef.current){
-            if(leaseProps&&!leaseManager!.isPending(recordId!,field!))
-              await leaseManager!.cancel(recordId!,field!);
+          // A dismissed/unmounted request does not cancel here; its
+          // releaseAfterAcquire() fence owns that cancel exactly once.
+          if(epoch!==requestEpoch.current)return;
+          if(!trigger.isConnected||externallyDisabledRef.current){
+            await cancelUnused();
             return;
           }
           setQuery('');setOpen(true);
