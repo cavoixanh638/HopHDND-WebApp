@@ -57,5 +57,7 @@ jobs:
           path: |
             source/pr95-v4-l4-*.png
             source/pr95-l4-*.png
+            source/pr95-v5-l4-*.png
+            source/pr95-v5-integrated-*.png
           if-no-files-found: warn
           retention-days: 14
