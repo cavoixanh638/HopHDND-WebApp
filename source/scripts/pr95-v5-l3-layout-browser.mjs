@@ -184,6 +184,7 @@ try{
   await screenshot('pr95-v5-l3-list-narrow-scroll.png');
   await call('document.querySelector(".item-data-table .compact-stages").style.removeProperty("width")');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   await verify('list-390-guest-readonly');
   await screenshot('pr95-v5-l3-list-390-guest.png');
   await nav('Báo cáo tổng hợp');
