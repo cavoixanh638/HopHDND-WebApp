@@ -210,7 +210,15 @@ try{
   await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
   await until('!document.querySelector("dialog.report-grid-modal[open]")','admin popup closed');
   await nav('Danh sách');
-  await until('document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL] input.custom-cell-input")',
+  await until('document.querySelector(".item-data-table .compact-document-badge")',
+    'admin List type badge');
+  const adminTypeProbe=await js('(()=>{const root=document.querySelector("[data-preview=pr95-l4-full]");'+
+    'const badges=[...document.querySelectorAll(".item-data-table .compact-document-badge")];'+
+    'return {role:root?.dataset.role,count:badges.length,'+
+    'examples:badges.slice(0,3).map(e=>e.outerHTML.slice(0,650))};})()');
+  console.log('UI_V5_L3_ADMIN_TYPE_PROBE '+JSON.stringify(adminTypeProbe));
+  await screenshot('pr95-v5-l3-admin-type-probe.png');
+  await until('document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL] :is(button.cell-picker-trigger,input.custom-cell-input)")',
     'admin List real QPPL editor');
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   const editableList=await verify('list-1440-admin-editable');
