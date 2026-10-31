@@ -2314,6 +2314,112 @@ try{
     JSON.stringify({tested:['progressBuild left/right','progressParty right','progressCouncil left'],
       labelClickNoPopover:v4LeftLabel,patched:false}));
 
+  const v4AfterEsc=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    return {noOpen:!document.querySelector('.cell-picker-popover:popover-open'),
+      values:states.map(x=>x.textContent.trim()),allClosed:[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger')].every(x=>x.getAttribute('aria-expanded')==='false')};
+  })()`);
+  if(!v4AfterEsc.noOpen||!v4AfterEsc.allClosed||
+    !v4AfterEsc.values.some(x=>x.includes('Sở chưa trình')))
+    throw Error('V4 Escape improperly changed an editor or field: '+JSON.stringify(v4AfterEsc));
+
+  // Visual and caret geometry at a narrow browser width, then at a saved
+  // narrow projected source column. Preserve all source fields and layout.
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 mobile status editors missing');
+  await evaluate(`document.querySelector('.item-data-table tbody tr:first-child .compact-stages').scrollIntoView({block:'center',inline:'center'})`);
+  const v4Mobile=await evaluate(`(()=>{
+    const stages=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const metrics=stages.map(row=>{
+      const state=row.querySelector('.compact-stage-state'),button=state?.querySelector('.cell-picker-trigger');
+      if(!button)return {ok:false,stage:row.dataset.stageField};
+      const b=button.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
+      const track=parseFloat(style.gridTemplateColumns.split(' ').at(-1));
+      return {stage:row.dataset.stageField,caret:b.right-parseFloat(style.paddingRight)-track/2,
+        ok:b.height>=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+          Math.abs(track-22)<1&&dot.content==='none'&&style.display==='grid',
+        width:b.width,height:b.height,frameWidth:frame.width,track};
+    });
+    return {ok:metrics.length===3&&metrics.every(x=>x.ok)&&
+      Math.max(...metrics.map(x=>x.caret))-Math.min(...metrics.map(x=>x.caret))<1.1,
+      viewport:innerWidth,metrics};
+  })()`);
+  if(!v4Mobile.ok)throw Error('UI V4 status caret alignment at 390px: '+JSON.stringify(v4Mobile));
+  const v4MobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-mobile-390.png',Buffer.from(v4MobileShot.data,'base64'));
+  console.log('UI_V4_L2_MOBILE_390_CARET_RAIL_PASS',JSON.stringify(v4Mobile));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&fit=1&frame=900'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 saved narrow-column status editors missing');
+  const v4Narrow=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const data=rows.map(row=>{
+      const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
+      const frame=row.getBoundingClientRect();
+      return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=38};
+    });
+    return {ok:data.length===3&&data.every(x=>x.ok)&&
+      Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
+  })()`);
+  if(!v4Narrow.ok)throw Error('UI V4 saved narrow status column overflow: '+JSON.stringify(v4Narrow));
+  console.log('UI_V4_L2_NARROW_SAVED_COLUMN_PASS',JSON.stringify(v4Narrow));
+
+  // Explicit palette override; the right caret rail uses currentColor and
+  // must not hardcode amber/green ink, repaint a sibling, or add a framed pill.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&r05=1&r05-palette=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office] .cell-picker-trigger')!==null",
+    'V4 custom-colored editable office state missing');
+  const v4Custom=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office]');
+    const member=row?.querySelector('.compact-stage-state'),button=member?.querySelector('button.cell-picker-trigger');
+    const other=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=not-submitted]');
+    if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
+    const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
+    return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
+      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
+      b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
+      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
+      customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
+  })()`);
+  if(!v4Custom.ok)throw Error('UI V4 custom status palette/arrow regression: '+JSON.stringify(v4Custom));
+  const v4CustomShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-custom-palette.png',Buffer.from(v4CustomShot.data,'base64'));
+  console.log('UI_V4_L2_CUSTOM_PALETTE_CARET_PASS',JSON.stringify(v4Custom));
+
+  // Readonly must never show a caret, pointer cursor or hover affordance.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state').length===3",
+    'V4 read-only real ItemList missing');
+  const v4Readonly=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    const rows=states.map(x=>({
+      button:x.querySelectorAll('.cell-picker-trigger').length,
+      editable:x.hasAttribute('data-editable'),
+      dot:getComputedStyle(x,'::before').content,
+      pseudoDisplay:getComputedStyle(x,'::before').display,
+      cursor:getComputedStyle(x).cursor
+    }));
+    return {ok:rows.length===3&&rows.every(x=>!x.button&&!x.editable&&x.dot==='none'&&
+      x.pseudoDisplay==='none'&&x.cursor!=='pointer'),rows};
+  })()`);
+  if(!v4Readonly.ok)throw Error('UI V4 readonly appears editable: '+JSON.stringify(v4Readonly));
+  const v4ReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-readonly-desktop.png',Buffer.from(v4ReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_READONLY_NO_CARET_DOT_PASS',JSON.stringify(v4Readonly));
+
+  // Re-mount the exact old editable fixture before the pre-existing field
+  // isolation and keyboard/lease regression suite resumes.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 restored edit fixture missing');
+
+
   const v3GrantedShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v3-l2-granted-desktop.png',Buffer.from(v3GrantedShot.data,'base64'));
   const beforeStageEdit=await evaluate(`(()=>{
