@@ -121,6 +121,10 @@
   .list-active-filters{padding:8px;margin-bottom:8px}
   .list-active-filter-results{order:3;flex-basis:100%}
   .list-active-filter-clear-all{margin-left:auto}
-  .list-active-filter-chip-value{max-width:min(45vw,225px)}
-  .list-active-filter-chip{max-width:100%}
+  /* A long Vietnamese detail label must wrap instead of pushing X off-screen. */
+  .list-active-filter-chip{max-width:100%;min-width:0}
+  .list-active-filter-chip-label{white-space:normal;overflow-wrap:anywhere;
+    max-width:42vw;flex:0 1 auto}
+  .list-active-filter-chip-value{max-width:40vw;flex:1 1 auto;min-width:0}
+  .list-active-filter-remove{flex:0 0 31px}
 }
