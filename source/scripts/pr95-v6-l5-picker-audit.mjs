@@ -4,10 +4,12 @@
  */
 import {readFileSync,writeFileSync,existsSync,statSync} from 'node:fs';
 
-const [listPath,racePath]=process.argv.slice(2);
-if(!listPath||!racePath)throw Error('Usage: node scripts/pr95-v6-l5-picker-audit.mjs <ListChrome.log> <ControlledAckChrome.log>');
+const [listPath,racePath,scrollPath]=process.argv.slice(2);
+if(!listPath||!racePath||!scrollPath)
+  throw Error('Usage: node scripts/pr95-v6-l5-picker-audit.mjs <ListChrome.log> <ControlledAckChrome.log> <ScrollChrome.log>');
 const list=readFileSync(listPath,'utf8').split(/\r?\n/);
 const race=readFileSync(racePath,'utf8').split(/\r?\n/);
+const scroll=readFileSync(scrollPath,'utf8').split(/\r?\n/);
 const fail=message=>{throw Error('PR95_V6_L5_PICKER_AUDIT_FAIL '+message);};
 const extract=(lines,prefix)=>lines.flatMap(line=>{
   if(!line.startsWith(prefix+' '))return [];
@@ -65,6 +67,13 @@ const pending=unique(race,'R_V5_02_PENDING_A');
 const late=unique(race,'R_V5_02_LATE_ACK_SINGLE_CLICK_SAME_FIELD_PASS');
 const leak=unique(race,'R_V5_02_LEASE_NOOP_LISTENER_CLEANUP_PASS');
 const end=unique(race,'R_V5_02_REAL_CELL_PICKER_CHROME_PASS');
+const scrollProof=unique(scroll,'PR95_V6_L5_SCROLL_VISUAL_VIEWPORT_PASS');
+if(scrollProof.patchCount!==0||scrollProof.productionRequests!==0||
+  scrollProof.screenshots!==3||!scrollProof.after?.menu||
+  !(scrollProof.after.trigger.y<scrollProof.before?.trigger?.y-2)||
+  scrollProof.offscreen?.menu!==null||
+  !(scrollProof.mobileAfter?.viewport?.scale>scrollProof.mobileBefore?.viewport?.scale+0.1))
+  fail('scroll/visual viewport evidence invalid '+JSON.stringify(scrollProof));
 if(pending.count!==1||pending.patches!==0||
   late.held!=='B'||late.canceledA!==1||late.canceledB!==0||
   late.patches!==0||late.visiblePopovers!==1||
@@ -86,7 +95,10 @@ const images=[
   'pr95-v5-l1-mobile-390-status.png',
   'pr95-v5-l1-mobile-390-popup.png',
   'pr95-v5-l1-race-pending-popup-unmount.png',
-  'pr95-v5-l1-race-late-ack-b-open.png'
+  'pr95-v5-l1-race-late-ack-b-open.png',
+  'pr95-v6-l5-before-scroll.png',
+  'pr95-v6-l5-after-scroll.png',
+  'pr95-v6-l5-visual-viewport.png'
 ];
 for(const path of images){
   if(!existsSync(path)||statSync(path).size<2000||
@@ -112,6 +124,9 @@ const evidence={
   listenerCounts:leak.listenerCounts,
   productionRequests:0,
   screenshots:images,
+  scrollAndVisualViewport:{before:scrollProof.before,after:scrollProof.after,
+    offscreen:scrollProof.offscreen,mobileBefore:scrollProof.mobileBefore,
+    mobileAfter:scrollProof.mobileAfter},
   unitChoiceLengths:[3,5,7],
   caution:'3/5/7 verified by unit; lease ACK is controlled stub. Firebase security has separate Emulator suite.'
 };
@@ -124,5 +139,6 @@ console.log('PR95_V6_L5_REAL_BROWSER_AUDIT_PASS '+JSON.stringify({
   popupHandoffs:evidence.physicalPopupHandoffs,
   patchCountNoop:0,leaseTimeline:evidence.leaseTimeline,
   listenerCounts:evidence.listenerCounts,
-  screenshots:evidence.screenshots.length,productionRequests:0
+  screenshots:evidence.screenshots.length,scrollReposition:true,
+  visualViewportPinch:true,productionRequests:0
 }));
