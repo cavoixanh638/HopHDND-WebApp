@@ -222,8 +222,8 @@ try{
     'admin List real QPPL editor');
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   const editableList=await verify('list-1440-admin-editable');
-  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='INPUT'&&x.outerBorder==='1px'&&x.editorBorder==='0px'),
-    'admin QPPL classification single border on real LeaseTextInput');
+  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='BUTTON'&&x.outerBorder==='1px'&&x.editorBorder==='0px'),
+    'admin QPPL classification single border on actual nested CellPicker');
   await screenshot('pr95-v5-l3-list-1440-admin.png');
   // Presentation-only color test: temporary CSS variables and a member highlight.
   // No edit callback, source mutation, layout setting or account write.
@@ -240,8 +240,8 @@ try{
     'doc.style.setProperty("--member-highlight-text","#714A12");'+
     'return {memberBackground:getComputedStyle(member).backgroundColor,'+
     'docBackground:getComputedStyle(doc).backgroundColor,'+
-    'docButtonBorder:getComputedStyle(doc.querySelector("input.custom-cell-input")).borderTopWidth,'+
-    'docButtonBackground:getComputedStyle(doc.querySelector("input.custom-cell-input")).backgroundColor};})()');
+    'docButtonBorder:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).borderTopWidth,'+
+    'docButtonBackground:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).backgroundColor};})()');
   assert(skin.memberBackground==='rgb(255, 241, 172)'&&
     skin.docBackground==='rgb(255, 241, 172)'&&
     skin.docButtonBorder==='0px'&&skin.docButtonBackground==='rgba(0, 0, 0, 0)',
