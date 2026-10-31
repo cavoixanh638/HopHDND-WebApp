@@ -375,7 +375,9 @@ try{
   await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
-  await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
+  // UI6-R02: anonymous startup intentionally has no A01/A02 nav.
+  await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",
+    'guest App gear shell did not render');
   // A genuine clean Chrome profile measures cold UI shell render on this runner;
   // auth and Firebase production timing must still be tested on the user's network.
   const cold=await evaluate(`(()=>{const navigation=performance.getEntriesByType('navigation')[0];
@@ -385,8 +387,12 @@ try{
       moduleFetches:resources.filter(r=>r.initiatorType==='script'||r.name.endsWith('.js')).length,
       stylesheetFetches:resources.filter(r=>r.initiatorType==='link'||r.name.endsWith('.css')).length};})()`);
   console.log('COLD_CHROME_SHELL',JSON.stringify(cold));
-  const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));if(!b)return false;b.click();return true})()");
-  if(!nav)throw Error('Cannot navigate to content list');
+  // Wait for the real list after profile/data verification; no synthetic
+  // guest button, test-only route injection, or admin privilege bypass.
+  await eventually("!!document.querySelector('.item-data-region')&&"+
+    "!document.querySelector('nav.primary-section-switcher')",
+    'guest List did not mount without primary navigation',150);
+  console.log('UI6_R02_REAL_GUEST_LIST_NO_NAV_PASS');
   // No temporary-source override. The actual App guest session must read the
   // seeded V2 generation via FirebaseRepository and authenticated RTDB Rules.
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
@@ -403,23 +409,8 @@ try{
     throw Error('Firebase V2 rows missing in List: '+JSON.stringify(firebaseList));
   if(forbiddenNetwork.length)throw Error('Production/Sheets request observed: '+JSON.stringify(forbiddenNetwork));
   console.log('FIREBASE_ONLY_LIST_REAL_BROWSER_PASS',JSON.stringify(firebaseList));
-  // Verify the actual Report, not only an inserted CSS probe or a list fixture.
-  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
-  await eventually("document.querySelector('.report-table tbody')?.textContent?.includes('Sở kiểm thử')===true",
-    'Real Report did not aggregate Firebase V2 seeded department');
-  const firebaseReport=await evaluate(`(()=>{
-    const tables=[...document.querySelectorAll('.report-surface .report-table')];
-    return {tables:tables.length,group:tables.some(table=>
-      table.querySelector('tbody')?.textContent?.includes('Sở kiểm thử')),
-      counts:tables.flatMap(table=>[...table.querySelectorAll('tbody button.count-drill')]
-        .map(button=>Number(button.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
-  })()`);
-  if(!firebaseReport.group||firebaseReport.counts.length===0)
-    throw Error('Firebase V2 seeded counts are absent from real Report: '+JSON.stringify(firebaseReport));
-  console.log('FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS',JSON.stringify(firebaseReport));
-  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1]?.click()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
-    'List did not restore Firebase V2 rows after Report navigation');
+  // Report database count/aggregation witness moved to the verified admin
+  // journey below. Guest has no A01/A02 or Reports route in UI V6.
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
   const inkPoints=await evaluate(`(()=>{
@@ -799,196 +790,39 @@ try{
   })()`);
   if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
   const sortAndGuestLayout=await evaluate(`(()=>{
-    const topbar=document.querySelector('.topbar'),nav=document.querySelector('.nav-tabs');
-    const cardHeader=document.querySelector('.item-data-region .card-header');
+    const topbar=document.querySelector('.topbar');
+    const nav=document.querySelector('nav.primary-section-switcher');
     const viewport=document.querySelector('.item-table-scroll');
+    const summary=document.querySelector('.item-summary-grid');
+    const heading=document.querySelector('.item-list-page-title');
+    const toolbar=document.querySelector('.list-filter-toolbar');
     const status=document.querySelector('.item-filter-status-slot');
+    const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!nav||!viewport||stt||!sort)return {ok:false,reason:'Missing V3 guest chrome, STT shown or guest sorting unavailable'};
-    const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
-    const cards=document.querySelector('.item-summary-grid');
-    const cardRect=cards?.getBoundingClientRect();
-    const toolbar=document.querySelector('.list-filter-toolbar')?.getBoundingClientRect();
-    const gapBefore=(toolbar?.top??0)-tabs.bottom;
-    const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
-    const gapBelowToolbar=(cardRect?.top??0)-(toolbar?.bottom??0);
-    const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
+    if(!topbar||!summary||!heading||!toolbar||!viewport||!sort||stt||nav)
+      return {ok:false,reason:'Guest List B/C/heading/F missing, nav or STT unexpectedly present'};
+    const rects=[topbar,summary,heading,toolbar,viewport].map(x=>x.getBoundingClientRect());
+    const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
+    const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
+      heading.compareDocumentPosition(toolbar)&Node.DOCUMENT_POSITION_FOLLOWING &&
+      toolbar.compareDocumentPosition(viewport)&Node.DOCUMENT_POSITION_FOLLOWING;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    // Same strict no-extra-blank-space contract, now measured before and after
-    // the four explicitly requested summary cards instead of across their height.
-    return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
-      gapBelowToolbar>=0&&gapBelowToolbar<30&&
-      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!localMenu&&!!sort,
-      aligned,gapBefore,gapAfter,gapBelowToolbar,cardHeight:cardRect?.height,
-      hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
+    const ok=!!order&&gaps.every((gap,i)=>gap>=-2&&gap<([100,24,30,30][i]))&&
+      summary.querySelectorAll('[data-summary-card]').length===4&&
+      document.querySelectorAll('.item-list-page-title').length===1&&
+      getComputedStyle(heading).textAlign==='center'&&
+      !status&&!cardHeader&&!localMenu;
+    return {ok,order:!!order,gaps,summaryCards:summary.querySelectorAll('[data-summary-card]').length,
+      heading:heading.textContent.trim(),headerCount:document.querySelectorAll('.item-list-page-title').length,
+      hasNav:!!nav,hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
-  const mainSectionCards=await evaluate(`(()=>{
-    const nav=document.querySelector('nav.primary-section-switcher');
-    const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
-    const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
-    const boxes=cards.map(el=>el.getBoundingClientRect());
-    const geometry=cards.map(el=>{
-      const title=el.querySelector('.section-card-title'),slot=el.querySelector('.section-card-state');
-      const r=title?.getBoundingClientRect(),badge=slot?.getBoundingClientRect(),button=el.getBoundingClientRect();
-      const range=document.createRange();
-      if(title)range.selectNodeContents(title);
-      const pieces=range.getClientRects().length;
-      return {lines:pieces,rightInset:button.right-(badge?.right??0),
-        titleFits:!!r&&!!badge&&r.right<badge.left-2,
-        overflow:!!title&&title.scrollWidth>title.clientWidth+1,
-        badgeWidth:badge?.width};
-    });
-    const selected=cards.find(el=>el.classList.contains('active'));
-    const unselected=cards.find(el=>!el.classList.contains('active'));
-    const activeStyle=selected?getComputedStyle(selected):null;
-    const idleStyle=unselected?getComputedStyle(unselected):null;
-    const restrainedGradient=activeStyle?.backgroundImage.includes('linear-gradient')&&idleStyle?.backgroundImage==='none';
-    const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
-    const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
-    const noIcons=nav.querySelectorAll('.section-card-icon').length===0;
-    const activeBadge=!!selected&&getComputedStyle(selected.querySelector('.section-card-state')).backgroundColor!=='rgba(0, 0, 0, 0)';
-    const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
-    return {ok:nav?.getBoundingClientRect().width<=1000&&
-      restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
-      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=8&&g.rightInset<=29)&&
-      Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
-      Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
-      cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
-      labels[1]==='Danh sách các ND trình HĐND'&&
-      boxes.every(box=>box.width>=300&&box.height>=42&&box.height<=72)&&
-      !nav.querySelector('.section-card-description')&&
-      getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
-      getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
-      cards.every(el=>el.querySelector('.section-card-state')?.textContent==='Đang xem')&&
-      Math.abs(boxes[0].width-boxes[1].width)<1&&
-      Math.abs(boxes[0].height-boxes[1].height)<1&&
-      cards.filter(el=>el.classList.contains('active')).length===1&&
-      !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
-  })()`);
-  if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
-  const compactNavigation=await evaluate(`(()=>{
-    const nav=document.querySelector('nav.primary-section-switcher');
-    const cards=[...(nav?.querySelectorAll('.primary-section-card')??[])];
-    return {count:cards.length,heights:cards.map(x=>x.getBoundingClientRect().height),
-      focusable:cards.every(x=>x.tagName==='BUTTON'&&!x.disabled),
-      active:cards.filter(x=>x.classList.contains('active')).length,
-      navGap:parseFloat(getComputedStyle(nav).rowGap)};
-  })()`);
-  if(compactNavigation.count!==2||compactNavigation.active!==1||
-      !compactNavigation.focusable||compactNavigation.heights.some(h=>h>72||h<42))
-    throw Error('PR95 compact navigation regression '+JSON.stringify(compactNavigation));
-  const compactNavigationShot=await send('Page.captureScreenshot',{format:'png'});
-  writeFileSync('hophdnd-pr95-nav-compact-synthetic.png',
-    Buffer.from(compactNavigationShot.data,'base64'));
-  console.log('PR95_COMPACT_NAVIGATION_PASS',JSON.stringify(compactNavigation));
-  console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
-  console.log('PRIMARY_CARD_TABS_NO_ICONS_PASS',JSON.stringify({widths:mainSectionCards.widths,cardDepth:mainSectionCards.cardDepth,activeBadge:mainSectionCards.activeBadge}));
-
-  // Theme2 is a visual skin: a very subtle gradient ONLY on the active tab,
-  // solid Imperial Sky action buttons, white/ice surfaces elsewhere.
-  const imperial=await evaluate(`(()=>{
-    const shell=document.querySelector('.app-shell');
-    const tabs=[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')];
-    const active=tabs.find(el=>el.classList.contains('active')),
-      inactive=tabs.find(el=>!el.classList.contains('active'));
-    const ac=getComputedStyle(active),ic=getComputedStyle(inactive);
-    const fixture=document.createElement('div');
-    fixture.style.cssText='position:fixed;top:80px;left:30px;z-index:100000;';
-    fixture.innerHTML='<button class="button primary">Lưu</button><button class="button ghost">Khác</button><input type="text" />';
-    shell.appendChild(fixture);
-    const solid=getComputedStyle(fixture.querySelector('.button.primary')),
-      ghost=getComputedStyle(fixture.querySelector('.button.ghost'));
-    const result={scope:shell.classList.contains('imperial-sky-theme'),
-      gradient:ac.backgroundImage,activeInk:ac.color,activeBorder:ac.borderTopColor,
-      inactiveFill:ic.backgroundColor,inactiveInk:ic.color,
-      actionFill:solid.backgroundColor,actionInk:solid.color,
-      ghostInk:ghost.color,activeBox:active.getBoundingClientRect().width,
-      inactiveBox:inactive.getBoundingClientRect().width};
-    fixture.remove();return result;
-  })()`);
-  if(!imperial.scope||
-    !imperial.gradient.includes('linear-gradient')||
-    !imperial.gradient.includes('36, 90, 121')||
-    !imperial.gradient.includes('46, 111, 149')||
-    imperial.activeInk!=='rgb(248, 251, 253)'||
-    imperial.activeBorder!=='rgb(36, 90, 121)'||
-    imperial.inactiveFill!=='rgb(242, 248, 252)'||
-    imperial.inactiveInk!=='rgb(53, 85, 107)'||
-    imperial.actionFill!=='rgb(46, 111, 149)'||
-    imperial.actionInk!=='rgb(255, 255, 255)'||
-    imperial.ghostInk!=='rgb(53, 85, 107)'||
-    Math.abs(imperial.activeBox-imperial.inactiveBox)>1)
-    throw Error('Imperial Sky must style chrome without changing geometry: '+JSON.stringify(imperial));
-  console.log('THEME2_IMPERIAL_SKY_CHROME_PASS',JSON.stringify(imperial));
-
-  // The inactive label reserves exactly the same space as "Đang xem".
-  // Switching either main tab must not resize either button.
-  const beforeSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
-    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))`);
-  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0].click()");
-  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:first-child')?.classList.contains('active')===true",
-    'Overview tab did not become active');
-  const duringSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
-    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
-      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
-      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
-  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1].click()");
-  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:last-child')?.classList.contains('active')===true",
-    'List tab did not become active again');
-  const afterSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
-    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
-      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
-      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
-  const stableSize=beforeSwitch.every((item,i)=>
-    Math.abs(item.width-duringSwitch[i].width)<1&&
-    Math.abs(item.height-duringSwitch[i].height)<1&&
-    Math.abs(item.width-afterSwitch[i].width)<1&&
-    Math.abs(item.height-afterSwitch[i].height)<1);
-  if(!stableSize||duringSwitch[0].state!=='visible'||duringSwitch[1].state!=='hidden'||
-    afterSwitch[0].state!=='hidden'||afterSwitch[1].state!=='visible'||
-    !duringSwitch[0].gradient.includes('linear-gradient')||
-    duringSwitch[1].gradient!=='none'||
-    !afterSwitch[1].gradient.includes('linear-gradient')||
-    afterSwitch[0].gradient!=='none')
-    throw Error('Main tabs changed size/hidden-label spacing while switching: '+
-      JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
-  console.log('PRIMARY_TABS_FIXED_SIZE_PASS',JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
-
-  for(const [selector,color] of [['.active','rgb(248, 251, 253)'],[':not(.active)','rgb(53, 85, 107)']]){
-    const query='nav.primary-section-switcher .primary-section-card'+selector;
-    const p=await evaluate(`(()=>{
-      const el=document.querySelector(${JSON.stringify(query)});
-      el?.scrollIntoView({block:'center',inline:'nearest'});
-      const r=el?.getBoundingClientRect();return r?{x:r.left+r.width/2,y:r.top+r.height/2}:null;
-    })()`);
-    if(!p)throw Error('No main tab for 3D hover '+selector);
-    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});
-    await new Promise(resolve=>setTimeout(resolve,270));
-    const hover=await evaluate(`(()=>{
-      const el=document.querySelector(${JSON.stringify(query)});
-      const style=getComputedStyle(el);
-      return {hover:el.matches(':hover'),liftY:new DOMMatrixReadOnly(style.transform).m42,
-        color:style.color,shadow:style.boxShadow,
-        titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
-    })()`);
-    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
-      hover.color!==color||hover.titleSize<15||hover.titleSize>17)
-      throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
-  }
-  // V3 cards now start near the top. x=785,y=9 is over a card, NOT mouseleave.
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:3,y:105});
-  await new Promise(resolve=>setTimeout(resolve,270));
-  const navReset=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')]
-    .every(el=>Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)<.25)`);
-  if(!navReset)throw Error('Main tabs still elevated after mouseleave');
-  console.log('HOVER_3D_B_MAIN_TABS_PASS');
-
+  // V6 L3: old A01/A02 navigation-theme/hover tests run only after
+  // real Firebase Emulator Google admin verification below.
   const listHeadingAndLines=await evaluate(`(()=>{
     const card=document.querySelector('.item-data-region .card-header');
-    const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
+    const title=document.querySelector('.item-data-region > .item-list-page-title');
     const headers=[...document.querySelectorAll('.item-heading-row th')];
     const first=headers[0],label=first?.querySelector('.column-heading-label');
     const td=document.querySelector('.item-data-table tbody td');
@@ -1383,6 +1217,200 @@ try{
   // V2 intentionally has one compact global toolbar and no duplicate column-header filters.
   if(!await evaluate("!!document.querySelector('.list-filter-toolbar')&&!document.querySelector('.item-column-filter-row')"))
     throw Error('V2 toolbar missing or duplicate full-width per-column filter row returned');
+  // UI6-R02: this is an actual Emulator Google-provider sign-in in the
+  // SAME browser target. Only verified admin may open Reports and A01/A02.
+  await eventually("typeof window.__pr95EmulatorGoogleAdminSignIn==='function'",
+    'local Emulator Google admin sign-in hook missing');
+  const v6AdminIdentity=await evaluate('window.__pr95EmulatorGoogleAdminSignIn()');
+  if(v6AdminIdentity?.email!=='cavoixanh638@gmail.com'||
+    !v6AdminIdentity?.emailVerified||!v6AdminIdentity?.providerIds?.includes('google.com'))
+    throw Error('UI6-R02 verified Emulator Google admin identity missing '+JSON.stringify(v6AdminIdentity));
+  await eventually("document.querySelectorAll('nav.primary-section-switcher .primary-section-card').length===2",
+    'verified admin A01/A02 not rendered',150);
+  console.log('UI6_R02_REAL_ADMIN_TWO_NAV_PASS',JSON.stringify({uid:v6AdminIdentity.uid,provider:'google.com',navCount:2}));
+  // Keep the original strict geometry, hover, theme and fixed-size checks;
+  // the only change is the correctly authenticated role in which they run.
+  const mainSectionCards=await evaluate(`(()=>{
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
+    const labels=cards.map(el=>el.querySelector('.section-card-title')?.textContent);
+    const boxes=cards.map(el=>el.getBoundingClientRect());
+    const geometry=cards.map(el=>{
+      const title=el.querySelector('.section-card-title'),slot=el.querySelector('.section-card-state');
+      const r=title?.getBoundingClientRect(),badge=slot?.getBoundingClientRect(),button=el.getBoundingClientRect();
+      const range=document.createRange();
+      if(title)range.selectNodeContents(title);
+      const pieces=range.getClientRects().length;
+      return {lines:pieces,rightInset:button.right-(badge?.right??0),
+        titleFits:!!r&&!!badge&&r.right<badge.left-2,
+        overflow:!!title&&title.scrollWidth>title.clientWidth+1,
+        badgeWidth:badge?.width};
+    });
+    const selected=cards.find(el=>el.classList.contains('active'));
+    const unselected=cards.find(el=>!el.classList.contains('active'));
+    const activeStyle=selected?getComputedStyle(selected):null;
+    const idleStyle=unselected?getComputedStyle(unselected):null;
+    const restrainedGradient=activeStyle?.backgroundImage.includes('linear-gradient')&&idleStyle?.backgroundImage==='none';
+    const distinct=activeStyle?.backgroundColor!==idleStyle?.backgroundColor;
+    const border=activeStyle?parseFloat(activeStyle.borderTopWidth)>=2:false;
+    const noIcons=nav.querySelectorAll('.section-card-icon').length===0;
+    const activeBadge=!!selected&&getComputedStyle(selected.querySelector('.section-card-state')).backgroundColor!=='rgba(0, 0, 0, 0)';
+    const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
+    return {ok:nav?.getBoundingClientRect().width<=1000&&
+      restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
+      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=8&&g.rightInset<=29)&&
+      Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
+      Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
+      cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
+      labels[1]==='Danh sách các ND trình HĐND'&&
+      boxes.every(box=>box.width>=300&&box.height>=42&&box.height<=72)&&
+      !nav.querySelector('.section-card-description')&&
+      getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
+      getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
+      cards.every(el=>el.querySelector('.section-card-state')?.textContent==='Đang xem')&&
+      Math.abs(boxes[0].width-boxes[1].width)<1&&
+      Math.abs(boxes[0].height-boxes[1].height)<1&&
+      cards.filter(el=>el.classList.contains('active')).length===1&&
+      !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
+      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
+  })()`);
+  if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+  const compactNavigation=await evaluate(`(()=>{
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const cards=[...(nav?.querySelectorAll('.primary-section-card')??[])];
+    return {count:cards.length,heights:cards.map(x=>x.getBoundingClientRect().height),
+      focusable:cards.every(x=>x.tagName==='BUTTON'&&!x.disabled),
+      active:cards.filter(x=>x.classList.contains('active')).length,
+      navGap:parseFloat(getComputedStyle(nav).rowGap)};
+  })()`);
+  if(compactNavigation.count!==2||compactNavigation.active!==1||
+      !compactNavigation.focusable||compactNavigation.heights.some(h=>h>72||h<42))
+    throw Error('PR95 compact navigation regression '+JSON.stringify(compactNavigation));
+  const compactNavigationShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-nav-compact-synthetic.png',
+    Buffer.from(compactNavigationShot.data,'base64'));
+  console.log('PR95_COMPACT_NAVIGATION_PASS',JSON.stringify(compactNavigation));
+  console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
+  console.log('PRIMARY_CARD_TABS_NO_ICONS_PASS',JSON.stringify({widths:mainSectionCards.widths,cardDepth:mainSectionCards.cardDepth,activeBadge:mainSectionCards.activeBadge}));
+
+  // Theme2 is a visual skin: a very subtle gradient ONLY on the active tab,
+  // solid Imperial Sky action buttons, white/ice surfaces elsewhere.
+  const imperial=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell');
+    const tabs=[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')];
+    const active=tabs.find(el=>el.classList.contains('active')),
+      inactive=tabs.find(el=>!el.classList.contains('active'));
+    const ac=getComputedStyle(active),ic=getComputedStyle(inactive);
+    const fixture=document.createElement('div');
+    fixture.style.cssText='position:fixed;top:80px;left:30px;z-index:100000;';
+    fixture.innerHTML='<button class="button primary">Lưu</button><button class="button ghost">Khác</button><input type="text" />';
+    shell.appendChild(fixture);
+    const solid=getComputedStyle(fixture.querySelector('.button.primary')),
+      ghost=getComputedStyle(fixture.querySelector('.button.ghost'));
+    const result={scope:shell.classList.contains('imperial-sky-theme'),
+      gradient:ac.backgroundImage,activeInk:ac.color,activeBorder:ac.borderTopColor,
+      inactiveFill:ic.backgroundColor,inactiveInk:ic.color,
+      actionFill:solid.backgroundColor,actionInk:solid.color,
+      ghostInk:ghost.color,activeBox:active.getBoundingClientRect().width,
+      inactiveBox:inactive.getBoundingClientRect().width};
+    fixture.remove();return result;
+  })()`);
+  if(!imperial.scope||
+    !imperial.gradient.includes('linear-gradient')||
+    !imperial.gradient.includes('36, 90, 121')||
+    !imperial.gradient.includes('46, 111, 149')||
+    imperial.activeInk!=='rgb(248, 251, 253)'||
+    imperial.activeBorder!=='rgb(36, 90, 121)'||
+    imperial.inactiveFill!=='rgb(242, 248, 252)'||
+    imperial.inactiveInk!=='rgb(53, 85, 107)'||
+    imperial.actionFill!=='rgb(46, 111, 149)'||
+    imperial.actionInk!=='rgb(255, 255, 255)'||
+    imperial.ghostInk!=='rgb(53, 85, 107)'||
+    Math.abs(imperial.activeBox-imperial.inactiveBox)>1)
+    throw Error('Imperial Sky must style chrome without changing geometry: '+JSON.stringify(imperial));
+  console.log('THEME2_IMPERIAL_SKY_CHROME_PASS',JSON.stringify(imperial));
+
+  // The inactive label reserves exactly the same space as "Đang xem".
+  // Switching either main tab must not resize either button.
+  const beforeSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}))`);
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0].click()");
+  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:first-child')?.classList.contains('active')===true",
+    'Overview tab did not become active');
+  const duringSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
+      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1].click()");
+  await eventually("document.querySelector('nav.primary-section-switcher button.primary-section-card:last-child')?.classList.contains('active')===true",
+    'List tab did not become active again');
+  const afterSwitch=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')]
+    .map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,
+      state:getComputedStyle(el.querySelector('.section-card-state')).visibility,
+      gradient:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color}))`);
+  const stableSize=beforeSwitch.every((item,i)=>
+    Math.abs(item.width-duringSwitch[i].width)<1&&
+    Math.abs(item.height-duringSwitch[i].height)<1&&
+    Math.abs(item.width-afterSwitch[i].width)<1&&
+    Math.abs(item.height-afterSwitch[i].height)<1);
+  if(!stableSize||duringSwitch[0].state!=='visible'||duringSwitch[1].state!=='hidden'||
+    afterSwitch[0].state!=='hidden'||afterSwitch[1].state!=='visible'||
+    !duringSwitch[0].gradient.includes('linear-gradient')||
+    duringSwitch[1].gradient!=='none'||
+    !afterSwitch[1].gradient.includes('linear-gradient')||
+    afterSwitch[0].gradient!=='none')
+    throw Error('Main tabs changed size/hidden-label spacing while switching: '+
+      JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
+  console.log('PRIMARY_TABS_FIXED_SIZE_PASS',JSON.stringify({beforeSwitch,duringSwitch,afterSwitch}));
+
+  for(const [selector,color] of [['.active','rgb(248, 251, 253)'],[':not(.active)','rgb(53, 85, 107)']]){
+    const query='nav.primary-section-switcher .primary-section-card'+selector;
+    const p=await evaluate(`(()=>{
+      const el=document.querySelector(${JSON.stringify(query)});
+      el?.scrollIntoView({block:'center',inline:'nearest'});
+      const r=el?.getBoundingClientRect();return r?{x:r.left+r.width/2,y:r.top+r.height/2}:null;
+    })()`);
+    if(!p)throw Error('No main tab for 3D hover '+selector);
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:p.x,y:p.y});
+    await new Promise(resolve=>setTimeout(resolve,270));
+    const hover=await evaluate(`(()=>{
+      const el=document.querySelector(${JSON.stringify(query)});
+      const style=getComputedStyle(el);
+      return {hover:el.matches(':hover'),liftY:new DOMMatrixReadOnly(style.transform).m42,
+        color:style.color,shadow:style.boxShadow,
+        titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
+    })()`);
+    if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
+      hover.color!==color||hover.titleSize<15||hover.titleSize>17)
+      throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
+  }
+  // V3 cards now start near the top. x=785,y=9 is over a card, NOT mouseleave.
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:3,y:105});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const navReset=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')]
+    .every(el=>Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)<.25)`);
+  if(!navReset)throw Error('Main tabs still elevated after mouseleave');
+  console.log('HOVER_3D_B_MAIN_TABS_PASS');
+
+
+  // Original real Firebase report witness runs only in the verified admin route.
+  // Verify the actual Report, not only an inserted CSS probe or a list fixture.
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+  await eventually("document.querySelector('.report-table tbody')?.textContent?.includes('Sở kiểm thử')===true",
+    'Real Report did not aggregate Firebase V2 seeded department');
+  const firebaseReport=await evaluate(`(()=>{
+    const tables=[...document.querySelectorAll('.report-surface .report-table')];
+    return {tables:tables.length,group:tables.some(table=>
+      table.querySelector('tbody')?.textContent?.includes('Sở kiểm thử')),
+      counts:tables.flatMap(table=>[...table.querySelectorAll('tbody button.count-drill')]
+        .map(button=>Number(button.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
+  })()`);
+  if(!firebaseReport.group||firebaseReport.counts.length===0)
+    throw Error('Firebase V2 seeded counts are absent from real Report: '+JSON.stringify(firebaseReport));
+  console.log('FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS',JSON.stringify(firebaseReport));
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1]?.click()");
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'List did not restore Firebase V2 rows after Report navigation');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
     const selectors=['.topbar','.nav-tabs'];
