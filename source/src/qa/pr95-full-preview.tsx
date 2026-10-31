@@ -125,9 +125,14 @@ export function Pr95FullPreview(){
   const switchRole=(next:Role)=>{
     setMenuOpen(false);setDrill(null);setRole(next);
     if(next!=='admin')setReferenceCodesOn(false);
-    if(next==='guest')setPage(previous=>previewCanOpenPage('guest',previous)?previous:'items');
-    setNotice('Đã chuyển sang '+(next==='admin'?'quản trị':'khách')+
-      ' MÔ PHỎNG — không đăng nhập Google/Firebase; không cấp quyền thật.');
+    // The guest has no large navigation tiles. Return to the List even after
+    // logout from a report or private admin page; preserve unrelated notices.
+    if(next==='guest'){
+      setPage('items');
+      setNotice(previous=>previous.startsWith('Đã chuyển sang ')?'':previous);
+    }else{
+      setNotice('Đã chuyển sang quản trị MÔ PHỎNG — không đăng nhập Google/Firebase; không cấp quyền thật.');
+    }
   };
   const openPage=(next:Page)=>{
     setMenuOpen(false);
@@ -171,7 +176,7 @@ export function Pr95FullPreview(){
       <div className="pr95-preview-product" aria-label="HopHDND bản xem thử">
         HopHDND <span>UI V3 · DEMO</span>
       </div>
-      <nav className="nav-tabs primary-section-switcher pr95-preview-nav"
+      {admin&&<nav className="nav-tabs primary-section-switcher pr95-preview-nav"
         aria-label="Hai phần dữ liệu chính">
         {nav.map(entry=><button key={entry.key} data-ui-reference-nav={entry.key} type="button"
           className={'primary-section-card'+(page===entry.key?' active':'')}
@@ -180,7 +185,7 @@ export function Pr95FullPreview(){
           <span className="section-card-copy"><strong className="section-card-title">{entry.label}</strong></span>
           {page===entry.key&&<span className="section-card-state">Đang xem</span>}
         </button>)}
-      </nav>
+      </nav>}
       <div className="pr95-preview-gear-zone" ref={gearZone}>
         <button type="button" className="pr95-preview-gear" aria-label="Mở cài đặt demo"
           aria-haspopup="true" aria-controls="pr95-preview-gear-menu" aria-expanded={menuOpen}
@@ -239,8 +244,10 @@ export function Pr95FullPreview(){
           group={group} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
       </section>}
       {(page==='items'||(page==='items-customize'&&admin))&&<section aria-label="Danh sách hồ sơ demo">
-        <div className="pr95-preview-section-heading"><h2>{page==='items-customize'?'Tùy chỉnh Danh sách (RAM)':'Danh sách các ND trình HĐND'}</h2>
-          {admin&&<small>Chỉ áp dụng trong bản demo, không lưu máy chủ</small>}</div>
+        {page==='items-customize'&&<div className="pr95-preview-section-heading">
+          <h2>Tùy chỉnh Danh sách (RAM)</h2>
+          <small>Chỉ áp dụng trong bản demo, không lưu máy chủ</small>
+        </div>}
         <ItemList key={'preview-list-'+revision+'-'+role+'-'+page} items={items} drafts={{}} errors={{}}
           busy={false} readOnly={false} sourceKind="demo" sourceKey={sourceKey}
           catalog={catalog} initialLayout={layout}
