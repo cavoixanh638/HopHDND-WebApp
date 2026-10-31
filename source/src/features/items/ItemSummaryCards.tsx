@@ -1,10 +1,11 @@
 import {useMemo} from 'react';
+import {useSummaryDiagnosticVisibility} from './summary-diagnostic-visibility';
 import type {ListKind} from './list-toolbar-filters';
 import type {Item} from '../../../shared/types';
 import {summarizeListItems,type SummaryStage,type SummarySelection} from '../../domain/item-summary';
 
-function StageCard({stage,selection,onSelect}: {stage:SummaryStage;selection:SummarySelection|null;
-  onSelect:(selection:SummarySelection)=>void}){
+function StageCard({stage,selection,onSelect,showDiagnostics}: {stage:SummaryStage;selection:SummarySelection|null;
+  onSelect:(selection:SummarySelection)=>void;showDiagnostics:boolean}){
   const pct=stage.percent??0;
   return <article className={'item-summary-card item-summary-'+stage.id}
     data-summary-card={stage.id}>
@@ -36,9 +37,9 @@ function StageCard({stage,selection,onSelect}: {stage:SummaryStage;selection:Sum
         <span>{bucket.label}</span><strong>{bucket.count}</strong>
       </button>)}
     </div>
-    <p className="item-summary-unmatched" role="note">
+    {showDiagnostics&&<p className="item-summary-unmatched" role="note">
       Chưa chuẩn hóa / ngoài nhóm: <strong>{stage.unmatched}</strong> (thuộc tổng {stage.total})
-    </p>
+    </p>}
   </article>;
 }
 /** Rendered immediately above the MAIN ItemList table; never in report popups. */
@@ -48,6 +49,7 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
   kindSelection?:ListKind|null;onSelectKind?:(kind:ListKind)=>void;
 }){
   const value=useMemo(()=>summarizeListItems(items),[items]);
+  const showDiagnostics=useSummaryDiagnosticVisibility();
   const activeStage=value.stages.find(stage=>stage.id===selection?.report);
   const activeBucket=activeStage?.buckets.find(bucket=>bucket.stage===selection?.stage);
   return <section className="item-summary-grid" aria-label="Bốn thẻ tổng hợp Danh sách nội dung">
@@ -75,7 +77,7 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
       </div>
     </article>
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}
-      selection={selection} onSelect={onSelect}/>)}
+      selection={selection} onSelect={onSelect} showDiagnostics={showDiagnostics}/>)}
     {kindSelection&&<div className="item-summary-active-filter" role="status">
       <span>Đang lọc loại văn bản: <strong>{kindSelection==='qppl'?'NQ QPPL':kindSelection==='hc'?'NQ HC':kindSelection==='bc'?'BC':kindSelection}</strong></span>
       <button type="button" className="button ghost" onClick={()=>onSelectKind?.(kindSelection)}>Bỏ lọc loại</button>
