@@ -796,19 +796,22 @@ try{
     const summary=document.querySelector('.item-summary-grid');
     const heading=document.querySelector('.item-list-page-title');
     const toolbar=document.querySelector('.list-filter-toolbar');
+    const activeBar=document.querySelector('.list-active-filters');
     const status=document.querySelector('.item-filter-status-slot');
     const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!summary||!heading||!toolbar||!viewport||!sort||stt||nav)
-      return {ok:false,reason:'Guest List B/C/heading/F missing, nav or STT unexpectedly present'};
-    const rects=[topbar,summary,heading,toolbar,viewport].map(x=>x.getBoundingClientRect());
+    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||!sort||stt||nav)
+      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, nav or STT unexpectedly present'};
+    const rects=[topbar,summary,heading,toolbar,activeBar,viewport].map(x=>x.getBoundingClientRect());
     const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
     const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
       heading.compareDocumentPosition(toolbar)&Node.DOCUMENT_POSITION_FOLLOWING &&
-      toolbar.compareDocumentPosition(viewport)&Node.DOCUMENT_POSITION_FOLLOWING;
+      toolbar.compareDocumentPosition(activeBar)&Node.DOCUMENT_POSITION_FOLLOWING &&
+      activeBar.compareDocumentPosition(viewport)&Node.DOCUMENT_POSITION_FOLLOWING;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    const ok=!!order&&gaps.every((gap,i)=>gap>=-2&&gap<([100,24,30,30][i]))&&
+    // Preserve L3's semantic order and L4's strict gaps around real filter content.
+    const ok=!!order&&gaps.every((gap,i)=>gap>=(i>=3?0:-2)&&gap<([100,24,30,24,30][i]))&&
       summary.querySelectorAll('[data-summary-card]').length===4&&
       document.querySelectorAll('.item-list-page-title').length===1&&
       getComputedStyle(heading).textAlign==='center'&&

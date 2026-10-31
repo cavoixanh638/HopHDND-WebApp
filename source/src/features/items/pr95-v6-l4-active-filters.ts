@@ -28,7 +28,7 @@ const kindNames:Record<ListKind,string>={
   qppl:'NQ QPPL',hc:'NQ HC',bc:'BC',
   'nq-unknown':'NQ chưa phân loại','unclassified':'Chưa phân loại'
 };
-const officialLabels=new Map(EXCEL_SOURCE_COLUMNS.map(column=>[column.key,column.label]));
+const officialLabels=new Map<string,string>(EXCEL_SOURCE_COLUMNS.map(column=>[column.key,column.label]));
 const nonEmpty=(value:unknown)=>typeof value==='string'&&value.trim()!=='';
 
 /** All effective filters, including saved state for physically hidden columns
