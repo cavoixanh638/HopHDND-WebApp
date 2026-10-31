@@ -51,12 +51,14 @@ npx vitest run tests/pr95-v5-l1-dropdown.test.tsx tests/cell-picker-lazy.test.ts
 npm run build:compact:qa
 node scripts/pr95-v5-l1-dropdown-browser.mjs
 node scripts/pr95-v5-l1-race-browser.mjs
+node scripts/pr95-v6-l5-scroll-browser.mjs  # cuộn khi đang mở + visualViewport pinch 390px
 # Backend safety là phép thử riêng, chỉ chạy trong Auth/RTDB Emulator:
 npm run test:firebase
 ```
 
 Dấu mốc:
 - `PR95_V5_L1_RECT`, `PR95_V5_L1_REAL_POINTER_SINGLE_CLICK_HANDOFF_PASS`, `PR95_V5_L1_REAL_CHROME_PASS`: browser thật trên List và ReportDetailGrid synthetic.
+- `PR95_V6_L5_SCROLL_VISUAL_VIEWPORT_PASS`: Chrome thật cuộn khi menu mở, anchor ra khỏi vùng clip thì đóng; thay đổi visualViewport khi pinch, ảnh trước/sau và patch=0. Đây là bổ sung audit V6, khác với công thức placement unit.
 - `R_V5_02_PENDING_A`, `R_V5_02_LATE_ACK_SINGLE_CLICK_SAME_FIELD_PASS`, `R_V5_02_LEASE_NOOP_LISTENER_CLEANUP_PASS`: controlled ACK; kiểm chính chuỗi `acquire:A,ack:A,cancel:A,acquire:B,ack:B`, canceledA=1, canceledB=0 trước Esc và patches=0.
 - Screenshot `pr95-v5-l1-*.png` được tạo trong `source/` bởi runner Chrome; artifact CI có thời hạn, nên **source + oracle trong test** mới là tham chiếu lâu dài. Nếu một case chưa được runner kiểm, ghi `not covered`, không gán PASS bằng suy đoán.
 
@@ -64,7 +66,7 @@ Dấu mốc:
 
 | Nhóm | Nguồn và regression trong repo | Khi cần chạy thêm |
 |---|---|---|
-| Dropdown/handoff/placement/focus | `src/features/items/CellPicker.tsx`, `pr95-v5-l1-picker-{coordinator,placement}.ts`; `tests/pr95-v5-l1-dropdown.test.tsx`; `scripts/pr95-v5-l1-{dropdown,race}-browser.mjs` | Bất kỳ thay đổi picker/layout/scroll |
+| Dropdown/handoff/placement/focus | `src/features/items/CellPicker.tsx`, `pr95-v5-l1-picker-{coordinator,placement}.ts`; `tests/pr95-v5-l1-dropdown.test.tsx`; `scripts/pr95-v5-l1-{dropdown,race}-browser.mjs`, `scripts/pr95-v6-l5-scroll-browser.mjs` | Bất kỳ thay đổi picker/layout/scroll |
 | Role/grant/revoke/lease/epoch | `src/data/cell-edit-leases.ts`, `tests/exclusive-cell-freeze.test.ts`, `tests/pr95-app-lease-epoch.test.ts`, `tests/inline-permissions.test.tsx` | Khi thay open/close, quyền hoặc save |
 | HC/BC Build lock | `src/domain/pr95-v5-l4-build-effective.ts`, `tests/pr95-v5-l4-hc-bc-build.test.ts`, `tests/pr95-v5-l5-progress-build-write-guard.test.ts` | Nếu thay quyền chỉnh trạng thái hoặc raw projection |
 | Raw Excel/history identity | `src/data/excel-transfer.ts`, `tests/pr95-l4-excel-contract.test.ts`, `tests/excel-transfer.test.ts` | Khi thay save/projection/import/export |
