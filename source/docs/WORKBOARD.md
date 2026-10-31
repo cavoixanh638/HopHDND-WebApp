@@ -1,3 +1,21 @@
+## PR95 UI V6 — BẢNG BÀN GIAO CHỐT 31/10/2026 (chưa ghép candidate)
+
+**Nguồn chi tiết:** [HOPHDND_HANDOFF_2026-10-31](tasks/HOPHDND_HANDOFF_2026-10-31.md), [Codex giao integrator L1](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6544932225). **Baseline V6 / PR95 Draft V5 HEAD:** c79da8f34e0cb1f774cf1b73f5eff31b65b727f2.
+
+| Luồng | Đã bàn giao và trạng thái | Việc tiếp |
+| --- | --- | --- |
+| L1 | [PR136](https://github.com/cavoixanh638/HopHDND-WebApp/pull/136) **33f751cd3827a5341110c449ac9e0329793d00eb**, UI6-R01 VERIFIED, 5/5 CI SUCCESS. | **L1 là integrator duy nhất**, giữ worker HEAD; mở nhánh candidate từ V5 baseline. |
+| L2 | [PR140](https://github.com/cavoixanh638/HopHDND-WebApp/pull/140) **2cbc3f75ae442f18ea92d39cd605641f817886d0**, 3/3 SUCCESS, highlight + skill. | Giữ SHA, không ghép riêng. |
+| L3 | [PR137](https://github.com/cavoixanh638/HopHDND-WebApp/pull/137) **5e87c9f4b8b033e2a8270ca70f180f5b0882b953**, UI6-R02 VERIFIED, 10/10 SUCCESS. | Giữ SHA, không ghép riêng. |
+| L4 | [PR139](https://github.com/cavoixanh638/HopHDND-WebApp/pull/139) **e9a10d2b10c26574166f85f90b1b472d4b3bde70**, 6/6 SUCCESS, active filters. | Giữ SHA, lưu ý conflict footer/ItemList. |
+| L5 | [PR138](https://github.com/cavoixanh638/HopHDND-WebApp/pull/138) **4f5d886d4b827b035bae97cfb6d131f3df2adde0**, 2/2 SUCCESS, picker audit + skill. | Giữ SHA, kiểm lại picker trên candidate mới. |
+| **Tích hợp V6** | 26/26 workflow là của **5 nhánh độc lập**, **chưa có candidate PASS**. | L1 nhận 5 SHA, giải xung đột ItemList/shared smoke, CI+Chrome/Emulator exact candidate, Draft PR base PR95, bàn giao Codex. |
+| **Phát hành** | PR95 chưa merge main; V5 synthetic preview đã publish; 1 duplicate Chrome-CDP workflow sau publish FAILED trước UI assertion. | **HOLD** V6 preview, Firebase Rules/Hosting/Functions, production IO và PR95→main cho đến phê duyệt riêng. |
+
+Nhật ký cũ bên dưới là lịch sử, không thay trạng thái snapshot này.
+
+---
+
 ## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
 
 | Mã | Trạng thái | Release gate |
