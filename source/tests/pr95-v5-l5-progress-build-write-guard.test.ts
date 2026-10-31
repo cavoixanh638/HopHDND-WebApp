@@ -286,18 +286,19 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(after.revision).toBe(old.revision);
     expect(after.history??{}).toEqual(old.history??{});
   },25000);
-  it('candidate guard does not forbid importing fresh HC/BC rows or V2 snapshot restore',async()=>{
+  it('active V2 rejects inline insertion; legacy HC is preserved for approved restore',async()=>{
     const admin=adminDb();
     const fresh=rows().find(x=>x.recordId==='hc')!;
-    // Admin import a completely NEW id in active generation; no prior data
-    // means this is dataset creation, NOT editing an existing Build field.
+    // Importing directly into an active generation is deliberately forbidden:
+    // there must be a reviewed candidate and atomic generation-pointer commit.
+    // See firebase-versioned-replacement.test.ts (run in THIS CI matrix):
+    // stage -> private backup -> commit -> restore with the legacy raw retained.
     const {archivedAt,...body}=fresh;
-    await assertSucceeds(set(ref(admin,path+'/imported_hc'),{
+    await assertFails(set(ref(admin,path+'/imported_hc'),{
       ...body,recordId:'imported_hc',revision:1,operationId:'v5l5_import_0001',
       updatedAt:serverTimestamp(),updatedBy:'admin'
     }));
-    expect((await current(admin,'imported_hc')).progressBuild)
-      .toBe(fresh.progressBuild);
-    // Separate staging/backup/restore scripts have their own regression suite.
+    expect((await get(ref(admin,path+'/imported_hc'))).exists()).toBe(false);
+    expect((await current(admin,'hc')).progressBuild).toBe(fresh.progressBuild);
   },25000);
 });
