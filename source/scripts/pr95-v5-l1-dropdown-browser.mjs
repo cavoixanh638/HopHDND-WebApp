@@ -234,6 +234,8 @@ try {
   await openPop('Tiến độ trình HĐND xây dựng NQ');
   const selected=await evaluate('document.querySelector(".cell-picker-popover:popover-open [role=option][aria-selected=true]")?.textContent?.trim()');
   assert(!!selected,'selected option must exist');
+  await waitFor('document.activeElement?.matches(".cell-picker-popover:popover-open [role=option]")',
+    'real option autofocused before keyboard Enter');
   await key('Enter',13);
   await waitFor('!document.querySelector(".cell-picker-popover:popover-open")','Enter same value closes');
   assert(!await evaluate('window.__l2LastPatch'),'no-op Enter creates a patch');
