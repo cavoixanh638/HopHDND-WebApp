@@ -43,10 +43,12 @@ function StageCard({stage,selection,onSelect,showDiagnostics}: {stage:SummarySta
   </article>;
 }
 /** Rendered immediately above the MAIN ItemList table; never in report popups. */
-export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,kindSelection=null,onSelectKind}:{
+export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,kindSelection=null,onSelectKind,showFilterFooters=true}:{
   items:Item[];selection:SummarySelection|null;onSelect:(selection:SummarySelection)=>void;
   onClear:()=>void;visibleCount:number;
   kindSelection?:ListKind|null;onSelectKind?:(kind:ListKind)=>void;
+  /** L4 V6 consolidates chip footers under the toolbar; default preserves existing callers. */
+  showFilterFooters?:boolean;
 }){
   const value=useMemo(()=>summarizeListItems(items),[items]);
   const showDiagnostics=useSummaryDiagnosticVisibility();
@@ -78,11 +80,11 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
     </article>
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}
       selection={selection} onSelect={onSelect} showDiagnostics={showDiagnostics}/>)}
-    {kindSelection&&<div className="item-summary-active-filter" role="status">
+    {showFilterFooters&&kindSelection&&<div className="item-summary-active-filter" role="status">
       <span>Đang lọc loại văn bản: <strong>{kindSelection==='qppl'?'NQ QPPL':kindSelection==='hc'?'NQ HC':kindSelection==='bc'?'BC':kindSelection}</strong></span>
       <button type="button" className="button ghost" onClick={()=>onSelectKind?.(kindSelection)}>Bỏ lọc loại</button>
     </div>}
-    {activeStage&&activeBucket&&<div className="item-summary-active-filter" role="status">
+    {showFilterFooters&&activeStage&&activeBucket&&<div className="item-summary-active-filter" role="status">
       <span>Đang lọc: <strong>{activeStage.title} — {activeBucket.label}</strong></span>
       <span>{visibleCount}/{value.total.total} nội dung</span>
       <button type="button" className="button ghost" onClick={onClear}>Bỏ lọc trạng thái</button>
