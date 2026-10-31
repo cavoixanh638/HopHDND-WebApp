@@ -29,6 +29,11 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
         <button type="button" className="list-active-filter-remove"
           aria-label={'Bỏ điều kiện '+condition.label+': '+condition.value}
           title={'Chỉ bỏ '+condition.label}
+          onKeyDown={event=>{
+            if(event.key!=='Enter'&&event.key!==' ')return;
+            event.preventDefault();
+            if(!event.repeat)onRemove(condition);
+          }}
           onClick={()=>onRemove(condition)}><span aria-hidden="true">×</span></button>
       </div>)}
     </div>:<p className="list-active-filter-idle">Chưa áp dụng điều kiện lọc nào.</p>}
