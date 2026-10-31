@@ -70,10 +70,19 @@ function CompactVisualQa(){
     const staff=params.get('review-staff')==='1'?
       items.map((item,index)=>index===0?{...item,
         vpLeader:'PCVP Trần Văn B',ubndLeader:'PCT Nguyễn Văn C'}:item):items;
-    if(params.get('r05')!=='1')return staff;
+    // V5 integration R03: the old highlight fixture expected a Build status
+    // on row 2, now correctly locked because that row is HC. Give only the
+    // explicitly requested ?highlight=1 RAM fixture a QPPL Build match,
+    // preserving the original "Sở chưa trình" source-field highlight oracle.
+    // Never mutate createDemoItems/default preview/production source rows.
+    const r03=params.get('highlight')==='1'
+      ?staff.map((item,index)=>index===6&&item.type==='QPPL'
+        ?{...item,progressBuild:'Sở chưa trình'}:item)
+      :staff;
+    if(params.get('r05')!=='1')return r03;
     // Synthetic only: red / amber / green in one record, neutral and
     // unknown in a second. The third includes an R03 source-specific rule.
-    return staff.map((item,index)=>index===0?{...item,
+    return r03.map((item,index)=>index===0?{...item,
       progressParty:'Sở chưa trình',progressBuild:'VP đang thực hiện',
       progressCouncil:'Đã trình HĐND'}:index===1?{...item,
       progressParty:'Không phải xin ý kiến',progressBuild:'Không phải trình',
