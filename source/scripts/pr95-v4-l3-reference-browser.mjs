@@ -299,13 +299,20 @@ try{
   await login();await until('document.querySelector("[data-role=admin]")','login again');
   assert(await noRef(),'relogin must default off after logout');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+  await nav('Danh sách');
+  await until('document.querySelector(".item-data-table tbody tr")','mobile actual List');
+  await call('window.scrollTo(0,0)');
   await gear();await toggle();
   await until('document.querySelector("[data-ui-ref-code=A01]")','mobile viewport marker');
+  assert(await js('!!document.querySelector(".item-data-table")'),'mobile List is mounted for screenshot');
   const mobile=await js('(()=>{const layer=document.querySelector("[data-ui-reference-layer]");return {width:innerWidth,hit:getComputedStyle(layer).pointerEvents,tagCount:layer.querySelectorAll("[data-ui-ref-code]").length}})()');
   assert(mobile.width===390&&mobile.hit==='none'&&mobile.tagCount>=3,'mobile overlay responsive');
   await verifyNoOcclusion('mobile-list');
   await screenshot('pr95-v4-l3-r-v4-01-mobile-list.png');
   await screenshot('pr95-v4-l3-mobile-admin.png');
+  await call('document.querySelector(".item-data-table").scrollIntoView({block:"center"})');
+  await verifyNoOcclusion('mobile-list-table');
+  await screenshot('pr95-v4-l3-r-v4-01-mobile-table.png');
   await nav('Báo cáo tổng hợp');
   await until('document.querySelector(".report-surface[data-ui-reference-report=party]")',
     'mobile real report before popup');
