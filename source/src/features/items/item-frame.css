@@ -1285,20 +1285,16 @@
   padding-top:5px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-stage-state[data-editable="true"] button.cell-picker-trigger {
-  align-items:start;
+  .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger {
+  align-items:start!important;
   border-radius:7px!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before {
   border-radius:0 7px 7px 0;
 }
-/* The editable status button has its own first-line inset. Match that inset
-   only for the row with an editable STATE, preserving read-only alignment. */
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-stage-row:has(.compact-stage-state[data-editable="true"]) .compact-stage-label {
-  padding-top:11px;
-}
+/* The button grid must start the value at the first line regardless of
+   whether it wraps. The 5px label inset now matches its own 5px top padding. */
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-row .compact-stage-state[data-highlighted="true"] {
   border-radius:7px;
