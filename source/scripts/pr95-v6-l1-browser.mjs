@@ -102,7 +102,7 @@ const visit=async(params,width=1440,height=900)=>{
     'new V6 page');
   await sleep(250);
   console.log('PR95_V6_L1_BOOT_DIAG '+JSON.stringify(await evaluate('(()=>({root:!!document.querySelector("[data-qa=pr95-v6-l1]"),'+
-    'tables:document.querySelectorAll("table").length,html:document.body.innerHTML.slice(0,700),'+
+    'tables:[...document.querySelectorAll("table")].map(t=>({className:t.className,rows:t.querySelectorAll("tbody tr").length})),rootText:document.body.textContent.slice(-1800),html:document.body.innerHTML.slice(-400),'+
     'windowError:window.__v6L1BootError??null}))()')));
   await waitFor("document.querySelector('table.item-data-table tbody tr,table.report-detail-grid tbody tr')",
     'mounted REAL table');
