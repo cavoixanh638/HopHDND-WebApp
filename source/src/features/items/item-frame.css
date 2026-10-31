@@ -1277,12 +1277,13 @@
   overflow-wrap:normal;
   word-break:normal;
 }
-/* Read-only status had no 5px button padding, so give its FIRST line the same
-   vertical origin as the label. Editable grid must start at the first line
-   instead of vertically centering 2–3 lines of long status text. */
+/* Read-only members remain FLAT with zero padding (R05 contract); align
+   their label to the same text origin. Editable values keep the existing
+   five-pixel button inset, now aligned from their first rather than middle
+   line when long statuses wrap. */
 :is(.item-data-table,.report-detail-grid) tbody td
-  .compact-stage-state:not([data-editable="true"]) {
-  padding-top:5px;
+  .compact-stage-row:has(.compact-stage-state:not([data-editable="true"])) .compact-stage-label {
+  padding-top:0;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger {
