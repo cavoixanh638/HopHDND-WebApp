@@ -162,10 +162,17 @@ try{
   await nav('Báo cáo tổng hợp');
   await until('document.querySelectorAll(".report-surface[data-ui-reference-report]").length===5',
     'five ID-anchored real reports');
-  await until('document.querySelector("[data-ui-ref-code=R01]")','R01 semantic marker');
+  // Markers are intentionally viewport-limited; scroll each report into
+  // view rather than demanding an off-screen badge be rendered.
+  await call('document.querySelector(\'.report-surface[data-ui-reference-report="party"] > .card-header\').scrollIntoView({block:"center"})');
+  await until('document.querySelector("[data-ui-ref-code=R01]")','visible R01 semantic marker');
   for(const id of ['party','build','council','nq','bc'])
     assert(await js('document.querySelector(".report-surface[data-ui-reference-report='+id+']")!==null'),
       'report semantic id '+id);
+  await call('document.querySelector(\'.report-surface[data-ui-reference-report="bc"] > .card-header\').scrollIntoView({block:"center"})');
+  await until('document.querySelector("[data-ui-ref-code=R05]")','visible R05 after scroll');
+  await call('document.querySelector(\'.report-surface[data-ui-reference-report="party"] > .card-header\').scrollIntoView({block:"center"})');
+  await until('document.querySelector("[data-ui-ref-code=R01]")','R01 after return scroll');
   await screenshot('pr95-v4-l3-admin-reports.png');
   await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
   await until('document.querySelector("dialog.report-grid-modal[open]")','actual popup opened');
