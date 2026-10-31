@@ -118,6 +118,9 @@ const openPop=async(term)=>{
     'open target only '+term);
 };
 const geometry=async(expr,label)=>{
+  // Native popover focus may scroll its source during the opening frame;
+  // assert only after the placement scroll/ResizeObserver rAF has run.
+  await sleep(150);
   const r=await evaluate('(()=>{const t='+expr+';const p=document.querySelector(".cell-picker-popover:popover-open");'+
     'if(!t||!p)return null;const a=t.getBoundingClientRect(),b=p.getBoundingClientRect();'+
     'const vv=visualViewport,top=vv?.offsetTop??0,h=vv?.height??innerHeight,left=vv?.offsetLeft??0,w=vv?.width??innerWidth;'+
