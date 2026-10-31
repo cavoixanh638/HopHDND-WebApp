@@ -183,7 +183,9 @@ async function capture(tab,name){
 const read=()=>ownerReq(PATH+'/generations/'+GEN+'/items/'+ROW);
 const rights=()=>ownerReq(PATH+'/permissions/'+GEN);
 const summarySnapshot=tab=>tab.evalJs(`(()=>{
-  const cards=[...document.querySelectorAll('.item-summary-card[data-summary-card]')];
+  const summary=document.querySelector('.item-summary-grid');
+  const grids=[...document.querySelectorAll('.item-summary-grid')];
+  const cards=[...summary?.querySelectorAll('.item-summary-card[data-summary-card]')??[]];
   const stages=cards.filter(x=>x.dataset.summaryCard!=='total').map(x=>({
     id:x.dataset.summaryCard,
     fraction:x.querySelector('.item-summary-fraction')?.textContent.trim(),
@@ -194,14 +196,19 @@ const summarySnapshot=tab=>tab.evalJs(`(()=>{
     })),
     note:x.querySelector('.item-summary-unmatched')?.textContent.trim()??null
   }));
-  const chips=[...document.querySelectorAll('button[data-summary-kind]')].map(b=>({
+  const chips=[...summary?.querySelectorAll('button[data-summary-kind]')??[]].map(b=>({
     kind:b.dataset.summaryKind,count:Number(b.querySelector('strong')?.textContent),
     pressed:b.getAttribute('aria-pressed')
   }));
   return {
-    total:Number(document.querySelector('.item-summary-total-count')?.textContent),
+    total:Number(summary?.querySelector('.item-summary-total-count')?.textContent),
+    grids:grids.length,
+    // React can temporarily retain more than one list during the draft/route
+    // transition. Check every grid, but compare one stable card tree per role.
+    sameTotalAcrossGrids:grids.length>0&&grids.every(x=>Number(x.querySelector('.item-summary-total-count')?.textContent)===Number(summary?.querySelector('.item-summary-total-count')?.textContent)),
+    noUnmatchedInAnyGuestGrid:grids.every(x=>!x.querySelector('.item-summary-unmatched')),
     diagnostics:document.querySelectorAll('.item-summary-unmatched').length,
-    leakedText:document.querySelector('.item-summary-grid')?.textContent?.includes('Chưa chuẩn hóa / ngoài nhóm')??false,
+    leakedText:grids.some(x=>x.textContent?.includes('Chưa chuẩn hóa / ngoài nhóm')),
     stages,chips,buttons:stages.map(x=>x.buckets.length),
     guestClass:document.querySelector('.app-shell')?.classList.contains('guest-view')
   };
@@ -238,6 +245,7 @@ async function test(){
   step('GUEST_INITIAL_DENIED_PASS',initial);
   const v5GuestInitial=await summarySnapshot(guest);
   assert.equal(v5GuestInitial.total,3,'all three synthetic rows are active');
+  assert.equal(v5GuestInitial.sameTotalAcrossGrids,true);
   assert.deepEqual(v5GuestInitial.buttons,[4,4,3]);
   assert.deepEqual(v5GuestInitial.chips.map(x=>x.kind),['qppl','hc','bc']);
   assert.equal(v5GuestInitial.diagnostics,0,'guest diagnostic nodes must be absent');
@@ -257,6 +265,7 @@ async function test(){
     'verified admin sees unknown QPPL fixture in real App');
   const v5AdminSummary=await summarySnapshot(admin);
   assert.equal(v5AdminSummary.guestClass,false);
+  assert.equal(v5AdminSummary.sameTotalAcrossGrids,true);
   assert.equal(v5AdminSummary.diagnostics,3,'verified admin must see all C01/C02/C03 diagnostics');
   assert.equal(v5AdminSummary.leakedText,true);
   assert.deepEqual(v5AdminSummary.buttons,[4,4,3]);
@@ -416,6 +425,8 @@ async function test(){
     stillOriginalNote:true,noNewAudit:!row.history?.['3']});
   const v5GuestRevoked=await summarySnapshot(guest);
   assert.equal(v5GuestRevoked.diagnostics,0,'revoke leaves no diagnostic in guest DOM');
+  assert.equal(v5GuestRevoked.noUnmatchedInAnyGuestGrid,true);
+  assert.equal(v5GuestRevoked.sameTotalAcrossGrids,true);
   assert.equal(numericSnapshot(v5GuestRevoked),numericSnapshot(v5GuestInitial));
   step('REAL_APP_REVOKED_GUEST_STILL_NO_DIAGNOSTICS_PASS',{diagnostics:0});
   // Nav regression: App reports, account sign-in, exported Excel controls.
