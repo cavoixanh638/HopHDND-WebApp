@@ -2005,6 +2005,22 @@ try{
   })()`);
   if(!wideShell)throw Error('Site shell still capped on 2200px desktop display');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  // UI6-R02: previous report, popup and tab checks used a genuine local
+  // Emulator Google admin. Log out through Firebase UI, then check guest
+  // List and gear without creating any admin/route bypass.
+  await evaluate("(()=>{const menu=document.querySelector('details.v3-settings-menu');"+
+    "if(!menu)throw Error('Admin gear missing');menu.open=true;"+
+    "const account=[...menu.querySelectorAll('.options-popover > button')].find(b=>b.textContent.trim()==='Tài khoản và dữ liệu');"+
+    "if(!account)throw Error('Verified admin account action missing');account.click();})()");
+  await eventually("!!document.querySelector('section[aria-label=\"Tài khoản Firebase\"]')",
+    'verified admin account panel missing',100);
+  await evaluate("(()=>{const b=[...document.querySelectorAll('section[aria-label=\"Tài khoản Firebase\"] button')].find(b=>b.textContent.trim()==='Đăng xuất');"+
+    "if(!b)throw Error('Real Firebase logout missing');b.click();})()");
+  await eventually("!!document.querySelector('.v3-settings-menu .v3-gear-login')&&"+
+    "!!document.querySelector('.item-data-region')&&!document.querySelector('nav.primary-section-switcher')",
+    'real Firebase signout must return to guest List without navigation',150);
+  console.log('UI6_R02_REAL_AUTH_SIGNOUT_RETURNS_GUEST_LIST_NO_NAV_PASS');
+
   // The guest must NEVER enter an account/settings page from a public UI
   // action; login is only inside the small corner gear, without triggering
   // real Google OAuth in the synthetic Chrome check.
@@ -2020,16 +2036,16 @@ try{
       !document.querySelector('.settings-hub-tabs,.account-source-actions,.source-column-visibility')&&
       !document.querySelector('.guest-signin')&&
       !document.querySelector('.app-shell.settings-page')&&
-      tabs.length===2&&tabs.every(t=>Math.abs(t.getBoundingClientRect().height-50)<1)&&
-      sr.width===34&&sr.height===34&&
-      gr.right>innerWidth-85&&nav.getBoundingClientRect().top<75,
+      tabs.length===0&&!nav&&
+      !!document.querySelector('.item-data-region .item-list-page-title')&&
+      sr.width===34&&sr.height===34&&gr.right>innerWidth-85,
       actions:links,gear:{right:gr.right,top:sr.top,width:sr.width,height:sr.height},
       tabs:tabs.map(t=>t.getBoundingClientRect().height)};
   })()`);
-  if(!guestOptions.ok)throw Error('V3 guest corner gear, two 50px tabs or admin guard failed: '+JSON.stringify(guestOptions));
+  if(!guestOptions.ok)throw Error('UI6-R02 guest corner gear, zero navigation cards or admin guard failed: '+JSON.stringify(guestOptions));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
-  console.log('V3_L1_GUEST_NAV_GEAR_ADMIN_HIDDEN_PASS',JSON.stringify(guestOptions));
+  console.log('UI6_R02_GUEST_ZERO_NAV_GEAR_ADMIN_HIDDEN_PASS',JSON.stringify(guestOptions));
 
   // Open the real ItemList component in a standalone, synthetic-only QA mount.
   // This is not the deployed admin user journey; it verifies actual production
