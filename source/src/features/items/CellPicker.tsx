@@ -50,6 +50,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     return Promise.resolve();
   };
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // Waiting disables this button temporarily: only external revoke/lock
+  // should invalidate a successfully authorized open request.
+  const externallyDisabledRef=useRef(disabled);
+  externallyDisabledRef.current=disabled;
   const popoverRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -100,8 +104,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   },[leaseProps,recordId,field]);
   // A popup may unmount during a role revoke, navigation or data generation
   // switch. Do not allow a late lease ACK to resurrect that editor.
-  useEffect(()=>()=>{requestEpoch.current++;releaseCellPickerClaim(
-    triggerRef.current,cancelUnused());},[]);
+  useEffect(()=>{
+    const element=triggerRef.current;
+    return()=>{requestEpoch.current++;releaseCellPickerClaim(element,cancelUnused());};
+  },[]);
   useEffect(() => {
     if (!open) return;
     const popover = popoverRef.current;
@@ -235,7 +241,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         void claimCellPicker(trigger,()=>close()).then(async()=>{
           if(epoch!==requestEpoch.current)return;
           if(leaseProps)await leaseManager!.acquire(recordId!,field!,editorKind);
-          if(epoch!==requestEpoch.current||!trigger.isConnected||trigger.disabled){
+          if(epoch!==requestEpoch.current||!trigger.isConnected||externallyDisabledRef.current){
             if(leaseProps&&!leaseManager!.isPending(recordId!,field!))
               await leaseManager!.cancel(recordId!,field!);
             return;
