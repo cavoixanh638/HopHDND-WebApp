@@ -2542,10 +2542,17 @@ try{
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    // V4 default demo stores BCH, not old "Ban Chấp hành". The QA wildcard
+    // deliberately still targets that LEGACY source string: it MUST NOT leak
+    // onto a new canonical label. Separate unit fixtures prove the same
+    // wildcard rule still highlights the actual legacy string.
+    const currentLevel=level?.textContent??'';
     return {ok:d?.background==='rgb(204, 0, 0)'&&d.text==='rgb(255, 255, 255)'&&
       t?.background!=='rgb(204, 0, 0)'&&c?.background!=='rgb(204, 0, 0)'&&
-      l?.background==='rgb(18, 52, 86)'&&p?.background==='rgb(255, 238, 85)'&&
-      p?.text==='rgb(0, 0, 0)',dept:d,type:t,content:c,level:l,progressBuild:p};
+      currentLevel.includes('BCH')&&
+      l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
+      p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,progressBuild:p};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
