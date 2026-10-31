@@ -3628,7 +3628,15 @@ try{
     if(current===role)return;
     if(!['guest','admin'].includes(role))throw Error('R-V3-03 invalid synthetic role');
     const label=role==='admin'?'Đăng nhập quản trị (mô phỏng)':'Đăng xuất mô phỏng';
-    const changed=await evaluate("(()=>{const gear=document.querySelector('.pr95-preview-gear');if(!gear)return false;if(!document.querySelector('.pr95-preview-gear-menu'))gear.click();const label="+JSON.stringify(label)+";const button=[...document.querySelectorAll('.pr95-preview-gear-menu button')].find(b=>b.textContent.trim()===label);if(!button)return false;button.click();return true;})()");
+    const hasGear=await evaluate("!!document.querySelector('.pr95-preview-gear')");
+    if(!hasGear)throw Error('R-V3-03 L5 gear missing');
+    if(!await evaluate("!!document.querySelector('.pr95-preview-gear-menu')"))
+      await evaluate("document.querySelector('.pr95-preview-gear').click()");
+    // React/Preact commits the popover in the next render, not synchronously
+    // inside the same evaluate() that clicked the gear.
+    await eventually("[...document.querySelectorAll('.pr95-preview-gear-menu button')].some(b=>b.textContent.trim()==="+JSON.stringify(label)+")",
+      'R-V3-03 verified gear menu action '+label);
+    const changed=await evaluate("(()=>{const label="+JSON.stringify(label)+";const button=[...document.querySelectorAll('.pr95-preview-gear-menu button')].find(b=>b.textContent.trim()===label);if(!button)return false;button.click();return true;})()");
     if(!changed)throw Error('R-V3-03 role change through V3 gear unavailable: '+label);
     await eventually("document.querySelector('.pr95-full-preview')?.dataset.role==="+JSON.stringify(role),
       'R-V3-03 gear role transition missing');
