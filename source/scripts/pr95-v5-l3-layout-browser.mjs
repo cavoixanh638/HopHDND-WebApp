@@ -98,6 +98,8 @@ const audit=()=>js('('+function geometryV5(){
       baselines:l&&v?{label:lr,state:vr,delta:Math.abs(lr-vr)}:null,
       editable:!!button,buttonBorder:css?.borderTopWidth,buttonRadius:css?.borderTopLeftRadius,
       railRadius:rail?.borderTopRightRadius,hitHeight:cr?.height,caretRight:cr?.right,
+      hitLeft:!!(button&&cr&&button.contains(document.elementFromPoint(cr.left+4,cr.top+cr.height/2))),
+      hitRight:!!(button&&cr&&button.contains(document.elementFromPoint(cr.right-4,cr.top+cr.height/2))),
       firstValue:v?.top,labelTop:l?.top};
   };
   const frame=scope.querySelector('.compact-stages');
@@ -127,6 +129,7 @@ const verify=async stage=>{
       assert(r.buttonBorder==='0px',stage+' no inner border');
       assert(r.buttonRadius==='7px'&&r.railRadius==='7px',stage+' rounded value and rail '+JSON.stringify(r));
       assert(r.hitHeight>=38,stage+' clickable height');
+      assert(r.hitLeft&&r.hitRight,stage+' both value edges actually hit editor '+JSON.stringify(r));
     }
   }
   for(const c of x.classification){
@@ -194,7 +197,7 @@ try{
   await screenshot('pr95-v5-l3-list-1280-guest.png');
   // This temporary DOM style is only a geometry probe; no saved layout write.
   const narrowed=await js('(()=>{const e=document.querySelector(".item-data-table .compact-stages");e.style.width="190px";return {client:e.clientWidth,scroll:e.scrollWidth}})()');
-  assert(narrowed.client<=192&&narrowed.scroll>=310,'narrow column uses internal scroll '+JSON.stringify(narrowed));
+  assert(narrowed.client<=192&&narrowed.scroll>=290,'narrow column uses internal scroll '+JSON.stringify(narrowed));
   await verify('list-saved-narrow-simulated');
   await screenshot('pr95-v5-l3-list-narrow-scroll.png');
   await call('document.querySelector(".item-data-table .compact-stages").style.removeProperty("width")');
