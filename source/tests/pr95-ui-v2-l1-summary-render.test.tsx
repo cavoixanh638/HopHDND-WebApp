@@ -12,16 +12,21 @@ const rows:Item[]=createDemoItems(3).map((row,i)=>({
   partyLevel:'Ban Chấp hành',isDropped:false,archivedAt:null
 }));
 describe('V2 L1 real summary chip HTML',()=>{
-  it('renders every kind including zero/unknown as an actual button, not span',()=>{
+  it('V3 keeps the three approved kinds as actual buttons, not spans or unknown-kind chips',()=>{
     const html=renderToStaticMarkup(createElement(ItemSummaryCards,{
       items:rows,selection:null,kindSelection:'qppl',visibleCount:1,
       onSelect:()=>{},onSelectKind:()=>{},onClear:()=>{}
     }));
-    for(const kind of ['qppl','hc','bc','nq-unknown','unclassified'])
-      expect(html).toMatch(new RegExp('<button[^>]+data-summary-kind="'+kind+'"'));
+    const kinds=[...html.matchAll(/<button[^>]+data-summary-kind="([^"]+)"/g)]
+      .map(match=>match[1]);
+    expect(kinds).toEqual(['qppl','hc','bc']);
+    expect(html).not.toContain('data-summary-kind="nq-unknown"');
+    expect(html).not.toContain('data-summary-kind="unclassified"');
     expect(html).toMatch(/data-summary-kind="qppl"[^>]+aria-pressed="true"/);
     expect(html).toContain('Bấm để lọc NQ QPPL; bấm lại để bỏ lọc');
     expect(html).toContain('NQ HC');
+    expect(html).toContain('BC <strong>1</strong>');
+    expect(html).toMatch(/class="item-summary-total-count">3<\/strong>/);
   });
   it('reuses the next stage label/aria and preserves 4+4+3 status buttons',()=>{
     const html=renderToStaticMarkup(createElement(ItemSummaryCards,{

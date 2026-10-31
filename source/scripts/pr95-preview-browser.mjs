@@ -1,4 +1,4 @@
-// PR95 L4 ONLY. Local-built synthetic preview + real Chromium CDP.
+// PR95 UI V3 L5: local-built synthetic preview + real Chromium CDP.
 // No Firebase emulator, real network, auth, Google Sheets or deployment.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
@@ -27,7 +27,7 @@ const port=server.address().port;
 const chrome=['google-chrome','google-chrome-stable','chromium','chromium-browser']
   .find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
 if(!chrome)throw Error('No Chromium available for L4 preview UI smoke');
-const userDir=mkdtempSync(join(tmpdir(),'pr95-l4-preview-'));
+const userDir=mkdtempSync(join(tmpdir(),'pr95-v3-l5-preview-'));
 let browser,ws,seq=0;
 const pending=new Map();
 const send=(method,params={})=>new Promise((done,fail)=>{
@@ -42,27 +42,43 @@ const evaluate=async js=>{
 };
 const ensure=async(js,label)=>{
   const value=await evaluate('Boolean('+js+')');
-  if(!value)throw Error('PR95_L4_BROWSER_FAIL '+label);
+  if(!value)throw Error('PR95_V3_L5_BROWSER_FAIL '+label);
 };
 const interact=async js=>evaluate('(()=>{'+js+';return true;})()');
-const clickText=async text=>interact(
-  'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()==='+JSON.stringify(text)+');'+
-  'if(!button)throw Error("Button missing: "+'+JSON.stringify(text)+');button.click()'
-);
-const selectValue=async(selector,value)=>interact(
-  'const input=document.querySelector('+JSON.stringify(selector)+');if(!input)throw Error("Select missing");'+
-  'input.value='+JSON.stringify(value)+';input.dispatchEvent(new Event("change",{bubbles:true}))'
-);
+const clickText=async text=>{
+  const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc',
+    'Phân quyền chỉnh sửa':'Phân quyền chỉnh sửa ô'}[text]??text;
+  const find='[...document.querySelectorAll("button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+'||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith('+JSON.stringify(alias)+')))';
+  if(!await evaluate('Boolean('+find+')')){
+    await interact('const gear=document.querySelector(".pr95-preview-gear");if(!gear)throw Error("No gear");gear.click()');
+    await waitFor('[...document.querySelectorAll(".pr95-preview-gear-menu button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+')','gear menu item '+alias);
+  }
+  return interact('const label='+JSON.stringify(alias)+';'+
+    'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()===label||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith(label)));'+
+    'if(!button)throw Error("Button missing: "+label);button.click()');
+};
+const selectValue=async(selector,value)=>{
+  if(selector==='#pr95-role'){
+    if(!['guest','admin'].includes(value))throw Error('Bad simulated role');
+    return clickText(value==='guest'?'Đăng xuất mô phỏng':'Đăng nhập quản trị (mô phỏng)');
+  }
+  return interact('const input=document.querySelector('+JSON.stringify(selector)+');if(!input)throw Error("Select missing");'+
+    'input.value='+JSON.stringify(value)+';input.dispatchEvent(new Event("change",{bubbles:true}))');
+};
 const screenshot=async name=>{
   const result=await send('Page.captureScreenshot',{format:'png',fromSurface:true});
   const data=Buffer.from(result.data,'base64');
   if(data.length<10000)throw Error('Bad screenshot '+name+' '+data.length);
   writeFileSync(name,data);
-  console.log('PR95_L4_SCREENSHOT '+name+' '+data.length);
+  console.log('PR95_V3_L5_SCREENSHOT '+name+' '+data.length);
 };
 async function waitFor(js,reason){
  for(let i=0;i<60;i++){try{if(await evaluate('Boolean('+js+')'))return;}catch{}await sleep(150);}
- throw Error('PR95_L4_WAIT_TIMEOUT '+reason);
+ try{
+   console.log('PR95_V3_L5_WAIT_DIAGNOSTIC',await evaluate('JSON.stringify({title:document.title,url:location.href,root:document.getElementById("root")?.innerHTML.slice(0,3500),text:document.body.innerText?.slice(0,1200)})'));
+ }catch(diag){console.log('PR95_V3_L5_DIAG_FAILED',String(diag));}
+ console.log('PR95_V3_L5_CONSOLE_ERRORS',logs.slice(-8));
+ throw Error('PR95_V3_L5_WAIT_TIMEOUT '+reason);
 }
 const logs=[];
 const network=[];
@@ -93,21 +109,41 @@ try{
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1'});
   await waitFor('document.querySelector("[data-preview=pr95-l4-full]")&&document.querySelector(".item-data-table tbody tr")','list default');
-  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===6','six navigation controls');
-  await ensure('document.querySelector("[data-role=admin]")','admin default');
-  await screenshot('pr95-l4-desktop-list.png');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','exactly two wide cards');
+  await ensure('document.querySelector("[data-role=guest]")','guest default');
+  await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".pr95-preview-role")','guest no Excel or role toolbar');
+  await ensure('!document.querySelector(".source-column-visibility")&&!document.querySelector(".compact-columns-menu")','guest no column controls');
+  await ensure('![...document.querySelectorAll(".item-data-table .column-resizer")].some(x=>getComputedStyle(x).display!=="none")','guest no visible resize affordance');
+  await screenshot('pr95-v3-l5-guest-1440.png');
+  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false});
+  await screenshot('pr95-v3-l5-guest-1280.png');
+  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+  await interact('document.querySelector(".pr95-preview-gear").click()');
+  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===1','guest gear login only');
+  await ensure('!document.querySelector(".pr95-preview-gear-menu")?.textContent.includes("Excel")','guest menu no Excel');
+  await screenshot('pr95-v3-l5-guest-gear.png');
+  await clickText('Đăng nhập quản trị (mô phỏng)');
+  await waitFor('document.querySelector("[data-role=admin]")','simulated admin login');
+  await interact('document.querySelector(".pr95-preview-gear").click()');
+  await ensure('document.querySelectorAll(".pr95-preview-gear-menu button").length===6','admin five tools and logout');
+  await screenshot('pr95-v3-l5-admin-gear.png');
+  await interact('document.querySelector(".pr95-preview-gear").click()');
 
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-surface").length===5','all 5 real ReportTable');
   await ensure('document.querySelectorAll(".report-table").length===5','five report tables');
-  await screenshot('pr95-l4-desktop-reports.png');
+  await screenshot('pr95-v3-l5-desktop-reports.png');
   await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No drill");b.click()');
   await waitFor('document.querySelector("dialog.report-grid-modal[open]")','actual report popup');
   await ensure('document.querySelector("dialog.report-grid-modal .report-grid-toolbar")','real popup controls');
-  await screenshot('pr95-l4-desktop-popup.png');
+  await screenshot('pr95-v3-l5-desktop-popup.png');
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','close popup');
 
+  await clickText('Tùy chỉnh cột và hiển thị');
+  await waitFor('document.querySelector(".column-manager")','real admin ItemColumnPanel');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','admin customizer does not add tab');
+  await screenshot('pr95-v3-l5-admin-columns.png');
   await clickText('Tài khoản');await waitFor('document.querySelector("[aria-label=\\"Tài khoản mô phỏng\\"]")','account panel');
   await clickText('Cài đặt');await waitFor('document.querySelector("[aria-label=\\"Cài đặt demo\\"]")','settings panel');
   await clickText('Excel · Nhập / Xuất');await waitFor('document.querySelector(".pr95-preview-excel")','Excel panel');
@@ -164,7 +200,18 @@ try{
     'input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));'+
     'input.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",ctrlKey:true,bubbles:true}))');
   await waitFor('document.querySelector("[data-testid=guest-edits]")?.textContent==="1"','guest edit RAM applied');
-  await screenshot('pr95-l4-desktop-guest-edited.png');
+  await ensure('document.querySelector(".pr95-preview-unsaved")','guest retains RAM Save/Cancel');
+  await screenshot('pr95-v3-l5-desktop-guest-edited.png');
+  await clickText('Lưu trong RAM');
+  await waitFor('!document.querySelector(".pr95-preview-unsaved")','guest RAM save confirmed');
+  await clickText('Báo cáo tổng hợp');
+  await waitFor('document.querySelectorAll(".report-table").length===5','guest report access');
+  await interact('const b=document.querySelector(".report-table .count-drill");if(!b)throw Error("No guest drill");b.click()');
+  await waitFor('document.querySelector("dialog.report-grid-modal[open]")','guest popup');
+  await ensure('!document.querySelector("dialog.report-grid-modal .report-grid-presets")&&!document.querySelector("dialog.report-grid-modal .report-grid-settings")','guest popup no admin customizations');
+  await screenshot('pr95-v3-l5-guest-popup.png');
+  await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
+  await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','guest popup closed');
   await selectValue('#pr95-role','admin');
   await clickText('Phân quyền chỉnh sửa');
   await waitFor('document.querySelector(".inline-permission-table")','permission revoke');
@@ -178,10 +225,10 @@ try{
   await ensure('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
-  await screenshot('pr95-l4-mobile-list.png');
+  await screenshot('pr95-v3-l5-mobile-list.png');
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','mobile reports');
-  await screenshot('pr95-l4-mobile-reports.png');
+  await screenshot('pr95-v3-l5-mobile-reports.png');
   // Open the packaged one-file HTML by file:// in *real Chrome*, without HTTP.
   // This catches raw JS leaked into HTML, module/CORS failures, broken CSS and
   // component bootstrap bugs that a simple grep of bundle bytes cannot see.
@@ -189,34 +236,37 @@ try{
   const offlineUrl=pathToFileURL(join(root,'HopHDND_GopCot_XemThu.html')).href;
   await send('Page.navigate',{url:offlineUrl});
   await waitFor('document.querySelector("[data-preview=pr95-l4-full]") && document.querySelector(".item-data-table tbody tr")','offline file React mount');
-  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===6','offline nav');
+  await ensure('document.querySelectorAll(".pr95-preview-nav button").length===2','offline two-card nav');
   await ensure('!document.body.textContent.includes("function Rf(")','offline no raw compiled JavaScript');
-  await screenshot('pr95-l4-offline-desktop-list.png');
+  await ensure('document.querySelector("[data-role=guest]")','offline guest default');
+  await screenshot('pr95-v3-l5-offline-guest.png');
+  await clickText('Đăng nhập quản trị (mô phỏng)');
+  await waitFor('document.querySelector("[data-role=admin]")','offline simulated login');
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','offline five real reports');
-  await screenshot('pr95-l4-offline-desktop-reports.png');
+  await screenshot('pr95-v3-l5-offline-desktop-reports.png');
   await clickText('Excel · Nhập / Xuất');
   await waitFor('document.querySelector(".pr95-preview-excel input[type=file]")','offline Excel controls');
   await clickText('Cài đặt');
   await waitFor('document.querySelector("[aria-label=\\"Cài đặt demo\\"]")','offline settings');
   await selectValue('#pr95-role','guest');
   await waitFor('document.querySelector("[data-role=guest]")','offline guest toggle');
-  await ensure('!document.querySelector(".pr95-preview-nav button[aria-current=page]")?.textContent.includes("Phân quyền")','guest has no admin controls');
+  await ensure('!document.querySelector(".pr95-preview-excel")&&!document.querySelector(".inline-permission-table")','guest admin panels unmounted');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','offline guest list narrow');
-  await screenshot('pr95-l4-offline-mobile-guest.png');
+  await screenshot('pr95-v3-l5-offline-mobile-guest.png');
   await clickText('Báo cáo tổng hợp');
   await waitFor('document.querySelectorAll(".report-table").length===5','offline mobile report');
-  await screenshot('pr95-l4-offline-mobile-reports.png');
-  console.log('PR95_L4_OFFLINE_FILE_CHROME_PASS '+JSON.stringify({
+  await screenshot('pr95-v3-l5-offline-mobile-reports.png');
+  console.log('PR95_V3_L5_OFFLINE_FILE_CHROME_PASS '+JSON.stringify({
     fileScheme:true,reactMount:true,reports:5,excel:true,settings:true,guest:true,desktop:1440,mobile:390}));
   await ensure('!document.documentElement.classList.contains("is-printing")','no print state');
   await ensure('!document.querySelector("script[src*=firebase]")','no Firebase network bootstrap');
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','docs.google.com/spreadsheets','identitytoolkit','securetoken','sheets.googleapis.com'].some(fragment=>url.toLowerCase().includes(fragment)));
-  if(forbidden.length)throw Error('PR95_L4_FORBIDDEN_PRODUCTION_REQUEST '+JSON.stringify(forbidden.slice(0,12)));
-  if(logs.length)console.log('PR95_L4_BROWSER_CONSOLE_ERRORS',logs.slice(0,3));
-  console.log('PR95_L4_FULL_PREVIEW_BROWSER_PASS '+JSON.stringify({
+  if(forbidden.length)throw Error('PR95_V3_L5_FORBIDDEN_PRODUCTION_REQUEST '+JSON.stringify(forbidden.slice(0,12)));
+  if(logs.length)console.log('PR95_V3_L5_BROWSER_CONSOLE_ERRORS',logs.slice(0,3));
+  console.log('PR95_V3_L5_FULL_PREVIEW_BROWSER_PASS '+JSON.stringify({
     realReports:5,popup:'ReportDetailGrid',list:'ItemList',
     permission:'InlinePermissionsTable',file:'real A–O parse RAM replacement',
     roles:'admin guest grant edit revoke',mobile:390,productionRequests:forbidden.length}));

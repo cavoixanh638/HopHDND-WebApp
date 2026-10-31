@@ -7,7 +7,7 @@ function file(sheets:{name:string;rows:unknown[][]}[]):Uint8Array{
   return new Uint8Array(XLSX.write(book,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
 }
 const row=(code='NQ001',stt=1)=>[code,stt,'Thông qua nghị quyết','Sở Tài chính','HC',
- 'Thành ủy','Sở chưa trình','Đã trình HĐND, chưa có QĐ','VP đang thực hiện','Chuyên viên A',
+ 'BTV TU','Sở chưa trình','Đã trình HĐND, chưa có QĐ','VP đang thực hiện','Chuyên viên A',
  'Phòng tổng hợp','Phó Chánh Văn phòng','Phó Chủ tịch','Chưa trình','Ghi chú'];
 describe('business A–O Excel must never silently import wrong sheet or malformed rows',()=>{
   it('has no technical fields in exported template',()=>{

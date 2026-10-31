@@ -104,9 +104,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
-  const shareCompact=allowLayout&&!!onPersistViewerLayout&&!anonymousViewer&&!personalViewActive;
-  const compactDisplay=customizing||shareCompact?activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY:
-    personalCompact??activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
+  const adminControls=allowLayout&&!anonymousViewer;
+  const shareCompact=adminControls&&!!onPersistViewerLayout&&!personalViewActive;
+  const compactDisplay=!adminControls||customizing||shareCompact
+    ?activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY
+    :personalCompact??activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY;
   // The viewer already receives the exact first-frame width from App. Avoid
   // a post-paint callback that can override the saved CSS with stale values.
   useEffect(()=>{if(customizing)onFrameWidthChange?.(activeLayout.frameWidth??'auto');},[customizing,activeLayout.frameWidth,onFrameWidthChange]);
@@ -368,7 +370,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // A visual column drag is not a shared-layout write. All viewers may resize
   // their current view; only authorized administrators use CAS to persist it.
   // Personal/anonymous viewers never call the shared Firebase writer.
-  const canViewerResize=!customizing&&!showAllSourceColumns&&!permissionMode;
+  const canViewerResize=adminControls&&!customizing&&!showAllSourceColumns&&!permissionMode;
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout):Promise<boolean>=>{
     if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return false;
     const baseline=initialLayout;
@@ -481,7 +483,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   };
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
-  const compactMenu=compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
+  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<details className="compact-columns-menu">
       <summary aria-label="Tùy chọn gộp cột">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
       <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
@@ -515,7 +517,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         <button className="button ghost" onClick={exit}>Về danh sách</button>
       </div>
     </div>}
-    {customizing&&!anonymousViewer&&!permissionMode&&<>
+    {customizing&&adminControls&&!permissionMode&&<>
     {layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Chưa lưu được.</strong><span>{layoutError}</span></div>}
     {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
     {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
@@ -537,9 +539,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    {anonymousViewer&&compactOn&&!permissionMode&&<div className="guest-compact-menu-bar" role="group"
-       aria-label="Cách hiển thị cột của tôi">{compactMenu}</div>}
-    {!anonymousViewer&&<div className="card-header">
+    {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
+    {adminControls&&<div className="card-header">
     <div className="item-header-actions">
       {compactMenu}
       {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
@@ -553,7 +554,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
-      {allowLayout&&!anonymousViewer&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
+      {adminControls&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
@@ -625,8 +626,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
-  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={customizing?cycleSort:undefined}
-  disabled={!(customizing&&!locked&&allowLayout||canViewerArrange)}
+  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={!permissionMode?cycleSort:undefined}
+  disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
@@ -651,7 +652,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           column.key,width,projectedExtras,compactOn,groupExtras));
         else if(canViewerResize)setApplied(previous=>resizeProjectedWithAdjacent(previous,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
-      }}/>}</ColumnHeader>)}</tr>{(customizing||permissionMode)&&<tr className="item-column-filter-row">
+      }}/>}</ColumnHeader>)}</tr>{adminControls&&(customizing||permissionMode)&&<tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
       (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
     ?<CompactGroupFilterCell key={column.key} items={items}

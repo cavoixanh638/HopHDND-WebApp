@@ -25,6 +25,9 @@ export function Pr95PreviewExcel({role,items,onReplace}:{
   const [error,setError]=useState('');
   const [confirm,setConfirm]=useState(false);
   const admin=role==='admin';
+  // Defense in depth: guest never mounts file input, export, or review controls.
+  // Parent also guards the page and every replace action.
+  if(!admin)return null;
   const choose=async(upload?:File)=>{
     setError('');setCandidate(null);setFile(null);setSheet('');setConfirm(false);
     if(!upload)return;

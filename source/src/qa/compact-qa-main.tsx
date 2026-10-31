@@ -81,6 +81,9 @@ function CompactVisualQa(){
       progressParty:'Đang rà soát',progressBuild:'Sở chưa trình'}:item);
   });
   const editing=params.get('edit')==='1';
+  // R-V3-01: optional-assignment clear proof in the real List/popup, RAM only.
+  const clearQa=params.get('clear-qa')==='1';
+  const popupClearQa=params.get('popup-clear-qa')==='1';
   const guest=params.get('guest')==='1';
   const palette=defaultStatusPaletteStore();
   if(params.get('r05-palette')==='1')palette.active.office={
@@ -97,20 +100,27 @@ function CompactVisualQa(){
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey="compact-qa-synthetic-popup-only"
-        catalog={catalog} listLayout={layout} readOnlyViewer={params.get('popup-settings')!=='1'}
+        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
-        allowDraft={false} canEditCell={()=>false} onUpdate={()=>{throw Error('QA read-only');}}
+        allowDraft={popupClearQa} canEditCell={(_id,field)=>popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
+        onUpdate={(recordId,changes)=>{
+          if(!popupClearQa)throw Error('QA read-only');
+          Object.assign(window,{__l2LastPatch:{recordId,changes}});
+          setRecords(previous=>previous.map(item=>item.recordId===recordId?{...item,...changes}:item));
+        }}
         onKeepDraft={()=>false} dirtyIds={new Set()} errors={{}} onClose={()=>{}}
       />:<ItemList
         items={records} drafts={{}} errors={{}} busy={false}
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
-        readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
+        readOnly={!editing} canEditDraft={editing}
+        canEditCell={editing?(_id,field)=>!clearQa||field==='vpLeader'||field==='ubndLeader':undefined}
         customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
           // In-memory edit proof, never any Firebase/database write.
+          if(clearQa)Object.assign(window,{__l2LastPatch:{recordId,changes}});
           setRecords(prev=>prev.map(item=>item.recordId===recordId?{...item,...changes}:item));
         }}
         onHistory={()=>{}} onClose={()=>{}}
@@ -136,7 +146,8 @@ function CompactVisualQa(){
 const query=new URLSearchParams(window.location.search);
 const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
   'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
-  'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings'];
+  'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings',
+  'clear-qa','popup-clear-qa'];
 // The pre-existing source smoke hosts this fixture under /compact-qa/ and
 // checks the original read-only 8-row component. Do not change L1's runner or
 // undermine that regression suite. Public /preview/pr95/ and the root QA entry

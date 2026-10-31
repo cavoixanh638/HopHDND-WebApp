@@ -1,6 +1,6 @@
 import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
-import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
+import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
@@ -28,6 +28,7 @@ import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
+import {popupFieldOptions} from './pr95-l1-popup-options';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
@@ -88,13 +89,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
   // Preview pending column changes while the settings panel is open.
-  const displayedLayout=settings?pending:applied;
-  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll)&&
-    (c.key!=='stt'||showAll||settings)),
-    [displayedLayout,showAll,settings]);
+  const displayedLayout=settings&&!guestViewer?pending:applied;
+  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll&&!guestViewer)&&
+    (c.key!=='stt'||showAll&&!guestViewer||settings&&!guestViewer)),
+    [displayedLayout,showAll,settings,guestViewer]);
   // Popup retains its own source configuration; only the ordinary read view
   // projects visible source members into the same groups as the main list.
-  const popupCompact=!settings&&!showAll;
+  const popupCompact=(!settings||guestViewer)&&(!showAll||guestViewer);
   const popupSource=shownColumns.map(c=>({...c,label:labelByKey.get(c.key)??c.key}));
   const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
     ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
@@ -119,7 +120,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
     // Window sizing is a viewing preference, not permission to edit data.
-    if(!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(guestViewer||readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -135,10 +136,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     });
   };
   const patch=(key:DetailColumnKey,changes:Partial<{visible:boolean;width:number}>)=>{
+    if(guestViewer||readOnlyViewer)return;
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
   };
   const commitWidth=(key:DetailColumnKey,width:number)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){patch(key,{width});return;}
     const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
     if(!saveDetailGridPreferences(sourceKey,next)){
@@ -148,7 +150,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setNotice('Đã giữ độ rộng cột của bảng popup trên trình duyệt.');
   };
   const moveHeader=(from:string,to:string)=>{
-    if(!settings)return;
+    if(guestViewer||readOnlyViewer||!settings)return;
     setPending(old=>({...old,columns:reorderByKey(old.columns,c=>c.key,from,to)}));
   };
   const closeSettings=()=>{
@@ -156,7 +158,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setSettings(false);
   };
   const toggleSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){closeSettings();return;}
     setPending(applied);setSettings(true);setNotice('');
   };
@@ -164,7 +166,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
   const clearFilters=()=>{setFilters({});setSort(null);};
   const loadPreset=(id:string)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     const next=presets.find(v=>v.id===id);
     if(next){
       setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
@@ -177,7 +179,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     }
   };
   const createPreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!presetName.trim()){setNotice('Nhập tên mẫu trước khi lưu.');return;}
     if(presets.length>=12){setNotice('Đã đạt tối đa 12 mẫu của bảng popup.');return;}
     const next:ReportDetailPreset={id:crypto.randomUUID(),name:presetName.trim().slice(0,60),
@@ -187,21 +189,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPresets(list);setSelectedPreset(next.id);setPresetName('');setNotice('Đã lưu mẫu popup cá nhân.');
   };
   const updatePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.map(v=>v.id===selectedPreset?{...v,layout:applied,filters,colors}:v);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không cập nhật được mẫu.');return;}
     setPresets(list);setNotice('Đã cập nhật mẫu cá nhân.');
   };
   const removePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.filter(v=>v.id!==selectedPreset);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không xóa được mẫu.');return;}
     setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
     // R07: storage *and* live state must use the SAME validated snapshot.
     // Empty/whitespace-only overrides are deleted by the validator, allowing
@@ -212,16 +214,6 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(!saveDetailGridPreferences(sourceKey,valid)){setNotice('Chưa lưu được cấu hình cột trên trình duyệt.');return;}
     setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
-  };
-  const options=(field:TextField,current:string)=>{
-    const optionsFromCatalog=(catalog.options as Partial<Record<TextField,string[]>>)[field]??[];
-    // Council completion is labelled exactly as the current Excel/HĐND report,
-    // not the obsolete generic "Hoàn thành" option in the older list editor.
-    const standard=field==='progressCouncil'
-      ?['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']
-      :(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
-    const safeCatalog=field==='progressCouncil'?optionsFromCatalog.filter(v=>v!=='Hoàn thành'||v===current):optionsFromCatalog;
-    return [...new Set(['',...safeCatalog,...standard,current])];
   };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
@@ -248,7 +240,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
     return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-      searchable={field==='specialist'} options={options(field,raw).filter(value=>
+      searchable={field==='specialist'} options={popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
         !value||catalog.specialistRooms[value]?.includes(item.room))}
       onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
@@ -392,7 +384,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <thead>
           <tr className="report-grid-heading-row">{renderedColumns.map((c,index)=>
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
-              sortDirection={sort?.key===c.key?sort.direction:null} onSort={editing?cycleSort:undefined}
+              sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
               {c.label}

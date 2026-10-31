@@ -60,9 +60,7 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
         {([
           ['qppl','NQ QPPL',value.total.qppl],
           ['hc','NQ HC',value.total.hc],
-          ['bc','Báo cáo',value.total.bc],
-          ['nq-unknown','NQ chưa rõ loại',value.total.nqUnclassified],
-          ['unclassified','Chưa phân loại',value.total.unclassified],
+          ['bc','BC',value.total.bc],
         ] as const).map(([kind,label,count])=>
           <button type="button" key={kind} data-summary-kind={kind}
             className="item-summary-kind-chip" aria-pressed={kindSelection===kind}
@@ -79,7 +77,7 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}
       selection={selection} onSelect={onSelect}/>)}
     {kindSelection&&<div className="item-summary-active-filter" role="status">
-      <span>Đang lọc loại văn bản: <strong>{kindSelection}</strong></span>
+      <span>Đang lọc loại văn bản: <strong>{kindSelection==='qppl'?'NQ QPPL':kindSelection==='hc'?'NQ HC':kindSelection==='bc'?'BC':kindSelection}</strong></span>
       <button type="button" className="button ghost" onClick={()=>onSelectKind?.(kindSelection)}>Bỏ lọc loại</button>
     </div>}
     {activeStage&&activeBucket&&<div className="item-summary-active-filter" role="status">

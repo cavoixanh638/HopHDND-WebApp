@@ -2687,3 +2687,70 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .app-shell > nav.nav-tabs.primary-section-switcher{gap:5px!important;margin:2px auto 6px!important;}
   .app-shell > nav.nav-tabs.primary-section-switcher .primary-section-card{min-height:44px!important;padding:5px 10px!important;}
 }
+
+
+/* V3 / L1 only: compact top shell, two broad 50px cards, small corner gear.
+   Keep Imperial Sky active gradient and all worker-owned cell/summary colors. */
+.app-shell.imperial-sky-theme > header.topbar.compact-topbar.v3-shell-topbar {
+  position:relative;z-index:40;min-height:0;height:0;
+  margin:0;padding:0;border:0;overflow:visible;pointer-events:none;
+  width:100%;max-width:100%;
+}
+.app-shell.imperial-sky-theme > header.v3-shell-topbar > .top-actions {
+  position:absolute;top:8px;right:0;z-index:45;
+  margin:0;width:auto;pointer-events:auto;
+}
+.app-shell.imperial-sky-theme .v3-settings-menu > summary {
+  display:grid;place-items:center;width:34px;height:34px;min-width:34px;
+  padding:0;border:1px solid #d8e2de;border-radius:8px;background:#fff;
+  color:#52717e;font-size:18px;line-height:1;
+}
+.app-shell.imperial-sky-theme .v3-settings-menu > summary:hover,
+.app-shell.imperial-sky-theme .v3-settings-menu[open] > summary {
+  background:#eaf1f5;border-color:#b7cdd9;
+}
+.app-shell.imperial-sky-theme .v3-settings-menu > .options-popover {
+  position:absolute;right:0;top:41px;z-index:60;
+  width:248px;max-width:calc(100vw - 28px);
+}
+.v3-settings-menu .v3-gear-status {
+  color:#425f6b;font-size:11px;line-height:1.4;
+  padding:5px 8px;margin:3px 0 0;overflow-wrap:anywhere;
+}
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  width:min(100%,920px);max-width:920px;
+  gap:12px;margin:8px auto 10px;padding:0;border:0;
+  min-height:50px;overflow:visible;
+}
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card {
+  height:50px;min-height:50px;padding:0 18px;
+  gap:8px;border-width:2px;border-radius:12px;
+}
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-title {
+  font-size:16px;line-height:1.25;letter-spacing:0;
+}
+.app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-state {
+  height:22px;min-width:76px;width:76px;flex-basis:76px;
+  padding:2px 7px;font-size:11px;
+}
+@media(max-width:980px){
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher {
+    width:calc(100% - 46px);max-width:none;
+    margin:8px 46px 10px 0;gap:8px;
+  }
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card {
+    height:50px;min-height:50px;padding:0 12px;
+  }
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-title {font-size:13px;}
+}
+@media(max-width:600px){
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher {
+    grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  }
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card {padding:6px 7px;}
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-title {
+    font-size:11px;white-space:normal;overflow-wrap:break-word;
+  }
+  .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-state {display:none;}
+}

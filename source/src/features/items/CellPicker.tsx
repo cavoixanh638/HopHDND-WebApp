@@ -5,6 +5,21 @@ import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-lease
 import type {EditableField} from '../../../shared/types';
 import './cell-picker.css';
 
+/** R-V3-01: List intentionally strips empty catalog values before passing
+ * options, while the Report popup may supply an explicit empty value.
+ * Only optional non-status assignments can be cleared. Status/partyLevel and
+ * the withdrawn flag must never gain an invented fifth/sixth choice. */
+const STATUS_PICKER_FIELDS:ReadonlySet<EditableField>=new Set([
+  'partyLevel','progressParty','progressBuild','progressCouncil','isDropped'
+]);
+const OPTIONAL_ASSIGNMENT_FIELDS:ReadonlySet<EditableField>=new Set([
+  'department','type','specialist','room','vpLeader','ubndLeader'
+]);
+export function cellPickerCanClear(field:EditableField|undefined,options:readonly string[]):boolean{
+  if(field&&STATUS_PICKER_FIELDS.has(field))return false;
+  return !!(field&&OPTIONAL_ASSIGNMENT_FIELDS.has(field))||options.includes('');
+}
+
 type CellPickerProps = {
   label: string;
   value: string;
@@ -41,10 +56,13 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       : options;
   }, [open, options, query]);
   const selectedIsFilteredOut = open && value !== '' && !filteredOptions.includes(value);
+  // Present choices ONLY: no visual field/record heading or explanatory row.
+  // Preserve an unrecognized legacy current value as a selectable choice so
+  // that opening the editor never silently rewrites saved source data.
   const visibleOptions = open ? [
-    { value: '', label: '—' },
-    ...(selectedIsFilteredOut ? [{ value, label: `${value} (giá trị hiện tại)` }] : []),
-    ...filteredOptions.filter(option => option !== '' && !(selectedIsFilteredOut && option === value)).map(option => ({ value: option, label: option })),
+    ...(cellPickerCanClear(field,options) ? [{ value: '', label: '—' }] : []),
+    ...(selectedIsFilteredOut ? [{ value, label: value }] : []),
+    ...filteredOptions.filter(option => option !== '').map(option => ({ value: option, label: option })),
   ] : [];
 
   const close = (restoreFocus = false) => {
@@ -161,6 +179,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     {open && <div
       ref={popoverRef}
       className="cell-picker-popover"
+      data-choices-only={!searchable ? 'true' : undefined}
       popover="manual"
       role="dialog"
       aria-label={label}
@@ -174,7 +193,6 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(visibleOptions.length - 1); }
         else if (event.key === 'Enter' && filteredOptions.length) { event.preventDefault(); choose(filteredOptions[0]); }
       }} placeholder="Nhập để lọc" /></label>}
-      {selectedIsFilteredOut && <p className="cell-picker-note" role="status">Giá trị hiện tại “{value}” không khớp bộ lọc.</p>}
       <div className="cell-picker-options" role="listbox" aria-label={label}>
         {visibleOptions.map((option, index) => (
           <button

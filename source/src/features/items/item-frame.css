@@ -864,10 +864,9 @@
 .compact-stage-state[data-progress-tone]::before{
   content:"";flex:none;width:6px;height:6px;margin:6px 5px 0 0;border-radius:50%;background:currentColor;
 }
-.compact-stage-state .compact-part{min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+.compact-stage-state .compact-part{min-width:0;flex:1 1 auto;overflow-wrap:break-word;word-break:normal}
 .compact-stage-state .cell-picker-trigger{
-  background:var(--workflow-bg);color:var(--workflow-text);border-color:var(--workflow-border);
-  white-space:normal;max-width:100%;height:auto;overflow-wrap:anywhere;
+  white-space:normal;max-width:100%;height:auto;overflow-wrap:break-word;word-break:normal;
 }
 .compact-cv-room-line{display:flex;align-items:flex-start;gap:5px;min-width:0;flex-wrap:wrap}
 .compact-cv-room-name{display:inline-flex;align-items:center;min-width:0;overflow-wrap:anywhere}
@@ -1008,3 +1007,52 @@
  .item-summary-subcounts{justify-content:flex-start;gap:6px}
  .item-summary-subcounts > span{gap:8px;padding:6px 8px}
  .group-label-editor-row{flex-direction:column;align-items:stretch}}
+
+
+/* Only grouped stages lose the legacy standalone status pill.
+   Other, deliberately independent cells keep their previously approved skin. */
+.compact-stage-row .compact-stage-state[data-progress-tone]{
+  padding:0;border:0;border-radius:0;background:transparent;
+  min-width:0;word-break:normal;overflow-wrap:break-word;
+}
+/* UI V3 L2: no nested pill/button/editor boxes inside a colored grouped stage.
+   These rules intentionally override the historical 3D individual-button hover
+   skin in app.css without changing that skin in unrelated standalone fields. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger {
+  display:inline-flex;width:100%;min-width:0;max-width:100%;min-height:0;
+  padding:0;margin:0;border:0!important;border-radius:0;
+  background:transparent!important;box-shadow:none!important;
+  transform:none!important;transition:none;
+  color:inherit!important;align-items:center;justify-content:flex-start;
+  text-align:left;white-space:normal;overflow-wrap:break-word;word-break:normal;
+  cursor:pointer;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
+  :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  border:0!important;background:transparent!important;
+  box-shadow:none!important;outline:0!important;transform:none!important;
+  color:inherit!important;
+}
+/* One deliberate focus/hover affordance, on the actual shared ROW, not a nested box.
+   A read-only row has no button and therefore never gains an edit affordance. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:hover){
+  border-color:#356C8B;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
+  outline:2px solid #356C8B;outline-offset:1px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row button.cell-picker-trigger:not(:disabled)::after{
+  display:block;flex:none;margin-left:5px;border-color:currentColor;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row button.cell-picker-trigger:disabled::after{display:none}
+/* Field-level user highlights still win, but only on the affected member,
+   never on the entire merged TD or unrelated stages. */
+.compact-stage-row :is(.compact-stage-state,.compact-stage-level)[data-highlighted="true"]{
+  background-color:var(--member-highlight-bg)!important;
+  color:var(--member-highlight-text)!important;
+  border:0;border-radius:3px;
+}
+@media(max-width:620px){
+  .compact-stage-row .compact-stage-state{margin-left:0}
+}

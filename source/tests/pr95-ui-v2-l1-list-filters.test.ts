@@ -111,7 +111,7 @@ describe('V2 L1 toolbar filters independently of other workers',()=>{
     const source=readFileSync(new URL('../src/features/items/ItemList.tsx',import.meta.url),'utf8');
     const popup=readFileSync(new URL('../src/features/reports/ReportDetailGrid.tsx',import.meta.url),'utf8');
     expect(source).toContain("column.key!=='stt'||showAllSourceColumns||customizing");
-    expect(popup).toContain("c.key!=='stt'||showAll||settings");
+    expect(popup).toContain("c.key!=='stt'||showAll&&!guestViewer||settings&&!guestViewer");
     expect(source.indexOf("column.key!=='stt'")).toBeLessThan(source.indexOf('const baseWidths='));
     expect(EXCEL_SOURCE_COLUMNS[1].key).toBe('stt');
     expect(defaultItemLayout().columns.some(c=>c.key==='stt')).toBe(true);

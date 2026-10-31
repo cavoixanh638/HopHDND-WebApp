@@ -40,7 +40,7 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     layout[3].hiddenColumns = ['Đã trình HĐND thành phố'];
     expect(configuredReports(layout)).toEqual([]);
     expect(configuredReports(layout, true)).toHaveLength(5);
-    const report = aggregateReport(createDemoItems(), configuredReports(layout, true)[3], 'department');
+    const report = aggregateReport(createDemoItems(), configuredReports(validateReportLayout(layout), true)[3], 'department');
     expect(report.total).toBe(aggregateReport(createDemoItems(), DEFAULT_REPORTS[3], 'department').total);
     expect(report.columns).not.toContain('Hoàn thành');
   });
@@ -73,36 +73,36 @@ describe('Bố trí bảng không thay đổi nghiệp vụ', () => {
     expect(migrated[3].title).toBe(DEFAULT_REPORTS[3].title);
     expect(migrated[4].title).toBe(DEFAULT_REPORTS[4].title);
     expect(migrated[0].columnOrder).toHaveLength(DEFAULT_REPORTS[0].columns.length);
-    expect(migrated[0].columnOrder.slice(0,4)).toEqual(['Không phải trình','Sở chưa trình','VP đang thực hiện','Đã gửi ĐU']);
+    expect(migrated[0].columnOrder.slice(0,4)).toEqual(['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU']);
     expect(migrated[0].columnOrder).toContain('Đã có TBKL');
     expect(migrated[0].columnOrder).not.toContain('Đã báo cáo TU');
-    expect(migrated[0].hiddenColumns).toEqual(['ĐU đã gửi TU, chưa họp','Không phải trình']);
-    expect(aggregateReport(createDemoItems(9),configuredReports(migrated)[0],'department').columns).not.toContain('ĐU đã gửi TU, chưa họp');
+    expect(migrated[0].hiddenColumns).toEqual(['ĐU gửi TU, chưa họp','Không phải trình']);
+    expect(aggregateReport(createDemoItems(9),configuredReports(migrated)[0],'department').columns).not.toContain('ĐU gửi TU, chưa họp');
     const unknown=structuredClone(layout);
     unknown[0].columnOrder=['Sở chưa trình'];
     expect(()=>validateReportLayout(unknown)).toThrow('Thứ tự cột cần đủ');
   });
   it('merges both previous Party meeting columns in a saved 9-column profile',()=>{
     const old=defaultReportLayout();
-    const index=old[0].columnOrder.indexOf('Đã họp/xin phiếu, chưa có TBKL');
+    const index=old[0].columnOrder.indexOf('Đã xin ý kiến, chờ TBKL');
     old[0].columnOrder.splice(index,0,'Đã họp, chưa có TBKL');
     old[0].hiddenColumns=['Đã họp, chưa có TBKL'];
     const migrated=validateReportLayout(old);
     const correct=DEFAULT_REPORTS[0].columns;
     expect(migrated[0].columnOrder).toHaveLength(correct.length);
-    expect(migrated[0].columnOrder.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(migrated[0].columnOrder.filter(value=>value==='Đã xin ý kiến, chờ TBKL')).toHaveLength(1);
     expect(migrated[0].columnOrder).not.toContain('Đã họp, chưa có TBKL');
-    expect(migrated[0].hiddenColumns).toEqual(['Đã họp/xin phiếu, chưa có TBKL','Không phải trình']);
+    expect(migrated[0].hiddenColumns).toEqual(['Đã xin ý kiến, chờ TBKL','Không phải trình']);
     expect(migrated[0].columnOrder).toEqual(correct);
     expect(old[0].columnOrder).toContain('Đã họp, chưa có TBKL'); // draft not mutated
     const invalid=structuredClone(old);
-    invalid[0].columnOrder[index]='Đã họp/xin phiếu, chưa có TBKL'; // duplicate identical names
+    invalid[0].columnOrder[index]='Đã xin ý kiến, chờ TBKL'; // duplicate identical names
     expect(()=>validateReportLayout(invalid)).toThrow(/bị trùng/);
   });
   it('migrates saved 8-column Party layout with only old name to the replacement',()=>{
     const old=defaultReportLayout();
     old[0].columnOrder=old[0].columnOrder.map(value=>
-      value==='Đã họp/xin phiếu, chưa có TBKL'?'Đã họp, chưa có TBKL':value);
+      value==='Đã xin ý kiến, chờ TBKL'?'Đã họp, chưa có TBKL':value);
     const next=validateReportLayout(old);
     expect(next[0].columnOrder).toEqual(DEFAULT_REPORTS[0].columns);
   });
@@ -134,7 +134,7 @@ describe('Nâng cấp cấu hình 3/4 bảng sang 5 bảng',()=>{
     expect(migrated[1].columnOrder).toEqual(DEFAULT_REPORTS[1].columns);
     expect(migrated[3].title).toBe('Bảng NQ tôi đã đổi tên');
     expect(migrated[3].visible).toBe(false);
-    expect(migrated[3].hiddenColumns).toEqual(['Đã trình HĐND thành phố']);
+    expect(migrated[3].hiddenColumns).toEqual(['Hoàn thành']);
     expect(migrated[3].columnOrder).toEqual([...old[1].columnOrder]);
     expect(JSON.stringify(old)).toBe(before);
   });
@@ -198,7 +198,9 @@ describe('Lưu cấu hình theo nguồn', () => {
     const layout = defaultReportLayout().reverse();
     layout[0].title = 'Báo cáo riêng'; layout[1].visible = false; layout[1].hiddenColumns = ['Đã trình HĐND thành phố'];
     expect(saveReportLayout('file:gid1', layout)).toBe(true);
-    expect(loadReportLayout('file:gid1')).toEqual(layout);
+    const loaded=loadReportLayout('file:gid1');
+    expect(loaded).toEqual(validateReportLayout(layout));
+    expect(loaded[1].hiddenColumns).toEqual(['Hoàn thành']); // legacy saved heading projected
     expect(loadReportLayout('file:gid2')).toEqual(defaultReportLayout());
     expect(loadReportLayout('demo')).toEqual(defaultReportLayout());
   });

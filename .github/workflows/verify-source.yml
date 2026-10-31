@@ -142,6 +142,10 @@ jobs:
             source/hophdnd-review-r02-cap-after.png
             source/hophdnd-review-r03-after.png
             source/hophdnd-r05-before-white-simulated.png
+            source/hophdnd-v3-l2-clear-list.png
+            source/hophdnd-v3-l2-clear-popup.png
+            source/hophdnd-v3-l2-granted-desktop.png
+            source/hophdnd-v3-l2-choices-only-dropdown.png
             source/hophdnd-r05-after-multitone-list.png
             source/hophdnd-r05-after-list-stage-crop.png
             source/hophdnd-r05-after-multitone-popup.png
@@ -161,6 +165,9 @@ jobs:
             source/hophdnd-r06-mobile-app-shell-top.png
             source/hophdnd-r06-mobile-app-shell-table-reachable.png
             source/hophdnd-r07-popup-empty-save-fallback.png
+            source/hophdnd-pr95-v3-l1-popup-guest-denied.png
+            source/hophdnd-pr95-v3-l1-popup-council-choices.png
+            source/hophdnd-pr95-v3-l1-popup-completed.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure

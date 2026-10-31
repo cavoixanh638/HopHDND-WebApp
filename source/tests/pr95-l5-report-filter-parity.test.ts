@@ -90,8 +90,8 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
     expect(all.rows.get('Sở thử')?.get('Chưa chuẩn hóa')?.map(x=>x.displayCode))
       .toEqual(['E','H']);
     expect(all.unknown).toEqual(['Trạng thái lạ','Chưa chuẩn hóa']);
-    expect(normalizeReportStatus(' Hoàn thành ',council)).toBe('Đã trình HĐND thành phố');
-    expect(normalizeReportStatus('Đã trình HĐND TP',council)).toBe('Đã trình HĐND thành phố');
+    expect(normalizeReportStatus(' Hoàn thành ',council)).toBe('Hoàn thành');
+    expect(normalizeReportStatus('Đã trình HĐND TP',council)).toBe('Hoàn thành');
     expect(normalizeReportStatus('Chưa chuẩn hóa',council)).toBe('Chưa chuẩn hóa');
     expect(reportStage('Chưa chuẩn hóa',council)).toBe('other');
   });
@@ -103,7 +103,7 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
     expect(codes(reportItems(rows,party))).toEqual(['A','B','C','D','E','F','H','I','J','N']);
     expect(codes(reportItems(rows,build))).toEqual(['A','B','C','D','F','H']);
     expect(codes(reportItems(rows,{...party,includeNotRequired:true})))
-      .toEqual(['A','B','C','D','E','F','G','H','I','J','N']);
+      .toEqual(['A','B','C','D','E','F','G','H','I','J','M','N']);
     expect(codes(reportItems(rows,{...build,includeNotRequired:true})))
       .toEqual(['A','B','C','D','E','F','G','H']);
     expect(aggregateReport(rows,{...party,includeNotRequired:true,hiddenColumns:[]},'department')
@@ -123,23 +123,23 @@ describe('PR95 L5: independently enumerated List/Report parity',()=>{
     const rows=fixture();
     const expectedCells:Record<string,Record<string,string[]>>={
       party:{
-        'Sở chưa trình':['A','I','J','N'],'VP đang thực hiện':['B'],
-        'Đã gửi ĐU':['C'],'ĐU đã gửi TU, chưa họp':['D'],
-        'Đã họp/xin phiếu, chưa có TBKL':['E'],'Đã có TBKL':['F'],
+        'Sở chưa trình':['A','I','J','N'],'VP đang xử lý':['B'],
+        'Đã gửi ĐU':['C'],'ĐU gửi TU, chưa họp':['D'],
+        'Đã xin ý kiến, chờ TBKL':['E'],'Đã có TBKL':['F'],
         'Chưa chuẩn hóa':['H'],
       },
       build:{
-        'Sở chưa trình':['A'],'VP đang thực hiện':['B'],
-        'Đã trình HĐND, chưa có QĐ':['C'],'Đã có QĐ chấp thuận':['D','F'],
+        'Sở chưa trình':['A'],'VP đang xử lý':['B'],
+        'Đã trình, chờ QĐ':['C'],'Đã có QĐ':['D','F'],
         'Chưa chuẩn hóa':['H'],
       },
       council:{
-        'Sở chưa trình':['A','F','I','M','N'],'VP đang thực hiện':['B'],
-        'Đã trình HĐND thành phố':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
+        'Sở chưa trình':['A','F','I','M','N'],'VP đang xử lý':['B'],
+        'Hoàn thành':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
       },
       nq:{
-        'Sở chưa trình':['A','F','M','N'],'VP đang thực hiện':['B'],
-        'Đã trình HĐND thành phố':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
+        'Sở chưa trình':['A','F','M','N'],'VP đang xử lý':['B'],
+        'Hoàn thành':['C','D','G'],'Chưa chuẩn hóa':['E','H'],
       },
       bc:{'Sở chưa trình':['I']},
     };
