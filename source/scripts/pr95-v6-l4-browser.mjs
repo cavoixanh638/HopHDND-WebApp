@@ -242,7 +242,13 @@ try {
   await setInput('.list-filter-search','MẪU');
   await setSelect('select[aria-label="Lọc Sở, ngành"]','Sở mẫu A');
   await setSelect('select[aria-label="Lọc Phòng"]','Phòng mẫu 1');
-  condition=await expectInventory(3,7,'mobile three conditions, 27-source scope');
+  await expectInventory(3,7,'mobile three conditions, 27-source scope');
+  await click('.list-filter-other>summary');
+  await waitFor("document.querySelector('.list-filter-other-panel')",'mobile other details opened');
+  await setSelect('select[aria-label="Lọc Tiến độ ban hành NQ/BC chi tiết"]','Sở chưa trình');
+  condition=await expectInventory(4,3,'mobile long detail label and 3 AND records');
+  await click('.list-filter-other>summary');
+  await waitFor("!document.querySelector('.list-filter-other-panel')",'mobile other closed with count');
   const geometry=await evaluate(`(()=>{
     const zone=document.querySelector('.list-active-filters');
     const r=zone.getBoundingClientRect();
