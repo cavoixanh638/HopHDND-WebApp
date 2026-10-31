@@ -207,6 +207,39 @@ try{
   await until('document.querySelector("dialog.report-grid-modal .compact-stage-state[data-editable=true] button.cell-picker-trigger")','popup editor');
   await verify('popup-1440-admin-editable');
   await screenshot('pr95-v5-l3-popup-1440-admin.png');
+  await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
+  await until('!document.querySelector("dialog.report-grid-modal[open]")','admin popup closed');
+  await nav('Danh sách');
+  await until('document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL] > button.cell-picker-trigger")',
+    'admin List real QPPL editor');
+  await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
+  const editableList=await verify('list-1440-admin-editable');
+  assert(editableList.classification.some(x=>x.hasButton&&x.outerBorder==='1px'&&x.buttonBorder==='0px'),
+    'admin QPPL classification single border on real button');
+  await screenshot('pr95-v5-l3-list-1440-admin.png');
+  // Presentation-only color test: temporary CSS variables and a member highlight.
+  // No edit callback, source mutation, layout setting or account write.
+  const skin=await js('(()=>{const root=document.querySelector(".pr95-full-preview");'+
+    'root.style.setProperty("--hdnd-stage-office-bg","#E7F3FF");'+
+    'root.style.setProperty("--hdnd-stage-office-border","#94A8C9");'+
+    'const member=document.querySelector(".item-data-table .compact-stage-state[data-editable=true]");'+
+    'member.dataset.highlighted="true";'+
+    'member.style.setProperty("--member-highlight-bg","#FFF1AC");'+
+    'member.style.setProperty("--member-highlight-text","#714A12");'+
+    'const doc=document.querySelector(".item-data-table .compact-document-badge[data-kind=QPPL]");'+
+    'doc.dataset.highlighted="true";'+
+    'doc.style.setProperty("--member-highlight-bg","#FFF1AC");'+
+    'doc.style.setProperty("--member-highlight-text","#714A12");'+
+    'return {memberBackground:getComputedStyle(member).backgroundColor,'+
+    'docBackground:getComputedStyle(doc).backgroundColor,'+
+    'docButtonBorder:getComputedStyle(doc.querySelector("button")).borderTopWidth,'+
+    'docButtonBackground:getComputedStyle(doc.querySelector("button")).backgroundColor};})()');
+  assert(skin.memberBackground==='rgb(255, 241, 172)'&&
+    skin.docBackground==='rgb(255, 241, 172)'&&
+    skin.docButtonBorder==='0px'&&skin.docButtonBackground==='rgba(0, 0, 0, 0)',
+    'custom highlight must stay on member with one classification frame '+JSON.stringify(skin));
+  await verify('list-1440-admin-custom-palette-highlight');
+  await screenshot('pr95-v5-l3-list-admin-highlight.png');
   const cloud=network.filter(s=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(s));
   assert(cloud.length===0,'unexpected production/cloud request '+JSON.stringify(cloud));
   console.log('UI_V5_L3_REAL_CHROME_PASS '+JSON.stringify({synthetic:true,main:true,popup:true,narrow:true,
