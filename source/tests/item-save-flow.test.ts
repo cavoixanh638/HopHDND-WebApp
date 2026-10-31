@@ -207,4 +207,36 @@ describe('separate item layout save and data draft',()=>{
     expect(picker.props.value).toBe('Sở chưa trình');
   });
 
+  it('V4 L1: List edits only a newly selected canonical status; alias display does not rewrite source',()=>{
+    const original=createDemoItems(1)[0];
+    const item={...original,partyLevel:'Ban Chấp hành',progressParty:'VP đang thực hiện',
+      progressBuild:'Đã trình HĐND, chưa có QĐ',progressCouncil:'Đã trình HĐND thành phố'};
+    const before=JSON.stringify(item),onUpdate=vi.fn();
+    const props={items:[item],drafts:{},errors:{},busy:false,onUpdate,onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google' as const,customizing:false,anonymousViewer:true,
+      sourceKey:'v4-l1-status-legacy-list',catalog:catalogFromItems([item]),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),
+      onLayoutSaved:vi.fn(),initialLayout:defaultItemLayout(),
+      canEditCell:(_id:string,field:string)=>_id===item.recordId&&field==='progressBuild'};
+    const tree=ItemList(props);
+    const buttons=nodes(tree).filter(node=>node.type===CellPicker&&node.props.field==='progressBuild');
+    expect(buttons).toHaveLength(1);
+    const picker=buttons[0].props;
+    expect(picker.value).toBe('Đã trình, chờ QĐ');
+    expect(picker.displayValue).toBe('Đã trình, chờ QĐ');
+    expect(picker.options).toEqual([
+      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'
+    ]);
+    expect(picker.options).not.toContain(item.progressBuild);
+    expect(onUpdate).not.toHaveBeenCalled(); // render/open/Esc is non-mutating
+    picker.onChange('Đã trình, chờ QĐ');
+    expect(onUpdate).not.toHaveBeenCalled(); // same canonical selection
+    picker.onChange('Đã có QĐ');
+    expect(onUpdate).toHaveBeenCalledExactlyOnceWith(item.recordId,{progressBuild:'Đã có QĐ'});
+    expect(JSON.stringify(item)).toBe(before);
+    const noGrant=nodes(ItemList({...props,canEditCell:()=>false}))
+      .filter(node=>node.type===CellPicker&&node.props.field==='progressBuild');
+    expect(noGrant).toHaveLength(0);
+  });
+
 });
