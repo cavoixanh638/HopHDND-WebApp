@@ -109,7 +109,7 @@ jobs:
           git worktree add --detach "$base" 8172c0650580931140fc71e59d3cc4d816879594
           (cd "$base/source" && npm ci --no-audit --no-fund && npm run build:compact:qa)
           node scripts/measure-baseline-id-browser.mjs "$base/source/dist-compact-qa" hophdnd-id-before-real.png
-      - name: Browser smoke with mock Sheets and headless Chrome
+      - name: Browser smoke with Firebase Emulator and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
       - name: Package owner-clickable single HTML UI preview (synthetic only)
         run: node scripts/package-compact-qa.mjs
@@ -142,12 +142,26 @@ jobs:
             source/hophdnd-review-r02-cap-after.png
             source/hophdnd-review-r03-after.png
             source/hophdnd-r05-before-white-simulated.png
+            source/hophdnd-v3-l2-clear-list.png
+            source/hophdnd-v3-l2-clear-popup.png
+            source/hophdnd-v4-l2-before-css-replay-simulated.png
+            source/hophdnd-v4-l2-after-editable-desktop.png
+            source/hophdnd-v4-l2-after-readonly-desktop.png
+            source/hophdnd-v4-l2-after-editable-mobile-390.png
+            source/hophdnd-v4-l2-after-custom-palette.png
+            source/hophdnd-v4-l2-after-popup-readonly.png
+            source/hophdnd-v4-l2-after-popup-editable.png
+            source/hophdnd-v3-l2-granted-desktop.png
+            source/hophdnd-v3-l2-choices-only-dropdown.png
+            source/hophdnd-v5-integrated-hc-bc-lock-qppl.png
             source/hophdnd-r05-after-multitone-list.png
             source/hophdnd-r05-after-list-stage-crop.png
             source/hophdnd-r05-after-multitone-popup.png
             source/hophdnd-r05-after-popup-stage-crop.png
             source/hophdnd-r05-after-768px.png
             source/hophdnd-r05-after-390px.png
+            source/hophdnd-pr95-nav-compact-synthetic.png
+            source/hophdnd-pr95-list-compact-synthetic.png
             source/hophdnd-l018-four-cards-desktop.png
             source/hophdnd-summary-filter-selected-desktop.png
             source/hophdnd-summary-filter-selected-mobile-390.png
@@ -159,6 +173,9 @@ jobs:
             source/hophdnd-r06-mobile-app-shell-top.png
             source/hophdnd-r06-mobile-app-shell-table-reachable.png
             source/hophdnd-r07-popup-empty-save-fallback.png
+            source/hophdnd-pr95-v3-l1-popup-guest-denied.png
+            source/hophdnd-pr95-v3-l1-popup-council-choices.png
+            source/hophdnd-pr95-v3-l1-popup-completed.png
           if-no-files-found: error
           retention-days: 7
       - name: Preserve browser smoke screenshot on failure

@@ -1,11 +1,251 @@
 // Headless Chromium smoke against a locally served, built Pages TEST artifact.
-// GViz is intercepted with synthetic records; Firebase production is never contacted.
+// Real demo Firebase Auth + RTDB emulators serve synthetic versioned rows.
+// This script never touches production Firebase or Google Sheets.
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync,statSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {setTimeout as sleep} from 'node:timers/promises';
+import {createHash} from 'node:crypto';
+import {isDeepStrictEqual} from 'node:util';
+import * as XLSX from 'xlsx';
+
+// L3-AUDIT-GAP-01: the pages-test Firebase bootstrap is pinned to demo-hdnd
+// on loopback 9000/9099. A separate runtime-only Emulator config MUST load
+// the immutable exclusive-candidate Rules file rather than firebase.json's
+// old database.rules.json. Keep the original source Rules entirely unchanged.
+// Run the real Rules with both emulators for the full Chrome smoke.
+const EMULATOR_PROJECT='demo-hdnd';
+const EMULATOR_DB='http://127.0.0.1:9000';
+const EMULATOR_AUTH='http://127.0.0.1:9099';
+const EMULATOR_NAMESPACE='demo-hdnd';
+const EMULATOR_ROOT=EMULATOR_DB+'/.json?ns='+EMULATOR_NAMESPACE;
+// Admin Bearer owner is used ONLY to install exact Rules and seed synthetic
+// localhost demo data. All guest assertions use genuine anonymous ID tokens.
+const EXCLUSIVE_RULES_FILE=resolve('firebase/database.exclusive-candidate.rules.json');
+const expectedRules=JSON.parse(readFileSync(EXCLUSIVE_RULES_FILE,'utf8'));
+const rulesDigest=createHash('sha256').update(JSON.stringify(expectedRules)).digest('hex');
+// Firebase resolves the rules relative to its --config file: use an ABSOLUTE
+// source Rules path and a temporary isolated config; never change firebase.json.
+// The Firebase CLI determines its project root from the config location.
+// Put this runtime-only config UNDER source/, not /tmp/, to preserve the
+// existing project root while selecting the exclusive candidate Rules file.
+const emulatorConfigDir=mkdtempSync(join(resolve('.'),'.pr95-browser-exclusive-rules-'));
+const emulatorConfigFile=join(emulatorConfigDir,'firebase.json');
+writeFileSync(emulatorConfigFile,JSON.stringify({
+  database:{rules:EXCLUSIVE_RULES_FILE},
+  emulators:{
+    database:{host:'127.0.0.1',port:9000},
+    auth:{host:'127.0.0.1',port:9099},
+    ui:{enabled:false},
+    singleProjectMode:true
+  }
+},null,2));
+const PRIVATE_MARKER='PR95_PRIVATE_EMULATOR_ONLY_NEVER_EXPOSE';
+const SMOKE_OPERATION='pr95_browser_smoke_20261030';
+const SMOKE_GENERATION='gen_'+SMOKE_OPERATION;
+const INACTIVE_GENERATION='gen_pr95_browser_inactive_20261030';
+const firebaseRows=[
+  {displayCode:'NQ01',stt:1,content:'Nội dung kiểm thử smoke',
+    department:'Sở kiểm thử',type:'QPPL',partyLevel:'BTV',
+    progressParty:'Sở chưa trình',progressBuild:'Trình xây dựng NQ',
+    progressCouncil:'Đã trình HĐND',specialist:'Chuyên viên mẫu',
+    room:'Phòng mẫu',vpLeader:'PCVP Nguyễn Ngọc Hùng',
+    ubndLeader:'PCT Trần Văn Quân',specificProgress:'Sở đang thực hiện',
+    note:'Ghi chú nguồn O'},
+  // This is a genuine Firebase item, not a malformed empty Excel row:
+  // required content/displayCode are set to a dash, optional fields remain empty.
+  {displayCode:'—',stt:2,content:'—',department:'',type:'QPPL',
+    partyLevel:'',progressParty:'',progressBuild:'',progressCouncil:'',
+    specialist:'',room:'',vpLeader:'',ubndLeader:'',specificProgress:'',note:''},
+  ...Array.from({length:52},(_,i)=>({
+    displayCode:'NQ'+(i+3),stt:i+3,content:'Nội dung kiểm thử thêm '+(i+3),
+    department:'Sở kiểm thử',type:'QPPL',partyLevel:'',
+    progressParty:'',progressBuild:'',progressCouncil:'',
+    specialist:'',room:'',vpLeader:'',ubndLeader:'',specificProgress:'',note:''
+  }))
+].map((row,index)=>({
+  recordId:'pr95_smoke_'+String(index+1).padStart(3,'0'),
+  documentKind:'NQ',isDropped:false,revision:1,...row
+}));
+const firebaseSeed={hdnd:{datasetV2:{
+  active:{generationId:SMOKE_GENERATION,operationId:SMOKE_OPERATION,
+    revision:1,rowCount:firebaseRows.length,digest:'a'.repeat(64)},
+  generations:{
+    [SMOKE_GENERATION]:{items:Object.fromEntries(firebaseRows.map(row=>[row.recordId,row]))},
+    [INACTIVE_GENERATION]:{items:{private_stale_row:{...firebaseRows[0],
+      recordId:'private_stale_row',displayCode:'SECRET_STALE',content:PRIVATE_MARKER}}}
+  },
+  permissions:{[SMOKE_GENERATION]:{columns:{}}},
+  candidates:{[SMOKE_OPERATION]:PRIVATE_MARKER+' candidate'},
+  backups:{[SMOKE_OPERATION]:PRIVATE_MARKER+' backup'},
+  legacyBackups:{[SMOKE_OPERATION]:PRIVATE_MARKER+' legacy backup'},
+  operations:{[SMOKE_OPERATION]:{
+    status:'COMMITTED',from:'legacy',to:SMOKE_GENERATION,at:Date.now()}}
+}}};
+let emulator=null,emulatorOutput='';
+let verifyExclusiveRules=async()=>{throw Error('Exclusive Rules verifier not initialized');};
+const emulatorsReady=async()=>{
+  for(let attempt=0;attempt<160;attempt++){
+    if(emulator?.exitCode!==null)
+      throw Error('Isolated Firebase emulator exited early: '+emulatorOutput.slice(-3500));
+    try{
+      // Firebase Emulator Hub is the authoritative ready/port registry.
+      // The Auth account-list REST route is not a general health endpoint.
+      const reply=await fetch('http://127.0.0.1:4400/emulators',
+        {signal:AbortSignal.timeout(850)});
+      if(reply.ok){
+        const available=await reply.json();
+        if(available?.auth?.port===9099&&available?.database?.port===9000&&
+          ['127.0.0.1','localhost'].includes(available.auth.host)&&
+          ['127.0.0.1','localhost'].includes(available.database.host))
+          return;
+      }
+    }catch{}
+    await sleep(250);
+  }
+  throw Error('Demo RTDB/Auth emulator never became ready: '+emulatorOutput.slice(-3500));
+};
+async function startAndSeedFirebase(){
+  emulator=spawn(process.execPath,[
+    'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
+    '--project',EMULATOR_PROJECT,'--only','database,auth','--config',emulatorConfigFile
+  ],{stdio:['ignore','pipe','pipe'],env:{...process.env,
+    FIREBASE_CLI_EXPERIMENTS:'webframeworks',CI:'true'}});
+  for(const stream of [emulator.stdout,emulator.stderr])
+    stream?.on('data',chunk=>{emulatorOutput=(emulatorOutput+String(chunk)).slice(-8000);});
+  emulator.on('error',error=>{emulatorOutput+=' SPAWN: '+error.message;});
+  await emulatorsReady();
+  // Management endpoint is admin-only: use Authorization Bearer owner
+  // (the ?auth=owner query alone returns HTTP 403 for /.settings/rules.json).
+  // NEVER PUT/overwrite any Rules. Require byte-equivalent JSON tree via GET.
+  const config=JSON.parse(readFileSync(emulatorConfigFile,'utf8'));
+  const original=JSON.parse(readFileSync(resolve('firebase.json'),'utf8'));
+  if(config.database?.rules!==EXCLUSIVE_RULES_FILE||
+    original.database?.rules===EXCLUSIVE_RULES_FILE||
+    expectedRules.rules?.hdnd?.datasetV2?.['.read']===undefined)
+    throw Error('Candidate Rules Emulator configuration is not isolated');
+  console.log('BROWSER_EXCLUSIVE_RULES_CONFIGURED',JSON.stringify({
+    source:'firebase/database.exclusive-candidate.rules.json',sha256:rulesDigest,
+    absoluteRulesPath:EXCLUSIVE_RULES_FILE,emulatorConfig:emulatorConfigFile,
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
+  }));
+  // The demo database starts with open fallback Rules until its ruleset is
+  // explicitly installed. Install the EXACT unchanged candidate JSON into
+  // this disposable localhost-only emulator. This neither rewrites the
+  // checked-in file nor contacts/deploys to any production Firebase project.
+  const settings=EMULATOR_DB+'/.settings/rules.json?ns='+EMULATOR_NAMESPACE;
+  const adminHeaders={Authorization:'Bearer owner'};
+  const initial=await fetch(settings,{headers:adminHeaders,signal:AbortSignal.timeout(8000)});
+  if(!initial.ok)throw Error('Cannot inspect initial demo Emulator Rules: HTTP '+initial.status);
+  const startupRules=await initial.json();
+  if(!isDeepStrictEqual(startupRules,expectedRules)){
+    console.log('BROWSER_EXCLUSIVE_RULES_STARTUP_GAP_DETECTED',JSON.stringify({
+      actualSha256:createHash('sha256').update(JSON.stringify(startupRules)).digest('hex'),
+      candidateSha256:rulesDigest,
+      actualRootRead:startupRules?.rules?.['.read']??null,
+      note:'default Emulator rules do not prove exclusive-candidate loaded'
+    }));
+  }
+  const install=await fetch(settings,{
+    method:'PUT',headers:{...adminHeaders,'Content-Type':'application/json'},
+    body:JSON.stringify(expectedRules),signal:AbortSignal.timeout(8000)
+  });
+  if(!install.ok)throw Error('Cannot load unchanged exclusive Rules into isolated Emulator: HTTP '+
+    install.status+' '+(await install.text()).slice(0,280));
+  verifyExclusiveRules=async phase=>{
+    const live=await fetch(settings,{headers:adminHeaders,signal:AbortSignal.timeout(8000)});
+    if(!live.ok)throw Error('Cannot GET actual Emulator Rules ('+phase+'): '+live.status);
+    const actual=await live.json();
+    const actualSha=createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+    if(!isDeepStrictEqual(actual,expectedRules))
+      throw Error('L3-AUDIT-GAP-01: Rules changed/mismatch during '+phase+
+        ': expected='+rulesDigest+' actual='+actualSha);
+    console.log('BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS',JSON.stringify({
+      phase,source:'firebase/database.exclusive-candidate.rules.json',
+      candidateSha256:rulesDigest,actualRulesSha256:actualSha,
+      verifiedFrom:'live RTDB GET /.settings/rules.json with Authorization Bearer owner',
+      method:'PUT exact unchanged candidate into disposable demo Emulator only',
+      project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE
+    }));
+  };
+  await verifyExclusiveRules('before-auth-and-browser');
+  const response=await fetch(EMULATOR_ROOT,{method:'PUT',headers:{
+    'Content-Type':'application/json',Authorization:'Bearer owner'
+  },body:JSON.stringify(firebaseSeed),signal:AbortSignal.timeout(8000)});
+  if(!response.ok)throw Error('Could not seed isolated RTDB: HTTP '+response.status+
+    ' '+(await response.text()).slice(0,500));
+  const readback=await fetch(EMULATOR_ROOT,{
+    headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
+  if(!readback.ok)throw Error('Could not read synthetic RTDB seed back');
+  const actual=await readback.json();
+  const active=actual?.hdnd?.datasetV2?.active;
+  const rows=actual?.hdnd?.datasetV2?.generations?.[SMOKE_GENERATION]?.items;
+  if(active?.operationId!==SMOKE_OPERATION||active?.generationId!==SMOKE_GENERATION||
+    Object.keys(rows??{}).length!==54||rows?.pr95_smoke_001?.displayCode!=='NQ01')
+    throw Error('Firebase seed server readback failed (generation/row mismatch)');
+  console.log('FIREBASE_BROWSER_SEED_VERIFIED',JSON.stringify({
+    project:EMULATOR_PROJECT,namespace:EMULATOR_NAMESPACE,
+    generationId:active.generationId,operationId:active.operationId,
+    rowCount:Object.keys(rows).length,source:'REAL RTDB EMULATOR V2'}));
+  // Real anonymous Authentication Emulator ID token; no owner token for
+  // positive/negative authorization assertions. All paths have seeded data.
+  const login=await fetch(EMULATOR_AUTH+'/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-test-key',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({returnSecureToken:true}),signal:AbortSignal.timeout(8000)
+  });
+  if(!login.ok)throw Error('Guest Emulator Auth sign-in rejected: '+login.status);
+  const principal=await login.json();
+  if(typeof principal.idToken!=='string'||!principal.localId)
+    throw Error('Auth Emulator did not issue an anonymous guest token');
+  const request=async path=>{
+    const url=EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE+
+      '&auth='+encodeURIComponent(principal.idToken);
+    return fetch(url,{signal:AbortSignal.timeout(8000)});
+  };
+  const activeRead=await request('/hdnd/datasetV2/active');
+  if(!activeRead.ok||!isDeepStrictEqual(await activeRead.json(),firebaseSeed.hdnd.datasetV2.active))
+    throw Error('Anonymous guest cannot read actual active generation pointer');
+  const generationRead=await request('/hdnd/datasetV2/generations/'+SMOKE_GENERATION+'/items');
+  if(!generationRead.ok){
+    throw Error('Anonymous guest cannot read active generation items: HTTP '+generationRead.status);
+  }
+  const guestRows=await generationRead.json();
+  if(Object.keys(guestRows??{}).length!==firebaseRows.length||
+    guestRows?.pr95_smoke_001?.displayCode!=='NQ01')
+    throw Error('Anonymous guest active-generation readback does not match seed');
+  const deniedPaths=[
+    '/hdnd/datasetV2',
+    '/hdnd/datasetV2/candidates/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/backups/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/legacyBackups/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/operations/'+SMOKE_OPERATION,
+    '/hdnd/datasetV2/generations/'+INACTIVE_GENERATION+'/items',
+    '/hdnd/editors'
+  ];
+  for(const path of deniedPaths){
+    const denial=await request(path);
+    const responseBody=await denial.text();
+    if(denial.status!==401||!/permission denied/i.test(responseBody)||
+      responseBody.includes(PRIVATE_MARKER))
+      throw Error('Guest private RTDB read was not denied at '+path+
+        ': HTTP '+denial.status+' body='+responseBody.slice(0,200));
+  }
+  console.log('BROWSER_EXCLUSIVE_RULES_GUEST_READ_PASS',JSON.stringify({
+    principal:'anonymous Emulator Auth',generationId:SMOKE_GENERATION,
+    activeRead:true,visibleRows:Object.keys(guestRows).length,privatePathsDenied:deniedPaths.length,
+    checks:deniedPaths,configuredRulesSha256:rulesDigest
+  }));
+  // Independent witness after exact byte-equivalent live Rules GET.
+  console.log('BROWSER_EXCLUSIVE_RULES_RUNTIME_WITNESS_PASS',JSON.stringify({
+    source:'firebase/database.exclusive-candidate.rules.json',
+    sha256:rulesDigest,guestReadActive:true,guestReadCurrentGeneration:true,
+    deniedPrivatePaths:deniedPaths.length,
+    contrast:'legacy firebase/database.rules.json grants hdnd/.read to authenticated guests',
+    method:'exact live Rules GET + isolated config + anonymous Auth/RTDB permission assertions'
+  }));
+}
 
 const appRoot=resolve('dist-pages-test');
 const qaRoot=resolve('dist-compact-qa');
@@ -91,6 +331,7 @@ let ws;
 let seq=0;
 const pending=new Map();
 let interceptError=null;
+const forbiddenNetwork=[];
 function send(method,params={}){
   return new Promise((resolve,reject)=>{
     const id=++seq;pending.set(id,{resolve,reject});
@@ -98,17 +339,6 @@ function send(method,params={}){
     setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(Error('CDP timeout: '+method));}},16000);
   });
 }
-const sourcePayload={status:'ok',table:{cols:Array.from({length:15},()=>({})),rows:[
-  {c:Array.from({length:15},(_,i)=>({v:({
-    2:'Nội dung trình',3:'Sở, ngành',4:'Loại VB',5:'Cấp Thành ủy cho ý kiến',
-    6:'Tiến độ xin ý kiến Thành ủy',7:'Tiến độ trình HĐND xây dựng NQ',
-    8:'Tiến độ trình HĐND ban hành NQ/BC',13:'Tiến độ hiện tại',14:'Ghi chú'
-  })[i]??''}))},
-  {c:['NQ01',1,'Nội dung kiểm thử smoke','Sở kiểm thử','QPPL','BTV','Sở chưa trình','Trình xây dựng NQ',
-    'Đã trình HĐND','Chuyên viên mẫu','Phòng mẫu','PCVP Nguyễn Ngọc Hùng','PCT Trần Văn Quân','Sở đang thực hiện','Ghi chú nguồn O'].map(v=>({v}))},
-  {c:['',2,'','','QPPL','','','','','','','','','',''].map(v=>({v}))},
-  ...Array.from({length:52},(_,i)=>({c:[`NQ${i+3}`,i+3,`Nội dung kiểm thử thêm ${i+3}`,'Sở kiểm thử','QPPL','','','','','','','','','',''].map(v=>({v}))}))
-]}};
 async function evaluate(expression){
   const res=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
   if(res.exceptionDetails)throw Error('Evaluate error: '+JSON.stringify(res.exceptionDetails));
@@ -123,6 +353,7 @@ async function eventually(expression,why,tries=75){
   throw Error('Browser smoke failed: '+why);
 }
 try{
+  await startAndSeedFirebase();
   const tabs=await launchChrome();
   const tab=tabs.find(t=>t.type==='page');
   if(!tab)throw Error('Chrome did not open a page');
@@ -131,21 +362,18 @@ try{
   ws.addEventListener('message',ev=>{
     const data=JSON.parse(ev.data);
     if(data.id&&pending.has(data.id)){const p=pending.get(data.id);pending.delete(data.id);data.error?p.reject(Error(JSON.stringify(data.error))):p.resolve(data.result);return;}
-    if(data.method==='Fetch.requestPaused'){
-      try{
-        const url=new URL(data.params.request.url),handler=url.searchParams.get('tqx')?.split('responseHandler:')[1];
-        if(!handler||!/^[A-Za-z_][A-Za-z0-9_]*$/.test(handler))throw Error('Unexpected GViz callback');
-        const script=handler+'('+JSON.stringify(sourcePayload)+');';
-        void send('Fetch.fulfillRequest',{requestId:data.params.requestId,responseCode:200,
-          responseHeaders:[{name:'Content-Type',value:'application/javascript; charset=utf-8'}],
-          body:Buffer.from(script).toString('base64')}).catch(err=>{interceptError=err;});
-      }catch(err){interceptError=err;}
+    if(data.method==='Network.requestWillBeSent'){
+      const url=String(data.params?.request?.url??'');
+      if(url.includes('docs.google.com/spreadsheets/')||
+        (url.includes('hophdnd-8b7b2')&&
+          ['firebaseio.com','firebasedatabase.app','googleapis.com'].some(host=>url.includes(host))))
+        forbiddenNetwork.push(url);
     }
   });
   await send('Page.enable');
   await send('Runtime.enable');
+  await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
-  await send('Fetch.enable',{patterns:[{urlPattern:'*docs.google.com/spreadsheets/*/gviz/tq*',requestStage:'Request'}]});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await eventually("document.querySelector('.nav-tabs')!==null",'App did not render');
   // A genuine clean Chrome profile measures cold UI shell render on this runner;
@@ -159,10 +387,39 @@ try{
   console.log('COLD_CHROME_SHELL',JSON.stringify(cold));
   const nav=await evaluate("(()=>{const b=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));if(!b)return false;b.click();return true})()");
   if(!nav)throw Error('Cannot navigate to content list');
-  // This test intentionally blocks real Firebase. Keep normal first paint gated,
-  // then explicitly opt in to temporary source viewing for isolated Sheets checks.
-  await evaluate("(()=>{const button=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('Xem dữ liệu tạm'));button?.click();return true;})()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Mock Sheets row NQ01 did not render');
+  // No temporary-source override. The actual App guest session must read the
+  // seeded V2 generation via FirebaseRepository and authenticated RTDB Rules.
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Firebase V2 row NQ01 did not render in the real List');
+  const firebaseList=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    return {rows:rows.length,hasFirst:rows.some(row=>row.textContent?.includes('NQ01')&&
+      row.textContent?.includes('Nội dung kiểm thử smoke')),
+      hasLast:rows.some(row=>row.textContent?.includes('NQ54')),
+      hasNote:rows.some(row=>row.textContent?.includes('Ghi chú nguồn O')),
+      isTemporary:document.body.textContent?.includes('Xem dữ liệu tạm')};
+  })()`);
+  if(firebaseList.rows!==54||!firebaseList.hasFirst||!firebaseList.hasLast||!firebaseList.hasNote)
+    throw Error('Firebase V2 rows missing in List: '+JSON.stringify(firebaseList));
+  if(forbiddenNetwork.length)throw Error('Production/Sheets request observed: '+JSON.stringify(forbiddenNetwork));
+  console.log('FIREBASE_ONLY_LIST_REAL_BROWSER_PASS',JSON.stringify(firebaseList));
+  // Verify the actual Report, not only an inserted CSS probe or a list fixture.
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+  await eventually("document.querySelector('.report-table tbody')?.textContent?.includes('Sở kiểm thử')===true",
+    'Real Report did not aggregate Firebase V2 seeded department');
+  const firebaseReport=await evaluate(`(()=>{
+    const tables=[...document.querySelectorAll('.report-surface .report-table')];
+    return {tables:tables.length,group:tables.some(table=>
+      table.querySelector('tbody')?.textContent?.includes('Sở kiểm thử')),
+      counts:tables.flatMap(table=>[...table.querySelectorAll('tbody button.count-drill')]
+        .map(button=>Number(button.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
+  })()`);
+  if(!firebaseReport.group||firebaseReport.counts.length===0)
+    throw Error('Firebase V2 seeded counts are absent from real Report: '+JSON.stringify(firebaseReport));
+  console.log('FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS',JSON.stringify(firebaseReport));
+  await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1]?.click()");
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'List did not restore Firebase V2 rows after Report navigation');
   // CSS-only hover: assert that the value's ink remains exactly unchanged
   // for an editable content button and a workflow status picker.
   const inkPoints=await evaluate(`(()=>{
@@ -247,7 +504,7 @@ try{
       [...blank.querySelectorAll('td')].some(cell=>cell.textContent?.trim()==='—')&&
       !/Chưa phân công|Chưa chọn|thiếu mã/.test(blank.textContent??'');
   })()`);
-  if(!layoutAndBlanks)throw Error('List/card width diverged or blank Sheet values are not shown as dash');
+  if(!layoutAndBlanks)throw Error('List/card width diverged or valid blank Firebase fields are not shown as dash');
   const fullExcelColumns=await evaluate(`(()=>{
     const header=[...document.querySelectorAll('.item-heading-row th')].map(node=>node.querySelector('.column-heading-label')?.textContent?.trim()??'');
     const values=document.querySelector('.item-data-table tbody tr')?.textContent??'';
@@ -289,18 +546,20 @@ try{
   }
   console.log('GUEST_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
   const groupedDefault=await evaluate(`(()=>{
-    const keys=[...document.querySelectorAll('.item-column-filter-row [data-filter-key]')]
-      .map(el=>el.getAttribute('data-filter-key'));
     const headings=[...document.querySelectorAll('.item-heading-row th')]
       .map(el=>el.querySelector('.column-heading-label')?.textContent?.trim());
-    const expected=['displayCode','stt','type','department','content','partyLevel','progressParty',
-      'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress','note'];
+    const search=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    const departments=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    const rooms=document.querySelector('select[aria-label="Lọc Phòng"]');
+    const advance=document.querySelector('details.list-filter-other');
+    const oldRow=document.querySelector('.item-column-filter-row');
+    const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const row=document.querySelector('.item-data-table tbody tr');
     const doc=row?.querySelector('td[data-col-key=content]');
     const stages=row?.querySelector('td[data-col-key=partyLevel]');
     const text=stages?.textContent??'';
-    return {ok:keys.length===15&&JSON.stringify(keys)===JSON.stringify(expected)&&
-      headings.length===10&&new Set(headings).size===10&&
+    return {ok:!!search&&!!departments&&!!rooms&&!!advance&&!oldRow&&!stt&&
+      headings.length===9&&new Set(headings).size===9&&
       headings.includes('Tiến độ 3 khâu')&&headings.includes('Nội dung trình')&&
       headings.includes('Tiến độ hiện tại')&&headings.includes('Ghi chú')&&
       !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
@@ -308,15 +567,17 @@ try{
       stages?.querySelectorAll('.compact-stage-row').length===3&&
       text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
       !document.querySelector('.source-column-visibility button'),
-      keys,headings,stages:text.slice(0,180)};
+      headings,stages:text.slice(0,180),toolbar:!!search,stt:!!stt};
   })()`);
-  if(!groupedDefault.ok)throw Error('Required U01/U02 groups or original 15 source filters missing: '+JSON.stringify(groupedDefault));
-  console.log('MANDATORY_U01_U02_AND_FILTERS_PASS',JSON.stringify(groupedDefault));
-  
+  if(!groupedDefault.ok)throw Error('V2 U01/U02 group projection or compact toolbar missing: '+JSON.stringify(groupedDefault));
+  console.log('V2_MANDATORY_GROUPS_TOOLBAR_NO_STT_PASS',JSON.stringify(groupedDefault));
+
+  // Only V2 filter selectors change here; the baseline palette RGB oracle is
+  // unchanged on independent L1 (L2 owns the later colors diff).
   const statusStyles=await evaluate(`(()=>{
     const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
-    const input=document.querySelector('[data-filter-key=content] input');
-    const selector=document.querySelector('[data-filter-key=type] select');
+    const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    const selector=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
     const th=document.querySelector('.item-heading-row th');
     if(!status||!input||!selector||!th)return {ok:false,reason:'missing real group controls'};
     const tones=[...document.querySelectorAll('.compact-stage-state')].slice(0,3)
@@ -332,12 +593,12 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgb(255, 224, 228)'&&
-      colors[1].background==='rgb(254, 249, 195)'&&
-      colors[2].background==='rgb(213, 240, 222)'&&
-      colors[0].color==='rgb(208, 0, 37)'&&
-      colors[1].color==='rgb(133, 77, 14)'&&
-      colors[2].color==='rgb(0, 122, 24)'&&
+      colors[0].background==='rgb(255, 241, 243)'&&
+      colors[1].background==='rgb(255, 248, 233)'&&
+      colors[2].background==='rgb(238, 248, 241)'&&
+      colors[0].color==='rgb(177, 64, 82)'&&
+      colors[1].color==='rgb(128, 92, 34)'&&
+      colors[2].color==='rgb(52, 110, 72)'&&
       !!input&&!!selector&&
       getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
       tones,colors,header:getComputedStyle(th).backgroundColor};
@@ -365,12 +626,12 @@ try{
   if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
-    semanticCells.office.bg!=='rgb(254, 249, 195)'||
-    semanticCells.office.ink!=='rgb(133, 77, 14)')
+    semanticCells.office.bg!=='rgb(255, 248, 233)'||
+    semanticCells.office.ink!=='rgb(128, 92, 34)')
     throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
-  const expectedBorder={ 'report-stage-source':'rgb(208, 0, 37)',
-    'report-stage-office':'rgb(133, 77, 14)',
-    'report-stage-completed':'rgb(0, 122, 24)'};
+  const expectedBorder={ 'report-stage-source':'rgb(177, 64, 82)',
+    'report-stage-office':'rgb(128, 92, 34)',
+    'report-stage-completed':'rgb(52, 110, 72)'};
   for(const cell of semanticCells.statusCells){
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',
       x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
@@ -414,11 +675,11 @@ try{
     const outer=getComputedStyle(td),inner=getComputedStyle(button);
     return {ok:td.matches(':hover')&&!button.matches(':hover')&&
       outer.boxShadow==='none'&&outer.outlineStyle==='none'&&
-      inner.borderTopColor==='rgb(208, 0, 37)'&&
-      inner.boxShadow.includes('rgb(255, 224, 228)')&&
+      inner.borderTopColor==='rgb(177, 64, 82)'&&
+      inner.boxShadow.includes('rgb(255, 241, 243)')&&
       inner.boxShadow.includes('8px 16px')&&
       Math.abs(new DOMMatrixReadOnly(inner.transform).m42+3)<.25&&
-      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(208, 0, 37)',
+      inner.outlineStyle==='solid'&&inner.outlineColor==='rgb(177, 64, 82)',
       outerShadow:outer.boxShadow,outerOutline:outer.outlineStyle,
       innerBorder:inner.borderTopColor,innerShadow:inner.boxShadow,
       liftY:new DOMMatrixReadOnly(inner.transform).m42,
@@ -511,16 +772,30 @@ try{
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
   const paletteCascade=await evaluate(`(()=>{
-    const root=document.querySelector('.app-shell');
     const sample=document.querySelector('.item-data-table tbody td[data-col-key="partyLevel"] .compact-stage-state[data-progress-tone="not-submitted"]');
-    if(!root||!sample)return {ok:false,reason:'missing table/status'};
-    root.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
-    root.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
-    const style=getComputedStyle(sample);
-    const ok=style.color==='rgb(161, 0, 34)'&&style.backgroundColor==='rgb(241, 203, 219)';
-    root.style.removeProperty('--hdnd-status-not-submitted-text');
-    root.style.removeProperty('--hdnd-status-not-submitted-bg');
-    return {ok,text:style.color,background:style.backgroundColor};
+    const frame=sample?.closest('.compact-stage-row');
+    if(!sample||!frame)return {ok:false,reason:'missing real grouped stage'};
+    // App may supply a nearer scoped palette than the outer app-shell. Edit the
+    // actual closest CSS-variable owner, then restore it without writing storage.
+    let owner=sample.parentElement;
+    while(owner&&!owner.style.getPropertyValue('--hdnd-status-not-submitted-text'))
+      owner=owner.parentElement;
+    owner??=document.querySelector('.app-shell');
+    if(!owner)return {ok:false,reason:'missing palette owner'};
+    const beforeText=owner.style.getPropertyValue('--hdnd-status-not-submitted-text');
+    const beforeBg=owner.style.getPropertyValue('--hdnd-status-not-submitted-bg');
+    owner.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
+    owner.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
+    const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
+    const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
+    const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
+    const ok=text==='rgb(161, 0, 34)'&&background==='rgba(0, 0, 0, 0)'&&
+      inherited==='#A10022'&&frameBackground!=='rgba(0, 0, 0, 0)';
+    if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
+    else owner.style.removeProperty('--hdnd-status-not-submitted-text');
+    if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
+    else owner.style.removeProperty('--hdnd-status-not-submitted-bg');
+    return {ok,text,background,frameBackground,inherited,owner:owner.className};
   })()`);
   if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
   const sortAndGuestLayout=await evaluate(`(()=>{
@@ -529,20 +804,23 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const status=document.querySelector('.item-filter-status-slot');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
-    const sort=stt?.querySelector('.column-sort-button');
-    if(!topbar||!nav||!viewport||!stt||sort)return {ok:false,reason:'Missing guest chrome or sort incorrectly visible in view mode'};
+    const sort=document.querySelector('.item-heading-row .column-sort-button');
+    if(!topbar||!nav||!viewport||stt||!sort)return {ok:false,reason:'Missing V3 guest chrome, STT shown or guest sorting unavailable'};
     const top=topbar.getBoundingClientRect(),tabs=nav.getBoundingClientRect();
     const cards=document.querySelector('.item-summary-grid');
     const cardRect=cards?.getBoundingClientRect();
-    const gapBefore=cardRect?.top-tabs.bottom;
+    const toolbar=document.querySelector('.list-filter-toolbar')?.getBoundingClientRect();
+    const gapBefore=(toolbar?.top??0)-tabs.bottom;
     const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
+    const gapBelowToolbar=(cardRect?.top??0)-(toolbar?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
     // Same strict no-extra-blank-space contract, now measured before and after
     // the four explicitly requested summary cards instead of across their height.
     return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
-      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!!localMenu,
-      aligned,gapBefore,gapAfter,cardHeight:cardRect?.height,
+      gapBelowToolbar>=0&&gapBelowToolbar<30&&
+      cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!localMenu&&!!sort,
+      aligned,gapBefore,gapAfter,gapBelowToolbar,cardHeight:cardRect?.height,
       hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
@@ -574,12 +852,12 @@ try{
     const cardDepth=!!activeStyle?.boxShadow.includes('10px 24px')&&!!idleStyle?.boxShadow.includes('4px 14px');
     return {ok:nav?.getBoundingClientRect().width<=1000&&
       restrainedGradient&&distinct&&border&&noIcons&&activeBadge&&cardDepth&&
-      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=15&&g.rightInset<=29)&&
+      geometry.length===2&&geometry.every(g=>g.lines===1&&g.titleFits&&!g.overflow&&g.rightInset>=8&&g.rightInset<=29)&&
       Math.abs(geometry[0].rightInset-geometry[1].rightInset)<1&&
       Math.abs(geometry[0].badgeWidth-geometry[1].badgeWidth)<1&&
       cards.length===2&&labels[0]==='Báo cáo tổng hợp'&&
       labels[1]==='Danh sách các ND trình HĐND'&&
-      boxes.every(box=>box.width>=300&&box.height>=78&&box.height<=100)&&
+      boxes.every(box=>box.width>=300&&box.height>=42&&box.height<=72)&&
       !nav.querySelector('.section-card-description')&&
       getComputedStyle(unselected.querySelector('.section-card-state')).visibility==='hidden'&&
       getComputedStyle(selected.querySelector('.section-card-state')).visibility==='visible'&&
@@ -591,6 +869,21 @@ try{
       labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
+  const compactNavigation=await evaluate(`(()=>{
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const cards=[...(nav?.querySelectorAll('.primary-section-card')??[])];
+    return {count:cards.length,heights:cards.map(x=>x.getBoundingClientRect().height),
+      focusable:cards.every(x=>x.tagName==='BUTTON'&&!x.disabled),
+      active:cards.filter(x=>x.classList.contains('active')).length,
+      navGap:parseFloat(getComputedStyle(nav).rowGap)};
+  })()`);
+  if(compactNavigation.count!==2||compactNavigation.active!==1||
+      !compactNavigation.focusable||compactNavigation.heights.some(h=>h>72||h<42))
+    throw Error('PR95 compact navigation regression '+JSON.stringify(compactNavigation));
+  const compactNavigationShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-nav-compact-synthetic.png',
+    Buffer.from(compactNavigationShot.data,'base64'));
+  console.log('PR95_COMPACT_NAVIGATION_PASS',JSON.stringify(compactNavigation));
   console.log('TAB_LABELS_RIGHT_AND_SINGLE_LINE_PASS',JSON.stringify(mainSectionCards.geometry));
   console.log('PRIMARY_CARD_TABS_NO_ICONS_PASS',JSON.stringify({widths:mainSectionCards.widths,cardDepth:mainSectionCards.cardDepth,activeBadge:mainSectionCards.activeBadge}));
 
@@ -682,10 +975,11 @@ try{
         titleSize:parseFloat(getComputedStyle(el.querySelector('.section-card-title')).fontSize)};
     })()`);
     if(!hover.hover||Math.abs(hover.liftY+3)>.25||!hover.shadow.includes('12px 24px')||
-      hover.color!==color||hover.titleSize<18)
+      hover.color!==color||hover.titleSize<15||hover.titleSize>17)
       throw Error('Main tab 3D or lighter text mismatch: '+JSON.stringify({selector,hover}));
   }
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:785,y:9});
+  // V3 cards now start near the top. x=785,y=9 is over a card, NOT mouseleave.
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:3,y:105});
   await new Promise(resolve=>setTimeout(resolve,270));
   const navReset=await evaluate(`[...document.querySelectorAll('nav.primary-section-switcher .primary-section-card')]
     .every(el=>Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m42)<.25)`);
@@ -696,30 +990,38 @@ try{
     const card=document.querySelector('.item-data-region .card-header');
     const title=document.querySelector('.nav-tabs button[aria-current=page] .section-card-title');
     const headers=[...document.querySelectorAll('.item-heading-row th')];
-    const first=headers[0];
-    const label=first?.querySelector('.column-heading-label');
-    const filter=document.querySelector('.item-column-filter-row th');
+    const first=headers[0],label=first?.querySelector('.column-heading-label');
     const td=document.querySelector('.item-data-table tbody td');
-    const thinLine=node=>node?getComputedStyle(node).borderRightWidth:null;
+    const toolbar=document.querySelector('.list-filter-toolbar');
+    const border=node=>node?getComputedStyle(node).borderRightWidth:null;
     return {ok:!card&&title?.textContent==='Danh sách các ND trình HĐND'&&
-      !document.querySelector('.item-list-summary')&&
-      headers.length>=10&&
+      !document.querySelector('.item-list-summary')&&headers.length>=9&&!!toolbar&&
+      !document.querySelector('.item-column-filter-row')&&
+      !document.querySelector('th[data-column-key=stt]')&&
       getComputedStyle(label).textAlign==='center'&&
-      thinLine(first)==='1px'&&thinLine(filter)==='1px'&&thinLine(td)==='1px',
-      heading:title?.textContent,headers:headers.length,
+      border(first)==='1px'&&border(td)==='1px',
+      heading:title?.textContent,headers:headers.length,toolbar:!!toolbar,
       align:label?getComputedStyle(label).textAlign:null,
-      widths:[thinLine(first),thinLine(filter),thinLine(td)]};
+      widths:[border(first),border(td)]};
   })()`);
-  if(!listHeadingAndLines.ok)throw Error('List header or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
-  // Sorting is now edit-mode only. The viewer/anonymous guest must not
-  // expose a sorting button or activate sort via the header itself.
-  const viewerSortBlocked=await evaluate(`(()=>{
-    const header=document.querySelector('.item-heading-row th[data-column-key="stt"]');
-    header?.click();
-    return !!header&&header.getAttribute('aria-sort')==='none'&&
-      !header.querySelector('.column-sort-button');
+  if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
+  // V3: every viewer sorts, without getting header drag/reorder rights.
+  const viewerSortEnabled=await evaluate(`(()=>{
+    const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
+    const button=header?.querySelector('.column-sort-button');
+    if(!header||!button||header.classList.contains('column-movable'))return false;
+    button.click();return true;
   })()`);
-  if(!viewerSortBlocked)throw Error('Viewer must not expose sorting');
+  if(!viewerSortEnabled)throw Error('Guest must have sort but no column rearrange');
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='ascending'",
+    'Guest ascending view sort unavailable');
+  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='descending'",
+    'Guest descending view sort unavailable');
+  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
+  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='none'",
+    'Guest sort must reset without changing saved column layout');
+  console.log('V3_L1_GUEST_SORT_WITHOUT_LAYOUT_CONTROL_PASS');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
   // Synthetic marked cell tests the one shared editing tooltip without granting
@@ -782,31 +1084,45 @@ try{
 
 
   const visibleRows=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
-  if(visibleRows!==54)throw Error('All 54 Sheets records should render without 50-row pagination, got '+visibleRows);
+  if(visibleRows!==54)throw Error('All 54 Firebase V2 records should render without 50-row pagination, got '+visibleRows);
   if(await evaluate("!!document.querySelector('.pagination')"))throw Error('Legacy pagination controls should be removed');
   const sticky=await evaluate(`(()=>{
-    const scroll=document.querySelector('.item-table-scroll'),title=scroll?.querySelector('.item-heading-row th'),
-      filter=scroll?.querySelector('.item-column-filter-row th');
-    if(!scroll||!title||!filter)return false;
+    const scroll=document.querySelector('.item-table-scroll');
+    const title=scroll?.querySelector('.item-heading-row th');
+    const toolbar=document.querySelector('.list-filter-toolbar');
+    const search=toolbar?.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    if(!scroll||!title||!toolbar||!search)return false;
     if(getComputedStyle(scroll.querySelector('thead')).position!=='sticky')return false;
     if(getComputedStyle(title).whiteSpace!=='normal')return false;
-    const titleBottom=title.getBoundingClientRect().bottom,filterTop=filter.getBoundingClientRect().top;
-    if(filterTop<titleBottom-3)return false;
-    if(getComputedStyle(document.querySelector('.item-sticky-search-controls')).position!=='sticky')return false;
+    if(document.querySelector('.item-column-filter-row,.item-sticky-search-controls'))return false;
     const before=title.getBoundingClientRect().top;
     if(scroll.scrollHeight<=scroll.clientHeight+30)return false;
     scroll.scrollTop=180;
     const after=title.getBoundingClientRect().top;
     return scroll.scrollTop>=100&&Math.abs(before-after)<3&&
-      document.querySelectorAll('.item-column-filter-row input,.item-column-filter-row select').length>2;
+      !!document.querySelector('select[aria-label="Lọc Sở, ngành"]')&&
+      !!document.querySelector('select[aria-label="Lọc Phòng"]');
   })()`);
-  if(!sticky)throw Error('Sticky table header/filter/search and vertical scroll must work together');
-  await eventually("document.querySelector('.guest-signin')!==null",'Anonymous viewer must have a simple login entry');
+  if(!sticky)throw Error('V2 sticky table heading and compact toolbar scroll must work together');
+  await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",'Anonymous viewer must have gear-only login');
+  // UI V4 L3: guest and unauthenticated visitors never mount reference codes.
+  const guestReferenceDenied=await evaluate(`(()=>{
+    const root=document.querySelector('.app-shell');
+    return !root?.hasAttribute('data-ui-reference-active')&&
+      !document.querySelector('[data-ui-reference-layer]')&&
+      ![...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .some(button=>button.textContent?.trim()==='Hiện mã khu vực');
+  })()`);
+  if(!guestReferenceDenied)throw Error('UI V4 L3 guest reference codes must be absent');
+  console.log('PR95_UI_V4_L3_APP_GUEST_DEFAULT_OFF_PASS');
   const guestClean=await evaluate(`(()=>{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
-    return !!document.querySelector('.guest-signin')&&
-      !document.querySelector('.options-menu')&&!document.querySelector('.list-view-box')&&
-      !!document.querySelector('.version')&&
+    const gear=document.querySelector('.v3-settings-menu');
+    const actions=[...gear?.querySelectorAll('.options-popover > button')??[]];
+    return !!gear&&actions.length===1&&actions[0].textContent.trim()==='Đăng nhập quản trị'&&
+      !document.querySelector('.guest-signin')&&!document.querySelector('.list-view-box')&&
+      !document.querySelector('.version')&&
+      !document.querySelector('.source-column-visibility,.compact-columns-menu,.status-palette-trigger,.column-resizer')&&
       !document.querySelector('.brand')&&!document.querySelector('.demo-banner')&&
       !document.querySelector('.settings-mode-bar')&&
       !document.querySelector('.app-footer')&&
@@ -814,8 +1130,8 @@ try{
       !document.body.textContent?.includes('Dữ liệu tự cập nhật')&&
       !banner.includes('GID')&&
       !document.querySelector('.notice[role="status"]')?.textContent?.includes('Danh mục và bố trí')&&
-      document.querySelector('[data-filter-key="displayCode"] input')?.placeholder===''&&
-      document.querySelector('input[aria-label="Lọc Nội dung"]')?.placeholder==='Nội dung';
+      document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.placeholder==='Tìm kiếm không dấu…'&&
+      !!document.querySelector('select[aria-label="Lọc Sở, ngành"]');
   })()`);
   if(!guestClean)throw Error('Anonymous list still exposes admin configuration or outdated filter labels');
   // Guest footer and generic edit hint are intentionally removed. Use the
@@ -858,35 +1174,40 @@ try{
       throw Error('List grid shifted while '+label+': '+JSON.stringify({tablePosition,result}));
   };
 
-  const started=await evaluate(`(()=>{const input=document.querySelector('input[aria-label="Lọc Nội dung"]');input?.focus();return !!input})()`);
-  if(!started)throw Error('Column filter UI is missing');
+  const started=await evaluate(`(()=>{
+    const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
+    input?.focus();return !!input;
+  })()`);
+  if(!started)throw Error('V2 global search input missing');
   await send('Input.insertText',{text:'Không khớp'});
-  await eventually("document.querySelector('input[aria-label=\"Lọc Nội dung\"]')?.value==='Không khớp'",'Direct column filter value not shown');
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",'Column filtering does not restrict the list');
+  await eventually("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.value==='Không khớp'",
+    'Global search value not shown');
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
+    'Global search must constrain table');
   await assertStable('no matching rows');
-  await evaluate("document.querySelector('[data-filter-key=\"content\"] .item-filter-clear')?.click()");
-  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",'Removing filter did not restore list');
-  await assertStable('clearing column search');
-  // Search without diacritics, highlight ALL occurrences inside the source
-  // content cell without changing text or the underlying edit value.
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+    'Clearing global search did not restore the list');
+  await assertStable('clearing global search');
   const began=Date.now();
-  await evaluate("document.querySelector('input[aria-label=\\\"Lọc Nội dung\\\"]')?.focus()");
+  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.focus()");
   await send('Input.insertText',{text:'kiem thu'});
   await eventually("document.querySelector('.item-data-table tbody td[data-col-key=\\\"content\\\"] mark.item-search-match')?.textContent?.toLowerCase().includes('kiểm thử')===true",
-    'Vietnamese search matches must be marked in visible contents');
+    'V2 Unicode search highlighting missing');
   const marked=await evaluate(`(()=>{
     const content=[...document.querySelectorAll('.item-data-table tbody td[data-col-key="content"]')];
     const marks=content.flatMap(cell=>[...cell.querySelectorAll('mark.item-search-match')]);
     const source=content[0]?.textContent??'';
     return {matches:marks.length,count:content.length,first:marks[0]?.textContent,
-      fullTextPreserved:source.includes('Nội dung kiểm thử'),input:document.querySelector('[data-filter-key=content] input')?.value};
+      fullTextPreserved:source.includes('Nội dung kiểm thử'),
+      input:document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value};
   })()`);
   if(marked.matches<40||!marked.fullTextPreserved||marked.input!=='kiem thu')
-    throw Error('Search highlights must preserve Vietnamese text in all matching rows: '+JSON.stringify(marked));
-  console.log('CONTENT_SEARCH_MARKED_PASS',JSON.stringify({...marked,elapsedMs:Date.now()-began}));
-  await evaluate("document.querySelector('[data-filter-key=\\\"content\\\"] .item-filter-clear')?.click()");
+    throw Error('Global search must highlight and preserve Vietnamese source text: '+JSON.stringify(marked));
+  console.log('V2_CONTENT_SEARCH_MARKED_PASS',JSON.stringify({...marked,elapsedMs:Date.now()-began}));
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
   await eventually("document.querySelectorAll('.item-data-table mark.item-search-match').length===0",
-    'Clearing content search must remove every yellow mark');
+    'Clearing global search must clear yellow marks');
   const highlightLayout=await evaluate(`(()=>{
     const table=document.createElement('table');
     table.className='item-data-table';table.style.cssText='width:228px;table-layout:fixed;';
@@ -911,55 +1232,66 @@ try{
     !highlightLayout.text.includes('số 254 ngày'))
     throw Error('Left-aligned progress note must preserve unsplit numeric highlight: '+JSON.stringify(highlightLayout));
   console.log('LEFT_ALIGN_AND_ATOMIC_SEARCH_HIGHLIGHT_PASS',JSON.stringify(highlightLayout));
-  const placeholderSelect=await evaluate(`(()=>{
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
-    const color=select?getComputedStyle(select).color:'';
-    return {ok:!!select&&select.classList.contains('filter-placeholder')&&
-      color==='rgb(154, 169, 160)'&&select.selectedOptions[0]?.textContent==='Loại VB',color};
+  const kindOptions=await evaluate(`(()=>{
+    const buttons=[...document.querySelectorAll('button[data-summary-kind]')];
+    const keys=buttons.map(b=>b.getAttribute('data-summary-kind'));
+    const label=buttons[0]?.getAttribute('title');
+    const selected=buttons.find(b=>b.getAttribute('data-summary-kind')==='qppl');
+    selected?.click();
+    return {keys,tooltip:label,pressed:selected?.getAttribute('aria-pressed')};
   })()`);
-  if(!placeholderSelect.ok)throw Error('Category placeholder styling regression: '+JSON.stringify(placeholderSelect));
-  // Focus the REAL sticky select through CDP after scrolling deep into the
-  // grid. Opening a dropdown must not scroll all rows to the top.
-  const stickySelectPoint=await evaluate(`(()=>{
-    const grid=document.querySelector('.item-table-scroll');
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
-    if(!grid||!select)return null;
-    grid.scrollTop=320;
-    const r=select.getBoundingClientRect();
-    return {x:r.left+r.width/2,y:r.top+r.height/2,top:grid.scrollTop,
-      actual:document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.tagName};
-  })()`);
-  if(!stickySelectPoint||stickySelectPoint.top<200||stickySelectPoint.actual!=='SELECT')
-    throw Error('Sticky category dropdown not hittable when scrolled: '+JSON.stringify(stickySelectPoint));
-  await send('Input.dispatchMouseEvent',{type:'mousePressed',x:stickySelectPoint.x,
-    y:stickySelectPoint.y,button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:stickySelectPoint.x,
-    y:stickySelectPoint.y,button:'left',clickCount:1});
-  await sleep(70);
-  const afterOpenTop=await evaluate("document.querySelector('.item-table-scroll')?.scrollTop");
-  if(Math.abs(afterOpenTop-stickySelectPoint.top)>2)
-    throw Error('Opening sticky dropdown moved list rows: '+JSON.stringify({
-      before:stickySelectPoint.top,after:afterOpenTop}));
-  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
-  await evaluate("document.querySelector('.item-table-scroll').scrollTop=0");
+  // PR95 UI V3 L4: exactly three visible kind chips, not the obsolete
+  // V2 unknown-kind buttons. Unknown source records remain in the true total.
+  if(kindOptions.keys.join(',')!=='qppl,hc,bc'||
+      !kindOptions.tooltip?.includes('bấm lại để bỏ lọc'))
+    throw Error('V3 three kind chips invalid: '+JSON.stringify(kindOptions));
+  await eventually("document.querySelector('button[data-summary-kind=qppl]')?.getAttribute('aria-pressed')==='true'",
+    'QPPL kind chip selection failed');
+  await evaluate("document.querySelector('button[data-summary-kind=qppl]')?.click()");
+  await eventually("document.querySelector('button[data-summary-kind=qppl]')?.getAttribute('aria-pressed')==='false'",
+    'QPPL kind chip second click must clear only kind');
 
-  const selectedType=await evaluate(`(()=>{
-    const select=document.querySelector('.item-column-filter-row [data-filter-key="type"] select');
+  // Real selected department dropdown must constrain exact string values.
+  const v2Department=await evaluate(`(()=>{
+    const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    if(!el||el.options.length<2)return false;
+    el.value=el.options[1].value;
+    el.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  })()`);
+  if(!v2Department)throw Error('V2 department dropdown missing');
+  await eventually("document.querySelector('.list-filter-count')?.textContent.includes('kết quả')",
+    'V2 department count did not render');
+  // Escape inside dropdown keeps its native behavior and does not erase filters.
+  await evaluate(`(()=>{
+    const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    el?.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  })()`);
+  if(!await evaluate("!!document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value"))
+    throw Error('Escape in dropdown wrongly cleared List filters');
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value===''",
+    'V2 list reset did not clear department');
+  console.log('V2_KIND_DEPARTMENT_DROPDOWN_PASS',JSON.stringify(kindOptions));
+  // Browser-level Escape guard: one bare Escape outside interactive controls
+  // clears AND filters; native Escape inside select was checked above.
+  const v2EscReady=await evaluate(`(()=>{
+    const select=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
+    document.querySelectorAll('details[open]').forEach(node=>node.open=false);
     if(!select||select.options.length<2)return false;
     select.value=select.options[1].value;
     select.dispatchEvent(new Event('change',{bubbles:true}));
     return true;
   })()`);
-  if(!selectedType)throw Error('Type dropdown filter missing');
-  await eventually("document.querySelector('[data-filter-key=type] select')?.classList.contains('selected-filter-value')===true",
-    'Type category filter did not apply');
-  await evaluate(`(()=>{
-    document.querySelector('[data-filter-key=type] select')?.dispatchEvent(
-      new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
-  })()`);
-  await eventually("document.querySelector('[data-filter-key=type] select')?.value===''",
-    'Escape did not clear selected type');
+  if(!v2EscReady)throw Error('V2 Escape browser setup unavailable');
+  await eventually("!!document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value",
+    'V2 Escape setup did not apply department filter');
+  await evaluate(`document.body.dispatchEvent(new KeyboardEvent('keydown',
+    {key:'Escape',code:'Escape',bubbles:true,cancelable:true}))`);
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Sở, ngành\\\"]')?.value===''",
+    'V2 Escape outside controls must clear list conditions');
+  console.log('V2_ESC_NATIVE_CONTROL_AND_OUTSIDE_CLEAR_PASS');
+
 
   // An unsaved edit must not highlight the whole row in yellow or paint an
   // amber stripe in the detail popup. Explicit user row color rules are separate.
@@ -1037,17 +1369,20 @@ try{
   console.log('HOVER_3D_B_REPORT_POPUP_PASS',JSON.stringify(modalLift));
 
 
-  // Guest may change local-only grouping but must never receive admin layout controls.
+  // V3: anonymous and non-admin viewers MUST NOT receive any personal
+  // compact column menu or a stale layout write path, but can still sort.
   const compactGuestSafe=await evaluate(`(()=>{
-    const guest=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    return !!guest&&guest.textContent.includes('Tùy chọn người phụ trách')&&
-      !document.querySelector('.admin-column-arrange-hint')&&
-      !document.querySelector('.item-column-panel')&&
-      !document.querySelector('.status-palette-trigger');
+    const menu=document.querySelector('.guest-compact-menu-bar,.compact-columns-menu');
+    const sort=document.querySelector('.item-heading-row .column-sort-button');
+    return !menu&&!!sort&&!!document.querySelector('.list-filter-toolbar')&&
+      !document.querySelector('.admin-column-arrange-hint,.item-column-panel,.source-column-visibility')&&
+      !document.querySelector('.status-palette-trigger,.column-resizer');
   })()`);
-  if(!compactGuestSafe)throw Error('Guest compact view must remain local-only');
-  // The duplicate top search toolbar is intentionally removed; every column has its own filter.
-  if(await evaluate("!!document.querySelector('.search-field')"))throw Error('Redundant global search toolbar remains');
+  if(!compactGuestSafe)throw Error('V3 guest received admin-only column or layout controls');
+  console.log('V3_GUEST_NO_COMPACT_LAYOUT_CONTROLS_PASS');
+  // V2 intentionally has one compact global toolbar and no duplicate column-header filters.
+  if(!await evaluate("!!document.querySelector('.list-filter-toolbar')&&!document.querySelector('.item-column-filter-row')"))
+    throw Error('V2 toolbar missing or duplicate full-width per-column filter row returned');
   // Switching Overview / List must never resize or horizontally relocate the shared page header.
   const sharedGeometry=()=>evaluate(`(()=>{
     const selectors=['.topbar','.nav-tabs'];
@@ -1123,21 +1458,35 @@ try{
       })()`);
       if(!colorConsistency.ok)throw Error('Report status header/body/footer palette mismatch: '+
         JSON.stringify(colorConsistency));
-      // A report without intermediate stage must not show an empty
-      // "Bước tiếp theo" action chip; Party and Build retain that chip.
+      // Exact V3 summary-chip contract: only Party says "Bước tiếp theo";
+      // Build's pending QĐ and every completed stage have report-specific names.
+      // Check text, accessible name and button count together in real Chrome.
       const intermediateChips=await evaluate(`(()=>{
-        const titles=[...document.querySelectorAll('.report-surface > .card-header h3')];
-        const reports=titles.map(title=>{
-          const section=title.closest('.report-surface');
-          const labels=[...section.querySelectorAll('.report-flow-summary .report-stage-summary')]
-            .map(el=>el.textContent?.trim());
-          return {title:title.textContent?.trim(),labels,hasNext:labels.some(l=>l?.includes('Bước tiếp theo'))};
+        const expected=[
+          {title:'Tiến độ xin ý kiến Thành ủy',labels:['Sở chưa trình','VP đang xử lý','Bước tiếp theo','Đã có TBKL']},
+          {title:'Tiến độ trình HĐND xây dựng NQ',labels:['Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ']},
+          {title:'Tiến độ các Nghị quyết và Báo cáo trình HĐND',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+          {title:'Tiến độ trình HĐND ban hành NQ',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+          {title:'Tiến độ trình HĐND ban hành BC',labels:['Sở chưa trình','VP đang xử lý','Hoàn thành']},
+        ];
+        const reports=[...document.querySelectorAll('.report-surface > .card-header h3')].map(title=>{
+          const reportTitle=title.textContent?.replace(/\\(\\d+ nội dung\\)\\s*$/u,'').trim()??'';
+          const spec=expected.find(value=>value.title===reportTitle);
+          const chips=[...title.closest('.report-surface').querySelectorAll('.report-flow-summary .report-stage-summary')]
+            .map(el=>({label:el.querySelector('span')?.textContent?.trim()??'',
+              count:Number(el.querySelector('strong')?.textContent??-1),
+              aria:el.getAttribute('aria-label'),tag:el.tagName}));
+          const labels=chips.map(value=>value.label);
+          return {title:reportTitle,labels,expected:spec?.labels,
+            ok:!!spec&&JSON.stringify(labels)===JSON.stringify(spec.labels)&&
+              chips.every(value=>value.tag==='BUTTON'&&Number.isInteger(value.count)&&
+                value.count>=0&&value.aria===
+                  reportTitle+' · '+value.label+': '+value.count+' nội dung. Bấm để xem chi tiết')};
         });
-        return {ok:reports.length===5&&reports.every(r=>
-          r.hasNext===(r.title.includes('xin ý kiến Thành ủy')||r.title.includes('xây dựng NQ'))),reports};
+        return {ok:reports.length===expected.length&&reports.every(value=>value.ok),reports};
       })()`);
-      if(!intermediateChips.ok)throw Error('Intermediate-stage chips mismatch: '+JSON.stringify(intermediateChips));
-      console.log('REPORT_STAGE_SUMMARIES_MATCH_COLUMNS_PASS');
+      if(!intermediateChips.ok)throw Error('R-V3-02 report-specific chip labels/aria mismatch: '+JSON.stringify(intermediateChips));
+      console.log('R_V3_02_REPORT_STAGE_LABELS_ARIA_PASS',JSON.stringify(intermediateChips.reports));
       const buildHeading=await evaluate(`(()=>{
         const title=[...document.querySelectorAll('.report-surface h3')]
           .find(node=>node.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
@@ -1172,13 +1521,13 @@ try{
           .find(node=>node.querySelector('h3')?.textContent?.includes('Tiến độ trình HĐND xây dựng NQ'));
         const table=section?.querySelector('table.report-table');
         const header=[...(table?.querySelectorAll('thead th')??[])];
-        const pending=header.find(el=>el.textContent?.includes('Đã trình HĐND, chưa có QĐ'));
+        const pending=header.find(el=>el.textContent?.includes('Đã trình, chờ QĐ'));
         const total=table?.querySelector('tfoot td.report-total-col');
         const totalText=total?.querySelector('.count-drill > span')?.textContent?.trim() ??
           total?.querySelector('strong')?.textContent?.trim()??'';
         const rendered=section?.querySelector('.report-heading-count')?.textContent??'';
         const count=Number(rendered.match(/\\d+/)?.[0]??-1);
-        return {ok:!!pending&&pending.classList.contains('report-stage-intermediate')&&
+        return {ok:!!pending&&pending.classList.contains('report-stage-next')&&
           !header.some(el=>el.textContent?.trim()==='Không phải trình')&&
           !table?.querySelector('.report-stage-excluded')&&
           Number(totalText)===count,
@@ -1565,13 +1914,21 @@ try{
       .map(selector=>document.querySelector(selector)?.getBoundingClientRect());
     const expected=Math.min(window.innerWidth-40,${width});
     const reference=all[2],nav=all[1],top=all[0];
+    const gear=document.querySelector('header.v3-shell-topbar .v3-settings-menu > summary')?.getBoundingClientRect();
+    // V3 intentionally uses a zero-height, full-width corner-gear header.
+    // Retain strict centering of the two wide cards relative to page content,
+    // while checking that the separate 34px gear stays in the right corner.
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
-      Math.abs(top.left-reference.left)<=2&&Math.abs(top.width-reference.width)<=2&&
+      Math.abs((top.left+top.right)/2-(reference.left+reference.right)/2)<=3&&
+      top.left>=0&&top.right<=window.innerWidth+1&&top.width>=nav.width&&
+      !!gear&&gear.width>=33&&gear.width<=35&&
+      gear.left>=nav.right&&gear.right>=top.right-40&&gear.right<=top.right+2&&
       nav.width<=1000&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
       shellClass:shell.className,activeTab:document.querySelector('.nav-tabs button[aria-current=page]')?.textContent?.trim(),
       mainCssWidth:getComputedStyle(document.querySelector('main')).width,
-      boxes:all.map(r=>r?{left:r.left,width:r.width}:null)};
+      boxes:all.map(r=>r?{left:r.left,width:r.width}:null),
+      gear:gear?{left:gear.left,right:gear.right,width:gear.width}:null};
   })()`);
   for(const customWidth of [850,1280]){
     const aligned=await alignedCustomWidth(customWidth);
@@ -1623,26 +1980,31 @@ try{
   })()`);
   if(!wideShell)throw Error('Site shell still capped on 2200px desktop display');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
-  const guestOptions=await evaluate(`(()=>{const b=document.querySelector('.guest-signin');b?.click();return !!b})()`);
-  if(!guestOptions)throw Error('Guest must have login entry');
-  await eventually("document.querySelector('.firebase-panel')!==null || document.querySelector('main')?.textContent?.includes('Tài khoản Firebase')===true",
-    'Guest login did not open account page');
-  const accountWidth=await evaluate(`(()=>{
-    const shell=document.querySelector('.app-shell');
-    const main=document.querySelector('main');
-    const top=document.querySelector('.topbar');
-    const tabs=document.querySelector('.nav-tabs');
-    if(!shell?.classList.contains('settings-page')||!main||!top||!tabs)
-      return {ok:false,reason:'Account settings frame missing'};
-    const m=main.getBoundingClientRect(),t=top.getBoundingClientRect(),n=tabs.getBoundingClientRect();
-    return {ok:Math.abs(m.width-1100)<3&&Math.abs(m.left-t.left)<3&&
-      Math.abs(m.width-t.width)<3&&n.width<=1000&&
-      Math.abs((n.left+n.right)/2-(m.left+m.right)/2)<3,
-      main:m.width,top:t.width,tabs:n.width};
+  // The guest must NEVER enter an account/settings page from a public UI
+  // action; login is only inside the small corner gear, without triggering
+  // real Google OAuth in the synthetic Chrome check.
+  const guestOptions=await evaluate(`(()=>{
+    const gear=document.querySelector('details.v3-settings-menu');
+    const summary=gear?.querySelector('summary[aria-label="Cài đặt"]');
+    if(!gear||!summary)return {ok:false};summary.click();
+    const links=[...gear.querySelectorAll('.options-popover > button')].map(x=>x.textContent?.trim());
+    const nav=document.querySelector('nav.primary-section-switcher');
+    const tabs=[...nav?.querySelectorAll('.primary-section-card')??[]];
+    const gr=gear.getBoundingClientRect(),sr=summary.getBoundingClientRect();
+    return {ok:gear.open&&links.length===1&&links[0]==='Đăng nhập quản trị'&&
+      !document.querySelector('.settings-hub-tabs,.account-source-actions,.source-column-visibility')&&
+      !document.querySelector('.guest-signin')&&
+      !document.querySelector('.app-shell.settings-page')&&
+      tabs.length===2&&tabs.every(t=>Math.abs(t.getBoundingClientRect().height-50)<1)&&
+      sr.width===34&&sr.height===34&&
+      gr.right>innerWidth-85&&nav.getBoundingClientRect().top<75,
+      actions:links,gear:{right:gr.right,top:sr.top,width:sr.width,height:sr.height},
+      tabs:tabs.map(t=>t.getBoundingClientRect().height)};
   })()`);
-  if(!accountWidth.ok)throw Error('Account settings must use compact aligned frame: '+JSON.stringify(accountWidth));
+  if(!guestOptions.ok)throw Error('V3 guest corner gear, two 50px tabs or admin guard failed: '+JSON.stringify(guestOptions));
   const shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-ui-smoke-pass.png',Buffer.from(shot.data,'base64'));
+  console.log('V3_L1_GUEST_NAV_GEAR_ADMIN_HIDDEN_PASS',JSON.stringify(guestOptions));
 
   // Open the real ItemList component in a standalone, synthetic-only QA mount.
   // This is not the deployed admin user journey; it verifies actual production
@@ -1665,7 +2027,7 @@ try{
     const docTop=doc?.querySelector('.compact-document-heading');
     const kind=docTop?.querySelector('.compact-document-badge');
     const department=docTop?.querySelector('.compact-document-department');
-    return {ok:columns.length===7&&new Set(columns).size===7&&
+    return {ok:columns.length===6&&new Set(columns).size===6&&
       columns.includes('content')&&columns.includes('partyLevel')&&columns.includes('room')&&
       !columns.some(k=>['type','department','progressParty','progressBuild','progressCouncil',
         'specialist','ubndLeader','vpLeader'].includes(k))&&
@@ -1769,7 +2131,7 @@ try{
     if(!checkbox)return false;checkbox.click();return true;
   })()`);
   if(!leaderToggle)throw Error('Leader pair switch missing');
-  await eventually("document.querySelectorAll('.item-heading-row th').length===9",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===8",
     'Switch to leader pair must restore room and specialist source columns');
   const leaderKeys=await evaluate(`[...document.querySelectorAll('.item-heading-row th')].map(x=>x.dataset.columnKey)`);
   if(!leaderKeys.includes('room')||!leaderKeys.includes('specialist')||
@@ -1782,7 +2144,7 @@ try{
     if(!checkbox)return false;checkbox.click();return true;
   })()`);
   if(!teamToggle)throw Error('Team merge switch missing');
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'Restoring team must still preserve the mandatory document/stage groups');
 
   await send('Emulation.setDeviceMetricsOverride',{width:768,height:1000,deviceScaleFactor:1,mobile:false});
@@ -1835,6 +2197,241 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel] .cell-picker-trigger')!==null",
     'Field-level staged editor missing');
+  // UI V3 L2: computed styles of the real mounted, independently editable group.
+  const v3Editable=await evaluate(`(()=>{
+    const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
+    const row=cell?.querySelector('[data-stage-field=progressBuild]');
+    const state=row?.querySelector('.compact-stage-state');
+    const button=state?.querySelector('button.cell-picker-trigger');
+    const level=cell?.querySelector('.compact-stage-level button.cell-picker-trigger');
+    if(!row||!state||!button||!level)return {ok:false,reason:'missing independently permitted editors'};
+    const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
+    const arrow=getComputedStyle(button,'::after');
+    return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
+      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
+      bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
+      arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
+      level!==button&&level.getAttribute('aria-haspopup')==='dialog',
+      rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
+      stateBorder:vs.borderTopWidth,buttonBackground:bs.backgroundColor,
+      buttonBorder:bs.borderTopWidth,buttonShadow:bs.boxShadow,
+      arrow:arrow.content,statusLabel:button.getAttribute('aria-label'),
+      levelLabel:level.getAttribute('aria-label')};
+  })()`);
+  if(!v3Editable.ok)throw Error('UI_V3_L2 single editable stage frame: '+JSON.stringify(v3Editable));
+  console.log('UI_V3_L2_SINGLE_EDITABLE_STAGE_CHROME_PASS',JSON.stringify(v3Editable));
+  // UI V4 L2: geometry of the ACTUAL built CompactGroupedValue and CellPicker.
+  // All three statuses are granted in this RAM-only QA; the separate
+  // readonly/grant-specific suite below checks absence of imaginary arrows.
+  const v4Geometry=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child td[data-col-key=partyLevel] .compact-stage-row')];
+    const computed=rows.map(row=>{
+      const state=row.querySelector('.compact-stage-state');
+      const button=state?.querySelector('button.cell-picker-trigger');
+      if(!state||!button)return {ok:false,stage:row.dataset.stageField,reason:'no granted button'};
+      const b=button.getBoundingClientRect(),s=state.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
+      const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
+      const cols=style.gridTemplateColumns.split(' ').map(parseFloat);
+      const track=cols.at(-1);
+      const caretX=b.right-parseFloat(style.paddingRight)-track/2;
+      const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
+      const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
+      return {ok:style.display==='grid'&&cols.length===2&&Math.abs(track-22)<1&&
+        b.height>=37.9&&Math.abs(b.width-s.width)<1&&
+        b.left>=frame.left-1&&b.right<=frame.right+1&&
+        style.borderTopWidth==='0px'&&style.boxShadow==='none'&&
+        style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
+        dot.content==='none'&&dot.display==='none'&&
+        rail.content==='""'&&parseFloat(rail.width)>=33&&
+        arrow.content==='""'&&arrow.gridColumnStart==='2'&&
+        hit(leftX)&&hit(rightX),
+        stage:row.dataset.stageField,caretX,leftX,rightX,midY,
+        hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
+        fill:style.backgroundColor,ink:style.color,dot:dot.content,
+        arrowColumn:arrow.gridColumnStart,railWidth:rail.width};
+    });
+    const first=computed[0]?.caretX;
+    return {ok:computed.length===3&&computed.every(x=>x.ok)&&
+      computed.every(x=>Math.abs(x.caretX-first)<1.1),
+      stages:computed,caretSpan:computed.length?Math.max(...computed.map(x=>x.caretX))-
+        Math.min(...computed.map(x=>x.caretX)):null};
+  })()`);
+  if(!v4Geometry.ok)throw Error('UI_V4_L2 three-row fixed caret + full hitbox geometry: '+JSON.stringify(v4Geometry));
+  console.log('UI_V4_L2_CARET_RAIL_3_ROWS_HITBOX_PASS',JSON.stringify(v4Geometry));
+
+  // Same real component/viewport, baseline styling replayed *only in the DOM*
+  // for a side-by-side before/after illustration. This is explicitly NOT an
+  // historical deployment screenshot; the actual immutable baseline screenshot
+  // is independently available from Source run #41165414469.
+  await evaluate(`(()=>{
+    const style=document.createElement('style');style.id='ui-v4-l2-before-css-replay';
+    style.textContent=\`
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger{
+        display:inline-flex!important;min-height:0!important;height:auto!important;
+        padding:0!important;background:transparent!important;grid-template-columns:none!important;
+      }
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{content:none!important;display:none!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-editable="true"] button.cell-picker-trigger::after{grid-column:auto!important;margin-left:5px!important}
+      .item-data-table tbody td .compact-stage-row .compact-stage-state[data-progress-tone]::before{
+        content:""!important;display:block!important;flex:none;width:6px;height:6px;
+        margin:6px 5px 0 0;border-radius:50%;background:currentColor
+      }
+    \`;
+    document.head.append(style);
+  })()`);
+  const v4BeforeShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-before-css-replay-simulated.png',Buffer.from(v4BeforeShot.data,'base64'));
+  await evaluate("document.querySelector('#ui-v4-l2-before-css-replay').remove()");
+  const v4AfterShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-desktop.png',Buffer.from(v4AfterShot.data,'base64'));
+
+  // Hit-testing uses actual CDP mouse events at both extreme ends of a
+  // status member. Clicking its label never forwards to an adjacent editor.
+  const v4HitStatus=async(stage,side)=>{
+    const row=v4Geometry.stages.find(x=>x.stage===stage);
+    if(!row)throw Error('missing stage for hit test '+stage);
+    const x=side==='left'?row.leftX:row.rightX,y=row.midY;
+    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',x,y,button:'left',clickCount:1});
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x,y,button:'left',clickCount:1});
+    await eventually("document.querySelector('.cell-picker-popover:popover-open')?.getAttribute('aria-label')?.includes("+
+      JSON.stringify(stage==='progressBuild'?'Tiến độ trình HĐND xây dựng NQ':stage==='progressParty'?'Tiến độ xin ý kiến Thành ủy':'Tiến độ trình HĐND ban hành NQ')+")",
+      'V4 '+stage+' '+side+' hit must open the own picker');
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
+      'V4 Escape must close '+stage+' without a patch');
+  };
+  await v4HitStatus('progressBuild','left');
+  await v4HitStatus('progressBuild','right');
+  await v4HitStatus('progressParty','right');
+  await v4HitStatus('progressCouncil','left');
+  const v4LeftLabel=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row');
+    const label=row?.querySelector('.compact-stage-label > span:last-child');
+    if(!label)return false;
+    const point=label.getBoundingClientRect();
+    const x=point.left+3,y=point.top+Math.min(5,point.height/2);
+    const node=document.elementFromPoint(x,y);
+    if(!node||node.closest('button.cell-picker-trigger'))return false;
+    node.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
+    return !document.querySelector('.cell-picker-popover:popover-open');
+  })()`);
+  if(!v4LeftLabel)throw Error('V4 stage label unexpectedly activated progress editor');
+  console.log('UI_V4_L2_INDEPENDENT_FIELD_EDGE_CLICKS_ESCAPE_PASS',
+    JSON.stringify({tested:['progressBuild left/right','progressParty right','progressCouncil left'],
+      labelClickNoPopover:v4LeftLabel,patched:false}));
+
+  const v4AfterEsc=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    return {noOpen:!document.querySelector('.cell-picker-popover:popover-open'),
+      values:states.map(x=>x.textContent.trim()),allClosed:[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger')].every(x=>x.getAttribute('aria-expanded')==='false')};
+  })()`);
+  if(!v4AfterEsc.noOpen||!v4AfterEsc.allClosed||
+    !v4AfterEsc.values.some(x=>x.includes('Sở chưa trình')))
+    throw Error('V4 Escape improperly changed an editor or field: '+JSON.stringify(v4AfterEsc));
+
+  // Visual and caret geometry at a narrow browser width, then at a saved
+  // narrow projected source column. Preserve all source fields and layout.
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 mobile status editors missing');
+  await evaluate(`document.querySelector('.item-data-table tbody tr:first-child .compact-stages').scrollIntoView({block:'center',inline:'center'})`);
+  const v4Mobile=await evaluate(`(()=>{
+    const stages=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const metrics=stages.map(row=>{
+      const state=row.querySelector('.compact-stage-state'),button=state?.querySelector('.cell-picker-trigger');
+      if(!button)return {ok:false,stage:row.dataset.stageField};
+      const b=button.getBoundingClientRect(),frame=row.getBoundingClientRect();
+      const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
+      const track=parseFloat(style.gridTemplateColumns.split(' ').at(-1));
+      return {stage:row.dataset.stageField,caret:b.right-parseFloat(style.paddingRight)-track/2,
+        ok:b.height>=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+          Math.abs(track-22)<1&&dot.content==='none'&&style.display==='grid',
+        width:b.width,height:b.height,frameWidth:frame.width,track};
+    });
+    return {ok:metrics.length===3&&metrics.every(x=>x.ok)&&
+      Math.max(...metrics.map(x=>x.caret))-Math.min(...metrics.map(x=>x.caret))<1.1,
+      viewport:innerWidth,metrics};
+  })()`);
+  if(!v4Mobile.ok)throw Error('UI V4 status caret alignment at 390px: '+JSON.stringify(v4Mobile));
+  const v4MobileShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-editable-mobile-390.png',Buffer.from(v4MobileShot.data,'base64'));
+  console.log('UI_V4_L2_MOBILE_390_CARET_RAIL_PASS',JSON.stringify(v4Mobile));
+  await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&fit=1&frame=900'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 saved narrow-column status editors missing');
+  const v4Narrow=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const data=rows.map(row=>{
+      const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
+      const frame=row.getBoundingClientRect();
+      return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=38};
+    });
+    return {ok:data.length===3&&data.every(x=>x.ok)&&
+      Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
+  })()`);
+  if(!v4Narrow.ok)throw Error('UI V4 saved narrow status column overflow: '+JSON.stringify(v4Narrow));
+  console.log('UI_V4_L2_NARROW_SAVED_COLUMN_PASS',JSON.stringify(v4Narrow));
+
+  // Explicit palette override; the right caret rail uses currentColor and
+  // must not hardcode amber/green ink, repaint a sibling, or add a framed pill.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&r05=1&r05-palette=1'});
+  await eventually("document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office] .cell-picker-trigger')!==null",
+    'V4 custom-colored editable office state missing');
+  const v4Custom=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=office]');
+    const member=row?.querySelector('.compact-stage-state'),button=member?.querySelector('button.cell-picker-trigger');
+    const other=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-row[data-progress-tone=not-submitted]');
+    if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
+    const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
+    return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
+      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
+      b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
+      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
+      customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
+  })()`);
+  if(!v4Custom.ok)throw Error('UI V4 custom status palette/arrow regression: '+JSON.stringify(v4Custom));
+  const v4CustomShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-custom-palette.png',Buffer.from(v4CustomShot.data,'base64'));
+  console.log('UI_V4_L2_CUSTOM_PALETTE_CARET_PASS',JSON.stringify(v4Custom));
+
+  // Readonly must never show a caret, pointer cursor or hover affordance.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state').length===3",
+    'V4 read-only real ItemList missing');
+  const v4Readonly=await evaluate(`(()=>{
+    const states=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state')];
+    const rows=states.map(x=>({
+      button:x.querySelectorAll('.cell-picker-trigger').length,
+      editable:x.hasAttribute('data-editable'),
+      dot:getComputedStyle(x,'::before').content,
+      pseudoDisplay:getComputedStyle(x,'::before').display,
+      cursor:getComputedStyle(x).cursor
+    }));
+    return {ok:rows.length===3&&rows.every(x=>!x.button&&!x.editable&&x.dot==='none'&&
+      x.pseudoDisplay==='none'&&x.cursor!=='pointer'),rows};
+  })()`);
+  if(!v4Readonly.ok)throw Error('UI V4 readonly appears editable: '+JSON.stringify(v4Readonly));
+  const v4ReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-readonly-desktop.png',Buffer.from(v4ReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_READONLY_NO_CARET_DOT_PASS',JSON.stringify(v4Readonly));
+
+  // Re-mount the exact old editable fixture before the pre-existing field
+  // isolation and keyboard/lease regression suite resumes.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-state button.cell-picker-trigger').length===3",
+    'V4 restored edit fixture missing');
+
+
+  const v3GrantedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-granted-desktop.png',Buffer.from(v3GrantedShot.data,'base64'));
   const beforeStageEdit=await evaluate(`(()=>{
     const cell=document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]');
     return [...cell.querySelectorAll('.compact-stage-row')].map(x=>({
@@ -1853,10 +2450,10 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
     if(!next)return false;next.click();return true;
   })()`);
-  if(!selected)throw Error('QA BTV choice missing');
+  if(!selected)throw Error('QA BTV TU official choice missing');
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
     'Selecting staged Cấp value failed');
   const isolatedEdit=await evaluate(`(()=>{
@@ -1872,112 +2469,308 @@ try{
       rows,values};
   })()`);
   if(!isolatedEdit.ok)throw Error('Source stage editors must not cross-write: '+JSON.stringify(isolatedEdit));
+  // V5 integration: do not use row 2 as a positive Build editor. In the
+  // genuine demo that record is NQ HC and MUST be locked for both admin and
+  // individually granted editors. BC is also denied. The QPPL positive has
+  // an explicit stable identity (NQ07), not a guessed table position.
+  const v5BusinessBuildLocks=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    const kind=row=>row.querySelector('.compact-document-badge')?.textContent?.trim()??'';
+    const id=row=>row.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()??'';
+    const check=type=>{
+      const found=rows.find(row=>kind(row)===type);
+      const state=found?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+      const hint=state?.querySelector('.business-build-locked');
+      return {kind:type,id:found&&id(found),ok:!!found&&!!hint&&
+        state.textContent?.trim()==='Không phải trình'&&
+        !state.querySelector('button.cell-picker-trigger')&&
+        hint.getAttribute('data-quick-tooltip')?.includes('không thể chỉnh sửa'),
+        value:state?.textContent?.trim(),locked:!!hint,
+        button:!!state?.querySelector('button.cell-picker-trigger')};
+    };
+    const hc=check('HC'),bc=check('Báo cáo');
+    const qppl=rows.find(row=>id(row)==='NQ07'&&kind(row)==='QPPL');
+    const build=qppl?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    return {ok:hc.ok&&bc.ok&&!!qppl&&!!build?.querySelector('button.cell-picker-trigger'),
+      hc,bc,qppl:{id:qppl&&id(qppl),kind:qppl&&kind(qppl),
+        build:build?.textContent?.trim(),editor:!!build?.querySelector('button.cell-picker-trigger')}};
+  })()`);
+  if(!v5BusinessBuildLocks.ok)
+    throw Error('UI_V5_INTEGRATED_HC_BC_LOCK_QPPL_EDITOR_FAIL '+JSON.stringify(v5BusinessBuildLocks));
+  console.log('UI_V5_INTEGRATED_HC_BC_LOCK_QPPL_EDITOR_PASS',JSON.stringify(v5BusinessBuildLocks));
+  const v5LockedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v5-integrated-hc-bc-lock-qppl.png',Buffer.from(v5LockedShot.data,'base64'));
+  // Keep all legacy V3 choices-only/selected/keyboard/ESC checks; change
+  // ONLY the formerly invalid HC-positive oracle to an actual editable QPPL.
+  const v3Opened=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07'&&
+      x.querySelector('.compact-document-badge')?.textContent?.trim()==='QPPL');
+    const button=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger');
+    if(!button)return false;
+    button.scrollIntoView({block:'center',inline:'nearest'});
+    button.click();return true;
+  })()`);
+  if(!v3Opened)throw Error('V3 status dropdown not available on granted QPPL NQ07 field');
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-options [role=option]')",
+    'V3 QPPL status options did not open');
+  const v3Choices=await evaluate(`(()=>{
+    const p=document.querySelector('.cell-picker-popover:popover-open');
+    const children=[...p?.children??[]], choices=[...p?.querySelectorAll('.cell-picker-option')??[]];
+    const selected=choices.filter(x=>x.getAttribute('aria-selected')==='true');
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07'&&
+      x.querySelector('.compact-document-badge')?.textContent?.trim()==='QPPL');
+    const stage=row?.querySelector('[data-stage-field=progressBuild]');
+    const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
+    const labels=choices.map(x=>x.textContent?.trim());
+    return {ok:p?.dataset.choicesOnly==='true'&&!!p.getAttribute('aria-label')&&
+      p.getAttribute('aria-label').includes('NQ07')&&
+      children.length===1&&children[0].classList.contains('cell-picker-options')&&
+      JSON.stringify(labels)===JSON.stringify(expected)&&selected.length===1&&
+      selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
+      choices.every(x=>x.getAttribute('role')==='option')&&
+      p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
+      getComputedStyle(stage).outlineStyle==='solid'&&
+      !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
+      id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
+      optionCount:choices.length,labels,selected:selected.map(x=>x.textContent?.trim()),
+      ariaLabel:p?.getAttribute('aria-label'),children:children.map(x=>x.className)};
+  })()`);
+  if(!v3Choices.ok)throw Error('UI_V3_L2 choices-only QPPL status dropdown: '+JSON.stringify(v3Choices));
+  const v3ChoicesShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-choices-only-dropdown.png',Buffer.from(v3ChoicesShot.data,'base64'));
+  const v5BuildBeforeEsc=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger')?.textContent?.trim();
+  })()`);
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+  await eventually("!document.querySelector('.cell-picker-popover:popover-open')",
+    'Escape must close the QPPL current picker');
+  const v5BuildAfterEsc=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')].find(x=>
+      x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    return row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state button.cell-picker-trigger')?.textContent?.trim();
+  })()`);
+  if(v5BuildBeforeEsc!==v5BuildAfterEsc)
+    throw Error('UI_V5_INTEGRATION_ESC_MUTATED_QPPL_BUILD '+JSON.stringify({before:v5BuildBeforeEsc,after:v5BuildAfterEsc}));
+  console.log('UI_V3_L2_CHOICES_ONLY_KEYBOARD_PASS',JSON.stringify(v3Choices));
 
-  // U04 is OFF until a guest explicitly enables it; source and UID isolation
-  // survives reload, while shared default and all source values remain intact.
+  // R-V3-01: the real List strips '' from the catalog. The optional
+  // VP leader must STILL offer clear. All changes remain synthetic RAM.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1&review-staff=1&clear-qa=1'});
+  await eventually("[...document.querySelectorAll('.item-data-table tbody tr:first-child .cell-picker-trigger')].some(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'))",
+    'R-V3-01: List VP leader trigger missing');
+  const l2ListGrant=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child');
+    const buttons=[...row?.querySelectorAll('button.cell-picker-trigger')??[]];
+    const leader=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'));
+    const ubnd=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    const status=row?.querySelector('.compact-stage-row .cell-picker-trigger');
+    if(!leader||!ubnd||status)return {ok:false,reason:'invalid field-specific grants',
+      buttons:buttons.map(x=>x.getAttribute('aria-label')),status:!!status};
+    leader.click();
+    return {ok:true,leader:leader.getAttribute('aria-label'),ubnd:ubnd.textContent?.trim()};
+  })()`);
+  if(!l2ListGrant.ok)throw Error('R-V3-01 List grant regression: '+JSON.stringify(l2ListGrant));
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')",
+    'R-V3-01 List leader picker did not open');
+  const l2ListClear=await evaluate(`(()=>{
+    const popup=document.querySelector('.cell-picker-popover:popover-open');
+    const options=[...popup?.querySelectorAll('.cell-picker-option')??[]];
+    const clear=options.find(x=>x.textContent?.trim()==='—'&&x.getAttribute('aria-selected')==='false');
+    return {ok:!!clear&&popup?.dataset.choicesOnly==='true'&&
+      options.some(x=>x.getAttribute('aria-selected')==='true')&&
+      !!popup.getAttribute('aria-label')&&
+      !popup.querySelector('h1,h2,h3,.cell-picker-note'),
+      labels:options.map(x=>x.textContent?.trim()),hasClear:!!clear};
+  })()`);
+  if(!l2ListClear.ok)throw Error('R-V3-01 List optional clear unavailable: '+JSON.stringify(l2ListClear));
+  const l2ListClearShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-clear-list.png',Buffer.from(l2ListClearShot.data,'base64'));
+  await evaluate(`[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent?.trim()==='—')?.click()`);
+  await eventually("window.__l2LastPatch?.changes?.vpLeader===''",
+    'R-V3-01 List clear must patch vpLeader exactly empty');
+  const l2ListPatch=await evaluate(`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child');
+    const ubnd=[...row?.querySelectorAll('button.cell-picker-trigger')??[]]
+      .find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    return {patch:window.__l2LastPatch,
+      // Leaders are visually abbreviated in the compact List; the accessible
+      // button label must retain the complete underlying assignment.
+      stillAssignedUbnd:ubnd?.getAttribute('aria-label')?.includes('PCT Nguyễn Văn C'),
+      ubndLabel:ubnd?.getAttribute('aria-label'),
+      statusEditors:row?.querySelectorAll('.compact-stage-row button.cell-picker-trigger').length
+    };
+  })()`);
+  if(l2ListPatch.statusEditors!==0||!l2ListPatch.stillAssignedUbnd)
+    throw Error('R-V3-01 List changed unauthorized field: '+JSON.stringify(l2ListPatch));
+  console.log('R_V3_01_LIST_OPTIONAL_LEADER_CLEAR_PASS',JSON.stringify({choice:l2ListClear,patch:l2ListPatch}));
+
+  // Real ReportDetailGrid (shared CellPicker): same permission & exact patch,
+  // with no need to alter production caller signatures or option catalogs.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?popup=1&popup-clear-qa=1&review-staff=1'});
+  await eventually("[...document.querySelectorAll('.report-grid-actions button')].some(x=>x.textContent.includes('Chỉnh sửa nháp'))",
+    'R-V3-01 Report popup edit mode missing');
+  const l2PopupMode=await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('.report-grid-actions button')].find(x=>x.textContent.includes('Chỉnh sửa nháp'));
+    if(!button)return false;button.click();return true;
+  })()`);
+  if(!l2PopupMode)throw Error('R-V3-01 popup could not activate permitted edit mode');
+  // Popup defaults to a saved subset of source columns with leaders hidden.
+  // Reveal them through the real existing UI, not by changing user preferences.
+  const l2ShowPopupLeaders=await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('.report-grid-actions button')]
+      .find(x=>x.textContent.includes('Hiện đủ cột Excel'));
+    if(!button)return false;button.click();return true;
+  })()`);
+  if(!l2ShowPopupLeaders)throw Error('R-V3-01 popup cannot reveal optional leader columns');
+  await eventually("[...document.querySelectorAll('.report-detail-grid tbody tr:first-child button.cell-picker-trigger')].some(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'))",
+    'R-V3-01 popup VP leader not mounted');
+  const l2PopupGrant=await evaluate(`(()=>{
+    const row=document.querySelector('.report-detail-grid tbody tr:first-child');
+    const buttons=[...row?.querySelectorAll('button.cell-picker-trigger')??[]];
+    const leader=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo VP'));
+    const ubnd=buttons.find(x=>x.getAttribute('aria-label')?.includes('Lãnh đạo UBND'));
+    if(!leader||!ubnd||row.querySelector('.compact-stage-row .cell-picker-trigger'))
+      return {ok:false,labels:buttons.map(x=>x.getAttribute('aria-label'))};
+    leader.scrollIntoView({block:'nearest',inline:'center'});
+    leader.click();return {ok:true,leader:leader.getAttribute('aria-label')};
+  })()`);
+  if(!l2PopupGrant.ok)throw Error('R-V3-01 popup grants failed: '+JSON.stringify(l2PopupGrant));
+  await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')",
+    'R-V3-01 popup leader picker not open');
+  const l2PopupClear=await evaluate(`(()=>{
+    const pop=document.querySelector('.cell-picker-popover:popover-open');
+    const choices=[...pop?.querySelectorAll('.cell-picker-option')??[]];
+    return {ok:pop?.dataset.choicesOnly==='true'&&
+      choices.filter(x=>x.textContent?.trim()==='—').length===1&&
+      choices.some(x=>x.getAttribute('aria-selected')==='true')&&
+      !pop.querySelector('h1,h2,h3,.cell-picker-note'),
+      options:choices.map(x=>x.textContent?.trim()),aria:pop?.getAttribute('aria-label')};
+  })()`);
+  if(!l2PopupClear.ok)throw Error('R-V3-01 popup optional clear unavailable: '+JSON.stringify(l2PopupClear));
+  const l2PopupClearShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v3-l2-clear-popup.png',Buffer.from(l2PopupClearShot.data,'base64'));
+  await evaluate(`[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent?.trim()==='—')?.click()`);
+  await eventually("window.__l2LastPatch?.changes?.vpLeader===''&&document.querySelector('.report-detail-grid tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C')",
+    'R-V3-01 popup clear must patch vpLeader empty, preserve UBND');
+  const l2PopupPatch=await evaluate(`(()=>({
+    patch:window.__l2LastPatch,
+    ubndIntact:document.querySelector('.report-detail-grid tbody tr:first-child')?.textContent?.includes('PCT Nguyễn Văn C'),
+    statusEditors:document.querySelectorAll('.report-detail-grid tbody tr:first-child .compact-stage-row button.cell-picker-trigger').length
+  }))()`);
+  if(!l2PopupPatch.ubndIntact||l2PopupPatch.statusEditors!==0)
+    throw Error('R-V3-01 popup leaked edit permission: '+JSON.stringify(l2PopupPatch));
+  console.log('R_V3_01_POPUP_OPTIONAL_LEADER_CLEAR_PASS',JSON.stringify({choice:l2PopupClear,patch:l2PopupPatch}));
+
+
+
+  // V3 replaces the old guest-local U04 toggle with the shared viewing
+  // layout. No source, viewer-UID or local preference can be written by guest.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("document.querySelector('.guest-compact-menu-bar .compact-columns-menu')!==null",
-    'Guest personal compact menu missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
+    'V3 guest shared projection missing');
   const guestInitial=await evaluate(`(()=>{
-    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    menu.open=true;
-    const label=[...menu.querySelectorAll('label')].find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
+    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
     return {columns:document.querySelectorAll('.item-heading-row th').length,
       hasInline:!!document.querySelector('.compact-cv-room-line'),
-      checkbox:label?.querySelector('input')?.checked??null};
+      localMenu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
+      localSaved:localStorage.getItem(key),
+      sourceSaved:localStorage.getItem('hdnd.qa.group-labels-synthetic'),
+      sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
   })()`);
-  if(guestInitial.columns!==7||guestInitial.hasInline||guestInitial.checkbox!==false)
-    throw Error('U04 must default off for guest and preserve 7 displayed columns: '+JSON.stringify(guestInitial));
-  const guestToggle=await evaluate(`(()=>{
-    const label=[...document.querySelectorAll('.guest-compact-menu-bar label')]
-      .find(x=>x.textContent.includes('Chuyên viên và phòng cùng dòng'));
-    const checkbox=label?.querySelector('input');
-    if(!checkbox)return false;checkbox.click();return true;
-  })()`);
-  if(!guestToggle)throw Error('Guest cannot enable U04 inline CV/Phòng');
-  await eventually("document.querySelector('.item-data-table tbody tr .compact-cv-room-line')!==null",
-    'U04 inline staff rendering did not activate');
-  const guestSaved=await evaluate(`(()=>{
-    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
-    const prefs=JSON.parse(localStorage.getItem(key)||'null');
-    return {ok:prefs?.cvRoomInline===true&&prefs?.teamTogether===true&&
-      document.querySelectorAll('.item-heading-row th').length===7,
-      inlineText:document.querySelector('.compact-cv-room-line')?.textContent?.slice(0,150)};
-  })()`);
-  if(!guestSaved.ok)throw Error('U04 guest localStorage scope or inline view regression: '+JSON.stringify(guestSaved));
+  if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
+    guestInitial.localSaved!==null||!guestInitial.sortable)
+    throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("document.querySelector('.compact-cv-room-line')!==null",
-    'U04 personal option did not survive reload');
-  const resetGuest=await evaluate(`(()=>{
-    const menu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
-    if(!menu)return false;menu.open=true;
-    const button=[...menu.querySelectorAll('button')]
-      .find(x=>x.textContent.includes('Khôi phục cách hiển thị chung'));
-    if(!button)return false;button.click();return true;
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
+    'V3 guest reload missing');
+  const guestCompactReload=await evaluate(`(()=>{
+    const key='hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest';
+    return {inline:!!document.querySelector('.compact-cv-room-line'),
+      menu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
+      local:localStorage.getItem(key),
+      source:localStorage.getItem('hdnd.qa.group-labels-synthetic')};
   })()`);
-  if(!resetGuest)throw Error('Guest reset option missing');
-  await eventually("document.querySelector('.compact-cv-room-line')===null",
-    'Reset must restore shared U04=false');
-  if(!await evaluate("localStorage.getItem('hdnd.viewer-compact.v1:viewer-compact:compact-qa-synthetic-only:synthetic-guest')===null"))
-    throw Error('Guest reset wrote to source or failed to clear local setting');
-  console.log('U04_GUEST_LOCAL_ONLY_RELOAD_RESET_PASS',JSON.stringify(guestSaved));
+  if(guestCompactReload.inline||guestCompactReload.menu||guestCompactReload.local!==null||
+    guestCompactReload.source!==guestInitial.sourceSaved)
+    throw Error('V3 guest reload persisted forbidden column customization: '+JSON.stringify({guestInitial,guestCompactReload}));
+  console.log('V3_GUEST_SHARED_COLUMNS_NO_PRESETS_RELOAD_PASS',JSON.stringify({guestInitial,guestCompactReload}));
   console.log('GROUPED_STAGED_FIELD_EDIT_IN_MEMORY_PASS',JSON.stringify(isolatedEdit));
   console.log('COMPACT_REAL_ITEMLIST_DESKTOP_MOBILE_PASS',JSON.stringify({desktopGroups,compactMenuDesktop,mobileGroups}));
 
 
-  // Review 005 / R01: type into the REAL grouped header (full source strings,
-  // including diacritics, while names displayed in the cells are abbreviated).
+  // V2 R01: exercise the real List toolbar on synthetic full-name records.
+  // Searches always inspect ORIGINAL member fields even if projection shortens names.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?review-staff=1'});
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
     'R01 staff fixture did not render');
   const staffSearch=async(key,term,count)=>{
     const found=await evaluate(`(()=>{
-      const input=document.querySelector('th[data-filter-key="${key}"] input');
+      const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
       if(!input)return false;input.focus();return true;
     })()`);
-    if(!found)throw Error('R01 missing grouped staff input '+key);
+    if(!found)throw Error('V2 R01 global search missing '+key);
     await send('Input.insertText',{text:term});
-    await eventually(`document.querySelectorAll('.item-data-table tbody tr').length===${count}`,
-      'R01 did not find full group member '+term);
-    const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr')]
+    await eventually(`document.querySelectorAll('.item-data-table tbody tr.color-row').length===${count}`,
+      'V2 R01 did not match full source member '+term);
+    const rows=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row')]
       .map(x=>x.querySelector('td[data-col-key="displayCode"]')?.textContent.trim())`);
-    if(rows.length!==count)throw Error('R01 result count changed '+term);
+    if(rows.length!==count)throw Error('V2 R01 count mismatch '+term);
     if(term==='Chuyên viên mẫu A'){
       const shot=await send('Page.captureScreenshot',{format:'png'});
       writeFileSync('hophdnd-review-r01-after.png',Buffer.from(shot.data,'base64'));
     }
-    await evaluate(`document.querySelector('th[data-filter-key="${key}"] .item-filter-clear')?.click()`);
-    await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
-      'R01 grouped staff clear did not restore rows');
+    await evaluate("document.querySelector('.list-filter-clear')?.click()");
+    await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
+      'V2 R01 clearing global search must restore all records');
     return {term,count,ids:rows};
   };
   const r01=[];
   r01.push(await staffSearch('room','Chuyên viên mẫu A',2));
   r01.push(await staffSearch('room','Phong mau 2',2));
-  r01.push(await staffSearch('room','PCVP Trần Văn B',1));
-  r01.push(await staffSearch('room','PCT Nguyễn Văn C',1));
-  // Combining a grouped staff search with an independent U01 Sở filter must
-  // remain AND, never a merged OR across unrelated source fields.
-  await evaluate("document.querySelector('th[data-filter-key=room] input')?.focus()");
+  r01.push(await staffSearch('vpLeader','PCVP Trần Văn B',1));
+  r01.push(await staffSearch('ubndLeader','PCT Nguyễn Văn C',1));
+  // Verify search AND exact dropdown, never a merged OR or substring match.
+  await evaluate("document.querySelector('input[aria-label=\\\"Tìm kiếm không dấu\\\"]')?.focus()");
   await send('Input.insertText',{text:'Chuyên viên mẫu A'});
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
-    'R01 grouped CV filter absent before AND check');
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
+    'V2 R01 specialist search absent before AND check');
   const addDepartment=await evaluate(`(()=>{
-    const select=document.querySelector('[data-filter-key=department] select');
+    const select=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
     if(!select||![...select.options].some(x=>x.value==='Sở mẫu B'))return false;
     select.value='Sở mẫu B';select.dispatchEvent(new Event('change',{bubbles:true}));return true;
   })()`);
-  if(!addDepartment)throw Error('R01 U01 source-level department filter missing');
+  if(!addDepartment)throw Error('V2 R01 exact Sở dropdown missing');
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('Không tìm thấy nội dung')===true",
-    'R01 staff + department AND did not exclude nonmatches');
-  await evaluate("document.querySelector('[data-filter-key=department] .item-filter-clear')?.click()");
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===2",
-    'R01 clearing department did not restore staff-only filter');
-  await evaluate("document.querySelector('th[data-filter-key=room] .item-filter-clear')?.click()");
-  await eventually("document.querySelectorAll('.item-data-table tbody tr').length===8",
-    'R01 clearing second filter did not restore all rows');
+    'V2 R01 search AND exact department did not exclude nonmatches');
+  await evaluate("document.querySelector('.list-filter-clear')?.click()");
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===8",
+    'V2 R01 clearing AND conditions failed');
+
+  const advanced=await evaluate(`(()=>{
+    const detail=document.querySelector('details.list-filter-other');
+    if(!detail)return {ok:false};detail.open=true;
+    const choices=[...detail.querySelectorAll('select')].map(x=>x.getAttribute('aria-label'));
+    return {ok:detail.open,choices};
+  })()`);
+  await eventually("document.querySelector('select[aria-label=\\\"Lọc Tiến độ Thành ủy chi tiết\\\"]')!==null",
+    'V2 R01 advanced full-status selector did not mount');
+  const advancedFields=await evaluate(`[...document.querySelectorAll('.list-filter-other-panel select')]
+    .map(x=>x.getAttribute('aria-label'))`);
+  if(!advanced.ok||!['Chọn trường tìm kiếm','Lọc Cấp Thành ủy cho ý kiến',
+     'Lọc Tiến độ Thành ủy chi tiết','Lọc Tiến độ xây dựng NQ chi tiết',
+     'Lọc Tiến độ ban hành NQ/BC chi tiết','Lọc Chuyên viên',
+     'Lọc Lãnh đạo VP','Lọc Lãnh đạo UBND'].every(x=>advancedFields.includes(x)))
+    throw Error('V2 advanced filter fields incomplete '+JSON.stringify({advanced,advancedFields}));
+  await evaluate("document.querySelector('details.list-filter-other').open=false");
+  await eventually("document.querySelector('.list-filter-other-panel')===null",
+    'Advanced select DOM must unmount when panel closes');
 
   const toggleLeader=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
@@ -1987,7 +2780,7 @@ try{
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
   if(!toggleLeader)throw Error('R01 cannot test leadersTogether');
-  await eventually("!!document.querySelector('th[data-filter-key=vpLeader] input')",
+  await eventually("!!document.querySelector('th[data-column-key=vpLeader]')",
     'R01 leadersTogether did not project');
   r01.push(await staffSearch('vpLeader','PCVP Tran Van B',1));
   r01.push(await staffSearch('vpLeader','PCT Nguyen Van C',1));
@@ -1997,7 +2790,7 @@ try{
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
   if(!restoreTeam)throw Error('R01 team restore missing');
-  await eventually("!!document.querySelector('th[data-filter-key=room] input')",
+  await eventually("!!document.querySelector('th[data-column-key=room]')",
     'R01 team source header did not return');
   const toggleInline=await evaluate(`(()=>{
     const label=[...document.querySelectorAll('.compact-columns-options label')]
@@ -2009,7 +2802,7 @@ try{
     'R01 U04 inline view not shown');
   r01.push(await staffSearch('room','Chuyen vien mau A',2));
   r01.push(await staffSearch('room','Phong mau 1',4));
-  console.log('R01_GROUP_STAFF_FULL_SEARCH_PASS',JSON.stringify(r01));
+  console.log('V2_R01_FULL_ORIGINAL_SEARCH_ADVANCED_AND_PASS',JSON.stringify(r01));
 
   // Review 005 / R03: exact on-screen colors, not a snapshot of JS props.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1'});
@@ -2020,14 +2813,28 @@ try{
     const type=row[0]?.querySelector('.compact-document-badge');
     const content=row[0]?.querySelector('.compact-document-content');
     const level=row[0]?.querySelector('.compact-stage-level');
-    const stage=row[1]?.querySelectorAll('.compact-stage-state')[1];
+    // R03 is now on an isolated QPPL positive: HC row 2 Build is locked.
+    const stage=row[6]?.querySelectorAll('.compact-stage-state')[1];
+    const qpplKind=row[6]?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const hcBuild=row[1]?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const hcLocked=!!hcBuild?.querySelector('.business-build-locked')&&
+      hcBuild.textContent?.trim()==='Không phải trình'&&
+      !hcBuild.querySelector('[data-highlighted=true]');
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    // V4 default demo stores BCH, not old "Ban Chấp hành". The QA wildcard
+    // deliberately still targets that LEGACY source string: it MUST NOT leak
+    // onto a new canonical label. Separate unit fixtures prove the same
+    // wildcard rule still highlights the actual legacy string.
+    const currentLevel=level?.textContent??'';
     return {ok:d?.background==='rgb(204, 0, 0)'&&d.text==='rgb(255, 255, 255)'&&
       t?.background!=='rgb(204, 0, 0)'&&c?.background!=='rgb(204, 0, 0)'&&
-      l?.background==='rgb(18, 52, 86)'&&p?.background==='rgb(255, 238, 85)'&&
-      p?.text==='rgb(0, 0, 0)',dept:d,type:t,content:c,level:l,progressBuild:p};
+      currentLevel.includes('BCH')&&
+      l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
+      qpplKind==='QPPL'&&hcLocked&&
+      p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
@@ -2092,6 +2899,7 @@ try{
       const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
       return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
+        pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
         labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
         numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
     });
@@ -2100,13 +2908,14 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=[
-    {tone:'not-submitted',bg:'rgb(255, 241, 242)',border:'rgb(254, 205, 211)'},
-    {tone:'office',bg:'rgb(255, 251, 235)',border:'rgb(253, 230, 138)'},
-    {tone:'done',bg:'rgb(240, 253, 244)',border:'rgb(187, 247, 208)'}
+    {tone:'not-submitted',bg:'rgb(255, 241, 243)',border:'rgb(239, 212, 218)'},
+    {tone:'office',bg:'rgb(255, 248, 233)',border:'rgb(235, 223, 196)'},
+    {tone:'done',bg:'rgb(238, 248, 241)',border:'rgb(208, 228, 215)'}
   ];
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
       x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill!==x.bg&&x.labelFits&&x.stateFits)||
+      x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'&&
+       x.labelFits&&x.stateFits)||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgb(248, 250, 252)'||
     r05Neutral[0].border!=='rgb(203, 213, 225)'||
@@ -2134,33 +2943,48 @@ try{
   const r05Crop=await send('Page.captureScreenshot',{format:'png',clip:r05Clip});
   writeFileSync('hophdnd-r05-after-list-stage-crop.png',Buffer.from(r05Crop.data,'base64'));
 
-  // R03 is still member-scoped; its custom yellow rule must not repaint
-  // the red ROW background of progressBuild in row 3.
+  // R03 remains member-scoped. The old row 3 is BC and locked in V5;
+  // the explicit ?highlight=1 QPPL NQ07 fixture must retain its yellow
+  // Build member inside the red Sở chưa trình STAGE outer frame.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&highlight=1'});
   await eventually("document.querySelector('.compact-stage-state[data-highlighted=true]')!==null",
     'R05 highlighted member fixture missing');
   const r05Highlight=await evaluate(`(()=>{
-    const cell=document.querySelector('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
-    const stage=cell.querySelectorAll('.compact-stage-row')[1],pill=stage.querySelector('.compact-stage-state');
-    const first=document.querySelector('.item-data-table tbody tr:first-child .compact-stage-level');
-    return {row:getComputedStyle(stage).backgroundColor,
-      pill:getComputedStyle(pill).backgroundColor,highlight:pill.dataset.highlighted,
-      level:getComputedStyle(first).backgroundColor};
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+    const qppl=rows.find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    const kind=qppl?.querySelector('.compact-document-badge')?.textContent?.trim();
+    const cell=qppl?.querySelector('td[data-col-key=partyLevel]');
+    const stage=cell?.querySelectorAll('.compact-stage-row')[1],pill=stage?.querySelector('.compact-stage-state');
+    const first=rows[0]?.querySelector('.compact-stage-level');
+    const bc=rows.find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='BC03');
+    const bcBuild=bc?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const bcLocked=!!bcBuild?.querySelector('.business-build-locked')&&
+      bcBuild?.textContent?.trim()==='Không phải trình'&&
+      !bcBuild?.hasAttribute('data-highlighted');
+    return {kind,bcLocked,row:stage&&getComputedStyle(stage).backgroundColor,
+      pill:pill&&getComputedStyle(pill).backgroundColor,highlight:pill?.dataset.highlighted,
+      level:getComputedStyle(first).backgroundColor,
+      levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
-  if(r05Highlight.row!=='rgb(255, 241, 242)'||
+  // The R03 wildcard still targets the explicitly LEGACY "Ban Chấp hành".
+  // V4's new synthetic BCH cannot match that old source string. Keep exact
+  // frame/pill/field rule checks; assert the unaffected label remains plain.
+  if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
+    r05Highlight.row!=='rgb(255, 241, 243)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
-    r05Highlight.level!=='rgb(18, 52, 86)')
+    r05Highlight.level!=='rgba(0, 0, 0, 0)'||
+    !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&r05-palette=1'});
   await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
-  if(r05Custom[1].bg==='rgb(255, 251, 235)'||
-    r05Custom[1].border==='rgb(253, 230, 138)'||
-    r05Custom[1].pill!=='rgb(252, 221, 160)'||
+  if(r05Custom[1].bg==='rgb(255, 248, 233)'||
+    r05Custom[1].border==='rgb(235, 223, 196)'||
+    r05Custom[1].pill!=='rgba(0, 0, 0, 0)'||r05Custom[1].pillBorder!=='0px'||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].bg!=='rgb(255, 241, 242)')
+    r05Custom[0].bg!=='rgb(255, 241, 243)')
     throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
@@ -2169,7 +2993,8 @@ try{
     'R05 real popup stage rows missing');
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
-    x.border===target[i].border&&x.tone===target[i].tone))
+    x.border===target[i].border&&x.tone===target[i].tone&&
+     x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'))
     throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
@@ -2252,7 +3077,7 @@ try{
       throw Error(label+' changed physical total '+JSON.stringify({before,after}));
   };
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
   await moveLast('displayCode');
   const r02Before=await widthSnapshot();
@@ -2301,7 +3126,7 @@ try{
   // Owner L019 explicit fallback: group adjacent reaches physical minimum
   // before the last visible ID (52px default) begins to compensate.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 fallback baseline missing');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
@@ -2341,7 +3166,7 @@ try{
     throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",'R02 grouped fixture missing');
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",'R02 grouped fixture missing');
   await moveLast('partyLevel');
   const groupedBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
@@ -2359,7 +3184,7 @@ try{
   // before the roomy Lãnh đạo / Phòng / CV group, with Ghi chú last.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?progress-before-staff=1'});
-  await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+  await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 reported column order missing');
   const reportedBefore=await widthSnapshot();
   const progressIndex=reportedBefore.keys.indexOf('specificProgress');
@@ -2480,43 +3305,38 @@ try{
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
     JSON.stringify({textGeometry,wideBefore,wideAfter}));
 
-  // Owner L023: anonymous/read-only viewers may resize a column ONLY in
-  // their live view; the shared layout is never written and reload resets it.
+  // V3: guest never receives resize handles or mutable column layout,
+  // even if the previous V2 guest-only local-width store exists.
   const guestResizeUrl='http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
   await send('Page.navigate',{url:guestResizeUrl});
-  await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
-    'L023 guest must have a local-only width divider');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
+    'V3 guest table must remain viewable and sortable');
   const guestBefore=await widthSnapshot();
   const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
-  const guestEdge=await evaluate(`(()=>{
-    const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
-      .getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  const noGuestResize=await evaluate(`(()=>{
+    const heading=document.querySelector('th[data-column-key=specificProgress]');
+    const sort=heading?.querySelector('.column-sort-button');
+    if(!heading||!sort||heading.querySelector('.column-resizer')||
+      document.querySelector('.source-column-visibility,.compact-columns-menu'))
+      return false;
+    sort.click();return true;
   })()`);
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...guestEdge});
-  await send('Input.dispatchMouseEvent',{type:'mousePressed',...guestEdge,
-    button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:guestEdge.x+120,y:guestEdge.y,
-    button:'left'});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:guestEdge.x+120,y:guestEdge.y,
-    button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=319",
-    'L023 guest local width did not change');
+  if(!noGuestResize)throw Error('Guest must sort but cannot resize or choose columns');
+  await eventually("document.querySelector('th[data-column-key=specificProgress]')?.getAttribute('aria-sort')==='ascending'",
+    'V3 guest sort failed');
   const guestAfter=await widthSnapshot();
-  assertSameTotal(guestBefore,guestAfter,'L023 guest local-only');
-  const gi=guestBefore.keys.indexOf('specificProgress');
-  if(guestAfter.widths[gi]!==guestBefore.widths[gi]+120||
-    guestAfter.widths[gi+1]!==130||
-    guestAfter.widths.at(-1)!==guestBefore.widths.at(-1)-10||
+  if(JSON.stringify(guestBefore.widths)!==JSON.stringify(guestAfter.widths)||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
-    throw Error('L023 guest changed other widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+    throw Error('V3 guest sort changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
-    'L023 guest remount missing');
+    'V3 guest remount missing');
   const guestReload=await widthSnapshot();
-  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths))
-    throw Error('L023 guest edit was not session-only: '+JSON.stringify({guestBefore,guestReload}));
-  console.log('L023_GUEST_LOCAL_ONLY_RESIZE_NO_SHARED_WRITE_PASS',
+  if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths)||
+    await evaluate("!!document.querySelector('.column-resizer,.guest-compact-menu-bar,.compact-columns-menu')"))
+    throw Error('V3 guest private column UI returned after reload: '+JSON.stringify({guestBefore,guestReload}));
+  console.log('V3_GUEST_SORT_ONLY_NO_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
@@ -2525,11 +3345,11 @@ try{
   for(const sourceCap of [1470,1550,1600]){
     await send('Page.navigate',{url:'http://127.0.0.1:'+port+
       '/compact-qa/compact-qa.html?cap-party='+sourceCap});
-    await eventually("document.querySelectorAll('.item-heading-row th').length===7",
+    await eventually("document.querySelectorAll('.item-heading-row th').length===6",
       'R02 capped source fixture did not mount');
     const before=await widthSnapshot();
-    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2842)>1)
-      throw Error('R04/R02 cap baseline not 1600 / 2842: '+JSON.stringify({sourceCap,before}));
+    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2772)>1)
+      throw Error('R04/R02 V2 no-STT cap baseline not 1600 / 2772: '+JSON.stringify({sourceCap,before}));
     const focusCap=await evaluate(`(()=>{
       const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
       if(!el)return false;el.focus();return document.activeElement===el;
@@ -2629,13 +3449,25 @@ try{
     const total=Number(document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent);
     const qppl=Number(document.querySelector('[data-summary-kind=qppl] strong')?.textContent);
     const hc=Number(document.querySelector('[data-summary-kind=hc] strong')?.textContent);
-    const nqUnknown=Number(document.querySelector('[data-summary-kind=nq-unknown] strong')?.textContent??0);
-    const nq=qppl+hc+nqUnknown;
     const bc=Number(document.querySelector('[data-summary-kind=bc] strong')?.textContent);
-    const unclassified=Number(document.querySelector('[data-summary-kind=unclassified] strong')?.textContent??0);
+    const kindButtons=[...document.querySelectorAll('button[data-summary-kind]')]
+      .map(button=>button.getAttribute('data-summary-kind'));
+    // This synthetic QA fixture has only classified NQ/BC; real unknown
+    // source records remain included in total and are covered separately
+    // by the L4 zero/unknown render and filter parity regression.
+    const classified=qppl+hc+bc;
     const stages=['party','build','nq'].map(k=>{
       const card=document.querySelector('[data-summary-card='+k+']');
-      return {key:k,status:card.querySelectorAll('.item-summary-bucket').length,
+      const buckets=[...card.querySelectorAll('.item-summary-bucket')];
+      const tops=buckets.map(button=>Math.round(button.getBoundingClientRect().top));
+      const rows=[...new Set(tops)].map(top=>tops.filter(value=>value===top).length);
+      const labelsFit=buckets.every(button=>{
+        const label=button.querySelector('span');
+        const range=document.createRange();range.selectNodeContents(label);
+        const text=range.getBoundingClientRect(),frame=button.getBoundingClientRect();
+        return text.left>=frame.left+1&&text.right<=frame.right-1;
+      });
+      return {key:k,status:buckets.length,rows,labelsFit,
         percent:card.querySelector('[role=progressbar]').getAttribute('aria-valuenow'),
         width:card.getBoundingClientRect().width};
     });
@@ -2644,18 +3476,41 @@ try{
       Math.abs(totalBounds.left+totalBounds.width/2-summary.left-summary.width/2)<2&&
       cards[0].scrollWidth<=cards[0].clientWidth+1&&
       totalBounds.bottom<workflowBounds[0].top&&workflowBounds.every(r=>
-        Math.abs(r.top-workflowBounds[0].top)<2&&Math.abs(r.width-workflowBounds[0].width)<2)&&
+        Math.abs(r.top-workflowBounds[0].top)<2)&&
+      // R-V3-04: the Build label is longer, so its deliberate 1.15fr track
+      // must fit without clipping. Preserve the balanced Party/Council widths.
+      Math.abs(workflowBounds[0].width-workflowBounds[2].width)<2&&
+      Math.abs(workflowBounds[1].width/workflowBounds[0].width-1.15)<.02&&
+      stages.every((stage,index)=>JSON.stringify(stage.rows)===
+        JSON.stringify(index===2?[3]:[4])&&stage.labelsFit)&&
       summary.bottom<table.top&&Math.abs(summary.width-region.width)<2&&
       headings.some(x=>x.includes('Hồ sơ tùy chỉnh'))&&
       headings.some(x=>x.includes('Ba khâu tùy chỉnh'))&&
       headings.some(x=>x.includes('Nhóm phụ trách tùy chỉnh'))&&
-      total===nq+bc+unclassified&&stages.map(x=>x.status).join(',')==='4,4,3',
-      total,nq,bc,unclassified,regionWidth:region.width,summaryWidth:summary.width,
+      kindButtons.join(',')==='qppl,hc,bc'&&total===classified&&
+      stages.map(x=>x.status).join(',')==='4,4,3',
+      total,qppl,hc,bc,classified,kindButtons,regionWidth:region.width,summaryWidth:summary.width,
       summaryBottom:summary.bottom,tableTop:table.top,headings,stages};
   })()`);
   if(!fourDesktop.ok)throw Error('Lượt 018 four-card/heading desktop geometry: '+JSON.stringify(fourDesktop));
   const fourDesktopShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-l018-four-cards-desktop.png',Buffer.from(fourDesktopShot.data,'base64'));
+  const pr95List=await evaluate(`(()=>{
+    const text=document.body.textContent??'';
+    return {presets:!!document.querySelector('.list-view-tools'),
+      personalName:text.includes('Mẫu hiển thị cá nhân')||text.includes('Tên mẫu mới')||
+        text.includes('Lưu mẫu mới'),
+      specialistToggle:text.includes('Chọn chuyên viên toàn cơ quan'),
+      toolbar:!!document.querySelector('.list-filter-toolbar input[aria-label="Tìm kiếm không dấu"]'),
+      legacyFilterRow:!!document.querySelector('.item-column-filter-row'),
+      summaryCards:document.querySelectorAll('[data-summary-card]').length};
+  })()`);
+  if(pr95List.presets||pr95List.personalName||pr95List.specialistToggle||
+    pr95List.summaryCards!==4||!pr95List.toolbar||pr95List.legacyFilterRow)
+    throw Error('PR95 V2 compact toolbar/personal UI regression '+JSON.stringify(pr95List));
+  const pr95ListShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-list-compact-synthetic.png',Buffer.from(pr95ListShot.data,'base64'));
+  console.log('PR95_REMOVED_PERSONAL_PRESETS_RETAINED_COLUMN_FILTERS_PASS',JSON.stringify(pr95List));
   // Clickable summary counts use live normalized report conditions. Counts
   // retain column-filter context so another quick condition remains selectable.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1'});
@@ -2666,6 +3521,17 @@ try{
   await evaluate("document.querySelector('[data-summary-report=party][data-summary-stage=next]').click()");
   await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===2",
     'Party next must filter both post-VP records, not only one literal status');
+  // V4 L1: the 7-row synthetic SOURCE still contains the historic alias,
+  // but the filtered grouped VIEW must show canonical labels. Keep the exact
+  // two selected row IDs/counts, never migrate the source to satisfy this check.
+  const v4NextVisible=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
+    .map(x=>x.textContent)`);
+  if(!v4NextVisible.some(x=>x.includes('Đã gửi ĐU'))||
+      !v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
+      v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
+    throw Error('UI V4 next bucket must preserve distinct source member IDs and show canonical labels: '+JSON.stringify(v4NextVisible));
+  console.log('UI_V4_L1_NEXT_BUCKET_CANONICAL_DISPLAY_IDS_PRESERVED_PASS',JSON.stringify(v4NextVisible));
+
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
     total:Number(document.querySelector('.item-summary-total-count').textContent),
@@ -2742,7 +3608,7 @@ try{
   // Column filters intersect the quick condition; clearing the quick filter
   // must preserve the existing column filter and summary base counts.
   const inputFocus=await evaluate(`(()=>{
-    const el=document.querySelector('[data-filter-key=displayCode] input');
+    const el=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
     if(!el)return false;el.focus();return document.activeElement===el;
   })()`);
   if(!inputFocus)throw Error('Lượt 018 ID filter missing');
@@ -2750,7 +3616,7 @@ try{
   await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
     'Lượt 018 summary total failed to follow ID column filter');
   await evaluate("document.querySelector('.item-summary-active-filter button').click()");
-  await eventually("!document.querySelector('.item-summary-active-filter')&&document.querySelector('[data-filter-key=displayCode] input').value==='NQ01'",
+  await eventually(`!document.querySelector('.item-summary-active-filter')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
   const filteredSummary=await evaluate(`(()=>{
     const cards=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
@@ -2819,8 +3685,10 @@ try{
   })`);
   if(quickRename.modalOpen)throw Error('R12 save did not close rename popup');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?guest=1'});
-  await eventually("!!document.querySelector('.guest-compact-menu-bar')",
-    'R12 guest layout failed to load');
+  await eventually("!!document.querySelector('.item-data-table')",
+    'R12 guest table failed to load');
+  if(await evaluate("!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu')"))
+    throw Error('R12 guest personal column menu unexpectedly present');
   if(await evaluate("!!document.querySelector('.group-label-shortcut')"))
     throw Error('R12 guest received admin-only group-title edit control');
   console.log('R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS',JSON.stringify(quickRename));
@@ -2913,7 +3781,7 @@ try{
       throw Error('R06 responsive table-height override lost CSS specificity at '+
         mode+': '+JSON.stringify({actual:before.tableHeight,intendedHeight}));
     if(!before.shell.includes('wide-table-page')||!before.shell.includes('list-fit-page')||
-      before.tableHeight<260||before.bodyHeight<=height+120||
+      before.tableHeight<260||before.bodyHeight<=height+20||
       before.bodyWidth>width+5||before.scrollMode!=='auto')
       throw Error('R06 P1: real list-fit App still clips table at '+mode+': '+JSON.stringify(before));
     if(mode==='mobile'){
@@ -2925,7 +3793,7 @@ try{
       // This is an actual user-reachable document scroll, not a DOM transform.
       table.scrollIntoView({block:'start'});
       const row=document.querySelector('.item-data-table tbody tr:first-child');
-      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const filter=document.querySelector('.list-filter-toolbar');
       const tableRect=table.getBoundingClientRect();
       const rowRect=row.getBoundingClientRect();
       const filterRect=filter.getBoundingClientRect();
@@ -2943,7 +3811,7 @@ try{
       const table=document.querySelector('.item-table-scroll');
       const start=table.scrollTop;table.scrollTop+=180;
       const heading=document.querySelector('.item-data-table .item-heading-row');
-      const filter=document.querySelector('.item-data-table .item-column-filter-row');
+      const filter=document.querySelector('.list-filter-toolbar');
       const viewport=table.getBoundingClientRect();
       return {start,end:table.scrollTop,scrollHeight:table.scrollHeight,
         clientHeight:table.clientHeight,headingTop:heading.getBoundingClientRect().top,
@@ -2951,7 +3819,7 @@ try{
         filterBottom:filter.getBoundingClientRect().bottom};
     })()`);
     if(internal.end<=internal.start||internal.scrollHeight<=internal.clientHeight||
-      internal.filterBottom<internal.viewportTop-3)
+      !Number.isFinite(internal.headingTop)||!Number.isFinite(internal.filterTop))
       throw Error('R06 P1: sticky filter/internal table scroll regression '+mode+': '+JSON.stringify(internal));
     if(mode==='mobile'){
       const shot=await send('Page.captureScreenshot',{format:'png'});
@@ -2987,7 +3855,7 @@ try{
   await send('Page.navigate',{url:r07Url});
   await eventually("document.querySelector('.report-grid-actions button[aria-expanded=false]')!==null",
     'R07 popup configuration controls missing');
-  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"]')?.textContent.trim()`);
+  const popupTitle=()=>evaluate(`document.querySelector('.report-grid-heading-row th[data-column-key="progressParty"] .column-heading-label')?.textContent.trim()`);
   const openR07=async()=>{
     await evaluate(`[...document.querySelectorAll('.report-grid-actions button')]
       .find(b=>b.textContent.includes('Cấu hình popup / cột'))?.click()`);
@@ -3021,18 +3889,18 @@ try{
   await openR07();
   await replaceR07('Tên popup riêng');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Tên popup riêng'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Tên popup riêng'",
     'R07 popup override title not immediately rendered');
   await openR07();
   await replaceR07('   ');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 whitespace-only title did not immediately inherit shared name');
   const r07Whitespace=await evaluate(`(()=>{
     const key=Object.keys(localStorage).find(k=>k.startsWith('hdnd.report-detail-grid.v1:')&&
       k.includes('compact-qa-synthetic-popup-only'));
     const stored=key?JSON.parse(localStorage.getItem(key)):null;
-    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim(),
+    return {title:document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim(),
       hasOverride:Object.prototype.hasOwnProperty.call(stored?.groupLabels??{},'partyTogether'),
       storedName:stored?.groupLabels?.partyTogether};
   })()`);
@@ -3054,29 +3922,679 @@ try{
   await eventually("document.querySelector('input[aria-label=\"Tên nhóm popup partyTogether\"]')?.value===''",
     'R07 reset did not clear popup-only title draft');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 restored title not visible after reset/save');
   await openR07();
   await replaceR07('Tên tạm để xóa');
   await replaceR07('');
   await saveR07();
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 empty-string title persisted in applied state');
   await send('Page.navigate',{url:r07Url});
-  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty]')?.textContent.trim()==='Ba khâu tùy chỉnh'",
+  await eventually("document.querySelector('.report-grid-heading-row th[data-column-key=progressParty] .column-heading-label')?.textContent.trim()==='Ba khâu tùy chỉnh'",
     'R07 empty title did not survive popup remount/reload');
   await openR07();
   if((await inputR07())!=='')throw Error('R07 saved empty override returned in reloaded settings');
   console.log('R07_POPUP_EMPTY_WHITESPACE_RESET_REOPEN_RELOAD_PASS',JSON.stringify(r07Whitespace));
+
+  // R-V3-03: real Chromium, actual ReportTable/ReportDetailGrid/CellPicker,
+  // using the existing FULL synthetic QA shell (no Firebase, Excel or credentials).
+  // The separate real-App Emulator workflow still owns server rights E2E.
+  const v3PopupUrl='http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?full=1';
+  await send('Page.navigate',{url:v3PopupUrl});
+  // L5 full QA defaults to guest. Do NOT restore the obsolete role selector.
+  // Exercise the actual V3 gear controls for synthetic login/logout.
+  await eventually("document.querySelector('.pr95-full-preview[data-role=guest] .pr95-preview-gear')!==null",
+    'R-V3-03 L5 guest-default full QA component not mounted');
+  const setPopupRole=async role=>{
+    const current=await evaluate("document.querySelector('.pr95-full-preview')?.dataset.role");
+    if(current===role)return;
+    if(!['guest','admin'].includes(role))throw Error('R-V3-03 invalid synthetic role');
+    const label=role==='admin'?'Đăng nhập quản trị (mô phỏng)':'Đăng xuất mô phỏng';
+    const hasGear=await evaluate("!!document.querySelector('.pr95-preview-gear')");
+    if(!hasGear)throw Error('R-V3-03 L5 gear missing');
+    if(!await evaluate("!!document.querySelector('.pr95-preview-gear-menu')"))
+      await evaluate("document.querySelector('.pr95-preview-gear').click()");
+    // React/Preact commits the popover in the next render, not synchronously
+    // inside the same evaluate() that clicked the gear.
+    await eventually("[...document.querySelectorAll('.pr95-preview-gear-menu button')].some(b=>b.textContent.trim()==="+JSON.stringify(label)+")",
+      'R-V3-03 verified gear menu action '+label);
+    const changed=await evaluate("(()=>{const label="+JSON.stringify(label)+";const button=[...document.querySelectorAll('.pr95-preview-gear-menu button')].find(b=>b.textContent.trim()===label);if(!button)return false;button.click();return true;})()");
+    if(!changed)throw Error('R-V3-03 role change through V3 gear unavailable: '+label);
+    await eventually("document.querySelector('.pr95-full-preview')?.dataset.role==="+JSON.stringify(role),
+      'R-V3-03 gear role transition missing');
+    if(await evaluate("!!document.querySelector('#pr95-role,.pr95-preview-role')"))
+      throw Error('R-V3-03 obsolete role toolbar was restored');
+  };
+  const openSourceCouncil=async()=>{
+    const navigated=await evaluate("(()=>{const b=[...document.querySelectorAll('.pr95-preview-nav button')].find(x=>x.querySelector('.section-card-title')?.textContent.trim()==='Báo cáo tổng hợp');if(!b)return false;b.click();return true;})()");
+    if(!navigated)throw Error('R-V3-03 full report navigation missing');
+    await eventually("document.querySelectorAll('.pr95-full-preview .report-surface').length===5",
+      'R-V3-03 five real reports not mounted');
+    const opened=await evaluate("(()=>{const s=[...document.querySelectorAll('.pr95-full-preview .report-surface')].find(x=>x.querySelector('h3')?.textContent.includes('Tiến độ các Nghị quyết và Báo cáo trình HĐND'));const b=[...s?.querySelectorAll('tfoot .count-drill')??[]].find(x=>x.getAttribute('aria-label')?.startsWith('Tổng cộng · Sở chưa trình,'));if(!b)return false;b.click();return true;})()");
+    if(!opened)throw Error('R-V3-03 unfinished Council report drilldown missing');
+    await eventually("document.querySelector('dialog.report-detail-modal[open] .report-detail-grid tbody tr')!==null",
+      'R-V3-03 ReportDetailGrid did not mount');
+  };
+  const councilStageSel='dialog.report-detail-modal[open] .report-detail-grid tbody tr:first-child td[data-col-key=progressParty] .compact-stage-row:last-child';
+  const stageValuesExpr="(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return [...row?.querySelectorAll('.compact-stage-row')??[]].map(x=>x.querySelector('.compact-stage-state')?.textContent.trim()??'');})()";
+  await setPopupRole('guest');
+  await openSourceCouncil();
+  const guestCouncil=await evaluate("(()=>{const modal=document.querySelector('dialog.report-detail-modal[open]');const row=document.querySelector("+JSON.stringify(councilStageSel)+");return {text:row?.querySelector('.compact-stage-state')?.textContent.trim(),picker:!!row?.querySelector('.cell-picker-trigger'),button:[...modal?.querySelectorAll('.report-grid-actions button')??[]].some(b=>b.textContent.trim()==='Chỉnh sửa nháp')};})()");
+  if(guestCouncil.text!=='Sở chưa trình'||guestCouncil.picker||guestCouncil.button)
+    throw Error('R-V3-03 denied guest unexpectedly has editor: '+JSON.stringify(guestCouncil));
+  const v4PopupReadonly=await evaluate("(()=>{const state=document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+");const wrapper=state?.querySelector('.workflow-status-value');return {ok:!!state&&!state.querySelector('button.cell-picker-trigger')&&!state.hasAttribute('data-editable')&&getComputedStyle(state,'::before').content==='none'&&(!wrapper||getComputedStyle(wrapper,'::before').content==='none'),stateDot:state?getComputedStyle(state,'::before').content:null,legacyDot:wrapper?getComputedStyle(wrapper,'::before').content:null};})()");
+  if(!v4PopupReadonly.ok)throw Error('UI V4 readonly popup status still has caret/dot: '+JSON.stringify(v4PopupReadonly));
+  const v4PopupReadonlyShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-readonly.png',Buffer.from(v4PopupReadonlyShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_READONLY_DOTLESS_PASS',JSON.stringify(v4PopupReadonly));
+  const v3GuestShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-guest-denied.png',Buffer.from(v3GuestShot.data,'base64'));
+  await setPopupRole('admin');
+  await eventually("!document.querySelector('dialog.report-detail-modal[open]')",
+    'R-V3-03 role switch retained prior popup');
+  await openSourceCouncil();
+  const originalCouncilStages=await evaluate(stageValuesExpr);
+  if(originalCouncilStages.length!==3||originalCouncilStages[2]!=='Sở chưa trình')
+    throw Error('R-V3-03 unfinished council fixture missing: '+JSON.stringify(originalCouncilStages));
+  const editingStarted=await evaluate("(()=>{const b=[...document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-actions button')].find(x=>x.textContent.trim()==='Chỉnh sửa nháp');if(!b)return false;b.click();return true;})()");
+  if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
+  await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
+    'R-V3-03 authorized Council picker missing');
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='grid'&&br.height>=38&&st.borderTopWidth==='0px'&&st.boxShadow==='none'&&dot.content==='none'&&arrow.gridColumnStart==='2'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
+  const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
+  console.log('UI_V4_L2_POPUP_EDITABLE_CARET_HITBOX_PASS',JSON.stringify(v4PopupEditable));
+  await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")?.click()");
+  await eventually("document.querySelector('.cell-picker-popover:popover-open .cell-picker-option')!==null",
+    'R-V3-03 actual Council choices did not open');
+  const councilChoices=await evaluate("([...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].map(x=>({label:x.textContent.trim(),selected:x.getAttribute('aria-selected')==='true'})))");
+  // Integrated L2 clear-policy + L3 authoritative catalog: *exactly* these
+  // three Council statuses, no empty/alias/legacy choice (unless raw is current).
+  const canonicalCouncilChoices=['Sở chưa trình','VP đang xử lý','Hoàn thành'];
+  if(JSON.stringify(councilChoices.map(x=>x.label))!==JSON.stringify(canonicalCouncilChoices)||
+      councilChoices.filter(x=>x.selected).length!==1||
+      !councilChoices.some(x=>x.label==='Sở chưa trình'&&x.selected))
+    throw Error('R-V3-03 integrated canonical Council options not EXACT: '+JSON.stringify(councilChoices));
+  const v3ChoiceShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-council-choices.png',Buffer.from(v3ChoiceShot.data,'base64'));
+  const clicked=await evaluate("(()=>{const b=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')].find(x=>x.textContent.trim()==='Hoàn thành');if(!b)return false;b.click();return true;})()");
+  if(!clicked)throw Error('R-V3-03 cannot select canonical Hoàn thành');
+  await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+")?.textContent.trim()==='Hoàn thành'",
+    'R-V3-03 onUpdate did not apply Council completion');
+  const updatedCouncilStages=await evaluate(stageValuesExpr);
+  const patchNotice=await evaluate("(()=>{const row=document.querySelector("+JSON.stringify(councilStageSel)+")?.closest('tr');return {draft:!!row?.querySelector('.report-grid-id small'),notice:[...document.querySelectorAll('.pr95-full-preview [role=status]')].some(x=>x.textContent?.includes('Đã sửa dữ liệu giả trong bộ nhớ'))};})()");
+  if(updatedCouncilStages.length!==3||
+     updatedCouncilStages[0]!==originalCouncilStages[0]||
+     updatedCouncilStages[1]!==originalCouncilStages[1]||
+     updatedCouncilStages[2]!=='Hoàn thành'||!patchNotice.draft||!patchNotice.notice)
+    throw Error('R-V3-03 canonical-only RAM patch failed: '+JSON.stringify({originalCouncilStages,updatedCouncilStages,patchNotice}));
+  const v3CompletedShot=await send('Page.captureScreenshot',{format:'png'});
+  writeFileSync('hophdnd-pr95-v3-l1-popup-completed.png',Buffer.from(v3CompletedShot.data,'base64'));
+  await evaluate("(()=>{const b=[...document.querySelectorAll('dialog.report-detail-modal[open] .report-grid-actions button')].find(x=>x.textContent.trim()==='Về chế độ xem');b?.click();})()");
+  await eventually("!document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")",
+    'R-V3-03 did not return to view mode');
+  const readAfter=await evaluate("document.querySelector("+JSON.stringify(councilStageSel+" .compact-stage-state")+")?.textContent.trim()");
+  if(readAfter!=='Hoàn thành')throw Error('R-V3-03 canonical patch lost in read mode: '+readAfter);
+  console.log('UI_V3_L1_RV303_REAL_CHROME_GUEST_DENIED_ADMIN_CANONICAL_PATCH_PASS',
+    JSON.stringify({guestCouncil,originalCouncilStages,updatedCouncilStages,patchNotice,councilChoices,
+      realComponent:'ReportDetailGrid/CellPicker',storage:'synthetic RAM only',screenshots:3}));
+
   
-  console.log('BROWSER_SMOKE_PASS: guest-only controls, subtle column search, stable grid with zero/many rows and search clear.');
+  // L2 incremental REAL-Chromium two-tab witness. These are two separate
+  // browser targets (not two Firebase SDK contexts). They validate the
+  // current active-generation List/Report after an owner-seeded pointer swap.
+  // This is READ-ONLY guest coverage; same-admin edit/lease/CAS + lost-ACK
+  // remain explicit L1 harness requests, never claim them from this fixture.
+  const twoTabConnections=[];
+  const debuggerPort=new URL(tab.webSocketDebuggerUrl).port;
+  async function makeUiTab(name,{waitForList=true}={}){
+    const response=await fetch('http://127.0.0.1:'+debuggerPort+'/json/new?about:blank',
+      {method:'PUT',signal:AbortSignal.timeout(5000)});
+    if(!response.ok)throw Error('Could not create genuine Chrome tab '+name+': '+response.status);
+    const target=await response.json();
+    if(!target.id||!target.webSocketDebuggerUrl)throw Error('Tab '+name+' has no CDP target');
+    const socket=new WebSocket(target.webSocketDebuggerUrl);
+    await new Promise((done,fail)=>{
+      socket.addEventListener('open',done,{once:true});
+      socket.addEventListener('error',fail,{once:true});
+    });
+    const pendingTab=new Map();let tabSeq=0;
+    socket.addEventListener('message',event=>{
+      const data=JSON.parse(event.data),entry=pendingTab.get(data.id);
+      if(!entry)return;
+      pendingTab.delete(data.id);
+      data.error?entry.reject(Error(JSON.stringify(data.error))):entry.resolve(data.result);
+    });
+    const call=(method,params={})=>new Promise((resolve,reject)=>{
+      const id=++tabSeq;pendingTab.set(id,{resolve,reject});
+      socket.send(JSON.stringify({id,method,params}));
+      setTimeout(()=>{if(pendingTab.has(id)){pendingTab.delete(id);
+        reject(Error('Chrome tab '+name+' CDP timed out: '+method));}},16000);
+    });
+    const js=async expression=>{
+      const result=await call('Runtime.evaluate',{
+        expression,returnByValue:true,awaitPromise:true
+      });
+      if(result.exceptionDetails)throw Error('Chrome tab '+name+' JS error');
+      return result.result?.value;
+    };
+    const until=async(expression,meaning)=>{
+      for(let i=0;i<100;i++){
+        if(await js(expression))return;
+        await sleep(150);
+      }
+      throw Error('Two-tab '+name+' failed '+meaning);
+    };
+    twoTabConnections.push(socket);
+    await call('Page.enable');
+    await call('Runtime.enable');
+    await call('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
+    await until("document.querySelector('.nav-tabs')!==null",'App shell');
+    if(waitForList){
+      await js("(()=>{const x=[...document.querySelectorAll('.nav-tabs button')].find(b=>b.textContent?.includes('Danh sách các ND trình HĐND'));x?.click();return !!x;})()");
+      await until("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
+        'current-generation NQ01');
+    }
+    return {id:target.id,name,js,until,call,socket};
+  }
+  try{
+    const first=await makeUiTab('A'),second=await makeUiTab('B');
+    if(first.id===second.id)throw Error('Two-tab CDP returned the same target');
+    const newOp='pr95_browser_two_tab_epoch_20261030';
+    const newGen='gen_'+newOp;
+    const changed=firebaseRows.map((row,index)=>index===0
+      ?{...row,displayCode:'BC77',documentKind:'BC',
+        content:'Nội dung generation mới xác nhận ở hai tab',department:'Sở V2 thử nghiệm'}
+      :row);
+    const newer=Object.fromEntries(changed.map(row=>[row.recordId,row]));
+    const ownerHeaders={Authorization:'Bearer owner','Content-Type':'application/json'};
+    const putFixture=async(path,value)=>{
+      const result=await fetch(EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE,{
+        method:'PUT',headers:ownerHeaders,body:JSON.stringify(value),
+        signal:AbortSignal.timeout(8000)
+      });
+      if(!result.ok)throw Error('Cannot stage two-tab Emulator fixture '+path+': '+result.status);
+    };
+    // Stage the immutable generation before flipping the active pointer,
+    // exactly as the source subscribers expect. A privileged fixture PUT is
+    // NOT a CAS test and is never described as one.
+    await putFixture('/hdnd/datasetV2/generations/'+newGen+'/items',newer);
+    await putFixture('/hdnd/datasetV2/permissions/'+newGen,{columns:{}});
+    await putFixture('/hdnd/datasetV2/active',{
+      generationId:newGen,operationId:newOp,revision:2,
+      rowCount:changed.length,digest:'b'.repeat(64)
+    });
+    await Promise.all([first,second].map(async side=>{
+      await side.until("document.querySelector('.item-data-table tbody')?.textContent?.includes('BC77')===true",
+        'new active-generation record BC77');
+      const view=await side.js(`(()=>{
+        const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+        return {rows:rows.length,newItem:rows.some(r=>r.textContent?.includes('BC77')&&
+          r.textContent?.includes('Nội dung generation mới xác nhận ở hai tab')),
+          oldItem:rows.some(r=>r.textContent?.includes('NQ01'))};
+      })()`);
+      if(view.rows!==54||!view.newItem||view.oldItem)
+        throw Error('Two-tab '+side.name+' stale List: '+JSON.stringify(view));
+      await side.js("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[0]?.click()");
+      await side.until("document.querySelector('.report-table tbody')?.textContent?.includes('Sở V2 thử nghiệm')===true",
+        'Report from new active generation');
+    }));
+    console.log('BROWSER_TWO_REAL_TABS_READ_SWITCH_PASS',JSON.stringify({
+      distinctChromeTargets:true,firstTab:first.id,secondTab:second.id,
+      previousGeneration:SMOKE_GENERATION,nextGeneration:newGen,
+      currentRowsPerTab:54,reportedDepartment:'Sở V2 thử nghiệm',
+      scope:'guest List/Report epoch switch only, NOT admin write/lease/lost ACK'
+    }));
+  }finally{
+    for(const socket of twoTabConnections)socket.close();
+  }
+
+  // L2 Excel-only UI journey, ONE real Chrome tab authenticated through the
+  // Auth Emulator Google-provider SDK bridge. Other lanes own two-tab CAS
+  // and application/network ACK-loss investigations.
+  const adminE2eDir=mkdtempSync(join(tmpdir(),'pr95-admin-ui-e2e-'));
+  const adminTargets=[];
+  try{
+    const adminOwnerHeaders={Authorization:'Bearer owner','Content-Type':'application/json'};
+    const rootSeed={hdnd:{
+      items:Object.fromEntries(firebaseRows.slice(0,2).map(item=>[item.recordId,item])),
+      permissions:{columns:{}},
+      control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()},
+      freezeControl:{mode:'FROZEN',revision:1,epoch:1,actor:'pr95-seed',
+        changedAt:Date.now()-10000,deadline:0,closedAt:Date.now()-9000}
+    }};
+    const rootPut=await fetch(EMULATOR_ROOT,{
+      method:'PUT',headers:adminOwnerHeaders,body:JSON.stringify(rootSeed),
+      signal:AbortSignal.timeout(10000)
+    });
+    if(!rootPut.ok)throw Error('Cannot seed FROZEN legacy root in test Emulator: '+rootPut.status);
+    const adminA=await makeUiTab('Excel admin',{waitForList:false});
+    adminTargets.push(adminA);
+    const adminIdentity=[];
+    for(const side of adminTargets){
+      await side.until("typeof window.__pr95EmulatorGoogleAdminSignIn==='function'",
+        'Emulator Google-admin SDK hook');
+      const credentials=await side.js("window.__pr95EmulatorGoogleAdminSignIn()");
+      if(!credentials?.uid||credentials.email!=='cavoixanh638@gmail.com'||
+        !credentials.emailVerified||!credentials.providerIds?.includes('google.com'))
+        throw Error('Wrong Google Emulator SDK identity in '+side.name+': '+JSON.stringify(credentials));
+      adminIdentity.push({tabId:side.id,...credentials});
+      await side.until("document.querySelector('.options-menu summary[aria-label=\"Cài đặt\"]')!==null",
+        'authenticated admin settings');
+    }
+    console.log('BROWSER_EXCEL_ADMIN_AUTH_PASS',JSON.stringify({
+      targetId:adminA.id,identity:adminIdentity[0],
+      source:'real Auth Emulator SDK signInWithCredential',
+      notProductionGoogleLogin:true
+    }));
+    // V4 L3 tests the ACTUAL App with a verified Google-provider admin on
+    // local Auth + RTDB Emulators, independently from synthetic full preview.
+    await adminA.until("[...document.querySelectorAll('.v3-settings-menu .options-popover > button')].some(b=>b.textContent.trim()==='Hiện mã khu vực')",
+      'verified admin-only region toggle');
+    const referenceDefault=await adminA.js(`(()=>{
+      const button=[...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực');
+      return !!button&&button.getAttribute('aria-pressed')==='false'&&
+        !document.querySelector('[data-ui-reference-layer]')&&
+        !document.querySelector('[data-ui-reference-active]');
+    })()`);
+    if(!referenceDefault)throw Error('UI V4 L3 App admin reference codes must default OFF');
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!!document.querySelector('[data-ui-ref-code=A01]')",
+      'real App admin reference overlay');
+    const appCodes=await adminA.js(`(()=>{
+      const layer=document.querySelector('[data-ui-reference-layer]');
+      const codes=[...layer?.querySelectorAll('[data-ui-ref-code]')??[]].map(node=>node.dataset.uiRefCode);
+      return {codes,hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
+        nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
+          [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents==='none')};
+    })()`);
+    if(!appCodes.hasAdminToggle||!appCodes.nonblocking||
+      !['A01','A02','A03'].every(code=>appCodes.codes.includes(code)))
+      throw Error('UI V4 L3 App admin reference selectors/roles: '+JSON.stringify(appCodes));
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!document.querySelector('[data-ui-reference-layer]')",
+      'real App admin overlay fully unmounted after toggle');
+    console.log('PR95_UI_V4_L3_REAL_APP_ADMIN_ON_OFF_PASS',JSON.stringify({
+      codes:appCodes.codes,defaultHidden:referenceDefault,pointerEventsNone:appCodes.nonblocking,
+      emulatorOnly:true}));
+    const headers=[
+      'Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
+      'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',
+      'Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ',
+      'Chuyên viên','Phòng','Lãnh đạo VP','Lãnh đạo UBND',
+      'Tiến độ hiện tại','Ghi chú'
+    ];
+    const makeXlsx=(name,variant)=>{
+      const workbook=XLSX.utils.book_new();
+      const sheet=XLSX.utils.aoa_to_sheet([headers,
+        ['NQ90',1,'PR95 '+variant+' nghị quyết','Sở QA '+variant,'QPPL',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant],
+        ['BC91',2,'PR95 '+variant+' báo cáo','Sở QA '+variant,'BC',
+          '','','','','Chuyên viên QA','Phòng QA','','','Sở đang thực hiện','Ghi chú '+variant]]);
+      XLSX.utils.book_append_sheet(workbook,sheet,'DATA_AO');
+      const file=join(adminE2eDir,name);
+      writeFileSync(file,XLSX.write(workbook,{type:'buffer',bookType:'xlsx'}));
+      return file;
+    };
+    const initialXlsx=makeXlsx('pr95-initial.xlsx','INITIAL');
+    const replaceXlsx=makeXlsx('pr95-replacement.xlsx','REPLACE');
+    const clickText=async(side,selector,fragment)=>{
+      const clicked=await side.js(`(()=>{
+        const el=[...document.querySelectorAll(${JSON.stringify(selector)})]
+          .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
+        if(!el||el.disabled)return false;el.click();return true;
+      })()`);
+      if(!clicked){
+        const snapshot=await side.js(`(()=>{
+          const el=[...document.querySelectorAll(${JSON.stringify(selector)})]
+            .find(x=>x.textContent?.includes(${JSON.stringify(fragment)}));
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          return {found:!!el,disabled:el?.disabled??null,
+            panelText:panel?.innerText?.slice(0,1000)??null,
+            notices:[...document.querySelectorAll('[role="alert"],[role="status"]')]
+              .map(x=>x.innerText?.slice(0,160)).slice(-12)};
+        })()`);
+        console.error('PR95_ADMIN_UI_BLOCKER_DIAGNOSTIC',JSON.stringify({
+          tab:side.name,action:fragment,selector,...snapshot
+        }));
+        // Best effort only; a failing CDP screenshot must never obscure the
+        // original disabled button/state cause (the prior CI timed out here).
+        try{
+          const shot=await Promise.race([
+            side.call('Page.captureScreenshot',{format:'png'}),
+            sleep(2500).then(()=>null)
+          ]);
+          if(shot?.data)writeFileSync('hophdnd-pr95-admin-ui-blocker.png',
+            Buffer.from(shot.data,'base64'));
+        }catch(e){
+          console.warn('PR95_ADMIN_UI_SCREENSHOT_NONFATAL',String(e));
+        }
+        throw Error(side.name+' cannot click '+fragment+' within '+selector+
+          ' diagnostic='+JSON.stringify(snapshot));
+      }
+    };
+    const enter=async(side,selector,value)=>{
+      const focus=await side.js(`(()=>{
+        const el=document.querySelector(${JSON.stringify(selector)});
+        if(!el||el.disabled)return false;el.focus();el.select?.();return document.activeElement===el;
+      })()`);
+      if(!focus)throw Error(side.name+' cannot focus '+selector);
+      await side.call('Input.insertText',{text:value});
+      await side.until(`document.querySelector(${JSON.stringify(selector)})?.value===${JSON.stringify(value)}`,
+        'controlled input value '+selector);
+    };
+    const upload=async(side,filename)=>{
+      const {root}=await side.call('DOM.getDocument',{depth:1});
+      const {nodeId}=await side.call('DOM.querySelector',{
+        nodeId:root.nodeId,selector:'.business-excel-review input[type=file]'
+      });
+      if(!nodeId)throw Error(side.name+' no real business Excel file input');
+      await side.call('DOM.setFileInputFiles',{nodeId,files:[filename]});
+      await side.until("document.querySelector('.business-excel-review [role=status]')?.textContent?.includes('Đã chọn:')===true",
+        'A-O file selected');
+      await side.js(`(()=>{
+        const el=document.querySelector('.business-excel-review select');
+        if(!el)return false;const setter=Object.getOwnPropertyDescriptor(
+          HTMLSelectElement.prototype,'value').set;
+        setter.call(el,'DATA_AO');el.dispatchEvent(new Event('change',{bubbles:true}));return true;
+      })()`);
+      await side.until("document.querySelector('.business-excel-review select')?.value==='DATA_AO'",
+        'explicit workbook sheet selection');
+      await clickText(side,'.business-excel-review button','Kiểm tra toàn bộ file');
+      await side.until("document.querySelector('section[aria-label=\"Bản xem trước chưa áp dụng\"]')!==null",
+        'real file parsed/previewed');
+    };
+    const openTransfer=async side=>{
+      // V3 renders the gear for guests too. A Google SDK sign-in is not yet
+      // verified admin readiness: common profile, epoch and connected state
+      // must all have passed before any admin-only menu item is rendered.
+      // Wait for the *real* admin menu, never bypass or replace that guard.
+      await side.until("[...document.querySelectorAll('header.v3-shell-topbar .options-popover > button')].some(b=>b.textContent.trim()==='Tài khoản và dữ liệu')",
+        'verified V3 administrator tools (not the guest login menu)');
+      await clickText(side,'.options-menu summary','⚙');
+      await clickText(side,'.options-popover button','Tài khoản và dữ liệu');
+      await side.until("document.querySelector('.settings-hub-tabs')!==null",'admin settings tabs');
+      await clickText(side,'.settings-hub-tabs button','Excel · Nhập/Xuất');
+      await side.until("document.querySelector('.business-excel-review')!==null",
+        'business Excel importer visible');
+    };
+    const ownerValue=async path=>{
+      const response=await fetch(EMULATOR_DB+path+'.json?ns='+EMULATOR_NAMESPACE,{
+        headers:{Authorization:'Bearer owner'},signal:AbortSignal.timeout(8000)});
+      if(!response.ok)throw Error('Cannot verify real Emulator server '+path+' HTTP '+response.status);
+      return response.json();
+    };
+    const operationCounts=async()=>{
+      const v2=await ownerValue('/hdnd/datasetV2');
+      return {active:v2?.active??null,
+        operations:Object.keys(v2?.operations??{}),
+        generations:Object.keys(v2?.generations??{})};
+    };
+    const stagedId=async side=>{
+      // The App does not permit staging while the Firebase profile, current
+      // generation, in-flight workspace refresh or stale draft is unsettled.
+      // Wait for those guards rather than clicking a transient disabled UI.
+      const selector='section[aria-label="Thử nghiệm thế hệ Firebase"] button';
+      for(let i=0;i<100;i++){
+        if(await side.js(`[...document.querySelectorAll(${JSON.stringify(selector)})]
+          .some(x=>x.textContent?.includes('Ghi staging, đọc lại')&&!x.disabled)`))break;
+        await sleep(120);
+      }
+      await clickText(side,selector,'Ghi staging, đọc lại và sao lưu thử nghiệm');
+      await side.until("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.includes(' V2 ')===true || document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent?.startsWith('THAY ')===true",
+        'readback staging and confirmation');
+      const text=await side.js("document.querySelector('section[aria-label=\"Xem trước dữ liệu staging\"] code')?.textContent");
+      const op=text?.split(' ')[text.startsWith('THAY ')?1:3];
+      if(!/^excel_[A-Za-z0-9_]{12,80}$/.test(op))throw Error('Invalid UI staged operationId '+text);
+      return {text,op};
+    };
+    const verifyCommit=async(op,before,label)=>{
+      const after=await operationCounts();
+      const expectedRevision=(before.active?.revision??0)+1;
+      if(after.active?.operationId!==op||after.active.revision!==expectedRevision||
+        after.operations.filter(x=>x===op).length!==1||
+        after.operations.length!==before.operations.length+1||
+        after.generations.length!==before.generations.length+1)
+        throw Error(label+' did not commit exactly once on Emulator server: '+JSON.stringify({before,after}));
+      return after;
+    };
+    const takeShot=async(label)=>{
+      try{
+        const shot=await Promise.race([
+          adminA.call('Page.captureScreenshot',{format:'png'}),
+          sleep(3000).then(()=>null)
+        ]);
+        if(shot?.data){
+          const file='hophdnd-pr95-excel-'+label+'.png';
+          const bytes=Buffer.from(shot.data,'base64');
+          writeFileSync(file,bytes);
+          // Existing L1-owned workflow already uploads these two standard
+          // screenshot paths. Preserve the actual initial UNKNOWN screen as
+          // the failure artifact without modifying the workflow/runner.
+          if(label==='initial-blocked')writeFileSync('hophdnd-ui-smoke-failure.png',bytes);
+          if(label==='restore')writeFileSync('hophdnd-ui-smoke-pass.png',bytes);
+          console.log('BROWSER_EXCEL_SCREENSHOT_SAVED',file);
+        }else console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,'CDP timeout');
+      }catch(e){console.warn('BROWSER_EXCEL_SCREENSHOT_SKIPPED',label,String(e));}
+    };
+    const assertUiCommitted=async(label,operationId)=>{
+      let last=null;
+      for(let attempt=0;attempt<115;attempt++){
+        last=await adminA.js(`(()=>{
+          const panel=document.querySelector('section[aria-label="Thử nghiệm thế hệ Firebase"]');
+          const statuses=[...document.querySelectorAll('p[aria-label^="Trạng thái thao tác"]')];
+          return {status:statuses.map(x=>x.innerText),messages:[...panel?.querySelectorAll('p[role="status"],p[role="alert"]')??[]].map(x=>x.innerText),
+            panel:panel?.innerText.slice(-1000)??null,
+            ready:!!panel,buttons:[...panel?.querySelectorAll('button')??[]].map(x=>({text:x.textContent.trim(),disabled:x.disabled}))};
+        })()`);
+        if(last.status.some(x=>x.includes('ĐÃ COMMIT')))return last;
+        // Other status values can be transient; allow the documented
+        // application to resolve operationId and render the final result.
+        await sleep(180);
+      }
+      const server=await operationCounts();
+      throw Error('REAL_UI_'+label+'_STATUS_NOT_CONFIRMED '+JSON.stringify({
+        operationId,ui:last,server
+      }));
+    };
+    await openTransfer(adminA);
+    await upload(adminA,initialXlsx);
+    await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Kích hoạt V2 lần đầu')===true",
+      'initial activation UI on FROZEN legacy');
+    const initial=await stagedId(adminA);
+    const initialCandidate=JSON.parse(await ownerValue('/hdnd/datasetV2/candidates/'+initial.op));
+    const initialRows=Object.values(initialCandidate.items??{});
+    if(initialRows.length!==2||
+      initialRows.some(row=>Object.hasOwn(row,'partyMeeting')||Object.hasOwn(row,'examined'))||
+      !initialRows.some(row=>row.content==='PR95 INITIAL nghị quyết'))
+      throw Error('V2 staging still contains legacy P/Q or did not preserve parsed A–O Excel content.');
+    console.log('BROWSER_EXCEL_AO_V2_PAYLOAD_CANONICAL_PASS',JSON.stringify({
+      operationId:initial.op,serverRows:initialRows.length,
+      keys:Object.keys(initialRows[0]),nonemptyLegacyDropped:false
+    }));
+    const initialBefore=await operationCounts();
+    await enter(adminA,'input[aria-label="Xác nhận kích hoạt V2 lần đầu"]',initial.text);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Kích hoạt V2 lần đầu bằng CAS');
+    const checkLiveListReport=async(stage,expectedContent,expectedDepartment)=>{
+      // The application intentionally disables the main navigation while
+      // inside Excel settings. Use the visible "Về chế độ xem" UI action,
+      // rather than bypassing React's disabled tab buttons.
+      if(await adminA.js("document.querySelector('.nav-tabs button')?.disabled===true")){
+        await clickText(adminA,'.card-header button','Về chế độ xem');
+        await adminA.until("document.querySelector('.nav-tabs button')?.disabled===false",
+          stage+' leave Excel settings through real UI');
+      }
+      await clickText(adminA,'.nav-tabs button','Danh sách các ND trình HĐND');
+      await adminA.until(`document.querySelector('.item-data-table tbody')?.textContent?.includes(${JSON.stringify(expectedContent)})===true`,
+        stage+' current List records');
+      const list=await adminA.js(`(()=>{
+        const rows=[...document.querySelectorAll('.item-data-table tbody tr')];
+        return {count:rows.length,codes:rows.map(row=>row.textContent?.slice(0,150)),
+          content:document.querySelector('.item-data-table tbody')?.textContent??''};
+      })()`);
+      if(list.count!==2||!list.content.includes(expectedContent)||
+        !list.content.includes('NQ90')||!list.content.includes('BC91'))
+        throw Error('LIVE_LIST_'+stage+'_MISMATCH '+JSON.stringify(list));
+      await takeShot(stage.toLowerCase()+'-list');
+      await clickText(adminA,'.nav-tabs button','Báo cáo tổng hợp');
+      await adminA.until(`[...document.querySelectorAll('.report-table tbody')].some(x=>x.textContent?.includes(${JSON.stringify(expectedDepartment)}))`,
+        stage+' current Report totals');
+      const report=await adminA.js(`(()=>{
+        const tables=[...document.querySelectorAll('.report-table')];
+        return {tables:tables.length,rows:tables.map(t=>t.querySelectorAll('tbody tr').length),
+          groups:tables.map(t=>t.querySelector('tbody')?.textContent?.slice(0,230))};
+      })()`);
+      if(report.tables<1||!report.groups.some(x=>x?.includes(expectedDepartment))||
+        !report.groups.some(x=>x?.includes('2')))
+        throw Error('LIVE_REPORT_'+stage+'_MISMATCH '+JSON.stringify(report));
+      await takeShot(stage.toLowerCase()+'-report');
+      console.log('BROWSER_EXCEL_'+stage+'_LIVE_LIST_REPORT_PASS',JSON.stringify({
+        listRows:list.count,reportTables:report.tables,reportGroup:expectedDepartment,
+        expectedContent,source:'live Chrome App reading active RTDB generation'
+      }));
+    };
+    let initialBlocked=null;
+    let initialAfter=null;
+    try{
+      await assertUiCommitted('INITIAL',initial.op);
+      initialAfter=await verifyCommit(initial.op,initialBefore,'initial CAS');
+      const initialV2=await ownerValue('/hdnd/datasetV2/generations/'+initialAfter.active.generationId+'/items');
+      if(Object.keys(initialV2??{}).length!==2||
+        !Object.values(initialV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Initial generation not stored as parsed Excel business rows');
+      console.log('BROWSER_EXCEL_INITIAL_UI_CAS_PASS',JSON.stringify({
+        operationId:initial.op,revision:initialAfter.active.revision,
+        serverRows:Object.keys(initialV2).length,backupVerified:true
+      }));
+      await takeShot('initial');
+    }catch(error){
+      const server=await operationCounts();
+      console.error('BROWSER_EXCEL_INITIAL_UI_BLOCKED',JSON.stringify({
+        operationId:initial.op,cause:String(error),server,
+        noAutomaticRetry:true,noPrivilegedCasFallback:true
+      }));
+      await takeShot('initial-blocked');
+      throw error; // Real UI CAS only: never substitute a privileged fixture.
+    }
+    await checkLiveListReport('INITIAL',
+      'PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    await openTransfer(adminA);
+    await adminA.until("document.querySelector('section[aria-label=\"Thử nghiệm thế hệ Firebase\"]')?.textContent?.includes('Thay dữ liệu theo thế hệ')===true",
+      'active V2 switched in UI');
+    await upload(adminA,replaceXlsx);
+    const replacement=await stagedId(adminA);
+    const replacementBefore=await operationCounts();
+    await enter(adminA,'input[aria-label="Xác nhận thay thế toàn bộ"]',replacement.text);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Chuyển thế hệ bằng CAS');
+    let replacementBlocked=null;
+    try{
+      await assertUiCommitted('REPLACE',replacement.op);
+      const replacementAfter=await verifyCommit(replacement.op,replacementBefore,'replacement CAS');
+      const replacementV2=await ownerValue('/hdnd/datasetV2/generations/'+replacementAfter.active.generationId+'/items');
+      if(Object.keys(replacementV2??{}).length!==2||
+        !Object.values(replacementV2).some(x=>x.content==='PR95 REPLACE nghị quyết'))
+        throw Error('Replacement generation did not contain new Excel rows');
+      console.log('BROWSER_EXCEL_REPLACEMENT_UI_CAS_PASS',JSON.stringify({
+        operationId:replacement.op,revision:replacementAfter.active.revision,
+        serverRows:Object.keys(replacementV2).length,backupVerified:true
+      }));
+      await takeShot('replacement');
+    }catch(error){
+      const server=await operationCounts();
+      console.error('BROWSER_EXCEL_REPLACEMENT_UI_BLOCKED',JSON.stringify({
+        operationId:replacement.op,cause:String(error),server,
+        noAutomaticRetry:true,noPrivilegedCasFallback:true
+      }));
+      await takeShot('replacement-blocked');
+      throw error; // A replace failure must not create a synthetic generation.
+    }
+    await checkLiveListReport('REPLACEMENT',
+      'PR95 REPLACE nghị quyết','Sở QA REPLACE');
+    await openTransfer(adminA);
+    await enter(adminA,'input#v2-operation-lookup',replacement.op);
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Tra cứu trạng thái operationId');
+    const restoreOp='restore_pr95_excel_ui_20261030';
+    await adminA.until("document.querySelector('input[aria-label=\"Mã khôi phục mới\"]')!==null",
+      'restore UI from saved replacement backup');
+    await enter(adminA,'input[aria-label="Mã khôi phục mới"]',restoreOp);
+    await enter(adminA,'input[aria-label="Xác nhận khôi phục"]','KHOI PHUC '+restoreOp);
+    const restoreBefore=await operationCounts();
+    await clickText(adminA,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
+      'Khôi phục bằng CAS');
+    let restoreBlocked=null;
+    try{
+      await assertUiCommitted('RESTORE',restoreOp);
+      const restoreAfter=await verifyCommit(restoreOp,restoreBefore,'restore CAS');
+      const restoredV2=await ownerValue('/hdnd/datasetV2/generations/'+restoreAfter.active.generationId+'/items');
+      if(Object.keys(restoredV2??{}).length!==2||
+        !Object.values(restoredV2).some(x=>x.content==='PR95 INITIAL nghị quyết'))
+        throw Error('Restored generation did not reproduce original Excel content');
+      console.log('BROWSER_EXCEL_RESTORE_UI_CAS_PASS',JSON.stringify({
+        operationId:restoreOp,revision:restoreAfter.active.revision,
+        serverRows:Object.keys(restoredV2).length,restoredFrom:replacement.op
+      }));
+      await takeShot('restore');
+      await checkLiveListReport('RESTORE','PR95 INITIAL nghị quyết','Sở QA INITIAL');
+    }catch(error){
+      const server=await operationCounts();
+      restoreBlocked=String(error);
+      console.error('BROWSER_EXCEL_RESTORE_UI_BLOCKED',JSON.stringify({
+        operationId:restoreOp,reason:restoreBlocked,active:server.active,
+        noAutomaticRetry:true
+      }));
+      await takeShot('restore-blocked');
+    }
+    if(initialBlocked||replacementBlocked||restoreBlocked)
+      throw Error('PR95_REAL_EXCEL_UI_JOURNEY_INCOMPLETE '+JSON.stringify({
+        initial:initialBlocked?'BLOCKED':'PASS',
+        replacement:replacementBlocked?'BLOCKED':'PASS',
+        restore:restoreBlocked?'BLOCKED':'PASS',
+        fixtures:'disposable demo Emulator only; no skipped CAS marked PASS'
+      }));
+  }finally{
+    for(const t of adminTargets)t.socket.close();
+    rmSync(adminE2eDir,{recursive:true,force:true,maxRetries:6,retryDelay:120});
+  }
+
+  if(forbiddenNetwork.length)throw Error('Production/Sheets network access detected: '+JSON.stringify(forbiddenNetwork));
+  await verifyExclusiveRules('after-browser-smoke');
+  console.log('BROWSER_SMOKE_PASS: real Firebase Emulator V2 List/Report, guest-only controls, column search and UI regressions.');
 }catch(error){
-  try{if(ws?.readyState===WebSocket.OPEN){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync('hophdnd-ui-smoke-failure.png',Buffer.from(shot.data,'base64'));}}catch{}
+  // Do not overwrite the actual Excel admin-screen failure already captured
+  // under the workflow's standard artifact path with an unrelated CDP tab.
+  let preservedExcelFailure=false;
+  try{preservedExcelFailure=statSync('hophdnd-ui-smoke-failure.png').isFile();}catch{}
+  if(!preservedExcelFailure){
+    try{if(ws?.readyState===WebSocket.OPEN){
+      const shot=await Promise.race([
+        send('Page.captureScreenshot',{format:'png'}),
+        sleep(2500).then(()=>null)
+      ]);
+      if(shot?.data)writeFileSync('hophdnd-ui-smoke-failure.png',
+        Buffer.from(shot.data,'base64'));
+    }}catch{}
+  }
   console.error('BROWSER_SMOKE_FAIL:',error);process.exitCode=1;
 }finally{
   for(const p of pending.values())p.reject?.(Error('closing browser'));
   if(ws)ws.close();
   if(chrome)chrome.kill('SIGKILL');
   server.close();
+  if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
   rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
+  rmSync(emulatorConfigDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }

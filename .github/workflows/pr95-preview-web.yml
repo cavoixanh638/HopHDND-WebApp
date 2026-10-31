@@ -1,0 +1,266 @@
+name: PR95 isolated synthetic WEB preview (not production)
+on:
+  push:
+    branches:
+      - feat/firebase-excel-safe-replacement-and-list-compact-20261030
+    paths:
+      - source/src/app/App.tsx
+      - source/src/qa/**
+      - source/compact-qa.html
+      - source/scripts/pr95-preview-browser.mjs
+      - source/tests/pr95-guest-rights-notice.test.ts
+      - .github/workflows/pr95-preview-web.yml
+  pull_request:
+    paths:
+      - "source/src/qa/**"
+      - "source/compact-qa.html"
+      - "source/scripts/pr95-preview-browser.mjs"
+      - "source/scripts/package-compact-qa.mjs"
+      - "source/scripts/package-compact-qa.fixture.mjs"
+      - "source/tests/pr95-ui-v2-l4-*.test.ts"
+      - "source/tests/pr95-ui-v3-l5-*.test.ts"
+      - ".github/workflows/pr95-preview-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: pr95-synthetic-preview-only
+  cancel-in-progress: false
+
+jobs:
+  verify-v3-l5-full-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck real baseline components
+        working-directory: source
+        run: npm run typecheck
+      - name: Run dedicated memory contract tests
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-ui-v2-l4-preview.test.ts tests/pr95-ui-v3-l5-preview-shell.test.ts
+      - name: Build standalone QA only (NO publish)
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -name '*.js' -print -quit)"
+          ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
+      - name: Prove exact dollar metacharacters and offline HTML safety guards
+        working-directory: source
+        run: |
+          node --check scripts/package-compact-qa.mjs
+          node --test scripts/package-compact-qa.fixture.mjs
+      - name: Package the ACTUAL L4 preview into a self-contained HTML file
+        working-directory: source
+        run: |
+          node scripts/package-compact-qa.mjs
+          test -s dist-compact-qa/HopHDND_GopCot_XemThu.html
+          ! grep -Eiq '<script[^>]+src=|<link[^>]+rel="stylesheet"[^>]+href=' dist-compact-qa/HopHDND_GopCot_XemThu.html
+      - name: Chrome desktop/mobile roles, five reports, popup, Excel A-O smoke
+        working-directory: source
+        run: node scripts/pr95-preview-browser.mjs
+      - name: Upload L4 preview screenshots (NO publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-ui-v3-l5-desktop-mobile-synthetic
+          path: |
+            source/pr95-v3-l5-*.png
+            source/pr95-v5-integrated-*.png
+            source/dist-compact-qa/HopHDND_GopCot_XemThu.html
+          if-no-files-found: warn
+          retention-days: 14
+  publish-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/firebase-excel-safe-replacement-and-list-compact-20261030'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install and verify exactly scoped change
+        working-directory: source
+        run: |
+          npm ci
+          npm run typecheck
+          npm exec -- vitest run tests/pr95-guest-rights-notice.test.ts tests/pr95-ui-v2-l4-preview.test.ts tests/pr95-ui-v3-l5-preview-shell.test.ts
+          node --test scripts/package-compact-qa.fixture.mjs
+      - name: Build full synthetic PR95 V2 tabs with separate JS/CSS assets
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.js' -print -quit)"
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
+          grep -Rq 'Bản xem thử' dist-compact-qa/assets
+          grep -RFq 'pr95-l4-full' dist-compact-qa/assets
+          ! grep -RFq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' dist-compact-qa/assets
+          ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
+      - name: Real headless Chrome desktop and narrow viewport smoke
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$chrome"
+          # Use the actual Vite-built HTML + JS + CSS, not the old inline
+          # single-HTML packager (which could terminate a script tag early).
+          node_modules/.bin/vite preview --outDir dist-compact-qa --host 127.0.0.1 --port 41789 > pr95-preview-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:41789/compact-qa.html >/dev/null; then break; fi
+            sleep 1
+          done
+          uri="http://127.0.0.1:41789/compact-qa.html"
+          flags=(--headless=new --no-sandbox --disable-dev-shm-usage --disable-gpu
+            --disable-extensions --disable-background-networking --no-first-run
+            --virtual-time-budget=4000)
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900 \
+            --screenshot=pr95-preview-desktop.png "$uri" >/dev/null 2>/dev/null
+          timeout 45s "$chrome" "${flags[@]}" --window-size=390,844 \
+            --screenshot=pr95-preview-mobile.png "$uri" >/dev/null 2>/dev/null
+          timeout 45s "$chrome" "${flags[@]}" --window-size=1440,900 \
+            --dump-dom "$uri" > pr95-preview-dom.txt 2>/dev/null
+          echo "PR95_PREVIEW_DOM_BYTES $(wc -c < pr95-preview-dom.txt)"
+          echo "PR95_PREVIEW_DESKTOP_BYTES $(wc -c < pr95-preview-desktop.png)"
+          echo "PR95_PREVIEW_MOBILE_BYTES $(wc -c < pr95-preview-mobile.png)"
+          if ! grep -Fq 'data-qa="compact-real-itemlist"' pr95-preview-dom.txt ||
+             ! grep -Fq 'data-preview="pr95-l4-full"' pr95-preview-dom.txt; then
+            echo '::error::Real ItemList did not mount; showing first 800 chars of DOM'
+            node -e 'const fs=require("node:fs");const s=fs.readFileSync("pr95-preview-dom.txt","utf8");const i=s.indexOf(`<div id="root"`);console.log("root snippet:",s.slice(i,i+1600));'
+            exit 1
+          fi
+          if ! grep -Fq 'Dữ liệu giả · Chỉ lưu trong bộ nhớ' pr95-preview-dom.txt ||
+             ! grep -Fq 'Báo cáo tổng hợp' pr95-preview-dom.txt ||
+             ! grep -Fq 'data-role="guest"' pr95-preview-dom.txt ||
+             ! grep -Fq 'Mở cài đặt demo' pr95-preview-dom.txt; then
+            echo '::error::Synthetic preview label not rendered'
+            exit 1
+          fi
+          if grep -Fq 'Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.' pr95-preview-dom.txt ||
+             grep -Fq 'pr95-preview-role' pr95-preview-dom.txt; then
+            echo '::error::Removed guest notice still visible'
+            exit 1
+          fi
+          test -s pr95-preview-desktop.png
+          test -s pr95-preview-mobile.png
+          echo "PR95_PREVIEW_REAL_CHROME_DESKTOP_MOBILE_PASS"
+      - name: Exercise ALL V2 demo panels, 5 reports, roles, rights and Excel with real Chrome
+        working-directory: source
+        run: |
+          # The Chrome journey verifies BOTH HTTP and file://. Materialize the
+          # same self-contained HTML that the dedicated PR job packages first.
+          node scripts/package-compact-qa.mjs
+          node scripts/pr95-preview-browser.mjs
+      - name: Upload synthetic preview screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-web-preview-desktop-mobile
+          path: |
+            source/pr95-preview-desktop.png
+            source/pr95-preview-mobile.png
+            source/pr95-preview-dom.txt
+            source/pr95-preview-server.log
+            source/pr95-v3-l5-*.png
+            source/pr95-v5-integrated-*.png
+          retention-days: 14
+      - name: Publish ONLY preview/pr95 HTML and scoped assets to main Pages tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s source/dist-compact-qa/compact-qa.html
+          test -n "$(find source/dist-compact-qa/assets -name '*.js' -print -quit)"
+          git fetch --no-tags origin main
+          dest="$RUNNER_TEMP/pr95-pages-preview"
+          git worktree add --detach "$dest" origin/main
+          test -f "$dest/.nojekyll"
+          mkdir -p "$dest/preview/pr95/assets"
+          cp source/dist-compact-qa/compact-qa.html "$dest/preview/pr95/index.html"
+          rsync -a --delete source/dist-compact-qa/assets/ "$dest/preview/pr95/assets/"
+          git -C "$dest" add -A -- preview/pr95
+          changes="$(git -C "$dest" diff --cached --name-only)"
+          if [ -z "$changes" ]; then
+            echo "PR95_PREVIEW_ALREADY_PUBLISHED"
+            exit 0
+          fi
+          while IFS= read -r path; do
+            case "$path" in
+              preview/pr95/*) ;;
+              *) echo "::error::Refusing to stage outside preview/pr95: $path"; exit 1 ;;
+            esac
+          done <<< "$changes"
+          test -s "$dest/index.html"
+          git -C "$dest" diff --quiet -- index.html assets .github/workflows
+          git -C "$dest" config user.name 'github-actions[bot]'
+          git -C "$dest" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$dest" commit -m 'docs(preview): publish isolated PR95 synthetic UI and scoped assets'
+          git -C "$dest" push origin HEAD:main
+          echo "PR95_PREVIEW_PUBLISHED_PATH preview/pr95/"
+          echo "PR95_PREVIEW_URL https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
+      - name: Request Pages build and verify PUBLIC preview without changing site settings
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/cavoixanh638/HopHDND-WebApp"
+          headers=(-H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json'
+            -H 'X-GitHub-Api-Version: 2026-03-10')
+          curl --fail --silent --show-error "${headers[@]}" "$api/pages" > "$RUNNER_TEMP/pr95-pages-config.json"
+          node -e '
+            const p=require(process.env.RUNNER_TEMP+"/pr95-pages-config.json");
+            if(p.source?.branch!=="main"||p.source?.path!=="/")
+              throw Error("Pages source mismatch; refuse site configuration change: "+JSON.stringify(p.source));
+            console.log("PR95_PAGES_SOURCE_UNCHANGED",JSON.stringify({source:p.source,build_type:p.build_type}));
+          '
+          # A GITHUB_TOKEN-originated push does not itself trigger a Pages build.
+          # Request the existing branch-source build; do not change Pages settings.
+          curl --fail --silent --show-error -X POST "${headers[@]}" "$api/pages/builds" > "$RUNNER_TEMP/pr95-pages-build.json"
+          echo "PR95_PAGES_BUILD_REQUESTED $(cat "$RUNNER_TEMP/pr95-pages-build.json")"
+          url="https://cavoixanh638.github.io/HopHDND-WebApp/preview/pr95/"
+          verified=0
+          for attempt in {1..24}; do
+            code="$(curl -L -sS --max-time 15 -o "$RUNNER_TEMP/pr95-live.html" -w '%{http_code}' "$url" || true)"
+            if [ "$code" = 200 ] &&
+               cmp -s "$RUNNER_TEMP/pr95-live.html" source/dist-compact-qa/compact-qa.html &&
+               grep -Fq 'HopHDND — Bản xem thử · Dữ liệu giả' "$RUNNER_TEMP/pr95-live.html"; then
+              verified=1
+              break
+            fi
+            echo "PR95_PAGES_PROPAGATING attempt=$attempt http=$code"
+            sleep 5
+          done
+          test "$verified" -eq 1 || { echo "::error::Public preview not yet serving correct HTML"; exit 1; }
+          script="$(grep -oE '\./assets/[^"]+\.js' "$RUNNER_TEMP/pr95-live.html" | head -1)"
+          style="$(grep -oE '\./assets/[^"]+\.css' "$RUNNER_TEMP/pr95-live.html" | head -1)"
+          test -n "$script" && test -n "$style"
+          for asset in "$script" "$style"; do
+            curl --fail --location --silent --show-error --max-time 20 "$url$asset" > "$RUNNER_TEMP/pr95-public-asset"
+            test -s "$RUNNER_TEMP/pr95-public-asset"
+            cmp -s "$RUNNER_TEMP/pr95-public-asset" "source/dist-compact-qa/${asset#./}" ||
+              { echo "::error::Public asset differs from exact candidate build: $asset"; exit 1; }
+            echo "PR95_LIVE_ASSET_200_AND_EXACT_HASH $asset"
+          done
+          echo "PR95_PUBLIC_EXACT_HTML_SHA256 $(sha256sum "$RUNNER_TEMP/pr95-live.html" | cut -d' ' -f1)"
+          echo "PR95_PUBLIC_URL_VERIFIED_200 $url"

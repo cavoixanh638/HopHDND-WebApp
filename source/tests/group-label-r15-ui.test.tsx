@@ -18,7 +18,7 @@ const hooks=vi.hoisted(()=>{
     flush:()=>{const tasks=effects;effects=[];tasks.forEach(task=>task());},
     reset:()=>{slots.length=0;cursor=0;effects=[];}};
 });
-vi.mock('react',()=>({useState:hooks.state,useRef:hooks.ref,useMemo:hooks.memo,
+vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),useState:hooks.state,useRef:hooks.ref,useMemo:hooks.memo,
   useEffect:hooks.effect,useCallback:(fn:any,deps:any[])=>hooks.memo(()=>fn,deps)}));
 vi.mock('../src/components/useElementWidth',()=>({useElementWidth:()=>({ref:vi.fn(),width:1200})}));
 vi.mock('../src/components/SharedEditTooltip',()=>({mountSharedEditTooltip:()=>{}}));

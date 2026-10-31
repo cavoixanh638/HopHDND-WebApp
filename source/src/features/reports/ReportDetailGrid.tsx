@@ -1,6 +1,6 @@
-import {useEffect,useMemo,useState,type CSSProperties,type ReactNode} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} from 'react';
 import type {Changes,Item,TextField} from '../../../shared/types';
-import {TEXT_FIELDS,STATUS_OPTIONS} from '../../../shared/field-definitions';
+import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
@@ -13,6 +13,7 @@ import {Modal} from '../../components/Modal';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
+import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CompactGroupFilterCell} from '../items/CompactGroupFilterCell';
@@ -21,6 +22,7 @@ import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY,readPer
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
+import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from '../items/status-display';
 import {ContentEditor} from '../items/ContentEditor';
 import {InlineNoteEditor} from '../items/InlineNoteEditor';
 import {LeaseTextInput} from '../items/LeaseTextInput';
@@ -28,6 +30,7 @@ import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
+import {popupFieldOptions} from './pr95-l1-popup-options';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
@@ -87,13 +90,29 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     listLayout?.columns.find(col=>col.key===c.key)?.label??c.label])),[listLayout]);
   const ids=useMemo(()=>new Set(selectedIds),[selectedIds]);
   const subset=useMemo(()=>items.filter(item=>ids.has(item.recordId)),[items,ids]);
+  const latestItems=useRef(items);
+  latestItems.current=items;
+  const safeUpdate=(id:string,changes:Changes)=>{
+    const current=latestItems.current.find(entry=>entry.recordId===id);
+    if(current&&rejectsBuildChange(current,changes))return;
+    onUpdate(id,changes);
+  };
+  const mayEditField=(item:Item,field:TextField)=>
+    !(field==='progressBuild'&&buildLocked(item))&&canEditCell(item.recordId,field);
+  const lockedBuildHint=(item:Item)=><span className="business-build-locked"
+    tabIndex={0} data-quick-tooltip={buildLockReason(item)??undefined}
+    aria-label={'Tiến độ xây dựng NQ: Không phải trình. '+buildLockReason(item)}>
+    Không phải trình
+  </span>;
+  const statusFilterItems=useMemo(()=>projectedStatusFilterRows(subset),[subset]);
   // Preview pending column changes while the settings panel is open.
-  const displayedLayout=settings?pending:applied;
-  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>c.visible||showAll),
-    [displayedLayout,showAll]);
+  const displayedLayout=settings&&!guestViewer?pending:applied;
+  const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll&&!guestViewer)&&
+    (c.key!=='stt'||showAll&&!guestViewer||settings&&!guestViewer)),
+    [displayedLayout,showAll,settings,guestViewer]);
   // Popup retains its own source configuration; only the ordinary read view
   // projects visible source members into the same groups as the main list.
-  const popupCompact=!settings&&!showAll;
+  const popupCompact=(!settings||guestViewer)&&(!showAll||guestViewer);
   const popupSource=shownColumns.map(c=>({...c,label:labelByKey.get(c.key)??c.key}));
   const popupPrefs={...DEFAULT_COMPACT_DISPLAY,...listLayout?.compactDisplay,
     ...(viewerCompactScope?readPersonalCompactDisplay(viewerCompactScope):null)};
@@ -106,19 +125,19 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const visible=useMemo(()=>{
     return sortItems(subset.filter(item=>{
       return Object.entries(filters).every(([key,value])=>!value.trim()||
-        normalizeSearch(filterValue(item,key)).includes(normalizeSearch(value)));
+        normalizeSearch(key==='progressBuild'?effectiveBuildStatus(item):statusFilterText(key,filterValue(item,key))).includes(normalizeSearch(value)));
     }),sort);
   },[subset,filters,sort]);
   // Explicitly separate guest read-only report viewing from list edit grants.
   const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
-  const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>canEditCell(item.recordId,field.key)));
+  const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>mayEditField(item,field.key)));
   const availableWidth=Math.min(2400,Math.max(640,
     (typeof window==='undefined'?1480:window.innerWidth||1480)-20));
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
     // Window sizing is a viewing preference, not permission to edit data.
-    if(!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(guestViewer||readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -134,10 +153,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     });
   };
   const patch=(key:DetailColumnKey,changes:Partial<{visible:boolean;width:number}>)=>{
+    if(guestViewer||readOnlyViewer)return;
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
   };
   const commitWidth=(key:DetailColumnKey,width:number)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){patch(key,{width});return;}
     const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
     if(!saveDetailGridPreferences(sourceKey,next)){
@@ -147,7 +167,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setNotice('Đã giữ độ rộng cột của bảng popup trên trình duyệt.');
   };
   const moveHeader=(from:string,to:string)=>{
-    if(!settings)return;
+    if(guestViewer||readOnlyViewer||!settings)return;
     setPending(old=>({...old,columns:reorderByKey(old.columns,c=>c.key,from,to)}));
   };
   const closeSettings=()=>{
@@ -155,7 +175,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setSettings(false);
   };
   const toggleSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(settings){closeSettings();return;}
     setPending(applied);setSettings(true);setNotice('');
   };
@@ -163,7 +183,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     ?{key,direction:'asc'}:old.direction==='asc'?{key,direction:'desc'}:null);
   const clearFilters=()=>{setFilters({});setSort(null);};
   const loadPreset=(id:string)=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     const next=presets.find(v=>v.id===id);
     if(next){
       setApplied(next.layout);setPending(next.layout);setFilters({...next.filters});
@@ -176,7 +196,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     }
   };
   const createPreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!presetName.trim()){setNotice('Nhập tên mẫu trước khi lưu.');return;}
     if(presets.length>=12){setNotice('Đã đạt tối đa 12 mẫu của bảng popup.');return;}
     const next:ReportDetailPreset={id:crypto.randomUUID(),name:presetName.trim().slice(0,60),
@@ -186,21 +206,21 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPresets(list);setSelectedPreset(next.id);setPresetName('');setNotice('Đã lưu mẫu popup cá nhân.');
   };
   const updatePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.map(v=>v.id===selectedPreset?{...v,layout:applied,filters,colors}:v);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không cập nhật được mẫu.');return;}
     setPresets(list);setNotice('Đã cập nhật mẫu cá nhân.');
   };
   const removePreset=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!selectedPreset)return;
     const list=presets.filter(v=>v.id!==selectedPreset);
     if(!saveDetailPresets(sourceKey,list)){setNotice('Không xóa được mẫu.');return;}
     setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
-    if(readOnlyViewer)return;
+    if(readOnlyViewer||guestViewer)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
     // R07: storage *and* live state must use the SAME validated snapshot.
     // Empty/whitespace-only overrides are deleted by the validator, allowing
@@ -212,45 +232,39 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
   };
-  const options=(field:TextField,current:string)=>{
-    const optionsFromCatalog=(catalog.options as Partial<Record<TextField,string[]>>)[field]??[];
-    // Council completion is labelled exactly as the current Excel/HĐND report,
-    // not the obsolete generic "Hoàn thành" option in the older list editor.
-    const standard=field==='progressCouncil'
-      ?['Sở chưa trình','VP đang thực hiện','Đã trình HĐND thành phố']
-      :(STATUS_OPTIONS as Partial<Record<TextField,string[]>>)[field]??[];
-    const safeCatalog=field==='progressCouncil'?optionsFromCatalog.filter(v=>v!=='Hoàn thành'||v===current):optionsFromCatalog;
-    return [...new Set(['',...safeCatalog,...standard,current])];
-  };
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
+    const shown=statusReadOnlyValue(key as TextField,effectiveItemField(item,key));
+    if(key==='progressBuild'&&buildLocked(item))return lockedBuildHint(item);
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>
 
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
-    if(!editing||!popupMayEdit||!editableFields.has(key)||!canEditCell(item.recordId,key as TextField))
-      return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{raw}</span>:raw||'—';
+    if(!editing||!popupMayEdit||!editableFields.has(key)||!mayEditField(item,key as TextField))
+      return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{shown}</span>:shown||'—';
     const field=key as TextField;
     if(field==='note'||field==='specificProgress')return <InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field={field} value={raw}
       label={'Sửa '+(labelByKey.get(key)??field)+' · '+displayId(item)} onCommit={value=>{
-        if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return false;
-        onUpdate(item.recordId,{[field]:value});return true;
+        if(!editing||!popupMayEdit||!mayEditField(item,field))return false;
+        safeUpdate(item.recordId,{[field]:value});return true;
       }}/>;
     if(field==='content')
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>openContent(item,field)}>{raw||'—'}</button>;
-    if(listLayout?.columns.find(c=>c.key===key)?.kind==='text')
+    if(!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-        onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
-    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
-      searchable={field==='specialist'} options={options(field,raw).filter(value=>
+        onChange={value=>{if(editing&&popupMayEdit&&mayEditField(item,field))safeUpdate(item.recordId,{[field]:value});}}/>;
+    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={statusDisplayValue(field,raw)}
+      displayValue={isStatusDisplayField(field)?shown:undefined}
+      searchable={field==='specialist'} options={statusPickerValues(field,popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||
-        !value||catalog.specialistRooms[value]?.includes(item.room))}
-      onChange={value=>{if(editing&&popupMayEdit&&canEditCell(item.recordId,field))onUpdate(item.recordId,{[field]:value});}}/>;
+        !value||catalog.specialistRooms[value]?.includes(item.room)))}
+      onChange={value=>{if(!editing||!popupMayEdit||!canEditCell(item.recordId,field))return;
+        const next=statusEditSelection(field,raw,value);if(next!==null)safeUpdate(item.recordId,{[field]:next});}}/>;
   };
   const inGroupDirty=subset.filter(item=>dirtyIds.has(item.recordId)).length;
   const canClose=()=>{
@@ -391,7 +405,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <thead>
           <tr className="report-grid-heading-row">{renderedColumns.map((c,index)=>
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
-              sortDirection={sort?.key===c.key?sort.direction:null} onSort={editing?cycleSort:undefined}
+              sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
               {c.label}
@@ -402,31 +416,31 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             </ColumnHeader>)}</tr>
           <tr className="report-grid-filter-row">{renderedColumns.map(c=>popupPairs.some(pair=>pair.anchor===c.key&&
               (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
-            ?<CompactGroupFilterCell key={c.key} items={subset}
+            ?<CompactGroupFilterCell key={c.key} items={statusFilterItems}
               fields={popupPairs.find(pair=>pair.anchor===c.key)!.memberFields}
               values={filters} onChange={(field,value)=>setFilters(old=>{
                 const next={...old};if(value)next[field]=value;else delete next[field];return next;
               })}/>
             :<ColumnFilterCell key={c.key} field={c.key} label={labelByKey.get(c.key)??c.key}
-              items={subset} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
+              items={statusFilterItems} value={filters[c.key]??''} onChange={value=>setFilters(old=>{
                 const next={...old};if(value)next[c.key]=value;else delete next[c.key];return next;
               })}/>)}</tr>
         </thead>
         <tbody>
           {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
-              canEditCell(item.recordId,c.key as TextField);
+              mayEditField(item,c.key as TextField);
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
-                data-progress-tone={statusPaletteTone(c.key,item[c.key as DetailColumnKey],statusPaletteStore?.active.otherEnabled??false)??undefined}
+                data-progress-tone={c.key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(c.key,effectiveItemField(item,c.key),statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
-                style={pair?undefined:cellHighlightStyle(item[c.key as DetailColumnKey],c.key,listLayout?.cellHighlights)}>
-                {pair?<CompactGroupedValue item={item} pair={pair}
-                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&canEditCell(item.recordId,field)}
-                  tone={field=>statusPaletteTone(field,item[field],statusPaletteStore?.active.otherEnabled??false)??undefined}
-                  highlight={field=>cellHighlightStyle(item[field],field,listLayout?.cellHighlights)}
+                style={pair?undefined:cellHighlightStyle(effectiveItemField(item,c.key),c.key,listLayout?.cellHighlights)}>
+                {pair?<CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
+                  field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&mayEditField(item,field)}
+                  tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
+                  highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,listLayout?.cellHighlights)}
                   cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}

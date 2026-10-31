@@ -1,0 +1,251 @@
+# PR #95 — LUỒNG 2: BÀN GIAO APP/STATE/REPOSITORY (CHƯA TÍCH HỢP)
+
+Ngày: 2026-10-30. Trạng thái: WORKER / DRAFT / NOT RELEASE READY. Luồng 1 là **người tích hợp duy nhất**, không tự cherry-pick, merge, publish hoặc triển khai Firebase.
+
+## 1. Phạm vi, mốc mã nguồn và quyền sở hữu
+
+- Repository: `cavoixanh638/HopHDND-WebApp`.
+- Nhánh làm việc **duy nhất**: `pr95/l2-app-state-firebase-only-20261030`.
+- **SPLIT_BASE = `099132ee722fe8c1ea1e9976e64e2e4f75809641`**. Đã kiểm tra nhánh khởi đầu giống hệt commit này, `ahead_by=0`, `behind_by=0`; không reset lịch sử.
+- **Mã nguồn L2 tại thời điểm soạn handoff: `237a75ef1c0dc2063f0ecc054dfac4ff65423f64`**. Commit chứa file handoff được xác định bằng HEAD mới của nhánh trên GitHub (không tự chèn SHA của chính commit chứa nó vào file).
+- PR rà soát/CI riêng, **DRAFT, tuyệt đối không merge**: https://github.com/cavoixanh638/HopHDND-WebApp/pull/96 . Chỉ Luồng 1 tích hợp vào PR #95, chưa về main.
+- Contract bị khóa: `source/docs/tasks/PR95_PARALLEL_CONTRACT.md` tại SPLIT_BASE; không sửa. Không thay backend V2, Firebase Rules, shared/types, domain/items, scripts/workflows, source/package.
+- Không truy cập/ghi dữ liệu production, không deploy, không publish hay commit Excel thật/backup. Chỉ fixture tự tạo, unit tests và Emulator do CI chạy.
+
+## 2. Tệp đã thay đổi — tất cả thuộc mục D của contract
+
+| Đường dẫn | Nội dung |
+| --- | --- |
+| `source/src/app/App.tsx` | Tạo `FirebaseRepository` với expected active pointer; chặn khởi chạy dữ liệu Firebase khi `datasetEpochReady=false`; tách sourceKey theo `generationId/operationId/revision`; tái tạo repository/lease manager khi bất kỳ thuộc tính xác định epoch nào thay đổi; giữ luồng Google Authentication, bố cục/resize/CAS và giao diện sẵn có. |
+| `source/src/state/use-firebase.ts` | Lắng nghe `datasetV2/active`, kiểm tra shape và khóa truy cập trước khi có con trỏ xác nhận; nếu V2 từng tồn tại mà pointer bị xóa/hỏng/lỗi quyền thì fail closed, không âm thầm chuyển `hdnd/items`; permission CAS kiểm tra active pointer trước và sau kể cả giai đoạn legacy. |
+| `source/src/data/firebase-repository.ts` | `sameDatasetEpoch` so đầy đủ pointer; `list/history/save` kiểm pointer đầu-cuối; subscription V2 chỉ xuất bản hàng khi pointer đúng, dọn dữ liệu hiển thị cũ nếu pointer sai; không cho `importItems` API cũ trên V2. Các kiểm tra phía client **không thay thế** Rules. |
+| `source/src/state/use-workspace.ts` | Loại nháp/checkpoint workspace cũ sau khi source/epoch đổi; ngăn callback subscription cũ và lưu khi source chưa active; không tự ghép nháp theo ID trùng; giữ luồng giữ nháp trong cùng thế hệ. |
+| `source/src/data/cell-edit-leases.ts` | Lease theo generation; bảo vệ race `acquire` khi manager đã dispose; `cancel` giải phóng đúng generation path; `has/proof/markPending/preserveDraft/recoverDraft` đều từ chối manager đã hủy. |
+| `source/src/features/settings/VersionedExcelReplacementPanel.tsx` | UI staging/readback/preview/commit/restore gọi **đúng API Luồng 1 đã có**, chỉ bật trên Emulator, thêm ô tra cứu operationId độc lập (hữu ích khi reload/mất ACK), không tự retry. |
+| `source/tests/firebase-config-state.test.ts` | Cập nhật **fixture mô phỏng con trỏ legacy ban đầu** và `get` mock đúng chuỗi kiểm pointer mới; giữ nguyên assertions phân quyền/CAS thực tế. |
+| `source/tests/pr95-app-generation.test.ts` (mới) | Unit tests dữ liệu giả: đối chiếu full epoch, đọc đúng path với pre/post pointer, từ chối đổi con trỏ khi đang đọc, từ chối stale save/history, subscription chờ pointer và dọn old rows sau switch. |
+| `source/tests/pr95-app-lease-epoch.test.ts` (mới) | Unit tests dữ liệu giả: draft cùng ID không lẫn qua hai generation, manager dispose từ chối lease/proof và đọc/ghi nháp cũ. |
+| `source/docs/tasks/PR95_L2_HANDOFF.md` (mới) | File bàn giao này. |
+
+## 3. CI và bằng chứng phân biệt lỗi gốc
+
+**Đã xác minh tại commit `69f276e068184ba4006a0c203417e75e377fcde7`:**
+
+- `Verify HopHDND source` run **40997810504: FAILURE** tại riêng bước **Firebase emulator tests**. `npm run typecheck`: **PASS**; `npm test` (unit): **PASS**; các bước trước Emulator không bị lược bỏ.
+- Vẫn **3 lỗi `permission_denied`** trong `tests/firebase-versioned-replacement.test.ts` ở case staging/commit/restore (line 54), two tabs CAS (line 90), old/new lease (line 100), lỗi phát sinh tại `src/data/firebase-versioned-replacement.ts:214`; **đã được ghi rõ từ SPLIT_BASE/tiền nhiệm trong contract** (run nền #40993112430). Đây là phần backend/Rules Luồng 1, không phải unit regression còn lại của L2. Không tắt `.validate`, không nới Rules và không xóa test.
+- `Verify isolated Firebase staging` run **40997810616: SUCCESS** (không đủ chứng minh V2 swap thành công).
+- `Firebase operational QA — isolated multi-account test` run **40997810551: SUCCESS** (không đủ chứng minh V2 swap).
+- Các lần commit trung gian có lỗi assertion fixture do L2 gây ra; đã sửa. **Code HEAD `237a75ef1c0dc2063f0ecc054dfac4ff65423f64`:** verify source run **40998185861**: **typecheck PASS, unit tests PASS**, test kích thước cột R02 PASS, kiểm tra backup offline PASS, docs check PASS; **Firebase Emulator vẫn đúng 3 lỗi nền `permission_denied`**, không có lỗi mới. Isolated staging **40998185874 SUCCESS**, operational QA **40998185840 SUCCESS**.
+- **Handoff commit `6acef56ec5fd75405c86d7c2cf3232085de129f7`:** Verify HopHDND source **40998275920 FAILURE** chỉ tại bước Firebase Emulator (typecheck/unit/docs PASS); isolated staging **40998275946 SUCCESS**, operational QA **40998275915 SUCCESS**. Kết quả này không được suy rộng thành V2 GO.
+- Browser smoke/build Pages sau bước Emulator vẫn chưa chạy trong verify source này do workflow dừng ở lỗi nền; chưa có bằng chứng end-to-end List/Report sau swap thực dưới Rules.
+
+## 4. Những điều đã triển khai và chưa được xác minh
+
+**Client implemented:** List/Reports cùng nhận `workspace.items` từ một instance repository theo epoch; history/save cùng instance; chưa tải nguồn Google Sheets trong đường dữ liệu sản xuất nếu ứng dụng có Firebase; Google OAuth vẫn giữ nguyên. Epoch switch reset workspace, nguồn xem và manager lease; cùng recordId hoặc displayCode không được coi là quyền áp dụng nháp cũ. Preview staging/ReportTable dùng bản candidate mà API đọc lại; thao tác ghi thật V2 panel luôn bị khóa ngoài Firebase Emulator.
+
+**NOT VERIFIED / NOT DONE:** quyền đọc active pointer cho guest thực tế; full Rules-signed generation writes, server-authoritative stale epoch fencing, CAS giữa chỉnh sửa cùng generation và replacement, full UI read/write/history/permission/lease trong Emulator sau khi swap; chuyển lần đầu từ `hdnd/items` legacy còn dữ liệu; độ bền trạng thái STAGED/UNKNOWN qua reload; semantic operationId sau swap/restore; restore/readback và tiêu chí production release. L2 chỉ thêm client preflight/postflight để giảm lỗi người dùng; race giữa preflight và transaction **phải do Rules của L1 xử lý trên server**, không thể đảm bảo an toàn bằng client.
+
+## 5. Đề nghị API-CHANGE cho Luồng 1 — đã gửi trực tiếp PR #95
+
+**Comment API-CHANGE trong PR #95:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6514293219
+
+1. **API-CHANGE-01 — kích hoạt V2 lần đầu từ legacy có dữ liệu**: hiện `stageDatasetReplacement(...):Promise<ReplacementApproval>` yêu cầu `expected:ActiveDatasetPointer`, nên không đủ bảo đảm khởi tạo khi pointer null và legacy populated. Đã đề nghị tách prepare/commit activation với baseline legacy, backup/rights/locks, server CAS, readback, chặn old writes. **Chỉ là đề nghị**, L2 chưa thêm API hay type.
+2. **API-CHANGE-02 — tra cứu lịch sử `operationId`**: hiện `resolveDatasetOperation(...)` trả `'committed'|'not-committed'|'unknown'` và chỉ nhận committed nếu đang active; đề nghị phân biệt `committed-active`, `committed-historical`, `not-committed`, `unknown` với generationId để hỗ trợ LOST ACK, restore và replay. Chờ L1 ACK chữ ký/wire.
+3. **L1 Rules required**: guest/admin đọc con trỏ và items đúng thế hệ, quyền V2/cell lease, write stale generation bị từ chối tại server; old `hdnd/items` bị chặn sau cutover; same-generation writes không lọt qua snapshot CAS. Các điều này **không thể được giải quyết bằng mã client**.
+
+**Quy tắc phối hợp:** Luồng 1 ghi rõ before/after API + wire format + test và ACK trong PR #95; Luồng 2 mới điều chỉnh chữ ký sau đồng ý. Không thay shared types, contract hoặc backend ở nhánh này.
+
+## 6. Hướng dẫn tích hợp và kiểm tra
+
+- Luồng 1 đối chiếu diff từ `099132ee722fe8c1ea1e9976e64e2e4f75809641` tới HEAD của `pr95/l2-app-state-firebase-only-20261030`; chỉ các file liệt kê ở mục 2 được sửa.
+- Không cherry-pick vào main. Luồng chính tích hợp vào PR #95 theo thứ tự L1 → L2 → L3 sau khi thống nhất API và chốt security Rules.
+- Chạy `npm run typecheck`, `npm test`, `npm run test:firebase`, `npm run build:pages`, browser smoke với Emulator/dữ liệu giả; **không skip test nào** và phải xem CI đúng HEAD, không suy diễn từ workflow xanh không chứa V2.
+- Chưa GO và tuyệt đối không deploy Firebase/Pages hay sử dụng Excel thật. Chờ Luồng 1 sửa ba lỗi backend, trả lời API-CHANGE và chạy chéo Luồng 3.
+
+
+---
+
+## 7. L2 follow-up sau mốc tích hợp `1c9dbf0780375bd426db6dbe42e78d06e01829dc` — API-CHANGE-02
+
+Ngày 2026-10-30. Phần này **bổ sung** cho bàn giao ban đầu ở trên; các thông tin CI/lỗi nền ở mục 3–6 là lịch sử tại thời điểm chia ba luồng, không còn mô tả toàn bộ trạng thái tích hợp hiện nay.
+
+### Phối hợp ACK / nhánh / nguyên tắc
+
+- ACK chính xác chữ ký mới của L1 trong PR #95: https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6514617603
+- **Chữ ký đã thống nhất:** `resolveDatasetOperation(database:Database,operationId:string):Promise<{status:'committed-active'|'committed-historical'|'not-committed'|'unknown';operationId:string;generationId?:string}>`.
+- Nhánh tiếp nối **độc lập**, được tạo và kiểm tra từ đúng tích hợp `1c9dbf0780375bd426db6dbe42e78d06e01829dc` (0 ahead/behind trước sửa): `pr95/l2-operation-status-v2-after-integration-20261030`. Không reset/đổi nhánh L2 cũ.
+- **Code commit của đợt này trước khi ghi handoff:** `5985a7d54c00b468e4525c22e93c8739665456c6`. File handoff mới nhất có commit SHA riêng sau commit mã. Luồng 1 cần xác minh HEAD/diff trước khi tích hợp.
+- Luồng 1 đã merge PR nháp worker #100 ở commit code `8a0537e9c931124bcfb5eef216e5a1f9ac6c97bb`, chỉ một **checkpoint sớm**; những điều chỉnh bổ sung sau checkpoint được mở bằng **PR nháp #101**: https://github.com/cavoixanh638/HopHDND-WebApp/pull/101 . **Không tự merge**.
+- L1 triển khai backend ở PR #95 riêng; L2 **không sửa** `src/data/firebase-versioned-replacement.ts`, Firebase Rules, test của L1/L3, shared types hoặc contract.
+
+### File L2 đã sửa trong follow-up
+
+1. `source/src/features/settings/VersionedExcelReplacementPanel.tsx`: UI-only `presentDatasetOperation` và `readOperationView` đọc kiểu trả về object mới, đối chiếu operationId và optional generationId; hiển thị 4 trạng thái rõ ràng, đặc biệt `committed-historical` là **đã commit thành công trong lịch sử, không phải lỗi**. Kiểu string cũ/shape lệch/truy vấn thất bại được coi `unknown`, không chuyển thành `not-committed`. Sau kết quả commit/restore thông thường tra cứu một lần; khi backend throw do thao tác đã thành historical thì chỉ tra cứu **read-only**, không thực hiện lại giao dịch. `UNKNOWN` khoá nút thực hiện lại cùng operationId/restoreId và tạm khóa staging mới khi kết quả ghi chưa rõ. Panel vẫn chỉ thực thi các API ghi khi `enabled` do Firebase Emulator.
+2. `source/tests/pr95-app-operation-status.test.tsx` (file mới hợp lệ theo mục D): kiểm thử fixture giả cho 4 trạng thái, legacy string/malformed ID/generation, read/network failure, lookup thủ công, `UNKNOWN` không retry hoặc tạo staging tiếp, lỗi backend nhưng log historic COMMITTED của commit/restore, không truy vấn khi disabled.
+3. `source/docs/tasks/PR95_L2_HANDOFF.md`: ghi bàn giao bổ sung (file này).
+
+### Bằng chứng CI, lỗi cũ và giới hạn
+
+- Tại `8a0537e9c931124bcfb5eef216e5a1f9ac6c97bb`, Verify source #41000733694: **Typecheck PASS, Unit tests PASS, Docs PASS**, thất bại ở **independent L3 real Emulator suite**, không phải ở unit/UI của L2. Test L3 tại thời điểm đó còn so `resolveDatasetOperation(...)` với string cũ và có một ca ghi ô chưa đúng chuẩn lease/audit; đã nêu rõ trong review. Không sửa Rules hoặc tắt test.
+- L1 sau đó cập nhật backend theo đúng signature ACK và cập nhật L3 independent race test trên nhánh tích hợp (các commit sau `1c9dbf`). L2 giữ code trên branch riêng, tuyệt đối không tự thay backend/L3.
+- **Follow-up HEAD trước cập nhật kết quả CI: `7eb66d4371bf8d983ac5875e237d6cfb0719781b`** (code SHA `5985a7d54c00b468e4525c22e93c8739665456c6`). **Verify HopHDND source #41001160514 = FAILURE duy nhất ở bước `Browser smoke with mock Sheets and headless Chrome`**. **Typecheck PASS, Unit tests PASS, Docs PASS, Firebase Emulator tests PASS với Rules thật, build Pages / Pages test PASS, historical W0 measurement PASS**. `Firebase operational QA — isolated multi-account test` **#41001160522 = SUCCESS**. Browser log ghi `BROWSER_SMOKE_FAIL: Mock Sheets row NQ01 did not render` và `Sai Firebase project/instance`; đây là lỗi mock Sheets/browser route đã được L1 nêu ở PR #95 trước khi L2 sửa status API, **không phải lỗi TypeScript, unit hay V2 Emulator mới**. Không sửa/nới Rules, không quay lại Google Sheets vận hành, không bật production. Bước browser smoke cần phân tích độc lập và không được tuyên bố end-to-end PASS.
+- Commit ghi nhận CI trong file handoff được đẩy **sau** `7eb66d`; workflow tại commit tài liệu mới có thể chạy lại, và phải được kiểm tra theo HEAD cuối nếu tiếp tục công việc.
+- Không GO production. Các điểm còn chờ Luồng 1: API-CHANGE-01 kích hoạt V2 từ populated legacy với cross-path CAS; kiểm chứng full Rules, lost ACK/restore/historical operation và Chromium 2-tab end-to-end; CI full pass, browser smoke. Không đọc/ghi/import/delete production.
+
+### Bàn giao tích hợp
+
+L1 kiểm tra **diff còn lại** giữa PR #95 integration branch hiện hành và PR nháp **#101**; chỉ áp dụng thay đổi trong 3 file L2 ở trên. Không cherry-pick toàn bộ commit cũ trong worker nếu phần trước đã được tích hợp bởi PR #100. Chạy `npm run typecheck`, `npm test`, `npm run test:firebase` (Rules thật), `npm run build:pages`, browser smoke; phân biệt lỗi L3/backend đã tồn tại với regressions do L2. Không merge main/publish/deploy.
+
+---
+
+## 8. L2 follow-up — Firebase-only Browser smoke sau tích hợp `143e34c05c6ec431eb2ebf80021045a2213e1d15`
+
+**Ngày 30/10/2026; đây là lượt tiếp nối độc lập, không reset nhánh L2 cũ.**
+- Branch: `pr95/l2-firebase-only-browser-smoke-20261030`, tạo tại đúng `143e34c05c6ec431eb2ebf80021045a2213e1d15`, xác nhận trước sửa 0 ahead/behind.
+- **Exact CI-tested code SHA:** `b5db6aba6bc4d5481fa42b032ac7ec53a3d1caf5`.
+- **L2 Draft worker PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/102 (chỉ tích hợp bởi Luồng 1).
+- **Only changed existing source:** `source/scripts/smoke-pages-browser.mjs`; mục 8 handoff này là thay đổi documentation L2 được phép. Không chỉnh backend/Rules/workflow/project allowlist, không publish/deploy/production.
+
+### Thay nguồn kiểm thử, KHÔNG làm yếu kiểm tra
+
+1. Bản trước intercept `docs.google.com/spreadsheets/*/gviz` trả bảng giả và bấm `Xem dữ liệu tạm`; lỗi ở Firebase-only vì ứng dụng không còn vận hành bằng Google Sheets. Đã bỏ **chỉ mock và thao tác chuyển nguồn**, không bỏ kiểm tra `NQ01` hoặc bộ assert giao diện cũ.
+2. Script khởi động Auth + RTDB emulators ngay trong phiên bằng `firebase emulators:start --project demo-hdnd --only database,auth --config firebase.json`, đợi Hub xác nhận port localhost `9099`/`9000`, chỉ kết thúc khi Chrome QA hoàn tất. Bản kiểm thử tự sở hữu vòng đời Emulator nên không cần sửa workflow/runner; chạy sau `npm run test:firebase` cũng dùng phiên Emulator mới.
+3. Dùng REST **owner token chỉ trên localhost demo Emulator** để nạp dữ liệu giả, readback kiểm tra đủ 54 rows và con trỏ `hdnd/datasetV2/active`, generation `gen_pr95_browser_smoke_20261030`. Các hồ sơ nằm trong đúng đường dẫn `hdnd/datasetV2/generations/<generationId>/items` mà `FirebaseRepository` của App đọc. Auth đăng nhập ẩn danh thật qua Emulator và RTDB Rules thật.
+4. Chrome xác nhận Danh sách có `NQ01`, `NQ54`, Ghi chú, đủ 54 rows, không bấm chế độ tạm; mở Báo cáo và xác nhận **5 report tables**, phòng ban `Sở kiểm thử` và nonzero counts (tổng hợp fixture). Quay lại Danh sách tiếp tục full regression UI. Chặn request `docs.google.com/spreadsheets` và Firebase production trong phiên.
+5. Toàn bộ script browser CDP test hơn ba nghìn dòng về bố cục, 52px ID, resize, hover, 15 filter, search, lịch sử của khách, popup, báo cáo, mobile và screenshot vẫn được thực thi, không skip vì thay nguồn.
+
+### Bằng chứng GitHub Actions / exact SHA
+
+**Verify HopHDND source #41004145273 = SUCCESS** tại chính `b5db6aba6bc4d5481fa42b032ac7ec53a3d1caf5`:
+https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41004145273
+
+- Typecheck **PASS**, unit tests **PASS**, Firebase Emulator Rules/race **PASS**, Pages builds/compatibility **PASS**, W0 historic measurement **PASS**, Browser smoke **PASS**, screenshots/previews generated. Không deploy.
+- Log có `FIREBASE_BROWSER_SEED_VERIFIED` `rowCount:54`, `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` `rows:54`, `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` `tables:5`, `GUEST_TWO_FIELD_HISTORY_PASS`, và cuối `BROWSER_SMOKE_PASS`.
+- Lượt CI trước `d94a...` FAIL do health-check Auth **trong test mới**, dù Emulator thực tế đã ready; L2 sửa dùng Emulator Hub, không thay đổi App hay Rules. Đây không phải lỗi cấu hình Firebase production.
+- Dòng `Sai Firebase project/instance` thuộc **negative backup-helper test** và test đó PASS. Không sửa project allowlist.
+- Tên bước workflow hiện vẫn là `Browser smoke with mock Sheets and headless Chrome` dù bên trong đã là Firebase-only; **đề nghị Luồng 1 đổi nhãn** thành `Browser smoke with real Firebase Emulators and headless Chrome` tại `.github/workflows/verify-source.yml` (ngoài ownership L2), chỉ sửa nhãn, không đổi test logic. Không bắt buộc đổi nhãn để CI PASS.
+
+**Handoff:** Luồng 1 review diff PR #102, chỉ cherry-pick/merge phần L2 script + tài liệu theo đúng ownership vào **nhánh tích hợp PR #95**, không main. Chạy toàn bộ CI tại HEAD tích hợp mới; worker-green `b5db6ab` không thay thế bằng chứng integrated HEAD. PR #95 giữ DRAFT; chưa sẵn sàng GO production cho đến khi toàn bộ release gates khác được chốt.
+---
+
+## 9. L3-AUDIT-GAP-01 — Browser smoke với EXACT exclusive-candidate Rules (30/10/2026)
+
+### Base, ownership và lệnh tích hợp
+
+- **Exact integrated base:** `4f1a5b14140f1ef4b706e535bbccc4eea4730939`. Branch L2 tiếp nối: `pr95/l2-exclusive-rules-browser-audit-20261030` (tạo mới, ban đầu đúng base, không reset các branch trước).
+- **Code SHA đã được CI kiểm chứng:** `95eb4928ae00837d99457775ee646b377b6dd683`.
+- **Draft worker PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/103
+- Chỉ sửa file Luồng 2 sở hữu `source/scripts/smoke-pages-browser.mjs`, và bổ sung phần 9 của `source/docs/tasks/PR95_L2_HANDOFF.md`. **KHÔNG sửa** `source/firebase/database.exclusive-candidate.rules.json`, `firebase.json` chính, backend, Rules khác, workflow/runner, project allowlist, production.
+- L1 là **duy nhất** tích hợp vào PR #95; không merge main, publish/deploy hoặc truy cập production.
+
+### Cách nạp Rules và vì sao cần xác minh 2 lần
+
+Script dùng một `firebase.json` thử nghiệm tạo *runtime* trong thư mục tạm tại `source/.pr95-browser-exclusive-rules-*`, khai báo `database.rules` là đường dẫn tuyệt đối tới **file exclusive-candidate Rules nguyên bản**. Chỉ chạy hai Emulators localhost `127.0.0.1:9000` (RTDB) và `127.0.0.1:9099` (Auth), project `demo-hdnd`. Emulators sống xuyên suốt phiên browser, dừng và xóa config tạm khi test kết thúc.
+
+**Phát hiện an toàn thực tế:** Firebase CLI khởi động demo RTDB với Rules mặc định `{".read":true,".write":true}` dù config thử nghiệm có trỏ file Rules ứng viên. Không được đánh dấu đạt chỉ vì Firebase CLI báo `All emulators ready`. Script kiểm tra Rules ban đầu bằng GET admin `/.settings/rules.json`, ghi log `BROWSER_EXCLUSIVE_RULES_STARTUP_GAP_DETECTED`, sau đó **nạp chính xác nội dung không sửa** của `firebase/database.exclusive-candidate.rules.json` vào **Emulator demo cục bộ duy nhất** bằng PUT `/.settings/rules.json` với `Authorization: Bearer owner`. Đây là bước cài đặt Rules cho **bộ mô phỏng tạm thời**, **không thay đổi file gốc, không deploy production và không nới Rules**. Owner Bearer chỉ sử dụng trên localhost để cài Rules và seed dữ liệu giả; không dùng cho guest assertions.
+
+Ngay sau khi nạp và **sau khi toàn bộ Chrome smoke hoàn tất**, script GET lại **Rules thực tế** trong Emulator với header admin, đối chiếu bằng `isDeepStrictEqual` toàn bộ JSON với file nguyên bản và SHA-256 của JSON. Nếu khác, test FAIL closed.
+
+**Rules source / live SHA-256 đã kiểm chứng cả 2 lần:** `3bb044daef1df129ca46478a70f1895fa76c9bd0400c5069afec5358bbe53ecc`.
+
+### Bằng chứng kiểm tra phân quyền thật và UI thật
+
+Script nạp 54 hồ sơ **giả** vào `hdnd/datasetV2/generations/gen_pr95_browser_smoke_20261030/items`, cùng `hdnd/datasetV2/active`, và các fixture dữ liệu riêng tư có marker để phân biệt với dữ liệu không tồn tại. Nó đọc lại seed bằng owner **chỉ sau khi Rules chính xác đã cài**.
+
+Một tài khoản ẩn danh **thật** được cấp token qua Auth Emulator; dùng token này (không phải owner token) qua REST RTDB để assert:
+- **Được đọc** `hdnd/datasetV2/active` và cả 54 hồ sơ của generation hiện hành, có `NQ01`.
+- **Bị từ chối HTTP 401 Permission denied** tại 7 đích có chủ ý: toàn bộ `datasetV2` parent; `candidates/<operation>`; `backups/<operation>`; `legacyBackups/<operation>`; `operations/<operation>`; `generations/<inactive>/items`; `hdnd/editors`. Không lộ marker dữ liệu riêng tư.
+- Kiểm thử này đặc trưng riêng của Rules ứng viên vì Rules cũ có `hdnd/.read: auth != null` cho người đã đăng nhập.
+
+Trình duyệt Chrome với Auth Emulator/Rules thật vẫn phải chứng minh hai tab UI chính: `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` **54 rows NQ01/NQ54**, `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` **5 tables** + tổng hợp giá trị thật từ fixture; và **toàn bộ các assertion UI/hành vi cũ** (hover, filter, lịch sử, resize, popup, responsive, screenshot). Không thêm GViz, không khôi phục Sheets, không bỏ assertion cũ.
+
+### Exact CI và trạng thái release
+
+**Code SHA `95eb4928ae00837d99457775ee646b377b6dd683`:**
+
+[Verify HopHDND source #41007003009](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41007003009) **SUCCESS**, gồm:
+- Typecheck PASS; Unit tests PASS; Firebase Emulator Rules/race PASS; Pages build PASS; browser smoke thực PASS; kiểm tra các tác vụ UI trước/sau PASS.
+- Log: `BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS` ở `before-auth-and-browser` và `after-browser-smoke` với SHA-256 cùng khớp; `BROWSER_EXCLUSIVE_RULES_GUEST_READ_PASS` (`visibleRows:54`, `privatePathsDenied:7`); `FIREBASE_ONLY_LIST_REAL_BROWSER_PASS` (`rows:54`); `FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS` (`tables:5`); `BROWSER_SMOKE_PASS`.
+- Các lần CI trước bị FAIL **có nguyên nhân cụ thể**: đọc management endpoint thiếu header (403); phát hiện Emulator chạy Rules mở; seed bằng query `auth=owner` bị Rules mới chặn. Đã sửa bằng cách **không nới Rules**: dùng Authorization Bearer header chỉ với Emulator demo, nạp đúng nguồn file và kiểm chứng lại 2 lần.
+
+**Kết luận giới hạn:** Đây là bằng chứng thực cho browser smoke đọc Danh sách/Báo cáo theo thế hệ dưới exclusive-candidate Rules và kiểm thử guest read/privacy. **Không phải** bằng chứng đầy đủ cho hai tab cùng sửa dữ liệu, stale draft/lease, mất ACK hoặc kích hoạt V2 lần đầu — các phần đó cần chứng cứ độc lập theo kế hoạch Luồng 1/3. PR #95 vẫn Draft, không publish/deploy/main merge/production.
+
+---
+
+## 10. API-CHANGE-01 ACK và L2 Emulator-only workflow UI + real Chrome 2 tabs (30/10/2026)
+
+### Base/ownership/ACK
+
+- **Base đúng mốc đã tích hợp PR #103 và 3 CI xanh:** `a5911b17b872658e555b6f80f7f1b3565db311da`. Không reset nhánh cũ, không chạm main/production.
+- **Nhánh tiếp nối:** `pr95/l2-emulator-first-activation-workflow-20261030`; **worker Draft PR #104:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/104
+- **L2 ACK đầy đủ §H/API-CHANGE-01:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6516097869. Đồng ý nguyên vẹn `prepareInitialDatasetActivation`, `commitInitialDatasetActivation`, `InitialActivationApproval`, chuỗi **`KHOI TAO V2 <operationId> <legacyRowCount> <newCount>`**, yêu cầu FROZEN trước stage, không auto FROZEN, Rules/freeze revision/epoch server-side, staging/backup SHA-256. Không cần sửa chữ ký backend.
+- **Chỉ các file do L2 sở hữu:** `source/src/app/App.tsx`, `source/src/features/settings/ExcelTransferPanel.tsx`, `source/src/features/settings/BusinessExcelReviewPanel.tsx`, `source/src/features/settings/VersionedExcelReplacementPanel.tsx`, `source/scripts/smoke-pages-browser.mjs`, **mới** `source/tests/pr95-app-initial-activation.test.tsx`, và handoff này. **KHÔNG chỉnh** backend, Rules, `firebase.json`, API contract hay workflows.
+
+### Luồng người dùng Emulator
+
+1. App chỉ truyền `versioned` adapter khi **Firebase Emulator thực + Google admin hiện tại + dataset epoch đã được xác nhận**. Không có adapter ghi khi production, không có global feature flag. `readyForMutation` yêu cầu Firebase kết nối, profile Ready, không cache pending, không dirty draft/protected recovery, không workspace busy/unsaved editor.
+2. Trong màn Nhập/Xuất, chọn file nghiệp vụ **.xlsx**, chọn *sheet* rõ ràng, validate A–O toàn bộ bằng parser hiện hữu; có so sánh old/new, List preview và 5 Report preview. Không auto chọn sheet đầu, không ghi khi mới chọn file.
+3. Nếu **chưa có V2 active pointer**, UI đòi quản trị đã **chủ động FROZEN** ở mục Quản trị (nút chốt do `FreezeAdminPanel` hiện hữu cung cấp). `readFreeze` từ Firebase phải trả `FROZEN` + revision/epoch/closedAt hợp lệ, `activeEditLeaseCount` phải bằng 0 trước prepare. Backend `prepareInitialDatasetActivation` tạo staging manifest SHA-256, private legacy backup/readback; UI đọc lại staging bằng `readStagedDataset`, re-read freeze revision/epoch. Khách chỉ commit sau khi gõ **chính xác** `KHOI TAO V2 <id> <legacyCount> <newCount>`; trước submit re-check freeze và lease. Backend giữ kiểm chứng cuối/server CAS; UI không tự bypass Rules.
+4. Nếu đã có V2 active, chỉ dùng `stageDatasetReplacement` để tạo thế hệ mới + private backup, readback và so sánh List/Reports, sau đó gõ `THAY <id> <oldCount> <newCount>` và commit CAS. Không cho dùng staging cũ nếu dataset fingerprint hoặc active pointer thay đổi.
+5. `UNKNOWN` sau mất ACK: ghi nhận **terminal fence theo operationId**, không tự gửi lại commit, restore hoặc stage khi kết quả chưa xác định. Có tra cứu một lần read-only `resolveDatasetOperation` với bốn trạng thái API-CHANGE-02; COMMITTED-historical vẫn là thành công lịch sử.
+6. Restore chỉ xuất hiện sau commit đã xác minh có backup thế hệ (không nhầm private `legacyBackups` của activation đầu với `backups` V2). Cho phép read-only lookup operationId, kiểm tra backup có thật trong private V2 bằng admin SDK read, nhập mã restore **mới** và chuỗi `KHOI PHUC <newOperationId>`, gửi `restoreDatasetBackup` CAS với **active pointer mới nhất**. Backend mới là authority xác minh integrity/rights.
+7. Giao diện staging/khôi phục tiếp tục hiển thị sau khi current generation đổi (đánh dấu stale, khóa stage/commit cũ); không làm mất lookup/restore ngay khi màn List/Report cập nhật.
+
+### Bộ kiểm tra đã có
+
+- **Vitest L2:** `source/tests/pr95-app-initial-activation.test.tsx` test initial FROZEN, 0 lease, freeze revalidation, staging/readback, confirmation exact, reject OPEN/DRAINING/stale freeze, terminal UNKNOWN, historical COMMITTED read-only recovery; active V2 theo stage/commit thay thế. Giữ tất cả `pr95-app-operation-status.test.tsx` cũ, không xóa assertion.
+- **Hai tab Chromium THẬT (không phải hai SDK contexts):** chỉ thêm đoạn **ở cuối** `source/scripts/smoke-pages-browser.mjs`, **không thay phần Rules L3 đã chứng minh**. Tạo 2 Chrome CDP targets (A và B), mỗi tab tải App thật, đọc generation A đủ 54 rows rồi sau khi owner nạp fixture generation B và flip active pointer **trên Emulator demo**, hai tab cùng phải thấy `BC77`, không thấy `NQ01`, và Report có `Sở V2 thử nghiệm`. Giữ các assertion UI cũ và kiểm tra exact Rules SHA-256 trước/sau.
+- **Bằng chứng Chrome 2-tab code SHA `d9c1251e408cf7a0b39707a48ef8db4ac6362a65`:** [Verify source CI #41012314299 — SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41012314299), log `BROWSER_TWO_REAL_TABS_READ_SWITCH_PASS` ghi **hai targetId khác nhau**, 54 rows mỗi tab và Report đổi generation; `BROWSER_EXCLUSIVE_RULES_LOADED_EXACT_PASS` trước/sau vẫn khớp hash `3bb044daef1df129ca46478a70f1895fa76c9bd0400c5069afec5358bbe53ecc`. Đây là **READ-SWITCH ONLY**; backend CAS chưa được sử dụng trong bước owner fixture flip.
+- Lượt CI sau cùng trên worker HEAD/commit mới phải được đối chiếu chính xác; không tự dùng mốc cũ để kết luận integrated CI.
+
+### L1 dependency / KHÔNG gọi là đã đạt
+
+Đã gửi L1 yêu cầu cung cấp **hai hạng mục thuộc ownership L1**: https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6516181437
+
+1. **Hai tab Chromium quản trị viên thật cùng UID**, được Auth Emulator cấp thông tin Google provider hợp lệ mà Firebase client guard + RTDB Rules đều nhận. Thử sửa dữ liệu thật có lease/revision/history, chuyển thế hệ bằng backend CAS, xác minh stale draft/lease/save tab cũ bị từ chối. Phép kiểm tra guest two-tab đọc hiện có **không thay thế** yêu cầu này.
+2. **Actual LOST ACK sau CAS đã ghi máy chủ, trước client nhận ACK**: hook/bộ thử fault một lần theo operationId ở backend/runner hoặc transport, chứng minh read-only resolve trả COMMITTED active hoặc historical, operation log chỉ có một commit, revision tăng đúng một lần; không dùng pre-CAS offline, cached-get hoặc permission denied làm bằng chứng giả.
+
+Cho đến khi L1 cung cấp harness và kiểm thử này PASS cùng L3 xác minh độc lập, hai hạng mục là **BLOCKED / NOT YET VERIFIED**. Browser UI/Emulator hiện tại không đủ bằng chứng cho GO. PR #95 và PR #104 giữ **DRAFT / NO-GO**, không merge main, deploy, publish hoặc chạm production.
+
+---
+
+## 11. L2 continuation — HÀNH TRÌNH EXCEL MỘT TAB Chrome thật, PR #105 (30/10/2026)
+
+### Checkpoint và phạm vi
+
+- Tiếp tục **nguyên vẹn** nhánh `pr95/l2-real-admin-browser-e2e-20261030` / **Draft PR #105**, checkpoint `df8a913e47346123d91bd9f3132fc545c692c8e3`, không reset/đổi nhánh/main merge.
+- Base L1 đã tích hợp §I: `01530a9ccedba021434626c1f717c2ac76fcaa64`. Luồng 2 nay chỉ **một** CDP Chrome target với Auth Emulator Google admin (SDK identity token thật, không fake User), đường UI Excel A–O → FROZEN legacy → V2 first activation → replacement → restore. Hai-tab, lease/repository/workspace, mất ACK mạng hoặc result fault **đã loại khỏi phạm vi này**.
+- Các file L2 thay đổi sau checkpoint: `source/scripts/smoke-pages-browser.mjs`, `source/src/features/settings/VersionedExcelReplacementPanel.tsx`, `source/src/features/settings/BusinessExcelReviewPanel.tsx`, `source/tests/pr95-app-initial-activation.test.tsx` và handoff này. Không sửa backend/Rules/runner/workflow hoặc production.
+- Browser script chạy trước đây các original assertions + exclusive candidate Rules trước/sau trong lượt PASS; phần mới **không** giảm phạm vi hoặc sửa nguồn Rules. Chỉ seed dữ liệu giả vào **disposable localhost demo Auth/RTDB Emulator**.
+
+### Chẩn đoán chính xác và cách xử lý UI
+
+1. **CI #41021473207:** lúc staging bị khóa, helper chụp ảnh bên trong exception lại timeout `Page.captureScreenshot`, che lỗi gốc. Đã đổi thành **log diagnostic ngay trước ảnh**, screenshot best effort có deadline riêng; lỗi gốc luôn được `throw`, không đổi thành lỗi ảnh. Không vô hiệu hóa `readyForMutation`.
+2. Script đợi nút staging được bật sau khi Auth/generation/nháp/profile xác nhận, rồi dùng nút thật. Thực hiện `DOM.setFileInputFiles` với workbook `.xlsx` A–O do Node XLSX tạo, chọn sheet `DATA_AO` qua DOM `change`, bấm `Kiểm tra toàn bộ file`, xem trước **2 dòng NQ90/BC91 + 5 Report previews**. Không gọi trực tiếp backend prepare/commit từ script.
+3. Panel lần đầu thực hiện **read-only prewarm gốc `hdnd/datasetV2`**, kiểm tra private `candidates/<op>` và `legacyBackups/<op>` tồn tại trước khi gọi backend CAS (không bỏ qua `freezeControl`, Rules, SHA-256 hay transaction). Test UI Vitest đã được cập nhật.
+4. Để tra cứu/restore sau khi điều hướng sang Danh sách/Báo cáo, phần `BusinessExcelReviewPanel` luôn cho mở **read-only `operationId` lookup** cả khi không chọn workbook; nút staging **khóa** nếu chưa validate file. Giữ nguyên `UNKNOWN` terminal no-retry.
+5. Browser đi đúng UI: bấm `Về chế độ xem` trước khi chọn tab Danh sách/Báo cáo (hai nút điều hướng được App cố ý disable lúc đang ở settings). Kiểm tra List row count, nội dung, 5 report tables/nhóm giá trị sau mỗi mốc.
+
+### Bằng chứng thực tế — phân biệt PASS và BLOCKED
+
+- **Google Auth Emulator trên một CDP target thật: PASS**, ví dụ `BROWSER_EXCEL_ADMIN_AUTH_PASS` tại Verify #41024834618.
+- **Excel upload / explicit sheet selection / A–O parser / 2-row List preview / 5 Report preview: PASS** trên Chrome thật.
+- **Initial legacy FROZEN → V2 từ UI: BLOCKED.** Sau bấm đúng chuỗi `KHOI TAO V2 <op> 2 2`, UI hiển thị `UNKNOWN`; owner server readback chứng minh `active=null`, `operations=[]`, `generations=[]`. Việc chụp ảnh hay cache warm-up không đổi kết quả. **KHÔNG được gọi là lost ACK sau commit**; server chưa có COMMITTED. Không auto retry operationId.
+- Để không giả mạo kết quả, script ghi rõ `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_NOT_INITIAL_UI_PASS` sau khi dùng privileged PUT tạo V2 *fixture riêng* từ candidate A–O đã validate/readback, chỉ để tiếp tục thử replace/restore. Không coi owner PUT là UI CAS.
+- **Live App List/Report trên independent V2 fixture: PASS**. `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_LIVE_LIST_REPORT_PASS`: 2 rows, 5 report tables, nhóm `Sở QA INITIAL`; dữ liệu hiện ra từ generation active.
+- **Replacement UI CAS: BLOCKED** trên #41024308782 và #41024834618: staging, private backup và preview file thứ hai đều thành công, nhưng `commitDatasetReplacement` bị `permission_denied`, UI `UNKNOWN`, owner RTDB vẫn active revision 1, không có generation/operation cho thao tác mới. Chạy lại fixture có `updatedAt`/`updatedBy`/`operationId` và scoped permission `note:true` cũng không sửa quyền parent CAS. Không tự retry.
+- **Restore UI CAS: BLOCKED** ở Verify #41025450698 trên fixture độc lập: sau khi tra cứu `operationId` trên panel không có file, UI đã xác minh backup riêng tư, hiển thị nút khôi phục, nhận chuỗi `KHOI PHUC restore_pr95_excel_ui_20261030` và gọi RESTORE thực, nhưng CAS trả **`permission_denied`**; `BROWSER_EXCEL_RESTORE_UI_BLOCKED`, server giữ pointer revision **2**, không có operation restore. Không retry. Hai nguồn fixture đều được gắn nhãn `...NOT_UI_CAS_PASS`; không gọi là khôi phục thành công.
+- **Bằng chứng CI/cause từ bước trước:** [Verify #41024308782](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41024308782) FAIL **chỉ browser**, xác nhận giao diện và server bằng log `BROWSER_EXCEL_INITIAL_UI_BLOCKED`, `BROWSER_EXCEL_SYNTHETIC_V2_BASELINE_LIVE_LIST_REPORT_PASS`, `REAL_UI_REPLACE_STATUS_NOT_CONFIRMED`; Typecheck/Unit/Rules Emulator không được bỏ.
+- **Bằng chứng cuối thực chạy mã tại `9726db11f111f09496b812f30cee9b0a8ed7e787`:** [Verify #41025450698](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41025450698) **FAIL tại Browser smoke**, không phải browser PASS. Log chốt `PR95_REAL_EXCEL_UI_JOURNEY_INCOMPLETE {\"initial\":\"BLOCKED\",\"replacement\":\"BLOCKED\",\"restore\":\"BLOCKED\"}`. Các bước Typecheck, Unit, Emulator và build riêng không thất bại; xem run để kiểm chứng từng bước. `Firebase operational QA` kiểm tra độc lập và CI trên HEAD docs-only cần đối chiếu riêng, không đồng nhất với giao diện E2E.
+
+### Ảnh và đường dẫn kiểm chứng
+
+- Script tạo `source/hophdnd-pr95-excel-initial-blocked.png`, `source/hophdnd-pr95-excel-*-list.png`, `source/hophdnd-pr95-excel-*-report.png`, `source/hophdnd-pr95-excel-replacement-blocked.png`, `source/hophdnd-pr95-excel-restore-blocked.png` / `restore.png` nếu đi được đến bước. Ảnh chụp từ **chính CDP target UI**.
+- Ảnh đã được **xác minh tồn tại trong artifact CI thật**, không chỉ lưu runner: [Verify #41025450698](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41025450698) → artifact **`hophdnd-browser-smoke-failure`** (GitHub artifact ID `12963856281`, kích thước 92.754 byte), là bản chụp màn UI **initial-blocked** qua `source/hophdnd-ui-smoke-failure.png`; catch cuối không ghi đè từ tab không liên quan. Không sửa `.github/workflows/verify-source.yml`.
+- Các screenshot tên `hophdnd-pr95-excel-*.png` khác hiện được tạo trên CI runner, **chưa được khai báo là upload artifacts bởi workflow L1**; không tuyên bố đã tải xuống/kiểm chứng những file chưa có artifact. Khi L1 muốn lưu trữ đầy đủ bộ ảnh cần bổ sung path upload vào runner thuộc L1.
+
+### Ranh giới và bàn giao
+
+- Blocker với bằng chứng cụ thể đã đăng [PR #105 comment #6518227906](https://github.com/cavoixanh638/HopHDND-WebApp/pull/105#issuecomment-6518227906). Dữ liệu A–O được chọn/staged qua App và private backup đã readback; **parent-node CAS RTDB thực tế bị từ chối / không COMMITTED** mặc dù suite backend Unit/Rules có ca synthetic PASS. L2 không sửa phần `firebase-versioned-replacement.ts` / exclusive Rules của L1, không nới Rules và không tạo production fallback.
+- Các phép thử vẫn ở trạng thái **NO-GO / unresolved** cho chuỗi đầy đủ. Giữ PR105, PR95 **Draft**, không merge main, publish, deploy, read/write/delete production.
+- **Đề nghị L1 xử lý sau khi nhận bàn giao (không chờ L1 mới chốt L2):** xác định tại tầng server Rules/transaction vì sao `commitInitialDatasetActivation` trả `unknown` khi **không có active/operation COMMITTED**, còn `commitDatasetReplacement` và `restoreDatasetBackup` trả `permission_denied` với Auth Emulator Google admin; kiểm tra parent-node CAS + nested validators trên A–O candidate. Không thể hạ Rules hoặc ghi đè pointer để tuyên bố UI PASS. Luồng 2 đã cung cấp log, ảnh và đúng operationId từng ca.

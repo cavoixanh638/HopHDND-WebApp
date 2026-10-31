@@ -1,0 +1,44 @@
+name: PR95 L3 - two real Chrome admin tabs (Emulator only)
+on:
+  pull_request:
+    paths:
+      - "source/pr95-two-admin.html"
+      - "source/tests/pr95-two-admin-browser-entry.tsx"
+      - "source/scripts/pr95-two-admin-browser.mjs"
+      - "source/src/data/firebase-repository.ts"
+      - "source/src/data/cell-edit-leases.ts"
+      - "source/src/state/use-workspace.ts"
+      - ".github/workflows/pr95-l3-two-admin-tabs.yml"
+      - "source/src/app/App.tsx"
+      - "source/src/state/use-firebase.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-two-admin-tabs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install frozen dependencies
+        run: npm ci
+      - name: Typecheck and isolated harness syntax
+        run: |
+          npm run typecheck
+          node --check scripts/pr95-two-admin-browser.mjs
+      - name: Two real Chrome targets, same Emulator Google admin, candidate V2 Rules
+        run: node scripts/pr95-two-admin-browser.mjs

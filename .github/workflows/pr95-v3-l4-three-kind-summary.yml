@@ -1,0 +1,50 @@
+name: PR95 V3 L4 — three kind summary only (synthetic Chrome)
+on:
+  pull_request:
+    paths:
+      - 'source/src/features/items/ItemSummaryCards.tsx'
+      - 'source/tests/pr95-v3-l4-three-kind-summary.test.ts'
+      - 'source/scripts/pr95-v3-l4-summary-browser.mjs'
+      - '.github/workflows/pr95-v3-l4-three-kind-summary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-three-kinds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exact source dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck unchanged public component API
+        working-directory: source
+        run: npm run typecheck
+      - name: Test exact chips, zeros, unknowns, counts and filter IDs
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-v3-l4-three-kind-summary.test.ts tests/item-summary.test.ts
+      - name: Build real production-component QA with synthetic data
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.js' -print -quit)"
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
+      - name: Headless REAL Chrome — mouse Enter Space tooltip and filter counts
+        working-directory: source
+        run: node scripts/pr95-v3-l4-summary-browser.mjs
+      - name: Preserve Chrome screenshots from this exact commit (NO publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-ui-v3-l4-three-kind-real-chrome
+          path: source/pr95-v3-l4-*.png
+          if-no-files-found: warn
+          retention-days: 14

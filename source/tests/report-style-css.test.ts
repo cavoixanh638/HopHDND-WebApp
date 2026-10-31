@@ -44,14 +44,14 @@ describe('Năm phong cách tô màu báo cáo', () => {
     expect(contrast(softBg,declaration(quietBlock!,'stage-ink'))).toBeGreaterThanOrEqual(4.5);
     for(const stage of ['source','office','completed']){
       const vividBg=declaration(palette!,stage+'-bg');
-      expect(luminance(vividBg),stage+' must stand out against Party middle columns')
-        .toBeLessThan(luminance(softBg)-(stage==='office'?0.02:0.10));
+      expect(luminance(vividBg),stage+' must retain a subtle distinction from intermediate milestones')
+        .toBeLessThan(luminance(softBg)-(stage==='office'?0.015:0.03));
     }
     expect(css).toContain('report-style-band .report-table thead th.report-stage-intermediate');
     expect(css).toContain('report-style-compact .report-table :is(tbody,tfoot) td.report-stage-intermediate');
     expect(css).toContain('body.is-printing #print-target.report-surface.report-style-band .report-table thead th.report-stage-intermediate');
   });
-  it('renders Không phải trình exactly as faintly as Đã trình HĐND, chưa có QĐ',()=>{
+  it('renders Không phải trình as faintly as V3 Đã trình, chờ QĐ with alias-aware report classes',()=>{
     const muted=css.match(/\.report-surface \.report-stage-intermediate,\s*\.report-surface \.report-stage-excluded\s*\{([^}]*)\}/)?.[1];
     expect(muted).toBeDefined();
     expect(luminance(declaration(muted!,'stage-bg'))).toBeGreaterThan(0.96);
@@ -59,7 +59,16 @@ describe('Năm phong cách tô màu báo cáo', () => {
     // No later excluded override can restore its old, stronger background.
     expect(css).not.toContain('--stage-bg:#f0f3f6;--stage-ink:#4b6170');
     const component=readFileSync(new URL('../src/features/reports/ReportTable.tsx',import.meta.url),'utf8');
-    expect(component).toContain("normalizeSearch('Không phải trình')].includes(normalizeSearch(status))");
+    // V3 uses per-field canonicalStatus; the previous literal-source assertion
+    // would fail even though actual header/body/footer visual colors remain correct.
+    // The runtime oracle in pr95-ui-v3-l3-report-table-review.test.ts separately
+    // asserts stage + muted classes on all three rendered cell locations.
+    expect(component).toContain("canonicalStatus(config.statusField,status)");
+    expect(component).toContain("const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ')");
+    expect(component).toContain("const excludedMilestone=normalizeSearch('Không phải trình')");
+    expect(component).toContain("canonical===quietBuildMilestone");
+    expect(component).toContain("canonical===excludedMilestone");
+    expect(component).toContain("' report-stage-intermediate'");
     for(const style of ['classic','signal','compact','bars','band']){
       expect(css).toContain('.report-surface.report-style-'+style+' .report-table');
     }
@@ -130,18 +139,18 @@ describe('Editable dropdown and shared immediate tooltip presentation',()=>{
 describe('Data list workflow palette is synchronized with the actual report stage palette',()=>{
   it('uses identical report-stage fills for all three main statuses including completion',()=>{
     const palette=css.match(/\.report-surface\s*\{([^}]*)\}/g)?.find(block=>block.includes('--source-bg'));
-    expect(palette).toContain('--source-bg:var(--hdnd-status-not-submitted-bg,#FFE0E4)');
-    expect(palette).toContain('--source-ink:var(--hdnd-status-not-submitted-text,#7F1D30)');
-    expect(palette).toContain('--office-bg:var(--hdnd-status-office-bg,#FEF9C3)');
-    expect(palette).toContain('--office-ink:var(--hdnd-status-office-text,#854D0E)');
-    expect(palette).toContain('--completed-bg:var(--hdnd-status-done-bg,#D5F0DE)');
-    expect(palette).toContain('--completed-ink:var(--hdnd-status-done-text,#125B35)');
-    expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
-    expect(css).toContain('--workflow-bg:#FEF9C3;--workflow-border:#E5CD70;--workflow-fg:#854D0E');
-    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(palette).toContain('--source-bg:var(--hdnd-status-not-submitted-bg,#FFF1F3)');
+    expect(palette).toContain('--source-ink:var(--hdnd-status-not-submitted-text,#B14052)');
+    expect(palette).toContain('--office-bg:var(--hdnd-status-office-bg,#FFF8E9)');
+    expect(palette).toContain('--office-ink:var(--hdnd-status-office-text,#805C22)');
+    expect(palette).toContain('--completed-bg:var(--hdnd-status-done-bg,#EEF8F1)');
+    expect(palette).toContain('--completed-ink:var(--hdnd-status-done-text,#346E48)');
+    expect(css).toContain('--workflow-bg:#FFF1F3;--workflow-border:#EFD4DA;--workflow-fg:#B14052');
+    expect(css).toContain('--workflow-bg:#FFF8E9;--workflow-border:#EBDFC4;--workflow-fg:#805C22');
+    expect(css).toContain('--workflow-bg:#EEF8F1;--workflow-border:#D0E4D7;--workflow-fg:#346E48');
     expect(contrast('D5F0DE','2B7450')).toBeGreaterThanOrEqual(4.5);
     expect(css).toContain('td[data-progress-tone="done"] .workflow-status-value::before');
-    expect(css).toContain('background:#125B35;');
+    expect(css).toContain('background:var(--hdnd-status-done-text,#346E48);');
   });
   it('keeps edit fields subtly slate-blue and completed lettering softer in list and popup',()=>{
     expect(css).toContain('border:1.5px solid #b7cbd6');
@@ -171,7 +180,7 @@ describe('Data list workflow palette is synchronized with the actual report stag
     // altered completed ink. Those regressions must remain rolled back.
     expect(css).not.toContain('td.editable-cell[data-progress-tone] .cell-picker-trigger::before');
     expect(css).toContain('opacity:.42;');
-    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(css).toContain('--workflow-bg:#EEF8F1;--workflow-border:#D0E4D7;--workflow-fg:#346E48');
     expect(css).not.toContain('--workflow-fg:#307651');
   });
   it('never paints a yellow/orange entire row solely because it has a pending edit',()=>{
@@ -183,13 +192,13 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('background-color:var(--workflow-bg)');
     expect(css).toContain('opacity:.42;');
   });
-  it('keeps V5 saturated status ink at weight 600 without changing fills or history',()=>{
+  it('keeps soft V2 status ink at weight 600 without changing history or personalized fills',()=>{
     // Foreground is intentionally separate from the checkpoint's semantic fill,
     // border and status-dot variable (--workflow-fg).
     for(const [tone,ink,fill,minimum] of [
-      ['not-submitted','D00025','FFE0E4',4.5],
-      ['office','854D0E','FEF9C3',4.5],
-      ['done','007A18','D5F0DE',4.5],
+      ['not-submitted','B14052','FFF1F3',4.5],
+      ['office','805C22','FFF8E9',4.5],
+      ['done','346E48','EEF8F1',4.5],
     ] as const){
       const selector='tbody td[data-progress-tone="'+tone+'"]';
       expect(css).toContain(selector);
@@ -199,14 +208,14 @@ describe('Data list workflow palette is synchronized with the actual report stag
     expect(css).toContain('color:var(--workflow-text);\n  font-weight:600;');
     expect(css).toContain('.item-data-table tbody td[data-progress-tone] .workflow-status-value,');
     expect(css).toContain('.report-detail-grid tbody td.editable-cell[data-progress-tone] :is(.cell-picker-trigger,.custom-cell-input)');
-    expect(css).toContain('--workflow-bg:#FFE0E4;--workflow-border:#E7A1AD;--workflow-fg:#7F1D30');
-    expect(css).toContain('--workflow-bg:#FEF9C3;--workflow-border:#E5CD70;--workflow-fg:#854D0E');
-    expect(css).toContain('--workflow-bg:#D5F0DE;--workflow-border:#91CFA8;--workflow-fg:#2B7450');
+    expect(css).toContain('--workflow-bg:#FFF1F3;--workflow-border:#EFD4DA;--workflow-fg:#B14052');
+    expect(css).toContain('--workflow-bg:#FFF8E9;--workflow-border:#EBDFC4;--workflow-fg:#805C22');
+    expect(css).toContain('--workflow-bg:#EEF8F1;--workflow-border:#D0E4D7;--workflow-fg:#346E48');
     expect(css).toContain('opacity:.42;');
-    // V5 is text-only: do not change weight, background or dot colors.
-    expect(css).toContain('--workflow-text:#D00025;');
-    expect(css).toContain('--workflow-text:#854D0E;');
-    expect(css).toContain('--workflow-text:#007A18;');
+    // User-selected backgrounds and dot colors still derive from active palette vars.
+    expect(css).toContain('--workflow-text:#B14052;');
+    expect(css).toContain('--workflow-text:#805C22;');
+    expect(css).toContain('--workflow-text:#346E48;');
     expect(css).toContain('font-weight:600;');
   });
 });

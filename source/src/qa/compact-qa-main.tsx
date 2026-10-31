@@ -10,6 +10,7 @@ import {ItemList} from '../features/items/ItemList';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import '../styles/app.css';
+import {Pr95FullPreview} from './pr95-full-preview';
 
 const items=createDemoItems(8);
 const initial=defaultItemLayout();
@@ -69,10 +70,19 @@ function CompactVisualQa(){
     const staff=params.get('review-staff')==='1'?
       items.map((item,index)=>index===0?{...item,
         vpLeader:'PCVP Trần Văn B',ubndLeader:'PCT Nguyễn Văn C'}:item):items;
-    if(params.get('r05')!=='1')return staff;
+    // V5 integration R03: the old highlight fixture expected a Build status
+    // on row 2, now correctly locked because that row is HC. Give only the
+    // explicitly requested ?highlight=1 RAM fixture a QPPL Build match,
+    // preserving the original "Sở chưa trình" source-field highlight oracle.
+    // Never mutate createDemoItems/default preview/production source rows.
+    const r03=params.get('highlight')==='1'
+      ?staff.map((item,index)=>index===6&&item.type==='QPPL'
+        ?{...item,progressBuild:'Sở chưa trình'}:item)
+      :staff;
+    if(params.get('r05')!=='1')return r03;
     // Synthetic only: red / amber / green in one record, neutral and
     // unknown in a second. The third includes an R03 source-specific rule.
-    return staff.map((item,index)=>index===0?{...item,
+    return r03.map((item,index)=>index===0?{...item,
       progressParty:'Sở chưa trình',progressBuild:'VP đang thực hiện',
       progressCouncil:'Đã trình HĐND'}:index===1?{...item,
       progressParty:'Không phải xin ý kiến',progressBuild:'Không phải trình',
@@ -80,6 +90,9 @@ function CompactVisualQa(){
       progressParty:'Đang rà soát',progressBuild:'Sở chưa trình'}:item);
   });
   const editing=params.get('edit')==='1';
+  // R-V3-01: optional-assignment clear proof in the real List/popup, RAM only.
+  const clearQa=params.get('clear-qa')==='1';
+  const popupClearQa=params.get('popup-clear-qa')==='1';
   const guest=params.get('guest')==='1';
   const palette=defaultStatusPaletteStore();
   if(params.get('r05-palette')==='1')palette.active.office={
@@ -89,27 +102,34 @@ function CompactVisualQa(){
     data-qa="compact-real-itemlist"
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
-      <h1 style={{fontSize:20,margin:0}}>HopHDND · Gộp cột (bản kiểm thử UI)</h1>
-      <p className="muted" style={{margin:'4px 0 0'}}>Dữ liệu mô phỏng · không đăng nhập, không lưu Firebase</p>
+      <h1 style={{fontSize:20,margin:0}}>HopHDND · Danh sách nội dung trình HĐND</h1>
+      <p className="muted" style={{margin:'4px 0 0'}}>Bản xem thử · Dữ liệu giả — không đăng nhập, không kết nối Firebase/Google Sheets</p>
     </header>
     <main style={{maxWidth:1440,margin:'0 auto',padding:'14px'}}>
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey="compact-qa-synthetic-popup-only"
-        catalog={catalog} listLayout={layout} readOnlyViewer={params.get('popup-settings')!=='1'}
+        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
-        allowDraft={false} canEditCell={()=>false} onUpdate={()=>{throw Error('QA read-only');}}
+        allowDraft={popupClearQa} canEditCell={(_id,field)=>popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
+        onUpdate={(recordId,changes)=>{
+          if(!popupClearQa)throw Error('QA read-only');
+          Object.assign(window,{__l2LastPatch:{recordId,changes}});
+          setRecords(previous=>previous.map(item=>item.recordId===recordId?{...item,...changes}:item));
+        }}
         onKeepDraft={()=>false} dirtyIds={new Set()} errors={{}} onClose={()=>{}}
       />:<ItemList
         items={records} drafts={{}} errors={{}} busy={false}
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
-        readOnly={!editing} canEditDraft={editing} canEditCell={editing?()=>true:undefined}
+        readOnly={!editing} canEditDraft={editing}
+        canEditCell={editing?(_id,field)=>!clearQa||field==='vpLeader'||field==='ubndLeader':undefined}
         customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
           // In-memory edit proof, never any Firebase/database write.
+          if(clearQa)Object.assign(window,{__l2LastPatch:{recordId,changes}});
           setRecords(prev=>prev.map(item=>item.recordId===recordId?{...item,...changes}:item));
         }}
         onHistory={()=>{}} onClose={()=>{}}
@@ -130,4 +150,18 @@ function CompactVisualQa(){
   </div>;
 }
 
-createRoot(document.getElementById('root')!).render(<CompactVisualQa/>);
+// Preserve old QA URL fixtures unmodified. The unqualified /compact-qa.html
+// now exposes the complete two-tab, six-section V2 preview by default.
+const query=new URLSearchParams(window.location.search);
+const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
+  'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
+  'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings',
+  'clear-qa','popup-clear-qa'];
+// The pre-existing source smoke hosts this fixture under /compact-qa/ and
+// checks the original read-only 8-row component. Do not change L1's runner or
+// undermine that regression suite. Public /preview/pr95/ and the root QA entry
+// continue to show the full V2 preview; ?full=1 always opts into it.
+const legacy=query.get('full')!=='1'&&(
+  query.get('legacy')==='1'||window.location.pathname.includes('/compact-qa/')||
+  classicOnly.some(key=>query.has(key)));
+createRoot(document.getElementById('root')!).render(legacy?<CompactVisualQa/>:<Pr95FullPreview/>);

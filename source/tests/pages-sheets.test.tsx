@@ -16,10 +16,11 @@ const h=vi.hoisted(()=>{
     begin:()=>{cursor=0;},flush:()=>{const work=effects;effects=[];work.forEach(fn=>fn());},dispose:()=>slots.forEach(slot=>slot?.cleanup?.()),reset:()=>{slots.length=0;cursor=0;effects=[];},
   };
 });
-vi.mock('react',()=>({memo:(component:any)=>component,useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
+vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),memo:(component:any)=>component,useState:h.state,useRef:h.ref,useMemo:h.memo,useEffect:h.effect,useCallback:(fn:any,deps:any[])=>h.memo(()=>fn,deps)}));
 vi.mock('../src/state/use-shared-config',()=>({useSharedConfig:h.common}));
 vi.mock('../src/data/google-bridge',()=>({isGoogleHost:()=>false,googleCall:vi.fn()}));
 import {App} from '../src/app/App';
+import {SummaryDiagnosticVisibilityProvider} from '../src/features/items/summary-diagnostic-visibility';
 import {ItemList} from '../src/features/items/ItemList';
 import {ReportSettings} from '../src/features/settings/ReportSettings';
 import {CatalogSettings} from '../src/features/catalogs/CatalogSettings';
@@ -31,7 +32,19 @@ function text(v:any):string{return Array.isArray(v)?v.map(text).join(''):v&&type
 const payload=(note='Nguồn Sheets')=>({status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[{c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]},{c:['NQ01',1,'Nội dung giả','Sở giả','QPPL','','','','','CV giả','Phòng giả','LĐ VP','LĐ UBND','',note,false].map(v=>({v}))}]}});
 const settle=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 let scripts:any[],firebase:FirebaseController;
-function render(){h.begin();const tree=App({firebase,TransferPanel:ExcelTransferPanel});h.flush();return tree;}
+function render(){
+  h.begin();const tree=App({firebase,TransferPanel:ExcelTransferPanel});h.flush();
+  // V5 L2 adds only a transparent React Context provider, not a DOM wrapper.
+  // Unwrap it in this hand-built element-tree harness so the ORIGINAL frame,
+  // width and permission assertions still target the exact same root <div>.
+  expect(tree.type).toBe(SummaryDiagnosticVisibilityProvider);
+  return tree.props.children;
+}
+function grantAdmin(){
+  firebase.isAdmin=true;
+  firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
+  firebase.datasetEpochReady=true;firebase.connected=true;
+}
 function button(tree:any,label:string){const result=nodes(tree).find(n=>n.type==='button'&&
   (text(n)===label||nodes(n).some(child=>child.props?.className==='section-card-title'&&text(child)===label)));
   expect(result,`button ${label}`).toBeDefined();return result;}
@@ -39,11 +52,11 @@ function open(label:string){button(render(),label).props.onClick({currentTarget:
 function respond(note?:string){const script=scripts.at(-1),name=new URL(script.src).searchParams.get('tqx')!.split('responseHandler:')[1];(window as any)[name](payload(note));}
 beforeEach(()=>{
   h.reset();vi.useFakeTimers();scripts=[];
-  vi.stubGlobal('window',{setTimeout:globalThis.setTimeout,setInterval:globalThis.setInterval,addEventListener:vi.fn(),removeEventListener:vi.fn()});
+  vi.stubGlobal('window',{setTimeout:globalThis.setTimeout,setInterval:globalThis.setInterval,clearTimeout:globalThis.clearTimeout,clearInterval:globalThis.clearInterval,addEventListener:vi.fn(),removeEventListener:vi.fn()});
   vi.stubGlobal('document',{hidden:false,addEventListener:vi.fn(),removeEventListener:vi.fn(),head:{append:(s:any)=>scripts.push(s)},createElement:()=>({src:'',remove:vi.fn()})});
   const storage=new Map<string,string>();vi.stubGlobal('localStorage',{getItem:(k:string)=>storage.get(k)??null,setItem:(k:string,v:string)=>storage.set(k,v),removeItem:(k:string)=>storage.delete(k)});
   h.common.mockReturnValue({config:null,status:'disabled',busy:false,message:'',refresh:vi.fn(),save:vi.fn()});
-  firebase={ready:true,user:{isAnonymous:true,uid:'guest'},isAdmin:false,connected:true,permissions:{columns:{note:true}},profile:null,emulator:true,canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>mayEdit(firebase.permissions,id,field,firebase.isAdmin),common:{config:null,status:'ready',busy:false,message:'Firebase configuration',refresh:vi.fn(),save:vi.fn().mockResolvedValue({revision:1})},savePermissions:vi.fn(),login:vi.fn(),logout:vi.fn()} as unknown as FirebaseController;
+  firebase={ready:true,user:{isAnonymous:true,uid:'guest'},isAdmin:false,datasetEpochReady:true,connected:true,permissions:{columns:{note:true}},profile:null,emulator:true,canEdit:(id:string,field:Parameters<typeof mayEdit>[2])=>mayEdit(firebase.permissions,id,field,firebase.isAdmin),common:{config:null,status:'ready',busy:false,message:'Firebase configuration',refresh:vi.fn(),save:vi.fn().mockResolvedValue({revision:1})},savePermissions:vi.fn(),refreshPermissions:vi.fn().mockResolvedValue({columns:{note:true}}),login:vi.fn(),logout:vi.fn()} as unknown as FirebaseController;
 });
 afterEach(()=>{h.dispose();vi.useRealTimers();vi.unstubAllGlobals();});
 describe('Pages integrates Sheets content with Firebase administration',()=>{
@@ -151,22 +164,22 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
       .toMatchObject({report:1320,list:960,schema:1});
   });
   it('keeps Account settings on the same compact frame even before profile loading finishes',async()=>{
-    firebase.user={isAnonymous:false,uid:'admin',email:'admin@example.com'} as FirebaseController['user'];
-    firebase.isAdmin=true;
+    grantAdmin();
     firebase.common.status='loading';
-    let tree=open('Tài khoản và dữ liệu');
+    let tree=render();
+    expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(false);
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined(); // Fail closed during profile verification.
+    firebase.common.status='ready';
+    tree=open('Tài khoản và dữ liệu');
     expect(tree.props.className).toContain('settings-page');
     expect(tree.props.style['--page-content-width']).toBe('1100px');
     expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(true);
-    expect(text(tree)).not.toContain('Đang tải bố cục đã lưu');
-    firebase.common.status='ready';
-    tree=render();
-    expect(tree.props.style['--page-content-width']).toBe('1100px');
   });
   it('honors stored Sheets URL/gid and refreshes manually and every 60 seconds, only while visible',async()=>{
+    grantAdmin();
     saveSheetConfig(parseSheetConfig('https://docs.google.com/spreadsheets/d/fake-sheet/edit?gid=42'));
     render();expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('42');respond();await settle();render();
-    button(render(),'Quản trị').props.onClick();
+    open('Tài khoản và dữ liệu');
     button(render(),'Làm mới dữ liệu').props.onClick();expect(scripts).toHaveLength(2);expect(firebase.common.refresh).toHaveBeenCalledOnce();respond('Sau đọc lại');await settle();render();
     await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);respond('Sau polling');await settle();render();
     (document as any).hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);
@@ -219,10 +232,12 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
     render();respond();await settle();const tree=open('Danh sách các ND trình HĐND');
-    expect(button(tree,'Quản trị')).toBeDefined();
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(false);
-    expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(true);
+    const gear=nodes(tree).find(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'));
+    expect(gear).toBeDefined();
+    expect(nodes(gear).filter(n=>n.type==='button').map(text)).toEqual(['Đăng nhập quản trị']);
+    expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='demo-banner')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='brand')).toBe(false);
     expect(nodes(tree).filter(n=>n.type==='button'&&String(n.props.className).includes('primary-section-card'))).toHaveLength(2);
@@ -231,8 +246,44 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list.props.anonymousViewer).toBe(true);
   });
+  it('keeps guest Google login inside gear with no permission or settings shortcut',async()=>{
+    render();respond();await settle();
+    let tree=open('Danh sách các ND trình HĐND');
+    const login=button(tree,'Đăng nhập quản trị');
+    expect(nodes(tree).some(n=>n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    login.props.onClick();await settle();
+    expect(firebase.login).toHaveBeenCalledOnce();
+    tree=render();
+    expect(tree.props.className).not.toContain('settings-page');
+    expect(nodes(tree).some(n=>n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    const list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list.props.allowLayout).toBe(false);
+    expect(list.props.canEditCell(list.props.items[0].recordId,'note')).toBe(true);
+  });
+  it('immediately closes admin editing routes on grant/profile/connection loss; keeps guest cell grants',async()=>{
+    grantAdmin();render();respond();await settle();
+    let tree=open('Chỉnh sửa');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing)).toBe(true);
+    firebase.isAdmin=false;
+    firebase.user={isAnonymous:false,uid:'nonadmin-google',email:'member@example.com'} as FirebaseController['user'];
+    tree=render();tree=render(); // simulated React effect: private page redirects
+    expect(nodes(tree).some(n=>n.type===ReportSettings||n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    const list=nodes(tree).find(n=>n.type===ItemList);
+    expect(list).toBeDefined();
+    expect(list.props.anonymousViewer).toBe(true);
+    expect(list.props.allowLayout).toBe(false);
+    expect(list.props.onSavePermissions).toBeUndefined();
+    expect(list.props.onPersistLayout).toBeUndefined();
+    expect(list.props.canEditCell('synthetic-granted-row','note')).toBe(true);
+    // Even an admin UID loses tool affordances when Firebase connection fails.
+    grantAdmin();tree=render();
+    firebase.connected=false;tree=render();
+    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(false);
+  });
   it('keeps the administrator override in both list and customize views; staff remain cell-grant scoped',async()=>{
-    firebase.isAdmin=true;
+    grantAdmin();
     firebase.user={isAnonymous:false,uid:'admin',email:'cavoixanh638@gmail.com'} as FirebaseController['user'];
     firebase.permissions={columns:{content:false,note:true,progressParty:true}};
     render();respond();await settle();
@@ -256,7 +307,8 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     render();respond();await settle();
     const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);
     const id=list.props.items[0].recordId;
-    expect(list.props.anonymousViewer).toBe(false);
+    expect(list.props.anonymousViewer).toBe(true); // Signed-in Google non-admin has guest UI.
+    expect(list.props.allowLayout).toBe(false);
     expect(list.props.customizing).toBe(false);
     expect(list.props.canEditCell(id,'note')).toBe(true);
     expect(list.props.canEditCell(id,'content')).toBe(false);
@@ -268,7 +320,8 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     list.props.onUpdate(id,{note:'Nháp thử'});list=nodes(render()).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nháp thử');
     await vi.advanceTimersByTimeAsync(120000);render();expect(scripts).toHaveLength(1);expect(firebase.common.save).not.toHaveBeenCalled();
     expect(list.props.onKeepDraft()).toBe(true);await expect(list.props.onSaveData()).resolves.toBe(false);expect(firebase.common.save).not.toHaveBeenCalled();
-    await expect(list.props.onPersistLayout(list.props.initialLayout)).rejects.toThrow();
+    expect(list.props.onPersistLayout).toBeUndefined();
+    expect(list.props.onSavePermissions).toBeUndefined();
   });
   it('hides anonymous edit controls on empty Sheets while keeping admin permissions accessible',async()=>{
     render();
@@ -276,25 +329,25 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     (window as any)[name]({status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[{c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]}]}});
     await settle();render();
     expect(nodes(render()).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
-    expect(nodes(render()).some(n=>n.type==='button'&&text(n)==='Quản trị')).toBe(true);
-    firebase.isAdmin=true;
+    expect(button(render(),'Đăng nhập quản trị')).toBeDefined();
+    grantAdmin();
     let list=nodes(open('Chỉnh sửa')).find(n=>n.type===ItemList);
     expect(list.props.items).toHaveLength(0);
     expect(list.props.permissions).toEqual(firebase.permissions);
     expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
   });
   it('keeps the last Sheets snapshot when a subsequent GViz read fails',async()=>{
-    render();respond();await settle();render();button(render(),'Quản trị').props.onClick();button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
+    grantAdmin();render();respond();await settle();render();open('Tài khoản và dữ liệu');button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
     const tree=open('Danh sách các ND trình HĐND'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();
+    grantAdmin();render();respond();await settle();
     open('Chỉnh sửa');let tree=open('Bảng thống kê');let panel=nodes(tree).find(n=>n.type===ReportSettings);await panel.props.onSave(panel.props.initial);expect(firebase.common.save).toHaveBeenLastCalledWith('reports',panel.props.initial,0);panel.props.onClose();
     open('Chỉnh sửa');tree=render();panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistCatalog(catalogFromItems(createDemoItems(2)));expect(vi.mocked(firebase.common.save).mock.calls.at(-1)?.[0]).toBe('catalogs');
     tree=open('Chỉnh sửa');panel=nodes(tree).find(n=>n.type===ItemList);await panel.props.onPersistLayout(panel.props.initialLayout);expect(firebase.common.save).toHaveBeenLastCalledWith('items',panel.props.initialLayout,0,panel.props.initialLayout);
   });
   it('saves only reports even if the displayed Sheets-augmented catalog contains invalid duplicate labels',async()=>{
-    firebase.isAdmin=true;
+    grantAdmin();
     const config={
       revision:3,
       items:defaultItemLayout(),
@@ -321,7 +374,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(firebase.common.config.catalogs).toEqual(config.catalogs);
   });
   it('previews unsaved report width immediately and restores persisted value on exit',async()=>{
-    firebase.isAdmin=true;
+    grantAdmin();
     firebase.common.config={revision:1,items:{...defaultItemLayout(),frameWidth:900},
       reports:withReportPageWidth(defaultReportLayout(),1500),
       catalogs:catalogFromItems(createDemoItems(2))};
@@ -337,7 +390,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=open('Danh sách các ND trình HĐND');expect(tree.props.style['--page-content-width']).toBe('900px');
   });
   it('keeps independent 2400px report and 640px list content widths without moving the header',async()=>{
-    firebase.isAdmin=true;
+    grantAdmin();
     firebase.common.config={
       revision:1,
       items:{...defaultItemLayout(),frameWidth:640},
@@ -359,7 +412,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(tree.props.style['--page-content-width']).toBe('2400px');
   });
   it('provides one global View mode exit to every editor, while local saves remain in their own tabs',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();
+    grantAdmin();render();respond();await settle();
     let tree=open('Chỉnh sửa');
     expect(nodes(tree).filter(n=>n.type==='button'&&text(n)==='Về chế độ xem')).toHaveLength(1);
     let list=nodes(tree).find(n=>n.type===ItemList);
@@ -380,7 +433,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
 
   it('keeps all column choices and permission controls inside one manager instead of separate tabs',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();
+    grantAdmin();render();respond();await settle();
     const tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.props?.className==='settings-sub-tabs')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='settings-section')).toBe(false);
@@ -392,30 +445,32 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Giá trị lựa chọn')).toBe(false);
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Quyền chỉnh sửa')).toBe(false);
   });
-  it('has exactly two compact settings menu choices and keeps the gear visible across sections',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();
+  it('has verified-admin-only gear choices and keeps it visible across sections',async()=>{
+    grantAdmin();render();respond();await settle();
     let tree=render();
-    const menu=nodes(tree).find(n=>n.type==='details'&&n.props.className==='options-menu');
+    const menu=nodes(tree).find(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'));
     expect(menu).toBeDefined();
     const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
-    expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual(['Chỉnh sửa','Tài khoản và dữ liệu']);
+    expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual([
+      'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo','Tài khoản và dữ liệu','Nhập / Xuất Excel','Hiện mã khu vực'
+    ]);
     expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(1);
     tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
     tree=open('Bảng thống kê');
     expect(nodes(tree).some(n=>n.type===ReportSettings)).toBe(true);
     tree=open('Tài khoản và dữ liệu');
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
     expect(nodes(tree).some(n=>n.type==='div'&&n.props?.className==='options-popover')).toBe(true);
     tree=open('Excel · Trích xuất');
     expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(true);
-    expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
+    expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
   });
   it('blocks switching editing sections while a report draft is unsaved',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();
+    grantAdmin();render();respond();await settle();
     open('Chỉnh sửa');let tree=open('Bảng thống kê');
     const panel=nodes(tree).find(n=>n.type===ReportSettings);
     panel.props.onDirtyChange(true);
@@ -427,7 +482,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
+    grantAdmin();render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
     open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
     const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
   });
