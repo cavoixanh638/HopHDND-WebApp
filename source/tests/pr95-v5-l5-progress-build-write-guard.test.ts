@@ -29,6 +29,19 @@ const fixtureSpec:readonly (readonly [string,string,Item['documentKind'],string]
   ['kindbc','QPPL','BC','Sở chưa trình'],
   ['unknown','Không rõ','UNCLASSIFIED','Sở chưa trình']
 ];
+/** Exact values sent by the client SDK: tab/newline/NBSP/em-space and
+ * Vietnamese NFC/NFD (including mixed composition in one phrase).
+ * Assert these against BOTH the repository classifier and RTDB validators.
+ */
+const classifiedTypeVariants=[
+  '\tHC\t','\nHC\r',' Hc ','Hành\tchính',
+  'Hành  chính','Hành\u00a0chính','Hành\u2003chính',
+  'Hành chính','Hành chính'.normalize('NFD'),
+  'Ha\u0300nh chi\u0301nh','Hành chi\u0301nh',
+  '\tBC\t','Báo\tcáo','Báo  cáo',
+  'Báo cáo','Báo cáo'.normalize('NFD'),
+  'Ba\u0301o ca\u0301o','Báo\u00a0cáo'
+] as const;
 const rows=():Item[]=>fixtureSpec.map(([id,type,documentKind,progressBuild],i)=>({
   ...createDemoItems(1)[0],recordId:id,displayCode:'MẪU'+String(i+1).padStart(2,'0'),
   stt:i+1,type,documentKind,progressBuild,note:'Bản ghi gốc '+id,
@@ -54,6 +67,8 @@ describe('V5 L5 HC/BC write policy — exact data-layer contract (no migration)'
       'BC',' Báo cáo ','Bao cao','bÁo  cÁo']){
       expect(buildNotRequiredForType({type,documentKind:'NQ'}),type).toBe(true);
     }
+    for(const type of classifiedTypeVariants)
+      expect(buildNotRequiredForType({type,documentKind:'NQ'}),JSON.stringify(type)).toBe(true);
     expect(buildNotRequiredForType({type:'QPPL',documentKind:'BC'})).toBe(true);
     for(const type of ['QPPL','NQ','Không rõ','']){
       expect(buildNotRequiredForType({type,documentKind:'NQ'}),type).toBe(false);
@@ -273,6 +288,38 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       expect(await current(w.db,id)).toEqual(before);
     }
   },45000);
+  it('R-V5-01 RED/REGRESSION: direct SDK denies whitespace and NFC/NFD HC/BC with valid lease, grants and truthful audit',async()=>{
+    const guest=harness(),admin=harness(true);
+    // Same direct SDK payload succeeds for non-HC/non-BC rows: guard, not
+    // malformed audit/proof/auth, must be the reason the cases below fail.
+    await assertSucceeds(directSdkEdit(guest,'qppl','VP đang xử lý'));
+    await assertSucceeds(directSdkEdit(admin,'unknown','VP đang xử lý',true));
+    for(let i=0;i<classifiedTypeVariants.length;i++){
+      const type=classifiedTypeVariants[i];
+      expect(buildNotRequiredForType({type,documentKind:'NQ'}),JSON.stringify(type)).toBe(true);
+      // Privileged fixture setup only. Every SUBJECT write below is a real
+      // client SDK update/transaction using auth, grant, lease and audit.
+      await env.withSecurityRulesDisabled(async ctx=>{
+        await set(ref(ctx.database() as never,path+'/hc/type'),type);
+      });
+      const w=i%2===0?guest:admin;
+      const before=await current(w.db,'hc');
+      expect(before.type).toBe(type);
+      await assertFails(directSdkEdit(w,'hc','Đã có QĐ',i%2===1));
+      expect(await current(w.db,'hc'),JSON.stringify(type)).toEqual(before);
+    }
+    const untouched=await current(guest.db,'hc');
+    expect(untouched.progressBuild).toBe('Đã trình HĐND, chưa có QĐ');
+    expect(untouched.revision).toBe(1);
+    // Legitimate edits and type-only changes must continue working without
+    // normalizing historical Build or manufacturing a Build audit event.
+    const note=await persist(guest,'hc',{note:'Giữ cột H legacy'},
+      (await guest.repo.list()).find(row=>row.recordId==='hc')!);
+    expect(note.ok,note.message).toBe(true);
+    const after=await current(guest.db,'hc');
+    expect(after.progressBuild).toBe(untouched.progressBuild);
+    expect((after.history as any)['2'].changes).toEqual({note:'Giữ cột H legacy'});
+  },60000);
   it('REVOKE: stale client grant + acquired lease cannot write QPPL Build',async()=>{
     const w=harness(false,{columns:{progressBuild:true}}),admin=adminDb();
     const old=await current(w.db,'qppl');
