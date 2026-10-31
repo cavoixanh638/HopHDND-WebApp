@@ -299,9 +299,25 @@ try {
   const standalone=await detail('.item-data-table tbody tr:first-child td[data-col-key=type]');
   assert(standalone.editable&&standalone.kind==='QPPL','separate type editor missing '+JSON.stringify(standalone));
   await screenshotV6('pr95-v6-l1-type-standalone-1440.png');
+
+  // Saved narrow widths must not split the Cấp trình caption/caret,
+  // even when the stage group uses its horizontal inner scroll fallback.
+  await visit('view=list&role=admin&narrow=1',1280,760);
+  await inspectLevels('.item-data-table','list-saved-narrow-1280');
+  const narrowScroll=await evaluate('(()=>{const s=document.querySelector(".item-data-table tbody tr:first-child .compact-stages");'+
+    'return {client:s?.clientWidth,scroll:s?.scrollWidth,overflow:getComputedStyle(s).overflowX};})()');
+  assert(narrowScroll&&narrowScroll.scroll>=narrowScroll.client,
+    'narrow stage scrolling contract '+JSON.stringify(narrowScroll));
+  await evaluate('document.querySelector(".item-data-table tbody tr:first-child .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await screenshotV6('pr95-v6-l1-saved-narrow-level-1280.png');
+  console.log('PR95_V6_L1_NARROW_LEVEL_PASS '+JSON.stringify(narrowScroll));
+
   await visit('view=list&role=admin',390,844);
   await inspectLevels('.item-data-table','list-mobile-390');
   await screenshotV6('pr95-v6-l1-list-mobile-390.png');
+  await evaluate('document.querySelector(".item-data-table tbody tr:first-child .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await sleep(120);
+  await screenshotV6('pr95-v6-l1-list-mobile-390-level-visible.png');
 
   await visit('view=popup&role=readonly',1440,900);
   const pRead=await evaluate('(()=>{const td=document.querySelector(".report-detail-grid tbody tr:first-child");'+
@@ -317,6 +333,10 @@ try {
     'buttons.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','popup grouped level');
   const popLevels=await inspectLevels('.report-detail-grid','popup-admin-1440');
+  const popupGroupedType=await detail('.report-detail-grid tbody tr:first-child .compact-document-badge');
+  assert(popupGroupedType.editable&&popupGroupedType.allBorders===0,
+    'popup grouped Loại VB has double border '+JSON.stringify(popupGroupedType));
+  console.log('PR95_V6_L1_POPUP_GROUPED_TYPE_PASS '+JSON.stringify(popupGroupedType));
   await screenshotV6('pr95-v6-l1-popup-admin-grouped-1440.png');
   // The UI's "Hiện đủ cột Excel" legitimately switches away from grouping.
   await evaluate('(()=>{const buttons=[...document.querySelectorAll(".report-grid-actions button")];'+
@@ -336,17 +356,23 @@ try {
   await waitFor('!!document.querySelector(".report-detail-grid .compact-stage-level")','mobile grouped stage');
   await inspectLevels('.report-detail-grid','popup-mobile-390');
   await screenshotV6('pr95-v6-l1-popup-mobile-grouped-390.png');
+  await evaluate('document.querySelector(".report-detail-grid tbody tr:first-child .compact-stage-level")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await sleep(120);
+  await screenshotV6('pr95-v6-l1-popup-mobile-390-level-visible.png');
   await evaluate('(()=>{const b=[...document.querySelectorAll(".report-grid-actions button")];'+
     'b.find(x=>x.textContent.includes("Hiện đủ cột Excel"))?.click();})()');
   await waitFor('!!document.querySelector(".report-detail-grid td[data-col-key=type] .cell-picker-trigger")','mobile popup standalone type');
   await screenshotV6('pr95-v6-l1-popup-mobile-standalone-390.png');
+  await evaluate('document.querySelector(".report-detail-grid tbody tr:first-child td[data-col-key=type] .cell-picker-trigger")?.scrollIntoView({block:"nearest",inline:"center"})');
+  await sleep(120);
+  await screenshotV6('pr95-v6-l1-popup-mobile-390-type-visible.png');
   const forbidden=network.filter(x=>['firebaseio','firebasedatabase','identitytoolkit','securetoken',
     'docs.google.com/spreadsheets','sheets.googleapis.com'].some(z=>x.toLowerCase().includes(z)));
   assert(forbidden.length===0,'production endpoint accessed '+JSON.stringify(forbidden));
   console.log('PR95_V6_L1_CHROME_PASS '+JSON.stringify({
     threeKinds:['QPPL','HC','BC'],legacy:true,levels:['BCH','BTV TU','TTTU'],
     main:true,popup:true,readonly:true,admin:true,mixed:true,separate:true,
-    desktop:1440,medium:1280,mobile:390,noPatch:true,
+    desktop:1440,medium:1280,mobile:390,narrow:true,noPatch:true,
     stageRails:rails,productionRequests:0
   }));
 }finally {
