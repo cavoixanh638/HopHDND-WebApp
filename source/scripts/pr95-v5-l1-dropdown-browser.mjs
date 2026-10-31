@@ -313,14 +313,17 @@ try {
     'buttons.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();'+
     'buttons.find(b=>b.textContent.includes("Hiện đủ cột Excel"))?.click();})()');
   await waitFor('!!'+popupFirst('Lãnh đạo VP'),'popup leader picker');
+  // Sticky filter rows overlap the first body row if block:center scrolls it.
+  // Keep the true pointer target below the header without DOM click replay.
+  await evaluate('document.querySelector(".report-grid-scroll").scrollTop=0');
   console.log('PR95_V5_L1_POPUP_DIAG '+JSON.stringify(await evaluate('(()=>{const e='+popupFirst('Lãnh đạo VP')+';'+
-    'e.scrollIntoView({block:"center",inline:"nearest"});const r=e.getBoundingClientRect();'+
+    'e.scrollIntoView({block:"nearest",inline:"center"});const r=e.getBoundingClientRect();'+
     'const h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);'+
     'const scroll=document.querySelector(".report-grid-scroll");return {rect:r.toJSON(),'+
     'cover:h?.outerHTML?.slice(0,400),coverClass:h?.className,hit:h?.closest("button.cell-picker-trigger")===e,'+
     'scroll:scroll?{box:scroll.getBoundingClientRect().toJSON(),scrollTop:scroll.scrollTop,scrollLeft:scroll.scrollLeft}:null,'+
     'popoverCount:document.querySelectorAll(".cell-picker-popover:popover-open").length};})()')));
-  await actual(popupFirst('Lãnh đạo VP'),true);
+  await actual(popupFirst('Lãnh đạo VP'));
   await openPop('Lãnh đạo VP');
   const popupA=await geometry(popupFirst('Lãnh đạo VP'),'popup-leader');
   await screenshot('pr95-v5-l1-popup-open-desktop.png');
