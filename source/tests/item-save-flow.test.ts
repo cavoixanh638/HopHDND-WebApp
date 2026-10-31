@@ -182,7 +182,7 @@ describe('separate item layout save and data draft',()=>{
     expect(nodes(withoutFirebase).some(n=>n.props?.className==='content-button')).toBe(false);
   });
 
-  it('uses one source of truth for Excel dropdowns: the shared catalog, not legacy column options',()=>{
+  it('keeps official status dropdowns canonical even if old catalog and old column selections disagree',()=>{
     const items=createDemoItems(1),id=items[0].recordId;
     const catalog=catalogFromItems(items);
     catalog.options.progressParty.push('Giá trị từ danh mục chung');
@@ -197,8 +197,14 @@ describe('separate item layout save and data draft',()=>{
       initialLayout:layout,canEditCell:(_id:string,field:string)=>_id===id&&field==='progressParty'});
     const picker=nodes(tree).find(node=>node.type===CellPicker&&String(node.props?.label).includes('Tiến độ xin ý kiến Thành ủy'));
     expect(picker).toBeDefined();
-    expect(picker.props.options).toContain('Giá trị từ danh mục chung');
+    expect(picker.props.options).toEqual([
+      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+      'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'
+    ]);
+    expect(picker.props.options).not.toContain('Giá trị từ danh mục chung');
     expect(picker.props.options).not.toContain('Lựa chọn cũ không còn sử dụng');
+    // The raw alias is displayed as the canonical selected option, not written back.
+    expect(picker.props.value).toBe('Sở chưa trình');
   });
 
 });
