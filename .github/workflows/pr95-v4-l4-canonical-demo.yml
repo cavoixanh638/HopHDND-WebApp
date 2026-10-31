@@ -41,6 +41,11 @@ jobs:
       - name: Actual Chrome UI V4 L4 main / five reports / popup screenshots
         working-directory: source
         run: node scripts/pr95-v4-l4-demo-browser.mjs
+      - name: Package the actual full preview for offline file Chrome regression
+        working-directory: source
+        run: |
+          node scripts/package-compact-qa.mjs
+          test -s dist-compact-qa/HopHDND_GopCot_XemThu.html
       - name: Full synthetic preview Chrome Excel A–O and in-RAM roles regression
         working-directory: source
         run: node scripts/pr95-preview-browser.mjs
