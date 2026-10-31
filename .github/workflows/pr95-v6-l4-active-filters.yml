@@ -10,6 +10,8 @@ on:
       - 'source/src/features/items/pr95-v6-l4-active-filters.ts'
       - 'source/tests/pr95-v6-l4-active-filters.test.tsx'
       - 'source/scripts/pr95-v6-l4-browser.mjs'
+      - 'source/scripts/pr95-v3-l4-summary-browser.mjs'
+      - 'source/scripts/pr95-v5-l2-summary-preview-browser.mjs'
   workflow_dispatch:
 permissions:
   contents: read
