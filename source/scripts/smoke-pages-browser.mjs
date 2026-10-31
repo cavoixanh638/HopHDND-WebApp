@@ -1282,8 +1282,10 @@ try{
     return true;
   })()`);
   if(!v2Department)throw Error('V2 department dropdown missing');
-  await eventually("document.querySelector('.list-filter-count')?.textContent.includes('kết quả')",
-    'V2 department count did not render');
+  // V6 L4 replaces the obsolete bare count with a scoped N / prefilter
+  // denominator and a specifically removable, selected Sở/ngành chip.
+  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.includes(' / ')",
+    'V6 department chip and before-filter denominator did not render');
   // Escape inside dropdown keeps its native behavior and does not erase filters.
   await evaluate(`(()=>{
     const el=document.querySelector('select[aria-label="Lọc Sở, ngành"]');
