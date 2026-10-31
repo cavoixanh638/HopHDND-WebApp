@@ -3231,10 +3231,13 @@ try{
     'Party next must filter both post-VP records, not only one literal status');
   const v2NextRaw=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
     .map(x=>x.textContent)`);
+  // V4 default synthetic records now carry canonical source labels, while
+  // the two DISTINCT Party milestones and their original IDs remain intact.
   if(!v2NextRaw.some(x=>x.includes('Đã gửi ĐU'))||
-      !v2NextRaw.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
-    throw Error('V2 grouped next stage replaced original distinct row statuses: '+JSON.stringify(v2NextRaw));
-  console.log('V2_NEXT_BUCKET_RAW_LABELS_PRESERVED_PASS',JSON.stringify(v2NextRaw));
+      !v2NextRaw.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
+      v2NextRaw.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
+    throw Error('V4 canonical grouped next stages must stay distinct: '+JSON.stringify(v2NextRaw));
+  console.log('V4_NEXT_BUCKET_CANONICAL_LABELS_DISTINCT_PASS',JSON.stringify(v2NextRaw));
 
   const quickSummary=await evaluate(`({
     selected:document.querySelectorAll('.item-summary-bucket[aria-pressed=true]').length,
