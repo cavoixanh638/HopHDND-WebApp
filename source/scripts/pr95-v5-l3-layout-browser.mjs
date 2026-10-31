@@ -88,6 +88,13 @@ const audit=()=>js('('+function geometryV5(){
     const lineHeight=e=>parseFloat(getComputedStyle(e).lineHeight);
     const lr=l?l.top+Math.min(l.height,lineHeight(label||row))*.78:null;
     const vr=v?v.top+Math.min(v.height,lineHeight(button||state||row))*.78:null;
+    // UI6-R01: the content-sized caption can make the progress rail live
+    // beyond the stage's INTERNAL horizontal scroll viewport. Scroll its
+    // container to the progress end BEFORE checking both genuine hit edges.
+    // We do NOT waive either elementFromPoint assertion.
+    const stageScroll=button?.closest('.compact-stages');
+    if(button&&stageScroll&&stageScroll.scrollWidth>stageScroll.clientWidth)
+      stageScroll.scrollLeft=stageScroll.scrollWidth-stageScroll.clientWidth;
     const cr=button?.getBoundingClientRect();
     const css=button?getComputedStyle(button):null;
     const rail=button?getComputedStyle(button,'::before'):null;

@@ -18,7 +18,7 @@ import {ColumnHeader} from '../items/ColumnHeader';
 import {ColumnFilterCell,filterValue} from '../items/ColumnFilterCell';
 import {CompactGroupFilterCell} from '../items/CompactGroupFilterCell';
 import {CompactGroupedValue} from '../items/CompactGroupedValue';
-import {activeCompactPairs,compactVisibleColumns,DEFAULT_COMPACT_DISPLAY,readPersonalCompactDisplay} from '../items/compact-columns';
+import {activeCompactPairs,compactVisibleColumns,compactTypeTone,DEFAULT_COMPACT_DISPLAY,readPersonalCompactDisplay} from '../items/compact-columns';
 import {statusPaletteTone,type StatusPaletteStore} from '../../data/status-palettes';
 import {StatusPaletteManager} from '../items/StatusPaletteManager';
 import {CellPicker} from '../items/CellPicker';
@@ -242,6 +242,19 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {dirtyIds.has(item.recordId)&&<small>Chưa lưu</small>}
       {errors[item.recordId]&&<small className="error-text" role="alert">{errors[item.recordId]}</small>}
     </div>;
+    if(key==='type'){
+      const typeEditable=editing&&popupMayEdit&&editableFields.has(key)&&mayEditField(item,'type');
+      return <span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
+        data-editable={typeEditable?'true':undefined}
+        style={cellHighlightStyle(item.type,'type',listLayout?.cellHighlights)}>
+        {typeEditable
+          ?<CellPicker leaseManager={leaseManager} recordId={item.recordId} field="type"
+            label={(labelByKey.get(key)??'Loại VB')+' · '+displayId(item)} value={raw}
+            options={popupFieldOptions('type',raw,catalog)}
+            onChange={value=>{if(value!==raw&&mayEditField(item,'type'))safeUpdate(item.recordId,{type:value});}}/>
+          :shown||'—'}
+      </span>;
+    }
     if(!editing||!popupMayEdit||!editableFields.has(key)||!mayEditField(item,key as TextField))
       return statusPaletteTone(key,raw,statusPaletteStore?.active.otherEnabled??false)?<span className="workflow-status-value">{shown}</span>:shown||'—';
     const field=key as TextField;
@@ -254,7 +267,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       return <button type="button" className="cell-value-button"
         aria-label={'Sửa '+labelByKey.get(key)+' · '+displayId(item)}
         onClick={()=>openContent(item,field)}>{raw||'—'}</button>;
-    if(!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
+    if(field!=='type'&&!isStatusDisplayField(field)&&listLayout?.columns.find(c=>c.key===key)?.kind==='text')
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&mayEditField(item,field))safeUpdate(item.recordId,{[field]:value});}}/>;

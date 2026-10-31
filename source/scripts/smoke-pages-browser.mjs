@@ -2230,6 +2230,12 @@ try{
       const state=row.querySelector('.compact-stage-state');
       const button=state?.querySelector('button.cell-picker-trigger');
       if(!state||!button)return {ok:false,stage:row.dataset.stageField,reason:'no granted button'};
+      // UI6-R01: the caption-sized first track can require INTERNAL stage
+      // scrolling. Bring the status rail fully into view before the original
+      // V4 L2 full-width and BOTH-edge elementFromPoint assertions.
+      const stageScroller=button.closest('.compact-stages');
+      if(stageScroller&&stageScroller.scrollWidth>stageScroller.clientWidth)
+        stageScroller.scrollLeft=stageScroller.scrollWidth-stageScroller.clientWidth;
       const b=button.getBoundingClientRect(),s=state.getBoundingClientRect(),frame=row.getBoundingClientRect();
       const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
       const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
