@@ -48,7 +48,7 @@ describe('UI V4 L1 popup real editor callbacks with legacy source',()=>{
       onUpdate,onKeepDraft:vi.fn().mockReturnValue(true),dirtyIds:new Set<string>(),
       errors:{},onClose:vi.fn()};
     hooks.begin();let tree=ReportDetailGrid(props);
-    const readOnly=nodes(tree).filter(n=>n.type===CompactGroupedValue);
+    const readOnly=nodes(tree).filter(n=>n.type===CompactGroupedValue&&n.props.pair?.variant==='partyTogether');
     expect(readOnly).toHaveLength(1);
     // Grouped read-only spans are resolved field-by-field against raw source.
     const staticText=content(CompactGroupedValue(readOnly[0].props as Parameters<typeof CompactGroupedValue>[0]));
