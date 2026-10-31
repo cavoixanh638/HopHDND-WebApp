@@ -51,7 +51,7 @@ describe('UI V4 L1 popup real editor callbacks with legacy source',()=>{
     const readOnly=nodes(tree).filter(n=>n.type===CompactGroupedValue);
     expect(readOnly).toHaveLength(1);
     // Grouped read-only spans are resolved field-by-field against raw source.
-    const staticText=content(CompactGroupedValue(readOnly[0].props));
+    const staticText=content(CompactGroupedValue(readOnly[0].props as Parameters<typeof CompactGroupedValue>[0]));
     for(const shown of ['BCH','VP đang xử lý','Đã trình, chờ QĐ','Hoàn thành'])
       expect(staticText).toContain(shown);
     expect(onUpdate).not.toHaveBeenCalled();
