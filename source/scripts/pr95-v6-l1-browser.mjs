@@ -147,7 +147,7 @@ const detail=async(scope)=>{
 // UI6-R01: a caption is NOT safe merely because the caret fits its brackets.
 // Geometry must separate the COMPLETE caption from the adjacent progress state.
 const inspectLevels=async(rootSelector,label)=>{
-  const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+';'+
+  const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+');'+
     'if(!root)return null;const rows=[...root.querySelectorAll(".compact-stage-row[data-stage-field=progressParty]")];'+
     'return rows.slice(0,7).map(row=>{const title=row.querySelector(".compact-stage-title"),'+
     'l=row.querySelector(".compact-stage-level"),button=l?.querySelector(".cell-picker-trigger"),'+
