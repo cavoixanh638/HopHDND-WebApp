@@ -1105,6 +1105,16 @@ try{
   })()`);
   if(!sticky)throw Error('V2 sticky table heading and compact toolbar scroll must work together');
   await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",'Anonymous viewer must have gear-only login');
+  // UI V4 L3: guest and unauthenticated visitors never mount reference codes.
+  const guestReferenceDenied=await evaluate(`(()=>{
+    const root=document.querySelector('.app-shell');
+    return !root?.hasAttribute('data-ui-reference-active')&&
+      !document.querySelector('[data-ui-reference-layer]')&&
+      ![...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .some(button=>button.textContent?.trim()==='Hiện mã khu vực');
+  })()`);
+  if(!guestReferenceDenied)throw Error('UI V4 L3 guest reference codes must be absent');
+  console.log('PR95_UI_V4_L3_APP_GUEST_DEFAULT_OFF_PASS');
   const guestClean=await evaluate(`(()=>{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
     const gear=document.querySelector('.v3-settings-menu');
@@ -3871,6 +3881,45 @@ try{
       source:'real Auth Emulator SDK signInWithCredential',
       notProductionGoogleLogin:true
     }));
+    // V4 L3 tests the ACTUAL App with a verified Google-provider admin on
+    // local Auth + RTDB Emulators, independently from synthetic full preview.
+    await adminA.until("[...document.querySelectorAll('.v3-settings-menu .options-popover > button')].some(b=>b.textContent.trim()==='Hiện mã khu vực')",
+      'verified admin-only region toggle');
+    const referenceDefault=await adminA.js(`(()=>{
+      const button=[...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực');
+      return !!button&&button.getAttribute('aria-pressed')==='false'&&
+        !document.querySelector('[data-ui-reference-layer]')&&
+        !document.querySelector('[data-ui-reference-active]');
+    })()`);
+    if(!referenceDefault)throw Error('UI V4 L3 App admin reference codes must default OFF');
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!!document.querySelector('[data-ui-ref-code=A01]')",
+      'real App admin reference overlay');
+    const appCodes=await adminA.js(`(()=>{
+      const layer=document.querySelector('[data-ui-reference-layer]');
+      const codes=[...layer?.querySelectorAll('[data-ui-ref-code]')??[]].map(node=>node.dataset.uiRefCode);
+      return {codes,hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
+        nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
+          [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents==='none')};
+    })()`);
+    if(!appCodes.hasAdminToggle||!appCodes.nonblocking||
+      !['A01','A02','A03'].every(code=>appCodes.codes.includes(code)))
+      throw Error('UI V4 L3 App admin reference selectors/roles: '+JSON.stringify(appCodes));
+    await adminA.js(`(()=>{
+      document.querySelector('.v3-settings-menu > summary').click();
+      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+        .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
+    })()`);
+    await adminA.until("!document.querySelector('[data-ui-reference-layer]')",
+      'real App admin overlay fully unmounted after toggle');
+    console.log('PR95_UI_V4_L3_REAL_APP_ADMIN_ON_OFF_PASS',JSON.stringify({
+      codes:appCodes.codes,defaultHidden:referenceDefault,pointerEventsNone:appCodes.nonblocking,
+      emulatorOnly:true}));
     const headers=[
       'Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
       'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy',
