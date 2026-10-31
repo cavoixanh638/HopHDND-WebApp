@@ -80,6 +80,7 @@ jobs:
           name: pr95-ui-v3-l5-desktop-mobile-synthetic
           path: |
             source/pr95-v3-l5-*.png
+            source/pr95-v5-integrated-*.png
             source/dist-compact-qa/HopHDND_GopCot_XemThu.html
           if-no-files-found: warn
           retention-days: 14
@@ -182,6 +183,7 @@ jobs:
             source/pr95-preview-dom.txt
             source/pr95-preview-server.log
             source/pr95-v3-l5-*.png
+            source/pr95-v5-integrated-*.png
           retention-days: 14
       - name: Publish ONLY preview/pr95 HTML and scoped assets to main Pages tree
         shell: bash
