@@ -350,7 +350,11 @@ try{
   await selectValue('#pr95-role','guest');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','revoked guest list');
-  await ensure('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
+  // React's synthetic role transition and the permissions snapshot resolve on
+  // separate frames. Re-test the SAME exact revoked cell, but wait until the
+  // read-only render has settled; do not weaken the permission assertion.
+  await waitFor('![...document.querySelectorAll(".inline-note-trigger")].some(x=>x.getAttribute("aria-label")==='+JSON.stringify(firstNote)+')','revoke removes guest note editor');
+  console.log('UI_V4_L1_REVOKED_GUEST_EDITOR_NOT_RENDERED_PASS '+JSON.stringify(firstNote));
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await inspectSummary('390-mobile',{party:[2,2],build:[2,2],nq:[3]});
