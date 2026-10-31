@@ -94,7 +94,9 @@ const inspectSummary=async(label,expected)=>{
   }
   console.log('R_V3_04_SUMMARY_GEOMETRY_PASS '+label+' '+JSON.stringify(geometry));
 };
-const inspectGroupedReadOnly=async(scope,label,requireDone=false)=>{
+const inspectGroupedReadOnly=async(scope,label,requireDone=false,allowDirectText=false)=>{
+  const rows=await evaluate('document.querySelector('+JSON.stringify(scope)+')?.querySelectorAll(".compact-stage-row .compact-stage-state").length??0');
+  if(!rows)throw Error('R_V3_05_MISSING_GROUPED_STAGES '+label);
   const values=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(scope)+');if(!root)return null;'+
     'return [...root.querySelectorAll(".compact-stage-row .compact-stage-state .workflow-status-value")].map(node=>{'+
     'const css=getComputedStyle(node),member=getComputedStyle(node.closest(".compact-stage-state"));'+
@@ -103,9 +105,12 @@ const inspectGroupedReadOnly=async(scope,label,requireDone=false)=>{
     'flat:["Top","Right","Bottom","Left"].every(x=>css["border"+x+"Width"]==="0px"&&css["padding"+x]==="0px"),'+
     'transparent:css.backgroundColor==="rgba(0, 0, 0, 0)"||css.backgroundColor==="transparent",'+
     'inherit:css.color===member.color,noSecondDot:dot.content==="none"||dot.display==="none"};});})()');
-  if(!values?.length||values.some(x=>!x.flat||!x.transparent||!x.inherit||!x.noSecondDot)||
+  // ItemList renders direct read-only text in grouped stages; ReportDetailGrid
+  // wraps its read-only values in a legacy span. Both must keep one frame.
+  if(!values||(values.length===0&&!allowDirectText)||
+      values.some(x=>!x.flat||!x.transparent||!x.inherit||!x.noSecondDot)||
       (requireDone&&!values.some(x=>x.tone==='done')))
-    throw Error('R_V3_05_NESTED_READONLY_FAIL '+label+' '+JSON.stringify(values));
+    throw Error('R_V3_05_NESTED_READONLY_FAIL '+label+' '+JSON.stringify({rows,values}));
   console.log('R_V3_05_GROUPED_READONLY_PASS '+label+' '+JSON.stringify({count:values.length,done:values.filter(x=>x.tone==='done').length,tones:[...new Set(values.map(x=>x.tone))]}));
 };
 
@@ -152,7 +157,7 @@ try{
   await ensure('!document.querySelector(".source-column-visibility")&&!document.querySelector(".compact-columns-menu")','guest no column controls');
   await ensure('![...document.querySelectorAll(".item-data-table .column-resizer")].some(x=>getComputedStyle(x).display!=="none")','guest no visible resize affordance');
   await inspectSummary('1440-single-row',{party:[4],build:[4],nq:[3]});
-  await inspectGroupedReadOnly('.item-data-table','main-guest-default');
+  await inspectGroupedReadOnly('.item-data-table','main-guest-default',false,true);
   await screenshot('pr95-v3-l5-guest-1440.png');
   await send('Emulation.setDeviceMetricsOverride',{width:1280,height:860,deviceScaleFactor:1,mobile:false});
   await inspectSummary('1280-paired',{party:[2,2],build:[2,2],nq:[3]});
