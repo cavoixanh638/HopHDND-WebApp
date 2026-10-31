@@ -812,15 +812,21 @@ try{
     const toolbar=document.querySelector('.list-filter-toolbar')?.getBoundingClientRect();
     const gapBefore=(toolbar?.top??0)-tabs.bottom;
     const gapAfter=viewport.getBoundingClientRect().top-(cardRect?.bottom??0);
-    const gapBelowToolbar=(cardRect?.top??0)-(toolbar?.bottom??0);
+    // V6 L4 places an actual live filter-summary bar between F controls and
+    // the cards on this frozen baseline. Keep the strict whitespace bounds
+    // on EACH gap instead of treating meaningful chips as blank space.
+    const activeBar=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+    const gapToActiveBar=activeBar?activeBar.top-(toolbar?.bottom??0):null;
+    const gapBelowToolbar=(cardRect?.top??0)-(activeBar?.bottom??toolbar?.bottom??0);
     const aligned=Math.abs((top.left+top.right)/2-(tabs.left+tabs.right)/2)<3&&tabs.width<=1000&&tabs.width<top.width;
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
     // Same strict no-extra-blank-space contract, now measured before and after
     // the four explicitly requested summary cards instead of across their height.
     return {ok:aligned&&!!cardRect&&gapBefore<155&&gapAfter<30&&gapBefore>=0&&gapAfter>=0&&
       gapBelowToolbar>=0&&gapBelowToolbar<30&&
+      (gapToActiveBar===null||gapToActiveBar>=0&&gapToActiveBar<24)&&
       cards.querySelectorAll('[data-summary-card]').length===4&&!status&&!cardHeader&&!localMenu&&!!sort,
-      aligned,gapBefore,gapAfter,gapBelowToolbar,cardHeight:cardRect?.height,
+      aligned,gapBefore,gapAfter,gapBelowToolbar,gapToActiveBar,cardHeight:cardRect?.height,
       hasEmptyStatus:!!status,hasCounterHeader:!!cardHeader,hasPersonalMenu:!!localMenu};
   })()`);
   if(!sortAndGuestLayout.ok)throw Error('Guest layout regression: '+JSON.stringify(sortAndGuestLayout));
