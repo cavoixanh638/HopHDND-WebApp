@@ -9,7 +9,7 @@ import {defaultItemLayout} from '../src/data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../src/data/status-palettes';
 import {ItemList} from '../src/features/items/ItemList';
 import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
-import type {TextField} from '../shared/types';
+import type {EditableField} from '../shared/types';
 import '../src/styles/app.css';
 
 const params=new URLSearchParams(window.location.search);
@@ -33,7 +33,7 @@ if(highlight)layout.cellHighlights=[{id:'v6type',field:'type',word:'QPPL',
   textColor:'#FFFFFF',backgroundColor:'#663399'}];
 const palette=defaultStatusPaletteStore();
 const patches:{id:string;changes:object}[]=[];
-const writable=(id:string,field:TextField)=>role==='admin'||
+const writable=(id:string,field:EditableField)=>role==='admin'||
   role==='mixed'&&(
     (id===original[0].recordId&&field==='type')||
     (id===original[1].recordId&&field==='partyLevel')
