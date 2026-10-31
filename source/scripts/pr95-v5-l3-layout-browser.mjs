@@ -135,11 +135,26 @@ const verify=async stage=>{
       (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
       stage+' QPPL no second button frame '+JSON.stringify(c));
   }
-  const buttons=first.filter(x=>x.editable);
-  if(buttons.length>1){
-    const dif=Math.max(...buttons.map(x=>x.caretRight))-Math.min(...buttons.map(x=>x.caretRight));
-    assert(dif<=2,stage+' fixed caret right edge: '+dif);
+  // Each record can have a longer Party-level title than the preceding
+  // record. Measure EVERY visible 3-stage group; checking only row 1 misses
+  // the BTV TU caret drift observed in the initial Chrome run.
+  const groups=[];let group=[];
+  for(const row of x.stageRows){
+    if(row.field==='progressParty'&&group.length){groups.push(group);group=[];}
+    group.push(row);
   }
+  if(group.length)groups.push(group);
+  const caretSpreads=[];
+  for(const rows of groups){
+    const buttons=rows.filter(r=>r.editable);
+    if(buttons.length>1){
+      const dif=Math.max(...buttons.map(r=>r.caretRight))-
+        Math.min(...buttons.map(r=>r.caretRight));
+      caretSpreads.push(dif);
+      assert(dif<=2,stage+' each record fixed caret right edge: '+dif+' '+JSON.stringify(rows));
+    }
+  }
+  console.log('UI_V5_L3_CARET_GROUPS '+stage+' '+JSON.stringify(caretSpreads));
   assert(x.wholePageWidth<=x.viewport+3,stage+' no page-level horizontal overflow');
   console.log('UI_V5_L3_RECT_PASS '+stage+' '+JSON.stringify(x));
   return x;
