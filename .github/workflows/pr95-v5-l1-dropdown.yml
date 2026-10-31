@@ -1,0 +1,48 @@
+name: PR95 UI V5 L1 — dropdown handoff and natural-height positioning (NO publish)
+on:
+  pull_request:
+    paths:
+      - 'source/src/features/items/CellPicker.tsx'
+      - 'source/src/features/items/cell-picker.css'
+      - 'source/src/features/items/pr95-v5-l1-*'
+      - 'source/tests/pr95-v5-l1-*'
+      - 'source/scripts/pr95-v5-l1-*'
+      - '.github/workflows/pr95-v5-l1-dropdown.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v5-l1-dropdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install exactly frozen dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck
+        working-directory: source
+        run: npm run typecheck
+      - name: Unit regression — coordinates, async handoff and lazy options
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-v5-l1-dropdown.test.tsx tests/cell-picker-lazy.test.tsx
+      - name: Build real ItemList + popup, isolated synthetic fixture
+        working-directory: source
+        run: npm run build:compact:qa
+      - name: REAL Chrome pointerdown/up/click, dropdown/keyboard/bottom/mobile/popup
+        working-directory: source
+        run: node scripts/pr95-v5-l1-dropdown-browser.mjs
+      - name: Retain V5 L1 genuine Chrome screenshots without publication
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v5-l1-real-chrome-dropdown
+          path: source/pr95-v5-l1-*.png
+          if-no-files-found: warn
+          retention-days: 14
