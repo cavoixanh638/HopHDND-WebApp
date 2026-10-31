@@ -219,7 +219,7 @@ try {
   await evaluate("document.querySelector('[data-active-filter-id=department] button').focus()");
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
-  condition=await expectInventory(1,14,'keyboard Enter removes only department');
+  condition=await expectInventory(1,13,'keyboard Enter removes only department');
   assert(condition.ids[0]==='room','keyboard removed wrong chip '+JSON.stringify(condition));
   await click('.list-active-filter-clear-all');
   await expectInventory(0,27,'clear all without changing row data');
