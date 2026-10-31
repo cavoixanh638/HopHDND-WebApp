@@ -2,7 +2,7 @@
  * The default createDemoItems() must never use these labels again.
  * Do not import this file from App, QA preview or production code.
  */
-import type {Item} from '../../../shared/types';
+import type {Item} from '../../shared/types';
 import {createDemoItems} from '../../src/data/demo-items';
 
 const oldParty=[
