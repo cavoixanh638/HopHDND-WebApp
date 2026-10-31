@@ -215,8 +215,9 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     };
     const onMouseOut=()=>{if(hover.textContent){hover.textContent='';schedule();}};
     const observer=new MutationObserver(mutations=>{
-      if(mutations.some(m=>!isInsideOverlay(m.target)&&
-        ![...m.addedNodes].every(isInsideOverlay)))schedule();
+      if(mutations.some(m=>!isInsideOverlay(m.target)&&(
+        m.type==='attributes'||![...m.addedNodes].every(isInsideOverlay)||
+        ![...m.removedNodes].every(isInsideOverlay))))schedule();
     });
     observer.observe(root,{subtree:true,childList:true,attributes:true,
       attributeFilter:['class','style','open','data-column-key','data-col-key']});
