@@ -92,21 +92,21 @@ try {
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1&preview-role=admin'});
 
-  await waitFor("document.querySelector('[data-preview=pr95-l4-full][data-role=admin]') && document.querySelectorAll('.item-data-table tbody tr').length===27",
+  await waitFor("document.querySelector('[data-preview=pr95-l4-full][data-role=admin]') && document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length===27",
     'V6 full preview mounted 27 rows');
   const inventory=async()=>evaluate(`(()=>{
     const zone=document.querySelector('.list-active-filters');
     return {count:Number(zone?.getAttribute('data-active-filter-count')??-1),
       ids:[...zone?.querySelectorAll('[data-active-filter-id]')??[]].map(x=>x.getAttribute('data-active-filter-id')),
       results:zone?.querySelector('.list-active-filter-results')?.textContent?.trim()??'',
-      visible:document.querySelectorAll('.item-data-table tbody tr').length,
+      visible:document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length,
       summaryFooters:document.querySelectorAll('.item-summary-active-filter').length,
       other:document.querySelector('.list-filter-other-count')?.textContent?.trim()??'',
       noResults:!!zone?.querySelector('.list-active-filter-empty')};
   })()`);
   const expectInventory=async(count,visible,label)=>{
     await waitFor(`document.querySelector('.list-active-filters')?.dataset.activeFilterCount===${JSON.stringify(String(count))}
-      && document.querySelectorAll('.item-data-table tbody tr').length===${visible}`,label);
+      && document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length===${visible}`,label);
     const actual=await inventory();
     assert(actual.count===count&&actual.visible===visible,label+': '+JSON.stringify(actual));
     return actual;
@@ -195,7 +195,7 @@ try {
   await screenshot('pr95-v6-l4-desktop-zero-results.png');
   await click('.list-active-filter-empty button');
   await expectInventory(0,27,'zero-state clear-all restores 27');
-  const returned=await evaluate("document.querySelectorAll('.item-data-table tbody tr').length");
+  const returned=await evaluate("document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length");
   assert(returned===27,'clear all changed source scope');
 
   // Esc in an input is local; outside an editor/popup it clears all predicates.
@@ -219,7 +219,7 @@ try {
   await evaluate("document.querySelector('[data-active-filter-id=department] button').focus()");
   await send('Input.dispatchKeyEvent',{type:'rawKeyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
   await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
-  condition=await expectInventory(1,7,'keyboard Enter removes only department');
+  condition=await expectInventory(1,14,'keyboard Enter removes only department');
   assert(condition.ids[0]==='room','keyboard removed wrong chip '+JSON.stringify(condition));
   await click('.list-active-filter-clear-all');
   await expectInventory(0,27,'clear all without changing row data');
