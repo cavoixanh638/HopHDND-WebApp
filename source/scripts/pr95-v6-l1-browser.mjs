@@ -258,6 +258,20 @@ try {
   const noPatch=await evaluate('window.__v6L1.snapshot().patches.length');
   assert(noPatch===0,'Esc should not patch source');
 
+  // Custom highlight above intentionally overrides QPPL. Inspect the real
+  // base palette separately without that override, not just three variants.
+  await visit('view=list&role=admin',1440,900);
+  const kindPalette=[];
+  for(let i=1;i<=3;i++)kindPalette.push(await detail(typeRow(i)));
+  assert(JSON.stringify(kindPalette.map(x=>x.fill))===JSON.stringify([
+    'rgb(245, 243, 255)','rgb(239, 246, 255)','rgb(241, 245, 249)'
+  ]),'document-kind palette changed or status colors leaked '+JSON.stringify(kindPalette));
+  assert(JSON.stringify(kindPalette.map(x=>x.color))===JSON.stringify([
+    'rgb(91, 33, 182)','rgb(29, 78, 216)','rgb(51, 65, 85)'
+  ]),'type inks must preserve contrast '+JSON.stringify(kindPalette));
+  console.log('PR95_V6_L1_TYPE_PALETTE_BASE_AND_CUSTOM_PASS '+JSON.stringify({base:kindPalette,custom:types[0]}));
+  await screenshotV6('pr95-v6-l1-list-palette-without-highlight.png');
+
   await visit('view=list&role=readonly',1280,850);
   const readonly=await detail(typeRow(1));
   assert(!readonly.editable,'readonly still editable');
