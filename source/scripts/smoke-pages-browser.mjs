@@ -1230,6 +1230,11 @@ try{
   console.log('UI6_R02_REAL_ADMIN_TWO_NAV_PASS',JSON.stringify({uid:v6AdminIdentity.uid,provider:'google.com',navCount:2}));
   // Keep the original strict geometry, hover, theme and fixed-size checks;
   // the only change is the correctly authenticated role in which they run.
+  // Clear the pointer left by the preceding guest-only CSS hover checks.
+  // It may now overlap a newly mounted admin tile and activate its :hover
+  // shadow; geometry must measure the unhovered canonical tile state.
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:3,y:880});
+  await sleep(280);
   const mainSectionCards=await evaluate(`(()=>{
     const nav=document.querySelector('nav.primary-section-switcher');
     const cards=[...(nav?.querySelectorAll('button.primary-section-card')??[])];
@@ -1272,7 +1277,9 @@ try{
       Math.abs(boxes[0].height-boxes[1].height)<1&&
       cards.filter(el=>el.classList.contains('active')).length===1&&
       !document.querySelector('.brand,.demo-banner,.page-heading,.unknown-note'),
-      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth};
+      labels,widths:boxes.map(box=>Math.round(box.width)),geometry,restrainedGradient,distinct,border,noIcons,activeBadge,cardDepth,
+      activeShadow:activeStyle?.boxShadow,idleShadow:idleStyle?.boxShadow,
+      hovered:cards.map(card=>card.matches(':hover'))};
   })()`);
   if(!mainSectionCards.ok)throw Error('Two main section cards were not rendered cleanly: '+JSON.stringify(mainSectionCards));
   const compactNavigation=await evaluate(`(()=>{
