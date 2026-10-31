@@ -17,6 +17,7 @@ const params=new URLSearchParams(window.location.search);
 const view=params.get('view')==='popup'?'popup':'list';
 const role=params.get('role')??'admin';
 const split=params.get('split')==='1';
+const narrow=params.get('narrow')==='1';
 const highlight=params.get('highlight')==='1';
 const original=createDemoItems(8).map((item,index)=>({
   ...item,
@@ -30,6 +31,9 @@ const layout=defaultItemLayout();
 layout.compactDisplay={...layout.compactDisplay!,contentDetails:!split,partyTogether:!split,
   councilTogether:true,teamTogether:true,shortLeaders:true,shortSpecialist:true};
 layout.tableWidth=2100;
+if(narrow)layout.columns=layout.columns.map(c=>
+  c.key==='partyLevel'?{...c,width:70}:
+  c.key==='content'?{...c,width:170}:c);
 if(highlight)layout.cellHighlights=[{id:'v6type',field:'type',word:'QPPL',
   textColor:'#FFFFFF',backgroundColor:'#663399'}];
 // The regular popup intentionally hides Excel Loại VB / Cấp trình by default.
