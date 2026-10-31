@@ -70,6 +70,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
              </span>}</span>
          </span>
          {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}
+           data-editable={editable(stage.key)?'true':undefined}
            {...memberAttributes(stage.key)}>{shown(stage.key)}</span>}
        </div>)}
    </div>;
