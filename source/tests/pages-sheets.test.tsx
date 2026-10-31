@@ -53,8 +53,13 @@ function open(label:string){
   // UI V6 L3: the verified guest starts directly on List and has no large
   // navigation tile. Asking to open the already mounted List is a no-op;
   // private navigation still needs an actual admin control.
-  if(label==='Danh sách các ND trình HĐND'&&nodes(current).some(n=>n.type===ItemList))
-    return current;
+  if(label==='Danh sách các ND trình HĐND'){
+    const tile=nodes(current).find(n=>n.type==='button'&&n.props?.['data-ui-reference-nav']==='items');
+    // Guest, loading and unverified views have NO nav tile (even if a
+    // layout-loading placeholder is shown instead of the List). This is not
+    // a role bypass: clicking an already active admin List is equally a no-op.
+    if(!tile||tile.props['aria-current']==='page')return current;
+  }
   button(current,label).props.onClick({currentTarget:{closest:()=>null}});
   return render();
 }
