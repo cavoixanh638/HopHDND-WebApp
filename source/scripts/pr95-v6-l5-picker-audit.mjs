@@ -3,6 +3,7 @@
  * A browser-start failure or missing assertion is a failure (never green).
  */
 import {readFileSync,writeFileSync,existsSync,statSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 
 const [listPath,racePath,scrollPath]=process.argv.slice(2);
 if(!listPath||!racePath||!scrollPath)
@@ -105,10 +106,15 @@ for(const path of images){
     readFileSync(path).subarray(0,8).toString('hex')!=='89504e470d0a1a0a')
     fail('missing/invalid actual Chrome screenshot '+path);
 }
+const checkedHead=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+if(process.env.PR95_V6_L5_EXPECTED_SHA&&
+   checkedHead!==process.env.PR95_V6_L5_EXPECTED_SHA)
+  fail('checked-out source is NOT the requested PR head '+
+    JSON.stringify({checkedHead,expected:process.env.PR95_V6_L5_EXPECTED_SHA}));
 const evidence={
   baselineSource:'actual ItemList + ReportDetailGrid from checked-out SHA',
   controlledAck:'real mounted React CellPicker with stub lease manager; NOT Firebase',
-  sha:process.env.GITHUB_SHA??'local-checkout',
+  sha:checkedHead,
   listFixture:'synthetic compact-qa',
   popup:true,mobile390:true,
   physicalPointerHandoffs:main.pointerHandoffs,
