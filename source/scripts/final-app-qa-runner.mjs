@@ -294,8 +294,18 @@ const menu=async(page,label)=>{
 const settings=async(page,label)=>{
   await click(page,'nav.settings-hub-tabs button',label);
 };
-const waitRow=async(page,text)=>page.locator('.item-data-table tbody').getByText(text,{exact:false})
-  .first().waitFor({timeout:28000});
+const waitRow=async(page,text)=>{
+  // The business List renders semantic short IDs (NQ01/NQ02), not the
+  // longer demo displayCode (NQ-MẪU-001). Assert the REAL App table and a
+  // field from the original server-seeded item, never a fixture-only page.
+  const rows=page.locator('.item-data-table tbody tr');
+  await rows.first().waitFor({state:'visible',timeout:28000});
+  await wait(async()=>{
+    const visible=await rows.count();
+    const body=await rows.first().innerText().catch(()=>'');
+    return visible>=2&&body.includes('MẪU:')?{visible,body:body.slice(0,180)}:false;
+  },'Actual semantic List rows for '+text,10000);
+};
 const noteRow=page=>page.locator('.item-data-table tbody tr').first()
   .locator('td[data-col-key="note"]');
 async function editNote(page,value){
