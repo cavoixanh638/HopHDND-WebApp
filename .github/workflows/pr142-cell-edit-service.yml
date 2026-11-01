@@ -32,6 +32,9 @@ jobs:
       - name: Install isolated Firebase Functions and Emulator dependencies
         working-directory: source/cell-edit-service
         run: npm install --no-audit --no-fund
+      - name: Install actual Chromium for two-tab browser test
+        working-directory: source/cell-edit-service
+        run: npx playwright install --with-deps chromium
       - name: Typecheck existing real application with new callable adapter
         working-directory: source
         run: npm run typecheck
@@ -76,5 +79,7 @@ jobs:
           path: |
             source/cell-edit-service/stdout.local.txt
             source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+            source/cell-edit-service/test/*.local.png
           if-no-files-found: warn
           retention-days: 14
