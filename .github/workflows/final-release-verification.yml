@@ -92,6 +92,20 @@ jobs:
           node ../../reviewer/source/release-review/audit-release-manifest.mjs \
             ../../release/source/docs/releases/PR147_RELEASE_MANIFEST.json \
             2>&1 | tee parent-commit-service/evidence/final-release-audit.stdout.log
+      - name: Independently download exact-SHA rehearsal artifact and verify all 5 tar.gz bytes
+        if: always()
+        working-directory: target/source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$FINAL_VERIFY_TARGET_SHA" = "82b6db5b4011aeea322183e9e9ca13aa73674603"
+          gh run download 41328054403 --repo "$GITHUB_REPOSITORY" \
+            --name pr147-release-rehearsal-82b6db5b4011aeea322183e9e9ca13aa73674603-1 \
+            --dir ../frv-artifact
+          node ../../reviewer/source/release-review/verify-package-ci.mjs ../frv-artifact \
+            2>&1 | tee parent-commit-service/evidence/frv-package-audit.stdout.log
       - name: Preserve reviewer-only generated test, server witnesses and audit
         if: always()
         uses: actions/upload-artifact@v4
