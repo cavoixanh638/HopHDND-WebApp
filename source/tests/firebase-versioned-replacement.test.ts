@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import * as XLSX from 'xlsx';
 import {BUSINESS_HEADERS,parseBusinessExcel} from '../src/data/business-excel';
 import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
-import {initializeAuth,connectAuthEmulator,inMemoryPersistence,getIdTokenResult,signOut} from 'firebase/auth';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence,signInAnonymously,getIdTokenResult,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator} from 'firebase/database';
 import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
@@ -42,8 +42,9 @@ const seed=()=>({hdnd:{items:{legacy:initialRows[0]},
   }}});
 describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>{
   let env:RulesTestEnvironment;
-  let adminApp:FirebaseApp;
-  let adminDb:ReturnType<typeof getDatabase>;
+  let adminApp:FirebaseApp,guestApp:FirebaseApp;
+  let adminDb:ReturnType<typeof getDatabase>,guestDb:ReturnType<typeof getDatabase>;
+  let guestUser:User;
   const admin=()=>adminDb;
   const guest=()=>env.authenticatedContext('anon',{firebase:{sign_in_provider:'anonymous'}}).database() as never;
   beforeAll(async()=>{
@@ -58,14 +59,22 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     connectDatabaseEmulator(adminDb,'127.0.0.1',9000);
     actor=await signInAsEmulatorGoogleAdmin(auth);
     expect(actor.emailVerified).toBe(true);
+    guestApp=initializeApp({apiKey:'demo-pr142-v2',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr142-v2-real-guest',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'pr142-v2-real-guest');
+    const guestAuth=initializeAuth(guestApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(guestAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+    guestDb=getDatabase(guestApp);
+    connectDatabaseEmulator(guestDb,'127.0.0.1',9000);
+    guestUser=(await signInAnonymously(guestAuth)).user;
   },30000);
   beforeEach(async()=>{await env.clearDatabase();await env.withSecurityRulesDisabled(async ctx=>{
     await set(ref(ctx.database() as never),seed());
   });});
   afterAll(async()=>{
     await env.cleanup();
-    goOffline(adminDb);
-    await deleteApp(adminApp);
+    goOffline(adminDb);goOffline(guestDb);
+    await Promise.all([deleteApp(adminApp),deleteApp(guestApp)]);
   });
 
   it('two independently initialized real Auth Emulator Google SDK sessions share verified admin UID and pass candidate Rules',async()=>{
@@ -144,13 +153,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   it('rejects replacement after an authorized lease-backed edit in the same generation',async()=>{
     const db=admin(),operation='pr95_valid_race_01';
     const approval=await stageDatasetReplacement(db,actor,replacement(),operation,'test.xlsx');
-    const editorDb=env.authenticatedContext('concurrent-editor',
-      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
-    const editor={uid:'concurrent-editor',isAnonymous:true,email:null,
-      emailVerified:false,providerData:[]} as unknown as User;
+    const editorDb=guestDb,editor=guestUser;
     const manager=new CellEditSessionManager(editorDb,()=>editor,'gen_seed_initial');
     const repository=new FirebaseRepository(editorDb,()=>editor,
-      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items',
+      seed().hdnd.datasetV2.active);
     repository.leaseManager=manager;
     // r1 deliberately has malformed stale-lease fixture; r2 has no lease.
     const original=(await repository.list()).find(row=>row.recordId==='r2')!;
@@ -216,13 +223,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2');
     const active='gen_'+operation;
     await assertSucceeds(set(ref(db,DATASET_V2_PATH+'/permissions/'+active+'/columns/note'),true));
-    const editorDb=env.authenticatedContext('editor-v2',
-      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
-    const editor={uid:'editor-v2',isAnonymous:true,email:null,emailVerified:false,
-      providerData:[]} as unknown as User;
+    const editorDb=guestDb,editor=guestUser;
     const manager=new CellEditSessionManager(editorDb,()=>editor,active);
     const repository=new FirebaseRepository(editorDb,()=>editor,
-      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/'+active+'/items');
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/'+active+'/items',
+      (await get(ref(db,DATASET_V2_PATH+'/active'))).val());
     repository.leaseManager=manager;
     const before=(await repository.list())[0];
     await manager.acquire(before.recordId,'note','multiline');
