@@ -138,7 +138,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(saved.ok,saved.message).toBe(true);
     const fresh=(await get(ref(db as never,'hdnd/items/r1'))).val();
     expect(fresh.note).toBe('Khách cập nhật ô được phép');
-    expect(fresh.updatedBy).toBe(id);
+    expect(fresh.updatedBy).toBe(real(id).user.uid);
     expect(fresh.history[String(fresh.revision%50)].changes.note).toBe('Khách cập nhật ô được phép');
     await session.finish('r1','note');await session.dispose();
   });
