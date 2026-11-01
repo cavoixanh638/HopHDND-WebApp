@@ -1,7 +1,7 @@
 /**
- * PR142 isolated proof of Firebase Admin databaseAuthVariableOverride.
- * NEVER connects to production. Uses Auth + RTDB Emulators only.
- * This is a minimal, synthetic RULES MECHANISM PoC, NOT the candidate app.
+ * PR142 / CHAT 1: isolated scoped Admin RTDB auth-override mechanism PoC.
+ * A demo project and local Auth+RTDB Emulators are REQUIRED. No production I/O.
+ * Reduced Rules fixture only; not the application's candidate Rules.
  */
 import assert from 'node:assert/strict';
 import {createHash, randomBytes, randomUUID, timingSafeEqual} from 'node:crypto';
@@ -11,306 +11,515 @@ import {getAuth as getAdminAuth} from 'firebase-admin/auth';
 import {getDatabase as getAdminDatabase} from 'firebase-admin/database';
 import {initializeApp, deleteApp} from 'firebase/app';
 import {getAuth, connectAuthEmulator, createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, getIdToken, getIdTokenResult} from 'firebase/auth';
-import {getDatabase, connectDatabaseEmulator, get, ref, update, set} from 'firebase/database';
+  signInWithEmailAndPassword, getIdToken, getIdTokenResult, signOut} from 'firebase/auth';
+import {getDatabase, connectDatabaseEmulator, get, ref, set, goOffline} from 'firebase/database';
 
 const PROJECT='demo-pr142-override';
 const NAMESPACE=`${PROJECT}-default-rtdb`;
 const SHA='98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847';
 const DB_URL=`https://${NAMESPACE}.firebaseio.com`;
-const API_URL='http://127.0.0.1:9000';
+const REST='http://127.0.0.1:9000';
 const AUTH_URL='http://127.0.0.1:9099';
-const JSON_PATH=new URL('./witness.local.json',import.meta.url);
-const results=[];
-let appSerial=0;
+const WITNESS=new URL('./witness.local.json', import.meta.url);
+const TTL_MS=30_000;
+const cases=[];
+const transactions=[];
+const checks=[];
+const scopedApps=new Set();
+let scopedCreated=0;
+let scopedDeleted=0;
+let A, B, C, verifyApp;
+let tokenA, tokenB, tokenC, ownerUid, otherUid;
 
 function guard() {
   if (process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000' ||
       process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')
-    throw new Error('STOP: both FIREBASE_*_EMULATOR_HOST must point to 127.0.0.1 local emulators');
-  if (!PROJECT.startsWith('demo-') || !DB_URL.includes('demo-'))
-    throw new Error('STOP: non-demo project');
+    throw new Error('EMULATOR_ONLY: expected localhost ports 9000/9099 for BOTH Auth and RTDB');
+  if (PROJECT!=='demo-pr142-override' || !DB_URL.includes('demo-'))
+    throw new Error('EMULATOR_ONLY: a demo- project is required');
 }
 guard();
 
+function failed(kind,details) {
+  const error=new Error(`${kind}: ${details}`);
+  error.code=kind;
+  return error;
+}
+function errorText(e) {
+  return String(e?.code??e?.message??e);
+}
+function isPermissionDenied(e) {
+  return /permission[\s_-]*denied/i.test(`${e?.code??''} ${e?.message??''}`);
+}
 function hashProof(uid,backend,secret) {
   return createHash('sha256').update('PR142 cell proof v1\0').update(uid)
     .update('\0').update(backend).update('\0').update(secret).digest('hex');
 }
-function proofEqual(actual, expected) {
-  if (!/^[a-f0-9]{64}$/.test(String(actual))) return false;
-  return timingSafeEqual(Buffer.from(actual,'hex'),Buffer.from(expected,'hex'));
+function proofEqual(actual,expected) {
+  return typeof actual==='string' && /^[a-f0-9]{64}$/.test(actual) &&
+    timingSafeEqual(Buffer.from(actual,'hex'),Buffer.from(expected,'hex'));
 }
-function rowPath(backend) {
-  return backend==='legacy'?'hdnd/items/r1':'hdnd/datasetV2/generations/gen_test_a/items/r1';
+function paths(backend,id='r1') {
+  assert.ok(['legacy','v2'].includes(backend));
+  assert.ok(['r1','r2'].includes(id));
+  const root=backend==='legacy'?'hdnd':`hdnd/datasetV2`;
+  return backend==='legacy'
+    ? {row:`${root}/items/${id}`,lease:`${root}/editLocks/${id}/note`}
+    : {row:`${root}/generations/gen_test_a/items/${id}`,lease:`${root}/leases/gen_test_a/${id}/note`};
 }
-function leasePath(backend) {
-  return backend==='legacy'?'hdnd/editLocks/r1/note':'hdnd/datasetV2/leases/gen_test_a/r1/note';
-}
-async function ownerRequest(method,path,body) {
-  const r=await fetch(`${API_URL}/${path}.json?ns=${NAMESPACE}`,{
+const sha256=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+// Emulator owner token is used ONLY for fixture setup/readback and timed admin
+// policy changes. It is never supplied to the cell gateway or raw user controls.
+async function owner(method,path,body) {
+  const response=await fetch(`${REST}/${path}.json?ns=${NAMESPACE}`,{
     method,headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
     ...(body===undefined?{}:{body:JSON.stringify(body)})});
-  if (!r.ok) throw new Error(`LOCAL_OWNER_${method}_${path}_${r.status}: ${(await r.text()).slice(0,100)}`);
-  return r.json();
+  if (!response.ok) throw failed('LOCAL_FIXTURE_ERROR',`${method} ${path} HTTP ${response.status}`);
+  return response.json();
 }
-const ownerGet=path=>ownerRequest('GET',path);
-const ownerPut=(path,value)=>ownerRequest('PUT',path,value);
-async function witness(backend) {
-  return {row:await ownerGet(rowPath(backend)),lease:await ownerGet(leasePath(backend))};
+const ownerGet=path=>owner('GET',path);
+const ownerPut=(path,data)=>owner('PUT',path,data);
+async function witness(backend,id='r1') {
+  const p=paths(backend,id);
+  const [row,lease]=await Promise.all([ownerGet(p.row),ownerGet(p.lease)]);
+  return {row,lease};
 }
-function expectSame(a,b,label) {assert.deepEqual(b,a,`${label}: server row/lease changed unexpectedly`);}
-function expectCode(fn,expected) {
-  return fn().then(()=>{throw new Error(`Expected ${expected}, operation completed`);},e=>{
-    if (e.message===`Expected ${expected}, operation completed`) throw e;
-    assert.match(String(e?.code??e?.message),expected);
-  });
+function fingerprints(snapshot) {
+  return {row:sha256(snapshot.row),lease:sha256(snapshot.lease)};
+}
+function compareWitness(before,after,label,shouldChange=false) {
+  const x=fingerprints(before),y=fingerprints(after);
+  const unchanged=x.row===y.row&&x.lease===y.lease;
+  checks.push({label,kind:shouldChange?'positive':'negative',before:x,after:y,
+    unchanged,assertion:shouldChange?'must-mutate':'must-not-mutate'});
+  if (shouldChange) assert.ok(!unchanged,`${label}: expected server mutation`);
+  else assert.deepEqual(y,x,`${label}: server row/lease unexpectedly changed`);
 }
 
-const clientConfig={apiKey:'demo-pr142-api-key',authDomain:`${PROJECT}.firebaseapp.com`,
-  projectId:PROJECT,databaseURL:DB_URL};
-function client(label) {
-  const app=initializeApp(clientConfig,`client-${label}`);
-  const auth=getAuth(app);connectAuthEmulator(auth,AUTH_URL,{disableWarnings:true});
-  const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+function client(name) {
+  const config={apiKey:'demo-pr142-api-key',authDomain:`${PROJECT}.firebaseapp.com`,
+    projectId:PROJECT,databaseURL:DB_URL};
+  const app=initializeApp(config,`client-${name}`);
+  const auth=getAuth(app);
+  connectAuthEmulator(auth,AUTH_URL,{disableWarnings:true});
+  const db=getDatabase(app);
+  connectDatabaseEmulator(db,'127.0.0.1',9000);
   return {app,auth,db};
 }
-
-// Firebase Auth Emulator issues REAL Emulator ID tokens: no rules-unit-testing
-// authenticatedContext which can artificially inject arbitrary custom claims.
-const authAdminApp=adminInitialize({projectId:PROJECT},'poc-auth-verify');
-const adminAuth=getAdminAuth(authAdminApp);
 async function verified(idToken) {
-  const decoded=await adminAuth.verifyIdToken(idToken);
-  assert.ok(decoded.uid);
-  assert.notEqual(decoded.cellService,true,'The caller ID token must NOT carry service claim');
-  return decoded;
+  const result=await getAdminAuth(verifyApp).verifyIdToken(idToken);
+  assert.ok(result.uid,'ID token has no verified UID');
+  assert.notEqual(result.cellService,true,'Client token must never carry cellService');
+  return result;
 }
-async function scoped(idToken,serviceClaim,fn) {
+async function scoped(idToken,serviceClaim,callback) {
   const identity=await verified(idToken);
-  const name=`scoped-${++appSerial}-${randomUUID()}`;
-  // Only the trusted server constructs this override; never from client input.
+  const name=`scoped-${++scopedCreated}-${randomUUID()}`;
+  assert.ok(!scopedApps.has(name),'App name reused');
+  scopedApps.add(name);
+  // Per-request immutable override: ONLY the verified UID and server-set claim.
+  // Never copy a UID or serviceClaim from request payload or a shared cached app.
   const app=adminInitialize({projectId:PROJECT,databaseURL:DB_URL,
     databaseAuthVariableOverride:{uid:identity.uid,token:{
       email:identity.email??null,
       email_verified:identity.email_verified===true,
-      firebase:{sign_in_provider:identity.firebase?.sign_in_provider??'anonymous'},
+      firebase:{sign_in_provider:identity.firebase?.sign_in_provider??'password'},
       cellService:serviceClaim
     }}},name);
-  try {return await fn(getAdminDatabase(app),identity,name);}
-  finally {await adminDelete(app);}
+  const db=getAdminDatabase(app);
+  try {return await callback(db,identity);}
+  finally {
+    try {db.goOffline();} catch {}
+    await adminDelete(app);
+    scopedApps.delete(name);
+    scopedDeleted++;
+  }
 }
 
-// In a real callable, idToken comes from the verified Firebase callable context.
-// This PoC passes a token explicitly to prove the UID cannot be selected by payload.
+// A persistent listener warms the EXACT RTDB node and stays attached until the
+// transaction resolves. A one-time get()/once() may leave the transaction cache
+// cold and cause a LOCAL abort (callback gets null despite server record).
+async function holdWarmNode(location) {
+  let resolveReady,rejectReady;
+  const ready=new Promise((resolve,reject)=>{resolveReady=resolve;rejectReady=reject;});
+  let settled=false;
+  const listener=snapshot=>{
+    if (!settled) {settled=true;resolveReady(snapshot.val());}
+  };
+  const onError=error=>{
+    if (!settled) {settled=true;rejectReady(error);}
+  };
+  location.on('value',listener,onError);
+  let timer;
+  try {
+    const initial=await Promise.race([ready,new Promise((_,reject)=>{
+      timer=setTimeout(()=>reject(failed('WARM_TIMEOUT','RTDB listener did not receive server state')),10_000);
+    })]);
+    return {initial,release:()=>location.off('value',listener)};
+  } catch(error) {
+    location.off('value',listener);
+    throw error;
+  } finally {clearTimeout(timer);}
+}
+
+async function transactionWithEvidence(location,backend,action,callback) {
+  const warm=await holdWarmNode(location);
+  const event={backend,action,warmed:!Object.is(warm.initial,undefined),
+    warmedNull:warm.initial===null,callbackCalls:0,coldNullCallbacks:0,
+    candidateProduced:0,outcome:'UNKNOWN'};
+  transactions.push(event);
+  try {
+    let result;
+    try {
+      result=await location.transaction(current=>{
+        event.callbackCalls++;
+        if (current===null) event.coldNullCallbacks++;
+        const next=callback(current);
+        if (next!==undefined) event.candidateProduced++;
+        return next;
+      },undefined,false);
+    } catch(error) {
+      if (isPermissionDenied(error)) {
+        event.outcome=event.candidateProduced>0?'RULES_DENIED':'DENIED_WITHOUT_CANDIDATE';
+        if (event.candidateProduced<1)
+          throw failed('NO_RULES_EVIDENCE',`${backend}/${action}: denied before any candidate was produced`);
+        throw failed('RULES_DENIED',`${backend}/${action}: server rejected candidate after ${event.callbackCalls} callback(s)`);
+      }
+      event.outcome='SDK_ERROR';
+      throw error;
+    }
+    if (!result.committed) {
+      event.outcome='LOCAL_ABORT';
+      throw failed('LOCAL_ABORT',`${backend}/${action}: callback ${event.callbackCalls}x, `+
+        `candidate ${event.candidateProduced}x, coldNull ${event.coldNullCallbacks}x`);
+    }
+    event.outcome='COMMITTED';
+    return result.snapshot.val();
+  } finally {warm.release();}
+}
+
+// Gateway mechanism: the verified real Auth Emulator ID token selects UID, and
+// original 32-byte secret (not its RTDB-readable hash) is checked BEFORE writes.
+// This is an in-process PoC for a future callable, not a network API deployment.
 async function gateway(idToken,action,backend,secret,options={}) {
-  if (!Buffer.isBuffer(secret)) secret=Buffer.from(String(secret));
-  if (secret.length!==32) throw Object.assign(new Error('PROOF_INVALID'),{code:'PROOF_INVALID'});
-  return scoped(idToken,true,async (db,actor)=>{
-    const loc=db.ref(leasePath(backend));
-    const digest=hashProof(actor.uid,backend,secret);
+  if (!Buffer.isBuffer(secret) || secret.length!==32)
+    throw failed('PROOF_INVALID','expected the original 32-byte private secret');
+  const id=options.recordId??'r1';
+  const p=paths(backend,id);
+  return scoped(idToken,true,async(db,identity)=>{
+    const leaseRef=db.ref(p.lease);
+    const proofHash=hashProof(identity.uid,backend,secret);
     const now=Date.now();
     if (action==='acquire') {
       const leaseId=randomUUID();
-      const outcome=await loc.transaction(current=>{
-        if (current && current.expiresAt>now) return;
-        return {uid:actor.uid,leaseId,proofHash:digest,revision:(current?.revision??0)+1,
-          kind:'short',acquiredAt:now,expiresAt:now+30000};
-      },undefined,false);
-      if (!outcome.committed) throw Object.assign(new Error('LOCK_HELD'),{code:'LOCK_HELD'});
-      return {leaseId:outcome.snapshot.val().leaseId,revision:outcome.snapshot.val().revision};
+      const result=await transactionWithEvidence(leaseRef,backend,`${id}/acquire`,raw=>{
+        if (raw?.expiresAt>now) return undefined;
+        return {uid:identity.uid,leaseId,proofHash,revision:(raw?.revision??0)+1,
+          kind:'short',acquiredAt:now,expiresAt:now+TTL_MS};
+      });
+      return {leaseId:result.leaseId,revision:result.revision};
     }
-    // Read current public lease. This read is NOT an authorization decision.
-    const current=(await loc.once('value')).val();
-    if (!current || current.uid!==actor.uid || !proofEqual(current.proofHash,digest) ||
-        current.expiresAt<=now)
-      throw Object.assign(new Error('PROOF_INVALID'),{code:'PROOF_INVALID'});
-    // Test-only hook simulates grant/freeze/pointer changing AFTER pre-read,
-    // immediately before the Rules-enforced transaction.
+    // Proof lookup uses RTDB-readable public state; no authorization is based
+    // on that hash alone: the server must derive it from A's private bytes.
+    const stored=(await leaseRef.once('value')).val();
+    if (!stored || stored.uid!==identity.uid || !proofEqual(stored.proofHash,proofHash) ||
+        stored.expiresAt<=now)
+      throw failed('PROOF_INVALID',`${backend}/${action}: public hash is NOT a bearer credential`);
     if (options.afterProof) await options.afterProof();
     if (action==='save') {
-      const target=db.ref(rowPath(backend));
       const opId=options.operationId??randomUUID();
-      const nextNote=options.note??'Owner-committed note';
-      const baseline=options.baseNote??'original';
+      const note=options.note??'owner-note';
+      const original=options.baseNote??'original';
       const at=Date.now();
-      const out=await target.transaction(raw=>{
-        if (!raw || raw.note!==baseline || raw.operationId===opId) return;
-        const nextRev=raw.revision+1;
-        return {...raw,note:nextNote,revision:nextRev,operationId:opId,updatedAt:at,
-          updatedBy:actor.uid,editProofs:{...(raw.editProofs??{}),note:digest},
-          history:{...(raw.history??{}),[String(nextRev%50)]:{
-            operationId:opId,recordId:'r1',at,actor:actor.uid,
-            changes:{note:nextNote},oldValues:{note:raw.note}}}};
-      },undefined,false);
-      if (!out.committed) throw Object.assign(new Error('CONFLICT'),{code:'CONFLICT'});
-      return {revision:out.snapshot.val().revision,operationId:opId};
+      const row=await transactionWithEvidence(db.ref(p.row),backend,`${id}/save`,raw=>{
+        if (!raw || raw.note!==original || raw.operationId===opId) return undefined;
+        const revision=raw.revision+1;
+        return {...raw,note,revision,operationId:opId,updatedAt:at,
+          updatedBy:identity.uid,editProofs:{...raw.editProofs,note:proofHash},
+          history:{...raw.history,[String(revision%50)]:{
+            operationId:opId,recordId:id,at,actor:identity.uid,
+            changes:{note},oldValues:{note:raw.note}}}};
+      });
+      return {rowRevision:row.revision,operationId:opId};
     }
-    if (action==='renew'||action==='release') {
-      const out=await loc.transaction(raw=>{
-        if (!raw || raw.uid!==actor.uid || raw.leaseId!==current.leaseId ||
-            !proofEqual(raw.proofHash,digest) || raw.expiresAt<=now) return;
+    if (action==='renew' || action==='release') {
+      const lease=await transactionWithEvidence(leaseRef,backend,`${id}/${action}`,raw=>{
+        if (!raw || raw.uid!==identity.uid || raw.leaseId!==stored.leaseId ||
+            !proofEqual(raw.proofHash,proofHash) || raw.expiresAt<=now) return undefined;
         return {...raw,revision:raw.revision+1,
-          expiresAt:action==='release'?0:now+30000};
-      },undefined,false);
-      if (!out.committed) throw Object.assign(new Error('LEASE_CONFLICT'),{code:'LEASE_CONFLICT'});
-      return {revision:out.snapshot.val().revision};
+          expiresAt:action==='release'?0:now+TTL_MS};
+      });
+      return {leaseRevision:lease.revision};
     }
-    throw new Error('Unknown action');
+    throw failed('UNKNOWN_ACTION',action);
   });
 }
 
-const A=client('A'),B=client('B-same-uid'),C=client('C-other-uid');
-let tokenA,tokenB,tokenC,ownerUid,otherUid;
-const cases=[];
-async function test(name,fn) {
-  try {await fn();cases.push({name,status:'PASS'});console.log('PASS '+name);}
-  catch (e) {cases.push({name,status:'FAIL',message:String(e?.message??e).slice(0,200)});
-    console.error('FAIL '+name+': '+String(e?.message??e));}
-}
 async function seed(backend) {
-  const row={recordId:'r1',note:'original',revision:1,operationId:'seed',updatedBy:'seed',
-    editProofs:{note:'0'.repeat(64)}};
-  const hdnd={editors:{[ownerUid]:true,[otherUid]:false},
+  const row=id=>({recordId:id,note:'original',revision:1,operationId:'seed',
+    updatedBy:'seed',editProofs:{note:'0'.repeat(64)}});
+  const items={r1:row('r1'),r2:row('r2')};
+  await ownerPut('hdnd',{editors:{[ownerUid]:true,[otherUid]:false},
     permissions:{columns:{note:true}},control:{editingLocked:false},
     freezeControl:{mode:'OPEN',changedAt:0,deadline:0},
-    ...(backend==='legacy'?{items:{r1:row}}:{datasetV2:{
-      active:{generationId:'gen_test_a',operationId:'seed',revision:1,rowCount:1,digest:'a'.repeat(64)},
+    ...(backend==='legacy'?{items}:{datasetV2:{
+      active:{generationId:'gen_test_a',operationId:'seed',revision:1,rowCount:2,
+        digest:'a'.repeat(64)},
       permissions:{gen_test_a:{columns:{note:true}}},
-      generations:{gen_test_a:{items:{r1:row}}}}})};
-  await ownerPut('hdnd',hdnd);
+      generations:{gen_test_a:{items}}}})});
 }
-async function acquired(backend) {
+async function acquired(backend,options={}) {
   const secret=randomBytes(32);
-  await gateway(tokenA,'acquire',backend,secret);
+  await gateway(tokenA,'acquire',backend,secret,options);
   return secret;
 }
-async function assertDeniedNoMutation(backend,attempt,match) {
+async function requireDenied(action,expected) {
+  let thrown;
+  try {await action();}catch(e){thrown=e;}
+  if (!thrown) throw failed('UNEXPECTED_COMMIT',`Expected ${expected}, action returned success`);
+  if (thrown.code!==expected)
+    throw failed('WRONG_DENIAL',`Expected ${expected}, got ${errorText(thrown)}`);
+  return thrown;
+}
+async function noMutation(backend,label,action,expected,{recordId='r1'}={}) {
+  const before=await witness(backend,recordId);
+  await requireDenied(action,expected);
+  compareWitness(before,await witness(backend,recordId),label);
+}
+async function rawRulesDenied(action,label) {
+  try {await action();throw failed('UNEXPECTED_COMMIT',`${label} succeeded`);}
+  catch(e) {
+    if (e.code==='UNEXPECTED_COMMIT') throw e;
+    if (!isPermissionDenied(e)) throw failed('WRONG_DENIAL',`${label}: ${errorText(e)}`);
+  }
+}
+async function test(name,fn) {
+  const before=transactions.length;
+  const checksBefore=checks.length;
+  try {
+    await fn();
+    cases.push({name,status:'PASS',transactions:transactions.slice(before).map(t=>({...t})),
+      checkedServerStates:checks.length-checksBefore});
+    console.log('PASS '+name);
+  } catch(error) {
+    cases.push({name,status:'FAIL',error:errorText(error),
+      transactions:transactions.slice(before).map(t=>({...t})),
+      checkedServerStates:checks.length-checksBefore});
+    console.error('FAIL '+name+' :: '+errorText(error));
+  }
+}
+async function restWithIdToken(method,path,token,body,extra={}) {
+  // Important: Firebase ID tokens go into ?auth=, NOT Authorization: Bearer
+  // (the latter is the Google OAuth2 access-token transport).
+  const query=new URLSearchParams({ns:NAMESPACE,auth:token});
+  return fetch(`${REST}/${path}.json?${query}`,{
+    method,headers:{'Content-Type':'application/json',...extra},
+    ...(body===undefined?{}:{body:JSON.stringify(body)})});
+}
+async function rawRestTest(backend) {
+  await seed(backend);
+  const s=await acquired(backend);
+  const p=paths(backend);
   const before=await witness(backend);
-  await expectCode(attempt,match);
-  const after=await witness(backend);
-  expectSame(before,after,backend);
+  await rawRulesDenied(()=>set(ref(B.db,p.lease),{...before.lease,
+    revision:before.lease.revision+1,expiresAt:0}),'SDK raw lease');
+  await rawRulesDenied(()=>set(ref(B.db,p.row),{...before.row,
+    note:'raw SDK forged',revision:before.row.revision+1,
+    editProofs:{note:before.lease.proofHash}}),'SDK raw row');
+  // Positive identity control: authenticated REST read works, unauthenticated
+  // read cannot. This proves the ID token transport is not being ignored.
+  const anonymous=await fetch(`${REST}/${p.row}.json?ns=${NAMESPACE}`);
+  assert.ok([401,403].includes(anonymous.status),
+    `Unauthenticated REST read unexpectedly HTTP ${anonymous.status}`);
+  const authenticated=await restWithIdToken('GET',p.row,tokenB);
+  assert.equal(authenticated.status,200,'Firebase ID token ?auth= failed positive REST GET');
+  assert.deepEqual(await authenticated.json(),before.row);
+  const claimHeader={'X-CellService':'true'};
+  for (const [path,payload] of [
+    [p.row,{note:'raw REST forged'}],
+    [p.lease,{expiresAt:0,revision:before.lease.revision+1}]
+  ]) {
+    const response=await restWithIdToken('PATCH',path,tokenB,payload,claimHeader);
+    const responseText=await response.text();
+    assert.ok([401,403].includes(response.status),
+      `Forged REST ${path} unexpectedly HTTP ${response.status}: ${responseText.slice(0,140)}`);
+  }
+  compareWitness(before,await witness(backend),'raw SDK + authenticated REST must not mutate');
+  assert.equal((await get(ref(B.db,p.lease))).val().proofHash,hashProof(ownerUid,backend,s));
 }
-async function rawSdkDenied(path,value) {
-  await expectCode(()=>set(ref(B.db,path),value),/PERMISSION_DENIED|permission_denied/);
-}
-
-try {
+async function main() {
+  A=client('A'); B=client('B'); C=client('C');
+  verifyApp=adminInitialize({projectId:PROJECT},'auth-verify');
   const a=await createUserWithEmailAndPassword(A.auth,'owner@demo.invalid','Test12345!');
   ownerUid=a.user.uid;
   const b=await signInWithEmailAndPassword(B.auth,'owner@demo.invalid','Test12345!');
-  assert.equal(ownerUid,b.user.uid);
+  assert.equal(b.user.uid,ownerUid,'A and B MUST be distinct clients with the same UID');
   const c=await createUserWithEmailAndPassword(C.auth,'other@demo.invalid','Test12345!');
   otherUid=c.user.uid;
-  tokenA=await getIdToken(a.user);tokenB=await getIdToken(b.user);tokenC=await getIdToken(c.user);
-  console.log('AUTH_EMULATOR: A/B share UID, C has distinct UID (redacted)');
+  assert.notEqual(otherUid,ownerUid,'C must have another UID');
+  [tokenA,tokenB,tokenC]=await Promise.all([getIdToken(a.user),getIdToken(b.user),getIdToken(c.user)]);
   assert.equal((await verified(tokenA)).uid,(await verified(tokenB)).uid);
-  assert.notEqual((await verified(tokenC)).uid,(await verified(tokenA)).uid);
-  assert.notEqual((await getIdTokenResult(a.user)).claims.cellService,true);
-  assert.notEqual((await getIdTokenResult(b.user)).claims.cellService,true);
+  assert.notEqual((await verified(tokenA)).uid,(await verified(tokenC)).uid);
+  for (const user of [a.user,b.user,c.user])
+    assert.notEqual((await getIdTokenResult(user)).claims.cellService,true);
+  console.log('AUTH CONTROL: A/B real Emulator tokens have same UID; C different; all lack cellService');
 
   for (const backend of ['legacy','v2']) {
-    await test(`${backend}: owner acquire -> renew -> SAVE -> RELEASE`,async()=>{
-      await seed(backend);const s=await acquired(backend);
+    await test(`${backend} OWNER acquire/renew/save/release`,async()=>{
+      await seed(backend);
+      const first=await witness(backend);
+      const s=await acquired(backend);
       await gateway(tokenA,'renew',backend,s);
-      const done=await gateway(tokenA,'save',backend,s,{note:'Owner-committed note'});
-      assert.equal(done.revision,2);
+      const result=await gateway(tokenA,'save',backend,s,{note:'owner-note'});
+      assert.equal(result.rowRevision,2);
       const afterSave=await witness(backend);
       assert.equal(afterSave.row.updatedBy,ownerUid);
-      assert.equal(afterSave.row.history['2'].changes.note,'Owner-committed note');
+      assert.equal(afterSave.row.history['2'].actor,ownerUid);
+      assert.equal(afterSave.row.history['2'].oldValues.note,'original');
+      assert.equal(afterSave.row.history['2'].changes.note,'owner-note');
       assert.equal(afterSave.row.editProofs.note,afterSave.lease.proofHash);
       assert.notEqual(afterSave.lease.proofHash,s.toString('hex'));
+      compareWitness(first,afterSave,'owner row commit',true);
       await gateway(tokenA,'release',backend,s);
       assert.equal((await witness(backend)).lease.expiresAt,0);
     });
-    await test(`${backend}: B same UID reads only public hash; replay SAVE/RENEW/RELEASE denied`,async()=>{
-      await seed(backend);await acquired(backend);
-      const visible=(await get(ref(B.db,leasePath(backend)))).val();
-      assert.equal(typeof visible.proofHash,'string');
-      assert.ok(!('secret' in visible) && !('token' in visible));
-      const copied=Buffer.from(visible.proofHash,'hex');
-      for (const action of ['save','renew','release']) {
-        await assertDeniedNoMutation(backend,()=>gateway(tokenB,action,backend,copied),/PROOF_INVALID/);
+
+    await test(`${backend} SAME_UID B copied public lease/row hash cannot SAVE/RENEW/RELEASE`,async()=>{
+      await seed(backend);
+      const s=await acquired(backend);
+      await gateway(tokenA,'save',backend,s,{note:'owner-prior-save'});
+      const publicLease=(await get(ref(B.db,paths(backend).lease))).val();
+      const publicRow=(await get(ref(B.db,paths(backend).row))).val();
+      assert.equal(publicLease.proofHash,publicRow.editProofs.note);
+      assert.ok(!('token' in publicLease) && !('secret' in publicLease));
+      for(const hash of [publicLease.proofHash,publicRow.editProofs.note]) {
+        const copied=Buffer.from(hash,'hex');
+        for(const action of ['save','renew','release'])
+          await noMutation(backend,`same UID public-${action}`,()=>gateway(tokenB,action,backend,copied),
+            'PROOF_INVALID');
       }
     });
-    await test(`${backend}: raw B has genuine Auth token but cannot forge cellService`,async()=>{
-      await seed(backend);const s=await acquired(backend);
-      const before=await witness(backend);
-      await rawSdkDenied(leasePath(backend),{...before.lease,revision:before.lease.revision+1,expiresAt:0});
-      await rawSdkDenied(rowPath(backend),{...before.row,note:'forged',revision:2,
-        editProofs:{note:before.lease.proofHash}});
-      const jwt=await getIdToken(B.auth.currentUser);
-      const resp=await fetch(`${API_URL}/${rowPath(backend)}.json?ns=${NAMESPACE}`,{
-        method:'PATCH',headers:{Authorization:`Bearer ${jwt}`,
-          'Content-Type':'application/json','X-CellService':'true'},
-        body:JSON.stringify({note:'forged by header'})});
-      assert.ok([401,403].includes(resp.status),`Forged REST request unexpectedly HTTP ${resp.status}`);
-      expectSame(before,await witness(backend),'raw client');
+
+    await test(`${backend} RAW SDK and REST cannot forge service claim`,()=>rawRestTest(backend));
+
+    await test(`${backend} WRONG_UID proof rejected; scoped claim=false denied by Rules`,async()=>{
+      await seed(backend);
+      const s=await acquired(backend);
+      await noMutation(backend,'different UID with A private secret',
+        ()=>gateway(tokenC,'save',backend,s),'PROOF_INVALID');
+      await noMutation(backend,'limited Admin claim=false',
+        ()=>scoped(tokenA,false,async(db)=>{
+          const p=paths(backend);
+          const lease=(await db.ref(p.lease).once('value')).val();
+          try {
+            await db.ref(p.lease).update({expiresAt:0,revision:lease.revision+1});
+          } catch(error) {
+            if (isPermissionDenied(error))
+              throw failed('RULES_DENIED_DIRECT','unprivileged Admin override denied by Rules');
+            throw error;
+          }
+        }),'RULES_DENIED_DIRECT');
     });
-    await test(`${backend}: scoped wrong UID denied; never mixes callers`,async()=>{
+
+    await test(`${backend} REVOKE after valid proof, candidate reaches Rules and denied`,async()=>{
       await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenC,'save',backend,s),/PROOF_INVALID/);
-      // No backend service claim => even a *scoped* Admin app cannot write.
-      await assertDeniedNoMutation(backend,()=>scoped(tokenA,false,async(db)=>{
-        const current=(await db.ref(leasePath(backend)).once('value')).val();
-        await db.ref(leasePath(backend)).update({expiresAt:0,revision:current.revision+1});
-      }),/PERMISSION_DENIED|permission_denied/);
+      await noMutation(backend,'revocation commit gate',
+        ()=>gateway(tokenA,'save',backend,s,{
+          afterProof:()=>ownerPut(`hdnd/editors/${ownerUid}`,false)}),'RULES_DENIED');
     });
-    await test(`${backend}: editor grant revoked AFTER proof read, before SAVE commit`,async()=>{
+
+    await test(`${backend} FROZEN after valid proof denies SAVE at Rules commit`,async()=>{
       await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenA,'save',backend,s,{
-        afterProof:()=>ownerPut(`hdnd/editors/${ownerUid}`,false)}),
-      /PERMISSION_DENIED|permission_denied/);
+      await noMutation(backend,'freeze save gate',
+        ()=>gateway(tokenA,'save',backend,s,{
+          afterProof:()=>ownerPut('hdnd/freezeControl',{
+            mode:'FROZEN',changedAt:Date.now(),deadline:0})}),'RULES_DENIED');
     });
-    await test(`${backend}: FROZEN AFTER proof read blocks SAVE commit`,async()=>{
+
+    await test(`${backend} FROZEN after valid proof denies RENEW at Rules commit`,async()=>{
       await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenA,'save',backend,s,{
-        afterProof:()=>ownerPut('hdnd/freezeControl',{mode:'FROZEN',changedAt:Date.now(),deadline:0})}),
-      /PERMISSION_DENIED|permission_denied/);
+      await noMutation(backend,'freeze renew gate',
+        ()=>gateway(tokenA,'renew',backend,s,{
+          afterProof:()=>ownerPut('hdnd/freezeControl',{
+            mode:'FROZEN',changedAt:Date.now(),deadline:0})}),'RULES_DENIED');
     });
-    await test(`${backend}: FROZEN AFTER proof read blocks RENEW commit`,async()=>{
+
+    await test(`${backend} GENERATION switch after proof denies SAVE at Rules commit`,async()=>{
       await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenA,'renew',backend,s,{
-        afterProof:()=>ownerPut('hdnd/freezeControl',{mode:'FROZEN',changedAt:Date.now(),deadline:0})}),
-      /PERMISSION_DENIED|permission_denied/);
-    });
-    await test(`${backend}: generation pointer switched AFTER proof read blocks SAVE`,async()=>{
-      await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenA,'save',backend,s,{
+      await noMutation(backend,'generation gate',()=>gateway(tokenA,'save',backend,s,{
         afterProof:()=>ownerPut('hdnd/datasetV2/active',{
-          generationId:'gen_test_b',revision:2,operationId:'swap',rowCount:1,digest:'b'.repeat(64)})}),
-      /PERMISSION_DENIED|permission_denied/);
+          generationId:'gen_test_b',revision:2,operationId:'swap',rowCount:2,
+          digest:'b'.repeat(64)})}),'RULES_DENIED');
     });
-    await test(`${backend}: FROZEN AFTER proof read blocks RELEASE commit`,async()=>{
+
+    await test(`${backend} FROZEN after valid proof denies RELEASE at Rules commit`,async()=>{
       await seed(backend);const s=await acquired(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenA,'release',backend,s,{
-        afterProof:()=>ownerPut('hdnd/freezeControl',{mode:'FROZEN',changedAt:Date.now(),deadline:0})}),
-      /PERMISSION_DENIED|permission_denied/);
+      await noMutation(backend,'freeze release gate',
+        ()=>gateway(tokenA,'release',backend,s,{
+          afterProof:()=>ownerPut('hdnd/freezeControl',{
+            mode:'FROZEN',changedAt:Date.now(),deadline:0})}),'RULES_DENIED');
     });
-    await test(`${backend}: concurrently scoped A/C never share Auth override`,async()=>{
+
+    await test(`${backend} CONCURRENT A r1 / C r2 never cross UID override`,async()=>{
       await seed(backend);
       const attempts=await Promise.allSettled([
-        gateway(tokenA,'acquire',backend,randomBytes(32)),
-        gateway(tokenC,'acquire',backend,randomBytes(32))
+        gateway(tokenA,'acquire',backend,randomBytes(32),{recordId:'r1'}),
+        gateway(tokenC,'acquire',backend,randomBytes(32),{recordId:'r2'})
       ]);
-      assert.equal(attempts[0].status,'fulfilled');
-      assert.equal(attempts[1].status,'rejected');
-      assert.match(String(attempts[1].reason),/PERMISSION_DENIED|permission_denied/);
-      assert.equal((await witness(backend)).lease.uid,ownerUid);
+      assert.equal(attempts[0].status,'fulfilled','A must acquire r1');
+      assert.equal(attempts[1].status,'rejected','C must NOT acquire other field');
+      assert.equal(attempts[1].reason.code,'RULES_DENIED',
+        `C must be Rules-denied on uncontended r2, got ${errorText(attempts[1].reason)}`);
+      assert.equal((await witness(backend,'r1')).lease.uid,ownerUid);
+      assert.equal((await witness(backend,'r2')).lease,null,
+        'C attempted different, empty r2; should never be LOCK_HELD');
+      checks.push({label:`${backend} concurrent r1/r2`,uidIsolated:true,
+        CserverLeaseEmpty:true});
     });
-    await test(`${backend}: non-enrolled caller cannot ACQUIRE with service claim`,async()=>{
+
+    await test(`${backend} UNENROLLED C alone denied even when cell not locked`,async()=>{
       await seed(backend);
-      await assertDeniedNoMutation(backend,()=>gateway(tokenC,'acquire',backend,randomBytes(32)),
-        /PERMISSION_DENIED|permission_denied/);
+      await noMutation(backend,'unenrolled caller',
+        ()=>gateway(tokenC,'acquire',backend,randomBytes(32),{recordId:'r2'}),
+        'RULES_DENIED',{recordId:'r2'});
     });
   }
-} finally {
-  results.push(...cases);
-  writeFileSync(JSON_PATH,JSON.stringify({sha:SHA,project:PROJECT,namespace:NAMESPACE,
-    executedAt:new Date().toISOString(),runtime:process.version,
-    summary:{pass:cases.filter(x=>x.status==='PASS').length,
-      fail:cases.filter(x=>x.status==='FAIL').length},cases},null,2));
-  await Promise.allSettled([deleteApp(A.app),deleteApp(B.app),deleteApp(C.app),adminDelete(authAdminApp)]);
 }
-console.log(`SUMMARY ${cases.filter(x=>x.status==='PASS').length} PASS, ${cases.filter(x=>x.status==='FAIL').length} FAIL; see witness.local.json`);
-if (cases.some(x=>x.status==='FAIL')) process.exitCode=1;
+
+async function teardown() {
+  for(const x of [A,B,C].filter(Boolean)) {
+    try {goOffline(x.db);}catch{}
+  }
+  await Promise.allSettled([A,B,C].filter(Boolean).map(async x=>{
+    try {await signOut(x.auth);}catch{}
+    await deleteApp(x.app);
+  }));
+  if (verifyApp) await adminDelete(verifyApp);
+}
+
+let topError=null;
+try {await main();}
+catch(e) {topError=errorText(e);console.error('FATAL setup/runtime :: '+topError);}
+finally {
+  try {
+    let timer;
+    await Promise.race([teardown(),new Promise((_,reject)=>{
+      timer=setTimeout(()=>reject(failed('TEARDOWN_TIMEOUT','SDK connections remain open')),8000);
+    })]).finally(()=>clearTimeout(timer));
+  } catch(e) {topError=topError??`TEARDOWN ${errorText(e)}`;}
+  writeFileSync(WITNESS,JSON.stringify({reviewedSourceSha:SHA,project:PROJECT,
+    executedAt:new Date().toISOString(),node:process.version,
+    status:topError?'FAIL':cases.some(c=>c.status==='FAIL')?'FAIL':'PASS',
+    counts:{pass:cases.filter(c=>c.status==='PASS').length,
+      fail:cases.filter(c=>c.status==='FAIL').length},
+    topError,scopedApps:{created:scopedCreated,deleted:scopedDeleted,open:scopedApps.size},
+    cases,checks,transactions},null,2));
+}
+console.log(`SUMMARY ${cases.filter(c=>c.status==='PASS').length} PASS / `+
+  `${cases.filter(c=>c.status==='FAIL').length} FAIL, scoped apps created/deleted `+
+  `${scopedCreated}/${scopedDeleted}; witness.local.json`);
+// Admin and client SDK websocket timers may otherwise keep Node alive after a
+// finished test. Emulators:exec waits for this process to terminate; all
+// witness data is flushed synchronously BEFORE process.exit.
+process.exit(topError||cases.some(c=>c.status==='FAIL')||scopedApps.size?1:0);
