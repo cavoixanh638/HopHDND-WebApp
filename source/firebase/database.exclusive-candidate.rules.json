@@ -293,8 +293,8 @@
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"
       },
       "freezeControl": {
-        ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
-        ".validate": "newData.hasChildren(['mode','revision','epoch','actor','changedAt','deadline','closedAt']) && newData.child('actor').val() === auth.uid && newData.child('revision').val() === (data.exists()?data.child('revision').val()+1:1) && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? (newData.child('mode').val() === 'DRAINING' || newData.child('mode').val() === 'FROZEN') : (data.child('mode').val() === 'DRAINING' ? (newData.child('mode').val() === 'FROZEN' || newData.child('mode').val() === 'OPEN') : (data.child('mode').val() === 'FROZEN' && newData.child('mode').val() === 'OPEN'))) && newData.child('epoch').val() === (data.child('mode').val() === 'OPEN' || !data.exists() ? (data.child('epoch').val()===null?0:data.child('epoch').val())+1 : data.child('epoch').val()) && newData.child('changedAt').val() === now && newData.child('closedAt').isNumber() && (newData.child('mode').val() === 'FROZEN' ? newData.child('closedAt').val() === now : newData.child('closedAt').val() === 0) && newData.child('deadline').isNumber() && (newData.child('mode').val() === 'DRAINING' ? (newData.child('deadline').val() >= now && newData.child('deadline').val() <= now+60000) : newData.child('deadline').val() === 0)",
+        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && (newData.child('mode').val() === 'OPEN' ? (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists()) : (root.child('hdnd/datasetV2/active').exists() ? (newData.child('datasetV2').hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/datasetV2/active').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/datasetV2/active').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/datasetV2/active').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/datasetV2/active').child('digest').val() && (newData.child('mode').val() === 'FROZEN' ? ((newData.child('closeKind').val() === 'orderly' || newData.child('closeKind').val() === 'forced') && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? newData.child('closeKind').val() === 'forced' : true) && (newData.child('closeKind').val() === 'orderly' ? (data.child('datasetV2').child('generationId').val() === newData.child('datasetV2').child('generationId').val() && data.child('datasetV2').child('operationId').val() === newData.child('datasetV2').child('operationId').val() && data.child('datasetV2').child('revision').val() === newData.child('datasetV2').child('revision').val() && data.child('datasetV2').child('rowCount').val() === newData.child('datasetV2').child('rowCount').val() && data.child('datasetV2').child('digest').val() === newData.child('datasetV2').child('digest').val()) : true)) : !newData.child('closeKind').exists())) : (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists())))",
+        ".validate": "(newData.hasChildren(['mode','revision','epoch','actor','changedAt','deadline','closedAt']) && newData.child('actor').val() === auth.uid && newData.child('revision').val() === (data.exists()?data.child('revision').val()+1:1) && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? (newData.child('mode').val() === 'DRAINING' || newData.child('mode').val() === 'FROZEN') : (data.child('mode').val() === 'DRAINING' ? (newData.child('mode').val() === 'FROZEN' || newData.child('mode').val() === 'OPEN') : (data.child('mode').val() === 'FROZEN' && newData.child('mode').val() === 'OPEN'))) && newData.child('epoch').val() === (data.child('mode').val() === 'OPEN' || !data.exists() ? (data.child('epoch').val()===null?0:data.child('epoch').val())+1 : data.child('epoch').val()) && newData.child('changedAt').val() === now && newData.child('closedAt').isNumber() && (newData.child('mode').val() === 'FROZEN' ? newData.child('closedAt').val() === now : newData.child('closedAt').val() === 0) && newData.child('deadline').isNumber() && (newData.child('mode').val() === 'DRAINING' ? (newData.child('deadline').val() >= now && newData.child('deadline').val() <= now+60000) : newData.child('deadline').val() === 0)) && (newData.child('mode').val() === 'OPEN' ? (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists()) : (root.child('hdnd/datasetV2/active').exists() ? (newData.child('datasetV2').hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/datasetV2/active').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/datasetV2/active').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/datasetV2/active').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/datasetV2/active').child('digest').val() && (newData.child('mode').val() === 'FROZEN' ? ((newData.child('closeKind').val() === 'orderly' || newData.child('closeKind').val() === 'forced') && ((data.child('mode').val() === 'OPEN' || !data.exists()) ? newData.child('closeKind').val() === 'forced' : true) && (newData.child('closeKind').val() === 'orderly' ? (data.child('datasetV2').child('generationId').val() === newData.child('datasetV2').child('generationId').val() && data.child('datasetV2').child('operationId').val() === newData.child('datasetV2').child('operationId').val() && data.child('datasetV2').child('revision').val() === newData.child('datasetV2').child('revision').val() && data.child('datasetV2').child('rowCount').val() === newData.child('datasetV2').child('rowCount').val() && data.child('datasetV2').child('digest').val() === newData.child('datasetV2').child('digest').val()) : true)) : !newData.child('closeKind').exists())) : (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists())))",
         "$other": {
           ".validate": false
         },
@@ -319,12 +319,36 @@
         "closedAt": {
           ".validate": "true"
         },
-        ".read": true
+        ".read": true,
+        "datasetV2": {
+          ".validate": "newData.hasChildren(['generationId','operationId','revision','rowCount','digest'])",
+          "generationId": {
+            ".validate": "true"
+          },
+          "operationId": {
+            ".validate": "true"
+          },
+          "revision": {
+            ".validate": "true"
+          },
+          "rowCount": {
+            ".validate": "true"
+          },
+          "digest": {
+            ".validate": "true"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "closeKind": {
+          ".validate": "newData.isString() && (newData.val() === 'orderly' || newData.val() === 'forced')"
+        }
       },
       "freezeReceipts": {
         "$epoch": {
-          ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.exists() && newData.exists() && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/freezeControl/epoch').val() + '' === $epoch",
-          ".validate": "newData.hasChildren(['epoch','rows','sha256','actor','frozenAt','recordedAt']) && newData.child('epoch').val() + '' === $epoch && newData.child('rows').isNumber() && newData.child('rows').val() >= 0 && newData.child('rows').val() <= 5000 && newData.child('sha256').isString() && newData.child('sha256').val().matches(/^[0-9a-f]{64}$/) && newData.child('actor').val() === auth.uid && newData.child('frozenAt').val() === root.child('hdnd/freezeControl/closedAt').val() && newData.child('recordedAt').val() === now",
+          ".write": "((auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && !data.exists() && newData.exists() && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && root.child('hdnd/freezeControl/epoch').val() + '' === $epoch) && (root.child('hdnd/datasetV2/active').exists() ? (newData.child('datasetV2').hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/datasetV2/active').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/datasetV2/active').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/datasetV2/active').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/datasetV2/active').child('digest').val() && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/freezeControl').child('datasetV2').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/freezeControl').child('datasetV2').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/freezeControl').child('datasetV2').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/freezeControl').child('datasetV2').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/freezeControl').child('datasetV2').child('digest').val() && newData.child('rows').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('closeKind').val() === root.child('hdnd/freezeControl').child('closeKind').val() && (newData.child('closeKind').val() === 'forced' || newData.child('closeKind').val() === 'orderly')) : (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists()))",
+          ".validate": "(newData.hasChildren(['epoch','rows','sha256','actor','frozenAt','recordedAt']) && newData.child('epoch').val() + '' === $epoch && newData.child('rows').isNumber() && newData.child('rows').val() >= 0 && newData.child('rows').val() <= 5000 && newData.child('sha256').isString() && newData.child('sha256').val().matches(/^[0-9a-f]{64}$/) && newData.child('actor').val() === auth.uid && newData.child('frozenAt').val() === root.child('hdnd/freezeControl/closedAt').val() && newData.child('recordedAt').val() === now) && (root.child('hdnd/datasetV2/active').exists() ? (newData.child('datasetV2').hasChildren(['generationId','operationId','revision','rowCount','digest']) && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/datasetV2/active').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/datasetV2/active').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/datasetV2/active').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/datasetV2/active').child('digest').val() && newData.child('datasetV2').child('generationId').val() === root.child('hdnd/freezeControl').child('datasetV2').child('generationId').val() && newData.child('datasetV2').child('operationId').val() === root.child('hdnd/freezeControl').child('datasetV2').child('operationId').val() && newData.child('datasetV2').child('revision').val() === root.child('hdnd/freezeControl').child('datasetV2').child('revision').val() && newData.child('datasetV2').child('rowCount').val() === root.child('hdnd/freezeControl').child('datasetV2').child('rowCount').val() && newData.child('datasetV2').child('digest').val() === root.child('hdnd/freezeControl').child('datasetV2').child('digest').val() && newData.child('rows').val() === root.child('hdnd/datasetV2/active').child('rowCount').val() && newData.child('closeKind').val() === root.child('hdnd/freezeControl').child('closeKind').val() && (newData.child('closeKind').val() === 'forced' || newData.child('closeKind').val() === 'orderly')) : (!newData.child('datasetV2').exists() && !newData.child('closeKind').exists()))",
           "$other": {
             ".validate": false
           },
@@ -345,6 +369,30 @@
           },
           "recordedAt": {
             ".validate": "true"
+          },
+          "datasetV2": {
+            ".validate": "newData.hasChildren(['generationId','operationId','revision','rowCount','digest'])",
+            "generationId": {
+              ".validate": "true"
+            },
+            "operationId": {
+              ".validate": "true"
+            },
+            "revision": {
+              ".validate": "true"
+            },
+            "rowCount": {
+              ".validate": "true"
+            },
+            "digest": {
+              ".validate": "true"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "closeKind": {
+            ".validate": "newData.isString() && (newData.val() === 'orderly' || newData.val() === 'forced')"
           }
         },
         ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"

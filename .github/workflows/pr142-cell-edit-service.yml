@@ -1,0 +1,85 @@
+name: PR142 cell-edit implementation — FULL Rules Auth+Functions+RTDB Emulator
+on:
+  push:
+    branches: [feat/pr142-cell-edit-service-20261101]
+    paths:
+      - "source/cell-edit-service/**"
+      - "source/src/data/cell-edit-api.ts"
+      - "source/src/data/cell-edit-leases.ts"
+      - "source/src/data/firebase-repository.ts"
+      - "source/firebase.cell-edit.test.json"
+      - ".github/workflows/pr142-cell-edit-service.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pr142-cell-edit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cell-edit-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - name: Install existing client dependencies without changing package lock
+        working-directory: source
+        run: npm ci --no-audit --no-fund
+      - name: Install isolated Firebase Functions and Emulator dependencies
+        working-directory: source/cell-edit-service
+        run: npm install --no-audit --no-fund
+      - name: Install actual Chromium for two-tab browser test
+        working-directory: source/cell-edit-service
+        run: npx playwright install --with-deps chromium
+      - name: Typecheck existing real application with new callable adapter
+        working-directory: source
+        run: npm run typecheck
+      - name: Parse backend, generate FULL candidate Rules copy; do not modify source Rules
+        working-directory: source/cell-edit-service
+        run: |
+          npm run check
+          node scripts/make-test-rules.mjs
+          test -s generated/database.rules.json
+          node --check test/integration.mjs
+      - name: Run REAL signed-in Auth + Functions + RTDB Emulator integration
+        id: emulator
+        working-directory: source/cell-edit-service
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=10s 10m npm run test:isolated >stdout.local.txt 2>&1
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          echo "EMULATOR_EXIT_CODE=$status"
+          cat stdout.local.txt
+          exit "$status"
+      - name: Print nonsecret witness summary
+        if: always()
+        working-directory: source/cell-edit-service
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          if(!fs.existsSync('test/witness.local.json')){console.log('WITNESS_NOT_CREATED');process.exit(0)}
+          const w=JSON.parse(fs.readFileSync('test/witness.local.json','utf8'));
+          console.log('FULL_RULES_WITNESS_SUMMARY',JSON.stringify(w.summary));
+          for(const c of w.cases??[])if(c.status!=='PASS')console.log('FAILED_CASE',JSON.stringify(c));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '## Cell-edit FULL Rules emulator\n\n'+JSON.stringify(w.summary)+'\n\nNo production access.\n');
+          JS
+      - name: Upload stdout and witness even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-cell-edit-full-emulator-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+            source/cell-edit-service/test/*.local.png
+          if-no-files-found: warn
+          retention-days: 14
