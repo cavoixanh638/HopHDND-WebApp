@@ -8,7 +8,7 @@ import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,sign
 import {getDatabase,connectDatabaseEmulator,ref,set,get,goOffline} from 'firebase/database';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 
-const PROJECT='demo-pr142-cell-edit',INSTANCE=PROJECT+'-default-rtdb';
+const PROJECT='demo-hdnd',INSTANCE=PROJECT+'-default-rtdb';
 const rest='http://127.0.0.1:9000',authHost='http://127.0.0.1:9099';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000'||
  process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||!process.env.FIREBASE_EMULATOR_HUB)
