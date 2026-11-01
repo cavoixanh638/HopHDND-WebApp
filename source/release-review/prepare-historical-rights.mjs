@@ -99,3 +99,18 @@ it('FINAL-RELEASE-CODE-REVIEW historical admin permissions remain immutable afte
 source+='\n'+extra;
 writeFileSync(output,source);
 console.log('FINAL_RELEASE_REVIEW_ONE_TARGETED_TEST_READY '+output);
+
+
+const originalRunner='parent-commit-service/test/run-functions.mjs';
+const reviewerRunner='parent-commit-service/test/final-release-review-run.generated.mjs';
+let runner=readFileSync(originalRunner,'utf8');
+function replaceExactly(oldText,newText){
+ if(runner.split(oldText).length!==2)throw Error('PINNED_RUNNER_SHAPE_CHANGED: '+oldText);
+ runner=runner.replace(oldText,newText);
+}
+replaceExactly("'parent-commit-service/test/integration.test.ts'",
+ "'parent-commit-service/test/final-release-review.generated.test.ts'");
+replaceExactly("...(process.env.PARENT_ONLY_ACK_TESTS==='true'?['--testNamePattern','lost API completion|lost HTTP ACK']:[])",
+ "['--testNamePattern','FINAL-RELEASE-CODE-REVIEW']");
+writeFileSync(reviewerRunner,runner);
+console.log('FINAL_RELEASE_REVIEW_ONE_TEST_ONLY_RUNNER_READY '+reviewerRunner);
