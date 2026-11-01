@@ -348,15 +348,32 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       .rejects.toThrow('P/Q legacy');
   });
 
-  it('proves server COMMITTED despite lost application completion on all 3 CAS APIs; lookup never replays',async()=>{
+  it('proves server COMMITTED despite REAL HTTP ACK loss after initial/replace/restore, never duplicates',async()=>{
+    // Drop ONLY the response from the actual authenticated onRequest wrapper
+    // AFTER server has committed and returned HTTP 200. No mock RTDB CAS path.
+    const loseAck=async(operationId:string,send:()=>Promise<unknown>)=>{
+      const native=globalThis.fetch;let dropped=false;
+      globalThis.fetch=(async(input:any,init?:any)=>{
+        const response=await native(input,init);
+        if(!dropped&&String(input).includes('parentDatasetCommit')){
+          dropped=true;expect(response.status).toBe(200);
+          const returned=await response.clone().json() as {status?:string;operationId?:string};
+          expect(returned.operationId).toBe(operationId);
+          expect(returned.status).toBe('committed');
+          throw Error('PR142_TEST_ONLY_HTTP_RESPONSE_LOSS_AFTER_REAL_COMMIT');
+        }
+        return response;
+      }) as typeof fetch;
+      try{expect(await send()).toEqual({status:'unknown',operationId});}
+      finally{globalThis.fetch=native;}
+      expect(dropped).toBe(true);
+    };
     await setupFrozenLegacy();
     const db=admin();
     const first='pr95_loss_initial_0001';
     const approval=await prepareInitialDatasetActivation(db,actor,replacement(),first,'first.xlsx');
-    armEmulatorPostCommitCallerAckLoss(db,first);
-    await expect(commitInitialDatasetActivation(db,actor,approval,
-      'KHOI TAO V2 '+first+' 2 2')).rejects.toThrow(
-      'PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(first,()=>commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+first+' 2 2'));
     const active1=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active1).toMatchObject({operationId:first,revision:1});
     expect(await resolveDatasetOperation(db,first)).toEqual({
@@ -364,18 +381,15 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     const second='pr95_loss_replace_001';
     const rows2=replacement().map(row=>({...row,content:row.content+' second'}));
     const next=await stageDatasetReplacement(db,actor,rows2,second,'second.xlsx');
-    armEmulatorPostCommitCallerAckLoss(db,second);
-    await expect(commitDatasetReplacement(db,actor,next,'THAY '+second+' 2 2'))
-      .rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(second,()=>commitDatasetReplacement(db,actor,next,'THAY '+second+' 2 2'));
     const active2=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active2).toMatchObject({operationId:second,revision:2});
     expect(await resolveDatasetOperation(db,first)).toMatchObject({status:'committed-historical'});
     expect(await resolveDatasetOperation(db,second)).toMatchObject({
       status:'committed-active',generationId:'gen_'+second});
     const third='pr95_loss_restore_001';
-    armEmulatorPostCommitCallerAckLoss(db,third);
-    await expect(restoreDatasetBackup(db,actor,second,third,active2,
-      'KHOI PHUC '+third)).rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(third,()=>restoreDatasetBackup(db,actor,second,third,active2,
+      'KHOI PHUC '+third));
     const active3=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active3).toMatchObject({operationId:third,revision:3});
     expect(await resolveDatasetOperation(db,second)).toMatchObject({
@@ -386,7 +400,19 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect(Object.keys(frozen.operations)).toHaveLength(3);
     expect(Object.keys(frozen.generations)).toHaveLength(3);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(3);
-    // Only read-only status lookups after injected faults: no repeated runTransaction.
+    // Replay the SAME operations through the real service, requiring
+    // already-committed, with exactly 3 historical generations and audits.
+    expect((await commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+first+' 2 2')).status).toBe('already-committed');
+    expect((await commitDatasetReplacement(db,actor,next,
+      'THAY '+second+' 2 2')).status).toBe('already-committed');
+    expect((await restoreDatasetBackup(db,actor,second,third,active2,
+      'KHOI PHUC '+third)).status).toBe('already-committed');
+    const replay=(await get(ref(db,DATASET_V2_PATH))).val();
+    expect(replay.active.revision).toBe(3);
+    expect(Object.keys(replay.operations)).toHaveLength(3);
+    expect(Object.keys(replay.generations)).toHaveLength(3);
+    // Read-only resolution never fabricates another commit.
     expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+first+'/status'))).val())
       .toBe('COMMITTED');
     expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+second+'/status'))).val())
