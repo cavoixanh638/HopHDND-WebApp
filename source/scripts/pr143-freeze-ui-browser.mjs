@@ -319,10 +319,22 @@ async function reset(A){
  */
 const observedCheckpoints=async(A,point)=>
   (await A.call('checkpoints')).filter(event=>event.point===point).length;
-const heldGate=async(A,id,label)=>sleepUntil(async()=>{
-  const gate=await A.call('gate',id);
-  return gate.state==='held'?gate:false;
-},label+' checkpoint reached and held',16000);
+const heldGate=async(A,id,label)=>{
+  try{
+    return await sleepUntil(async()=>{
+      const gate=await A.call('gate',id);
+      return gate.state==='held'?gate:false;
+    },label+' checkpoint reached and held',16000);
+  }catch(e){
+    step('F4_GATE_DIAGNOSTIC',{
+      label,gate:await A.call('gate',id).catch(x=>String(x)),
+      view:await snapshot(A).catch(x=>String(x)),
+      server:await syntheticState().catch(x=>String(x)),
+      checkpoints:await A.call('checkpoints').catch(x=>String(x))
+    });
+    throw e;
+  }
+};
 const completedGate=async(A,id,point,minEvents,label)=>sleepUntil(async()=>{
   const [gate,hits]=await Promise.all([
     A.call('gate',id),observedCheckpoints(A,point)
