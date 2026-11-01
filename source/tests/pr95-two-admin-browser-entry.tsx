@@ -94,20 +94,29 @@ const api={
     const {manager}=ensure(generation);
     await manager.acquire(id,field,'multiline');
     const lease=(await get(node(lockPath(id,field,generation)))).val();
-    if(!lease||manager.proof(id,field)!==lease.token)throw Error('Lease proof mismatch');
+    const credential=manager.credential(id,field);
+    if(!lease||!credential||credential.token!==lease.token||
+      !credential.secret||credential.secret===lease.proofHash)
+      throw Error('Private per-tab credential does not match the held public lease');
     return {generation,uid:lease.uid,session:lease.session,token:lease.token,
       revision:lease.revision,expiresAt:lease.expiresAt,acquiredAt:lease.acquiredAt};
   },
   async rawRenew(lease:CellLease,field:EditableField,id=recordId,gen?:string){
-    const updated=await renewCellLease(database,lease,id,field,gen??await currentGeneration());
+    const generation=gen??await currentGeneration();
+    const credential=ensure(generation).manager.credential(id,field);
+    if(!credential||credential.token!==lease.token)throw Error('Private lease credential missing');
+    const updated=await renewCellLease(database,{...lease,secret:credential.secret},
+      id,field,generation);
     return {token:updated.token,revision:updated.revision};
   },
   async renew(field:EditableField,id=recordId,gen?:string){
     const generation=gen??await currentGeneration();
     const {manager}=ensure(generation);
     const lease=(await get(node(lockPath(id,field,generation)))).val() as CellLease;
-    if(!lease||lease.token!==manager.proof(id,field))throw Error('Not this tab lease');
-    const next=await renewCellLease(database,lease,id,field,generation);
+    const credential=manager.credential(id,field);
+    if(!lease||!credential||lease.token!==credential.token)throw Error('Not this tab lease');
+    const next=await renewCellLease(database,{...lease,secret:credential.secret},
+      id,field,generation);
     return {token:next.token,revision:next.revision,expiresAt:next.expiresAt};
   },
   async finish(field:EditableField,id=recordId,gen?:string){
