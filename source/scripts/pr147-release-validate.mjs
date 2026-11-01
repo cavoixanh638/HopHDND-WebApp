@@ -75,7 +75,7 @@ try{
   if(!process.env.PARENT_COMMIT_ENABLED||!['true','false'].includes(process.env.PARENT_COMMIT_ENABLED))
     fail('PARENT_COMMIT_ENABLED_MISSING');
   const pg=content('../.github/workflows/publish-pages.yml');
-  if(!pg.includes('branches: [main]')||!pg.includes('git push origin HEAD:main'))fail('UNREVIEWED_PAGES_AUTOPUBLISH');
+  if(!pg.includes('branches: [main]')||!pg.includes('git push origin HEAD:main')||!pg.includes('HOPHDND_PAGES_APPROVED_MAIN_SHA')||!pg.includes('HOPHDND_RELEASE_BACKENDS_CONFIRMED'))fail('UNREVIEWED_PAGES_AUTOPUBLISH');
   if(mode==='rehearsal'){
     if(project!=='demo-hdnd'||parentDb.href!=='https://demo-hdnd.firebaseio.com/'||
        !allowedOrigins.every(x=>x.startsWith('http://127.0.0.1:'))||
