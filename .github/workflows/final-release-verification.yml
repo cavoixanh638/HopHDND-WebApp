@@ -8,7 +8,7 @@ permissions:
   actions: read
 jobs:
   independent-candidate-verification:
-    if: ${{ startsWith(github.event.head_commit.message, 'verify(FRV): pin ') }}
+    if: ${{ startsWith(github.event.head_commit.message, 'verify-FRV-pin-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
