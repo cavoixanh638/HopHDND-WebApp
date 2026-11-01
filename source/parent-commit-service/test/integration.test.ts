@@ -206,6 +206,18 @@ it('full App adapter journey: real Google ID token → activate → replace → 
  expect(restoreRetry.status).toBe('already-committed');
  expect(stable(afterRestoreRetry)).toBe(stable(after3));
  log('app_adapter_restore_retry_no_double_commit',after3,afterRestoreRetry,restoreRetry);
+ // Replaying ACTIVATE and REPLACE after an unrelated RESTORE must return
+ // confirmed, idempotent status and MUST NOT resurrect old generations.
+ const historicalActivate=await commitInitialDatasetActivation(db,admin,staged,
+  'KHOI TAO V2 '+first+' '+staged.legacyRowCount+' '+staged.preview.newCount);
+ const historicalReplace=await commitDatasetReplacement(db,admin,approval,
+  'THAY '+second+' '+approval.preview.oldCount+' '+approval.preview.newCount);
+ const afterHistoricalReplay=await witness();
+ expect(historicalActivate.status).toBe('already-committed');
+ expect(historicalReplace.status).toBe('already-committed');
+ expect(stable(afterHistoricalReplay)).toBe(stable(after3));
+ log('app_adapter_historical_replay_no_resurrection',after3,afterHistoricalReplay,
+  {historicalActivate,historicalReplace});
 });
 
 it('malicious commit tree, wrong confirmation, stale pointer and tampered staging fail closed through real endpoint',async()=>{

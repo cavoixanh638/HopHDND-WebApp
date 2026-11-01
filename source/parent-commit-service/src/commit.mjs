@@ -130,7 +130,10 @@ export async function handleParentAction(db,identity,input){
   const before=await loadRoot(db);
   const status=statusFor(before,op);
   if(status.status==='committed-active'||status.status==='committed-historical')return {
-    status:status.status==='committed-active'?'already-committed':'committed-historical',operationId:op};
+    // The COMMITTED historical operation is an idempotent retry of a past
+    // successful call, not an UNKNOWN or a new write. Resolution separately
+    // keeps the active/historical distinction. Never replay old content.
+    status:'already-committed',operationId:op};
   check(status.status==='not-committed'||(!before?.active&&body.action==='activate'),
     'operation status ambiguous');
   // Preflight is not authority; it validates SHA256 and exposes corruption before CAS.

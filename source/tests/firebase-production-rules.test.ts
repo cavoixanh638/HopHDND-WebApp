@@ -95,8 +95,7 @@ describe.skipIf(!emulator)('Firebase FULL candidate legacy primary and configura
     expect(migrated).toEqual({sourceCount:1,importedCount:1});
     await expect(migrateMirrorToPrimary(admin() as never,user('verified-admin',true),source))
       .rejects.toThrow(/đã có dữ liệu/);
-    const visitor=new FirebaseRepository(guest('viewer') as never,()=>user('viewer'),
-      ()=>({columns:{note:true}}));
+    const visitor=repo('viewer');
     const [item]=await visitor.list();
     expect(item.recordId).toBe(recordId);
     expect(item.displayCode).toBe('NQ-X3');
@@ -134,6 +133,7 @@ describe.skipIf(!emulator)('Firebase FULL candidate legacy primary and configura
     const root=repo('verified-admin',true);
     await root.leaseManager!.acquire('r1','note','multiline');
     expect((await root.save([patch((await root.list())[0],{note:'admin vẫn sửa được'})]))[0].ok).toBe(true);
+    await root.leaseManager!.finish('r1','note');
     await assertFails(set(ref(guest('editor') as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     await assertSucceeds(set(ref(a as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     const current=(await client.list())[0];

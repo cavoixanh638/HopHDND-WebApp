@@ -13,6 +13,7 @@ import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-
 import type {User} from 'firebase/auth';
 import {FirebaseRepository,samePermissions,type CellPermissions} from '../src/data/firebase-repository';
 import {CellEditSessionManager} from '../src/data/cell-edit-leases';
+import {setFreezeMode,readFreeze} from '../src/data/freeze-control';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import type {Changes,Item,EditableField} from '../shared/types';
@@ -193,13 +194,25 @@ describe.skipIf(!enabled)('Firebase FULL Rules Auth+Functions+RTDB: 14 business/
         a.save([attempt]),
         new Promise<null>(resolve=>setTimeout(()=>resolve(null),1500))
       ]);
-      if(pending)expect(pending[0].ok).toBe(false);
-      // The backend must NOT silently enqueue a raw SDK write while offline.
-      expect((await get(ref(admin(),'hdnd/items/r1/note'))).val()).toBe(initial.note);
+      // The Functions HTTP transport is INDEPENDENT of the RTDB SDK
+      // socket: while RTDB is offline, a real HTTPS callable may still
+      // receive a valid ACK and commit. Never label that server-ACKed result
+      // "pending"; whether it completed or stayed unknown, a same-op retry
+      // MUST NOT create another write.
+      if(pending?.[0]?.ok){
+        const committed=(await get(ref(admin(),'hdnd/items/r1'))).val();
+        expect(committed.note).toBe('giữ khi mất mạng');
+        expect(committed.revision).toBe(2);
+      }else{
+        expect(pending===null||pending[0].ok===false).toBe(true);
+      }
     }finally{goOnline(A.db);}
     const saved=(await a.save([attempt]))[0];
     expect(saved.ok,saved.message).toBe(true);
-    expect((await a.list())[0].revision).toBe(2);
+    const confirmed=(await get(ref(admin(),'hdnd/items/r1'))).val();
+    expect(confirmed.note).toBe('giữ khi mất mạng');
+    expect(confirmed.revision).toBe(2);
+    expect(Object.keys(confirmed.history??{})).toHaveLength(1);
   },30000);
 
   it('forged local grants cannot authorize ungranted content',async()=>{
@@ -213,10 +226,8 @@ describe.skipIf(!enabled)('Firebase FULL Rules Auth+Functions+RTDB: 14 business/
   it('FROZEN forbids raw writes by guest/admin and authenticated callable SAVE',async()=>{
     const a=repo('a'),old=(await a.list())[0];
     await lease(a,'r1','note');
-    await assertSucceeds(set(ref(admin(),'hdnd/freezeControl'),{
-      mode:'FROZEN',revision:2,epoch:2,actor:root.user.uid,
-      changedAt:Date.now(),deadline:0,closedAt:Date.now()
-    }));
+    const frozen=await setFreezeMode(admin(),root.user,await readFreeze(admin()),'FROZEN',true);
+    expect(frozen.mode).toBe('FROZEN');
     for(const db of [admin(),guest('a')]){
       await assertFails(set(ref(db,'hdnd/items/r2'),base));
       await assertFails(update(ref(db,'hdnd/items/r1'),{note:'bypass'}));

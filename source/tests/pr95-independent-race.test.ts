@@ -29,13 +29,13 @@ const next=(label:string)=>createDemoItems(2).map((row,i)=>({...row,
   recordId:'l3-new-'+i,displayCode:'NQ'+(i+70),
   revision:1,archivedAt:null,isDropped:false,content:label+' '+i}));
 const seed=()=>({hdnd:{
-  datasetV2:{active:{generationId:'gen_l3_initial',operationId:'l3_initial_seed',revision:1,
+  datasetV2:{active:{generationId:'gen_l3_initial_seed',operationId:'l3_initial_seed',revision:1,
     rowCount:2,digest:'a'.repeat(64)},
-    generations:{gen_l3_initial:{items:Object.fromEntries(old().map(row=>
+    generations:{gen_l3_initial_seed:{items:Object.fromEntries(old().map(row=>
       [row.recordId,{...row,updatedBy:'l3-admin',updatedAt:1,operationId:'l3_initial_seed'}]))}},
-    permissions:{gen_l3_initial:{columns:{note:true}}},
+    permissions:{gen_l3_initial_seed:{columns:{note:true}}},
     operations:{l3_initial_seed:{status:'COMMITTED',from:'legacy',
-      to:'gen_l3_initial',at:1}}
+      to:'gen_l3_initial_seed',at:1}}
   },
   items:{legacy:old()[0]}
 }});
@@ -129,7 +129,7 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     const approval=await stageDatasetReplacement(
       adminDb,actor,next('Bản trước'),op,'synthetic.xlsx');
     const generation=approval.expected.generationId;
-    expect(generation).toBe('gen_l3_initial');
+    expect(generation).toBe('gen_l3_initial_seed');
 
     // A non-admin editor exercises the ACTUAL Rules, not the admin write
     // privilege. The seed grants only note in this active generation.
@@ -192,7 +192,7 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
       expect((await repository.list()).find(row=>row.recordId===before!.recordId)?.note)
         .toBe(changedNote);
       await expect(commitDatasetReplacement(adminDb,actor,approval,confirm(op)))
-        .rejects.toThrow('Dữ liệu đang sử dụng đã bị sửa trong lúc duyệt, kể cả cùng thế hệ.');
+        .rejects.toThrow(/PARENT_COMMIT_DENIED: active generation content changed since staging/);
       expect((await get(ref(adminDb,DATASET_V2_PATH+'/active'))).val())
         .toEqual(approval.expected);
       expect((await get(ref(adminDb,recordPath+'/note'))).val()).toBe(changedNote);

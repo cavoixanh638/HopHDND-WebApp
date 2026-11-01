@@ -9,6 +9,7 @@ import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
 import {get,ref,set,update,goOffline,goOnline,serverTimestamp} from 'firebase/database';
+import {setFreezeMode,readFreeze} from '../src/data/freeze-control';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
@@ -145,7 +146,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
         {note:'Thay đổi sau duyệt',revision:2});
     });
     await expect(commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2'))
-      .rejects.toThrow('cùng thế hệ');
+      .rejects.toThrow(/PARENT_COMMIT_DENIED: active generation content changed since staging/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
   },20000);
@@ -168,7 +169,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await manager.finish(original.recordId,'note');
     await manager.dispose();
     await expect(commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2'))
-      .rejects.toThrow(/cùng thế hệ|đã thay đổi/);
+      .rejects.toThrow(/PARENT_COMMIT_DENIED: active generation content changed since staging/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
     expect(await resolveDatasetOperation(db,operation)).toEqual({status:'not-committed',operationId:operation});
@@ -461,10 +462,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await assertFails(set(ref(db,'hdnd/permissions/columns/note'),false));
     // Even reopening the old freeze mode cannot resurrect legacy writers
     // once V2 has an active pointer.
-    await assertSucceeds(update(ref(db,'hdnd/freezeControl'),{
-      mode:'OPEN',revision:3,epoch:1,actor:'administrator',
-      changedAt:serverTimestamp(),deadline:0,closedAt:0
-    }));
+    // The new freeze controller strips the V2 close evidence on OPEN.
+    // Raw partial update leaves frozen datasetV2/closeKind and is rejected.
+    const frozen=await readFreeze(db);
+    const reopened=await setFreezeMode(db,actor,frozen,'OPEN');
+    expect(reopened.mode).toBe('OPEN');
     await assertFails(set(ref(db,'hdnd/items/r1/note'),'Không được hồi sinh legacy'));
     await assertFails(set(ref(db,'hdnd/permissions/columns/note'),true));
   },45000);
@@ -478,7 +480,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       });
     });
     await expect(commitInitialDatasetActivation(db,actor,approval,
-      'KHOI TAO V2 '+op+' 2 2')).rejects.toThrow(/Legacy|đóng băng|thay đổi/);
+      'KHOI TAO V2 '+op+' 2 2')).rejects.toThrow(/PARENT_COMMIT_DENIED: legacy\/freeze changed/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active'))).exists()).toBe(false);
     // Unauthorized direct pointer writes cannot bypass the server freeze gate.
     await assertFails(set(ref(db,DATASET_V2_PATH+'/active'),{
