@@ -29,6 +29,7 @@ const cases={
   valid_pointer:['committed',true],unscoped_pointer_only:['rejected',false],
   leaf_release_own:['committed',true],leaf_release_foreign:['rejected',false],
   leaf_release_same_uid_copied:['committed',true],
+  existing_foreign_lease_expire:['rejected',false],
   existing_lease_expire:['rejected',false],
   new_generation_tamper:['rejected',false],
   trusted_preflight_rejects:['rejected-in-process-before-write',false],
