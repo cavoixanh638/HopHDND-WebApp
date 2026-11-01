@@ -21,6 +21,7 @@ const {auth,database,emulator}=getFirebaseServices();
 if(!emulator||auth.app.options.projectId!=='demo-hdnd')
   throw Error('PR143 Freeze UI requires demo-hdnd Firebase Emulator.');
 const errors:string[]=[];
+const pageId=crypto.randomUUID();
 window.addEventListener('unhandledrejection',event=>{
   errors.push('unhandledrejection: '+String(event.reason));
 });
@@ -39,6 +40,7 @@ function admin():User{
   return user;
 }
 const api={
+  pageId,
   snapshot:()=>({
     uid:controller?.user?.uid??null,
     isAdmin:controller?.isAdmin??false,

@@ -258,18 +258,35 @@ async function screenshot(A,label){
   images.push(file);
   step('SCREENSHOT',{label,file});
 }
+let resetCount=0;
 async function reset(A){
+  const previous=await A.eval('window.__pr143FreezeUi?.pageId??null');
   await loadRules(rules);
   await request('','PUT',initial);
-  await A.send('Page.reload',{ignoreCache:true});
-  await sleepUntil(()=>A.eval('Boolean(window.__pr143FreezeUi)&&document.readyState==="complete"'),
-    'Reload React UI bridge',30000);
+  // On the first scenario reuse the guest tab; later reloads must wait for
+  // a NEW execution context, never call login on the old pre-reload page.
+  if(resetCount++>0){
+    await A.send('Page.reload',{ignoreCache:true});
+    await sleepUntil(()=>A.eval('Boolean(window.__pr143FreezeUi)&&document.readyState==="complete"&&'+
+      'window.__pr143FreezeUi.pageId!=='+JSON.stringify(previous)),
+      'New React UI execution context after reload',30000);
+  }
   await A.call('login');
-  await sleepUntil(async()=>{
-    const x=await snapshot(A);
-    return x.isAdmin&&x.panelVisible&&x.datasetEpochReady&&x.connected&&
-      x.generationId===gen&&x.freezeMode==='OPEN'?x:false;
-  },'verified Admin Chrome/RTDB OPEN state',30000);
+  try{
+    await sleepUntil(async()=>{
+      const x=await snapshot(A);
+      return x.isAdmin&&x.panelVisible&&x.datasetEpochReady&&x.connected&&
+        x.generationId===gen&&x.freezeMode==='OPEN'?x:false;
+    },'verified Admin Chrome/RTDB OPEN state',30000);
+  }catch(e){
+    console.error('PR143_RESET_DIAGNOSTIC',JSON.stringify({
+      view:await snapshot(A).catch(err=>String(err)),
+      errors:await A.call('errors').catch(err=>String(err)),
+      chromeException:A.getError(),
+      server:await syntheticState().catch(err=>String(err))
+    }));
+    throw e;
+  }
 }
 async function exercise(){
   await startEmulators();
