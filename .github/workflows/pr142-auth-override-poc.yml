@@ -1,0 +1,104 @@
+name: PR142 scoped RTDB auth-override PoC (isolated Emulator only)
+
+on:
+  push:
+    branches:
+      - poc/pr142-scoped-auth-override-98ead3e
+    paths:
+      - "source/poc/pr142-auth-override/**"
+      - ".github/workflows/pr142-auth-override-poc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr142-auth-override-poc-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scoped-auth-override:
+    name: Real Auth+RTDB Emulator, synthetic legacy/V2, authoritative witness
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: bash
+        working-directory: source/poc/pr142-auth-override
+    steps:
+      - name: Check out EXACT PoC branch commit (no application edits)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node (PoC pinned dependencies)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up Java for RTDB Emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Verify fixture is local-only and candidate Rules not selected
+        run: |
+          node --version
+          java -version
+          node --check poc.mjs
+          node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('firebase.poc.json','utf8')); if(p.database.rules!=='database.poc.rules.json'||p.emulators.auth.host!=='127.0.0.1'||p.emulators.database.host!=='127.0.0.1'||p.emulators.auth.port!==9099||p.emulators.database.port!==9000) process.exit(1); console.log('LOCAL_FIXTURE_GUARD_PASS')"
+          if [ -n "${FIREBASE_DATABASE_EMULATOR_HOST:-}" ] || [ -n "${FIREBASE_AUTH_EMULATOR_HOST:-}" ]; then
+            echo "::error::CI runner unexpectedly has external emulator endpoints configured."
+            exit 1
+          fi
+
+      - name: Install ONLY standalone PoC dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run all PoC cases with watchdog and preserve raw exit code
+        id: poc
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=15s 10m npm run poc > poc.stdout.local.txt 2>&1
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "POC_EXIT_CODE=$code"
+          cat poc.stdout.local.txt
+          exit "$code"
+
+      - name: Summarize witness without credentials
+        if: always()
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const path='witness.local.json';
+          if(!fs.existsSync(path)) {
+            console.log('WITNESS_MISSING (setup failure or timeout)');
+            process.exit(0);
+          }
+          const w=JSON.parse(fs.readFileSync(path,'utf8'));
+          console.log('WITNESS_COUNTS '+JSON.stringify({status:w.status,counts:w.counts,scopedApps:w.scopedApps}));
+          const failed=w.cases?.filter(c=>c.status!=='PASS')??[];
+          for(const c of failed) console.log('WITNESS_FAILED_CASE '+JSON.stringify({name:c.name,error:c.error,transactions:c.transactions?.map(t=>({action:t.action,outcome:t.outcome,candidateProduced:t.candidateProduced,callbackCalls:t.callbackCalls}))}));
+          const lines=['## PR142 isolated emulator witness','',
+            'Source candidate SHA: `98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847`',
+            'PoC tested commit: `'+process.env.GITHUB_SHA+'`',
+            'STATUS: **'+w.status+'**',
+            'Cases: '+w.counts.pass+' PASS / '+w.counts.fail+' FAIL',
+            'Scoped override apps: '+w.scopedApps.created+' created / '+w.scopedApps.deleted+' deleted / '+w.scopedApps.open+' open',
+            'Scope: reduced standalone Rules; no production or full candidate Rules tested.'];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,lines.join('\n')+'\n');
+          JS
+
+      - name: Upload stdout + authoritative witness even on FAILURE
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-auth-override-poc-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/poc/pr142-auth-override/poc.stdout.local.txt
+            source/poc/pr142-auth-override/witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
