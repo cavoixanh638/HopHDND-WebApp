@@ -1,0 +1,84 @@
+name: FINAL-APP-REVIEW (PR147 pinned Draft candidate, Chrome + Emulators)
+on:
+  pull_request:
+    paths:
+      - "source/scripts/final-app-qa-*.mjs"
+      - ".github/workflows/final-app-review.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-real-app:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'qa/pr145-pr146-pr143-final-app-20261101'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    env:
+      FINAL_APP_CANDIDATE_SHA: 050ab1acb2bea82b7a336ab1927559659bd114e0
+      CI: "true"
+      GCLOUD_PROJECT: demo-hdnd
+      FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      VITE_PARENT_REPLACEMENT_ENABLED: "true"
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - name: Checkout QA-only test branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Pin Chat1 PR147 exact SHA, copy only QA test files into ephemeral worktree
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/final-app-review-tests"
+          cp source/scripts/final-app-qa-runner.mjs "$RUNNER_TEMP/final-app-review-tests/"
+          cp source/scripts/final-app-qa-rules.mjs "$RUNNER_TEMP/final-app-review-tests/"
+          git fetch --no-tags origin "$FINAL_APP_CANDIDATE_SHA"
+          git cat-file -e "$FINAL_APP_CANDIDATE_SHA^{commit}"
+          git checkout --detach "$FINAL_APP_CANDIDATE_SHA"
+          test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+          cp "$RUNNER_TEMP/final-app-review-tests/"*.mjs source/scripts/
+          test -f source/firebase.staging.json
+          test -f source/firebase/database.exclusive-candidate.rules.json
+          git diff --exit-code -- source/src source/firebase source/cell-edit-service source/parent-commit-service
+          echo "QA_PR147_PINNED_HEAD=$(git rev-parse HEAD)"
+          echo "QA_TEST_FILES_ONLY_NOT_COMMITTED"
+          git status --short
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install pinned candidate + test services and Chromium
+        working-directory: source
+        run: |
+          set -euo pipefail
+          npm ci
+          npm install --prefix cell-edit-service --no-audit --no-fund --ignore-scripts
+          npm install --prefix parent-commit-service --no-audit --no-fund --ignore-scripts --no-package-lock
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Fingerprint PR147's FULL Rules without changing one byte
+        working-directory: source
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Static-validate original test-only runner
+        working-directory: source
+        run: |
+          node --check scripts/final-app-qa-runner.mjs
+          node --check scripts/final-app-qa-rules.mjs
+      - name: Real Full App Chrome guest/admin/Excel/freeze/ACK with both Functions and RTDB
+        working-directory: source
+        timeout-minutes: 21
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Upload browser PNGs, per-case verdict and server before/after witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-app-review-PR147-DRAFT-pinned-emulator-evidence
+          path: source/qa-results/final-app-review/
+          retention-days: 14
+          if-no-files-found: warn
