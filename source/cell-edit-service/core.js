@@ -13,6 +13,25 @@ const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HEX_RE=/^[a-f0-9]{64}$/;
 const NAMESPACE=process.env.GCLOUD_PROJECT||process.env.GCP_PROJECT||'';
 let sequence=0;
+/** Firebase Functions supplies FIREBASE_CONFIG (including RTDB URL) at runtime.
+ * When no URL is configured, FAIL CLOSED rather than selecting a wrong database.
+ * Only the demo Emulator may derive a namespace URL from its project ID.
+ */
+function scopedDatabaseURL(){
+  let runtime={};
+  try{runtime=JSON.parse(process.env.FIREBASE_CONFIG??'{}');}catch{}
+  const value=process.env.FIREBASE_DATABASE_URL||runtime.databaseURL||
+    (NAMESPACE.startsWith('demo-')?`https://${NAMESPACE}-default-rtdb.firebaseio.com`:undefined);
+  if(!value)fail('unavailable','Chưa cấu hình đường dẫn Realtime Database cho dịch vụ sửa ô.');
+  try{
+    const url=new URL(value);
+    if(url.protocol!=='https:'||url.username||url.password||
+      !/\\.(firebaseio\\.com|firebasedatabase\\.app)$/.test(url.hostname))
+      throw new Error('Bad Firebase RTDB endpoint');
+  }catch{fail('unavailable','Đường dẫn Realtime Database không hợp lệ.');}
+  return value;
+}
+
 
 function fail(code,message){throw new HttpsError(code,message);}
 function validId(value,label){
@@ -76,9 +95,7 @@ async function scoped(auth,work){
   // The override is derived only from the Callable's verified Auth context.
   // Never accept uid/provider/email/cellService claims from request.data.
   const app=initializeApp({
-    projectId:NAMESPACE,databaseURL:process.env.FIREBASE_DATABASE_URL||
-      (NAMESPACE.startsWith('demo-')?`https://${NAMESPACE}-default-rtdb.firebaseio.com`:
-        undefined),
+    projectId:NAMESPACE,databaseURL:scopedDatabaseURL(),
     databaseAuthVariableOverride:identity
   },'pr142-cell-'+(++sequence)+'-'+randomUUID());
   const db=getDatabase(app);
