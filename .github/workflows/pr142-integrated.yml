@@ -96,7 +96,9 @@ jobs:
           cat pr142-unified-emulator.stdout
           exit "$rc"
       - name: Real Freeze UI Chrome F1-F5 + deterministic generation races, same FULL Rules
-        if: always()
+        # A cancelled dependency-install cannot run the function wrappers.
+        # Still independently run Freeze after a genuine service test failure.
+        if: ${{ !cancelled() && (success() || steps.integration.outcome == 'failure') }}
         shell: bash
         env:
           PARENT_COMMIT_ENABLED: "true"
