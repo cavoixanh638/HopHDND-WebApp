@@ -79,7 +79,10 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
       countRequest.current++;
       setCount(null);setCountSource('');
       setError('');
-      setMessage('Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.');
+      // A first-load legacy -> V2 source switch is not evidence of any receipt.
+      setMessage(previous=>previous.includes('Biên nhận ')||
+        previous.includes('Đã CHỐT')||previous.includes('Đã ĐÓNG BĂNG')
+        ?'Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.':'');
     }
     lastSource.current=key;
   },[firebase.datasetActive?.generationId,firebase.datasetActive?.operationId,

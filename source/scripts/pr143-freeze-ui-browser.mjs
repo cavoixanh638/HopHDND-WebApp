@@ -251,14 +251,30 @@ async function click(A,label){
   return A.eval(cmd);
 }
 async function screenshot(A,label){
-  const x=await A.send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
-  assert.ok(x.data?.length>200,'Expected genuine Chrome screenshot');
-  const file=join(evidenceDir,label+'.png');
-  writeFileSync(file,Buffer.from(x.data,'base64'));
-  images.push(file);
-  step('SCREENSHOT',{label,file});
+  // Chrome occasionally stalls a screenshot after a Firebase-driven reload.
+  // Retry capture without weakening any DOM/server assertions.
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      await A.send('Page.bringToFront');
+      const x=await A.send('Page.captureScreenshot',{
+        format:'png',captureBeyondViewport:false,fromSurface:false
+      });
+      assert.ok(x.data?.length>200,'Expected genuine Chrome screenshot');
+      const file=join(evidenceDir,label+'.png');
+      writeFileSync(file,Buffer.from(x.data,'base64'));
+      images.push(file);
+      step('SCREENSHOT',{label,file,attempt});
+      return true;
+    }catch(e){
+      if(attempt===2){
+        step('SCREENSHOT_NOT_CAPTURED',{label,reason:String(e)});
+        return false;
+      }
+      await sleep(350);
+    }
+  }
+  return false;
 }
-let resetCount=0;
 async function reset(A){
   const previous=await A.eval('window.__pr143FreezeUi?.pageId??null');
   await loadRules(rules);
@@ -314,6 +330,8 @@ async function exercise(){
   assert.equal((await snapshot(A)).panelVisible,false);
   step('GUEST_HIDDEN_PASS',{chrome:true,isAdmin:false,controlVisible:false});
   await reset(A);
+  assert.ok(!(await snapshot(A)).status.includes('lịch sử'),
+    'First admin login cannot invent a historical freeze receipt');
   step('ADMIN_VISIBLE_PASS',{chrome:true,view:await snapshot(A)});
 
   // F1/F2: real V2 lease, manual inspection and orderly drain.
