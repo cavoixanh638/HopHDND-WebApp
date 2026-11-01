@@ -285,6 +285,26 @@ async function run(){
          baseValues:{progressBuild:'Sở chưa trình'},changes:{progressBuild:'Đã trình'}},
        leases:{progressBuild:{token:l.token,secret:l.secret}}}));
    });
+   await step(scope+' BC rejects changed progressBuild but preserves legacy value on note save',async()=>{
+     await seed(scope);
+     const p=paths(scope);
+     await ownerPut(p.row+'/documentKind','BC');
+     await ownerPut(p.row+'/type','Báo cáo');
+     const buildLease=await acquire(scope,'r1','progressBuild');
+     await sameState(scope,'BC changed Build must be rejected',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',operationId:randomUUID(),baseRevision:1,
+         baseValues:{progressBuild:'Sở chưa trình'},changes:{progressBuild:'Đã trình'}},
+       leases:{progressBuild:{token:buildLease.token,secret:buildLease.secret}}}));
+     const noteLease=await acquire(scope,'r1','note');
+     const operationId=randomUUID();
+     const result=await call(a,scope,'save',{operationId,patch:{
+       recordId:'r1',operationId,baseRevision:1,
+       baseValues:{note:'MẪU chưa sửa'},changes:{note:'Ghi chú BC không làm đổi Build'}},
+       leases:{note:{token:noteLease.token,secret:noteLease.secret}}});
+     assert.equal(result.row.revision,2);
+     assert.equal(result.row.progressBuild,'Sở chưa trình',
+       'Unchanged legacy Build may not be normalized or erased');
+   });
    await step(scope+' two independent fields on one row retain per-field CAS',async()=>{
      await seed(scope);await ownerPut('hdnd/editors/'+uidC,true);
      const [la,lc]=await Promise.all([
