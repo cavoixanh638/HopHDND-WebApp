@@ -1,0 +1,105 @@
+name: FINAL-RELEASE-VERIFICATION exact candidate and release artifact (reviewer only)
+on:
+  push:
+    branches:
+      - review/pr147-final-release-verification-20261101
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-candidate-verification:
+    if: ${{ startsWith(github.event.head_commit.message, 'verify(FRV): pin ') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      # Reviewer replaces both only after Chat1 releases NEW SHA + matching manifest.
+      FINAL_VERIFY_TARGET_SHA: PENDING_CHAT1_FIXED_CANDIDATE_SHA
+      FINAL_VERIFY_RELEASE_DOCS_SHA: PENDING_CHAT1_RELEASE_MANIFEST_SHA
+      GCLOUD_PROJECT: demo-hdnd
+      PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_COMMIT_ENABLED: 'true'
+      PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: reviewer
+          persist-credentials: false
+      - name: Exact immutable FIXED candidate in detached path
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FINAL_VERIFY_TARGET_SHA }}
+          path: target
+          persist-credentials: false
+      - name: Separate pinned release manifest checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FINAL_VERIFY_RELEASE_DOCS_SHA }}
+          path: release
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify pinned checkout identities and isolated demo-only mode
+        shell: bash
+        run: |
+          test "$(cd target && git rev-parse HEAD)" = "$FINAL_VERIFY_TARGET_SHA"
+          test "$(cd release && git rev-parse HEAD)" = "$FINAL_VERIFY_RELEASE_DOCS_SHA"
+          test "$GCLOUD_PROJECT" = "demo-hdnd"
+          echo "FRV_PINNED_CANDIDATE=$FINAL_VERIFY_TARGET_SHA"
+          echo "FRV_PINNED_MANIFEST_TREE=$FINAL_VERIFY_RELEASE_DOCS_SHA"
+      - name: Install source + both actual service dependency graphs (no shared source commit)
+        working-directory: target/source
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          for service in cell-edit-service parent-commit-service; do
+            if test -f "$service/package-lock.json"; then
+              npm ci --prefix "$service" --no-audit --no-fund
+            else
+              echo "::warning::$service no pinned service lockfile, package audit must report HOLD"
+              npm install --prefix "$service" --no-package-lock --ignore-scripts --no-audit --no-fund
+            fi
+          done
+          mkdir -p parent-commit-service/evidence
+      - name: Generate only two real-service reviewer FRCR cases in detached target checkout
+        working-directory: target/source
+        shell: bash
+        run: |
+          node ../../reviewer/source/release-review/prepare-final-verification.mjs \
+            ../../reviewer/source/release-review/final-release-test-suffix.ts
+          test -s parent-commit-service/test/final-release-verification.generated.test.ts
+          test -s parent-commit-service/test/final-release-verification-run.generated.mjs
+      - name: Auth + actual Callable/onRequest Functions + RTDB Emulator + FULL Rules tests
+        working-directory: target/source
+        shell: bash
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec --project demo-hdnd --only auth,database,functions \
+            --config firebase.staging.json \
+            "node parent-commit-service/test/final-release-verification-run.generated.mjs" \
+            2>&1 | tee parent-commit-service/evidence/final-release-verification.stdout.log
+      - name: Independent release source SHA, config, lock, artifact and security audit
+        if: always()
+        working-directory: target/source
+        shell: bash
+        run: |
+          set -o pipefail
+          node ../../reviewer/source/release-review/audit-release-manifest.mjs \
+            ../../release/source/docs/releases/PR147_RELEASE_MANIFEST.json \
+            2>&1 | tee parent-commit-service/evidence/final-release-audit.stdout.log
+      - name: Preserve reviewer-only generated test, server witnesses and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-release-verification-${{ github.run_id }}
+          path: |
+            target/source/parent-commit-service/evidence/**
+            target/source/parent-commit-service/test/final-release-verification.generated.test.ts
+            target/source/parent-commit-service/test/final-release-verification-run.generated.mjs
+          if-no-files-found: warn
+          retention-days: 30
