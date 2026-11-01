@@ -54,8 +54,13 @@ const sha=(rows:Record<string,unknown>)=>createHash('sha256')
 describe.skipIf(!enabled)('PR142 V2 freeze F1-F5 + pointer/generation fencing',()=>{
   let env:RulesTestEnvironment;
   const admin=()=>env.authenticatedContext('administrator',claims).database() as never;
-  const server=async(path='hdnd')=>env.withSecurityRulesDisabled(async ctx=>
-    (await get(ref(ctx.database() as never,path))).val());
+  const server=async(path='hdnd'):Promise<any>=>{
+    let observed:any=null;
+    await env.withSecurityRulesDisabled(async ctx=>{
+      observed=(await get(ref(ctx.database() as never,path))).val();
+    });
+    return observed;
+  };
   const reset=async(v2=true)=>{
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database() as never),fixture(v2)));
