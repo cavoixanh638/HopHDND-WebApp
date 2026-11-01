@@ -24,7 +24,8 @@ const ROOT=resolve('qa-results/final-app-review');
 const RULES=resolve(ROOT,'generated/shared.rules.json');
 const reportPath=resolve(ROOT,'witness.json');
 const hash=s=>createHash('sha256').update(s).digest('hex');
-const refs={PR142:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
+const PIN=process.env.FINAL_APP_CANDIDATE_SHA||null;
+const refs={candidatePR147:PIN,PR142:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
   PR145:'bf78bdddf336f16082ad68db1c1f39723bc95251',
   PR146:'9424a52767e8acb57a1f50feba2515787fb2ad26',
   PR143:'c039405a9ad6802ae1d412465cc91b88745a0371'};
@@ -35,7 +36,12 @@ const checkout=git('rev-parse','HEAD');
 const manifest=JSON.parse(readFileSync(resolve(ROOT,'generated/rules-manifest.json'),'utf8'));
 const expected=JSON.parse(readFileSync(RULES,'utf8'));
 assert.equal(manifest.combinedSha256,hash(readFileSync(RULES)));
-assert.equal(manifest.kind,'UNOFFICIAL_QA_SHARED_RULES_NOT_FOR_DEPLOY');
+if(PIN){
+  assert.match(PIN,/^[a-f0-9]{40}$/);
+  assert.equal(checkout,PIN,'QA must checkout the precise PR147 SHA; no moving branch');
+  assert.equal(manifest.kind,'PINNED_PR147_CANDIDATE_RULES_UNMODIFIED_NOT_RELEASE');
+  assert.equal(manifest.candidateSha,PIN);
+}else assert.equal(manifest.kind,'UNOFFICIAL_QA_SHARED_RULES_NOT_FOR_DEPLOY');
 for(const k of ['FIREBASE_SERVICE_ACCOUNT','GOOGLE_APPLICATION_CREDENTIALS']){
   if(process.env[k])throw Error('PRODUCTION CREDENTIAL ENV FORBIDDEN '+k);
 }
@@ -142,15 +148,18 @@ function monitor(page,role){
   });
   page.on('response',async response=>{
     const url=response.url();
-    if(!url.includes('/cellEdit')||response.status()<400)return;
+    if(response.status()<400||
+      (!url.includes('/cellEdit')&&!url.includes('/parentDatasetCommit')))return;
+    const parent=url.includes('/parentDatasetCommit');
     try{
       const body=await response.json();
       const error=body?.error??{};
-      record('CELL_CALLABLE_REJECTED',{role,httpStatus:response.status(),
-        errorStatus:String(error.status??'').slice(0,80),
-        message:String(error.message??'').slice(0,240)});
-    }catch(error){record('CELL_CALLABLE_REJECTED',{role,httpStatus:response.status(),
-      parseError:String(error).slice(0,100)});}
+      record(parent?'PARENT_HTTP_REJECTED':'CELL_CALLABLE_REJECTED',{
+        role,httpStatus:response.status(),
+        errorStatus:String(typeof error==='string'?error:error.status??'').slice(0,80),
+        message:String(body?.message??error.message??'').slice(0,240)});
+    }catch(error){record(parent?'PARENT_HTTP_REJECTED':'CELL_CALLABLE_REJECTED',{
+      role,httpStatus:response.status(),parseError:String(error).slice(0,100)});}
   });
   page.on('requestfailed',req=>{
     if(req.url().includes('/cellEdit'))
@@ -228,19 +237,34 @@ async function seed(){
   record('SERVER_SEED',{generation:seedPointer,rowIDs:Object.keys(v2)});
 }
 async function startServices(){
-  const config=resolve(ROOT,'generated/emulators.json');
-  const contents={
-    functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',
-      runtime:'nodejs22'}],
-    database:{rules:RULES},
-    emulators:{database:{host:'127.0.0.1',port:9000},
-      auth:{host:'127.0.0.1',port:9099},
-      functions:{host:'127.0.0.1',port:5001},
-      ui:{enabled:false},singleProjectMode:true}
-  };
-  writeFileSync(config,JSON.stringify(contents,null,2));
+  const config=PIN?resolve('firebase.staging.json')
+    :resolve(ROOT,'generated/emulators.json');
+  if(PIN){
+    const projectConfig=JSON.parse(readFileSync(config,'utf8'));
+    assert.equal(projectConfig.database?.rules,
+      'firebase/database.exclusive-candidate.rules.json');
+    assert.deepEqual(projectConfig.functions.map(x=>x.source).sort(),
+      ['cell-edit-service','parent-commit-service']);
+    assert.equal(hash(readFileSync(resolve(projectConfig.database.rules))),
+      manifest.combinedSha256,'Pinned candidate Rules changed since QA pin');
+  }else{
+    const contents={
+      functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',
+        runtime:'nodejs22'}],
+      database:{rules:RULES},
+      emulators:{database:{host:'127.0.0.1',port:9000},
+        auth:{host:'127.0.0.1',port:9099},
+        functions:{host:'127.0.0.1',port:5001},
+        ui:{enabled:false},singleProjectMode:true}
+    };
+    writeFileSync(config,JSON.stringify(contents,null,2));
+  }
   const env={...process.env,CI:'true',GCLOUD_PROJECT:PROJECT,
-    FIREBASE_DATABASE_URL:'https://demo-hdnd.firebaseio.com'};
+    FIREBASE_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
+    FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
+    PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    PARENT_ALLOWED_ORIGINS:SITE,PARENT_COMMIT_ENABLED:'true'};
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
     '--only','auth,database,functions','--project',PROJECT,'--config',config
@@ -268,21 +292,26 @@ async function startServices(){
   assert.equal(put.status,200,'Install exact combined QA Rules');
   const live=await(await fetch(url,{headers:{Authorization:'Bearer owner'}})).json();
   assert.deepEqual(live,expected,'Shared Rules differ from installed Emulator Rules');
-  const parentEnv={...env,
-    FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
-    FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
-    PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
-    PARENT_ALLOWED_ORIGINS:SITE,
-    PARENT_COMMIT_ENABLED:'true',PARENT_PORT:'8787'};
-  parentServer=spawn(process.execPath,['parent-commit-service/dev-server.mjs'],
-    {stdio:['ignore','pipe','pipe'],env:parentEnv});
-  for(const out of [parentServer.stdout,parentServer.stderr])
-    out.on('data',chunk=>{logs.parent=(logs.parent+String(chunk)).slice(-10000)});
-  await wait(async()=>{
-    if(parentServer.exitCode!==null)throw Error('Parent server exited '+logs.parent);
-    const r=await fetch('http://127.0.0.1:8787/health');
-    return r.ok&&(await r.json()).enabled;
-  },'Real authenticated parent endpoint',35000);
+  if(PIN){
+    const parentURL='http://127.0.0.1:5001/'+PROJECT+'/us-central1/parentDatasetCommit';
+    await wait(async()=>{
+      const r=await fetch(parentURL,{method:'POST',
+        headers:{Origin:SITE,'Content-Type':'application/json'},
+        body:'{}',signal:AbortSignal.timeout(3500)});
+      return r.status!==404&&r.status!==502&&r.status!==503;
+    },'PR147 onRequest parentDatasetCommit available',45000);
+  }else{
+    const parentEnv={...env,PARENT_PORT:'8787'};
+    parentServer=spawn(process.execPath,['parent-commit-service/dev-server.mjs'],
+      {stdio:['ignore','pipe','pipe'],env:parentEnv});
+    for(const out of [parentServer.stdout,parentServer.stderr])
+      out.on('data',chunk=>{logs.parent=(logs.parent+String(chunk)).slice(-10000)});
+    await wait(async()=>{
+      if(parentServer.exitCode!==null)throw Error('Parent server exited '+logs.parent);
+      const r=await fetch('http://127.0.0.1:8787/health');
+      return r.ok&&(await r.json()).enabled;
+    },'Real authenticated parent endpoint',35000);
+  }
   vite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',
     server:{host:'127.0.0.1',port:4179,strictPort:true},
     logLevel:'error'});
@@ -290,8 +319,10 @@ async function startServices(){
   await wait(async()=>{const r=await fetch(SITE+'/pages.html');
     return r.ok&&(await r.text()).includes('pages-main');},'Real business App pages.html',30000);
   record('FULL_EMULATOR_READY',{project:PROJECT,functions:5001,database:9000,auth:9099,
-    parentEndpoint:8787,rulesHash:manifest.combinedSha256,site:SITE,
-    disclaimer:'QA checkout merged locally in CI; no official Chat1 candidate'});
+    parentEndpoint:PIN?5001:8787,rulesHash:manifest.combinedSha256,site:SITE,
+    pinnedCandidateSha:PIN,disclaimer:PIN
+      ?'PR147 Draft candidate exact SHA; not READY, no release authorization'
+      :'QA checkout merged locally in CI; not official Chat1 candidate'});
 }
 async function loginVerifiedAdmin(page,label){
   // Login must follow the REAL App's asynchronous anonymous warmup. Calling
@@ -715,7 +746,7 @@ async function generationWithDraft(){
     draftStillVisible:await secondAdmin.locator('.draft-bar').count()>0};
 }
 async function run(){
-  record('QA_MODE',{kind:'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
+  record('QA_MODE',{kind:PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
     localCheckoutSha:checkout,refs,manifest});
   await seedWorkbook();await startServices();
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
@@ -742,7 +773,7 @@ catch(error){
     parentLog:logs.parent.slice(-1600)});
   process.exitCode=1;
 }finally{
-  const result={kind:'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',
+  const result={kind:PIN?'PR147_EXACT_SHA_DRAFT_NOT_APPROVED':'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',
     checkedOutSha:checkout,refs,sharedRules:manifest,
     cases,events,screenshots:screenshots.map(x=>x.replace(ROOT+'/','')),
     logSummary:{firebase:logs.firebase.slice(-1600),parent:logs.parent.slice(-1600)},
