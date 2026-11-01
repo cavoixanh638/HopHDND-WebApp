@@ -50,6 +50,12 @@ jobs:
             --config parent-commit-service/firebase.parent-commit-test.json \
             "node parent-commit-service/test/run.mjs" 2>&1 \
             | tee parent-commit-service/evidence/emulator.stdout.log
+      - name: Regress existing App transfer panel event wiring (mocked backend only)
+        shell: bash
+        run: |
+          set -o pipefail
+          npx vitest run tests/pr95-app-initial-activation.test.tsx 2>&1 |
+            tee parent-commit-service/evidence/panel-regression.stdout.log
       - name: Archive local-only service endpoint and RTDB witnesses
         if: always()
         uses: actions/upload-artifact@v4

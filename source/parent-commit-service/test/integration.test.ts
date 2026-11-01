@@ -161,6 +161,12 @@ it('full App adapter journey: real Google ID token → activate → replace → 
  expect(after1.datasetV2.active.generationId).toBe('gen_'+first);
  expect(after1.datasetV2.generations['gen_'+first].items.r1.note).toBe('Initial V2');
  log('app_adapter_initial_activation',before1,after1,activated);
+ const activationRetry=await commitInitialDatasetActivation(db,admin,staged,
+  'KHOI TAO V2 '+first+' '+staged.legacyRowCount+' '+staged.preview.newCount);
+ const afterActivationRetry=await witness();
+ expect(activationRetry.status).toBe('already-committed');
+ expect(stable(afterActivationRetry)).toBe(stable(after1));
+ log('app_adapter_activation_retry_no_double_commit',after1,afterActivationRetry,activationRetry);
  const second='auth_replace_0002';
  const approval=await stageDatasetReplacement(db,admin,[row('Approved replacement')],second,'second.xlsx');
  const before2=await witness();
@@ -194,6 +200,12 @@ it('full App adapter journey: real Google ID token → activate → replace → 
  expect((await resolveDatasetOperation(db,second)).status).toBe('committed-historical');
  expect((await resolveDatasetOperation(db,restoreId)).status).toBe('committed-active');
  log('app_adapter_restore_historical_resolve',before3,after3,restored);
+ const restoreRetry=await restoreDatasetBackup(db,admin,second,restoreId,
+  before3.datasetV2.active,'KHOI PHUC '+restoreId);
+ const afterRestoreRetry=await witness();
+ expect(restoreRetry.status).toBe('already-committed');
+ expect(stable(afterRestoreRetry)).toBe(stable(after3));
+ log('app_adapter_restore_retry_no_double_commit',after3,afterRestoreRetry,restoreRetry);
 });
 
 it('malicious commit tree, wrong confirmation, stale pointer and tampered staging fail closed through real endpoint',async()=>{

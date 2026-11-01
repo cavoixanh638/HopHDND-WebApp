@@ -134,6 +134,9 @@ export async function handleParentAction(db,identity,input){
   // Preflight is not authority; it validates SHA256 and exposes corruption before CAS.
   const legacy=body.action==='activate'?legacySnapshot({hdnd:await loadState(db)}):null;
   inspect(before,body,uid,legacy);
+  // A restore must not silently replace an active generation changed after
+  // the admin examined it. The old source fingerprint is rechecked within CAS.
+  const restoreBaseline=body.action==='restore'?stable(scoped(before)):null;
   const reference=db.ref(ROOT);
   await reference.get();
   const releaseCache=await holdRootCache(reference);
@@ -143,6 +146,8 @@ export async function handleParentAction(db,identity,input){
     result=await reference.transaction(raw=>{
       try{
         if(!raw)return undefined;
+        if(restoreBaseline!==null&&stable(scoped(raw))!==restoreBaseline)
+          throw Error('PARENT_COMMIT_DENIED: active row/rights/leases changed during restore');
         return inspect(raw,body,uid,legacy);
       }catch(error){denial=String(error?.message??error);return undefined;}
     },undefined,false);
