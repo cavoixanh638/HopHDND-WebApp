@@ -10,7 +10,7 @@ let s=readFileSync(origin,'utf8');
 if(!s.includes("it('lost API completion")||!s.includes('const records:any[]=[];'))
   throw Error('Candidate test source drift; refuse heuristic rewrite');
 const extra=String.raw`
-it.each(['renew','release'] as const)(
+it.each(['renew','release','save'] as const)(
  'FINAL-DATA-REVIEW candidate in-flight %s across real authenticated replacement endpoint',
  async(action)=>{
   const now=Date.now(),prev='review_old_cell_gen_0001',next='review_new_parent_gen_0002';
@@ -42,8 +42,13 @@ it.each(['renew','release'] as const)(
   const before=await witness();
   let parentResponse:any=null,backendError:any=null,reached=false;
   try{
-   await dispatchCellEdit(identity,{action,scope:'v2',generation:base,
-    operationId:randomUUID(),recordId:'r1',field:'note',token:lease.token,secret:privateSecret},
+   const editOperationId=randomUUID();
+   const request={action,scope:'v2',generation:base,
+    operationId:editOperationId,recordId:'r1',field:'note',token:lease.token,secret:privateSecret,
+    ...(action==='save'?{patch:{recordId:'r1',operationId:editOperationId,baseRevision:1,
+      baseValues:{note:'ORIGINAL OLD ROW'},changes:{note:'MUST NOT WRITE OLD GENERATION'}},
+      leases:{note:{token:lease.token,secret:privateSecret}}}:{})};
+   await dispatchCellEdit(identity,request,
     {afterProof:async()=>{
      reached=true;
      parentResponse=await post(admin,{action:'replace',operationId:next,
@@ -58,15 +63,19 @@ it.each(['renew','release'] as const)(
   const oldLeaseBefore=before.datasetV2.leases?.[oldGen]?.r1?.note;
   const oldLeaseAfter=after.datasetV2.leases?.[oldGen]?.r1?.note;
   const oldChanged=stable(oldLeaseBefore)!==stable(oldLeaseAfter);
+  const oldRowChanged=stable(before.datasetV2.generations[oldGen])!==
+    stable(after.datasetV2.generations[oldGen]);
   const event={action,reached,parentHTTP:parentResponse?.status,
    parentStatus:parentResponse?.body?.status,
    backendError,oldLeaseBefore:{revision:oldLeaseBefore?.revision,expiresAt:oldLeaseBefore?.expiresAt},
    oldLeaseAfter:{revision:oldLeaseAfter?.revision,expiresAt:oldLeaseAfter?.expiresAt},
-   oldChanged,activeBefore:before.datasetV2.active,activeAfter:after.datasetV2.active,
-   previousGenerationUnchanged:stable(before.datasetV2.generations[oldGen])===
-    stable(after.datasetV2.generations[oldGen]),
-   expected:'parent COMMITTED; old lease immutable; backend should reject stale generation without server mutation',
-   finding:oldChanged?'REPRODUCED_OLD_LEASE_WRITE_AFTER_REAL_PARENT_COMMIT':'NO_STALE_LEASE_WRITE'};
+   oldChanged,oldRowChanged,activeBefore:before.datasetV2.active,
+   activeAfter:after.datasetV2.active,
+   previousGenerationUnchanged:!oldRowChanged,
+   expected:'parent COMMITTED; old historical row and lease must remain immutable, stale write rejected at Rules transaction',
+   finding:action==='save'
+    ?(oldRowChanged?'REPRODUCED_OLD_ROW_WRITE':'OLD_ROW_RULES_DENIED')
+    :(oldChanged?'REPRODUCED_OLD_LEASE_WRITE_AFTER_REAL_PARENT_COMMIT':'NO_STALE_LEASE_WRITE')};
   log('FINAL_DATA_REVIEW_real_parent_'+action,before,after,event,
    'real verified Firebase Auth token -> backend afterProof hold -> real authenticated PR147 parent endpoint -> scoped cell Admin transaction via merged FULL Rules');
   console.log('FINAL_DATA_REVIEW_CANDIDATE_CROSS '+JSON.stringify(event));
@@ -74,7 +83,14 @@ it.each(['renew','release'] as const)(
   expect(parentResponse?.body?.status).toBe('committed');
   expect(after.datasetV2.active.generationId).toBe('gen_'+next);
   expect(event.previousGenerationUnchanged).toBe(true);
-  expect(oldChanged,'Probing known stale-generation lease Rules vulnerability').toBe(true);
+  if(action==='save'){
+   expect(oldChanged).toBe(false);
+   expect(oldRowChanged).toBe(false);
+   expect(backendError?.code,'old-generation SAVE must fail at Rules, not after committing').toBe('permission-denied');
+  }else{
+   expect(oldChanged,'Probing known stale-generation lease Rules vulnerability').toBe(true);
+   expect(backendError?.code).toBe('failed-precondition');
+  }
  }
 );
 
