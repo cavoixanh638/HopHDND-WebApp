@@ -103,7 +103,7 @@ it('denies no ID token, anonymous, invalid provider and unverified identity; cli
  const otherCtx=await sdk('other');const other=await google(otherCtx,'other-account','other@example.net');
  const wrongEmail=await post(other,{action:'resolve',operationId:'verify_admin_0001'});
  expect(wrongEmail.status).toBe(403);
- const unverifiedCtx=await sdk('unverified');const unverified=await google(unverifiedCtx,'unverified-admin',ADMIN_EMAIL,false);
+ const unverifiedCtx=await sdk('unverified');const unverified=await google(unverifiedCtx,'unverified-admin','unverified-local@example.test',false);
  const unverifiedResult=await post(unverified,{action:'resolve',operationId:'verify_admin_0001'});
  expect(unverifiedResult.status).toBe(403);
  const injected=await post(admin,{action:'activate',operationId:'verify_admin_0001',
@@ -156,6 +156,7 @@ it('full App adapter journey: real Google ID token → activate → replace → 
  const activated=await commitInitialDatasetActivation(db,admin,staged,
   'KHOI TAO V2 '+first+' '+staged.legacyRowCount+' '+staged.preview.newCount);
  const after1=await witness();
+ console.log('PARENT_ACTIVATE_OBSERVATION',JSON.stringify({response:activated,active:after1.datasetV2?.active??null,operation:after1.datasetV2?.operations?.[first]??null}));
  expect(activated.status).toBe('committed');
  expect(after1.datasetV2.active.generationId).toBe('gen_'+first);
  expect(after1.datasetV2.generations['gen_'+first].items.r1.note).toBe('Initial V2');
@@ -249,7 +250,9 @@ it('lost API completion after actual server commit returns UNKNOWN; read-only re
  finally{globalThis.fetch=nativeFetch;}
  expect(intercepted).toBe(true);
  expect(result.status).toBe('unknown');
- const after=await witness();expect(after.datasetV2.active.operationId).toBe(op);
+ const after=await witness();
+ console.log('PARENT_ACK_LOSS_OBSERVATION',JSON.stringify({response:result,active:after.datasetV2?.active??null,operation:after.datasetV2?.operations?.[op]??null}));
+ expect(after.datasetV2.active.operationId).toBe(op);
  expect(after.datasetV2.active.revision).toBe(before.datasetV2.active.revision+1);
  log('lost_http_caller_ack_after_commit',before,after,result);
  expect((await resolveDatasetOperation(db,op)).status).toBe('committed-active');

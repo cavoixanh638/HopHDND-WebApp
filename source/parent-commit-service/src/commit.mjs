@@ -127,6 +127,7 @@ export async function handleParentAction(db,identity,input){
       }catch(error){denial=String(error?.message??error);return undefined;}
     },undefined,false);
   }catch(error){throw Error('PARENT_TRANSACTION_DENIED: '+String(error?.message??error));}
+  if(process.env.FIREBASE_DATABASE_EMULATOR_HOST)console.log('PARENT_TRANSACTION_RESULT',JSON.stringify({action:body.action,operationId:op,committed:result.committed,denial}));
   if(!result.committed){
     // A failed transaction may be conflict, denial, or ambiguous. Read server status.
     const verified=statusFor(await loadRoot(db),op);

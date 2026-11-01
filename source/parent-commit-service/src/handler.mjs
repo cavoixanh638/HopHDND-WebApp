@@ -95,12 +95,14 @@ export async function handleParentRequest(req,res){
   try{
     scoped=scopedDatabase(claims);
     const result=await handleParentAction(scoped.db,{uid:claims.uid},body);
+    if(process.env.FIREBASE_DATABASE_EMULATOR_HOST)console.log('PARENT_SCOPED_ENDPOINT_RESULT',JSON.stringify({action:body.action,operationId:body.operationId,status:result.status}));
     json(res,200,result,allowOrigin);
   }catch(error){
     const message=String(error?.message??error);
     // Avoid printing row, token, authorization or private backup content.
     const conflict=/DENIED|mismatch|stale|invalid|missing|changed|PARENT_TRANSACTION/.test(message);
     const status=conflict?409:503;
+    if(process.env.FIREBASE_DATABASE_EMULATOR_HOST)console.log('PARENT_SCOPED_ENDPOINT_ERROR',JSON.stringify({action:body?.action,operationId:body?.operationId,status,reason:message.slice(0,180)}));
     json(res,status,{error:conflict?'PARENT_REJECTED':'PARENT_UNKNOWN',
       message:message.slice(0,220),operationId:typeof body?.operationId==='string'?body.operationId:undefined},allowOrigin);
   }finally{if(scoped)await deleteApp(scoped.app).catch(()=>{});}
