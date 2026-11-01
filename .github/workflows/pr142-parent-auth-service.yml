@@ -36,11 +36,11 @@ jobs:
       - name: Install application deps
         run: npm ci
       - name: Install isolated service deps (without touching application lockfile)
-        run: npm install --prefix parent-commit-service --no-package-lock --ignore-scripts
+        run: npm ci --prefix parent-commit-service --no-audit --no-fund --ignore-scripts
       - name: Check main application TypeScript
         run: npm run typecheck
       - name: Install companion cell Functions dependency graph
-        run: npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
+        run: npm ci --prefix cell-edit-service --no-audit --no-fund
       - name: Verify exact shared FULL candidate Rules and both Functions codebases
         run: |
           node -e "const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;const f=require('./firebase.staging.json');if(f.functions.length!==2||!r.datasetV2['.write'].includes('parentCasService')||!r.items[String.fromCharCode(36)+'id']['.write'].includes('cellService'))process.exit(1)"

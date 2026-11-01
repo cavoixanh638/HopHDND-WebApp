@@ -14,6 +14,68 @@ concurrency:
   group: pr142-integrated-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  lock-backend-deps:
+    # Bootstrap exactly two service lockfiles once; never deploy or publish.
+    if: (github.event_name == 'pull_request' && github.event.pull_request.number == 147 && github.event.pull_request.head.ref == 'integration/pr142-cell-parent-freeze-candidate-20261101') || (github.event_name == 'push' && github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Generate frozen Node22 package locks if absent
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          if test -f cell-edit-service/package-lock.json && test -f parent-commit-service/package-lock.json; then
+            echo "LOCKFILES_ALREADY_TRACKED"
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          node -e "for(const n of ['cell-edit-service','parent-commit-service']) {const p=require('./'+n+'/package.json'),l=require('./'+n+'/package-lock.json');if(l.lockfileVersion!==3||l.packages[''].name!==p.name)process.exit(1);for(const [k,v] of Object.entries(p.dependencies))if(l.packages[''].dependencies[k]!==v)process.exit(2)}"
+          git diff --exit-code -- firebase/database.exclusive-candidate.rules.json src cell-edit-service/index.js cell-edit-service/core.js parent-commit-service/index.mjs parent-commit-service/src
+          git status --short
+      - name: Commit only backend lockfiles to existing PR147 branch
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f source/cell-edit-service/package-lock.json && test -f source/parent-commit-service/package-lock.json; then
+            git add -- source/cell-edit-service/package-lock.json source/parent-commit-service/package-lock.json
+            if git diff --cached --quiet; then echo "LOCKFILES_ALREADY_TRACKED"; exit 0; fi
+            test "$(git diff --cached --name-only | wc -l)" -eq 2
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(PR147): pin both Node22 Firebase Functions package-lock files"
+            # Multiple integrator commits can advance the PR while CI resolves npm.
+            # Rebase ONLY this two-lockfile commit, never force-push or touch main.
+            for attempt in 1 2 3 4; do
+              git fetch --no-tags origin integration/pr142-cell-parent-freeze-candidate-20261101
+              git rebase origin/integration/pr142-cell-parent-freeze-candidate-20261101
+              changed="$(git diff --name-only origin/integration/pr142-cell-parent-freeze-candidate-20261101 HEAD)"
+              if test "$changed" != "$(printf 'source/cell-edit-service/package-lock.json\nsource/parent-commit-service/package-lock.json')"; then
+                echo "::error::Unexpected change in rebased lockfile commit"; exit 2
+              fi
+              if git push origin HEAD:refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101; then
+                echo "LOCKFILES_COMMITTED_SHA=$(git rev-parse HEAD)"
+                exit 0
+              fi
+            done
+            echo "::error::Candidate advanced during lockfile bootstrap"; exit 2
+          else
+            echo "::error::Missing generated lockfiles"; exit 2
+          fi
+
   static-app:
     if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
     runs-on: ubuntu-latest
@@ -31,8 +93,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Authenticated parent + cell services (isolated)
         run: |
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
       - name: Confirm exact source SHA
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -70,8 +132,8 @@ jobs:
       - name: Install all 3 isolated dependency graphs
         run: |
           npm ci --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Browser runtime
         run: npx --prefix cell-edit-service playwright install --with-deps chromium
       - name: Verify EXACT integration Rules and both functions
@@ -147,8 +209,8 @@ jobs:
       - name: Install App and BOTH Functions service graphs
         run: |
           npm ci --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Build real pages-test artifact
         run: npm run build:pages:test
       - name: Build the original compact real ItemList fixture required by full Chrome smoke

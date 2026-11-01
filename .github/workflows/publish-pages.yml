@@ -1,5 +1,6 @@
 name: Build and publish HopHDND Pages
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -24,6 +25,10 @@ concurrency:
 
 jobs:
   publish:
+    # NEVER publish a new Pages build just because code was merged into main.
+    # Operator must first certify BOTH functions + FULL Rules deployment and
+    # whitelist the exact new main SHA for a separate, controlled web release.
+    if: ${{ vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,7 +57,15 @@ jobs:
         run: npm run test:firebase
       - name: Check documentation
         run: npm run docs:check
-      - name: Build Pages from TypeScript
+      - name: Verify approved public HTTPS parent endpoint BEFORE any web build
+        env:
+          APPROVED_PARENT_ENDPOINT: ${{ vars.HOPHDND_PARENT_COMMIT_ENDPOINT }}
+        run: |
+          node -e "const u=process.env.APPROVED_PARENT_ENDPOINT;if(!u||!u.startsWith('https://'))throw Error('PAGES_RELEASE_HOLD: approved HTTPS parent endpoint missing');const a=new URL(u);if(a.protocol!=='https:'||a.username||a.password||a.hash||a.search)throw Error('PAGES_RELEASE_HOLD: endpoint unsafe')"
+      - name: Build Pages from TypeScript with explicitly approved V2 flags
+        env:
+          VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+          VITE_PARENT_COMMIT_ENDPOINT: ${{ vars.HOPHDND_PARENT_COMMIT_ENDPOINT }}
         run: npm run build:pages
       - name: Copy split Pages build while keeping older hashed assets for cached HTML
         run: |

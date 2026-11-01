@@ -1,5 +1,21 @@
 # PR147 — integrated candidate contract and Emulator handoff
 
+## Post-review FRCR-01 fix + repeatable release package (after historical 0296472 review)
+
+The original **historical** integrated release-review SHA is `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7`. It remains immutable historical evidence only: **do not infer that its old SHA256 Rules, CI artifact or binary are the newer FRCR-01 candidate**. Current candidate identity must be read from PR147 HEAD and the exact current HEAD CI result.
+
+- FRCR-01: `firebase/database.exclusive-candidate.rules.json` now permits verified admin `datasetV2/permissions/$generation` writes **only when that generation is active at server decision time**. The unchanged `datasetV2` parent `parentCasService` gate remains available for genuine A->B and restore transactions; no weakening of `verifyCommittedRestoreSource`.
+- Real regression in `parent-commit-service/test/integration.test.ts` checks active column/row/cell grant and revoke; authentic A->B HTTP CAS; queued old A permissions rejected *after* pointer switch; deletion, multipath and all scopes rejected without partial write; anonymous and unprivileged Google denied; valid historically COMMITTED backup restores successfully. Original DR-01 and DR-02 tests stay enabled.
+- Both Node22 backend dependency graphs are pinned in `cell-edit-service/package-lock.json` and `parent-commit-service/package-lock.json`. Source Verify and integrated workflows use `npm ci --prefix ...`, not floating `npm install`; CI Node24 builds the web and Node22 runs backend package checks.
+- `firebase.release.json` includes **FULL Rules and exactly two named Node22 Functions** but deliberately has database instance `REQUIRED_UNVERIFIED`. It MUST NOT be used directly for a production deploy. `scripts/pr147-release-validate.mjs` independently checks the target and required env/endpoint/flag/CORS and rejects production use without external signed approvals. `pr147-package-rehearsal.yml` records exact source SHA and SHA256 for web, both Functions, and FULL Rules; the V2 web example targets the localhost *demo* Emulator only.
+- `.github/workflows/publish-pages.yml` now blocks automatic publishing after merge unless independent backend/Rules approval and the **exact main SHA** are set as explicit release variables. A new web Pages build with HTTPS V2 endpoint is only permitted *after* verified backend + FULL Rules; no automatic Firebase/Cloudflare hosting switch.
+- [PR149 operations (docs only)](https://github.com/cavoixanh638/HopHDND-WebApp/pull/149) remains authoritative for first-use UAT, legacy empty/non-empty/V2-active decisions, fresh private backup and owner signoff. Production remains `NOT_AUTHORIZED`; do not read/write production to satisfy code CI.
+
+**Release flags, rehearsal-only (from `source/`):** set `GCLOUD_PROJECT=demo-hdnd`, `FIREBASE_DATABASE_URL=PARENT_DATABASE_URL=https://demo-hdnd.firebaseio.com`, `PARENT_ALLOWED_ORIGINS=http://127.0.0.1:4179`, `PARENT_COMMIT_ENABLED=true`, `VITE_PARENT_REPLACEMENT_ENABLED=true`, `VITE_PARENT_COMMIT_ENDPOINT=http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit`; then run `node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json`. These values are **never production defaults**. For production, a separately authorized operator-approved config and a real HTTPS parent endpoint are required; until then validator must return HOLD.
+
+**Verdict vocabulary:** `CODE_READY` only if all code gates PASS on the latest identical SHA; `PACKAGE_READY` may mean validated **emulator rehearsal archives only**, never a production-enabled web; `PRODUCTION_AUTHORIZED=false` until owner signs off all live checks and release window.
+
+
 **Draft PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/147  
 **Source branch:** `integration/pr142-cell-parent-freeze-candidate-20261101`  
 **Baseline:** PR142 `98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847`  
@@ -21,8 +37,8 @@ Run from `source/`. The commands must never use a production Firebase project, d
 
 ```sh
 npm ci --no-audit --no-fund
-npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+npm ci --prefix cell-edit-service --no-audit --no-fund
+npm ci --prefix parent-commit-service --no-audit --no-fund
 npm run typecheck
 npm test
 npm run build

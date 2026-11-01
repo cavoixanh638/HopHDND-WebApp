@@ -41,8 +41,10 @@ const fact={schema:'pr149.run.v1',lockedOriginalSha:'02964722ae405a7ccf70f2b88bf
  frcrFixedExpected:process.env.PR149_EXPECT_FRCR_FIXED==='true'};
 writeFileSync('pr149-ops-evidence/environment.json',JSON.stringify(fact,null,2)+'\n');
 console.log('PR149_EMULATOR_FULL_RULES_READY',JSON.stringify(fact));
-const cmd=['node_modules/vitest/vitest.mjs','run',
-  'docs/operations/pr149/operational-drill.test.ts',
+const testPath=process.env.PR149_ONLY_OPERATOR_BOOTSTRAP==='true'
+ ?'docs/operations/pr149/bootstrap-operator.test.ts'
+ :'docs/operations/pr149/operational-drill.test.ts';
+const cmd=['node_modules/vitest/vitest.mjs','run',testPath,
   '--config','parent-commit-service/test/vitest.config.mjs',
   '--maxWorkers=1','--reporter=verbose'];
 const p=spawn(process.execPath,cmd,{stdio:'inherit',env:{...process.env,PR149_CANDIDATE_SHA:original,
