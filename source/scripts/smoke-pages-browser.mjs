@@ -35,9 +35,14 @@ const emulatorConfigDir=mkdtempSync(join(resolve('.'),'.pr95-browser-exclusive-r
 const emulatorConfigFile=join(emulatorConfigDir,'firebase.json');
 writeFileSync(emulatorConfigFile,JSON.stringify({
   database:{rules:EXCLUSIVE_RULES_FILE},
+  functions:[
+    {source:resolve('cell-edit-service'),codebase:'pr142-cell-edit',runtime:'nodejs22'},
+    {source:resolve('parent-commit-service'),codebase:'parent-v2',runtime:'nodejs22'}
+  ],
   emulators:{
     database:{host:'127.0.0.1',port:9000},
     auth:{host:'127.0.0.1',port:9099},
+    functions:{host:'127.0.0.1',port:5001},
     ui:{enabled:false},
     singleProjectMode:true
   }
@@ -98,6 +103,7 @@ const emulatorsReady=async()=>{
       if(reply.ok){
         const available=await reply.json();
         if(available?.auth?.port===9099&&available?.database?.port===9000&&
+          available?.functions?.port===5001&&
           ['127.0.0.1','localhost'].includes(available.auth.host)&&
           ['127.0.0.1','localhost'].includes(available.database.host))
           return;
@@ -110,9 +116,11 @@ const emulatorsReady=async()=>{
 async function startAndSeedFirebase(){
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
-    '--project',EMULATOR_PROJECT,'--only','database,auth','--config',emulatorConfigFile
+    '--project',EMULATOR_PROJECT,'--only','database,auth,functions','--config',emulatorConfigFile
   ],{stdio:['ignore','pipe','pipe'],env:{...process.env,
-    FIREBASE_CLI_EXPERIMENTS:'webframeworks',CI:'true'}});
+    FIREBASE_CLI_EXPERIMENTS:'webframeworks',CI:'true',
+    PARENT_COMMIT_ENABLED:'true',PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    PARENT_ALLOWED_ORIGINS:'http://127.0.0.1:'+port}});
   for(const stream of [emulator.stdout,emulator.stderr])
     stream?.on('data',chunk=>{emulatorOutput=(emulatorOutput+String(chunk)).slice(-8000);});
   emulator.on('error',error=>{emulatorOutput+=' SPAWN: '+error.message;});
@@ -122,7 +130,7 @@ async function startAndSeedFirebase(){
   // NEVER PUT/overwrite any Rules. Require byte-equivalent JSON tree via GET.
   const config=JSON.parse(readFileSync(emulatorConfigFile,'utf8'));
   const original=JSON.parse(readFileSync(resolve('firebase.json'),'utf8'));
-  if(config.database?.rules!==EXCLUSIVE_RULES_FILE||
+  if(config.database?.rules!==EXCLUSIVE_RULES_FILE||config.functions?.length!==2||
     original.database?.rules===EXCLUSIVE_RULES_FILE||
     expectedRules.rules?.hdnd?.datasetV2?.['.read']===undefined)
     throw Error('Candidate Rules Emulator configuration is not isolated');
