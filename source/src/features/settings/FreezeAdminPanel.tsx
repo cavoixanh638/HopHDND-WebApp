@@ -7,6 +7,7 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
   const [count,setCount]=useState<number|null>(null);
   const [countSource,setCountSource]=useState('');
   const lastSource=useRef<string|null>(null);
+  const countRequest=useRef(0);
   const sourceFence=firebase.datasetActive
     ?[firebase.datasetActive.generationId,firebase.datasetActive.operationId,
       firebase.datasetActive.revision,firebase.datasetActive.rowCount,
@@ -18,36 +19,52 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
   const [message,setMessage]=useState('');
   const working=useRef(false);
   const refresh=async()=>{
+    const request=++countRequest.current;
     const startedFor=sourceFenceRef.current;
     setCount(null);setCountSource('');
     const snapshot=await readActiveLeaseSnapshot(firebase.database);
     // React's generation state must not identify a different source.
-    if(!firebase.datasetEpochReady||sourceFenceRef.current!==startedFor||
+    if(request!==countRequest.current||!firebase.connected||
+      !firebase.datasetEpochReady||sourceFenceRef.current!==startedFor||
       !sameFreezeDataset(snapshot.active,firebase.datasetActive??null))
       throw Error('Generation trong bảng quản trị chưa khớp server; không dùng số đếm cũ.');
     setCount(snapshot.count);
     setCountSource(snapshot.source==='v2'?'V2 '+snapshot.active!.generationId:'Legacy');
     return snapshot.count;
   };
+  const inspect=async()=>{
+    const startedFor=sourceFenceRef.current;
+    setMessage('');setError('');
+    try{await refresh();}
+    catch(e){
+      setCount(null);setCountSource('');
+      if(sourceFenceRef.current===startedFor)
+        setError(e instanceof Error?e.message:'Không kiểm tra được phiên sửa.');
+      else
+        setMessage('Generation đã đổi; số đếm cũ không còn hiệu lực. Kiểm tra lại trên generation mới.');
+    }
+  };
   const change=async(next:'DRAINING'|'FROZEN'|'OPEN',force=false)=>{
     if(working.current)return;
-    working.current=true;setBusy(true);setError('');
+    working.current=true;setBusy(true);setError('');setMessage('');
     let frozenAck=false;
     try{
       const confirmed=await firebase.updateFreeze(next,force);
+      let confirmedMessage='';
       if(next==='FROZEN'){
         frozenAck=true;
         const proof=await createFreezeReceipt(firebase.database,firebase.user,confirmed.epoch);
         const forced=force||proof.closeKind==='forced';
-        setMessage((forced
+        confirmedMessage=(forced
           ?'Đã ĐÓNG BĂNG CƯỠNG BỨC; có thể còn nháp chưa lưu. '
           :'Đã CHỐT THÔNG THƯỜNG, không còn khóa đang hiệu lực. ')+
           'Biên nhận '+proof.rows+' nội dung'+
           (proof.datasetV2?' / '+proof.datasetV2.generationId:' / legacy')+
-          '. SHA-256: '+proof.sha256.slice(0,16)+'…');
-      }else if(next==='DRAINING')setMessage('Đã ngừng nhận lượt sửa mới. Các phiên đang sửa được yêu cầu lưu, chỉ chốt sau khi máy chủ xác nhận.');
-      else setMessage('Đã mở lại chỉnh sửa. Bản nháp cũ cần được đối chiếu trước khi gửi lại.');
+          '. SHA-256: '+proof.sha256.slice(0,16)+'…';
+      }else if(next==='DRAINING')confirmedMessage='Đã ngừng nhận lượt sửa mới. Các phiên đang sửa được yêu cầu lưu, chỉ chốt sau khi máy chủ xác nhận.';
+      else confirmedMessage='Đã mở lại chỉnh sửa. Bản nháp cũ cần được đối chiếu trước khi gửi lại.';
       await refresh();
+      setMessage(confirmedMessage);
     }catch(e){
       setCount(null);setCountSource('');
       setError((frozenAck?'FROZEN đã được ACK nhưng BIÊN NHẬN CHƯA XÁC MINH. ':'')+
@@ -59,13 +76,23 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
   useEffect(()=>{
     const key=sourceFence;
     if(lastSource.current!==null&&lastSource.current!==key){
+      countRequest.current++;
       setCount(null);setCountSource('');
+      setError('');
       setMessage('Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.');
     }
     lastSource.current=key;
   },[firebase.datasetActive?.generationId,firebase.datasetActive?.operationId,
       firebase.datasetActive?.revision,firebase.datasetActive?.rowCount,
       firebase.datasetActive?.digest]);
+  useEffect(()=>{
+    if(firebase.isAdmin&&!firebase.connected){
+      countRequest.current++;
+      setCount(null);setCountSource('');
+      setMessage('');
+      setError('Mất kết nối Firebase; không có số đếm khóa đã xác minh.');
+    }
+  },[firebase.isAdmin,firebase.connected]);
   // Admin dashboard watches current active leases; when an orderly drain
   // reaches zero it commits FROZEN automatically. A deadline alone never
   // claims unconfirmed local drafts were persisted.
@@ -78,7 +105,7 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
         const n=await refresh();
         if(n===0&&!stopped)await change('FROZEN',false);
         else if(Date.now()>=state.deadline&&!stopped)await change('FROZEN',true);
-      }catch(e){if(!stopped){setCount(null);setCountSource('');setError(e instanceof Error?e.message:'Không kiểm tra được số phiên sửa.');}}
+      }catch(e){if(!stopped){setCount(null);setCountSource('');setMessage('');setError(e instanceof Error?e.message:'Không kiểm tra được số phiên sửa.');}}
     };
     void tick();
     const timer=window.setInterval(()=>void tick(),3000);
@@ -109,7 +136,7 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
       {state?.mode==='DRAINING'&&<button type="button" className="button danger" disabled={busy} onClick={()=>void change('FROZEN',true)}>Đóng băng ngay</button>}
       {state?.mode==='OPEN'&&<button type="button" className="button ghost" disabled={busy} onClick={()=>void change('FROZEN',true)}>Đóng băng khẩn cấp</button>}
       {state?.mode==='FROZEN'&&<button type="button" className="button primary" disabled={busy||!firebase.connected} onClick={()=>void change('OPEN')}>Mở lại chỉnh sửa</button>}
-      <button type="button" className="button ghost" disabled={busy||!firebase.connected} onClick={()=>void refresh()}>Kiểm tra phiên sửa</button>
+      <button type="button" className="button ghost" disabled={busy||!firebase.connected} onClick={()=>void inspect()}>Kiểm tra phiên sửa</button>
     </div>
   </section>;
 }
