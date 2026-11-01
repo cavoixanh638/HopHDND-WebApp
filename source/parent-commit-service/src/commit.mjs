@@ -1,5 +1,5 @@
 import {ServerValue} from 'firebase-admin/database';
-import {stable,assertSafeParentTransition} from './parent-contract.mjs';
+import {stable,assertSafeParentTransition,verifyCommittedRestoreSource} from './parent-contract.mjs';
 import {operationValid,sha256,decodeCandidate,verifyBackup,scoped,sameEpoch,freezeEvidence,legacySnapshot} from './manifest.mjs';
 const ROOT='hdnd/datasetV2';
 const check=(ok,msg)=>{if(!ok)throw Error('PARENT_COMMIT_DENIED: '+msg);};
@@ -100,11 +100,13 @@ function inspect(current,body,uid,legacy){
     check(sameEpoch(current.active,body.expected),'stale restore pointer');
     check(body.confirmation==='KHOI PHUC '+op,'incorrect restore confirmation');
     const backup=verifyBackup(current.backups?.[body.backupOperationId]);
-    check(backup.previous&&backup.generation?.items,'backup missing approved rows');
+    // Verify that the referenced replacement ACTUALLY COMMITTED, and that
+    // the backup matches its immutable source generation. This runs again
+    // inside the Rules-scoped CAS after all concurrent writes.
+    const historical=verifyCommittedRestoreSource(current,backup,body.backupOperationId);
     check(!own(current.leases,'gen_'+op),'restore destination contains leases');
-    approved=backup.generation.items;count=Object.keys(approved).length;
-    check(count>0&&count<=1000,'invalid restored row count');
-    digest=backup.previous.digest;sourcePermissions=parse(backup.permissionsJson)??{columns:{}};
+    approved=historical.items;count=historical.count;
+    digest=historical.digest;sourcePermissions=historical.permissions??{columns:{}};
     oldGen=current.active.generationId;
   }else throw Error('Unsupported action');
   const next={...current,
