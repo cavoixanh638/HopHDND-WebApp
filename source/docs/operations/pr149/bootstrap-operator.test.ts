@@ -12,7 +12,10 @@ import {parseBusinessExcel} from '../../../src/data/business-excel';
 import {bootstrapApprovedRowsToPrimary} from '../../../src/data/firebase-primary-bootstrap';
 import {sha} from './offline-audit-core.mjs';
 
-it('operator wrapper: genuine Auth Emulator verified admin imports A-O exactly once through existing CAS API',async()=>{
+const enabled=process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099'&&
+ process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'&&
+ process.env.GCLOUD_PROJECT==='demo-hdnd'&&!!process.env.FIREBASE_EMULATOR_HUB;
+it.skipIf(!enabled)('operator wrapper: genuine Auth Emulator verified admin imports A-O exactly once through existing CAS API',async()=>{
  const file=process.env.PR149_BOOTSTRAP_XLSX,sheet=process.env.PR149_BOOTSTRAP_SHEET;
  if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
     process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000'||

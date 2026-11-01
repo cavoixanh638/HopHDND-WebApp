@@ -25,11 +25,10 @@ const PROJECT='demo-hdnd',ADMIN_EMAIL='cavoixanh638@gmail.com';
 const API='http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit';
 const rootURL='http://127.0.0.1:9000/.json?ns=demo-hdnd';
 const original='02964722ae405a7ccf70f2b88bfe21cb7d0bcca7';
-if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000'||
- process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
- !process.env.FIREBASE_EMULATOR_HUB||
- (process.env.GCLOUD_PROJECT??PROJECT)!==PROJECT)
- throw Error('PR149_REFUSES_NON_DEMO_EMULATOR');
+const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'&&
+ process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099'&&
+ !!process.env.FIREBASE_EMULATOR_HUB&&
+ (process.env.GCLOUD_PROJECT??PROJECT)===PROJECT;
 let env:RulesTestEnvironment,app:FirebaseApp,admin:User,db:ReturnType<typeof getDatabase>;
 const journal:any[]=[];
 const mask=s=>sha(s).slice(0,16);
@@ -101,7 +100,7 @@ beforeAll(async()=>{
 });
 beforeEach(async()=>{await env.clearDatabase();});
 afterAll(async()=>{await env?.cleanup();if(app)await deleteApp(app);});
-it('S1: truly EMPTY RTDB refuses V2 activation; approved legacy bootstrap CAS succeeds ONCE',async()=>{
+it.skipIf(!enabled)('S1: truly EMPTY RTDB refuses V2 activation; approved legacy bootstrap CAS succeeds ONCE',async()=>{
  const before=await server();expect(before??null).toBe(null);
  const op='ops_empty_activate_0001';
  await expect(prepareInitialDatasetActivation(db,admin,fixtureRows(),op,'new.xlsx'))
@@ -128,7 +127,7 @@ it('S1: truly EMPTY RTDB refuses V2 activation; approved legacy bootstrap CAS su
  expect(active.hdnd.datasetV2.operations[op].status).toBe('COMMITTED');
  expect(active.hdnd.items).toEqual(seeded.hdnd.items);
 });
-it('S2: existing legacy cannot be re-imported; V2 activation retains sealed legacy backup',async()=>{
+it.skipIf(!enabled)('S2: existing legacy cannot be re-imported; V2 activation retains sealed legacy backup',async()=>{
  const existing=fixtureRows('already ACK legacy');
  await bootstrapApprovedRowsToPrimary(db,admin,existing);
  await set(ref(db,'hdnd/permissions/columns/note'),true);
@@ -152,7 +151,7 @@ it('S2: existing legacy cannot be re-imported; V2 activation retains sealed lega
  expect(post.hdnd.datasetV2.permissions?.['gen_'+op]?.columns?.note).toBeUndefined();
  expect(post.hdnd.datasetV2.operations[op]).toMatchObject({status:'COMMITTED',from:'legacy'});
 });
-it('S3: V2 active -> backup then REAL server-ACK edit -> STOP, new snapshot and reconcile, no stale restore',async()=>{
+it.skipIf(!enabled)('S3: V2 active -> backup then REAL server-ACK edit -> STOP, new snapshot and reconcile, no stale restore',async()=>{
  const initial='ops_ack_initial_0001',second='ops_ack_replace_0002';
  await activate('ACK',initial);
  await set(ref(db,'hdnd/datasetV2/permissions/gen_'+initial+'/columns/note'),true);
@@ -208,7 +207,7 @@ it('S3: V2 active -> backup then REAL server-ACK edit -> STOP, new snapshot and 
  expect(report.issues.some(x=>x.code==='POST_BACKUP_SERVER_CHANGES_REQUIRE_RECONCILIATION')).toBe(true);
  writeFileSync('pr149-ops-evidence/s3-reconcile.json',JSON.stringify({stop,report},null,2)+'\n');
 });
-it('FRCR-01: verified admin historical rights write is witnessed on pinned original; fixed SHA MUST deny and still RESTORE',async()=>{
+it.skipIf(!enabled)('FRCR-01: verified admin historical rights write is witnessed on pinned original; fixed SHA MUST deny and still RESTORE',async()=>{
  const a='ops_frcr_initial_0001',b='ops_frcr_replace_0002',c='ops_frcr_restore_0003';
  await activate('FRCR',a);
  await set(ref(db,'hdnd/datasetV2/permissions/gen_'+a+'/columns/note'),true);
@@ -240,7 +239,7 @@ it('FRCR-01: verified admin historical rights write is witnessed on pinned origi
   console.log('PR149_FRCR01_VERDICT=FAIL_ON_PINNED_ORIGINAL');
  }
 });
-it('DR-02: forged self-consistent-looking backup MUST NOT restore',async()=>{
+it.skipIf(!enabled)('DR-02: forged self-consistent-looking backup MUST NOT restore',async()=>{
  const a='ops_forged_initial_0001',b='ops_forged_replace_0002',fake='ops_forged_fake_0003',restore='ops_forged_restore_0004';
  await activate('DR02',a);
  await replace(fixtureRows('genuine B'),b);
@@ -256,7 +255,7 @@ it('DR-02: forged self-consistent-looking backup MUST NOT restore',async()=>{
  expect(attempted.status).toBe(409);expect(post).toEqual(pre);
  expect(post.hdnd.datasetV2.operations?.[restore]).toBeUndefined();
 });
-it('valid RESTORE remains available when no historical right tamper and no new ACK',async()=>{
+it.skipIf(!enabled)('valid RESTORE remains available when no historical right tamper and no new ACK',async()=>{
  const a='ops_valid_initial_0001',b='ops_valid_replace_0002',c='ops_valid_restore_0003';
  await activate('OK',a);
  await set(ref(db,'hdnd/datasetV2/permissions/gen_'+a+'/columns/note'),true);
