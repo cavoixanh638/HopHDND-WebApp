@@ -6,7 +6,7 @@ import {initializeTestEnvironment,type RulesTestEnvironment} from '@firebase/rul
 import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,
   signInAnonymously,getIdToken,type User} from 'firebase/auth';
-import {getDatabase,connectDatabaseEmulator,get,ref,runTransaction,serverTimestamp} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,get,ref,set,runTransaction,serverTimestamp} from 'firebase/database';
 import {getDatabase as getAdminDatabase} from 'firebase-admin/database';
 import {initializeApp as adminInitialize,deleteApp as adminDelete} from 'firebase-admin/app';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
@@ -235,6 +235,46 @@ it('malicious commit tree, wrong confirmation, stale pointer and tampered stagin
  expect(rejected.status).toBe(409);
  const postBad=await witness();expect(stable(postBad)).toBe(stable(preBad));
  log('corrupted_staging_SHA256_denied',preBad,postBad,rejected);
+});
+
+it('DR-02 REGRESSION: self-consistent admin-created backup cannot restore rows absent from COMMITTED journal',async()=>{
+  const created=Date.now();
+  const source='source_approved_seed_0001';
+  const active={generationId:'gen_'+source,operationId:source,revision:1,
+    rowCount:1,digest:'a'.repeat(64)};
+  const approved={...row('GENUINELY APPROVED SOURCE'),operationId:source,
+    updatedAt:1,updatedBy:admin.uid};
+  await seeded({hdnd:{freezeControl:{mode:'OPEN',revision:1,epoch:1,
+    actor:admin.uid,changedAt:created-1000,deadline:0,closedAt:0},
+    datasetV2:{active,generations:{[active.generationId]:{items:{r1:approved}}},
+      operations:{[source]:{status:'COMMITTED',from:'legacy',
+        to:active.generationId,at:created-1000}}}}});
+  const forgedOperation='unapproved_backup_0002';
+  const forgedPrevious={generationId:'gen_never_approved_0000',
+    operationId:'never_approved_0000',revision:1,rowCount:1,digest:'f'.repeat(64)};
+  const forgedItems={r1:{...row('UNAPPROVED INJECTED RESTORE'),
+    operationId:forgedPrevious.operationId,updatedBy:admin.uid,updatedAt:1}};
+  const permissions={columns:{note:true}},leases=null;
+  const forgedBackup={previous:forgedPrevious,generation:{items:forgedItems},
+    permissionsJson:stable(permissions),leasesJson:stable(leases),
+    baseline:stable({active:forgedPrevious,items:forgedItems,permissions,leases})};
+  // Reproduce the product policy: a REAL verified admin may create the
+  // write-once private staging backup, but it is NOT itself a server-approved
+  // committed operation. An attacker can recompute every JSON checksum.
+  await set(ref(db,ROOT+'/backups/'+forgedOperation),JSON.stringify(forgedBackup));
+  const before=await witness();
+  expect(before.datasetV2.backups[forgedOperation]).toBe(JSON.stringify(forgedBackup));
+  const restoreId='review_restore_forged_0003';
+  const attempted=await post(admin,{action:'restore',operationId:restoreId,
+    backupOperationId:forgedOperation,expected:active,
+    confirmation:'KHOI PHUC '+restoreId});
+  expect(attempted.status).toBe(409);
+  expect(String(attempted.body.message??'')).toMatch(/historically COMMITTED/);
+  const after=await witness();
+  expect(stable(after)).toBe(stable(before));
+  expect(after.datasetV2.active).toEqual(active);
+  expect(after.datasetV2.generations['gen_'+restoreId]).toBeUndefined();
+  log('DR02_forged_private_backup_denied_at_server',before,after,attempted);
 });
 
 it('lost API completion after actual server commit returns UNKNOWN; read-only resolve and same-op retry never double-commit',async()=>{
