@@ -24,7 +24,7 @@ function client(name){
  connectFunctionsEmulator(functions,'127.0.0.1',5001);
  return {app,auth,database,functions,call:httpsCallable(functions,'cellEdit',{timeout:20000})};
 }
-const a=client('A'),b=client('B'),c=client('C'),d=client('D-anonymous');
+const a=client('A'),b=client('B'),c=client('C'),d=client('D-anonymous'),adminTab=client('E-verified-admin');
 let uid,uidC,uidAnon,verifiedAdmin;
 const proof=()=>randomBytes(32).toString('hex');
 const hash=o=>createHash('sha256').update(JSON.stringify(o)).digest('hex');
@@ -127,10 +127,10 @@ async function positive(scope){
 // Authentication still comes from a REAL Auth Emulator ID token, verified
 // by Firebase Admin. The optional callback is passed only by this Node test,
 // never through an HTTP/callable payload, after proof-read and before commit.
-async function strictRace(scope,action,lease,afterProof){
+async function strictRace(scope,action,lease,afterProof,actor=a){
  process.env.GCLOUD_PROJECT=PROJECT;
  const {dispatchCellEdit}=await import('../core.js');
- const verified=await getAdminAuth(verifiedAdmin).verifyIdToken(await getIdToken(a.auth.currentUser));
+ const verified=await getAdminAuth(verifiedAdmin).verifyIdToken(await getIdToken(actor.auth.currentUser));
  const operationId=randomUUID();
  const payload={...scopeInfo(scope),action,recordId:'r1',
    operationId,field:'note',token:lease.token,secret:lease.secret};
@@ -151,12 +151,15 @@ async function strictRace(scope,action,lease,afterProof){
 async function run(){
  const adminAssertion=JSON.stringify({sub:'pr142-cell-real-google',email:'poc-editor@demo.invalid',email_verified:true});
  const cAssertion=JSON.stringify({sub:'pr142-cell-real-other',email:'poc-other@demo.invalid',email_verified:true});
- const [ua,ub,uc]=await Promise.all([
+ const rootAssertion=JSON.stringify({sub:'pr142-cell-real-admin',email:'cavoixanh638@gmail.com',email_verified:true});
+ const [ua,ub,uc,rootActor]=await Promise.all([
    signInWithCredential(a.auth,GoogleAuthProvider.credential(adminAssertion)),
    signInWithCredential(b.auth,GoogleAuthProvider.credential(adminAssertion)),
-   signInWithCredential(c.auth,GoogleAuthProvider.credential(cAssertion))
+   signInWithCredential(c.auth,GoogleAuthProvider.credential(cAssertion)),
+   signInWithCredential(adminTab.auth,GoogleAuthProvider.credential(rootAssertion))
  ]);
  uid=ua.user.uid;uidC=uc.user.uid;assert.equal(ub.user.uid,uid);assert.notEqual(uidC,uid);
+ assert.equal(rootActor.user.email,'cavoixanh638@gmail.com');
  verifiedAdmin=adminInitialize({projectId:PROJECT},'verify-emulator-real-claims');
  const ad=await signInAnonymously(d.auth);uidAnon=ad.user.uid;assert.notEqual(uidAnon,uid);
  for(const scope of ['legacy','v2']){
@@ -241,10 +244,14 @@ async function run(){
      checks.push({label:scope+' in-flight freeze',outcome:'RULES_DENIED',serverUnchanged:true});
    });
    await step(scope+' IN-FLIGHT pointer swap AFTER proof-read BEFORE Rules transaction',async()=>{
-     await seed(scope);const l=await acquire(scope);
+     await seed(scope);
+     // Old V2 generations become unreadable to regular editors at pointer swap.
+     // A verified admin retains historical read, so transaction write reaches Rules.
+     const actor=scope==='v2'?adminTab:a;
+     const l=await acquire(scope,'r1','note',actor);
      const before={row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)};
      await strictRace(scope,'save',l,()=>ownerPut('hdnd/datasetV2/active',{
-       generationId:'gen_new',operationId:'new',revision:2,rowCount:2,digest:'b'.repeat(64)}));
+       generationId:'gen_new',operationId:'new',revision:2,rowCount:2,digest:'b'.repeat(64)}),actor);
      assert.deepEqual({row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)},before);
      checks.push({label:scope+' in-flight pointer',outcome:'RULES_DENIED',serverUnchanged:true});
    });
@@ -315,9 +322,9 @@ async function run(){
 let fatal=null;
 try{await run();}catch(e){fatal=String(e?.message??e);console.log('FATAL '+fatal);}
 finally{
- for(const x of [a,b,c,d]){try{goOffline(x.database);}catch{}}
- await Promise.allSettled([signOut(a.auth),signOut(b.auth),signOut(c.auth),signOut(d.auth)]);
- await Promise.allSettled([deleteApp(a.app),deleteApp(b.app),deleteApp(c.app),deleteApp(d.app)]);
+ for(const x of [a,b,c,d,adminTab]){try{goOffline(x.database);}catch{}}
+ await Promise.allSettled([signOut(a.auth),signOut(b.auth),signOut(c.auth),signOut(d.auth),signOut(adminTab.auth)]);
+ await Promise.allSettled([deleteApp(a.app),deleteApp(b.app),deleteApp(c.app),deleteApp(d.app),deleteApp(adminTab.app)]);
  if(verifiedAdmin)await adminDelete(verifiedAdmin);
  writeFileSync(new URL('./witness.local.json',import.meta.url),JSON.stringify({
   source:'FULL candidate Rules copy, cellService guard applied',
