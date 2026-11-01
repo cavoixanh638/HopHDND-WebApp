@@ -127,7 +127,7 @@ export class FirebaseRepository implements Repository {
           action:'save',scope:this.expectedActive?'v2':'legacy',
           generation:this.expectedActive,operationId:patch.operationId,
           recordId:patch.recordId,patch,leases
-        });
+        },this.database);
         if(answer.status!=='committed'||!answer.row)
           throw new Error('Dịch vụ chưa xác nhận bản ghi; không tự lưu lại.');
         await this.assertEpoch();
