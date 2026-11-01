@@ -109,7 +109,14 @@ const checks={
       return true;
     }catch(error){
       const entry={name,status:'FAIL',elapsedMs:Date.now()-started,error:safeError(error),
-        server:await state().catch(e=>({unavailable:safeError(e)}))};
+        server:await state().catch(e=>({unavailable:safeError(e)})),
+        parentServiceLog:logs.parent.slice(-2500),
+        functionsEmulatorLog:logs.firebase.slice(-1200),
+        ui:page?{
+          route:page.url(),
+          body:(await page.locator('body').innerText({timeout:3500}).catch(()=>''))?.slice(-2000),
+          alerts:await page.locator('[role=alert]').allTextContents().catch(()=>[])
+        }:null};
       cases.push(entry);record('CASE_FAIL',{case:name,error:entry.error});
       await screenshot(page,'FAIL-'+name.replace(/[^a-z0-9]+/gi,'-'));
       return false;
@@ -264,22 +271,35 @@ async function startServices(){
     parentEndpoint:8787,rulesHash:manifest.combinedSha256,site:SITE,
     disclaimer:'QA checkout merged locally in CI; no official Chat1 candidate'});
 }
+async function loginVerifiedAdmin(page,label){
+  // Login must follow the REAL App's asynchronous anonymous warmup. Calling
+  // Google sign-in too early lets a later anonymous setPersistence overwrite it.
+  await wait(async()=>page.evaluate(()=>{
+    const probe=window.__pr95UiV2L3RightsProbe?.();
+    return typeof window.__pr95EmulatorGoogleAdminSignIn==='function'&&
+      probe?.userUid&&probe?.epochReady&&probe?.connected?probe:false;
+  }),label+' guest Auth/epoch warmup has completed',26000);
+  const result=await page.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
+  assert.equal(result.emailVerified,true);
+  assert.ok(result.providerIds.includes('google.com'));
+  await wait(async()=>page.evaluate(expected=>{
+    const probe=window.__pr95UiV2L3RightsProbe?.();
+    return probe?.isAdmin===true&&probe?.userUid===expected&&
+      probe?.epochReady&&probe?.connected&&probe?.commonBusy===false?probe:false;
+  },result.uid),label+' authenticated App admin controller',30000);
+  await page.locator('.options-menu summary').waitFor({state:'visible',timeout:18000});
+  if(!adminIdentity)adminIdentity=result;
+  else assert.equal(result.uid,adminIdentity.uid,'Two Chrome tabs must share verified admin UID');
+  record('ADMIN_IDENTITY_READY',{role:label,uidHash:hash(result.uid).slice(0,12),
+    realApp:true});
+  return result;
+}
 async function newContext(role,viewport={width:1440,height:900}){
   const ctx=await browser.newContext({viewport,locale:'vi-VN'});
   const page=await ctx.newPage();monitor(page,role);
   await page.goto(SITE+'/pages.html',{waitUntil:'domcontentloaded'});
   await page.locator('.v3-settings-menu summary').waitFor({timeout:35000});
-  if(role!=='guest'){
-    await wait(async()=>page.evaluate(()=>typeof window.__pr95EmulatorGoogleAdminSignIn==='function'),
-      'Auth Emulator login hook '+role,26000);
-    const result=await page.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
-    assert.equal(result.emailVerified,true);
-    assert.ok(result.providerIds.includes('google.com'));
-    await wait(async()=>page.locator('.options-menu summary').count(),
-      'Verified Google admin shell',25000);
-    if(!adminIdentity)adminIdentity=result;
-    else assert.equal(result.uid,adminIdentity.uid,'All admin tabs same verified UID');
-  }
+  if(role!=='guest')await loginVerifiedAdmin(page,role);
   return {ctx,page};
 }
 const click=async(page,selector,text)=>{
@@ -332,11 +352,7 @@ async function resetPages(){
   contextAdmin=await browser.newContext({viewport:{width:1440,height:900},locale:'vi-VN'});
   admin=await contextAdmin.newPage();monitor(admin,'admin-desktop');
   await admin.goto(SITE+'/pages.html');
-  await wait(async()=>admin.evaluate(()=>typeof window.__pr95EmulatorGoogleAdminSignIn==='function'),
-    'Admin Auth Emulator hook',20000);
-  adminIdentity=await admin.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
-  assert.equal(adminIdentity.emailVerified,true);
-  await admin.locator('.options-menu summary').waitFor({timeout:20000});
+  await loginVerifiedAdmin(admin,'admin-desktop');
   try{
     await waitRow(admin,sourceRows[0].displayCode);
     await waitRow(guest,sourceRows[0].displayCode);
@@ -412,11 +428,7 @@ async function twoTabAndPopup(){
   secondAdmin=await contextAdmin.newPage();
   monitor(secondAdmin,'admin-tab-2');
   await secondAdmin.goto(SITE+'/pages.html');
-  await wait(async()=>secondAdmin.evaluate(()=>
-    typeof window.__pr95EmulatorGoogleAdminSignIn==='function'),
-    'Second real App admin Auth hook');
-  const id2=await secondAdmin.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
-  assert.equal(id2.uid,adminIdentity.uid);
+  const id2=await loginVerifiedAdmin(secondAdmin,'admin-tab-2');
   await waitRow(secondAdmin,sourceRows[0].displayCode);
   await click(admin,'nav.settings-hub-tabs button','Về chế độ xem').catch(async()=>{
     await menu(admin,'Chỉnh sửa');await settings(admin,'Về chế độ xem');
@@ -501,8 +513,7 @@ async function freezeJourney(){
   // Keep a real inline editor lease open in admin tab 2 during FORCE.
   secondAdmin=await contextAdmin.newPage();monitor(secondAdmin,'admin-lease-before-freeze');
   await secondAdmin.goto(SITE+'/pages.html');
-  await wait(async()=>secondAdmin.evaluate(()=>typeof window.__pr95EmulatorGoogleAdminSignIn==='function'),'second admin login');
-  await secondAdmin.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
+  await loginVerifiedAdmin(secondAdmin,'admin-lease-before-freeze');
   await waitRow(secondAdmin,sourceRows[0].displayCode);
   await noteRow(secondAdmin).locator('button.inline-note-trigger').click();
   await secondAdmin.locator('textarea.inline-note-textarea').waitFor();
@@ -547,10 +558,20 @@ async function excelJourney(){
   await stage.locator('input[aria-label="Xác nhận thay thế toàn bộ"]').fill(confirmation);
   await click(admin,'section[aria-label="Thử nghiệm thế hệ Firebase"] button',
     'Chuyển thế hệ bằng CAS');
-  const replaced=await wait(async()=>{
-    const s=await state();
-    return s.generation?.operationId===op?s:false;
-  },'Real App Excel CAS switched active generation',35000);
+  let replaced;
+  try{
+    replaced=await wait(async()=>{
+      const s=await state();
+      return s.generation?.operationId===op?s:false;
+    },'Real App Excel CAS switched active generation',28000);
+  }catch(error){
+    record('EXCEL_PARENT_COMMIT_DIAGNOSTIC',{
+      operationId:op,confirmation,ui:(await stage.innerText().catch(()=>'')).slice(-1800),
+      server:await state(),parentServiceLog:logs.parent.slice(-3700),
+      emulatorLog:logs.firebase.slice(-950)});
+    await screenshot(admin,'FAIL-EXCEL-PARENT-CAS-409');
+    throw error;
+  }
   assert.equal(replaced.rowCount,2);
   await screenshot(admin,'13-excel-replaced-generation');
   const view=await wait(async()=>{
@@ -592,17 +613,36 @@ async function popupJourney(){
     return x>0?x:false;
   },'Real popup editable controls',16000);
   await screenshot(admin,'16-real-popup-editable');
-  return {popupVisible:true,editableControls:editable};
+  const before=await state();
+  const note='QA FULL APP popup lưu qua Callable';
+  const noteTrigger=dialog.locator('button.inline-note-trigger').first();
+  if(!(await noteTrigger.count()))throw Error('Real popup has no inline note editor');
+  await noteTrigger.click();
+  const textarea=dialog.locator('textarea.inline-note-textarea').first();
+  await textarea.waitFor({state:'visible',timeout:12000});
+  await textarea.fill(note);
+  await textarea.press('Control+Enter');
+  await admin.locator('.draft-bar').waitFor({timeout:12000});
+  await screenshot(admin,'17-real-popup-draft');
+  await saveDraft(admin);
+  const saved=await wait(async()=>{
+    const current=await state();
+    const match=Object.entries(current.rows).find(([id,x])=>
+      x.note===note&&x.revision===Number(before.rows[id]?.revision??0)+1);
+    return match?{id:match[0],row:match[1],generation:current.generation}:false;
+  },'Popup save received by server with incremented revision',25000);
+  assert.ok(saved.row.historyCount>0,'Popup save must have audit history');
+  await admin.locator('.draft-bar').waitFor({state:'detached',timeout:15000});
+  await screenshot(admin,'18-real-popup-saved');
+  return {popupVisible:true,editableControls:editable,serverSaved:saved,
+    beforeRevision:before.rows[saved.id]?.revision,afterRevision:saved.row.revision};
 }
 async function generationWithDraft(){
   await resetPages();
   // A real unsaved note in tab B remains when tab A changes the generation.
   secondAdmin=await contextAdmin.newPage();monitor(secondAdmin,'admin-draft-generation');
   await secondAdmin.goto(SITE+'/pages.html');
-  await wait(async()=>secondAdmin.evaluate(()=>typeof window.__pr95EmulatorGoogleAdminSignIn==='function'),
-    'Tab B Google Auth hook');
-  const id=await secondAdmin.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
-  assert.equal(id.uid,adminIdentity.uid);
+  const id=await loginVerifiedAdmin(secondAdmin,'admin-draft-generation');
   await waitRow(secondAdmin,sourceRows[0].displayCode);
   await editNote(secondAdmin,'UNSAVED_QA_GENERATION_OLD');
   const prior=await state();
