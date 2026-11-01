@@ -44,7 +44,7 @@ let fatal=null;
 try{
  server=spawn(process.execPath,['node_modules/vite/bin/vite.js',
     '--host','127.0.0.1','--port','4174','--strictPort','--mode','pages-test'],
-   {cwd:resolve('..'),stdio:'ignore',env:{...process.env}});
+   {cwd:resolve(import.meta.dirname,'../..'),stdio:'ignore',env:{...process.env}});
  await ready(base+'/cell-edit-service/test/browser-qa.html');
  browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  const ctx=await browser.newContext({viewport:{width:1280,height:800}});
@@ -66,7 +66,7 @@ try{
  });
  await step('A acquires real manager lease',async()=>{
    const ok=await A.evaluate(()=>window.qa.acquire());
-   assert.equal(ok,true);await A.screenshot({path:'test/browser-owner-acquired.local.png'});
+   assert.equal(ok,true);await A.screenshot({path:resolve(import.meta.dirname,'browser-owner-acquired.local.png')});
  });
  await step('B same UID cannot acquire or use DB-readable public proof',async()=>{
    const publicLease=await B.evaluate(()=>window.qa.readPublic());
@@ -75,7 +75,7 @@ try{
    const held=await B.evaluate(()=>window.qa.acquire());
    assert.equal(held,false,'same UID B acquired A lease');
    assert.equal(await B.evaluate(()=>window.qa.copiedHashAttack()),'DENIED');
-   await B.screenshot({path:'test/browser-other-tab-denied.local.png'});
+   await B.screenshot({path:resolve(import.meta.dirname,'browser-other-tab-denied.local.png')});
  });
  await step('ACK lost after server commit retains draft and original operationId',async()=>{
    await A.locator('#draft').fill('MẪU Chrome sau mất ACK');
@@ -98,7 +98,7 @@ try{
    const serverRow=await owner('GET','hdnd/items/r1');
    assert.equal(serverRow.revision,2);
    assert.equal(serverRow.note,draft.text);
-   await A.screenshot({path:'test/browser-ack-lost-keeps-draft.local.png'});
+   await A.screenshot({path:resolve(import.meta.dirname,'browser-ack-lost-keeps-draft.local.png')});
  });
  await step('same operationId retry confirms once, no double audit/revision',async()=>{
    const result=await A.evaluate(()=>window.qa.save());
@@ -109,14 +109,14 @@ try{
    assert.equal(latest.history['2'].changes.note,'MẪU Chrome sau mất ACK');
    const clientDraft=await A.evaluate(()=>window.qa.draft());
    assert.equal(clientDraft.operationId,null);
-   await A.screenshot({path:'test/browser-retry-confirmed.local.png'});
+   await A.screenshot({path:resolve(import.meta.dirname,'browser-retry-confirmed.local.png')});
  });
  await ctx.close();
 }catch(e){fatal=String(e?.stack??e).slice(0,1800);console.log('CHROME FATAL '+fatal);}
 finally{
  if(browser)await browser.close();
  if(server){server.kill('SIGTERM');}
- writeFileSync('test/browser-witness.local.json',JSON.stringify({
+ writeFileSync(resolve(import.meta.dirname,'browser-witness.local.json'),JSON.stringify({
    source:'Actual CellEditSessionManager + FirebaseRepository in Chrome with local Auth+Functions+FULL Rules RTDB',
    emulatorOnly:true,summary:{pass:cases.filter(x=>x.status==='PASS').length,
      fail:cases.filter(x=>x.status==='FAIL').length},fatal,cases
