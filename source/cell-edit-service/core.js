@@ -291,7 +291,7 @@ export async function dispatchCellEdit(auth,request,testHooks=undefined){
       if(outdated){abort('Ô '+outdated+' đã thay đổi, bản nháp vẫn được giữ.');return undefined;}
       const changed=fields.filter(field=>raw[field]!==patch.changes[field]);
       if(!changed.length){abort('Không có thay đổi dữ liệu.');return undefined;}
-      if(prohibitedBuild(raw,patch.changes)){abort('HC/BC không phải trình xây dựng NQ.');return undefined;}
+      if(prohibitedBuild(raw,patch.changes)){abort('Loại VB HC/BC không phải trình xây dựng NQ nên trạng thái này không thể chỉnh sửa.');return undefined;}
       const nextRev=raw.revision+1;
       const editProofs={...(raw.editProofs??{})};
       for(const field of changed)editProofs[field]=checked.get(field).stored.token;
