@@ -16,7 +16,7 @@ concurrency:
 jobs:
   lock-backend-deps:
     # Bootstrap exactly two service lockfiles once; never deploy or publish.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101'
+    if: (github.event_name == 'pull_request' && github.event.pull_request.number == 147 && github.event.pull_request.head.ref == 'integration/pr142-cell-parent-freeze-candidate-20261101') || (github.event_name == 'push' && github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101')
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: true
           fetch-depth: 0
       - uses: actions/setup-node@v4
@@ -33,7 +33,7 @@ jobs:
         working-directory: source
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
           if test -f cell-edit-service/package-lock.json && test -f parent-commit-service/package-lock.json; then
             echo "LOCKFILES_ALREADY_TRACKED"
             exit 0
