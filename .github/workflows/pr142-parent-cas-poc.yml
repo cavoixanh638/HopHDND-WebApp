@@ -1,11 +1,5 @@
 name: PR142 parent-CAS PoC (isolated Emulator only)
 on:
-  push:
-    branches:
-      - poc/pr142-parent-cas-isolated-20261101
-    paths:
-      - source/poc/pr142-parent-cas/**
-      - .github/workflows/pr142-parent-cas-poc.yml
   pull_request:
     paths:
       - source/poc/pr142-parent-cas/**
