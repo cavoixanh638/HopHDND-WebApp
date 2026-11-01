@@ -67,6 +67,13 @@ async function holdTransactionCache(location:DatabaseReference):Promise<()=>void
     },reject);
   });
 }
+const assertTestOnlyLegacyParentCAS=(database:Database):void=>{
+  // Old direct parent CAS is retained solely for historical Vitest fixtures.
+  // The connected application imports firebase-versioned-replacement-secure,
+  // never these raw-transaction exports. There is NO production fallback.
+  if(import.meta.env.MODE==='test'&&database.app.options.projectId?.startsWith('demo-'))return;
+  throw Error('Direct browser V2 parent CAS đã bị vô hiệu; sử dụng dịch vụ commit xác thực.');
+};
 const adminGuard=(user:User|null)=>{
   if(!firebaseAdmin(user))throw Error('Chỉ tài khoản Google quản trị đã xác minh được thay dữ liệu.');
 };
@@ -273,6 +280,7 @@ export async function commitInitialDatasetActivation(
   database:Database,user:User|null,approval:InitialActivationApproval,
   confirmation:string
 ):Promise<ReplacementOutcome>{
+  assertTestOnlyLegacyParentCAS(database);
   adminGuard(user);
   const {operationId,manifest}=approval;
   if(confirmation!=='KHOI TAO V2 '+operationId+' '+approval.legacyRowCount+
@@ -422,6 +430,7 @@ export async function resolveDatasetOperation(database:Database,operationId:stri
 export async function commitDatasetReplacement(
   database:Database,user:User|null,approval:ReplacementApproval,confirmation:string
 ):Promise<ReplacementOutcome>{
+  assertTestOnlyLegacyParentCAS(database);
   adminGuard(user);
   if(confirmation!=='THAY '+approval.operationId+' '+approval.preview.oldCount+' '+approval.preview.newCount)
     throw Error('Xác nhận không khớp operationId và số lượng hồ sơ cũ/mới.');
@@ -495,6 +504,7 @@ export async function restoreDatasetBackup(
   database:Database,user:User|null,backupOperationId:string,restoreOperationId:string,
   expected:ActiveDatasetPointer,confirmation:string
 ):Promise<ReplacementOutcome>{
+  assertTestOnlyLegacyParentCAS(database);
   adminGuard(user);
   if(!/^[A-Za-z0-9_-]{12,80}$/.test(restoreOperationId)||
     confirmation!=='KHOI PHUC '+restoreOperationId)

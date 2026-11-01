@@ -1,0 +1,9 @@
+{
+  "functions": [
+    {
+      "source": "parent-commit-service",
+      "codebase": "parent-v2",
+      "runtime": "nodejs22"
+    }
+  ]
+}
