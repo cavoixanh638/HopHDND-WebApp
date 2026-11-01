@@ -314,3 +314,96 @@ it('lost API completion after actual server commit returns UNKNOWN; read-only re
  const final=await witness();expect(stable(final)).toBe(stable(after));
  log('reconcile_immutable_operation_no_double_commit',after,final,retried);
 });
+
+it('lost HTTP ACK after real INITIAL activation keeps committed status, one generation and idempotent retry',async()=>{
+  const op='ack_initial_real_0001';
+  const start=await witness();
+  const imported=await bootstrapApprovedRowsToPrimary(db,admin,[row('Legacy for ACK initial')]);
+  expect(imported.importedCount).toBe(1);
+  const control=await setFreezeMode(db,admin,initialFreeze,'FROZEN',true);
+  expect(control.mode).toBe('FROZEN');
+  const approval=await prepareInitialDatasetActivation(db,admin,[row('Approved initial despite lost ACK')],
+    op,'initial-ack.xlsx');
+  const before=await witness();
+  const nativeFetch=globalThis.fetch;
+  let lost=false;
+  globalThis.fetch=(async(input:any,init?:any)=>{
+    const response=await nativeFetch(input,init);
+    if(!lost&&String(input).includes('/parentDatasetCommit')){
+      lost=true;
+      expect(response.status).toBe(200); // server ACK existed, caller won't get it
+      const server=await response.clone().json();
+      expect(server).toMatchObject({status:'committed',operationId:op});
+      throw Error('PR142_ONLY_TEST_DISCARD_REAL_INITIAL_HTTP_RESPONSE_AFTER_SERVER_COMMIT');
+    }
+    return response;
+  }) as typeof fetch;
+  let unknown:any;
+  try{unknown=await commitInitialDatasetActivation(db,admin,approval,
+    'KHOI TAO V2 '+op+' '+approval.legacyRowCount+' '+approval.preview.newCount);}
+  finally{globalThis.fetch=nativeFetch;}
+  expect(lost).toBe(true);
+  expect(unknown).toEqual({status:'unknown',operationId:op});
+  const committed=await witness();
+  expect(committed.datasetV2.active).toMatchObject({
+    generationId:'gen_'+op,operationId:op,revision:1});
+  expect(Object.keys(committed.datasetV2.generations)).toHaveLength(1);
+  expect(Object.keys(committed.datasetV2.operations)).toHaveLength(1);
+  expect((await resolveDatasetOperation(db,op)).status).toBe('committed-active');
+  const replay=await commitInitialDatasetActivation(db,admin,approval,
+    'KHOI TAO V2 '+op+' '+approval.legacyRowCount+' '+approval.preview.newCount);
+  expect(replay.status).toBe('already-committed');
+  const after=await witness();expect(stable(after)).toBe(stable(committed));
+  log('http_ack_initial_committed_no_duplicate',before,after,{unknown,replay,lost,
+    checkedIndependentServer:true});
+});
+
+it('lost HTTP ACK after real RESTORE still commits once and cannot overwrite later operation',async()=>{
+  const first='ack_restore_seed_0001';
+  await bootstrapApprovedRowsToPrimary(db,admin,[row('Legacy restore ACK')]);
+  await setFreezeMode(db,admin,initialFreeze,'FROZEN',true);
+  const initial=await prepareInitialDatasetActivation(db,admin,[row('Approved initial for restore')],
+    first,'ack-restore-initial.xlsx');
+  expect((await commitInitialDatasetActivation(db,admin,initial,
+    'KHOI TAO V2 '+first+' '+initial.legacyRowCount+' '+initial.preview.newCount)).status).toBe('committed');
+  const second='ack_restore_replace_0002';
+  const staged=await stageDatasetReplacement(db,admin,[row('Approved second for restore')],
+    second,'ack-restore-second.xlsx');
+  expect((await commitDatasetReplacement(db,admin,staged,
+    'THAY '+second+' '+staged.preview.oldCount+' '+staged.preview.newCount)).status).toBe('committed');
+  const current=await witness();
+  const previous=current.datasetV2.active;
+  const restoreId='ack_restore_final_0003';
+  const nativeFetch=globalThis.fetch;
+  let dropped=false;
+  globalThis.fetch=(async(input:any,init?:any)=>{
+    const response=await nativeFetch(input,init);
+    if(!dropped&&String(input).includes('/parentDatasetCommit')){
+      dropped=true;expect(response.status).toBe(200);
+      expect(await response.clone().json()).toMatchObject({status:'committed',operationId:restoreId});
+      throw Error('PR142_ONLY_TEST_DISCARD_REAL_RESTORE_HTTP_RESPONSE_AFTER_SERVER_COMMIT');
+    }
+    return response;
+  }) as typeof fetch;
+  let unknown:any;
+  try{unknown=await restoreDatasetBackup(db,admin,second,restoreId,previous,
+    'KHOI PHUC '+restoreId);}
+  finally{globalThis.fetch=nativeFetch;}
+  expect(dropped).toBe(true);
+  expect(unknown).toEqual({status:'unknown',operationId:restoreId});
+  const committed=await witness();
+  expect(committed.datasetV2.active).toMatchObject({
+    generationId:'gen_'+restoreId,operationId:restoreId,revision:3});
+  expect(committed.datasetV2.generations['gen_'+restoreId].items.r1.note)
+    .toBe('Approved initial for restore');
+  expect(Object.keys(committed.datasetV2.generations)).toHaveLength(3);
+  expect(Object.keys(committed.datasetV2.operations)).toHaveLength(3);
+  expect((await resolveDatasetOperation(db,restoreId)).status).toBe('committed-active');
+  expect((await resolveDatasetOperation(db,second)).status).toBe('committed-historical');
+  const replay=await restoreDatasetBackup(db,admin,second,restoreId,previous,
+    'KHOI PHUC '+restoreId);
+  expect(replay.status).toBe('already-committed');
+  const final=await witness();expect(stable(final)).toBe(stable(committed));
+  log('http_ack_restore_committed_no_duplicate',current,final,{unknown,replay,dropped,
+    checkedIndependentServer:true});
+});
