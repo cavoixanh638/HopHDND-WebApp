@@ -23,6 +23,17 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
       firebase.datasetActive.digest].join('|'):'legacy';
   const sourceFenceRef=useRef(sourceFence);
   sourceFenceRef.current=sourceFence;
+  // Async handlers may have captured React props for the PREVIOUS generation.
+  // Verify results against the latest rendered Firebase source, not that
+  // outdated closure, before displaying a count or freeze confirmation.
+  const currentSource=useRef({
+    active:firebase.datasetActive,ready:firebase.datasetEpochReady,
+    connected:firebase.connected
+  });
+  currentSource.current={
+    active:firebase.datasetActive,ready:firebase.datasetEpochReady,
+    connected:firebase.connected
+  };
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
@@ -36,9 +47,10 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
       request,count:snapshot.count,generationId:snapshot.active?.generationId??null
     });
     // React's generation state must not identify a different source.
-    if(request!==countRequest.current||!firebase.connected||
-      !firebase.datasetEpochReady||sourceFenceRef.current!==startedFor||
-      !sameFreezeDataset(snapshot.active,firebase.datasetActive??null))
+    const latest=currentSource.current;
+    if(request!==countRequest.current||!latest.connected||
+      !latest.ready||sourceFenceRef.current!==startedFor||
+      !sameFreezeDataset(snapshot.active,latest.active??null))
       throw Error('Generation trong bảng quản trị chưa khớp server; không dùng số đếm cũ.');
     setCount(snapshot.count);
     setCountSource(snapshot.source==='v2'?'V2 '+snapshot.active!.generationId:'Legacy');
@@ -66,7 +78,8 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
   const change=async(next:'DRAINING'|'FROZEN'|'OPEN',force=false)=>{
     if(working.current)return;
     working.current=true;setBusy(true);setError('');setMessage('');
-    let frozenAck=false;
+    const startedFor=sourceFenceRef.current;
+    let frozenAck=false,receiptVerified=false;
     try{
       const confirmed=await firebase.updateFreeze(next,force);
       if(next==='FROZEN')await testCheckpoint?.('frozen-ack',{
@@ -76,6 +89,7 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
       if(next==='FROZEN'){
         frozenAck=true;
         const proof=await createFreezeReceipt(firebase.database,firebase.user,confirmed.epoch);
+        receiptVerified=true;
         await testCheckpoint?.('receipt-written',{
           generationId:proof.datasetV2?.generationId??null,epoch:proof.epoch
         });
@@ -89,11 +103,28 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
       }else if(next==='DRAINING')confirmedMessage='Đã ngừng nhận lượt sửa mới. Các phiên đang sửa được yêu cầu lưu, chỉ chốt sau khi máy chủ xác nhận.';
       else confirmedMessage='Đã mở lại chỉnh sửa. Bản nháp cũ cần được đối chiếu trước khi gửi lại.';
       await refresh();
+      if(sourceFenceRef.current!==startedFor){
+        // The verified receipt still exists, but only for the OLD generation.
+        // Never label a prior generation as successfully frozen now.
+        setMessage(receiptVerified
+          ?'Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.'
+          :'Generation đã đổi; kết quả chốt cũ không còn hiệu lực.');
+        return;
+      }
       setMessage(confirmedMessage);
     }catch(e){
-      setCount(null);setCountSource('');
-      setError((frozenAck?'FROZEN đã được ACK nhưng BIÊN NHẬN CHƯA XÁC MINH. ':'')+
-        (e instanceof Error?e.message:'Không thay đổi được chế độ.'));
+      if(receiptVerified&&sourceFenceRef.current!==startedFor){
+        // Receipt was verified before the switch; it is historical, NOT a
+        // failed receipt. Do not erase a newer generation's validated count.
+        setError('');
+        setMessage('Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.');
+      }else{
+        setCount(null);setCountSource('');
+        setError((frozenAck&&!receiptVerified
+          ?'FROZEN đã được ACK nhưng BIÊN NHẬN CHƯA XÁC MINH. '
+          :frozenAck?'FROZEN đã được ACK; cần xác minh lại trạng thái và số khóa. ':'')+
+          (e instanceof Error?e.message:'Không thay đổi được chế độ.'));
+      }
     }
     finally{
       setBusy(false);working.current=false;
