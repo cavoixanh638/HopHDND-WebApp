@@ -7,6 +7,7 @@
  * string; this check is therefore deliberately executed INSIDE the trusted
  * parent transaction callback. No pre-read+unrestricted-write is acceptable.
  */
+import {createHash} from 'node:crypto';
 const own=(x,k)=>Object.prototype.hasOwnProperty.call(x??{},k);
 const isObject=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 export const stable=x=>JSON.stringify(sort(x));
@@ -18,6 +19,56 @@ function sort(x){
 function equal(a,b){return stable(a)===stable(b);}
 function check(ok,reason){if(!ok)throw Error('PARENT_CONTRACT_DENIED: '+reason);}
 function keys(x){return Object.keys(x??{}).sort();}
+/** SHA256 of the EXACT historical snapshot that will be restored. Unlike the
+ * original import-file digest, it includes legitimate intervening row edits
+ * and their audit history; the new restore generation therefore has its own
+ * content fingerprint, not a copied/attacker-chosen pointer digest. */
+export function restoredSnapshotDigest(items){
+  check(isObject(items),'missing historical row snapshot');
+  return createHash('sha256').update(stable(items)).digest('hex');
+}
+/** A backup is privately admin-writable before a replacement. Self-consistent
+ * JSON is NOT proof of a committed source. Verify its source operation,
+ * immutable old generation, rights and leases against the trusted server
+ * journal INSIDE the parent transaction callback. */
+export function verifyCommittedRestoreSource(before,backup,backupOperationId){
+  check(isObject(before)&&isObject(backup)&&isObject(backup.previous)&&
+    isObject(backup.generation?.items),'malformed historical restore source');
+  const previous=backup.previous;
+  const sourceGeneration=previous.generationId;
+  const sourceOp=before.operations?.[backupOperationId];
+  check(sourceOp?.status==='COMMITTED'&&
+    sourceOp.to==='gen_'+backupOperationId&&
+    sourceOp.from===sourceGeneration&&Number.isFinite(sourceOp.at)&&
+    isObject(before.generations?.[sourceOp.to]?.items),
+    'restore backup not bound to a historically COMMITTED replacement');
+  const originalOp=before.operations?.[previous.operationId];
+  check(sourceGeneration==='gen_'+previous.operationId&&
+    originalOp?.status==='COMMITTED'&&originalOp.to===sourceGeneration&&
+    Number.isFinite(originalOp.at),'backup source generation lacks committed provenance');
+  const currentHistorical=before.generations?.[sourceGeneration]?.items;
+  check(isObject(currentHistorical)&&equal(currentHistorical,backup.generation.items),
+    'backed rows differ from immutable committed historical generation');
+  const count=keys(currentHistorical).length;
+  check(count>0&&count<=1000&&previous.rowCount===count,
+    'historical row-count or pointer mismatch');
+  let permissions,leases;
+  try{
+    permissions=JSON.parse(backup.permissionsJson);
+    leases=JSON.parse(backup.leasesJson);
+  }catch{check(false,'malformed backed rights/leases');}
+  check(equal(before.permissions?.[sourceGeneration]??null,permissions),
+    'historical permissions differ from approved backed values');
+  check(equal(before.leases?.[sourceGeneration]??null,leases),
+    'historical lease state differs from backed values');
+  check(backup.baseline===stable({
+    active:previous,items:backup.generation.items,
+    permissions,leases
+  }),'backup baseline/checksum mismatch');
+  return {items:backup.generation.items,permissions,count,
+    digest:restoredSnapshotDigest(backup.generation.items)};
+}
+
 function sameOldChildren(oldMap,newMap,kind){
   for(const key of keys(oldMap))check(own(newMap,key)&&equal(oldMap[key],newMap[key]),`existing ${kind}/${key} modified or deleted`);
 }
@@ -89,10 +140,10 @@ export function assertSafeParentTransition(before,after,{mode,operationId,actor,
     const encoded=before.backups?.[backupOperationId];
     check(typeof encoded==='string','missing immutable restore backup');
     const backup=JSON.parse(encoded);
-    check(backup.previous&&isObject(backup.generation?.items),'invalid restore backup');
-    approvedRows=backup.generation.items;approvedDigest=backup.previous.digest;
-    approvedCount=keys(approvedRows).length;
-    check(equal(after.permissions?.[newGen]??{columns:{}},JSON.parse(backup.permissionsJson)??{columns:{}}),
+    const approved=verifyCommittedRestoreSource(before,backup,backupOperationId);
+    approvedRows=approved.items;approvedDigest=approved.digest;
+    approvedCount=approved.count;
+    check(equal(after.permissions?.[newGen]??{columns:{}},approved.permissions??{columns:{}}),
       'restored permissions differ from backup');
     check(equal(before.bootstrap,after.bootstrap),'bootstrap changed during restore');
   }else{
