@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import * as XLSX from 'xlsx';
 import {BUSINESS_HEADERS,parseBusinessExcel} from '../src/data/business-excel';
-import {initializeApp,deleteApp} from 'firebase/app';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
 import {initializeAuth,connectAuthEmulator,inMemoryPersistence,getIdTokenResult,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator} from 'firebase/database';
 import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
@@ -16,8 +16,8 @@ import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   resolveDatasetOperation,restoreDatasetBackup,prepareInitialDatasetActivation,
-  commitInitialDatasetActivation,armEmulatorPostCommitCallerAckLoss,DATASET_V2_PATH} from
-  '../src/data/firebase-versioned-replacement';
+  commitInitialDatasetActivation,DATASET_V2_PATH} from
+  '../src/data/firebase-versioned-replacement-secure';
 
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 // Run the real, unmodified candidate rules; disabling validation would make
@@ -25,36 +25,54 @@ const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const rule=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
   firebase:{sign_in_provider:'google.com' as const}};
-const actor={uid:'administrator',email:claims.email,emailVerified:true,
-  providerData:[{providerId:'google.com'}]} as User;
+let actor:User;
 const initialRows=createDemoItems(2).map((item,i)=>({...item,
   recordId:'r'+(i+1),displayCode:'NQ0'+(i+1),revision:1,archivedAt:null,isDropped:false}));
 const replacement=()=>createDemoItems(2).map((item,i)=>({...item,
   recordId:'v'+(i+1),displayCode:'NQ0'+(i+1),revision:1,archivedAt:null,
   isDropped:false,content:'Mới '+i}));
 const seed=()=>({hdnd:{items:{legacy:initialRows[0]},
-  datasetV2:{active:{generationId:'gen_seed_initial',operationId:'seed_op_000001',
+  datasetV2:{active:{generationId:'gen_seed_initial',operationId:'seed_initial',
     revision:1,rowCount:2,digest:'a'.repeat(64)},
     generations:{gen_seed_initial:{items:Object.fromEntries(initialRows.map(row=>[row.recordId,{...row,operationId:'seed',updatedAt:1,updatedBy:'administrator'}]))}},
     permissions:{gen_seed_initial:{columns:{note:true}}},
-    leases:{gen_seed_initial:{r1:{note:{token:'stale-lease'}}}}
+    leases:{gen_seed_initial:{r1:{note:{token:'stale-lease'}}}},
+    operations:{seed_initial:{status:'COMMITTED',from:'legacy',
+      to:'gen_seed_initial',at:1}}
   }}});
 describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>{
   let env:RulesTestEnvironment;
-  const admin=()=>env.authenticatedContext('administrator',claims).database() as never;
+  let adminApp:FirebaseApp;
+  let adminDb:ReturnType<typeof getDatabase>;
+  const admin=()=>adminDb;
   const guest=()=>env.authenticatedContext('anon',{firebase:{sign_in_provider:'anonymous'}}).database() as never;
-  beforeAll(async()=>{env=await initializeTestEnvironment({projectId:'demo-hdnd-v2',database:{
-    host:'127.0.0.1',port:9000,rules:rule}});},30000);
+  beforeAll(async()=>{
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
+      host:'127.0.0.1',port:9000,rules:rule}});
+    adminApp=initializeApp({apiKey:'demo-pr142-v2',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr142-v2-verified-admin',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'pr142-v2-real-admin');
+    const auth=initializeAuth(adminApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+    adminDb=getDatabase(adminApp);
+    connectDatabaseEmulator(adminDb,'127.0.0.1',9000);
+    actor=await signInAsEmulatorGoogleAdmin(auth);
+    expect(actor.emailVerified).toBe(true);
+  },30000);
   beforeEach(async()=>{await env.clearDatabase();await env.withSecurityRulesDisabled(async ctx=>{
     await set(ref(ctx.database() as never),seed());
   });});
-  afterAll(async()=>env.cleanup());
+  afterAll(async()=>{
+    await env.cleanup();
+    goOffline(adminDb);
+    await deleteApp(adminApp);
+  });
 
   it('two independently initialized real Auth Emulator Google SDK sessions share verified admin UID and pass candidate Rules',async()=>{
     const apps=[0,1].map(i=>initializeApp({
-      apiKey:'demo-test-key',authDomain:'demo-hdnd-v2.firebaseapp.com',
-      projectId:'demo-hdnd-v2',appId:'pr95-auth-emulator-'+i,
-      databaseURL:'https://demo-hdnd-v2.firebaseio.com'
+      apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr95-auth-emulator-'+i,
+      databaseURL:'https://demo-hdnd.firebaseio.com'
     },'pr95-google-auth-tab-'+i));
     try {
       const identities=await Promise.all(apps.map(async app=>{
@@ -168,7 +186,10 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   it('does not call missing or inconsistent operation log entries uncommitted',async()=>{
     const db=admin();
     // A seeded active pointer without a matching operation log is ambiguous.
-    expect(await resolveDatasetOperation(db,'seed_op_000001')).toEqual({status:'unknown',operationId:'seed_op_000001'});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,DATASET_V2_PATH+'/operations/seed_initial'),null);
+    });
+    expect(await resolveDatasetOperation(db,'seed_initial')).toEqual({status:'unknown',operationId:'seed_initial'});
     expect(await resolveDatasetOperation(db,'not_seen_ever_0001')).toEqual({status:'not-committed',operationId:'not_seen_ever_0001'});
     await env.withSecurityRulesDisabled(async ctx=>{
       await set(ref(ctx.database() as never,DATASET_V2_PATH+
