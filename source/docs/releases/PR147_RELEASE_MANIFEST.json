@@ -342,5 +342,99 @@
     },
     "productionAuthorized": false,
     "note": "This branch remains an immutable source snapshot plus historical documentation. The current FRCR01 candidate has its own exact-SHA build manifest in CI, never deploy the old source snapshot."
+  },
+  "finalFixedCandidate": {
+    "sourceSha": "5656a5eaffa4e6b32e5100b11f36697af93c7340",
+    "sourcePr": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/147",
+    "sourceBranch": "integration/pr142-cell-parent-freeze-candidate-20261101",
+    "CODE_READY": true,
+    "PACKAGE_READY": "REPRODUCIBLE_EMULATOR_REHEARSAL_ONLY",
+    "PRODUCTION_AUTHORIZED": false,
+    "workflowSummary": {
+      "success": 15,
+      "failure": 0,
+      "conditionalSkipped": 1,
+      "total": 16,
+      "standalonePr143Equivalent": "freeze and deterministic F4 race PASS within integrated common emulator"
+    },
+    "importantRuns": {
+      "sourceVerify": 41328843871,
+      "fullIntegration": 41328843999,
+      "independentFullAppQA": 41328843966,
+      "firebaseOperationalQA": 41328843984,
+      "authenticatedParent": 41328843960,
+      "lostHttpAck": 41328843975,
+      "twoAdminTabs": 41328843855,
+      "releaseRehearsalPackage": 41328843887
+    },
+    "provenance": {
+      "originalReviewedSha": "02964722ae405a7ccf70f2b88bfe21cb7d0bcca7",
+      "firstFrcr01RulesFixSha": "7bbcf1f8493ef1e5b1164818286c52a75cb9c5de",
+      "finalFrcr01RulesRawSha256": "ba20c51b67ed8ca9ed43af02541e6d44f665ec9b9c1f3a8065e3f3a2abf6f481",
+      "parentCommittedRestoreTest": "9/9 real Auth + parent Function PASS",
+      "cellTests": "32 PASS / 0 FAIL",
+      "twoTabCellChrome": "4 PASS / 0 FAIL",
+      "integratedRealApp": "5 PASS / 0 FAIL",
+      "independentFullApp": "QA01-QA08, 8 PASS, 20 screenshots",
+      "sourceVerifyR12Focus": "R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS",
+      "freeze": "PR143_FREEZE_CHROME_F4_RACE_FINAL_PASS",
+      "rootCauseResolution": "Historical generations denied admin permissions writes under shared FULL Rules; unchanged restore provenance and DR01/DR02"
+    },
+    "artifacts": {
+      "releaseRehearsal": {
+        "runId": 41328843887,
+        "artifactId": 13092447357,
+        "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328843887/artifacts/13092447357",
+        "archiveZipSha256": "fa83a0522d045ce5e29ebe50b0264bc384eaa199d74b307e95d5f35bbc5bd415",
+        "expiresAt": "2026-11-22T16:57:17Z",
+        "sourceSha": "5656a5eaffa4e6b32e5100b11f36697af93c7340",
+        "innerArchivesSha256": {
+          "web-pages-default-disabled.tar.gz": "78ec59aa22b75ce704171a2989ebabe551306370ee088a9bd155856b7d23cf77",
+          "web-pages-test-emulator-only.tar.gz": "24e4442df4f02d06266a692e5050cbd340b2c33e5a1c23b214cb1a8ea1420120",
+          "functions-cellEdit-node22.tar.gz": "6afb490e2bbd3de8f2976fffd2682571a36865f07bff89b714f44120be63b6d8",
+          "functions-parentDatasetCommit-node22.tar.gz": "2b0c115b20f0d95872c180dd280a44e33d61958146fdb8a470f030515ea5933b",
+          "firebase-full-rules-frcr01.tar.gz": "90c5a748595bbab0f8c22db1988e382560510231884fe637cb7e30681541da8e"
+        },
+        "doubleReproductionPassed": true,
+        "deployPerformed": false
+      },
+      "integrated": {
+        "runId": 41328843999,
+        "artifactId": 13092656871,
+        "digest": "sha256:ec407a77983a80a38d3645f4a884d41c76bdc6735eb3421a89be4aed55270a33"
+      },
+      "independentFullApp": {
+        "runId": 41328843966,
+        "artifactId": 13091853643,
+        "digest": "sha256:e39b345765072ad2bffbf59e7db3b423f3efc2e8f799cc4ac9582a9b38a5a740"
+      },
+      "sourceVerifyHosting": {
+        "runId": 41328843871,
+        "artifactId": 13092352704,
+        "digest": "sha256:3a254ac9ae0a0f1287d5d3d6a2df797c62fb0a2437fabe3945f810a1b511b0c9"
+      }
+    },
+    "releaseConfig": {
+      "sourcePath": "source/firebase.release.json",
+      "fullRulesPath": "source/firebase/database.exclusive-candidate.rules.json",
+      "twoFunctions": [
+        "pr142-cell-edit:asia-southeast1:cellEdit:nodejs22",
+        "parent-v2:us-central1:parentDatasetCommit:nodejs22"
+      ],
+      "node22ServiceLocks": true,
+      "validator": "source/scripts/pr147-release-validate.mjs",
+      "databaseInstance": "REQUIRED_UNVERIFIED",
+      "productionHttpsParentEndpoint": "REQUIRED_UNVERIFIED",
+      "hosting": "GitHub Pages workflow publish gate: exact main SHA and backend approval; no hosting migration"
+    },
+    "externalRequiredUnverified": [
+      "Independent production FULL Rules/security approval and published hash/instance proof",
+      "Live project/RTDB instance, IAM/Cloud Run Invoker, HTTPS parent endpoint and approved browser CORS",
+      "Verified production parent+cell database binding and Auth authorized domain",
+      "Fresh private DB and published Rules backup, restore drill, active generation and pending journal reconciliation",
+      "Operator and data owner first-use scenario approvals in PR149",
+      "Production VITE_PARENT_ENABLED + HTTPS endpoint build, separately checked against actually deployed server/Rules",
+      "Maintenance window with web-last release/stop/rollback written authorization"
+    ]
   }
 }
