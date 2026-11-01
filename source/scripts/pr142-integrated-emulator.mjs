@@ -6,6 +6,7 @@ const cmds=[
  ['node',['cell-edit-service/test/integration.mjs']],
  ['node',['cell-edit-service/test/browser-chrome.mjs']],
  ['node',['parent-commit-service/test/run-functions.mjs']],
+ ['node',['cell-edit-service/test/full-app.mjs']],
 ];
 for(const [command,args]of cmds){
  console.log('PR142_INTEGRATED_RUNNING',command,...args);
