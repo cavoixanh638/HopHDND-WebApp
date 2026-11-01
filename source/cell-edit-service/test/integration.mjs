@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {randomBytes,randomUUID,createHash} from 'node:crypto';
 import {writeFileSync} from 'node:fs';
 import {initializeApp,deleteApp} from 'firebase/app';
-import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,getIdToken,signOut} from 'firebase/auth';
+import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,signInAnonymously,getIdToken,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator,ref,set,get,goOffline} from 'firebase/database';
 import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 
@@ -22,8 +22,8 @@ function client(name){
  connectFunctionsEmulator(functions,'127.0.0.1',5001);
  return {app,auth,database,functions,call:httpsCallable(functions,'cellEdit',{timeout:20000})};
 }
-const a=client('A'),b=client('B'),c=client('C');
-let uid,uidC;
+const a=client('A'),b=client('B'),c=client('C'),d=client('D-anonymous');
+let uid,uidC,uidAnon;
 const proof=()=>randomBytes(32).toString('hex');
 const hash=o=>createHash('sha256').update(JSON.stringify(o)).digest('hex');
 function scopeInfo(scope) {
@@ -131,6 +131,7 @@ async function run(){
    signInWithCredential(c.auth,GoogleAuthProvider.credential(cAssertion))
  ]);
  uid=ua.user.uid;uidC=uc.user.uid;assert.equal(ub.user.uid,uid);assert.notEqual(uidC,uid);
+ const ad=await signInAnonymously(d.auth);uidAnon=ad.user.uid;assert.notEqual(uidAnon,uid);
  for(const scope of ['legacy','v2']){
    await step(scope+' owner acquire/renew/SAVE/release + duplicate SAVE idempotent',()=>positive(scope));
    await step(scope+' same UID public proofHash/editProofs not bearer',async()=>{
@@ -194,6 +195,59 @@ async function run(){
        rowCount:2,digest:'b'.repeat(64)});
      await sameState(scope,'generation switch',()=>call(a,scope,'renew',{token:l.token,field:'note',secret:l.secret}));
    });
+
+   await step(scope+' anonymous guest with granted note writes through authenticated service',async()=>{
+     await seed(scope);const l=await acquire(scope,'r1','note',d);
+     const operationId=randomUUID();
+     const result=await call(d,scope,'save',{operationId,patch:{
+       recordId:'r1',operationId,baseRevision:1,
+       baseValues:{note:'MẪU chưa sửa'},changes:{note:'MẪU khách đã cập nhật'}},
+       leases:{note:{token:l.token,secret:l.secret}}});
+     assert.equal(result.status,'committed');
+     assert.equal(result.row.updatedBy,uidAnon);
+     assert.equal(result.row.history['2'].actor,uidAnon);
+   });
+   await step(scope+' cell-specific deny overrides allowed column at Rules commit',async()=>{
+     await seed(scope);const l=await acquire(scope);
+     const perms=scope==='legacy'?'hdnd/permissions/cells/r1/note':
+       'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/cells/r1/note';
+     await ownerPut(perms,false);
+     await sameState(scope,'cell permission false',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',operationId:randomUUID(),baseRevision:1,
+         baseValues:{note:'MẪU chưa sửa'},changes:{note:'blocked by cell policy'}},
+       leases:{note:{token:l.token,secret:l.secret}}}));
+   });
+   await step(scope+' HC type rejects progressBuild mutation and retains data',async()=>{
+     await seed(scope);const p=paths(scope);
+     await ownerPut(p.row+'/type','HC');
+     const l=await acquire(scope,'r1','progressBuild');
+     await sameState(scope,'HC build policy',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',operationId:randomUUID(),baseRevision:1,
+         baseValues:{progressBuild:'Sở chưa trình'},changes:{progressBuild:'Đã trình'}},
+       leases:{progressBuild:{token:l.token,secret:l.secret}}}));
+   });
+   await step(scope+' two independent fields on one row retain per-field CAS',async()=>{
+     await seed(scope);await ownerPut('hdnd/editors/'+uidC,true);
+     const [la,lc]=await Promise.all([
+       acquire(scope,'r1','note',a),acquire(scope,'r1','specificProgress',c)
+     ]);
+     const opA=randomUUID(),opC=randomUUID();
+     const savedA=await call(a,scope,'save',{operationId:opA,patch:{
+       recordId:'r1',operationId:opA,baseRevision:1,
+       baseValues:{note:'MẪU chưa sửa'},changes:{note:'A note after CAS'}},
+       leases:{note:{token:la.token,secret:la.secret}}});
+     assert.equal(savedA.row.revision,2);
+     const savedC=await call(c,scope,'save',{operationId:opC,patch:{
+       recordId:'r1',operationId:opC,baseRevision:1,
+       baseValues:{specificProgress:'MẪU tiến độ'},changes:{specificProgress:'C progress after CAS'}},
+       leases:{specificProgress:{token:lc.token,secret:lc.secret}}});
+     assert.equal(savedC.row.revision,3);
+     const final=await ownerGet(paths(scope).row);
+     assert.equal(final.note,'A note after CAS');
+     assert.equal(final.specificProgress,'C progress after CAS');
+     assert.equal(final.history['2'].actor,uid);
+     assert.equal(final.history['3'].actor,uidC);
+   });
    await step(scope+' concurrent A/C isolation on different unlocked rows',async()=>{
      await seed(scope);const [aResult,cResult]=await Promise.allSettled([
        acquire(scope,'r1','note',a),
@@ -209,9 +263,9 @@ async function run(){
 let fatal=null;
 try{await run();}catch(e){fatal=String(e?.message??e);console.log('FATAL '+fatal);}
 finally{
- for(const x of [a,b,c]){try{goOffline(x.database);}catch{}}
- await Promise.allSettled([signOut(a.auth),signOut(b.auth),signOut(c.auth)]);
- await Promise.allSettled([deleteApp(a.app),deleteApp(b.app),deleteApp(c.app)]);
+ for(const x of [a,b,c,d]){try{goOffline(x.database);}catch{}}
+ await Promise.allSettled([signOut(a.auth),signOut(b.auth),signOut(c.auth),signOut(d.auth)]);
+ await Promise.allSettled([deleteApp(a.app),deleteApp(b.app),deleteApp(c.app),deleteApp(d.app)]);
  writeFileSync(new URL('./witness.local.json',import.meta.url),JSON.stringify({
   source:'FULL candidate Rules copy, cellService guard applied',
   reviewedSha:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
