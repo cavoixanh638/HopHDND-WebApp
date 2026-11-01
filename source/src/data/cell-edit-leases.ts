@@ -1,5 +1,6 @@
 import {get,onValue,ref,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
+import {get,onValue,ref,type Database} from 'firebase/database';
 import type {EditableField} from '../../shared/types';
 import {callCellEdit,newPrivateCellSecret} from './cell-edit-api';
 
@@ -59,7 +60,7 @@ export async function acquireCellLease(database:Database,user:User|null,session:
   const operationId=retry?.operationId??crypto.randomUUID();
   const generation=await readActivePointer(database,generationId);
   const result=await callCellEdit({action:'acquire',scope:generationId?'v2':'legacy',
-    generation,operationId,recordId:id,field,kind,secret});
+    generation,operationId,recordId:id,field,kind,secret},database);
   if(result.status!=='acquired'||!result.lease||!validLease(result.lease))
     throw new Error('Dịch vụ chưa xác nhận quyền giữ khóa.');
   await assertActiveLeaseGeneration(database,generationId);
@@ -77,7 +78,7 @@ export async function renewCellLease(database:Database,lease:CellLease,id:string
   if(!lease.secret)throw new Error('Không có bí mật phiên riêng; không thể gia hạn.');
   const generation=await readActivePointer(database,generationId);
   const answer=await callCellEdit({action:'renew',scope:generationId?'v2':'legacy',
-    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token});
+    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token},database);
   if(answer.status!=='renewed'||!answer.lease||!validLease(answer.lease))
     throw new Error('Dịch vụ chưa xác nhận gia hạn.');
   await assertActiveLeaseGeneration(database,generationId);
@@ -89,7 +90,7 @@ export async function releaseCellLease(database:Database,lease:CellLease,
   if(!lease.secret)throw new Error('Thiếu bí mật phiên, không thể hủy khóa của người khác.');
   const generation=await readActivePointer(database,generationId);
   const result=await callCellEdit({action:'release',scope:generationId?'v2':'legacy',
-    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token});
+    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token},database);
   if(result.status!=='released')throw new Error('Chưa xác nhận giải phóng khóa.');
 }
 export function watchCellLease(database:Database,id:string,field:EditableField,
