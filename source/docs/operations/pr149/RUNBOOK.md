@@ -59,7 +59,7 @@ Khi code trả `HOLD` do delta, phải xem report ở kho riêng và được op
 
 ## G2 — Diễn tập ba trạng thái với API thật / FULL Rules / hai Functions
 
-[Workflow PR149](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/pr149-operations-drill.yml) chỉ chạy ``demo-hdnd``, có guard cấm project khác. Kết quả và run-id xem `DRILL_REPORT.md`.
+[Workflow PR149](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/pr149-operations-drill.yml) chỉ chạy `demo-hdnd`, có guard cấm project khác. Kết quả và run-id xem `DRILL_REPORT.md`.
 
 ~~~sh
 cd source

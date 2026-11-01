@@ -115,3 +115,37 @@ it('writes demo-only operator source.xlsx plus full-root manifest for actual CLI
   xlsx:raw.byteLength,snapshotSha256:sha(bytes),rowCount:1,
   parser:'parseBusinessExcel',production:'NONE'}));
 });
+
+it('flags missing items despite a claimed full-root count, not a truly empty database',()=>{
+ const state={hdnd:{profile:{dataSource:'primary'},items:null}};
+ const proof=checked(state);
+ proof.manifest.hdndItemsCount=3;
+ const x=audit(proof);
+ expect(x.target).toBe('INCONSISTENT');
+ expect(x.issues.map(i=>i.code)).toContain('SNAPSHOT_COUNT_MISMATCH_OR_MISSING_ITEMS');
+});
+it('rejects tampered active manifest digest and changed historical generations after pointer switch',()=>{
+ const id='x-6162',one='ops_prev_active_0001',two='ops_next_active_0002';
+ const rowA={...row('ab'),recordId:id};
+ const state={hdnd:{items:{[id]:rowA},datasetV2:{
+  active:{generationId:'gen_'+one,operationId:one,revision:1,rowCount:1,digest:'a'.repeat(64)},
+  generations:{['gen_'+one]:{items:{[id]:rowA}}},
+  operations:{[one]:{status:'COMMITTED',to:'gen_'+one,from:'legacy',at:1}},
+  candidates:{[one]:JSON.stringify({manifest:{generationId:'gen_'+one,operationId:one,rowCount:1,
+   digest:'a'.repeat(64)}})}
+ }}};
+ const bad=structuredClone(state);
+ bad.hdnd.datasetV2.active.digest='b'.repeat(64);
+ const found=audit(checked(bad));
+ expect(found.target).toBe('INCONSISTENT');
+ expect(found.issues.map(x=>x.code)).toContain('ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH');
+ const newer=structuredClone(state);
+ const b='gen_'+two;
+ newer.hdnd.datasetV2.active={generationId:b,operationId:two,revision:2,rowCount:1,digest:'c'.repeat(64)};
+ newer.hdnd.datasetV2.generations[b]={items:{[id]:rowA}};
+ newer.hdnd.datasetV2.operations[two]={status:'COMMITTED',from:'gen_'+one,to:b,at:2};
+ newer.hdnd.datasetV2.generations['gen_'+one].items[id].note='TAMPER_HISTORY';
+ const history=audit({...checked(newer),previousSnapshot:state});
+ expect(history.issues.map(x=>x.code)).toContain('HISTORICAL_GENERATION_MUTATED');
+ expect(history.issues.map(x=>x.code)).toContain('POST_BACKUP_POINTER_CHANGED_REQUIRE_RECONCILIATION');
+});

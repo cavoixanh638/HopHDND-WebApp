@@ -43,7 +43,7 @@ const summaryRows=(rows,out,scope)=>{
 const equal=(a,b)=>stable(a??null)===stable(b??null);
 export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=null,expectedRawSha=null}){
  const report={schema:'pr149.offline-audit.v1',sourceSha:'02964722ae405a7ccf70f2b88bfe21cb7d0bcca7',
-  verifiedCandidateSha:process.env.PR149_FIXED_CANDIDATE_SHA??null,mode:'OFFLINE_ONLY',
+  verifiedCandidateSha:process.env.PR149_SOURCE_SHA??null,mode:'OFFLINE_ONLY',
   target:'UNREADABLE',snapshotIntegrity:'UNVERIFIED',verdict:'HOLD',issues:[],differences:[],
   counts:{},rights:{},journals:{},operations:{},restoreChecks:[]};
  if(!object(snapshot)&&snapshot!==null){issue(report,'ROOT_NOT_OBJECT','/');return report;}
@@ -59,6 +59,13 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
  }
  report.snapshotIntegrity='FULL_ROOT_BACKUP_HASH_VERIFIED';
  report.snapshotSha256=rawHash;
+ if(keys(snapshot?.hdnd?.items).length!==manifest.hdndItemsCount||
+   (Number.isInteger(manifest.hdndMirrorsCount)&&
+    keys(snapshot?.hdnd?.mirrors).length!==manifest.hdndMirrorsCount)){
+  report.target='INCONSISTENT';
+  issue(report,'SNAPSHOT_COUNT_MISMATCH_OR_MISSING_ITEMS','/hdnd');
+  return report;
+ }
  const root=snapshot??{};
  if(!object(root)){issue(report,'ROOT_NOT_OBJECT','/');report.target='INCONSISTENT';return report;}
  if(keys(root).length===0){
@@ -83,8 +90,17 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
   const p=v2.active;report.target='V2_ACTIVE';
   const gen=p.generationId,op=p.operationId,active=v2.generations?.[gen]?.items;
   if(!/^gen_[A-Za-z0-9_-]{12,80}$/.test(gen??'')||gen!=='gen_'+op||
-     !Number.isSafeInteger(p.revision)||p.revision<1)
+     !Number.isSafeInteger(p.revision)||p.revision<1||!/^[a-f0-9]{64}$/.test(p.digest??''))
     issue(report,'ACTIVE_POINTER_MALFORMED','datasetV2/active');
+  const candidateJson=v2.candidates?.[op];
+  if(candidateJson!==undefined){
+   try{
+    const c=JSON.parse(candidateJson);
+    if(c.manifest?.generationId!==gen||c.manifest?.operationId!==op||
+       c.manifest?.digest!==p.digest||c.manifest?.rowCount!==p.rowCount)
+      issue(report,'ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH','datasetV2/active');
+   }catch{issue(report,'ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH','datasetV2/candidates');}
+  }
   const activeSummary=summaryRows(active,report,'active:'+String(gen));
   report.counts.active=activeSummary;
   if(!object(active)||activeSummary.count!==p.rowCount)
@@ -157,6 +173,8 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
  if(previousSnapshot){
   const old=previousSnapshot.hdnd??{},oldV2=old.datasetV2??{},p=oldV2.active;
   const newer=v2?.active;
+  if(p&&newer&&p.generationId!==newer.generationId)
+   issue(report,'POST_BACKUP_POINTER_CHANGED_REQUIRE_RECONCILIATION','active');
   if(p&&newer&&p.generationId===newer.generationId){
     const original=oldV2.generations?.[p.generationId]?.items??{};
     const latest=v2.generations?.[p.generationId]?.items??{};
@@ -164,13 +182,13 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
       issue(report,'POST_BACKUP_SERVER_CHANGES_REQUIRE_RECONCILIATION','active');
   }
   for(const id of keys(oldV2.generations)){
-    if(id!==p?.generationId&&(!equal(oldV2.generations[id],v2?.generations?.[id])||
+    if(id!==newer?.generationId&&(!equal(oldV2.generations[id],v2?.generations?.[id])||
        !equal(oldV2.permissions?.[id],v2?.permissions?.[id])))
       issue(report,'HISTORICAL_GENERATION_MUTATED','generation:'+masked(id));
   }
   report.previousSnapshotHash=sha(previousSnapshot);
  }
- if(report.issues.some(x=>/INVALID|MALFORMED|ROWCOUNT|JOURNAL|BACKUP_|HISTORICAL_GENERATION/.test(x.code)))
+ if(report.issues.some(x=>/INVALID|MALFORMED|ROWCOUNT|JOURNAL|BACKUP_|HISTORICAL_GENERATION|DIGEST_MISMATCH|SNAPSHOT_COUNT_MISMATCH/.test(x.code)))
   report.target='INCONSISTENT';
  report.verdict=report.issues.length?'HOLD':report.target==='V2_ACTIVE'?'PASS_VERIFIED_SNAPSHOT_STRUCTURE'
   :report.target==='LEGACY_NONEMPTY_NO_V2'?'PASS_LEGACY_PRESENT'

@@ -34,7 +34,7 @@ if(stable(v.permissions)!==stable(from.permissions)||
    stable(current.hdnd.freezeControl)!==stable(snapshot.hdnd.freezeControl))
  stop('rights/backup/leases/journal/legacy/freeze changed');
 const witness={
- status:'PASS_SYNTHETIC_RESTORE_VERIFIED_NO_PRODUCTION',sourceSha:'02964722ae405a7ccf70f2b88bfe21cb7d0bcca7',
+ status:'PASS_SYNTHETIC_RESTORE_VERIFIED_NO_PRODUCTION',originalSourceSha:'02964722ae405a7ccf70f2b88bfe21cb7d0bcca7',candidateUnderTestSha:process.env.PR149_SOURCE_SHA??'UNKNOWN',
  backupRawSha256:manifest.rtdbSha256,canonicalSha256:sha(snapshot),
  restoredCanonicalSha256:sha(current),active:v.active,
  generations:Object.keys(v.generations).length,committedOperations:Object.values(v.operations).filter(x=>x.status==='COMMITTED').length,
