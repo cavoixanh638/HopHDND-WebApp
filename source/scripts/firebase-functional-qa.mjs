@@ -24,9 +24,9 @@ if(!inner){
     err('Run the outer QA command from a normal terminal, without preconfigured emulator hosts.');
   const cmd=process.execPath;
   const args=['node_modules/firebase-tools/lib/bin/firebase.js','emulators:exec',
-    '--project',PROJECT,'--only','database,auth','--config','firebase.staging.json',
+    '--project',PROJECT,'--only','database,auth,functions','--config','firebase.staging.json',
     'node scripts/firebase-functional-qa.mjs --inside'];
-  console.log('QA isolation: Firebase Auth+RTDB Emulators ONLY / project '+PROJECT);
+  console.log('QA isolation: Firebase Auth+RTDB+Functions Emulators ONLY / project '+PROJECT);
   const p=spawnSync(cmd,args,{stdio:'inherit',env:process.env,timeout:240000});
   if(p.error)err('Emulator runner failed: '+p.error.message);
   process.exit(p.status??1);

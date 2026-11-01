@@ -97,7 +97,18 @@ async function sameState(scope,label,action){
 }
 async function step(name,fn){
  try{await fn();cases.push({name,status:'PASS'});console.log('PASS '+name);}
- catch(e){cases.push({name,status:'FAIL',error:String(e?.message??e).slice(0,250)});console.log('FAIL '+name+' '+String(e?.code??e.message).slice(0,160));}
+ catch(e){
+  const reason=String(e?.stack??e).replace(/\b[a-f0-9]{64}\b/gi,'[HASH_REDACTED]').slice(0,1400);
+  let server={unavailable:true};
+  try{const v=(await ownerGet('hdnd'))??{};server={
+    active:v.datasetV2?.active??null,freeze:v.freezeControl?.mode??'MISSING',
+    legacyLeaseCount:Object.keys(v.editLocks??{}).length,
+    v2LeaseGenerations:Object.keys(v.datasetV2?.leases??{}),
+    editorFlag:v.editors?.[uid]??null,control:v.control?.editingLocked??null
+  };}catch{}
+  cases.push({name,status:'FAIL',error:reason,server});
+  console.error('CELL_TEST_FAIL_DIAGNOSTIC '+JSON.stringify({name,reason,server}));
+}
 }
 async function acquire(scope,recordId='r1',field='note',client=a) {
  const secret=proof(),operationId=randomUUID();

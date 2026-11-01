@@ -4597,6 +4597,7 @@ try{
       await takeShot('initial');
     }catch(error){
       const server=await operationCounts();
+      console.error('BROWSER_EXCEL_FUNCTIONS_EMULATOR_DIAGNOSTIC',emulatorOutput.slice(-9500));
       console.error('BROWSER_EXCEL_INITIAL_UI_BLOCKED',JSON.stringify({
         operationId:initial.op,cause:String(error),server,
         noAutomaticRetry:true,noPrivilegedCasFallback:true
