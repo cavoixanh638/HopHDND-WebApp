@@ -39,7 +39,14 @@ function validateRequest(body){
   return body;
 }
 async function loadRoot(db){return (await db.ref(ROOT).get()).val();}
-async function loadState(db){return (await db.ref('hdnd').get()).val();}
+async function loadState(db){
+  // RTDB Rules deliberately DENY a broad /hdnd read. Scope to the four
+  // separate authorized legacy paths; only the root transaction is V2.
+  const [items,permissions,editLocks,freezeControl]=await Promise.all(
+    ['items','permissions','editLocks','freezeControl'].map(async key=>
+      (await db.ref('hdnd/'+key).get()).val()));
+  return {items,permissions,editLocks,freezeControl};
+}
 function inspect(current,body,uid,legacy){
   const op=body.operationId,mode=body.action;
   check(current&&typeof current==='object','missing staged root');
