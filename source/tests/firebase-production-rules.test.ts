@@ -1,7 +1,11 @@
 import {readFileSync} from 'node:fs';
-import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
+import {afterAll,afterEach,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,runTransaction} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,goOffline,get,ref,set,update,runTransaction,type Database} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence,signInAnonymously} from 'firebase/auth';
+import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
+import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {mergeItemLayout} from '../src/data/item-layout-merge';
 import {defaultReportLayout} from '../src/data/report-preferences';
@@ -14,24 +18,46 @@ import {migrateMirrorToPrimary} from '../src/data/firebase-primary-bootstrap';
 import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 import type {Changes,Item} from '../shared/types';
 
-const productionRules=JSON.parse(readFileSync('firebase/database.production-candidate.rules.json','utf8'));
+const productionRules=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
 const permission:CellPermissions={columns:{note:true}};
-const user=(uid:string,admin=false)=>({uid,email:admin?adminClaims.email:null,emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]}) as unknown as User;
+let adminIdentity:User,guestIdentity:User;
+const user=(_uid:string,admin=false)=>admin?adminIdentity:guestIdentity;
 const seed={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
 const patch=(item:Item,changes:Changes)=>updateDraft(item,undefined,changes)!;
-describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests',()=>{
-  let env:RulesTestEnvironment;
-  const guest=(uid:string)=>env.authenticatedContext(uid,{firebase:{sign_in_provider:'anonymous'}}).database();
-  const admin=()=>env.authenticatedContext('verified-admin',adminClaims).database();
-  const repo=(uid:string,isAdmin=false)=>new FirebaseRepository(
-    (isAdmin?admin():guest(uid)) as never,()=>user(uid,isAdmin),()=>permission,'hdnd/items');
+describe.skipIf(!emulator)('Firebase FULL candidate legacy primary and configuration regression',()=>{
+  let env:RulesTestEnvironment,adminApp:FirebaseApp,guestApp:FirebaseApp;
+  let adminDb:Database,guestDb:Database;
+  const sessions=new Set<CellEditSessionManager>();
+  const guest=(_uid:string)=>guestDb;
+  const admin=()=>adminDb;
+  const repo=(uid:string,isAdmin=false)=>{
+    const db=isAdmin?adminDb:guestDb,actor=user(uid,isAdmin);
+    const r=new FirebaseRepository(db,()=>actor,()=>permission,'hdnd/items');
+    const manager=new CellEditSessionManager(db,()=>actor);
+    sessions.add(manager);r.leaseManager=manager;return r;
+  };
   beforeAll(async()=>{
     env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
       host:'127.0.0.1',port:9000,rules:JSON.stringify(productionRules)
     }});
-  },30000);
+    const sdk=(name:string)=>{
+      const app=initializeApp({apiKey:'demo-production-legacy',authDomain:'demo-hdnd.firebaseapp.com',
+        projectId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com',
+        appId:'legacy-'+name},'pr147-legacy-'+name);
+      const auth=initializeAuth(app,{persistence:inMemoryPersistence});
+      connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      return {app,auth,db};
+    };
+    const a=sdk('admin'),g=sdk('anonymous');
+    adminApp=a.app;guestApp=g.app;adminDb=a.db;guestDb=g.db;
+    adminIdentity=await signInAsEmulatorGoogleAdmin(a.auth);
+    guestIdentity=(await signInAnonymously(g.auth)).user;
+    expect(adminIdentity.emailVerified).toBe(true);
+    expect(guestIdentity.isAnonymous).toBe(true);
+  },40000);
   beforeEach(async()=>{
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(async context=>{
@@ -42,7 +68,12 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
       });
     });
   });
-  afterAll(async()=>env?.cleanup());
+  afterEach(async()=>{await Promise.allSettled([...sessions].map(x=>x.dispose()));sessions.clear();});
+  afterAll(async()=>{
+    await env?.cleanup();
+    if(adminDb)goOffline(adminDb);if(guestDb)goOffline(guestDb);
+    await Promise.allSettled([adminApp,guestApp].filter(Boolean).map(x=>deleteApp(x)));
+  });
 
   it('moves the verified mirror to primary exactly once, keeps IDs and grants, then serves realtime edits without Sheets',async()=>{
     const source=parseSheetConfig(DEFAULT_SHEET_URL);
@@ -69,6 +100,7 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     const [item]=await visitor.list();
     expect(item.recordId).toBe(recordId);
     expect(item.displayCode).toBe('NQ-X3');
+    await visitor.leaseManager!.acquire(recordId,'note','multiline');
     const saved=(await visitor.save([updateDraft(item,undefined,{note:'Lưu realtime vào Database chính'})!]))[0];
     expect(saved.ok,saved.message).toBe(true);
     expect((await visitor.list())[0].note).toBe('Lưu realtime vào Database chính');
@@ -83,9 +115,10 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     expect((await get(ref(admin() as never,'hdnd/items/r1'))).exists()).toBe(true);
   });
 
-  it('preserves authenticated read and authorized existing-row edits before any lock is created',async()=>{
+  it('preserves public read and requires a real service lease for existing-row edits',async()=>{
     const client=repo('editor');
     await assertSucceeds(get(ref(guest('editor') as never,'hdnd/items')));
+    await client.leaseManager!.acquire('r1','note','multiline');
     expect((await client.save([patch(seed,{note:'được phép theo quyền hiện tại'})]))[0].ok).toBe(true);
     await assertFails(set(ref(guest('editor') as never,'hdnd/items/r2'),{...seed,recordId:'r2'}));
     await assertFails(set(ref(guest('editor') as never,'hdnd/items/r1'),null));
@@ -98,10 +131,13 @@ describe.skipIf(!emulator)('Firebase PRODUCTION-CANDIDATE rules regression tests
     const client=repo('editor');
     expect((await client.save([patch((await client.list())[0],{note:'lách khóa'})]))[0].ok).toBe(false);
     await assertFails(update(ref(guest('editor') as never,'hdnd/items/r1'),{note:'ghi thẳng'}));
-    expect((await repo('verified-admin',true).save([patch((await repo('verified-admin',true).list())[0],{note:'admin vẫn sửa được'})]))[0].ok).toBe(true);
+    const root=repo('verified-admin',true);
+    await root.leaseManager!.acquire('r1','note','multiline');
+    expect((await root.save([patch((await root.list())[0],{note:'admin vẫn sửa được'})]))[0].ok).toBe(true);
     await assertFails(set(ref(guest('editor') as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     await assertSucceeds(set(ref(a as never,'hdnd/control'),{revision:2,editingLocked:false,changedAt:new Date().toISOString()}));
     const current=(await client.list())[0];
+    await client.leaseManager!.acquire('r1','note','multiline');
     expect((await client.save([patch(current,{note:'mở khóa đã sửa được'})]))[0].ok).toBe(true);
   });
 
