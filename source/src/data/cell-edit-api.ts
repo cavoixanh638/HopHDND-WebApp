@@ -1,5 +1,5 @@
 import {getApp} from 'firebase/app';
-import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
+import {getFunctions,connectFunctionsEmulator,httpsCallable,type Functions} from 'firebase/functions';
 import type {Database} from 'firebase/database';
 import type {EditableField,Patch} from '../../shared/types';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
@@ -15,7 +15,7 @@ type Envelope={action:'acquire'|'renew'|'release'|'save'|'resolve';
   leases?:Record<string,{token:string;secret:string}>};
 type Answer={status:string;lease?:CellLease;row?:unknown;operationId?:string};
 
-let emulatorConnected=false;
+const emulatorConnected=new WeakSet<Functions>();
 export class CellServiceUnavailableError extends Error{
   constructor(message='Chưa kết nối được dịch vụ sửa ô. Bản nháp vẫn được giữ; không dùng đường ghi cũ.'){
     super(message);this.name='CellServiceUnavailableError';
@@ -24,11 +24,21 @@ export class CellServiceUnavailableError extends Error{
 export async function callCellEdit(message:Envelope,database?:Database):Promise<Answer>{
   try{
     const functions=getFunctions(database?.app??getApp('hdnd-pages'),'asia-southeast1');
-    if(import.meta.env.MODE==='pages-test'&&!emulatorConnected){
-      if(typeof location==='undefined'||!['localhost','127.0.0.1'].includes(location.hostname))
-        throw new CellServiceUnavailableError('Emulator sửa ô chỉ được dùng trên localhost.');
+    const pagesEmulator=import.meta.env.MODE==='pages-test'&&
+      typeof location!=='undefined'&&['localhost','127.0.0.1'].includes(location.hostname);
+    // Only an explicit demo Auth+RTDB+Functions Emulator process may route
+    // real Vitest client SDK calls to the local callable. Never infer from
+    // body-provided UID/service claims; verification stays server-side.
+    const nodeEmulator=import.meta.env.MODE==='test'&&
+      (database?.app.options.projectId??'').startsWith('demo-')&&
+      typeof process!=='undefined'&&
+      process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099'&&
+      process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST==='127.0.0.1:5001';
+    if(import.meta.env.MODE==='pages-test'&&!pagesEmulator)
+      throw new CellServiceUnavailableError('Emulator sửa ô chỉ được dùng trên localhost.');
+    if((pagesEmulator||nodeEmulator)&&!emulatorConnected.has(functions)){
       connectFunctionsEmulator(functions,'127.0.0.1',5001);
-      emulatorConnected=true;
+      emulatorConnected.add(functions);
     }
     const result=await httpsCallable<Envelope,Answer>(functions,'cellEdit',{timeout:25000})(message);
     if(!result.data||typeof result.data.status!=='string')throw Error('Phản hồi dịch vụ sửa ô không hợp lệ.');
