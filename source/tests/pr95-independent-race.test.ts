@@ -96,7 +96,7 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
     const backup=(await get(ref(db,DATASET_V2_PATH+'/backups/'+op))).val();
     expect(typeof backup).toBe('string');
     const parsed=JSON.parse(backup as string);
-    expect(parsed.previous.generationId).toBe('gen_l3_initial');
+    expect(parsed.previous.generationId).toBe('gen_l3_initial_seed');
     expect(Object.keys(parsed.generation.items)).toHaveLength(2);
     await assertFails(set(ref(db,DATASET_V2_PATH+'/candidates/'+op),'different file'));
     await assertFails(set(ref(db,DATASET_V2_PATH+'/backups/'+op),'forged backup'));

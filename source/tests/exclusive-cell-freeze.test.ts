@@ -118,7 +118,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect((await get(ref(staff as never,'hdnd/editors/'+real('a').user.uid))).val()).toBe(true);
     await assertFails(get(ref(staff as never,'hdnd/editors/'+real('b').user.uid)));
     await assertFails(get(ref(visitor as never,'hdnd/editors/'+real('a').user.uid)));
-    expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
+    expect((await get(ref(visitor as never,'hdnd/editors/'+real('anon-read').user.uid))).val()).toBe(null);
     await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
     expect((await get(ref(visitor as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
     // An allowlisted editor must still read the exact lock node to perform CAS.
@@ -291,7 +291,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   it('only one of two different users (or two tabs same UID) can hold the same field',async()=>{
     const a=manager('a'),b=manager('b');
     expect(await a.acquire('r1','note','multiline')).toBe(true);
-    await expect(b.acquire('r1','note','multiline')).rejects.toThrow(/đang được sửa/);
+    await expect(b.acquire('r1','note','multiline')).rejects.toThrow(/Ô đang được phiên khác giữ khóa/);
     const otherTab=manager('a');
     await expect(otherTab.acquire('r1','note','multiline')).rejects.toThrow();
     expect(await b.acquire('r1','specificProgress','multiline')).toBe(true);
@@ -623,7 +623,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const drain=await setFreezeMode(admin() as never,actor('administrator',true),initialFreeze,'DRAINING');
     expect((await readFreeze(guest('a') as never)).mode).toBe('DRAINING');
     const b=manager('b');
-    await expect(b.acquire('r1','progressParty','status')).rejects.toThrow(/chốt/);
+    await expect(b.acquire('r1','progressParty','status')).rejects.toThrow(/freeze đã đổi trước khi máy chủ xác nhận/);
     const saved=(await writer.save([updateDraft(baseline,undefined,{note:'Lưu trước chốt'})!]))[0];
     expect(saved.ok,saved.message).toBe(true);
     await a.finish('r1','note');
