@@ -2,7 +2,9 @@ import {readFileSync} from 'node:fs';
 import {afterAll,afterEach,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {assertFails,assertSucceeds,initializeTestEnvironment,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,runTransaction,serverTimestamp,set,update,type Database} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,get,ref,runTransaction,serverTimestamp,set,update,goOffline,type Database} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,signInAnonymously,GoogleAuthProvider,signInWithCredential,signOut,type Auth} from 'firebase/auth';
 import type {User} from 'firebase/auth';
 import type {Changes,EditableField,Item,Patch} from '../shared/types';
 import {createDemoItems} from '../src/data/demo-items';
@@ -12,7 +14,7 @@ import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {buildNotRequiredForType,violatesProgressBuildWritePolicy} from
   '../src/data/pr95-v5-l5-progress-build-policy';
 
-const activeId='gen_v5_l5';
+const activeId='gen_v5l5_initial_0001';
 const path='hdnd/datasetV2/generations/'+activeId+'/items';
 const epoch={generationId:activeId,operationId:'v5l5_initial_0001',
   revision:1,rowCount:7,digest:'a'.repeat(64)};
@@ -56,10 +58,6 @@ const seed=()=>({hdnd:{datasetV2:{
   }))}},
   permissions:{[activeId]:allGrants}
 }}});
-const actor=(id:string,admin=false):User=>({
-  uid:id,isAnonymous:!admin,email:admin?adminClaims.email:null,
-  emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]
-} as User);
 
 describe('V5 L5 HC/BC write policy — exact data-layer contract (no migration)',()=>{
   it('recognizes HC aliases and BC kind/type without assuming unknown is HC',()=>{
@@ -98,22 +96,28 @@ type Harness={db:Database;session:CellEditSessionManager;repo:FirebaseRepository
 describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + direct SDK',()=>{
   let env:RulesTestEnvironment;
   const sessions=new Set<CellEditSessionManager>();
-  const adminDb=()=>env.authenticatedContext('admin',adminClaims).database() as never as Database;
-  const guestDb=()=>env.authenticatedContext('guest',{
-    firebase:{sign_in_provider:'anonymous'}}).database() as never as Database;
+  const realApps:FirebaseApp[]=[];
+  let realAdmin:{auth:Auth;db:Database;user:User};
+  let realGuest:{auth:Auth;db:Database;user:User};
+  // Test ONLY: issue genuine Google and anonymous ID tokens using Auth
+  // Emulator. A rules-unit-testing fabricated auth context is NOT a Callable
+  // Firebase Auth token, so it may be used only for negative raw SDK checks.
+  const adminDb=()=>realAdmin.db,guestDb=()=>realGuest.db;
   const harness=(admin=false,staleGrants:CellPermissions=allGrants):Harness=>{
-    const uid=admin?'admin':'guest',db=admin?adminDb():guestDb();
-    const session=new CellEditSessionManager(db,()=>actor(uid,admin),activeId);
+    const principal=admin?realAdmin:realGuest;
+    const uid=principal.user.uid,db=principal.db;
+    const session=new CellEditSessionManager(db,()=>principal.user,activeId);
     sessions.add(session);
-    const repo=new FirebaseRepository(db,()=>actor(uid,admin),()=>staleGrants,path,epoch);
+    const repo=new FirebaseRepository(db,()=>principal.user,()=>staleGrants,path,epoch);
     repo.leaseManager=session;
     return {db,session,repo,uid};
   };
   const legacyHarness=(admin=false):Harness=>{
-    const uid=admin?'admin':'guest',db=admin?adminDb():guestDb();
-    const session=new CellEditSessionManager(db,()=>actor(uid,admin));
+    const principal=admin?realAdmin:realGuest;
+    const uid=principal.user.uid,db=principal.db;
+    const session=new CellEditSessionManager(db,()=>principal.user);
     sessions.add(session);
-    const repo=new FirebaseRepository(db,()=>actor(uid,admin),()=>allGrants);
+    const repo=new FirebaseRepository(db,()=>principal.user,()=>allGrants);
     repo.leaseManager=session;
     return {db,session,repo,uid};
   };
@@ -157,8 +161,28 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
   };
   beforeAll(async()=>{
     expect(enabled).toBe(true);
-    env=await initializeTestEnvironment({projectId:'demo-hdnd-v5-l5',
+    expect(process.env.FIREBASE_AUTH_EMULATOR_HOST).toBe('127.0.0.1:9099');
+    expect(process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST).toBe('127.0.0.1:5001');
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',
       database:{host:'127.0.0.1',port:9000,rules:candidate}});
+    const make=(tag:string)=>{
+      const app=initializeApp({apiKey:'demo-v5l5-test',authDomain:'demo-hdnd.firebaseapp.com',
+        databaseURL:'https://demo-hdnd.firebaseio.com',projectId:'demo-hdnd',appId:'demo-v5l5-'+tag},
+        'pr142-v5l5-'+tag);
+      realApps.push(app);
+      const auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      return {auth,db};
+    };
+    const a=make('admin'),g=make('anonymous');
+    const [signedIn,guest]=await Promise.all([
+      signInWithCredential(a.auth,GoogleAuthProvider.credential(JSON.stringify({
+        sub:'pr142-v5l5-google-admin',email:adminClaims.email,email_verified:true}))),
+      signInAnonymously(g.auth)
+    ]);
+    realAdmin={...a,user:signedIn.user};realGuest={...g,user:guest.user};
+    expect(realAdmin.user.emailVerified).toBe(true);
+    expect(realGuest.user.isAnonymous).toBe(true);
   },30000);
   beforeEach(async()=>{
     await env.clearDatabase();
@@ -169,7 +193,14 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     await Promise.allSettled([...sessions].map(s=>s.dispose()));
     sessions.clear();
   });
-  afterAll(async()=>env?.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    for(const p of [realAdmin,realGuest]){
+      try{goOffline(p.db);}catch{}
+      try{await signOut(p.auth);}catch{}
+    }
+    await Promise.allSettled(realApps.map(app=>deleteApp(app)));
+  });
 
   it('READS every HC/BC legacy raw Build intact and does not convert it',async()=>{
     const w=harness();
