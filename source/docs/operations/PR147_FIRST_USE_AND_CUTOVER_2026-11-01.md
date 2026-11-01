@@ -1,7 +1,10 @@
 # PR147 — Hồ sơ đưa HopHDND vào sử dụng: dữ liệu, cutover, sao lưu và quay lui
 
-**Ngày:** 01/11/2026 (Asia/Bangkok) · **Bản mã ghim:** PR147 `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` · **Trạng thái:** `READY_FOR_CODEX_REVIEW` / **production HOLD**.  
+**Ngày:** 01/11/2026 (Asia/Saigon) · **Bản mã ghim:** PR147 `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` · **Trạng thái:** `READY_FOR_CODEX_REVIEW` / **production HOLD**.  
 **Phạm vi:** chỉ xây dựng phương án theo tài liệu/repo và bằng chứng sẵn có; không truy cập production, import, sửa Rules/runtime, đổi nguồn, merge, publish hoặc deploy. Chat1 là integrator PR147 duy nhất. Hồ sơ này ở nhánh tài liệu **riêng**, không là candidate phát hành.
+
+
+> **Bản chạy/đo kiểm thay cho checklist lý thuyết:** [PR149 RUNBOOK](pr149/RUNBOOK.md) và [báo cáo S1–S3/FRCR-01/backup restore](pr149/DRILL_REPORT.md). Các kịch bản offline/Emulator được thực thi bằng công cụ riêng; không sử dụng báo cáo bản gốc để xác nhận SHA candidate sửa mới. Manifest phát hành ban đầu vẫn ghim SHA gốc, phải cập nhật cho SHA mới. **FRCR-01:** Rules gốc cho admin sửa quyền generation lịch sử, làm backup COMMITTED mất khả năng restore; chỉ mở sửa khi SHA mới đã chứng minh chặn đường ghi này và restore hợp lệ còn hoạt động. Múi giờ nghiệp vụ: Asia/Saigon.
 
 **Tài liệu đồng bộ:** [Kịch bản nghiệm thu admin và MỘT danh sách xác nhận chủ dự án](PR147_ADMIN_ACCEPTANCE_AND_OWNER_CONFIRMATIONS_2026-11-01.md). Đọc cả hai trước bất kỳ quyết định GO.
 

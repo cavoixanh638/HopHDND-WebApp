@@ -24,26 +24,21 @@ Mỗi lượt ghi **exact SHA frontend + FULL Rules checksum + hai Function code
 
 **Dẫn chứng sẵn có:** [PR147 FULL App QA #41291947075](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291947075) **8/8 PASS** trên đúng SHA với ảnh và server readback; [Integrated CI #41291946931](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946931) chứng minh 2 Functions+1 Rules, cell 32/32, Chrome 4/4; [Operational QA #41291946937](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946937) **54/54 PASS**. Những ca đã có chứng cứ này không phải chạy lặp chỉ để tạo nhãn PASS mới. **UAT vận hành với nguồn, quyền, website và backend production thật: NOT RUN**.
 
-## 2. MỘT danh sách cần chủ dự án xác nhận trước GO
+## 2. Chỉ ba nhóm quyết định thật sự thuộc chủ dự án
 
-Đây là **danh sách hợp nhất duy nhất**; không yêu cầu người dùng trả lời rải rác. Chủ dự án có thể chọn người vận hành/bảo mật trả lời mỗi hàng bằng **kết luận và metadata/hàm băm**, không gửi backup JSON, token, UID thực, email hay dữ liệu nghiệp vụ vào chat/PR. “Chưa rõ” tương đương **HOLD** cho hành động tương ứng.
+**Giữ nguyên chính sách đã chốt:** Sau cutover, Firebase là nguồn dữ liệu duy nhất; Google Sheets/Excel chỉ là nguồn ban đầu, không đồng bộ nền. Không phục hồi backup cũ đè dữ liệu server đã ACK. Ngày giờ ký dùng **Asia/Saigon**.
 
-| # | Chủ dự án / người được ủy quyền cần xác nhận | Vì sao cần / tác động nếu thiếu |
+Các thông số kỹ thuật trước đây thuộc bảng 12 mục **chuyển cho operator đo** theo [RUNBOOK](pr149/RUNBOOK.md): đúng project/instance, trạng thái dữ liệu legacy/V2, manifest, web bundle, Published Rules, Auth/IAM, cả hai Functions, CORS/endpoint, backup/restore và server ACK. Chủ dự án không phải đoán giá trị Firebase.
+
+| Quyết định của chủ dự án | Nội dung cần ký | Vì sao không giao kỹ thuật viên tự chọn |
 |---|---|---|
-| 01 | **Một nguồn dữ liệu chính thức cuối**: Google Sheets/Excel nào, tab nào, version/SHA256, thời điểm chốt (Asia/Bangkok), số dòng, tập mã/ID, danh sách hồ sơ thêm/bớt/rút/lưu trữ, người ký. | Không có chuẩn so full A–O; mirror 55 và ảnh 57 khác mốc không quyết định được nguồn; **không import**. |
-| 02 | **Đích production và trạng thái chỉ đọc hiện thời**: project/instance, `hdnd/items` là null hay nonempty, `datasetV2.active` + generation/operations/rights/receipt, số dòng và 2 checkpoint hash. | Quyết định nhánh A/B/C sai có thể mất dữ liệu; **không suy rằng đích trống từ backup 25/10**. |
-| 03 | **Phiên bản web đang chạy và chế độ nguồn**: Pages URL/build SHA, cache, `profile.dataSource`, người dùng thực đang xem legacy/V2/Sheets ở bản nào, đã có người sửa WebApp chưa. | Bản PR147 mới force Firebase primary và không tự fallback Sheets; **không public web mới trước backend+dữ liệu**. |
-| 04 | **Chốt thay đổi mới**: ai còn cập nhật Sheet/Excel, có nháp browser chưa ACK, có giao dịch server mới sau thời điểm backup không; ai chịu trách nhiệm gom/hòa giải. | Chặn mất dữ liệu do import/rollback lên bản cũ; **chưa dừng ghi nguồn thì không cutover**. |
-| 05 | **ID và chính sách bảo toàn**: bảng mapping `recordId`↔`displayCode`, quyền theo cột/dòng/ô, UID nhân viên, revision, audit/history/receipt, legacy P/Q, hồ sơ rút/lưu trữ; có cho phép reset quyền/history ở generation V2 mới không? | Activate/replace V2 **mặc định quyền rỗng**, không tự chuyển audit cũ vào active; nếu có nghĩa vụ bảo toàn mà chưa có cách kiểm chứng thì **HOLD**. |
-| 06 | **Quyền khách Anonymous Auth**: người có link có thể sửa những ô nào, hay tất cả chỉ xem; phạm vi hiển thị history/dữ liệu công khai, cách chặn sửa ác ý và người chịu trách nhiệm cấp quyền. | Quyền cấp ô cho guest cho phép người chưa xác minh danh tính ghi ô đó; cần phê duyệt bảo mật trước **MỞ SỬA**. |
-| 07 | **Người quản trị và nhân viên thử**: ai có Google verified admin; 2 nhân viên/UID khác nhau; chính sách dùng chung tài khoản (không dùng chung), người xác nhận mỗi kết quả U01–U09. | Không chứng minh được phân quyền, tab cùng UID, server-ACK và điều kiện cho phép ghi ở môi trường thật. |
-| 08 | **Hai backend + một FULL Rules + web**: operator IAM, đúng databaseURL/project, codebase/region, HTTPS endpoint parent, CORS origins, frontend flags, checksum artifact và rollback tương thích. | Service/Rules/web không cùng phiên bản gây từ chối ghi hoặc nguy cơ cấu hình sai; **không triển khai một nửa rồi public web**. |
-| 09 | **Backup mới và nơi giữ riêng tư**: người sao lưu Rules Published, RTDB, checksum/checkpoint, quyền truy cập/retention; người thực hiện restore drill **bản mới** ở demo và đối chiếu V2. | PASS restore 25/10 chỉ chứng minh snapshot lịch sử, không đảm bảo rollback an toàn tại cutover; **HOLD**. |
-| 10 | **Nếu Firebase thực sự trống**: có phê duyệt cơ chế bootstrap legacy empty-root CAS ngoài UI PR147 không, ai vận hành và kiểm Emulator/Rules trước khi kích hoạt V2? | Không có đường first import production được gắn trong App PR147; V2 cần legacy nonempty + FROZEN; **không tự viết hoặc chạy script ghi không được duyệt**. |
-| 11 | **Nếu đã có dữ liệu**: tập delta và bản ghi server-ACK nào ưu tiên; có chấp thuận full V2 replace/reset rights không, backup nào đủ provenance để restore, nguyên tắc fix-forward. | Không thể mặc định “file Excel mới đúng hơn”; replace/restore thiếu duyệt có thể loại bỏ thay đổi mới. |
-| 12 | **GO/NO-GO vận hành**: thời điểm bảo trì, thông báo ngừng cập nhật nguồn cũ, owner ký duyệt, người giữ quyền Rules, trigger dừng và ai quyết định hòa giải khi đã có ACK mới. | Không có quyền phát hành hoặc quy trình quay lui bảo vệ dữ liệu; **mặc định NO-GO**. |
+| **D1 — Một nguồn nghiệp vụ cuối cùng** | Bản Google Sheets/Excel và worksheet, version/hash, mốc chốt theo Asia/Saigon, số dòng/ID và chênh lệch đã rà, người chốt nguồn và các thay đổi đang làm dở. | Công cụ đo delta nhưng không tự quyết file nào có thẩm quyền hơn dữ liệu đã ACK. |
+| **D2 — Quyền, ID và lịch sử** | Bảng mapping recordId ↔ displayCode; những quyền cột/dòng/ô, UID nhân viên, audit/history và biên nhận phải lưu tra được; có chấp thuận reset quyền generation mới hay không; cách bảo toàn ACK mới. | Activate/replace tạo quyền new generation rỗng, hàng A–O mới không tự mang history legacy; không tự quyết được phép bỏ. |
+| **D3 — Người và thời điểm GO** | Người có quyền Firebase/Rules, người duyệt bảo mật và nghiệp vụ, thời gian bảo trì/thông báo dừng nhập nguồn cũ, người ký GO/NO-GO và quyết định hòa giải khi đã có ACK. | Quyền phát hành và mức rủi ro còn lại phải do người được giao chịu trách nhiệm. |
 
-## 3. Mẫu biên bản ký sau khi đủ chứng cứ
+Chỉ đưa ba quyết định này ra ký **sau** khi tất cả kiểm tra offline/Emulator có chứng cứ và FRCR-01 được xác nhận FIX trên SHA candidate mới. Việc đọc production vẫn cần ủy quyền riêng; không chuyển thành câu hỏi lần lượt cho owner.
+
+## 3. Biên bản nghiệm thu và quyết định GO/NO-GO
 
 | Trường bắt buộc | Giá trị trước khi owner xác nhận |
 |---|---|

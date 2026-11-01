@@ -105,7 +105,7 @@ it('S1: truly EMPTY RTDB refuses V2 activation; approved legacy bootstrap CAS su
  const before=await server();expect(before??null).toBe(null);
  const op='ops_empty_activate_0001';
  await expect(prepareInitialDatasetActivation(db,admin,fixtureRows(),op,'new.xlsx'))
-  .rejects.toThrow(/Legacy|hồ sơ|khởi tạo/);
+  .rejects.toThrow(/Legacy|hồ sơ|khởi tạo|Cấu trúc Firebase/);
  expect(await server()).toEqual(before);
  const source=fixtureRows('đích trống — có duyệt');
  const importRes=await bootstrapApprovedRowsToPrimary(db,admin,source);
