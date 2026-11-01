@@ -122,6 +122,14 @@ try{
    B.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn())
  ]);
  assert.equal(authA.uid,authB.uid);
+ // Admin login can land on Overview instead of List; navigate using actual
+ // UI and only then require the real ItemList rows.
+ for(const page of [A,B]){
+   if(!(await page.locator('.item-list-page-title').count())){
+     const button=page.locator('nav.primary-section-switcher button').filter({hasText:'Danh sách'}).first();
+     if(await button.count())await button.click();
+   }
+ }
  await Promise.all([loaded(A),loaded(B)]);
  await step('two Chrome FULL App admin tabs same UID cannot share a lease',async()=>{
    const textareaA=await begin(A,'NQ02');
