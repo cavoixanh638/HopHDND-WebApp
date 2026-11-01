@@ -33,7 +33,8 @@ export async function callCellEdit(message:Envelope,database?:Database):Promise<
       (database?.app.options.projectId??'').startsWith('demo-')&&
       typeof process!=='undefined'&&
       process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099'&&
-      process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST==='127.0.0.1:5001';
+      process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'&&
+      !!process.env.FIREBASE_EMULATOR_HUB;
     if(import.meta.env.MODE==='pages-test'&&!pagesEmulator)
       throw new CellServiceUnavailableError('Emulator sửa ô chỉ được dùng trên localhost.');
     if((pagesEmulator||nodeEmulator)&&!emulatorConnected.has(functions)){
