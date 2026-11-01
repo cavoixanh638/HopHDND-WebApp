@@ -148,6 +148,8 @@ jobs:
           npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
       - name: Build real pages-test artifact
         run: npm run build:pages:test
+      - name: Build the original compact real ItemList fixture required by full Chrome smoke
+        run: npm run build:compact:qa
       - name: Run FULL App Chrome guest/admin and Excel preview-stage-activate-replace-restore
         shell: bash
         run: |
