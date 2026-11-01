@@ -14,6 +14,55 @@ concurrency:
   group: pr142-integrated-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  lock-backend-deps:
+    # Bootstrap exactly two service lockfiles once; never deploy or publish.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Generate frozen Node22 package locks if absent
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if test -f cell-edit-service/package-lock.json && test -f parent-commit-service/package-lock.json; then
+            echo "LOCKFILES_ALREADY_TRACKED"
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          node -e "for(const n of ['cell-edit-service','parent-commit-service']) {const p=require('./'+n+'/package.json'),l=require('./'+n+'/package-lock.json');if(l.lockfileVersion!==3||l.packages[''].name!==p.name)process.exit(1);for(const [k,v] of Object.entries(p.dependencies))if(l.packages[''].dependencies[k]!==v)process.exit(2)}"
+          git diff --exit-code -- firebase/database.exclusive-candidate.rules.json src cell-edit-service/index.js cell-edit-service/core.js parent-commit-service/index.mjs parent-commit-service/src
+          git status --short
+      - name: Commit only backend lockfiles to existing PR147 branch
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f source/cell-edit-service/package-lock.json && test -f source/parent-commit-service/package-lock.json; then
+            git add -- source/cell-edit-service/package-lock.json source/parent-commit-service/package-lock.json
+            if git diff --cached --quiet; then echo "LOCKFILES_ALREADY_TRACKED"; exit 0; fi
+            test "$(git diff --cached --name-only | wc -l)" -eq 2
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(PR147): pin both Node22 Firebase Functions package-lock files"
+            git push origin HEAD:refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101
+            echo "LOCKFILES_COMMITTED_SHA=$(git rev-parse HEAD)"
+          else
+            echo "::error::Missing generated lockfiles"; exit 2
+          fi
+
   static-app:
     if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
     runs-on: ubuntu-latest
