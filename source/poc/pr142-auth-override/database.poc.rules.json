@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "hdnd": {
+      "editors": {"$uid": {".read": "auth != null && auth.uid === $uid"}},
+      "permissions": {".read": "auth != null"},
+      "freezeControl": {".read": "auth != null"},
+      "control": {".read": "auth != null"},
+      "items": {
+        "$id": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.token.cellService === true && !root.child('hdnd/datasetV2/active').exists() && root.child('hdnd/freezeControl/mode').val() !== 'FROZEN' && (root.child('hdnd/freezeControl/mode').val() === 'OPEN' || (root.child('hdnd/freezeControl/mode').val() === 'DRAINING' && root.child('hdnd/editLocks').child($id).child('note/acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val() && now < root.child('hdnd/freezeControl/deadline').val())) && root.child('hdnd/control/editingLocked').val() !== true && root.child('hdnd/editors').child(auth.uid).val() === true && root.child('hdnd/permissions/columns/note').val() === true && data.exists() && newData.exists() && root.child('hdnd/editLocks').child($id).child('note/uid').val() === auth.uid && root.child('hdnd/editLocks').child($id).child('note/expiresAt').val() > now && newData.child('editProofs/note').val() === root.child('hdnd/editLocks').child($id).child('note/proofHash').val() && newData.child('revision').val() === data.child('revision').val() + 1 && newData.child('operationId').val() !== data.child('operationId').val() && newData.child('updatedBy').val() === auth.uid && newData.child('history').child((newData.child('revision').val() % 50) + '').child('actor').val() === auth.uid && newData.child('history').child((newData.child('revision').val() % 50) + '').child('oldValues/note').val() === data.child('note').val() && newData.child('history').child((newData.child('revision').val() % 50) + '').child('changes/note').val() === newData.child('note').val()",
+          ".validate": "newData.hasChildren(['recordId','note','revision','operationId','updatedBy','editProofs','history']) && newData.child('recordId').val() === $id && newData.child('note').isString() && newData.child('note').val().length <= 20000"
+        }
+      },
+      "editLocks": {
+        "$id": {"$field": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.token.cellService === true && $field === 'note' && !root.child('hdnd/datasetV2/active').exists() && root.child('hdnd/freezeControl/mode').val() === 'OPEN' && root.child('hdnd/control/editingLocked').val() !== true && root.child('hdnd/editors').child(auth.uid).val() === true && root.child('hdnd/permissions/columns/note').val() === true && root.child('hdnd/items').child($id).exists() && newData.exists() && newData.child('uid').val() === auth.uid && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && (!data.exists() || data.child('expiresAt').val() <= now || (data.child('uid').val() === auth.uid && data.child('proofHash').val() === newData.child('proofHash').val() && data.child('leaseId').val() === newData.child('leaseId').val()))",
+          ".validate": "newData.hasChildren(['uid','proofHash','leaseId','revision','kind','acquiredAt','expiresAt']) && newData.child('proofHash').isString() && newData.child('proofHash').val().matches(/^[0-9a-f]{64}$/) && newData.child('leaseId').isString() && newData.child('expiresAt').isNumber()"
+        }}
+      },
+      "datasetV2": {
+        "active": {".read": "auth != null"},
+        "permissions": {"$generation": {".read": "auth != null"}},
+        "generations": {"$generation": {"items": {
+          "$id": {
+            ".read": "auth != null",
+            ".write": "auth != null && auth.token.cellService === true && root.child('hdnd/datasetV2/active/generationId').val() === $generation && root.child('hdnd/freezeControl/mode').val() !== 'FROZEN' && (root.child('hdnd/freezeControl/mode').val() === 'OPEN' || (root.child('hdnd/freezeControl/mode').val() === 'DRAINING' && root.child('hdnd/datasetV2/leases').child($generation).child($id).child('note/acquiredAt').val() < root.child('hdnd/freezeControl/changedAt').val() && now < root.child('hdnd/freezeControl/deadline').val())) && root.child('hdnd/control/editingLocked').val() !== true && root.child('hdnd/editors').child(auth.uid).val() === true && root.child('hdnd/datasetV2/permissions').child($generation).child('columns/note').val() === true && data.exists() && newData.exists() && root.child('hdnd/datasetV2/leases').child($generation).child($id).child('note/uid').val() === auth.uid && root.child('hdnd/datasetV2/leases').child($generation).child($id).child('note/expiresAt').val() > now && newData.child('editProofs/note').val() === root.child('hdnd/datasetV2/leases').child($generation).child($id).child('note/proofHash').val() && newData.child('revision').val() === data.child('revision').val() + 1 && newData.child('operationId').val() !== data.child('operationId').val() && newData.child('updatedBy').val() === auth.uid && newData.child('history').child((newData.child('revision').val() % 50) + '').child('actor').val() === auth.uid && newData.child('history').child((newData.child('revision').val() % 50) + '').child('oldValues/note').val() === data.child('note').val() && newData.child('history').child((newData.child('revision').val() % 50) + '').child('changes/note').val() === newData.child('note').val()",
+            ".validate": "newData.hasChildren(['recordId','note','revision','operationId','updatedBy','editProofs','history']) && newData.child('recordId').val() === $id && newData.child('note').isString() && newData.child('note').val().length <= 20000"
+          }
+        }}},
+        "leases": {"$generation": {"$id": {"$field": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.token.cellService === true && $field === 'note' && root.child('hdnd/datasetV2/active/generationId').val() === $generation && root.child('hdnd/freezeControl/mode').val() === 'OPEN' && root.child('hdnd/control/editingLocked').val() !== true && root.child('hdnd/editors').child(auth.uid).val() === true && root.child('hdnd/datasetV2/permissions').child($generation).child('columns/note').val() === true && root.child('hdnd/datasetV2/generations').child($generation).child('items').child($id).exists() && newData.exists() && newData.child('uid').val() === auth.uid && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && (!data.exists() || data.child('expiresAt').val() <= now || (data.child('uid').val() === auth.uid && data.child('proofHash').val() === newData.child('proofHash').val() && data.child('leaseId').val() === newData.child('leaseId').val()))",
+          ".validate": "newData.hasChildren(['uid','proofHash','leaseId','revision','kind','acquiredAt','expiresAt']) && newData.child('proofHash').isString() && newData.child('proofHash').val().matches(/^[0-9a-f]{64}$/) && newData.child('leaseId').isString() && newData.child('expiresAt').isNumber()"
+        }}}}
+      }
+    }
+  }
+}
