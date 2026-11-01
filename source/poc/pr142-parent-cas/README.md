@@ -27,7 +27,7 @@ bash poc/pr142-parent-cas/run.sh "$PWD" /tmp/pr142-parent-cas-evidence
 
 Requires Node (Codex used 24), Java 21, Firebase CLI and Vitest installed with `npm ci`. The script requires an ancestor of exact SHA, generates a **private full-Rules** baseline and trial, checks the 9 Node-only contract tests, and runs two separate fresh Emulator executions on `127.0.0.1:9000` (RTDB), `127.0.0.1:9099` (Auth), namespace `demo-pr142-parent-cas`.
 
-It writes `baseline.witness.json`, `trial.witness.json`, per-mode stdout, the Rules manifest, and `SHA256SUMS` to the chosen evidence directory. An owner REST GET to localhost captures authoritative server **before/after**. The seed `withSecurityRulesDisabled` is fixture-only; every attack and positive transaction uses a `Rules Unit Testing authenticatedContext`, and all outcomes record whether Rules actually rejected it or a local abort occurred. Witnesses redact `token`, `session`, `editProofs`, candidate/backup payload strings; no production account is used.
+It writes `baseline.witness.json`, `trial.witness.json`, per-mode stdout, `summary.json`, `summary.md`, the Rules manifest and `SHA256SUMS` to the evidence directory. **The runner exits nonzero if either Emulator mode, 9 contract tests, strict case inventory, provenance hashes or server-witness checks fail.** GitHub Actions [`pr142-parent-cas-poc.yml`](../../../.github/workflows/pr142-parent-cas-poc.yml) runs this command on every PoC PR update, uploads artifacts even on failure and uses no production credentials. An owner REST GET to localhost captures authoritative server **before/after**. The seed `withSecurityRulesDisabled` is fixture-only; every attack and positive transaction uses a `Rules Unit Testing authenticatedContext`, and all outcomes record whether Rules actually rejected it or a local abort occurred. Witnesses redact `token`, `session`, `editProofs`, candidate/backup payload strings; no production account is used.
 
 ## Matrix and hard limits
 
@@ -38,6 +38,8 @@ It writes `baseline.witness.json`, `trial.witness.json`, per-mode stdout, the Ru
 | Pointer only | COMMITTED | COMMITTED with synthetic service claim; ordinary browser DENIED |
 | Same-UID legitimate leaf RELEASE | Determine from actual leaf Rules | Keep factual leaf result; do not call parent-specific bypass |
 | Foreign UID/session lease RELEASE through leaf | DENIED | DENIED with unchanged server |
+| **Same UID, independent app, copied lease through leaf** | COMMITTED (known separate cell-token blocker) | Still COMMITTED (parent fence does not purport to fix cell gateway) |
+| **Foreign-owned old lease in parent-CAS** | Observe server verdict separately (not automatically equated with own lease) | DENIED, server unchanged |
 | Parent + old lease expire | COMMITTED (security FAIL) | Ordinary admin DENIED; server unchanged |
 | Parent + new generation note tamper | COMMITTED (security FAIL) | Ordinary admin DENIED; server unchanged |
 | Trusted coordinator with forged old lease/new note | Not present | Pure contract DENIED without sending request; not a Rules denial |
@@ -48,5 +50,7 @@ It writes `baseline.witness.json`, `trial.witness.json`, per-mode stdout, the Ru
 ## Current evidence
 
 - **Executed in authoring environment:** `node --test contract-smoke.test.mjs`: **9/9 PASS**; source code `node --check` PASS. This proves only the local deterministic contract logic.
-- **NOT RUN HERE:** full Auth+RTDB Emulator suite: environment lacks project node_modules / Firebase CLI and cannot resolve github.com. Codex must run local and attach stdout + before/after witness. Do not relabel code-level controls as Emulator PASS.
+- **Auth+RTDB Emulator runs now available on GitHub Actions:** [isolated PoC workflow runs](https://github.com/cavoixanh638/HopHDND-WebApp/actions/workflows/pr142-parent-cas-poc.yml) and its attached `baseline.witness.json` / `trial.witness.json` / `summary.json` / `summary.md`. Earlier Codex data is separately preserved in [#6552621089](https://github.com/cavoixanh638/HopHDND-WebApp/pull/142#issuecomment-6552621089). Do not mistake 9 in-process contract assertions for Emulator Rules denial; the witness distinguishes `rejected-in-process-before-write` from `permission_denied` on a transmitted request.
+- **New independent controls** explicitly demonstrate the current unresolved **same-UID copied leaf token RELEASE** (a separate Chat1 blocker), the foreign-owned lease denial through leaf and parent, a baseline staged-content mismatch with an unchanged pointer digest, and a trial trusted replacement checked against staging and old branches.
+- **Final exact CI SHA, pass/fail counts and evidence artifact:** consult the latest [PR144 conversation](https://github.com/cavoixanh638/HopHDND-WebApp/pull/144) rather than assuming a previous run's green status applies to a subsequent commit.
 - Retain original Codex baseline witness [comment #6552621089](https://github.com/cavoixanh638/HopHDND-WebApp/pull/142#issuecomment-6552621089) as baseline; the supplied test intentionally replays baseline and trial in **separate namespaces/run outputs** for future verification, not to re-prove older results today.
