@@ -275,6 +275,7 @@ async function screenshot(A,label){
   }
   return false;
 }
+let resetCount=0;
 async function reset(A){
   const previous=await A.eval('window.__pr143FreezeUi?.pageId??null');
   await loadRules(rules);
