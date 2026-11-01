@@ -7,15 +7,22 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
   const [count,setCount]=useState<number|null>(null);
   const [countSource,setCountSource]=useState('');
   const lastSource=useRef<string|null>(null);
+  const sourceFence=firebase.datasetActive
+    ?[firebase.datasetActive.generationId,firebase.datasetActive.operationId,
+      firebase.datasetActive.revision,firebase.datasetActive.rowCount,
+      firebase.datasetActive.digest].join('|'):'legacy';
+  const sourceFenceRef=useRef(sourceFence);
+  sourceFenceRef.current=sourceFence;
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
   const working=useRef(false);
   const refresh=async()=>{
+    const startedFor=sourceFenceRef.current;
     setCount(null);setCountSource('');
     const snapshot=await readActiveLeaseSnapshot(firebase.database);
     // React's generation state must not identify a different source.
-    if(!firebase.datasetEpochReady||
+    if(!firebase.datasetEpochReady||sourceFenceRef.current!==startedFor||
       !sameFreezeDataset(snapshot.active,firebase.datasetActive??null))
       throw Error('Generation trong bảng quản trị chưa khớp server; không dùng số đếm cũ.');
     setCount(snapshot.count);
@@ -50,17 +57,15 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
   };
   // When the active pointer changes, any previous count/receipt is historical.
   useEffect(()=>{
-    const key=firebase.datasetActive
-      ?firebase.datasetActive.generationId+'|'+firebase.datasetActive.operationId+'|'+
-        firebase.datasetActive.revision+'|'+firebase.datasetActive.digest
-      :'legacy';
+    const key=sourceFence;
     if(lastSource.current!==null&&lastSource.current!==key){
       setCount(null);setCountSource('');
       setMessage('Generation đã đổi; biên nhận của generation trước chỉ còn giá trị lịch sử.');
     }
     lastSource.current=key;
   },[firebase.datasetActive?.generationId,firebase.datasetActive?.operationId,
-      firebase.datasetActive?.revision,firebase.datasetActive?.digest]);
+      firebase.datasetActive?.revision,firebase.datasetActive?.rowCount,
+      firebase.datasetActive?.digest]);
   // Admin dashboard watches current active leases; when an orderly drain
   // reaches zero it commits FROZEN automatically. A deadline alone never
   // claims unconfirmed local drafts were persisted.
