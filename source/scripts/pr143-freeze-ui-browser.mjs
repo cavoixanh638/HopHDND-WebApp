@@ -162,7 +162,7 @@ async function launchChrome(){
     const res=await fetch(server+'/json/version',{signal:AbortSignal.timeout(1000)});
     return res.ok;
   },'Chrome DevTools endpoint',20000);
-  const url=encodeURIComponent('http://127.0.0.1:4179/pr95-two-admin.html');
+  const url=encodeURIComponent('http://127.0.0.1:4179/pr143-freeze.html');
   const a=await (await fetch(server+'/json/new?'+url,{method:'PUT'})).json();
   const b=await (await fetch(server+'/json/new?'+url,{method:'PUT'})).json();
   assert.ok(a.id&&b.id&&a.id!==b.id&&a.webSocketDebuggerUrl&&b.webSocketDebuggerUrl,
