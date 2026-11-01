@@ -139,7 +139,7 @@ async function assertEpoch(db,scope,generation){
 async function checkLease(db,identity,scope,gen,id,field,secret,token,allowTombstone=false){
   const loc=db.ref(paths(scope,gen,id,field).lease);
   const stored=(await loc.once('value')).val();
-  const hash=proofHash(identity.uid,scope+(gen??''),id,field,secret);
+  const hash=proofHash(identity.uid,scope==='legacy'?'legacy':`v2:${gen}`,id,field,secret);
   if(!stored||stored.uid!==identity.uid||!equalsHash(stored.proofHash,hash)||
     stored.token!==token||(!allowTombstone&&stored.expiresAt<=Date.now()))
     fail('failed-precondition','Bí mật hoặc trạng thái khóa không còn hiệu lực.');
