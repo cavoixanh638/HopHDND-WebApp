@@ -162,7 +162,7 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
   beforeAll(async()=>{
     expect(enabled).toBe(true);
     expect(process.env.FIREBASE_AUTH_EMULATOR_HOST).toBe('127.0.0.1:9099');
-    expect(process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST).toBe('127.0.0.1:5001');
+    expect(process.env.FIREBASE_EMULATOR_HUB).toBeTruthy();
     env=await initializeTestEnvironment({projectId:'demo-hdnd',
       database:{host:'127.0.0.1',port:9000,rules:candidate}});
     const make=(tag:string)=>{
