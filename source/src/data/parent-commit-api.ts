@@ -24,7 +24,7 @@ function endpoint(database:Database):string {
   if(emulator){
     if(typeof window!=='undefined'&&!['localhost','127.0.0.1'].includes(window.location.hostname))
       throw Error('Parent commit thử nghiệm chỉ dùng tại localhost.');
-    return configured||'http://127.0.0.1:8787/parentDatasetCommit';
+    return configured||'http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit';
   }
   if(!configured||!configured.startsWith('https://'))
     throw Error('Dịch vụ commit V2 chưa được cấu hình và duyệt; không được ghi bằng SDK trực tiếp.');
