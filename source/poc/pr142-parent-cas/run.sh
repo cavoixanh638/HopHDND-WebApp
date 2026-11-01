@@ -22,7 +22,12 @@ EVIDENCE="${2:-$(mktemp -d /tmp/pr142-parent-cas-XXXXXXXX)}"
 mkdir -p "$EVIDENCE"
 EVIDENCE="$(cd "$EVIDENCE" && pwd)"
 node "$POC/build-trial-rules.mjs" "$SOURCE/firebase/database.exclusive-candidate.rules.json" "$EVIDENCE"
+set +e
 node --test "$POC/contract-smoke.test.mjs" > "$EVIDENCE/contract-logic.stdout.log" 2>&1
+CONTRACT_CODE=$?
+set -e
+echo "contract exit=$CONTRACT_CODE" | tee -a "$EVIDENCE/index.txt"
+RESULT=$CONTRACT_CODE
 for MODE in baseline trial; do
   FILE="$EVIDENCE/$MODE.full.rules.json"
   cat > "$EVIDENCE/config.$MODE.json" <<JSON
@@ -47,8 +52,20 @@ JSON
   CODE=$?
   set -e
   echo "$MODE exit=$CODE" | tee -a "$EVIDENCE/index.txt"
+  if [[ "$CODE" -ne 0 ]]; then RESULT=1; fi
 done
-sha256sum "$EVIDENCE"/*.json "$EVIDENCE"/*.log > "$EVIDENCE/SHA256SUMS"
+set +e
+node "$POC/summarize-evidence.mjs" "$EVIDENCE" > "$EVIDENCE/summary.stdout.log" 2>&1
+SUMMARY_CODE=$?
+set -e
+echo "summary exit=$SUMMARY_CODE" | tee -a "$EVIDENCE/index.txt"
+if [[ "$SUMMARY_CODE" -ne 0 ]]; then RESULT=1; fi
+sha256sum "$EVIDENCE"/*.json "$EVIDENCE"/*.log "$EVIDENCE"/*.md > "$EVIDENCE/SHA256SUMS"
 cat "$EVIDENCE/index.txt"
 echo "EVIDENCE_DIR=$EVIDENCE"
 echo 'Do not claim Emulator PASS unless trial and positive controls actually passed.'
+if [[ "$RESULT" -ne 0 ]]; then
+  echo 'ERROR: Parent-CAS contract, baseline, trial or witness gate FAILED. See artifact.' >&2
+  exit 1
+fi
+echo 'PARENT_CAS_EMULATOR_GATE_PASS: baseline and trial independent witnesses verified'
