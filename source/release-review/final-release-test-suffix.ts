@@ -3,7 +3,6 @@
  * -> FULL Rules regression harness copied from the immutable target SHA.
  * No production calls, and no fixture bypass after the initial synthetic data setup.
  */
-import {update,goOffline,goOnline} from 'firebase/database';
 import {CellEditSessionManager} from '../../src/data/cell-edit-leases';
 import {FirebaseRepository} from '../../src/data/firebase-repository';
 import {updateDraft} from '../../src/domain/items';
