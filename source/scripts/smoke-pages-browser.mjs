@@ -3753,8 +3753,10 @@ try{
   await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
     'R12 admin list header rename shortcut missing');
   await evaluate("document.querySelector('.group-label-shortcut').click()");
-  await eventually("!!document.querySelector('.group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')",
-    'R12 header rename dialog missing');
+  // A native dialog mounts its form before React's showModal() effect runs.
+  // Focus must wait for the dialog's real open state; closed dialogs are inert.
+  await eventually("!!document.querySelector('dialog.modal[open] .group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')",
+    'R12 header rename dialog not yet open');
   const quickNameFocus=await evaluate(`(()=>{
     const input=document.querySelector('.group-label-quick-editor input[aria-label="Đổi tên cột gộp partyTogether"]');
     input?.focus();return document.activeElement===input;
