@@ -46,9 +46,14 @@ export function FreezeAdminPanel({firebase,testCheckpoint}:{
   };
   const inspect=async()=>{
     const startedFor=sourceFenceRef.current;
+    // refresh increments the request counter synchronously before any await.
+    const request= countRequest.current+1;
     setMessage('');setError('');
     try{await refresh();}
     catch(e){
+      // A slower earlier request has no authority to clear a newer count or
+      // to replace the newer request's notification, even if its read failed.
+      if(request!==countRequest.current)return;
       setCount(null);setCountSource('');
       if(sourceFenceRef.current===startedFor)
         setError(e instanceof Error?e.message:'Không kiểm tra được phiên sửa.');
