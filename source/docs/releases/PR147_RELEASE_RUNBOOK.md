@@ -1,3 +1,9 @@
+## IMPORTANT: this is a historical SHA 02964722 release preparation, NOT the FRCR-01-fixed candidate
+
+The independent [release code review](https://github.com/cavoixanh638/HopHDND-WebApp/pull/147#issuecomment-6559399784) found FRCR-01 after these records were prepared. Historical Rules hash `45d74efa...` and CI web archive here belong **only** to frozen old SHA `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7`. They MUST NOT be used to deploy the corrected candidate. New server-fenced permissions and verified rehearsal artifacts exist on [PR147](https://github.com/cavoixanh638/HopHDND-WebApp/pull/147), with a tested package at [run #41328054403](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328054403) (SHA `82b6db5b4011aeea322183e9e9ca13aa73674603`). Always retrieve the latest PR147 HEAD and matching CI package manifest; the eventual exact final SHA may differ. GitHub Pages now requires an explicit approved main SHA and verified backend/Rules gate; no production GO.
+
+---
+
 # PR147 — Operator release runbook (documentation only; production NO-GO)
 
 **Frozen release code**: `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` on [Draft PR147](https://github.com/cavoixanh638/HopHDND-WebApp/pull/147). This release documentation branch is **NOT** a new product candidate. No deployment, production reads/writes, merge or production toggle has been performed.
