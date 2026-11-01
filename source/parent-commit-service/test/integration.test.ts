@@ -133,7 +133,7 @@ it('Rules reject unscoped raw admin parent writes and restricted Admin SDK overr
   databaseURL:'https://'+PROJECT+'.firebaseio.com',databaseAuthVariableOverride:{
   uid:admin.uid,token:{email:ADMIN_EMAIL,email_verified:true,
    firebase:{sign_in_provider:'google.com'},parentCasService:true}}
- }},'independent-scoped-override-'+randomUUID());
+ },'independent-scoped-override-'+randomUUID());
  try{
   // Because this is a REAL Admin SDK Rules-scoped credential, an invalid
   // pointer without valid operation/generation MUST still fail at Rules.
