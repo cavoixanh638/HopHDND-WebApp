@@ -239,7 +239,7 @@ async function run(){
      assert.equal(savedA.row.revision,2);
      const savedC=await call(c,scope,'save',{operationId:opC,patch:{
        recordId:'r1',operationId:opC,baseRevision:1,
-       baseValues:{specificProgress:'MẪU tiến độ'},changes:{specificProgress:'C progress after CAS'}},
+       baseValues:{specificProgress:'MẪU chưa hoàn tất'},changes:{specificProgress:'C progress after CAS'}},
        leases:{specificProgress:{token:lc.token,secret:lc.secret}}});
      assert.equal(savedC.row.revision,3);
      const final=await ownerGet(paths(scope).row);
