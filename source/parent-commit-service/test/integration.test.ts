@@ -20,7 +20,7 @@ import {stageDatasetReplacement,prepareInitialDatasetActivation,readStagedDatase
 import {requestParentDatasetCommit} from '../../src/data/parent-commit-api';
 
 const PROJECT='demo-hdnd',ROOT='hdnd/datasetV2';
-const API='http://127.0.0.1:8787/parentDatasetCommit';
+const API=process.env.PARENT_ENDPOINT||'http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit';
 if(process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000'||
  process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')throw Error('EMULATOR_ONLY');
 const ADMIN_EMAIL='cavoixanh638@gmail.com';
@@ -79,7 +79,7 @@ const seeded=async(value:any)=>env.withSecurityRulesDisabled(async ctx=>{
 });
 async function realAdmin(){const s=await sdk('admin');admin=await google(s,'real-google-admin-test');db=s.database;}
 beforeAll(async()=>{env=await initializeTestEnvironment({projectId:PROJECT,database:{host:'127.0.0.1',port:9000,
- rules:readFileSync('parent-commit-service/.generated/trial.rules.json','utf8')}});
+ rules:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')}});
  await realAdmin();});
 beforeEach(async()=>{await env.clearDatabase();});
 afterAll(async()=>{
