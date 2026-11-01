@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 35
     env:
       # Reviewer replaces both only after Chat1 releases NEW SHA + matching manifest.
-      FINAL_VERIFY_TARGET_SHA: 580276997943dedbf4a00bc8b5e90437274ca553
+      FINAL_VERIFY_TARGET_SHA: 82b6db5b4011aeea322183e9e9ca13aa73674603
       FINAL_VERIFY_RELEASE_DOCS_SHA: 79f2e59b7c4e6116d6456836e0099ba744ba5ba0
       GCLOUD_PROJECT: demo-hdnd
       PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
