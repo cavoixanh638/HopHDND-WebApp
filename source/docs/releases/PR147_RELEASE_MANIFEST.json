@@ -1,0 +1,330 @@
+{
+  "schema": "hop-hdnd.pr147.release-manifest.v1",
+  "preparedDate": "2026-11-01",
+  "status": "DOCS_PREPARED_PRODUCTION_NO_GO",
+  "statusPolicy": "No merge, no publish/deploy, no production feature enable and no production data reads/writes were performed in this preparation.",
+  "source": {
+    "repository": "cavoixanh638/HopHDND-WebApp",
+    "releaseSourceSha": "02964722ae405a7ccf70f2b88bfe21cb7d0bcca7",
+    "sourcePrUrl": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/147",
+    "integratorHandoffComment": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/147#issuecomment-6555988999",
+    "sourceHandoffDoc": "source/docs/tasks/PR147_INTEGRATED_CANDIDATE.md",
+    "releaseDocumentationBranch": "release/pr147-02964722-package-20261101",
+    "onlyAllowedReleaseBranchChanges": [
+      "source/docs/releases/**"
+    ],
+    "verifiedSourceShaByGitHub": true,
+    "sourceFilesSha256Utf8Raw": {
+      "firebase/database.exclusive-candidate.rules.json": "45d74efaa73e7ff8f18b301630f2bbba9ca88d27340687df7ad577c99d912cd5",
+      "firebase.staging.json": "67f2269c6819186f670b261ac1391b949fc39bee715dbe5291b576b70c484553",
+      "firebase.json": "76b8faee3b86fd1360fb0e1ab58c83db5bb39ff97460226300763905abbd0700",
+      "package.json": "b943bd610c0e7d9cd0f38c95234223d4cb3f44188daf2c50dd27599c071ba2f2",
+      "package-lock.json": "63140a32cb39d21726b20a3cd940e18cd9646c9b24ce5c71d0d60eed09fa79aa",
+      "vite.config.ts": "5ca80519027e0a940418602157574c97742f7adc6476343d9de7071f53d7f552",
+      "src/data/firebase-config.ts": "d4e1c08ed11c9244116c2c218659a5c798d374070d3e1bc678e7849e0d980147",
+      "src/data/parent-commit-api.ts": "de1fc986e81a16fd68ebaec6efb66230636f8a8f93b80a6fdf2bb618e46ca994",
+      "src/data/cell-edit-api.ts": "02b6c8b08f7f3ae02301bcdb2c6fbd94319d3b3679b684db04feed152acb345f",
+      "cell-edit-service/index.js": "c0f8fef25161767b0e414d1fde1b68442b5a7c673f5405133e8c015e503ef4f5",
+      "cell-edit-service/core.js": "3446842957c3472dd937f6405f18f06d2e9a506de91f33086593c35b279baff9",
+      "cell-edit-service/package.json": "9bd456aa51aea41ec26fb3065b019d2a38c4b737a8ebb7baa7343eb0bd35b97d",
+      "parent-commit-service/index.mjs": "58fbb799f9b19047417103747cbe67c3e82ed506ee76d637d467ab3a0020395b",
+      "parent-commit-service/src/handler.mjs": "75da97f3ecda80060b3d9222c5ff3f2c4131197cde86a396b57bb0382390b5af",
+      "parent-commit-service/src/commit.mjs": "7a0cdcd8fdf4f2daad6ef5d32e9ecaa35b5eaea23fc48e2e6ba7343c9d030e64",
+      "parent-commit-service/src/manifest.mjs": "5eb40f770fd637c6b2de0be385555254bb6a54d3119d347122f406816e21dff8",
+      "parent-commit-service/src/parent-contract.mjs": "981b8e4dde1218ae6f20bfbe2342b40793e00034a78434e95cec865d5b383884",
+      "parent-commit-service/package.json": "dce2379b0f0993ca6b7117c3fb075a1680d5131c3366d4801ae2e89136331a83"
+    },
+    "sourceSHA1GitBlobs": {
+      "fullRules": "66887de85294397681bedb8376d733a861f42673",
+      "cellIndex": "396cdb70d4bcf49cc3b6d2e76c3f65c2aa7e81f9",
+      "cellCore": "49b25f4f5c3c2390542e207f504f009ecafa303e",
+      "parentIndex": "7c1c56bcef7185b75fdc5df98f96b8da10cf17f3",
+      "parentHandler": "6e9d1ecd800c534134d9a107f6a9b5497b5c8da9"
+    }
+  },
+  "evidence": {
+    "sourceSha": "02964722ae405a7ccf70f2b88bfe21cb7d0bcca7",
+    "integrated": {
+      "runId": 41291946931,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946931",
+      "commonEmulator": "cell 32 PASS / 0 FAIL; browser 4 PASS / 0 FAIL; parent onRequest PASS; DR-01/02 server evidence; freeze F1-F5 race PASS",
+      "jobs": [
+        "common-emulator",
+        "static-app",
+        "full-pages-browser"
+      ]
+    },
+    "independentFullApp": {
+      "runId": 41291947075,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291947075",
+      "cases": "QA01-QA08 8 PASS / 0 FAIL",
+      "screenshots": 20
+    },
+    "sourceVerify": {
+      "runId": 41291946979,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946979"
+    },
+    "operationalQA": {
+      "runId": 41291946937,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946937",
+      "cases": "54 PASS / 0 FAIL"
+    },
+    "parent": {
+      "runId": 41291946953,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946953"
+    },
+    "lostHttpAck": {
+      "runId": 41291946930,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946930"
+    },
+    "standalonePr143": {
+      "status": "CONDITIONAL_SKIP",
+      "equivalentCoverage": "Integrated #41291946931 freeze F1-F5 and deterministic race PASS"
+    },
+    "productionAcceptance": {
+      "status": "NOT_RUN"
+    }
+  },
+  "artifacts": {
+    "web": {
+      "sourceBuildCommand": "npm ci --no-audit --no-fund && npm run build:pages && node scripts/prepare-hosting-staging.mjs",
+      "sourceDirectory": "source/dist-pages",
+      "ciStagingOutput": "source/dist-hosting/{firebase,cloudflare}/public",
+      "ciArchive": {
+        "workflowRunId": 41291946979,
+        "artifactId": 13076978958,
+        "name": "hophdnd-verified-hosting-candidates",
+        "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946979/artifacts/13076978958",
+        "archiveZipSha256": "86c4667cd70cad5a07de9f01d436a542fdd5fbbf6117d1820890914337bce71a",
+        "indexHtmlSha256": "fd28efb0f3bbc536657d9f2417ebb7059b9e3c6e6adf355c99103de704f5684c",
+        "verifiedIdenticalFiles": 5,
+        "expiresAt": "2026-11-15T09:12:28Z",
+        "scope": "Staged Firebase Hosting and Cloudflare Pages copies, NOT live GitHub Pages, not published."
+      },
+      "sourceCodeLocked": true,
+      "fullV2ParentEnabledWeb": {
+        "status": "REQUIRED_UNVERIFIED",
+        "reason": "CI build:pages step does not supply VITE_PARENT_REPLACEMENT_ENABLED=true nor an approved HTTPS VITE_PARENT_COMMIT_ENDPOINT. App.tsx compiles the V2 admin panel gate at build time; existing CI zip is not evidence of a production-enabled V2 panel.",
+        "requirements": [
+          "Approve exact live parent endpoint and web origin",
+          "Build with both approved VITE_PARENT_* values on frozen source SHA",
+          "Archive generated web bytes and record new SHA256",
+          "Validate build in isolated staging with same backend/Rules and cross-origin browser checks"
+        ]
+      }
+    },
+    "cellFunction": {
+      "codebase": "pr142-cell-edit",
+      "directory": "source/cell-edit-service",
+      "entry": "index.js",
+      "export": "cellEdit",
+      "trigger": "https.onCall",
+      "region": "asia-southeast1",
+      "runtime": "nodejs22",
+      "runtimeOptions": {
+        "minInstances": 0,
+        "maxInstances": 10,
+        "memory": "256MiB",
+        "timeoutSeconds": 30,
+        "cors": true
+      },
+      "packageDirectDependencies": {
+        "firebase-admin": "13.0.0",
+        "firebase-functions": "6.3.2",
+        "firebase": "13.0.0"
+      },
+      "entrySha256": "c0f8fef25161767b0e414d1fde1b68442b5a7c673f5405133e8c015e503ef4f5",
+      "coreSha256": "3446842957c3472dd937f6405f18f06d2e9a506de91f33086593c35b279baff9",
+      "packageSha256": "9bd456aa51aea41ec26fb3065b019d2a38c4b737a8ebb7baa7343eb0bd35b97d",
+      "npmLockfile": "ABSENT_IN_FROZEN_SOURCE",
+      "deployableImmutableZip": "REQUIRED_UNVERIFIED",
+      "productionDatabaseBinding": "FIREBASE_DATABASE_URL or FIREBASE_CONFIG.databaseURL must exactly match verified web RTDB; never rely on inferred namespace."
+    },
+    "parentFunction": {
+      "codebase": "parent-v2",
+      "directory": "source/parent-commit-service",
+      "entry": "index.mjs",
+      "export": "parentDatasetCommit",
+      "trigger": "https.onRequest",
+      "region": "us-central1",
+      "runtime": "nodejs22",
+      "runtimeOptions": {
+        "maxInstances": 10,
+        "memory": "512MiB",
+        "timeoutSeconds": 120,
+        "cors": false
+      },
+      "corsHandler": "src/handler.mjs uses exact PARENT_ALLOWED_ORIGINS; only POST/OPTIONS and GET /health logic",
+      "packageDirectDependencies": {
+        "firebase-admin": "13.6.0",
+        "firebase-functions": "6.4.0"
+      },
+      "entrySha256": "58fbb799f9b19047417103747cbe67c3e82ed506ee76d637d467ab3a0020395b",
+      "backendRuntimeSha256": {
+        "src/handler.mjs": "75da97f3ecda80060b3d9222c5ff3f2c4131197cde86a396b57bb0382390b5af",
+        "src/commit.mjs": "7a0cdcd8fdf4f2daad6ef5d32e9ecaa35b5eaea23fc48e2e6ba7343c9d030e64",
+        "src/manifest.mjs": "5eb40f770fd637c6b2de0be385555254bb6a54d3119d347122f406816e21dff8",
+        "src/parent-contract.mjs": "981b8e4dde1218ae6f20bfbe2342b40793e00034a78434e95cec865d5b383884"
+      },
+      "packageSha256": "dce2379b0f0993ca6b7117c3fb075a1680d5131c3366d4801ae2e89136331a83",
+      "npmLockfile": "ABSENT_IN_FROZEN_SOURCE",
+      "deployableImmutableZip": "REQUIRED_UNVERIFIED",
+      "productionDatabaseBinding": "PARENT_DATABASE_URL explicitly set to exact verified RTDB; default fallback is NOT approved.",
+      "parentGate": "PARENT_COMMIT_ENABLED=true only after full Rules readback and deployment approval; false for initial staging."
+    },
+    "fullRules": {
+      "source": "source/firebase/database.exclusive-candidate.rules.json",
+      "rawUtf8Bytes": 168510,
+      "rawSha256": "45d74efaa73e7ff8f18b301630f2bbba9ca88d27340687df7ad577c99d912cd5",
+      "jsonStringifyCompactSha256": "4f70fd0524d235a430e407dc6391f6cc159496c9ed34ec09a456eb6160fee5ed",
+      "gitBlobSha1": "66887de85294397681bedb8376d733a861f42673",
+      "verifiedAgainst": "Independent QA #41291947075 raw source SHA; integrated #41291946931 live Emulator JSON compact hash",
+      "configContainingExactRules": "source/firebase.staging.json",
+      "legacyDefaultConfig": "source/firebase.json -> firebase/database.rules.json (DANGEROUS FOR THIS RELEASE)",
+      "productionEffectiveRules": "REQUIRED_UNVERIFIED",
+      "productionInstanceTarget": "REQUIRED_UNVERIFIED"
+    }
+  },
+  "runtime": {
+    "builder": {
+      "node": "24 (CI)",
+      "java": "21 (Emulator only)",
+      "firebaseTools": "15.34.0",
+      "vite": "8.3.4",
+      "typescript": "7.0.2",
+      "appFirebaseSdk": "13.0.0",
+      "rootDependencyLockSha256": "63140a32cb39d21726b20a3cd940e18cd9646c9b24ce5c71d0d60eed09fa79aa"
+    },
+    "functionsNodeRuntime": "nodejs22",
+    "functionsTransitiveDependencyResolution": "NOT_LOCKED_UNVERIFIED: both codebases have package.json but no package-lock.json at frozen SHA; CI used npm install --no-package-lock.",
+    "dependencyFreezeRequiredBeforeDeploy": true
+  },
+  "configuration": {
+    "codeObservedNotProductionVerified": {
+      "webFirebaseProjectId": "hophdnd-8b7b2",
+      "webRtdbUrl": "https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app",
+      "rtdbInstanceFromExistingReadonlyTool": "hophdnd-8b7b2-default-rtdb",
+      "defaultFirebaseConfig": "source/firebase.json does not include production Functions or matching FULL Rules",
+      "integratedEmulatorConfig": "source/firebase.staging.json project demo-hdnd ports auth=9099 database=9000 functions=5001",
+      "githubPagesPublishWorkflow": ".github/workflows/publish-pages.yml triggers on main and can publish automatically after a source-path merge"
+    },
+    "frontendBuildFlags": {
+      "VITE_PARENT_REPLACEMENT_ENABLED": {
+        "approvedValue": "true",
+        "status": "REQUIRED_UNVERIFIED",
+        "type": "Vite build-time (not a hosting runtime toggle)"
+      },
+      "VITE_PARENT_COMMIT_ENDPOINT": {
+        "approvedValue": "HTTPS deployed parentDatasetCommit URL",
+        "status": "REQUIRED_UNVERIFIED",
+        "type": "Vite build-time"
+      }
+    },
+    "backendRuntime": {
+      "PARENT_COMMIT_ENABLED": {
+        "preCutover": "false/unset",
+        "afterGatedApproval": "true",
+        "status": "REQUIRED_UNVERIFIED"
+      },
+      "PARENT_DATABASE_URL": {
+        "status": "REQUIRED_UNVERIFIED",
+        "mustEqual": "codeObservedNotProductionVerified.webRtdbUrl after operator verification"
+      },
+      "PARENT_ALLOWED_ORIGINS": {
+        "status": "REQUIRED_UNVERIFIED",
+        "mustInclude": "exact approved web origin(s); no path/trailing slash"
+      },
+      "FIREBASE_DATABASE_URL_or_FIREBASE_CONFIG_databaseURL": {
+        "status": "REQUIRED_UNVERIFIED",
+        "mustEqual": "same approved RTDB URL"
+      },
+      "GCLOUD_PROJECT_or_GCP_PROJECT": {
+        "status": "REQUIRED_UNVERIFIED",
+        "mustEqual": "approved Firebase project for both functions"
+      }
+    },
+    "corsIamAuth": "REQUIRED_UNVERIFIED: exact browser origin, Firebase Auth authorized domains, Callable reachability, onRequest Cloud Run invoker policy + verified Firebase ID token, proper RTDB Rules service overrides",
+    "prodProjectAndDatabaseOwnership": "REQUIRED_UNVERIFIED",
+    "deploymentConfigurationBinding": "REQUIRED_UNVERIFIED: no approved production firebase.json/instance target is committed"
+  },
+  "gateRequirements": [
+    {
+      "step": "SOURCE_AND_ARTIFACTS",
+      "status": "OFFLINE_CHECKED",
+      "detail": "pinned source and checked-in file hashes; CI web ZIP and index hashes recorded"
+    },
+    {
+      "step": "FUNCTION_PACKAGE_LOCKS",
+      "status": "REQUIRED_UNVERIFIED",
+      "detail": "Capture exact resolved transitive deps or immutable deploy bundles; immutable source alone cannot guarantee byte-identical install"
+    },
+    {
+      "step": "APPROVE_PRODUCTION_TARGETS_IAM_CORS",
+      "status": "REQUIRED_UNVERIFIED"
+    },
+    {
+      "step": "APPROVE_READONLY_BACKUP_PUBLISHED_RULES_PROVENANCE",
+      "status": "REQUIRED_UNVERIFIED"
+    },
+    {
+      "step": "APPROVE_MAINTENANCE_ZERO_UNACKNOWLEDGED_WRITES",
+      "status": "REQUIRED_UNVERIFIED"
+    },
+    {
+      "step": "STAGE_FUNCTIONS_DISABLED_AND_PROBE",
+      "status": "NOT_RUN"
+    },
+    {
+      "step": "DEPLOY_APPROVED_FULL_RULES_TO_EXACT_INSTANCE_AND_COMPARE",
+      "status": "NOT_RUN"
+    },
+    {
+      "step": "ENABLE_PARENT_SERVER_AND_PROBE",
+      "status": "NOT_RUN"
+    },
+    {
+      "step": "BUILD_AND_STAGE_APPROVED_PRODUCTION_V2_WEB_AND_VERIFY",
+      "status": "NOT_RUN"
+    },
+    {
+      "step": "PROMOTE_WEB_LAST_AND_CHECK",
+      "status": "NOT_RUN"
+    },
+    {
+      "step": "POST_RELEASE_OWNERSHIP_AND_ROLLBACK_DECISION",
+      "status": "NOT_RUN"
+    }
+  ],
+  "productionUnverified": [
+    "Named operator, written approval and maintenance window",
+    "Actual project identity and exact RTDB instance, ruleset target mapping",
+    "Effective published Rules and independent security review",
+    "Read-only database and Rules snapshots with stored private hashes and restore drill",
+    "Approved frozen business data, current generation, leases, audit and pending drafts",
+    "Both Functions deployed revisions and verified 2nd gen runtime/invoker IAM",
+    "Exact Functions service URL, Google Auth authorized web domain, CORS allowlist",
+    "App hosting target (currently repository Pages workflow; Firebase/Cloudflare artifact does not prove live target)",
+    "VITE build flags and production-enabled web artifact checksum",
+    "Both Functions transitive dependency lock/bundle identity",
+    "Approved controlled post-cutover production read/write/rollback test plan"
+  ],
+  "hardStopConditions": [
+    "Any source tree, FULL Rules or source-file digest differs from locked release",
+    "Production project, RTDB instance or deployed endpoint is guessed rather than verified",
+    "Unreviewed default firebase.json is selected for any deploy",
+    "Web would be published before both Functions and matching effective Rules are verified",
+    "Web parent V2 panel flags are assumed enabled from the current CI artifact",
+    "Function dependencies or production IAM/CORS remain unresolved",
+    "Freeze/maintenance cannot prevent old clients writing during cutover",
+    "Rules/live source has unexplained differences or backup/restore evidence missing",
+    "Any uncertain ACK, unreviewed new edits or mismatch between active pointer and journal",
+    "An operator attempts to deploy from a documentation-only release branch instead of approved package."
+  ],
+  "rollbackPolicy": "After a new acknowledged business edit, never restore an older data backup or a permissive old Rules file. Freeze/maintain, capture fresh read-only state, reconcile and obtain explicit authorization. Before any acknowledged edit, rollback only to a verified compatible web/Functions/Rules set after operator check."
+}
