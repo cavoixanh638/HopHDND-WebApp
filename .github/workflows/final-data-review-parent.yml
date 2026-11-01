@@ -47,6 +47,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+          mkdir -p parent-commit-service/evidence
           npx firebase emulators:exec --project demo-hdnd --only database,auth \
             --config parent-commit-service/firebase.parent-commit-test.json \
             "node parent-commit-service/test/final-data-review-run.generated.mjs" 2>&1 |
