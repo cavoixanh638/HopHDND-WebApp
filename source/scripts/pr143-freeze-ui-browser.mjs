@@ -83,6 +83,7 @@ async function liveRules(){
   return r.json();
 }
 let emu,web,chrome,emulatorLog='',webLog='',chromeLog='';
+let diagnosticTarget=null;
 const targets=[];
 let failed=false;
 const step=(name,details)=>{evidence.push({name,details});console.log('PR143_FREEZE_CHROME_'+name+' '+JSON.stringify(details));};
@@ -276,10 +277,21 @@ async function exercise(){
   const [infoA,infoB]=await launchChrome();
   const A=connection(infoA),B=connection(infoB);
   targets.push(A,B);
+  diagnosticTarget=A;
   await A.send('Runtime.enable');
   await A.send('Page.enable');
   await A.send('Emulation.setDeviceMetricsOverride',{width:1240,height:850,deviceScaleFactor:1,mobile:false});
-  await sleepUntil(()=>A.eval('Boolean(window.__pr143FreezeUi)'),'Browser bridge',30000);
+  try{
+    await sleepUntil(()=>A.eval('Boolean(window.__pr143FreezeUi)'),'Browser bridge',30000);
+  }catch(e){
+    console.error('PR143_BRIDGE_DIAGNOSTIC',JSON.stringify({
+      lastChromeException:A.getError(),
+      title:await A.eval('document.title').catch(err=>String(err)),
+      html:await A.eval('document.documentElement.outerHTML.slice(0,2000)').catch(err=>String(err)),
+      vite: webLog.slice(-2500)
+    }));
+    throw e;
+  }
   await sleepUntil(async()=>{const x=await snapshot(A);return x.ready&&!x.isAdmin?x:false;},
     'real Firebase anonymous guest',20000);
   assert.equal((await snapshot(A)).panelVisible,false);
@@ -408,6 +420,9 @@ try{
 }catch(error){
   failed=true;
   console.error('PR143_FREEZE_CHROME_FAIL:',error);
+  if(diagnosticTarget)try{await screenshot(diagnosticTarget,'pr143-freeze-ui-failure');}catch(e){
+    console.error('PR143_FAILURE_SCREENSHOT_UNAVAILABLE',String(e));
+  }
   process.exitCode=1;
 }finally{
   for(const t of targets)try{t.ws.close()}catch{}
