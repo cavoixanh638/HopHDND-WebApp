@@ -42,7 +42,7 @@ jobs:
         run: npm run typecheck
       - name: Unit and component regression suites
         if: always()
-        run: npm run test -- --exclude tests/firebase-emulator.test.ts --exclude tests/firebase-production-rules.test.ts --exclude tests/exclusive-cell-freeze.test.ts --exclude tests/firebase-tab-auth.test.ts --exclude tests/firebase-versioned-replacement.test.ts --exclude tests/pr142-v2-freeze.test.ts --exclude tests/pr95-independent-rules.test.ts --exclude tests/pr95-independent-race.test.ts
+        run: npm run test -- --exclude tests/firebase-emulator.test.ts --exclude tests/firebase-production-rules.test.ts --exclude tests/exclusive-cell-freeze.test.ts --exclude tests/firebase-tab-auth.test.ts --exclude tests/firebase-versioned-replacement.test.ts --exclude tests/pr142-v2-freeze.test.ts --exclude tests/pr95-independent-rules.test.ts --exclude tests/pr95-independent-race.test.ts --exclude parent-commit-service/test/integration.test.ts
       - name: Build full web application
         if: always()
         run: npm run build
