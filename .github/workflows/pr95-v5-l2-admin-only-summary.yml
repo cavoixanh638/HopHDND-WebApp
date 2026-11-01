@@ -38,8 +38,8 @@ jobs:
         run: npm ci
       - name: Install both real Functions before guest cell editing
         run: |
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Verify frozen public props/role context typecheck
         run: npm run typecheck
       - name: SSR role/context, unknown QPPL, 4-4-3 counts, chips and filter IDs

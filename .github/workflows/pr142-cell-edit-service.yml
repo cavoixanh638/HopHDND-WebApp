@@ -31,7 +31,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Install isolated Firebase Functions and Emulator dependencies
         working-directory: source/cell-edit-service
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Install actual Chromium for two-tab browser test
         working-directory: source/cell-edit-service
         run: npx playwright install --with-deps chromium
