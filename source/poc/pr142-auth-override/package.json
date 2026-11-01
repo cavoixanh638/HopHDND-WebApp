@@ -1,0 +1,18 @@
+{
+  "name": "pr142-scoped-auth-override-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "scripts": {
+    "poc": "firebase emulators:exec --project demo-pr142-override --config firebase.poc.json --only auth,database \"node poc.mjs\"",
+    "syntax": "node --check poc.mjs"
+  },
+  "dependencies": {
+    "firebase": "13.0.0",
+    "firebase-admin": "13.0.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "15.34.0"
+  }
+}
