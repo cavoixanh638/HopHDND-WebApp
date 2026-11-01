@@ -17,10 +17,12 @@ const check=(ok,message)=>{if(!ok)throw Error('TRUSTED_PARENT_DENIED: '+message)
 async function watchParent(db){
   return new Promise((resolve,reject)=>{
     let done=false,stop=()=>{};
+    const timeout=setTimeout(()=>{if(!done){done=true;stop();reject(Error('Cannot warm trusted root transaction'));}},15000);
     stop=onValue(ref(db,ROOT),snapshot=>{
       if(done||!snapshot.exists())return;
-      done=true;resolve(stop);
-    },reject);
+      done=true;
+      queueMicrotask(()=>{clearTimeout(timeout);resolve(stop);});
+    },err=>{if(!done){done=true;clearTimeout(timeout);reject(err);}});
   });
 }
 export async function commitTrustedReplacement(db,approval,verifiedActorUid){
