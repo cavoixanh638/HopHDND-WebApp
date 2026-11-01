@@ -219,4 +219,8 @@ function WorkspaceProbe(){
     <p>Rows: {workspace.items.length}; Drafts: {Object.keys(workspace.drafts).length}</p>
   </section>;
 }
+// E2E witness: this window is deliberately held mid-edit while a different
+// authenticated tab commits replacement. The flag exists only in pages-test
+// on loopback and has no effect on production autosave.
+(window as Window & {__pr142TestHoldAutosave?:boolean}).__pr142TestHoldAutosave=true;
 createRoot(document.getElementById('root')!).render(<WorkspaceProbe/>);
