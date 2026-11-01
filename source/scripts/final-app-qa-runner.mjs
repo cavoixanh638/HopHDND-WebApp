@@ -687,6 +687,11 @@ async function popupJourney(){
   await textarea.press('Control+Enter');
   await admin.locator('.draft-bar').waitFor({timeout:12000});
   await screenshot(admin,'17-real-popup-draft');
+  // A native <dialog> is modal: clicking an underlying draft bar while
+  // it is open is impossible for a real user. Close the popup first,
+  // keep the draft, then use the genuine application Save control.
+  await dialog.locator('.report-grid-footer button').filter({hasText:'Đóng'}).click();
+  await dialog.waitFor({state:'detached',timeout:12000});
   await saveDraft(admin);
   const saved=await wait(async()=>{
     const current=await state();
