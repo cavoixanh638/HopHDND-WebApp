@@ -116,8 +116,26 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  // from unapproved client payload or blindly inherited pointer digest.
  const restoreApproval=afterBEdit.datasetV2.active;
  const beforeRestore=await witness();
- const restored=await restoreDatasetBackup(db,admin,second,restore,restoreApproval,'KHOI PHUC '+restore);
+ let restored:any=null,restoreError='';
+ try{restored=await restoreDatasetBackup(db,admin,second,restore,restoreApproval,'KHOI PHUC '+restore);}
+ catch(error:any){restoreError=String(error?.message??error);}
  const afterRestore=await witness(),genC='gen_'+restore;
+ if(restoreError){
+  const summary={candidateSha:FRV_SHA,request:'RESTORE historically committed source A after real valid guest cell edit A',
+    sourceGeneration:genA,sourceRevision:beforeRestore.datasetV2.generations[genA].items.r1.revision,
+    sourceHistorySlots:Object.keys(beforeRestore.datasetV2.generations[genA].items.r1.history??{}),
+    generationB:genB,sourceReplacementJournal:beforeRestore.datasetV2.operations[second]?.status,
+    priorBackupUnchanged:afterRestore.datasetV2.backups[second]===beforeRestore.datasetV2.backups[second],
+    rowsUnchanged:stable(beforeRestore.datasetV2.generations)===stable(afterRestore.datasetV2.generations),
+    permissionsUnchanged:stable(beforeRestore.datasetV2.permissions)===stable(afterRestore.datasetV2.permissions),
+    leasesUnchanged:stable(beforeRestore.datasetV2.leases)===stable(afterRestore.datasetV2.leases),
+    activeUnchanged:stable(beforeRestore.datasetV2.active)===stable(afterRestore.datasetV2.active),
+    error:restoreError,serverBeforeSha256:sha(stable(beforeRestore)),serverAfterSha256:sha(stable(afterRestore))};
+  console.log('FRV_EDITED_HISTORICAL_A_RESTORE_WITNESS '+JSON.stringify(summary));
+  log('FRV_EDITED_HISTORICAL_A_RESTORE_DENIED',beforeRestore,afterRestore,summary,
+    'verified admin real Auth -> actual parent onRequest -> Rules scoped ancestor CAS');
+ }
+ expect(restoreError,'Valid COMMITTED backup of legally edited A must restore; '+restoreError).toBe('');
  expect(restored.status).toBe('committed');
  expect(afterRestore.datasetV2.active.generationId).toBe(genC);
  expect(afterRestore.datasetV2.operations[restore]).toMatchObject({
@@ -143,6 +161,38 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   sourceOperation:afterRestore.datasetV2.operations[second],
   activeAfterRestore:afterCEdit.datasetV2.active,
   sourceBackupUnchanged:true}));
+},120000);
+
+
+it('FINAL-RELEASE-VERIFICATION CONTROL active B edited but source A has no history restores normally',async()=>{
+ const A='frv_control_initial_0001',B='frv_control_replace_0002',C='frv_control_restore_0003';
+ await frvStageInitial(A,'FRV CONTROL A NO EDIT');
+ await set(ref(db,ROOT+'/permissions/gen_'+A+'/columns/note'),true);
+ const staged=await stageDatasetReplacement(db,admin,[row('FRV CONTROL B')],B,'control.xlsx');
+ expect((await commitDatasetReplacement(db,admin,staged,
+   'THAY '+B+' '+staged.preview.oldCount+' '+staged.preview.newCount)).status).toBe('committed');
+ await set(ref(db,ROOT+'/permissions/gen_'+B+'/columns/note'),true);
+ const userSdk=await sdk('frv-control-guest'),user=(await signInAnonymously(userSdk.auth)).user;
+ const previous=(await witness()).datasetV2.active;
+ await frvGuestNoteEdit(userSdk.database,user,previous,'FRV VALID EDIT B ONLY');
+ const before=await witness();
+ expect(before.datasetV2.generations['gen_'+A].items.r1.history).toBeFalsy();
+ expect(Object.keys(before.datasetV2.generations['gen_'+B].items.r1.history??{}).length).toBeGreaterThan(0);
+ const resp=await restoreDatasetBackup(db,admin,B,C,before.datasetV2.active,'KHOI PHUC '+C);
+ const after=await witness();
+ log('FRV_POSITIVE_CONTROL_EDITED_B_UNEDITED_A_RESTORE',before,after,resp,
+   'real verified Admin + actual parent Functions with A history absent, B valid guest history present');
+ expect(resp.status).toBe('committed');
+ expect(after.datasetV2.active.generationId).toBe('gen_'+C);
+ expect(after.datasetV2.permissions['gen_'+C]?.columns?.note).toBe(true);
+ expect(after.datasetV2.leases?.['gen_'+C]).toBeUndefined();
+ await frvGuestNoteEdit(userSdk.database,user,after.datasetV2.active,'FRV VALID CONTROL C GUEST EDIT');
+ console.log('FRV_RESTORE_B_ONLY_EDIT_CONTRAST_PASS '+JSON.stringify({
+  sourceSha:FRV_SHA,changedLiveBeforeRestore:'B',restoredSource:'A unedited',
+  priorHistoryB:Object.keys(before.datasetV2.generations['gen_'+B].items.r1.history??{}),
+  approvedHistoricalSource:true,
+  restoreStatus:resp.status,
+  beforeSha256:sha(stable(before)),afterSha256:sha(stable(after))}));
 },120000);
 
 it('FINAL-RELEASE-VERIFICATION FRCR-01 queued permissions write races real parent pointer switch',async()=>{
