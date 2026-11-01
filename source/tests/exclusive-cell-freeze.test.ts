@@ -1,7 +1,9 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,serverTimestamp} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,goOffline,get,ref,set,update,serverTimestamp} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,signInAnonymously,signOut,type Auth} from 'firebase/auth';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
@@ -19,27 +21,55 @@ const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:id+'
 const row={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
 describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB security',()=>{
   let env:RulesTestEnvironment;
+  const realClients=new Map<string,{app:FirebaseApp;auth:Auth;db:import('firebase/database').Database;user:User}>();
   const guest=(id:string)=>env.authenticatedContext(id,{email:id+'@example.test',email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
   const anonymous=(id:string)=>env.authenticatedContext(id,{firebase:{sign_in_provider:'anonymous'}}).database();
   const admin=()=>env.authenticatedContext('administrator',adminClaims).database();
+  const real=(id:string)=>{const client=realClients.get(id);
+    if(!client)throw Error('Real test Auth principal not initialized: '+id);
+    return client;
+  };
   const manager=(id:string,isAdmin=false)=>new CellEditSessionManager(
-    (isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin));
+    real(id).db,()=>real(id).user);
   const publicManager=(id:string)=>new CellEditSessionManager(
-    anonymous(id) as never,()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User));
+    real(id).db,()=>real(id).user);
   const publicRepo=(id:string,session:CellEditSessionManager)=>{
-    const r=new FirebaseRepository(anonymous(id) as never,
-      ()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User),
+    const c=real(id);
+    const r=new FirebaseRepository(c.db,()=>c.user,
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
     r.leaseManager=session;return r;
   };
   const repo=(id:string,session:CellEditSessionManager,isAdmin=false)=>{
-    const r=new FirebaseRepository((isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin),
+    const c=real(id);
+    const r=new FirebaseRepository(c.db,()=>c.user,
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
     r.leaseManager=session;return r;
   };
-  beforeAll(async()=>{env=await initializeTestEnvironment({projectId:'demo-hdnd-exclusivity',database:{
-    host:'127.0.0.1',port:9000,rules:JSON.stringify(candidate)
-  }});},30000);
+  beforeAll(async()=>{
+    if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
+       process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST!=='127.0.0.1:5001')
+      throw Error('PR142 exclusive tests require real local Auth+Functions+FULL Rules');
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
+      host:'127.0.0.1',port:9000,rules:JSON.stringify(candidate)
+    }});
+    const signed=['administrator','a','b','guest','forger','ungranted','untrusted'];
+    const anonymousUsers=['anon-a','anon-denied','anon-locked','anon-read'];
+    for(const id of [...signed,...anonymousUsers]){
+      const app=initializeApp({apiKey:'demo-exclusive-only',authDomain:'demo-hdnd.firebaseapp.com',
+        projectId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com',
+        appId:'exclusive-'+id},'pr142-exclusive-'+id);
+      const auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      const user=anonymousUsers.includes(id)?
+        (await signInAnonymously(auth)).user:
+        (await signInWithCredential(auth,GoogleAuthProvider.credential(JSON.stringify({
+          sub:id,email:id==='administrator'?adminClaims.email:id+'@example.test',
+          email_verified:true})))).user;
+      realClients.set(id,{app,auth,db,user});
+    }
+    expect(real('administrator').user.emailVerified).toBe(true);
+    expect(real('anon-a').user.isAnonymous).toBe(true);
+  },60000);
   beforeEach(async()=>{
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(async context=>{
@@ -47,12 +77,19 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await set(ref(context.database() as never),{
         hdnd:{items:{r1:{...record,operationId:'initial',updatedAt:Date.now(),updatedBy:'administrator'}},
           permissions:{columns:{note:true,specificProgress:true,progressParty:true}},
-          editors:{a:true,b:true,forger:true,ungranted:true,untrusted:true},
+          editors:{a:true,b:true,guest:true,forger:true,ungranted:true,untrusted:true},
           control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()}}
       });
     });
   });
-  afterAll(async()=>env?.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    for(const c of realClients.values()){
+      try{goOffline(c.db);}catch{}
+      try{await signOut(c.auth);}catch{}
+      try{await deleteApp(c.app);}catch{}
+    }
+  });
   it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
     const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
     // Public viewing is the product policy: anonymous, unknown Google and no auth can read business rows.
