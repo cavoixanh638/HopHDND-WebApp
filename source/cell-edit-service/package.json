@@ -8,8 +8,8 @@
     "node": "22"
   },
   "scripts": {
-    "check": "node --check index.js && node --check core.js && node --check scripts/make-test-rules.mjs",
-    "test:isolated": "node scripts/make-test-rules.mjs && firebase emulators:exec --project demo-pr142-cell-edit --config ../firebase.cell-edit.test.json --only auth,database,functions \"node test/integration.mjs\""
+    "check": "node --check index.js && node --check core.js && node --check scripts/make-test-rules.mjs && node --check test/integration.mjs && node --check test/browser-chrome.mjs",
+    "test:isolated": "node scripts/make-test-rules.mjs && firebase emulators:exec --project demo-pr142-cell-edit --config ../firebase.cell-edit.test.json --only auth,database,functions \"node test/integration.mjs && node test/browser-chrome.mjs\""
   },
   "dependencies": {
     "firebase-admin": "13.0.0",
