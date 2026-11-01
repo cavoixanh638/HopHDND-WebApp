@@ -678,10 +678,14 @@ async function popupJourney(){
   await screenshot(admin,'16-real-popup-editable');
   const before=await state();
   const note='QA FULL APP popup lưu qua Callable';
-  const noteTrigger=dialog.locator('button.inline-note-trigger').first();
-  if(!(await noteTrigger.count()))throw Error('Real popup has no inline note editor');
+  // The first inline editor in a real report is often 'Tiến độ hiện tại',
+  // not 'Ghi chú'. Selecting by index silently edited the wrong business
+  // field: server revision increased but the note remained unchanged.
+  // Target the requested exact field, not the first available editor.
+  const noteTrigger=dialog.locator('button.inline-note-trigger[aria-label*="Ghi chú"]').first();
+  if(!(await noteTrigger.count()))throw Error('Real popup has no granted Ghi chú editor');
   await noteTrigger.click();
-  const textarea=dialog.locator('textarea.inline-note-textarea').first();
+  const textarea=dialog.locator('textarea.inline-note-textarea[aria-label*="Ghi chú"]').first();
   await textarea.waitFor({state:'visible',timeout:12000});
   await textarea.fill(note);
   await textarea.press('Control+Enter');
