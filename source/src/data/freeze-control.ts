@@ -165,10 +165,19 @@ export async function setFreezeMode(database:Database,user:User|null,expected:Fr
     };
   },{applyLocally:false});
   if(!x.committed)throw new Error('Mốc chốt đã thay đổi hoặc Rules từ chối generation. Tải lại trước khi thao tác.');
-  const confirmed=parseFreeze(x.snapshot.val());
+  const acknowledged=parseFreeze(x.snapshot.val());
+  if(acknowledged.mode!==next||acknowledged.revision!==expected.revision+1||
+    !sameFreezeDataset(acknowledged.datasetV2??null,pointer))
+    throw new Error('Firebase chưa ACK đúng mốc chốt.');
+  // serverTimestamp() in the caller snapshot can differ from the server value.
+  // Receipt must use the authoritative freeze record's closedAt/frozenAt.
+  const confirmed=await readFreeze(database);
   if(confirmed.mode!==next||confirmed.revision!==expected.revision+1||
-    !sameFreezeDataset(confirmed.datasetV2??null,pointer))
-    throw new Error('Firebase chưa xác nhận đúng mốc chốt.');
+    confirmed.epoch!==expected.epoch+(expected.mode==='OPEN'&&next!=='OPEN'?1:0)||
+    confirmed.actor!==user!.uid||
+    !sameFreezeDataset(confirmed.datasetV2??null,pointer)||
+    (pointer&&next==='FROZEN'&&confirmed.closeKind!==(force?'forced':'orderly')))
+    throw new Error('Mốc chốt đọc lại từ server không khớp ACK; không cấp biên nhận.');
   if(next!=='OPEN'&&!sameFreezeDataset(await readActiveDatasetPointer(database),pointer))
     throw new Error('Generation đổi sau ACK đóng băng; phải xác minh trạng thái trên server.');
   return confirmed;
