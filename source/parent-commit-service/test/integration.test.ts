@@ -2,11 +2,11 @@
  * Rules override -> FULL RTDB Rules. No authenticatedContext service claim.
  */
 import {beforeAll,beforeEach,afterAll,it,expect} from 'vitest';
-import {initializeTestEnvironment,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
+import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
 import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,
   signInAnonymously,getIdToken,type User} from 'firebase/auth';
-import {getDatabase,connectDatabaseEmulator,get,ref,set,runTransaction,serverTimestamp} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,get,ref,set,update,goOffline,goOnline,runTransaction,serverTimestamp} from 'firebase/database';
 import {getDatabase as getAdminDatabase} from 'firebase-admin/database';
 import {initializeApp as adminInitialize,deleteApp as adminDelete} from 'firebase-admin/app';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
@@ -287,6 +287,87 @@ it('DR-02 REGRESSION: self-consistent admin-created backup cannot restore rows a
   expect(after.datasetV2.active).toEqual(active);
   expect(after.datasetV2.generations['gen_'+restoreId]).toBeUndefined();
   log('DR02_forged_private_backup_denied_at_server',before,after,attempted);
+});
+
+
+it('FRCR-01: real admin A rights immutable after HTTP parent A-to-B, valid restore still commits',async()=>{
+ const aOp='frcr_real_activate_0001',bOp='frcr_real_replace_0002',restoreOp='frcr_real_restore_0003';
+ await bootstrapApprovedRowsToPrimary(db,admin,[row('FRCR legacy')]);
+ await setFreezeMode(db,admin,initialFreeze,'FROZEN',true);
+ const initial=await prepareInitialDatasetActivation(db,admin,[row('FRCR approved A')],aOp,'frcr-a.xlsx');
+ expect((await commitInitialDatasetActivation(db,admin,initial,
+   'KHOI TAO V2 '+aOp+' '+initial.legacyRowCount+' '+initial.preview.newCount)).status).toBe('committed');
+ const A='gen_'+aOp,B='gen_'+bOp,oldPath=ROOT+'/permissions/'+A,newPath=ROOT+'/permissions/'+B;
+ const rights={columns:{note:true,content:true},rows:{r1:{note:true}},
+   cells:{r1:{note:true,content:true}}};
+ await set(ref(db,oldPath),rights);
+ // Active: verified Google administrator can grant AND revoke each permission scope.
+ for(const path of ['columns/note','rows/r1/note','cells/r1/note']){
+   await set(ref(db,oldPath+'/'+path),false);
+   await set(ref(db,oldPath+'/'+path),true);
+ }
+ const stage=await stageDatasetReplacement(db,admin,[row('FRCR approved B')],bOp,'frcr-b.xlsx');
+ // A queued SDK request is issued before the pointer switch but reaches RTDB
+ // afterwards. The server decision must use CURRENT root/active, not client time.
+ const queue=await sdk('frcr-admin-inflight');
+ await google(queue,'real-google-admin-test');
+ await get(ref(queue.database,oldPath+'/columns/note'));
+ goOffline(queue.database);
+ const delayed=set(ref(queue.database,oldPath+'/columns/note'),false);
+ expect((await commitDatasetReplacement(db,admin,stage,
+   'THAY '+bOp+' '+stage.preview.oldCount+' '+stage.preview.newCount)).status).toBe('committed');
+ const postSwitch=await witness();
+ expect(postSwitch.datasetV2.active.generationId).toBe(B);
+ expect(postSwitch.datasetV2.permissions[A]).toEqual(rights);
+ expect(postSwitch.datasetV2.operations[bOp].status).toBe('COMMITTED');
+ expect(JSON.parse(JSON.parse(postSwitch.datasetV2.backups[bOp]).permissionsJson)).toEqual(rights);
+ goOnline(queue.database);
+ await assertFails(delayed);
+ const afterQueue=await witness();
+ expect(stable(afterQueue)).toBe(stable(postSwitch));
+ log('FRCR01_ACTIVE_SWITCH_DENIES_INFLIGHT_OLD_RIGHTS',postSwitch,afterQueue,
+   {status:'PERMISSION_DENIED',actor:'real verified Google admin'});
+ const guest=await sdk('frcr-anon');await signInAnonymously(guest.auth);
+ const outsider=await sdk('frcr-other');await google(outsider,'frcr-other-uid','other@example.invalid');
+ const before=await witness();
+ // All historic paths: column, row, cell, ancestor deletion, multi-location update.
+ for(const path of ['columns/note','rows/r1/note','cells/r1/note']){
+   await assertFails(set(ref(db,oldPath+'/'+path),false));
+ }
+ await assertFails(set(ref(db,oldPath+'/columns'),{note:false}));
+ await assertFails(set(ref(db,oldPath+'/rows'),{r1:{note:false}}));
+ await assertFails(set(ref(db,oldPath+'/cells'),{r1:{note:false}}));
+ await assertFails(set(ref(db,oldPath),null));
+ await assertFails(update(ref(db,ROOT+'/permissions'),{
+   [A+'/columns/note']:false,[B+'/columns/note']:true
+ }));
+ await assertFails(set(ref(guest.database,oldPath+'/columns/note'),false));
+ await assertFails(set(ref(outsider.database,oldPath+'/columns/note'),false));
+ const after=await witness();
+ expect(stable(after)).toBe(stable(before));
+ log('FRCR01_HISTORICAL_COLUMNS_ROWS_CELLS_DELETE_MULTIPATH_DENIED',
+   before,after,{status:'PERMISSION_DENIED',serverChanged:false});
+ // B remains administered by its verified owner; unprivileged principals cannot.
+ await assertFails(set(ref(guest.database,newPath+'/columns/note'),true));
+ await assertFails(set(ref(outsider.database,newPath+'/columns/note'),true));
+ for(const path of ['columns/note','rows/r1/note','cells/r1/note']){
+   await set(ref(db,newPath+'/'+path),true);
+   await set(ref(db,newPath+'/'+path),false);
+ }
+ await set(ref(db,newPath+'/cells/r1/note'),null);
+ const beforeRestore=await witness();
+ expect(beforeRestore.datasetV2.permissions[A]).toEqual(rights);
+ const restored=await restoreDatasetBackup(db,admin,bOp,restoreOp,beforeRestore.datasetV2.active,
+   'KHOI PHUC '+restoreOp);
+ expect(restored.status).toBe('committed');
+ const done=await witness();
+ expect(done.datasetV2.active.generationId).toBe('gen_'+restoreOp);
+ expect(done.datasetV2.generations['gen_'+restoreOp].items.r1.note).toBe('FRCR approved A');
+ expect(done.datasetV2.permissions[A]).toEqual(rights);
+ expect(done.datasetV2.operations[restoreOp].status).toBe('COMMITTED');
+ expect(done.datasetV2.leases?.['gen_'+restoreOp]).toBeUndefined();
+ log('FRCR01_APPROVED_RESTORE_SUCCEEDS_AFTER_DENIAL',beforeRestore,done,
+   {status:restored.status,provenance:'historically COMMITTED replacement'});
 });
 
 it('lost API completion after actual server commit returns UNKNOWN; read-only resolve and same-op retry never double-commit',async()=>{

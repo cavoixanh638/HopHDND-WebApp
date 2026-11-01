@@ -589,7 +589,7 @@
         "permissions": {
           "$generation": {
             ".read": "root.child('hdnd/datasetV2/active/generationId').val() === $generation",
-            ".write": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'"
+            ".write": "(root.child('hdnd/datasetV2/active/generationId').val() === $generation) && (auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')"
           }
         },
         "leases": {
