@@ -140,6 +140,22 @@ function monitor(page,role){
     if(msg.type()==='error'||msg.type()==='warning')
       record('BROWSER_CONSOLE',{role,kind:msg.type(),text:msg.text().slice(0,400)});
   });
+  page.on('response',async response=>{
+    const url=response.url();
+    if(!url.includes('/cellEdit')||response.status()<400)return;
+    try{
+      const body=await response.json();
+      const error=body?.error??{};
+      record('CELL_CALLABLE_REJECTED',{role,httpStatus:response.status(),
+        errorStatus:String(error.status??'').slice(0,80),
+        message:String(error.message??'').slice(0,240)});
+    }catch(error){record('CELL_CALLABLE_REJECTED',{role,httpStatus:response.status(),
+      parseError:String(error).slice(0,100)});}
+  });
+  page.on('requestfailed',req=>{
+    if(req.url().includes('/cellEdit'))
+      record('CELL_CALLABLE_NETWORK_FAILURE',{role,failure:req.failure()?.errorText??'unknown'});
+  });
   page.on('request',req=>{
     if(!assertLocalUrl(req.url()))record('BLOCK_EXTERNAL_REQUEST',{role,
       hostname:new URL(req.url()).hostname});
@@ -183,9 +199,9 @@ async function seedWorkbook(){
   }finally{await seedVite.close();}
 }
 async function seed(){
-  const [a,b]=sourceRows.map((row,index)=>{
+  const [a,b]=sourceRows.map(row=>{
     const {archivedAt,...rest}=row;
-    return [row.recordId,{...rest,revision:1,operationId:'qa_seed_'+index,
+    return [row.recordId,{...rest,revision:1,operationId:seedPointer.operationId,
       updatedAt:1,updatedBy:'qa-only'}];
   });
   const v2={[a[0]]:a[1],[b[0]]:b[1]};
@@ -199,8 +215,14 @@ async function seed(){
       changedAt:1,deadline:0,closedAt:0},
     datasetV2:{active:seedPointer,generations:{
       [seedPointer.generationId]:{items:v2}},
-      permissions:{[seedPointer.generationId]:{columns:{}}}}
-  }};
+      permissions:{[seedPointer.generationId]:{columns:{}}},
+      // V2 baseline must represent a real prior committed generation.
+      // PR146 parent contract refuses insertion of an absent operations tree.
+      operations:{[seedPointer.operationId]:{
+        status:'COMMITTED',from:'legacy',to:seedPointer.generationId,
+        at:Date.now()-1000}}
+    }
+  };
   await ownerPut('',initial);
   assert.equal((await state()).rowCount,2);
   record('SERVER_SEED',{generation:seedPointer,rowIDs:Object.keys(v2)});
@@ -331,7 +353,17 @@ const noteRow=page=>page.locator('.item-data-table tbody tr').first()
 async function editNote(page,value){
   await noteRow(page).locator('button.inline-note-trigger').first().click();
   const textarea=page.locator('textarea.inline-note-textarea');
-  await textarea.waitFor({state:'visible',timeout:15000});
+  try{await textarea.waitFor({state:'visible',timeout:15000});}
+  catch(error){
+    record('EDITOR_NOT_OPENED',{
+      error:safeError(error),url:page.url(),roles:await page.evaluate(()=>
+        window.__pr95UiV2L3RightsProbe?.()??null).catch(()=>null),
+      alerts:await page.locator('[role=alert]').allTextContents().catch(()=>[]),
+      noteHtml:(await noteRow(page).innerHTML().catch(()=>''))?.slice(0,1800),
+      server:await state()
+    });
+    throw error;
+  }
   await textarea.fill(value);
   await textarea.press('Control+Enter');
   await page.locator('.draft-bar').waitFor({timeout:13000});
@@ -424,6 +456,7 @@ async function grantAndGuestEdit(){
     auditCount:Object.keys(saved.history??{}).length};
 }
 async function twoTabAndPopup(){
+  await resetPages();
   // Login a second *actual App* Chrome target with the same verified admin.
   secondAdmin=await contextAdmin.newPage();
   monitor(secondAdmin,'admin-tab-2');
@@ -688,9 +721,10 @@ async function run(){
   browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
   await resetPages();
   await checks.task('QA01_DESKTOP_MOBILE_GUEST_ADMIN',desktopMobileEvidence,admin);
-  const permissionOK=await checks.task('QA02_GRANT_GUEST_LIST_EDIT_SAVE_READBACK',grantAndGuestEdit,guest);
-  if(permissionOK)await checks.task('QA03_TWO_SAME_UID_TABS_REAL_APP',twoTabAndPopup,admin);
-  else checks.unverified('QA03_TWO_SAME_UID_TABS_REAL_APP','QA02 failed; run independently after grant/navigation repair');
+  await checks.task('QA02_GRANT_GUEST_LIST_EDIT_SAVE_READBACK',grantAndGuestEdit,guest);
+  // Same-UID admin collision is independently runnable even when guest-grant
+  // path has an application error. Never suppress this security test.
+  await checks.task('QA03_TWO_SAME_UID_TABS_REAL_APP',twoTabAndPopup,admin);
   await checks.task('QA04_LOST_ACK_DRAFT_RETRY',ackLostAndRetry,admin);
   await checks.task('QA05_REAL_APP_REPORT_POPUP',popupJourney,admin);
   await checks.task('QA06_FREEZE_NORMAL_FORCED_RECEIPT',freezeJourney,admin);
