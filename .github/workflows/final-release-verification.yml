@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      # Pinned immutable candidate SHA and historical release-doc negative control; exact CI bundle audited separately.
+      # Independent second pass: A history-vs-B history control and immutable CI artifact on SHA82b6.
       FINAL_VERIFY_TARGET_SHA: 82b6db5b4011aeea322183e9e9ca13aa73674603
       FINAL_VERIFY_RELEASE_DOCS_SHA: 79f2e59b7c4e6116d6456836e0099ba744ba5ba0
       GCLOUD_PROJECT: demo-hdnd
