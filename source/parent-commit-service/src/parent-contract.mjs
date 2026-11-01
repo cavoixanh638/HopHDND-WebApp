@@ -66,7 +66,8 @@ export function assertSafeParentTransition(before,after,{mode,operationId,actor,
     'operation/generation already exists');
   for(const k of keys(before))check(own(after,k),'root key removed: '+k);
   for(const k of keys(after))check(own(before,k)||
-    (mode==='activate'&&['active','generations','permissions','operations','bootstrap'].includes(k)),
+    (mode==='activate'&&['active','generations','permissions','operations','bootstrap'].includes(k))||
+    (k==='permissions'&&!own(before,'permissions')),
     'unexpected datasetV2 root insertion: '+k);
   for(const k of keys(before))if(!['active','generations','permissions','operations','bootstrap'].includes(k))
     check(equal(before[k],after[k]),`root ${k} modified including leases/backups/candidates`);

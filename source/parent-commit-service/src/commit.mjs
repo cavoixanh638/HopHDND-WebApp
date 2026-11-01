@@ -39,6 +39,25 @@ function validateRequest(body){
   return body;
 }
 async function loadRoot(db){return (await db.ref(ROOT).get()).val();}
+async function holdRootCache(ref){
+  // Admin SDK may start a transaction from a cold local null despite a prior
+  // get(). An active value listener guarantees the real parent snapshot is
+  // present before our CAS callback chooses whether to abort.
+  let unsubscribe=()=>{};
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    const timeout=setTimeout(()=>{if(!done){done=true;ref.off('value',onValue);reject(Error('PARENT_ROOT_CACHE_TIMEOUT'));}},12000);
+    const onValue=snapshot=>{
+      if(done||!snapshot.exists())return;
+      done=true;clearTimeout(timeout);resolve();
+    };
+    const onError=error=>{if(done)return;done=true;clearTimeout(timeout);ref.off('value',onValue);reject(error);};
+    ref.on('value',onValue,onError);
+    unsubscribe=()=>ref.off('value',onValue);
+  });
+  return unsubscribe;
+}
+
 async function loadState(db){
   // RTDB Rules deliberately DENY a broad /hdnd read. Scope to the four
   // separate authorized legacy paths; only the root transaction is V2.
@@ -117,16 +136,18 @@ export async function handleParentAction(db,identity,input){
   inspect(before,body,uid,legacy);
   const reference=db.ref(ROOT);
   await reference.get();
+  const releaseCache=await holdRootCache(reference);
   let denial='';
   let result;
   try{
     result=await reference.transaction(raw=>{
       try{
-        if(!raw)return;
+        if(!raw)return undefined;
         return inspect(raw,body,uid,legacy);
       }catch(error){denial=String(error?.message??error);return undefined;}
     },undefined,false);
   }catch(error){throw Error('PARENT_TRANSACTION_DENIED: '+String(error?.message??error));}
+  finally{releaseCache();}
   if(process.env.FIREBASE_DATABASE_EMULATOR_HOST)console.log('PARENT_TRANSACTION_RESULT',JSON.stringify({action:body.action,operationId:op,committed:result.committed,denial}));
   if(!result.committed){
     // A failed transaction may be conflict, denial, or ambiguous. Read server status.
