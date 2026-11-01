@@ -207,7 +207,11 @@ it('CONTROL activation -> replace -> restore -> resolve with verified staged pay
   expect(assertSafeParentTransition(b2.raw.datasetV2,a2.raw.datasetV2,
     {mode:'restore',operationId:restoreOp,backupOperationId:approval.operationId,actor:UID})).toBe(true);
   const resolved=await resolveDatasetOperation(MODE==='trial'?SERVICE():ADMIN(),restoreOp);
+  const afterResolve=await snap();
+  log('resolve_restore',a2,afterResolve,{status:resolved.status,operationId:restoreOp},
+    'source read-only resolve API using '+MODE+' Rules context');
   expect(resolved.status).toBe('committed-active');
+  expect(afterResolve.hash).toBe(a2.hash);
 });
 it('CONTROL pointer-only through Rules (baseline admin / trial synthetic service)',async()=>{
   await ready();
@@ -247,6 +251,44 @@ it('CONTROL foreign-session/UID lease cannot be released at leaf by admin',async
   expect(result.status).toBe('rejected');
   expect(before.hash).toBe(after.hash);
 });
+// The leaf path must be checked independently of the ancestor CAS: the
+// trial parent gate intentionally does not solve same-UID cell replay.
+it('CONTROL separate same-UID SDK app can copy and release a leaf lease (known distinct blocker)',async()=>{
+  await ready();
+  const before=await snap();
+  const owner=ADMIN(), secondTab=ADMIN();
+  expect(owner.app.name).not.toBe(secondTab.app.name);
+  const path=BASE+'/leases/'+PREV_GEN+'/r1/note';
+  const copied=(await get(ref(secondTab,path))).val();
+  let result={status:'not-sent'};
+  try{
+    await update(ref(secondTab,path),{token:copied.token,session:copied.session,
+      revision:copied.revision+1,expiresAt:0});
+    result={status:'committed'};
+  }catch(e){result={status:'rejected',message:String(e)};}
+  const after=await snap();
+  log('leaf_release_same_uid_copied',before,after,result,
+    'SECOND independent synthetic same-UID app; real leaf Rules; this is NOT the parent-CAS fix');
+  expect(result.status,'Current separate cell-token blocker must remain visible').toBe('committed');
+  expect(after.raw.datasetV2.leases[PREV_GEN].r1.note.expiresAt).toBe(0);
+  expect(after.raw.datasetV2.active).toEqual(before.raw.datasetV2.active);
+});
+// Report whether current descendant validation independently forbids modifying
+// another UID's lease when the admin switches a valid parent pointer.
+it('OBSERVATION valid pointer + FOREIGN UID old lease expiry through parent',async()=>{
+  await ready({foreignLease:true});
+  const x=await sendParent('existing_foreign_lease_expire',{tamper:next=>{
+    next.leases[PREV_GEN].r1.note.expiresAt=0;
+    next.leases[PREV_GEN].r1.note.revision++;
+  }});
+  if(MODE==='trial')requireNoMutation(x);
+  else{
+    expect(['committed','rejected'],'Only a server outcome counts, never local abort')
+      .toContain(x.result.status);
+    if(x.result.status==='committed')expect(x.detail.existingLeaseChanged).toBe(true);
+    else expect(x.detail.serverChanged).toBe(false);
+  }
+});
 it('SECURITY REGRESSION valid pointer + existing lease RELEASE raw admin',async()=>{
   await ready();
   const x=await sendParent('existing_lease_expire',{tamper:next=>{
@@ -268,6 +310,12 @@ it('SECURITY REGRESSION valid pointer + new generation content tamper raw admin'
     console.warn('BASELINE SECURITY FAILURE EXPECTED: unstaged row accepted via parent='+x.result.status);
     expect(x.result.status).toBe('committed');
     expect(x.detail.activeAfter?.generationId).toBe(x.approval.manifest.generationId);
+    const committed=(await readOwner(BASE));
+    const newRow=committed.generations[x.approval.manifest.generationId].items.r1;
+    const staged=JSON.parse(committed.candidates[x.approval.operationId]);
+    expect(newRow.note).toBe('TAMPERED_NOT_STAGED');
+    expect(newRow.note).not.toBe(staged.items.r1.note);
+    expect(committed.active.digest).toBe(staged.manifest.digest);
   }else requireNoMutation(x);
 });
 it('TRUSTED coordinator rejects malicious lease or new-row content before Rules write',async()=>{
@@ -307,4 +355,11 @@ it('TRIAL trusted narrow replacement transaction builds from sealed staging',asy
     .toBe('Approved trusted_actual_commit');
   expect(after.raw.datasetV2.generations[PREV_GEN]).toEqual(before.raw.datasetV2.generations[PREV_GEN]);
   expect(after.raw.datasetV2.leases).toEqual(before.raw.datasetV2.leases);
+  const current=after.raw.datasetV2;
+  const staged=JSON.parse(current.candidates[approval.operationId]);
+  expect(current.generations[approval.manifest.generationId].items.r1.note)
+    .toBe(staged.items.r1.note);
+  expect(current.active.digest).toBe(staged.manifest.digest);
+  expect(assertSafeParentTransition(before.raw.datasetV2,after.raw.datasetV2,
+    {mode:'replace',operationId:approval.operationId,actor:UID})).toBe(true);
 });
