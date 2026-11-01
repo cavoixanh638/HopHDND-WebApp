@@ -31,7 +31,7 @@ export function samePermissions(a:CellPermissions|null|undefined,b:CellPermissio
 interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changes?:Partial<Record<EditableField,string|boolean>>;oldValues?:Partial<Record<EditableField,string|boolean>>;changesJson?:string;oldValuesJson?:string}
 type StoredItem=Item & {operationId:string;updatedAt:number;updatedBy:string;history?:Record<string,FirebaseEvent>};
 export const firebaseAdmin=(user:Pick<User,'email'|'emailVerified'|'providerData'>|null)=>!!user&&user.email===FIREBASE_ADMIN_EMAIL&&user.emailVerified&&user.providerData.some(provider=>provider.providerId==='google.com');
-export const mayEdit=(permissions:CellPermissions,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true);
+export const mayEdit=(permissions:CellPermissions|null|undefined,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions?.cells?.[id]?.[field]??permissions?.rows?.[id]??permissions?.columns?.[field])===true);
 export function validateFirebaseItem(value:unknown):Item {
   if(!value||typeof value!=='object')throw new Error('Dòng Firebase không hợp lệ.');
   const row=value as Item;
