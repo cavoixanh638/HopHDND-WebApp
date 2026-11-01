@@ -6,7 +6,10 @@ import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,serverTimestamp} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,goOffline,get,ref,set,serverTimestamp,type Database} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence} from 'firebase/auth';
+import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {acquireCellLease,releaseCellLease} from '../src/data/cell-edit-leases';
@@ -14,15 +17,14 @@ import {
   activeEditLeaseCount,readActiveLeaseSnapshot,readActiveDatasetPointer,
   readFreeze,setFreezeMode,createFreezeReceipt,freezeReceiptIsCurrent
 } from '../src/data/freeze-control';
-import {stageDatasetReplacement,commitDatasetReplacement} from '../src/data/firebase-versioned-replacement';
+import {stageDatasetReplacement,commitDatasetReplacement} from '../src/data/firebase-versioned-replacement-secure';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'&&
   process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099';
 const rules=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
   firebase:{sign_in_provider:'google.com' as const}};
-const user={uid:'administrator',email:claims.email,emailVerified:true,
-  providerData:[{providerId:'google.com'}]} as User;
+let user:User;
 const OP_A='pr142_freeze_generation_a';
 const GEN_A='gen_'+OP_A;
 const OP_B='pr142_freeze_generation_b';
@@ -52,8 +54,8 @@ const sha=(rows:Record<string,unknown>)=>createHash('sha256')
   .update(JSON.stringify(Object.keys(rows).sort().map(id=>[id,rows[id]]))).digest('hex');
 
 describe.skipIf(!enabled)('PR142 V2 freeze F1-F5 + pointer/generation fencing',()=>{
-  let env:RulesTestEnvironment;
-  const admin=()=>env.authenticatedContext('administrator',claims).database() as never;
+  let env:RulesTestEnvironment,adminApp:FirebaseApp,adminDb:Database;
+  const admin=()=>adminDb;
   const server=async(path='hdnd'):Promise<any>=>{
     let observed:any=null;
     await env.withSecurityRulesDisabled(async ctx=>{
@@ -78,10 +80,28 @@ describe.skipIf(!enabled)('PR142 V2 freeze F1-F5 + pointer/generation fencing',(
     expect(committed.status).toMatch(/committed/);
     expect((await readActiveDatasetPointer(db))?.generationId).toBe(GEN_B);
   };
-  beforeAll(async()=>{env=await initializeTestEnvironment({projectId:'demo-hdnd-pr142-freeze',
-    database:{host:'127.0.0.1',port:9000,rules}});},30000);
+  beforeAll(async()=>{
+    if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')
+      throw Error('Freeze integration requires real Auth Emulator');
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',
+      database:{host:'127.0.0.1',port:9000,rules}});
+    adminApp=initializeApp({apiKey:'demo-pr142-freeze',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr142-freeze',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'pr142-freeze-real-admin');
+    const auth=initializeAuth(adminApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+    adminDb=getDatabase(adminApp);
+    connectDatabaseEmulator(adminDb,'127.0.0.1',9000);
+    user=await signInAsEmulatorGoogleAdmin(auth);
+    expect(user.emailVerified).toBe(true);
+    expect(user.providerData.some(p=>p.providerId==='google.com')).toBe(true);
+  },40000);
   beforeEach(async()=>reset());
-  afterAll(async()=>env?.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    if(adminDb)goOffline(adminDb);
+    if(adminApp)await deleteApp(adminApp);
+  });
 
   it('F1: counts only live leases under the active V2 generation; ignores inactive and tombstones',async()=>{
     const db=admin();
@@ -167,7 +187,7 @@ describe.skipIf(!enabled)('PR142 V2 freeze F1-F5 + pointer/generation fencing',(
     const frozen=await setFreezeMode(db,user,await readFreeze(db),'FROZEN',true);
     await swap();
     const stale={
-      epoch:frozen.epoch,rows:2,sha256:'0'.repeat(64),actor:'administrator',
+      epoch:frozen.epoch,rows:2,sha256:'0'.repeat(64),actor:user.uid,
       frozenAt:frozen.closedAt,recordedAt:serverTimestamp(),
       datasetV2:pointerA,closeKind:'forced'
     };
