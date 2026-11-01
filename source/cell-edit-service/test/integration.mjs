@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID,createHash} from 'node:crypto';
 import {writeFileSync} from 'node:fs';
+import {initializeApp as adminInitialize,deleteApp as adminDelete} from 'firebase-admin/app';
+import {getAuth as getAdminAuth} from 'firebase-admin/auth';
 import {initializeApp,deleteApp} from 'firebase/app';
 import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,signInAnonymously,getIdToken,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator,ref,set,get,goOffline} from 'firebase/database';
@@ -23,7 +25,7 @@ function client(name){
  return {app,auth,database,functions,call:httpsCallable(functions,'cellEdit',{timeout:20000})};
 }
 const a=client('A'),b=client('B'),c=client('C'),d=client('D-anonymous');
-let uid,uidC,uidAnon;
+let uid,uidC,uidAnon,verifiedAdmin;
 const proof=()=>randomBytes(32).toString('hex');
 const hash=o=>createHash('sha256').update(JSON.stringify(o)).digest('hex');
 function scopeInfo(scope) {
@@ -122,6 +124,30 @@ async function positive(scope){
  assert.equal(released.status,'released');
  assert.equal((await ownerGet(p.lease)).expiresAt,0);
 }
+// Authentication still comes from a REAL Auth Emulator ID token, verified
+// by Firebase Admin. The optional callback is passed only by this Node test,
+// never through an HTTP/callable payload, after proof-read and before commit.
+async function strictRace(scope,action,lease,afterProof){
+ process.env.GCLOUD_PROJECT=PROJECT;
+ const {dispatchCellEdit}=await import('../core.js');
+ const verified=await getAdminAuth(verifiedAdmin).verifyIdToken(await getIdToken(a.auth.currentUser));
+ const operationId=randomUUID();
+ const payload={...scopeInfo(scope),action,recordId:'r1',
+   operationId,field:'note',token:lease.token,secret:lease.secret};
+ if(action==='save'){
+   payload.patch={recordId:'r1',operationId,baseRevision:1,
+     baseValues:{note:'MẪU chưa sửa'},changes:{note:'RACE blocked'}};
+   payload.leases={note:{token:lease.token,secret:lease.secret}};
+ }
+ let e;
+ try{await dispatchCellEdit({uid:verified.uid,token:verified},payload,{afterProof});}
+ catch(error){e=error;}
+ assert.ok(e,'in-flight mutation unexpectedly COMMITTED');
+ assert.equal(e.code,'permission-denied',
+   'must be RULES_DENIED at transaction, not LOCAL_ABORT, conflict or precheck: '+String(e.code));
+ return e.code;
+}
+
 async function run(){
  const adminAssertion=JSON.stringify({sub:'pr142-cell-real-google',email:'poc-editor@demo.invalid',email_verified:true});
  const cAssertion=JSON.stringify({sub:'pr142-cell-real-other',email:'poc-other@demo.invalid',email_verified:true});
@@ -131,6 +157,7 @@ async function run(){
    signInWithCredential(c.auth,GoogleAuthProvider.credential(cAssertion))
  ]);
  uid=ua.user.uid;uidC=uc.user.uid;assert.equal(ub.user.uid,uid);assert.notEqual(uidC,uid);
+ verifiedAdmin=adminInitialize({projectId:PROJECT},'verify-emulator-real-claims');
  const ad=await signInAnonymously(d.auth);uidAnon=ad.user.uid;assert.notEqual(uidAnon,uid);
  for(const scope of ['legacy','v2']){
    await step(scope+' owner acquire/renew/SAVE/release + duplicate SAVE idempotent',()=>positive(scope));
@@ -196,6 +223,31 @@ async function run(){
      await sameState(scope,'generation switch',()=>call(a,scope,'renew',{token:l.token,field:'note',secret:l.secret}));
    });
 
+
+   await step(scope+' IN-FLIGHT revoke AFTER proof-read BEFORE Rules transaction',async()=>{
+     await seed(scope);const l=await acquire(scope);
+     const before={row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)};
+     const result=await strictRace(scope,'save',l,()=>ownerPut('hdnd/editors/'+uid,false));
+     assert.equal(result,'permission-denied');
+     assert.deepEqual({row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)},before);
+     checks.push({label:scope+' in-flight revoke',outcome:'RULES_DENIED',serverUnchanged:true});
+   });
+   await step(scope+' IN-FLIGHT freeze AFTER proof-read BEFORE Rules transaction',async()=>{
+     await seed(scope);const l=await acquire(scope);
+     const before={row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)};
+     await strictRace(scope,'save',l,()=>ownerPut('hdnd/freezeControl',{
+       mode:'FROZEN',epoch:'poc',revision:2,changedAt:Date.now(),deadline:0}));
+     assert.deepEqual({row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)},before);
+     checks.push({label:scope+' in-flight freeze',outcome:'RULES_DENIED',serverUnchanged:true});
+   });
+   await step(scope+' IN-FLIGHT pointer swap AFTER proof-read BEFORE Rules transaction',async()=>{
+     await seed(scope);const l=await acquire(scope);
+     const before={row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)};
+     await strictRace(scope,'save',l,()=>ownerPut('hdnd/datasetV2/active',{
+       generationId:'gen_new',operationId:'new',revision:2,rowCount:2,digest:'b'.repeat(64)}));
+     assert.deepEqual({row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)},before);
+     checks.push({label:scope+' in-flight pointer',outcome:'RULES_DENIED',serverUnchanged:true});
+   });
    await step(scope+' anonymous guest with granted note writes through authenticated service',async()=>{
      await seed(scope);const l=await acquire(scope,'r1','note',d);
      const operationId=randomUUID();
@@ -266,6 +318,7 @@ finally{
  for(const x of [a,b,c,d]){try{goOffline(x.database);}catch{}}
  await Promise.allSettled([signOut(a.auth),signOut(b.auth),signOut(c.auth),signOut(d.auth)]);
  await Promise.allSettled([deleteApp(a.app),deleteApp(b.app),deleteApp(c.app),deleteApp(d.app)]);
+ if(verifiedAdmin)await adminDelete(verifiedAdmin);
  writeFileSync(new URL('./witness.local.json',import.meta.url),JSON.stringify({
   source:'FULL candidate Rules copy, cellService guard applied',
   reviewedSha:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
