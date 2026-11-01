@@ -20,7 +20,8 @@ if(!ready)throw Error('Real Functions Emulator onRequest wrapper not ready');
 console.log('PARENT_REAL_FUNCTIONS_WRAPPER_READY',url);
 mkdirSync('parent-commit-service/evidence',{recursive:true});
 const child=spawn(process.execPath,['node_modules/vitest/vitest.mjs','run',
- 'parent-commit-service/test/integration.test.ts','--config','parent-commit-service/test/vitest.config.mjs'],
+ 'parent-commit-service/test/integration.test.ts','--config','parent-commit-service/test/vitest.config.mjs',
+ ...(process.env.PARENT_ONLY_ACK_TESTS==='true'?['--testNamePattern','lost API completion|lost HTTP ACK']:[])],
  {env,stdio:'inherit'});
 const exit=await new Promise((resolve,reject)=>{child.once('exit',c=>resolve(c??1));child.once('error',reject);});
 console.log('PARENT_ACTUAL_ONREQUEST_FUNCTIONS_EMULATOR '+(exit===0?'PASS':'FAIL'));
