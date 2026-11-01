@@ -12,7 +12,7 @@ if(!['127.0.0.1','localhost'].includes(location.hostname)||import.meta.env.MODE!
 const project='demo-hdnd';
 const app=initializeApp({
  apiKey:'demo-pr142-browser',authDomain:project+'.firebaseapp.com',projectId:project,
- databaseURL:'https://'+project+'-default-rtdb.firebaseio.com'
+ databaseURL:'https://'+project+'.firebaseio.com'
 },'hdnd-pages');
 const auth=getAuth(app);
 connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
