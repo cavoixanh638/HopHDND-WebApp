@@ -1,0 +1,87 @@
+name: FINAL-APP-REVIEW (QA-only temporary assembly, no deploy)
+on:
+  pull_request:
+    paths:
+      - "source/scripts/final-app-qa-*.mjs"
+      - ".github/workflows/final-app-review.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-real-app:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'qa/pr145-pr146-pr143-final-app-20261101'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout only the QA test branch, never the runtime candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Assemble PR145 + PR146 + PR143 in DISPOSABLE local QA checkout
+        run: |
+          set -euo pipefail
+          git config user.name "FINAL-APP-QA (local only)"
+          git config user.email "qa-local@invalid.example"
+          BASE=98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          git fetch --no-tags origin refs/pull/145/head:refs/remotes/qa-input/pr145
+          git fetch --no-tags origin refs/pull/146/head:refs/remotes/qa-input/pr146
+          git fetch --no-tags origin refs/pull/143/head:refs/remotes/qa-input/pr143
+          test "$(git rev-parse refs/remotes/qa-input/pr145)" = bf78bdddf336f16082ad68db1c1f39723bc95251
+          test "$(git rev-parse refs/remotes/qa-input/pr146)" = 9424a52767e8acb57a1f50feba2515787fb2ad26
+          test "$(git rev-parse refs/remotes/qa-input/pr143)" = c039405a9ad6802ae1d412465cc91b88745a0371
+          for pr in 145 146 143; do
+            git merge --no-ff --no-edit -m "LOCAL QA ASSEMBLY PR$pr, NOT A RELEASE COMMIT" "refs/remotes/qa-input/pr$pr"
+          done
+          git diff --quiet && git diff --cached --quiet
+          mkdir -p source/qa-results/final-app-review/generated
+          printf 'QA_MERGE_HEAD %s\n' "$(git rev-parse HEAD)"
+          printf 'NOT_A_CANDIDATE_NO_PUSH_NO_DEPLOY\n'
+          git log -4 --pretty='%h %s'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install only project / test backend dependencies
+        working-directory: source
+        run: |
+          set -euo pipefail
+          npm ci
+          npm install --prefix cell-edit-service --no-audit --no-fund --ignore-scripts
+          npm install --prefix parent-commit-service --no-audit --no-fund --ignore-scripts --no-package-lock
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Generate FULL shared emulator Rules (test-only, not candidate Rules)
+        working-directory: source
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Static validation of the original FULL-App QA runner
+        working-directory: source
+        run: |
+          node --check scripts/final-app-qa-runner.mjs
+          node --check scripts/final-app-qa-rules.mjs
+      - name: REAL App Chrome journey with Auth+Functions+RTDB & parent endpoint
+        working-directory: source
+        timeout-minutes: 21
+        env:
+          CI: "true"
+          GCLOUD_PROJECT: demo-hdnd
+          FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          VITE_PARENT_REPLACEMENT_ENABLED: "true"
+          VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:8787/parentDatasetCommit
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Upload authoritative QA witness, browser screenshots and rule fingerprint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-app-review-UNOFFICIAL-qa-checkout
+          path: source/qa-results/final-app-review/
+          retention-days: 14
+          if-no-files-found: warn
