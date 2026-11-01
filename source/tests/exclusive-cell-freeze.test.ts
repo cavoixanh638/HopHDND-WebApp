@@ -8,6 +8,7 @@ import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
+import {callCellEdit} from '../src/data/cell-edit-api';
 import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
 import {migrateMirrorToPrimary,bootstrapApprovedRowsToPrimary} from '../src/data/firebase-primary-bootstrap';
@@ -472,21 +473,42 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
-  // KNOWN NO-GO SECURITY LIMITATION: the owning user's read access exposes
-  // the lease token to another tab carrying the same Firebase auth.uid.
-  // RTDB Rules cannot distinguish two browser tabs sharing one auth identity.
-  // Vitest expected failure keeps this adversarial regression visible in CI,
-  // without hiding it as a PASS/solved security property. Do not remove the
-  // expected-failure marker without a server-enforced session isolation design.
-  it.fails('KNOWN BLOCKER: deny same-UID second tab replaying a visible foreign tab lease token',async()=>{
-    const first=manager('a');
-    await first.acquire('r1','note','multiline');
-    // Both tabs have the same Firebase UID, but NOT the same tab-local session.
-    // The second tab has not obtained a lease and must not be able to save.
+  // Former PR142 expected-failure is now an ordinary PASS regression.
+  // Both browsers carry the SAME verified Google Auth UID. The public lease
+  // and row.editProofs can be read, but neither is a bearer credential; only
+  // the private 256-bit secret owned by the first manager may authorize any
+  // RENEW / RELEASE / SAVE. No expected-failure, skip or fake service claims.
+  it('REGRESSION PASS: second tab same UID cannot replay lease or editProofs for SAVE/RENEW/RELEASE',async()=>{
+    const first=manager('a'),writer=repo('a',first);
     const secondTab=guest('a');
-    const original=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    const initial=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    await first.acquire('r1','note','multiline');
     const visibleLease=(await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val();
-    const revision=original.revision+1;
+    expect(typeof visibleLease.proofHash).toBe('string');
+    expect(visibleLease.proofHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(visibleLease).not.toHaveProperty('secret');
+    const realDb=real('a').db;
+    const denied=async(secret:string,label:string)=>{
+      const before=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+      const beforeLease=(await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val();
+      for(const action of ['renew','release','save'] as const){
+        const operationId=crypto.randomUUID();
+        const patch=updateDraft(
+          (await writer.list())[0],undefined,{note:'FORGED FROM '+label+' '+action})!;
+        const envelope=action==='save'?{
+          action,scope:'legacy' as const,recordId:'r1',operationId:patch.operationId,
+          patch,leases:{note:{token:visibleLease.token,secret}}
+        }:{
+          action,scope:'legacy' as const,recordId:'r1',operationId,
+          field:'note' as const,token:visibleLease.token,secret
+        };
+        await expect(callCellEdit(envelope,realDb),label+' '+action).rejects.toThrow();
+      }
+      expect((await get(ref(secondTab as never,'hdnd/items/r1'))).val()).toEqual(before);
+      expect((await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val()).toEqual(beforeLease);
+    };
+    await denied(visibleLease.proofHash,'public lease hash');
+    const revision=initial.revision+1;
     await assertFails(update(ref(secondTab as never,'hdnd/items/r1'),{
       note:'Unauthorised same-UID second tab',
       revision,
@@ -497,12 +519,19 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
         operationId:'different-tab-lease-replay',recordId:'r1',
         at:serverTimestamp(),actor:'a',
         changes:{note:'Unauthorised same-UID second tab'},
-        oldValues:{note:original.note}
+        oldValues:{note:initial.note}
       }
     }));
-    const after=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
-    expect(after.revision).toBe(original.revision);
-    await first.cancel('r1','note');
+    const positive=(await writer.save([updateDraft((await writer.list())[0],undefined,{
+      note:'Owner still holds private secret and may save'
+    })!]))[0];
+    expect(positive.ok,positive.message).toBe(true);
+    const saved=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    expect(saved.revision).toBe(initial.revision+1);
+    expect(saved.note).toBe('Owner still holds private secret and may save');
+    expect(saved.editProofs.note).toBe(visibleLease.token);
+    await denied(saved.editProofs.note,'public editProofs token');
+    await first.finish('r1','note');
     await first.dispose();
   });
 
