@@ -38,8 +38,8 @@ jobs:
       - name: Install App and both real Functions dependency graphs
         run: |
           npm ci --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
       - name: Real authenticated HTTP Functions ACK drop after commit — ACTIVATE, REPLACE, RESTORE
         env:
           PARENT_COMMIT_ENABLED: 'true'

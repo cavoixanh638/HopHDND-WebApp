@@ -80,8 +80,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Authenticated parent + cell services (isolated)
         run: |
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
       - name: Confirm exact source SHA
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -119,8 +119,8 @@ jobs:
       - name: Install all 3 isolated dependency graphs
         run: |
           npm ci --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Browser runtime
         run: npx --prefix cell-edit-service playwright install --with-deps chromium
       - name: Verify EXACT integration Rules and both functions
@@ -196,8 +196,8 @@ jobs:
       - name: Install App and BOTH Functions service graphs
         run: |
           npm ci --no-audit --no-fund
-          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Build real pages-test artifact
         run: npm run build:pages:test
       - name: Build the original compact real ItemList fixture required by full Chrome smoke
