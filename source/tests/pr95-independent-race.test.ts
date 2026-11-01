@@ -2,7 +2,10 @@ import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {assertFails,assertSucceeds,initializeTestEnvironment,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,goOffline,get,ref,set,type Database} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence,signInAnonymously,type Auth} from 'firebase/auth';
+import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {CellEditSessionManager} from '../src/data/cell-edit-leases';
@@ -10,7 +13,7 @@ import {FirebaseRepository} from '../src/data/firebase-repository';
 import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,commitDatasetReplacement,readStagedDataset,
   restoreDatasetBackup,resolveDatasetOperation,DATASET_V2_PATH} from
-  '../src/data/firebase-versioned-replacement';
+  '../src/data/firebase-versioned-replacement-secure';
 
 // These are genuine authenticated RTDB Emulator clients, with real Rules.
 // Only initial seed() uses the privileged fixture builder.
@@ -18,8 +21,7 @@ const activeEmulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:90
 const rules=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
   firebase:{sign_in_provider:'google.com' as const}};
-const actor={uid:'l3-admin',email:claims.email,emailVerified:true,
-  providerData:[{providerId:'google.com'}]} as User;
+let actor:User;
 const old=()=>createDemoItems(2).map((row,i)=>({...row,
   recordId:'l3-original-'+i,displayCode:'NQ'+(i+70),
   revision:1,archivedAt:null,isDropped:false}));
@@ -31,7 +33,9 @@ const seed=()=>({hdnd:{
     rowCount:2,digest:'a'.repeat(64)},
     generations:{gen_l3_initial:{items:Object.fromEntries(old().map(row=>
       [row.recordId,{...row,updatedBy:'l3-admin',updatedAt:1,operationId:'l3_initial_seed'}]))}},
-    permissions:{gen_l3_initial:{columns:{note:true}}}
+    permissions:{gen_l3_initial:{columns:{note:true}}},
+    operations:{l3_initial_seed:{status:'COMMITTED',from:'legacy',
+      to:'gen_l3_initial',at:1}}
   },
   items:{legacy:old()[0]}
 }});
@@ -39,20 +43,50 @@ const confirm=(op:string)=>'THAY '+op+' 2 2';
 
 describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Emulator',()=>{
   let env:RulesTestEnvironment;
-  // Separate Firebase apps/SDK caches, same UID: two browser tabs of ONE admin.
-  const tabA=()=>env.authenticatedContext('l3-admin',claims).database() as never;
-  const tabB=()=>env.authenticatedContext('l3-admin',claims).database() as never;
+  const adminApps:FirebaseApp[]=[],adminDbs:Database[]=[];
+  let a:Database,b:Database,editorApp:FirebaseApp,editorDb:Database,editor:User;
+  // Independent Firebase Auth SDK instances, SAME verified Google UID, no
+  // fabricated authenticatedContext for a positive Functions service call.
+  const tabA=()=>a,tabB=()=>b;
   beforeAll(async()=>{
-    env=await initializeTestEnvironment({projectId:'demo-hdnd-pr95-l3-race',
+    if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099')
+      throw Error('Real Auth Emulator required for race suite');
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',
       database:{host:'127.0.0.1',port:9000,rules}});
-  },30000);
+    for(let i=0;i<2;i++){
+      const app=initializeApp({apiKey:'demo-l3-race',authDomain:'demo-hdnd.firebaseapp.com',
+        projectId:'demo-hdnd',appId:'l3-race-admin-'+i,
+        databaseURL:'https://demo-hdnd.firebaseio.com'},'l3-race-admin-'+i);
+      adminApps.push(app);
+      const auth=initializeAuth(app,{persistence:inMemoryPersistence});
+      connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      adminDbs.push(db);
+      const verified=await signInAsEmulatorGoogleAdmin(auth);
+      if(i===0)actor=verified;
+      else expect(verified.uid).toBe(actor.uid);
+    }
+    [a,b]=adminDbs;
+    editorApp=initializeApp({apiKey:'demo-l3-race',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'l3-race-anonymous',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'l3-race-guest');
+    const guestAuth=initializeAuth(editorApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(guestAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+    editorDb=getDatabase(editorApp);connectDatabaseEmulator(editorDb,'127.0.0.1',9000);
+    editor=(await signInAnonymously(guestAuth)).user;
+    expect(editor.isAnonymous).toBe(true);
+  },45000);
   beforeEach(async()=>{
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(async ctx=>{
       await set(ref(ctx.database() as never),seed());
     });
   });
-  afterAll(async()=>env.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    for(const db of [...adminDbs,editorDb])if(db)goOffline(db);
+    await Promise.allSettled([...adminApps,editorApp].filter(Boolean).map(app=>deleteApp(app)));
+  });
 
   it('independent staging readback + immutable candidate and private backup',async()=>{
     const db=tabA(),op='l3_stage_readback_001';
@@ -99,10 +133,6 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
 
     // A non-admin editor exercises the ACTUAL Rules, not the admin write
     // privilege. The seed grants only note in this active generation.
-    const editorDb=env.authenticatedContext('l3-midreview-editor',
-      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
-    const editor={uid:'l3-midreview-editor',isAnonymous:true,email:null,
-      emailVerified:false,providerData:[]} as unknown as User;
     const manager=new CellEditSessionManager(editorDb,()=>editor,generation);
     const rowsPath=DATASET_V2_PATH+'/generations/'+generation+'/items';
     const recordPath=rowsPath+'/l3-original-0';
@@ -121,7 +151,9 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
       const lease=(await get(ref(editorDb,DATASET_V2_PATH+'/leases/'+generation+
         '/'+before!.recordId+'/note'))).val();
       expect(lease).toMatchObject({uid:editor.uid,kind:'multiline',revision:1});
-      expect(lease.token).toBe(manager.proof(before!.recordId,'note'));
+      expect(lease.token).toBe(manager.credential(before!.recordId,'note')?.token);
+      expect(lease.proofHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(manager.proof(before!.recordId,'note')).not.toBe(lease.token);
       expect(lease.expiresAt).toBeGreaterThan(lease.acquiredAt);
 
       const patch=updateDraft(before!,undefined,{note:changedNote});
