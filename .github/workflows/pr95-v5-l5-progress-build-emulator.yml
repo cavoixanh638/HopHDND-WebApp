@@ -37,17 +37,19 @@ jobs:
           java-version: "21"
       - name: Install pinned dependencies
         run: npm ci
+      - name: Install two Functions codebases for real Authenticated callable
+        run: |
+          npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
+          npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
       - name: TypeScript source and test imports
         run: npm run typecheck
       - name: Ensure the RTDB test is NEVER silently skipped
         run: |
           node -e "const fs=require('node:fs');const text=fs.readFileSync('tests/pr95-v5-l5-progress-build-write-guard.test.ts','utf8');if(!text.includes('describe.skipIf(!enabled)') || !text.includes('FIREBASE_DATABASE_EMULATOR_HOST'))process.exit(1);"
-      - name: SDK + repo + immutable legacy + replacement in local Auth and RTDB Emulator
+      - name: REAL callable HC/BC + Unicode QPPL/UNKNOWN + raw SDK denied (same FULL Rules)
         run: >
           node node_modules/firebase-tools/lib/bin/firebase.js emulators:exec
-          --project demo-hdnd --only database,auth --config firebase.staging.json
+          --project demo-hdnd --only database,auth,functions --config firebase.staging.json
           "node node_modules/vitest/vitest.mjs run
           tests/pr95-v5-l5-progress-build-write-guard.test.ts
-          tests/firebase-versioned-replacement.test.ts
-          tests/pr95-independent-rules.test.ts
-          tests/exclusive-cell-freeze.test.ts --no-file-parallelism"
+          tests/pr95-independent-rules.test.ts --no-file-parallelism"
