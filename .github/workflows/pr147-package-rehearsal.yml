@@ -1,0 +1,109 @@
+name: PR147 release rehearsal packages — pinned web + Node22 services + FULL Rules (NO DEPLOY)
+on:
+  pull_request:
+    paths:
+      - "source/**"
+      - ".github/workflows/pr147-package-rehearsal.yml"
+  push:
+    branches: [integration/pr142-cell-parent-freeze-candidate-20261101]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pr147-release-package-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  reproducible-package:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    env:
+      GCLOUD_PROJECT: demo-hdnd
+      PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4179
+      PARENT_COMMIT_ENABLED: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Verify exact checkout and both immutable service package locks
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test -s cell-edit-service/package-lock.json
+          test -s parent-commit-service/package-lock.json
+          node --check scripts/pr147-release-validate.mjs
+          node --check scripts/pr147-package-artifacts.mjs
+      - name: Clean install root and validate strict offline config; disallow any production target
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json
+          if node scripts/pr147-release-validate.mjs --mode production --config firebase.release.json; then
+            echo "::error::Missing production approval must fail closed"; exit 1
+          fi
+          if node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.json; then
+            echo "::error::Default legacy rules must be rejected"; exit 1
+          fi
+          if env -u PARENT_DATABASE_URL node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json; then
+            echo "::error::Missing function database binding must be rejected"; exit 1
+          fi
+      - name: Build ordinary Pages web without any V2 parent flags
+        run: |
+          set -euo pipefail
+          env -u VITE_PARENT_REPLACEMENT_ENABLED -u VITE_PARENT_COMMIT_ENDPOINT npm run build:pages
+      - name: Build a SEPARATE V2-enabled demo Pages-test artifact with localhost emulator endpoint
+        run: |
+          set -euo pipefail
+          npm run build:pages:test
+          test -s dist-pages/index.html
+          test -s dist-pages-test/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            source/cell-edit-service/package-lock.json
+            source/parent-commit-service/package-lock.json
+      - name: Node22 locked service dependency graphs; check both real entrypoints
+        run: |
+          set -euo pipefail
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          node --check cell-edit-service/index.js
+          node --check cell-edit-service/core.js
+          node --check parent-commit-service/index.mjs
+          node --check parent-commit-service/src/handler.mjs
+          node --check parent-commit-service/src/commit.mjs
+          node --check parent-commit-service/src/parent-contract.mjs
+      - name: Deterministic package all four components, manifest and checksums twice
+        run: |
+          set -euo pipefail
+          node scripts/pr147-package-artifacts.mjs
+          (cd qa-results/pr147-release-package && sha256sum -c SHA256SUMS)
+          (cd qa-results/pr147-release-package && sha256sum -- *.tar.gz) > /tmp/pr147-package-before.sha256
+          node scripts/pr147-package-artifacts.mjs
+          (cd qa-results/pr147-release-package && sha256sum -- *.tar.gz) > /tmp/pr147-package-after.sha256
+          diff -u /tmp/pr147-package-before.sha256 /tmp/pr147-package-after.sha256
+          (cd qa-results/pr147-release-package && sha256sum -c SHA256SUMS)
+          echo "PR147_PACKAGE_REPRODUCED_TWICE_PASS"
+      - name: Archive exact-SHA rehearsal artifacts and release hashes (NOT DEPLOY)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr147-release-rehearsal-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: source/qa-results/pr147-release-package/
+          if-no-files-found: warn
+          retention-days: 21
