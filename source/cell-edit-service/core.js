@@ -20,8 +20,13 @@ let sequence=0;
 function scopedDatabaseURL(){
   let runtime={};
   try{runtime=JSON.parse(process.env.FIREBASE_CONFIG??'{}');}catch{}
-  const value=process.env.FIREBASE_DATABASE_URL||runtime.databaseURL||
-    (NAMESPACE.startsWith('demo-')?`https://${NAMESPACE}-default-rtdb.firebaseio.com`:undefined);
+  // The Functions Emulator may expose an internal HTTP RTDB URL. Firebase
+  // Admin still expects a normal HTTPS namespace; its Emulator transport
+  // redirects it to the local RTDB host without contacting production.
+  const demoLocal=NAMESPACE.startsWith('demo-') &&
+    /^(127\\.0\\.0\\.1|localhost):9000$/.test(process.env.FIREBASE_DATABASE_EMULATOR_HOST??'');
+  const value=demoLocal?`https://${NAMESPACE}-default-rtdb.firebaseio.com`:
+    (process.env.FIREBASE_DATABASE_URL||runtime.databaseURL);
   if(!value)fail('unavailable','Chưa cấu hình đường dẫn Realtime Database cho dịch vụ sửa ô.');
   try{
     const url=new URL(value);
