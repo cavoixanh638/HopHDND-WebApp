@@ -101,7 +101,13 @@ async function stage(label){
 async function keepLiveParent(db){
   return new Promise((resolve,reject)=>{
     let done=false,stop=()=>{};
-    stop=onValue(ref(db,BASE),s=>{if(!done&&s.exists()){done=true;resolve(stop);}},reject);
+    const timeout=setTimeout(()=>{if(!done){done=true;stop();reject(Error('Timed out warming parent transaction cache'));}},15000);
+    stop=onValue(ref(db,BASE),s=>{
+      if(done||!s.exists())return;
+      done=true;
+      // In SDKs that first emit synchronously, unsubscribe must already be set.
+      queueMicrotask(()=>{clearTimeout(timeout);resolve(stop);});
+    },err=>{if(!done){done=true;clearTimeout(timeout);reject(err);}});
   });
 }
 function proposed(old,approval){
