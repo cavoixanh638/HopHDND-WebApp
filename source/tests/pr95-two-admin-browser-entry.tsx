@@ -11,7 +11,7 @@ import {getFirebaseServices} from '../src/state/firebase-boot';
 import {FirebaseRepository} from '../src/data/firebase-repository';
 import {CellEditSessionManager,renewCellLease,lockPath,type CellLease} from '../src/data/cell-edit-leases';
 import {updateDraft} from '../src/domain/items';
-import {stageDatasetReplacement,commitDatasetReplacement,DATASET_V2_PATH} from '../src/data/firebase-versioned-replacement';
+import {stageDatasetReplacement,commitDatasetReplacement,DATASET_V2_PATH} from '../src/data/firebase-versioned-replacement-secure';
 import {useWorkspace} from '../src/state/use-workspace';
 import type {ActiveDatasetPointer} from '../src/data/dataset-replacement-integrity';
 import type {EditableField,Item,Patch} from '../shared/types';
