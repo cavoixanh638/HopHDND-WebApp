@@ -1,4 +1,5 @@
 import {getApp} from 'firebase/app';
+import {getFunctions,connectFunctionsEmulator,httpsCallable} from 'firebase/functions';
 import type {Database} from 'firebase/database';
 import type {EditableField,Patch} from '../../shared/types';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
@@ -22,7 +23,6 @@ export class CellServiceUnavailableError extends Error{
 }
 export async function callCellEdit(message:Envelope,database?:Database):Promise<Answer>{
   try{
-    const {getFunctions,connectFunctionsEmulator,httpsCallable}=await import('firebase/functions');
     const functions=getFunctions(database?.app??getApp('hdnd-pages'),'asia-southeast1');
     if(import.meta.env.MODE==='pages-test'&&!emulatorConnected){
       if(typeof location==='undefined'||!['localhost','127.0.0.1'].includes(location.hostname))
