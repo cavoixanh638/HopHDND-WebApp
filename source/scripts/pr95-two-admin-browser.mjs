@@ -80,8 +80,10 @@ let failed=false;
 const step=(name,details)=>console.log('PR95_L3_'+name+' '+JSON.stringify(details));
 async function startEmulators(){
   emu=spawn(process.execPath,['node_modules/firebase-tools/lib/bin/firebase.js',
-    'emulators:start','--project',project,'--only','database,auth',
-    '--config',config],{stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true'}});
+    'emulators:start','--project',project,'--only','database,auth,functions',
+    '--config','firebase.staging.json'],{stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true',PARENT_COMMIT_ENABLED:'true',
+      PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+      PARENT_ALLOWED_ORIGINS:'http://127.0.0.1:4179'}});
   for(const stream of [emu.stdout,emu.stderr])stream.on('data',x=>{
     emulatorLog=(emulatorLog+String(x)).slice(-12000);
   });
@@ -90,7 +92,7 @@ async function startEmulators(){
     if(emu.exitCode!==null)throw Error('Emulator died '+emulatorLog);
     const p=await fetch('http://127.0.0.1:4400/emulators',{signal:AbortSignal.timeout(1200)});
     if(!p.ok)return false;
-    const x=await p.json();return x.auth?.port===9099&&x.database?.port===9000;
+    const x=await p.json();return x.auth?.port===9099&&x.database?.port===9000&&x.functions?.port===5001;
   },'Emulator ready',30000);
   const before=await liveRules();
   step('RULES_STARTUP',{sameCandidate:isDeepStrictEqual(before,rules),hash:digest(before)});
