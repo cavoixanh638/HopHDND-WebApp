@@ -222,7 +222,7 @@ async function seed(){
         status:'COMMITTED',from:'legacy',to:seedPointer.generationId,
         at:Date.now()-1000}}
     }
-  };
+  }};
   await ownerPut('',initial);
   assert.equal((await state()).rowCount,2);
   record('SERVER_SEED',{generation:seedPointer,rowIDs:Object.keys(v2)});
