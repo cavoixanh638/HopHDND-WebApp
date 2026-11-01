@@ -1,0 +1,67 @@
+name: PR147 independent FULL App QA — exact candidate SHA
+on:
+  push:
+    branches: [integration/pr142-cell-parent-freeze-candidate-20261101]
+  pull_request:
+    paths: ["source/**", ".github/workflows/pr147-full-app-qa.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pr147-full-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  full-app-qa:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
+    runs-on: ubuntu-latest
+    timeout-minutes: 34
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify exact candidate checkout and QA scripts
+        run: |
+          test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+          test -f scripts/final-app-qa-rules.mjs
+          test -f scripts/final-app-qa-runner.mjs
+      - name: Install App + both production Functions + Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --prefix cell-edit-service --no-audit --no-fund --no-package-lock
+          npm install --prefix parent-commit-service --no-audit --no-fund --no-package-lock
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Pin EXACT candidate FULL Rules bytes (no alternate generated rules)
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Validate independent QA scripts
+        run: |
+          node --check scripts/final-app-qa-rules.mjs
+          node --check scripts/final-app-qa-runner.mjs
+      - name: FULL Pages Chrome guest/admin/two tabs/ACK/Excel/freeze
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Preserve independent server witness and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr147-independent-full-app-${{ github.run_id }}-${{ github.run_attempt }}
+          path: source/qa-results/final-app-review/
+          if-no-files-found: warn
+          retention-days: 21
