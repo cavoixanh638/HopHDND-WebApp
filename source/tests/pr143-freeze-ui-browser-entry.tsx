@@ -8,7 +8,7 @@ import {signOut,type User} from 'firebase/auth';
 import {get,goOffline,goOnline,ref} from 'firebase/database';
 import {useFirebase,type FirebaseController} from '../src/state/use-firebase';
 import {getFirebaseServices,ensureGuestAuth} from '../src/state/firebase-boot';
-import {FreezeAdminPanel} from '../src/features/settings/FreezeAdminPanel';
+import {FreezeAdminPanel,type FreezeUiTestCheckpoint} from '../src/features/settings/FreezeAdminPanel';
 import {acquireCellLease,releaseCellLease,type CellLease} from '../src/data/cell-edit-leases';
 import {stageDatasetReplacement,commitDatasetReplacement} from '../src/data/firebase-versioned-replacement';
 import {createDemoItems} from '../src/data/demo-items';
@@ -22,6 +22,25 @@ if(!emulator||auth.app.options.projectId!=='demo-hdnd')
   throw Error('PR143 Freeze UI requires demo-hdnd Firebase Emulator.');
 const errors:string[]=[];
 const pageId=crypto.randomUUID();
+// A gate only pauses a *real* SDK-backed UI operation at a named checkpoint.
+// No return value, Firebase snapshot, or commit result is mocked.
+type GatePoint=Parameters<FreezeUiTestCheckpoint>[0];
+type Gate={
+  id:string;point:GatePoint;state:'armed'|'held'|'released';
+  details:Record<string,string|number|null>|null;resume:(()=>void)|null
+};
+const gates=new Map<string,Gate>();
+const checkpoints:Array<{point:GatePoint;details:Record<string,string|number|null>}>=[];
+let gateSequence=0;
+const testCheckpoint:FreezeUiTestCheckpoint=async(point,details)=>{
+  checkpoints.push({point,details});
+  const gate=[...gates.values()].find(x=>x.point===point&&x.state==='armed');
+  if(!gate)return;
+  gate.state='held';
+  gate.details=details;
+  await new Promise<void>(resolve=>{gate.resume=resolve;});
+  gate.state='released';
+};
 window.addEventListener('unhandledrejection',event=>{
   errors.push('unhandledrejection: '+String(event.reason));
 });
@@ -41,6 +60,26 @@ function admin():User{
 }
 const api={
   pageId,
+  armGate(point:GatePoint){
+    if(!['count-snapshot','frozen-ack','receipt-written'].includes(point))
+      throw Error('Only explicit mid-operation checkpoints can be held');
+    const id='gate-'+(++gateSequence);
+    gates.set(id,{id,point,state:'armed',details:null,resume:null});
+    return id;
+  },
+  gate(id:string){
+    const gate=gates.get(id);
+    if(!gate)throw Error('Unknown test gate '+id);
+    return {id:gate.id,point:gate.point,state:gate.state,details:gate.details};
+  },
+  resumeGate(id:string){
+    const gate=gates.get(id);
+    if(!gate||gate.state!=='held'||!gate.resume)
+      throw Error('Cannot resume an unobserved test checkpoint '+id);
+    gate.resume();
+    return {id,acknowledged:true};
+  },
+  checkpoints:()=>[...checkpoints],
   snapshot:()=>({
     uid:controller?.user?.uid??null,
     isAdmin:controller?.isAdmin??false,
@@ -117,7 +156,7 @@ function TestApp(){
       <p data-testid="identity">Identity: {firebase.user?.isAnonymous?'guest':firebase.isAdmin?'admin':'pending'} ·
         generation: {firebase.datasetActive?.generationId??'legacy'} ·
         connected: {String(firebase.connected)}</p></header>
-    <FreezeAdminPanel firebase={firebase}/>
+    <FreezeAdminPanel firebase={firebase} testCheckpoint={testCheckpoint}/>
   </article>;
 }
 createRoot(document.getElementById('root')!).render(<TestApp/>);

@@ -2,7 +2,16 @@ import {useEffect,useRef,useState} from 'react';
 import type {FirebaseController} from '../../state/use-firebase';
 import {createFreezeReceipt,readActiveLeaseSnapshot,sameFreezeDataset} from '../../data/freeze-control';
 
-export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
+/** Optional synchronization points, populated only by the localhost browser
+ * acceptance harness. Production never supplies this callback; all Firebase
+ * reads/writes remain the real application implementations. */
+export type FreezeUiTestCheckpoint = (
+  point:'count-snapshot'|'frozen-ack'|'receipt-written'|'inspect-settled'|'change-settled',
+  details:Record<string,string|number|null>
+)=>Promise<void>;
+export function FreezeAdminPanel({firebase,testCheckpoint}:{
+  firebase:FirebaseController;testCheckpoint?:FreezeUiTestCheckpoint
+}){
   const state=firebase.freezeControl;
   const [count,setCount]=useState<number|null>(null);
   const [countSource,setCountSource]=useState('');
@@ -23,6 +32,9 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
     const startedFor=sourceFenceRef.current;
     setCount(null);setCountSource('');
     const snapshot=await readActiveLeaseSnapshot(firebase.database);
+    await testCheckpoint?.('count-snapshot',{
+      request,count:snapshot.count,generationId:snapshot.active?.generationId??null
+    });
     // React's generation state must not identify a different source.
     if(request!==countRequest.current||!firebase.connected||
       !firebase.datasetEpochReady||sourceFenceRef.current!==startedFor||
@@ -42,6 +54,8 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
         setError(e instanceof Error?e.message:'Không kiểm tra được phiên sửa.');
       else
         setMessage('Generation đã đổi; số đếm cũ không còn hiệu lực. Kiểm tra lại trên generation mới.');
+    }finally{
+      await testCheckpoint?.('inspect-settled',{generationId:sourceFenceRef.current});
     }
   };
   const change=async(next:'DRAINING'|'FROZEN'|'OPEN',force=false)=>{
@@ -50,10 +64,16 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
     let frozenAck=false;
     try{
       const confirmed=await firebase.updateFreeze(next,force);
+      if(next==='FROZEN')await testCheckpoint?.('frozen-ack',{
+        generationId:confirmed.datasetV2?.generationId??null,epoch:confirmed.epoch
+      });
       let confirmedMessage='';
       if(next==='FROZEN'){
         frozenAck=true;
         const proof=await createFreezeReceipt(firebase.database,firebase.user,confirmed.epoch);
+        await testCheckpoint?.('receipt-written',{
+          generationId:proof.datasetV2?.generationId??null,epoch:proof.epoch
+        });
         const forced=force||proof.closeKind==='forced';
         confirmedMessage=(forced
           ?'Đã ĐÓNG BĂNG CƯỠNG BỨC; có thể còn nháp chưa lưu. '
@@ -70,7 +90,10 @@ export function FreezeAdminPanel({firebase}:{firebase:FirebaseController}){
       setError((frozenAck?'FROZEN đã được ACK nhưng BIÊN NHẬN CHƯA XÁC MINH. ':'')+
         (e instanceof Error?e.message:'Không thay đổi được chế độ.'));
     }
-    finally{setBusy(false);working.current=false;}
+    finally{
+      setBusy(false);working.current=false;
+      await testCheckpoint?.('change-settled',{generationId:sourceFenceRef.current,next});
+    }
   };
   // When the active pointer changes, any previous count/receipt is historical.
   useEffect(()=>{

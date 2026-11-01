@@ -312,6 +312,185 @@ async function reset(A){
     throw e;
   }
 }
+
+/** Deterministic barriers are fulfilled only by the actual React handler after
+ * the SDK Firebase operation has resolved. The runner never fakes a callback,
+ * delays by an arbitrary time, or writes the generation pointer via owner REST.
+ */
+const observedCheckpoints=async(A,point)=>
+  (await A.call('checkpoints')).filter(event=>event.point===point).length;
+const heldGate=async(A,id,label)=>sleepUntil(async()=>{
+  const gate=await A.call('gate',id);
+  return gate.state==='held'?gate:false;
+},label+' checkpoint reached and held',16000);
+const completedGate=async(A,id,point,minEvents,label)=>sleepUntil(async()=>{
+  const [gate,hits]=await Promise.all([
+    A.call('gate',id),observedCheckpoints(A,point)
+  ]);
+  return gate.state==='released'&&hits>=minEvents?gate:false;
+},label+' resumed with React handler completion',18000);
+
+async function exerciseF4Deterministic(A){
+  // C1. A's active-V2 count is already read and HELD before React applies it.
+  // A real SDK lease release and then authenticated parent CAS changes active
+  // generation. B's new count must survive A's late response/error.
+  await reset(A);
+  await A.call('acquire');
+  const g1=await A.call('armGate','count-snapshot');
+  await click(A,'Kiểm tra phiên sửa');
+  const hold1=await heldGate(A,g1,'F4 count old generation');
+  assert.equal(hold1.details.generationId,gen);
+  assert.equal(hold1.details.count,1);
+  const countBefore=await syntheticState();
+  assert.equal(countBefore.activeLeases,1);
+  await A.call('release');
+  const swapCount=await A.call('swap');
+  assert.equal(swapCount.status,'committed');
+  assert.notEqual(swapCount.generationId,gen);
+  const countAfterCas=await syntheticState();
+  assert.equal(countAfterCas.pointer.generationId,swapCount.generationId);
+  assert.equal(countAfterCas.freeze.mode,'OPEN');
+  await sleepUntil(async()=>{
+    const view=await snapshot(A);
+    return view.generationId===swapCount.generationId&&
+      view.content.includes('Chưa xác minh số khóa')?view:false;
+  },'F4 pointer watcher invalidated held old V2 lease count',16000);
+  await click(A,'Kiểm tra phiên sửa');
+  await sleepUntil(async()=>{
+    const view=await snapshot(A);
+    return view.content.includes('0 ô còn phiên sửa hợp lệ (V2 '+swapCount.generationId+')')
+      ?view:false;
+  },'F4 new generation count genuinely read',18000);
+  await sleepUntil(async()=>(await observedCheckpoints(A,'inspect-settled'))>=1,
+    'F4 new count inspection settled',10000);
+  const newCountBeforeLate=await snapshot(A);
+  await A.call('resumeGate',g1);
+  await completedGate(A,g1,'inspect-settled',2,'F4 late old count');
+  const afterLateCount=await snapshot(A);
+  assert.ok(afterLateCount.content.includes(
+    '0 ô còn phiên sửa hợp lệ (V2 '+swapCount.generationId+')'),
+    'Late old-generation count/error must not remove new generation count');
+  assert.equal(afterLateCount.error,'','Old generation error cannot override newer successful read');
+  assert.ok(!afterLateCount.status.includes('Đã CHỐT'),'No stale freeze success');
+  assert.deepEqual(await A.call('errors'),[],'No unhandled stale refresh rejection');
+  assert.equal(await screenshot(A,'pr143-f4-race-count-after-cas'),true);
+  step('F4_RACE_COUNT_PASS',{
+    gate:hold1,serverBefore:countBefore,serverAfterCas:countAfterCas,
+    newCountBeforeLate,viewAfterLate:afterLateCount,realParentCas:swapCount
+  });
+
+  // C2. Two in-flight count requests in SAME generation. The first reports
+  // a live lease before release, while the second reports zero after release.
+  // The first must never replace/erase the newer zero count.
+  await reset(A);
+  await A.call('acquire');
+  const g2=await A.call('armGate','count-snapshot');
+  await click(A,'Kiểm tra phiên sửa');
+  const hold2=await heldGate(A,g2,'F4 older same-source count');
+  assert.equal(hold2.details.count,1);
+  const sameBefore=await syntheticState();
+  await A.call('release');
+  await click(A,'Kiểm tra phiên sửa');
+  await sleepUntil(async()=>{
+    const view=await snapshot(A);
+    return view.content.includes('0 ô còn phiên sửa hợp lệ (V2 '+gen+')')
+      ?view:false;
+  },'F4 newer count after server release',17000);
+  await sleepUntil(async()=>(await observedCheckpoints(A,'inspect-settled'))>=1,
+    'F4 newer inspection settled',10000);
+  const sameNew=await snapshot(A);
+  await A.call('resumeGate',g2);
+  await completedGate(A,g2,'inspect-settled',2,'F4 same-source stale result');
+  const sameFinal=await snapshot(A);
+  assert.ok(sameFinal.content.includes('0 ô còn phiên sửa hợp lệ (V2 '+gen+')'));
+  assert.equal(sameFinal.error,'','Late result must not show an obsolete error');
+  assert.equal(sameFinal.status,'','Late result must not replace newer notice');
+  assert.equal((await syntheticState()).activeLeases,0);
+  assert.equal(await screenshot(A,'pr143-f4-race-count-same-generation'),true);
+  step('F4_RACE_LATE_COUNT_PASS',{
+    gate:hold2,serverBefore:sameBefore,serverAfter:await syntheticState(),
+    newerView:sameNew,finalView:sameFinal
+  });
+
+  // C3. FROZEN is ACKed by the actual server, but the test halts BEFORE
+  // createFreezeReceipt. Valid parent CAS moves active pointer at that point.
+  // UI must never report a verified receipt or reopen a FROZEN dataset.
+  await reset(A);
+  const g3=await A.call('armGate','frozen-ack');
+  await click(A,'Đóng băng khẩn cấp');
+  const hold3=await heldGate(A,g3,'F4 FROZEN ACK before receipt');
+  assert.equal(hold3.details.generationId,gen);
+  const ackBeforeSwap=await syntheticState();
+  assert.equal(ackBeforeSwap.freeze.mode,'FROZEN');
+  assert.equal(ackBeforeSwap.receipts,null);
+  const swappedAck=await A.call('swap');
+  assert.equal(swappedAck.status,'committed');
+  await sleepUntil(async()=>(await snapshot(A)).generationId===swappedAck.generationId,
+    'F4 generation switched after FROZEN ACK',16000);
+  const ackAfterSwap=await syntheticState();
+  assert.equal(ackAfterSwap.freeze.mode,'FROZEN');
+  assert.equal(ackAfterSwap.receipts,null);
+  await A.call('resumeGate',g3);
+  await completedGate(A,g3,'change-settled',1,'F4 receipt invalidation after ACK');
+  const ackFinal=await snapshot(A);
+  assert.equal(ackFinal.freezeMode,'FROZEN','Freeze may not reopen automatically');
+  assert.ok(ackFinal.error.includes('BIÊN NHẬN CHƯA XÁC MINH'),
+    'FROZEN ACK without receipt must show explicit unverified state');
+  assert.ok(!ackFinal.status.includes('Đã ĐÓNG BĂNG'));
+  assert.ok(!ackFinal.status.includes('Đã CHỐT'));
+  assert.equal((await syntheticState()).receipts,null);
+  assert.equal(await screenshot(A,'pr143-f4-race-frozen-ack-no-receipt'),true);
+  step('F4_RACE_ACK_NO_RECEIPT_PASS',{
+    gate:hold3,serverAtAck:ackBeforeSwap,serverAfterCas:ackAfterSwap,
+    finalServer:await syntheticState(),view:ackFinal,realParentCas:swappedAck
+  });
+
+  // C4. Receipt has been written AND independently verified on server,
+  // but React has not yet displayed the success message. Valid CAS now
+  // switches the pointer. The receipt is immutable HISTORY, not current proof.
+  await reset(A);
+  const g4=await A.call('armGate','receipt-written');
+  await click(A,'Đóng băng khẩn cấp');
+  const hold4=await heldGate(A,g4,'F4 written receipt before UI success');
+  assert.equal(hold4.details.generationId,gen);
+  const verifiedBeforeSwap=await syntheticState();
+  assert.equal(verifiedBeforeSwap.freeze.mode,'FROZEN');
+  const proof=verifiedBeforeSwap.receipts?.[String(verifiedBeforeSwap.freeze.epoch)];
+  assert.equal(proof?.datasetV2?.generationId,gen);
+  assert.equal(proof?.sha256,verifiedBeforeSwap.currentHash);
+  const swappedReceipt=await A.call('swap');
+  assert.equal(swappedReceipt.status,'committed');
+  await sleepUntil(async()=>(await snapshot(A)).generationId===swappedReceipt.generationId,
+    'F4 React observes new generation before showing old receipt',16000);
+  const receiptAfterCas=await syntheticState();
+  assert.equal(receiptAfterCas.receipts?.[String(receiptAfterCas.freeze.epoch)]?.datasetV2?.generationId,gen);
+  assert.equal(receiptAfterCas.freeze.mode,'FROZEN');
+  await A.call('resumeGate',g4);
+  await completedGate(A,g4,'change-settled',1,'F4 old receipt result');
+  const receiptFinal=await snapshot(A);
+  assert.equal(receiptFinal.freezeMode,'FROZEN');
+  assert.ok(receiptFinal.status.includes('lịch sử'),
+    'Old verified receipt must be displayed only as historical');
+  assert.ok(!receiptFinal.status.includes('Đã ĐÓNG BĂNG'));
+  assert.ok(!receiptFinal.status.includes('Đã CHỐT'));
+  assert.ok(!receiptFinal.error.includes('BIÊN NHẬN CHƯA XÁC MINH'),
+    'Already-written/verified receipt should not be relabeled as unverified');
+  assert.deepEqual(await A.call('errors'),[]);
+  assert.equal(await screenshot(A,'pr143-f4-race-receipt-history'),true);
+  step('F4_RACE_RECEIPT_HISTORY_PASS',{
+    gate:hold4,serverBefore:verifiedBeforeSwap,serverAfterCas:receiptAfterCas,
+    view:receiptFinal,realParentCas:swappedReceipt
+  });
+
+  step('F4_RACE_FINAL_PASS',{
+    deterministicGates:['count-snapshot','frozen-ack','receipt-written'],
+    realAuthorizedCas:true,
+    checks:['old generation count ignored','late old count no overwrite',
+      'FROZEN ACK with no receipt','verified old receipt is historical'],
+    noArbitrarySleepUsedForRace:true
+  });
+}
+
 async function exercise(){
   await startEmulators();
   await startVite();
@@ -453,8 +632,10 @@ async function exercise(){
   await screenshot(A,'pr143-f5-receipt-unverified-pass');
   step('F5_RECEIPT_UNVERIFIED_PASS',{server:noReceipt,view:await snapshot(A)});
   await loadRules(rules);
+  await exerciseF4Deterministic(A);
   step('CHROME_EMULATOR_FINAL_PASS',{realBrowser:true,
-    groups:['guest','F1','F2','F3','F4 real CAS','F5 read denial','F5 offline','F5 receipt denial'],
+    groups:['guest','F1','F2','F3','F4 real CAS','F5 read denial','F5 offline','F5 receipt denial',
+      'F4 deterministic count/ACK/receipt races'],
     screenshots:images.length});
 }
 

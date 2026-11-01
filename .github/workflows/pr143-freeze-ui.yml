@@ -12,6 +12,7 @@ permissions:
   contents: read
 jobs:
   chrome-freeze-ui:
+    timeout-minutes: 16
     if: github.event.pull_request.number == 143
     runs-on: ubuntu-latest
     defaults:
@@ -32,8 +33,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Real Chrome UI / synthetic Auth+RTDB Emulator
-        run: node scripts/pr143-freeze-ui-browser.mjs
+      - name: Real Chrome UI + deterministic F4 generation races (Auth+RTDB Emulator)
+        run: |
+          node --check scripts/pr143-freeze-ui-browser.mjs
+          node scripts/pr143-freeze-ui-browser.mjs
       - name: Upload Chrome screenshots, logs and server witness
         if: always()
         uses: actions/upload-artifact@v4
