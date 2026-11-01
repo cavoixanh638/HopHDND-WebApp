@@ -111,6 +111,6 @@ function replaceExactly(oldText,newText){
 replaceExactly("'parent-commit-service/test/integration.test.ts'",
  "'parent-commit-service/test/final-release-review.generated.test.ts'");
 replaceExactly("...(process.env.PARENT_ONLY_ACK_TESTS==='true'?['--testNamePattern','lost API completion|lost HTTP ACK']:[])",
- "['--testNamePattern','FINAL-RELEASE-CODE-REVIEW']");
+ "...['--testNamePattern','FINAL-RELEASE-CODE-REVIEW']");
 writeFileSync(reviewerRunner,runner);
 console.log('FINAL_RELEASE_REVIEW_ONE_TEST_ONLY_RUNNER_READY '+reviewerRunner);
