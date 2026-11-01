@@ -10,7 +10,7 @@ import {useFirebase,type FirebaseController} from '../src/state/use-firebase';
 import {getFirebaseServices,ensureGuestAuth} from '../src/state/firebase-boot';
 import {FreezeAdminPanel,type FreezeUiTestCheckpoint} from '../src/features/settings/FreezeAdminPanel';
 import {acquireCellLease,releaseCellLease,type CellLease} from '../src/data/cell-edit-leases';
-import {stageDatasetReplacement,commitDatasetReplacement} from '../src/data/firebase-versioned-replacement';
+import {stageDatasetReplacement,commitDatasetReplacement} from '../src/data/firebase-versioned-replacement-secure';
 import {createDemoItems} from '../src/data/demo-items';
 import '../src/styles/app.css';
 
