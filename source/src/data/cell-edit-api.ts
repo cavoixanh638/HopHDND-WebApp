@@ -1,4 +1,5 @@
 import {getApp} from 'firebase/app';
+import type {Database} from 'firebase/database';
 import type {EditableField,Patch} from '../../shared/types';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import type {CellLease,EditorKind} from './cell-edit-leases';
@@ -19,10 +20,10 @@ export class CellServiceUnavailableError extends Error{
     super(message);this.name='CellServiceUnavailableError';
   }
 }
-export async function callCellEdit(message:Envelope):Promise<Answer>{
+export async function callCellEdit(message:Envelope,database?:Database):Promise<Answer>{
   try{
     const {getFunctions,connectFunctionsEmulator,httpsCallable}=await import('firebase/functions');
-    const functions=getFunctions(getApp('hdnd-pages'),'asia-southeast1');
+    const functions=getFunctions(database?.app??getApp('hdnd-pages'),'asia-southeast1');
     if(import.meta.env.MODE==='pages-test'&&!emulatorConnected){
       if(typeof location==='undefined'||!['localhost','127.0.0.1'].includes(location.hostname))
         throw new CellServiceUnavailableError('Emulator sửa ô chỉ được dùng trên localhost.');
