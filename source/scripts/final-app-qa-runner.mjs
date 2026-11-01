@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
 import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync} from 'node:fs';
-import {dirname,join,resolve} from 'node:path';
+import {dirname,join,resolve,relative} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash,randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
@@ -62,14 +62,14 @@ const wait=async(fn,label,timeout=25000)=>{
   throw Error('TIMEOUT '+label+' last='+last);
 };
 const bodyOf=async path=>{
-  const url=DB+'/'+(path?path.replace(/^\/+|\/+$/g,'')+'.':'')+'json?ns='+NAMESPACE;
+  const url=DB+'/'+(path?path.replace(/^\/+|\/+$/g,''):'')+'.json?ns='+NAMESPACE;
   const res=await fetch(url,{headers:{Authorization:'Bearer owner'},
     signal:AbortSignal.timeout(12000)});
   if(!res.ok)throw Error('LOCAL OWNER READ '+path+' HTTP '+res.status);
   return res.json();
 };
 const ownerPut=async(path,value)=>{
-  const url=DB+'/'+(path?path.replace(/^\/+|\/+$/g,'')+'.':'')+'json?ns='+NAMESPACE;
+  const url=DB+'/'+(path?path.replace(/^\/+|\/+$/g,''):'')+'.json?ns='+NAMESPACE;
   const res=await fetch(url,{method:'PUT',
     headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
     body:JSON.stringify(value),signal:AbortSignal.timeout(12000)});
@@ -197,7 +197,7 @@ async function seed(){
 async function startServices(){
   const config=resolve(ROOT,'generated/emulators.json');
   const contents={
-    functions:[{source:resolve('cell-edit-service'),codebase:'pr142-cell-edit',
+    functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',
       runtime:'nodejs22'}],
     database:{rules:RULES},
     emulators:{database:{host:'127.0.0.1',port:9000},
@@ -222,6 +222,12 @@ async function startServices(){
     return ports.auth?.port===9099&&ports.database?.port===9000&&
       ports.functions?.port===5001;
   },'Auth+Functions+RTDB Emulator ready',100000);
+  await wait(async()=>{
+    const reply=await fetch('http://127.0.0.1:5001/'+PROJECT+
+      '/asia-southeast1/cellEdit',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:'{}',signal:AbortSignal.timeout(2500)});
+    return reply.status!==404&&reply.status!==502;
+  },'Functions Emulator loaded real cellEdit callable',30000);
   const url=DB+'/.settings/rules.json?ns='+NAMESPACE;
   const put=await fetch(url,{method:'PUT',headers:{
     Authorization:'Bearer owner','Content-Type':'application/json'},
