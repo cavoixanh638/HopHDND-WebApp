@@ -255,6 +255,24 @@ async function run(){
      assert.deepEqual({row:await ownerGet(paths(scope).row),lease:await ownerGet(paths(scope).lease)},before);
      checks.push({label:scope+' in-flight pointer',outcome:'RULES_DENIED',serverUnchanged:true});
    });
+   if(scope==='v2')for(const action of ['renew','release']){
+     await step(scope+' DR-01 REGRESSION '+action+' AFTER proof-read + pointer swap must not mutate OLD lease',async()=>{
+       await seed(scope);
+       const privateLease=await acquire(scope);
+       const oldPaths=paths(scope);
+       const before={row:await ownerGet(oldPaths.row),lease:await ownerGet(oldPaths.lease)};
+       const status=await strictRace(scope,action,privateLease,()=>ownerPut('hdnd/datasetV2/active',{
+         generationId:'gen_new_server_epoch',operationId:'new_server_epoch',
+         revision:2,rowCount:2,digest:'b'.repeat(64)}));
+       assert.equal(status,'permission-denied');
+       const after={row:await ownerGet(oldPaths.row),lease:await ownerGet(oldPaths.lease)};
+       assert.deepEqual(after,before,'historical '+action+' mutated inactive generation lease');
+       checks.push({label:scope+' DR01 in-flight '+action,
+         outcome:'RULES_DENIED',serverUnchanged:true,
+         before:{row:hash(before.row),lease:hash(before.lease)},
+         after:{row:hash(after.row),lease:hash(after.lease)}});
+     });
+   }
    await step(scope+' anonymous guest with granted note writes through authenticated service',async()=>{
      await seed(scope);const l=await acquire(scope,'r1','note',d);
      const operationId=randomUUID();
