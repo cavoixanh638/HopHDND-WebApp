@@ -121,6 +121,7 @@ jobs:
             source/qa-results/pr143-freeze-ui/
             source/cell-edit-service/test/witness.local.json
             source/cell-edit-service/test/browser-witness.local.json
+            source/cell-edit-service/test/full-app-witness.local.json
             source/cell-edit-service/test/*.local.png
             source/parent-commit-service/evidence/*
           if-no-files-found: warn
