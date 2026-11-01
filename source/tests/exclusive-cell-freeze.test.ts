@@ -48,7 +48,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   };
   beforeAll(async()=>{
     if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
-       process.env.FIREBASE_FUNCTIONS_EMULATOR_HOST!=='127.0.0.1:5001')
+       !process.env.FIREBASE_EMULATOR_HUB)
       throw Error('PR142 exclusive tests require real local Auth+Functions+FULL Rules');
     env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
       host:'127.0.0.1',port:9000,rules:JSON.stringify(candidate)
