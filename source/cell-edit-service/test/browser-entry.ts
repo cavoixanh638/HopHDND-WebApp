@@ -9,7 +9,7 @@ import type {Patch} from '../../shared/types';
 
 if(!['127.0.0.1','localhost'].includes(location.hostname)||import.meta.env.MODE!=='pages-test')
   throw Error('Emulator-only Chrome entry refused non-localhost or non-test build');
-const project='demo-pr142-cell-edit';
+const project='demo-hdnd';
 const app=initializeApp({
  apiKey:'demo-pr142-browser',authDomain:project+'.firebaseapp.com',projectId:project,
  databaseURL:'https://'+project+'-default-rtdb.firebaseio.com'
