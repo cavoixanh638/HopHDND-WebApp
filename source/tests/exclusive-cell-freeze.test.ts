@@ -17,15 +17,21 @@ import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
-const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:id+'@example.test',
-  emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]}) as User;
+const realActorByTag=new Map<string,User>();
+const actor=(id:string,admin=false)=>realActorByTag.get(id)??({
+  uid:id,email:admin?adminClaims.email:id+'@example.test',
+  emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]
+} as User);
 const row={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
 describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB security',()=>{
   let env:RulesTestEnvironment;
   const realClients=new Map<string,{app:FirebaseApp;auth:Auth;db:import('firebase/database').Database;user:User}>();
-  const guest=(id:string)=>env.authenticatedContext(id,{email:id+'@example.test',email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
-  const anonymous=(id:string)=>env.authenticatedContext(id,{firebase:{sign_in_provider:'anonymous'}}).database();
-  const admin=()=>env.authenticatedContext('administrator',adminClaims).database();
+  const guest=(id:string)=>realClients.get(id)?.db??env.authenticatedContext(id,{
+    email:id+'@example.test',email_verified:true,
+    firebase:{sign_in_provider:'google.com'}}).database();
+  const anonymous=(id:string)=>realClients.get(id)?.db??env.authenticatedContext(id,{
+    firebase:{sign_in_provider:'anonymous'}}).database();
+  const admin=()=>real('administrator').db;
   const real=(id:string)=>{const client=realClients.get(id);
     if(!client)throw Error('Real test Auth principal not initialized: '+id);
     return client;
@@ -67,6 +73,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
           sub:id,email:id==='administrator'?adminClaims.email:id+'@example.test',
           email_verified:true})))).user;
       realClients.set(id,{app,auth,db,user});
+      realActorByTag.set(id,user);
     }
     expect(real('administrator').user.emailVerified).toBe(true);
     expect(real('anon-a').user.isAnonymous).toBe(true);
@@ -78,7 +85,8 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await set(ref(context.database() as never),{
         hdnd:{items:{r1:{...record,operationId:'initial',updatedAt:Date.now(),updatedBy:'administrator'}},
           permissions:{columns:{note:true,specificProgress:true,progressParty:true}},
-          editors:{a:true,b:true,guest:true,forger:true,ungranted:true,untrusted:true},
+          editors:Object.fromEntries(['a','b','guest','forger','ungranted','untrusted']
+            .map(tag=>[real(tag).user.uid,true])),
           control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()}}
       });
     });
@@ -107,9 +115,9 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await assertFails(get(ref(db as never,'hdnd/freezeReceipts')));
     }
     // Staff can only discover THEIR membership; anonymous visitors see no other UID.
-    expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
-    await assertFails(get(ref(staff as never,'hdnd/editors/b')));
-    await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
+    expect((await get(ref(staff as never,'hdnd/editors/'+real('a').user.uid))).val()).toBe(true);
+    await assertFails(get(ref(staff as never,'hdnd/editors/'+real('b').user.uid)));
+    await assertFails(get(ref(visitor as never,'hdnd/editors/'+real('a').user.uid)));
     expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
     await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
     expect((await get(ref(visitor as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
@@ -191,13 +199,13 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     }));
   });
   it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
-    const staff=guest('a'),list=ref(staff as never,'hdnd/editors/a');
+    const staff=guest('a'),list=ref(staff as never,'hdnd/editors/'+real('a').user.uid);
     expect((await get(list)).val()).toBe(true);
     await assertFails(set(list,false));
-    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),false);
     const managerA=manager('a');
     await expect(managerA.acquire('r1','note','multiline')).rejects.toThrow();
-    await set(ref(admin() as never,'hdnd/editors/a'),true);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),true);
     await managerA.acquire('r1','note','multiline');
     await managerA.cancel('r1','note');
     await managerA.dispose();
@@ -206,7 +214,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const editor=manager('a'),writer=repo('a',editor);
     const [initial]=await writer.list();
     await editor.acquire('r1','note','multiline');
-    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),false);
     const [result]=await writer.save([updateDraft(initial,undefined,{note:'revoked UID must not write'})!]);
     expect(result.ok).toBe(false);
     const after=(await writer.list())[0];
