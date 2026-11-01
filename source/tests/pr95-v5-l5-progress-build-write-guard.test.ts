@@ -304,9 +304,11 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(after.progressBuild).toBe(before.progressBuild);
     expect((after.history as any)['2'].changes).toEqual({type:'QPPL'});
   },30000);
-  it('DIRECT SDK: valid guest grant+lease+audit edits QPPL, but cannot change HC/BC',async()=>{
+  it('DIRECT SDK is denied despite valid guest grants, while authenticated callable edits QPPL and blocks HC/BC',async()=>{
     const w=harness();
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý'));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý'));
+    const confirmed=await persist(w,'qppl',{progressBuild:'VP đang xử lý'});
+    expect(confirmed.ok,confirmed.message).toBe(true);
     const success=await current(w.db,'qppl');
     expect(success.progressBuild).toBe('VP đang xử lý');
     expect(success.revision).toBe(2);
@@ -316,11 +318,13 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       expect(await current(w.db,id)).toEqual(before);
     }
   },45000);
-  it('DIRECT SDK TRANSACTION: verified admin lease and audit cannot bypass HC/BC guard',async()=>{
+  it('DIRECT SDK TRANSACTION denied even for verified admin, callable still edits QPPL but blocks HC/BC',async()=>{
     const w=harness(true);
     // Positive same payload against QPPL proves the test does not merely fail
     // on malformed audit, missing .write or missing lease.
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý',true));
+    const confirmed=await persist(w,'qppl',{progressBuild:'VP đang xử lý'});
+    expect(confirmed.ok,confirmed.message).toBe(true);
     expect((await current(w.db,'qppl')).revision).toBe(2);
     for(const id of ['hc','bc']){
       const before=await current(w.db,id);
@@ -330,10 +334,13 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
   },45000);
   it('R-V5-01 RED/REGRESSION: direct SDK denies whitespace and NFC/NFD HC/BC with valid lease, grants and truthful audit',async()=>{
     const guest=harness(),admin=harness(true);
-    // Same direct SDK payload succeeds for non-HC/non-BC rows: guard, not
-    // malformed audit/proof/auth, must be the reason the cases below fail.
-    await assertSucceeds(directSdkEdit(guest,'qppl','VP đang xử lý'));
-    await assertSucceeds(directSdkEdit(admin,'unknown','VP đang xử lý',true));
+    // Direct SDK is never the writer, even when the actor and field are
+    // otherwise valid. Prove callable succeeds for the same QPPL/UNKNOWN
+    // baselines, so the HC/BC rejection below is not an auth/setup artifact.
+    await assertFails(directSdkEdit(guest,'qppl','VP đang xử lý'));
+    expect((await persist(guest,'qppl',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
+    await assertFails(directSdkEdit(admin,'unknown','VP đang xử lý',true));
+    expect((await persist(admin,'unknown',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
     for(let i=0;i<classifiedTypeVariants.length;i++){
       const type=classifiedTypeVariants[i];
       expect(buildNotRequiredForType({type,documentKind:'NQ'}),JSON.stringify(type)).toBe(true);
@@ -362,7 +369,7 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(after.progressBuild).toBe(untouched.progressBuild);
     expect((after.history as any)['2'].changes).toEqual({note:'Giữ cột H legacy'});
   },60000);
-  it('R-V5-01 legacy fallback direct SDK: unicode HC/BC block, QPPL/unknown and unrelated note remain writable',async()=>{
+  it('R-V5-01 legacy: direct writes blocked and authenticated callable preserves QPPL/UNKNOWN and unrelated HC notes',async()=>{
     // No V2 active pointer: prove the independent hdnd/items/$id validator
     // enforces the exact same business guard, not only the V2 validator.
     await env.clearDatabase();
@@ -379,8 +386,10 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       }});
     });
     const w=legacyHarness(true),legacyPath='hdnd/items';
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true,legacyPath));
-    await assertSucceeds(directSdkEdit(w,'unknown','VP đang xử lý',false,legacyPath));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý',true,legacyPath));
+    expect((await persist(w,'qppl',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
+    await assertFails(directSdkEdit(w,'unknown','VP đang xử lý',false,legacyPath));
+    expect((await persist(w,'unknown',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
     for(const [id,type,transact] of [
       ['hc','\tHC\t',false],
       ['hc','Ha\u0300nh chi\u0301nh',true],
