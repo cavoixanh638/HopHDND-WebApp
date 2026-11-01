@@ -26,7 +26,7 @@ function scopedDatabaseURL(){
   try{
     const url=new URL(value);
     if(url.protocol!=='https:'||url.username||url.password||
-      !/\\.(firebaseio\\.com|firebasedatabase\\.app)$/.test(url.hostname))
+      !/\.(firebaseio\.com|firebasedatabase\.app)$/.test(url.hostname))
       throw new Error('Bad Firebase RTDB endpoint');
   }catch{fail('unavailable','Đường dẫn Realtime Database không hợp lệ.');}
   return value;
