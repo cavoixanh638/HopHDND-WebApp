@@ -95,6 +95,21 @@ jobs:
           echo "PR142_UNIFIED_EMULATOR_EXIT=$rc"
           cat pr142-unified-emulator.stdout
           exit "$rc"
+      - name: Real Freeze UI Chrome F1-F5 + deterministic generation races, same FULL Rules
+        if: always()
+        shell: bash
+        env:
+          PARENT_COMMIT_ENABLED: "true"
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4179
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=10s 9m node scripts/pr143-freeze-ui-browser.mjs > pr142-freeze-ui.stdout 2>&1
+          rc=$?
+          set -e
+          echo "PR142_INTEGRATED_FREEZE_EXIT=$rc"
+          tail -c 22000 pr142-freeze-ui.stdout
+          exit "$rc"
       - name: Upload ALL evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4
@@ -102,6 +117,8 @@ jobs:
           name: pr142-unified-real-emulator-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             source/pr142-unified-emulator.stdout
+            source/pr142-freeze-ui.stdout
+            source/qa-results/pr143-freeze-ui/
             source/cell-edit-service/test/witness.local.json
             source/cell-edit-service/test/browser-witness.local.json
             source/cell-edit-service/test/*.local.png
