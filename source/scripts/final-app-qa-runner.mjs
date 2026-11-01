@@ -129,6 +129,10 @@ function assertLocalUrl(url){
 }
 function monitor(page,role){
   page.on('pageerror',error=>record('BROWSER_EXCEPTION',{role,error:safeError(error)}));
+  page.on('console',msg=>{
+    if(msg.type()==='error'||msg.type()==='warning')
+      record('BROWSER_CONSOLE',{role,kind:msg.type(),text:msg.text().slice(0,400)});
+  });
   page.on('request',req=>{
     if(!assertLocalUrl(req.url()))record('BLOCK_EXTERNAL_REQUEST',{role,
       hostname:new URL(req.url()).hostname});
@@ -323,8 +327,25 @@ async function resetPages(){
   adminIdentity=await admin.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn());
   assert.equal(adminIdentity.emailVerified,true);
   await admin.locator('.options-menu summary').waitFor({timeout:20000});
-  await waitRow(admin,sourceRows[0].displayCode);
-  await waitRow(guest,sourceRows[0].displayCode);
+  try{
+    await waitRow(admin,sourceRows[0].displayCode);
+    await waitRow(guest,sourceRows[0].displayCode);
+  }catch(error){
+    const diagnostics=async page=>({
+      url:page.url(),
+      title:await page.title().catch(()=>null),
+      body:(await page.locator('body').innerText({timeout:4000}).catch(()=>''))?.slice(0,5000),
+      tableCount:await page.locator('.item-data-table tbody tr').count().catch(()=>-1),
+      alerts:await page.locator('[role=alert]').allTextContents().catch(()=>[]),
+      networkText:await page.locator('[role=status]').allTextContents().catch(()=>[])
+    });
+    record('APP_BOOT_DIAGNOSTIC',{error:safeError(error),
+      admin:await diagnostics(admin),guest:await diagnostics(guest),
+      server:await state()});
+    await screenshot(admin,'FAIL-APP-BOOT-DESKTOP');
+    await screenshot(guest,'FAIL-APP-BOOT-MOBILE');
+    throw error;
+  }
 }
 async function closeGuest(){if(contextGuest)await contextGuest.close();contextGuest=null;guest=null;}
 async function desktopMobileEvidence(){
