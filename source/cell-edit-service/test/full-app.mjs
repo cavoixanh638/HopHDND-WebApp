@@ -41,7 +41,7 @@ async function step(name,fn){
 }
 function snapshot(page,path){
  const name='full-app-'+path+'.local.png';
- screens.push(name);return page.screenshot({path:'cell-edit-service/test/'+name,fullPage:false});
+ screens.push(name);return page.screenshot({path:resolve(import.meta.dirname,name),fullPage:false});
 }
 async function hostReady(){
  for(let i=0;i<85;i++){
@@ -90,7 +90,7 @@ try{
  });
  server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--host','127.0.0.1',
   '--port','4174','--strictPort','--mode','pages-test'],
-  {cwd:resolve('..'),env:{...process.env},stdio:'ignore'});
+  {cwd:resolve(import.meta.dirname,'../..'),env:{...process.env},stdio:'ignore'});
  await hostReady();
  chrome=await chromium.launch({headless:true,args:['--no-sandbox']});
  const guestContext=await chrome.newContext({viewport:{width:1280,height:900}});
@@ -162,7 +162,7 @@ finally{
    summary:{pass:cases.filter(x=>x.status==='PASS').length,fail:cases.filter(x=>x.status==='FAIL').length},
    error,cases,screens};
  mkdirSync('cell-edit-service/test',{recursive:true});
- writeFileSync('cell-edit-service/test/full-app-witness.local.json',JSON.stringify(result,null,2));
+ writeFileSync(resolve(import.meta.dirname,'full-app-witness.local.json'),JSON.stringify(result,null,2));
 }
 console.log('PR142_FULL_APP_SUMMARY',cases.filter(x=>x.status==='PASS').length,
  cases.filter(x=>x.status==='FAIL').length);
