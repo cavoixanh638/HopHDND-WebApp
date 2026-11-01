@@ -50,7 +50,11 @@ const initial={
     datasetV2:{
       active:{generationId:gen,operationId:op,revision:1,rowCount:2,digest:'a'.repeat(64)},
       generations:{[gen]:{items:rows}},
-      permissions:{[gen]:{columns:{note:true,specificProgress:true}}}
+      permissions:{[gen]:{columns:{note:true,specificProgress:true}}},
+      // A seed active pointer must have a historically COMMITTED source.
+      // Parent service refuses to invent a missing operation journal during
+      // replacement; the old pre-service fixture omitted this record.
+      operations:{[op]:{status:'COMMITTED',from:'legacy',to:gen,at:Date.now()}}
     }
   }
 };
