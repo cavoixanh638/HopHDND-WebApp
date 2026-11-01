@@ -199,7 +199,7 @@ it('malicious commit tree, wrong confirmation, stale pointer and tampered stagin
  const now=Date.now(),first='seed_base_auth_0001';
  await seeded({hdnd:{freezeControl:{mode:'OPEN',revision:1,epoch:1,actor:admin.uid,changedAt:now-1000,deadline:0,closedAt:0},
   datasetV2:{active:{generationId:'gen_'+first,operationId:first,revision:1,rowCount:1,digest:'b'.repeat(64)},
-    generations:{['gen_'+first]:{items:{r1:{...row(),operationId:first,updatedAt:1,updatedBy:admin.uid}}},
+    generations:{['gen_'+first]:{items:{r1:{...row(),operationId:first,updatedAt:1,updatedBy:admin.uid}}}},
     operations:{[first]:{status:'COMMITTED',from:'legacy',to:'gen_'+first,at:now-1000}}}}});
  const id='auth_attempt_0002';const approval=await stageDatasetReplacement(db,admin,[row('Genuine staged')],id,'stage.xlsx');
  const before=await witness();
