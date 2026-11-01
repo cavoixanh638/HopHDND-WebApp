@@ -50,7 +50,8 @@ export async function requestParentDatasetCommit(database:Database,user:User|nul
   if(!response.ok){
     if(response.status===401||response.status===403||response.status===409){
       const server=payload as {error?:string;message?:string}|null;
-      throw Error('Dịch vụ từ chối commit: '+String(server?.error??'REJECTED'));
+      throw Error('Dịch vụ từ chối commit: '+String(server?.error??'REJECTED')+
+        (server?.message?' ('+String(server.message).slice(0,220)+')':''));
     }
     return {status:'unknown',operationId};
   }

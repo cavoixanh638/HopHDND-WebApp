@@ -19,8 +19,13 @@ const candidate=JSON.parse(readFileSync(resolve('firebase/database.exclusive-can
 const rulesHash=createHash('sha256').update(JSON.stringify(candidate)).digest('hex');
 const temp=mkdtempSync(join(resolve('.'),'.pr95-ui-v2-l3-'));
 const config=join(temp,'firebase.json');
-writeFileSync(config,JSON.stringify({database:{rules:resolve('firebase/database.exclusive-candidate.rules.json')},
-  emulators:{database:{host:'127.0.0.1',port:9000},auth:{host:'127.0.0.1',port:9099},ui:{enabled:false},singleProjectMode:true}}));
+writeFileSync(config,JSON.stringify({
+ database:{rules:resolve('firebase/database.exclusive-candidate.rules.json')},
+ functions:[{source:resolve('cell-edit-service'),codebase:'pr142-cell-edit',runtime:'nodejs22'},
+   {source:resolve('parent-commit-service'),codebase:'parent-v2',runtime:'nodejs22'}],
+ emulators:{database:{host:'127.0.0.1',port:9000},auth:{host:'127.0.0.1',port:9099},
+   functions:{host:'127.0.0.1',port:5001},ui:{enabled:false},singleProjectMode:true}
+}));
 const step=(name,obj)=>console.log('PR95_UI_V2_L3_'+name+' '+JSON.stringify(obj));
 const wait=async(fn,label,ms=20000)=>{
   const end=Date.now()+ms;let last;
@@ -38,14 +43,14 @@ const ownerReq=async(path='',method='GET',body)=>{
 let emu,host;let emuOutput='';const browsers=[];
 async function startEmulator(){
   emu=spawn(process.execPath,['node_modules/firebase-tools/lib/bin/firebase.js',
-    'emulators:start','--project',PROJECT,'--only','auth,database','--config',config],
-    {stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true'}});
+    'emulators:start','--project',PROJECT,'--only','auth,database,functions','--config',config],
+    {stdio:['ignore','pipe','pipe'],env:{...process.env,CI:'true',PARENT_COMMIT_ENABLED:'true',PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com'}});
   for(const stream of [emu.stdout,emu.stderr])stream.on('data',p=>{emuOutput=(emuOutput+String(p)).slice(-9000)});
   await wait(async()=>{
     if(emu.exitCode!==null)throw Error('Emulator exited: '+emuOutput);
     const response=await fetch('http://127.0.0.1:4400/emulators',{signal:AbortSignal.timeout(1000)});
     if(!response.ok)return false;
-    const e=await response.json();return e.auth?.port===9099&&e.database?.port===9000;
+    const e=await response.json();return e.auth?.port===9099&&e.database?.port===9000&&e.functions?.port===5001;
   },'Auth RTDB Emulator ready',40000);
   const url=BASE+'/.settings/rules.json?ns='+NS;
   const headers={Authorization:'Bearer owner','Content-Type':'application/json'};
