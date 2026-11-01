@@ -79,7 +79,7 @@ jobs:
           node --check scripts/pr142-integrated-emulator.mjs
           node --check parent-commit-service/test/run-functions.mjs
           npm run typecheck
-          node -e "const f=require('./firebase.staging.json');if(f.functions.length!==2||f.database.rules!=='firebase/database.exclusive-candidate.rules.json')process.exit(1);const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;if(!r.datasetV2['.write'].includes('parentCasService')||!r.items['$id']['.write'].includes('cellService'))process.exit(2)"
+          node -e "const f=require('./firebase.staging.json');if(f.functions.length!==2||f.database.rules!=='firebase/database.exclusive-candidate.rules.json')process.exit(1);const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;if(!r.datasetV2['.write'].includes('parentCasService')||!r.items[String.fromCharCode(36)+'id']['.write'].includes('cellService'))process.exit(2)"
       - name: Auth + BOTH real Functions wrappers + RTDB + FULL Rules + Chrome
         id: integration
         shell: bash
