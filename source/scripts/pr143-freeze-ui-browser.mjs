@@ -26,6 +26,12 @@ const candidateFile=resolve('firebase/database.exclusive-candidate.rules.json');
 const rules=JSON.parse(readFileSync(candidateFile,'utf8'));
 const digest=json=>createHash('sha256').update(JSON.stringify(json)).digest('hex');
 const expectedHash=digest(rules);
+// pull_request GITHUB_SHA may name a synthetic merge ref, not checkout HEAD.
+// Witness must record the exact repository source that ran in Chromium.
+const checkedOut=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'});
+if(checkedOut.status!==0||!/^[a-f0-9]{40}$/.test(checkedOut.stdout.trim()))
+  throw Error('Cannot verify exact checked-out Git SHA for Chrome witness');
+const checkoutSha=checkedOut.stdout.trim();
 const tempDir=mkdtempSync(join(resolve('.'),'.pr143-freeze-chrome-'));
 const config=join(tempDir,'firebase.json');
 writeFileSync(config,JSON.stringify({database:{rules:candidateFile},emulators:{
@@ -495,6 +501,7 @@ async function exerciseF4Deterministic(A){
   });
 
   step('F4_RACE_FINAL_PASS',{
+    checkoutSha,
     deterministicGates:['count-snapshot','frozen-ack','receipt-written'],
     realAuthorizedCas:true,
     checks:['old generation count ignored','late old count no overwrite',
@@ -666,7 +673,7 @@ try{
   await sleep(300);
   try{writeFileSync(join(evidenceDir,'witness.json'),JSON.stringify({
     base:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
-    head:process.env.GITHUB_SHA??null,project,rulesSha256:expectedHash,
+    head:checkoutSha,project,rulesSha256:expectedHash,
     result:failed?'FAIL':'PASS',steps:evidence,images,syntheticOnly:true
   },null,2));}catch{}
   rmSync(tempDir,{recursive:true,force:true,maxRetries:6,retryDelay:100});
