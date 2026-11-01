@@ -326,5 +326,21 @@
     "Any uncertain ACK, unreviewed new edits or mismatch between active pointer and journal",
     "An operator attempts to deploy from a documentation-only release branch instead of approved package."
   ],
-  "rollbackPolicy": "After a new acknowledged business edit, never restore an older data backup or a permissive old Rules file. Freeze/maintain, capture fresh read-only state, reconcile and obtain explicit authorization. Before any acknowledged edit, rollback only to a verified compatible web/Functions/Rules set after operator check."
+  "rollbackPolicy": "After a new acknowledged business edit, never restore an older data backup or a permissive old Rules file. Freeze/maintain, capture fresh read-only state, reconcile and obtain explicit authorization. Before any acknowledged edit, rollback only to a verified compatible web/Functions/Rules set after operator check.",
+  "historicalRecord": {
+    "originalReviewSha": "02964722ae405a7ccf70f2b88bfe21cb7d0bcca7",
+    "status": "HISTORICAL_SHA_NOT_FRCR01_FIXED",
+    "independentFinding": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/147#issuecomment-6559399784",
+    "newCandidateTrack": {
+      "pr": 147,
+      "branch": "integration/pr142-cell-parent-freeze-candidate-20261101",
+      "latestRehearsalCISha": "82b6db5b4011aeea322183e9e9ca13aa73674603",
+      "rulesRawSha256": "ba20c51b67ed8ca9ed43af02541e6d44f665ec9b9c1f3a8065e3f3a2abf6f481",
+      "packageRun": 41328054403,
+      "packageArtifact": 13091469937,
+      "nextSourceSha": "VERIFY_CURRENT_PR147_HEAD; do not reuse original checksum for changed Rules"
+    },
+    "productionAuthorized": false,
+    "note": "This branch remains an immutable source snapshot plus historical documentation. The current FRCR01 candidate has its own exact-SHA build manifest in CI, never deploy the old source snapshot."
+  }
 }
