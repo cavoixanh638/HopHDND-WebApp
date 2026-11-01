@@ -27,7 +27,10 @@ if(!inner){
     '--project',PROJECT,'--only','database,auth,functions','--config','firebase.staging.json',
     'node scripts/firebase-functional-qa.mjs --inside'];
   console.log('QA isolation: Firebase Auth+RTDB+Functions Emulators ONLY / project '+PROJECT);
-  const p=spawnSync(cmd,args,{stdio:'inherit',env:process.env,timeout:240000});
+  const emulatorEnv={...process.env,PARENT_COMMIT_ENABLED:'true',
+    PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    PARENT_ALLOWED_ORIGINS:'http://127.0.0.1:4173,http://127.0.0.1:4174,http://127.0.0.1:4179'};
+  const p=spawnSync(cmd,args,{stdio:'inherit',env:emulatorEnv,timeout:240000});
   if(p.error)err('Emulator runner failed: '+p.error.message);
   process.exit(p.status??1);
 }
