@@ -288,6 +288,13 @@ async function reset(A){
       'window.__pr143FreezeUi.pageId!=='+JSON.stringify(previous)),
       'New React UI execution context after reload',30000);
   }
+  // Complete the page's anonymous-auth warmup before the synthetic Google
+  // login; otherwise a late ensureGuestAuth() can overwrite the admin user.
+  await A.call('guest');
+  await sleepUntil(async()=>{
+    const state=await snapshot(A);
+    return state.ready&&!state.isAdmin?state:false;
+  },'guest warmup completed before admin login',14000);
   await A.call('login');
   try{
     await sleepUntil(async()=>{
