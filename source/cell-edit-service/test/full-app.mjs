@@ -122,15 +122,29 @@ try{
    B.evaluate(()=>window.__pr95EmulatorGoogleAdminSignIn())
  ]);
  assert.equal(authA.uid,authB.uid);
- // Admin login can land on Overview instead of List; navigate using actual
- // UI and only then require the real ItemList rows.
+ // Admin Auth changes can leave either page on Overview; the navigation
+ // component mounts asynchronously. Wait for a visible real List tab instead
+ // of a one-time count() that can race the Auth state transition.
  for(const page of [A,B]){
-   if(!(await page.locator('.item-list-page-title').count())){
-     const button=page.locator('nav.primary-section-switcher button').filter({hasText:'Danh sách'}).first();
-     if(await button.count())await button.click();
+   if(!(await page.locator('.item-list-page-title').isVisible())){
+     const button=page.locator('nav.primary-section-switcher button')
+       .filter({hasText:'Danh sách'}).first();
+     await button.waitFor({state:'visible',timeout:20000});
+     await button.click();
    }
  }
- await Promise.all([loaded(A),loaded(B)]);
+ try{await Promise.all([loaded(A),loaded(B)]);}
+ catch(error){
+   const diagnostics=await Promise.all([A,B].map(async page=>
+     page.evaluate(()=>({route:location.pathname,
+       listTitle:!!document.querySelector('.item-list-page-title'),
+       rows:document.querySelectorAll('.item-data-table tbody tr').length,
+       nav:document.querySelector('nav.primary-section-switcher')?.textContent?.slice(0,200)
+     })).catch(e=>({error:String(e)}))));
+   console.log('PR142_ADMIN_LIST_WAIT_DIAGNOSTIC',JSON.stringify(diagnostics));
+   await Promise.allSettled([snapshot(A,'admin-a-list-timeout'),snapshot(B,'admin-b-list-timeout')]);
+   throw error;
+ }
  await step('two Chrome FULL App admin tabs same UID cannot share a lease',async()=>{
    const textareaA=await begin(A,'NQ02');
    assert.ok(await textareaA.isVisible());
