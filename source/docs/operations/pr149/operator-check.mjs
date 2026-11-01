@@ -26,7 +26,7 @@ try{
  }
  const runner=resolve(source,'node_modules/vitest/vitest.mjs');
  if(!existsSync(runner))throw Error('Run npm ci in source/ before offline preflight (network-free validation)');
- const processResult=spawnSync(process.execPath,[runner,'run',tests,'--reporter=verbose','--maxWorkers=1','--minWorkers=1'],
+ const processResult=spawnSync(process.execPath,[runner,'run',tests,'--reporter=verbose','--maxWorkers=1'],
    {cwd:source,stdio:'inherit',env:{...process.env,PR149_AUDIT_ARGS:JSON.stringify(o)},
     timeout:120000});
  if(processResult.error)throw processResult.error;

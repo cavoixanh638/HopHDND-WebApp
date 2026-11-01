@@ -54,7 +54,16 @@ jobs:
           npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
           npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
       - name: Offline source A-O parser and snapshot classifier with positive+negative fixtures
-        run: node node_modules/vitest/vitest.mjs run docs/operations/pr149/offline-fixture.test.ts --maxWorkers=1 --minWorkers=1 --reporter=verbose
+        run: node node_modules/vitest/vitest.mjs run docs/operations/pr149/offline-fixture.test.ts --maxWorkers=1 --reporter=verbose
+      - name: Rehearse real operator command against synthetic approved Excel and full backup
+        run: |
+          set -euo pipefail
+          node docs/operations/pr149/operator-check.mjs \
+            --source "$PWD/pr149-ops-evidence/approved-source.xlsx" \
+            --sheet Approved \
+            --snapshot "$PWD/pr149-ops-evidence/offline-checkpoint.json" \
+            --manifest "$PWD/pr149-ops-evidence/offline-manifest.json" \
+            --output "$PWD/pr149-ops-evidence/operator-report.json"
       - name: Real Auth, TWO actual Functions, FULL Rules, three Firebase states, FRCR/DR02 and ACK
         timeout-minutes: 14
         run: |

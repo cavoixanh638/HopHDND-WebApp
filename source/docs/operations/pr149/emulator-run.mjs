@@ -44,7 +44,7 @@ console.log('PR149_EMULATOR_FULL_RULES_READY',JSON.stringify(fact));
 const cmd=['node_modules/vitest/vitest.mjs','run',
   'docs/operations/pr149/operational-drill.test.ts',
   '--config','parent-commit-service/test/vitest.config.mjs',
-  '--maxWorkers=1','--minWorkers=1','--reporter=verbose'];
+  '--maxWorkers=1','--reporter=verbose'];
 const p=spawn(process.execPath,cmd,{stdio:'inherit',env:{...process.env,PR149_CANDIDATE_SHA:original,
  PARENT_COMMIT_ENABLED:'true',PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
  PARENT_ALLOWED_ORIGINS:'http://127.0.0.1:4173',

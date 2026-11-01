@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {mkdtempSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import * as XLSX from 'xlsx';
@@ -88,4 +88,30 @@ it('multiple V2 generations, historical rights and journal: catches FRCR-like mu
  const after=audit({...checked(ack),previousSnapshot:before});
  expect(after.issues.map(x=>x.code)).toContain('POST_BACKUP_SERVER_CHANGES_REQUIRE_RECONCILIATION');
  expect(after.verdict).toBe('HOLD');
+});
+
+it('writes demo-only operator source.xlsx plus full-root manifest for actual CLI execution',()=>{
+ const data=[ [...BUSINESS_HEADERS],
+  ['NQ-OPS-A',1,'Văn bản thử nghiệm có dấu','Sở giả','HC','','','','','','','','','','Nội dung thử'] ];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'Approved');
+ const raw=new Uint8Array(XLSX.write(wb,{type:'array',bookType:'xlsx'}));
+ const parsed=parseBusinessExcel(raw,'Approved');
+ const item=parsed.items[0],stored={...item,operationId:'pr149_synthetic_seed',
+  updatedAt:1,updatedBy:'synthetic-admin'};
+ const snapshot={hdnd:{items:{[item.recordId]:stored},
+  profile:{dataSource:'primary',revision:1},permissions:{columns:{note:true}}}};
+ const bytes=Buffer.from(JSON.stringify(snapshot,null,2)+'\n');
+ const meta={projectId:'demo-hdnd',instanceId:'demo-hdnd',rtdbFile:'offline-checkpoint.json',
+  rtdbSha256:sha(bytes),rtdbBytes:bytes.byteLength,hdndItemsCount:1,hdndMirrorsCount:0,
+  stability:'Two successive exports matched byte-for-byte',
+  origin:'ONLY_SYNTHETIC_OPERATOR_OFFLINE_TEST'};
+ mkdirSync('pr149-ops-evidence',{recursive:true});
+ writeFileSync('pr149-ops-evidence/approved-source.xlsx',raw);
+ writeFileSync('pr149-ops-evidence/offline-checkpoint.json',bytes);
+ writeFileSync('pr149-ops-evidence/offline-manifest.json',JSON.stringify(meta,null,2)+'\n');
+ const check=audit({snapshot,rawBytes:bytes,manifest:meta,sourceRows:parsed.items});
+ expect(check.verdict).toBe('PASS_LEGACY_PRESENT');
+ console.log('PR149_SYNTHETIC_OPERATOR_INPUTS_READY',JSON.stringify({
+  xlsx:raw.byteLength,snapshotSha256:sha(bytes),rowCount:1,
+  parser:'parseBusinessExcel',production:'NONE'}));
 });
