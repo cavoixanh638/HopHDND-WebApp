@@ -103,8 +103,8 @@ async function warm(ref){
   }catch(error){ref.off('value',onValue);throw error;}
   finally {clearTimeout(timer);}
 }
-async function transact(location,callback){
-  const held=await warm(location);
+async function transact(location,callback,heldAlready){
+  const held=heldAlready??await warm(location);
   let localReason='';let candidate=false;
   try {
     let result;
@@ -159,7 +159,12 @@ function readPayload(request){
   if(JSON.stringify(request).length>180000)fail('invalid-argument','Yêu cầu quá lớn.');
   return {action,scope,gen:scope==='v2'?request.generation.generationId:null,id:validId(request.recordId,'ID dòng')};
 }
-export async function dispatchCellEdit(auth,request){
+export async function dispatchCellEdit(auth,request,testHooks=undefined){
+  // No network client can supply a JS callback; onCall always passes exactly
+  // (verifiedAuth, data). Emulator regression tests may inject a synchronous
+  // checkpoint AFTER proof verification but BEFORE the Rules-enforced commit.
+  if(testHooks&&!((process.env.FIREBASE_DATABASE_EMULATOR_HOST??'').startsWith('127.0.0.1:')&&
+    NAMESPACE.startsWith('demo-')))fail('permission-denied','Test hooks require local demo Emulators.');
   const {action,scope,gen,id}=readPayload(request);
   const opId=asUuid(request.operationId,'Mã thao tác');
   const scopeKey=scope==='legacy'?'legacy':`v2:${gen}`;
@@ -219,7 +224,11 @@ export async function dispatchCellEdit(auth,request){
       }
       if(stored.expiresAt<=Date.now())fail('failed-precondition','Khóa đã hết hạn.');
       const now=Date.now();
-      const changed=await transact(loc,(raw,abort)=>{
+      const testWarm=testHooks?.afterProof?await warm(loc):null;
+      let changed;
+      try{
+        if(testHooks?.afterProof)await testHooks.afterProof();
+        changed=await transact(loc,(raw,abort)=>{
         if(!raw||raw.uid!==identity.uid||raw.token!==token||
           !equalsHash(raw.proofHash,hash)||raw.expiresAt<=now){
           abort('Khóa đã chuyển phiên hoặc hết hạn.');return undefined;
@@ -229,7 +238,8 @@ export async function dispatchCellEdit(auth,request){
         }
         return {...raw,revision:raw.revision+1,lastOperationId:opId,
           expiresAt:action==='release'?0:Math.min(now+TTL,raw.acquiredAt+MAX_EDIT_MS[raw.kind])};
-      });
+        },testWarm);
+      }finally{testWarm?.close();}
       await assertEpoch(db,scope,request.generation);
       return {status:action==='release'?'released':'renewed',lease:changed};
     }
@@ -248,7 +258,11 @@ export async function dispatchCellEdit(auth,request){
     }
     const itemLoc=db.ref(paths(scope,gen,id,fields[0]).row);
     const at=ServerValue.TIMESTAMP;
-    const saved=await transact(itemLoc,(raw,abort)=>{
+    const testWarm=testHooks?.afterProof?await warm(itemLoc):null;
+    let saved;
+    try{
+      if(testHooks?.afterProof)await testHooks.afterProof();
+      saved=await transact(itemLoc,(raw,abort)=>{
       if(!raw){abort('Dòng không tồn tại.');return undefined;}
       if(raw.operationId===opId){abort('ACK đã ghi trước đó.');return undefined;}
       const outdated=fields.find(field=>raw[field]!==patch.baseValues[field]);
@@ -272,7 +286,8 @@ export async function dispatchCellEdit(auth,request){
       const actual=(await itemLoc.once('value')).val();
       if(actual?.operationId===opId&&fields.every(f=>actual[f]===patch.changes[f]))return actual;
       throw error;
-    });
+      });
+    }finally{testWarm?.close();}
     await assertEpoch(db,scope,request.generation);
     return {status:'committed',operationId:opId,row:saved};
   });
