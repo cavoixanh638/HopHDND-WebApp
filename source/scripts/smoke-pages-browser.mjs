@@ -36,8 +36,8 @@ const emulatorConfigFile=join(emulatorConfigDir,'firebase.json');
 writeFileSync(emulatorConfigFile,JSON.stringify({
   database:{rules:EXCLUSIVE_RULES_FILE},
   functions:[
-    {source:resolve('cell-edit-service'),codebase:'pr142-cell-edit',runtime:'nodejs22'},
-    {source:resolve('parent-commit-service'),codebase:'parent-v2',runtime:'nodejs22'}
+    {source:'../cell-edit-service',codebase:'pr142-cell-edit',runtime:'nodejs22'},
+    {source:'../parent-commit-service',codebase:'parent-v2',runtime:'nodejs22'}
   ],
   emulators:{
     database:{host:'127.0.0.1',port:9000},

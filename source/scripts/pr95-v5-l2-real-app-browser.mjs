@@ -23,8 +23,8 @@ const temp=mkdtempSync(join(resolve('.'),'.pr95-v5-l2-'));
 const config=join(temp,'firebase.json');
 writeFileSync(config,JSON.stringify({
  database:{rules:resolve('firebase/database.exclusive-candidate.rules.json')},
- functions:[{source:resolve('cell-edit-service'),codebase:'pr142-cell-edit',runtime:'nodejs22'},
-   {source:resolve('parent-commit-service'),codebase:'parent-v2',runtime:'nodejs22'}],
+ functions:[{source:'../cell-edit-service',codebase:'pr142-cell-edit',runtime:'nodejs22'},
+   {source:'../parent-commit-service',codebase:'parent-v2',runtime:'nodejs22'}],
  emulators:{database:{host:'127.0.0.1',port:9000},auth:{host:'127.0.0.1',port:9099},
    functions:{host:'127.0.0.1',port:5001},ui:{enabled:false},singleProjectMode:true}
 }));
