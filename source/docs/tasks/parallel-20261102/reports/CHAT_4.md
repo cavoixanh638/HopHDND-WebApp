@@ -4,8 +4,7 @@
 - Nhánh: `parallel/20261102-chat4-backup`.
 - Code/tool SHA được CI chạy: `7d2525451dbb48699784b13291becd3fecf49582`.
 - [Workflow Chat4 #41409437881](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409437881).
-- Trạng thái tại lúc ghi: **RUNNING**, chưa được gọi DONE. Đã xác minh PASS: syntax, npm ci (source và 2 Functions), offline fixture, negative restore guard fixture, CLI operator A–O trên nguồn .xlsx và checkpoint tổng hợp.
-- Auth+Functions+FULL Rules, bootstrap operator, backup verifier và full-root restore: tiếp tục đọc conclusion cuối của run, đừng suy PASS từ các bước trước.
+- Trạng thái cuối: **SUCCESS** trên đúng SHA `7d2525451dbb48699784b13291becd3fecf49582`. PASS: syntax, npm ci (source và 2 Functions), offline fixture, negative restore guard fixture, CLI operator A–O trên .xlsx/checkpoint tổng hợp, S1–S3 + FRCR-01 + forged backup qua Auth + hai Functions + FULL Rules + RTDB Emulator, bootstrap operator, backup verifier regression và full-root restore demo 127.0.0.1:9198, artifact upload. KHÔNG suy kết quả này là production GO.
 
 ## File thay đổi
 - `source/docs/operations/pr149/{RUNBOOK.md,DRILL_REPORT.md,offline-audit-core.mjs,offline-fixture.test.ts,operator-check.mjs,operator-check.test.ts,emulator-run.mjs,operational-drill.test.ts,bootstrap-operator.test.ts,verify-restored.mjs}` (tái sử dụng công cụ PR149 thuộc vùng sở hữu, gia cố audit).
@@ -39,3 +38,8 @@ node docs/operations/pr149/operator-check.mjs --source "$PWD/pr149-ops-evidence/
 - Owner chỉ cần D1 nguồn chính thức, D2 chính sách ID/quyền/history, D3 người và thời điểm GO; tất cả tham số kỹ thuật do operator thu.
 - First import là luồng Chat3: `source/scripts/operator-first-import.mjs`, `source/docs/operations/PR147_OPERATOR_FIRST_IMPORT.md`; không sửa source của Chat3.
 - Không đụng runtime/Rules, không merge PR hoặc deploy. Nếu CI final fail, sửa file thuộc vùng Chat4 và chạy lại exact SHA.
+
+## Kết luận vận hành
+- **DONE_WITH_EXTERNAL_GAPS**: bộ công cụ/QA/runbook thuộc quyền Chat4 hoàn tất và workflow đã SUCCESS; các chứng cứ production là gate ngoài phạm vi và vẫn HOLD.
+- Tested code SHA `7d2525451dbb48699784b13291becd3fecf49582`; commit báo cáo/checkpoint sau đó là docs-only, không cần gán kết quả runtime cho SHA docs.
+- Run id `41409437881`, xem từng step và artifact `parallel-chat4-backup-41409437881-demo-only` tại workflow.
