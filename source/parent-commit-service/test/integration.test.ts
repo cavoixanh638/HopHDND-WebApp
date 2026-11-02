@@ -649,6 +649,35 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  // from unapproved client payload or blindly inherited pointer digest.
  const restoreApproval=afterBEdit.datasetV2.active;
  const beforeRestore=await witness();
+
+ // Diagnostic key-only schema check: never write or alter A, backups, or
+ // expected values. We log only property names, never user content/tokens.
+ const historic=beforeRestore.datasetV2.generations[genA].items.r1;
+ const rulesSchema=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'))
+   .rules.hdnd.datasetV2.generations.$generation.items.$id;
+ const unknownPaths:string[]=[];
+ const inspectKeys=(obj:any,schema:any,path:string)=>{
+   if(!obj||typeof obj!=='object'||!schema)return;
+   for(const [name,val] of Object.entries(obj)){
+     const node=schema[name]??schema.$slot??schema.$field??schema.$id??schema.$other;
+     if(!node||node['.validate']===false)
+       unknownPaths.push(path+'/'+name+' [MISSING_OR_LITERAL_DENY]');
+     else inspectKeys(val,node,path+'/'+name);
+   }
+ };
+ inspectKeys(historic,rulesSchema,'/hdnd/datasetV2/generations/'+genA+'/items/r1');
+ console.log('FRV02_AUDIT_SOURCE_FIELD_KEYS_ONLY',JSON.stringify({
+  root:Object.keys(historic),histSlots:Object.keys(historic.history??{}),
+  histEntryKeys:Object.fromEntries(Object.entries(historic.history??{})
+    .map(([slot,v]:any)=>[slot,Object.keys(v??{})])),
+  histChangeKeys:Object.fromEntries(Object.entries(historic.history??{})
+    .map(([slot,v]:any)=>[slot,Object.keys(v?.changes??{})])),
+  histOldValueKeys:Object.fromEntries(Object.entries(historic.history??{})
+    .map(([slot,v]:any)=>[slot,Object.keys(v?.oldValues??{})])),
+  editProofFields:Object.keys(historic.editProofs??{}),
+  unknownSchemaPaths:unknownPaths
+ }));
+
  const coverageBefore=await frvRuleCoverageSnapshot();
  let restored:any=null,restoreError='';
  try{restored=await restoreDatasetBackup(db,admin,second,restore,restoreApproval,'KHOI PHUC '+restore);}
