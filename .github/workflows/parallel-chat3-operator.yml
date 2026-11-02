@@ -53,15 +53,17 @@ jobs:
           node scripts/pr147-default-deploy-guard.mjs
           node --check scripts/operator-first-import.mjs
           node --check parallel-qa/chat3/operator-preflight.mjs
+          node --check parallel-qa/chat3/operator-lost-ack.mjs
       - name: Run real CLI preflight and one-time CAS integration with Auth, RTDB, Functions, FULL Rules
         shell: bash
         run: |
           set -euo pipefail
           npx firebase emulators:exec --project demo-hdnd --only database,auth,functions \
             --config firebase.staging.json \
-            "node parallel-qa/chat3/operator-preflight.mjs && node node_modules/vitest/vitest.mjs run parent-commit-service/test/integration.test.ts --config parent-commit-service/test/vitest.config.mjs --testNamePattern 'FRV-02 OPERATOR'" \
+            "node parallel-qa/chat3/operator-preflight.mjs && node parallel-qa/chat3/operator-lost-ack.mjs && node node_modules/vitest/vitest.mjs run parent-commit-service/test/integration.test.ts --config parent-commit-service/test/vitest.config.mjs --testNamePattern 'FRV-02 OPERATOR'" \
             2>&1 | tee "$RUNNER_TEMP/chat3-operator-evidence.log"
           grep -q 'CHAT3_PREFLIGHT_TOTAL 12' "$RUNNER_TEMP/chat3-operator-evidence.log"
+          grep -q 'CHAT3_REAL_CAS_LOST_ACK_UNKNOWN_PASS' "$RUNNER_TEMP/chat3-operator-evidence.log"
           grep -q 'FRV02_OPERATOR_PROTECTED_EMPTY_CAS_VERIFIED' "$RUNNER_TEMP/chat3-operator-evidence.log"
       - name: Retain no credential-containing artifacts
         if: always()
