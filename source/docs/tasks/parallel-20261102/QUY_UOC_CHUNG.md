@@ -16,6 +16,21 @@ Không tự thêm tính năng, đổi chính sách nghiệp vụ, thiết kế l
 việc chỉ để đủ số luồng. Nếu phần được giao đã đúng và có bằng chứng phù hợp,
 có thể kết thúc bằng kết luận không cần sửa.
 
+## Đích cuối và điều kiện hoàn tất — v3 (02/11/2026)
+
+Mỗi nhiệm vụ phải ghi kết quả cuối, chủ sở hữu/phạm vi độc lập, tiêu chí nghiệm
+thu đo được và nơi lưu bằng chứng. Luồng tự làm từ khảo sát đến sửa, kiểm thử,
+sửa lỗi phát hiện và bàn giao; không dừng ở chẩn đoán, commit hoặc khởi chạy CI.
+DONE chỉ khi mọi tiêu chí bắt buộc đạt trên bản mã cuối. Thiếu kiểm thử bắt buộc
+thì chưa DONE; khi bị chặn phải ghi nguyên nhân, bằng chứng, đầu vào/người gỡ chặn
+và bước tiếp tục, đồng thời hoàn thành phần độc lập còn lại.
+DONE_WITH_EXTERNAL_GAPS chỉ dùng cho gap ngoài phạm vi sau khi phần được giao đạt.
+Điều phối phát hiện việc còn thiếu phải giao chủ sở hữu, cập nhật file nhiệm vụ
+và prompt có điều kiện đóng trong cùng lượt, không chờ người dùng nhắc.
+Đích chung là candidate tích hợp đủ năm phần, gate liên quan đạt đúng SHA,
+gói phát hành dựng lại từ SHA đó và bàn giao dùng được; không đồng nghĩa quyền
+merge/deploy/production. Năm luồng DONE riêng chưa chứng minh đích chung đã đạt.
+
 ## Bắt đầu và tiếp tục sau khi đổi chat
 
 1. Đọc file nhiệm vụ của đúng luồng, file quy ước này và checkpoint tương ứng
@@ -34,7 +49,7 @@ có thể kết thúc bằng kết luận không cần sửa.
    về mốc xuất phát, không tạo nhánh mới rồi bỏ công việc cũ. Nếu nhánh bị đổi tên,
    người điều phối cập nhật đường dẫn; không tự đoán.
 6. Kiểm chứng checkpoint bằng git/CI. Đọc phần “Bước tiếp theo” rồi làm tiếp,
-   không yêu cầu người dùng kể lại toàn bộ hội thoại. Nếu trạng thái DONE, báo
+   không yêu cầu người dùng kể lại toàn bộ hội thoại. Nếu trạng thái DONE và không có nhiệm vụ tiếp tục mới, báo
    kết quả hiện có; không tự tạo vòng công việc mới.
 
 | Luồng | Nhánh cố định | Checkpoint |
@@ -130,9 +145,17 @@ Chat mới đọc quy ước + nhiệm vụ + checkpoint rồi chỉ tra code/lo
 
 ### Khi đổi chat
 
+Chủ động báo nên đổi ở mốc khép lại giai đoạn, trước giai đoạn kế tiếp chỉ cần
+checkpoint ngắn, hoặc khi lịch sử không còn cần thiết khiến phải đọc lại nhiều.
+Trước khi báo: lưu mã/nhánh/SHA, đích cuối, tiêu chí còn thiếu, WIP/run đang chạy
+và một câu tiếp quản qua file nhiệm vụ. Không chờ người dùng canh hit limit,
+không đoán % context hay hứa tiết kiệm credits. Không đổi chat liên tục hoặc dùng
+việc đổi chat để dừng giữa chừng; đề nghị đổi không đồng nghĩa DONE.
+
+
 Dùng lại link nhiệm vụ cũ; checkpoint trên nhánh luồng là nguồn tiếp tục.
 Xác nhận trạng thái Git/CI trước khi làm, không reset hoặc lặp lại test đã đủ
-bằng chứng. Nếu DONE thì báo kết quả hiện có, không tự mở vòng việc mới.
+bằng chứng. Nếu DONE và không có nhiệm vụ tiếp tục mới thì báo kết quả hiện có, không tự mở vòng việc mới.
 
 Mẫu: [HANDOFF_TEMPLATE.md](HANDOFF_TEMPLATE.md).
 Trạng thái: NOT_STARTED, IN_PROGRESS, BLOCKED_EXTERNAL, DONE,
@@ -144,7 +167,7 @@ Người điều phối cập nhật file quy ước này khi có chỉ thị m�
 kiểm tra phiên bản quy ước lúc bắt đầu/tiếp quản và sau mỗi mốc lớn; nếu có
 blob SHA mới chỉ đọc phần thay đổi, không nạp lại toàn bộ bộ tài liệu.
 Thay đổi file không tự làm một chat đang chạy đọc lại; khi cần áp dụng ngay,
-người dùng gửi một câu nhắc đọc quy ước v2. Không cần gửi lại nhiệm vụ.
+người dùng gửi một câu nhắc đọc quy ước v3. Không cần gửi lại nhiệm vụ.
 
 ## Hoàn tất một luồng
 
