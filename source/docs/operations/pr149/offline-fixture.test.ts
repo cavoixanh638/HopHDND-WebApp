@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import * as XLSX from 'xlsx';
 import {parseBusinessExcel,BUSINESS_HEADERS} from '../../../src/data/business-excel';
 import {audit,loadLocal,sha} from './offline-audit-core.mjs';
+import {stable as contractStable} from '../../../parent-commit-service/src/parent-contract.mjs';
 import {createDemoItems} from '../../../src/data/demo-items';
 
 const checked=(snapshot)=>{
@@ -73,7 +74,9 @@ it('multiple V2 generations, historical rights and journal: catches FRCR-like mu
     backups:{[opB]:JSON.stringify({
       previous:{generationId:a,operationId:opA,revision:1,rowCount:1,digest:'a'.repeat(64)},
       generation:{items:{[r.recordId]:r}},permissionsJson:JSON.stringify(perms),
-      leasesJson:'null',baseline:'test'})}
+      leasesJson:'null',baseline:contractStable({
+        active:{generationId:a,operationId:opA,revision:1,rowCount:1,digest:'a'.repeat(64)},
+        items:{[r.recordId]:r},permissions:perms,leases:null})})}
    }}};
  const valid=audit(checked(before));
  expect(valid.verdict).toBe('PASS_VERIFIED_SNAPSHOT_STRUCTURE');
@@ -83,6 +86,13 @@ it('multiple V2 generations, historical rights and journal: catches FRCR-like mu
  const historical=audit(checked(mutate));
  expect(historical.target).toBe('INCONSISTENT');
  expect(historical.issues.map(x=>x.code)).toContain('BACKUP_HISTORICAL_SCOPE_CHANGED');
+ const forged=structuredClone(before);
+ const forgedBackup=JSON.parse(forged.hdnd.datasetV2.backups[opB]);
+ forgedBackup.baseline='forged-self-declared-baseline';
+ forged.hdnd.datasetV2.backups[opB]=JSON.stringify(forgedBackup);
+ const rejected=audit(checked(forged));
+ expect(rejected.target).toBe('INCONSISTENT');
+ expect(rejected.issues.map(x=>x.code)).toContain('BACKUP_PROVENANCE_OR_FORMAT_INVALID');
  const ack=structuredClone(before);
  ack.hdnd.datasetV2.generations[b].items[r.recordId]={...rowB,revision:3,note:'ACK mới'};
  const after=audit({...checked(ack),previousSnapshot:before});
@@ -139,6 +149,14 @@ it('rejects tampered active manifest digest and changed historical generations a
  const found=audit(checked(bad));
  expect(found.target).toBe('INCONSISTENT');
  expect(found.issues.map(x=>x.code)).toContain('ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH');
+ // Pointer and manifest can agree while both lie about the staged-row SHA.
+ const forgedCandidate=structuredClone(state);
+ const staged={...rowA};delete staged.history;
+ forgedCandidate.hdnd.datasetV2.candidates[one]=JSON.stringify({
+  items:{[id]:staged},manifest:{generationId:'gen_'+one,operationId:one,
+   rowCount:1,digest:'a'.repeat(64)}});
+ const untrusted=audit(checked(forgedCandidate));
+ expect(untrusted.issues.map(x=>x.code)).toContain('ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH');
  const newer=structuredClone(state);
  const b='gen_'+two;
  newer.hdnd.datasetV2.active={generationId:b,operationId:two,revision:2,rowCount:1,digest:'c'.repeat(64)};

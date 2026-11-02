@@ -7,6 +7,8 @@
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {decodeCandidate,verifyBackup} from '../../../parent-commit-service/src/manifest.mjs';
+import {verifyCommittedRestoreSource} from '../../../parent-commit-service/src/parent-contract.mjs';
 export const sha=x=>createHash('sha256').update(typeof x==='string'||Buffer.isBuffer(x)?x:stable(x)).digest('hex');
 export const sort=x=>Array.isArray(x)?x.map(sort):x&&typeof x==='object'
   ?Object.fromEntries(Object.keys(x).sort().map(k=>[k,sort(x[k])])):x;
@@ -51,7 +53,8 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
  if(expectedRawSha&&rawHash!==expectedRawSha)issue(report,'INPUT_HASH_MISMATCH','/');
  const complete=object(manifest)&&manifest.stability==='Two successive exports matched byte-for-byte'
   &&manifest.rtdbSha256===rawHash&&manifest.rtdbBytes===rawBytes?.byteLength
-  &&manifest.rtdbFile&&Number.isInteger(manifest.hdndItemsCount);
+  &&typeof manifest.rtdbFile==='string'&&manifest.rtdbFile.length>0
+  &&Number.isInteger(manifest.hdndItemsCount);
  if(!complete){
   report.target='INCOMPLETE_SNAPSHOT';
   issue(report,'FULL_ROOT_PROVENANCE_MISSING_OR_MISMATCH','/');
@@ -59,7 +62,8 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
  }
  report.snapshotIntegrity='FULL_ROOT_BACKUP_HASH_VERIFIED';
  report.snapshotSha256=rawHash;
- if(keys(snapshot?.hdnd?.items).length!==manifest.hdndItemsCount||
+ if((Number.isInteger(manifest.rootKeysCount)&&keys(snapshot).length!==manifest.rootKeysCount)||
+   keys(snapshot?.hdnd?.items).length!==manifest.hdndItemsCount||
    (Number.isInteger(manifest.hdndMirrorsCount)&&
     keys(snapshot?.hdnd?.mirrors).length!==manifest.hdndMirrorsCount)){
   report.target='INCONSISTENT';
@@ -95,12 +99,15 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
   const candidateJson=v2.candidates?.[op];
   if(candidateJson!==undefined){
    try{
-    const c=JSON.parse(candidateJson);
-    if(c.manifest?.generationId!==gen||c.manifest?.operationId!==op||
-       c.manifest?.digest!==p.digest||c.manifest?.rowCount!==p.rowCount)
+    // Recompute digest from immutable staged A-O rows, not two untrusted strings.
+    // Legitimate later ACK edits mean current rows need not hash to staging digest.
+    const {manifest:checked}=decodeCandidate(candidateJson,op);
+    if(checked.generationId!==gen||checked.operationId!==op||
+       checked.digest!==p.digest||checked.rowCount!==p.rowCount)
       issue(report,'ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH','datasetV2/active');
+    else report.operations.activeDigestWitness='RECOMPUTED_FROM_STAGING';
    }catch{issue(report,'ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH','datasetV2/candidates');}
-  }
+  }else report.operations.activeDigestWitness='NO_STAGED_CANDIDATE_RESTORE_OR_UNVERIFIED';
   const activeSummary=summaryRows(active,report,'active:'+String(gen));
   report.counts.active=activeSummary;
   if(!object(active)||activeSummary.count!==p.rowCount)
@@ -123,21 +130,20 @@ export function audit({snapshot,manifest,rawBytes,sourceRows,previousSnapshot=nu
   }
   for(const [backupOp,encoded] of Object.entries(v2.backups??{})){
     try{
-      const b=typeof encoded==='string'?JSON.parse(encoded):null;
-      const prev=b?.previous;
-      const corresponding=v2.operations?.[backupOp];
-      if(!object(b)||!object(prev)||!object(b.generation?.items)||
-         corresponding?.status!=='COMMITTED'||corresponding?.from!==prev.generationId)
-        throw Error('provenance');
-      const historical=v2.generations?.[prev.generationId]?.items;
-      const perms=JSON.parse(b.permissionsJson),leases=JSON.parse(b.leasesJson);
-      const intact=equal(historical,b.generation.items)
-        &&equal(v2.permissions?.[prev.generationId]??null,perms)
-        &&equal(v2.leases?.[prev.generationId]??null,leases);
+      // Reuse protected parent service checksum, COMMITTED journal, source,
+      // row-count and historical rights/lease invariants; no weaker clone.
+      const backup=verifyBackup(encoded);
+      const proven=verifyCommittedRestoreSource(v2,backup,backupOp);
       report.restoreChecks.push({backupIdHash:masked(backupOp),
-        historicalEligible:intact,sourceGenerationHash:masked(prev.generationId)});
-      if(!intact)issue(report,'BACKUP_HISTORICAL_SCOPE_CHANGED','backups/'+masked(backupOp));
-    }catch{issue(report,'BACKUP_PROVENANCE_OR_FORMAT_INVALID','backups/'+masked(backupOp));}
+        historicalEligible:true,sourceGenerationHash:masked(backup.previous.generationId),
+        rowCount:proven.count,restoredSourceDigest:proven.digest});
+    }catch(error){
+      const why=String(error?.message??'');
+      report.restoreChecks.push({backupIdHash:masked(backupOp),historicalEligible:false});
+      issue(report,/historical|backed rows|permissions|lease|row-count/.test(why)
+        ?'BACKUP_HISTORICAL_SCOPE_CHANGED':'BACKUP_PROVENANCE_OR_FORMAT_INVALID',
+        'backups/'+masked(backupOp));
+    }
   }
  }else{
   report.target=legacy.count?'LEGACY_NONEMPTY_NO_V2':'LEGACY_ITEMS_EMPTY_IN_FULL_SNAPSHOT';
