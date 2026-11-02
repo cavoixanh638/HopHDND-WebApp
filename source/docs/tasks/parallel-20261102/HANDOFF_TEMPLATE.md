@@ -1,43 +1,30 @@
 # Checkpoint — Chat N
 
-> Sao chép cấu trúc vào handoffs/CHAT_N.md của đúng luồng. Ghi điều đã biết;
-> giữ UNKNOWN/NOT RUN cho điều chưa xác minh. Không chứa token/dữ liệu thật.
+> Mẫu v2: cập nhật chủ động theo quy ước chung, không đợi gần hết context.
+> Chỉ sửa checkpoint của đúng luồng; giữ ngắn, không chép log/hội thoại.
+> Status có thể là NOT_STARTED, IN_PROGRESS, BLOCKED_EXTERNAL, DONE,
+> DONE_WITH_EXTERNAL_GAPS. File này là mẫu, không ghi đè tiến độ hiện có.
 
-- Trạng thái: NOT_STARTED | IN_PROGRESS | BLOCKED_EXTERNAL | DONE | DONE_WITH_EXTERNAL_GAPS
-- Cập nhật lúc: YYYY-MM-DD HH:mm Asia/Saigon
-- Vai trò/file nhiệm vụ:
-- Repository / branch:
-- Worktree nếu đang có thay đổi chưa push:
-- Mốc mã nguồn xuất phát:
-- Code SHA gần nhất:
-- Tested SHA (nếu khác code SHA, giải thích):
-- Draft PR (nếu có):
-- Có chat khác còn hoạt động trên nhánh/worktree này: có / không / chưa xác minh
+- Status: IN_PROGRESS
+- Branch / code SHA / tested SHA:
+- Lưu: REMOTE hoặc LOCAL_ONLY (worktree/path nếu chưa push)
+- Cập nhật: YYYY-MM-DD HH:mm Asia/Saigon
+- Quy ước đã đọc: v2 (2026-11-02)
 
-## Đã hoàn tất
-- Việc, file và bằng chứng tương ứng.
+## Đã làm / quyết định cần giữ
+- Tối đa 3 ý kèm file/link.
 
-## Đang làm / chưa commit hoặc chưa push
-- File, mục đích, trạng thái; đừng tự reset/xóa khi tiếp tục.
+## Đang làm / WIP
+- File sửa dở, chưa commit/push; không tự reset.
+- Run/session đang chạy, code SHA và cách xem kết quả.
 
 ## Kiểm thử
-| Lệnh hoặc workflow | SHA | PASS / FAIL / RUNNING / NOT RUN | Link / ghi chú |
-|---|---|---|---|
+- PASS/FAIL/NOT RUN/UNKNOWN + lệnh hoặc run URL, SHA tương ứng.
 
-## Quyết định cần giữ
-- Hợp đồng/giới hạn quan trọng, lý do chọn cách sửa.
+## Bước tiếp theo
+1. Việc cụ thể.
+2. Việc cụ thể.
+3. Điều kiện hoàn tất còn thiếu.
 
-## Đã thử nhưng không hiệu quả
-- Kết quả giúp chat mới không lặp lại điều tra.
-
-## Vấn đề ngoài phạm vi
-| Vấn đề | Tái hiện / bằng chứng | Phạm vi sở hữu | Phần bị chặn |
-|---|---|---|---|
-
-## Bước tiếp theo (ưu tiên, thực thi được)
-1. Lệnh/file/run cụ thể cần xử lý tiếp.
-2. Điều kiện hoàn tất còn thiếu.
-
-## Bàn giao cuối
-- File báo cáo, artifact, phần còn NOT RUN.
-- Nếu đã DONE: không mở việc mới khi chat mới đọc lại.
+## Ngoài phạm vi
+- Gap có bằng chứng, nếu có; không chờ chat khác để làm phần còn lại.
