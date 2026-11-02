@@ -1,6 +1,6 @@
 # Chat 5 — Báo cáo đóng gói và chuẩn bị phát hành (02/11/2026)
 
-**Trạng thái cuối:** DONE_WITH_EXTERNAL_GAPS — CI SHA-pinned PASS; chỉ xác nhận rehearsal, production NOT RUN / NOT AUTHORIZED.
+**Trạng thái cuối (quy ước v2):** DONE_WITH_EXTERNAL_GAPS — code SHA `005d842ed59185ea9a887a9faeef315f0e78e4b9` đã PASS offline CI; production NOT RUN / NOT AUTHORIZED.
 
 ## Phạm vi thực hiện và thay đổi
 - `source/scripts/pr147-package-artifacts.mjs`: thay cách đóng gói dist có sẵn bằng build từ exact `--source-sha`, clean checkout, Node22, ba `npm ci` theo lockfile; không dùng artifact tồn lưu. Mỗi tar có inventory path/bytes/SHA256; script tự giải nén vào thư mục tạm và so SHA. Manifest ghi source commit/tree, lock hashes, raw Rules hash, service regions, cấu hình web và checksum manifest.
@@ -21,4 +21,15 @@
 3. Nếu artifact GitHub hết hạn, tái tạo từ nguồn/lock đúng SHA bằng lệnh trên; không coi manifest tracked lịch sử là căn cứ phát hành.
 4. Production yêu cầu operator tự xác minh live/backup/restore, signoff, exact target/endpoint, Rules Published và IAM. Production web build offline chỉ dùng private config+approval đã kiểm, và vẫn không tự publish. Backend+FULL Rules được kiểm trước web; rollback phải đối soát ACK/UNKNOWN.
 
-**Không merge, không thực thi deploy, không đụng production, không tự GO.** Xem checkpoint Chat5 để tiếp tục CI cho đến PASS hoặc xác định blocker.
+**Không merge, không thực thi deploy, không đụng production, không tự GO.** Bản Chat5 đã đủ bằng chứng rehearsal tại SHA mới; không mở vòng test khi chỉ thay checkpoint.
+
+## Bổ sung theo quy ước v2 — mã và CI mới 02/11/2026
+
+- Đã lưu checkpoint **trước** batch tại `d46b1e176e58262a4f75863aad19dea4c56300f3`, rồi batch code atomic `005d842ed59185ea9a887a9faeef315f0e78e4b9`, sau đó checkpoint ghi CI đang chạy ở `e2c1120815d31a091904f505dfba54d5d48c3c1b`. Không có mã LOCAL_ONLY.
+- `.github/workflows/parallel-chat5-release-rehearsal.yml`: push được giới hạn ở thay đổi code, Firebase config và workflow; loại `source/docs/**`/QA results, tránh checkpoint-only tạo run/cancel vô ích. Vẫn giữ manual `workflow_dispatch`.
+- `.github/workflows/publish-pages.yml`: job chỉ chạy cho `refs/heads/main` khi backend xác nhận và **approved main SHA đúng run SHA**; trước commit và trước push phải so `origin/main` với `GITHUB_SHA`. Bỏ cơ chế `git rebase origin/main`; mọi thay đổi main, kể cả docs-only, yêu cầu STOP, duyệt SHA mới. Push non-force để remote move trong race gây lỗi an toàn. **Không chạy publish/deploy thật.**
+- `source/scripts/pr147-release-validate.mjs`: offline validator bắt buộc workflow có main-ref/exact-SHA guard và không còn đường rebase. CI test-only xác minh rehearsal positive; thiếu DB binding, production thiếu approval và sai source SHA phải HOLD.
+- **CI PASS**: [#41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669) tại đúng code SHA `005d842ed59185ea9a887a9faeef315f0e78e4b9`. Step exact-SHA/HOLD + offline release validation, npm ci theo ba locks, rebuild packages từ nguồn, tar extract inventory, double-build checksum và artifact upload đều thành công.
+- Artifact [#13125500286](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669/artifacts/13125500286), 21 ngày, ZIP digest do GitHub báo `sha256:bb01bda9cd6f4d105a168ec30aff874d82458f8fadb187831b017d0224d1d0b0`. Digest ZIP không thay cho SHA riêng từng tar/Rules trong generated manifest.
+- Handoff-only commit `e2c1120` **không sinh run mới** (đã kiểm danh sách Actions); đây là kỳ vọng từ filter, không phải bỏ kiểm thử mã.
+- Chưa xác minh production IAM, Rules Published, backup/restore, quyền operator, ACK/UNKNOWN hoặc GO: tất cả tiếp tục **NOT RUN**. SHA tích hợp khác phải xây lại và test lại; không kế thừa PASS cũ.

@@ -1,25 +1,25 @@
-# Checkpoint — Chat 5: SHA-pinned release (quy ước v2)
+# Checkpoint — Chat 5: Đóng gói, cấu hình, release (v2)
 
-- Trạng thái: **IN_PROGRESS — CI xác minh bản sửa cuối**, production vẫn NOT RUN/NO-GO.
+- Trạng thái: **DONE_WITH_EXTERNAL_GAPS** — rehearsal hoàn tất, production NO-GO / NOT RUN.
 - Cập nhật: 2026-11-02, Asia/Saigon.
-- Repo/nhánh: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat5-release`.
-- Quy ước v2 blob: `ad0d6cd42b224061a39bbf11de8753471d342e35`.
-- Code SHA hiện tại: **`005d842ed59185ea9a887a9faeef315f0e78e4b9`**.
-- Tested SHA trước batch: `d46b1e176e58262a4f75863aad19dea4c56300f3` — [CI #41409497364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409497364) PASS; không tự áp kết quả đó cho code mới.
-- CI của code mới: **RUNNING** [#41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669), SHA `005d842ed59185ea9a887a9faeef315f0e78e4b9`.
-- Worktree: chỉ ghi GitHub connector, không có thay đổi LOCAL_ONLY; không thể kiểm tra worktree ngoài GitHub. Writer khác: chưa xác minh.
+- Nhánh: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat5-release`.
+- Quy ước chung v2 blob `ad0d6cd42b224061a39bbf11de8753471d342e35`; nhiệm vụ [CHAT_5_RELEASE.md](../CHAT_5_RELEASE.md).
+- Code SHA cuối: **`005d842ed59185ea9a887a9faeef315f0e78e4b9`**.
+- Tested code SHA: **`005d842ed59185ea9a887a9faeef315f0e78e4b9`**, [CI #41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669) **SUCCESS**.
+- Docs-only sau code: `e2c1120815d31a091904f505dfba54d5d48c3c1b` và commit báo cáo/checkpoint hiện tại (xem lịch sử Git).
+- Worktree/WIP: không có thay đổi LOCAL_ONLY trong lượt; tất cả sửa được commit/push qua GitHub connector. Worktree ngoài GitHub, writer khác: chưa xác minh.
 
-## Đã hoàn tất
-- Gói nguồn exact SHA, Node22 + 3 npm locks, ordinary/demo web tách, 6 TAR + inventory/extract/SHA256, dựng lại hai lần PASS tại SHA cũ; artifact [13124348900](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409050177/artifacts/13124348900), 21 ngày.
-- Batch v2 `005d842` chỉ đổi 3 file: `.github/workflows/parallel-chat5-release-rehearsal.yml` thêm `paths` loại `source/docs/**`, thêm offline validator; `.github/workflows/publish-pages.yml` chỉ chạy khi main exact approved SHA, kiểm main trước/sau commit, bỏ rebase và dừng nếu main tăng; `source/scripts/pr147-release-validate.mjs` bắt buộc các guard này.
-- Diff batch đã đối chiếu qua GitHub compare: **chỉ ba đường dẫn thuộc Chat 5**. Không sửa Rules/backend/UI/locks. Không deploy/publish/merge.
+## Đã hoàn thành
+1. Package exact SHA, clean checkout, Node22/3 npm lockfiles, ordinary V2-off + demo emulator-only V2-on, 6 TAR, manifest nguồn/Rules raw hash/regions + file inventory, extract checksum, reproducible x2. Mã trong `source/scripts/pr147-package-artifacts.mjs`.
+2. Theo quy ước v2: chỉnh workflow `parallel-chat5-release-rehearsal.yml` lọc handoff-only, thêm rehearsal/negative offline validation; `publish-pages.yml` dừng nếu main rời SHA được duyệt, bỏ rebase; `pr147-release-validate.mjs` bắt buộc gate này. Diff code commit: **chỉ 3 đường dẫn Chat5**.
+3. Runbook [PR147_RELEASE_RUNBOOK.md](../../releases/PR147_RELEASE_RUNBOOK.md) và báo cáo [reports/CHAT_5.md](../reports/CHAT_5.md) có tái tạo SHA tương lai, thứ tự backend+FULL Rules trước web, STOP/rollback đối soát ACK/UNKNOWN.
 
-## Quyết định
-- Không chạy lại test ở SHA cũ; code mới phải có CI riêng. Bảo toàn sentinel Firebase và tracked instance `REQUIRED_UNVERIFIED`.
-- GitHub Pages không được rebase artifact đã duyệt sang main mới, kể cả docs-only. Nếu SHA main đổi: STOP, xác minh lại và duyệt SHA mới.
-- Production Rules Published/IAM/backup/ACK/GO **NOT RUN**; PASS offline tuyệt đối không cấp GO.
+## Kiểm thử / chứng cứ
+- [Actions #41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669) PASS: offline default guard, rehearsal validation, thiếu DB/prod approval/wrong SHA HOLD, 3 npm ci, build, giải nén đối chiếu, hai lần đóng gói/checksum trùng.
+- [Artifact #13125500286](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669/artifacts/13125500286), retention 21 ngày; ZIP SHA256 `bb01bda9cd6f4d105a168ec30aff874d82458f8adb187831b017d0224d1d0b0`. Checkpoint-only push sau đổi workflow không tạo run mới.
+- Production deploy/publish/IAM/Rules Published/backup restore/GO: **NOT RUN — FORBIDDEN**. Không có shell thử lệnh deploy.
 
-## Bước tiếp theo
-1. Theo dõi [run #41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669) đến kết luận; nếu FAIL, đọc step/log và chỉ sửa phạm vi Chat5, checkpoint trước chờ.
-2. Xác nhận commit checkpoint/doc-only sau khi thêm `paths` không tạo run CI mới; kiểm artifact/sha, ghi kết quả thực vào `reports/CHAT_5.md`.
-3. Checkpoint cuối `DONE_WITH_EXTERNAL_GAPS`, tested code SHA và docs-only SHA riêng; không phát hành production, không mở vòng sửa mới nếu PASS.
+## Quyết định và bước tiếp theo
+- **Không mở vòng sửa/test mới** chỉ vì đọc lại checkpoint DONE_WITH_EXTERNAL_GAPS. Tracked release template vẫn `REQUIRED_UNVERIFIED`, default Firebase sentinel vẫn fail closed; không gọi web ordinary/demo là production-ready.
+- Điều phối chọn SHA tích hợp mới: checkout sạch Node22 tại đúng SHA, chạy `cd source && node scripts/pr147-package-artifacts.mjs --source-sha <exact40>`, kiểm `SHA256SUMS`, chạy CI SHA mới; không dùng artifact/checksum cũ để chứng minh SHA mới.
+- Operator có thẩm quyền phải xác minh target/RULES/backup+restore/ACK, service IAM+CORS+HTTPS, signoff, GO độc lập; rồi mới backend+FULL Rules, web cuối. Không merge, deploy, publish hoặc ghi production tại Chat 5.
