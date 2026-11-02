@@ -12,7 +12,7 @@
 ## Đã hoàn thành
 1. Package exact SHA, clean checkout, Node22/3 npm lockfiles, ordinary V2-off + demo emulator-only V2-on, 6 TAR, manifest nguồn/Rules raw hash/regions + file inventory, extract checksum, reproducible x2. Mã trong `source/scripts/pr147-package-artifacts.mjs`.
 2. Theo quy ước v2: chỉnh workflow `parallel-chat5-release-rehearsal.yml` lọc handoff-only, thêm rehearsal/negative offline validation; `publish-pages.yml` dừng nếu main rời SHA được duyệt, bỏ rebase; `pr147-release-validate.mjs` bắt buộc gate này. Diff code commit: **chỉ 3 đường dẫn Chat5**.
-3. Runbook [PR147_RELEASE_RUNBOOK.md](../../releases/PR147_RELEASE_RUNBOOK.md) và báo cáo [reports/CHAT_5.md](../reports/CHAT_5.md) có tái tạo SHA tương lai, thứ tự backend+FULL Rules trước web, STOP/rollback đối soát ACK/UNKNOWN.
+3. Runbook [PR147_RELEASE_RUNBOOK.md](../../../releases/PR147_RELEASE_RUNBOOK.md) và báo cáo [reports/CHAT_5.md](../reports/CHAT_5.md) có tái tạo SHA tương lai, thứ tự backend+FULL Rules trước web, STOP/rollback đối soát ACK/UNKNOWN.
 
 ## Kiểm thử / chứng cứ
 - [Actions #41409661669](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409661669) PASS: offline default guard, rehearsal validation, thiếu DB/prod approval/wrong SHA HOLD, 3 npm ci, build, giải nén đối chiếu, hai lần đóng gói/checksum trùng.
