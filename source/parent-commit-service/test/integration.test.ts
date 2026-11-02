@@ -776,18 +776,34 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
       ['audit-changes-field',['history','$slot','changes','$field']],
       ['audit-oldValues',['history','$slot','oldValues']],
       ['audit-oldValues-field',['history','$slot','oldValues','$field']],
-      ['all-audit-subtree',[]]
+      ['all-audit-subtree',[]],
+      ['all-except-history-root',['history']],
+      ['all-except-history-slot',['history','$slot']],
+      ['all-except-operationId',['history','$slot','operationId']],
+      ['all-except-recordId',['history','$slot','recordId']],
+      ['all-except-at',['history','$slot','at']],
+      ['all-except-actor',['history','$slot','actor']],
+      ['all-except-changes',['history','$slot','changes']],
+      ['all-except-changes-field',['history','$slot','changes','$field']],
+      ['all-except-oldValues',['history','$slot','oldValues']],
+      ['all-except-oldValues-field',['history','$slot','oldValues','$field']]
     ] as const;
     for(const [patchName,keys] of patchGroups){
       const patch=JSON.parse(baselineRules);
       const item=patch.rules.hdnd.datasetV2.generations.$generation.items.$id;
-      if(patchName==='all-audit-subtree'){
+      if(patchName==='all-audit-subtree'||patchName.startsWith('all-except-')){
         const all=(obj:any)=>{
           for(const [k,v] of Object.entries(obj))
             if(k==='.validate'&&typeof v==='string')obj[k]=true;
             else if(typeof v==='object'&&v)all(v);
         };
         all(item.history);
+        if(patchName.startsWith('all-except-')){
+          let isolated:any=item;
+          let original:any=JSON.parse(baselineRules).rules.hdnd.datasetV2.generations.$generation.items.$id;
+          for(const k of keys){isolated=isolated[k];original=original[k];}
+          isolated['.validate']=original['.validate'];
+        }
       }else{
         let node:any=item;
         for(const k of keys)node=node[k];
