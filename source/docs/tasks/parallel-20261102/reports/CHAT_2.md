@@ -26,7 +26,7 @@
 - **Sau:** helper `shouldClearRoomSpecialistFilter('Escape','')` trả false, còn với `'Phòng Tổng hợp'` hoặc `'Nguyễn Văn A'` trả true. Kiểm thử DOM Chrome/viewport và screenshot **chưa chạy**; đây là xác minh logic bằng unit, không phải browser PASS.
 
 ## Kiểm thử / giới hạn môi trường
-- Workflow: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605 — SHA code `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60`; trạng thái xem checkpoint mới nhất.
+- Workflow: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605 — SHA code `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60`; **PASS** (typecheck, targeted regression, toàn bộ unit và build Pages thử); https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605.
 - Kết nối GitHub có quyền ghi; container hiện tại không phân giải được `github.com` khi `git ls-remote`, vì vậy không có clone/worktree local và không thể chạy Vite/Emulator/Chrome trên checkout thật tại đây.
 - Không chạy production, không tạo dữ liệu thật. Không có screenshot/viewport/role mới; mọi kiểm chứng trình duyệt còn NOT RUN. CI test không thay thế test tương tác Chrome.
 - Cần tiếp tục kịch bản đối kháng: Escape trên popup sau khi lọc rỗng, filter có giá trị, 390px/900px/1440px; LeaseTextInput blur trước acquire ACK và refocus; ghép với Firebase Emulator và ảnh giả theo role guest/admin.
