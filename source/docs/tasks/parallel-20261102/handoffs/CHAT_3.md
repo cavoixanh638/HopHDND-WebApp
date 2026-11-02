@@ -1,23 +1,26 @@
 # Checkpoint — Chat 3 / COORD-01 Windows receipt guard
 
-- **Status: IN_PROGRESS** — nhiệm vụ COORD-01 mới, dù gói operator cũ đã DONE.
-- Branch: `parallel/20261102-chat3-bootstrap`; HEAD tiếp quản `83693480387acb861ef50444a95e0eeaf6813248` (docs-only giao việc).
-- Old tested code SHA: `342b8f620e4edcaead93a1e04d0f502f2a672cdd`; baseline CLI CI [#41410079477](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410079477) SUCCESS.
-- Quy ước: `QUY_UOC_CHUNG.md` v2, blob `ad0d6cd42b224061a39bbf11de8753471d342e35`.
-- **Saved: REMOTE** (GitHub connector), không có local worktree/dirty edits, chưa có code change COORD-01; không reset HEAD.
-- Cập nhật 02/11/2026 Asia/Saigon; mã chưa test COORD-01: **NOT RUN**.
-- Finding: [review COORD-01](https://github.com/cavoixanh638/HopHDND-WebApp/blob/docs/parallel-workstreams-20261102/source/docs/tasks/parallel-20261102/reviews/REVIEW_5_STREAMS_2026-11-02.md).
+- **Status: IN_PROGRESS** — nhiệm vụ mới COORD-01, gói operator trước đó DONE; không làm lại.
+- Branch: `parallel/20261102-chat3-bootstrap`; HEAD mã+workflow trước docs `04568fd30a8be59f269be58f03d0dcc2cb72de85`.
+- **Code SHA mới: `04568fd30a8be59f269be58f03d0dcc2cb72de85`**, **TEST_PENDING**; prior tested `342b8f620e4edcaead93a1e04d0f502f2a672cdd` ([CI PASS #41410079477](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410079477)).
+- **CI mới:** [run #41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660), **PENDING** tại lúc checkpoint; Ubuntu Emulator + Windows-native real CLI.
+- Lưu: **REMOTE**; không có uncommitted local worktree. Quy ước `QUY_UOC_CHUNG.md` v2 (blob `ad0d6cd42b224061a39bbf11de8753471d342e35`). Cập nhật 02/11/2026 Asia/Saigon.
 
-## Đã xác minh
-- Dòng 84 của `scripts/operator-first-import-entry.ts`: `target.startsWith(checkout+'/')` dùng slash cố định, sai khi Node Windows trả backslash; POSIX CI trước không bắt được.
-- Chưa có bằng chứng CLI Windows; yêu cầu mới đòi regression win32/POSIX thuần dùng chính helper production và chạy CLI thật trên Windows.
-- Container Linux hiện không resolve github.com qua `git ls-remote`; dùng GitHub connector commit; CI Windows/Linux làm môi trường kiểm chứng.
+## Đã làm
+- Tái hiện **trước sửa** trên Node `path.win32`: checkout `C:\\repo\\HopHDND-WebApp`/target `...\\private\\receipt.json`, old guard `false`, relative containment `true`; đối chứng POSIX old guard `true`.
+- Tách logic production ở `scripts/operator-first-import-path.mjs`, `entry.ts` gọi **chính helper đó**; `relative/isAbsolute/sep` thay nối slash. Giữ `realpathSync` parent, `wx` receipt, fail before CAS.
+- Test `parallel-qa/chat3/operator-receipt-path.test.mjs` kiểm root/child/nested/parent/sibling/cross-drive/Windows case và realpath symlink/junction; `operator-windows-cli.mjs` gọi launcher thật trên Windows với approved XLSX giả và xác nhận inside HOLD, outside đi tới lỗi stdin, không tạo receipt. Workflow riêng có job Ubuntu + Windows.
 
-## WIP / an toàn
-- Chưa sửa file. Chỉ sửa CLI, QA `parallel-qa/chat3`, workflow `parallel-chat3-*`, docs vận hành và checkpoint/report Chat 3.
-- Giữ `realpathSync` parent, xuất biên nhận ngoài repo, kiểm độc quyền `wx`; không đổi parser/CAS/Rules/backend, không merge/deploy/production.
+## Kiểm thử / tình trạng
+- **PASS local Node reproduction:** old Windows guard fails exact containment; POSIX control.
+- **PENDING**: [CI #41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660) gồm native Windows CLI + pure test, Linux TypeScript/deploy guard/preflight/ACK-loss/FRV-02.
+- **NOT RUN**: Firebase production/real credentials/deploy/merge. Container không clone GitHub do DNS; commit qua connector.
 
-## Bước tiếp theo
-1. Tái hiện lỗi Windows/POSIX; tạo helper containment dùng `relative/isAbsolute/sep` và chia sẻ production + test, kiểm sibling/parent/root/different drive/symlink.
-2. CI Windows CLI thật + POSIX và Chat 3 Emulator receipt/HOLD/UNKNOWN/replay trên exact code SHA; sau mỗi batch ghi checkpoint/run ID.
-3. Khi CI tất cả PASS, cập nhật `reports/CHAT_3.md` và checkpoint DONE cho COORD-01; nếu thiếu Windows giữ IN_PROGRESS và nêu NOT RUN.
+## WIP / ranh giới
+- Không có file chưa push. Chỉ file CLI, QA riêng, workflow riêng, docs/report/checkpoint được phép; không sửa parser/CAS/Rules/backend.
+- Chưa gọi DONE trước khi cả **Windows** và **Ubuntu** job PASS đúng SHA. Các run cũ có thể auto-cancel khi commit tiếp, không coi là kết quả.
+
+## Tiếp theo
+1. Theo dõi [#41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660) tới kết luận từng job, đọc log nếu FAIL, sửa code/test thực chất và chạy lại.
+2. Khi cả Windows+POSIX+Emulator PASS, cập nhật hướng dẫn xử lý COORD-01 và report với actual run SHA, diff phạm vi.
+3. Chốt checkpoint `DONE` đúng COORD-01; production vẫn NOT RUN.
