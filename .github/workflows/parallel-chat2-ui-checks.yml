@@ -37,3 +37,21 @@ jobs:
         run: npm run test -- --run
       - name: Verify build without publishing
         run: npm run build:pages:test
+      - name: Install isolated Chromium runner (no production connection)
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Real Chrome synthetic component UX: Esc, mobile, late ACK
+        env:
+          CHAT2_COMPONENT_QA_ONLY: 'true'
+        run: |
+          node --check parallel-qa/chat2/ui-browser.mjs
+          node parallel-qa/chat2/ui-browser.mjs
+      - name: Upload browser witness and PNG (never publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat2-component-chrome-${{ github.run_id }}
+          path: source/parallel-qa/chat2/artifacts/
+          if-no-files-found: warn
+          retention-days: 14
