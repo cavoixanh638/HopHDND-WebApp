@@ -26,7 +26,7 @@
 | Dedicated exact-SHA workflow | e0ebe52b7f2455e2c396c46544adfa0cb764eb99 | PASS | [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875). |
 | Isolated local Node22/Auth/RTDB/Functions | same | NOT RUN | No clone/dependency/network available in current container; CI is authoritative if completed. |
 | Malformed source / negative auth / nonempty / happy path repeat | same | PASS (theo workflow) | Dedicated workflow carries executable cases. |
-| Change-after-stdin and forced lost-ACK | same | NOT RUN | CLI code guards before CAS and marks unknown after request; test needs fault injection to verify exact timing. |
+| Excel/approval changed after stdin checkpoint | same | PASS (CI) | Real CLI stdin-race case in synthetic Emulator. |\n| Forced loss of CAS ACK after server commit | same | NOT RUN | Requires dedicated fault injection and read-only reconciliation. |
 | Production target or credentials | n/a | NOT RUN | Explicitly forbidden. |
 
 ## Safety constraints and integration
@@ -37,7 +37,7 @@
 ## Next verification
 1. Read [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) conclusion and logs. If FAIL, inspect exact failing job; apply fix only in owned files and rerun on new code SHA.
 2. Run fault injection for source mutation after STDIN, broken readback after server commit, and transport failure. Record server witness and private receipt states. No production.
-3. If green, record exact tested code SHA/CI run and mark checkpoint DONE or DONE_WITH_EXTERNAL_GAPS, keeping production NOT RUN.
+3. Done: exact SHA CI PASS is recorded. ACK-loss injection and any production authorization remain separately gated.
 
 - Proven prior CI PASS: [run #41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) for earlier code SHA `f0c3f88af23371d4e87a97227fc4c15f63981014` (before adding stdin-race tests). This does not prove the latest code SHA.
 
