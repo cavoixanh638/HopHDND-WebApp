@@ -758,6 +758,13 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
     // Patches are loaded in memory; tracked FULL Rules and expected-success
     // FRV-02 assertion remain unchanged. Reapply original Rules even on error.
     const baselineRules=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
+    const localRulesApply=async(ruleSource:string)=>{
+      const response=await fetch('http://127.0.0.1:9000/.settings/rules.json?ns='+PROJECT,{
+        method:'PUT',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
+        body:ruleSource
+      });
+      if(!response.ok)throw Error('LOCAL_EMULATOR_RULES_LOAD_'+response.status+' '+(await response.text()).slice(0,200));
+    };
     const patchGroups=[
       ['history-root',['history']],
       ['history-slot',['history','$slot']],
@@ -788,7 +795,7 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
       }
       let actual='DENIED';
       try{
-        await env.loadDatabaseRules({rules:JSON.stringify(patch)});
+        await localRulesApply(JSON.stringify(patch));
         await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
         const proposal=copyJson(replayBase);
         const cItem=copyJson(copiedWithoutProof);
@@ -804,9 +811,12 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
       }catch(e:any){actual='DIAGNOSTIC_ERROR: '+String(e?.message??e).slice(0,160);}
       console.log('FRV02_RULE_EXPRESSION_ISOLATED',JSON.stringify({patchName,outcome:actual}));
     }
-    await env.loadDatabaseRules({rules:baselineRules});
+    await localRulesApply(baselineRules);
   }finally{
-    await env.loadDatabaseRules({rules:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')});
+    await fetch('http://127.0.0.1:9000/.settings/rules.json?ns='+PROJECT,{
+      method:'PUT',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
+      body:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')
+    });
     await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
     await adminDelete(scopedProbe);
   }
