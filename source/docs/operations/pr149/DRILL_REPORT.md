@@ -6,6 +6,25 @@
 **Checkout kiểm:** PR149 ghép **chỉ script/docs QA** vào đúng source candidate; không tạo bản runtime cạnh tranh. Candidate có thể đổi SHA sau lần kiểm này; mọi SHA mới phải chạy lại và ghi report mới.  
 **Cấu hình:** hoàn toàn giả lập `demo-hdnd` (Auth 9099, RTDB 9000, hai Functions thật 5001, FULL Rules đúng namespace) và `demo-hdnd-restore` (RTDB 9198). Không chạm Firebase thật.
 
+## 0. Tiếp nối Chat 3 — kiểm toán vận hành tăng cường 02/11/2026 (Asia/Saigon)
+
+**Không đổi nguồn runtime/Rules:** original PR147 `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` vẫn **FAIL FRCR-01**; fixed operations PR149 đã kiểm `536f4811b84ee0f97f2841e7c746f0362df80a2e`; Chat1 final candidate `5656a5eaffa4e6b32e5100b11f36697af93c7340` (duy nhất thêm browser smoke script so với 536f). Release manifest tại commit `8a6664e135ed888c7a458e4c4b1518a62890231e` giữ rõ historical `source.releaseSourceSha` và `finalFixedCandidate.sourceSha`. **Mọi run ở nhánh PR149 có merge source base 536f: không tự ghi là run exact 5656.** 
+
+**Đợt offline bổ sung:** commit ops `3ae13fbdcdd021a496ebaf4c993948bd47506a4d`, [workflow #41371491257 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41371491257) và [Source Verify #41371491179 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41371491179). Thêm nguyên tắc **fail-closed**:
+- Recompute staging SHA với chính `decodeCandidate` sản phẩm; pointer/manifest cùng khai một digest sai vẫn bị `ACTIVE_CANDIDATE_MANIFEST_DIGEST_MISMATCH`.
+- Dùng `verifyBackup` và `verifyCommittedRestoreSource` thực của protected parent để kiểm baseline, nguồn committed, số dòng, quyền/lease generation lịch sử; backup tự khai baseline hoặc provenance không hợp lệ bị HOLD.
+- Previous full-root snapshot phải có manifest cặp riêng, giữ checksum; dữ liệu không đọc được được báo `UNREADABLE` và đầu ra JSON, không tự diễn giải thành tập rỗng. Bất kỳ `HOLD` đều làm CLI trả exit khác 0, bao gồm empty-root cần bootstrap.
+- Test bổ sung forged candidate, forged backup, snapshot trước-sau, historical tampering; tất cả bằng dữ liệu giả.
+
+**Đợt chuẩn hóa tài liệu/lockfile:** ops `56435b52d6dd32c67df4cb8f5d41b392f953ae92`, đổi sang `npm ci --prefix` theo lockfile thực có của cả hai Functions, ghi tách mốc gốc/fixed/final và owner chỉ có D1–D3. **Kết luận chỉ nâng lên PASS khi workflow tương ứng với chính commit tài liệu/tool mới đạt SUCCESS**, không dùng success của commit cũ làm bằng chứng commit mới.
+
+| Gate thêm | Kết quả đến trước CI trên SHA 56435… | Cách xử lý |
+|---|---|---|
+| Offline security/provenance hardening tại 3ae13… | **PASS** | CI #41371491257, cùng test S1–S3/FRCR/restore |
+| Source Verify tại 3ae13… | **PASS** | CI #41371491179 |
+| Run chính xác SHA 56435… gồm workflow lockfile + tài liệu | **NOT RUN / PENDING VERIFICATION** | Xem Actions PR149, chỉ cập nhật thành PASS khi CI success |
+| Production live state, Published Rules, IAM, private backup, user UAT | **NOT RUN** | Giữ HARD HOLD; người vận hành có phép mới thu chứng cứ |
+
 ## 1. Chứng cứ
 
 - **Lượt SHA gốc:** [Actions #41328381588 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328381588), [artifact demo #13092700733](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328381588/artifacts/13092700733). 5 offline fixtures, operator CLI, 6 server API tests, backup verifier, restore demo PASS. **Riêng FRCR-01 release gate FAIL** vì admin đổi được quyền generation cũ rồi restore hợp lệ bị HTTP409; test cố tình tái hiện thành công không phải FIX.
