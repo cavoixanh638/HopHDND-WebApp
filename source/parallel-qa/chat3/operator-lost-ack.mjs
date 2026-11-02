@@ -5,7 +5,7 @@
  */
 import {strict as assert} from 'node:assert';
 import {createServer,connect} from 'node:net';
-import {mkdtempSync,rmSync,writeFileSync,readFileSync,statSync} from 'node:fs';
+import {mkdtempSync,rmSync,writeFileSync,readFileSync,statSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawn,spawnSync,execFileSync} from 'node:child_process';
@@ -158,6 +158,21 @@ try{
   '--sheet','Approved','--approval-file',approvalFile,'--source-sha',sourceSha,
   '--confirm','IMPORT_ONCE_'+project+'_'+workbookSha256.slice(0,12),
   '--output',output];
+ // Fail BEFORE CAS: Auth succeeds but the local RTDB endpoint is unreachable.
+ // The production CLI must exit 2, create no attempt marker and write nothing.
+ const offlineOutput=join(folder,'offline-no-attempt.json');
+ const offline=spawnSync(process.execPath,
+  ['scripts/operator-first-import.mjs',...args.slice(0,-2),'--output',offlineOutput],
+  {cwd:process.cwd(),env:{...env,FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:19004'},
+   encoding:'utf8',input:token,timeout:45000});
+ assert.equal(offline.status,2,'disconnected before CAS should HOLD: '+offline.stderr);
+ assert.match(offline.stderr,/PR147_BOOTSTRAP_HOLD_(LIVE_EMPTY_ROOT_READ_TIMEOUT|PREWRITE_AUTH_OR_SOURCE_ERROR)/);
+ assert.equal(existsSync(offlineOutput),false,'prewrite failure cannot create attempt receipt');
+ assert.equal(await readOnly(),null,'failed prewrite connection cannot mutate server');
+ assert.doesNotMatch(offline.stdout+offline.stderr,/CHAT3_PRIVATE_TOKEN_NEVER_LOG/);
+ console.log('CHAT3_PREWRITE_OFFLINE_HOLD_PASS',JSON.stringify({
+  exitCode:offline.status,receiptCreated:false,serverUnchanged:true,production:false
+ }));
  proxy=await startLossyProxy();
  const child=launch(args);
  let stderr='',stdout='';
