@@ -26,6 +26,8 @@ jobs:
           cache-dependency-path: source/package-lock.json
       - name: Install exact dependencies
         run: npm ci
+      - name: Verify default Firebase deploy cannot select permissive legacy Rules
+        run: node scripts/pr147-default-deploy-guard.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests

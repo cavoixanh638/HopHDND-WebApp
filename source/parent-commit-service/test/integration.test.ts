@@ -9,7 +9,12 @@ import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,
 import {getDatabase,connectDatabaseEmulator,get,ref,set,update,goOffline,goOnline,runTransaction,serverTimestamp} from 'firebase/database';
 import {getDatabase as getAdminDatabase} from 'firebase-admin/database';
 import {initializeApp as adminInitialize,deleteApp as adminDelete} from 'firebase-admin/app';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+import * as XLSX from 'xlsx';
+import {BUSINESS_HEADERS,parseBusinessExcel} from '../../src/data/business-excel';
 import {createHash,randomUUID} from 'node:crypto';
 import {bootstrapApprovedRowsToPrimary} from '../../src/data/firebase-primary-bootstrap';
 import {setFreezeMode,initialFreeze} from '../../src/data/freeze-control';
@@ -777,3 +782,76 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 queued permissions write races real paren
  log('FRV_RESTORE_AFTER_RACE_DENIAL',prior,final,result,'real authenticated parent CAS');
 },120000);
 
+
+
+it('FRV-02 OPERATOR: production-grade CLI performs actual verified Google empty-only CAS and refuses second import',async()=>{
+  const folder=mkdtempSync(join(tmpdir(),'pr147-operator-fixture-'));
+  try{
+    const excel=join(folder,'approved.xlsx'),approval=join(folder,'approved.json');
+    const output=join(folder,'private-result.json'),sheet='Approved';
+    const headers=[...BUSINESS_HEADERS];
+    const data=['NQ-OPS-0001',1,'MẪU hồ sơ operator đã duyệt','Sở mẫu A',
+      'QPPL','BCH','Sở chưa trình','Sở chưa trình','Sở chưa trình',
+      'Chuyên viên mẫu','Phòng mẫu','Lãnh đạo VP mẫu','Lãnh đạo UBND mẫu',
+      'MẪU đang xử lý','Ghi chú mẫu'];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([headers,data]),sheet);
+    const bytes=Buffer.from(XLSX.write(wb,{bookType:'xlsx',type:'buffer'}));
+    writeFileSync(excel,bytes);
+    const rows=parseBusinessExcel(bytes,sheet);
+    expect(rows.count).toBe(1);
+    const hash=sha(bytes),sourceSha=FRV_SHA;
+    const prior=await witness();
+    expect(prior).toBeNull();
+    const record={schema:'PR147_OPERATOR_FIRST_IMPORT_APPROVAL_V1',
+      project:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com/',
+      sourceSha,workbookSha256:hash,sheet,expectedRows:rows.count,
+      expectedState:'EMPTY_ROOT_CONFIRMED_IN_SNAPSHOT',
+      fullRootSnapshotSha256:sha(stable(prior)),
+      fullRootSnapshotReadAt:new Date().toISOString(),
+      operatorEmail:ADMIN_EMAIL,approved:true};
+    writeFileSync(approval,JSON.stringify(record));
+    const args=['scripts/operator-first-import.mjs','--mode','emulator',
+      '--project','demo-hdnd','--database-url','https://demo-hdnd.firebaseio.com',
+      '--api-key','demo-key','--auth-domain','demo-hdnd.firebaseapp.com',
+      '--app-id','demo-operator','--xlsx',excel,'--sheet',sheet,
+      '--approval-file',approval,'--source-sha',sourceSha,
+      '--confirm','IMPORT_ONCE_demo-hdnd_'+hash.slice(0,12),'--output',output];
+    const input=JSON.stringify({sub:'pr147-operator-admin',email:ADMIN_EMAIL,
+      email_verified:true,name:'Synthetic authenticated operator'});
+    const opts={cwd:process.cwd(),input,encoding:'utf8' as const,timeout:45000,
+      env:{...process.env,GCLOUD_PROJECT:'demo-hdnd'}};
+    const first=spawnSync(process.execPath,args,opts);
+    expect(first.status,first.stderr+'\n'+first.stdout).toBe(0);
+    expect(first.stdout).toContain('PR147_OPERATOR_FIRST_IMPORT_CAS_READBACK_PASS');
+    const receipt=JSON.parse(readFileSync(output,'utf8'));
+    expect(receipt).toMatchObject({mode:'emulator',sourceSha,imported:1,
+      verifiedAdmin:true,readbackVerified:true,usingAdminServiceBypass:false});
+    expect(receipt.workbookSha256).toBe(hash);
+    const state=await witness();
+    expect(state.items).toBeDefined();
+    expect(Object.keys(state.items)).toHaveLength(1);
+    expect(state.items[rows.items[0].recordId]).toMatchObject({
+      recordId:rows.items[0].recordId,displayCode:'NQ-OPS-0001',
+      content:'MẪU hồ sơ operator đã duyệt',revision:1,
+      updatedBy:'pr147-operator-admin'
+    });
+    const beforeSecond=sha(stable(state));
+    const second=spawnSync(process.execPath,args,opts);
+    expect(second.status).not.toBe(0);
+    expect(second.stderr).toContain('PR147_BOOTSTRAP_HOLD_');
+    expect(sha(stable(await witness()))).toBe(beforeSecond);
+    // The same executable MUST fail closed before touching any production
+    // target if forced into production mode without operator release approval.
+    const productionArgs=[...args];
+    productionArgs[productionArgs.indexOf('emulator')]='production';
+    const prod=spawnSync(process.execPath,productionArgs,{...opts,
+      env:{...opts.env,PR147_OPERATOR_FIRST_IMPORT_APPROVED:'NO'}});
+    expect(prod.status).not.toBe(0);
+    expect(sha(stable(await witness()))).toBe(beforeSecond);
+    log('FRV02_OPERATOR_PROTECTED_EMPTY_CAS_VERIFIED',prior,await witness(),{
+      workbookSha256:hash,sourceSha,rowCount:1,operatorExecuted:true,
+      duplicateRejected:true,productionModeBlocked:true,
+      reportSha256:sha(readFileSync(output,'utf8'))});
+  }finally{rmSync(folder,{recursive:true,force:true});}
+},150000);

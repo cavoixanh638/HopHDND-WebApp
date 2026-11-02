@@ -36,7 +36,7 @@ try{
   const file=json(configPath),defaultCfg=json('firebase.json');
   const rulesFile='firebase/database.exclusive-candidate.rules.json';
   if(file?.database?.rules!==rulesFile||!existsSync(rulesFile))fail('WRONG_FULL_RULES');
-  if(defaultCfg?.database?.rules===rulesFile)fail('DANGEROUS_DEFAULT_CONFIG_NEEDS_REVIEW');
+  if(defaultCfg?.database?.rules!=='firebase/REQUIRED_UNVERIFIED_NO_DEFAULT_DEPLOY_DO_NOT_CREATE.rules.json'||existsSync(defaultCfg.database.rules)||defaultCfg.functions||defaultCfg.hosting)fail('DEFAULT_FIREBASE_DEPLOY_NOT_FAIL_CLOSED');
   const services=file.functions;
   const want={'pr142-cell-edit':['cell-edit-service','nodejs22'],
     'parent-v2':['parent-commit-service','nodejs22']};

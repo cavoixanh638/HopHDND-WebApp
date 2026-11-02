@@ -50,6 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --no-audit --no-fund
+          node scripts/pr147-default-deploy-guard.mjs
           node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json
           if node scripts/pr147-release-validate.mjs --mode production --config firebase.release.json; then
             echo "::error::Missing production approval must fail closed"; exit 1

@@ -66,9 +66,12 @@ try{
  const cell=archive('functions-cellEdit-node22',['index.js','core.js','package.json','package-lock.json'],'cell-edit-service');
  const parent=archive('functions-parentDatasetCommit-node22',['index.mjs','src','package.json','package-lock.json'],'parent-commit-service');
  const fullRules=archive('firebase-full-rules-frcr01',['firebase/database.exclusive-candidate.rules.json']);
+ const operator=archive('operator-first-import-node22-sources',[
+  'scripts/operator-first-import.mjs','scripts/operator-first-import-entry.ts',
+  'scripts/pr147-default-deploy-guard.mjs','src','shared','package.json','package-lock.json']);
  // The tar archives above are deterministic for identical inputs. Validate
  // content digests in this same run and write unambiguous checksum file.
- const archives=[webDefault,webDemo,cell,parent,fullRules];
+ const archives=[webDefault,webDemo,cell,parent,fullRules,operator];
  for(const a of archives)required(sha(readFileSync(join(folder,a.file)))===a.sha256,'INTERNAL_CHECKSUM_MISMATCH');
  const manifest={kind:'PR147_CI_REHEARSAL_PACKAGE_NOT_PRODUCTION',sourceSha:head,
   statuses:{CODE_READY:'CI_PENDING',PACKAGE_READY:'OFFLINE_REHEARSAL_ONLY',PRODUCTION_AUTHORIZED:false},
@@ -79,18 +82,30 @@ try{
   sourceHashes:{rootLockSha256:sha(read('package-lock.json')),
    cellLockSha256:sha(read('cell-edit-service/package-lock.json')),
    parentLockSha256:sha(read('parent-commit-service/package-lock.json')),
-   releaseConfigTemplateSha256:sha(read('firebase.release.json'))},
+   releaseConfigTemplateSha256:sha(read('firebase.release.json')),
+   defaultFirebaseDeployHoldSha256:sha(read('firebase.json')),
+   defaultDeployGuardSha256:sha(read('scripts/pr147-default-deploy-guard.mjs')),
+   operatorCliSourceSha256:sha(read('scripts/operator-first-import.mjs')),
+   operatorCliEntrySha256:sha(read('scripts/operator-first-import-entry.ts'))},
   buildFlags:{
    defaultWeb:'VITE_PARENT_REPLACEMENT_ENABLED absent: no approved V2 endpoint',
    rehearsalWeb:{mode:'pages-test',VITE_PARENT_REPLACEMENT_ENABLED:true,
      VITE_PARENT_COMMIT_ENDPOINT:'http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit',
      project:'demo-hdnd',deployForbidden:true}},
+  operatorFirstImport:{sourceArchive:'operator-first-import-node22-sources.tar.gz',
+    entrypoint:'node scripts/operator-first-import.mjs',
+    requiredAuthority:'Verified Google Auth + approved exact source SHA/project/database/empty snapshot; operator only',
+    deployPerformed:false,productionExecuted:false},
+  defaultDeploy:{config:'firebase.json',status:'FAIL_CLOSED_MISSING_RULES_SOURCE',
+    verify:'node scripts/pr147-default-deploy-guard.mjs',
+    requiredReleaseConfig:'firebase.release.json'},
   archives,
   caution:'No live project/instance/HTTPS parent endpoint confirmed; demo Pages-test is localhost-only. CI archive is NOT an authorized production web or backend deployment.',
   sourceReproduction:[
    'npm ci --no-audit --no-fund',
    'npm ci --prefix cell-edit-service --no-audit --no-fund',
    'npm ci --prefix parent-commit-service --no-audit --no-fund',
+   'node scripts/pr147-default-deploy-guard.mjs',
    'npm run build:pages',
    'VITE_PARENT_REPLACEMENT_ENABLED=true VITE_PARENT_COMMIT_ENDPOINT=http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit npm run build:pages:test',
    'node scripts/pr147-package-artifacts.mjs'
