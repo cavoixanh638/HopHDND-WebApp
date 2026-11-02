@@ -117,7 +117,7 @@ try{
   hold(process.versions.node.split('.')[0]==='22','NODE22_BUILDER_REQUIRED');
   const head=git('rev-parse','HEAD');
   hold(sourceSha===head,'CHECKOUT_SHA_MISMATCH expected='+sourceSha+' actual='+head);
-  hold(git('status','--porcelain','--untracked-files=normal')==='','DIRTY_CHECKOUT');
+  hold(git('status','--porcelain','--untracked-files=normal','--','.',':!qa-results')==='','DIRTY_CHECKOUT');
   validateSource();
   command('node',['scripts/pr147-default-deploy-guard.mjs']);
   const rulesPath='firebase/database.exclusive-candidate.rules.json';
