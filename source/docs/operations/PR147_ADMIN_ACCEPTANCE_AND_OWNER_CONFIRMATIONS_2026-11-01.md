@@ -1,7 +1,7 @@
 # PR147 — Kịch bản nghiệm thu quản trị và danh sách xác nhận duy nhất của chủ dự án
 
 **Đi kèm:** [Hồ sơ nguồn dữ liệu / cutover / backup / rollback](PR147_FIRST_USE_AND_CUTOVER_2026-11-01.md).  
-**SHA cố định:** `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` · **Ngày:** 01/11/2026 · **Tình trạng:** chỉ hướng dẫn chuẩn bị; **production GO = HOLD**.  
+**SHA gốc có FRCR-01:** `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` · **Fixed đã PR149 diễn tập:** `536f4811b84ee0f97f2841e7c746f0362df80a2e` · **Final Chat1:** `5656a5eaffa4e6b32e5100b11f36697af93c7340` · **Rà:** 02/11/2026 (Asia/Saigon) · **production GO = HOLD**.  
 **Không thực hiện** bất kỳ bài thử ghi nào trên production khi chưa có lịch, quyền, Rules/Functions và dữ liệu thử đã phê duyệt. Bằng chứng `8/8 PASS` nêu dưới là Emulator/Chrome của PR147, không phải nghiệm thu sản xuất.
 
 ## 1. Cách ghi biên nhận nghiệm thu
@@ -22,7 +22,7 @@ Mỗi lượt ghi **exact SHA frontend + FULL Rules checksum + hai Function code
 | U08. Freeze + receipt | Admin `Quản trị` chọn “Yêu cầu lưu rồi chốt” (DRAINING), chờ các editor hợp lệ; kiểm không mở lease mới. Thử force “Đóng băng ngay” khi có editor/nháp. Xem receipt, rồi kiểm quy trình OPEN theo quyền. | `freezeControl.mode=FROZEN` phải có server ACK + `freezeReceipts/{epoch}` khớp generation/rows/hash; forced không tính nháp chưa ACK, server từ chối SAVE/RENEW trái quy tắc; DRAINING không được gọi là hoàn tất. |
 | U09. Đổi generation khi đang sửa | Trong Emulator A đang giữ editor/nháp cũ, admin B thực hiện replacement có duyệt; A thử lưu cũ; kiểm desktop 1440px/mobile 390px và thông báo lỗi. | Old-generation lease/SAVE bị chặn tại Rules, không ghi vào generation mới; nháp cũ được giữ để đối chiếu, phản hồi lỗi chính xác; không che nút quan trọng trên mobile. |
 
-**Dẫn chứng sẵn có:** [PR147 FULL App QA #41291947075](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291947075) **8/8 PASS** trên đúng SHA với ảnh và server readback; [Integrated CI #41291946931](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946931) chứng minh 2 Functions+1 Rules, cell 32/32, Chrome 4/4; [Operational QA #41291946937](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946937) **54/54 PASS**. Những ca đã có chứng cứ này không phải chạy lặp chỉ để tạo nhãn PASS mới. **UAT vận hành với nguồn, quyền, website và backend production thật: NOT RUN**.
+**Dẫn chứng mới, không trộn SHA:** [PR147 final FULL App #41328843966](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328843966) và [integrated #41328843999](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328843999) PASS tại `5656a5…`; [PR149 S1–S3/FRCR/restore #41329223877](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41329223877) PASS tại `536f481…` (final khác đúng file browser-smoke). **Mốc gốc lịch sử:** [PR147 FULL App QA #41291947075](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291947075) **8/8 PASS** trên đúng SHA với ảnh và server readback; [Integrated CI #41291946931](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946931) chứng minh 2 Functions+1 Rules, cell 32/32, Chrome 4/4; [Operational QA #41291946937](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41291946937) **54/54 PASS**. Những ca đã có chứng cứ này không phải chạy lặp chỉ để tạo nhãn PASS mới. **UAT vận hành với nguồn, quyền, website và backend production thật: NOT RUN**.
 
 ## 2. Chỉ ba nhóm quyết định thật sự thuộc chủ dự án
 
@@ -42,7 +42,7 @@ Chỉ đưa ba quyết định này ra ký **sau** khi tất cả kiểm tra off
 
 | Trường bắt buộc | Giá trị trước khi owner xác nhận |
 |---|---|
-| SHA dự kiến | PR147 `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` — Emulator PASS, vẫn Draft |
+| SHA dự kiến | PR147 fixed `5656a5eaffa4e6b32e5100b11f36697af93c7340` — `CODE_READY`/Emulator PASS, vẫn Draft/chưa GO; PR149 độc lập tại `536f481…`. |
 | Web/2 Functions/FULL Rules artifact và checksum, URLs/regions/IAM | **CHƯA GHI / CHƯA DUYỆT PRODUCTION** |
 | Nguồn cuối A–O, cutoff, ID mapping, quyền/history cần giữ | **CHƯA CÓ BẢN KÝ** |
 | Trạng thái RTDB legacy/V2 + profile + Rules Published + hash | **CHƯA KIỂM TẠI CUTOVER** |
@@ -59,4 +59,4 @@ Chỉ đưa ba quyết định này ra ký **sau** khi tất cả kiểm tra off
 - [First import cũ](FIREBASE_FIRST_IMPORT_FROM_CURRENT_SOURCE_2026-10-27.md), [One-time cutover và rollback](FIREBASE_ONE_TIME_CUTOVER_ROLLBACK_PLAN_2026-10-25.md), [Bàn giao backup riêng tư](FIREBASE_READONLY_BACKUP_HANDOFF_2026-10-25.md), [Release gate và lịch sử restore demo](FIREBASE_PRIMARY_RELEASE_GATE_2026-10-25.md).
 - Đường ứng dụng hiện hành theo `src/app/App.tsx`, `VersionedExcelReplacementPanel.tsx`, `firebase-versioned-replacement-secure.ts` và `parent-commit-service/src/commit.mjs` trên **SHA PR147 đã ghim**; không suy sản phẩm production đã cập nhật từ mã repo.
 
-**Hồ sơ này chỉ lập kịch bản và checklist; không có hành động với production hoặc data private.**
+**Hồ sơ này đi kèm runbook có lệnh chạy, auditor offline và bằng chứng Auth/Functions/RTDB/restore Emulator tại PR149; không có hành động với production hoặc dữ liệu riêng tư.**

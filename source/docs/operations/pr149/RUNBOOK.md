@@ -1,13 +1,13 @@
 # PR149 — Runbook offline → Firebase Emulator → điều kiện chuyển đổi
 
 **Mốc mã nguồn gốc:** PR147 `02964722ae405a7ccf70f2b88bfe21cb7d0bcca7` — FRCR-01 chưa sửa.  
-**Mốc ứng viên sửa:** xem `DRILL_REPORT.md`, bắt buộc kiểm lại bằng server witness; Chat1 sở hữu mọi mã runtime/Rules và release manifest mới.  
-**Manifest gốc:** [PR147_RELEASE_MANIFEST.json](https://github.com/cavoixanh638/HopHDND-WebApp/blob/79f2e59b7c4e6116d6456836e0099ba744ba5ba0/source/docs/releases/PR147_RELEASE_MANIFEST.json) chỉ ghim nguồn gốc; checksum phải tái lập cho SHA sửa.  
+**Ứng viên FRCR-fixed đã PR149 kiểm độc lập:** `536f4811b84ee0f97f2841e7c746f0362df80a2e` ([DRILL_REPORT](DRILL_REPORT.md)); PR147 final Chat1 `5656a5eaffa4e6b32e5100b11f36697af93c7340` chỉ sửa thêm file smoke browser (so sánh 536f→5656). Đừng gán một lượt PR149 chạy tại 536f cho exact SHA 5656; Chat1 chịu trách nhiệm chứng cứ final SHA và runtime/Rules.  
+**Release manifest mới nhất:** [PR147_RELEASE_MANIFEST.json](https://github.com/cavoixanh638/HopHDND-WebApp/blob/8a6664e135ed888c7a458e4c4b1518a62890231e/source/docs/releases/PR147_RELEASE_MANIFEST.json) giữ nguồn lịch sử `source.releaseSourceSha=0296…` và phân biệt `finalFixedCandidate.sourceSha=5656…`; production NO-GO. Không dùng checksum nguồn cũ cho mã sửa.  
 **Múi giờ:** Asia/Saigon (UTC+07:00). **Production: HOLD**. Các lệnh thực thi dưới đây chỉ kiểm file local hoặc demo emulator, không kết nối/ghi production.
 
 ## G0 — Chuẩn bị và xác định SHA
 
-Dùng clone QA tách biệt với nhánh Chat1. Node 24 theo CI, Java 21, npm dependencies đã khóa. Đối với bản source có package-lock riêng của cả hai Functions dùng `npm ci --prefix`; bản gốc chỉ dùng `npm install --no-package-lock` trong QA, không coi đó là release artifact đã khóa.
+Dùng clone QA tách biệt với nhánh Chat1. Node 24 theo CI, Java 21; hai Functions ở ứng viên đã sửa có `package-lock.json` riêng cho Node 22 runtime, dùng `npm ci --prefix` để tái lập đúng phụ thuộc, không cài trôi phiên bản.
 
 ~~~sh
 cd /PATH/TO/HopHDND-WebApp/source
@@ -15,8 +15,8 @@ git rev-parse HEAD
 node --version
 java -version
 npm ci --no-audit --no-fund
-npm install --prefix cell-edit-service --no-package-lock --no-audit --no-fund
-npm install --prefix parent-commit-service --no-package-lock --no-audit --no-fund
+npm ci --prefix cell-edit-service --no-audit --no-fund
+npm ci --prefix parent-commit-service --no-audit --no-fund
 node docs/operations/pr149/operator-check.mjs --help
 ~~~
 
@@ -31,10 +31,10 @@ cd /PATH/TO/HopHDND-WebApp/source
 node scripts/firebase-backup-verify.mjs /ABSOLUTE/PRIVATE/checkpoint
 node docs/operations/pr149/operator-check.mjs --source /ABSOLUTE/PRIVATE/approved.xlsx --sheet "Sheet duoc duyet" --snapshot /ABSOLUTE/PRIVATE/checkpoint/rtdb.before.json --manifest /ABSOLUTE/PRIVATE/checkpoint/manifest.json --output /ABSOLUTE/PRIVATE/reports/audit-pr149.json
 # Có mốc cũ để phát hiện ACK/biến động? thêm:
-# --previous /ABSOLUTE/PRIVATE/checkpoint-previous/rtdb.before.json
+# --previous /ABSOLUTE/PRIVATE/checkpoint-previous/rtdb.before.json --previous-manifest /ABSOLUTE/PRIVATE/checkpoint-previous/manifest.json
 ~~~
 
-Công cụ **không có Firebase SDK/network** ở lõi kiểm; launcher dùng Vitest có sẵn trong `node_modules` để gọi chính parser `src/data/business-excel.ts::inspectBusinessExcel/parseBusinessExcel`. Không sửa file đầu vào. `--output` ghi báo cáo mới với chế độ không đè file cũ, stdout chỉ có số dòng, hash, mã sai lệch và ID đã băm. Kiểm 15 cột A–O, header, công thức/lỗi Excel, sheet do admin chọn, mã/recordId thiếu/trùng, thứ tự, Unicode, source digest, 13 trường text, revision/operationId, quyền và lịch sử, generation pointer/journal/backup. Raw JSON, email/UID không đưa lên PR.
+Công cụ **không có Firebase SDK/network** ở lõi kiểm; launcher dùng Vitest có sẵn trong `node_modules` để gọi chính parser `src/data/business-excel.ts::inspectBusinessExcel/parseBusinessExcel`. Không sửa file đầu vào. `--output` ghi báo cáo mới với chế độ không đè file cũ, stdout chỉ có số dòng, hash, mã sai lệch và ID đã băm. `--previous` bắt buộc kèm `--previous-manifest` cùng checkpoint. Auditor **tái tính digest** từ staged rows bằng `decodeCandidate`, kiểm backup bằng `verifyBackup` và `verifyCommittedRestoreSource` thực của parent; JSON tự khai digest/baseline không được tin. `HOLD` (kể cả đích trống cần bootstrap) trả exit khác 0; file JSON báo `UNREADABLE` vẫn được tạo cho file/JSON không đọc được nếu đầu ra hợp lệ. Kiểm 15 cột A–O, header, công thức/lỗi Excel, sheet do admin chọn, mã/recordId thiếu/trùng, thứ tự, Unicode, source digest, 13 trường text, revision/operationId, quyền và lịch sử, generation pointer/journal/backup. Raw JSON, email/UID không đưa lên PR.
 
 | Phân loại | Ý nghĩa và hành động |
 |---|---|
