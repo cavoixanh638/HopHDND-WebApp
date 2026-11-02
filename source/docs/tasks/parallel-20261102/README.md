@@ -65,3 +65,10 @@ không reset hoặc force-push.”**
 
 Khi có quyết định điều phối mới, cập nhật quy tắc liên quan và skill, tránh chỉ
 để trong lịch sử chat. Không ghi đè checkpoint tiến độ của worker khi cập nhật mẫu.
+
+## Kết quả kiểm tra điều phối — 02/11/2026
+
+[Báo cáo kiểm tra 5 luồng](reviews/REVIEW_5_STREAMS_2026-11-02.md) xác nhận CI
+đúng SHA của từng luồng và ghi finding COORD-01 về đường dẫn biên nhận Windows.
+[Checkpoint điều phối](handoffs/COORDINATOR.md) lưu bước tích hợp tiếp theo.
+Đây là kết quả review các nhánh riêng; chưa có SHA/gói tích hợp được nghiệm thu.
