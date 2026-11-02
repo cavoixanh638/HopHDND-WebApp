@@ -1,27 +1,23 @@
-# Checkpoint — Chat 3 / COORD-01 Windows receipt guard
+# Checkpoint — Chat 3 / COORD-01 (Windows receipt containment)
 
-- **Status: IN_PROGRESS** — nhiệm vụ mới COORD-01, gói operator trước đó DONE; không làm lại.
-- Branch: `parallel/20261102-chat3-bootstrap`; HEAD mã+workflow trước docs `04568fd30a8be59f269be58f03d0dcc2cb72de85`.
-- **Code SHA mới: `04568fd30a8be59f269be58f03d0dcc2cb72de85`**, **TEST_PENDING**; prior tested `342b8f620e4edcaead93a1e04d0f502f2a672cdd` ([CI PASS #41410079477](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410079477)).
-- **CI mới:** [run #41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660): **Windows SUCCESS**, Ubuntu Emulator **IN_PROGRESS**; exact code+workflow SHA `04568fd30a8be59f269be58f03d0dcc2cb72de85`.
-- Lưu: **REMOTE**; không có uncommitted local worktree. Quy ước `QUY_UOC_CHUNG.md` v2 (blob `ad0d6cd42b224061a39bbf11de8753471d342e35`). Cập nhật 02/11/2026 Asia/Saigon.
+- **Status: DONE — COORD-01 CLOSED**; gói operator trước đó vẫn DONE; production **NOT RUN / NO GO**.
+- Branch: `parallel/20261102-chat3-bootstrap`; [nhiệm vụ và COORD-01](../CHAT_3_BOOTSTRAP.md).
+- **Code + workflow tested SHA: `04568fd30a8be59f269be58f03d0dcc2cb72de85`.**
+- **Exact-SHA CI SUCCESS:** [GitHub Actions #41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660) — 2/2 jobs: native Windows `windows-receipt-guard`, Linux FULL Rules Emulator `operator-cli`.
+- **Saved: REMOTE**, không có local WIP/dirty/unpushed. Docs-only sau code SHA gồm `PR147_OPERATOR_FIRST_IMPORT.md`, `reports/CHAT_3.md` (commit `a9f35e63c02e024566396bc87060b756782ab507`) và checkpoint.
+- Quy ước `QUY_UOC_CHUNG.md` v2 đã đọc, blob `ad0d6cd42b224061a39bbf11de8753471d342e35`; cập nhật 2026-11-02 Asia/Saigon.
 
-## Đã làm
-- Tái hiện **trước sửa** trên Node `path.win32`: checkout `C:\\repo\\HopHDND-WebApp`/target `...\\private\\receipt.json`, old guard `false`, relative containment `true`; đối chứng POSIX old guard `true`.
-- Tách logic production ở `scripts/operator-first-import-path.mjs`, `entry.ts` gọi **chính helper đó**; `relative/isAbsolute/sep` thay nối slash. Giữ `realpathSync` parent, `wx` receipt, fail before CAS.
-- Test `parallel-qa/chat3/operator-receipt-path.test.mjs` kiểm root/child/nested/parent/sibling/cross-drive/Windows case và realpath symlink/junction; `operator-windows-cli.mjs` gọi launcher thật trên Windows với approved XLSX giả và xác nhận inside HOLD, outside đi tới lỗi stdin, không tạo receipt. Workflow riêng có job Ubuntu + Windows.
+## Đã làm / quyết định giữ
+- Tái hiện lỗi cũ: `target.startsWith(checkout + '/')` → **false** cho `C:\\repo\\HopHDND-WebApp\\private\\receipt.json`, dù thực sự nằm trong checkout. POSIX đối chứng true.
+- Sửa `scripts/operator-first-import-entry.ts` dùng helper production `scripts/operator-first-import-path.mjs` với `relative/isAbsolute/sep`; vẫn `realpathSync` parent, chặn symlink/junction, đảm bảo output độc quyền `wx` và pre-CAS HOLD. Không đổi parser/CAS/Auth/Rules.
+- Thêm `parallel-qa/chat3/operator-receipt-path.test.mjs` và `operator-windows-cli.mjs`, workflow riêng Windows+Ubuntu, hướng dẫn vận hành; [báo cáo chi tiết](../reports/CHAT_3.md).
 
-## Kiểm thử / tình trạng
-- **PASS local Node reproduction:** old Windows guard fails exact containment; POSIX control.
-- **PASS Windows real runner:** [CI #41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660), job `windows-receipt-guard`: pure path tests **15/15**, CLI thật **6/6** (4 inside HOLD trước Auth, 2 outside qua path rồi HOLD do thiếu stdin), junction được chặn.
-- **RUNNING Ubuntu:** same CI Linux typecheck/path tests và full Auth/RTDB/Functions Emulator preflight/ACK-loss/replay/happy path; chưa ghi PASS.
-- **NOT RUN**: Firebase production/real credentials/deploy/merge. Container không clone GitHub do DNS; commit qua connector.
+## Kiểm thử đúng SHA `04568fd…`
+- **PASS Windows thật:** `node --test parallel-qa/chat3/operator-receipt-path.test.mjs` **15/15**; `node parallel-qa/chat3/operator-windows-cli.mjs` **6/6**, gồm root/child/junction HOLD trước ghi; ngoài checkout/sibling qua path guard rồi HOLD do thiếu token; không có output receipt.
+- **PASS POSIX/Linux:** path tests **15/15**, typecheck, default deploy guard; Auth/RTDB/Functions + FULL Rules Emulator: 12 negative preflight, offline-before-CAS exit 2/no receipt/unchanged DB, ACK lost after server commit exit 3/UNKNOWN/replay unchanged, FRV-02 happy CAS/readback/duplicate denied.
+- **NOT RUN:** Firebase CAS native Windows (job Windows kiểm prewrite path CLI thật, **không** ghi Firebase); production Auth/RTDB/Rules, deploy, merge, credential thật. Linux end-to-end cùng SHA đã PASS.
 
-## WIP / ranh giới
-- Không có file chưa push. Chỉ file CLI, QA riêng, workflow riêng, docs/report/checkpoint được phép; không sửa parser/CAS/Rules/backend.
-- Chưa gọi DONE trước khi cả **Windows** và **Ubuntu** job PASS đúng SHA. Các run cũ có thể auto-cancel khi commit tiếp, không coi là kết quả.
-
-## Tiếp theo
-1. Theo dõi **job Ubuntu** trong [#41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660) tới kết luận và log, nếu FAIL sửa đúng scope.
-2. Khi cả Windows+POSIX+Emulator PASS, cập nhật hướng dẫn xử lý COORD-01 và report với actual run SHA, diff phạm vi.
-3. Chốt checkpoint `DONE` đúng COORD-01; production vẫn NOT RUN.
+## Bàn giao / không còn WIP
+1. Điều phối tích hợp từ nhánh này, dùng tested SHA và CI trên để review; **không lặp test đã PASS** chỉ vì docs-only commits.
+2. Nếu xây candidate tích hợp riêng, kiểm lại trên exact integration SHA; đợt COORD-01 chỉ chứng minh nhánh Chat 3, không chứng minh tích hợp cả năm luồng.
+3. Chat mới đọc nhiệm vụ + checkpoint thấy COORD-01 **DONE** thì báo kết quả, không tự mở vòng sửa mới; production GO do người vận hành/điều phối phê duyệt riêng.
