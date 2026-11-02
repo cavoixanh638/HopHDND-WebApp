@@ -22,8 +22,9 @@ assert('NON_PRODUCTION_REHEARSAL_STATUS',manifest.statuses?.PRODUCTION_AUTHORIZE
 const ruleHash=digest(readFileSync('firebase/database.exclusive-candidate.rules.json'));
 assert('EXACT_RULES_CONTENT_SHA256',manifest.rules?.rawSha256===ruleHash,{manifest:manifest.rules?.rawSha256,current:ruleHash});
 const wanted=['web-pages-default-disabled.tar.gz','web-pages-test-emulator-only.tar.gz',
- 'functions-cellEdit-node22.tar.gz','functions-parentDatasetCommit-node22.tar.gz','firebase-full-rules-frcr01.tar.gz'];
-assert('FIVE_DISTINCT_REQUIRED_ARCHIVES',wanted.length===manifest.archives?.length&&wanted.every(name=>manifest.archives.some(x=>x.file===name)),
+ 'functions-cellEdit-node22.tar.gz','functions-parentDatasetCommit-node22.tar.gz',
+ 'firebase-full-rules-frcr01.tar.gz','operator-first-import-node22-sources.tar.gz'];
+assert('SIX_DISTINCT_REQUIRED_ARCHIVES',wanted.length===manifest.archives?.length&&wanted.every(name=>manifest.archives.some(x=>x.file===name)),
  {files:manifest.archives?.map(x=>x.file)});
 const observedLines=checks.map(s=>s.match(/^([0-9a-f]{64})  ([A-Za-z0-9._-]+\.tar\.gz)$/)).filter(Boolean);
 assert('SHA256SUMS_PARSE_AND_COUNT',observedLines.length===wanted.length);
@@ -48,6 +49,23 @@ for(const file of ['index.js','core.js','package.json','package-lock.json'])
 for(const file of ['index.mjs','src/handler.mjs','src/commit.mjs','src/manifest.mjs','src/parent-contract.mjs','package.json','package-lock.json'])
  assert('PARENT_CONTENT_'+file,digest(extracted(tarParent,file))===digest(readFileSync('parent-commit-service/'+file)));
 assert('RULES_CONTENT',digest(extracted('firebase-full-rules-frcr01.tar.gz','firebase/database.exclusive-candidate.rules.json'))===ruleHash);
+const tarOperator='operator-first-import-node22-sources.tar.gz';
+for(const file of ['scripts/operator-first-import.mjs','scripts/operator-first-import-entry.ts',
+ 'scripts/pr147-default-deploy-guard.mjs','package.json','package-lock.json']){
+ assert('OPERATOR_CONTENT_'+file,
+   digest(extracted(tarOperator,file))===digest(readFileSync(file)));
+}
+assert('OPERATOR_REQUIRED_ENTRYPOINT',manifest.operatorFirstImport?.sourceArchive===tarOperator &&
+ manifest.operatorFirstImport?.entrypoint==='node scripts/operator-first-import.mjs' &&
+ manifest.operatorFirstImport?.deployPerformed===false &&
+ manifest.operatorFirstImport?.productionExecuted===false);
+assert('DEFAULT_DEPLOY_HOLD_SOURCE_HASH',
+ manifest.sourceHashes?.defaultFirebaseDeployHoldSha256===digest(readFileSync('firebase.json')) &&
+ manifest.sourceHashes?.defaultDeployGuardSha256===digest(readFileSync('scripts/pr147-default-deploy-guard.mjs')) &&
+ manifest.defaultDeploy?.status==='FAIL_CLOSED_MISSING_RULES_SOURCE');
+assert('OPERATOR_LOCK_AND_SOURCE_HASHES',
+ manifest.sourceHashes?.operatorCliSourceSha256===digest(readFileSync('scripts/operator-first-import.mjs')) &&
+ manifest.sourceHashes?.operatorCliEntrySha256===digest(readFileSync('scripts/operator-first-import-entry.ts')));
 for(const archive of wanted.slice(0,2)){
  const listed=dirs.find(x=>x.file===archive).listed;
  assert('WEB_ASSET_PRESENT_'+archive,listed.some(x=>/index\.html$/.test(x))&&listed.some(x=>/\/assets\/.*\.js$/.test(x)));
