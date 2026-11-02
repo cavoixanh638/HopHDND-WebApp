@@ -651,12 +651,26 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
    // Each coverage event contains a rule AST. Keep only structured,
    // path-scoped hints: never log the gigantic full report to CI stdout.
    const decoded=typeof coverage==='string'?JSON.parse(coverage):coverage;
-   const details=Object.entries(decoded??{}).map(([k,v])=>({
-     key:k,type:typeof v,array:Array.isArray(v),
-     length:typeof v==='string'||Array.isArray(v)?v.length:null,
-     sample:JSON.stringify(v).slice(0,1800)}));
-   console.log('FRV02_RULES_COVERAGE_STRUCTURE',JSON.stringify({
-    httpStatus:resp.status,keys:Object.keys(decoded??{}),details}).slice(0,6200));
+   const points:any[]=[];
+   const visit=(obj:any,path:string)=>{
+     if(!obj||typeof obj!=='object')return;
+     for(const [key,value] of Object.entries(obj)){
+       if(key==='.validate'||key==='.write'){
+         const v:any=value;
+         points.push({path:path+'/'+key,expression:v?.text?.slice(0,100),
+           results:(v?.values??[]).filter((x:any)=>typeof x.value==='boolean')
+             .map((x:any)=>({value:x.value,count:x.count}))});
+       }else if(!['values','children','text','location-start','location-end'].includes(key))
+         visit(value,path+'/'+key);
+     }
+   };
+   visit(decoded.report?.hdnd?.datasetV2,'/hdnd/datasetV2');
+   const failing=points.filter((x:any)=>x.results.some((y:any)=>y.value===false));
+   console.log('FRV02_RULES_COVERAGE_PATHS',JSON.stringify({
+     httpStatus:resp.status,all:points.length,falseCount:failing.length,
+     suspect:failing.filter((x:any)=>/generations|permissions|leases|active|operations/.test(x.path))
+       .slice(0,50)
+   }).slice(0,9500));
   }catch(error){console.log('FRV02_RULES_COVERAGE_UNAVAILABLE',String(error));}
  }
  expect(restoreError,'Valid COMMITTED backup of legally edited A must restore; '+restoreError).toBe('');

@@ -142,3 +142,7 @@ try{
 }finally{
  if(app)await deleteApp(app).catch(()=>{});
 }
+// All client requests and authoritative CAS/readback have completed above.
+// Firebase Auth/RTDB networking can retain active connection handles after
+// deleteApp on Node. This is a single-purpose CLI, not a persistent server.
+process.exit(process.exitCode??0);
