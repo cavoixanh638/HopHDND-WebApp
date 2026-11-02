@@ -1,49 +1,26 @@
-# Checkpoint — Chat 2: Giao diện và thao tác người dùng
+# Checkpoint — Chat 2: UI (quy ước v2)
 
-- Trạng thái: **IN_PROGRESS**
-- Cập nhật lúc: 2026-11-02 14:41 Asia/Saigon
-- File nhiệm vụ: [CHAT_2_UI.md](../CHAT_2_UI.md)
-- Repository/branch: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat2-ui`
-- Worktree: không có trong container; checkout GitHub trực tiếp bằng connector (container DNS github.com không hoạt động).
-- Mốc nguồn: `0a04b81dbb00979fb87aee7fc497e802058d8518`
-- HEAD code đã push: `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60`
-- Tested code SHA: `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60` — CI PASS: typecheck, unit và Pages test build
-- Draft PR: chưa tạo. Writer khác trên nhánh: chưa xác minh; HEAD ban đầu chỉ docs bootstrap, không có tác vụ UI khác ghi vào checkpoint.
+- **Trạng thái:** IN_PROGRESS · cập nhật 2026-11-02 14:56 Asia/Saigon.
+- **Nhánh:** `parallel/20261102-chat2-ui`; mốc gốc `0a04b81d`; HEAD sau chỉnh workflow `8af962f01358c7b91106bfce1d353fb8e0be86b0`.
+- **Code UI đã kiểm:** `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60` (CI PASS [41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605)). HEAD sau đó chỉ báo cáo/quy ước và sửa workflow.
+- **CI workflow-only mới:** [41409484881](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409484881) — đang chạy khi checkpoint; phải xác minh kết luận.
+- **Worktree:** không có; GitHub connector là writer; container `git ls-remote` lỗi DNS; không có code LOCAL_ONLY. Writer khác: chưa thấy commit UI song song, không thể xác minh worktree ngoài hệ thống.
 
-## Đã hoàn tất
-- Đọc quy ước chung, AGENTS, baseline CI; đối chiếu UI List, bộ lọc, modal, history, editor, admin; xem [báo cáo](../reports/CHAT_2.md).
-- Sửa bug keyboard UX: Escape bộ lọc Phòng/CV rỗng không còn nuốt sự kiện; điều kiện nguồn/role không đổi.
-- Unit test colocated: `source/src/features/items/RoomSpecialistFilterCell.test.ts`.
-- Thêm workflow scoped `.github/workflows/parallel-chat2-ui-checks.yml` — không deploy.
+## Đã thực hiện
+- Đọc `QUY_UOC_CHUNG.md` v2 (blob `ad0d6cd4...`), file nhiệm vụ, checkpoint và đối chiếu HEAD/CI; không reset, không lặp test đã PASS.
+- Sửa Escape khi bộ lọc Phòng/CV rỗng; unit cùng vùng UI; báo cáo [CHAT_2](../reports/CHAT_2.md).
+- Sửa workflow `.github/workflows/parallel-chat2-ui-checks.yml` chỉ chạy push khi sửa UI/QA/workflow, không kích hoạt vì checkpoint-only.
 
-## Đang làm/chưa commit
-- Không có file local chưa commit; các commit sửa UI/test/workflow đã đẩy. Báo cáo và checkpoint cập nhật bằng GitHub connector sau code SHA.
+## Đang làm / quyết định
+- Bước kế: bổ sung QA Chrome component thật bằng synthetic data trong `source/parallel-qa/chat2/`, test keyboard/viewport/ảnh, không gọi fixture là tích hợp.
+- Xác minh race `LeaseTextInput` blur trước server ACK (code hiện `then(setReady(true))` sau blur), sửa nếu tái hiện; không đổi `source/src/data/`, API/quyền hay hành vi ACK.
+- GIỮ palette/status/column resize/guest popup/polling; không publish, merge, production.
 
-## Kiểm thử
-| Kiểm thử | SHA | Trạng thái | Chứng cứ |
-|---|---|---|---|
-| Baseline FULL App QA | baseline trước luồng | PASS lịch sử, không áp dụng code mới | [run 41390964199](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41390964199) |
-| Chat2 npm ci / typecheck / unit / build | `876b69d` | **PASS** | [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) |
-| Browser real synthetic desktop/mobile | code mới | NOT RUN | Thiếu checkout chạy Vite ở môi trường hiện tại |
-| Emulator Auth/RTDB/Functions end-to-end | code mới | NOT RUN | Không được gọi fixture là integration PASS |
-
-## Quyết định cần giữ
-- Không đổi palette, bố cục, popup khách, quyền, 60s polling hay business mappings đã chốt.
-- Chỉ sửa điều kiện xử lý keyboard cho bộ lọc có giá trị; giữ AND phòng/chuyên viên.
-- Không đụng shared runner hoặc production; CI QA chỉ chạy test.
-
-## Đã thử nhưng không hiệu quả
-- `git ls-remote https://github.com/cavoixanh638/HopHDND-WebApp.git` trong container: lỗi DNS `Could not resolve host: github.com`; GitHub connector vẫn fetch/update thành công.
-
-## Vấn đề ngoài phạm vi / chưa giải quyết
-- Nghi vấn `LeaseTextInput`: blur trước khi `manager.acquire` resolve có thể để lease còn held; cần browser/Emulator tái hiện trước khi chốt, không khẳng định đã xảy ra.
-- Chưa có Chrome screenshot viewport/role/data giả mới; còn các luồng đặc biệt tải/rỗng/lỗi mạng cần E2E.
+## Kiểm thử và phần chưa hoàn tất
+- PASS baseline QA [41390964199](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41390964199) (SHA nền), PASS Chat2 typecheck/unit/build [41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) (SHA `876b69d`).
+- **NOT RUN** trên code Chat2: Chrome viewport 390/900/1440 và Auth/RTDB/Functions Emulator; chưa có ảnh mới.
 
 ## Bước tiếp theo
-1. CI [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) đã PASS cho code SHA trên; không cần chạy lại nếu mã không đổi.
-2. Tạo/chạy Chrome/Emulator real-app synthetic QA riêng `source/parallel-qa/chat2/`, viewport 390/900/1440, guest/admin; tương tác Escape trên filter trong modal, kiểm scroll/focus và PNG.
-3. Tái hiện riêng blur-before-acquire (lease ACK) và kiểm xử lý, tránh mất draft/false ACK; không sửa backend. Thêm regression chạy CI.
-4. Kiểm tra diff/CI SHA cuối; ghi rõ các case PASS/NOT RUN, cập nhật report+checkpoint thành DONE hoặc DONE_WITH_EXTERNAL_GAPS đúng thực tế.
-
-## Bàn giao cuối
-- [Báo cáo](../reports/CHAT_2.md). Chưa DONE; chat sau đọc HEAD branch và tiếp tục các bước trên, không reset.
+1. Theo dõi CI 41409484881; viết và push harness Chrome/runner, workflow artifact trong vùng riêng; ghi code SHA+run ngay khi có ID.
+2. Dùng Chrome synthetic tái hiện lỗi LeaseTextInput; sửa UI, chạy lại Chrome + typecheck/unit trên đúng SHA; ghi expected/actual và PNG.
+3. Nếu có thể, chạy Emulator với baseline và full-app runner trong CI riêng; kết luận PASS/NOT RUN minh bạch, cập nhật báo cáo + checkpoint DONE hoặc DONE_WITH_EXTERNAL_GAPS.
