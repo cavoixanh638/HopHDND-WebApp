@@ -4,7 +4,9 @@
 - Branch / code SHA / tested SHA:
 - Lưu: REMOTE hoặc LOCAL_ONLY (worktree/path nếu chưa push)
 - Cập nhật: YYYY-MM-DD HH:mm Asia/Saigon
-- Quy ước đã đọc: v2 (2026-11-02)
+- Quy ước đã đọc: v3 (2026-11-02)
+- Đích cuối / link nhiệm vụ và tiêu chí hoàn tất:
+- Tiêu chí còn thiếu / bằng chứng đã đạt: (DONE chỉ khi không còn thiếu)
 
 ## Đã làm / quyết định cần giữ
 - Tối đa 3 ý kèm file/link.
@@ -23,3 +25,4 @@
 
 ## Ngoài phạm vi
 - Gap có bằng chứng, nếu có; không chờ chat khác để làm phần còn lại.
+
