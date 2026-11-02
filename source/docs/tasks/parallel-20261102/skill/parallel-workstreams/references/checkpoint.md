@@ -19,12 +19,28 @@ Không có thay đổi hữu ích thì không tạo commit, không nhắc lại 
 Mục tiêu 20–40 dòng, khoảng 300–600 từ trở xuống khi có thể.
 Dùng [mẫu](../assets/CHECKPOINT.md), chỉ giữ:
 - Status, nhánh, code SHA/tested SHA, nơi lưu (remote/local-only).
+- Đích cuối/link nhiệm vụ, tiêu chí chưa đạt và bằng chứng đã đạt; không mất
+  điều kiện hoàn tất khi chuyển chat. DONE chỉ khi đủ tiêu chí bắt buộc.
 - Đã làm (tối đa 3 ý), quyết định/điều đã thử cần giữ (tối đa 3 ý).
 - File WIP và phần chưa push; không nhầm checkpoint với bản sao mã nguồn.
 - Test/result + run URL/ID; chưa chạy ghi NOT RUN, chưa có ACK ghi UNKNOWN.
 - Tối đa 3 bước kế tiếp thực thi được; vấn đề ngoài phạm vi nếu có.
 Log, screenshot và lịch sử chi tiết nằm ở artifact hoặc git, không chép vào file.
 Chat tiếp quản đọc 3 file nhỏ: quy ước, nhiệm vụ, checkpoint; tra code/log theo nhu cầu.
+
+## Đề nghị đổi chat
+
+Ưu tiên lúc kết thúc một giai đoạn, trước giai đoạn độc lập tiếp theo, khi phần
+lịch sử dài đã được thay bằng bằng chứng và checkpoint. Nếu thấy cảnh báo context
+thật thì lưu ngay; không tự đặt ngưỡng số lượt/% token thiếu căn cứ. Không đổi chat
+chỉ vì một log dài nếu có thể đọc phần cần thiết; không hứa giảm credits cụ thể.
+
+Trước khi báo nên đổi: xác nhận mã đã lưu ở đâu, cập nhật đích cuối/tiêu chí còn
+thiếu, nhánh/SHA, quyết định, WIP và run ID cần theo dõi. Đưa một câu: “Đọc [file
+đầu vào], tiếp tục từ checkpoint đến khi đạt [tiêu chí], không làm lại phần PASS.”
+Chat mới thay writer cũ; không tự tạo chat hay bỏ run đang chạy không có bàn giao.
+Đề nghị đổi chat không phải trạng thái DONE và không đình chỉ phần việc đã được
+giao nếu người dùng tiếp tục trong chat hiện tại.
 
 ## Lưu mã và đồng bộ
 
@@ -45,3 +61,4 @@ Chat tiếp quản đọc 3 file nhỏ: quy ước, nhiệm vụ, checkpoint; tr
 
 Đây là giao thức assistant chủ động thực hiện trong lúc chạy, không phải daemon
 tự lưu khi model đã dừng. Không thể bảo đảm cứu phần chưa lưu giữa hai mốc.
+
