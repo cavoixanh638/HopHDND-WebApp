@@ -6,8 +6,15 @@ const check=(ok,msg)=>{if(!ok)throw Error('PARENT_COMMIT_DENIED: '+msg);};
 const parse=x=>JSON.parse(x);
 const own=(x,k)=>Object.hasOwn(x??{},k);
 const clean=(x)=>structuredClone(x);
-const rowsWithProvenance=(items,op,uid)=>Object.fromEntries(Object.entries(items).map(([id,row])=>
-  [id,{...row,operationId:op,updatedAt:ServerValue.TIMESTAMP,updatedBy:uid}]));
+const rowsWithProvenance=(items,op,uid,{restoring=false}={})=>
+  Object.fromEntries(Object.entries(items).map(([id,row])=>{
+    // A restoration creates a NEW edit scope. Historic editProofs identify
+    // old generation leases; never carry reusable old session tokens to C.
+    // The immutable original rows, COMMITTED backup, and history stay intact.
+    const {editProofs:_oldSessionProofs,...rowWithoutOldSessionProofs}=row;
+    return [id,{...(restoring?rowWithoutOldSessionProofs:row),
+      operationId:op,updatedAt:ServerValue.TIMESTAMP,updatedBy:uid}];
+  }));
 export function statusFor(snapshot,op){
   const unknown={status:'unknown',operationId:op};
   if(!snapshot?.active||!snapshot?.generations)return unknown;
@@ -110,7 +117,7 @@ function inspect(current,body,uid,legacy){
     oldGen=current.active.generationId;
   }else throw Error('Unsupported action');
   const next={...current,
-    generations:{...(current.generations??{}),['gen_'+op]:{items:rowsWithProvenance(approved,op,uid)}},
+    generations:{...(current.generations??{}),['gen_'+op]:{items:rowsWithProvenance(approved,op,uid,{restoring:mode==='restore'})}},
     permissions:{...(current.permissions??{}),['gen_'+op]:sourcePermissions},
     active:{generationId:'gen_'+op,operationId:op,revision:(current.active?.revision??0)+1,
       rowCount:count,digest},

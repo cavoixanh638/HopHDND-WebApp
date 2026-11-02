@@ -93,6 +93,10 @@ function cleanedRows(newItems,expectedItems,opId,actor,{restoring=false}={}){
       Number.isFinite(actual.updatedAt),'bad updatedAt '+id);
     const {operationId:_a,updatedAt:_b,updatedBy:_c,...payload}=actual;
     const {operationId:_d,updatedAt:_e,updatedBy:_f,...oldBusiness}=source;
+    // Only the new RESTORE generation is forbidden to inherit A's old
+    // session proof markers. Provenance verifies the entire untouched source
+    // row/history BEFORE this comparison; this removes, never adds, authority.
+    if(restoring)delete oldBusiness.editProofs;
     check(equal(payload,restoring?oldBusiness:source),'staged content differs for '+id);
   }
 }

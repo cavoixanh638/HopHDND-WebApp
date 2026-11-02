@@ -723,6 +723,7 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  expect(Object.keys(sourceRow.history??{})).toContain('2');
  expect(restoredRow.revision).toBe(sourceRow.revision);
  expect(restoredRow.history).toEqual(sourceRow.history);
+ expect(restoredRow.editProofs).toBeUndefined(); // never migrate A's session tokens into C
  expect(restoredRow.note).toBe(sourceRow.note);
  expect(restoredRow.operationId).toBe(restore);
  expect(restoredRow.updatedBy).toBe(admin.uid);
@@ -745,6 +746,7 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  expect(afterC.history['3'].changes.note).toBe('FRV VALID C GUEST EDIT');
  expect(afterC.history['3'].oldValues.note).toBe('FRV VALID A GUEST EDIT');
  expect(afterC.history['3'].actor).toBe(guest.uid);
+ expect(afterC.editProofs?.note).toMatch(/^[A-Za-z0-9_-]{20,100}$/);
  expect(afterCEdit.datasetV2.generations[genA]).toEqual(beforeRestore.datasetV2.generations[genA]);
 
  await frvDenied('HISTORICAL_B_PERMISSION_AFTER_RESTORE',()=>set(ref(db,bGrant),false));
