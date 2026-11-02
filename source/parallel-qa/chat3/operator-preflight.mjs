@@ -81,11 +81,12 @@ try{
      email_verified:true,name:'DO_NOT_PRINT_SECRET'}));
    }
   });
-  const code=await Promise.race([
-    new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);}),
-    new Promise((_,reject)=>setTimeout(()=>{child.kill('SIGKILL');
-      reject(Error('race CLI timed out before completion'));},60000))
-  ]);
+  const code=await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>{child.kill('SIGKILL');
+      reject(Error('race CLI timed out before completion'));},60000);
+    child.once('error',e=>{clearTimeout(timer);reject(e);});
+    child.once('exit',c=>{clearTimeout(timer);resolve(c);});
+  });
   assert.equal(changed,true,stderr);
   assert.equal(code,2,stderr+' '+stdout);
   assert.match(stderr,new RegExp(expected));
