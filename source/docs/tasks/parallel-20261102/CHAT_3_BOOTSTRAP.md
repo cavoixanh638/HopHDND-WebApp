@@ -2,6 +2,40 @@
 
 **Đây là file đầu vào duy nhất cần gửi cho chat mới hoặc chat tiếp tục luồng 3.**
 
+## Nhiệm vụ tiếp tục được giao — đóng COORD-01 (02/11/2026)
+
+**Có nhiệm vụ mới cụ thể dù checkpoint trước ghi DONE. Chỉ mở lại COORD-01,
+không làm lại toàn bộ gói đã nghiệm thu. Chủ sở hữu: Chat 3, làm từ đầu đến cuối,
+không chờ Chat 1/2/4/5.**
+
+Đọc [finding và bằng chứng của điều phối](https://github.com/cavoixanh638/HopHDND-WebApp/blob/docs/parallel-workstreams-20261102/source/docs/tasks/parallel-20261102/reviews/REVIEW_5_STREAMS_2026-11-02.md).
+Ở `operator-first-import-entry.ts` (dòng 84 tại SHA đã kiểm
+`342b8f620e4edcaead93a1e04d0f502f2a672cdd`), biểu thức
+`target.startsWith(checkout+'/')` có thể lọt đường dẫn con Windows dùng
+backslash. Bằng chứng hiện tại chỉ tái hiện phép kiểm đường dẫn, chưa phải full CLI Windows.
+
+1. Tiếp tục HEAD hiện tại của nhánh luồng; kiểm tra thay đổi chưa commit,
+   đọc quy ước và checkpoint; giữ nguyên thành quả cũ. Ghi checkpoint bắt đầu COORD-01.
+2. Tái hiện lỗi rồi sửa phép xác định receipt nằm trong checkout bằng API đường
+   dẫn phù hợp nền tảng (relative/isAbsolute/sep hoặc tương đương). Giữ realpath,
+   chống đi vòng qua symlink và tạo file độc quyền; không làm yếu chặn trước CAS.
+3. Kiểm thử Windows và POSIX: checkout itself, child/nested child, parent,
+   sibling có cùng prefix, đường dẫn khác drive trên Windows. Phép kiểm thuần
+   phải gọi đúng logic production. Thêm kiểm thử CLI thật trên Windows (local
+   hoặc runner riêng) xác nhận receipt trong checkout bị HOLD trước ghi, receipt
+   ngoài checkout qua được bước kiểm đường dẫn. Nếu môi trường không cho chạy
+   một kiểm tra, ghi NOT RUN cùng lý do; không gọi mô phỏng win32 là full CLI.
+4. Chạy lại bộ kiểm thử Chat 3 liên quan trên SHA sửa cuối, gồm receipt,
+   prewrite HOLD, lost-ACK UNKNOWN và chặn chạy lặp; sửa đến khi đạt.
+   Chỉ dùng dữ liệu tổng hợp/Emulator. Không sửa backend, Rules hoặc mã luồng khác.
+5. Commit/push trên nhánh luồng, cập nhật báo cáo và checkpoint: nguyên nhân,
+   sửa gì, SHA code, lệnh/CI và kết quả thật, phần chưa chạy. Tự lưu theo quy ước
+   trong lúc làm, không đợi hit limit. Không merge/deploy/truy cập production.
+
+**Xong khi:** COORD-01 có sửa và bằng chứng hồi quy; các gate liên quan đạt đúng
+code SHA; bàn giao đủ để điều phối tích hợp, không cần một chat khác kiểm hộ.
+Nếu thiếu bằng chứng Windows, ghi rõ phần chưa hoàn tất thay vì đánh dấu đóng.
+
 ## Đọc trước, rồi thực hiện
 
 1. [Quy ước chung](QUY_UOC_CHUNG.md).
@@ -16,7 +50,7 @@
 - Báo cáo kết quả của mình: `source/docs/tasks/parallel-20261102/reports/CHAT_3.md`.
 - Checkpoint của mình: `source/docs/tasks/parallel-20261102/handoffs/CHAT_3.md`.
 
-Không cần đọc lại toàn bộ chat cũ. Nếu checkpoint đã DONE, báo kết quả đã có
+Không cần đọc lại toàn bộ chat cũ. Nếu checkpoint đã DONE và không có nhiệm vụ tiếp tục chưa đóng ở đầu file, báo kết quả đã có
 và không tự khởi động một vòng sửa mới. Nếu đang làm, tiếp tục bước kế tiếp
 sau khi đối chiếu git/CI; giữ nguyên phần việc chưa commit của người trước.
 
