@@ -56,7 +56,7 @@ OAUTH_GOOGLE_ID_TOKEN_PRODUCER_FOR_APPROVED_ADMIN_ONLY \
    --output /ABSOLUTE/PRIVATE/first-import-result.json
 ```
 
-The example's credential producer is **a placeholder**, not an executable command. No real credentials, project URLs, IAM or LIVE approval are provided in source. The operator must use a real approved OAuth acquisition method; Firebase Auth verifies Google provider/email and the code checks `email_verified` and the configured admin email. On any missing/mismatched input, previously populated legacy/V2 root, permission error, concurrent CAS rejection or readback ambiguity, the tool **returns HOLD and does not retry automatically**.
+The example's credential producer is **a placeholder**, not an executable command. No real credentials, project URLs, IAM or LIVE approval are provided in source. The operator must use a real approved OAuth acquisition method; Firebase Auth verifies Google provider/email and the code checks `email_verified` and the configured admin email. For missing/mismatched input, wrong identity, preflight connection failure, or an already populated root, the tool returns **prewrite HOLD (exit 2)**. Once it invokes the shared CAS, **any** rejection, lost ACK, timeout, or readback ambiguity is **UNKNOWN (exit 3)**; the tool never deliberately starts a second import.
 
 **Output:** a private new-file-only (`wx`, 0600) attempt marker is reserved immediately before CAS. After verified readback the marker becomes a JSON receipt that binds exact source SHA, workbook SHA, project/database, actor UID, imported row count and server readback SHA; no token, source workbook cell values or secret. The CLI itself independently checks accepted row IDs, code, revision, UID and timestamp; the existing CAS implementation verifies every business field. Rerunning it cannot overwrite existing records.
 
@@ -91,7 +91,89 @@ The dedicated workflow [parallel-chat3-operator.yml](../../../.github/workflows/
 ```sh
 npx firebase emulators:exec --project demo-hdnd --only database,auth,functions \
   --config firebase.staging.json \
-  "node parallel-qa/chat3/operator-preflight.mjs && node node_modules/vitest/vitest.mjs run parent-commit-service/test/integration.test.ts --config parent-commit-service/test/vitest.config.mjs --testNamePattern 'FRV-02 OPERATOR'"
+  "node parallel-qa/chat3/operator-preflight.mjs && node parallel-qa/chat3/operator-lost-ack.mjs && node node_modules/vitest/vitest.mjs run parent-commit-service/test/integration.test.ts --config parent-commit-service/test/vitest.config.mjs --testNamePattern 'FRV-02 OPERATOR'"
 ```
 
 The emulator fixture uses fake identities **only** on `127.0.0.1`; `--mode production` always has separate approval gates and no emulator hosts. On machines running concurrent QA, use separate worktrees and emulator port configuration; this CLI accepts localhost port numbers from the injected Emulator host variables, while the standard published staging suite uses ports 9099/9000. Never point a demo fixture at a live instance. In CLI errors no original Google token or raw workbook contents should be echoed. The workflow's final status, not its mere existence, determines a PASS.
+
+### Reproducible lost-ACK and prewrite-network-outage drill
+
+In the isolated GitHub Actions demo emulator, `parallel-qa/chat3/operator-lost-ack.mjs`
+invokes the **shipped CLI**, not a mock writer or test-only replacement.
+It uses the FULL RTDB Rules, synthetic Auth Emulator, and a local TCP proxy
+on `127.0.0.1:19003` in front of the RTDB Emulator on `127.0.0.1:9000`.
+The proxy decodes masked WebSocket frames **only in memory**, forwards the
+actual `/hdnd/items` CAS, then suppresses its server-to-client response.
+Neither the proxy nor QA directly writes the imported row; an independent
+read-only Emulator REST witness confirms its final server state.
+
+The CLI must exit `3` (`UNKNOWN`), not `0`/`2`; its private receipt must
+show `UNKNOWN_AFTER_CAS_ATTEMPT_DO_NOT_RETRY`. The real server must contain
+exactly the approved A–O record; a later negative replay must exit `2`
+without altering the server data. This confirms why UNKNOWN must **not**
+be automatically retried. The script also tests an unreachable local RTDB
+endpoint **before** CAS: exit `2`, no attempt receipt, demo root unchanged.
+
+The drill only runs in an isolated demo emulator. It uses no real OAuth
+credentials or live Rules and is **not** evidence of production safety or
+authorization. A script's presence does not mean the test passed; always
+inspect the exact-SHA CI run and the Chat 3 report.
+
+### Clean receipt examples — illustrative, not authorization
+
+Following an UNKNOWN operation, the private receipt can resemble:
+
+```json
+{
+  "schema": "PR147_OPERATOR_FIRST_IMPORT_ATTEMPT_V1",
+  "status": "UNKNOWN_AFTER_CAS_ATTEMPT_DO_NOT_RETRY",
+  "mode": "emulator",
+  "sourceSha": "<exact 40-hex checkout SHA>",
+  "project": "demo-hdnd",
+  "databaseURL": "https://demo-hdnd.firebaseio.com/",
+  "workbookSha256": "<sha256 of approved synthetic workbook>",
+  "approvalSha256": "<sha256 of approved synthetic approval file>",
+  "approvedSheet": "Approved",
+  "rowCount": 1,
+  "recordIdsSha256": "<sha256 of ordered ID list>",
+  "uid": "<synthetic-emulator-user-id>",
+  "startedAt": "<UTC ISO 8601>",
+  "stoppedAt": "<UTC ISO 8601>",
+  "readbackVerified": false,
+  "nextAction": "READ_ONLY_SERVER_RECONCILIATION_BEFORE_ANY_NEW_ATTEMPT"
+}
+```
+
+If the process is killed after the attempt marker but before it can update
+the receipt, `status` may remain `CAS_MAY_HAVE_BEEN_SENT_DO_NOT_RETRY` and
+`stoppedAt` may be absent. Neither proves that the server rejected the write.
+
+A successful synthetic-only import writes a *different* final result:
+
+```json
+{
+  "schema": "PR147_OPERATOR_FIRST_IMPORT_RESULT_V1",
+  "mode": "emulator",
+  "sourceSha": "<exact 40-hex checkout SHA>",
+  "project": "demo-hdnd",
+  "databaseURL": "https://demo-hdnd.firebaseio.com/",
+  "operation": "EMPTY_LEGACY_ITEMS_CAS_ONCE",
+  "workbookSha256": "<sha256 of approved synthetic workbook>",
+  "approvedSheet": "Approved",
+  "rowCount": 1,
+  "uid": "<synthetic-emulator-user-id>",
+  "serverReadbackSha256": "<sha256 of Firebase JSON readback>",
+  "imported": 1,
+  "verifiedAdmin": true,
+  "readbackVerified": true,
+  "legacyRootOverwrite": false,
+  "usingAdminServiceBypass": false,
+  "productionAuthorizedByThisCLI": false
+}
+```
+
+All bracketed values are placeholders, **not** real approval or real
+receipts. No Google ID token, private credentials or raw workbook cell
+values belong in logged/committed evidence. The approval's
+`fullRootSnapshotSha256` remains an external operator assertion;
+the CLI cannot independently certify a production empty full root.
