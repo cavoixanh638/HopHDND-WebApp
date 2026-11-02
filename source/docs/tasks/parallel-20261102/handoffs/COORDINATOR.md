@@ -1,6 +1,6 @@
 # Checkpoint — điều phối 5 luồng / tiếp quản giai đoạn tích hợp
 
-- Status: REVIEW_DONE / INTEGRATION_NOT_STARTED; ngày 02/11/2026 Asia/Saigon, quy ước v3.
+- Status: IN_PROGRESS / INTEGRATION_PREPARING; ngày 02/11/2026 Asia/Saigon, quy ước v3.
 - Chủ sở hữu bước kế: chat điều phối tiếp quản file này, một writer.
 - Lưu: REMOTE, nhánh tài liệu `docs/parallel-workstreams-20261102`.
 - Đọc [quy ước](../QUY_UOC_CHUNG.md), [skill](../skill/parallel-workstreams/SKILL.md),
@@ -11,7 +11,9 @@
   gói phát hành dựng lại từ SHA đó có checksum và hướng dẫn/bàn giao để review.
 - DONE chỉ khi đủ cả mã ghép, bằng chứng gate, artifact và bàn giao; không dừng
   ở tạo nhánh, ghép xong, hoặc vừa khởi chạy CI. Không dùng artifact Chat 5 cũ.
-- Chưa có candidate tích hợp; chưa chạy gate tích hợp hoặc dựng artifact mới.
+- Đã tiếp quản: checkout riêng `parallel-five-integration`, nhánh dự kiến `integration/20261102-five-streams`.
+- Đang đối chiếu HEAD và chọn thay đổi 5 nhánh; gate tích hợp/artifact mới NOT RUN.
+- Checkout cũ có log chưa theo dõi, giữ nguyên; không mở lại worker đã PASS.
 
 ## Đã hoàn tất / không làm lại
 - Chat 1/2/3 DONE; Chat 4/5 DONE phần độc lập, gap production ngoài phạm vi.
