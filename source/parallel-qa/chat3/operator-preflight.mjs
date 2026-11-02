@@ -1,9 +1,9 @@
 /** Chat 3: invoke the shipped CLI itself, never a test-only wrapper. */
 import {strict as assert} from 'node:assert';
-import {mkdtempSync,rmSync,writeFileSync,readFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,writeFileSync,readFileSync,appendFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {spawnSync,execFileSync} from 'node:child_process';
+import {spawnSync,spawn,execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import * as XLSX from 'xlsx';
 const sha=x=>createHash('sha256').update(x).digest('hex');
@@ -65,6 +65,41 @@ try{
  assert.match(denied.stderr,/VERIFIED_GOOGLE_ADMIN_REQUIRED|PREWRITE_AUTH_OR_SOURCE_ERROR/);
  assert.doesNotMatch(denied.stdout+denied.stderr,/DO_NOT_PRINT_SECRET/);
  console.log('CHAT3_PREFLIGHT_PASS',++n,'unverified admin');
+ // Race at the real executable's stdin boundary: source was approved and
+ // parsed, but changes before identity is supplied. Server must remain empty.
+ async function mutateAfterApproval(file,mutate,expected){
+  const child=spawn(process.execPath,['scripts/operator-first-import.mjs',...args],
+   {cwd:process.cwd(),env,stdio:['pipe','pipe','pipe']});
+  let stderr='',stdout='',changed=false;
+  child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+  child.stdout.on('data',chunk=>{stdout+=chunk;});
+  child.stderr.on('data',chunk=>{
+   stderr+=chunk;
+   if(!changed&&stderr.includes('PR147_OPERATOR_FIRST_IMPORT_AWAITING_STDIN_ID_TOKEN')){
+    changed=true;mutate();
+    child.stdin.end(JSON.stringify({sub:'chat3-race-admin',email:'cavoixanh638@gmail.com',
+     email_verified:true,name:'DO_NOT_PRINT_SECRET'}));
+   }
+  });
+  const code=await Promise.race([
+    new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);}),
+    new Promise((_,reject)=>setTimeout(()=>{child.kill('SIGKILL');
+      reject(Error('race CLI timed out before completion'));},60000))
+  ]);
+  assert.equal(changed,true,stderr);
+  assert.equal(code,2,stderr+' '+stdout);
+  assert.match(stderr,new RegExp(expected));
+  assert.doesNotMatch(stderr+stdout,/DO_NOT_PRINT_SECRET/);
+  console.log('CHAT3_PREFLIGHT_PASS',++n,file);
+ }
+ await mutateAfterApproval('workbook changed after confirm',
+  ()=>appendFileSync(xlsx,Buffer.from([0])), 'WORKBOOK_CHANGED_AFTER_CONFIRMATION');
+ // Restore original approved bytes, then vary only approval contents mid-flight.
+ writeFileSync(xlsx,bytes);
+ await mutateAfterApproval('approval changed after confirm',
+  ()=>writeFileSync(approvalFile,JSON.stringify({...approval,approved:true,reviewNote:'changed'})),
+  'APPROVAL_CHANGED_AFTER_CONFIRMATION');
+ writeFileSync(approvalFile,JSON.stringify(approval));
  // Verified identity with wrong email must not pass admin gate.
  const nonAdmin=JSON.stringify({sub:'chat3-wrong-admin',email:'not-admin@example.test',
   email_verified:true,name:'DO_NOT_PRINT_SECRET'});
