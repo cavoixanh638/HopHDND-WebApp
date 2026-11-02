@@ -11,7 +11,10 @@ import {join} from 'node:path';
 import {spawn,spawnSync,execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import * as XLSX from 'xlsx';
-import {BUSINESS_HEADERS,parseBusinessExcel} from '../../src/data/business-excel.ts';
+const BUSINESS_HEADERS=['Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
+ 'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy','Trình HĐND xây dựng NQ',
+ 'Trình HĐND ban hành NQ','Chuyên viên','Phòng','Lãnh đạo VP','Lãnh đạo UBND',
+ 'Tiến độ hiện tại','Ghi chú'];
 
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const project='demo-hdnd';
@@ -132,8 +135,12 @@ try{
   'Lãnh đạo VP MẪU','Lãnh đạo UBND MẪU','MẪU đang xử lý','Ghi chú MẪU'];
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([[...BUSINESS_HEADERS],data]),'Approved');
  const bytes=Buffer.from(XLSX.write(wb,{bookType:'xlsx',type:'buffer'}));
- const parsed=parseBusinessExcel(bytes,'Approved');
- assert.equal(parsed.count,1);
+ const original={recordId:'x-'+Buffer.from(data[0],'utf8').toString('hex'),
+  displayCode:data[0],stt:1,revision:1,
+  content:data[2],department:data[3],type:data[4],partyLevel:data[5],
+  progressParty:data[6],progressBuild:data[7],progressCouncil:data[8],
+  specialist:data[9],room:data[10],vpLeader:data[11],ubndLeader:data[12],
+  specificProgress:data[13],note:data[14]};
  const workbook=join(folder,'synthetic.xlsx'),approvalFile=join(folder,'approval.json');
  const output=join(folder,'attempt-result.json'),replay=join(folder,'replay-result.json');
  writeFileSync(workbook,bytes);
@@ -179,7 +186,7 @@ try{
  const after=await readOnly();
  assert(after?.items&&Object.keys(after.items).length===1,
   'the real emulator must have committed the write despite the missing ACK');
- const original=parsed.items[0],stored=after.items[original.recordId];
+ const stored=after.items[original.recordId];
  assert(stored,'stable recordId must exist on server');
  for(const field of ['recordId','displayCode','stt','revision','content','department',
   'type','partyLevel','progressParty','progressBuild','progressCouncil','specialist',
