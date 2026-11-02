@@ -517,6 +517,30 @@ import {updateDraft} from '../../src/domain/items';
 import {execFileSync} from 'node:child_process';
 
 const FRV_SHA=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+
+async function frvRuleCoverageSnapshot(){
+ const response=await fetch('http://127.0.0.1:9000/.inspect/coverage.json?ns=demo-hdnd');
+ if(!response.ok)throw Error('FRV02_RULES_COVERAGE_READ_'+response.status);
+ const raw=await response.json(),doc=typeof raw==='string'?JSON.parse(raw):raw;
+ const answer:Record<string,Record<string,number>>={};
+ const collect=(o:any,path:string)=>{
+  if(!o||typeof o!=='object')return;
+  for(const [key,value] of Object.entries(o)){
+   if(key==='.validate'||key==='.write'){
+    const result:Record<string,number>={};
+    for(const v of ((value as any)?.values??[])){
+     const k=typeof v.value==='string'?v.value:String(v.value);
+     result[k]=(result[k]??0)+(v.count??0);
+    }
+    answer[path+'/'+key]=result;
+   }else if(!['values','children','text','location-start','location-end'].includes(key))
+    collect(value,path+'/'+key);
+  }
+ };
+ collect(doc?.report?.hdnd?.datasetV2,'/hdnd/datasetV2');
+ return answer;
+}
+
 const FRV_RULES='source/firebase/database.exclusive-candidate.rules.json';
 async function frvDenied(label:string,req:()=>Promise<unknown>){
  const before=await witness();let result='ACCEPTED',reason='';
@@ -625,11 +649,22 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  // from unapproved client payload or blindly inherited pointer digest.
  const restoreApproval=afterBEdit.datasetV2.active;
  const beforeRestore=await witness();
+ const coverageBefore=await frvRuleCoverageSnapshot();
  let restored:any=null,restoreError='';
  try{restored=await restoreDatasetBackup(db,admin,second,restore,restoreApproval,'KHOI PHUC '+restore);}
  catch(error:any){restoreError=String(error?.message??error);}
  const afterRestore=await witness(),genC='gen_'+restore;
  if(restoreError){
+  const coverageAfter=await frvRuleCoverageSnapshot(),diffs:any[]=[];
+  for(const path of new Set([...Object.keys(coverageBefore),...Object.keys(coverageAfter)])){
+   const a=coverageBefore[path]??{},b=coverageAfter[path]??{};
+   for(const v of new Set([...Object.keys(a),...Object.keys(b)])){
+    const increase=(b[v]??0)-(a[v]??0);
+    if(increase!==0)diffs.push({path,value:v,delta:increase});
+   }
+  }
+  console.log('FRV02_RULES_COVERAGE_EXACT_RESTORE_DELTA',
+   JSON.stringify({n:diffs.length,changed:diffs.slice(0,60)}).slice(0,10500));
   const summary={candidateSha:FRV_SHA,request:'RESTORE historically committed source A after real valid guest cell edit A',
     sourceGeneration:genA,sourceRevision:beforeRestore.datasetV2.generations[genA].items.r1.revision,
     sourceHistorySlots:Object.keys(beforeRestore.datasetV2.generations[genA].items.r1.history??{}),
