@@ -76,6 +76,11 @@ try{
     fail('PARENT_COMMIT_ENABLED_MISSING');
   const pg=content('../.github/workflows/publish-pages.yml');
   if(!pg.includes('branches: [main]')||!pg.includes('git push origin HEAD:main')||!pg.includes('HOPHDND_PAGES_APPROVED_MAIN_SHA')||!pg.includes('HOPHDND_RELEASE_BACKENDS_CONFIRMED'))fail('UNREVIEWED_PAGES_AUTOPUBLISH');
+  if(!pg.includes("github.ref == 'refs/heads/main'")||
+    !pg.includes('git rev-parse origin/main')||
+    !pg.includes('PAGES_RELEASE_HOLD: main advanced')||
+    !pg.includes('APPROVED_MAIN_SHA')||
+    pg.includes('git rebase origin/main'))fail('PAGES_MAIN_ADVANCE_MUST_FAIL_CLOSED');
   if(mode==='rehearsal'){
     if(project!=='demo-hdnd'||parentDb.href!=='https://demo-hdnd.firebaseio.com/'||
        !allowedOrigins.every(x=>x.startsWith('http://127.0.0.1:'))||

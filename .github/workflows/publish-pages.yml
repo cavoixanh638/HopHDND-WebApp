@@ -28,7 +28,7 @@ jobs:
     # NEVER publish a new Pages build just because code was merged into main.
     # Operator must first certify BOTH functions + FULL Rules deployment and
     # whitelist the exact new main SHA for a separate, controlled web release.
-    if: ${{ vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -81,32 +81,44 @@ jobs:
           echo "PAGES_JEKYLL_DISABLED_PASS"
           test -n "$(find ../assets -type f -name '*.js' -print -quit)"
           node scripts/check-published-assets.mjs ../index.html /tmp/hophdnd-previous-index.html ../assets
-      - name: Commit and push Pages HTML and assets if changed
+      - name: Commit and push only if main still matches approved exact SHA
         working-directory: .
         shell: bash
+        env:
+          APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
+          BACKENDS_CONFIRMED: ${{ vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED }}
         run: |
+          set -euo pipefail
+          # An approval is bound to one exact main commit, not merely a source tree.
+          if [ "$GITHUB_REF" != "refs/heads/main" ] ||
+             [ "$APPROVED_MAIN_SHA" != "$GITHUB_SHA" ] ||
+             [ "$BACKENDS_CONFIRMED" != "true" ]; then
+            echo "::error::PAGES_RELEASE_HOLD: main ref or approval does not match job SHA"
+            exit 1
+          fi
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ] ||
+             [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            echo "::error::PAGES_RELEASE_HOLD: main advanced; new SHA requires new approval"
+            exit 1
+          fi
           git add -A -- index.html assets
           if git diff --cached --quiet -- index.html assets; then
-            echo "Published HTML already matches the source build."
+            echo "Pages assets already match exactly approved main SHA; nothing to publish."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "build(pages): publish verified split HopHDND source"
-          # Documentation-only pushes can advance main while CI is building.
-          # Rebase the HTML-only commit, never overwrite a newer source revision.
-          for attempt in 1 2 3; do
-            git fetch origin main
-            if ! git diff --quiet HEAD origin/main -- source/src source/shared source/scripts source/pages.html source/index.html source/vite.config.ts source/tsconfig.json source/package.json source/package-lock.json; then
-              echo "::error::Source changed during build. A newer source push must be built separately."
-              exit 1
-            fi
-            git rebase origin/main
-            if git push origin HEAD:main; then
-              echo "Pages HTML published after rechecking main."
-              exit 0
-            fi
-            echo "main advanced during publish; retrying ($attempt/3)."
-          done
-          echo "::error::Could not publish after three non-force push attempts."
-          exit 1
+          # Race-safe: no rebase onto newer main, even if only docs changed.
+          # If main advances after this fetch, non-force push will fail closed.
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "::error::PAGES_RELEASE_HOLD: main advanced before push; re-approve new SHA"
+            exit 1
+          fi
+          if ! git push origin HEAD:main; then
+            echo "::error::PAGES_RELEASE_HOLD: non-force push rejected; do not retry on newer main"
+            exit 1
+          fi
+          echo "Pages published from exact approved main SHA."

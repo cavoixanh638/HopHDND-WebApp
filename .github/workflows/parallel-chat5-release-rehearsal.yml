@@ -2,6 +2,14 @@ name: Chat 5 SHA-pinned release rehearsal (NO DEPLOY)
 on:
   push:
     branches: [parallel/20261102-chat5-release]
+    # v2: don't spawn/cancel an expensive package run for checkpoint-only pushes.
+    paths:
+      - '.github/workflows/parallel-chat5-release-rehearsal.yml'
+      - '.github/workflows/pr147-package-rehearsal.yml'
+      - '.github/workflows/publish-pages.yml'
+      - 'source/**'
+      - '!source/docs/**'
+      - '!source/qa-results/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -41,6 +49,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ github.sha }}"
           node --check scripts/pr147-package-artifacts.mjs
           node scripts/pr147-default-deploy-guard.mjs
+          node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json
+          if env -u PARENT_DATABASE_URL node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json; then
+            echo "::error::Unbound database passed offline validator"; exit 1
+          fi
           if node scripts/pr147-release-validate.mjs --mode production --config firebase.release.json; then
             echo "::error::Unapproved production request passed"; exit 1
           fi
