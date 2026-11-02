@@ -1,0 +1,102 @@
+name: PR149 isolated operations drill — offline + Auth Functions RTDB + restore
+on:
+  pull_request:
+    paths:
+      - "source/docs/operations/pr149/**"
+      - "source/docs/operations/PR147_*.md"
+      - ".github/workflows/pr149-operations-drill.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rehearsal:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 149
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    defaults:
+      run: {working-directory: source}
+    env:
+      CI: "true"
+      GCLOUD_PROJECT: demo-hdnd
+      GCP_PROJECT: demo-hdnd
+      FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_COMMIT_ENABLED: "true"
+      PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+      PR149_SOURCE_SHA: 536f4811b84ee0f97f2841e7c746f0362df80a2e
+      PR149_EXPECT_FRCR_FIXED: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: "24", cache: npm, cache-dependency-path: source/package-lock.json}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "21"}
+      - name: Source provenance and docs-only guard
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          git diff --name-only 536f4811b84ee0f97f2841e7c746f0362df80a2e HEAD
+          if git diff --name-only 536f4811b84ee0f97f2841e7c746f0362df80a2e HEAD | grep -Ev '^(source/docs/operations/(PR147_.*\.md|pr149/.*)|\.github/workflows/pr149-operations-drill\.yml)$'; then
+            echo 'PR149_ILLEGAL_NON_OPERATIONS_CHANGE'; exit 2
+          fi
+          node --check docs/operations/pr149/offline-audit-core.mjs
+          node --check docs/operations/pr149/operator-check.mjs
+          node --check docs/operations/pr149/verify-restored.mjs
+          node --check docs/operations/pr149/emulator-run.mjs
+      - name: Install existing pinned project dependencies and both Functions
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Offline source A-O parser and snapshot classifier with positive+negative fixtures
+        run: node node_modules/vitest/vitest.mjs run docs/operations/pr149/offline-fixture.test.ts --maxWorkers=1 --reporter=verbose
+      - name: Rehearse real operator command against synthetic approved Excel and full backup
+        run: |
+          set -euo pipefail
+          node docs/operations/pr149/operator-check.mjs \
+            --source "$PWD/pr149-ops-evidence/approved-source.xlsx" \
+            --sheet Approved \
+            --snapshot "$PWD/pr149-ops-evidence/offline-checkpoint.json" \
+            --manifest "$PWD/pr149-ops-evidence/offline-manifest.json" \
+            --output "$PWD/pr149-ops-evidence/operator-report.json"
+      - name: Real Auth, TWO actual Functions, FULL Rules, three Firebase states, FRCR/DR02 and ACK
+        timeout-minutes: 14
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=10s 12m npx firebase emulators:exec --project demo-hdnd --config firebase.staging.json --only auth,database,functions "node docs/operations/pr149/emulator-run.mjs" > pr149-ops-evidence-emulator.log 2>&1 || {
+            cat pr149-ops-evidence-emulator.log
+            exit 1
+          }
+          cat pr149-ops-evidence-emulator.log
+      - name: Standalone actual operator bootstrap API from approved synthetic A-O Excel (NO fixture seeding)
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          export PR149_ONLY_OPERATOR_BOOTSTRAP=true
+          export PR149_BOOTSTRAP_XLSX="$PWD/pr149-ops-evidence/approved-source.xlsx"
+          export PR149_BOOTSTRAP_SHEET=Approved
+          timeout --signal=TERM --kill-after=10s 6m npx firebase emulators:exec --project demo-hdnd --config firebase.staging.json --only auth,database,functions "node docs/operations/pr149/emulator-run.mjs"
+      - name: Existing isolated backup verifier regression (no production)
+        run: node --test scripts/firebase-backup-verify.fixture.mjs
+      - name: Actual synthetic full-root backup RESTORE in separate Emulator namespace
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          test -f pr149-ops-evidence/rtdb.before.json
+          export HDND_PRIVATE_BACKUP="$PWD/pr149-ops-evidence/rtdb.before.json"
+          timeout --signal=TERM --kill-after=10s 6m npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs && node docs/operations/pr149/verify-restored.mjs"
+      - name: Upload non-production synthetic witnesses and verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr149-operations-drill-${{ github.run_id }}-demo-only
+          path: |
+            source/pr149-ops-evidence/
+            source/pr149-ops-evidence-emulator.log
+          retention-days: 14
+          if-no-files-found: warn
