@@ -707,6 +707,57 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   console.log('FRV_EDITED_HISTORICAL_A_RESTORE_WITNESS '+JSON.stringify(summary));
   log('FRV_EDITED_HISTORICAL_A_RESTORE_DENIED',beforeRestore,afterRestore,summary,
     'verified admin real Auth -> actual parent onRequest -> Rules scoped ancestor CAS');
+
+  // FRV-02 diagnostic-only: scoped SDK + FULL Rules probes on disposable
+  // Emulator state. Never used as product authorization or a passing test.
+  // Invariant: real RESTORE failure above remains a mandatory test failure.
+  const scopedProbe=adminInitialize({projectId:PROJECT,
+    databaseURL:'https://'+PROJECT+'.firebaseio.com',
+    databaseAuthVariableOverride:{uid:admin.uid,token:{email:ADMIN_EMAIL,
+      email_verified:true,firebase:{sign_in_provider:'google.com'},parentCasService:true}}
+  },'frv02-diagnostic-'+randomUUID());
+  const replayBase=beforeRestore.datasetV2;
+  const sourceItem=replayBase.generations[genA].items.r1;
+  const copiedWithoutProof={...sourceItem};
+  delete copiedWithoutProof.editProofs;
+  const copyJson=(v:any)=>JSON.parse(JSON.stringify(v));
+  const diagnoses=[
+    {name:'full-history-no-session-proof',removeHistory:false,removeOldLease:false,keepOldProof:false,omitRight:false},
+    {name:'omit-new-C-history-ONLY_FOR_DIAG',removeHistory:true,removeOldLease:false,keepOldProof:false,omitRight:false},
+    {name:'omit-old-A-lease-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:true,keepOldProof:false,omitRight:false},
+    {name:'copy-old-proof-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:false,keepOldProof:true,omitRight:false},
+    {name:'omit-C-right-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:false,keepOldProof:false,omitRight:true}
+  ];
+  try{
+    for(const t of diagnoses){
+      await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
+      const proposal=copyJson(replayBase);
+      const restoredItem=copyJson(copiedWithoutProof);
+      if(t.removeHistory)delete restoredItem.history;
+      if(t.keepOldProof)restoredItem.editProofs=copyJson(sourceItem.editProofs);
+      restoredItem.operationId=restore;
+      restoredItem.updatedAt={'.sv':'timestamp'};
+      restoredItem.updatedBy=admin.uid;
+      proposal.generations[genC]={items:{r1:restoredItem}};
+      if(t.removeOldLease&&proposal.leases)delete proposal.leases[genA];
+      if(!t.omitRight)proposal.permissions[genC]=copyJson(JSON.parse(backupA.permissionsJson));
+      proposal.active={generationId:genC,operationId:restore,
+        revision:replayBase.active.revision+1,
+        rowCount:1,digest:sha(stable(replayBase.generations[genA].items))};
+      proposal.operations[restore]={status:'COMMITTED',from:genB,to:genC,at:Date.now()};
+      let outcome='ALLOWED';
+      try{await getAdminDatabase(scopedProbe).ref(ROOT).set(proposal);}
+      catch(err:any){outcome='DENIED: '+String(err?.code??err?.message??err).slice(0,170);}
+      console.log('FRV02_SCOPED_RULES_ISOLATION_NOT_ACCEPTANCE',
+        JSON.stringify({name:t.name,outcome,sourceHistory:Object.keys(sourceItem.history??{}),
+          sourceHadLease:!!replayBase.leases?.[genA],sourceHadProof:!!sourceItem.editProofs,
+          sourceHadRight:!!JSON.parse(backupA.permissionsJson)?.columns?.note}));
+    }
+  }finally{
+    await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
+    await adminDelete(scopedProbe);
+  }
+
   // Rules Emulator's built-in rule coverage provides exact evaluated
   // expressions, never a guessed permissive fix or fixture bypass.
   try{
