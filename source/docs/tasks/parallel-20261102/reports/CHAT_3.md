@@ -2,8 +2,8 @@
 
 ## Scope / status
 - Branch: `parallel/20261102-chat3-bootstrap`.
-- Last **code / test / workflow** SHA: `f0c3f88af23371d4e87a97227fc4c15f63981014`.
-- Exact independent GitHub Actions [run 41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) — **QUEUED at checkpoint preparation**, not PASS.
+- Last **code / test / workflow** SHA: `e0ebe52b7f2455e2c396c46544adfa0cb764eb99`.
+- Exact independent GitHub Actions [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) — **PENDING at checkpoint preparation**, not PASS.
 - Production: **NOT RUN / NO GO**. Only synthetic demo identities and local emulator fixture are authorized.
 - Direct local run: **NOT RUN** (container has no reachable github.com DNS and no checkout or root node_modules; all GitHub changes made through connected GitHub API).
 
@@ -22,8 +22,8 @@
 ## Test evidence / limitations
 | Item | SHA | Result | Details |
 |---|---|---|---|
-| GitHub receipt of code and new workflow | f0c3f88af23371d4e87a97227fc4c15f63981014 | COMMITTED | Branch-specific changes through GitHub connector. |
-| Dedicated exact-SHA workflow | f0c3f88af23371d4e87a97227fc4c15f63981014 | QUEUED | [run 41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031). |
+| GitHub receipt of code and new workflow | e0ebe52b7f2455e2c396c46544adfa0cb764eb99 | COMMITTED | Branch-specific changes through GitHub connector. |
+| Dedicated exact-SHA workflow | e0ebe52b7f2455e2c396c46544adfa0cb764eb99 | PENDING | [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875). |
 | Isolated local Node22/Auth/RTDB/Functions | same | NOT RUN | No clone/dependency/network available in current container; CI is authoritative if completed. |
 | Malformed source / negative auth / nonempty / happy path repeat | same | NOT YET CONFIRMED | Dedicated workflow carries executable cases. |
 | Change-after-stdin and forced lost-ACK | same | NOT RUN | CLI code guards before CAS and marks unknown after request; test needs fault injection to verify exact timing. |
@@ -35,6 +35,8 @@
 - A browser UI/import source activation/PR149 conversion is separate; not covered by this branch.
 
 ## Next verification
-1. Read [run 41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) conclusion and logs. If FAIL, inspect exact failing job; apply fix only in owned files and rerun on new code SHA.
+1. Read [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) conclusion and logs. If FAIL, inspect exact failing job; apply fix only in owned files and rerun on new code SHA.
 2. Run fault injection for source mutation after STDIN, broken readback after server commit, and transport failure. Record server witness and private receipt states. No production.
 3. If green, record exact tested code SHA/CI run and mark checkpoint DONE or DONE_WITH_EXTERNAL_GAPS, keeping production NOT RUN.
+
+- Proven prior CI PASS: [run #41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) for earlier code SHA `f0c3f88af23371d4e87a97227fc4c15f63981014` (before adding stdin-race tests). This does not prove the latest code SHA.
