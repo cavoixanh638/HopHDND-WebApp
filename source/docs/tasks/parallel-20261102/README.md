@@ -46,3 +46,22 @@ của năm luồng.
 Không tự merge/deploy/publish hoặc truy cập production. Bằng chứng code và
 Emulator không phải phê duyệt production. Không tự đánh dấu nhiệm vụ xong
 chỉ vì bộ tài liệu này đã được tạo.
+
+## Bổ sung v2 — chủ động lưu khi đang làm
+
+Hit limit có thể tới bất ngờ. Cả năm nhánh đã nhận [quy ước checkpoint v2](QUY_UOC_CHUNG.md):
+lưu từ đầu, trước việc dài, sau batch/kết quả quan trọng; checkpoint ngắn và ghi rõ
+mã chưa push. Không cần người dùng canh context. Đây là giao thức worker thực hiện,
+không phải daemon tự chạy sau khi chat bị dừng.
+
+Skill dùng lại: [parallel-workstreams/SKILL.md](skill/parallel-workstreams/SKILL.md).
+Bản skill được lưu ở nhánh tài liệu này; không giả định các nhánh worker đã có
+thư mục skill. Quy ước và mẫu checkpoint v2 đã được cập nhật riêng trên cả năm nhánh.
+
+Với các chat đã bắt đầu, gửi thêm một lần: **“Đọc lại QUY_UOC_CHUNG.md v2 trên
+GitHub ở nhánh luồng của bạn. Áp dụng checkpoint chủ động từ bây giờ; không chờ
+hit limit, không làm lại nhiệm vụ. Fetch thay đổi docs trước khi push nếu cần;
+không reset hoặc force-push.”**
+
+Khi có quyết định điều phối mới, cập nhật quy tắc liên quan và skill, tránh chỉ
+để trong lịch sử chat. Không ghi đè checkpoint tiến độ của worker khi cập nhật mẫu.
