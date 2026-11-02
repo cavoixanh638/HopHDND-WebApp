@@ -71,4 +71,6 @@ Khi có quyết định điều phối mới, cập nhật quy tắc liên quan 
 [Báo cáo kiểm tra 5 luồng](reviews/REVIEW_5_STREAMS_2026-11-02.md) xác nhận CI
 đúng SHA của từng luồng và ghi finding COORD-01 về đường dẫn biên nhận Windows.
 [Checkpoint điều phối](handoffs/COORDINATOR.md) lưu bước tích hợp tiếp theo.
-Đây là kết quả review các nhánh riêng; chưa có SHA/gói tích hợp được nghiệm thu.
+Đã hoàn tất bản tích hợp: [bàn giao 5 phần](reviews/INTEGRATION_2026-11-02.md),
+tested/rebuilt SHA `66e33b85a3424b2316f090e214e813cd04331afc`, 7 workflow / 8 jobs
+SUCCESS và gói mới dựng x2/checksum khớp. Chưa merge/deploy/publish hoặc production GO.
