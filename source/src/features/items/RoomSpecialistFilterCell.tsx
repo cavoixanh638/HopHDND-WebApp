@@ -3,6 +3,9 @@ import type {Item} from '../../../shared/types';
 import type {KeyboardEvent} from 'react';
 import {preserveStickyFilterViewport} from './filter-scroll';
 
+/** A blank filter must not eat Escape from an enclosing dialog or browser control. */
+export const shouldClearRoomSpecialistFilter=(key:string,current:string)=>key==='Escape'&&current.length>0;
+
 /** Independent AND filters for the visually merged Room / Specialist column. */
 export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
   items:Item[];room:string;person:string;
@@ -10,8 +13,8 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
 }){
   const rooms=useMemo(()=>[...new Set(items.map(item=>item.room).filter(Boolean))]
     .sort((a,b)=>a.localeCompare(b,'vi')),[items]);
-  const clear=(event:KeyboardEvent<HTMLInputElement|HTMLSelectElement>,fn:(v:string)=>void)=>{
-    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();fn('');}
+  const clear=(event:KeyboardEvent<HTMLInputElement|HTMLSelectElement>,fn:(v:string)=>void,current:string)=>{
+    if(shouldClearRoomSpecialistFilter(event.key,current)){event.preventDefault();event.stopPropagation();fn('');}
   };
   return <th className={'item-column-filter-cell room-specialist-filter'+(room||person?' has-filter':'')}
     scope="col" data-filter-key="room">
@@ -20,7 +23,7 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
         <select aria-label="Lọc theo Phòng" title="Lọc theo Phòng" value={room}
           className={room?'selected-filter-value':'filter-placeholder'}
           onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
-          onChange={e=>onRoom(e.currentTarget.value)} onKeyDown={e=>clear(e,onRoom)}>
+          onChange={e=>onRoom(e.currentTarget.value)} onKeyDown={e=>clear(e,onRoom,room)}>
           <option value="">Lọc theo Phòng</option>
           {rooms.map(option=><option key={option} value={option}>{option}</option>)}
           {room&&!rooms.includes(room)&&<option value={room}>{room}</option>}
@@ -33,7 +36,7 @@ export function RoomSpecialistFilterCell({items,room,person,onRoom,onPerson}:{
           aria-label="Tìm kiếm tên CV" placeholder="Tìm kiếm tên CV" value={person}
           onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
           onChange={e=>onPerson(e.currentTarget.value)}
-          onKeyDown={e=>clear(e,onPerson)}/>
+          onKeyDown={e=>clear(e,onPerson,person)}/>
         {person&&<button type="button" className="item-filter-clear"
           aria-label="Xóa tìm kiếm tên CV" onClick={()=>onPerson('')}>×</button>}
       </div>

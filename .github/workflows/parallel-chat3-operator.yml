@@ -1,0 +1,101 @@
+name: Chat 3 isolated first-import CLI proof (NO DEPLOY)
+on:
+  push:
+    branches:
+      - integration/20261102-five-streams
+      - parallel/20261102-chat3-bootstrap
+    paths:
+      - "source/scripts/operator-first-import*"
+      - "source/parallel-qa/chat3/**"
+      - ".github/workflows/parallel-chat3-operator.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chat3-operator-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  operator-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    env:
+      CI: 'true'
+      GCLOUD_PROJECT: demo-hdnd
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_DATABASE_EMULATOR_HOST: 127.0.0.1:9000
+      PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_COMMIT_ENABLED: 'true'
+      PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
+      PARENT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned app and actual functions dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Typecheck, guard, and syntax
+        run: |
+          npm run typecheck
+          node scripts/pr147-default-deploy-guard.mjs
+          node --check scripts/operator-first-import.mjs
+          node --check scripts/operator-first-import-path.mjs
+          node --test parallel-qa/chat3/operator-receipt-path.test.mjs
+          node --check parallel-qa/chat3/operator-preflight.mjs
+          node --check parallel-qa/chat3/operator-lost-ack.mjs
+      - name: Run real CLI preflight and one-time CAS integration with Auth, RTDB, Functions, FULL Rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx firebase emulators:exec --project demo-hdnd --only database,auth,functions \
+            --config firebase.staging.json \
+            "node parallel-qa/chat3/operator-preflight.mjs && node parallel-qa/chat3/operator-lost-ack.mjs && node node_modules/vitest/vitest.mjs run parent-commit-service/test/integration.test.ts --config parent-commit-service/test/vitest.config.mjs --testNamePattern 'FRV-02 OPERATOR'" \
+            2>&1 | tee "$RUNNER_TEMP/chat3-operator-evidence.log"
+          grep -q 'CHAT3_PREFLIGHT_TOTAL 12' "$RUNNER_TEMP/chat3-operator-evidence.log"
+          grep -q 'CHAT3_PREWRITE_OFFLINE_HOLD_PASS' "$RUNNER_TEMP/chat3-operator-evidence.log"
+          grep -q 'CHAT3_REAL_CAS_LOST_ACK_UNKNOWN_PASS' "$RUNNER_TEMP/chat3-operator-evidence.log"
+          grep -q 'FRV02_OPERATOR_PROTECTED_EMPTY_CAS_VERIFIED' "$RUNNER_TEMP/chat3-operator-evidence.log"
+      - name: Retain no credential-containing artifacts
+        if: always()
+        run: |
+          echo "Only GitHub job logs with redacted CLI status; no input/token/receipt uploaded."
+
+  windows-receipt-guard:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install pinned application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Pure production path guard on native Windows + win32/POSIX cases
+        run: |
+          node --check scripts/operator-first-import-path.mjs
+          node --test parallel-qa/chat3/operator-receipt-path.test.mjs
+      - name: Shipped CLI Windows prewrite receipt checks (no emulator/network)
+        run: |
+          node --check parallel-qa/chat3/operator-windows-cli.mjs
+          node parallel-qa/chat3/operator-windows-cli.mjs

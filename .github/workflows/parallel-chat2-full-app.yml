@@ -1,0 +1,69 @@
+name: Parallel Chat 2 - real App on isolated Firebase Emulator (NO deploy)
+on:
+  push:
+    branches:
+      - integration/20261102-five-streams
+      - parallel/20261102-chat2-ui
+    paths:
+      - 'source/src/app/**'
+      - 'source/src/components/**'
+      - 'source/src/features/**'
+      - 'source/src/styles/**'
+      - '.github/workflows/parallel-chat2-full-app.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: parallel-chat2-emulator-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  chat2-full-app-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 34
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Guard exact head and localhost-only test profile
+        run: |
+          test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+          test "$GCLOUD_PROJECT" = demo-hdnd
+          test -z "${FIREBASE_SERVICE_ACCOUNT:-}"
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+      - name: Install pinned App and both Functions services and Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Verify exact candidate Rules bytes in ephemeral QA only
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Run full App Auth RTDB Functions Chrome and Excel synthetic journeys
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Preserve independent Emulator witness and screenshots (never publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parallel-chat2-full-app-${{ github.run_id }}
+          path: source/qa-results/final-app-review/
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,58 @@
+name: Parallel Chat 2 - scoped UI checks (no deploy)
+on:
+  push:
+    branches:
+      - integration/20261102-five-streams
+      - parallel/20261102-chat2-ui
+    paths:
+      - 'source/src/app/**'
+      - 'source/src/components/**'
+      - 'source/src/features/**'
+      - 'source/src/styles/**'
+      - 'source/parallel-qa/chat2/**'
+      - '.github/workflows/parallel-chat2-*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ui-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: UI filter regression
+        run: npx vitest run src/features/items/RoomSpecialistFilterCell.test.ts
+      - name: Existing UI unit regressions
+        run: npm run test -- --run
+      - name: Verify build without publishing
+        run: npm run build:pages:test
+      - name: Install isolated Chromium runner (no production connection)
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: 'Real Chrome synthetic component UX - Esc, mobile, late ACK'
+        env:
+          CHAT2_COMPONENT_QA_ONLY: 'true'
+        run: |
+          node --check parallel-qa/chat2/ui-browser.mjs
+          node parallel-qa/chat2/ui-browser.mjs
+      - name: Upload browser witness and PNG (never publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat2-component-chrome-${{ github.run_id }}
+          path: source/parallel-qa/chat2/artifacts/
+          if-no-files-found: warn
+          retention-days: 14

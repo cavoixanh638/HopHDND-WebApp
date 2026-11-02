@@ -1,0 +1,81 @@
+name: Chat 5 SHA-pinned release rehearsal (NO DEPLOY)
+on:
+  push:
+    branches: [parallel/20261102-chat5-release, "integration/20261102-five-streams"]
+    # v2: don't spawn/cancel an expensive package run for checkpoint-only pushes.
+    paths:
+      - '.github/workflows/parallel-chat5-release-rehearsal.yml'
+      - '.github/workflows/pr147-package-rehearsal.yml'
+      - '.github/workflows/publish-pages.yml'
+      - 'source/**'
+      - '!source/docs/**'
+      - '!source/qa-results/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chat5-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: source
+    env:
+      GCLOUD_PROJECT: demo-hdnd
+      PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
+      PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4179
+      PARENT_COMMIT_ENABLED: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            source/package-lock.json
+            source/cell-edit-service/package-lock.json
+            source/parent-commit-service/package-lock.json
+      - name: Ensure pinned pristine checkout and offline HOLD gates
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          node --check scripts/pr147-package-artifacts.mjs
+          node scripts/pr147-default-deploy-guard.mjs
+          node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json
+          if env -u PARENT_DATABASE_URL node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json; then
+            echo "::error::Unbound database passed offline validator"; exit 1
+          fi
+          if node scripts/pr147-release-validate.mjs --mode production --config firebase.release.json; then
+            echo "::error::Unapproved production request passed"; exit 1
+          fi
+          if node scripts/pr147-package-artifacts.mjs --source-sha 0000000000000000000000000000000000000000; then
+            echo "::error::Incorrect SHA unexpectedly accepted"; exit 1
+          fi
+      - name: Rebuild source at exact SHA; install three locks; verify extracted contents
+        run: node scripts/pr147-package-artifacts.mjs --source-sha "${{ github.sha }}"
+      - name: Verify checksums and repeat independently from source
+        run: |
+          set -euo pipefail
+          (cd qa-results/pr147-release-package && sha256sum -c SHA256SUMS)
+          (cd qa-results/pr147-release-package && sha256sum -- *.tar.gz release-manifest.json SHA256SUMS) > /tmp/chat5-before
+          node scripts/pr147-package-artifacts.mjs --source-sha "${{ github.sha }}"
+          (cd qa-results/pr147-release-package && sha256sum -- *.tar.gz release-manifest.json SHA256SUMS) > /tmp/chat5-after
+          diff -u /tmp/chat5-before /tmp/chat5-after
+          (cd qa-results/pr147-release-package && sha256sum -c SHA256SUMS)
+          echo "CHAT5_PINNED_REBUILD_REPRODUCED_PASS"
+      - name: Retain source-pinned offline package (never publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat5-release-rehearsal-${{ github.sha }}-${{ github.run_attempt }}
+          path: source/qa-results/pr147-release-package/
+          retention-days: 21
+          if-no-files-found: warn
