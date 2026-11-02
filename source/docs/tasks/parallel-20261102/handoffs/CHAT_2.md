@@ -7,7 +7,7 @@
 - Worktree: không có trong container; checkout GitHub trực tiếp bằng connector (container DNS github.com không hoạt động).
 - Mốc nguồn: `0a04b81dbb00979fb87aee7fc497e802058d8518`
 - HEAD code đã push: `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60`
-- Tested code SHA: `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60` — CI đang chạy, chưa xác nhận PASS
+- Tested code SHA: `876b69d244cf1a5e6d03ae4fc0277f391c9c3a60` — CI PASS: typecheck, unit và Pages test build
 - Draft PR: chưa tạo. Writer khác trên nhánh: chưa xác minh; HEAD ban đầu chỉ docs bootstrap, không có tác vụ UI khác ghi vào checkpoint.
 
 ## Đã hoàn tất
@@ -23,7 +23,7 @@
 | Kiểm thử | SHA | Trạng thái | Chứng cứ |
 |---|---|---|---|
 | Baseline FULL App QA | baseline trước luồng | PASS lịch sử, không áp dụng code mới | [run 41390964199](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41390964199) |
-| Chat2 npm ci / typecheck / unit / build | `876b69d` | RUNNING / xem trạng thái mới nhất | [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) |
+| Chat2 npm ci / typecheck / unit / build | `876b69d` | **PASS** | [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) |
 | Browser real synthetic desktop/mobile | code mới | NOT RUN | Thiếu checkout chạy Vite ở môi trường hiện tại |
 | Emulator Auth/RTDB/Functions end-to-end | code mới | NOT RUN | Không được gọi fixture là integration PASS |
 
@@ -40,7 +40,7 @@
 - Chưa có Chrome screenshot viewport/role/data giả mới; còn các luồng đặc biệt tải/rỗng/lỗi mạng cần E2E.
 
 ## Bước tiếp theo
-1. Xem kết quả [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605); nếu FAIL xem job logs rồi sửa đúng phạm vi.
+1. CI [run 41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) đã PASS cho code SHA trên; không cần chạy lại nếu mã không đổi.
 2. Tạo/chạy Chrome/Emulator real-app synthetic QA riêng `source/parallel-qa/chat2/`, viewport 390/900/1440, guest/admin; tương tác Escape trên filter trong modal, kiểm scroll/focus và PNG.
 3. Tái hiện riêng blur-before-acquire (lease ACK) và kiểm xử lý, tránh mất draft/false ACK; không sửa backend. Thêm regression chạy CI.
 4. Kiểm tra diff/CI SHA cuối; ghi rõ các case PASS/NOT RUN, cập nhật report+checkpoint thành DONE hoặc DONE_WITH_EXTERNAL_GAPS đúng thực tế.
