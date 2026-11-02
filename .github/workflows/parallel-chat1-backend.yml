@@ -1,0 +1,74 @@
+name: Chat 1 backend — both Functions FULL Rules Auth RTDB
+on:
+  push:
+    branches:
+      - parallel/20261102-chat1-backend
+    paths:
+      - "source/cell-edit-service/**"
+      - "source/parent-commit-service/**"
+      - "source/firebase/database.exclusive-candidate.rules.json"
+      - ".github/workflows/parallel-chat1-backend.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: parallel-chat1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend-real-emulators:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install all 3 pinned graphs
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Pin candidate source, both real Functions and static check
+        run: |
+          echo "CHAT1_CODE_SHA=$(git rev-parse HEAD)"
+          npm run typecheck
+          node --check cell-edit-service/core.js
+          node --check parent-commit-service/src/commit.mjs
+          node --check parent-commit-service/src/parent-contract.mjs
+          node --check parent-commit-service/src/handler.mjs
+          node -e "const f=require('./firebase.staging.json');const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;if(f.functions.length!==2||!r.datasetV2['.write'].includes('parentCasService')||!r.items['$'+'id']['.write'].includes('cellService'))process.exit(1)"
+      - name: Authenticate, enforce FULL Rules, execute actual Callable and onRequest
+        shell: bash
+        env:
+          PARENT_COMMIT_ENABLED: "true"
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=10s 23m npx firebase emulators:exec \
+            --project demo-hdnd --config firebase.staging.json --only auth,database,functions \
+            "node scripts/pr142-integrated-emulator.mjs" 2>&1 | tee parallel-chat1-backend.stdout
+      - name: Preserve backend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parallel-chat1-real-backend-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/parallel-chat1-backend.stdout
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+            source/cell-edit-service/test/full-app-witness.local.json
+            source/parent-commit-service/evidence/**
+          if-no-files-found: warn
+          retention-days: 21
