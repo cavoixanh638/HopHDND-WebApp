@@ -5,6 +5,8 @@ on:
       - integration/20261102-five-streams
       - parallel/20261102-chat3-bootstrap
     paths:
+      - "source/parallel-qa/integration/**"
+      - "source/vitest.config.ts"
       - "source/scripts/operator-first-import*"
       - "source/parallel-qa/chat3/**"
       - ".github/workflows/parallel-chat3-operator.yml"

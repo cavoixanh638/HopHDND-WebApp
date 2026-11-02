@@ -9,6 +9,8 @@ import {defineConfig,configDefaults} from 'vitest/config';
  */
 export default defineConfig({
   test:{
-    exclude:[...configDefaults.exclude,'parent-commit-service/test/integration.test.ts']
+    // node:test runs this unchanged suite in the dedicated Linux/Windows CLI gate.
+    exclude:[...configDefaults.exclude,'parent-commit-service/test/integration.test.ts',
+      'parallel-qa/chat3/operator-receipt-path.test.mjs']
   }
 });

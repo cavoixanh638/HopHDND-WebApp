@@ -5,6 +5,8 @@ on:
       - integration/20261102-five-streams
       - parallel/20261102-chat2-ui
     paths:
+      - "source/parallel-qa/integration/**"
+      - "source/vitest.config.ts"
       - 'source/src/app/**'
       - 'source/src/components/**'
       - 'source/src/features/**'

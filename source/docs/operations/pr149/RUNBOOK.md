@@ -113,7 +113,7 @@ Chỉ kết luận **PASS** nếu có cả `LOCAL_EMULATOR_RESTORE_DRILL_PASS` v
 
 HARD HOLD cho đến khi Chat1 có SHA mới và manifest checksum web + hai Functions + FULL Rules, frontend V2-enabled HTTPS endpoint đúng, IAM/CORS/region/data URL được operator kiểm, bảo đảm **không dùng source/firebase.json mặc định** (Rules cũ và thiếu Functions). Cần fresh full RTDB backup + Published Rules hash và thử restore, nguồn cuối ký và mapping ID/history/quyền, không còn lease/ACK UNKNOWN, thông báo ngừng nhập Sheets theo lịch, Chrome UAT admin/guest/hai tab/freeze/Excel có readback. Mở sửa **sau cùng**, không public web mới trước Rules+Functions+data tương thích.
 
-**Chỉ được xác minh khi có quyền production:** live `hdnd/items`/`datasetV2.active`/profile, Rules Published, người thật/role, cloud IAM/Functions/cors/endpoint, backup tại thời điểm cutover, smoke dưới quyền. Đây là nhiệm vụ operator **NOT RUN**, không chuyển thành câu hỏi kỹ thuật cho owner. Ba nhóm quyết định thật sự của owner tập trung trong [tài liệu nghiệm thu](../PR147_ADMIN_ACCEPTANCE_AND_OWNER_CONFIRMATIONS_2026-11-01.md).
+**Chỉ được xác minh khi có quyền production:** live `hdnd/items`/`datasetV2.active`/profile, Rules Published, người thật/role, cloud IAM/Functions/cors/endpoint, backup tại thời điểm cutover, smoke dưới quyền. Đây là nhiệm vụ operator **NOT RUN**, không chuyển thành câu hỏi kỹ thuật cho owner. Ba nhóm quyết định thật sự của owner tập trung trong tài liệu nghiệm thu PR147 ngày 01/11/2026 (tham chiếu lịch sử; không có trong candidate này).
 
  
 ## G7 — Bổ sung độc lập Chat 4 (02/11/2026), áp dụng trên nhánh luồng

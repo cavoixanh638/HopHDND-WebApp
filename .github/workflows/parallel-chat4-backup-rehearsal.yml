@@ -3,6 +3,8 @@ on:
   push:
     branches: ["parallel/20261102-chat4-backup", "integration/20261102-five-streams"]
     paths:
+      - "source/parallel-qa/integration/**"
+      - "source/vitest.config.ts"
       - "source/docs/operations/pr149/**"
       - "source/scripts/firebase-backup-*.mjs"
       - "source/parallel-qa/chat4/**"

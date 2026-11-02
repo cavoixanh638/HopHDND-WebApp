@@ -131,7 +131,8 @@ try{
     defaultConfigSha256:sha256(read('firebase.json')),
     defaultDeployGuardSha256:sha256(read('scripts/pr147-default-deploy-guard.mjs')),
     operatorCliSha256:sha256(read('scripts/operator-first-import.mjs')),
-    operatorCliEntrySha256:sha256(read('scripts/operator-first-import-entry.ts'))
+    operatorCliEntrySha256:sha256(read('scripts/operator-first-import-entry.ts')),
+    operatorCliPathSha256:sha256(read('scripts/operator-first-import-path.mjs'))
   };
   // Run exactly the locked dependency installs and REBUILD each web mode.
   // Never package dist-pages from an earlier working tree or stale CI job.
@@ -165,6 +166,7 @@ try{
     archive('firebase-full-rules-frcr01',root,[rulesPath]),
     archive('operator-first-import-node22-sources',root,[
       'scripts/operator-first-import.mjs','scripts/operator-first-import-entry.ts',
+      'scripts/operator-first-import-path.mjs',
       'scripts/pr147-default-deploy-guard.mjs','src','shared','package.json','package-lock.json'])
   ];
   let productionWeb={status:'NOT_BUILT_NOT_AUTHORIZED',publishable:false,artifact:null};

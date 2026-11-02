@@ -66,7 +66,7 @@
 
 `activate`: giữ nguyên legacy `items`, `permissions`, `editLocks`, sealed `legacyBackups`; tạo V2 generation theo A–O với ID kỹ thuật có thể khác legacy, active rights **rỗng**, history/editProofs cũ **không tự nhập** vào active. `replace` cũng giữ generation cũ, quyền/lease sealed backup, journal; generation mới từ file duyệt có quyền rỗng, audit history cũ còn ở generation lịch sử. `restore` từ backup historically COMMITTED tạo generation mới, khôi phục đúng rights/history được backup, không chứa ACK sau thời điểm backup. FRCR fix bảo vệ **historical rights bất biến**, không được gỡ kiểm provenance để cứu restore.
 
-**Owner không mặc nhiên chấp nhận reset quyền hoặc bỏ lịch sử**. Những quyết định thuộc owner đã thu về ba nhóm ở [hồ sơ nghiệm thu](../PR147_ADMIN_ACCEPTANCE_AND_OWNER_CONFIRMATIONS_2026-11-01.md): D1 nguồn chính thức, D2 quyền/ID/lịch sử cần giữ, D3 người và thời điểm GO/NO-GO. Các số kỹ thuật phải do operator đo.
+**Owner không mặc nhiên chấp nhận reset quyền hoặc bỏ lịch sử**. Những quyết định thuộc owner đã thu về ba nhóm ở hồ sơ nghiệm thu PR147 ngày 01/11/2026 (tham chiếu lịch sử; không có trong candidate này): D1 nguồn chính thức, D2 quyền/ID/lịch sử cần giữ, D3 người và thời điểm GO/NO-GO. Các số kỹ thuật phải do operator đo.
 
 ## 5. Những phần production vẫn NOT RUN và yêu cầu Chat1
 

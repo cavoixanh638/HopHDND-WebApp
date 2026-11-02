@@ -5,6 +5,8 @@ on:
       - integration/20261102-five-streams
       - parallel/20261102-chat1-backend
     paths:
+      - "source/parallel-qa/integration/**"
+      - "source/vitest.config.ts"
       - "source/cell-edit-service/**"
       - "source/parent-commit-service/**"
       - "source/firebase/database.exclusive-candidate.rules.json"

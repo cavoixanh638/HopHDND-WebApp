@@ -4,6 +4,8 @@ on:
     branches: [parallel/20261102-chat5-release, "integration/20261102-five-streams"]
     # v2: don't spawn/cancel an expensive package run for checkpoint-only pushes.
     paths:
+      - "source/parallel-qa/integration/**"
+      - "source/vitest.config.ts"
       - '.github/workflows/parallel-chat5-release-rehearsal.yml'
       - '.github/workflows/pr147-package-rehearsal.yml'
       - '.github/workflows/publish-pages.yml'
@@ -71,6 +73,8 @@ jobs:
           diff -u /tmp/chat5-before /tmp/chat5-after
           (cd qa-results/pr147-release-package && sha256sum -c SHA256SUMS)
           echo "CHAT5_PINNED_REBUILD_REPRODUCED_PASS"
+      - name: Exercise actual extracted operator archive (no network)
+        run: node parallel-qa/integration/package-cli-smoke.mjs
       - name: Retain source-pinned offline package (never publish)
         if: always()
         uses: actions/upload-artifact@v4
