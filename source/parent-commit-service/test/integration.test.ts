@@ -650,12 +650,13 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
    const coverage=await resp.json();
    // Each coverage event contains a rule AST. Keep only structured,
    // path-scoped hints: never log the gigantic full report to CI stdout.
-   const entries=Array.isArray(coverage)?coverage:[coverage];
-   const sample=entries.find((entry:any)=>JSON.stringify(entry).includes('history'))??entries[0];
-   const head=JSON.stringify(sample??{}).slice(0,1500);
-   console.log('FRV02_RULES_COVERAGE_DIAG',JSON.stringify({
-    httpStatus:resp.status,isArray:Array.isArray(coverage),
-    count:entries.length,sample:head}));
+   const decoded=typeof coverage==='string'?JSON.parse(coverage):coverage;
+   const details=Object.entries(decoded??{}).map(([k,v])=>({
+     key:k,type:typeof v,array:Array.isArray(v),
+     length:typeof v==='string'||Array.isArray(v)?v.length:null,
+     sample:JSON.stringify(v).slice(0,1800)}));
+   console.log('FRV02_RULES_COVERAGE_STRUCTURE',JSON.stringify({
+    httpStatus:resp.status,keys:Object.keys(decoded??{}),details}).slice(0,6200));
   }catch(error){console.log('FRV02_RULES_COVERAGE_UNAVAILABLE',String(error));}
  }
  expect(restoreError,'Valid COMMITTED backup of legally edited A must restore; '+restoreError).toBe('');
@@ -842,13 +843,15 @@ it('FRV-02 OPERATOR: production-grade CLI performs actual verified Google empty-
     expect(receipt).toMatchObject({mode:'emulator',sourceSha,imported:1,
       verifiedAdmin:true,readbackVerified:true,usingAdminServiceBypass:false});
     expect(receipt.workbookSha256).toBe(hash);
+    expect(typeof receipt.uid).toBe('string');
+    expect(receipt.uid.length).toBeGreaterThan(8);
     const state=await witness();
     expect(state.items).toBeDefined();
     expect(Object.keys(state.items)).toHaveLength(1);
     expect(state.items[rows.items[0].recordId]).toMatchObject({
       recordId:rows.items[0].recordId,displayCode:'NQ-OPS-0001',
       content:'MẪU hồ sơ operator đã duyệt',revision:1,
-      updatedBy:'pr147-operator-admin'
+      updatedBy:receipt.uid
     });
     const beforeSecond=sha(stable(state));
     const second=spawnSync(process.execPath,args,opts);
