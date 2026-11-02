@@ -569,13 +569,14 @@ async function frvStageInitial(op:string,note:string){
  expect(open.mode).toBe('OPEN');
  return await witness();
 }
-async function frvGuestNoteEdit(dbClient:any,user:User,expected:any,text:string){
+async function frvGuestNoteEdit(dbClient:any,user:User,expected:any,text:string,recordId='r1'){
  const gen=expected.generationId;const manager=new CellEditSessionManager(dbClient,()=>user,gen);
  try{
    const repo=new FirebaseRepository(dbClient,()=>user,
      ()=>({columns:{note:true}}),ROOT+'/generations/'+gen+'/items',expected);
    repo.leaseManager=manager;
-   const original=(await repo.list())[0];
+   const original=(await repo.list()).find(item=>item.recordId===recordId)!;
+   expect(original).toBeDefined();
    const acquired=await manager.acquire(original.recordId,'note','multiline');
    expect(acquired).toBe(true);
    const save=(await repo.save([updateDraft(original,undefined,{note:text})!]))[0];
@@ -583,7 +584,7 @@ async function frvGuestNoteEdit(dbClient:any,user:User,expected:any,text:string)
    await manager.finish(original.recordId,'note');
  }finally{await manager.dispose();}
  const state=await witness();
- expect(state.datasetV2.generations[gen].items.r1.note).toBe(text);
+ expect(state.datasetV2.generations[gen].items[recordId].note).toBe(text);
  return state;
 }
 it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths denied, valid restore and B/C rights',async()=>{
@@ -831,6 +832,110 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   sourceBackupUnchanged:true}));
 },120000);
 
+
+
+it('CHAT1 chained multirow A→B→restore C→D→restore E with independent guest audit',async()=>{
+  // All transitions below use signed-in Auth, both real Function wrappers
+  // and FULL candidate RTDB Rules; no privileged seed after first import.
+  const A='chat1_multi_activate_0001',B='chat1_multi_replace_0002',
+    C='chat1_multi_restore_0003',D='chat1_multi_replace_0004',
+    E='chat1_multi_restore_0005';
+  const gen=x=>'gen_'+x;
+  const rows=(text:string)=>[row(text+' r1'),
+    {...row(text+' r2'),recordId:'r2',displayCode:'NQ-TEST-02',stt:2}];
+  const imported=await bootstrapApprovedRowsToPrimary(db,admin,rows('legacy'));
+  expect(imported.importedCount).toBe(2);
+  const frozen=await setFreezeMode(db,admin,initialFreeze,'FROZEN',true);
+  const stageA=await prepareInitialDatasetActivation(db,admin,rows('approved A'),A,'chat1-a.xlsx');
+  expect((await commitInitialDatasetActivation(db,admin,stageA,
+    'KHOI TAO V2 '+A+' '+stageA.legacyRowCount+' '+stageA.preview.newCount)).status).toBe('committed');
+  await setFreezeMode(db,admin,frozen,'OPEN');
+  await set(ref(db,ROOT+'/permissions/'+gen(A)+'/columns/note'),true);
+  const client=await sdk('chat1-multi-guest'),guest=(await signInAnonymously(client.auth)).user;
+  const pointerA=(await witness()).datasetV2.active;
+  await frvGuestNoteEdit(client.database,guest,pointerA,'guest A r1','r1');
+  const afterA=await frvGuestNoteEdit(client.database,guest,pointerA,'guest A r2','r2');
+  for(const id of ['r1','r2'])expect(afterA.datasetV2.generations[gen(A)].items[id].history['2'].actor).toBe(guest.uid);
+
+  const stageB=await stageDatasetReplacement(db,admin,rows('approved B'),B,'chat1-b.xlsx');
+  const backupA=JSON.parse((await witness()).datasetV2.backups[B]);
+  expect(backupA.generation.items).toEqual(afterA.datasetV2.generations[gen(A)].items);
+  expect((await commitDatasetReplacement(db,admin,stageB,
+    'THAY '+B+' '+stageB.preview.oldCount+' '+stageB.preview.newCount)).status).toBe('committed');
+  await set(ref(db,ROOT+'/permissions/'+gen(B)+'/columns/note'),true);
+  await frvGuestNoteEdit(client.database,guest,(await witness()).datasetV2.active,'guest B r1');
+  const beforeC=await witness();
+  expect((await restoreDatasetBackup(db,admin,B,C,beforeC.datasetV2.active,'KHOI PHUC '+C)).status).toBe('committed');
+  const stateC=await witness();
+  expect(stateC.datasetV2.permissions[gen(C)].columns.note).toBe(true);
+  expect(stateC.datasetV2.leases?.[gen(C)]).toBeUndefined();
+  const canonical=items=>Object.fromEntries(Object.entries(items).map(([id,r]:any)=>{
+    const {editProofs:_proof,operationId:_op,updatedAt:_at,updatedBy:_by,...kept}=r;
+    return [id,kept];
+  }));
+  const digestC=sha(stable(canonical(stateC.datasetV2.generations[gen(C)].items)));
+  const rawA=sha(stable(afterA.datasetV2.generations[gen(A)].items));
+  expect(stateC.datasetV2.active.digest).toBe(digestC);
+  expect(digestC).not.toBe(rawA);
+  for(const id of ['r1','r2']){
+    const source=afterA.datasetV2.generations[gen(A)].items[id];
+    const restored=stateC.datasetV2.generations[gen(C)].items[id];
+    expect(restored.history).toEqual(source.history);
+    expect(restored.revision).toBe(2);
+    expect(restored.editProofs).toBeUndefined();
+  }
+  expect(stateC.datasetV2.generations[gen(A)]).toEqual(beforeC.datasetV2.generations[gen(A)]);
+  expect(stateC.datasetV2.generations[gen(B)]).toEqual(beforeC.datasetV2.generations[gen(B)]);
+  const ptrC=stateC.datasetV2.active;
+  await frvGuestNoteEdit(client.database,guest,ptrC,'guest C r1','r1');
+  const afterC=await frvGuestNoteEdit(client.database,guest,ptrC,'guest C r2','r2');
+  for(const id of ['r1','r2']){
+    const current=afterC.datasetV2.generations[gen(C)].items[id];
+    expect(current.revision).toBe(3);
+    expect(current.history['2']).toEqual(afterA.datasetV2.generations[gen(A)].items[id].history['2']);
+    expect(current.history['3'].actor).toBe(guest.uid);
+    expect(current.editProofs.note).not.toBe(afterA.datasetV2.generations[gen(A)].items[id].editProofs.note);
+  }
+  const stageD=await stageDatasetReplacement(db,admin,rows('approved D'),D,'chat1-d.xlsx');
+  const backupC=JSON.parse((await witness()).datasetV2.backups[D]);
+  expect(backupC.generation.items).toEqual(afterC.datasetV2.generations[gen(C)].items);
+  expect((await commitDatasetReplacement(db,admin,stageD,
+    'THAY '+D+' '+stageD.preview.oldCount+' '+stageD.preview.newCount)).status).toBe('committed');
+  const beforeE=await witness();
+  expect((await restoreDatasetBackup(db,admin,D,E,beforeE.datasetV2.active,'KHOI PHUC '+E)).status).toBe('committed');
+  const stateE=await witness();
+  expect(stateE.datasetV2.active.digest).toBe(
+    sha(stable(canonical(stateE.datasetV2.generations[gen(E)].items))));
+  expect(stateE.datasetV2.permissions[gen(E)].columns.note).toBe(true);
+  expect(stateE.datasetV2.leases?.[gen(E)]).toBeUndefined();
+  for(const id of ['r1','r2']){
+    const restored=stateE.datasetV2.generations[gen(E)].items[id];
+    expect(restored.history).toEqual(afterC.datasetV2.generations[gen(C)].items[id].history);
+    expect(restored.revision).toBe(3);
+    expect(restored.editProofs).toBeUndefined();
+  }
+  for(const op of [A,B,C,D,E])expect(stateE.datasetV2.operations[op].status).toBe('COMMITTED');
+  for(const original of [A,B,C,D]){
+    expect(stateE.datasetV2.generations[gen(original)]).toEqual(beforeE.datasetV2.generations[gen(original)]);
+    expect(stateE.datasetV2.permissions?.[gen(original)]).toEqual(beforeE.datasetV2.permissions?.[gen(original)]);
+    expect(stateE.datasetV2.leases?.[gen(original)]).toEqual(beforeE.datasetV2.leases?.[gen(original)]);
+  }
+  expect(stateE.datasetV2.backups[B]).toBe(beforeE.datasetV2.backups[B]);
+  expect(stateE.datasetV2.backups[D]).toBe(beforeE.datasetV2.backups[D]);
+  await frvGuestNoteEdit(client.database,guest,stateE.datasetV2.active,'guest E r2','r2');
+  const afterE=await witness(),last=afterE.datasetV2.generations[gen(E)].items.r2;
+  expect(last.revision).toBe(4);
+  expect(last.history['4'].oldValues.note).toBe('guest C r2');
+  expect(last.history['4'].actor).toBe(guest.uid);
+  expect(last.editProofs.note).not.toBe(afterC.datasetV2.generations[gen(C)].items.r2.editProofs.note);
+  await frvDenied('CHAT1_SECOND_RESTORE_HISTORY_TAMPER',()=>set(ref(db,
+    ROOT+'/generations/'+gen(E)+'/items/r2/history/2/actor'),'forged'));
+  await frvDenied('CHAT1_HISTORIC_C_RIGHTS_MUTATION',()=>set(ref(db,
+    ROOT+'/permissions/'+gen(C)+'/columns/note'),false));
+  log('CHAT1_MULTIROW_CHAINED_RESTORE_PASS',beforeC,afterE,{
+    verifiedSha:FRV_SHA,rawA,canonicalC:digestC,canonicalE:stateE.datasetV2.active.digest,
+    backupAStillSealed:true,backupCStillSealed:true,guestEditsAfterBothRestores:true});
+},180000);
 
 it('FINAL-RELEASE-VERIFICATION CONTROL active B edited but source A has no history restores normally',async()=>{
  const A='frv_control_initial_0001',B='frv_control_replace_0002',C='frv_control_restore_0003';
