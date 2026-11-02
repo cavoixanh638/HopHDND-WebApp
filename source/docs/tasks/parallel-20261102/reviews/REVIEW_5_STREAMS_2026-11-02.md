@@ -1,5 +1,24 @@
 # Điều phối — kiểm tra 5 luồng ngày 02/11/2026
 
+## Cập nhật nghiệm thu COORD-01 — 02/11/2026
+
+**CLOSED, điều phối đã kiểm chứng.** Chat 3 sửa bằng helper production
+`relative/isAbsolute/sep`, giữ realpath và tạo receipt độc quyền trước CAS.
+CI [41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660)
+SUCCESS đúng SHA `04568fd30a8be59f269be58f03d0dcc2cb72de85`; đã đọc diff và log
+hai jobs 125213791794 / 125213792159:
+- Windows thật: path 15/15, launcher CLI 6/6, gồm junction vào checkout bị HOLD.
+- Linux: path 15/15, 12 preflight, offline trước CAS, mất ACK/UNKNOWN/chặn replay,
+  actual CAS/readback/repeat guard đều PASS.
+- Windows Firebase CAS vẫn NOT RUN; nhiệm vụ path guard Windows đã đủ bằng chứng,
+  end-to-end Firebase đã chạy Linux cùng SHA. Production NOT RUN.
+- HEAD lúc kiểm `2ea20605afb7cd6b856a1ec27b8d115550d3cc77`: chỉ docs sau tested SHA.
+  Điều phối sau đó chỉ đồng bộ quy ước/đóng entrypoint; không đổi runtime.
+Không giao lại Chat 3. Đích còn lại là candidate tích hợp cả năm phần, gate đúng
+integration SHA và gói phát hành dựng lại; xem [checkpoint điều phối](../handoffs/COORDINATOR.md).
+Các mục finding bên dưới lưu lịch sử lần kiểm trước, đã được kết luận này thay thế.
+
+
 **Kết luận:** năm luồng đã bàn giao; các run chứng cứ đã hoàn tất SUCCESS tại
 đúng tested SHA. Không có thay đổi code sau các SHA này (chỉ tài liệu).
 **Có một finding mới COORD-01 cần sửa trong bước tích hợp. Chưa có bản ghép
