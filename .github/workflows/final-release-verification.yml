@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      FINAL_VERIFY_TARGET_SHA: a355fccfb2aaab033bdcd9defe45ec89d43087ab
+      FINAL_VERIFY_TARGET_SHA: 2bfb241f98363f794c1e0c055667d6b91ca73626
       GCLOUD_PROJECT: demo-hdnd
       PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
       FIREBASE_DATABASE_URL: https://demo-hdnd.firebaseio.com
@@ -87,8 +87,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$FINAL_VERIFY_TARGET_SHA"
-          gh run download 41379790777 --repo "$GITHUB_REPOSITORY" \
-            --name pr147-release-rehearsal-a355fccfb2aaab033bdcd9defe45ec89d43087ab-1 \
+          gh run download 41382927634 --repo "$GITHUB_REPOSITORY" \
+            --name pr147-release-rehearsal-2bfb241f98363f794c1e0c055667d6b91ca73626-1 \
             --dir ../frv-artifact
           node ../../reviewer/source/release-review/verify-package-ci.mjs ../frv-artifact \
             2>&1 | tee parent-commit-service/evidence/frv02-package-audit.stdout.log
