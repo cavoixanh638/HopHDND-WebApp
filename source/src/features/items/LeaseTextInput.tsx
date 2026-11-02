@@ -19,6 +19,7 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
   const disabledRef=useRef(disabled);
   disabledRef.current=disabled;
   const previousDisabled=useRef(disabled);
+  const activeFocusEpoch=useRef(0);
 
   /** A blur/drain/unmount fences an in-flight acquire BEFORE the next focus.
    * The backend ACK may arrive after the input disappears; it must then release
@@ -26,7 +27,9 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
    */
   const invalidate=(updateState=true)=>{
     const generation=++epoch.current;
-    if(updateState){setReady(false);setWaiting(false);}
+    // Keep the pending message mounted during pointerdown/blur, so buttons
+    // immediately after the input do not jump out from under the click.
+    if(updateState)setReady(false);
     if(!manager)return;
     const pending=inFlight.current;
     const release=releaseFence.current.catch(()=>{}).then(async()=>{
@@ -36,10 +39,14 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
     // A subsequent focus must wait for any late ACK and its release, including
     // a slower network response. Never interpret a failed release as save ACK.
     releaseFence.current=release.catch(()=>{});
-    void release.catch(cause=>{
-      if(updateState&&mounted.current&&epoch.current===generation)
+    void release.then(()=>{
+      if(updateState&&mounted.current&&epoch.current===generation)setWaiting(false);
+    }).catch(cause=>{
+      if(updateState&&mounted.current&&epoch.current===generation){
+        setWaiting(false);
         setError('Chưa xác nhận giải phóng khóa ô: '+
           (cause instanceof Error?cause.message:'Lỗi kết nối.'));
+      }
     });
   };
 
@@ -60,8 +67,9 @@ export function LeaseTextInput({value,label,id,field,disabled,maxLength=1000,
   },[disabled]);
 
   const focus=()=>{
-    if(!manager||ready||waiting||disabled)return;
+    if(!manager||ready||disabled||(waiting&&activeFocusEpoch.current===epoch.current))return;
     const generation=++epoch.current;
+    activeFocusEpoch.current=generation;
     setError('');
     setWaiting(true);
     const operation=releaseFence.current.catch(()=>{}).then(async()=>{
