@@ -34,7 +34,7 @@ function bounded<T>(task:Promise<T>,reason:string,ms:number):Promise<T>{
  return Promise.race([task,expiry]).finally(()=>{if(timer)clearTimeout(timer);});
 }
 function localEmulatorPort(name:string):number{
- const value=process.env[name]??'',match=/^127\\.0\\.0\\.1:(\\d{2,5})$/.exec(value);
+ const value=process.env[name]??'',match=/^127\.0\.0\.1:(\d{2,5})$/.exec(value);
  const port=match?Number(match[1]):0;
  if(port<1024||port>65535)fail(name+'_LOCALHOST_PORT_REQUIRED');
  return port;
@@ -160,7 +160,7 @@ try{
    nextAction:'READ_ONLY_SERVER_RECONCILIATION_BEFORE_ANY_NEW_ATTEMPT'};
  // An exclusive, private marker is created *before* calling the authoritative
  // CAS. If the process is interrupted or loses an ACK, the attempt is durable.
- if(outputPath)writeFileSync(outputPath,JSON.stringify(attempted,null,2)+'\\n',
+ if(outputPath)writeFileSync(outputPath,JSON.stringify(attempted,null,2)+'\n',
    {flag:'wx',mode:0o600});
  writeMayHaveBeenSent=true;
  console.error('PR147_OPERATOR_FIRST_IMPORT_CAS_ATTEMPT_MARKED_NO_AUTO_RETRY');
@@ -194,7 +194,7 @@ try{
    if(outputPath&&attempted){
      try{writeFileSync(outputPath,JSON.stringify({...attempted,
        status:'UNKNOWN_AFTER_CAS_ATTEMPT_DO_NOT_RETRY',
-       stoppedAt:new Date().toISOString()},null,2)+'\\n',{mode:0o600});}
+       stoppedAt:new Date().toISOString()},null,2)+'\n',{mode:0o600});}
      catch{/* Preserve the original error; private receipt may be incomplete. */}
    }
    console.error('PR147_BOOTSTRAP_UNKNOWN_AFTER_CAS_ATTEMPT_DO_NOT_RETRY_READ_SERVER');
