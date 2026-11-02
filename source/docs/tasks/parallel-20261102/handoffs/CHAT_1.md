@@ -5,9 +5,9 @@
 - File nhiệm vụ: [CHAT_1_BACKEND.md](../CHAT_1_BACKEND.md).
 - Repository/branch: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat1-backend`.
 - Base: `0a04b81dbb00979fb87aee7fc497e802058d8518`.
-- HEAD code + workflow được kiểm thử: `472a942533ab57446a725800a6f82e0b6477f951`.
+- Code SHA regression: `5210876eb04be23c1ee611e985f82fd2bc684ceb`; CI workflow sửa Chromium tại `46e916f31976cbbf3451ff67c22832627ca28e82`.
 - Docs-only sau code: `ae2c2146eb1cba1b644fe7df7b48e7862419f868` (report); commit checkpoint hiện tại tiếp theo.
-- Tested SHA: `472a942533ab57446a725800a6f82e0b6477f951` **RUNNING, KHÔNG PHẢI PASS**.
+- Tested SHA mới: `46e916f31976cbbf3451ff67c22832627ca28e82` **QUEUED/RUNNING, KHÔNG PHẢI PASS**.
 - Worktree: không có local checkout. Git clone bị lỗi DNS; chỉnh GitHub bằng connector.
 - Draft PR: chưa tạo; nhánh độc lập, không merge.
 - Writer khác: chưa thể xác minh ngoài phiên này; không mở thêm chat ghi cùng nhánh.
@@ -21,14 +21,16 @@
 
 ## Đang làm/chưa commit
 - Không có file chưa commit tại local. Các thay đổi nhánh trên GitHub đã commit.
-- CI mới chưa hoàn tất: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364
-- Tại lần kiểm cuối: setup/dependencies/static/typecheck PASS, integrated Emulator RUNNING.
+- Lượt 1 FAIL do thiếu Playwright Chromium (không phải backend); cell service 32 PASS/0 FAIL: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364
+- Đã sửa riêng workflow cài Chromium; lượt 2 đang QUEUED: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407721643
+- Lượt 1: setup/dependencies/static/typecheck PASS, cell 32/32 PASS; browser CHROME FATAL thiếu binary, parent NOT RUN. Lượt 2 chưa có kết quả.
 
 ## Kiểm thử
 | Gate | SHA | Trạng thái | Bằng chứng |
 |---|---|---|---|
 | Parent/unified nền | `0a04b81` | PASS nền (không phải mã mới) | #41390964223 / #41390964227 |
-| Chat1 Auth+2 Functions+FULL Rules | `472a9425` | RUNNING | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364 |
+| Chat1 lần 1 | `472a9425` | FAIL: browser thiếu Chromium; cell 32 PASS | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364 |
+| Chat1 lần 2 (sửa CI cài Chromium) | `46e916f3` | QUEUED/RUNNING | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407721643 |
 | Local emulator | — | NOT RUN | git clone DNS lỗi, không checkout local |
 
 ## Quyết định giữ
@@ -45,8 +47,8 @@
 - Chưa xác nhận lỗi ngoài phạm vi.
 
 ## Bước tiếp theo
-1. Gọi GitHub `mcp__GitHub__fetch_workflow_run_jobs` với `repo_full_name=cavoixanh638/HopHDND-WebApp`, `run_id=41407577364` để theo dõi job `backend-real-emulators`.
-2. Nếu FAIL, đọc `fetch_workflow_job_logs` với job ID `125152988396`, sửa test/backend thuộc phạm vi, commit rồi chờ CI mới.
+1. Gọi GitHub `mcp__GitHub__fetch_workflow_run_jobs` với `repo_full_name=cavoixanh638/HopHDND-WebApp`, `run_id=41407721643` để theo dõi job `backend-real-emulators`.
+2. Nếu FAIL, đọc job ID thực tế của run mới qua `fetch_workflow_run_jobs`, rồi `fetch_workflow_job_logs`; sửa trong phạm vi, commit và chạy lại.
 3. Nếu PASS, đối chiếu log witness `CHAT1_MULTIROW_CHAINED_RESTORE_PASS`, `PR142_INTEGRATED_SERVICES_FULL_RULES_PASS`, xác thực không skipped; cập nhật báo cáo + checkpoint thành DONE (hoặc DONE_WITH_EXTERNAL_GAPS khi có gap thật).
 4. Trước DONE rà giới hạn CI: không merge, không deploy, không tác động môi trường thật.
 
