@@ -65,6 +65,25 @@ try{
  assert.match(denied.stderr,/VERIFIED_GOOGLE_ADMIN_REQUIRED|PREWRITE_AUTH_OR_SOURCE_ERROR/);
  assert.doesNotMatch(denied.stdout+denied.stderr,/DO_NOT_PRINT_SECRET/);
  console.log('CHAT3_PREFLIGHT_PASS',++n,'unverified admin');
+ // Verified identity with wrong email must not pass admin gate.
+ const nonAdmin=JSON.stringify({sub:'chat3-wrong-admin',email:'not-admin@example.test',
+  email_verified:true,name:'DO_NOT_PRINT_SECRET'});
+ rejected('wrong admin',args,'VERIFIED_GOOGLE_ADMIN_REQUIRED',nonAdmin);
+ // Read-only owner REST witness checks nonempty target cannot be overwritten.
+ const endpoint='http://127.0.0.1:9000/hdnd/items.json?ns=demo-hdnd';
+ const seed=await fetch(endpoint,{method:'PUT',headers:{Authorization:'Bearer owner',
+  'Content-Type':'application/json'},body:JSON.stringify({'synthetic-existing':{revision:1,note:'keep'}})});
+ assert.equal(seed.status,200,'synthetic fixture requires emulator owner seed');
+ const before=await (await fetch(endpoint,{headers:{Authorization:'Bearer owner'}})).text();
+ const validAdmin=JSON.stringify({sub:'chat3-verified-admin',email:'cavoixanh638@gmail.com',
+  email_verified:true,name:'DO_NOT_PRINT_SECRET'});
+ rejected('nonempty root',args,'LIVE_TARGET_NOT_TRULY_EMPTY',validAdmin);
+ const after=await (await fetch(endpoint,{headers:{Authorization:'Bearer owner'}})).text();
+ assert.equal(after,before,'nonempty server root must remain unchanged');
+ console.log('CHAT3_PREFLIGHT_PASS',++n,'server unchanged');
+ // Remove only our demo-only fixture. Never run this against an actual database.
+ const clean=await fetch(endpoint,{method:'DELETE',headers:{Authorization:'Bearer owner'}});
+ assert.equal(clean.status,200);
  assert(!readFileSync(approvalFile,'utf8').includes('DO_NOT_PRINT_SECRET'));
  console.log('CHAT3_PREFLIGHT_TOTAL',n);
 }finally{rmSync(root,{recursive:true,force:true});}
