@@ -15,7 +15,7 @@
  * performed independently by the authorized operator through Google OAuth.
  * It never deploys, changes Rules, or stores Google tokens.
  */
-import {build} from 'esbuild';
+import {build} from 'vite';
 import {spawn} from 'node:child_process';
 import {mkdirSync,existsSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -28,9 +28,11 @@ try{
  const outputDir=resolve(root,'node_modules/.cache/pr147-operator-first-import');
  mkdirSync(outputDir,{recursive:true,mode:0o700});
  const out=resolve(outputDir,'operator-first-import.mjs');
- await build({entryPoints:[resolve(root,'scripts/operator-first-import-entry.ts')],
-   outfile:out,format:'esm',platform:'node',target:'node22',bundle:true,
-   packages:'external',logLevel:'silent'});
+ await build({configFile:false,root,logLevel:'silent',
+   build:{ssr:resolve(root,'scripts/operator-first-import-entry.ts'),
+     outDir:outputDir,emptyOutDir:false,target:'node22',minify:false,
+     rollupOptions:{output:{entryFileNames:'operator-first-import.mjs'},
+       external:['firebase/app','firebase/auth','firebase/database','xlsx']}}});
  const child=spawn(process.execPath,[out,...process.argv.slice(2)],{
    cwd:root,env:{...process.env},
    // Preserve STDIN streaming; NEVER echo or persist credentials.
@@ -40,6 +42,6 @@ try{
  });
  process.exitCode=status;
 }catch(error){
- console.error('PR147_OPERATOR_FIRST_IMPORT_LAUNCH_HOLD');
+ console.error('PR147_OPERATOR_FIRST_IMPORT_LAUNCH_HOLD '+String(error?.message??'').slice(0,250));
  process.exitCode=2;
 }
