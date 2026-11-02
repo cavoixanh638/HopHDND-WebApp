@@ -52,6 +52,8 @@ jobs:
           npm run typecheck
           node scripts/pr147-default-deploy-guard.mjs
           node --check scripts/operator-first-import.mjs
+          node --check scripts/operator-first-import-path.mjs
+          node --test parallel-qa/chat3/operator-receipt-path.test.mjs
           node --check parallel-qa/chat3/operator-preflight.mjs
           node --check parallel-qa/chat3/operator-lost-ack.mjs
       - name: Run real CLI preflight and one-time CAS integration with Auth, RTDB, Functions, FULL Rules
@@ -70,3 +72,29 @@ jobs:
         if: always()
         run: |
           echo "Only GitHub job logs with redacted CLI status; no input/token/receipt uploaded."
+
+  windows-receipt-guard:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install pinned application dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Pure production path guard on native Windows + win32/POSIX cases
+        run: |
+          node --check scripts/operator-first-import-path.mjs
+          node --test parallel-qa/chat3/operator-receipt-path.test.mjs
+      - name: Shipped CLI Windows prewrite receipt checks (no emulator/network)
+        run: |
+          node --check parallel-qa/chat3/operator-windows-cli.mjs
+          node parallel-qa/chat3/operator-windows-cli.mjs
