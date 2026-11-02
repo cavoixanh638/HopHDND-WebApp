@@ -2,7 +2,9 @@ import {readFileSync} from 'node:fs';
 import {afterAll,afterEach,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {assertFails,assertSucceeds,initializeTestEnvironment,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,runTransaction,serverTimestamp,set,update,type Database} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,get,ref,runTransaction,serverTimestamp,set,update,goOffline,type Database} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,signInAnonymously,GoogleAuthProvider,signInWithCredential,signOut,type Auth} from 'firebase/auth';
 import type {User} from 'firebase/auth';
 import type {Changes,EditableField,Item,Patch} from '../shared/types';
 import {createDemoItems} from '../src/data/demo-items';
@@ -12,7 +14,7 @@ import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {buildNotRequiredForType,violatesProgressBuildWritePolicy} from
   '../src/data/pr95-v5-l5-progress-build-policy';
 
-const activeId='gen_v5_l5';
+const activeId='gen_v5l5_initial_0001';
 const path='hdnd/datasetV2/generations/'+activeId+'/items';
 const epoch={generationId:activeId,operationId:'v5l5_initial_0001',
   revision:1,rowCount:7,digest:'a'.repeat(64)};
@@ -56,10 +58,6 @@ const seed=()=>({hdnd:{datasetV2:{
   }))}},
   permissions:{[activeId]:allGrants}
 }}});
-const actor=(id:string,admin=false):User=>({
-  uid:id,isAnonymous:!admin,email:admin?adminClaims.email:null,
-  emailVerified:admin,providerData:admin?[{providerId:'google.com'}]:[]
-} as User);
 
 describe('V5 L5 HC/BC write policy — exact data-layer contract (no migration)',()=>{
   it('recognizes HC aliases and BC kind/type without assuming unknown is HC',()=>{
@@ -98,22 +96,28 @@ type Harness={db:Database;session:CellEditSessionManager;repo:FirebaseRepository
 describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + direct SDK',()=>{
   let env:RulesTestEnvironment;
   const sessions=new Set<CellEditSessionManager>();
-  const adminDb=()=>env.authenticatedContext('admin',adminClaims).database() as never as Database;
-  const guestDb=()=>env.authenticatedContext('guest',{
-    firebase:{sign_in_provider:'anonymous'}}).database() as never as Database;
+  const realApps:FirebaseApp[]=[];
+  let realAdmin:{auth:Auth;db:Database;user:User};
+  let realGuest:{auth:Auth;db:Database;user:User};
+  // Test ONLY: issue genuine Google and anonymous ID tokens using Auth
+  // Emulator. A rules-unit-testing fabricated auth context is NOT a Callable
+  // Firebase Auth token, so it may be used only for negative raw SDK checks.
+  const adminDb=()=>realAdmin.db,guestDb=()=>realGuest.db;
   const harness=(admin=false,staleGrants:CellPermissions=allGrants):Harness=>{
-    const uid=admin?'admin':'guest',db=admin?adminDb():guestDb();
-    const session=new CellEditSessionManager(db,()=>actor(uid,admin),activeId);
+    const principal=admin?realAdmin:realGuest;
+    const uid=principal.user.uid,db=principal.db;
+    const session=new CellEditSessionManager(db,()=>principal.user,activeId);
     sessions.add(session);
-    const repo=new FirebaseRepository(db,()=>actor(uid,admin),()=>staleGrants,path,epoch);
+    const repo=new FirebaseRepository(db,()=>principal.user,()=>staleGrants,path,epoch);
     repo.leaseManager=session;
     return {db,session,repo,uid};
   };
   const legacyHarness=(admin=false):Harness=>{
-    const uid=admin?'admin':'guest',db=admin?adminDb():guestDb();
-    const session=new CellEditSessionManager(db,()=>actor(uid,admin));
+    const principal=admin?realAdmin:realGuest;
+    const uid=principal.user.uid,db=principal.db;
+    const session=new CellEditSessionManager(db,()=>principal.user);
     sessions.add(session);
-    const repo=new FirebaseRepository(db,()=>actor(uid,admin),()=>allGrants);
+    const repo=new FirebaseRepository(db,()=>principal.user,()=>allGrants);
     repo.leaseManager=session;
     return {db,session,repo,uid};
   };
@@ -157,8 +161,28 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
   };
   beforeAll(async()=>{
     expect(enabled).toBe(true);
-    env=await initializeTestEnvironment({projectId:'demo-hdnd-v5-l5',
+    expect(process.env.FIREBASE_AUTH_EMULATOR_HOST).toBe('127.0.0.1:9099');
+    expect(process.env.FIREBASE_EMULATOR_HUB).toBeTruthy();
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',
       database:{host:'127.0.0.1',port:9000,rules:candidate}});
+    const make=(tag:string)=>{
+      const app=initializeApp({apiKey:'demo-v5l5-test',authDomain:'demo-hdnd.firebaseapp.com',
+        databaseURL:'https://demo-hdnd.firebaseio.com',projectId:'demo-hdnd',appId:'demo-v5l5-'+tag},
+        'pr142-v5l5-'+tag);
+      realApps.push(app);
+      const auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      return {auth,db};
+    };
+    const a=make('admin'),g=make('anonymous');
+    const [signedIn,guest]=await Promise.all([
+      signInWithCredential(a.auth,GoogleAuthProvider.credential(JSON.stringify({
+        sub:'pr142-v5l5-google-admin',email:adminClaims.email,email_verified:true}))),
+      signInAnonymously(g.auth)
+    ]);
+    realAdmin={...a,user:signedIn.user};realGuest={...g,user:guest.user};
+    expect(realAdmin.user.emailVerified).toBe(true);
+    expect(realGuest.user.isAnonymous).toBe(true);
   },30000);
   beforeEach(async()=>{
     await env.clearDatabase();
@@ -169,7 +193,14 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     await Promise.allSettled([...sessions].map(s=>s.dispose()));
     sessions.clear();
   });
-  afterAll(async()=>env?.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    for(const p of [realAdmin,realGuest]){
+      try{goOffline(p.db);}catch{}
+      try{await signOut(p.auth);}catch{}
+    }
+    await Promise.allSettled(realApps.map(app=>deleteApp(app)));
+  });
 
   it('READS every HC/BC legacy raw Build intact and does not convert it',async()=>{
     const w=harness();
@@ -273,9 +304,11 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(after.progressBuild).toBe(before.progressBuild);
     expect((after.history as any)['2'].changes).toEqual({type:'QPPL'});
   },30000);
-  it('DIRECT SDK: valid guest grant+lease+audit edits QPPL, but cannot change HC/BC',async()=>{
+  it('DIRECT SDK is denied despite valid guest grants, while authenticated callable edits QPPL and blocks HC/BC',async()=>{
     const w=harness();
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý'));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý'));
+    const confirmed=await persist(w,'qppl',{progressBuild:'VP đang xử lý'});
+    expect(confirmed.ok,confirmed.message).toBe(true);
     const success=await current(w.db,'qppl');
     expect(success.progressBuild).toBe('VP đang xử lý');
     expect(success.revision).toBe(2);
@@ -285,11 +318,13 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       expect(await current(w.db,id)).toEqual(before);
     }
   },45000);
-  it('DIRECT SDK TRANSACTION: verified admin lease and audit cannot bypass HC/BC guard',async()=>{
+  it('DIRECT SDK TRANSACTION denied even for verified admin, callable still edits QPPL but blocks HC/BC',async()=>{
     const w=harness(true);
     // Positive same payload against QPPL proves the test does not merely fail
     // on malformed audit, missing .write or missing lease.
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý',true));
+    const confirmed=await persist(w,'qppl',{progressBuild:'VP đang xử lý'});
+    expect(confirmed.ok,confirmed.message).toBe(true);
     expect((await current(w.db,'qppl')).revision).toBe(2);
     for(const id of ['hc','bc']){
       const before=await current(w.db,id);
@@ -299,10 +334,13 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
   },45000);
   it('R-V5-01 RED/REGRESSION: direct SDK denies whitespace and NFC/NFD HC/BC with valid lease, grants and truthful audit',async()=>{
     const guest=harness(),admin=harness(true);
-    // Same direct SDK payload succeeds for non-HC/non-BC rows: guard, not
-    // malformed audit/proof/auth, must be the reason the cases below fail.
-    await assertSucceeds(directSdkEdit(guest,'qppl','VP đang xử lý'));
-    await assertSucceeds(directSdkEdit(admin,'unknown','VP đang xử lý',true));
+    // Direct SDK is never the writer, even when the actor and field are
+    // otherwise valid. Prove callable succeeds for the same QPPL/UNKNOWN
+    // baselines, so the HC/BC rejection below is not an auth/setup artifact.
+    await assertFails(directSdkEdit(guest,'qppl','VP đang xử lý'));
+    expect((await persist(guest,'qppl',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
+    await assertFails(directSdkEdit(admin,'unknown','VP đang xử lý',true));
+    expect((await persist(admin,'unknown',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
     for(let i=0;i<classifiedTypeVariants.length;i++){
       const type=classifiedTypeVariants[i];
       expect(buildNotRequiredForType({type,documentKind:'NQ'}),JSON.stringify(type)).toBe(true);
@@ -331,7 +369,7 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
     expect(after.progressBuild).toBe(untouched.progressBuild);
     expect((after.history as any)['2'].changes).toEqual({note:'Giữ cột H legacy'});
   },60000);
-  it('R-V5-01 legacy fallback direct SDK: unicode HC/BC block, QPPL/unknown and unrelated note remain writable',async()=>{
+  it('R-V5-01 legacy: direct writes blocked and authenticated callable preserves QPPL/UNKNOWN and unrelated HC notes',async()=>{
     // No V2 active pointer: prove the independent hdnd/items/$id validator
     // enforces the exact same business guard, not only the V2 validator.
     await env.clearDatabase();
@@ -348,8 +386,10 @@ describe.skipIf(!enabled)('PR95 V5 L5 REAL Auth/RTDB Emulator: repository + dire
       }});
     });
     const w=legacyHarness(true),legacyPath='hdnd/items';
-    await assertSucceeds(directSdkEdit(w,'qppl','VP đang xử lý',true,legacyPath));
-    await assertSucceeds(directSdkEdit(w,'unknown','VP đang xử lý',false,legacyPath));
+    await assertFails(directSdkEdit(w,'qppl','VP đang xử lý',true,legacyPath));
+    expect((await persist(w,'qppl',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
+    await assertFails(directSdkEdit(w,'unknown','VP đang xử lý',false,legacyPath));
+    expect((await persist(w,'unknown',{progressBuild:'VP đang xử lý'})).ok).toBe(true);
     for(const [id,type,transact] of [
       ['hc','\tHC\t',false],
       ['hc','Ha\u0300nh chi\u0301nh',true],

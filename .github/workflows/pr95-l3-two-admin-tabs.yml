@@ -38,6 +38,10 @@ jobs:
           java-version: '21'
       - name: Install frozen dependencies
         run: npm ci
+      - name: Install both production Functions codebases for common emulator
+        run: |
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
       - name: Typecheck and isolated harness syntax
         run: |
           npm run typecheck

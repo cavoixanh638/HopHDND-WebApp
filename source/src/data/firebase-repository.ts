@@ -7,6 +7,7 @@ import { FIREBASE_ADMIN_EMAIL } from './firebase-config';
 import type {CellEditSessionManager} from './cell-edit-leases';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-policy';
+import {callCellEdit} from './cell-edit-api';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -30,7 +31,7 @@ export function samePermissions(a:CellPermissions|null|undefined,b:CellPermissio
 interface FirebaseEvent {operationId:string;recordId:string;at:number;actor:string;changes?:Partial<Record<EditableField,string|boolean>>;oldValues?:Partial<Record<EditableField,string|boolean>>;changesJson?:string;oldValuesJson?:string}
 type StoredItem=Item & {operationId:string;updatedAt:number;updatedBy:string;history?:Record<string,FirebaseEvent>};
 export const firebaseAdmin=(user:Pick<User,'email'|'emailVerified'|'providerData'>|null)=>!!user&&user.email===FIREBASE_ADMIN_EMAIL&&user.emailVerified&&user.providerData.some(provider=>provider.providerId==='google.com');
-export const mayEdit=(permissions:CellPermissions,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true);
+export const mayEdit=(permissions:CellPermissions|null|undefined,id:string,field:EditableField,admin=false)=>EDITABLE_FIELDS.includes(field)&&(admin||(permissions?.cells?.[id]?.[field]??permissions?.rows?.[id]??permissions?.columns?.[field])===true);
 export function validateFirebaseItem(value:unknown):Item {
   if(!value||typeof value!=='object')throw new Error('Dòng Firebase không hợp lệ.');
   const row=value as Item;
@@ -96,64 +97,49 @@ export class FirebaseRepository implements Repository {
   async save(patches:Patch[]):Promise<SaveResult[]>{
     const results:SaveResult[]=[];
     for(const patch of patches){
-      let reason='Dữ liệu đã thay đổi; phần sửa của bạn vẫn được giữ để đối chiếu.';
       try{
         await this.assertEpoch();
-        const user=this.user();if(!user)throw new Error('Chưa đăng nhập Firebase.');
-        const issue=validateChanges(patch.changes);if(issue)throw new Error(issue);
+        const user=this.user();
+        if(!user)throw new Error('Chưa đăng nhập Firebase.');
+        const issue=validateChanges(patch.changes);
+        if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
-        if(this.leaseManager&&fields.some(field=>!this.leaseManager!.proof(patch.recordId,field)))
-          throw new Error('Mất khóa ô trước khi lưu. Bản nháp được giữ.');
-        if(!fields.length||fields.some(field=>!(field in patch.baseValues)||!mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))throw new Error('Bạn chưa được phép sửa ô này.');
-        let replay=false;
-        const transaction=await runTransaction(ref(this.database,`${this.itemPath}/${patch.recordId}`),raw=>{
-          // A cold transaction cache may initially be null; returning null asks the
-          // server to compare its version, then re-run with the actual record.
-          if(raw===null)return raw;
-          const current=validateFirebaseItem(raw);
-          if(raw.operationId===patch.operationId){replay=fields.every(field=>current[field]===patch.changes[field]);return undefined;}
-          const conflict=fields.find(field=>current[field]!==patch.baseValues[field]);
-          if(conflict){reason=`Ô ${conflict} hiện ở nguồn là “${String(current[conflict])}”; phần bạn nhập “${String(patch.changes[conflict])}” vẫn được giữ. Bỏ phần sửa để nhận dữ liệu nguồn hoặc đối chiếu trước khi nhập lại.`;return undefined;}
-          // V5 L5: the current server record wins over the type seen when an
-          // editor opened. Check the POST-PATCH type (including documentKind),
-          // before any new revision, editProof or audit entry is constructed.
-          // HC/BC legacy Build text is valid data when left unchanged.
-          if(violatesProgressBuildWritePolicy(current,patch.changes)){
-            reason='Loại VB HC/BC không phải trình xây dựng NQ nên trạng thái này không thể chỉnh sửa.';
-            return undefined;
-          }
-          if(fields.some(field=>field==='specialist'||field==='room')){const issue=this.checkAssignment?.({...current,...patch.changes});if(issue)throw new Error(issue);}
-          const editProofs={...(raw.editProofs??{})};
-          if(this.leaseManager)for(const field of fields)
-            editProofs[field]=this.leaseManager.proof(patch.recordId,field);
-          const next={...raw,...patch.changes,editProofs,revision:current.revision+1,operationId:patch.operationId,updatedAt:serverTimestamp(),updatedBy:user.uid};
-          // First-class audit values are validated by RTDB Rules against row
-          // before/after values. Opaque JSON strings cannot be validated.
-          const changed=fields.filter(field=>current[field]!==patch.changes[field]);
-          if(!changed.length){reason='Không có thay đổi dữ liệu mới cần lưu.';return undefined;}
-          const auditChanges=Object.fromEntries(changed.map(field=>[field,patch.changes[field]]));
-          const auditOldValues=Object.fromEntries(changed.map(field=>[field,current[field]]));
-          const history:Record<string,FirebaseEvent>={...(raw.history??{})};
-          history[String(next.revision%50)]=this.leaseManager?{
-            operationId:patch.operationId,recordId:patch.recordId,
-            at:serverTimestamp() as unknown as number,actor:user.uid,
-            changes:auditChanges,oldValues:auditOldValues
-          }:{
-            // Preserve the older Rules contract for non-primary/migration-only
-            // adapters. Exclusive primary Rules require structured audit values.
-            operationId:patch.operationId,recordId:patch.recordId,
-            at:serverTimestamp() as unknown as number,actor:user.uid,
-            changesJson:JSON.stringify(patch.changes),
-            oldValuesJson:JSON.stringify(patch.baseValues)
-          };
-          return {...next,history};
-        },{applyLocally:false});
+        // No silent fallback to the old public-token RTDB write path.
+        if(!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
+        if(!fields.length||fields.some(field=>!(field in patch.baseValues)||
+          !mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))
+          throw new Error('Bạn chưa được phép sửa ô này.');
+        const leases:Record<string,{token:string;secret:string}>={};
+        for(const field of fields){
+          const credential=this.leaseManager.credential(patch.recordId,field);
+          if(!credential)throw new Error('Mất khóa ô '+field+'; bản nháp được giữ.');
+          leases[field]=credential;
+        }
+        if(fields.includes('specialist')||fields.includes('room')){
+          const snapshot=(await get(ref(this.database,`${this.itemPath}/${patch.recordId}`))).val();
+          const current=validateFirebaseItem(snapshot);
+          const assignment=this.checkAssignment?.({...current,...patch.changes});
+          if(assignment)throw new Error(assignment);
+        }
+        // Backend verifies trusted UID, private lease proof and FULL candidate
+        // RTDB Rules at commit, including field grants, generation and freeze.
+        const answer=await callCellEdit({
+          action:'save',scope:this.expectedActive?'v2':'legacy',
+          generation:this.expectedActive,operationId:patch.operationId,
+          recordId:patch.recordId,patch,leases
+        },this.database);
+        if(answer.status!=='committed'||!answer.row)
+          throw new Error('Dịch vụ chưa xác nhận bản ghi; không tự lưu lại.');
         await this.assertEpoch();
-        const item=transaction.snapshot.exists()?validateFirebaseItem(transaction.snapshot.val()):undefined;
-        if(!item)reason='Dòng đã bị xóa hoặc chưa có trong Firebase.';
-        const confirmed=(transaction.committed||replay)&&item&&fields.every(field=>item[field]===patch.changes[field]);
-        results.push(confirmed?{recordId:patch.recordId,ok:true,item}:{recordId:patch.recordId,ok:false,error:item?'CONFLICT':'NOT_FOUND',message:reason});
-      }catch(cause){results.push({recordId:patch.recordId,ok:false,error:'VALIDATION',message:`Chưa lưu: ${cause instanceof Error?cause.message:'lỗi kết nối'}. Phần sửa vẫn giữ trên máy.`});}
+        const item=validateFirebaseItem(answer.row);
+        if(item.recordId!==patch.recordId||
+          fields.some(field=>item[field]!==patch.changes[field]))
+          throw new Error('Máy chủ phản hồi giá trị không khớp bản nháp.');
+        results.push({recordId:patch.recordId,ok:true,item});
+      }catch(cause){
+        results.push({recordId:patch.recordId,ok:false,error:'VALIDATION',
+          message:`Chưa xác nhận lưu: ${cause instanceof Error?cause.message:'lỗi dịch vụ'}. Bản nháp và operationId vẫn được giữ; không ghi trực tiếp RTDB.`});
+      }
     }
     return results;
   }

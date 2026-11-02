@@ -25,7 +25,7 @@ const api=vi.hoisted(()=>({
 vi.mock('react',async importOriginal=>({
   ...(await importOriginal<typeof import('react')>()),useState:h.state
 }));
-vi.mock('../src/data/firebase-versioned-replacement',()=>({
+vi.mock('../src/data/firebase-versioned-replacement-secure',()=>({
   resolveDatasetOperation:api.resolve,
   stageDatasetReplacement:api.stage,
   readStagedDataset:api.read,

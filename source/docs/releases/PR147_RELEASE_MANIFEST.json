@@ -1,0 +1,131 @@
+{
+  "schema": "hophdnd.pr147.frcr01.release-preparation.v2",
+  "status": "EMULATOR_REHEARSAL_PACKAGE_READY_PRODUCTION_NO_GO",
+  "source": {
+    "repo": "cavoixanh638/HopHDND-WebApp",
+    "pr": 147,
+    "branch": "integration/pr142-cell-parent-freeze-candidate-20261101",
+    "historicallyReviewedSha": "02964722ae405a7ccf70f2b88bfe21cb7d0bcca7",
+    "frcr01RehearsalVerifiedSha": "82b6db5b4011aeea322183e9e9ca13aa73674603",
+    "nextCandidateSha": "READ_LATEST_PR147_HEAD_AND_MATCH_ALL_CI; documentation-only HEAD may advance",
+    "noSourceShaUpgradeByAssumption": true,
+    "independentReview": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/147#issuecomment-6559399784",
+    "opsPr149": "https://github.com/cavoixanh638/HopHDND-WebApp/pull/149"
+  },
+  "frcr01": {
+    "fix": "active-generation fence on hdnd/datasetV2/permissions/$generation/.write",
+    "parentCasServiceAtAncestorUnchanged": true,
+    "verifyCommittedRestoreSourceUnchanged": true,
+    "serverEvidence": {
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41327380497",
+      "testedSha": "7bbcf1f8493ef1e5b1164818286c52a75cb9c5de",
+      "checkpoints": [
+        "FRCR01_ACTIVE_SWITCH_DENIES_INFLIGHT_OLD_RIGHTS",
+        "FRCR01_HISTORICAL_COLUMNS_ROWS_CELLS_DELETE_MULTIPATH_DENIED",
+        "FRCR01_APPROVED_RESTORE_SUCCEEDS_AFTER_DENIAL"
+      ],
+      "originalDR01DR02RegressionsRetained": true
+    }
+  },
+  "bundle": {
+    "webOrdinary": {
+      "mode": "pages",
+      "V2Enabled": false,
+      "artifact": "web-pages-default-disabled.tar.gz",
+      "publishableByThisWorkflow": false
+    },
+    "webRehearsal": {
+      "mode": "pages-test",
+      "V2Enabled": true,
+      "endpoint": "http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit",
+      "artifact": "web-pages-test-emulator-only.tar.gz",
+      "publishable": false
+    },
+    "cellFunction": {
+      "codebase": "pr142-cell-edit",
+      "region": "asia-southeast1",
+      "entry": "cell-edit-service/index.js",
+      "engine": "node22",
+      "lock": "cell-edit-service/package-lock.json",
+      "archive": "functions-cellEdit-node22.tar.gz"
+    },
+    "parentFunction": {
+      "codebase": "parent-v2",
+      "region": "us-central1",
+      "entry": "parent-commit-service/index.mjs",
+      "engine": "node22",
+      "lock": "parent-commit-service/package-lock.json",
+      "archive": "functions-parentDatasetCommit-node22.tar.gz"
+    },
+    "rules": {
+      "path": "firebase/database.exclusive-candidate.rules.json",
+      "rawSha256": "ba20c51b67ed8ca9ed43af02541e6d44f665ec9b9c1f3a8065e3f3a2abf6f481",
+      "archive": "firebase-full-rules-frcr01.tar.gz"
+    },
+    "CI": {
+      "runId": 41328054403,
+      "url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41328054403",
+      "provedSourceSha": "82b6db5b4011aeea322183e9e9ca13aa73674603",
+      "archiveArtifactId": 13091469937,
+      "archiveZipSha256": "63961fde2f2481c4d5332c2c232bf741255ab3366441d53d71ab93ba261ba3c3",
+      "expiresAt": "2026-11-22T16:47:22Z",
+      "innerArchivesSha256": {
+        "web-pages-default-disabled.tar.gz": "78ec59aa22b75ce704171a2989ebabe551306370ee088a9bd155856b7d23cf77",
+        "web-pages-test-emulator-only.tar.gz": "24e4442df4f02d06266a692e5050cbd340b2c33e5a1c23b214cb1a8ea1420120",
+        "functions-cellEdit-node22.tar.gz": "6afb490e2bbd3de8f2976fffd2682571a36865f07bff89b714f44120be63b6d8",
+        "functions-parentDatasetCommit-node22.tar.gz": "2b0c115b20f0d95872c180dd280a44e33d61958146fdb8a470f030515ea5933b",
+        "firebase-full-rules-frcr01.tar.gz": "90c5a748595bbab0f8c22db1988e382560510231884fe637cb7e30681541da8e"
+      },
+      "doublePackagingRunStable": true,
+      "checksumsVerified": true
+    }
+  },
+  "config": {
+    "releaseTemplate": "firebase.release.json",
+    "databaseInstance": "REQUIRED_UNVERIFIED",
+    "rules": "firebase/database.exclusive-candidate.rules.json",
+    "functions": [
+      "pr142-cell-edit",
+      "parent-v2"
+    ],
+    "hostingConfigured": false,
+    "validator": "node scripts/pr147-release-validate.mjs --mode rehearsal --config firebase.release.json",
+    "productionValidator": "node scripts/pr147-release-validate.mjs --mode production --config /ABSOLUTE/APPROVED/firebase.release.json --approval /ABSOLUTE/PRIVATE/approval.json",
+    "productionValidatorExpectedWithoutApproval": "HOLD",
+    "githubPagesReleaseGate": [
+      "HOPHDND_RELEASE_BACKENDS_CONFIRMED=true",
+      "HOPHDND_PAGES_APPROVED_MAIN_SHA=<exact independently approved main SHA>",
+      "HOPHDND_PARENT_COMMIT_ENDPOINT=<verified HTTPS endpoint>"
+    ],
+    "productionEnvRequired": [
+      "GCLOUD_PROJECT",
+      "PARENT_DATABASE_URL",
+      "FIREBASE_DATABASE_URL",
+      "PARENT_ALLOWED_ORIGINS",
+      "PARENT_COMMIT_ENABLED",
+      "VITE_PARENT_REPLACEMENT_ENABLED",
+      "VITE_PARENT_COMMIT_ENDPOINT"
+    ],
+    "bindingsVerifiedProduction": false
+  },
+  "releaseStatus": {
+    "CODE_READY": "PENDING_LAST_EXACT_SHA_CI_FINAL_GATE",
+    "PACKAGE_READY": "REHEARSAL_ONLY_VETTED_EXACT_SHA_82b6db5b4011aeea322183e9e9ca13aa73674603",
+    "PRODUCTION_AUTHORIZED": false
+  },
+  "remainingExternalGates": [
+    "Named independent security/Rules signoff",
+    "Actual production project and RTDB instance confirmed from Console",
+    "Current published Rules provenance and full read-only backup/restore drill",
+    "Verified both deployed Functions IAM, invoker access and CORS",
+    "Real HTTPS parent endpoint and V2-enabled production web build under exact SHA",
+    "First-use source/data branches empty-legacy/nonempty-legacy/V2-active approved by data owner",
+    "Approved admin UAT, maintenance window, operator GO/NO-GO, actual rollback reconciliation"
+  ],
+  "noActions": [
+    "No production access",
+    "No deployment or publish",
+    "No merge or automatic Pages release",
+    "No production flag activation"
+  ]
+}

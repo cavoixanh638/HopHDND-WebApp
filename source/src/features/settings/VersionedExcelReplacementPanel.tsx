@@ -8,7 +8,7 @@ import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   prepareInitialDatasetActivation,commitInitialDatasetActivation,
   resolveDatasetOperation,restoreDatasetBackup,type ReplacementApproval,
   type InitialActivationApproval}
-  from '../../data/firebase-versioned-replacement';
+  from '../../data/firebase-versioned-replacement-secure';
 import type {ActiveDatasetPointer} from '../../data/dataset-replacement-integrity';
 import {activeEditLeaseCount,readFreeze,type FreezeControl} from '../../data/freeze-control';
 

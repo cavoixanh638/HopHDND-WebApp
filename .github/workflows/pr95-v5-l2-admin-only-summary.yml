@@ -36,6 +36,10 @@ jobs:
           java-version: '21'
       - name: Install exact project dependencies
         run: npm ci
+      - name: Install both real Functions before guest cell editing
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Verify frozen public props/role context typecheck
         run: npm run typecheck
       - name: SSR role/context, unknown QPPL, 4-4-3 counts, chips and filter IDs

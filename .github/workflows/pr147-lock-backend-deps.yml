@@ -1,0 +1,54 @@
+name: PR147 generate and pin both Node22 backend dependency lockfiles (NO DEPLOY)
+on:
+  push:
+    branches: [integration/pr142-cell-parent-freeze-candidate-20261101]
+    paths: [".github/workflows/pr147-lock-backend-deps.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pr147-lock-node22-backend-deps
+  cancel-in-progress: false
+jobs:
+  lock-node22-services:
+    if: github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate only the two Node22 lockfiles, no source or Rules changes
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node -e "for (const x of ['cell-edit-service','parent-commit-service']) {const p=require('./'+x+'/package.json');if(p.engines.node!=='22')process.exit(1)}"
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          node -e "for(const x of ['cell-edit-service','parent-commit-service']) {const p=require('./'+x+'/package.json'),l=require('./'+x+'/package-lock.json');if(l.lockfileVersion!==3||l.packages[''].name!==p.name)process.exit(2);for(const [n,v] of Object.entries(p.dependencies))if(l.packages[''].dependencies[n]!==v)process.exit(3)}"
+          git diff --exit-code -- firebase/database.exclusive-candidate.rules.json src cell-edit-service/index.js cell-edit-service/core.js parent-commit-service/index.mjs parent-commit-service/src
+          git status --short
+      - name: Commit lockfiles only to the PR147 integration branch (no merge)
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- source/cell-edit-service/package-lock.json source/parent-commit-service/package-lock.json
+          git diff --cached --name-only | grep -Fx 'source/cell-edit-service/package-lock.json'
+          git diff --cached --name-only | grep -Fx 'source/parent-commit-service/package-lock.json'
+          if test "$(git diff --cached --name-only | wc -l)" -ne 2; then
+            echo "::error::Unexpected staged files"; exit 2
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "build(PR147): lock both Node22 Firebase Functions dependency graphs"
+          git push origin HEAD:refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101
+          echo "PR147_TWO_NODE22_LOCKFILES_COMMITTED $(git rev-parse HEAD)"

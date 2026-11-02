@@ -23,7 +23,7 @@ const calls=vi.hoisted(()=>({
 vi.mock('react',async importOriginal=>({
   ...(await importOriginal<typeof import('react')>()),useState:hooks.useState
 }));
-vi.mock('../src/data/firebase-versioned-replacement',()=>({
+vi.mock('../src/data/firebase-versioned-replacement-secure',()=>({
   prepareInitialDatasetActivation:calls.prepare,
   commitInitialDatasetActivation:calls.activate,
   stageDatasetReplacement:calls.stage,

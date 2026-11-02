@@ -26,6 +26,8 @@ jobs:
           cache-dependency-path: source/package-lock.json
       - name: Install exact dependencies
         run: npm ci
+      - name: Verify default Firebase deploy cannot select permissive legacy Rules
+        run: node scripts/pr147-default-deploy-guard.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
@@ -65,7 +67,11 @@ jobs:
           HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
       - name: Documentation checks
         run: npm run docs:check
-      - name: Firebase emulator tests
+      - name: Install real cell and parent Functions before shared FULL Rules Firebase regression
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Firebase emulator tests — real Auth+Functions+RTDB
         run: npm run test:firebase
       - name: Build split, on-demand Pages artifact
         run: npm run build:pages

@@ -32,6 +32,10 @@ jobs:
           java-version: '21'
       - name: Install frozen dependencies
         run: npm ci
+      - name: Install both real Functions before guest cell editing
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Build real Pages test App, not compact QA
         run: npm run build:pages:test
       - name: Verify isolated permissions script syntax

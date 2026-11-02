@@ -1,0 +1,238 @@
+name: PR142 unified candidate — two real Functions, one FULL Rules, App regression
+on:
+  push:
+    branches:
+      - integration/pr142-cell-parent-freeze-candidate-20261101
+  pull_request:
+    paths:
+      - "source/**"
+      - ".github/workflows/pr142-integrated.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pr142-integrated-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lock-backend-deps:
+    # Bootstrap exactly two service lockfiles once; never deploy or publish.
+    if: (github.event_name == 'pull_request' && github.event.pull_request.number == 147 && github.event.pull_request.head.ref == 'integration/pr142-cell-parent-freeze-candidate-20261101') || (github.event_name == 'push' && github.ref == 'refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101')
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Generate frozen Node22 package locks if absent
+        working-directory: source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          if test -f cell-edit-service/package-lock.json && test -f parent-commit-service/package-lock.json; then
+            echo "LOCKFILES_ALREADY_TRACKED"
+            exit 0
+          fi
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix cell-edit-service
+          npm ci --ignore-scripts --no-audit --no-fund --prefix parent-commit-service
+          node -e "for(const n of ['cell-edit-service','parent-commit-service']) {const p=require('./'+n+'/package.json'),l=require('./'+n+'/package-lock.json');if(l.lockfileVersion!==3||l.packages[''].name!==p.name)process.exit(1);for(const [k,v] of Object.entries(p.dependencies))if(l.packages[''].dependencies[k]!==v)process.exit(2)}"
+          git diff --exit-code -- firebase/database.exclusive-candidate.rules.json src cell-edit-service/index.js cell-edit-service/core.js parent-commit-service/index.mjs parent-commit-service/src
+          git status --short
+      - name: Commit only backend lockfiles to existing PR147 branch
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f source/cell-edit-service/package-lock.json && test -f source/parent-commit-service/package-lock.json; then
+            git add -- source/cell-edit-service/package-lock.json source/parent-commit-service/package-lock.json
+            if git diff --cached --quiet; then echo "LOCKFILES_ALREADY_TRACKED"; exit 0; fi
+            test "$(git diff --cached --name-only | wc -l)" -eq 2
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "build(PR147): pin both Node22 Firebase Functions package-lock files"
+            # Multiple integrator commits can advance the PR while CI resolves npm.
+            # Rebase ONLY this two-lockfile commit, never force-push or touch main.
+            for attempt in 1 2 3 4; do
+              git fetch --no-tags origin integration/pr142-cell-parent-freeze-candidate-20261101
+              git rebase origin/integration/pr142-cell-parent-freeze-candidate-20261101
+              changed="$(git diff --name-only origin/integration/pr142-cell-parent-freeze-candidate-20261101 HEAD)"
+              if test "$changed" != "$(printf 'source/cell-edit-service/package-lock.json\nsource/parent-commit-service/package-lock.json')"; then
+                echo "::error::Unexpected change in rebased lockfile commit"; exit 2
+              fi
+              if git push origin HEAD:refs/heads/integration/pr142-cell-parent-freeze-candidate-20261101; then
+                echo "LOCKFILES_COMMITTED_SHA=$(git rev-parse HEAD)"
+                exit 0
+              fi
+            done
+            echo "::error::Candidate advanced during lockfile bootstrap"; exit 2
+          else
+            echo "::error::Missing generated lockfiles"; exit 2
+          fi
+
+  static-app:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    defaults:
+      run: {working-directory: source}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: source/package-lock.json}
+      - name: App dependency installation
+        run: npm ci --no-audit --no-fund
+      - name: Authenticated parent + cell services (isolated)
+        run: |
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Confirm exact source SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git rev-parse HEAD
+      - name: Typecheck
+        id: typecheck
+        run: npm run typecheck
+      - name: Unit and component regression suites
+        if: always()
+        run: npm run test -- --exclude tests/firebase-emulator.test.ts --exclude tests/firebase-production-rules.test.ts --exclude tests/exclusive-cell-freeze.test.ts --exclude tests/firebase-tab-auth.test.ts --exclude tests/firebase-versioned-replacement.test.ts --exclude tests/pr142-v2-freeze.test.ts --exclude tests/pr95-independent-rules.test.ts --exclude tests/pr95-independent-race.test.ts --exclude parent-commit-service/test/integration.test.ts
+      - name: Build full web application
+        if: always()
+        run: npm run build
+      - name: Build pages test artifact
+        if: always()
+        run: npm run build:pages:test
+      - name: Documentation checks
+        if: always()
+        run: npm run docs:check
+  common-emulator:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    defaults:
+      run: {working-directory: source}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: source/package-lock.json}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - name: Install all 3 isolated dependency graphs
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Browser runtime
+        run: npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: Verify EXACT integration Rules and both functions
+        run: |
+          node --check scripts/pr142-integrated-emulator.mjs
+          node --check parent-commit-service/test/run-functions.mjs
+          npm run typecheck
+          node -e "const f=require('./firebase.staging.json');if(f.functions.length!==2||f.database.rules!=='firebase/database.exclusive-candidate.rules.json')process.exit(1);const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;if(!r.datasetV2['.write'].includes('parentCasService')||!r.items[String.fromCharCode(36)+'id']['.write'].includes('cellService'))process.exit(2)"
+      - name: Auth + BOTH real Functions wrappers + RTDB + FULL Rules + Chrome
+        id: integration
+        shell: bash
+        env:
+          PARENT_COMMIT_ENABLED: "true"
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=10s 14m npx firebase emulators:exec --project demo-hdnd --config firebase.staging.json --only auth,database,functions "node scripts/pr142-integrated-emulator.mjs" > pr142-unified-emulator.stdout 2>&1
+          rc=$?
+          set -e
+          echo "PR142_UNIFIED_EMULATOR_EXIT=$rc"
+          cat pr142-unified-emulator.stdout
+          exit "$rc"
+      - name: Real Freeze UI Chrome F1-F5 + deterministic generation races, same FULL Rules
+        # A cancelled dependency-install cannot run the function wrappers.
+        # Still independently run Freeze after a genuine service test failure.
+        if: ${{ !cancelled() && (success() || steps.integration.outcome == 'failure') }}
+        shell: bash
+        env:
+          PARENT_COMMIT_ENABLED: "true"
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4179
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=10s 9m node scripts/pr143-freeze-ui-browser.mjs > pr142-freeze-ui.stdout 2>&1
+          rc=$?
+          set -e
+          echo "PR142_INTEGRATED_FREEZE_EXIT=$rc"
+          tail -c 22000 pr142-freeze-ui.stdout
+          exit "$rc"
+      - name: Upload ALL evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-unified-real-emulator-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/pr142-unified-emulator.stdout
+            source/pr142-freeze-ui.stdout
+            source/qa-results/pr143-freeze-ui/
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+            source/cell-edit-service/test/full-app-witness.local.json
+            source/cell-edit-service/test/*.local.png
+            source/parent-commit-service/evidence/*
+          if-no-files-found: warn
+          retention-days: 21
+
+  full-pages-browser:
+    if: github.event_name != 'pull_request' || github.event.pull_request.number == 147
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run: {working-directory: source}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm, cache-dependency-path: source/package-lock.json}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - name: Install App and BOTH Functions service graphs
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Build real pages-test artifact
+        run: npm run build:pages:test
+      - name: Build the original compact real ItemList fixture required by full Chrome smoke
+        run: npm run build:compact:qa
+      - name: Run FULL App Chrome guest/admin and Excel preview-stage-activate-replace-restore
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=10s 17m node scripts/smoke-pages-browser.mjs > pr142-full-app-browser.stdout 2>&1
+          rc=$?
+          set -e
+          echo "PR142_FULL_APP_CHROME_EXIT=$rc"
+          tail -c 35000 pr142-full-app-browser.stdout
+          exit "$rc"
+      - name: Preserve full Pages Chrome screenshots and server witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-full-app-chrome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/pr142-full-app-browser.stdout
+            source/hophdnd*.png
+            source/qa-results/**
+          if-no-files-found: warn
+          retention-days: 21

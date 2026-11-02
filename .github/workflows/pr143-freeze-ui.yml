@@ -1,0 +1,47 @@
+name: PR143 Freeze UI Chrome + Firebase Emulator
+on:
+  pull_request:
+    paths:
+      - "source/src/features/settings/FreezeAdminPanel.tsx"
+      - "source/src/data/freeze-control.ts"
+      - "source/tests/pr143-freeze-ui-browser-entry.tsx"
+      - "source/scripts/pr143-freeze-ui-browser.mjs"
+      - "source/pr143-freeze.html"
+      - ".github/workflows/pr143-freeze-ui.yml"
+permissions:
+  contents: read
+jobs:
+  chrome-freeze-ui:
+    timeout-minutes: 16
+    if: github.event.pull_request.number == 143
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Real Chrome UI + deterministic F4 generation races (Auth+RTDB Emulator)
+        run: |
+          node --check scripts/pr143-freeze-ui-browser.mjs
+          node scripts/pr143-freeze-ui-browser.mjs
+      - name: Upload Chrome screenshots, logs and server witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr143-freeze-ui-chrome-emulator-evidence
+          path: source/qa-results/pr143-freeze-ui/
+          if-no-files-found: warn
+          retention-days: 14

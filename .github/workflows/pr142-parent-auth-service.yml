@@ -1,0 +1,75 @@
+name: PR142 parent replacement authenticated service (isolated)
+on:
+  pull_request:
+    paths:
+      - "source/parent-commit-service/**"
+      - "source/src/data/firebase-versioned-replacement*.ts"
+      - "source/src/data/parent-commit-api.ts"
+      - "source/src/features/settings/VersionedExcelReplacementPanel.tsx"
+      - ".github/workflows/pr142-parent-auth-service.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: parent-auth-service-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  authenticated-parent-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install application deps
+        run: npm ci
+      - name: Install isolated service deps (without touching application lockfile)
+        run: npm ci --prefix parent-commit-service --no-audit --no-fund --ignore-scripts
+      - name: Check main application TypeScript
+        run: npm run typecheck
+      - name: Install companion cell Functions dependency graph
+        run: npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Verify exact shared FULL candidate Rules and both Functions codebases
+        run: |
+          node -e "const r=require('./firebase/database.exclusive-candidate.rules.json').rules.hdnd;const f=require('./firebase.staging.json');if(f.functions.length!==2||!r.datasetV2['.write'].includes('parentCasService')||!r.items[String.fromCharCode(36)+'id']['.write'].includes('cellService'))process.exit(1)"
+      - name: Run REAL onRequest Functions wrapper + Auth + RTDB against shared FULL Rules
+        shell: bash
+        env:
+          PARENT_COMMIT_ENABLED: "true"
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
+        run: |
+          set -o pipefail
+          mkdir -p parent-commit-service/evidence
+          npx firebase emulators:exec --project demo-hdnd --only database,auth,functions \
+            --config firebase.staging.json \
+            "node parent-commit-service/test/run-functions.mjs" 2>&1 \
+            | tee parent-commit-service/evidence/emulator.stdout.log
+      - name: Regress existing App transfer panel event wiring (mocked backend only)
+        shell: bash
+        run: |
+          set -o pipefail
+          npx vitest run tests/pr95-app-initial-activation.test.tsx 2>&1 |
+            tee parent-commit-service/evidence/panel-regression.stdout.log
+      - name: Archive local-only service endpoint and RTDB witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-authenticated-parent-commit-${{ github.run_attempt }}
+          path: |
+            source/parent-commit-service/evidence/**
+            source/parent-commit-service/.generated/rules-manifest.json
+          if-no-files-found: warn
+          retention-days: 30

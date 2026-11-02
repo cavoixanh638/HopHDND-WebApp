@@ -1,14 +1,15 @@
 import {readFileSync} from 'node:fs';
 import * as XLSX from 'xlsx';
 import {BUSINESS_HEADERS,parseBusinessExcel} from '../src/data/business-excel';
-import {initializeApp,deleteApp} from 'firebase/app';
-import {initializeAuth,connectAuthEmulator,inMemoryPersistence,getIdTokenResult,signOut} from 'firebase/auth';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {initializeAuth,connectAuthEmulator,inMemoryPersistence,signInAnonymously,getIdTokenResult,signOut} from 'firebase/auth';
 import {getDatabase,connectDatabaseEmulator} from 'firebase/database';
 import {signInAsEmulatorGoogleAdmin} from '../src/state/firebase-emulator-admin-auth';
 import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {initializeTestEnvironment,assertFails,assertSucceeds,
   type RulesTestEnvironment} from '@firebase/rules-unit-testing';
 import {get,ref,set,update,goOffline,goOnline,serverTimestamp} from 'firebase/database';
+import {setFreezeMode,readFreeze} from '../src/data/freeze-control';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
@@ -16,8 +17,8 @@ import {CellEditSessionManager} from '../src/data/cell-edit-leases';
 import {updateDraft} from '../src/domain/items';
 import {stageDatasetReplacement,readStagedDataset,commitDatasetReplacement,
   resolveDatasetOperation,restoreDatasetBackup,prepareInitialDatasetActivation,
-  commitInitialDatasetActivation,armEmulatorPostCommitCallerAckLoss,DATASET_V2_PATH} from
-  '../src/data/firebase-versioned-replacement';
+  commitInitialDatasetActivation,DATASET_V2_PATH} from
+  '../src/data/firebase-versioned-replacement-secure';
 
 const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 // Run the real, unmodified candidate rules; disabling validation would make
@@ -25,36 +26,63 @@ const emulator=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
 const rule=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
 const claims={email:'cavoixanh638@gmail.com',email_verified:true,
   firebase:{sign_in_provider:'google.com' as const}};
-const actor={uid:'administrator',email:claims.email,emailVerified:true,
-  providerData:[{providerId:'google.com'}]} as User;
+let actor:User;
 const initialRows=createDemoItems(2).map((item,i)=>({...item,
   recordId:'r'+(i+1),displayCode:'NQ0'+(i+1),revision:1,archivedAt:null,isDropped:false}));
 const replacement=()=>createDemoItems(2).map((item,i)=>({...item,
   recordId:'v'+(i+1),displayCode:'NQ0'+(i+1),revision:1,archivedAt:null,
   isDropped:false,content:'Mới '+i}));
 const seed=()=>({hdnd:{items:{legacy:initialRows[0]},
-  datasetV2:{active:{generationId:'gen_seed_initial',operationId:'seed_op_000001',
+  datasetV2:{active:{generationId:'gen_seed_initial',operationId:'seed_initial',
     revision:1,rowCount:2,digest:'a'.repeat(64)},
     generations:{gen_seed_initial:{items:Object.fromEntries(initialRows.map(row=>[row.recordId,{...row,operationId:'seed',updatedAt:1,updatedBy:'administrator'}]))}},
     permissions:{gen_seed_initial:{columns:{note:true}}},
-    leases:{gen_seed_initial:{r1:{note:{token:'stale-lease'}}}}
+    leases:{gen_seed_initial:{r1:{note:{token:'stale-lease'}}}},
+    operations:{seed_initial:{status:'COMMITTED',from:'legacy',
+      to:'gen_seed_initial',at:1}}
   }}});
 describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>{
   let env:RulesTestEnvironment;
-  const admin=()=>env.authenticatedContext('administrator',claims).database() as never;
+  let adminApp:FirebaseApp,guestApp:FirebaseApp;
+  let adminDb:ReturnType<typeof getDatabase>,guestDb:ReturnType<typeof getDatabase>;
+  let guestUser:User;
+  const admin=()=>adminDb;
   const guest=()=>env.authenticatedContext('anon',{firebase:{sign_in_provider:'anonymous'}}).database() as never;
-  beforeAll(async()=>{env=await initializeTestEnvironment({projectId:'demo-hdnd-v2',database:{
-    host:'127.0.0.1',port:9000,rules:rule}});},30000);
+  beforeAll(async()=>{
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
+      host:'127.0.0.1',port:9000,rules:rule}});
+    adminApp=initializeApp({apiKey:'demo-pr142-v2',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr142-v2-verified-admin',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'pr142-v2-real-admin');
+    const auth=initializeAuth(adminApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+    adminDb=getDatabase(adminApp);
+    connectDatabaseEmulator(adminDb,'127.0.0.1',9000);
+    actor=await signInAsEmulatorGoogleAdmin(auth);
+    expect(actor.emailVerified).toBe(true);
+    guestApp=initializeApp({apiKey:'demo-pr142-v2',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr142-v2-real-guest',
+      databaseURL:'https://demo-hdnd.firebaseio.com'},'pr142-v2-real-guest');
+    const guestAuth=initializeAuth(guestApp,{persistence:inMemoryPersistence});
+    connectAuthEmulator(guestAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+    guestDb=getDatabase(guestApp);
+    connectDatabaseEmulator(guestDb,'127.0.0.1',9000);
+    guestUser=(await signInAnonymously(guestAuth)).user;
+  },30000);
   beforeEach(async()=>{await env.clearDatabase();await env.withSecurityRulesDisabled(async ctx=>{
     await set(ref(ctx.database() as never),seed());
   });});
-  afterAll(async()=>env.cleanup());
+  afterAll(async()=>{
+    await env.cleanup();
+    goOffline(adminDb);goOffline(guestDb);
+    await Promise.all([deleteApp(adminApp),deleteApp(guestApp)]);
+  });
 
   it('two independently initialized real Auth Emulator Google SDK sessions share verified admin UID and pass candidate Rules',async()=>{
     const apps=[0,1].map(i=>initializeApp({
-      apiKey:'demo-test-key',authDomain:'demo-hdnd-v2.firebaseapp.com',
-      projectId:'demo-hdnd-v2',appId:'pr95-auth-emulator-'+i,
-      databaseURL:'https://demo-hdnd-v2.firebaseio.com'
+      apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',
+      projectId:'demo-hdnd',appId:'pr95-auth-emulator-'+i,
+      databaseURL:'https://demo-hdnd.firebaseio.com'
     },'pr95-google-auth-tab-'+i));
     try {
       const identities=await Promise.all(apps.map(async app=>{
@@ -118,7 +146,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
         {note:'Thay đổi sau duyệt',revision:2});
     });
     await expect(commitDatasetReplacement(db,actor,approval,'THAY '+op+' 2 2'))
-      .rejects.toThrow('cùng thế hệ');
+      .rejects.toThrow(/PARENT_COMMIT_DENIED: active generation content changed since staging/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
   },20000);
@@ -126,13 +154,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   it('rejects replacement after an authorized lease-backed edit in the same generation',async()=>{
     const db=admin(),operation='pr95_valid_race_01';
     const approval=await stageDatasetReplacement(db,actor,replacement(),operation,'test.xlsx');
-    const editorDb=env.authenticatedContext('concurrent-editor',
-      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
-    const editor={uid:'concurrent-editor',isAnonymous:true,email:null,
-      emailVerified:false,providerData:[]} as unknown as User;
+    const editorDb=guestDb,editor=guestUser;
     const manager=new CellEditSessionManager(editorDb,()=>editor,'gen_seed_initial');
     const repository=new FirebaseRepository(editorDb,()=>editor,
-      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items');
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/gen_seed_initial/items',
+      seed().hdnd.datasetV2.active);
     repository.leaseManager=manager;
     // r1 deliberately has malformed stale-lease fixture; r2 has no lease.
     const original=(await repository.list()).find(row=>row.recordId==='r2')!;
@@ -143,7 +169,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await manager.finish(original.recordId,'note');
     await manager.dispose();
     await expect(commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2'))
-      .rejects.toThrow(/cùng thế hệ|đã thay đổi/);
+      .rejects.toThrow(/PARENT_COMMIT_DENIED: active generation content changed since staging/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/generationId'))).val())
       .toBe('gen_seed_initial');
     expect(await resolveDatasetOperation(db,operation)).toEqual({status:'not-committed',operationId:operation});
@@ -168,7 +194,10 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
   it('does not call missing or inconsistent operation log entries uncommitted',async()=>{
     const db=admin();
     // A seeded active pointer without a matching operation log is ambiguous.
-    expect(await resolveDatasetOperation(db,'seed_op_000001')).toEqual({status:'unknown',operationId:'seed_op_000001'});
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,DATASET_V2_PATH+'/operations/seed_initial'),null);
+    });
+    expect(await resolveDatasetOperation(db,'seed_initial')).toEqual({status:'unknown',operationId:'seed_initial'});
     expect(await resolveDatasetOperation(db,'not_seen_ever_0001')).toEqual({status:'not-committed',operationId:'not_seen_ever_0001'});
     await env.withSecurityRulesDisabled(async ctx=>{
       await set(ref(ctx.database() as never,DATASET_V2_PATH+
@@ -195,13 +224,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await commitDatasetReplacement(db,actor,approval,'THAY '+operation+' 2 2');
     const active='gen_'+operation;
     await assertSucceeds(set(ref(db,DATASET_V2_PATH+'/permissions/'+active+'/columns/note'),true));
-    const editorDb=env.authenticatedContext('editor-v2',
-      {firebase:{sign_in_provider:'anonymous'}}).database() as never;
-    const editor={uid:'editor-v2',isAnonymous:true,email:null,emailVerified:false,
-      providerData:[]} as unknown as User;
+    const editorDb=guestDb,editor=guestUser;
     const manager=new CellEditSessionManager(editorDb,()=>editor,active);
     const repository=new FirebaseRepository(editorDb,()=>editor,
-      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/'+active+'/items');
+      ()=>({columns:{note:true}}),DATASET_V2_PATH+'/generations/'+active+'/items',
+      (await get(ref(db,DATASET_V2_PATH+'/active'))).val());
     repository.leaseManager=manager;
     const before=(await repository.list())[0];
     await manager.acquire(before.recordId,'note','multiline');
@@ -322,15 +349,32 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       .rejects.toThrow('P/Q legacy');
   });
 
-  it('proves server COMMITTED despite lost application completion on all 3 CAS APIs; lookup never replays',async()=>{
+  it('proves server COMMITTED despite REAL HTTP ACK loss after initial/replace/restore, never duplicates',async()=>{
+    // Drop ONLY the response from the actual authenticated onRequest wrapper
+    // AFTER server has committed and returned HTTP 200. No mock RTDB CAS path.
+    const loseAck=async(operationId:string,send:()=>Promise<unknown>)=>{
+      const native=globalThis.fetch;let dropped=false;
+      globalThis.fetch=(async(input:any,init?:any)=>{
+        const response=await native(input,init);
+        if(!dropped&&String(input).includes('parentDatasetCommit')){
+          dropped=true;expect(response.status).toBe(200);
+          const returned=await response.clone().json() as {status?:string;operationId?:string};
+          expect(returned.operationId).toBe(operationId);
+          expect(returned.status).toBe('committed');
+          throw Error('PR142_TEST_ONLY_HTTP_RESPONSE_LOSS_AFTER_REAL_COMMIT');
+        }
+        return response;
+      }) as typeof fetch;
+      try{expect(await send()).toEqual({status:'unknown',operationId});}
+      finally{globalThis.fetch=native;}
+      expect(dropped).toBe(true);
+    };
     await setupFrozenLegacy();
     const db=admin();
     const first='pr95_loss_initial_0001';
     const approval=await prepareInitialDatasetActivation(db,actor,replacement(),first,'first.xlsx');
-    armEmulatorPostCommitCallerAckLoss(db,first);
-    await expect(commitInitialDatasetActivation(db,actor,approval,
-      'KHOI TAO V2 '+first+' 2 2')).rejects.toThrow(
-      'PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(first,()=>commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+first+' 2 2'));
     const active1=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active1).toMatchObject({operationId:first,revision:1});
     expect(await resolveDatasetOperation(db,first)).toEqual({
@@ -338,18 +382,15 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     const second='pr95_loss_replace_001';
     const rows2=replacement().map(row=>({...row,content:row.content+' second'}));
     const next=await stageDatasetReplacement(db,actor,rows2,second,'second.xlsx');
-    armEmulatorPostCommitCallerAckLoss(db,second);
-    await expect(commitDatasetReplacement(db,actor,next,'THAY '+second+' 2 2'))
-      .rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(second,()=>commitDatasetReplacement(db,actor,next,'THAY '+second+' 2 2'));
     const active2=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active2).toMatchObject({operationId:second,revision:2});
     expect(await resolveDatasetOperation(db,first)).toMatchObject({status:'committed-historical'});
     expect(await resolveDatasetOperation(db,second)).toMatchObject({
       status:'committed-active',generationId:'gen_'+second});
     const third='pr95_loss_restore_001';
-    armEmulatorPostCommitCallerAckLoss(db,third);
-    await expect(restoreDatasetBackup(db,actor,second,third,active2,
-      'KHOI PHUC '+third)).rejects.toThrow('PR95_TEST_ONLY_LOST_CALLER_ACK_AFTER_SERVER_CAS');
+    await loseAck(third,()=>restoreDatasetBackup(db,actor,second,third,active2,
+      'KHOI PHUC '+third));
     const active3=(await get(ref(db,DATASET_V2_PATH+'/active'))).val();
     expect(active3).toMatchObject({operationId:third,revision:3});
     expect(await resolveDatasetOperation(db,second)).toMatchObject({
@@ -360,7 +401,19 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     expect(Object.keys(frozen.operations)).toHaveLength(3);
     expect(Object.keys(frozen.generations)).toHaveLength(3);
     expect((await get(ref(db,DATASET_V2_PATH+'/active/revision'))).val()).toBe(3);
-    // Only read-only status lookups after injected faults: no repeated runTransaction.
+    // Replay the SAME operations through the real service, requiring
+    // already-committed, with exactly 3 historical generations and audits.
+    expect((await commitInitialDatasetActivation(db,actor,approval,
+      'KHOI TAO V2 '+first+' 2 2')).status).toBe('already-committed');
+    expect((await commitDatasetReplacement(db,actor,next,
+      'THAY '+second+' 2 2')).status).toBe('already-committed');
+    expect((await restoreDatasetBackup(db,actor,second,third,active2,
+      'KHOI PHUC '+third)).status).toBe('already-committed');
+    const replay=(await get(ref(db,DATASET_V2_PATH))).val();
+    expect(replay.active.revision).toBe(3);
+    expect(Object.keys(replay.operations)).toHaveLength(3);
+    expect(Object.keys(replay.generations)).toHaveLength(3);
+    // Read-only resolution never fabricates another commit.
     expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+first+'/status'))).val())
       .toBe('COMMITTED');
     expect((await get(ref(db,DATASET_V2_PATH+'/operations/'+second+'/status'))).val())
@@ -409,10 +462,11 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
     await assertFails(set(ref(db,'hdnd/permissions/columns/note'),false));
     // Even reopening the old freeze mode cannot resurrect legacy writers
     // once V2 has an active pointer.
-    await assertSucceeds(update(ref(db,'hdnd/freezeControl'),{
-      mode:'OPEN',revision:3,epoch:1,actor:'administrator',
-      changedAt:serverTimestamp(),deadline:0,closedAt:0
-    }));
+    // The new freeze controller strips the V2 close evidence on OPEN.
+    // Raw partial update leaves frozen datasetV2/closeKind and is rejected.
+    const frozen=await readFreeze(db);
+    const reopened=await setFreezeMode(db,actor,frozen,'OPEN');
+    expect(reopened.mode).toBe('OPEN');
     await assertFails(set(ref(db,'hdnd/items/r1/note'),'Không được hồi sinh legacy'));
     await assertFails(set(ref(db,'hdnd/permissions/columns/note'),true));
   },45000);
@@ -426,7 +480,7 @@ describe.skipIf(!emulator)('PR95 real RTDB Emulator generation replacement',()=>
       });
     });
     await expect(commitInitialDatasetActivation(db,actor,approval,
-      'KHOI TAO V2 '+op+' 2 2')).rejects.toThrow(/Legacy|đóng băng|thay đổi/);
+      'KHOI TAO V2 '+op+' 2 2')).rejects.toThrow(/PARENT_COMMIT_DENIED: legacy\/freeze changed/);
     expect((await get(ref(db,DATASET_V2_PATH+'/active'))).exists()).toBe(false);
     // Unauthorized direct pointer writes cannot bypass the server freeze gate.
     await assertFails(set(ref(db,DATASET_V2_PATH+'/active'),{

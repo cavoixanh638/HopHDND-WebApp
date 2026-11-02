@@ -1,44 +1,62 @@
-name: PR95 RTDB network ACK loss - isolated Emulator
+name: PR95 migrated ACK loss — authenticated parent HTTP wrapper and full Rules
 on:
+  push:
+    branches: [integration/pr142-cell-parent-freeze-candidate-20261101]
+    paths:
+      - "source/parent-commit-service/**"
+      - "source/firebase/database.exclusive-candidate.rules.json"
+      - ".github/workflows/pr95-network-ack-loss.yml"
   pull_request:
     paths:
-      - "source/scripts/pr95-network-ack-proxy.mjs"
-      - "source/scripts/run-pr95-network-ack-loss.mjs"
-      - "source/tests/pr95-network-ack-loss.test.ts"
-      - "source/src/data/firebase-versioned-replacement.ts"
+      - "source/parent-commit-service/**"
+      - "source/firebase/database.exclusive-candidate.rules.json"
       - ".github/workflows/pr95-network-ack-loss.yml"
-      - "source/src/app/App.tsx"
-      - "source/src/state/use-firebase.ts"
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: pr142-http-ack-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  network-ack:
+  authenticated-http-ack:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 17
     defaults:
-      run:
-        working-directory: source
+      run: {working-directory: source}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
           cache-dependency-path: source/package-lock.json
       - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Install pinned dependencies (never deploy)
-        run: npm ci
-      - name: Syntax-check real WebSocket frame proxy and isolated runner
+        with: {distribution: temurin, java-version: '21'}
+      - name: Install App and both real Functions dependency graphs
         run: |
-          node --check scripts/pr95-network-ack-proxy.mjs
-          node --check scripts/run-pr95-network-ack-loss.mjs
-      - name: Test independent server COMMITTED witness and actual server-to-SDK ACK loss
-        run: node scripts/run-pr95-network-ack-loss.mjs
+          npm ci --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Real authenticated HTTP Functions ACK drop after commit — ACTIVATE, REPLACE, RESTORE
+        env:
+          PARENT_COMMIT_ENABLED: 'true'
+          PARENT_ONLY_ACK_TESTS: 'true'
+          PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
+          PARENT_ALLOWED_ORIGINS: http://127.0.0.1:4173
+        run: |
+          set -o pipefail
+          npx firebase emulators:exec --project demo-hdnd --config firebase.staging.json --only auth,database,functions \
+            "node parent-commit-service/test/run-functions.mjs" 2>&1 | tee parent-http-ack.stdout
+      - name: Preserve authentic server witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr142-parent-http-ack-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            source/parent-http-ack.stdout
+            source/parent-commit-service/evidence/integration-witness.json
+          if-no-files-found: warn
+          retention-days: 14

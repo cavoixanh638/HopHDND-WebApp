@@ -171,6 +171,14 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   };
   const autoSave=useRef(save);autoSave.current=save;
   useEffect(()=>{
+    // Deterministic Chrome E2E only: simulate an editor still typing while
+    // a peer commits a new generation. Production builds constant-fold this
+    // pages-test-only hook out and retain the normal 800ms autosave.
+    const testHold=import.meta.env.MODE==='pages-test'&&
+      typeof window!=='undefined'&&
+      ['127.0.0.1','localhost'].includes(window.location.hostname)&&
+      (window as Window & {__pr142TestHoldAutosave?:boolean}).__pr142TestHoldAutosave===true;
+    if(testHold)return;
     if(!firebase||busy||protectedRecovery.current||!Object.keys(drafts).length)return;
     const signature=Object.values(drafts).map(patch=>patch.operationId).sort().join(':');
     if(autoFailed.current===signature)return;
