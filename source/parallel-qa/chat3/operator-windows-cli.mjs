@@ -15,7 +15,7 @@ if(process.platform!=='win32')throw Error('COORD01_REQUIRES_REAL_WINDOWS_NODE_RU
 const sourceSha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
 const checkout=execFileSync('git',['rev-parse','--show-toplevel'],{encoding:'utf8'}).trim();
 const root=mkdtempSync(join(tmpdir(),'chat3-coord01-real-cli-'));
-const sibling=join(dirname(checkout),basename(checkout)+'-coord01-receipts');
+const sibling=mkdtempSync(join(dirname(checkout),basename(checkout)+'-coord01-'));
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const headers=['Mã nội dung','STT','Nội dung trình','Sở, ngành','Loại VB',
  'Cấp cho ý kiến Thành ủy','Tiến độ xin ý kiến Thành ủy','Trình HĐND xây dựng NQ',
@@ -30,14 +30,14 @@ const env={...process.env,GCLOUD_PROJECT:'demo-hdnd',
  FIREBASE_EMULATOR_HUB:'127.0.0.1:4400'};
 let cases=0;
 
-function invoke(args,expected,output){
+function invoke(args,expected,output,preexists=false){
  const result=spawnSync(process.execPath,['scripts/operator-first-import.mjs',...args,
   '--output',output],{cwd:process.cwd(),env,input:'',encoding:'utf8',timeout:60000});
  assert.equal(result.status,2,
   'real CLI expected prewrite exit 2; observed '+result.status+' / '+result.stderr);
  assert(result.stderr.includes(expected),
   'real CLI expected '+expected+'; got '+result.stderr);
- assert(!existsSync(output),'the CLI may not create a receipt before the CAS');
+ assert.equal(existsSync(output),preexists,'the CLI must not create an output receipt before CAS');
  assert(!result.stderr.includes('PR147_OPERATOR_FIRST_IMPORT_CAS_ATTEMPT_MARKED_NO_AUTO_RETRY'));
  assert(!result.stdout.includes('PR147_OPERATOR_FIRST_IMPORT_CAS_READBACK_PASS'));
  console.log('CHAT3_COORD01_WINDOWS_CLI_PASS',++cases,expected);
@@ -62,7 +62,8 @@ try{
  '--sheet','Approved','--approval-file',approvalFile,'--source-sha',sourceSha,
  '--confirm','IMPORT_ONCE_demo-hdnd_'+digest.slice(0,12)];
 
- // Direct checkout, and two nesting levels including a path outside source/.
+ // Checkout root itself, and two nesting levels including a path outside source/.
+ invoke(args,'PR147_BOOTSTRAP_HOLD_PRIVATE_OUTPUT_OUTSIDE_CHECKOUT_REQUIRED',checkout,true);
  const inside=[join(checkout,'coord01-should-not-exist.json'),
   join(process.cwd(),'parallel-qa','chat3','coord01-should-not-exist.json')];
  for(const path of inside)
@@ -82,12 +83,11 @@ try{
   join(outsideDir,'outside-receipt.json'));
 
  // Same-prefix sibling must NOT be mistaken for a child of checkout.
- mkdirSync(sibling,{recursive:true});
  invoke(args,'PR147_BOOTSTRAP_HOLD_GOOGLE_ID_TOKEN_STDIN_REQUIRED',
   join(sibling,'sibling-receipt.json'));
 
  console.log('CHAT3_COORD01_WINDOWS_REAL_CLI_TOTAL',cases);
- assert.equal(cases,5);
+ assert.equal(cases,6);
 }finally{
  rmSync(root,{recursive:true,force:true});
  rmSync(sibling,{recursive:true,force:true});
