@@ -39,6 +39,8 @@ jobs:
           npm ci --no-audit --no-fund
           npm ci --prefix cell-edit-service --no-audit --no-fund
           npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Install real headless Chromium for integrated browser gate
+        run: npx --prefix cell-edit-service playwright install --with-deps chromium
       - name: Pin candidate source, both real Functions and static check
         run: |
           echo "CHAT1_CODE_SHA=$(git rev-parse HEAD)"
