@@ -41,7 +41,7 @@ jobs:
         run: |
           npm ci --prefix cell-edit-service --no-audit --no-fund
           npx --prefix cell-edit-service playwright install --with-deps chromium
-      - name: Real Chrome synthetic component UX: Esc, mobile, late ACK
+      - name: 'Real Chrome synthetic component UX - Esc, mobile, late ACK'
         env:
           CHAT2_COMPONENT_QA_ONLY: 'true'
         run: |
