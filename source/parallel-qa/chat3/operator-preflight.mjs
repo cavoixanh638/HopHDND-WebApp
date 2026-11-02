@@ -44,7 +44,7 @@ try{
   assert.doesNotMatch(r.stdout+r.stderr,/eyJhbGciOi|DO_NOT_PRINT_SECRET/);
   console.log('CHAT3_PREFLIGHT_PASS',++n,name);
  }
- rejected('no approval',[...args.slice(0,args.indexOf('--approval-file'))],'APPROVAL_FILE_REQUIRED');
+ rejected('no approval',[...args.filter((_,i)=>i!==args.indexOf('--approval-file')&&i!==args.indexOf('--approval-file')+1)],'APPROVAL_FILE_REQUIRED');
  rejected('wrong source sha',args.map((x,i)=>i===args.indexOf('--source-sha')+1?'0'.repeat(40):x),'FROZEN_CHECKOUT_SHA_MISMATCH');
  rejected('wrong confirmation',args.map((x,i)=>i===args.indexOf('--confirm')+1?'NO':x),'EXPLICIT_IMPORT_ONCE_CONFIRMATION_REQUIRED');
  const wrongHash={...approval,workbookSha256:'0'.repeat(64)};
