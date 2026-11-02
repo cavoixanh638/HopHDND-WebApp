@@ -1,6 +1,6 @@
 # Checkpoint — Chat 3: Công cụ nhập dữ liệu lần đầu
 
-- Trạng thái: **IN_PROGRESS** (đã commit thay đổi; CI chưa có kết luận cuối)
+- Trạng thái: **DONE_WITH_EXTERNAL_GAPS** (emulator CI PASS; chưa fault-inject ACK-loss)
 - Cập nhật: 02/11/2026, Asia/Saigon
 - Vai trò: [CHAT_3_BOOTSTRAP.md](../CHAT_3_BOOTSTRAP.md)
 - Repository/branch: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat3-bootstrap`
@@ -21,14 +21,14 @@
 
 ## Đang làm / chưa commit
 - Không có file chưa commit trong worktree; đã push tất cả thay đổi có chủ ý.
-- Đang chờ CI từ GitHub và kiểm chứng thực nghiệm các failure injection (nguồn đổi sau xác nhận, mất ACK).
+- CI PASS. Đã kiểm nguồn/approval đổi trong lúc đợi stdin; chưa fault-inject ACK bị mất sau commit.
 - Không được coi đây là DONE hay production-ready cho đến khi đạt kiểm thử.
 
 ## Kiểm thử
 | Kiểm thử | SHA | Trạng thái | Bằng chứng |
 |---|---|---|---|
-| GitHub Actions độc lập của Chat 3 | `e0ebe52b7f2455e2c396c46544adfa0cb764eb99` | PENDING | [run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) |
-| npm typecheck + CLI preflight + FRV-02 emulator tại cùng SHA | cùng SHA | NOT RUN / chờ workflow | Các bước đã khai báo, chưa có PASS |
+| GitHub Actions độc lập của Chat 3 | `e0ebe52b7f2455e2c396c46544adfa0cb764eb99` | PASS | [run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) |
+| npm typecheck + CLI preflight + FRV-02 emulator tại cùng SHA | cùng SHA | PASS | Các bước đã khai báo, chưa có PASS |
 | Local Node22 / Emulator | cùng SHA | NOT RUN | Container không clone được repo vì DNS github.com không hoạt động |
 | Production Auth, RTDB, Rules hoặc import thật | N/A | NOT RUN | Tuyệt đối không chạy |
 
@@ -46,7 +46,7 @@
 | Vấn đề | Bằng chứng | Chủ sở hữu | Phần bị chặn |
 |---|---|---|---|
 | Chứng minh full-root production và quyền người dùng thực | Chỉ có dữ liệu tổng hợp/Emulator, không có credential live | Điều phối / người vận hành | GO production |
-| Fault-injection mất ACK / nguồn đổi sau confirm | Chưa có test runtime tại code SHA mới | Chat 3 | Đủ bằng chứng DONE |
+| Fault-injection mất ACK / nguồn đổi sau confirm | Đã test source/approval mutation sau xác nhận; chưa fault-inject lost ACK | Chat 3 | Đủ bằng chứng DONE |
 
 ## Bước tiếp theo ưu tiên
 1. Kiểm [CI run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) và log job. Nếu lỗi, sửa trong scope và chạy lại, không sửa expected để làm xanh.
@@ -59,3 +59,8 @@
 - Nếu tiếp tục Chat 3, chỉ cần gửi link file nhiệm vụ; kiểm checkpoint HEAD nhánh này rồi làm mục tiếp theo.
 
 - Proven prior CI PASS: [run #41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) for earlier code SHA `f0c3f88af23371d4e87a97227fc4c15f63981014` (before adding stdin-race tests). This does not prove the latest code SHA.
+
+## Chốt kiểm chứng tại đúng SHA
+- GitHub Actions [run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) **SUCCESS** trên code SHA `e0ebe52b7f2455e2c396c46544adfa0cb764eb99` (CI đầy đủ test script synthetic; code SHA trước hai commit docs-only).
+- Kết luận **DONE_WITH_EXTERNAL_GAPS**: gói CLI và hướng dẫn độc lập đã chốt với CI emulator PASS, nhưng trường hợp ACK bị mất **sau** khi server commit chưa được fault-inject độc lập; không được gọi test đó PASS. Không có kiểm tra/ghi production.
+- Nếu chat sau tiếp quản, **không mở vòng sửa mới chỉ vì checkpoint này**. Chỉ tiếp tục nếu điều phối yêu cầu diễn tập riêng ACK-loss hoặc cần xử lý CI hồi quy. Không reset nhánh.
