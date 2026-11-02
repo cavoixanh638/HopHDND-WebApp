@@ -1,24 +1,30 @@
-# Checkpoint — Chat 2: UI (quy ước v2)
+# Checkpoint — Chat 2: Giao diện và thao tác người dùng
 
-- **Trạng thái:** IN_PROGRESS; cập nhật 2026-11-02 15:04 Asia/Saigon.
-- **Nhánh:** `parallel/20261102-chat2-ui`; baseline `0a04b81dbb00979fb87aee7fc497e802058d8518`.
-- **HEAD code mới:** `3b0153fabe988fadfc989206eecf1fb36675ab4e` — TEST_PENDING.
-- **CI mới:** component Chrome [41410409226](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409226) RUNNING; real App Emulator [41410409168](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409168) PENDING.
-- **Worktree:** không có tại container (DNS GitHub lỗi); tất cả code đã commit/push bằng connector. Writer khác trên nhánh chưa phát hiện, chưa xác minh được ngoài GitHub.
+- **Trạng thái: DONE** · 2026-11-02 15:09 Asia/Saigon, áp dụng [quy ước v2](../QUY_UOC_CHUNG.md) chủ động suốt quá trình.
+- **Nhánh:** `parallel/20261102-chat2-ui` (không merge/deploy/publish).
+- **Mốc chung:** `0a04b81dbb00979fb87aee7fc497e802058d8518`.
+- **Code/tested SHA cuối:** `3b0153fabe988fadfc989206eecf1fb36675ab4e`. **Hai commit sau chỉ sửa tài liệu**: `45214cfbcf3581edc25036cc9f9e37d5b21c9670` (checkpoint WIP), `cf83cadea89d696605fabcce6a7f8acfb7a9bd1c` (báo cáo); commit chứa checkpoint DONE tra từ lịch sử GitHub, không ghi tự tham chiếu.
+- **Worktree/WIP:** không có checkout local do container DNS github.com lỗi; tất cả mã+QA+docs đã commit/push bằng GitHub connector, **không có LOCAL_ONLY**. Chưa chứng thực writer khác ngoài GitHub; không thấy commit UI trái phạm vi trong diff.
+- **Báo cáo cuối:** [reports/CHAT_2.md](../reports/CHAT_2.md).
 
-## Đã lưu trên nhánh
-- Fix `RoomSpecialistFilterCell.tsx` Escape chỉ xóa bộ lọc có giá trị; unit `RoomSpecialistFilterCell.test.ts`. PASS typecheck/unit/build cũ [41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605).
-- Chrome synthetic component QA trong `source/parallel-qa/chat2/{index.html,fixture.tsx,ui-browser.mjs}`; workflow `parallel-chat2-ui-checks.yml` + `parallel-chat2-full-app.yml` chỉ test, không deploy. Workflow push lọc scope, checkpoint-only không kích hoạt CI.
-- **Chứng minh trước sửa:** Chrome SHA `cebc83c` [41409826275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409826275) 10 PASS / 4 FAIL; 9/9 filter ở 390/900/1440 PASS; race blur/unmount trước ACK & refocus FAIL; [artifact PNG/JSON](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409826275/artifacts/13125610220).
-- **Bản sửa vòng 1:** SHA `0b949583` Chrome [41410141277](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410141277) 13 PASS / 1 FAIL: giữ lease sau blur/unmount được sửa, refocus nhanh PASS; click nút unmount có thể mất khi status biến mất lúc pointer blur.
-- **Bản sửa vòng 2:** SHA `3b0153fa`, giữ thông báo đang xin khóa tới khi release hoàn tất để tránh dịch vị trí nút trong một click; refocus được phân biệt bằng epoch. Chờ CI exact-head [41410409226](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409226).
+## Đã hoàn tất
+- Sửa Escape bộ lọc Phòng/CV chỉ xóa khi có giá trị; bổ sung unit colocated.
+- Tái hiện bằng Chrome race khóa của `LeaseTextInput` (blur/unmount trước ACK, rapid refocus), sửa epoch + release fence, giữ feedback khi blur để click không bị lệch; giữ nguyên quyền/data/API/thiết kế.
+- Bộ QA `source/parallel-qa/chat2/` (mounted component, synthetic Vietnamese, viewport 390/900/1440) và hai workflow chỉ test `.github/workflows/parallel-chat2-*.yml`; không sửa shared smoke runner, không dùng production.
 
-## Quyết định/giới hạn
-- Dữ liệu popup/browser fixture synthetic; không có Auth/RTDB/Functions, không gọi component PASS là integration PASS.
-- Full App workflow dùng Auth/RTDB/Functions Emulator `demo-hdnd`, exact Rules QA; tham chiếu baseline [41390964199](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41390964199). Run cũ `fff8d308` [41410259963](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410259963) đang chạy, không thay kết quả cho code mới.
-- Không đổi quyền, data/domain, màu, popup khách, kéo cột, polling, backend, shared runner, production, không publish/merge.
+## Bằng chứng exact SHA
+| Gate | SHA | Kết luận | Evidence |
+|---|---|---|---|
+| Unit/typecheck/build ban đầu | `876b69d` | PASS | [41407686605](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407686605) |
+| Chrome trước sửa race | `cebc83c` | 10 PASS/4 FAIL; lỗi được tái hiện | [41409826275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409826275), [PNG/JSON](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409826275/artifacts/13125610220) |
+| Chrome bản cuối + unit/typecheck/build | `3b0153f` | **PASS 14/14 Chrome** và unit/typecheck/build | [41410409226](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409226), [10 PNG/witness](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409226/artifacts/13124872967) |
+| Real App guest/admin/two-tabs/ACK/popup/freeze/Excel | `3b0153f` | **PASS 8/8** Auth/RTDB/Functions Emulator `demo-hdnd` | [41410409168](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409168), [20 PNG/witness](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409168/artifacts/13124753409) |
 
-## Bước tiếp theo
-1. Theo dõi [Chrome 41410409226](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409226) đến PASS/FAIL và đọc artifact trước khi quyết định.
-2. Theo dõi [Emulator 41410409168](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410409168) exact SHA; nếu FAIL đọc witness nguyên nhân thuộc UI hay ngoài phạm vi, sửa nếu UI.
-3. Cập nhật [báo cáo](../reports/CHAT_2.md), diff và checkpoint; DONE/DONE_WITH_EXTERNAL_GAPS khi hoàn tất, ghi riêng những kiểm thử NOT RUN.
+## Quyết định / điểm cần biết
+- Mọi ảnh/log dùng dữ liệu **synthetic**: QA component không có Firebase, Full App QA là Emulator localhost; không xác nhận production GO. Giữ nguyên màu, lịch sử N/O, kéo cột adjacent-first, popup guest, polling, quyền và backup.
+- Full App run trung gian `fff8d308` [41410259963](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410259963) từng timeout QA02 selector xác nhận quyền (7/8 PASS); **run cuối exact SHA PASS 8/8**. Không sửa expected/runner. Xem báo cáo nếu cần đánh giá tính ổn định CI.
+- `QUY_UOC_CHUNG.md` v2 và `HANDOFF_TEMPLATE.md` cập nhật do điều phối; Chat 2 không sửa hai file này.
+
+## Bước tiếp theo / bàn giao
+- **Không còn việc Chat 2 bắt buộc.** Người điều phối kiểm tra nhánh, report, artifact và tích hợp theo quy trình chung; không tự merge/deploy.
+- Khi chat sau đọc trạng thái DONE, **báo kết quả hiện có, không khởi động vòng sửa mới** trừ khi người dùng giao yêu cầu mới.
