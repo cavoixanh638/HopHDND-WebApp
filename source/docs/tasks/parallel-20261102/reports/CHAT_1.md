@@ -23,11 +23,14 @@ Ngày: 02/11/2026 (Asia/Saigon). Nhánh: `parallel/20261102-chat1-backend`.
 | Gate | SHA | Trạng thái | Bằng chứng |
 |---|---|---|---|
 | Baseline parent 13/13, unified 4/4 | `0a04b81` | PASS nền do nhiệm vụ dẫn | CI #41390964223 và #41390964227; không gán cho code mới |
-| Chat 1 thực Auth+2 Functions+FULL Rules | `472a942533ab57446a725800a6f82e0b6477f951` | RUNNING tại thời điểm báo cáo | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364 |
+| Chat 1 lượt 1 | `472a942533ab57446a725800a6f82e0b6477f951` | FAIL: thiếu Chromium ở workflow; cell-edit 32/32 PASS | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407577364 |
+| Chat 1 lượt 2 | `46e916f31976cbbf3451ff67c22832627ca28e82` | **PASS**: Auth + hai Functions + FULL Rules; cell-edit 32/32; Chrome 4/4; parent 14/14; full-app 5/5 | https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407721643 |
 | Local clone / Emulator | — | NOT RUN | Container DNS không phân giải github.com, không có checkout/deps. Không được thay bằng mock để gọi PASS |
 
-## Giới hạn và bước cuối
-- Chưa có chứng cứ PASS cho test mới; không được gọi luồng DONE trước CI.
-- Chờ job `backend-real-emulators` hoàn tất, đọc kết quả/log; nếu FAIL phải sửa trong vùng sở hữu, đẩy commit tiếp và chạy lại.
-- Nếu chỉ trở ngại thực thi ngoài phạm vi, ghi chính xác BLOCKED; không đụng UI/operator/backup tools/config chung, không merge/deploy/production.
-- Code SHA của bản tạo CI hiện tại: `472a942533ab57446a725800a6f82e0b6477f951`.
+## Nghiệm thu và giới hạn
+- Lượt 1 thất bại vì thiếu Chromium ở runner; đã sửa trong workflow riêng của Chat 1 bằng `npx --prefix cell-edit-service playwright install --with-deps chromium`.
+- **Lượt 2 PASS tại chính xác SHA `46e916f31976cbbf3451ff67c22832627ca28e82`**: log có `PR142_SHARED_FULL_RULES_LIVE_EXACT`, `SUMMARY 32 PASS / 0 FAIL`, `CHROME SUMMARY 4 PASS / 0 FAIL`, `14 passed (14)`, `PARENT_ACTUAL_ONREQUEST_FUNCTIONS_EMULATOR PASS`, `PR142_FULL_APP_SUMMARY 5 0`, `PR142_INTEGRATED_SERVICES_FULL_RULES_PASS`.
+- Test bổ sung xác nhận `CHAT1_MULTIROW_CHAINED_RESTORE_PASS` trên cùng SHA: hai bản ghi, nhiều thế hệ, digest raw A độc lập canonical C/E, bảo toàn backup và audit, guest tạo audit mới sau cả hai lần restore. Thao tác sửa audit lịch sử và quyền thế hệ C cũ đều `PERMISSION_DENIED` với hash snapshot server không đổi.
+- [CI PASS #41407721643](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407721643) và [artifact witness #13124356699](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407721643/artifacts/13124356699).
+- Không phát hiện lỗi xác nhận cần sửa tiếp trong phạm vi backend ở gate này; không sửa runtime/Rules vì mã hiện tại cùng regression đạt PASS. Gate là Emulator/CI, **không** phải xác nhận production đã sẵn sàng. Không merge/deploy/publish/production.
+- Chỉ chỉnh test, workflow riêng và tài liệu Chat 1; commit sau code-test là docs-only. Trạng thái Chat 1: **DONE**, không tự khởi động vòng sửa mới.
