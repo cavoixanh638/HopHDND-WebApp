@@ -4,6 +4,7 @@
  */
 import {readFileSync,lstatSync,writeFileSync,existsSync,realpathSync} from 'node:fs';
 import {resolve,isAbsolute,dirname,basename} from 'node:path';
+import {isReceiptInsideCheckout} from './operator-first-import-path.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {initializeApp,deleteApp} from 'firebase/app';
@@ -81,7 +82,7 @@ try{
    // the private receipt back into the checkout even if the path looks safe.
    const checkout=realpathSync(execFileSync('git',['rev-parse','--show-toplevel'],{encoding:'utf8'}).trim());
    const target=resolve(realpathSync(dirname(output)),basename(output));
-   if(target===checkout||target.startsWith(checkout+'/'))
+   if(isReceiptInsideCheckout(checkout,target))
      fail('PRIVATE_OUTPUT_OUTSIDE_CHECKOUT_REQUIRED');
    if(existsSync(output))fail('PRIVATE_OUTPUT_ALREADY_EXISTS');
    outputPath=output;
