@@ -31,17 +31,53 @@ cho mỗi luồng, checkpoint bền vững riêng và mục lục. Mỗi entrypo
 ra role, nhánh, baseline, checkpoint mới nhất và cách tiếp tục. Dùng lại cùng link
 khi thay chat; không bắt người dùng chép lại hội thoại.
 
+## Đích cuối và điều kiện đóng việc
+
+Trước khi giao, mỗi nhiệm vụ phải ghi rõ: (1) kết quả cuối người dùng nhận được,
+(2) chủ sở hữu và phạm vi độc lập, (3) điều kiện hoàn tất kiểm chứng được,
+(4) bằng chứng/đầu ra phải lưu và nơi bàn giao. Tránh chỉ giao hoạt động như
+“kiểm tra”, “rà soát”, “sửa tiếp” mà không nêu thế nào là đạt.
+
+Worker tự đi hết khảo sát → thực hiện → kiểm thử → sửa lỗi phát hiện → kiểm lại
+phần bị ảnh hưởng → lưu/bàn giao. Không kết thúc chỉ vì đã tìm nguyên nhân,
+đề xuất cách sửa, commit mã hoặc khởi chạy CI khi còn bước làm được trong phạm vi.
+Nếu nhiệm vụ chỉ là review, đầu ra cuối là kết luận có bằng chứng và việc xử lý
+cụ thể; không tự sửa vượt phạm vi. Điều phối phát hiện việc còn thiếu phải chỉ
+định chủ sở hữu, cập nhật file nhiệm vụ và đưa prompt thực thi được trong cùng
+lượt; không chỉ liệt kê lỗi rồi đợi người dùng nhắc giao việc.
+
+Chỉ ghi DONE khi mọi tiêu chí bắt buộc đã đạt và bằng chứng gắn với bản cuối.
+Nếu còn tiêu chí chưa đạt, giữ IN_PROGRESS; khi thực sự bị chặn, ghi trở ngại,
+đã thử gì, ai/đầu vào nào gỡ chặn và bước tiếp tục, hoàn thành phần độc lập còn lại.
+DONE_WITH_EXTERNAL_GAPS chỉ dùng khi mọi tiêu chí trong phạm vi đã đạt và gap
+nằm ngoài phạm vi; không dùng để che kiểm thử bắt buộc chưa chạy. Không tự mở
+rộng phạm vi hoặc xin thêm quyền chỉ để gọi là xong.
+
+Điều phối phải xác định cả đích cuối chung và tiêu chí nghiệm thu bản tích hợp:
+các luồng DONE không đồng nghĩa toàn bộ công việc DONE. Tiếp tục phần tích hợp
+đã được giao; nếu cần giao tiếp, để lại nhiệm vụ có chủ sở hữu và điều kiện đóng.
+Khi tiêu chí đã đủ thì kết thúc, không mở vòng audit hoặc chia việc mới vô hạn.
+
 ## Tiếp tục và theo dõi
 
 Đọc entrypoint + checkpoint trước, xác nhận HEAD/dirty files/run đang có.
 Tiếp tục từ nhánh luồng hiện tại; không reset về baseline, không tạo lại công việc.
-Nếu DONE, trả kết quả hiện có thay vì tự mở vòng audit mới. Một luồng chỉ một writer;
+Nếu DONE và không có nhiệm vụ tiếp tục mới được giao, trả kết quả hiện có thay vì
+tự mở vòng audit mới. Một luồng chỉ một writer;
 chat mới thay chat cũ, không song song ghi cùng nhánh.
 
 Worker tự checkpoint theo sự kiện, không chờ cảnh báo context và không nhờ người
 dùng canh giờ. Với chat chỉ dùng GitHub connector, ghi checkpoint trực tiếp bằng
 current blob SHA; với checkout local, lưu local sớm và push tại ranh giới an toàn.
 Không force-push để vượt xung đột. Chi tiết trong reference.
+
+Chủ động đề nghị đổi chat ở mốc bàn giao an toàn khi đã xong một giai đoạn và
+giai đoạn kế chỉ cần checkpoint ngắn, hoặc lịch sử/log không còn liên quan làm
+việc tiếp tục phải đọc lại nhiều. Trước khi đề nghị, lưu mã, đích cuối, tiêu chí
+còn thiếu, run đang chạy và câu lệnh tiếp quản một link theo reference checkpoint.
+Không dùng đổi chat làm lý do dừng việc còn làm được giữa chừng; không đổi liên
+tục sau vài lượt, không tự tạo chat mới. Không đoán % context/token còn lại hoặc
+hứa mức tiết kiệm nếu không có số đo; đây là khuyến nghị theo mốc công việc.
 
 Khi người dùng báo “xong”: đọc bằng chứng/CI đúng code SHA và diff cần thiết,
 phân biệt DONE/FAIL/NOT RUN. Không chỉ tin nhãn “xong”, nhưng cũng không lặp lại
@@ -73,3 +109,4 @@ Người dùng đã yêu cầu duy trì skill này. Khi họ chốt quy tắc đ
 
 Thay đổi file không làm chat đang chạy tự đọc lại. Nếu không được ủy quyền gửi
 hướng dẫn trực tiếp, đưa người dùng một câu nhắc ngắn kèm link quy ước mới.
+
