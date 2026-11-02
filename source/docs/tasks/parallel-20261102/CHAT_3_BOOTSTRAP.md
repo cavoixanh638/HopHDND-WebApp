@@ -2,9 +2,17 @@
 
 **Đây là file đầu vào duy nhất cần gửi cho chat mới hoặc chat tiếp tục luồng 3.**
 
-## Nhiệm vụ tiếp tục được giao — đóng COORD-01 (02/11/2026)
+## COORD-01 — ĐÃ ĐÓNG, điều phối xác nhận 02/11/2026
 
-**Có nhiệm vụ mới cụ thể dù checkpoint trước ghi DONE. Chỉ mở lại COORD-01,
+CI [41426155660](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41426155660)
+SUCCESS đúng code SHA `04568fd30a8be59f269be58f03d0dcc2cb72de85`:
+Windows path 15/15, CLI 6/6; Linux path và Emulator regression PASS.
+Xem checkpoint nhánh luồng. Không chạy lại nhiệm vụ này; phần dưới lưu tiêu chí
+đã hoàn tất, không phải lệnh mở lại khi đọc file.
+
+### Nhiệm vụ đã hoàn tất — đóng COORD-01 (02/11/2026)
+
+**Nhiệm vụ này đã hoàn tất; khi giao ban đầu là nhiệm vụ mới dù checkpoint trước ghi DONE. Chỉ mở lại COORD-01,
 không làm lại toàn bộ gói đã nghiệm thu. Chủ sở hữu: Chat 3, làm từ đầu đến cuối,
 không chờ Chat 1/2/4/5.**
 
