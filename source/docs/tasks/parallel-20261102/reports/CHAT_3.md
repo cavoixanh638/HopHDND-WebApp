@@ -1,47 +1,41 @@
-# Chat 3 — Operator first import report (02/11/2026)
+# Chat 3 — First-import operator CLI: kết quả QA và bàn giao (02/11/2026)
 
-## Scope / status
-- Branch: `parallel/20261102-chat3-bootstrap`.
-- Last **code / test / workflow** SHA: `e0ebe52b7f2455e2c396c46544adfa0cb764eb99`.
-- Exact independent GitHub Actions [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) — **COMPLETED SUCCESS**, not PASS.
-- Production: **NOT RUN / NO GO**. Only synthetic demo identities and local emulator fixture are authorized.
-- Direct local run: **NOT RUN** (container has no reachable github.com DNS and no checkout or root node_modules; all GitHub changes made through connected GitHub API).
+## Phạm vi và mốc
+- Nhánh: `parallel/20261102-chat3-bootstrap`; không merge, không deploy, không ghi production.
+- Code QA mới nhất: `342b8f620e4edcaead93a1e04d0f502f2a672cdd` (test offline-before-CAS + loss-of-ACK). **CI #41410079477 đang chạy** khi cập nhật report.
+- Tested code SHA đã PASS: `9cd869c5b2dea5c0b19e90d565edcca5b512863e`; [run #41409734353](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409734353).
+- Baseline trước đó: `e0ebe52b7f2455e2c396c46544adfa0cb764eb99`; [run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) PASS.
+- Source of truth ngắn: [checkpoint Chat 3](../handoffs/CHAT_3.md); quy ước `QUY_UOC_CHUNG.md` v2 đã đọc.
+- Không có worktree local; mã và bằng chứng đã commit lên nhánh qua GitHub connector. Không dùng credential thật.
 
-## Modifications, owned files only
-1. `scripts/operator-first-import-entry.ts`: verifies workbook and approval bytes a second time just before invoking CAS, marks a private attempt receipt before the first possible CAS write, records UNKNOWN after potential CAS, exit 3 for unknown versus exit 2 for prewrite HOLD, exit 0 after server readback + final receipt. Production requires private receipt path; rejects checkout-path receipt including symlink-parent escape. Adds timeouts for preflight and CAS/readback and accepts isolated localhost emulator ports from injected hosts.
-2. `parallel-qa/chat3/operator-preflight.mjs`: launches the **actual executable** for missing approval, wrong source SHA, wrong confirmation, approval digest mismatch, corrupted Excel, missing stdin identity, unverified/wrong Google admin and nonempty emulator root. Uses a read-only server witness to compare before/after. Only synthetic workbook and fixture, cleaned after suite.
-3. `.github/workflows/parallel-chat3-operator.yml`: isolated NO DEPLOY job on branch push/manual, pinned npm install + typecheck/default deploy guard, actual Auth/RTDB/Functions with source FULL Rules and both Functions dependencies, new negative CLI script followed by existing FRV-02 real CAS/readback/repeat-guard test.
-4. `docs/operations/PR147_OPERATOR_FIRST_IMPORT.md`: decision table, receipt and reconciliation procedure, demo-only invocations, clear production boundary.
+## Đã sửa trong phạm vi sở hữu
+1. `scripts/operator-first-import-entry.ts`: kiểm file Excel và approval lại ngay trước CAS, marker riêng 0600 trước CAS, phân biệt prewrite HOLD exit `2` và post-CAS UNKNOWN exit `3`; timeout và fail-closed, không auto-retry. Giữ nguyên parser/CAS shared.
+2. `parallel-qa/chat3/operator-preflight.mjs`: gọi executable thật, 12 kiểm tra âm tính (nguồn, checksum, approval, confirmation, quyền, thay đổi sau xác nhận, DB không trống và server no-change).
+3. `parallel-qa/chat3/operator-lost-ack.mjs`: **không thay CLI/CAS**; proxy localhost chuyển CAS WebSocket thật đến FULL Rules RTDB Emulator nhưng chặn phản hồi, so sánh read-only owner witness và marker UNKNOWN, xác nhận duplicate bị chặn. Bổ sung kịch bản RTDB mất kết nối **trước** khi gọi CAS.
+4. `.github/workflows/parallel-chat3-operator.yml`: Node22, Java21, exact dependency graph, typecheck/deploy guard, Auth + RTDB + cả hai Functions, FULL Rules; chạy preflight, lost-ACK/network, FRV-02 happy path/duplicate. Không deploy/publish.
+5. `docs/operations/PR147_OPERATOR_FIRST_IMPORT.md`: hợp đồng exit code, quy trình xử lý UNKNOWN, ví dụ receipt đã làm sạch, lệnh demo.
 
-## Expected operator behavior
-- **Exit 2** before CAS: safe to diagnose input; invalid source/digest/approval/admin/root rejected, no CLI database write invoked.
-- **Exit 3** after CAS invocation: commit status UNKNOWN; stop, read live server independently, reconcile A–O business data/IDs/actor and root. NEVER auto-retry.
-- **Exit 0**: CAS + detailed backend readback + saved private RESULT receipt verified. Receipt excludes bearer/Google token, raw cells and private credentials.
-- Attempt receipt is an operator-private marker, not a server-side transaction log. Forced process termination and local filesystem failure can leave it incomplete, so absence of a successful final receipt is not evidence of no commit.
+## Bằng chứng đã xác nhận ở exact SHA
+| Kịch bản | SHA | Trạng thái | Bằng chứng |
+| --- | --- | --- | --- |
+| Typecheck, deploy guard, 12 preflight negative | `9cd869c5…` | **PASS** | [CI #41409734353](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41409734353), `CHAT3_PREFLIGHT_TOTAL 12` |
+| CAS thật, ACK bị chặn tại TCP proxy | `9cd869c5…` | **PASS** | `CHAT3_REAL_CAS_LOST_ACK_UNKNOWN_PASS`; 1 write frame, 1 server row, exit 3, receipt UNKNOWN, replay không đổi DB |
+| FRV-02 actual launcher, empty-root CAS/readback/repeat guard | `9cd869c5…` | **PASS** | `FRV02_OPERATOR_PROTECTED_EMPTY_CAS_VERIFIED`, Vitest 1 test PASS, còn 12 tests không thuộc phạm vi được filter |
+| Mất RTDB **trước khi gửi CAS** (exit 2/no marker/unchanged root) | `342b8f62…` | **RUNNING** | [CI #41410079477](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410079477) |
+| Local container run | n/a | NOT RUN | Môi trường không phân giải GitHub clone; GitHub Actions là nơi kiểm tích hợp thực tế |
+| Firebase production/Auth live/Rules live/import thật | n/a | **NOT RUN** | Cấm, không tự GO |
 
-## Test evidence / limitations
-| Item | SHA | Result | Details |
-|---|---|---|---|
-| GitHub receipt of code and new workflow | e0ebe52b7f2455e2c396c46544adfa0cb764eb99 | COMMITTED | Branch-specific changes through GitHub connector. |
-| Dedicated exact-SHA workflow | e0ebe52b7f2455e2c396c46544adfa0cb764eb99 | PASS | [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875). |
-| Isolated local Node22/Auth/RTDB/Functions | same | NOT RUN | No clone/dependency/network available in current container; CI is authoritative if completed. |
-| Malformed source / negative auth / nonempty / happy path repeat | same | PASS (theo workflow) | Dedicated workflow carries executable cases. |
-| Excel/approval changed after stdin checkpoint | same | PASS (CI) | Real CLI stdin-race case in synthetic Emulator. |\n| Forced loss of CAS ACK after server commit | same | NOT RUN | Requires dedicated fault injection and read-only reconciliation. |
-| Production target or credentials | n/a | NOT RUN | Explicitly forbidden. |
+**Sanitized witness trích từ run #41409734353:** `writeFrames=1`, `responseSuppressed=true`, `exitCode=3`, `receiptStatus=UNKNOWN_AFTER_CAS_ATTEMPT_DO_NOT_RETRY`, `committedServerRowCount=1`, `serverUnchangedOnReplay=true`. Không log token hoặc cell values. Ghi nhận trung thực: proxy kiểm tra việc mất **server-to-client ACK** của CAS, không mô phỏng mọi loại lỗi mạng và không thay thế một cuộc xác minh production.
 
-## Safety constraints and integration
-- Never change shared `business-excel.ts`, `firebase-primary-bootstrap.ts`, FULL Rules, release config, root package/lock, backup or other chat branches.
-- Current implementation cannot prove an independently signed full-root snapshot, and `fullRootSnapshotSha256` remains an external operator attestation. No production authorization implied by the tool.
-- A browser UI/import source activation/PR149 conversion is separate; not covered by this branch.
+## Ranh giới quyết định vận hành
+- Exit `0`: ghi thành công + readback server + receipt final. Không nhập lần 2.
+- Exit `2`: chưa gọi shared CAS; tìm lỗi nguồn/xác nhận/quyền/kết nối preflight, kiểm root độc lập trước khi quyết định lại.
+- Exit `3`: đã gọi CAS, *không biết kết quả* cho tới khi đối soát server. **Không tự retry**, kể cả thiếu ACK hoặc receipt final.
+- `fullRootSnapshotSha256` trong approval là chứng nhận bên ngoài, CLI không ký và không tự đọc toàn root under FULL Rules. Live full-root review/Rules/backup/production GO luôn ngoài phạm vi.
+- CI chỉ chạy tổng hợp trong Emulator, không dùng Admin SDK để né quyền nhập (REST owner chỉ là nhân chứng QA đọc độc lập).
+- Nếu cần test ở máy chung, bố trí worktree/port demo riêng; workflow Chat 3 chạy trên runner cô lập, không thay config phát hành.
 
-## Next verification
-1. Read [run 41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) conclusion and logs. If FAIL, inspect exact failing job; apply fix only in owned files and rerun on new code SHA.
-2. Run fault injection for source mutation after STDIN, broken readback after server commit, and transport failure. Record server witness and private receipt states. No production.
-3. Done: exact SHA CI PASS is recorded. ACK-loss injection and any production authorization remain separately gated.
-
-- Proven prior CI PASS: [run #41407800031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407800031) for earlier code SHA `f0c3f88af23371d4e87a97227fc4c15f63981014` (before adding stdin-race tests). This does not prove the latest code SHA.
-
-## Chốt kiểm chứng tại đúng SHA
-- GitHub Actions [run #41407997875](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41407997875) **SUCCESS** trên code SHA `e0ebe52b7f2455e2c396c46544adfa0cb764eb99` (CI đầy đủ test script synthetic; code SHA trước hai commit docs-only).
-- Kết luận **DONE_WITH_EXTERNAL_GAPS**: gói CLI và hướng dẫn độc lập đã chốt với CI emulator PASS, nhưng trường hợp ACK bị mất **sau** khi server commit chưa được fault-inject độc lập; không được gọi test đó PASS. Không có kiểm tra/ghi production.
-- Nếu chat sau tiếp quản, **không mở vòng sửa mới chỉ vì checkpoint này**. Chỉ tiếp tục nếu điều phối yêu cầu diễn tập riêng ACK-loss hoặc cần xử lý CI hồi quy. Không reset nhánh.
+## Bước còn lại
+1. Đối chiếu [run #41410079477](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41410079477) sau khi kết thúc. Nếu FAIL, giữ trạng thái và sửa đúng QA/CLI trong scope.
+2. Nếu PASS: ghi code tested SHA mới, PASS markers và commit docs-only sau code vào checkpoint, chốt `DONE` cho **gói operator trên hợp đồng xuất phát**, không phải production GO.
+3. Giữ lại link nhiệm vụ và checkpoint v2 để chat mới tiếp quản; không làm lại kiểm thử đã đủ bằng chứng.
