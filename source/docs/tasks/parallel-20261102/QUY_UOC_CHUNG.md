@@ -85,27 +85,66 @@ Bằng chứng gắn với SHA được kiểm thử. Commit chỉ sửa bàn gi
 nhưng phải ghi rõ tested code SHA và các commit docs-only sau nó; không gán kết
 quả cho mã mới chưa chạy. Tự kiểm diff cuối để không lẫn file ngoài phạm vi.
 
-## Checkpoint để không mất context
+## Checkpoint chủ động — v2 (02/11/2026)
 
-Checkpoint là bộ nhớ bền vững, không chỉ là thông báo cuối:
-- Cập nhật sau mỗi mốc có ý nghĩa (bản sửa, CI hoàn tất, phát hiện quan trọng);
-  tối thiểu khoảng 30 phút trong đợt dài và trước khi dừng/đổi chat/sắp hết context.
-- Commit/push phần việc đã kiểm tra vào **nhánh riêng**; chưa đạt vẫn được lưu
-  checkpoint nhưng phải ghi đúng trạng thái. Không commit secret, dữ liệu thật,
-  file tạm hoặc thay đổi của người khác.
-- Ghi SHA mã nguồn gần nhất, CI/link, file còn sửa dở, bước kế tiếp thực thi được,
-  điều đã thử nhưng không hiệu quả. Không chỉ ghi “xem chat cũ”.
-- Chưa push được: nói rõ checkpoint chỉ ở local, vị trí worktree và file;
-  không hứa rằng chat mới chỉ đọc GitHub sẽ thấy phần chưa đẩy.
-- Không cần ghi SHA của chính commit chứa checkpoint vào nội dung của nó:
-  ghi code SHA đã có, còn SHA checkpoint lấy từ lịch sử file GitHub.
-- Giữ checkpoint ngắn (mục tiêu dưới 150 dòng); chuyển log dài vào artifact/báo cáo.
-  Không tạo vòng commit vô hạn để tự cập nhật SHA tài liệu.
+**Hit limit có thể xảy ra mà người dùng không biết trước. Không chờ gần hết context.**
+Đây là giao thức chat chủ động ghi trong lúc chạy, không phải chức năng autosave
+nền của ứng dụng; không thể bảo đảm cứu phần chưa lưu giữa hai mốc.
+
+### Khi nào lưu
+
+- Lưu checkpoint đầu tiên trước khi bắt đầu làm sâu.
+- Trước việc dài/không rõ thời lượng: ghi việc sắp chạy, code SHA, bước kiểm tra
+  tiếp; vừa có run/session ID hoặc URL thì bổ sung ngay, trước khi chờ kết quả.
+- Sau một batch sửa nhỏ, quyết định quan trọng, tái hiện có ích hoặc kết quả CI.
+- Nếu chưa có mốc: sau khoảng **5 lượt công cụ có công việc mới** hoặc khoảng
+  **10 phút đang làm quan sát được**, tùy điều nào tới trước. Đây là mặc định
+  vận hành, không phải timer nền hay SLA. Gộp một lần ghi ở cuối batch.
+- Trước khi nhường lượt/dừng/đổi chat. Không cần người dùng nhắc hoặc canh context.
+- Không có thay đổi hữu ích thì không tạo checkpoint/commit mới hoặc polling liên tục.
+
+### Lưu gì để tiết kiệm token
+
+Giữ khoảng **20–40 dòng** (mục tiêu 300–600 từ trở xuống): status, nhánh,
+code SHA/tested SHA, 3 ý đã làm, quyết định cần giữ, file WIP/chưa push,
+CI/run ID và trạng thái, tối đa 3 bước kế tiếp thực thi được.
+Log dài/ảnh/lịch sử để ở artifact hoặc Git, không chép hội thoại vào checkpoint.
+Chat mới đọc quy ước + nhiệm vụ + checkpoint rồi chỉ tra code/log cần thiết.
+
+### Lưu mã và đồng bộ lên GitHub
+
+- Lưu file làm việc sau batch; kiểm diff rồi commit/push đúng đường dẫn sở hữu
+  lên nhánh riêng tại mốc an toàn. Có thể lưu WIP với TEST_PENDING/FAIL rõ ràng;
+  không đợi full CI xanh mới lưu công việc và không git add toàn repo.
+- Checkpoint không thay cho bản sao mã nguồn. Mã chưa commit/push phải được ghi
+  LOCAL_ONLY kèm worktree/path và việc còn dở; không tuyên bố GitHub đã lưu mã đó.
+- Nếu dùng connector: fetch current blob SHA rồi update checkpoint của mình.
+  Khi có conflict, đọc lại để bảo toàn nội dung mới; không force-push/reset.
+- Ghi code SHA đã tồn tại, không vòng lặp để ghi SHA chính commit checkpoint.
+  Docs-only commit sau tested SHA được ghi riêng, không coi là code đã kiểm mới.
+- Không chạy lại test chỉ vì handoff đổi. Workflow mới của luồng nên lọc phạm vi
+  phù hợp để handoff-only không tự tạo CI thừa; không bỏ required checks hoặc
+  tự sửa workflow dùng chung ngoài phạm vi.
+- Nếu không push được, giữ checkpoint local, báo rõ LOCAL_ONLY; hoàn thành phần
+  độc lập còn lại. Không hứa chat mới chỉ đọc GitHub thấy phần chưa đẩy.
+
+### Khi đổi chat
+
+Dùng lại link nhiệm vụ cũ; checkpoint trên nhánh luồng là nguồn tiếp tục.
+Xác nhận trạng thái Git/CI trước khi làm, không reset hoặc lặp lại test đã đủ
+bằng chứng. Nếu DONE thì báo kết quả hiện có, không tự mở vòng việc mới.
 
 Mẫu: [HANDOFF_TEMPLATE.md](HANDOFF_TEMPLATE.md).
-Trạng thái dùng: NOT_STARTED, IN_PROGRESS, BLOCKED_EXTERNAL, DONE,
-DONE_WITH_EXTERNAL_GAPS. Trạng thái cuối có gaps không được gọi là sản phẩm
-đã đủ điều kiện phát hành.
+Trạng thái: NOT_STARTED, IN_PROGRESS, BLOCKED_EXTERNAL, DONE,
+DONE_WITH_EXTERNAL_GAPS. Có gaps không có nghĩa production đã sẵn sàng.
+
+### Quy ước được cập nhật trong lúc các chat đang làm
+
+Người điều phối cập nhật file quy ước này khi có chỉ thị mới. Chat đang làm
+kiểm tra phiên bản quy ước lúc bắt đầu/tiếp quản và sau mỗi mốc lớn; nếu có
+blob SHA mới chỉ đọc phần thay đổi, không nạp lại toàn bộ bộ tài liệu.
+Thay đổi file không tự làm một chat đang chạy đọc lại; khi cần áp dụng ngay,
+người dùng gửi một câu nhắc đọc quy ước v2. Không cần gửi lại nhiệm vụ.
 
 ## Hoàn tất một luồng
 
