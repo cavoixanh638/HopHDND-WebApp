@@ -1,29 +1,48 @@
 # Checkpoint — Chat 1: Backend, Rules và tính toàn vẹn dữ liệu
 
-- Trạng thái: **NOT_STARTED**
-- Cập nhật: 02/11/2026, Asia/Saigon — khởi tạo tài liệu điều phối.
-- File nhiệm vụ: [CHAT_1_BACKEND.md](../CHAT_1_BACKEND.md)
-- Nhánh cần dùng: `parallel/20261102-chat1-backend`
-- Mốc mã nguồn: `0a04b81dbb00979fb87aee7fc497e802058d8518`
-- Code SHA nền: `0a04b81dbb00979fb87aee7fc497e802058d8518`
-- Tested SHA của riêng luồng: **NOT RUN**
-- Worktree / draft PR: chưa tạo trong bước chuẩn bị tài liệu.
-- Writer đang hoạt động: chưa xác minh; kiểm tra trước khi tiếp quản.
+- Trạng thái: **IN_PROGRESS**
+- Cập nhật: 02/11/2026, Asia/Saigon — bắt đầu tiếp quản qua GitHub connector.
+- File nhiệm vụ: [CHAT_1_BACKEND.md](../CHAT_1_BACKEND.md).
+- Repository / nhánh: `cavoixanh638/HopHDND-WebApp` / `parallel/20261102-chat1-backend`.
+- Mốc mã nguồn xuất phát: `0a04b81dbb00979fb87aee7fc497e802058d8518`.
+- HEAD khi tiếp quản: `23c04997af803a6c4af741efb37ee161a9a7c5bc` (nhánh tài liệu, chưa có thay đổi runtime của luồng).
+- Code SHA gần nhất: `0a04b81dbb00979fb87aee7fc497e802058d8518`.
+- Tested SHA riêng luồng: **NOT RUN**.
+- Worktree: không có checkout địa phương; `git clone` từ môi trường chạy bị chặn DNS, GitHub connector đọc/ghi được.
+- Writer khác cùng nhánh: chưa xác minh được bên ngoài phiên làm việc này; checkpoint trước là NOT_STARTED.
 
 ## Đã hoàn tất
-Chỉ chuẩn bị tài liệu, phạm vi và nhánh. Không phải báo cáo hoàn thành nhiệm vụ
-của Chat 1. Bằng chứng CI mốc nền nằm trong file nhiệm vụ, không phải kết quả
-đợt làm độc lập này.
+- Đọc nhiệm vụ, quy ước chung, mẫu handoff, `source/AGENTS.md`.
+- Xác nhận đúng nhánh, HEAD qua GitHub Git Ref, quyền push qua connector.
+- Xác nhận checkpoint trước là NOT_STARTED, không có việc của luồng đã commit.
 
-## Đang làm / chưa commit
-Chưa có công việc riêng của luồng được ghi nhận ở checkpoint khởi tạo này.
+## Đang làm / chưa commit hoặc chưa push
+- Đang kiểm tra backend/Rules và chuỗi thực A → B → C, tiếp tục ngay sau checkpoint này.
+- Không có file local cần bảo tồn; mọi thay đổi nhánh phải qua connector.
+
+## Kiểm thử
+| Lệnh/workflow | SHA | Trạng thái | Ghi chú |
+|---|---|---|---|
+| Baseline parent/unified (dẫn từ nhiệm vụ) | `0a04b81` | PASS nền | Không phải PASS của luồng này |
+| Kiểm thử tích hợp mới Chat 1 | chưa có | NOT RUN | Cần chạy Auth + Functions + FULL Rules |
+
+## Quyết định cần giữ
+- Giữ API/Frontend contract, canonical C digest tách raw A checksum, CAS, audit và history.
+- Chỉ sửa file sở hữu của Chat 1, không merge/deploy/production.
+- Lỗi ngoài phạm vi phải lưu tái hiện và phân công, không bypass để báo PASS.
+
+## Đã thử nhưng không hiệu quả
+- `git clone` trực tiếp từ container không thực hiện được: `Could not resolve host: github.com`.
+- GitHub connector đọc được SHA/file và có quyền ghi; sử dụng connector cho commit.
+
+## Vấn đề ngoài phạm vi
+- Chưa kết luận; cập nhật khi có kết quả.
 
 ## Bước tiếp theo
-1. Đọc file nhiệm vụ và quy ước chung; xác nhận đúng remote/nhánh/HEAD/worktree.
-2. Đọc phần mã và bằng chứng liên quan, chọn khoảng trống thực tế cần xử lý.
-3. Cập nhật checkpoint thành IN_PROGRESS và thực hiện trọn nhiệm vụ.
-4. Khi đổi chat, cập nhật file này **trên nhánh luồng**, không sửa bản khởi tạo
-   trên nhánh tài liệu.
+1. Đọc `cell-edit-service/`, `parent-commit-service/`, `firebase/database.exclusive-candidate.rules.json` và test hiện có.
+2. Bổ sung regression/ sửa lỗi có chứng cứ trong phạm vi.
+3. Tạo workflow kiểm thử riêng Chat 1 nếu cần; theo dõi chính xác SHA và trạng thái CI.
+4. Cập nhật `reports/CHAT_1.md` và checkpoint DONE hoặc DONE_WITH_EXTERNAL_GAPS dựa trên bằng chứng.
 
-## Vấn đề ngoài phạm vi / kiểm thử / bàn giao cuối
-Chưa có kết quả. Dùng [mẫu checkpoint](../HANDOFF_TEMPLATE.md) để bổ sung.
+## Bàn giao cuối
+- Chưa hoàn tất; không coi CI nền là nghiệm thu.
