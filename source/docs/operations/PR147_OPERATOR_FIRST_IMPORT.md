@@ -177,3 +177,54 @@ receipts. No Google ID token, private credentials or raw workbook cell
 values belong in logged/committed evidence. The approval's
 `fullRootSnapshotSha256` remains an external operator assertion;
 the CLI cannot independently certify a production empty full root.
+
+
+## COORD-01 — private receipt path containment on Windows/POSIX (02/11/2026)
+
+**Prewrite safety requirement:** the `--output` receipt must be a new absolute file
+**outside the Git checkout**, even if the entered path goes through a symlink or
+Windows junction. Never store a production receipt in the repository.
+The CLI continues to require a missing/new destination and creates the initial
+marker exclusively with `wx` and private mode `0600` before any CAS attempt.
+
+Earlier code tested `target.startsWith(checkout + '/')`, which failed to
+identify a Windows child such as `C:\\repo\\HopHDND-WebApp\\private\\receipt.json`
+because Windows uses `\\` as the directory separator.
+The corrected CLI calls `scripts/operator-first-import-path.mjs` after
+`realpathSync` of the checkout and destination's parent. Its shared helper
+uses native `path.relative(checkout, target)` and rejects the checkout
+itself, any child and nested child; it distinguishes `..` plus
+`path.sep`, absolute relatives (notably a different Windows drive) and
+same-prefix sibling names correctly.
+
+A blocked inside-checkout output is a **pre-CAS HOLD (exit 2)** with
+`PR147_BOOTSTRAP_HOLD_PRIVATE_OUTPUT_OUTSIDE_CHECKOUT_REQUIRED`. The CLI
+does not read the operator identity, connect to Auth/RTDB or write a receipt.
+An allowed outside-checkout output **only passes this path preflight**;
+it does not authorize an import. Without a Google ID token, the CLI still
+fails safely with `PR147_BOOTSTRAP_HOLD_GOOGLE_ID_TOKEN_STDIN_REQUIRED`
+and does not create an output file.
+
+Regression commands (isolated worktree, Node22, dependencies installed):
+
+```sh
+# Pure helper under native POSIX and simulated win32 path semantics
+node --test parallel-qa/chat3/operator-receipt-path.test.mjs
+# Same file runs again under the native Windows job; this command is Windows-only
+node parallel-qa/chat3/operator-windows-cli.mjs
+```
+
+The Windows runner invokes the **shipped**
+`node scripts/operator-first-import.mjs` with an approved *synthetic*
+A–O workbook, and verifies inside-repo root/children and junction paths
+are HOLD while external/same-prefix sibling paths reach the missing-stdin
+HOLD. The independent Linux job also runs the original Auth/RTDB/Functions
+FULL Rules Emulator suite for successful empty-root CAS, prewrite network
+failure, lost ACK UNKNOWN and denied replay on the exact candidate SHA.
+No native Windows Firebase write test is claimed; no real credentials,
+network writes, deploy or production approval are involved in the Windows
+path-only CLI preflight.
+
+Exact run/SHA and outcome: see
+[Chat 3 report](../tasks/parallel-20261102/reports/CHAT_3.md);
+a pending workflow does not constitute a PASS.
