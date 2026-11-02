@@ -643,6 +643,20 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   console.log('FRV_EDITED_HISTORICAL_A_RESTORE_WITNESS '+JSON.stringify(summary));
   log('FRV_EDITED_HISTORICAL_A_RESTORE_DENIED',beforeRestore,afterRestore,summary,
     'verified admin real Auth -> actual parent onRequest -> Rules scoped ancestor CAS');
+  // Rules Emulator's built-in rule coverage provides exact evaluated
+  // expressions, never a guessed permissive fix or fixture bypass.
+  try{
+   const resp=await fetch('http://127.0.0.1:9000/.inspect/coverage.json?ns=demo-hdnd');
+   const coverage=await resp.json();
+   mkdirSync('parent-commit-service/evidence',{recursive:true});
+   writeFileSync('parent-commit-service/evidence/frv02-rules-coverage.local.json',
+     JSON.stringify(coverage,null,2));
+   console.log('FRV02_RULES_COVERAGE',JSON.stringify({
+    httpStatus:resp.status,rootKeys:Object.keys(coverage??{}),
+    type:Array.isArray(coverage)?'array':'object',
+    size:JSON.stringify(coverage).length,
+    excerpt:JSON.stringify(coverage).slice(0,600)}));
+  }catch(error){console.log('FRV02_RULES_COVERAGE_UNAVAILABLE',String(error));}
  }
  expect(restoreError,'Valid COMMITTED backup of legally edited A must restore; '+restoreError).toBe('');
  expect(restored.status).toBe('committed');
@@ -800,7 +814,7 @@ it('FRV-02 OPERATOR: production-grade CLI performs actual verified Google empty-
     writeFileSync(excel,bytes);
     const rows=parseBusinessExcel(bytes,sheet);
     expect(rows.count).toBe(1);
-    const hash=sha(bytes),sourceSha=FRV_SHA;
+    const hash=createHash('sha256').update(bytes).digest('hex'),sourceSha=FRV_SHA;
     const prior=await witness();
     expect(prior).toBeNull();
     const record={schema:'PR147_OPERATOR_FIRST_IMPORT_APPROVAL_V1',
