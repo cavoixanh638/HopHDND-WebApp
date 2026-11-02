@@ -648,14 +648,14 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   try{
    const resp=await fetch('http://127.0.0.1:9000/.inspect/coverage.json?ns=demo-hdnd');
    const coverage=await resp.json();
-   mkdirSync('parent-commit-service/evidence',{recursive:true});
-   writeFileSync('parent-commit-service/evidence/frv02-rules-coverage.local.json',
-     JSON.stringify(coverage,null,2));
-   console.log('FRV02_RULES_COVERAGE',JSON.stringify({
-    httpStatus:resp.status,rootKeys:Object.keys(coverage??{}),
-    type:Array.isArray(coverage)?'array':'object',
-    size:JSON.stringify(coverage).length,
-    excerpt:JSON.stringify(coverage).slice(0,600)}));
+   // Each coverage event contains a rule AST. Keep only structured,
+   // path-scoped hints: never log the gigantic full report to CI stdout.
+   const entries=Array.isArray(coverage)?coverage:[coverage];
+   const sample=entries.find((entry:any)=>JSON.stringify(entry).includes('history'))??entries[0];
+   const head=JSON.stringify(sample??{}).slice(0,1500);
+   console.log('FRV02_RULES_COVERAGE_DIAG',JSON.stringify({
+    httpStatus:resp.status,isArray:Array.isArray(coverage),
+    count:entries.length,sample:head}));
   }catch(error){console.log('FRV02_RULES_COVERAGE_UNAVAILABLE',String(error));}
  }
  expect(restoreError,'Valid COMMITTED backup of legally edited A must restore; '+restoreError).toBe('');
