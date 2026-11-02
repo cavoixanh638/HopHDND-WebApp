@@ -3,6 +3,13 @@ on:
   push:
     branches:
       - parallel/20261102-chat2-ui
+    paths:
+      - 'source/src/app/**'
+      - 'source/src/components/**'
+      - 'source/src/features/**'
+      - 'source/src/styles/**'
+      - 'source/parallel-qa/chat2/**'
+      - '.github/workflows/parallel-chat2-*.yml'
   workflow_dispatch:
 permissions:
   contents: read
