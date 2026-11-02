@@ -7,7 +7,7 @@
 - Worktree local: **không có**; chỉnh sửa đã push thẳng qua GitHub connector
 - Mốc xuất phát: `0a04b81dbb00979fb87aee7fc497e802058d8518`
 - Code SHA gần nhất: `e0ebe52b7f2455e2c396c46544adfa0cb764eb99`
-- Tested SHA: **NOT RUN (đang chờ CI)**; workflow #41407800031 cùng code SHA
+- Tested SHA: **e0ebe52b7f2455e2c396c46544adfa0cb764eb99 — CI PASS**; workflow #41407997875
 - Draft PR: không tạo, không merge
 - Writer khác cùng branch: **chưa xác minh**; lịch sử ref trước lần ghi là bootstrap docs-only, các commit trong phiên này thuộc luồng 3.
 
