@@ -753,7 +753,60 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
           sourceHadLease:!!replayBase.leases?.[genA],sourceHadProof:!!sourceItem.editProofs,
           sourceHadRight:!!JSON.parse(backupA.permissionsJson)?.columns?.note}));
     }
+
+    // Surgical rule-expression isolation, solely on the disposable Emulator.
+    // Patches are loaded in memory; tracked FULL Rules and expected-success
+    // FRV-02 assertion remain unchanged. Reapply original Rules even on error.
+    const baselineRules=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
+    const patchGroups=[
+      ['history-root',['history']],
+      ['history-slot',['history','$slot']],
+      ['audit-operationId',['history','$slot','operationId']],
+      ['audit-recordId',['history','$slot','recordId']],
+      ['audit-at',['history','$slot','at']],
+      ['audit-actor',['history','$slot','actor']],
+      ['audit-changes',['history','$slot','changes']],
+      ['audit-changes-field',['history','$slot','changes','$field']],
+      ['audit-oldValues',['history','$slot','oldValues']],
+      ['audit-oldValues-field',['history','$slot','oldValues','$field']],
+      ['all-audit-subtree',[]]
+    ] as const;
+    for(const [patchName,keys] of patchGroups){
+      const patch=JSON.parse(baselineRules);
+      const item=patch.rules.hdnd.datasetV2.generations.$generation.items.$id;
+      if(patchName==='all-audit-subtree'){
+        const all=(obj:any)=>{
+          for(const [k,v] of Object.entries(obj))
+            if(k==='.validate'&&typeof v==='string')obj[k]=true;
+            else if(typeof v==='object'&&v)all(v);
+        };
+        all(item.history);
+      }else{
+        let node:any=item;
+        for(const k of keys)node=node[k];
+        node['.validate']=true;
+      }
+      let actual='DENIED';
+      try{
+        await env.loadDatabaseRules({rules:JSON.stringify(patch)});
+        await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
+        const proposal=copyJson(replayBase);
+        const cItem=copyJson(copiedWithoutProof);
+        cItem.operationId=restore;cItem.updatedAt={'.sv':'timestamp'};cItem.updatedBy=admin.uid;
+        proposal.generations[genC]={items:{r1:cItem}};
+        proposal.permissions[genC]=copyJson(JSON.parse(backupA.permissionsJson));
+        proposal.active={generationId:genC,operationId:restore,
+          revision:replayBase.active.revision+1,rowCount:1,
+          digest:sha(stable(replayBase.generations[genA].items))};
+        proposal.operations[restore]={status:'COMMITTED',from:genB,to:genC,at:Date.now()};
+        try{await getAdminDatabase(scopedProbe).ref(ROOT).set(proposal);actual='ALLOWED';}
+        catch(e:any){actual='DENIED: '+String(e?.code??e?.message??e).slice(0,120);}
+      }catch(e:any){actual='DIAGNOSTIC_ERROR: '+String(e?.message??e).slice(0,160);}
+      console.log('FRV02_RULE_EXPRESSION_ISOLATED',JSON.stringify({patchName,outcome:actual}));
+    }
+    await env.loadDatabaseRules({rules:baselineRules});
   }finally{
+    await env.loadDatabaseRules({rules:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')});
     await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
     await adminDelete(scopedProbe);
   }
