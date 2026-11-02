@@ -19,13 +19,25 @@ function sort(x){
 function equal(a,b){return stable(a)===stable(b);}
 function check(ok,reason){if(!ok)throw Error('PARENT_CONTRACT_DENIED: '+reason);}
 function keys(x){return Object.keys(x??{}).sort();}
-/** SHA256 of the EXACT historical snapshot that will be restored. Unlike the
- * original import-file digest, it includes legitimate intervening row edits
- * and their audit history; the new restore generation therefore has its own
- * content fingerprint, not a copied/attacker-chosen pointer digest. */
+/** Raw SHA256 witness of the sealed historical source A, including old
+ * session proofs and original provenance. This is NOT the digest of C. */
 export function restoredSnapshotDigest(items){
   check(isObject(items),'missing historical row snapshot');
   return createHash('sha256').update(stable(items)).digest('hex');
+}
+
+/** Canonical digest for restored generation C: retain business data and the
+ * original history, but exclude A-specific session proofs and server-issued
+ * provenance. This fingerprint is invariant under serverTimestamp() resolving
+ * at commit. The immutable historical A backup is verified separately. */
+export function restoredGenerationDigest(items){
+  check(isObject(items),'missing restored rows');
+  const canonical=Object.fromEntries(Object.entries(items).map(([id,row])=>{
+    check(isObject(row),'invalid restored row '+id);
+    const {editProofs:_proof,operationId:_op,updatedAt:_at,updatedBy:_uid,...persistent}=row;
+    return [id,persistent];
+  }));
+  return createHash('sha256').update(stable(canonical)).digest('hex');
 }
 /** A backup is privately admin-writable before a replacement. Self-consistent
  * JSON is NOT proof of a committed source. Verify its source operation,
@@ -66,7 +78,8 @@ export function verifyCommittedRestoreSource(before,backup,backupOperationId){
     permissions,leases
   }),'backup baseline/checksum mismatch');
   return {items:backup.generation.items,permissions,count,
-    digest:restoredSnapshotDigest(backup.generation.items)};
+    sourceRawDigest:restoredSnapshotDigest(backup.generation.items),
+    digest:restoredGenerationDigest(backup.generation.items)};
 }
 
 function sameOldChildren(oldMap,newMap,kind){
@@ -174,6 +187,8 @@ export function assertSafeParentTransition(before,after,{mode,operationId,actor,
   check(nextPtr.digest===approvedDigest&&nextPtr.rowCount===approvedCount,
     'pointer digest/count differ from approved staging/backup');
   cleanedRows(newRows,approvedRows,operationId,actor,{restoring:mode==='restore'});
+  if(mode==='restore')check(nextPtr.digest===restoredGenerationDigest(newRows),
+    'restored C canonical snapshot digest mismatch');
   return true;
 }
 /** For unit tests: a rejected proposal must be refused before any transaction. */

@@ -708,135 +708,7 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
   log('FRV_EDITED_HISTORICAL_A_RESTORE_DENIED',beforeRestore,afterRestore,summary,
     'verified admin real Auth -> actual parent onRequest -> Rules scoped ancestor CAS');
 
-  // FRV-02 diagnostic-only: scoped SDK + FULL Rules probes on disposable
-  // Emulator state. Never used as product authorization or a passing test.
-  // Invariant: real RESTORE failure above remains a mandatory test failure.
-  const scopedProbe=adminInitialize({projectId:PROJECT,
-    databaseURL:'https://'+PROJECT+'.firebaseio.com',
-    databaseAuthVariableOverride:{uid:admin.uid,token:{email:ADMIN_EMAIL,
-      email_verified:true,firebase:{sign_in_provider:'google.com'},parentCasService:true}}
-  },'frv02-diagnostic-'+randomUUID());
-  const replayBase=beforeRestore.datasetV2;
-  const sourceItem=replayBase.generations[genA].items.r1;
-  const copiedWithoutProof={...sourceItem};
-  delete copiedWithoutProof.editProofs;
-  const copyJson=(v:any)=>JSON.parse(JSON.stringify(v));
-  const diagnoses=[
-    {name:'full-history-no-session-proof',removeHistory:false,removeOldLease:false,keepOldProof:false,omitRight:false},
-    {name:'omit-new-C-history-ONLY_FOR_DIAG',removeHistory:true,removeOldLease:false,keepOldProof:false,omitRight:false},
-    {name:'omit-old-A-lease-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:true,keepOldProof:false,omitRight:false},
-    {name:'copy-old-proof-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:false,keepOldProof:true,omitRight:false},
-    {name:'omit-C-right-ONLY_FOR_DIAG',removeHistory:false,removeOldLease:false,keepOldProof:false,omitRight:true}
-  ];
-  try{
-    for(const t of diagnoses){
-      await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
-      const proposal=copyJson(replayBase);
-      const restoredItem=copyJson(copiedWithoutProof);
-      if(t.removeHistory)delete restoredItem.history;
-      if(t.keepOldProof)restoredItem.editProofs=copyJson(sourceItem.editProofs);
-      restoredItem.operationId=restore;
-      restoredItem.updatedAt={'.sv':'timestamp'};
-      restoredItem.updatedBy=admin.uid;
-      proposal.generations[genC]={items:{r1:restoredItem}};
-      if(t.removeOldLease&&proposal.leases)delete proposal.leases[genA];
-      if(!t.omitRight)proposal.permissions[genC]=copyJson(JSON.parse(backupA.permissionsJson));
-      proposal.active={generationId:genC,operationId:restore,
-        revision:replayBase.active.revision+1,
-        rowCount:1,digest:sha(stable(replayBase.generations[genA].items))};
-      proposal.operations[restore]={status:'COMMITTED',from:genB,to:genC,at:Date.now()};
-      let outcome='ALLOWED';
-      try{await getAdminDatabase(scopedProbe).ref(ROOT).set(proposal);}
-      catch(err:any){outcome='DENIED: '+String(err?.code??err?.message??err).slice(0,170);}
-      console.log('FRV02_SCOPED_RULES_ISOLATION_NOT_ACCEPTANCE',
-        JSON.stringify({name:t.name,outcome,sourceHistory:Object.keys(sourceItem.history??{}),
-          sourceHadLease:!!replayBase.leases?.[genA],sourceHadProof:!!sourceItem.editProofs,
-          sourceHadRight:!!JSON.parse(backupA.permissionsJson)?.columns?.note}));
-    }
-
-    // Surgical rule-expression isolation, solely on the disposable Emulator.
-    // Patches are loaded in memory; tracked FULL Rules and expected-success
-    // FRV-02 assertion remain unchanged. Reapply original Rules even on error.
-    const baselineRules=readFileSync('firebase/database.exclusive-candidate.rules.json','utf8');
-    const localRulesApply=async(ruleSource:string)=>{
-      const response=await fetch('http://127.0.0.1:9000/.settings/rules.json?ns='+PROJECT,{
-        method:'PUT',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
-        body:ruleSource
-      });
-      if(!response.ok)throw Error('LOCAL_EMULATOR_RULES_LOAD_'+response.status+' '+(await response.text()).slice(0,200));
-    };
-    const patchGroups=[
-      ['history-root',['history']],
-      ['history-slot',['history','$slot']],
-      ['audit-operationId',['history','$slot','operationId']],
-      ['audit-recordId',['history','$slot','recordId']],
-      ['audit-at',['history','$slot','at']],
-      ['audit-actor',['history','$slot','actor']],
-      ['audit-changes',['history','$slot','changes']],
-      ['audit-changes-field',['history','$slot','changes','$field']],
-      ['audit-oldValues',['history','$slot','oldValues']],
-      ['audit-oldValues-field',['history','$slot','oldValues','$field']],
-      ['all-audit-subtree',[]],
-      ['all-except-history-root',['history']],
-      ['all-except-history-slot',['history','$slot']],
-      ['all-except-operationId',['history','$slot','operationId']],
-      ['all-except-recordId',['history','$slot','recordId']],
-      ['all-except-at',['history','$slot','at']],
-      ['all-except-actor',['history','$slot','actor']],
-      ['all-except-changes',['history','$slot','changes']],
-      ['all-except-changes-field',['history','$slot','changes','$field']],
-      ['all-except-oldValues',['history','$slot','oldValues']],
-      ['all-except-oldValues-field',['history','$slot','oldValues','$field']]
-    ] as const;
-    for(const [patchName,keys] of patchGroups){
-      const patch=JSON.parse(baselineRules);
-      const item=patch.rules.hdnd.datasetV2.generations.$generation.items.$id;
-      if(patchName==='all-audit-subtree'||patchName.startsWith('all-except-')){
-        const all=(obj:any)=>{
-          for(const [k,v] of Object.entries(obj))
-            if(k==='.validate'&&typeof v==='string')obj[k]=true;
-            else if(typeof v==='object'&&v)all(v);
-        };
-        all(item.history);
-        if(patchName.startsWith('all-except-')){
-          let isolated:any=item;
-          let original:any=JSON.parse(baselineRules).rules.hdnd.datasetV2.generations.$generation.items.$id;
-          for(const k of keys){isolated=isolated[k];original=original[k];}
-          isolated['.validate']=original['.validate'];
-        }
-      }else{
-        let node:any=item;
-        for(const k of keys)node=node[k];
-        node['.validate']=true;
-      }
-      let actual='DENIED';
-      try{
-        await localRulesApply(JSON.stringify(patch));
-        await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
-        const proposal=copyJson(replayBase);
-        const cItem=copyJson(copiedWithoutProof);
-        cItem.operationId=restore;cItem.updatedAt={'.sv':'timestamp'};cItem.updatedBy=admin.uid;
-        proposal.generations[genC]={items:{r1:cItem}};
-        proposal.permissions[genC]=copyJson(JSON.parse(backupA.permissionsJson));
-        proposal.active={generationId:genC,operationId:restore,
-          revision:replayBase.active.revision+1,rowCount:1,
-          digest:sha(stable(replayBase.generations[genA].items))};
-        proposal.operations[restore]={status:'COMMITTED',from:genB,to:genC,at:Date.now()};
-        try{await getAdminDatabase(scopedProbe).ref(ROOT).set(proposal);actual='ALLOWED';}
-        catch(e:any){actual='DENIED: '+String(e?.code??e?.message??e).slice(0,120);}
-      }catch(e:any){actual='DIAGNOSTIC_ERROR: '+String(e?.message??e).slice(0,160);}
-      console.log('FRV02_RULE_EXPRESSION_ISOLATED',JSON.stringify({patchName,outcome:actual}));
-    }
-    await localRulesApply(baselineRules);
-  }finally{
-    await fetch('http://127.0.0.1:9000/.settings/rules.json?ns='+PROJECT,{
-      method:'PUT',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},
-      body:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')
-    });
-    await env.withSecurityRulesDisabled(async ctx=>set(ref(ctx.database(),ROOT),copyJson(replayBase)));
-    await adminDelete(scopedProbe);
-  }
-
+  // Surgical audit-validator isolation evidence: CI #41390728120 (synthetic-only).
   // Rules Emulator's built-in rule coverage provides exact evaluated
   // expressions, never a guessed permissive fix or fixture bypass.
   try{
@@ -887,11 +759,33 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  expect(restoredRow.operationId).toBe(restore);
  expect(restoredRow.updatedBy).toBe(admin.uid);
  expect(restoredRow.updatedAt).toBeGreaterThan(0);
- expect(afterRestore.datasetV2.active.digest).toBe(sha(stable(beforeRestore.datasetV2.generations[genA].items)));
+ // Independently recompute the actual post-commit C canonical digest,
+ // rather than comparing it with A's raw immutable backup checksum.
+ const cCanonical=(items:any)=>Object.fromEntries(Object.entries(items).map(([id,r]:any)=>{
+  const {editProofs:_proof,operationId:_operation,updatedAt:_at,updatedBy:_by,...businessAndHistory}=r;
+  return [id,businessAndHistory];
+ }));
+ const cHash=sha(stable(cCanonical(afterRestore.datasetV2.generations[genC].items)));
+ const aCanonicalHash=sha(stable(cCanonical(beforeRestore.datasetV2.generations[genA].items)));
+ const rawSourceHash=sha(stable(beforeRestore.datasetV2.generations[genA].items));
+ expect(afterRestore.datasetV2.active.digest).toBe(cHash);
+ expect(cHash).toBe(aCanonicalHash);
+ expect(cHash).not.toBe(rawSourceHash);
+ expect(backupA.baseline).toBe(stable({
+  active:backupA.previous,items:beforeRestore.datasetV2.generations[genA].items,
+  permissions:beforeRestore.datasetV2.permissions[genA],
+  leases:beforeRestore.datasetV2.leases[genA]
+ }));
+ console.log('FRV02_C_CANONICAL_DIGEST_VERIFIED',JSON.stringify({
+  candidateSha:FRV_SHA,rawSourceSha256:rawSourceHash,canonicalDestinationSha256:cHash,
+  pointerDigest:afterRestore.datasetV2.active.digest,backupBaselineSha256:sha(backupA.baseline)}));
 
  expect(afterRestore.datasetV2.backups[second]).toBe(beforeRestore.datasetV2.backups[second]);
  expect(afterRestore.datasetV2.generations[genA]).toEqual(beforeRestore.datasetV2.generations[genA]);
  expect(afterRestore.datasetV2.generations[genB]).toEqual(beforeRestore.datasetV2.generations[genB]);
+ expect(afterRestore.datasetV2.operations[second]).toEqual(beforeRestore.datasetV2.operations[second]);
+ expect(afterRestore.datasetV2.permissions[genA]).toEqual(beforeRestore.datasetV2.permissions[genA]);
+ expect(afterRestore.datasetV2.permissions[genB]).toEqual(beforeRestore.datasetV2.permissions[genB]);
  expect(afterRestore.datasetV2.leases?.[genA]).toEqual(beforeRestore.datasetV2.leases?.[genA]);
  expect(afterRestore.datasetV2.leases?.[genB]).toEqual(beforeRestore.datasetV2.leases?.[genB]);
  expect(afterRestore.datasetV2.active.digest).toMatch(/^[a-f0-9]{64}$/);
@@ -906,8 +800,28 @@ it('FINAL-RELEASE-VERIFICATION FRCR-01 live A rights, A→B, historical paths de
  expect(afterC.history['3'].oldValues.note).toBe('FRV VALID A GUEST EDIT');
  expect(afterC.history['3'].actor).toBe(guest.uid);
  expect(afterC.editProofs?.note).toMatch(/^[A-Za-z0-9_-]{20,100}$/);
+ expect(afterC.editProofs.note).not.toBe(sourceRow.editProofs.note);
  expect(afterCEdit.datasetV2.generations[genA]).toEqual(beforeRestore.datasetV2.generations[genA]);
 
+ // Negative controls: no raw client or scoped parent service may tamper with
+ // archived audit on a generation that ALREADY exists.
+ await frvDenied('RESTORED_C_HISTORY_ACTOR_TAMPER_DENIED',()=>set(ref(db,
+  ROOT+'/generations/'+genC+'/items/r1/history/2/actor'),'forged-actor'));
+ await frvDenied('RESTORED_C_HISTORY_MULTIPATH_TAMPER_DENIED',()=>update(ref(db,ROOT),{
+  ['generations/'+genC+'/items/r1/history/2/oldValues/note']:'FORGED VALUE'
+ }));
+ const scoped=adminInitialize({projectId:PROJECT,databaseURL:'https://'+PROJECT+'.firebaseio.com',
+  databaseAuthVariableOverride:{uid:admin.uid,token:{email:ADMIN_EMAIL,email_verified:true,
+   firebase:{sign_in_provider:'google.com'},parentCasService:true}}
+ },'frv02-existing-c-audit-denial-'+randomUUID());
+ const beforeScoped=await witness();
+ try{await expect(getAdminDatabase(scoped).ref(ROOT+'/generations/'+genC+
+  '/items/r1/history/2/actor').set('bad-parent-audit')).rejects.toThrow();}
+ finally{await adminDelete(scoped);}
+ const afterScoped=await witness();
+ expect(sha(stable(afterScoped))).toBe(sha(stable(beforeScoped)));
+ log('FRV02_EXISTING_C_PARENT_SERVICE_AUDIT_DENIED',beforeScoped,afterScoped,
+  {state:'DENIED',beforeSha256:sha(stable(beforeScoped)),afterSha256:sha(stable(afterScoped))});
  await frvDenied('HISTORICAL_B_PERMISSION_AFTER_RESTORE',()=>set(ref(db,bGrant),false));
  console.log('FINAL_RELEASE_VERIFICATION_COMPLETE '+JSON.stringify({
   candidateSha:FRV_SHA,frcr01:'FIX_VERIFIED',oldGeneration:genA,replacedGeneration:genB,restoredGeneration:genC,
