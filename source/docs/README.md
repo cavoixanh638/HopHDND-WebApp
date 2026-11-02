@@ -56,3 +56,12 @@ Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x
 - [TAI_LIEU_VA_BAN_GIAO](TAI_LIEU_VA_BAN_GIAO.md) là **đề xuất danh mục ban đầu/lịch sử**; quy ước gộp hiện hành tại trang này có ưu tiên khi có khác biệt.
 
 Với mỗi thay đổi, sửa **nguồn chuẩn trước**, tài liệu khác chỉ thêm liên kết/cảnh báo nếu cần. Không đánh dấu production PASS chỉ dựa vào test local hoặc emulator.
+
+## Phân công 5 luồng song song — 02/11/2026
+
+Bộ điều phối có phạm vi riêng và checkpoint để chat mới tiếp tục công việc:
+[tài liệu đầu vào và link từng luồng](tasks/parallel-20261102/README.md).
+[Quy ước chung](tasks/parallel-20261102/QUY_UOC_CHUNG.md) được tách riêng.
+Tiến độ nằm trong checkpoint trên nhánh từng luồng, không suy từ bản khởi tạo
+của nhánh tài liệu. Bộ này là phân công công việc, không thay nguồn trạng thái
+production hay runbook nghiệp vụ đã có.
