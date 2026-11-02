@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      # Independent second pass: A history-vs-B history control and immutable CI artifact on SHA82b6.
-      FINAL_VERIFY_TARGET_SHA: 536f4811b84ee0f97f2841e7c746f0362df80a2e
-      FINAL_VERIFY_RELEASE_DOCS_SHA: 536f4811b84ee0f97f2841e7c746f0362df80a2e
+      # Independent second pass: Independent A-edited RESTORE, queued ACL race, immutable 5656 artifact.
+      FINAL_VERIFY_TARGET_SHA: 5656a5eaffa4e6b32e5100b11f36697af93c7340
+      FINAL_VERIFY_RELEASE_DOCS_SHA: 5656a5eaffa4e6b32e5100b11f36697af93c7340
       GCLOUD_PROJECT: demo-hdnd
       PARENT_DATABASE_URL: https://demo-hdnd.firebaseio.com
       PARENT_COMMIT_ENABLED: 'true'
@@ -100,9 +100,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          test "$FINAL_VERIFY_TARGET_SHA" = "536f4811b84ee0f97f2841e7c746f0362df80a2e"
-          gh run download 41328449552 --repo "$GITHUB_REPOSITORY" \
-            --name pr147-release-rehearsal-536f4811b84ee0f97f2841e7c746f0362df80a2e-1 \
+          test "$FINAL_VERIFY_TARGET_SHA" = "5656a5eaffa4e6b32e5100b11f36697af93c7340"
+          gh run download 41328843887 --repo "$GITHUB_REPOSITORY" \
+            --name pr147-release-rehearsal-5656a5eaffa4e6b32e5100b11f36697af93c7340-1 \
             --dir ../frv-artifact
           node ../../reviewer/source/release-review/verify-package-ci.mjs ../frv-artifact \
             2>&1 | tee parent-commit-service/evidence/frv-package-audit.stdout.log
