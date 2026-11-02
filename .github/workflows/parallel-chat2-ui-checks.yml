@@ -1,0 +1,32 @@
+name: Parallel Chat 2 - scoped UI checks (no deploy)
+on:
+  push:
+    branches:
+      - parallel/20261102-chat2-ui
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ui-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install pinned dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: UI filter regression
+        run: npx vitest run src/features/items/RoomSpecialistFilterCell.test.ts
+      - name: Existing UI unit regressions
+        run: npm run test -- --run
+      - name: Verify build without publishing
+        run: npm run build:pages:test
