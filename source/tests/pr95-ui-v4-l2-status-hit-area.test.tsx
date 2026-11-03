@@ -81,15 +81,15 @@ describe('UI V4 L2 status row — fixed caret rail, one outer frame',()=>{
     expect(css).not.toContain('.compact-stage-row[role="button"]');
     expect(pickerCss).toContain('.cell-picker-value-text');
   });
-  it('removes status dots including legacy popup wrapper without touching stage numbers',()=>{
+  it('removes status dots while preserving three distinct workflow rows',()=>{
     expect(css).toMatch(/\.compact-stage-state\[data-progress-tone\]::before\s*\{[^}]*content:none;display:none;/s);
     expect(css).toContain('.compact-stage-state .workflow-status-value::before');
     expect(css).toContain('content:none!important;display:none!important;');
     const html=draw([]);
-    expect(html.match(/class="compact-stage-number"/g)).toHaveLength(3);
-    expect(html).toContain('>1</span>');
-    expect(html).toContain('>2</span>');
-    expect(html).toContain('>3</span>');
+    expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
+    expect(html).toContain('Thành ủy');
+    expect(html).toContain('Xây dựng NQ');
+    expect(html).toContain('Ban hành NQ');
   });
   it('preserves custom member palette/highlight, flat no-border button and local focus styling',()=>{
     const html=draw(['progressBuild']);

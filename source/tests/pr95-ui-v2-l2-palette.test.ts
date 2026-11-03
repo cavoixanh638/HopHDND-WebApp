@@ -39,7 +39,7 @@ describe('PR95 V2 L2 soft semantic palette, CSS only',()=>{
   });
 
   it('keeps every summary card white and neutrally bordered without a colored top stripe',()=>{
-    expect(frame).toContain('background:#fff;\n  border:1px solid #DCE5E0;border-top:3px solid #DCE5E0');
+    expect(frame).toMatch(/background:#fff;\r?\n  border:1px solid #DCE5E0;border-top:3px solid #DCE5E0/);
     for(const className of ['party','build','nq']){
       expect(frame).toContain('.item-summary-'+className+'{--summary-accent:');
       expect(frame).not.toMatch(new RegExp('\\.item-summary-'+className+'\\{[^}]*background:#'));
