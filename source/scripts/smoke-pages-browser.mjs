@@ -4708,7 +4708,11 @@ try{
   if(ws)ws.close();
   if(chrome)chrome.kill('SIGKILL');
   server.close();
-  if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
+  if(emulator&&emulator.exitCode===null){
+    if(process.platform==='win32'&&emulator.pid)
+      spawnSync('taskkill',['/PID',String(emulator.pid),'/T','/F'],{stdio:'ignore'});
+    else emulator.kill('SIGTERM');
+  }
   try{rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});}
   catch(error){if(!['EPERM','EBUSY'].includes(error.code))throw error;
     console.warn('CHROME_PROFILE_CLEANUP_PENDING',error.code);}
