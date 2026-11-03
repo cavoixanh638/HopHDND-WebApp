@@ -1,7 +1,10 @@
 import {describe,it,expect} from 'vitest';
-import {defaultItemLayout,validateItemLayout,validateListTitle,validateSummaryCards,DEFAULT_LIST_TITLE} from '../../../../../src/data/item-preferences';
+import {defaultItemLayout,validateItemLayout,validateListTitle,validateSummaryCards,DEFAULT_LIST_TITLE,overlayPersonalLayout} from '../../../../../src/data/item-preferences';
 import {mergeItemLayout,LayoutConflictError} from '../../../../../src/data/item-layout-merge';
 import {sortItems} from '../../../../../src/domain/sort-items';
+import {ColumnHeader} from '../../../../../src/features/items/ColumnHeader';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
 import type {Item} from '../../../../../shared/types';
 const row=(displayCode:string,documentKind='NQ')=>({displayCode,documentKind}) as Item;
 describe('Stream B shared admin controls',()=>{
@@ -29,4 +32,52 @@ describe('Stream B shared admin controls',()=>{
  expect(mergeItemLayout(base,local,{...remote,listTitle:'Tên khác'},{listTitle:'remote'}).listTitle).toBe('Tên khác');
  expect(validateItemLayout(JSON.parse(JSON.stringify(merged)))).toEqual(merged);
  });
+ it('keeps equal display IDs stable and never mutates the source rows',()=>{
+   const rows=[row('ID02'),row('ID2'),row('ID10'),row('ID1','BC'),row('ID2','BC'),row('ID2','UNCLASSIFIED'),row('Dòng 1 (thiếu mã)')];
+   const snapshot=[...rows];
+   expect(sortItems(rows,{key:'displayCode',direction:'asc'})).toEqual([rows[0],rows[1],rows[2],rows[3],rows[4],rows[5],rows[6]]);
+   expect(sortItems(rows,{key:'displayCode',direction:'desc'})).toEqual([rows[2],rows[0],rows[1],rows[4],rows[3],rows[5],rows[6]]);
+   expect(rows).toEqual(snapshot);
+ });
+ it('applies legacy defaults, and personal column presets cannot replace shared title/cards',()=>{
+   const legacy=defaultItemLayout();
+   delete legacy.listTitle;
+   delete legacy.summaryCards;
+   expect(validateItemLayout(legacy)).toMatchObject({
+     listTitle:DEFAULT_LIST_TITLE,summaryCards:{party:true,build:true,nq:true}
+   });
+   const shared={...defaultItemLayout(),listTitle:'Nội dung kỳ họp tháng 11',
+     summaryCards:{party:false,build:true,nq:false}};
+   const personal={...defaultItemLayout(),columns:[...defaultItemLayout().columns].reverse()};
+   const combined=overlayPersonalLayout(shared,personal);
+   expect(combined.listTitle).toBe(shared.listTitle);
+   expect(combined.summaryCards).toEqual(shared.summaryCards);
+   expect(combined.columns[0].key).toBe(personal.columns[0].key);
+ });
+ it('keeps independent card flags during CAS and supports immediately undoing a toggle',()=>{
+   const base=validateItemLayout(defaultItemLayout());
+   const first=mergeItemLayout(base,{...base,summaryCards:{party:false,build:true,nq:true}},base);
+   const local={...first,summaryCards:{party:false,build:false,nq:true}};
+   const remote={...first,listTitle:'Tên mới từ tab khác'};
+   const next=mergeItemLayout(first,local,remote);
+   expect(next.summaryCards).toEqual({party:false,build:false,nq:true});
+   expect(next.listTitle).toBe('Tên mới từ tab khác');
+   const undo=mergeItemLayout(first,{...first,summaryCards:{party:true,build:true,nq:true}},first);
+   expect(undo.summaryCards).toEqual({party:true,build:true,nq:true});
+ });
+ it('does not expose sort control, focus or aria-sort to guest headers',()=>{
+   const guest=renderToStaticMarkup(createElement(ColumnHeader,{
+     columnKey:'displayCode',disabled:true,onMove:()=>{},children:'ID'
+   }));
+   expect(guest).not.toContain('column-sort-button');
+   expect(guest).not.toContain('aria-sort');
+   expect(guest).not.toContain('tabindex');
+   const admin=renderToStaticMarkup(createElement(ColumnHeader,{
+     columnKey:'displayCode',disabled:true,onMove:()=>{},onSort:()=>{},children:'ID'
+   }));
+   expect(admin).toContain('column-sort-button');
+   expect(admin).toContain('aria-sort="none"');
+   expect(admin).toContain('tabindex="0"');
+ });
+
 });
