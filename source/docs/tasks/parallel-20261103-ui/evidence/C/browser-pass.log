@@ -1,0 +1,16 @@
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-desktop-before-active.png","bytes":127234}
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-desktop-six-active-filters.png","bytes":125687}
+PR95_V6_L4_SCREENSHOT {"file":"chip-desktop-1440.png","bytes":102707}
+PR95_V6_L4_SCREENSHOT {"file":"chip-width-900.png","bytes":68436}
+PR95_V6_L4_SCREENSHOT {"file":"chip-width-390.png","bytes":43789}
+PR95_V6_L4_SCREENSHOT {"file":"chip-width-320.png","bytes":39920}
+PR95_V6_L4_SCREENSHOT {"file":"chip-long-320.png","bytes":50380}
+PR95_V6_L4_SCREENSHOT {"file":"chip-long-font-150-percent-900.png","bytes":100498}
+PR95_V6_L4_SCREENSHOT {"file":"chip-long-font-150-percent-390.png","bytes":73915}
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-desktop-zero-results.png","bytes":83097}
+PR95_V6_L4_KEYBOARD_DIAGNOSTIC {"focus":{"focus":true,"hasFocus":true,"tag":"BUTTON"},"after":{"count":1,"ids":["room"],"results":"13 / 27 nội dung trong nguồn trước lọc","visible":13,"summaryFooters":0,"other":"","noResults":false}}
+PR95_V6_L4_SCREENSHOT {"file":"chip-keyboard-focus.png","bytes":129448}
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-admin-source-filter-before-hide.png","bytes":63937}
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-admin-source-filter-after-hide.png","bytes":56419}
+PR95_V6_L4_SCREENSHOT {"file":"pr95-v6-l4-mobile-filter-chips.png","bytes":44224}
+PR95_V6_L4_REAL_CHROME_PASS {"baselineRows":27,"searchUnique":1,"sixConditions":6,"otherClosedCount":"2","zeroResults":true,"independentClear":true,"escEditorSafe":true,"keyboardSingleRemove":true,"guestRole":true,"mobileWidth":390,"mobileChips":4,"hiddenColumnIds":4,"hiddenFilterPreserved":true,"productionRequests":0,"mobileGeometry":{"viewport":390,"zoneLeft":47,"zoneRight":343,"zoneWidth":296,"client":294,"scroll":294,"chips":[{"left":56,"right":277.625,"top":525,"height":33},{"left":56,"right":219.921875,"top":565,"height":33},{"left":56,"right":218.34375,"top":605,"height":33},{"left":56,"right":332.546875,"top":645,"height":47.59375}]}}

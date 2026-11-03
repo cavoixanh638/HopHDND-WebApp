@@ -129,7 +129,7 @@ const verify=async stage=>{
   assert(!x.error&&x.count>=3,stage+' stage list exists '+JSON.stringify(x));
   const first=x.stageRows.slice(0,3);
   for(const r of first){
-    assert(r.rowBorder==='1px'&&r.oneStageBorder,stage+' single outer stage frame '+JSON.stringify(r));
+    assert(r.rowBorder==='0px'&&r.oneStageBorder,stage+' separated stage rows '+JSON.stringify(r));
     assert(r.baselines&&r.baselines.delta<=5,stage+' first text line alignment '+JSON.stringify(r));
     assert(r.nowrap==='nowrap',stage+' nowrap label '+JSON.stringify(r));
     if(r.editable){
@@ -140,7 +140,8 @@ const verify=async stage=>{
     }
   }
   for(const c of x.classification){
-    assert(c.outerBorder==='1px',stage+' QPPL one outer border');
+    assert(c.hasEditor?c.outerBorder==='1px':c.outerBorder==='0px',
+      stage+' QPPL editor outline or quiet read-only metadata');
     if(c.hasEditor)assert(c.editorBorder==='0px'&&
       (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
       stage+' QPPL no second button frame '+JSON.stringify(c));
@@ -204,7 +205,8 @@ try{
   await screenshot('pr95-v5-l3-list-1280-guest.png');
   // This temporary DOM style is only a geometry probe; no saved layout write.
   const narrowed=await js('(()=>{const e=document.querySelector(".item-data-table .compact-stages");e.style.width="190px";return {client:e.clientWidth,scroll:e.scrollWidth}})()');
-  assert(narrowed.client<=192&&narrowed.scroll>=290,'narrow column uses internal scroll '+JSON.stringify(narrowed));
+  assert(narrowed.client<=192&&narrowed.scroll>narrowed.client+40,
+    'narrow column uses internal scroll '+JSON.stringify(narrowed));
   await verify('list-saved-narrow-simulated');
   await screenshot('pr95-v5-l3-list-narrow-scroll.png');
   await call('document.querySelector(".item-data-table .compact-stages").style.removeProperty("width")');

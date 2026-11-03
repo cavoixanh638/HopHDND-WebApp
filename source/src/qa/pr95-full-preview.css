@@ -4,9 +4,6 @@
   position:relative;display:block;height:72px;min-height:72px;margin:0;
   padding:10px 20px;background:transparent;border:0;
 }
-.pr95-preview-product{position:absolute;left:20px;top:25px;white-space:nowrap;
-  font-size:12px;font-weight:750;color:#426271}
-.pr95-preview-product span{font-size:10px;font-weight:600;margin-left:5px;color:#647c87}
 .pr95-full-preview .pr95-preview-nav{
   display:flex;gap:12px;max-width:920px;margin:0 auto;padding:0;align-items:stretch;
   border:0;background:none;

@@ -34,7 +34,11 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
             event.preventDefault();
             if(!event.repeat)onRemove(condition);
           }}
-          onClick={()=>onRemove(condition)}><span aria-hidden="true">×</span></button>
+          onClick={()=>onRemove(condition)}>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
+            <path d="m3 3 6 6m0-6-6 6" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>)}
     </div>:<p className="list-active-filter-idle">Chưa áp dụng điều kiện lọc nào.</p>}
     {count>0&&visibleCount===0&&<p className="list-active-filter-empty" role="status">

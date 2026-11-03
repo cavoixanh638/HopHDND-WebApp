@@ -1,4 +1,5 @@
 import type {Item} from '../../shared/types';
+import {displayId} from './display-id';
 import {filterValue} from '../features/items/ColumnFilterCell';
 
 export type ColumnSort={key:string;direction:'asc'|'desc'}|null;
@@ -18,12 +19,18 @@ export function sortItems<T extends Item>(
   if(!sort)return [...items];
   const {key,direction}=sort;
   const values=items.map((item,index)=>({
-    item,index,value:(key.startsWith('custom_')?(getCustom?.(item,key)??''):filterValue(item,key)).trim(),
+    item,index,value:(key==='displayCode'?displayId(item):key.startsWith('custom_')?(getCustom?.(item,key)??''):filterValue(item,key)).trim(),
   }));
   const sign=direction==='asc'?1:-1;
   values.sort((a,b)=>{
     if(blank(a.value)!==blank(b.value))return blank(a.value)?1:-1;
     if(blank(a.value)&&blank(b.value))return a.index-b.index;
+    // NQ precedes BC in both directions; reverse only within each group.
+    if(key==='displayCode'){
+      const group=(value:string)=>/^NQ/i.test(value)?0:/^BC/i.test(value)?1:2;
+      const delta=group(a.value)-group(b.value);
+      if(delta)return delta;
+    }
     const aa=parseNumber(a.value),bb=parseNumber(b.value);
     const result=aa!==null&&bb!==null?aa-bb:naturalVietnamese.compare(a.value,b.value);
     return sign*Math.sign(result)||a.index-b.index;

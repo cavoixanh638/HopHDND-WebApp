@@ -275,7 +275,9 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
 const candidates=['google-chrome','google-chrome-stable','chromium','chromium-browser'];
-const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
+const binary=process.env.CHROME_PATH||
+  (process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':
+    candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0));
 if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
 let chrome;
@@ -788,8 +790,8 @@ try{
     const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
     const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
     const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    const ok=text==='rgb(161, 0, 34)'&&background==='rgba(0, 0, 0, 0)'&&
-      inherited==='#A10022'&&frameBackground!=='rgba(0, 0, 0, 0)';
+    const ok=text==='rgb(161, 0, 34)'&&background==='rgb(241, 203, 219)'&&
+      inherited==='#A10022'&&frameBackground==='rgba(0, 0, 0, 0)';
     if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
     else owner.style.removeProperty('--hdnd-status-not-submitted-text');
     if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
@@ -809,8 +811,8 @@ try{
     const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||!sort||stt||nav)
-      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, nav or STT unexpectedly present'};
+    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||sort||stt||nav)
+      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, sort/nav/STT unexpectedly present'};
     const rects=[topbar,summary,heading,toolbar,activeBar,viewport].map(x=>x.getBoundingClientRect());
     const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
     const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
@@ -850,23 +852,18 @@ try{
       widths:[border(first),border(td)]};
   })()`);
   if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
-  // V3: every viewer sorts, without getting header drag/reorder rights.
-  const viewerSortEnabled=await evaluate(`(()=>{
+  // Current owner requirement: only verified admins receive column sort.
+  const guestSortAbsent=await evaluate(`(()=>{
     const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
     const button=header?.querySelector('.column-sort-button');
-    if(!header||!button||header.classList.contains('column-movable'))return false;
-    button.click();return true;
+    if(!header||button||header.classList.contains('column-movable')||header.hasAttribute('aria-sort'))return false;
+    const before=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    header.click();header.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    const after=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    return before===after&&!header.hasAttribute('aria-sort');
   })()`);
-  if(!viewerSortEnabled)throw Error('Guest must have sort but no column rearrange');
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='ascending'",
-    'Guest ascending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='descending'",
-    'Guest descending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='none'",
-    'Guest sort must reset without changing saved column layout');
-  console.log('V3_L1_GUEST_SORT_WITHOUT_LAYOUT_CONTROL_PASS');
+  if(!guestSortAbsent)throw Error('Guest must not see or activate column sort');
+  console.log('GUEST_SORT_ABSENT_PASS');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
   // Synthetic marked cell tests the one shared editing tooltip without granting
@@ -1233,11 +1230,11 @@ try{
 
 
   // V3: anonymous and non-admin viewers MUST NOT receive any personal
-  // compact column menu or a stale layout write path, but can still sort.
+  // compact column menu, sort, or a stale layout write path.
   const compactGuestSafe=await evaluate(`(()=>{
     const menu=document.querySelector('.guest-compact-menu-bar,.compact-columns-menu');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    return !menu&&!!sort&&!!document.querySelector('.list-filter-toolbar')&&
+    return !menu&&!sort&&!!document.querySelector('.list-filter-toolbar')&&
       !document.querySelector('.admin-column-arrange-hint,.item-column-panel,.source-column-visibility')&&
       !document.querySelector('.status-palette-trigger,.column-resizer');
   })()`);
@@ -2284,8 +2281,8 @@ try{
     if(!row||!state||!button||!level)return {ok:false,reason:'missing independently permitted editors'};
     const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
     const arrow=getComputedStyle(button,'::after');
-    return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
-      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
+    return {ok:rs.borderTopWidth==='0px'&&rs.backgroundColor==='rgba(0, 0, 0, 0)'&&
+      vs.backgroundColor!=='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&
       bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
       bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
@@ -2474,9 +2471,9 @@ try{
     if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
     const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
-      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
+      arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
       b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
-      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      getComputedStyle(other.querySelector('.compact-stage-state')).backgroundColor==='rgb(255, 241, 243)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);
@@ -2766,7 +2763,7 @@ try{
       sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
   })()`);
   if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
-    guestInitial.localSaved!==null||!guestInitial.sortable)
+    guestInitial.localSaved!==null||guestInitial.sortable)
     throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));
@@ -2967,8 +2964,7 @@ try{
 
 
 
-  // Codex Lượt 013 / R05: verify the FULL stage frame (left number/label
-  // AND right status) is tinted. All fixtures are local synthetic ItemList.
+  // R05: three separate named rows retain independent status colors.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1'});
   await eventually("document.querySelector('.item-data-table tbody tr .compact-stage-row[data-progress-tone=office]')!==null",
     'R05 multitone list fixture missing');
@@ -2980,31 +2976,27 @@ try{
       const css=getComputedStyle(el),p=getComputedStyle(pill);
       const label=el.querySelector('.compact-stage-label').getBoundingClientRect();
       const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
-      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
+      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopWidth,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
         pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
-        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
-        numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
+        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1};
     });
   })()`);
   const r05List=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
-  const target=[
-    {tone:'not-submitted',bg:'rgb(255, 241, 243)',border:'rgb(239, 212, 218)'},
-    {tone:'office',bg:'rgb(255, 248, 233)',border:'rgb(235, 223, 196)'},
-    {tone:'done',bg:'rgb(238, 248, 241)',border:'rgb(208, 228, 215)'}
-  ];
-  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
-      x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'&&
+  const target=['not-submitted','office','done'];
+  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
+      x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
+      x.pill!=='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&
        x.labelFits&&x.stateFits)||
+    new Set(r05List.map(x=>x.pill)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
-    r05Neutral[0].bg!=='rgb(248, 250, 252)'||
-    r05Neutral[0].border!=='rgb(203, 213, 225)'||
+    r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
+    r05Neutral[0].pill==='rgba(0, 0, 0, 0)'||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
-    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgb(248, 250, 252)')
-    throw Error('R05 entire-frame colors / neutral / independent stages: '+
+    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
+    throw Error('R05 status colors / neutral / independent stages: '+
       JSON.stringify({r05List,r05Neutral,r05Unknown}));
 
   // The "before" is an explicitly simulated CSS-only replay of the old
@@ -3053,7 +3045,7 @@ try{
   // V4's new synthetic BCH cannot match that old source string. Keep exact
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
-    r05Highlight.row!=='rgb(255, 241, 243)'||
+    r05Highlight.row!=='rgba(0, 0, 0, 0)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
@@ -3063,22 +3055,21 @@ try{
   await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
-  if(r05Custom[1].bg==='rgb(255, 248, 233)'||
-    r05Custom[1].border==='rgb(235, 223, 196)'||
-    r05Custom[1].pill!=='rgba(0, 0, 0, 0)'||r05Custom[1].pillBorder!=='0px'||
+  if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
+    r05Custom[1].pill!=='rgb(252, 221, 160)'||r05Custom[1].pillBorder!=='0px'||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].bg!=='rgb(255, 241, 243)')
-    throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
+    r05Custom[0].pill!==r05List[0].pill)
+    throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&popup=1&highlight=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stage-row')!==null",
     'R05 real popup stage rows missing');
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
-  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
-    x.border===target[i].border&&x.tone===target[i].tone&&
-     x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'))
-    throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
+  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
+    x.border==='0px'&&x.tone===target[i]&&
+     x.pill===r05List[i].pill&&x.pillBorder==='0px'))
+    throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
   const popupClip=await evaluate(`(()=>{
@@ -3108,7 +3099,8 @@ try{
         idWidth:id?.getBoundingClientRect().width,
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
-    if(!samples.every((x,i)=>x.bg===target[i].bg&&x.border===target[i].border&&
+    if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
+      x.tone===target[i]&&x.pill===r05List[i].pill&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
       throw Error('R05 responsive colored stage overflows '+vw+' '+JSON.stringify({samples,geometry}));
@@ -3355,7 +3347,7 @@ try{
   if(textGeometry.grip<13||textGeometry.progressAlign!=='left'||
     textGeometry.progressButtonAlign!=='left'||textGeometry.noteAlign!=='left'||
     textGeometry.noteButtonAlign!=='left'||textGeometry.contentAlign!=='left'||
-    textGeometry.headingAlign!=='center'||textGeometry.badgeY===null||
+    textGeometry.headingAlign!=='baseline'||textGeometry.badgeY===null||
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
@@ -3394,24 +3386,22 @@ try{
     '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
-    'V3 guest table must remain viewable and sortable');
+    'V3 guest table must remain viewable');
   const guestBefore=await widthSnapshot();
   const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
   const noGuestResize=await evaluate(`(()=>{
     const heading=document.querySelector('th[data-column-key=specificProgress]');
     const sort=heading?.querySelector('.column-sort-button');
-    if(!heading||!sort||heading.querySelector('.column-resizer')||
+    if(!heading||sort||heading.hasAttribute('aria-sort')||heading.querySelector('.column-resizer')||
       document.querySelector('.source-column-visibility,.compact-columns-menu'))
       return false;
-    sort.click();return true;
+    return true;
   })()`);
-  if(!noGuestResize)throw Error('Guest must sort but cannot resize or choose columns');
-  await eventually("document.querySelector('th[data-column-key=specificProgress]')?.getAttribute('aria-sort')==='ascending'",
-    'V3 guest sort failed');
+  if(!noGuestResize)throw Error('Guest must not sort, resize or choose columns');
   const guestAfter=await widthSnapshot();
   if(JSON.stringify(guestBefore.widths)!==JSON.stringify(guestAfter.widths)||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
-    throw Error('V3 guest sort changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+    throw Error('V3 guest view changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
     'V3 guest remount missing');
@@ -3419,7 +3409,7 @@ try{
   if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths)||
     await evaluate("!!document.querySelector('.column-resizer,.guest-compact-menu-bar,.compact-columns-menu')"))
     throw Error('V3 guest private column UI returned after reload: '+JSON.stringify({guestBefore,guestReload}));
-  console.log('V3_GUEST_SORT_ONLY_NO_RESIZE_OR_SHARED_WRITE_PASS',
+  console.log('V3_GUEST_NO_SORT_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
@@ -4713,7 +4703,13 @@ try{
   if(ws)ws.close();
   if(chrome)chrome.kill('SIGKILL');
   server.close();
-  if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
-  rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
+  if(emulator&&emulator.exitCode===null){
+    if(process.platform==='win32'&&emulator.pid)
+      spawnSync('taskkill',['/PID',String(emulator.pid),'/T','/F'],{stdio:'ignore'});
+    else emulator.kill('SIGTERM');
+  }
+  try{rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});}
+  catch(error){if(!['EPERM','EBUSY'].includes(error.code))throw error;
+    console.warn('CHROME_PROFILE_CLEANUP_PENDING',error.code);}
   rmSync(emulatorConfigDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }

@@ -1,4 +1,4 @@
-import {COMPACT_GROUP_LABEL_KEYS,validateItemLayout,type ItemLayout} from './item-preferences';
+import {SUMMARY_CARD_KEYS,COMPACT_GROUP_LABEL_KEYS,validateItemLayout,type ItemLayout} from './item-preferences';
 
 export type LayoutConflictChoice = 'local'|'remote';
 export type LayoutConflictChoices = Record<string,LayoutConflictChoice>;
@@ -88,6 +88,10 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
       `groupLabels.${key}`,`tên nhóm gộp: ${key}`);
     return value?[[key,value]]:[];
   }));
+  const listTitle=merge(base.listTitle,edited.listTitle,remote.listTitle,'listTitle','tên danh sách');
+  const summaryCards=Object.fromEntries(SUMMARY_CARD_KEYS.map(key=>[key,
+    merge(base.summaryCards![key],edited.summaryCards![key],remote.summaryCards![key],
+      'summaryCards.'+key,'hiển thị thẻ '+key)]));
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels,listTitle,summaryCards});
 }
