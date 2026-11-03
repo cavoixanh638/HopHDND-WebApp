@@ -249,7 +249,7 @@ try{
   // or source-row mutation), then an explicit one-member highlight.
   await interact('const root=document.querySelector(".pr95-full-preview");'+
     'root.style.setProperty("--hdnd-status-done-text","#14539A");'+
-    'root.style.setProperty("--hdnd-stage-done-bg","#E7F3FF");'+
+    'root.style.setProperty("--hdnd-status-done-bg","#E7F3FF");'+
     'root.style.setProperty("--hdnd-stage-done-border","#94A8C9")');
   await ensure('(()=>{const row=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done]");'+
     'const member=row?.querySelector(".compact-stage-state"),inner=member?.querySelector(".workflow-status-value");'+

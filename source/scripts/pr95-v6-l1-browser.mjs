@@ -144,7 +144,10 @@ const detail=async(scope)=>{
     'cursor:b.cursor}:null,'+
     'allBorders:[...frame.querySelectorAll("*")].filter(x=>getComputedStyle(x).borderTopWidth!=="0px").length};})()');
   assert(data, 'missing type frame '+scope);
-  assert(data.border==='1px'&&data.frame.height>=28&&data.frame.height<=38,'type frame height '+JSON.stringify(data));
+  assert(data.editable
+    ? data.border==='1px'&&data.frame.height>=28&&data.frame.height<=38
+    : data.border==='0px'&&data.fill==='rgba(0, 0, 0, 0)'&&data.frame.height>=14,
+    'type frame height '+JSON.stringify(data));
   if(data.editable)assert(data.button.border==='0px'&&data.allBorders===0,
     'nested type border '+JSON.stringify(data));
   return data;

@@ -140,7 +140,8 @@ const verify=async stage=>{
     }
   }
   for(const c of x.classification){
-    assert(c.outerBorder==='1px',stage+' QPPL one outer border');
+    assert(c.hasEditor?c.outerBorder==='1px':c.outerBorder==='0px',
+      stage+' QPPL editor outline or quiet read-only metadata');
     if(c.hasEditor)assert(c.editorBorder==='0px'&&
       (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
       stage+' QPPL no second button frame '+JSON.stringify(c));

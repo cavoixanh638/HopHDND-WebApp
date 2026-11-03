@@ -8,7 +8,7 @@ import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
 import {catalogFromItems,validateCatalog,type CatalogConfig} from '../data/catalogs';
-import {defaultItemLayout,validateItemLayout,type ItemLayout} from '../data/item-preferences';
+import {defaultItemLayout,validateItemLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
 import type {CellPermissions} from '../data/firebase-repository';
@@ -179,7 +179,7 @@ export function Pr95FullPreview(){
           className={'primary-section-card'+(page===entry.key?' active':'')}
           aria-current={page===entry.key?'page':undefined}
           onClick={()=>openPage(entry.key)}>
-          <span className="section-card-copy"><strong className="section-card-title">{entry.label}</strong></span>
+          <span className="section-card-copy"><strong className="section-card-title">{entry.key==='items'?layout.listTitle??DEFAULT_LIST_TITLE:entry.label}</strong></span>
           {page===entry.key&&<span className="section-card-state">Đang xem</span>}
         </button>)}
       </nav>}

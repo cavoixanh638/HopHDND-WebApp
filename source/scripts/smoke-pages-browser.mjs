@@ -2471,9 +2471,9 @@ try{
     if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
     const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
-      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
+      arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
       b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
-      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      getComputedStyle(other.querySelector('.compact-stage-state')).backgroundColor==='rgb(255, 241, 243)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);

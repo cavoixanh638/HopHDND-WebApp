@@ -28,7 +28,7 @@ import {loadSelectedWebFont} from '../data/on-demand-fonts';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
-import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
+import {loadItemLayout,saveItemLayout,overlayPersonalLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {loadActiveListView,loadListViews} from '../data/list-views';
 import {layoutRecoveryScope} from '../data/draft-checkpoints';
 import {readConfirmedPageWidths,rememberConfirmedPageWidths} from '../data/confirmed-page-widths';
@@ -585,7 +585,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     </header>
     {adminTools&&<nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
       {([['overview','Báo cáo tổng hợp'],
-        ['items','Danh sách các ND trình HĐND']] as const)
+        ['items',itemLayout.listTitle??DEFAULT_LIST_TITLE]] as const)
         .map(([key,title])=><button type="button" key={key} data-ui-reference-nav={key}
           disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
