@@ -809,8 +809,8 @@ try{
     const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||!sort||stt||nav)
-      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, nav or STT unexpectedly present'};
+    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||sort||stt||nav)
+      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, sort/nav/STT unexpectedly present'};
     const rects=[topbar,summary,heading,toolbar,activeBar,viewport].map(x=>x.getBoundingClientRect());
     const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
     const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
@@ -850,23 +850,18 @@ try{
       widths:[border(first),border(td)]};
   })()`);
   if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
-  // V3: every viewer sorts, without getting header drag/reorder rights.
-  const viewerSortEnabled=await evaluate(`(()=>{
+  // Current owner requirement: only verified admins receive column sort.
+  const guestSortAbsent=await evaluate(`(()=>{
     const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
     const button=header?.querySelector('.column-sort-button');
-    if(!header||!button||header.classList.contains('column-movable'))return false;
-    button.click();return true;
+    if(!header||button||header.classList.contains('column-movable')||header.hasAttribute('aria-sort'))return false;
+    const before=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    header.click();header.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    const after=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    return before===after&&!header.hasAttribute('aria-sort');
   })()`);
-  if(!viewerSortEnabled)throw Error('Guest must have sort but no column rearrange');
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='ascending'",
-    'Guest ascending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='descending'",
-    'Guest descending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='none'",
-    'Guest sort must reset without changing saved column layout');
-  console.log('V3_L1_GUEST_SORT_WITHOUT_LAYOUT_CONTROL_PASS');
+  if(!guestSortAbsent)throw Error('Guest must not see or activate column sort');
+  console.log('GUEST_SORT_ABSENT_PASS');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
   // Synthetic marked cell tests the one shared editing tooltip without granting
@@ -1233,11 +1228,11 @@ try{
 
 
   // V3: anonymous and non-admin viewers MUST NOT receive any personal
-  // compact column menu or a stale layout write path, but can still sort.
+  // compact column menu, sort, or a stale layout write path.
   const compactGuestSafe=await evaluate(`(()=>{
     const menu=document.querySelector('.guest-compact-menu-bar,.compact-columns-menu');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    return !menu&&!!sort&&!!document.querySelector('.list-filter-toolbar')&&
+    return !menu&&!sort&&!!document.querySelector('.list-filter-toolbar')&&
       !document.querySelector('.admin-column-arrange-hint,.item-column-panel,.source-column-visibility')&&
       !document.querySelector('.status-palette-trigger,.column-resizer');
   })()`);
@@ -2766,7 +2761,7 @@ try{
       sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
   })()`);
   if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
-    guestInitial.localSaved!==null||!guestInitial.sortable)
+    guestInitial.localSaved!==null||guestInitial.sortable)
     throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));
@@ -3394,24 +3389,22 @@ try{
     '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
-    'V3 guest table must remain viewable and sortable');
+    'V3 guest table must remain viewable');
   const guestBefore=await widthSnapshot();
   const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
   const noGuestResize=await evaluate(`(()=>{
     const heading=document.querySelector('th[data-column-key=specificProgress]');
     const sort=heading?.querySelector('.column-sort-button');
-    if(!heading||!sort||heading.querySelector('.column-resizer')||
+    if(!heading||sort||heading.hasAttribute('aria-sort')||heading.querySelector('.column-resizer')||
       document.querySelector('.source-column-visibility,.compact-columns-menu'))
       return false;
-    sort.click();return true;
+    return true;
   })()`);
-  if(!noGuestResize)throw Error('Guest must sort but cannot resize or choose columns');
-  await eventually("document.querySelector('th[data-column-key=specificProgress]')?.getAttribute('aria-sort')==='ascending'",
-    'V3 guest sort failed');
+  if(!noGuestResize)throw Error('Guest must not sort, resize or choose columns');
   const guestAfter=await widthSnapshot();
   if(JSON.stringify(guestBefore.widths)!==JSON.stringify(guestAfter.widths)||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
-    throw Error('V3 guest sort changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+    throw Error('V3 guest view changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
     'V3 guest remount missing');
@@ -3419,7 +3412,7 @@ try{
   if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths)||
     await evaluate("!!document.querySelector('.column-resizer,.guest-compact-menu-bar,.compact-columns-menu')"))
     throw Error('V3 guest private column UI returned after reload: '+JSON.stringify({guestBefore,guestReload}));
-  console.log('V3_GUEST_SORT_ONLY_NO_RESIZE_OR_SHARED_WRITE_PASS',
+  console.log('V3_GUEST_NO_SORT_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
