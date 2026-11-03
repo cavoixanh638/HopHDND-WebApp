@@ -275,7 +275,9 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
 const candidates=['google-chrome','google-chrome-stable','chromium','chromium-browser'];
-const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
+const binary=process.env.CHROME_PATH||
+  (process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':
+    candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0));
 if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
 let chrome;
