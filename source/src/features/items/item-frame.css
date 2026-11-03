@@ -1434,3 +1434,64 @@
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-level button.cell-picker-trigger:disabled::after{display:none}
+
+/* STREAM A: content first, source metadata secondary; permissions and
+   conditional highlights remain owned by each original field. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading {
+  gap:5px 8px;align-items:baseline;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-department {
+  flex:0 1 auto;font-weight:500;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-department:not([data-editable="true"]) {
+  color:#607467;min-height:0;font-size:12px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge:not([data-editable="true"]) {
+  min-height:0;padding:0;border:0;border-radius:0;background:transparent;
+  color:#607467;font-size:12px;font-weight:500;
+}
+/* Shared subgrid keeps all three value origins aligned, even for mixed
+   permissions. Narrow saved columns scroll internally rather than overlap. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row {
+  padding:0;border:0;border-radius:0;background:transparent;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-label {
+  font-weight:600;color:#607467;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-title .compact-stage-level {
+  margin-left:4px;gap:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row .compact-stage-state:not([data-editable="true"]) {
+  padding:5px 0 5px 8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(.compact-stage-state:not([data-editable="true"])) .compact-stage-label {
+  padding-top:5px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) {
+  vertical-align:middle;
+}
+/* At the standard 52px ID width, reserve only the actual sort target,
+   rather than the generic symmetric 46px inset. */
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] {
+  padding-inline:2px;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-heading-content {
+  padding-inline:0;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-heading-content.has-sort {
+  padding-left:0;padding-right:20px;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-sort-button {
+  width:18px;min-width:18px;padding-inline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row .compact-stage-state[data-progress-tone] {
+  background:var(--workflow-bg);border-radius:7px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row .compact-stage-state:not([data-editable="true"]) {
+  padding-left:9px;
+}
