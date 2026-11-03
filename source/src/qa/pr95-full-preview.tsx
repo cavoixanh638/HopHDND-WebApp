@@ -173,9 +173,6 @@ export function Pr95FullPreview(){
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <UiReferenceOverlay enabled={admin&&referenceCodesOn} rootRef={referenceRoot}/>
     <header className="pr95-preview-header">
-      <div className="pr95-preview-product" aria-label="HopHDND bản xem thử">
-        HopHDND <span>UI V3 · DEMO</span>
-      </div>
       {admin&&<nav className="nav-tabs primary-section-switcher pr95-preview-nav"
         aria-label="Hai phần dữ liệu chính">
         {nav.map(entry=><button key={entry.key} data-ui-reference-nav={entry.key} type="button"
