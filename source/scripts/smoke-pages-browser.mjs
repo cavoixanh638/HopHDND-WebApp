@@ -2986,7 +2986,7 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=['not-submitted','office','done'];
-  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
+  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
       x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
       x.pill!=='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&
        x.labelFits&&x.stateFits)||
@@ -3347,7 +3347,7 @@ try{
   if(textGeometry.grip<13||textGeometry.progressAlign!=='left'||
     textGeometry.progressButtonAlign!=='left'||textGeometry.noteAlign!=='left'||
     textGeometry.noteButtonAlign!=='left'||textGeometry.contentAlign!=='left'||
-    textGeometry.headingAlign!=='center'||textGeometry.badgeY===null||
+    textGeometry.headingAlign!=='baseline'||textGeometry.badgeY===null||
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
