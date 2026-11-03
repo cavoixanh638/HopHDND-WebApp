@@ -5,7 +5,11 @@ import {resolve} from 'node:path';
 const out=resolve(process.env.CHIP_EVIDENCE_DIR??'docs/tasks/parallel-20261103-ui/evidence/C');
 mkdirSync(out,{recursive:true});
 let runner=readFileSync('scripts/pr95-v6-l4-browser.mjs','utf8').replaceAll('\r\n','\n');
-runner=runner.replace("server.close();", "server.close();await delay(1200);");
+runner=runner.replace("server.close();", "server.close();await delay(3000);");
+// Windows can hold Chromium's profile lock briefly after the browser exits.
+// The visual assertions remain authoritative; profile cleanup is best-effort.
+runner=runner.replace("rmSync(tmp,{recursive:true,force:true,maxRetries:5,retryDelay:100});",
+  "try{rmSync(tmp,{recursive:true,force:true,maxRetries:5,retryDelay:100});}catch(error){if(!['EPERM','EBUSY'].includes(error.code))throw error;console.warn('CHROME_PROFILE_CLEANUP_PENDING',error.code);}");
 runner=runner.replace("target.startsWith(root+'/')","target.startsWith(root+ (process.platform==='win32'?'\\\\':'/'))");
 runner=runner.replace("const chrome=['google-chrome'", "const chrome=process.env.CHROME_PATH || (process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':null) || ['google-chrome'");
 runner=runner.replace('writeFileSync(file,bytes);',`writeFileSync(resolve(${JSON.stringify(out)},file),bytes);`);

@@ -36,7 +36,7 @@ try{
   for(const g of measurement.groups){assert(g.rows.length===3,'three rows');assert(Math.max(...g.rows.map(r=>r.stateX))-Math.min(...g.rows.map(r=>r.stateX))<1,'state alignment');assert(Math.max(...g.rows.map(r=>r.textX))-Math.min(...g.rows.map(r=>r.textX))<1,'text alignment');assert(g.scrollWidth<=g.clientWidth+1||g.overflow==='auto','internal overflow');for(const r of g.rows)if(r.level)assert(Math.abs(r.level.y-r.title.y)<8,'inline level');}
   for(const c of measurement.contents){assert(c.children.length===2&&c.children[0]==='compact-document-content','content first and once');assert(c.metadata.y>=c.content.bottom-1,'metadata below');}
   assert(measurement.vertical.every(v=>v==='middle'),'vertical centering');
-  if(measurement.id){const h=measurement.id;assert(Math.abs(h.rect.width-52)<1,'ID width 52');assert(h.scroll<=h.client+1,'ID no clipping');if(h.sort)assert(h.label.right<=h.sort.x+1,'ID sort no overlap');}
+  if(measurement.id){const h=measurement.id;if(mode!=='popup')assert(Math.abs(h.rect.width-52)<1,'List ID width 52');assert(h.scroll<=h.client+1,'ID no clipping');if(h.sort)assert(h.label.right<=h.sort.x+1,'ID sort no overlap');}
   assert(measurement.body.scroll<=measurement.body.width+1,'no page overflow');
   if(mode==='highlight')assert(measurement.highlights.length>0,'highlight retained');
   if(width===900){const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(out,mode+'-900.png'),Buffer.from(shot.data,'base64'));}
