@@ -205,7 +205,8 @@ try{
   await screenshot('pr95-v5-l3-list-1280-guest.png');
   // This temporary DOM style is only a geometry probe; no saved layout write.
   const narrowed=await js('(()=>{const e=document.querySelector(".item-data-table .compact-stages");e.style.width="190px";return {client:e.clientWidth,scroll:e.scrollWidth}})()');
-  assert(narrowed.client<=192&&narrowed.scroll>=290,'narrow column uses internal scroll '+JSON.stringify(narrowed));
+  assert(narrowed.client<=192&&narrowed.scroll>narrowed.client+40,
+    'narrow column uses internal scroll '+JSON.stringify(narrowed));
   await verify('list-saved-narrow-simulated');
   await screenshot('pr95-v5-l3-list-narrow-scroll.png');
   await call('document.querySelector(".item-data-table .compact-stages").style.removeProperty("width")');

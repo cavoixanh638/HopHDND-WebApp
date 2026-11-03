@@ -2964,8 +2964,7 @@ try{
 
 
 
-  // Codex Lượt 013 / R05: verify the FULL stage frame (left number/label
-  // AND right status) is tinted. All fixtures are local synthetic ItemList.
+  // R05: three separate named rows retain independent status colors.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1'});
   await eventually("document.querySelector('.item-data-table tbody tr .compact-stage-row[data-progress-tone=office]')!==null",
     'R05 multitone list fixture missing');
@@ -2977,31 +2976,27 @@ try{
       const css=getComputedStyle(el),p=getComputedStyle(pill);
       const label=el.querySelector('.compact-stage-label').getBoundingClientRect();
       const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
-      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
+      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopWidth,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
         pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
-        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
-        numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
+        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1};
     });
   })()`);
   const r05List=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
-  const target=[
-    {tone:'not-submitted',bg:'rgb(255, 241, 243)',border:'rgb(239, 212, 218)'},
-    {tone:'office',bg:'rgb(255, 248, 233)',border:'rgb(235, 223, 196)'},
-    {tone:'done',bg:'rgb(238, 248, 241)',border:'rgb(208, 228, 215)'}
-  ];
+  const target=['not-submitted','office','done'];
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
-      x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'&&
+      x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
+      x.pill!=='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&
        x.labelFits&&x.stateFits)||
+    new Set(r05List.map(x=>x.pill)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
-    r05Neutral[0].bg!=='rgb(248, 250, 252)'||
-    r05Neutral[0].border!=='rgb(203, 213, 225)'||
+    r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
+    r05Neutral[0].pill==='rgba(0, 0, 0, 0)'||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
-    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgb(248, 250, 252)')
-    throw Error('R05 entire-frame colors / neutral / independent stages: '+
+    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
+    throw Error('R05 status colors / neutral / independent stages: '+
       JSON.stringify({r05List,r05Neutral,r05Unknown}));
 
   // The "before" is an explicitly simulated CSS-only replay of the old
@@ -3050,7 +3045,7 @@ try{
   // V4's new synthetic BCH cannot match that old source string. Keep exact
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
-    r05Highlight.row!=='rgb(255, 241, 243)'||
+    r05Highlight.row!=='rgba(0, 0, 0, 0)'||
     r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
@@ -3060,22 +3055,21 @@ try{
   await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
-  if(r05Custom[1].bg==='rgb(255, 248, 233)'||
-    r05Custom[1].border==='rgb(235, 223, 196)'||
-    r05Custom[1].pill!=='rgba(0, 0, 0, 0)'||r05Custom[1].pillBorder!=='0px'||
+  if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
+    r05Custom[1].pill!=='rgb(252, 221, 160)'||r05Custom[1].pillBorder!=='0px'||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].bg!=='rgb(255, 241, 243)')
-    throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
+    r05Custom[0].pill!==r05List[0].pill)
+    throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&popup=1&highlight=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stage-row')!==null",
     'R05 real popup stage rows missing');
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
-  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
-    x.border===target[i].border&&x.tone===target[i].tone&&
-     x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'))
-    throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
+  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
+    x.border==='0px'&&x.tone===target[i]&&
+     x.pill===r05List[i].pill&&x.pillBorder==='0px'))
+    throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
   const popupClip=await evaluate(`(()=>{
@@ -3105,7 +3099,8 @@ try{
         idWidth:id?.getBoundingClientRect().width,
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
-    if(!samples.every((x,i)=>x.bg===target[i].bg&&x.border===target[i].border&&
+    if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
+      x.tone===target[i]&&x.pill===r05List[i].pill&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
       throw Error('R05 responsive colored stage overflows '+vw+' '+JSON.stringify({samples,geometry}));

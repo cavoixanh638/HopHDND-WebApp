@@ -250,8 +250,8 @@ try{
     'const other=[...row.parentElement.querySelectorAll(".compact-stage-row")].find(x=>x!==row);'+
     'return !!other&&getComputedStyle(member).backgroundColor==="rgb(255, 241, 172)"&&'+
     'getComputedStyle(inner).color==="rgb(113, 74, 18)"&&'+
-    'getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
-    'getComputedStyle(other).backgroundColor!==getComputedStyle(member).backgroundColor})()',
+    'getComputedStyle(row).backgroundColor==="rgba(0, 0, 0, 0)"&&'+
+    'getComputedStyle(other.querySelector(".compact-stage-state")).backgroundColor!==getComputedStyle(member).backgroundColor})()',
     'one-member highlight does not repaint neighboring stage or outer frame');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-member-highlight',true);
   await screenshot('pr95-v3-l5-desktop-popup-custom-highlight.png');
