@@ -34,28 +34,29 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    style:memberStyle(key), 'data-highlighted':highlight(key)?'true':undefined
  });
  if(pair.variant==='contentDetails'){
-   const header=includes('type')&&(!!item.type||editable('type'))||
+   const metadata=includes('type')&&(!!item.type||editable('type'))||
      includes('department')&&(!!item.department||editable('department'));
    return <div className="compact-document-group">
-     {header&&<div className="compact-document-heading">
+     {includes('content')&&<div className="compact-document-content"
+       {...memberAttributes('content')}>{shown('content')}</div>}
+     {metadata&&<div className="compact-document-heading">
+       {includes('department')&&(!!item.department||editable('department'))&&
+         <span className="compact-document-department" data-editable={editable('department')?'true':undefined} {...memberAttributes('department')}>
+           {shown('department')}
+         </span>}
        {includes('type')&&(!!item.type||editable('type'))&&
          <span className="compact-document-badge" data-kind={compactTypeTone(item.type)}
            data-editable={editable('type')?'true':undefined}
            {...memberAttributes('type')}>{shown('type')}</span>}
-       {includes('department')&&(!!item.department||editable('department'))&&
-         <strong className="compact-document-department" {...memberAttributes('department')}>
-           {shown('department')}
-         </strong>}
      </div>}
-     {includes('content')&&<div className="compact-document-content"
-       {...memberAttributes('content')}>{shown('content')}</div>}
+
    </div>;
  }
  if(pair.variant==='partyTogether'){
-   const stages:{key:TextField;label:string;number:number}[]=[
-     {key:'progressParty',label:'Thành ủy',number:1},
-     {key:'progressBuild',label:'Xây dựng NQ',number:2},
-     {key:'progressCouncil',label:'Ban hành NQ',number:3}
+   const stages:{key:TextField;label:string}[]=[
+     {key:'progressParty',label:'Thành ủy'},
+     {key:'progressBuild',label:'Xây dựng NQ'},
+     {key:'progressCouncil',label:'Ban hành NQ'}
    ];
    return <div className="compact-stages">
      {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>
@@ -63,7 +64,6 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
          data-stage-field={stage.key}
          data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}>
          <span className="compact-stage-label">
-           <span className="compact-stage-number">{stage.number}</span>
            <span className="compact-stage-title">{stage.label}{stage.key==='progressParty'&&includes('partyLevel')?' ':null}{stage.key==='progressParty'&&includes('partyLevel')&&
              (!!item.partyLevel||editable('partyLevel'))&&
              <span className="compact-stage-level" {...memberAttributes('partyLevel')}>

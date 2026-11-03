@@ -110,3 +110,20 @@ describe('R05: entire stage frames carry independent visual tones',()=>{
    expect(editable).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"/);
  });
 });
+
+describe('STREAM A metadata and stage rows',()=>{
+ it.each([false,true])('content precedes department and type (editing=%s)',editing=>{
+   const html=draw('contentDetails',[],[],false,editing);
+   expect(html.indexOf('compact-document-content')).toBeLessThan(html.indexOf('compact-document-department'));
+   expect(html.indexOf('compact-document-department')).toBeLessThan(html.indexOf('compact-document-badge'));
+   expect(html).toContain('Sở mẫu A');expect(html).toContain('QPPL');
+   expect(html.match(/class="compact-document-content"/g)).toHaveLength(1);
+ });
+ it.each([false,true])('keeps three named rows without numbered cards (editing=%s)',editing=>{
+   const html=draw('partyTogether',[],[],false,editing);
+   expect(html).not.toContain('compact-stage-number');
+   for(const label of ['Thành ủy','Xây dựng NQ','Ban hành NQ'])expect(html).toContain(label);
+   expect(html).toContain('compact-stage-level-open');expect(html).toContain('compact-stage-level-close');
+   expect((html.match(/data-editable="true"/g)||[]).length).toBe(editing?3:0);
+ });
+});

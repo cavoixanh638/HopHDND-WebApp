@@ -1,0 +1,812 @@
+[
+  {
+    "width": 1440,
+    "mode": "admin",
+    "groups": [
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (BCH)",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 241, 243)",
+            "level": {
+              "x": 607.640625,
+              "y": 578.03125,
+              "width": 53.5,
+              "height": 16.1875,
+              "top": 578.03125,
+              "right": 661.140625,
+              "bottom": 594.21875,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 578.03125,
+              "width": 107.765625,
+              "height": 17.390625,
+              "top": 578.03125,
+              "right": 661.140625,
+              "bottom": 595.421875,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 621.03125,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 621.03125,
+              "right": 627,
+              "bottom": 638.421875,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 241, 243)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 664.03125,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 664.03125,
+              "right": 626,
+              "bottom": 681.421875,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (BTV TU)",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(255, 248, 233)",
+            "level": {
+              "x": 607.640625,
+              "y": 721.03125,
+              "width": 69.765625,
+              "height": 16.1875,
+              "top": 721.03125,
+              "right": 677.40625,
+              "bottom": 737.21875,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 721.03125,
+              "width": 124.03125,
+              "height": 17.390625,
+              "top": 721.03125,
+              "right": 677.40625,
+              "bottom": 738.421875,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 764.03125,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 764.03125,
+              "right": 627,
+              "bottom": 781.421875,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(255, 248, 233)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 796.421875,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 796.421875,
+              "right": 626,
+              "bottom": 813.8125,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 298,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (TTTU)",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(226, 232, 240)",
+            "level": {
+              "x": 607.640625,
+              "y": 866.21875,
+              "width": 58.75,
+              "height": 16.1875,
+              "top": 866.21875,
+              "right": 666.390625,
+              "bottom": 882.40625,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 866.21875,
+              "width": 113.015625,
+              "height": 17.390625,
+              "top": 866.21875,
+              "right": 666.390625,
+              "bottom": 883.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 909.21875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 909.21875,
+              "right": 627,
+              "bottom": 926.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(238, 248, 241)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 941.609375,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 941.609375,
+              "right": 626,
+              "bottom": 959,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (BCH)",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(226, 232, 240)",
+            "level": {
+              "x": 607.640625,
+              "y": 1004.21875,
+              "width": 53.5,
+              "height": 16.1875,
+              "top": 1004.21875,
+              "right": 661.140625,
+              "bottom": 1020.40625,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 1004.21875,
+              "width": 107.765625,
+              "height": 17.390625,
+              "top": 1004.21875,
+              "right": 661.140625,
+              "bottom": 1021.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1047.21875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 1047.21875,
+              "right": 627,
+              "bottom": 1064.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 241, 243)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1079.609375,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 1079.609375,
+              "right": 626,
+              "bottom": 1097,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (Không phải trình)",
+            "stateX": 737.4375,
+            "textX": 746.4375,
+            "bg": "rgb(226, 232, 240)",
+            "level": {
+              "x": 607.640625,
+              "y": 1139.421875,
+              "width": 121.796875,
+              "height": 16.1875,
+              "top": 1139.421875,
+              "right": 729.4375,
+              "bottom": 1155.609375,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 1139.421875,
+              "width": 176.0625,
+              "height": 17.390625,
+              "top": 1139.421875,
+              "right": 729.4375,
+              "bottom": 1156.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 737.4375,
+            "textX": 746.4375,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1182.421875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 1182.421875,
+              "right": 627,
+              "bottom": 1199.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 737.4375,
+            "textX": 746.4375,
+            "bg": "rgb(255, 248, 233)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1225.421875,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 1225.421875,
+              "right": 626,
+              "bottom": 1242.8125,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 350,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (TTTU)",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(238, 248, 241)",
+            "level": {
+              "x": 607.640625,
+              "y": 1295.21875,
+              "width": 58.75,
+              "height": 16.1875,
+              "top": 1295.21875,
+              "right": 666.390625,
+              "bottom": 1311.40625,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 1295.21875,
+              "width": 113.015625,
+              "height": 17.390625,
+              "top": 1295.21875,
+              "right": 666.390625,
+              "bottom": 1312.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1338.21875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 1338.21875,
+              "right": 627,
+              "bottom": 1355.609375,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 674.390625,
+            "textX": 683.390625,
+            "bg": "rgb(238, 248, 241)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1370.609375,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 1370.609375,
+              "right": 626,
+              "bottom": 1388,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (BCH)",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 241, 243)",
+            "level": {
+              "x": 607.640625,
+              "y": 1430.421875,
+              "width": 53.5,
+              "height": 16.1875,
+              "top": 1430.421875,
+              "right": 661.140625,
+              "bottom": 1446.609375,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 1430.421875,
+              "width": 107.765625,
+              "height": 17.390625,
+              "top": 1430.421875,
+              "right": 661.140625,
+              "bottom": 1447.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 248, 233)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1473.421875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 1473.421875,
+              "right": 627,
+              "bottom": 1490.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 669.140625,
+            "textX": 678.140625,
+            "bg": "rgb(255, 241, 243)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1516.421875,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 1516.421875,
+              "right": 626,
+              "bottom": 1533.8125,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 297,
+        "overflow": "auto"
+      },
+      {
+        "rows": [
+          {
+            "label": "Thành ủy (BTV TU)",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(255, 248, 233)",
+            "level": {
+              "x": 607.640625,
+              "y": 1573.421875,
+              "width": 69.765625,
+              "height": 16.1875,
+              "top": 1573.421875,
+              "right": 677.40625,
+              "bottom": 1589.609375,
+              "left": 607.640625
+            },
+            "title": {
+              "x": 553.375,
+              "y": 1573.421875,
+              "width": 124.03125,
+              "height": 17.390625,
+              "top": 1573.421875,
+              "right": 677.40625,
+              "bottom": 1590.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Xây dựng NQ",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(226, 232, 240)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1616.421875,
+              "width": 73.625,
+              "height": 17.390625,
+              "top": 1616.421875,
+              "right": 627,
+              "bottom": 1633.8125,
+              "left": 553.375
+            }
+          },
+          {
+            "label": "Ban hành NQ",
+            "stateX": 685.40625,
+            "textX": 694.40625,
+            "bg": "rgb(255, 248, 233)",
+            "level": null,
+            "title": {
+              "x": 553.375,
+              "y": 1648.8125,
+              "width": 72.625,
+              "height": 17.390625,
+              "top": 1648.8125,
+              "right": 626,
+              "bottom": 1666.203125,
+              "left": 553.375
+            }
+          }
+        ],
+        "clientWidth": 297,
+        "scrollWidth": 298,
+        "overflow": "auto"
+      }
+    ],
+    "contents": [
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 573.03125,
+          "width": 417,
+          "height": 51,
+          "top": 573.03125,
+          "right": 530.375,
+          "bottom": 624.03125,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 629.03125,
+          "width": 417,
+          "height": 31.90625,
+          "top": 629.03125,
+          "right": 530.375,
+          "bottom": 660.9375,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 716.03125,
+          "width": 417,
+          "height": 51,
+          "top": 716.03125,
+          "right": 530.375,
+          "bottom": 767.03125,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 772.03125,
+          "width": 417,
+          "height": 31.90625,
+          "top": 772.03125,
+          "right": 530.375,
+          "bottom": 803.9375,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 858.421875,
+          "width": 417,
+          "height": 51,
+          "top": 858.421875,
+          "right": 530.375,
+          "bottom": 909.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 914.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 914.421875,
+          "right": 530.375,
+          "bottom": 946.328125,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 996.421875,
+          "width": 417,
+          "height": 51,
+          "top": 996.421875,
+          "right": 530.375,
+          "bottom": 1047.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 1052.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 1052.421875,
+          "right": 530.375,
+          "bottom": 1084.328125,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 1134.421875,
+          "width": 417,
+          "height": 51,
+          "top": 1134.421875,
+          "right": 530.375,
+          "bottom": 1185.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 1190.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 1190.421875,
+          "right": 530.375,
+          "bottom": 1222.328125,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 1287.421875,
+          "width": 417,
+          "height": 51,
+          "top": 1287.421875,
+          "right": 530.375,
+          "bottom": 1338.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 1343.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 1343.421875,
+          "right": 530.375,
+          "bottom": 1375.328125,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 1425.421875,
+          "width": 417,
+          "height": 51,
+          "top": 1425.421875,
+          "right": 530.375,
+          "bottom": 1476.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 1481.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 1481.421875,
+          "right": 530.375,
+          "bottom": 1513.328125,
+          "left": 113.375
+        }
+      },
+      {
+        "children": [
+          "compact-document-content",
+          "compact-document-heading"
+        ],
+        "content": {
+          "x": 113.375,
+          "y": 1568.421875,
+          "width": 417,
+          "height": 51,
+          "top": 1568.421875,
+          "right": 530.375,
+          "bottom": 1619.421875,
+          "left": 113.375
+        },
+        "metadata": {
+          "x": 113.375,
+          "y": 1624.421875,
+          "width": 417,
+          "height": 31.90625,
+          "top": 1624.421875,
+          "right": 530.375,
+          "bottom": 1656.328125,
+          "left": 113.375
+        }
+      }
+    ],
+    "vertical": [
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top",
+      "top"
+    ],
+    "id": {
+      "rect": {
+        "x": 50.375,
+        "y": 525.484375,
+        "width": 52,
+        "height": 38.546875,
+        "top": 525.484375,
+        "right": 102.375,
+        "bottom": 564.03125,
+        "left": 50.375
+      },
+      "label": {
+        "x": 52.375,
+        "y": 535.484375,
+        "width": 27,
+        "height": 17.546875,
+        "top": 535.484375,
+        "right": 79.375,
+        "bottom": 553.03125,
+        "left": 52.375
+      },
+      "text": "ID",
+      "scroll": 27,
+      "client": 27,
+      "sort": {
+        "x": 81.375,
+        "y": 532.25,
+        "width": 18,
+        "height": 24,
+        "top": 532.25,
+        "right": 99.375,
+        "bottom": 556.25,
+        "left": 81.375
+      }
+    },
+    "body": {
+      "width": 1425,
+      "scroll": 1425
+    },
+    "highlights": []
+  }
+]
