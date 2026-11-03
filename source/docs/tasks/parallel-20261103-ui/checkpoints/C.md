@@ -1,3 +1,19 @@
+# C checkpoint — exact-SHA takeover and verification
+
+Status: **TEST_RUNNING** (not DONE; gate results pending).
+Owner: STREAM-C; target branch: `ui/20261103-filter-chip`.
+2026-11-03: User expressly reassigned Luồng C to continue verification; previous handoff suspension is superseded for this takeover.
+
+## Test gate — START
+- Remote branch HEAD verified at `a8a4220b21d3b138e9ad0f47ef84ef67b1570673` using GitHub refs API. This is the **code/evidence candidate SHA** to test; legacy checkpoint “NOT PUSHED” below is historical and no longer correct.
+- GitHub confirms component, CSS, browser regression runner and `evidence/C/` are present at that SHA. These pre-commit results are **not** being substituted for a true exact-SHA rerun.
+- Required rerun: `npm run typecheck`, 14 focused tests, `npm run build:compact:qa`, Chrome/CDP 1440/900/390/320 + 150%-font + click/Enter/Space; inspect geometry and screenshots. Check any differences before DONE.
+- Scope limited to `ActiveListFilters.tsx`, `list-filter-toolbar.css`, associated C test/evidence, and `checkpoints/C.md`. Never merge, deploy, or write production data. No A/B files.
+
+---
+
+## Prior handoff record (historical, before this takeover)
+
 # C checkpoint — handoff to Gemini
 Status: HANDOFF / TEST_PENDING (exact committed SHA not rerun). Stopped on coordinator instruction 2026-11-03; do not continue writing concurrently with Gemini.
 Owner: STREAM-C. Branch: ui/20261103-filter-chip.
