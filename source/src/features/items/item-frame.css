@@ -1471,7 +1471,11 @@
   .compact-stage-row:has(.compact-stage-state:not([data-editable="true"])) .compact-stage-label {
   padding-top:5px;
 }
-:is(.item-data-table,.report-detail-grid) tbody td:is([data-col-key="specificProgress"],[data-col-key="note"]) {
+/* app.css is included after this feature stylesheet in the real QA bundle.
+   Its generic long-text selector must not move these two fields back to top.
+   The extra source-key attribute makes this override win regardless of import
+   order without changing left text alignment, text wrapping or edit controls. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-col-key]:is([data-col-key="specificProgress"],[data-col-key="note"]) {
   vertical-align:middle;
 }
 /* At the standard 52px ID width, reserve only the actual sort target,
