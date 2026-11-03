@@ -88,6 +88,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [toolbar,setToolbar]=useState(newToolbarState);
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
+  const listTitleBaseline=useRef<ItemLayout|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
   // An ordinary viewer should immediately see every A–R source field. Saved
@@ -108,7 +109,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const sharedBase=useRef<ItemLayout>(initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase.current;
-  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
+  useEffect(()=>{if(initialLayout&&!customizing){setApplied(initialLayout);sharedBase.current=initialLayout;}},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
@@ -162,6 +163,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [groupLabelChoices,setGroupLabelChoices]=useState<LayoutConflictChoices>({});
   const [groupLabelsError,setGroupLabelsError]=useState('');
   const viewSavingRef=useRef(false);
+  const [viewLayoutConflicts,setViewLayoutConflicts]=useState<LayoutFieldConflict[]>([]);
+  const [viewLayoutChoices,setViewLayoutChoices]=useState<LayoutConflictChoices>({});
+  const pendingViewLayout=useRef<{baseline:ItemLayout;next:ItemLayout;kind:'title'|'cards'|'layout'}|null>(null);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
@@ -404,32 +408,54 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
+  const isRamAdminList=effectiveSourceKind==='demo';
+  // Display settings are available even when the admin is viewing all source
+  // columns. Column drag/resize remains restricted by canViewerArrange.
+  const canEditListSettings=adminControls&&!customizing&&!permissionMode&&!locked&&
+    (!!onPersistViewerLayout||isRamAdminList);
   const canViewerArrange=adminControls&&!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
-    !personalViewActive&&!showAllSourceColumns&&!locked;
-  // A visual column drag is not a shared-layout write. All viewers may resize
-  // their current view; only authorized administrators use CAS to persist it.
-  // Personal/anonymous viewers never call the shared Firebase writer.
+    !personalViewActive&&!showAllSourceColumns&&!locked&&!permissionMode;
+  // A visual column drag is not a shared-layout write. Only verified admins
+  // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=adminControls&&!customizing&&!showAllSourceColumns&&!permissionMode;
-  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout):Promise<boolean>=>{
-    if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return false;
-    const baseline=initialLayout;
+  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
+    baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
+    kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
+    if(!canEditListSettings||viewSavingRef.current)return false;
+    // The locally confirmed layout can be newer than the last profile prop:
+    // rapid off/on toggles must not collapse into a false no-op.
+    const baseline=validateItemLayout(baselineOverride??sharedBase.current);
     let next:ItemLayout;
     try{next=validateItemLayout(transform(baseline));}
-    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return false;}
+    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình danh sách không hợp lệ.');return false;}
     if(JSON.stringify(next)===JSON.stringify(baseline))return true;
     viewSavingRef.current=true;setViewSaving(true);setLayoutError('');
-    setSaveFeedback('Đang lưu vị trí/độ rộng cột dùng chung…');
-    setApplied(next); // optimistic only; revert on any failure
+    setSaveFeedback(isRamAdminList&&!onPersistViewerLayout
+      ?'Đang áp dụng cấu hình demo trong RAM…':'Đang lưu cấu hình Danh sách dùng chung…');
+    setApplied(next); // optimistic only; revert on conflict, denial or offline
     try{
-      const confirmed=await onPersistViewerLayout(next,baseline);
+      const confirmed=onPersistViewerLayout
+        ?await onPersistViewerLayout(next,baseline,choices):next;
       const valid=validateItemLayout(confirmed??next);
       setApplied(valid);sharedBase.current=valid;
-      setSaveFeedback('Đã lưu bố trí/tên cột dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.');
+      pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+      const message=onPersistViewerLayout
+        ?'Đã lưu cấu hình Danh sách dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.'
+        :'Đã áp dụng cấu hình vào RAM demo; tải lại trang sẽ khôi phục mặc định.';
+      setSaveFeedback(message);
+      if(!onPersistViewerLayout)onLayoutSaved(message);
       return true;
     }catch(error){
-      setApplied(initialLayout);
-      setLayoutError(saveIssue(error));
-      setSaveFeedback('Không lưu được thay đổi. Đã hoàn lại bố trí trước thao tác.');
+      setApplied(sharedBase.current);
+      if(error instanceof LayoutConflictError){
+        pendingViewLayout.current={baseline,next,kind};
+        setViewLayoutConflicts(error.conflicts);setViewLayoutChoices({});
+        setLayoutError('Cấu hình đã được sửa ở tab khác. Chọn giá trị cần giữ cho từng mục bên dưới; chưa có gì bị ghi đè.');
+      }else{
+        pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+        setLayoutError(saveIssue(error));
+      }
+      setSaveFeedback('Chưa lưu được thay đổi; bản hiển thị đã được hoàn lại.');
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
@@ -551,7 +577,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
       </div>
     </details>);
-  return <section className="card item-list-card" data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false}>
+  return <section className="card item-list-card" data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -595,24 +621,27 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
-      {!customizing&&onPersistViewerLayout&&<details className="admin-list-controls">
+      {!customizing&&(onPersistViewerLayout||isRamAdminList)&&<details className="admin-list-controls">
         <summary>Tên danh sách và thẻ tổng hợp</summary>
         <div className="admin-list-controls-body">
           <form onSubmit={event=>{event.preventDefault();
             try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
-              void applyViewerLayout(base=>({...base,listTitle:title})).then(saved=>{if(saved)setListTitleDraft(null);});
+              void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
+                .then(saved=>{if(saved){setListTitleDraft(null);listTitleBaseline.current=null;}});
             }catch(error){setLayoutError(error instanceof Error?error.message:'Tên không hợp lệ.');}
           }}>
             <label>Tên danh sách<input aria-label="Tên danh sách" maxLength={100}
               value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
-              onChange={event=>setListTitleDraft(event.target.value)} disabled={!canViewerArrange||viewSaving}/></label>
-            <button type="submit" className="button ghost" disabled={!canViewerArrange||viewSaving}>Lưu tên danh sách</button>
+              onFocus={()=>{listTitleBaseline.current??=validateItemLayout(sharedBase.current);}}
+              onChange={event=>{listTitleBaseline.current??=validateItemLayout(sharedBase.current);
+                setListTitleDraft(event.target.value);}} disabled={!canEditListSettings||viewSaving}/></label>
+            <button type="submit" className="button ghost" disabled={!canEditListSettings||viewSaving}>Lưu tên danh sách</button>
           </form>
-          <fieldset disabled={!canViewerArrange||viewSaving}><legend>Hiện thẻ tổng hợp</legend>
+          <fieldset disabled={!canEditListSettings||viewSaving}><legend>Hiện thẻ tổng hợp</legend>
             {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}><input type="checkbox"
               aria-label={'Hiện C0'+(index+1)} checked={activeLayout.summaryCards?.[key]!==false}
               onChange={event=>{const checked=event.target.checked;void applyViewerLayout(base=>({...base,
-                summaryCards:{party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}));}}/>
+                summaryCards:{party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
               {'C0'+(index+1)+' · '+(['Thành ủy','Xây dựng NQ','Ban hành NQ/BC'][index])}</label>)}
           </fieldset>
         </div>
@@ -638,8 +667,21 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       </div>}
 
     </div></div>}
-    {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
+    {!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
+    {!customizing&&adminControls&&viewLayoutConflicts.length>0&&pendingViewLayout.current&&
+      <LayoutConflictResolver conflicts={viewLayoutConflicts} choices={viewLayoutChoices}
+        busy={viewSaving}
+        onChoose={(field,choice)=>setViewLayoutChoices(current=>({...current,[field]:choice}))}
+        onCancel={()=>{pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+          setLayoutError('');listTitleBaseline.current=null;}}
+        onConfirm={()=>{const request=pendingViewLayout.current;
+          if(request)void applyViewerLayout(()=>request.next,request.baseline,viewLayoutChoices,request.kind)
+            .then(saved=>{if(saved&&request.kind==='title'){
+              setListTitleDraft(null);listTitleBaseline.current=null;
+            }});
+        }}/>}
+
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
      {/* ColumnFilterCell remains accessible in editing and popup.
          Ordinary List uses compact AND toolbar, without a tall header row. */}
