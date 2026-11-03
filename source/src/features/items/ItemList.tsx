@@ -4,7 +4,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -35,6 +35,7 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './admin-list-controls.css';
 import './pr95-v6-l3-page-layout.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
@@ -86,6 +87,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [kindSelection,setKindSelection]=useState<ListKind|null>(null);
   const [toolbar,setToolbar]=useState(newToolbarState);
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
+  const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
   // An ordinary viewer should immediately see every A–R source field. Saved
@@ -354,12 +356,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[]);
   const selectSummary=(selection:SummarySelection)=>setSummarySelection(previous=>
     previous?.report===selection.report&&previous?.stage===selection.stage?null:selection);
-  const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
+  const rows=useMemo(()=>sortItems(filtered,adminControls?columnSort:null,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
-  }),[filtered,columnSort,activeLayout,codeCounts]);
-  const cycleSort=(key:string)=>setColumnSort(current=>
-    current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);
+  }),[filtered,columnSort,activeLayout,codeCounts,adminControls]);
+  const cycleSort=(key:string)=>{if(!adminControls)return;setColumnSort(current=>
+    current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);};
   // CellPicker option lists used to be sorted once PER CELL PER KEYSTROKE.
   const optionCache=useMemo(()=>new Map<string,string[]>(),[catalog,items]);
   const options = (field: TextField,item:Item) => {
@@ -402,7 +404,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
-  const canViewerArrange=!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
+  const canViewerArrange=adminControls&&!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
     !personalViewActive&&!showAllSourceColumns&&!locked;
   // A visual column drag is not a shared-layout write. All viewers may resize
   // their current view; only authorized administrators use CAS to persist it.
@@ -549,7 +551,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
       </div>
     </details>);
-  return <section className="card item-list-card">
+  return <section className="card item-list-card" data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -587,12 +589,34 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
         showFilterFooters={false}/>
-      <h2 className="item-list-page-title">Danh sách các ND trình HĐND</h2>
+      <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
+      {!customizing&&onPersistViewerLayout&&<details className="admin-list-controls">
+        <summary>Tên danh sách và thẻ tổng hợp</summary>
+        <div className="admin-list-controls-body">
+          <form onSubmit={event=>{event.preventDefault();
+            try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
+              void applyViewerLayout(base=>({...base,listTitle:title})).then(saved=>{if(saved)setListTitleDraft(null);});
+            }catch(error){setLayoutError(error instanceof Error?error.message:'Tên không hợp lệ.');}
+          }}>
+            <label>Tên danh sách<input aria-label="Tên danh sách" maxLength={100}
+              value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
+              onChange={event=>setListTitleDraft(event.target.value)} disabled={!canViewerArrange||viewSaving}/></label>
+            <button type="submit" className="button ghost" disabled={!canViewerArrange||viewSaving}>Lưu tên danh sách</button>
+          </form>
+          <fieldset disabled={!canViewerArrange||viewSaving}><legend>Hiện thẻ tổng hợp</legend>
+            {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}><input type="checkbox"
+              aria-label={'Hiện C0'+(index+1)} checked={activeLayout.summaryCards?.[key]!==false}
+              onChange={event=>{const checked=event.target.checked;void applyViewerLayout(base=>({...base,
+                summaryCards:{party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}));}}/>
+              {'C0'+(index+1)+' · '+(['Thành ủy','Xây dựng NQ','Ban hành NQ/BC'][index])}</label>)}
+          </fieldset>
+        </div>
+      </details>}
       {compactMenu}
       {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
         className="button ghost group-label-shortcut"
@@ -674,7 +698,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
-  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={!permissionMode?cycleSort:undefined}
+  sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
