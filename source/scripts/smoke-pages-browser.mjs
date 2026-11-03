@@ -790,8 +790,8 @@ try{
     const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
     const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
     const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    const ok=text==='rgb(161, 0, 34)'&&background==='rgba(0, 0, 0, 0)'&&
-      inherited==='#A10022'&&frameBackground!=='rgba(0, 0, 0, 0)';
+    const ok=text==='rgb(161, 0, 34)'&&background==='rgb(241, 203, 219)'&&
+      inherited==='#A10022'&&frameBackground==='rgba(0, 0, 0, 0)';
     if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
     else owner.style.removeProperty('--hdnd-status-not-submitted-text');
     if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
@@ -4709,6 +4709,8 @@ try{
   if(chrome)chrome.kill('SIGKILL');
   server.close();
   if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
-  rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
+  try{rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});}
+  catch(error){if(!['EPERM','EBUSY'].includes(error.code))throw error;
+    console.warn('CHROME_PROFILE_CLEANUP_PENDING',error.code);}
   rmSync(emulatorConfigDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }
