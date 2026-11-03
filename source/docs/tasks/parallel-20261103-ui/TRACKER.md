@@ -2,6 +2,8 @@
 
 **Điều phối:** IN_PROGRESS. Nguồn chung [README](README.md); [prompt Gemini](GEMINI_PROMPTS.md). Một writer cho mỗi nhánh; chỉ điều phối sửa file này. Mỗi Gemini cập nhật checkpoint **trên nhánh của mình** và push theo mốc khảo sát, bản sửa, kết quả test, lỗi/chặn, DONE. Điều phối đọc commit/checkpoint và cập nhật bảng dưới; không dựa vào lời nhắn “xong” đơn thuần. Checkpoint là cập nhật do chat đang chạy thực hiện, không phải tiến trình nền tự chạy sau khi chat dừng.
 
+Monitor Codex đã bật: `theo-d-i-ba-lu-ng-gemini-ui-h-nd`, quét GitHub mỗi 30 phút, chỉ báo khi có thay đổi đáng kể hoặc cần người dùng. Không thể thấy nội dung chat Gemini nếu Gemini không ghi checkpoint/push; nhánh GitHub là nguồn theo dõi.
+
 | Luồng | Nhánh / HEAD đã xác nhận trên GitHub | Trạng thái | Đã có | Còn thiếu trước DONE |
 |---|---|---|---|---|
 | A — ô bảng | `ui/20261103-table-cells` / `30b6fd3b31bc32a55790ab260f13da4a37e7c602` | TEST_PENDING, bàn giao Gemini | Typecheck + 31 test PASS đúng SHA; renderer/CSS và checkpoint đã push | Chrome phát hiện căn dọc chưa đạt; sửa rồi kiểm guest/popup, responsive, editor trên SHA mới |
