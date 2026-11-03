@@ -129,7 +129,7 @@ const verify=async stage=>{
   assert(!x.error&&x.count>=3,stage+' stage list exists '+JSON.stringify(x));
   const first=x.stageRows.slice(0,3);
   for(const r of first){
-    assert(r.rowBorder==='1px'&&r.oneStageBorder,stage+' single outer stage frame '+JSON.stringify(r));
+    assert(r.rowBorder==='0px'&&r.oneStageBorder,stage+' separated stage rows '+JSON.stringify(r));
     assert(r.baselines&&r.baselines.delta<=5,stage+' first text line alignment '+JSON.stringify(r));
     assert(r.nowrap==='nowrap',stage+' nowrap label '+JSON.stringify(r));
     if(r.editable){

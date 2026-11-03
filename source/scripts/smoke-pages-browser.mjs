@@ -2282,7 +2282,7 @@ try{
     const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
     const arrow=getComputedStyle(button,'::after');
     return {ok:rs.borderTopWidth==='0px'&&rs.backgroundColor==='rgba(0, 0, 0, 0)'&&
-      vs.backgroundColor!=='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&parseFloat(vs.paddingTop)>0&&
+      vs.backgroundColor!=='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&
       bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
       bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&

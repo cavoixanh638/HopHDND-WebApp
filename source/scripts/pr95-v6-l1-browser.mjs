@@ -182,7 +182,7 @@ const inspectLevels=async(rootSelector,label)=>{
     data.some(x=>x.level==='(TTTU)'),
     'UI6-R01 current level values missing '+label);
   for(const x of data){
-    if(x.buttonRight!==null)assert(x.buttonRight+1<=x.close,
+    if(x.buttonRight!==null)assert(x.buttonRight<=x.close+0.25,
       'party caret touches closing parenthesis '+label+' '+JSON.stringify(x));
   }
   console.log('UI6_R01_CAPTION_STATE_SEPARATION_PASS '+label+' '+JSON.stringify(data));

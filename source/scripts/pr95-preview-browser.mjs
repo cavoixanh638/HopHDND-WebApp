@@ -238,7 +238,7 @@ try{
     'root.style.setProperty("--hdnd-stage-done-border","#94A8C9")');
   await ensure('(()=>{const row=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done]");'+
     'const member=row?.querySelector(".compact-stage-state"),inner=member?.querySelector(".workflow-status-value");'+
-    'return !!inner&&getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
+    'return !!inner&&getComputedStyle(member).backgroundColor==="rgb(231, 243, 255)"&&'+
     'getComputedStyle(member).color==="rgb(20, 83, 154)"&&getComputedStyle(inner).color===getComputedStyle(member).color})()',
     'custom palette per-stage text/frame, no nested pill');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-custom-palette',true);
