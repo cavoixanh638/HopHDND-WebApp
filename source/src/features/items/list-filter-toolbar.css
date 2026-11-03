@@ -93,20 +93,22 @@
 .list-active-filter-clear-all:hover{background:#e0effa;border-color:#285f87}
 .list-active-filter-chips{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}
 .list-active-filter-chip {
-  display:inline-flex;align-items:stretch;max-width:100%;min-width:0;
+  display:inline-flex;align-items:center;max-width:100%;min-width:0;
   border:1px solid #9fbdd3;border-radius:7px;background:#edf5fb;
   font-family:inherit;font-weight:500;font-size:12px;line-height:1.4;color:#244967;
 }
-.list-active-filter-chip-label{padding:6px 6px 6px 9px;white-space:nowrap;font-weight:700}
+.list-active-filter-chip-label{padding:6px 6px 6px 9px;font-weight:700;
+  min-width:0;max-width:min(42vw,360px);white-space:normal;overflow-wrap:anywhere;flex:0 1 auto}
 .list-active-filter-chip-value{padding:6px 7px 6px 0;min-width:0;
   max-width:min(36vw,360px);overflow-wrap:anywhere;white-space:normal;color:#142f44}
 .list-active-filter-remove {
-  align-self:stretch;display:inline-flex;align-items:center;justify-content:center;
+  align-self:stretch;display:inline-flex;align-items:center;justify-content:center;flex:0 0 31px;
   min-width:31px;min-height:31px;margin:0;padding:0 5px;
   border:0;border-left:1px solid #b6cddd;border-radius:0 6px 6px 0;
   background:transparent;color:#244967;cursor:pointer;
-  font:bold 20px/1 system-ui,sans-serif;
+  font:inherit;line-height:1;
 }
+.list-active-filter-remove>svg{display:block;flex:none}
 .list-active-filter-remove:hover{background:#d9e9f5;color:#163d5e}
 .list-active-filter-idle{margin:0;color:var(--muted,#65717c);font-size:12px}
 .list-active-filter-empty {
@@ -123,8 +125,5 @@
   .list-active-filter-clear-all{margin-left:auto}
   /* A long Vietnamese detail label must wrap instead of pushing X off-screen. */
   .list-active-filter-chip{max-width:100%;min-width:0}
-  .list-active-filter-chip-label{white-space:normal;overflow-wrap:anywhere;
-    max-width:42vw;flex:0 1 auto}
   .list-active-filter-chip-value{max-width:40vw;flex:1 1 auto;min-width:0}
-  .list-active-filter-remove{flex:0 0 31px}
 }
