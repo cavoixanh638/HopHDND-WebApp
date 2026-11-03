@@ -16,7 +16,26 @@ export const COMPACT_GROUP_LABEL_KEYS=['contentDetails','partyTogether','leaders
 export type CompactGroupLabelKey=(typeof COMPACT_GROUP_LABEL_KEYS)[number];
 export type CompactGroupLabels=Partial<Record<CompactGroupLabelKey,string>>;
 export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false};
+export const DEFAULT_LIST_TITLE='Danh sách các ND trình HĐND';
+export const SUMMARY_CARD_KEYS=['party','build','nq'] as const;
+export type SummaryCardVisibility=Record<(typeof SUMMARY_CARD_KEYS)[number],boolean>;
+export function validateListTitle(value:unknown):string {
+  if(value===undefined)return DEFAULT_LIST_TITLE;
+  if(typeof value!=='string'||!value.trim()||value.length>100||/[\u0000-\u001f\u007f<>]/.test(value))
+    throw new Error('Tên danh sách cần từ 1 đến 100 ký tự, không chứa ký tự điều khiển hoặc < >.');
+  return value.trim();
+}
+export function validateSummaryCards(value:unknown):SummaryCardVisibility {
+  if(value===undefined)return {party:true,build:true,nq:true};
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+    Object.keys(value).some(key=>!SUMMARY_CARD_KEYS.includes(key as typeof SUMMARY_CARD_KEYS[number]))||
+    SUMMARY_CARD_KEYS.some(key=>typeof (value as SummaryCardVisibility)[key]!=='boolean'))
+    throw new Error('Cấu hình thẻ tổng hợp không hợp lệ.');
+  return {...value as SummaryCardVisibility};
+}
 export interface ItemLayout {
+  listTitle?:string;
+  summaryCards?:SummaryCardVisibility;
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
   compactDisplay?:SharedCompactDisplay;
   /** Administrator-owned titles; never rename source Excel fields. */
@@ -75,6 +94,7 @@ export function validateCompactGroupLabels(value:unknown):CompactGroupLabels {
  return out;
 }
 export const defaultItemLayout=():ItemLayout=>({
+  listTitle:DEFAULT_LIST_TITLE,summaryCards:{party:true,build:true,nq:true},
   tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},groupLabels:{}, 
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
@@ -182,7 +202,7 @@ export function validateItemLayout(value:unknown):ItemLayout{
   const groupLabels=validateCompactGroupLabels(input.groupLabels);
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */

@@ -1,0 +1,28 @@
+.item-list-card[data-hide-party="true"] [data-summary-card="party"],
+.item-list-card[data-hide-build="true"] [data-summary-card="build"],
+.item-list-card[data-hide-nq="true"] [data-summary-card="nq"] {display:none}
+.admin-list-controls {max-width:100%}
+.admin-list-controls summary {cursor:pointer;padding:8px}
+.admin-list-controls-body {padding:12px;border:1px solid #dfe9e2;border-radius:6px}
+.admin-list-controls form,.admin-list-controls fieldset {display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.admin-list-controls form label {display:grid;gap:6px;flex:1;min-width:180px}
+.admin-list-controls input:not([type="checkbox"]) {width:100%;min-height:36px}
+.admin-list-controls fieldset {margin:12px 0 0;border:0;padding:0}
+.admin-list-controls fieldset label {display:flex;align-items:center;gap:6px;min-height:36px}
+
+/* Hidden workflow cards remain mounted (so active filters survive toggles).
+   Give visible cards real grid tracks instead of leaving empty slots. */
+@media (min-width:981px) {
+  .item-list-card[data-visible-stages="0"] .item-summary-grid,
+  .item-list-card[data-visible-stages="1"] .item-summary-grid {
+    grid-template-columns:minmax(0,1fr);
+  }
+  .item-list-card[data-visible-stages="2"] .item-summary-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media (max-width:560px) {
+  .admin-list-controls-body {padding:10px}
+  .admin-list-controls form label {min-width:0;flex-basis:100%}
+  .admin-list-controls form .button {width:100%}
+}
