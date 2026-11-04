@@ -542,7 +542,25 @@ async function runControlsE2E(admin,guest,url){
     }
     assert.equal(after.profile.items.summaryCards.build,true,'C02 should be restored');
   }
-  step('OFFLINE_RECOVERY_PASS',{revision:(await saved()).revision,clicked:offlineClicked});
+  // A disconnected UI may correctly unmount admin controls. Prove that
+  // controls return and a fresh post-reconnect write is ACKed by the server.
+  await admin.until('!!document.querySelector(".admin-summary-visibility input")&&'+
+    '!document.querySelector(".admin-summary-visibility").disabled',
+    'verified admin controls recovered after Chrome goes online',20000);
+  if(!offlineClicked){
+    await keyboardSpace(admin,adminSelect('C02'));
+    await wait(async()=>{const remote=await saved();return remote.profile.items.summaryCards.build===false?remote:false},
+      'post-offline C02 save ACKed by Firebase',20000);
+    await admin.until('!document.querySelector(".admin-summary-visibility").disabled',
+      'C02 re-enabled for restore after reconnect',20000);
+    await keyboardSpace(admin,adminSelect('C02'));
+    await wait(async()=>{const remote=await saved();return remote.profile.items.summaryCards.build===true?remote:false},
+      'post-offline C02 restored and ACKed',20000);
+  }
+  assert.equal((await stageState(admin)).cards.build.visible,true,'C02 visible after reconnect');
+  await capture(admin,'B-post-offline-reconnected-and-saved');
+  step('OFFLINE_RECOVERY_PASS',{revision:(await saved()).revision,clicked:offlineClicked,
+    verifiedWriteAfterReconnect:!offlineClicked});
   const finalRules=await (await fetch(BASE+'/.settings/rules.json?ns='+NS,
     {headers:{Authorization:'Bearer owner'}})).json();
   assert.ok(isDeepStrictEqual(finalRules,candidate),'Emulator Rules not restored');
