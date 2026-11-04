@@ -441,7 +441,16 @@ async function runControlsE2E(admin,guest,url){
   const other=await startChrome(url,'admin-second');
   await other.until('typeof window.__pr95EmulatorGoogleAdminSignIn==="function"',
     'second admin sign in');
+  // firebase-boot.startFirebaseWarmup first calls ensureGuestAuth, including
+  // setPersistence and signInAnonymously. Signing in as admin before that
+  // promise completes can let the pending anonymous sign-in overwrite admin.
+  // Wait until the real App has acknowledged the temporary anonymous user.
+  await other.until('!!window.__pr95UiV2L3RightsProbe?.().userUid&&'+
+    'window.__pr95UiV2L3RightsProbe?.().isAdmin===false',
+    'second browser anonymous warmup completed before admin login',30000);
   const secondPrincipal=await other.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
+  await other.until('window.__pr95UiV2L3RightsProbe?.().isAdmin===true',
+    'second browser App controller acknowledges verified admin Auth',30000);
   assert.ok(secondPrincipal?.uid&&secondPrincipal?.emailVerified&&
     secondPrincipal.providerIds?.includes('google.com'),
     'second browser must receive verified Google Auth Emulator identity');
