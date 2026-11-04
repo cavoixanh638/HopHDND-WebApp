@@ -320,7 +320,8 @@ async function reloadList(tab,role){
   if(role==='admin'){
     await tab.until('!!document.querySelector("nav.primary-section-switcher")',
       'admin Auth survived reload',30000);
-    await clickText(tab,'nav.primary-section-switcher button','Danh sách');
+    // Renaming changes the nav label; route by the stable actual App page key.
+    await pointer(tab,'nav.primary-section-switcher button[data-ui-reference-nav="items"]');
   }else{
     await tab.until('!!document.querySelector(".item-data-region")&&'+
       '!document.querySelector("nav.primary-section-switcher")',
