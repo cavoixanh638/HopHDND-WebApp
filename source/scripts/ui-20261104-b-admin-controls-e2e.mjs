@@ -1,9 +1,7 @@
 /**
- * PR95 V5 L2: real App verified admin vs guest, Auth/RTDB Emulator only.
- * Based on the independently passing V2 permission E2E, with additional
- * synthetic unknown-QPPL summary rows and exact DOM role assertions.
- * Run only with demo-hdnd Auth/RTDB Emulators and unchanged candidate Rules.
- * NO production Firebase, no Google Sheets, no privileged application writes.
+ * Worker B admin controls E2E: Chrome real App + real local Firebase Emulators.
+ * Based on the verified V5 L2 real-App harness; never uses production tokens,
+ * services, Rules or business records. Synthetic records only on loopback.
  */
 import assert from 'node:assert/strict';
 import {spawn,spawnSync} from 'node:child_process';
@@ -490,13 +488,68 @@ async function runControlsE2E(admin,guest,url){
     await capture(admin,'B-emulator-permission-denied-rollback');
     step('EMULATOR_DENIED_ROLLBACK_PASS',{revision:afterDeny.revision});
   }finally{await setRules(candidate);}
+
+  // Genuine Chrome network-offline simulation; the Emulator stays accessible
+  // to this Node verifier so server revision is an independent witness.
+  const beforeOffline=await saved();
+  let offlineClicked=false;
+  await admin.send('Network.emulateNetworkConditions',{
+    offline:true,latency:0,downloadThroughput:0,uploadThroughput:0});
+  try{
+    await admin.until('navigator.onLine===false','Chrome navigator offline',4000);
+    const offlineAllowed=await admin.evalJs('(()=>{const e=document.querySelector('+
+      JSON.stringify(adminSelect('C02'))+');return !!e&&!e.disabled&&!e.closest("fieldset")?.disabled;})()');
+    if(offlineAllowed){
+      await pointer(admin,adminSelect('C02'));offlineClicked=true;
+    }else{
+      step('OFFLINE_CONTROL_GATED_PASS',{reason:'admin write control not available while disconnected'});
+    }
+    await sleep(900);
+    const during=await saved();
+    assert.equal(during.revision,beforeOffline.revision,
+      'Chrome offline write reached Firebase before reconnect');
+    assert.equal(during.profile.items.summaryCards.build,true,
+      'server C02 changed while browser offline');
+    if(offlineClicked){
+      const notice=await admin.evalJs('document.querySelector(".item-data-region")?.textContent||""');
+      assert.equal(notice.includes('Đã lưu cấu hình Danh sách dùng chung'),false,
+        'UI falsely announced saved while RTDB revision unchanged offline');
+    }
+    await capture(admin,'B-browser-offline-no-false-ack');
+    step('OFFLINE_NO_FALSE_ACK_PASS',{revision:during.revision,clicked:offlineClicked,
+      networkOffline:await admin.evalJs('navigator.onLine===false')});
+  }finally{
+    await admin.send('Network.emulateNetworkConditions',{
+      offline:false,latency:0,downloadThroughput:-1,uploadThroughput:-1});
+  }
+  if(offlineClicked){
+    // The Firebase SDK may queue the transaction until reconnected OR reject
+    // and rollback. Both are safe; after reconnect UI must match server ACK.
+    await wait(async()=>{
+      const remote=await saved();
+      const display=await stageState(admin);
+      const saving=await admin.evalJs('!!document.querySelector(".admin-summary-visibility")?.disabled');
+      return !saving&&display.cards.build.visible===(remote.profile.items.summaryCards.build!==false)?remote:false;
+    },'offline recovery server/UI reconciliation',30000);
+    let after=await saved();
+    if(after.profile.items.summaryCards.build===false){
+      await admin.until('!document.querySelector(".admin-summary-visibility").disabled',
+        'C02 enabled to restore after reconnect',15000);
+      await keyboardSpace(admin,adminSelect('C02'));
+      await wait(async()=>{const remote=await saved();return remote.profile.items.summaryCards.build===true?remote:false},
+        'C02 restored after offline',20000);
+      after=await saved();
+    }
+    assert.equal(after.profile.items.summaryCards.build,true,'C02 should be restored');
+  }
+  step('OFFLINE_RECOVERY_PASS',{revision:(await saved()).revision,clicked:offlineClicked});
   const finalRules=await (await fetch(BASE+'/.settings/rules.json?ns='+NS,
     {headers:{Authorization:'Bearer owner'}})).json();
   assert.ok(isDeepStrictEqual(finalRules,candidate),'Emulator Rules not restored');
   for(const tab of [admin,guest,other])assert.equal(tab.outbound.length,0,
     'Production request forbidden');
-  step('ADMIN_E2E_PASS',{source:'real App + Auth/RTDB/Functions emulator',
-    verifiedSha:process.env.GITHUB_SHA??'local',screens:[1440,900,390],
+  step('E2E_PASS',{source:'real App + Auth/RTDB/Functions emulator',
+    verifiedSha:process.env.B_TEST_CODE_SHA??'local',screens:[1440,900,390],
     title:true,guest:true,reload:true,threeCards:true,mouse:true,keyboard:true,
     twoTabsCAS:true,permissionDenied:true,noProductionNetwork:true});
 }
