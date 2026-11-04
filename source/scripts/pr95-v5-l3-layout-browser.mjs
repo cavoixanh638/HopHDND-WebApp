@@ -144,11 +144,10 @@ const verify=async stage=>{
     }
   }
   for(const c of x.classification){
-    assert(c.hasEditor?c.outerBorder==='1px':c.outerBorder==='0px',
-      stage+' QPPL editor outline or quiet read-only metadata');
-    if(c.hasEditor)assert(c.editorBorder==='0px'&&
-      (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
-      stage+' QPPL no second button frame '+JSON.stringify(c));
+    assert(c.outerBorder==='0px',stage+' REV2 grouped metadata has no outer frame');
+    if(c.hasEditor)assert(c.editorBorder!=='0px'&&
+      c.editorBackground!=='rgba(0, 0, 0, 0)',
+      stage+' QPPL actual colored button owns the ONE frame '+JSON.stringify(c));
   }
   // Each record can have a longer Party-level title than the preceding
   // record. Measure EVERY visible 3-stage group; checking only row 1 misses
@@ -159,17 +158,22 @@ const verify=async stage=>{
     group.push(row);
   }
   if(group.length)groups.push(group);
-  const caretSpreads=[];
+  const geometry=[];
   for(const rows of groups){
+    const spread=key=>Math.max(...rows.map(r=>r[key]))-Math.min(...rows.map(r=>r[key]));
+    const all={left:spread('stateLeft'),width:spread('stateWidth'),height:spread('stateHeight')};
+    assert(all.left<=2&&all.width<=2&&all.height<=2,
+      stage+' all 3 stage rails share left/width/height '+JSON.stringify({all,rows}));
     const buttons=rows.filter(r=>r.editable);
     if(buttons.length>1){
-      const dif=Math.max(...buttons.map(r=>r.caretRight))-
-        Math.min(...buttons.map(r=>r.caretRight));
-      caretSpreads.push(dif);
-      assert(dif<=2,stage+' each record fixed caret right edge: '+dif+' '+JSON.stringify(rows));
+      const d=key=>Math.max(...buttons.map(r=>r[key]))-Math.min(...buttons.map(r=>r[key]));
+      const exact={left:d('buttonLeft'),width:d('buttonWidth'),height:d('buttonHeight')};
+      assert(exact.left<=2&&exact.width<=2&&exact.height<=2,
+        stage+' editable buttons share left/width/height '+JSON.stringify({exact,rows}));
+      geometry.push(exact);
     }
   }
-  console.log('UI_V5_L3_CARET_GROUPS '+stage+' '+JSON.stringify(caretSpreads));
+  console.log('UI_A_REV2_V5_PICKER_GEOMETRY '+stage+' '+JSON.stringify(geometry));
   assert(x.wholePageWidth<=x.viewport+3,stage+' no page-level horizontal overflow');
   console.log('UI_V5_L3_RECT_PASS '+stage+' '+JSON.stringify(x));
   return x;
@@ -265,7 +269,7 @@ try{
     'admin List real QPPL editor');
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   const editableList=await verify('list-1440-admin-editable');
-  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='BUTTON'&&x.outerBorder==='1px'&&x.editorBorder==='0px'),
+  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='BUTTON'&&x.outerBorder==='0px'&&x.editorBorder!=='0px'),
     'admin QPPL classification single border on actual nested CellPicker');
   await screenshot('pr95-v5-l3-list-1440-admin.png');
   // Presentation-only color test: temporary CSS variables and a member highlight.
