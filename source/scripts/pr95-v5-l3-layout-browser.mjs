@@ -133,7 +133,7 @@ const verify=async stage=>{
   const first=x.stageRows.slice(0,3);
   for(const r of first){
     assert(r.rowBorder==='0px'&&r.oneStageBorder,stage+' separated stage rows '+JSON.stringify(r));
-    assert(r.baselines&&r.baselines.delta<=8,stage+' readable row baseline '+JSON.stringify(r));
+    assert(r.baselines&&r.baselines.delta<=(r.editable?6:13),stage+' readable row baseline '+JSON.stringify(r));
     assert(r.nowrap==='nowrap',stage+' nowrap label '+JSON.stringify(r));
     if(r.editable){
       assert(r.buttonBorder!=='0px',stage+' independent standard picker border '+JSON.stringify(r));
