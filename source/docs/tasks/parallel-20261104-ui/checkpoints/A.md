@@ -7,3 +7,9 @@
 - `Không phải trình` semantics: unit covers partyLevel nonrequired without rendering level. V6 browser fixture actually has nonrequired progressParty and non-nonrequired partyLevel; repaired stale test assertion, no source data change.
 - Pending: full Verify source job conclusion (possibly unrelated Firebase gate), baseline-before screenshot not reproduced on this work branch, independent commander integration gate. Do not call DONE until gate accepted.
 - Next: (1) inspect final Verify source conclusion; (2) record any remaining failure accurately; (3) send commander verified SHA, diff and test links, no merge/deploy.
+
+## Mốc phản hồi tổng chỉ huy (04/11/2026, sau audit)
+
+- **NEW TASK / IN_PROGRESS:** [PR #153, bình luận giao sửa](https://github.com/cavoixanh638/HopHDND-WebApp/pull/153#issuecomment-6620952313). [Verify source #41760550847](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760550847) kết luận **FAIL** tại `scripts/smoke-pages-browser.mjs:2620`: V3 choices-only QPPL so sánh `getComputedStyle(stage).outlineStyle==='solid'` với **row**. UI A đã cố ý chuyển focus outline từ row sang nút trạng thái riêng, cần đo computed của trigger thật trước khi thay oracle.
+- Source UI SHA `3a057bb1609e5434f9328e1b2d5ed530991be776` giữ nguyên. Các gate [V6 L1 #41760551214](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760551214), [V5 L3 #41760550820](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760550820) và [Firebase #41760550629](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760550629) vẫn PASS; source Verify chưa xanh.
+- Bước kế: (1) instrument `stageOutline/stateTriggerOutline/expanded/choices/aria` giữ oracle cũ để có log khách quan; (2) đổi oracle sang outline **nút đang mở** chỉ nếu computed chứng minh; (3) chạy lại Verify + V5/V6 trên đúng SHA mới, lưu log và bàn giao. Không sửa nhánh B, tracker, backend hoặc merge/deploy.
