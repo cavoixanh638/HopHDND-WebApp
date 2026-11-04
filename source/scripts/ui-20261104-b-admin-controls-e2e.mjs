@@ -441,12 +441,26 @@ async function runControlsE2E(admin,guest,url){
   const other=await startChrome(url,'admin-second');
   await other.until('typeof window.__pr95EmulatorGoogleAdminSignIn==="function"',
     'second admin sign in');
-  await other.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
-  await other.until('!!document.querySelector("nav.primary-section-switcher")',
-    'second admin authorized',30000);
-  await clickText(other,'nav.primary-section-switcher button',chosen);
-  await other.until('!!document.querySelector(".admin-list-rename-trigger")',
-    'second admin controls');
+  const secondPrincipal=await other.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
+  assert.ok(secondPrincipal?.uid&&secondPrincipal?.emailVerified&&
+    secondPrincipal.providerIds?.includes('google.com'),
+    'second browser must receive verified Google Auth Emulator identity');
+  // V2 profile, dataset epoch and auth listeners are asynchronous. Do not
+  // mistake a successful signInWithCredential for completed admin hydration.
+  try{
+    await other.until('document.querySelectorAll("nav.primary-section-switcher button").length===2',
+      'second admin verified profile, epoch and nav',65000);
+    await clickText(other,'nav.primary-section-switcher button',chosen);
+    await other.until('!!document.querySelector(".admin-list-rename-trigger")',
+      'second admin controls',30000);
+  }catch(error){
+    step('SECOND_ADMIN_READINESS_DIAGNOSTIC',{
+      principal:{uid:secondPrincipal.uid,providerIds:secondPrincipal.providerIds},
+      dom:await other.evalJs('({body:document.body?.textContent?.slice(0,1800),nav:document.querySelectorAll("nav.primary-section-switcher button").length,role:document.querySelector(".app-shell")?.className,alerts:[...document.querySelectorAll("[role=alert]")].map(e=>e.textContent.slice(0,200))})'),
+      serverProfileRevision:(await saved()).revision,
+      issue:String(error).slice(0,500)});
+    throw error;
+  }
   await pointer(admin,'.admin-list-rename-trigger');
   await admin.until('!!document.querySelector("#admin-list-title-input")',
     'first tab title baseline pinned');
