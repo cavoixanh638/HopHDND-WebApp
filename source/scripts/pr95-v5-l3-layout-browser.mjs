@@ -285,14 +285,14 @@ try{
     'doc.dataset.highlighted="true";'+
     'doc.style.setProperty("--member-highlight-bg","#FFF1AC");'+
     'doc.style.setProperty("--member-highlight-text","#714A12");'+
-    'return {memberBackground:getComputedStyle(member).backgroundColor,'+
-    'docBackground:getComputedStyle(doc).backgroundColor,'+
+    'return {memberButton:getComputedStyle(member.querySelector("button.cell-picker-trigger")).backgroundColor,'+
+    'docOuter:getComputedStyle(doc).borderTopWidth,'+
     'docButtonBorder:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).borderTopWidth,'+
-    'docButtonBackground:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).backgroundColor};})()');
-  assert(skin.memberBackground==='rgb(255, 241, 172)'&&
-    skin.docBackground==='rgb(255, 241, 172)'&&
-    skin.docButtonBorder==='0px'&&skin.docButtonBackground==='rgba(0, 0, 0, 0)',
-    'custom highlight must stay on member with one classification frame '+JSON.stringify(skin));
+    'docButton:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).backgroundColor};})()');
+  assert(skin.memberButton==='rgb(255, 241, 172)'&&
+    skin.docOuter==='0px'&&skin.docButtonBorder!=='0px'&&
+    skin.docButton==='rgb(255, 241, 172)',
+    'REV2 highlight is on actual independent buttons '+JSON.stringify(skin));
   await verify('list-1440-admin-custom-palette-highlight');
   await screenshot('pr95-v5-l3-list-admin-highlight.png');
   const cloud=network.filter(s=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(s));
