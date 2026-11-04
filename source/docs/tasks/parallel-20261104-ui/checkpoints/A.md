@@ -1,8 +1,9 @@
-# Checkpoint A — CI đang chạy đúng SHA (04/11/2026)
+# Checkpoint A — tablet fixture test repaired (04/11/2026)
 
 - Status: **TEST_PENDING**. Branch `ui/20261104-table-layout`; baseline `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`.
-- Code SHA đang kiểm: `68bc3be9d3f085f92d3903a1e11ad16ec517293a`. Draft PR QA: https://github.com/cavoixanh638/HopHDND-WebApp/pull/153 (không merge).
-- Thay đổi: `CompactGroupedValue.tsx`, `item-frame.css`; regression thêm `source/tests/ui-20261104-worker-a.test.tsx`; cập nhật Chrome oracle `source/scripts/pr95-v6-l1-browser.mjs`. Không sửa nguồn B/tracker/backend.
-- Unit và typecheck được các job xác nhận **PASS (từng bước)** đúng code SHA: [V6 L1 #41760082138](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082138), [V5 L3 #41760082107](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082107). **Chrome: đang chạy, chưa PASS**; build synthetic V5 L3: PASS trong job, chưa chốt toàn run. [Verify source #41760082109](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082109): typecheck PASS.
-- Chưa có screenshot, tọa độ x và nghiệm thu desktop/900/390 toàn bộ. Tuyệt đối không ghi DONE.
-- Bước kế: (1) đọc lỗi/pass cuối của Chrome run; (2) nếu lỗi, sửa nguồn/test và chạy lại đúng SHA mới; (3) cập nhật evidence, checkpoint, bàn giao tổng chỉ huy.
+- Latest code/test SHA `3a057bb1609e5434f9328e1b2d5ed530991be776`. Source UI last changed in `66d02ecf8c5aeabfb57a2e524a0536eb41220dc5` and `cfd54a374dfcce4ae3d81403cb6b3152148235ae`. Draft PR: https://github.com/cavoixanh638/HopHDND-WebApp/pull/153.
+- Previous exact tested SHA `68bc3be9d3f085f92d3903a1e11ad16ec517293a`: V5 grouped Chrome [#41760082107](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082107) PASS; V6 level/type Chrome [#41760082138](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082138) PASS. 0px status rail spread recorded; screenshots in workflow artifacts and links at `evidence/A/CI_AND_GEOMETRY.md`.
+- 900px extension SHA `2124989d01a4ecfba2b749fdb940d7928074c53b`: V6 [#41760253925](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760253925) **FAIL** due **test fixture assumption**, not measured geometry: test required a nonrequired *partyLevel* row, but fixture contains nonrequired *progressParty* with partyLevel BCH. Log confirmed 900px status-left spread 0px and gap 8px before assertion. Fixed assertion in `3a057bb...` to check suppression only when partyLevel truly nonrequired; synthetic unit A tests exact level case.
+- Latest SHA test status: typecheck/unit **NOT YET VERIFIED**, V5/V6 Chrome **NOT YET VERIFIED**; source verification earlier SHA unit PASS. Do not call DONE until new exact SHA PASS.
+- Bounded changes: `CompactGroupedValue.tsx`, `item-frame.css`, A tests/browser script/checkpoint/evidence. No source B, tracker, backend, merge or deploy.
+- Next: (1) monitor latest V5/V6 + source verification on exact SHA; (2) record 900px screenshots and test results; (3) deliver SHA/artifacts to commander or retain TEST_PENDING with missing gates.
