@@ -1499,3 +1499,111 @@
   .compact-stage-row .compact-stage-state:not([data-editable="true"]) {
   padding-left:9px;
 }
+
+/* UI 2026-11-04 / A — Metadata remains one quiet parenthesized text line.
+   Every member retains its own editor/highlight; no phantom punctuation for
+   absent fields and no floating type badge in read-only views. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:0;
+  min-width:0;max-width:100%;font-size:12px;line-height:1.5;
+  color:#607467;overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-meta-mark,
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-meta-separator{
+  flex:none;color:#607467;font-weight:400;white-space:pre;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-department{
+  display:inline-flex;align-items:baseline;flex:0 1 auto;
+  min-width:0;max-width:100%;min-height:0;font-weight:500;
+  font-size:inherit;line-height:inherit;overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-badge:not([data-editable="true"]){
+  display:inline;min-height:0;padding:0;border:0;border-radius:0;
+  background:transparent;color:inherit;font:inherit;line-height:inherit;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]{
+  margin-inline:2px;align-self:center;max-width:100%;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  .compact-document-department[data-editable="true"] :is(.compact-part,.cell-picker-trigger,input){
+  min-width:0;max-width:100%;box-sizing:border-box;
+}
+/* A single missing member does not create a fake '-' or empty parentheses.
+   A blank editable member is still a real CellPicker, not a plain caret. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  .compact-document-badge[data-editable="true"]{
+  display:inline-flex;flex:0 1 auto;min-width:0;
+}
+
+/* L03 shares ONE geometry across all three progress rows. The optional
+   party-level editor gets the middle column, not the first-row label's width.
+   Read-only caption spans two columns, leaving the status in the same x track. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages{
+  grid-template-columns:max-content max-content minmax(166px,1fr);
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+  grid-column:1 / -1;grid-template-columns:subgrid;column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row > .compact-stage-label{
+  grid-column:1 / 3;
+  align-self:start;min-width:0;white-space:nowrap;
+  font-weight:650;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row[data-level-editable="true"] > .compact-stage-label{
+  grid-column:1;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]{
+  grid-column:2;display:inline-flex;align-self:start;align-items:center;
+  gap:0;margin:0;min-width:max-content;white-space:nowrap;
+  padding-top:5px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]
+  button.cell-picker-trigger{
+  display:inline-flex!important;min-height:30px!important;box-sizing:border-box;
+  padding:4px 6px!important;border:1px solid #B7CBD6!important;
+  border-radius:7px!important;background:var(--hdnd-status-other-bg,#F2F6F9)!important;
+  color:var(--hdnd-status-other-text,#426274)!important;
+  align-items:center!important;gap:6px;white-space:nowrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]
+  button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border:1px solid #648CA3!important;
+  background:#E6F0F6!important;
+  outline:2px solid #356C8B!important;outline-offset:1px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-state{
+  grid-column:3;margin-left:0!important;min-width:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-state[data-editable="true"]
+  button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"]){
+  outline:2px solid #356C8B!important;outline-offset:1px;
+}
+/* Never substitute a row-wide hover/focus border for independent buttons. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(button.cell-picker-trigger:hover){
+  border-color:transparent;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
+  outline:0;
+}
+/* Container queries and phone rules must not collapse a row into one column:
+   narrow saved widths continue to scroll inside .compact-stages. */
+@media(max-width:620px){
+  :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+    grid-template-columns:subgrid;
+  }
+}
+@container(max-width:280px){
+  :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+    grid-template-columns:subgrid;
+  }
+}
