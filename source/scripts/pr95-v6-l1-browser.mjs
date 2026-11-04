@@ -573,10 +573,15 @@ try {
     ['metadata-none',false,false],['metadata-department',true,false],
     ['metadata-type',false,true],['metadata-both',true,true]]){
     await visit('view=popup&role='+role,900,800);
-    await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
-      'REV2 popup edit toggle '+role);
-    await evaluate('(()=>{const bs=[...document.querySelectorAll(".report-grid-actions button")];'+
-      'bs.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
+    if(role==='metadata-none'){
+      assert(await evaluate('![...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))'),
+        'REV2 no popup edit toggle without any granted source field');
+    }else{
+      await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
+        'REV2 popup edit toggle '+role);
+      await evaluate('(()=>{const bs=[...document.querySelectorAll(".report-grid-actions button")];'+
+        'bs.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
+    }
     await waitFor('!!document.querySelector(".report-detail-grid .compact-document-heading")',
       'REV2 popup metadata '+role);
     const state=await evaluate('(()=>{const h=document.querySelector(".report-detail-grid tbody tr:first-child .compact-document-heading");'+
