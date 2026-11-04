@@ -1607,3 +1607,247 @@
     grid-template-columns:subgrid;
   }
 }
+
+/* REV2 worker A — L01/L03 only. Earlier legacy frame/caret rules remain
+   in history for other views; selectors below are explicitly scoped to the
+   grouped projection and never mutate saved table/column widths. */
+
+/* L01: even ONE editable member selects one horizontal, two-source rail.
+   Read-only metadata continues to use the approved (Sở - Loại VB) notation. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]{
+  display:flex;flex-flow:row nowrap;align-items:center;gap:8px;
+  max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-inline:contain;scrollbar-width:thin;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge){
+  display:inline-flex;align-items:center;align-self:center;
+  box-sizing:border-box;flex:0 0 auto;max-width:min(72%,420px);
+  min-width:0;margin:0;overflow-wrap:break-word;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]{
+  min-width:92px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"] .compact-document-badge{
+  padding:0;border:0;border-radius:0;background:transparent;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  .compact-document-badge .pr95-v6-type-cell{
+  display:inline-flex;box-sizing:border-box;min-width:0;max-width:100%;
+  padding:0!important;border:0!important;border-radius:0;
+  background:transparent!important;color:inherit!important;outline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]
+  :is(button.cell-picker-trigger,input){
+  display:inline-flex!important;align-items:center;box-sizing:border-box;
+  min-height:34px!important;height:34px!important;min-width:0;max-width:100%;
+  padding:5px 9px!important;margin:0!important;
+  border:1.5px solid #B7CBD6!important;border-radius:7px!important;
+  background:#F2F6F9!important;color:#426274!important;
+  box-shadow:inset 0 1px 0 #ffffffd0!important;transform:none!important;
+  font-size:12px;line-height:1.35;text-align:left;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  .compact-document-badge[data-editable="true"] button.cell-picker-trigger{
+  background:var(--type-bg,#F1F5F9)!important;
+  border-color:var(--type-border,#94A3B8)!important;
+  color:var(--type-ink,#334155)!important;
+  font-weight:650;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]
+  :is(button.cell-picker-trigger,input):is(:hover,:focus-visible,[aria-expanded="true"]){
+  border-color:#648CA3!important;outline:2px solid #356d86!important;
+  outline-offset:1px;background:#E6F0F6!important;box-shadow:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  .compact-document-badge[data-editable="true"]
+  button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  background:var(--type-bg,#F1F5F9)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  .compact-document-badge[data-editable="true"] button.cell-picker-trigger::after{
+  content:"";display:block;flex:none;
+  width:5px;height:5px;border:0;
+  border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;
+  transform:rotate(45deg) translateY(-1px);margin-left:5px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-highlighted="true"]
+  :is(button.cell-picker-trigger,input){
+  background:var(--member-highlight-bg)!important;color:var(--member-highlight-text)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]
+  .compact-part{display:inline-flex;align-items:center;min-width:0;max-width:100%;}
+
+/* L03: an editable PARTY LEVEL chooses three tracks for the whole group;
+   a readonly level chooses two tracks, even if statuses may be editable. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]{
+  display:grid;gap:5px;min-width:0;max-width:100%;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="editable"]{
+  grid-template-columns:max-content 132px minmax(186px,1fr);
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="readonly"]{
+  grid-template-columns:max-content minmax(186px,1fr);
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row{
+  display:grid;grid-column:1/-1;grid-template-columns:subgrid;
+  gap:8px;min-width:0;width:100%;align-items:center;
+  padding:0;border:0;border-radius:0;background:transparent;
+  box-shadow:none;outline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-label{
+  grid-column:1;align-self:center;padding:0!important;margin:0;
+  font-weight:650;white-space:nowrap;color:#53695E;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-title{
+  display:inline-flex;align-items:baseline;gap:0;white-space:nowrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-title .compact-stage-level{
+  display:inline-flex;gap:0;margin-left:3px;
+  padding:0;background:transparent;border:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"]{
+  grid-column:2;align-self:center;display:flex;align-items:center;
+  width:132px;min-width:0;margin:0;padding:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state{
+  align-self:center;justify-self:stretch;display:flex;
+  min-width:0;width:100%;min-height:36px;box-sizing:border-box;
+  padding:0!important;border:0!important;border-radius:0;
+  background:transparent!important;box-shadow:none!important;
+  color:var(--workflow-text);align-items:center;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="editable"] .compact-stage-state{
+  grid-column:3!important;margin-left:0!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="readonly"] .compact-stage-state{
+  grid-column:2!important;margin-left:0!important;
+}
+/* Use ONE standard CellPicker chrome for level/status; no shaded caret rail.
+   Reserve a common 36px height and a fixed progress track for all 3 rows. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"]) .compact-part{
+  display:flex;align-items:stretch;min-width:0;width:100%;height:36px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"]) button.cell-picker-trigger{
+  display:flex!important;grid-template-columns:none!important;
+  justify-content:space-between!important;align-items:center!important;
+  gap:8px;position:relative;isolation:auto;
+  box-sizing:border-box;flex:1 1 auto;width:100%!important;min-width:0!important;max-width:100%!important;
+  min-height:36px!important;height:36px!important;
+  margin:0!important;padding:6px 9px!important;
+  border:1.5px solid #B7CBD6!important;border-radius:7px!important;
+  background:#F2F6F9!important;color:#426274!important;
+  box-shadow:inset 0 1px 0 #ffffffd0!important;
+  text-align:left;white-space:nowrap;transform:none!important;
+  font-weight:600;line-height:1.35;transition:none;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"]
+  button.cell-picker-trigger{
+  background:var(--workflow-bg)!important;
+  color:var(--workflow-text)!important;
+  border-color:var(--workflow-border)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"])
+  button.cell-picker-trigger .cell-picker-value-text{
+  display:block;position:static;grid-column:auto;
+  min-width:0;max-width:100%;overflow:hidden;
+  white-space:nowrap!important;text-overflow:ellipsis;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"])
+  button.cell-picker-trigger::before{
+  content:none!important;display:none!important;background:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"])
+  button.cell-picker-trigger:not(:disabled)::after{
+  content:"";display:block!important;grid-column:auto;
+  position:static;z-index:auto;flex:none;align-self:center;
+  width:6px;height:6px;margin:0 2px 2px auto!important;
+  border:0;border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;
+  border-radius:0;background:transparent!important;
+  transform:rotate(45deg)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"])
+  button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border-color:currentColor!important;
+  outline:2px solid #356d86!important;outline-offset:1px;
+  box-shadow:none!important;transform:none!important;
+}
+/* Workflow tone persists on the ACTUAL button on hover/open/focus. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"]
+  button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  background:var(--workflow-bg)!important;color:var(--workflow-text)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state[data-highlighted="true"]
+  button.cell-picker-trigger{
+  background:var(--member-highlight-bg)!important;color:var(--member-highlight-text)!important;
+}
+/* Read-only statuses are unframed source text and have NO fake cursor/caret. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"]){
+  min-height:36px;display:flex;align-items:center;padding:6px 0!important;
+  border:0!important;box-shadow:none!important;background:transparent!important;
+  color:var(--workflow-text);
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  .workflow-status-value{
+  border:0;background:transparent;box-shadow:none;
+}
+/* Legacy responsive single-column rules are deliberately superseded here. */
+@media(max-width:620px){
+  :is(.item-data-table,.report-detail-grid) tbody td
+    .compact-stages[data-rev2="true"] > .compact-stage-row{
+    grid-template-columns:subgrid!important;
+  }
+}
+@container(max-width:280px){
+  :is(.item-data-table,.report-detail-grid) tbody td
+    .compact-stages[data-rev2="true"] > .compact-stage-row{
+    grid-template-columns:subgrid!important;
+  }
+}
