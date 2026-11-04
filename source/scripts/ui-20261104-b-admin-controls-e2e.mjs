@@ -270,8 +270,10 @@ async function insert(tab,selector,value){
   await pointer(tab,selector);
   const focused=await tab.evalJs('document.activeElement===document.querySelector('+JSON.stringify(selector)+')');
   assert.ok(focused,'input did not receive real mouse focus: '+selector);
-  await tab.send('Input.dispatchKeyEvent',{type:'keyDown',key:'a',code:'KeyA',modifiers:2});
-  await tab.send('Input.dispatchKeyEvent',{type:'keyUp',key:'a',code:'KeyA',modifiers:2});
+  // Select the full existing value in the focused native input, then type via
+  // Chrome Input.insertText (not React synthetic change/DOM value mutation).
+  // CDP Ctrl+A is not deterministic in headless Linux without native keycodes.
+  assert.equal(await tab.evalJs('(()=>{const e=document.querySelector('+JSON.stringify(selector)+');e.select();return e.selectionStart===0&&e.selectionEnd===e.value.length;})()'),true);
   await tab.send('Input.insertText',{text:value});
   assert.equal(await tab.evalJs('document.querySelector('+JSON.stringify(selector)+').value'),value);
 }
