@@ -324,11 +324,20 @@ async function reloadList(tab,role){
   await tab.until('window.__uiBPreReloadMarker!=="old-document"&&document.readyState==="complete"',
     'fresh document after browser reload',30000);
   if(role==='admin'){
-    // Wait for the two real buttons, not the nav shell; Page.reload can
-    // briefly expose the old tree or an empty shell before Firebase Auth settles.
+    // A new test-origin document may start as an anonymous session; assert
+    // that no frontend role flag is substituted for a verified Emulator token.
+    await tab.until('typeof window.__pr95EmulatorGoogleAdminSignIn==="function" || '+
+      'document.querySelectorAll("nav.primary-section-switcher button").length===2',
+      'new-page verified Auth hook or admin navigation',30000);
+    const count=await tab.evalJs('document.querySelectorAll("nav.primary-section-switcher button").length');
+    if(count!==2){
+      const principal=await tab.evalJs('window.__pr95EmulatorGoogleAdminSignIn()');
+      assert.ok(principal?.uid&&principal?.emailVerified&&principal.providerIds?.includes('google.com'),
+        'real Auth Emulator admin sign-in after reload failed');
+      step('RELOAD_REAL_EMULATOR_ADMIN_REAUTH_PASS',{uid:principal.uid});
+    }
     await tab.until('document.querySelectorAll("nav.primary-section-switcher button").length===2',
-      'admin Auth and both real nav buttons survived reload',30000);
-    // Admin nav is (Báo cáo tổng hợp, Danh sách) and the title can change.
+      'verified admin nav after fresh document',30000);
     await pointer(tab,'nav.primary-section-switcher button:nth-child(2)');
   }else{
     await tab.until('!!document.querySelector(".item-data-region")&&'+
