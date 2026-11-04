@@ -1,7 +1,10 @@
-# Checkpoint B — 04/11/2026
+# Checkpoint B — bàn giao có điều kiện, 04/11/2026
 
-- Status: **IN_PROGRESS**; branch `ui/20261104-admin-controls`; HEAD ban đầu `6031ef55e53fc83c1ae93897359727d3740de43a` (chỉ thêm tài liệu điều phối); baseline code `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b` là tổ tiên trực tiếp, so sánh `ahead 1 / behind 0`.
-- Phạm vi: chỉ ItemList, ItemSummaryCards, admin-list-controls.css, App, QA preview nếu cần, tests/evidence B và checkpoint này; không sửa file A, tracker, backend hoặc source data.
-- Mốc khảo sát khởi động: đã đọc WORKER-ADMIN, README và source/AGENTS; đang đối chiếu đường đổi tên/ẩn-hiện C01–C03 và admin/Firebase CAS hiện có trước khi sửa.
-- Code SHA mới: **chưa có**. Tested SHA: **NOT RUN**. Screenshot/Chrome/Emulator: **NOT RUN** (mốc khảo sát).
-- Bước kế: (1) xác minh state và nguồn lưu chung App/preview; (2) thiết kế lối admin thấy ngay, giữ CAS/rollback; (3) kiểm thử đúng SHA rồi ghi bằng chứng.
+- **Status: TEST_PENDING** (không được ghi DONE khi thiếu typecheck/unit/Chrome/Emulator).
+- Branch: `ui/20261104-admin-controls`. Baseline code: `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`. Code SHA cuối: **`fca8f1d52d8bbc55f64ce9362c8970c3035bb11b`**; các commit sau chỉ checkpoint/evidence.
+- Commit mã: `e3a7ed49947c8bf320532e111d28e43d521787bb` (ItemList), `953612984a4ff3d482e42ac54cc57ab046705110` (responsive CSS), `fca8f1d52d8bbc55f64ce9362c8970c3035bb11b` (label chính xác).
+- Đã làm: nút đổi tên cạnh tiêu đề; form validation với baseline lúc mở, thông báo lỗi khi sai; C00 luôn có và C01–C03 hiện checkbox độc lập với nhãn khớp card; bố cục responsive. Xóa `details` khó thấy, **không** thêm cấu hình/nguồn lưu khác. Giữ `applyViewerLayout`, Firebase writer/CAS/rollback/conflict, đường demo RAM, quyền admin/guest. App/preview không phải sửa.
+- Static inspection **12/12 PASS** đúng code SHA. Bằng chứng: [evidence/B/STATIC_INSPECTION.md](../evidence/B/STATIC_INSPECTION.md).
+- **Typecheck/unit/build: NOT RUN**; **Emulator/Chrome/guest/admin/reload/denied/offline/CAS interaction/screenshot 1440/900/390: NOT RUN**; **CI run/status: không có trên code SHA**. Container không DNS tới github.com để clone; GitHub workflow push hiện không chạy trên nhánh B. Đây là thiếu gate nghiệm thu, không suy diễn PASS.
+- Bàn giao tổng chỉ huy: [code SHA](https://github.com/cavoixanh638/HopHDND-WebApp/commit/fca8f1d52d8bbc55f64ce9362c8970c3035bb11b), [diff baseline..code](https://github.com/cavoixanh638/HopHDND-WebApp/compare/d779dde0b1e42cd2b2bb511826cc53d0ebfa345b...fca8f1d52d8bbc55f64ce9362c8970c3035bb11b), evidence trên. Chỉ thay file nguồn B `ItemList.tsx`, `admin-list-controls.css` và tài liệu checkpoint/evidence B; không sửa file luồng A/tracker/backend. **Không merge/deploy**.
+- Bước kế (tối đa 3): (1) tổng chỉ huy chạy typecheck/unit/CAS trên SHA tích hợp; (2) kiểm Chrome/Emulator admin/guest/lưu/reload/mạng/conflict và screenshot đủ viewport; (3) nếu lỗi trả lại worker B kèm SHA/log, nếu PASS mới nghiệm thu.
