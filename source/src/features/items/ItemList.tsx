@@ -666,7 +666,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset>
-      </div>
+      </div>}
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
