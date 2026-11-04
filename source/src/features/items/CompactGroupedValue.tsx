@@ -41,49 +41,52 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    const showDepartment=hasDepartment||(includes('department')&&editable('department'));
    const showType=hasType||(includes('type')&&editable('type'));
    const hasSourceMetadata=hasDepartment||hasType;
+   const metadataEditable=(includes('department')&&editable('department'))||
+     (includes('type')&&editable('type'));
    return <div className="compact-document-group">
      {includes('content')&&<div className="compact-document-content"
        {...memberAttributes('content')}>{shown('content')}</div>}
      {(showDepartment||showType)&&<div className="compact-document-heading"
-       data-source-metadata={hasSourceMetadata?'true':'false'}>
-       {hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">(</span>}
+       data-source-metadata={hasSourceMetadata?'true':'false'}
+       data-metadata-mode={metadataEditable?'editable':'readonly'}>
+       {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">(</span>}
        {showDepartment&&<span className="compact-document-department"
          data-editable={editable('department')?'true':undefined}
          {...memberAttributes('department')}>{shown('department')}</span>}
-       {hasDepartment&&hasType&&<span className="compact-document-meta-separator" aria-hidden="true"> - </span>}
+       {!metadataEditable&&hasDepartment&&hasType&&<span className="compact-document-meta-separator" aria-hidden="true"> - </span>}
        {showType&&<span className="compact-document-badge" data-kind={compactTypeTone(item.type)}
          data-editable={editable('type')?'true':undefined}
          {...memberAttributes('type')}>{shown('type')}</span>}
-       {hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">)</span>}
+       {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">)</span>}
      </div>}
    </div>;
  }
  if(pair.variant==='partyTogether'){
+   const levelEditable=includes('partyLevel')&&editable('partyLevel');
+   // All rows use the SAME track geometry, based exclusively on the
+   // party-level permission. Status grants never shift their sibling rails.
    const stages:{key:TextField;label:string}[]=[
      {key:'progressParty',label:'Thành ủy'},
-     {key:'progressBuild',label:'Xây dựng NQ'},
-     {key:'progressCouncil',label:'Ban hành NQ'}
+     {key:'progressBuild',label:'Trình Xây dựng NQ'},
+     {key:'progressCouncil',label:'Trình ban hành NQ'}
    ];
-   return <div className="compact-stages">
+   return <div className="compact-stages" data-rev2="true"
+     data-level-layout={levelEditable?'editable':'readonly'}>
      {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>{
        const isParty=stage.key==='progressParty';
        const levelIncluded=isParty&&includes('partyLevel');
-       const levelEditable=levelIncluded&&editable('partyLevel');
-       // Non-required is already expressed by the source progress status.
-       // Hide the REDUNDANT read-only party level without changing either field.
        const levelNotRequired=levelIncluded&&!levelEditable&&
          isNotRequiredStatus('partyLevel',item.partyLevel);
        const showLevel=levelIncluded&&!levelNotRequired&&
          (!!item.partyLevel||levelEditable);
-       const stageTone=levelNotRequired?'neutral':
-         compactStageVisualTone(item[stage.key],tone(stage.key));
+       const stageTone=compactStageVisualTone(item[stage.key],tone(stage.key));
        return <div className="compact-stage-row" key={stage.key}
          data-stage-field={stage.key}
-         data-level-editable={levelEditable?'true':undefined}
+         data-level-editable={isParty&&levelEditable?'true':undefined}
          data-level-not-required={levelNotRequired?'true':undefined}
          data-progress-tone={stageTone}>
          <span className="compact-stage-label">
-           <span className="compact-stage-title">{stage.label}{showLevel&&levelEditable?' ':null}
+           <span className="compact-stage-title">{stage.label}
              {showLevel&&!levelEditable&&<>
                {' '}<span className="compact-stage-level" {...memberAttributes('partyLevel')}>
                  <span className="compact-stage-level-open" aria-hidden="true">(</span>
@@ -95,9 +98,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
          </span>
          {showLevel&&levelEditable&&<span className="compact-stage-level"
            data-level-editor="true" {...memberAttributes('partyLevel')}>
-           <span className="compact-stage-level-open" aria-hidden="true">(</span>
            {shown('partyLevel')}
-           <span className="compact-stage-level-close" aria-hidden="true">)</span>
          </span>}
          {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={stageTone}
            data-editable={editable(stage.key)?'true':undefined}
