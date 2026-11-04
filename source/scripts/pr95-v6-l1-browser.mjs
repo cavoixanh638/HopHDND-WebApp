@@ -419,6 +419,14 @@ try {
   await screenshotV6('pr95-v6-l1-saved-narrow-level-1280.png');
   console.log('PR95_V6_L1_NARROW_LEVEL_PASS '+JSON.stringify(narrowScroll));
 
+  // Worker A: tablet-width geometry and read-only nonrequired caption.
+  await visit('view=list&role=readonly',900,800);
+  const tabletLevels=await inspectLevels('.item-data-table','list-readonly-900');
+  assert(tabletLevels.some(x=>x.notRequired&&x.level===''),
+    'tablet: readonly Không phải trình must not display redundant level');
+  await assertStageHitTargets('.item-data-table','list-readonly-900');
+  await screenshotV6('worker-a-list-readonly-900.png');
+
   await visit('view=list&role=admin',390,844);
   await inspectLevels('.item-data-table','list-mobile-390');
   await assertStageHitTargets('.item-data-table','list-mobile-390');
@@ -435,6 +443,11 @@ try {
   await inspectLevels('.report-detail-grid','popup-readonly-1440');
   await assertStageHitTargets('.report-detail-grid','popup-readonly-1440');
   await screenshotV6('pr95-v6-l1-popup-readonly-1440.png');
+
+  await visit('view=popup&role=readonly',900,800);
+  await inspectLevels('.report-detail-grid','popup-readonly-900');
+  await assertStageHitTargets('.report-detail-grid','popup-readonly-900');
+  await screenshotV6('worker-a-popup-readonly-900.png');
 
   await visit('view=popup&role=admin',1440,900);
   await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
