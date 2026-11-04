@@ -14,7 +14,7 @@
 
 ## REV2 checkpoint mới — 04/11/2026 ~15:48 ICT
 
-- **REV2 status: A_IN_PROGRESS / SITE_PENDING.** Entrypoint [REV2-COMMANDER](../REV2-COMMANDER.md), requirements [REV2-REQUIREMENTS](../REV2-REQUIREMENTS.md). Đợt trước code/tested SHA vẫn `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` PASS 9/9, **không coi là REV2 PASS**.
+- **REV2 status: A_CODE_WIP / CI_FAIL / SITE_PENDING.** Entrypoint [REV2-COMMANDER](../REV2-COMMANDER.md), requirements [REV2-REQUIREMENTS](../REV2-REQUIREMENTS.md). Đợt trước code/tested SHA vẫn `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` PASS 9/9, **không coi là REV2 PASS**.
 - **A REV2:** HEAD `d3eb30b70491a8f130e1d9095af50b384df989a0`, compare old...HEAD ahead 1 (checkpoint only), behind 0; checkpoint đã `IN_PROGRESS — REV2`; REV2 test/CI/geometry NOT RUN, owner A. Source A không sửa tại tổng chỉ huy khi A đang làm.
 - **B:** DONE cũ, không sửa, không yêu cầu kiểm thử lại trừ gate tích hợp tự động. B source/test giữ nguyên; không mở luồng B.
 - **Coordinator:** HEAD `c4e7e47df5172fddb9857c984ab2cff33b5f994a` chỉ thêm docs REV2 so với `96526a7b`; chưa tích hợp code REV2 hoặc dựng package mới. Tracker REV2 đã mở; chờ delta A sau `9a78244e`. Sau A DONE đối chiếu diff/CI, chỉ áp dụng delta A, giữ history B, chạy full gate exact SHA, đóng gói và đo SHA256.
@@ -22,3 +22,5 @@
 - **Next (max 3):** (1) theo dõi A commit/checkpoint/CI và giao thiếu bằng chứng nếu cần; (2) chỉ tích hợp delta REV2 A đã PASS rồi chạy CI và package; (3) Site private nếu có tool, nếu không giữ SITE_PENDING và handoff.
 
 - **Mốc REV2 mới 04/11 ~15:51 ICT:** [PR #157 DRAFT QA-only](https://github.com/cavoixanh638/HopHDND-WebApp/pull/157) mở sau checkpoint A `d3eb30b7`; commit mới chỉ docs, **chưa nghiệm thu code REV2**. Tiếp tục đợi worker A push source/test, không động B hoặc source A.
+
+- **REV2 QA M2 ~15:52 ICT:** A code HEAD `2305e81f0ca6089eb54661fe04564bc8c67ffd41`, change `CompactGroupedValue.tsx` (+17/-16), no CSS/new tests/evidence yet. [V5 L3 #41802770237](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770237) FAIL old caption assertion; [V6 L1 #41802770194](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770194) FAIL old editable-bracket assertion; [Verify #41802770206](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770206) FAIL unit (typecheck PASS). [PR #157 comment](https://github.com/cavoixanh638/HopHDND-WebApp/pull/157#issuecomment-6626734295) instructs worker A replace oracle with strong REV2 assertions or handoff shared test delta. Waiting A CSS/new tests/Chrome/screenshot+geometry and checkpoint DONE. **No merge / no package / SITE_PENDING.**

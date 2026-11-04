@@ -54,11 +54,11 @@ Xem [báo cáo tích hợp](INTEGRATION_2026-11-04.md) và [checkpoint tổng ch
 
 ## REV2 — L01/L03 (đợt yêu cầu mới 04/11/2026, tổng chỉ huy)
 
-**Trạng thái REV2: A_IN_PROGRESS / WAITING_FOR_A_CODE.** Đã đọc [REV2-COMMANDER](REV2-COMMANDER.md), [REV2-REQUIREMENTS](REV2-REQUIREMENTS.md), [REV2-WORKER-A](REV2-WORKER-A.md). *Không kế thừa PASS đợt trước làm PASS REV2.*
+**Trạng thái REV2: A_IN_PROGRESS / CODE_WIP / CI_FAIL (legacy-unit oracle).** Đã đọc [REV2-COMMANDER](REV2-COMMANDER.md), [REV2-REQUIREMENTS](REV2-REQUIREMENTS.md), [REV2-WORKER-A](REV2-WORKER-A.md). *Không kế thừa PASS đợt trước làm PASS REV2.*
 
 | Gate REV2 mới | Owner | Trạng thái | HEAD/test SHA/bằng chứng | Còn thiếu |
 |---|---|---|---|---|
-| L01 cả hai readonly giữ `(Sở - Loại VB)`, không thừa dấu | A | NOT_RUN | A HEAD `d3eb30b70491a8f130e1d9095af50b384df989a0`, chỉ checkpoint REV2, chưa có code | Code/4 permission combinations, Chrome list/popup |
+| L01 cả hai readonly giữ `(Sở - Loại VB)`, không thừa dấu | A | NOT_RUN | A code HEAD `2305e81f0ca6089eb54661fe04564bc8c67ffd41`; JSX delta first, CSS/test pending; unit CI FAIL | Code/4 permission combinations, Chrome list/popup |
 | L01 ít nhất một editable: 2 ô cùng hàng, không `()`/`-`, readonly field không giả dropdown | A | NOT_RUN | Same old A HEAD; no REV2 tested SHA | Code, quyền hỗn hợp, hover/focus, dữ liệu thiếu/dài |
 | L01 Loại VB hover/focus/open giống Sở, giữ màu/highlight/lease | A | NOT_RUN | Chưa có ảnh/số đo REV2 | Chrome pointer/keyboard/Escape, palette |
 | L03 cấp trình editable: 3 track, dropdown giống Lãnh đạo/Phòng/CV, 3 status cùng trục, màu nền/chữ | A | NOT_RUN | Chưa có code/CI REV2 | Chrome 1440/900/390, list/popup, palette, narrow |
@@ -71,3 +71,5 @@ Xem [báo cáo tích hợp](INTEGRATION_2026-11-04.md) và [checkpoint tổng ch
 **Mốc theo dõi đầu 04/11/2026 ~15:48 ICT:** Compare A HEAD `9a78244e` vs accepted A HEAD `9a78244e` = ahead 0/behind 0; A checkpoint đã `IN_PROGRESS — REV2` tại `d3eb30b7` (docs-only), chưa có test/screenshot REV2. Compare coordination HEAD vs `96526a7b` chỉ thêm ba file tài liệu REV2. B worker DONE, không mở lại. Chỉ nghiệm thu A khi có commit mới + checkpoint DONE REV2, exact-SHA CI và ảnh/số đo; không tích hợp cũ lần nữa.
 
 - **REV2 tiến triển 04/11/2026 ~15:51 ICT:** A cập nhật checkpoint `IN_PROGRESS — REV2` qua commit docs-only `d3eb30b70491a8f130e1d9095af50b384df989a0`; compare old accepted...HEAD chỉ `checkpoints/A.md`, code/test mới NOT RUN. Tổng chỉ huy mở [draft QA-only PR #157](https://github.com/cavoixanh638/HopHDND-WebApp/pull/157) (không merge) để theo dõi CI khi A push. Trạng thái nhận bàn giao vẫn **WAITING_FOR_A_CODE**; B giữ DONE.
+
+- **REV2 mốc code đầu tiên 04/11/2026 ~15:52 ICT:** A HEAD `2305e81f0ca6089eb54661fe04564bc8c67ffd41`, diff old accepted chỉ checkpoint A và `CompactGroupedValue.tsx` (+17/-16). [V5 L3 #41802770237](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770237) FAIL ở oracle nhãn cũ `Ban hành NQ` vs REV2 `Trình ban hành NQ`; [V6 L1 #41802770194](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770194) FAIL bốn case đòi bracket trên level editable trong khi REV2 bỏ bracket; [Verify source #41802770206](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41802770206) FAIL unit, typecheck PASS. **KHÔNG nghiệm thu**; worker A còn CSS, test mới, CI full và ảnh/số đo. Commander đã ghi nguyên nhân/gate ở [PR #157](https://github.com/cavoixanh638/HopHDND-WebApp/pull/157#issuecomment-6626734295), không tự sửa mã A khi worker đang ghi.
