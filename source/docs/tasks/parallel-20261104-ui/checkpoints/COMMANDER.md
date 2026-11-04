@@ -11,3 +11,12 @@
 - **Next max 3:** (1) mở Sites với quyền owner trong môi trường hỗ trợ và xác minh owner-only; (2) đưa đúng HTML file hash trên lên Site riêng tư rồi xác minh deployment `succeeded`, version/URL và thao tác admin/guest; (3) cập nhật tracker/checkpoint/báo cáo DONE khi có bằng chứng thực tế, không tự đánh dấu.
 
 - **Đối chiếu lại 04/11/2026 ~14:24 ICT:** HEAD A/B/coordination không đổi; compare `c5ad9e7...1265b768` chỉ thay 3 file tài liệu. [V6 L3 docs-only run #41773822188](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773822188) attempt 1 FAIL Chrome CDP unavailable trước assertion, tổng chỉ huy rerun failed jobs; attempt 2 **SUCCESS đúng docs-only SHA**. Các workflow applicable khác trên docs-only HEAD SUCCESS; pinned code/test SHA `c5ad9e7` vẫn 9/9 PASS. **Site tiếp tục HOLD**, không merge/deploy production.
+
+## REV2 checkpoint mới — 04/11/2026 ~15:48 ICT
+
+- **REV2 status: WAITING_FOR_A / SITE_PENDING.** Entrypoint [REV2-COMMANDER](../REV2-COMMANDER.md), requirements [REV2-REQUIREMENTS](../REV2-REQUIREMENTS.md). Đợt trước code/tested SHA vẫn `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` PASS 9/9, **không coi là REV2 PASS**.
+- **A REV2:** HEAD `9a78244ee09df782a9835fffae181249e8fc1371` = accepted old A SHA; compare old...HEAD ahead 0/behind 0. A checkpoint `DONE` đợt trước, chưa nhận nhiệm vụ REV2; REV2 test/CI/geometry NOT RUN, owner A. Source A không sửa tại tổng chỉ huy khi A đang làm.
+- **B:** DONE cũ, không sửa, không yêu cầu kiểm thử lại trừ gate tích hợp tự động. B source/test giữ nguyên; không mở luồng B.
+- **Coordinator:** HEAD `c4e7e47df5172fddb9857c984ab2cff33b5f994a` chỉ thêm docs REV2 so với `96526a7b`; chưa tích hợp code REV2 hoặc dựng package mới. Tracker REV2 đã mở; chờ delta A sau `9a78244e`. Sau A DONE đối chiếu diff/CI, chỉ áp dụng delta A, giữ history B, chạy full gate exact SHA, đóng gói và đo SHA256.
+- **SITE_PENDING**: phiên GitHub connector hiện không có Sites action để verify owner-only/deployment/version/URL. Không deploy Firebase production, GitHub Pages production hoặc merge main.
+- **Next (max 3):** (1) theo dõi A commit/checkpoint/CI và giao thiếu bằng chứng nếu cần; (2) chỉ tích hợp delta REV2 A đã PASS rồi chạy CI và package; (3) Site private nếu có tool, nếu không giữ SITE_PENDING và handoff.

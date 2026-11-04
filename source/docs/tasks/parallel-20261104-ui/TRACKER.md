@@ -51,3 +51,21 @@ Xem [báo cáo tích hợp](INTEGRATION_2026-11-04.md) và [checkpoint tổng ch
 - PR [#155](https://github.com/cavoixanh638/HopHDND-WebApp/pull/155) vẫn **DRAFT/open**, không merge main. B/A vẫn DONE, không cần bổ sung code.
 - CI trên pinned source+test SHA vẫn **9/9 applicable SUCCESS**. Tại docs-only SHA `1265b768`, [V6 L3 #41773822188](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773822188) attempt 1 FAIL *Chrome CDP unavailable* trước UI asserts; commander đã rerun failed jobs, **attempt 2 SUCCESS cùng SHA**, không đổi source/test/oracle. 8 workflow applicable còn lại trên docs-only SHA cũng SUCCESS; 3 workflow scope-limited SKIPPED, không tính PASS.
 - **Trạng thái không đổi: CODE/INTEGRATION PASS — PRIVATE SITE PENDING.** Không có connector/action Sites trong phiên; không chứng minh owner-only, version, URL hoặc deployment `succeeded`. Tránh push mã/commit vô nghĩa; Site chỉ được cập nhật trong môi trường có quyền.
+
+## REV2 — L01/L03 (đợt yêu cầu mới 04/11/2026, tổng chỉ huy)
+
+**Trạng thái REV2: A_NOT_STARTED / WAITING_FOR_A.** Đã đọc [REV2-COMMANDER](REV2-COMMANDER.md), [REV2-REQUIREMENTS](REV2-REQUIREMENTS.md), [REV2-WORKER-A](REV2-WORKER-A.md). *Không kế thừa PASS đợt trước làm PASS REV2.*
+
+| Gate REV2 mới | Owner | Trạng thái | HEAD/test SHA/bằng chứng | Còn thiếu |
+|---|---|---|---|---|
+| L01 cả hai readonly giữ `(Sở - Loại VB)`, không thừa dấu | A | NOT_RUN | A HEAD `9a78244ee09df782a9835fffae181249e8fc1371`, chưa có delta REV2 | Code/4 permission combinations, Chrome list/popup |
+| L01 ít nhất một editable: 2 ô cùng hàng, không `()`/`-`, readonly field không giả dropdown | A | NOT_RUN | Same old A HEAD; no REV2 tested SHA | Code, quyền hỗn hợp, hover/focus, dữ liệu thiếu/dài |
+| L01 Loại VB hover/focus/open giống Sở, giữ màu/highlight/lease | A | NOT_RUN | Chưa có ảnh/số đo REV2 | Chrome pointer/keyboard/Escape, palette |
+| L03 cấp trình editable: 3 track, dropdown giống Lãnh đạo/Phòng/CV, 3 status cùng trục, màu nền/chữ | A | NOT_RUN | Chưa có code/CI REV2 | Chrome 1440/900/390, list/popup, palette, narrow |
+| L03 cấp trình readonly: 2 track, data-driven BCH/BTV TU; `Không phải trình`, trạng thái sửa/chỉ đọc hỗn hợp | A | NOT_RUN | Chưa có code/CI REV2 | Matrix mixed perms, no false affordances |
+| L03 3 trạng thái cùng left/width/height, không đổi độ rộng cột đã lưu | A | NOT_RUN | Chưa đo bounding rect cho REV2 | Screenshot/geometry đúng SHA |
+| Nghiệm thu/tích hợp **delta mới A sau `9a78244e`**, giữ B PASS | Commander | BLOCKED (A pending) | Coordination code SHA cũ `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`; coordination task-doc HEAD `c4e7e47df5172fddb9857c984ab2cff33b5f994a` | A DONE + diff/CI đúng tested SHA |
+| CI, HTML QA package SHA256 của bản tích hợp REV2 | Commander | NOT_RUN | Chưa có REV2 code SHA; CI 9/9 trước REV2 chỉ là regression baseline | Merge delta A, exact-SHA typecheck/unit/Chrome/Emulator, html hash |
+| ChatGPT Site riêng tư `appgprj_6ae93f17c2e48191815caef8a642fa14` | Commander | **SITE_PENDING** | Không có tool/action Sites trong phiên, owner-only/version/URL chưa xác minh | Chỉ deploy private khi có tool/quyền; không merge main/production |
+
+**Mốc theo dõi đầu 04/11/2026 ~15:48 ICT:** Compare A HEAD `9a78244e` vs accepted A HEAD `9a78244e` = ahead 0/behind 0; A checkpoint đang DONE *đợt cũ*, chưa có `IN_PROGRESS — REV2`, chưa có test/screenshot REV2. Compare coordination HEAD vs `96526a7b` chỉ thêm ba file tài liệu REV2. B worker DONE, không mở lại. Chỉ nghiệm thu A khi có commit mới + checkpoint DONE REV2, exact-SHA CI và ảnh/số đo; không tích hợp cũ lần nữa.
