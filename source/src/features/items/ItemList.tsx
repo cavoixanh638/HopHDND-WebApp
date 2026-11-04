@@ -617,9 +617,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
         showFilterFooters={false}/>
-      <div className="admin-list-heading">
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
         <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
-        {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<button type="button"
+        <button type="button"
           className="button ghost admin-list-rename-trigger"
           aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
           disabled={!canEditListSettings||viewSaving}
@@ -629,8 +629,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
             setTitleEditorOpen(true);setTitleValidationError('');}}}>
           {titleEditorOpen?'Đóng sửa tên':'Đổi tên danh sách'}
-        </button>}
-      </div>
+        </button>
+      </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div className="admin-list-controls"
         aria-label="Tùy chọn quản trị danh sách">
         {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
