@@ -566,7 +566,7 @@ try{
       !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
       !!doc?.querySelector('.compact-document-group')&&
       stages?.querySelectorAll('.compact-stage-row').length===3&&
-      text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
+      text.includes('Thành ủy')&&text.includes('Trình Xây dựng NQ')&&text.includes('Trình ban hành NQ')&&
       !document.querySelector('.source-column-visibility button'),
       headings,stages:text.slice(0,180),toolbar:!!search,stt:!!stt};
   })()`);
@@ -594,9 +594,9 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgb(255, 241, 243)'&&
-      colors[1].background==='rgb(255, 248, 233)'&&
-      colors[2].background==='rgb(238, 248, 241)'&&
+      colors[0].background==='rgba(0, 0, 0, 0)'&&
+      colors[1].background==='rgba(0, 0, 0, 0)'&&
+      colors[2].background==='rgba(0, 0, 0, 0)'&&
       colors[0].color==='rgb(177, 64, 82)'&&
       colors[1].color==='rgb(128, 92, 34)'&&
       colors[2].color==='rgb(52, 110, 72)'&&
@@ -2108,8 +2108,8 @@ try{
       !!kind&&!!department&&!!doc?.querySelector('.compact-document-content')&&
       kind.textContent?.includes('QPPL')&&department.textContent?.includes('Sở mẫu A')&&
       stages?.querySelectorAll('.compact-stage-row').length===3&&
-      labels.some(x=>x.includes('Thành ủy'))&&labels.some(x=>x.includes('Xây dựng NQ'))&&
-      labels.some(x=>x.includes('Ban hành NQ'))&&
+      labels.some(x=>x.includes('Thành ủy'))&&labels.some(x=>x.includes('Trình Xây dựng NQ'))&&
+      labels.some(x=>x.includes('Trình ban hành NQ'))&&
       team?.textContent?.includes('Phòng mẫu 1')&&
       !table.querySelector('.editable-cell')&&
       !!document.querySelector('.compact-columns-menu'),
@@ -2282,9 +2282,9 @@ try{
     const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
     const arrow=getComputedStyle(button,'::after');
     return {ok:rs.borderTopWidth==='0px'&&rs.backgroundColor==='rgba(0, 0, 0, 0)'&&
-      vs.backgroundColor!=='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&
-      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
-      bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
+      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&
+      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth!=='0px'&&
+      bs.transform==='none'&&bs.display==='flex'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
       level!==button&&level.getAttribute('aria-haspopup')==='dialog',
       rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
@@ -2314,18 +2314,18 @@ try{
       const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
       const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
       const cols=style.gridTemplateColumns.split(' ').map(parseFloat);
-      const track=cols.at(-1);
-      const caretX=b.right-parseFloat(style.paddingRight)-track/2;
+      const track=0;
+      const caretX=b.right;
       const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
       const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
-      return {ok:style.display==='grid'&&cols.length===2&&Math.abs(track-22)<1&&
-        b.height>=37.9&&Math.abs(b.width-s.width)<1&&
+      return {ok:style.display==='flex'&&style.borderTopWidth!=='0px'&&
+        b.height>=34&&b.height<=38&&Math.abs(b.width-s.width)<1&&
         b.left>=frame.left-1&&b.right<=frame.right+1&&
-        style.borderTopWidth==='0px'&&style.boxShadow==='none'&&
+        style.borderTopWidth!=='0px'&&
         style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
         dot.content==='none'&&dot.display==='none'&&
-        rail.content==='""'&&parseFloat(rail.width)>=33&&
-        arrow.content==='""'&&arrow.gridColumnStart==='2'&&
+        rail.content==='none'&&
+        arrow.content==='""'&&arrow.display==='block'&&
         hit(leftX)&&hit(rightX),
         stage:row.dataset.stageField,caretX,leftX,rightX,midY,
         hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
@@ -2427,10 +2427,10 @@ try{
       if(!button)return {ok:false,stage:row.dataset.stageField};
       const b=button.getBoundingClientRect(),frame=row.getBoundingClientRect();
       const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
-      const track=parseFloat(style.gridTemplateColumns.split(' ').at(-1));
-      return {stage:row.dataset.stageField,caret:b.right-parseFloat(style.paddingRight)-track/2,
-        ok:b.height>=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
-          Math.abs(track-22)<1&&dot.content==='none'&&style.display==='grid',
+      const track=0;
+      return {stage:row.dataset.stageField,caret:b.right,
+        ok:b.height>=34&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+          style.borderTopWidth!=='0px'&&dot.content==='none'&&style.display==='flex',
         width:b.width,height:b.height,frameWidth:frame.width,track};
     });
     return {ok:metrics.length===3&&metrics.every(x=>x.ok)&&
@@ -2447,11 +2447,12 @@ try{
     'V4 saved narrow-column status editors missing');
   const v4Narrow=await evaluate(`(()=>{
     const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const stageScroll=rows[0]?.closest('.compact-stages');if(stageScroll&&stageScroll.scrollWidth>stageScroll.clientWidth)stageScroll.scrollLeft=stageScroll.scrollWidth-stageScroll.clientWidth;
     const data=rows.map(row=>{
       const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
       const frame=row.getBoundingClientRect();
       return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
-        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=38};
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=34&&b.height<=38};
     });
     return {ok:data.length===3&&data.every(x=>x.ok)&&
       Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
@@ -2472,8 +2473,8 @@ try{
     const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
       arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
-      b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
-      getComputedStyle(other.querySelector('.compact-stage-state')).backgroundColor==='rgb(255, 241, 243)',
+      b.borderTopWidth!=='0px'&&getComputedStyle(button,'::before').content==='none'&&
+      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 241, 243)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);
@@ -4127,7 +4128,7 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
-  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='grid'&&br.height>=38&&st.borderTopWidth==='0px'&&st.boxShadow==='none'&&dot.content==='none'&&arrow.gridColumnStart==='2'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=34&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
   if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
   const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
