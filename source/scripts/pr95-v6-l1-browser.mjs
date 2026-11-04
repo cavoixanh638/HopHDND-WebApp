@@ -216,8 +216,9 @@ const inspectLevels=async(rootSelector,label)=>{
       'REV2 no outer frame or shaded caret rail '+label+' '+JSON.stringify(row));
     // Read-only long source text may wrap to >36px; only dropdowns are
     // required to share height. All VALUE TRACKS still share left + width.
-    assert(row.stateAria.every(x=>x!==null)||row.stateHeightSpread>=0,
-      'REV2 readonly status text may have natural height');
+    assert(row.stateAria.every(x=>x!==null)?
+      row.stateHeightSpread<=2:row.stateRect.every(x=>x.height>=34),
+      'REV2 all editable states same height; readonly content may wrap '+label+' '+JSON.stringify(row));
     assert(row.buttonRect.every(x=>x.height>=34&&x.height<=38)&&
       row.paints.every(x=>x.background!=='rgba(0, 0, 0, 0)'&&x.border!=='0px'),
       'REV2 actual colored standard button '+label+' '+JSON.stringify(row));
