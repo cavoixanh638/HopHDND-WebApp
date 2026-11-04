@@ -39,10 +39,10 @@ describe('UI V6 L1 type palette/field semantics',()=>{
     expect(cellPickerCanClear('partyLevel',['BCH','BTV TU','TTTU'])).toBe(false);
   });
 });
-describe('UI V6 L1 party-level brackets',()=>{
+describe('UI V6 L1 party-level source and REV2 edit/readonly layouts',()=>{
   it.each([['BCH','BCH'],['BTV TU','BTV TU'],['TTTU','TTTU'],
     ['Ban Chấp hành Thành ủy','Ban Chấp hành Thành ủy']])(
-    'retains raw source and explicit gap/independent level picker for %s',(raw)=>{
+    'retains raw source with independent UNBRACKETED picker for %s',(raw)=>{
       const sample={...item,partyLevel:raw};
       const html=renderToStaticMarkup(<CompactGroupedValue item={sample}
         pair={partyPair} tone={()=>undefined}
@@ -50,10 +50,12 @@ describe('UI V6 L1 party-level brackets',()=>{
         field={(key:TextField)=>key==='partyLevel'?<CellPicker field="partyLevel"
           label="Cấp Thành ủy" value={sample.partyLevel} options={['BCH','BTV TU','TTTU']}
           onChange={()=>{}}/>:String(sample[key]??'')}/>);
-      expect(html).toContain('compact-stage-level-open');
-      expect(html).toContain('compact-stage-level-close');
+      expect(html).not.toContain('compact-stage-level-open');
+      expect(html).not.toContain('compact-stage-level-close');
+      expect(html).toContain('data-level-layout="editable"');
       const text=html.replace(/<[^>]*>/g,'').replace(/<!--\s*-->/g,'');
-      expect(text).toContain('Thành ủy ('+raw+')');
+      expect(text).toContain('Thành ủy'+raw);
+      expect(text).not.toContain('('+raw+')');
       expect(html).toContain('aria-label="Cấp Thành ủy"');
       expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
     });
@@ -76,6 +78,7 @@ describe('UI V6 L1 party-level brackets',()=>{
     const html=renderToStaticMarkup(<CompactGroupedValue item={item}
       pair={partyPair} tone={()=>undefined}
       editable={()=>false} field={key=>String(item[key]??'')}/>);
+    expect(html).toContain('data-level-layout="readonly"');
     expect(html).toContain('compact-stage-level-close');
     expect(html).not.toContain('cell-picker-trigger');
   });
