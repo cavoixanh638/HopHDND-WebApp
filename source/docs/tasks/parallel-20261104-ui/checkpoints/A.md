@@ -1,6 +1,6 @@
 # Checkpoint A — REV2 (04/11/2026)
 
-**Status: IN_PROGRESS — REV2**. Writer: worker A only. Branch `ui/20261104-table-layout`. Initial HEAD `9a78244ee09df782a9835fffae181249e8fc1371`; old A REV1 code/test complete, no reset. Integrated prior accepted SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` from [REV2 requirements](../REV2-REQUIREMENTS.md).
+**Status: IN_PROGRESS — REV2**. Writer: worker A only. Branch `ui/20261104-table-layout`. Initial HEAD `9a78244ee09df782a9835fffae181249e8fc1371`; old A REV1 code/test complete, no reset. Integrated prior accepted SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` from [REV2 requirements](https://github.com/cavoixanh638/HopHDND-WebApp/blob/ui/20261104-coordination/source/docs/tasks/parallel-20261104-ui/REV2-REQUIREMENTS.md).
 
 ## New scope only
 - **L01**: read-only keeps `(Sở - Loại VB)`; when department/type editable in ANY combination, render two aligned source member controls on same metadata line without decorative parentheses/dash; preserve each source field, permission, lease, highlighting and type tone. Type hover/focus/open must match department affordance.
