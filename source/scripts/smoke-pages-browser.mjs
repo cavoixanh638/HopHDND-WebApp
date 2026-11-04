@@ -2629,7 +2629,13 @@ try{
       selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      getComputedStyle(stage).outlineStyle==='solid'&&
+      // UI A: L03 keeps the focus ring on the ACTIVE state trigger, not
+      // the entire mixed-permission stage row. Assert a visible, 2px
+      // high-contrast focus outline while its own dialog is expanded.
+      stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 108, 139)'&&
+      parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
+      checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
       stageOutline:{style:stageComputed?.outlineStyle,width:stageComputed?.outlineWidth,color:stageComputed?.outlineColor},
       stateTriggerOutline:{style:triggerComputed?.outlineStyle,width:triggerComputed?.outlineWidth,
