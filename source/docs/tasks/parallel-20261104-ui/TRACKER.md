@@ -44,3 +44,10 @@
 **Không có thay đổi nào vào `main`, Firebase production, GitHub Pages production, Rules hoặc RTDB thật.** Site demo riêng tư chưa được cập nhật trong phiên này vì không có quyền thao tác Site qua công cụ kết nối; không khẳng định URL/version. Chỉ đóng `DONE` chung khi có bằng chứng Site owner-only, deployment `succeeded`, version/URL và thao tác chính trên bản được truy cập.
 
 Xem [báo cáo tích hợp](INTEGRATION_2026-11-04.md) và [checkpoint tổng chỉ huy](checkpoints/COMMANDER.md) để tiếp quản.
+
+## Kiểm tra lại ngày 04/11/2026 — khoảng 14:24 ICT
+
+- Git HEAD vẫn như lần bàn giao trước: A `9a78244ee09df782a9835fffae181249e8fc1371`, B `066edf66dc0f6f9f137c29164be50141d91ed7d3`, coordination `1265b768ca34164f2be1b4760955dd0f954e3249` (docs-only so với source+test SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`).
+- PR [#155](https://github.com/cavoixanh638/HopHDND-WebApp/pull/155) vẫn **DRAFT/open**, không merge main. B/A vẫn DONE, không cần bổ sung code.
+- CI trên pinned source+test SHA vẫn **9/9 applicable SUCCESS**. Tại docs-only SHA `1265b768`, [V6 L3 #41773822188](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773822188) attempt 1 FAIL *Chrome CDP unavailable* trước UI asserts; commander đã rerun failed jobs, **attempt 2 SUCCESS cùng SHA**, không đổi source/test/oracle. 8 workflow applicable còn lại trên docs-only SHA cũng SUCCESS; 3 workflow scope-limited SKIPPED, không tính PASS.
+- **Trạng thái không đổi: CODE/INTEGRATION PASS — PRIVATE SITE PENDING.** Không có connector/action Sites trong phiên; không chứng minh owner-only, version, URL hoặc deployment `succeeded`. Tránh push mã/commit vô nghĩa; Site chỉ được cập nhật trong môi trường có quyền.
