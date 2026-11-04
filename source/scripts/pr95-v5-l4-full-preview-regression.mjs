@@ -292,7 +292,7 @@ try{
     'return {ok:s.dataset.editable==="true"&&v.display==="flex"&&v.borderTopWidth!=="0px"&&'+
     'v.backgroundColor!=="rgba(0, 0, 0, 0)"&&br.height>=34&&br.height<=38&&Math.abs(br.width-sr.width)<1&&'+
     'dot.content==="none"&&arrow.content==="\\\"\\\""&&arrow.display==="block"&&'+
-    'rail.content===\"none\",'+
+    'rail.content==="none",'+
     'right:br.right,fill:v.backgroundColor,stage:r.dataset.stageField};});'+
     'const byStage=new Map();for(const m of metrics){if(!byStage.has(m.stage))byStage.set(m.stage,m.right);'+
     'else if(Math.abs(byStage.get(m.stage)-m.right)>5)m.ok=false;}'+
