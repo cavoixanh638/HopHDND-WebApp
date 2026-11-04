@@ -529,6 +529,44 @@ try {
   await evaluate('document.querySelector(".report-detail-grid tbody tr:first-child td[data-col-key=type] .cell-picker-trigger")?.scrollIntoView({block:"nearest",inline:"center"})');
   await sleep(120);
   await screenshotV6('pr95-v6-l1-popup-mobile-390-type-visible.png');
+
+  // REV2: four independent metadata grants are verified in REAL List rows.
+  for(const [role,deptGranted,typeGranted] of [
+    ['metadata-none',false,false],['metadata-department',true,false],
+    ['metadata-type',false,true],['metadata-both',true,true]]){
+    await visit('view=list&role='+role,1440,900);
+    const metadata=await evaluate('(()=>{const h=document.querySelector(".item-data-table tbody tr:first-child .compact-document-heading");'+
+      'const d=h?.querySelector(".compact-document-department"),t=h?.querySelector(".compact-document-badge");'+
+      'const db=d?.querySelector("button.cell-picker-trigger,input"),tb=t?.querySelector("button.cell-picker-trigger,input");'+
+      'const dr=d?.getBoundingClientRect(),tr=t?.getBoundingClientRect();'+
+      'return {mode:h?.dataset.metadataMode,department:d?.textContent?.trim(),type:t?.textContent?.trim(),'+
+      'departmentEditor:!!db,typeEditor:!!tb,punctuation:!!h?.querySelector(".compact-document-meta-mark,.compact-document-meta-separator"),'+
+      'centerDelta:Math.abs((dr?.top??0)+(dr?.height??0)/2-(tr?.top??0)-(tr?.height??0)/2),'+
+      'overflow:document.documentElement.scrollWidth-innerWidth};})()');
+    assert(metadata?.departmentEditor===deptGranted&&metadata?.typeEditor===typeGranted&&
+      metadata.mode===(deptGranted||typeGranted?'editable':'readonly')&&
+      metadata.punctuation===!(deptGranted||typeGranted)&&metadata.centerDelta<=2&&
+      metadata.overflow<=3,'REV2 L01 four grant combinations '+role+' '+JSON.stringify(metadata));
+    console.log('UI_A_REV2_L01_PERMISSIONS_PASS '+role+' '+JSON.stringify(metadata));
+    await screenshotV6('worker-a-rev2-l01-'+role+'-1440.png');
+  }
+  await visit('view=list&role=metadata-both',390,844);
+  await screenshotV6('worker-a-rev2-l01-both-390.png');
+  for(const field of ['department','badge']){
+    const sel='.item-data-table tbody tr:first-child .compact-document-'+field+' button.cell-picker-trigger';
+    await testClick('document.querySelector('+JSON.stringify(sel)+')');
+    await waitFor('!!document.querySelector(".cell-picker-popover:popover-open")','REV2 L01 '+field+' open');
+    const focus=await evaluate('(()=>{const b=document.querySelector('+JSON.stringify(sel)+');'+
+      'const st=getComputedStyle(b);return {expanded:b?.getAttribute("aria-expanded"),'+
+      'outline:st.outlineStyle,width:st.outlineWidth};})()');
+    assert(focus.expanded==='true'&&focus.outline==='solid'&&parseFloat(focus.width)>=2,
+      'REV2 L01 '+field+' focus/open '+JSON.stringify(focus));
+    await screenshotV6('worker-a-rev2-l01-'+field+'-open-390.png');
+    await esc();await waitFor('!document.querySelector(".cell-picker-popover:popover-open")',
+      'REV2 L01 '+field+' Escape');
+  }
+  assert(await evaluate('window.__v6L1.snapshot().patches.length')===0,
+    'REV2 L01 Escape does not update source');
   const forbidden=network.filter(x=>['firebaseio','firebasedatabase','identitytoolkit','securetoken',
     'docs.google.com/spreadsheets','sheets.googleapis.com'].some(z=>x.toLowerCase().includes(z)));
   assert(forbidden.length===0,'production endpoint accessed '+JSON.stringify(forbidden));
