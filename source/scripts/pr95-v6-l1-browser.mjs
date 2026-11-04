@@ -422,8 +422,11 @@ try {
   // Worker A: tablet-width geometry and read-only nonrequired caption.
   await visit('view=list&role=readonly',900,800);
   const tabletLevels=await inspectLevels('.item-data-table','list-readonly-900');
-  assert(tabletLevels.some(x=>x.notRequired&&x.level===''),
-    'tablet: readonly Không phải trình must not display redundant level');
+  // The V6 fixture can contain a nonrequired PROGRESS with a different
+  // canonical party LEVEL. Do not fabricate a nonrequired level in that row.
+  // Synthetic unit regression separately renders the exact level value.
+  assert(tabletLevels.every(x=>!x.notRequired||x.level===''),
+    'tablet: suppress only readonly nonrequired party LEVEL');
   await assertStageHitTargets('.item-data-table','list-readonly-900');
   await screenshotV6('worker-a-list-readonly-900.png');
 
