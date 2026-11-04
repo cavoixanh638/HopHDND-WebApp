@@ -32,3 +32,16 @@
 - Exact 900px List readonly log: **statusLeft spread 0 CSS px**, caption-to-state gap **8px**. Table scroll container: `clientWidth=779`, `scrollWidth=1492`, page remains inside the table scrollbox. Popup readonly 900px: **statusLeft spread 0 CSS px**, gap **8px**, scroll container `clientWidth=848`, `scrollWidth=1610`.
 - V6 L1 log ends `PR95_V6_L1_CHROME_PASS` with desktop/1280/390/list/popup/mixed/narrow + additional 900px checks. No production requests.
 - `Không phải trình` regression: `source/tests/ui-20261104-worker-a.test.tsx` asserts a *partyLevel* exactly equal to `Không phải trình` hides the level; Chrome fixture only contains a nonrequired *progressParty* for some records and must not assume the two fields mean the same thing.
+
+## Follow-up: V3 choices-only focus oracle (commander request, 04/11)
+
+- Assignment: [PR #153 comment #6620952313](https://github.com/cavoixanh638/HopHDND-WebApp/pull/153#issuecomment-6620952313). Initial failure [Verify source #41760550847](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760550847) asserted `getComputedStyle(stage).outlineStyle==='solid'` on the **whole row**, conflicting with the new separately focusable L03 status trigger.
+- Diagnostic-only commit `54da0a6b62f18105d121eb7513d04b9f8306f5d0` left the obsolete oracle unchanged; [exact-SHA Verify source #41761708772](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41761708772) intentionally still **FAIL** at the same assertion but returned the following independent Chrome computations:
+  - `stageOutline={style:'none', width:'0px'}` (no enclosing-row focus ring).
+  - `stateTriggerOutline={style:'solid', width:'2px', color:'rgb(53, 108, 139)', offset:'1px'}` (visible, separate focus ring).
+  - Trigger `aria-expanded=true`, `aria-haspopup=dialog`; popup `role=dialog`, correct row-specific `aria-label`.
+  - `choices` all true except **only `rowOutline:false`**: five exact official options, selected `VP đang xử lý`, accessible option roles, one choices-only container, no decorative headings or second input.
+  - `document.activeElement` is the selected `role=option` button: keyboard focus moves into the dialog, while expanded trigger retains its own visible outline.
+- Fix is **test-only**: commit `38e5ff6a2a0174d2c4d3f546e345da87a5db075c` modifies `source/scripts/smoke-pages-browser.mjs` to require row outline `none/0px` **and** trigger outline solid/≥2px, expected color/offset, `aria-expanded` and dialog semantics. Original exact 5-option/selected/choices-only/role/ESC/no-patch assertions remain intact. No source UI/CSS/backend changes.
+- Previous diagnostic SHA retained V5 Chrome [#41761708909](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41761708909) **PASS** and V6 Chrome [#41761708717](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41761708717) **PASS**.
+- **Gate outstanding until the final test-only SHA gets Verify + V5 + V6 PASS.** No deployment/merge.
