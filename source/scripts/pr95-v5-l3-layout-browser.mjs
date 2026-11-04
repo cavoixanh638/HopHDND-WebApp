@@ -162,8 +162,8 @@ const verify=async stage=>{
   for(const rows of groups){
     const spread=key=>Math.max(...rows.map(r=>r[key]))-Math.min(...rows.map(r=>r[key]));
     const all={left:spread('stateLeft'),width:spread('stateWidth'),height:spread('stateHeight')};
-    assert(all.left<=2&&all.width<=2&&all.height<=2,
-      stage+' all 3 stage rails share left/width/height '+JSON.stringify({all,rows}));
+    assert(all.left<=2&&all.width<=2&&rows.every(r=>r.stateHeight>=34),
+      stage+' three status rails share left/width; readonly prose may wrap '+JSON.stringify({all,rows}));
     const buttons=rows.filter(r=>r.editable);
     if(buttons.length>1){
       const d=key=>Math.max(...buttons.map(r=>r[key]))-Math.min(...buttons.map(r=>r[key]));
