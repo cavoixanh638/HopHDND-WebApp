@@ -318,10 +318,12 @@ async function setRules(value){
 async function reloadList(tab,role){
   await tab.send('Page.reload',{ignoreCache:true});
   if(role==='admin'){
-    await tab.until('!!document.querySelector("nav.primary-section-switcher")',
-      'admin Auth survived reload',30000);
-    // Renaming changes the nav label; route by the stable actual App page key.
-    await pointer(tab,'nav.primary-section-switcher button[data-ui-reference-nav="items"]');
+    // Wait for the two real buttons, not the nav shell; Page.reload can
+    // briefly expose the old tree or an empty shell before Firebase Auth settles.
+    await tab.until('document.querySelectorAll("nav.primary-section-switcher button").length===2',
+      'admin Auth and both real nav buttons survived reload',30000);
+    // Admin nav is (Báo cáo tổng hợp, Danh sách) and the title can change.
+    await pointer(tab,'nav.primary-section-switcher button:nth-child(2)');
   }else{
     await tab.until('!!document.querySelector(".item-data-region")&&'+
       '!document.querySelector("nav.primary-section-switcher")',
