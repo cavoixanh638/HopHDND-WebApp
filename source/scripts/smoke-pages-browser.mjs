@@ -2604,6 +2604,24 @@ try{
     const stage=row?.querySelector('[data-stage-field=progressBuild]');
     const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
     const labels=choices.map(x=>x.textContent?.trim());
+    const trigger=stage?.querySelector('.compact-stage-state button.cell-picker-trigger');
+    const stageComputed=stage?getComputedStyle(stage):null;
+    const triggerComputed=trigger?getComputedStyle(trigger):null;
+    const checks={
+      choicesOnly:p?.dataset.choicesOnly==='true',
+      popupAria:!!p?.getAttribute('aria-label')&&p.getAttribute('aria-label').includes('NQ07'),
+      onlyChoicesList:children.length===1&&children[0].classList.contains('cell-picker-options'),
+      exactOptions:JSON.stringify(labels)===JSON.stringify(expected),
+      selectedMatches:selected.length===1&&selected[0].textContent?.trim()===trigger?.textContent?.trim(),
+      optionAria:choices.every(x=>x.getAttribute('role')==='option'),
+      popupTextOnly:p?.textContent?.trim()===choices.map(x=>x.textContent).join('').trim(),
+      rowOutline:stageComputed?.outlineStyle==='solid',
+      triggerOutline:triggerComputed?.outlineStyle==='solid'&&parseFloat(triggerComputed?.outlineWidth||'0')>=2,
+      triggerExpanded:trigger?.getAttribute('aria-expanded')==='true',
+      triggerHaspopup:trigger?.getAttribute('aria-haspopup')==='dialog',
+      popupRole:p?.getAttribute('role')==='dialog',
+      noDecorations:!p?.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search')
+    };
     return {ok:p?.dataset.choicesOnly==='true'&&!!p.getAttribute('aria-label')&&
       p.getAttribute('aria-label').includes('NQ07')&&
       children.length===1&&children[0].classList.contains('cell-picker-options')&&
@@ -2611,8 +2629,22 @@ try{
       selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      getComputedStyle(stage).outlineStyle==='solid'&&
+      // UI A: L03 keeps the focus ring on the ACTIVE state trigger, not
+      // the entire mixed-permission stage row. Assert a visible, 2px
+      // high-contrast focus outline while its own dialog is expanded.
+      stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 108, 139)'&&
+      parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
+      checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
+      stageOutline:{style:stageComputed?.outlineStyle,width:stageComputed?.outlineWidth,color:stageComputed?.outlineColor},
+      stateTriggerOutline:{style:triggerComputed?.outlineStyle,width:triggerComputed?.outlineWidth,
+        color:triggerComputed?.outlineColor,offset:triggerComputed?.outlineOffset},
+      expanded:trigger?.getAttribute('aria-expanded'),
+      choices:checks,
+      aria:{trigger:trigger?.getAttribute('aria-label'),haspopup:trigger?.getAttribute('aria-haspopup'),
+        popup:p?.getAttribute('aria-label'),popupRole:p?.getAttribute('role')},
+      focusedElement:document.activeElement?.outerHTML?.slice(0,220),
       id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
       optionCount:choices.length,labels,selected:selected.map(x=>x.textContent?.trim()),
       ariaLabel:p?.getAttribute('aria-label'),children:children.map(x=>x.className)};

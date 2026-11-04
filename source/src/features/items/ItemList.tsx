@@ -88,6 +88,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [toolbar,setToolbar]=useState(newToolbarState);
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
+  const [titleEditorOpen,setTitleEditorOpen]=useState(false);
+  const [titleValidationError,setTitleValidationError]=useState('');
   const listTitleBaseline=useRef<ItemLayout|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
@@ -615,37 +617,61 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
         showFilterFooters={false}/>
-      <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
+        <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
+        <button type="button"
+          className="button ghost admin-list-rename-trigger"
+          aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
+          disabled={!canEditListSettings||viewSaving}
+          onClick={()=>{if(titleEditorOpen){setTitleEditorOpen(false);setListTitleDraft(null);
+            listTitleBaseline.current=null;setTitleValidationError('');}
+          else {listTitleBaseline.current=validateItemLayout(sharedBase.current);
+            setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
+            setTitleEditorOpen(true);setTitleValidationError('');}}}>
+          {titleEditorOpen?'Đóng sửa tên':'Đổi tên danh sách'}
+        </button>
+      </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div className="admin-list-controls"
+        aria-label="Tùy chọn quản trị danh sách">
+        {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
+          onSubmit={event=>{event.preventDefault();
+            try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
+              setTitleValidationError('');
+              void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
+                .then(saved=>{if(saved){setListTitleDraft(null);listTitleBaseline.current=null;
+                  setTitleEditorOpen(false);}});
+            }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
+          }}>
+          <label htmlFor="admin-list-title-input">Tên danh sách mới</label>
+          <input id="admin-list-title-input" aria-label="Tên danh sách mới" maxLength={100}
+            aria-invalid={!!titleValidationError}
+            aria-describedby={titleValidationError?'admin-list-title-error':undefined}
+            value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
+            onChange={event=>{setTitleValidationError('');setListTitleDraft(event.currentTarget.value);}}
+            disabled={!canEditListSettings||viewSaving}/>
+          <button type="submit" className="button" disabled={!canEditListSettings||viewSaving}>
+            Lưu tên danh sách
+          </button>
+          {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
+        </form>}
+        <fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
+          <legend>Hiện/ẩn thẻ tổng hợp</legend>
+          <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
+          {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}>
+            <input type="checkbox" checked={activeLayout.summaryCards?.[key]!==false}
+              aria-label={'Hiện C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}
+              onChange={event=>{const checked=event.currentTarget.checked;
+                void applyViewerLayout(base=>({...base,summaryCards:{
+                  party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
+            <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
+          </label>)}
+        </fieldset>
+      </div>}
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
-      {!customizing&&(onPersistViewerLayout||isRamAdminList)&&<details className="admin-list-controls">
-        <summary>Tên danh sách và thẻ tổng hợp</summary>
-        <div className="admin-list-controls-body">
-          <form onSubmit={event=>{event.preventDefault();
-            try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
-              void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
-                .then(saved=>{if(saved){setListTitleDraft(null);listTitleBaseline.current=null;}});
-            }catch(error){setLayoutError(error instanceof Error?error.message:'Tên không hợp lệ.');}
-          }}>
-            <label>Tên danh sách<input aria-label="Tên danh sách" maxLength={100}
-              value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
-              onFocus={()=>{listTitleBaseline.current??=validateItemLayout(sharedBase.current);}}
-              onChange={event=>{listTitleBaseline.current??=validateItemLayout(sharedBase.current);
-                setListTitleDraft(event.target.value);}} disabled={!canEditListSettings||viewSaving}/></label>
-            <button type="submit" className="button ghost" disabled={!canEditListSettings||viewSaving}>Lưu tên danh sách</button>
-          </form>
-          <fieldset disabled={!canEditListSettings||viewSaving}><legend>Hiện thẻ tổng hợp</legend>
-            {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}><input type="checkbox"
-              aria-label={'Hiện C0'+(index+1)} checked={activeLayout.summaryCards?.[key]!==false}
-              onChange={event=>{const checked=event.target.checked;void applyViewerLayout(base=>({...base,
-                summaryCards:{party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
-              {'C0'+(index+1)+' · '+(['Thành ủy','Xây dựng NQ','Ban hành NQ/BC'][index])}</label>)}
-          </fieldset>
-        </div>
-      </details>}
       {compactMenu}
       {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
         className="button ghost group-label-shortcut"

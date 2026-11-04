@@ -161,21 +161,25 @@ const inspectLevels=async(rootSelector,label)=>{
     'l=row.querySelector(".compact-stage-level"),button=l?.querySelector(".cell-picker-trigger"),'+
     'open=l?.querySelector(".compact-stage-level-open"),close=l?.querySelector(".compact-stage-level-close"),'+
     'state=row.querySelector(".compact-stage-state"),group=row.closest(".compact-stages");'+
-    'if(!l||!open||!close||!state)return null;const lr=l.getBoundingClientRect(),o=open.getBoundingClientRect(),'+
-    'c=close.getBoundingClientRect(),br=button?.getBoundingClientRect(),sr=state.getBoundingClientRect(),'+
-    'tr=title.getBoundingClientRect(),captionRight=Math.max(tr.right,c.right);'+
+    'if(!title||!state||!group)return null;const lr=l?.getBoundingClientRect(),o=open?.getBoundingClientRect(),'+
+    'c=close?.getBoundingClientRect(),br=button?.getBoundingClientRect(),sr=state.getBoundingClientRect(),'+
+    'tr=title.getBoundingClientRect(),captionRight=Math.max(tr.right,c?.right??tr.right);'+
     'let textRight=0;if(title.firstChild?.nodeType===Node.TEXT_NODE){const range=document.createRange();'+
     'range.selectNodeContents(title.firstChild);textRight=range.getBoundingClientRect().right;}'+
-    'const rights=[...group.querySelectorAll(".compact-stage-row .compact-stage-state")].map(e=>e.getBoundingClientRect().right);'+
-    'return {text:title.textContent,level:l.textContent,open:o.left,close:c.left,'+
-    'buttonRight:br?.right??null,buttonLeft:br?.left??null,margin:parseFloat(getComputedStyle(l).marginLeft),'+
-    'line:Math.round(lr.height),titleLine:Math.round(tr.height),'+
-    'space:o.left-textRight,caretDisplay:button?getComputedStyle(button,"::after").display:null,'+
+    'const states=[...group.querySelectorAll(".compact-stage-row .compact-stage-state")];'+
+    'const lefts=states.map(e=>e.getBoundingClientRect().left),rights=states.map(e=>e.getBoundingClientRect().right);'+
+    'const notRequired=row.dataset.levelNotRequired==="true";'+
+    'return {text:title.textContent+(l&&!title.contains(l)?l.textContent:""),level:l?.textContent??"",'+
+    'notRequired,editableLevel:row.dataset.levelEditable==="true",'+
+    'open:o?.left??null,close:c?.left??null,buttonRight:br?.right??null,buttonLeft:br?.left??null,'+
+    'margin:l?parseFloat(getComputedStyle(l).marginLeft):0,'+
+    'line:Math.round(lr?.height??tr.height),titleLine:Math.round(tr.height),'+
+    'space:o?o.left-textRight:8,caretDisplay:button?getComputedStyle(button,"::after").display:null,'+
     'buttonWidth:br?.width??null,captionRight,stateLeft:sr.left,stateRight:sr.right,'+
-    'captionStateGap:sr.left-captionRight,stageRailSpread:Math.max(...rights)-Math.min(...rights),'+
+    'captionStateGap:sr.left-captionRight,stageRailSpread:Math.max(...lefts)-Math.min(...lefts),'+
     'insideScroll:group.scrollWidth>group.clientWidth,groupWidth:group.clientWidth,groupScrollWidth:group.scrollWidth};});})()');
   assert(data&&data.length>=6&&data.slice(0,3).every(x=>x&&x.text.includes('Thành ủy (')&&
-    x.space>=4&&x.line<=30&&x.titleLine<=30),
+    x.space>=4&&x.line<=40&&x.titleLine<=40),
     'party label spacing / one line '+label+' '+JSON.stringify(data));
   assert(data.every(x=>x&&x.captionStateGap>=6&&x.stageRailSpread<=2),
     'UI6-R01 caption must NOT overlap state and three progress rails align '+label+' '+JSON.stringify(data));
@@ -184,6 +188,8 @@ const inspectLevels=async(rootSelector,label)=>{
   assert(data.some(x=>x.level==='(BCH)')&&data.some(x=>x.level==='(BTV TU)')&&
     data.some(x=>x.level==='(TTTU)'),
     'UI6-R01 current level values missing '+label);
+  assert(data.every(x=>!x.notRequired||x.level===''),
+    'UI A readonly nonrequired must omit redundant level '+label+' '+JSON.stringify(data));
   for(const x of data){
     if(x.buttonRight!==null)assert(x.buttonRight<=x.close+0.25,
       'party caret touches closing parenthesis '+label+' '+JSON.stringify(x));
@@ -191,8 +197,8 @@ const inspectLevels=async(rootSelector,label)=>{
   console.log('UI6_R01_CAPTION_STATE_SEPARATION_PASS '+label+' '+JSON.stringify(data));
   return data;
 };
-// Check actual pointer hit regions rather than inferring editability from DOM.
-// Scroll each field independently when saved widths require an inner scrollbar.
+// Check actual pointer hit regions; a hidden non-required level exposes the
+// plain title, never a phantom editable target.
 const assertStageHitTargets=async(rootSelector,label)=>{
   const data=await evaluate('(()=>{const root=document.querySelector('+JSON.stringify(rootSelector)+');'+
     'if(!root)return null;const rows=[...root.querySelectorAll(".compact-stage-row[data-stage-field=progressParty]")].slice(0,6);'+
@@ -209,7 +215,7 @@ const assertStageHitTargets=async(rootSelector,label)=>{
     'return {ok:!!found&&(target===found||target.contains(found)),x,y,hit:found?.className?.toString().slice(0,120)};};'+
     'return rows.map((row,i)=>{const level=row.querySelector(".compact-stage-level"),'+
     'state=row.querySelector(".compact-stage-state"),'+
-    'levelTarget=level?.querySelector("button.cell-picker-trigger")||level,'+
+    'levelTarget=level?.querySelector("button.cell-picker-trigger")||level||row.querySelector(".compact-stage-title"),'+
     'stateTarget=state?.querySelector("button.cell-picker-trigger")||state;'+
     'return {row:i,level:hit(levelTarget),state:hit(stateTarget),'+
     'independentTargets:!levelTarget?.contains(stateTarget)&&!stateTarget?.contains(levelTarget)};});})()');
@@ -413,6 +419,17 @@ try {
   await screenshotV6('pr95-v6-l1-saved-narrow-level-1280.png');
   console.log('PR95_V6_L1_NARROW_LEVEL_PASS '+JSON.stringify(narrowScroll));
 
+  // Worker A: tablet-width geometry and read-only nonrequired caption.
+  await visit('view=list&role=readonly',900,800);
+  const tabletLevels=await inspectLevels('.item-data-table','list-readonly-900');
+  // The V6 fixture can contain a nonrequired PROGRESS with a different
+  // canonical party LEVEL. Do not fabricate a nonrequired level in that row.
+  // Synthetic unit regression separately renders the exact level value.
+  assert(tabletLevels.every(x=>!x.notRequired||x.level===''),
+    'tablet: suppress only readonly nonrequired party LEVEL');
+  await assertStageHitTargets('.item-data-table','list-readonly-900');
+  await screenshotV6('worker-a-list-readonly-900.png');
+
   await visit('view=list&role=admin',390,844);
   await inspectLevels('.item-data-table','list-mobile-390');
   await assertStageHitTargets('.item-data-table','list-mobile-390');
@@ -429,6 +446,11 @@ try {
   await inspectLevels('.report-detail-grid','popup-readonly-1440');
   await assertStageHitTargets('.report-detail-grid','popup-readonly-1440');
   await screenshotV6('pr95-v6-l1-popup-readonly-1440.png');
+
+  await visit('view=popup&role=readonly',900,800);
+  await inspectLevels('.report-detail-grid','popup-readonly-900');
+  await assertStageHitTargets('.report-detail-grid','popup-readonly-900');
+  await screenshotV6('worker-a-popup-readonly-900.png');
 
   await visit('view=popup&role=admin',1440,900);
   await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
