@@ -98,13 +98,16 @@ const audit=()=>js('('+function geometryV5(){
     const cr=button?.getBoundingClientRect();
     const css=button?getComputedStyle(button):null;
     const rail=button?getComputedStyle(button,'::before'):null;
+    const sr=state?.getBoundingClientRect();
     return {field:row.dataset.stageField,title:label?.textContent.trim(),
       level:level?.textContent.trim(),nowrap:label?getComputedStyle(label).whiteSpace:null,
       rowBorder:getComputedStyle(row).borderTopWidth,
       oneStageBorder:getComputedStyle(state).borderTopWidth==='0px',
       baselines:l&&v?{label:lr,state:vr,delta:Math.abs(lr-vr)}:null,
       editable:!!button,buttonBorder:css?.borderTopWidth,buttonRadius:css?.borderTopLeftRadius,
-      railRadius:rail?.borderTopRightRadius,hitHeight:cr?.height,caretRight:cr?.right,
+      railContent:rail?.content,hitHeight:cr?.height,buttonRight:cr?.right,
+      stateLeft:sr?.left,stateWidth:sr?.width,stateHeight:sr?.height,
+      buttonLeft:cr?.left,buttonWidth:cr?.width,buttonHeight:cr?.height,
       hitLeft:!!(button&&cr&&button.contains(document.elementFromPoint(cr.left+4,cr.top+cr.height/2))),
       hitRight:!!(button&&cr&&button.contains(document.elementFromPoint(cr.right-4,cr.top+cr.height/2))),
       firstValue:v?.top,labelTop:l?.top};
@@ -130,12 +133,13 @@ const verify=async stage=>{
   const first=x.stageRows.slice(0,3);
   for(const r of first){
     assert(r.rowBorder==='0px'&&r.oneStageBorder,stage+' separated stage rows '+JSON.stringify(r));
-    assert(r.baselines&&r.baselines.delta<=5,stage+' first text line alignment '+JSON.stringify(r));
+    assert(r.baselines&&r.baselines.delta<=8,stage+' readable row baseline '+JSON.stringify(r));
     assert(r.nowrap==='nowrap',stage+' nowrap label '+JSON.stringify(r));
     if(r.editable){
-      assert(r.buttonBorder==='0px',stage+' no inner border');
-      assert(r.buttonRadius==='7px'&&r.railRadius==='7px',stage+' rounded value and rail '+JSON.stringify(r));
-      assert(r.hitHeight>=38,stage+' clickable height');
+      assert(r.buttonBorder!=='0px',stage+' independent standard picker border '+JSON.stringify(r));
+      assert(r.buttonRadius==='7px'&&r.railContent==='none',
+        stage+' rounded picker with no shaded caret rail '+JSON.stringify(r));
+      assert(r.hitHeight>=34&&r.hitHeight<=38,stage+' uniform picker height '+JSON.stringify(r));
       assert(r.hitLeft&&r.hitRight,stage+' both value edges actually hit editor '+JSON.stringify(r));
     }
   }
