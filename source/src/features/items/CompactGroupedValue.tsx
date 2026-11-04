@@ -83,7 +83,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
          data-level-not-required={levelNotRequired?'true':undefined}
          data-progress-tone={stageTone}>
          <span className="compact-stage-label">
-           <span className="compact-stage-title">{stage.label}
+           <span className="compact-stage-title">{stage.label}{showLevel&&levelEditable?' ':null}
              {showLevel&&!levelEditable&&<>
                {' '}<span className="compact-stage-level" {...memberAttributes('partyLevel')}>
                  <span className="compact-stage-level-open" aria-hidden="true">(</span>
