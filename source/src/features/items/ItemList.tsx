@@ -659,11 +659,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
           {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}>
             <input type="checkbox" checked={activeLayout.summaryCards?.[key]!==false}
-              aria-label={'Hiện C0'+(index+1)+' · '+(['Thành ủy','Xây dựng NQ','Ban hành NQ/BC'][index])}
+              aria-label={'Hiện C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}
               onChange={event=>{const checked=event.currentTarget.checked;
                 void applyViewerLayout(base=>({...base,summaryCards:{
                   party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
-            <span>{'C0'+(index+1)+' · '+(['Thành ủy','Xây dựng NQ','Ban hành NQ/BC'][index])}</span>
+            <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset>
       </div>
