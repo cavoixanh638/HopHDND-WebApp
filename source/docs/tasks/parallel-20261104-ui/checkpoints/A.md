@@ -1,8 +1,8 @@
-# Checkpoint A — bản sửa JSX/CSS (04/11/2026)
+# Checkpoint A — CI đang chạy đúng SHA (04/11/2026)
 
-- Status: **IN_PROGRESS**; branch `ui/20261104-table-layout`; baseline `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`.
-- Code commits đã push: `3ddfc08deaff16ef6ab133025a5e43dcfbf5f6a2` (JSX metadata/L03), `cfd54a374dfcce4ae3d81403cb6b3152148235ae` (CSS responsive/3 cột). **Code SHA mới: `cfd54a374dfcce4ae3d81403cb6b3152148235ae`.**
-- Sửa: metadata Sở + Loại VB có dấu ngoặc/dấu nối khi có nguồn; ô rỗng vẫn editable riêng; L03 cấp trình chỉ đọc gộp vào nhãn, cấp trình editable là nút thứ hai; trạng thái là track 3 chung, bỏ cấp trình read-only `Không phải trình`. Quyền/lease/CAS vẫn gọi từ `field(key)` gốc.
-- Tests: **NOT RUN**; Chrome: **NOT RUN**; CI: **NOT RUN**. Nhiều test Chrome hiện có dùng oracle bố cục 2 cột cũ, cần điều chỉnh trước gate. Evidence screenshot: chưa có.
-- Môi trường local: `git ls-remote` báo DNS không phân giải được `github.com`. GitHub connector push thành công, chưa xác nhận có thể chạy browser đúng SHA.
-- Bước kế: (1) cập nhật test oracle và thêm regression mới trong `source/tests`; (2) chạy CI đúng SHA nếu có thể; (3) lưu evidence/đánh giá tiêu chí thiếu và bàn giao tổng chỉ huy.
+- Status: **TEST_PENDING**. Branch `ui/20261104-table-layout`; baseline `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`.
+- Code SHA đang kiểm: `68bc3be9d3f085f92d3903a1e11ad16ec517293a`. Draft PR QA: https://github.com/cavoixanh638/HopHDND-WebApp/pull/153 (không merge).
+- Thay đổi: `CompactGroupedValue.tsx`, `item-frame.css`; regression thêm `source/tests/ui-20261104-worker-a.test.tsx`; cập nhật Chrome oracle `source/scripts/pr95-v6-l1-browser.mjs`. Không sửa nguồn B/tracker/backend.
+- Unit và typecheck được các job xác nhận **PASS (từng bước)** đúng code SHA: [V6 L1 #41760082138](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082138), [V5 L3 #41760082107](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082107). **Chrome: đang chạy, chưa PASS**; build synthetic V5 L3: PASS trong job, chưa chốt toàn run. [Verify source #41760082109](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41760082109): typecheck PASS.
+- Chưa có screenshot, tọa độ x và nghiệm thu desktop/900/390 toàn bộ. Tuyệt đối không ghi DONE.
+- Bước kế: (1) đọc lỗi/pass cuối của Chrome run; (2) nếu lỗi, sửa nguồn/test và chạy lại đúng SHA mới; (3) cập nhật evidence, checkpoint, bàn giao tổng chỉ huy.
