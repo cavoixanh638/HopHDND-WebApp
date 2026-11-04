@@ -567,6 +567,34 @@ try {
   }
   assert(await evaluate('window.__v6L1.snapshot().patches.length')===0,
     'REV2 L01 Escape does not update source');
+
+  // Same four source-permission combinations in the REAL editable popup at 900px.
+  for(const [role,departmentGrant,typeGrant] of [
+    ['metadata-none',false,false],['metadata-department',true,false],
+    ['metadata-type',false,true],['metadata-both',true,true]]){
+    await visit('view=popup&role='+role,900,800);
+    await waitFor('[...document.querySelectorAll(".report-grid-actions button")].some(b=>b.textContent.includes("Chỉnh sửa nháp"))',
+      'REV2 popup edit toggle '+role);
+    await evaluate('(()=>{const bs=[...document.querySelectorAll(".report-grid-actions button")];'+
+      'bs.find(b=>b.textContent.includes("Chỉnh sửa nháp"))?.click();})()');
+    await waitFor('!!document.querySelector(".report-detail-grid .compact-document-heading")',
+      'REV2 popup metadata '+role);
+    const state=await evaluate('(()=>{const h=document.querySelector(".report-detail-grid tbody tr:first-child .compact-document-heading");'+
+      'const d=h?.querySelector(".compact-document-department"),t=h?.querySelector(".compact-document-badge");'+
+      'const r=d?.getBoundingClientRect(),q=t?.getBoundingClientRect();'+
+      'return {mode:h?.dataset.metadataMode,dept:!!d?.querySelector("button.cell-picker-trigger,input"),'+
+      'type:!!t?.querySelector("button.cell-picker-trigger,input"),'+
+      'punctuation:!!h?.querySelector(".compact-document-meta-mark,.compact-document-meta-separator"),'+
+      'centerDelta:Math.abs((r?.top??0)+(r?.height??0)/2-(q?.top??0)-(q?.height??0)/2),'+
+      'pageOverflow:document.documentElement.scrollWidth-innerWidth};})()');
+    assert(state?.dept===departmentGrant&&state?.type===typeGrant&&
+      state.mode===(departmentGrant||typeGrant?'editable':'readonly')&&
+      state.punctuation===!(departmentGrant||typeGrant)&&state.centerDelta<=2&&
+      state.pageOverflow<=3,'REV2 popup 900 L01 permission/geometry '+role+' '+JSON.stringify(state));
+    console.log('UI_A_REV2_L01_POPUP_PASS '+role+' '+JSON.stringify(state));
+    await screenshotV6('worker-a-rev2-l01-popup-'+role+'-900.png');
+  }
+
   const forbidden=network.filter(x=>['firebaseio','firebasedatabase','identitytoolkit','securetoken',
     'docs.google.com/spreadsheets','sheets.googleapis.com'].some(z=>x.toLowerCase().includes(z)));
   assert(forbidden.length===0,'production endpoint accessed '+JSON.stringify(forbidden));
