@@ -45,3 +45,21 @@
 - Fix is **test-only**: commit `38e5ff6a2a0174d2c4d3f546e345da87a5db075c` modifies `source/scripts/smoke-pages-browser.mjs` to require row outline `none/0px` **and** trigger outline solid/≥2px, expected color/offset, `aria-expanded` and dialog semantics. Original exact 5-option/selected/choices-only/role/ESC/no-patch assertions remain intact. No source UI/CSS/backend changes.
 - Previous diagnostic SHA retained V5 Chrome [#41761708909](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41761708909) **PASS** and V6 Chrome [#41761708717](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41761708717) **PASS**.
 - **Gate outstanding until the final test-only SHA gets Verify + V5 + V6 PASS.** No deployment/merge.
+
+## Final worker A retest: all three gates PASS on the SAME Git HEAD
+
+- **Exact fully tested Git HEAD:** `73c2d17a4bdbcd74ce62b8e465db78a04cbcadf0`. Source UI remains unchanged since earlier worker SHA; final test fix is `38e5ff6a2a0174d2c4d3f546e345da87a5db075c`. Later commits to this head only add/update `docs/tasks/parallel-20261104-ui/checkpoints/A.md` and `evidence/A/CI_AND_GEOMETRY.md`.
+- [Verify HopHDND source #41762122590](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122590) **SUCCESS on 73c2d17...**: TypeScript, full unit, Firebase Auth/Functions/RTDB Emulator, split Pages build, standalone build, compact QA build, and real Chrome browser smoke including the corrected QPPL focus case. Log contains `UI_V3_L2_CHOICES_ONLY_KEYBOARD_PASS` with row outline `none/0px`, trigger ring `solid/2px/#356C8B`, `aria-expanded=true`, all 5 official options/selected role/ARIA correct. Following Escape the selected status is unchanged; `UI_V4_L2_INDEPENDENT_FIELD_EDGE_CLICKS_ESCAPE_PASS` reports `patched:false`; final `BROWSER_SMOKE_PASS`.
+- [V6 L1 #41762122685](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122685) **SUCCESS on 73c2d17...**: List/Popup, desktop/900/390, readonly/admin/mixed, saved narrow width and status-alignment checks. [Screenshot artifact #13291096140](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122685/artifacts/13291096140).
+- [V5 L3 #41762122641](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122641) **SUCCESS on 73c2d17...**: typecheck, old+new unit contracts, build:compact:qa and Chrome list/popup/guest/narrow/mobile. [Screenshot artifact #13290866443](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122641/artifacts/13290866443).
+- [Real combined browser smoke screenshots #13290708126](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122590/artifacts/13290708126) (including `hophdnd-v3-l2-choices-only-dropdown.png`, list/popup and guest/desktop/mobile output).
+
+### Immutable BEFORE vs AFTER image pairs
+
+- **BEFORE**, genuine code baseline `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`: [V5 L3 run #41635316556](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41635316556), [screenshots artifact #13230223055](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41635316556/artifacts/13230223055). Original files `pr95-v5-l3-list-1440-admin.png`, `pr95-v5-l3-popup-1440-admin.png` and `pr95-v5-l3-list-390-guest.png`. Baseline log names editable caption **`Thành ủy (BCH)`**, editor enclosed in caption; caret-right spread `[0,0,0]` already PASS at baseline (do NOT incorrectly claim it was not aligned).
+- **AFTER**, same named screenshots from [V5 L3 run #41762122641](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41762122641/artifacts/13290866443). New editable caption is **`Thành ủy`** and separate `(BCH ▾)` control in an independent track, with unchanged per-field lease and right-caret alignment `[0,0,0]`.
+- The BEFORE/AFTER PNGs are retained in **GitHub Actions artifacts**, not copied into Git source; above links are the precise immutable original sources. This log and V6 inspect output provide measured geometry; no screenshots were fabricated.
+
+### Remaining outside worker A
+
+- Integrated A+B code SHA, browser/deployment tests and private demo Site are owned by commander. Worker A branch stays isolated and PR #153 draft; no merge/main/Firebase deployment is authorized.
