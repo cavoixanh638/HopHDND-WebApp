@@ -316,7 +316,13 @@ async function setRules(value){
   assert.equal(response.status,200,'local emulator Rules change failed');
 }
 async function reloadList(tab,role){
+  // Page.reload is asynchronous: the old DOM can satisfy a nav assertion
+  // just before it is destroyed. Pin a marker in the OLD window and wait
+  // until the NEW document finishes loading before touching page controls.
+  await tab.evalJs('window.__uiBPreReloadMarker="old-document";true');
   await tab.send('Page.reload',{ignoreCache:true});
+  await tab.until('window.__uiBPreReloadMarker!=="old-document"&&document.readyState==="complete"',
+    'fresh document after browser reload',30000);
   if(role==='admin'){
     // Wait for the two real buttons, not the nav shell; Page.reload can
     // briefly expose the old tree or an empty shell before Firebase Auth settles.
