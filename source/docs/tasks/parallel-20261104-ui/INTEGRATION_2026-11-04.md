@@ -1,55 +1,49 @@
-# Integration review 04/11/2026 — A+B (QA ONLY, NOT RELEASED)
+# Integration review — 04/11/2026, kết quả mới nhất
 
-## Immutable provenance
+## Quyết định
 
-- Baseline code `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`.
-- Worker A HEAD `9a78244ee09df782a9835fffae181249e8fc1371`, code source in `CompactGroupedValue.tsx`/`item-frame.css`; last tested source/test SHA `73c2d17a4bdbcd74ce62b8e465db78a04cbcadf0`; checkpoint A **DONE**, worker evidence `evidence/A/CI_AND_GEOMETRY.md`.
-- Worker B HEAD `4cf1aa88382f90c927c59c2dd20226c285e37798`, code source in `ItemList.tsx`/`admin-list-controls.css`; code/tested SHA `9ca1101edeabe942a5ce4daeee15c96b05795a99`; checkpoint B **TEST_PENDING**, worker evidence `evidence/B/CI_CORRECTIVE_20261104.md`.
-- **Integrated code Git SHA `60cda9329fa7f94f22617d15952337e734f0834b`**, octopus commit with 3 parents (commander, A, B); constructed by applying exact 12 non-overlapping worker blob SHAs to coordinator base tree. Verify via GitHub compare: integration ahead of both worker HEADs, behind 0. After this code SHA, only documentation commits may follow.
-- [Draft QA PR #155](https://github.com/cavoixanh638/HopHDND-WebApp/pull/155), base `ui/20261103-coordination`. **No merge to main or deployment**.
+**Worker A DONE; Worker B DONE; bản tích hợp CODE + CI DONE. Site demo riêng tư HOLD.** Đây là báo cáo mới nhất thay thế các trạng thái chờ trong những checkpoint cũ.
 
-## Integrated CI, EXACT code SHA `60cda932...`
+- **Baseline:** `d779dde0b1e42cd2b2bb511826cc53d0ebfa345b`.
+- **A HEAD:** `9a78244ee09df782a9835fffae181249e8fc1371`. JSX/CSS Nội dung trình + L03 và các unit/Chrome test A; checkpoint A DONE.
+- **B HEAD:** `066edf66dc0f6f9f137c29164be50141d91ed7d3`. Source UI cuối `9ca1101edeabe942a5ce4daeee15c96b05795a99`. Bổ sung E2E Chrome real App/Emulator riêng, code/test SHA `b35611a7d452313e9e33536d5be3a1309f9d6605`; checkpoint B DONE.
+- **Integrated exact SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`** ở `ui/20261104-coordination`: đã tích hợp cả lịch sử worker A và B. B ngoài docs thêm `.github/workflows/ui-20261104-b-admin-e2e.yml` và `source/scripts/ui-20261104-b-admin-controls-e2e.mjs`, không sửa thêm ItemList sau mã đã kiểm. Không có file source chồng A/B.
+- **PR nháp [#155](https://github.com/cavoixanh638/HopHDND-WebApp/pull/155)**: kiểm trên nhánh riêng, không merge main.
 
-All **8/8 applicable workflow runs SUCCESS**; PR142 and PR147 gated workflows are SKIPPED and are *not* counted.
+## Ma trận yêu cầu — kiểm trên một SHA tích hợp
 
-| CI gate | Run | Conclusion |
-|---|---|---|
-| Verify source: typecheck, full unit, Firebase Auth+Functions+RTDB Emulator, build, real Chrome smoke, single HTML QA preview | [#41766317264](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317264) | SUCCESS |
-| V5 L3 grouped real Chrome list/popup/guest | [#41766316840](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316840) | SUCCESS |
-| V5 L4 HC/BC effective | [#41766316943](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316943) | SUCCESS |
-| V5 L5 HC/BC Firebase RTDB write guard | [#41766316997](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316997) | SUCCESS |
-| V6 L1 Loại VB/Cấp trình List/Popup | [#41766316914](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316914) | SUCCESS |
-| V6 L3 guest shell/Admin/List ordering | [#41766317124](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317124) | SUCCESS |
-| V6 L4 active filters and keyboard | [#41766316853](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316853) | SUCCESS |
-| Firebase operational QA multi-account | [#41766316868](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316868) | SUCCESS |
-
-### Evidence artifacts from those exact SHA runs
-
-- [V6 L1 real Chrome screenshots ZIP #13292418505](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316914/artifacts/13292418505), archive digest `sha256:03ed93e10718b9b473ee2ea279dbaf53c104444fab0668d2a9fbfa9e41ddc698`.
-- [V5 L3 visual geometry ZIP #13292906719](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316840/artifacts/13292906719), archive digest `sha256:e89dab7460e006a83e24068ba693229c633084ebfa10995faab3cd93e8322f23`.
-- [V6 L3 guest layout Chrome ZIP #13292018389](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317124/artifacts/13292018389), archive digest `sha256:bbbbdc644be77f789c0286abb4ef9b9a0e894b7c2f4a618a33f0d687e1633c7c`.
-- [Verified hosting candidates ZIP #13292528372](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317264/artifacts/13292528372), archive digest `sha256:119697382a48bc47761dc1551542a7c2d7b60a7d4bca4b788c9bdebd828828f8`.
-- [Offline compact interactive HTML QA ZIP #13291963938](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317264/artifacts/13291963938), archive digest `sha256:9e0115844c90490fc9023daaf00f6e1c8f97c16e64d1d39a63e443c09070275e`.
-- [Browser smoke preview ZIP #13292847194](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766317264/artifacts/13292847194), archive digest `sha256:989d080e949c725335212dd52898a208691fb73166e7062ce0523766df122eac`.
-- Digest values above are **GitHub artifact ZIP digests**, *not* the SHA256 of the individual HTML file; HTML content hash and Site deployment version still need separate attestation.
-
-## Acceptance matrix
-
-| Requirement | Files/SHA | Independent + integrated proof | State |
+| Yêu cầu | File | Bằng chứng | Kết quả |
 |---|---|---|---|
-| Nội dung trình `(Sở - Loại VB)` conditional/read-only/per-field editor/highlight | A `CompactGroupedValue.tsx`, `item-frame.css`, integrated `60cda932` | A checkpoint, [V6 L1 #41766316914](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316914) + [V5 L3 #41766316840](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316840) | PASS, scoped |
-| L03 3-column editable partyLevel, separate status picker | A same | [V6 L1 #41766316914](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41766316914) Chrome geometry/hit targets | PASS, scoped |
-| L03 2-column readonly and suppress redundant `Không phải trình` level | A same | same V6 L1 + A unit; original source values unchanged | PASS, scoped |
-| L03 three aligned statuses, 1440/900/390, keyboard/hover/focus | A CSS/tests/smoke | A 0px spread evidence + integrated V6 L1 and Verify real Chrome | PASS, scoped |
-| Admin immediate `Đổi tên danh sách` and title/nav persistence | B `ItemList.tsx`/CSS | B static/Chrome general, integrated V6 L3 and Verify; dedicated E2E save/reload/guest **missing** | TEST_PENDING |
-| Admin separate C01/C02/C03 toggle, C00 constant/guest/CAS | B same | B static + CI general; dedicated E2E toggles/filter/reports, denied/offline/CAS **missing** | TEST_PENDING |
-| Integrated CI/package/private Site demo | Commander merge `60cda932` | 8/8 exact SHA SUCCESS, QA artifact ZIP available; private Site version/deployment **NOT RUN** | TEST_PENDING |
+| Metadata `(Sở - Loại VB)`, field source độc lập, read-only nhẹ | `CompactGroupedValue.tsx`, `item-frame.css` | [V6 L1](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276775), [V5 L3](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276724) | PASS |
+| L03 cấp trình editable dropdown riêng, trạng thái chung cột, readonly 2 cột, `Không phải trình` không lặp | 2 file A + test A | [V6 L1](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276775) Chrome list/popup/1440/900/390; [Verify](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276708) | PASS |
+| Admin đổi tên danh sách và tên tab/guest live, reload, validation | `ItemList.tsx`, admin CSS, E2E script B | [real App E2E](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276745) / log `TITLE_SAVE_LIVE_GUEST_PASS`, `TITLE_RELOAD_PASS` | PASS |
+| Admin bật/tắt C01–C03 độc lập; C00 cố định; reports, filters, source giữ nguyên | B source+test | [real App E2E](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276745) `CARD_TOGGLE_MOUSE_KEYBOARD_PASS` x3, `DATA_REPORTS_FILTERS_UNCHANGED_PASS` | PASS |
+| Guest không có admin, CAS/rollback/denied/offline/reconnect, desktop/tablet/mobile | B source+test | [real App E2E](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276745) các checkpoint + 17 PNG; [Firebase operational](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276876) | PASS |
+| Typecheck/unit, Firebase Auth/Functions/RTDB, Chrome smoke, build/offline HTML | Integrated SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9` | [Verify](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276708) và 8 CI còn lại | PASS |
+| Site riêng tư owner-only, version/URL `succeeded` | ChatGPT Sites `appgprj_6ae93f17c2e48191815caef8a642fa14` | Không có công cụ Sites được cấp cho phiên này, không có deployment confirmation | NOT RUN |
 
-## Remaining release gate (no false DONE)
+## GitHub Actions — đúng SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`
 
-1. Run **dedicated real Chrome App + Firebase Emulator** on integrated code SHA for title edit/validation/save/reload and tab/guest realtime; C01–C03 disable/enable each while C00/count/filter/reports remain; offline/denied/CAS conflict rollback; screenshots at 1440/900/390 with keyboard and pointer focus. Existing source and generic Chrome PASS do not substitute for this.
-2. Record actual **HTML QA file SHA256** after extracting exact successful build artifact; preserve corresponding Git/code SHA.
-3. **Private Site** `appgprj_6ae93f17c2e48191815caef8a642fa14`: only update if original owner-only controls verified, and only after E2E + package hash; then capture version/deployment succeeded and owner URL. No Site mutation executed or verified in this checkpoint.
-4. No Firebase production, GitHub Pages production, Rules, real RTDB changes, or `main` merge. Keep tracker NOT DONE.
+9/9 workflow áp dụng kết thúc `SUCCESS`:
 
-The commander has posted E2E follow-up to [worker B PR #154](https://github.com/cavoixanh638/HopHDND-WebApp/pull/154#issuecomment-6621641259), and [PR #155 has integration evidence](https://github.com/cavoixanh638/HopHDND-WebApp/pull/155#issuecomment-6621649845).
+- [Verify source #41773276708](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276708): typecheck, full unit, Firebase Emulator, Pages/offline/QA build, Chrome smoke.
+- [V5 L3 grouped #41773276724](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276724): SUCCESS attempt 2 (attempt 1 Chrome CDP unavailable, trước khi assert UI).
+- [V5 L4 HC/BC #41773276840](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276840): SUCCESS.
+- [V5 L5 guard #41773276897](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276897): SUCCESS.
+- [V6 L1 L03 #41773276775](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276775): SUCCESS.
+- [V6 L3 guest #41773276939](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276939): SUCCESS attempt 2 (attempt 1 Chrome CDP unavailable).
+- [V6 L4 filters #41773276838](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276838): SUCCESS.
+- [Firebase operational #41773276876](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276876): SUCCESS.
+- [Worker B real App admin controls E2E #41773276745](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276745): SUCCESS, log cuối `UI_B_ADMIN_E2E_PASS` và `verifiedSha=c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`. PR142/PR147 scope-limited SKIPPED không tính PASS.
+
+## Artifact provenance và SHA-256
+
+- [Standalone QA ZIP #13295398372](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276708/artifacts/13295398372), SHA256 archive `22e257a6e245dc7e7b67919da69b209018069fe6a7934b791042aeadd424e2be`. Đã tải ZIP thật, giải nén `HopHDND_GopCot_XemThu.html`: **1,077,099 bytes; SHA256 HTML `d2ecdc7881caaa09f307de1a4dbf7de7d9c359cc935c3012029fa67ad0f285bf`**. Đây là hash file HTML, không chỉ hash ZIP; chỉ dùng dữ liệu mô phỏng.
+- [B E2E screenshot ZIP #13296285946](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276745/artifacts/13296285946), SHA256 ZIP `f6bcbd4861902a060cef4edbc31a658ba6dace31f90f6d6e38d64719b8c061d4`. Đã tải và kiểm danh sách **17 PNG**: 6 admin/guest tại 1440/900/390px, 3 thẻ ẩn, title, guest, CAS, offline, denied, khôi phục, báo cáo.
+- [Verified hosting candidates ZIP #13295104663](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773276708/artifacts/13295104663) SHA256 ZIP `df958a679062cbc5852e8446126432d40f039d711251d9711830b0cfc4e951db`; **package was NOT deployed**.
+
+## Gate riêng tư vẫn HOLD
+
+Trong phiên điều phối này có GitHub read/write/CI và file tools, **không có Sites action/API** để thao tác project `appgprj_6ae93f17c2e48191815caef8a642fa14`. Không có bằng chứng Site owner-only hiện tại hoặc quyền phát hành; vì vậy **không thực hiện cập nhật Site, không tạo version/URL giả, không chuyển toàn nhiệm vụ sang DONE**. Cần môi trường có quyền mở và chỉnh ChatGPT Sites, xác minh owner-only, đưa đúng HTML QA đã hash lên Site, đợi deployment succeeded và thử các thao tác thực tế trên URL truy cập. Không thay bằng GitHub Pages/Firebase production.
+
+Đã tuân thủ: không merge `main`, không deploy Firebase production, không sửa Rules/data/Excel thật. [Tracker](TRACKER.md), [checkpoint](checkpoints/COMMANDER.md).
