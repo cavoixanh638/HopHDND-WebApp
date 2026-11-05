@@ -427,6 +427,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const projectedExtras=Object.fromEntries(displayedColumns.map(c=>[c.key,
     (compactPairs.find(pair=>pair.anchor===c.key)?.extraWidth??0)+
     fittedWidths[c.key]-baseVisualWidth(c.width,c.key)]));
+  // Do not let L03 become a resize reservoir: its widths belong only to the two
+  // explicit administrator modes. Ordinary columns still resize against their
+  // next physical neighbor and the final *other* column as backup.
+  const resizeKeys=displayedColumns.filter(c=>c.key!==l03Key).map(c=>c.key);
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
   const tableWidth=compactOn?Math.max(500,shownWidth):
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
@@ -845,20 +849,20 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
     // No per-track or indirect neighbor resize may silently alter the L03 modes.
     column.key!==l03Key&&displayedColumns[index+1]?.key!==l03Key&&
-    displayedColumns.at(-1)?.key!==l03Key&&
-    projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
+    resizeKeys.indexOf(column.key)<resizeKeys.length-1&&
+    projectedAdjacentBounds(activeLayout,resizeKeys,column.key,
       projectedExtras,compactOn,groupExtras)&&
     <ColumnResizeHandle windowDragFallback columnIndex={index} width={visualWidth(column.width,column.key)}
       adjacent={{index:index+1,
         width:visualWidth(displayedColumns[index+1].width,displayedColumns[index+1].key),
         ...projectedPhysicalLimits(displayedColumns[index+1].key,groupExtras,compactOn)}}
-      fallback={index+1<displayedColumns.length-1?{
-        index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns.at(-1)!.width,displayedColumns.at(-1)!.key),
-        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,groupExtras,compactOn)}:undefined}
+      fallback={resizeKeys.indexOf(column.key)<resizeKeys.length-2?{
+        index:displayedColumns.findIndex(c=>c.key===resizeKeys.at(-1)),
+        width:visualWidth(activeLayout.columns.find(c=>c.key===resizeKeys.at(-1))!.width,resizeKeys.at(-1)),
+        ...projectedPhysicalLimits(resizeKeys.at(-1)!,groupExtras,compactOn)}:undefined}
       {...projectedPhysicalLimits(column.key,groupExtras,compactOn)}
       label={column.label} onCommit={width=>{
-        const keys=displayedColumns.map(col=>col.key);
+        const keys=resizeKeys;
         // Same pair-first transfer in preview and CAS commit. Bake viewport
         // growth only upon an explicit drag, so a wide neighbor can shrink.
         if(customizing)setLayout(previous=>resizeProjectedWithAdjacent(previous,keys,
