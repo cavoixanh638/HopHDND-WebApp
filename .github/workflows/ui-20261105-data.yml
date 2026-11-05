@@ -42,6 +42,9 @@ jobs:
       - name: Frozen isolated Functions dependencies
         working-directory: source/cell-edit-service
         run: npm ci --no-audit --no-fund
+      - name: Install Chromium for browser regression
+        working-directory: source/cell-edit-service
+        run: npx playwright install --with-deps chromium
       - name: Syntax and FULL candidate Rules generator
         working-directory: source/cell-edit-service
         run: |
