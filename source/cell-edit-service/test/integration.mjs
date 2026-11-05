@@ -305,6 +305,79 @@ async function run(){
          baseValues:{note:'MẪU chưa sửa'},changes:{note:'blocked by cell policy'}},
        leases:{note:{token:l.token,secret:l.secret}}}));
    });
+   await step(scope+' PARTY: level-only grant forces dependent status with one lease',async()=>{
+     await seed(scope);const p=paths(scope);
+     const perms=scope==='legacy'?'hdnd/permissions/columns':'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/columns';
+     await ownerPut(perms+'/partyLevel',true);
+     await ownerPut(perms+'/progressParty',false);
+     const l=await acquire(scope,'r1','partyLevel');
+     const operationId=randomUUID();
+     const saved=await call(a,scope,'save',{operationId,patch:{
+       recordId:'r1',operationId,baseRevision:1,
+       baseValues:{partyLevel:'BCH'},changes:{partyLevel:'Không'}},
+       leases:{partyLevel:{token:l.token,secret:l.secret}}});
+     assert.equal(saved.row.partyLevel,'Không');
+     assert.equal(saved.row.progressParty,'Không phải trình');
+     assert.equal(saved.row.revision,2);
+     assert.deepEqual(saved.row.history['2'].changes,{partyLevel:'Không',progressParty:'Không phải trình'});
+     assert.equal(saved.row.history['2'].oldValues.progressParty,'Sở chưa trình');
+     const replay=await call(a,scope,'save',{operationId,patch:{
+       recordId:'r1',operationId,baseRevision:1,
+       baseValues:{partyLevel:'BCH'},changes:{partyLevel:'Không'}},
+       leases:{partyLevel:{token:l.token,secret:l.secret}}});
+     assert.equal(replay.row.revision,2);
+     const statusLease=await acquire(scope,'r1','progressParty');
+     await sameState(scope,'PARTY direct status frozen by level Không',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',baseRevision:2,baseValues:{progressParty:'Không phải trình'},
+         changes:{progressParty:'Đã gửi ĐU'}},
+       leases:{progressParty:{token:statusLease.token,secret:statusLease.secret}}}));
+   });
+   await step(scope+' PARTY: leaving Không resets status with party-only grant',async()=>{
+     await seed(scope);const p=paths(scope);
+     await ownerPut(p.row+'/partyLevel','Không phải trình');
+     await ownerPut(p.row+'/progressParty','Không phải trình');
+     const perms=scope==='legacy'?'hdnd/permissions/columns':'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/columns';
+     await ownerPut(perms+'/partyLevel',true);
+     await ownerPut(perms+'/progressParty',false);
+     const l=await acquire(scope,'r1','partyLevel'),operationId=randomUUID();
+     const saved=await call(a,scope,'save',{operationId,patch:{
+       recordId:'r1',operationId,baseRevision:1,
+       baseValues:{partyLevel:'Không phải trình'},changes:{partyLevel:'BTV'}},
+       leases:{partyLevel:{token:l.token,secret:l.secret}}});
+     assert.equal(saved.row.partyLevel,'BTV');
+     assert.equal(saved.row.progressParty,'Sở chưa trình');
+     assert.deepEqual(saved.row.history['2'].changes,{partyLevel:'BTV',progressParty:'Sở chưa trình'});
+   });
+   await step(scope+' PARTY: status-only grant cannot bypass Không dependency',async()=>{
+     await seed(scope);const p=paths(scope);
+     const perms=scope==='legacy'?'hdnd/permissions/columns':'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/columns';
+     await ownerPut(perms+'/partyLevel',false);
+     await ownerPut(perms+'/progressParty',true);
+     await ownerPut(p.row+'/partyLevel','Không');
+     await ownerPut(p.row+'/progressParty','Không phải trình');
+     const l=await acquire(scope,'r1','progressParty');
+     await sameState(scope,'PARTY status only denied',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',baseRevision:1,baseValues:{progressParty:'Không phải trình'},
+         changes:{progressParty:'Sở chưa trình'}},
+       leases:{progressParty:{token:l.token,secret:l.secret}}}));
+   });
+   await step(scope+' PARTY: denied level grant and racing level CAS preserve state',async()=>{
+     await seed(scope);const p=paths(scope);
+     const perms=scope==='legacy'?'hdnd/permissions/columns':'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/columns';
+     await ownerPut(perms+'/partyLevel',false);
+     await ownerPut(perms+'/progressParty',true);
+     const lease=await acquire(scope,'r1','partyLevel');
+     await sameState(scope,'PARTY denied level',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',baseRevision:1,baseValues:{partyLevel:'BCH'},
+         changes:{partyLevel:'Không'}},
+       leases:{partyLevel:{token:lease.token,secret:lease.secret}}}));
+     await ownerPut(perms+'/partyLevel',true);
+     await ownerPut(p.row+'/partyLevel','TTTU');
+     await sameState(scope,'PARTY stale CAS',()=>call(a,scope,'save',{
+       patch:{recordId:'r1',baseRevision:1,baseValues:{partyLevel:'BCH'},
+         changes:{partyLevel:'Không'}},
+       leases:{partyLevel:{token:lease.token,secret:lease.secret}}}));
+   });
    await step(scope+' HC type rejects progressBuild mutation and retains data',async()=>{
      await seed(scope);const p=paths(scope);
      await ownerPut(p.row+'/type','HC');
