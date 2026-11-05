@@ -75,7 +75,8 @@ describe('Worker A REV2 — L01 source metadata',()=>{
    expect(css).toContain('.compact-document-heading[data-metadata-mode="editable"]');
    expect(css).toContain('display:flex;flex-flow:row nowrap;align-items:center;gap:8px');
    expect(css).toContain('overflow-x:auto;overflow-y:hidden');
-   expect(css).toContain('background:var(--type-bg,#F1F5F9)!important');
+   expect(css).toContain('--ui-picker-bg:var(--type-bg,#F1F5F9);');
+   expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
    expect(css).toContain('outline:2px solid #356d86!important');
  });
 });
@@ -96,7 +97,8 @@ describe('Worker A REV2 — L03 permission drives entire group geometry',()=>{
  it('level readonly: two tracks, caption keeps real value, no fake level picker',()=>{
    const html=render(stages,fixture,['progressBuild']);
    expect(html).toContain('data-level-layout="readonly"');
-   expect(plain(html)).toContain('Thành ủy (BTV TU)VP đang xử lý');
+   expect(plain(html)).toContain('Thành ủy (BTV)VP đang xử lý');
+   expect(fixture.partyLevel).toBe('BTV TU'); // render-only alias, never writes source
    expect(html).not.toContain('data-level-editor="true"');
    expect(html).not.toContain('aria-label="NQ01 partyLevel"');
    expect(html).toContain('aria-label="NQ01 progressBuild"');
@@ -126,11 +128,13 @@ describe('Worker A REV2 — L03 permission drives entire group geometry',()=>{
  });
  it('uses standard dropdown frame, semantic background/ink and no shaded caret rail',()=>{
    expect(css).toContain('.compact-stages[data-rev2="true"]');
-   expect(css).toContain('grid-template-columns:max-content 132px minmax(186px,1fr)');
-   expect(css).toContain('grid-template-columns:max-content minmax(186px,1fr)');
-   expect(css).toContain('min-height:36px!important;height:36px!important');
-   expect(css).toContain('background:var(--workflow-bg)!important');
-   expect(css).toContain('color:var(--workflow-text)!important');
+   expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-level-track) var(--ui-stage-status-track)!important');
+   expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-status-track)!important');
+   expect(css).toContain('min-height:36px!important;height:auto!important');
+   expect(css).toContain('--ui-picker-bg:var(--workflow-bg,#F2F6F9);');
+   expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
+   expect(css).toContain('--ui-picker-fg:var(--workflow-text,#426274);');
+   expect(css).toContain('color:var(--ui-picker-fg,#426274)!important');
    expect(css).toContain('content:none!important;display:none!important;background:none!important');
    expect(css).toContain('grid-template-columns:subgrid!important');
    expect(css).toContain('overflow-x:auto;overflow-y:hidden');
