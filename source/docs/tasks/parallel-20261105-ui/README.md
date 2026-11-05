@@ -4,7 +4,7 @@ Repo: `cavoixanh638/HopHDND-WebApp`. Baseline chung `d8c994c44f7bd11b685d82f8f95
 
 ## Đích cuối
 
-Sửa mã vị trí và mã con, picker, cấp trình/trạng thái Thành ủy, căn lề và độ rộng cụm Tiến độ 3 khâu theo ảnh người dùng 05/11. Bản tích hợp phải có test/CI đúng SHA, screenshot và số đo ở list/popup, 1440/900/390 px, admin/guest/quyền hỗn hợp; gói HTML QA mới có SHA-256; Site demo riêng tư hiện có được cập nhật **nếu có quyền Sites** và xác minh version/deployment/URL. Không ghi Firebase thật trong đợt này; chuẩn bị/test migration để chạy khi UI được duyệt triển khai production. Không merge main, không deploy Firebase Hosting/production.
+Sửa mã vị trí và mã con, picker, cấp trình/trạng thái Thành ủy, căn lề và độ rộng cụm Tiến độ 3 khâu. Ảnh người dùng 05/11 cho thấy cụm hai track readonly vẫn rộng gần trọn cột, ô dropdown ở hàng đầu giãn rất dài và các nhãn/giá trị trong những hàng kế bị lệch trục dọc. Bản tích hợp phải có test/CI đúng SHA, screenshot và số đo ở list/popup, 1440/900/390 px, admin/guest/quyền hỗn hợp; gói HTML QA mới có SHA-256; Site demo riêng tư hiện có được cập nhật **nếu có quyền Sites** và xác minh version/deployment/URL. Không ghi Firebase thật trong đợt này; chuẩn bị/test migration để chạy khi UI được duyệt triển khai production. Không merge main, không deploy Firebase Hosting/production.
 
 Site hiện có `appgprj_6ae93f17c2e48191815caef8a642fa14` vẫn v2 từ source commit `e975c4e3906ecea525d51e73a9153e82569b46cc` khi kiểm; chưa chứa REV2. Không gọi toàn việc DONE nếu Site chưa được cập nhật hoặc không có bằng chứng.
 
