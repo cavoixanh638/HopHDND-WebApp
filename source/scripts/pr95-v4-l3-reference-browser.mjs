@@ -247,6 +247,15 @@ try{
   for(const row of [1,2]){
     const selector='.report-surface[data-ui-reference-report=party] .report-table tbody tr:nth-child('+row+') td[data-ui-reference-report-column="__PERCENT__"]';
     await hover(selector);
+    const cellProbe=await js(`(()=>{
+      const x=document.querySelector(${JSON.stringify(selector)});
+      const badge=document.querySelector('[data-ui-reference-hover]');
+      return {cell:x?.getBoundingClientRect().toJSON(),text:x?.innerText?.slice(0,70),
+        code:badge?.dataset.uiRefCode,hidden:badge?.hidden,placement:badge?.dataset.uiRefPlacement,
+        compact:badge?.dataset.uiRefCompact,short:badge?.querySelector('.ui-reference-short')?.textContent,
+        badgeRect:badge?.getBoundingClientRect().toJSON()};
+    })()`);
+    console.log('REF_MATRIX_CELL_PROBE '+JSON.stringify({row,...cellProbe}));
     await until('(()=>{const b=document.querySelector("[data-ui-reference-hover]");return !!b&&!b.hidden&&b.dataset.uiRefCode?.startsWith("R01.CELL.")})()',
       'report numeric cell '+row+' displayed its full semantic code');
     const full=await js('document.querySelector("[data-ui-reference-hover]")?.dataset.uiRefCode??null');
