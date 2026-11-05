@@ -32,3 +32,10 @@
 **DATA trên `ui/20261105-party-data`:** Đọc `README.md`, `WORKER-DATA.md`, checkpoint DATA, HEAD; làm catalog `Không/TTTU/BTV/BCH`, transaction quyền hẹp và race/lease/CAS, Firebase Emulator tests, dry-run migration inventory/manifest/idempotency/rollback; đưa patch contract App.tsx cho commander. **Không ghi live**; commit/push code/test/evidence và checkpoint với SHA. Không sửa App.tsx hay UI.
 
 **Commander next:** Chờ các worker đóng checkpoint với bằng chứng; update tracker theo HEAD/CI thực; sau đó kiểm diff file ownership, tích hợp App.tsx/glue và attr recordId trên coordination, test exact SHA, build + hash, thử Site chỉ khi owner-only được xác minh. Không chấm DONE cho integration hoặc Site hiện tại.
+
+## Checkpoint dừng phiên kiểm, trạng thái chưa DONE
+
+- Tracker cập nhật mới nhất tại [`34b8574`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/34b8574c25a31f2625db29e6c83ce8dfcdc5c75a).
+- HEAD cuối đã đọc: REF [`877b309`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/877b309543382fa24c919fea3f7540b41d2ce78a), UI [`dd05d21`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/dd05d21a25b6ef852d525d3249af5e94212fe6ba), WIDTH [`d933b64`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/d933b64e2f7d990822a2d172cce049135b3980b6), DATA `aa135cf`. REF/WIDTH còn commit liên tục; đừng lấy tracker snapshot làm HEAD hiện hành.
+- **NO INTEGRATED SHA / NO CI / NO PACKAGE HASH / SITE_PENDING**. Cần DATA commit/handoff và các worker xác nhận ngừng ghi trước khi tích hợp. UI đã handoff code và test nhưng tự báo Chrome/CI NOT RUN. Do hạn chế không có checkout/dependencies và không có Sites API, không tự khẳng định Chrome/Emulator/deploy. Site chưa cập nhật; Firebase production không thay đổi bởi commander.
+- Nếu tiếp quản ngay: kiểm lại HEAD/checkpoint/CI của cả bốn worker, chỉ tích hợp delta chính xác; kiểm mâu thuẫn WIDTH/UI (width nội bộ CSS), REF recordId của list + popup; sau DATA handoff nối transaction `App.tsx`; tạo artifact và hash chỉ từ build thật. Không dùng `main` và không viết live RTDB.
