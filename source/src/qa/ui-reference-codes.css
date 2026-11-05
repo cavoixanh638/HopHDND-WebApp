@@ -49,7 +49,7 @@
   border-radius:3px;
   background:#fff;
   color:#135279;
-  font:700 12px/13px inherit;
+  font-weight:700;font-size:12px;line-height:13px;font-family:inherit;
   cursor:pointer;
   pointer-events:auto!important;
   user-select:none;
