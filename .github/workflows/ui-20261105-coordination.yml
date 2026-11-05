@@ -17,7 +17,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ui-20261105-coordination-${{ github.ref }}
+  group: ui-20261105-coordination-${{ github.sha }}
   cancel-in-progress: true
 jobs:
   app-qa:
