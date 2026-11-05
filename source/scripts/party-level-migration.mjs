@@ -52,7 +52,7 @@ export function plan(snapshot){
     redactedDistinctValues:Object.keys(unknown).length,
     redactedTotal:report.unknownCount
   },patches:patches.map(({idDigest,changes})=>({idDigest,fields:Object.keys(changes)}))};
-  return {report,publicManifest,privatePlan:{target:TARGET,sourceDigest:report.sourceDigest,patches}};
+  return {report,publicManifest,privatePlan:{target:TARGET,sourceDigest:report.sourceDigest,unknownCount:report.unknownCount,patches}};
 }
 export function verify(snapshot,planData){
   assert(snapshot?.items&&planData?.target?.project===TARGET.project&&planData.target.instance===TARGET.instance);
@@ -67,7 +67,8 @@ export function verify(snapshot,planData){
 }
 export function applyFixture(snapshot,planData,{stopAfter=Infinity}={}){
   assert(planData.target.project===TARGET.project&&planData.target.instance===TARGET.instance);
-  assert(sha(snapshot.items)===planData.sourceDigest||Object.values(snapshot.items).some(Boolean));
+  assert(planData.unknownCount===0);
+  assert(snapshot.items&&typeof snapshot.items==='object'&&!Array.isArray(snapshot.items));
   if(!Number.isInteger(stopAfter)&&stopAfter!==Infinity)throw Error('Bad stopAfter');
   const copy=structuredClone(snapshot);let writes=0,skips=0;
   for(const patch of planData.patches){
