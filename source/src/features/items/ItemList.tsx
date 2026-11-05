@@ -893,7 +893,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr>}</thead><tbody>
-      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
+      {rows.map(item => <tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
           const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));
@@ -943,6 +943,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
         const writable=editableField(item,key);
         return <td key={column.key} data-col-key={column.key}
+           data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
           data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable?'Bấm để sửa':undefined}
