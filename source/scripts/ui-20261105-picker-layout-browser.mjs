@@ -26,16 +26,20 @@ const server=createServer((req,res)=>{
 });
 await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const base='http://127.0.0.1:'+server.address().port+'/compact-qa.html';
-const bin=['chromium','google-chrome','google-chrome-stable'].find(n=>
+const bin=['google-chrome','google-chrome-stable','chromium','chromium-browser'].find(n=>
  spawnSync('which',[n],{encoding:'utf8'}).status===0);
 assert(bin,'Chromium is required');
 const tmp=mkdtempSync(join(tmpdir(),'ui-20261105-picker-'));
 const free=createServer();await new Promise(ok=>free.listen(0,'127.0.0.1',ok));
 const port=free.address().port;await new Promise(ok=>free.close(ok));
 const browser=spawn(bin,['--headless=new','--no-sandbox','--disable-dev-shm-usage',
- '--disable-background-networking','--remote-allow-origins=*',
+ '--disable-gpu','--disable-extensions','--disable-background-networking',
+ '--no-first-run','--no-default-browser-check','--remote-allow-origins=*',
+ '--remote-debugging-address=127.0.0.1',
  '--remote-debugging-port='+port,'--user-data-dir='+tmp,'about:blank'],
- {stdio:['ignore','ignore','pipe']});
+ {stdio:['ignore','ignore','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
+const chromeStderr=[];
+browser.stderr.on('data',buf=>{if(chromeStderr.length<25)chromeStderr.push(String(buf).slice(0,400));});
 let ws,seq=0;const jobs=new Map(),requests=[];
 const send=(method,params={})=>new Promise((done,fail)=>{
  const id=++seq;jobs.set(id,{done,fail});ws.send(JSON.stringify({id,method,params}));
@@ -100,7 +104,7 @@ try{
   try{tab=(await (await fetch('http://127.0.0.1:'+port+'/json/list')).json()).find(t=>t.type==='page');if(tab)break;}catch{}
   await delay(130);
  }
- assert(tab,'Chrome debugger endpoint unavailable');
+ assert(tab,'Chrome debugger endpoint unavailable: executable='+bin+' stderr='+chromeStderr.join(' | ').slice(0,1300));
  ws=new WebSocket(tab.webSocketDebuggerUrl);
  await new Promise((ok,bad)=>{ws.addEventListener('open',ok,{once:true});
   ws.addEventListener('error',bad,{once:true});});
