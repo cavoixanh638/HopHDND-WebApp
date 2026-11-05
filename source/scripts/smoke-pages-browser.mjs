@@ -2944,6 +2944,10 @@ try{
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    // REV2 places the highlighted progress fill on the actual CellPicker
+    // while keeping its wrapper transparent (no fake row affordance).
+    const highlightedTrigger=stage?.querySelector('button.cell-picker-trigger');
+    const triggerPaint=color(highlightedTrigger);
     // V4 default demo stores BCH, not old "Ban Chấp hành". The QA wildcard
     // deliberately still targets that LEGACY source string: it MUST NOT leak
     // onto a new canonical label. Separate unit fixtures prove the same
@@ -2954,8 +2958,10 @@ try{
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
       qpplKind==='QPPL'&&hcLocked&&
-      p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
-      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p};
+      p?.background==='rgba(0, 0, 0, 0)'&&p?.tag==='true'&&
+      !!highlightedTrigger&&triggerPaint?.background==='rgb(255, 238, 85)'&&
+      triggerPaint?.text==='rgb(0, 0, 0)',
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p,highlightedTrigger:triggerPaint};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
