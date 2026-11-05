@@ -5,7 +5,7 @@ import {ReportTable} from '../src/features/reports/ReportTable';
 import {DEFAULT_REPORTS} from '../src/domain/reporting';
 import {reportReferenceGroupRows,reportReferenceStatusColumn,
   REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR} from '../src/domain/report-reference-identity';
-import {uiReferenceReportCellCode} from '../src/qa/ui-reference-codes';
+import {uiReferenceReportCellCode,uiReferenceShortCode} from '../src/qa/ui-reference-codes';
 import type {Item} from '../shared/types';
 
 const base=():Item[]=>createDemoItems(6).map((item,i)=>({
@@ -58,6 +58,15 @@ describe('UI 05/11 report matrix semantic identity (no label/index keys)',()=>{
     expect(uiReferenceReportCellCode('unknown',row,statusA)).toBeNull();
     expect(uiReferenceReportCellCode('council','',statusA)).toBeNull();
     expect(uiReferenceReportCellCode('council',row,'')).toBeNull();
+  });
+  it('shows distinct compact numeric codes while retaining the full semantic ID for copy',()=>{
+    const first=uiReferenceReportCellCode('party','record:demo-0001',RC.percent)!;
+    const second=uiReferenceReportCellCode('party','record:demo-0002',RC.percent)!;
+    const shortA=uiReferenceShortCode(first),shortB=uiReferenceShortCode(second);
+    expect(shortA).toMatch(/^R01·[0-9a-z]{7}$/);
+    expect(shortA).not.toBe(first);
+    expect(shortA).not.toBe(shortB);
+    expect(uiReferenceShortCode('L06.1@demo-0001')).toBe('L06.1');
   });
   it('renders stable report attributes on all headers, body, totals, percentages and empty row',()=>{
     const items=base(),cfg=DEFAULT_REPORTS[2];
