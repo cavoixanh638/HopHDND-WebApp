@@ -43,7 +43,7 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm ci --prefix cell-edit-service --no-audit --no-fund
-          npx --prefix cell-edit-service playwright install --with-deps chromium
+          npx --prefix cell-edit-service playwright install chromium
       - name: Typecheck and entire unit suite
         run: |
           npm run typecheck
@@ -112,7 +112,7 @@ jobs:
           npm run check --prefix cell-edit-service
           node cell-edit-service/scripts/make-test-rules.mjs
       - name: Isolated Chrome / Playwright
-        run: npx --prefix cell-edit-service playwright install --with-deps chromium
+        run: npx --prefix cell-edit-service playwright install chromium
       - name: Real isolated Auth, RTDB and Callable Emulator
         run: |
           cd cell-edit-service
@@ -163,7 +163,7 @@ jobs:
           npm ci --no-audit --no-fund
           npm ci --prefix cell-edit-service --no-audit --no-fund
           npm ci --prefix parent-commit-service --no-audit --no-fund
-          npx --prefix cell-edit-service playwright install --with-deps chromium
+          npx --prefix cell-edit-service playwright install chromium
       - name: Generate exact offline shared Rules
         run: node scripts/final-app-qa-rules.mjs
       - name: FULL App guest/admin/tabs/ACK/freeze/browser using local emulators
