@@ -32,6 +32,7 @@ const strange=plan({items:{...original.items,z:item('TU đã cho ý kiến','S�
 assert.equal(strange.report.unknownCount,1);
 assert.equal(strange.report.changedRows,2);
 assert.equal(strange.report.unknown['TU đã cho ý kiến'],1);
+assert.throws(()=>applyFixture({items:{...original.items,z:item('TU đã cho ý kiến','Sở chưa trình')}},strange.privatePlan),/MIGRATION_SAFETY_ABORT/);
 assert.throws(()=>applyFixture({...original,items:{...original.items,b:item('BTV TU','RACE changed')}},privatePlan),/CAS_CONFLICT/);
 assert.throws(()=>plan({items:{bad:{partyLevel:'Không'}}}),/MIGRATION_SAFETY_ABORT/);
 console.log('PARTY_LEVEL_FIXTURE_PASS '+JSON.stringify({
