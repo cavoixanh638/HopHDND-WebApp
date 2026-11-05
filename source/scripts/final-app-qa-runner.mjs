@@ -191,10 +191,13 @@ async function seedWorkbook(){
       reports:reports.defaultReportLayout(),items:item.defaultItemLayout()};
     const rows=[
       [...business.BUSINESS_HEADERS],
+      // F/G must be a valid four-level party/status pair. Empty F is
+      // permitted by the legacy read parser but REJECTED by the new-generation
+      // RTDB Rules. Repair the synthetic fixture, never relax production Rules.
       ['NQQA001',1,'Nghị quyết kiểm thử kết nối','Sở mẫu A','HC',
-        '','','','','','','','','Chờ xử lý','Bộ hồ sơ QA A'],
+        'TTTU','Sở chưa trình','','','','','','','Chờ xử lý','Bộ hồ sơ QA A'],
       ['BCQA002',2,'Báo cáo kiểm thử toàn ứng dụng','Sở mẫu B','BC',
-        '','','','','','','','','Chờ xử lý','Bộ hồ sơ QA B']
+        'BTV','VP đang xử lý','','','','','','','Chờ xử lý','Bộ hồ sơ QA B']
     ];
     const workbook=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet(rows),'QA A-O');
@@ -648,11 +651,16 @@ async function excelJourney(){
     try{
       const raw=await bodyOf('hdnd/datasetV2/candidates/'+op);
       const backup=await bodyOf('hdnd/datasetV2/backups/'+op);
+      const unpack=value=>typeof value==='string'?JSON.parse(value):value;
+      const candidate=unpack(raw),savedBackup=unpack(backup);
+      const first=Object.values(candidate?.items??{})[0];
       record('QA_PARENT_STAGING_STRUCTURE',{
-        keys:Object.keys(raw??{}),
-        backupKeys:Object.keys(backup??{}),
-        itemFields:Object.keys(Object.values(raw?.items??{})[0]??{}),
-        candidateLength:JSON.stringify(raw??{}).length});
+        candidateKeys:Object.keys(candidate??{}).slice(0,12),
+        backupKeys:Object.keys(savedBackup??{}).slice(0,12),
+        recordCount:Object.keys(candidate?.items??{}).length,
+        itemFieldNames:Object.keys(first??{}).slice(0,35),
+        partyLevels:[...new Set(Object.values(candidate?.items??{}).map(x=>x.partyLevel))],
+        sourceBytes:typeof raw==='string'?Buffer.byteLength(raw):JSON.stringify(raw??{}).length});
     }catch(cause){record('QA_PARENT_STAGING_STRUCTURE_ERROR',{error:safeError(cause)});}
     await screenshot(admin,'FAIL-EXCEL-PARENT-CAS-409');
     throw error;
