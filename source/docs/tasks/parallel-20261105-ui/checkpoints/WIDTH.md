@@ -1,3 +1,14 @@
-# WIDTH checkpoint
+# WIDTH checkpoint — 2026-11-05
 
-Trạng thái: NOT_STARTED. Baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9`. Đọc `../WORKER-WIDTH.md` và `../README.md`; kiểm HEAD/dirty tree rồi ghi mốc đầu. Chỉ WIDTH ghi file này trên nhánh WIDTH.
+## Khảo sát và mốc đầu (SURVEY, IN_PROGRESS)
+- Owner duy nhất nhánh `ui/20261105-column-width`; baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9`; remote HEAD trước thay đổi `aa135cfb07fbc29fe642da8710bfb11d61941927` (hai commit tài liệu sau baseline). GitHub working tree là commit snapshot, không có dirty tree từ GitHub; môi trường container không clone được vì DNS `github.com` không phân giải; không khẳng định local checkout clean.
+- Đã đọc `README.md`, `WORKER-WIDTH.md`, `ItemList.tsx`, `item-preferences.ts`, `compact-columns.ts`, `resize-last-column.ts`, `fit-table-columns.ts`, `CompactGroupedValue.tsx`, `item-frame.css`, `App.tsx`, `item-layout-merge.ts`. L03 `partyTogether` hiện được chiếu qua `compactVisibleColumns` với `extraWidth:130`; `fitTableColumns` tiếp tục giãn cả L03. `<colgroup>` chọn width theo base + auto-fit; không nhận quyền cấp trình trên từng dòng.
+- Đường lưu chính: `App.tsx -> saveItemLayoutConfig -> common/Firebase profile.items`, với `mergeItemLayout` CAS theo field; demo/local `saveItemLayout`; viewer `onPersistViewerLayout` có optimistic update, rollback và màn giải quyết xung đột.
+- **Phạm vi mở rộng bắt buộc, ghi trước khi sửa:** `source/src/data/item-layout-merge.ts` hiện dựng lại `ItemLayout` từ danh sách field cố định, nên sẽ làm rơi hai width nếu không thêm merge field-level. File này không nằm trong sở hữu DATA worker (DATA chỉ sửa field-definitions, status-contract, service/Rules/migration). WIDTH sẽ chỉ thêm merge hai key cấu hình ở module này; không sửa domain/service, `App.tsx`, các file worker khác.
+- **Hợp đồng tức thời cho UI worker:** WIDTH sẽ cung cấp CSS variables `--hdnd-l03-width-readonly` (px), `--hdnd-l03-width-editable` (px) ở `table.item-data-table`; cho từng `td.compact-merged-cell` L03 có `data-l03-layout="readonly|editable"` và `--hdnd-l03-inner-width` tính bằng width cấu hình trừ khoảng đệm ô. UI worker dùng giá trị này làm giới hạn chiều ngang grid *bên trong* `.compact-stages` (không sử dụng `1fr` kéo picker ra full physical khi mixed); **không** tính/set độ rộng cột vật lý trong `CompactGroupedValue.tsx` hay `item-frame.css`.
+- Quy tắc vật lý: nếu các dòng hiển thị đều readonly cấp trình thì `<col>` L03 = width readonly; có ít nhất một dòng được quyền sửa cấp trình thì `<col>` = max(width readonly,width editable); mỗi dòng readonly vẫn nhận `--hdnd-l03-inner-width` readonly, không kéo rộng theo `<col>`. Khả năng sửa phụ thuộc `canEdit`, `locked`, `canEditCell(recordId,'partyLevel')`. L03 header có thể chuyển vị trí nhưng không trở thành nhiều cột con.
+
+## Trạng thái
+- Survey: PASS, dựa trên remote source `aa135cfb`.
+- Code: NOT RUN; unit/typecheck/build: NOT RUN; browser 1440/900/390 admin/guest/mixed: NOT RUN; Firebase Emulator: NOT RUN. Không có artifact/screenshots/run từ WIDTH ở thời điểm này.
+- Việc kế tiếp: sửa schema/validation/default/migration cấu hình cũ; UI admin chỉnh hai width, CAS/rollback/preview; cột vật lý và per-row contract; test; checkpoint SHA chính xác; không merge/deploy/Firebase live.
