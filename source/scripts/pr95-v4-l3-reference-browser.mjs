@@ -225,7 +225,7 @@ try{
   // silently fall back to displayCode, STT or row index.
   const rowCode=await js('(()=>{const cell=document.querySelector(".item-data-table tbody td[data-col-key=note]");if(!cell)return null;cell.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerId:1}));return cell.closest("tr")?.getAttribute("data-ui-reference-record-id")})()');
   await sleep(150);
-  if(!rowCode)assert(!await js('!!document.querySelector("[data-ui-ref-code^=L06\\.1@]")'),
+  if(!rowCode)assert(!await js('document.querySelector("[data-ui-ref-code]")?.dataset.uiRefCode?.startsWith("L06.1@")'),
     'missing record-id must suppress instance code');
   const horizontal=await js('(()=>{const e=document.querySelector(".item-table-scroll");e.scrollLeft=160;e.dispatchEvent(new Event("scroll"));return e.scrollLeft})()');
   assert(horizontal>0,'horizontal table scroll');
@@ -248,7 +248,7 @@ try{
     assert(found,'stable report registry '+id);
   }
   await call('(()=>{const head=document.querySelector(".report-surface[data-ui-reference-report=party] > .card-header");head.scrollIntoView({block:"center"});head.dispatchEvent(new PointerEvent("pointerover",{bubbles:true}));})()');
-  await until('document.querySelector("[data-ui-ref-code=R01\\.HEADER]")','report header hover');
+  await until('document.querySelector(\'[data-ui-ref-code="R01.HEADER"]\')','report header hover');
   await verifyNoOcclusion('desktop-reports');
   await screenshot('pr95-v4-l3-admin-reports.png');
   await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
