@@ -106,7 +106,7 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(css).toMatch(/button\.cell-picker-trigger::before\{\s*content:none!important;display:none!important;/s);
     expect(css).toContain('border:0;border-right:1.8px solid currentColor');
     expect(css).toContain('background:transparent!important');
-    expect(css).toContain('outline:2px solid #356d86!important');
+    expect(css).toContain('outline:2px solid #356D86!important');
   });
   it('retains unchanged CellPicker aria, keyboard, lease/save/clear contracts',()=>{
     for(const source of ["aria-haspopup=\"dialog\"","aria-selected={value === option.value}",
