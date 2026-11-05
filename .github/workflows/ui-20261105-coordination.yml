@@ -49,7 +49,7 @@ jobs:
         run: |
           npm run build
           npm run build:compact:qa
-          test -s dist/index.html
+          test -s dist/Dashboard_HĐND.html
           test -s dist-compact-qa/compact-qa.html
       - name: Verify real Chrome available
         run: command -v google-chrome-stable || command -v google-chrome || command -v chromium
@@ -60,7 +60,7 @@ jobs:
       - name: Immutable QA package with hashes (no publication)
         run: |
           mkdir -p qa-results/ui-20261105
-          sha256sum dist/index.html dist-compact-qa/compact-qa.html > qa-results/ui-20261105/file-sha256.txt
+          sha256sum dist/Dashboard_HĐND.html dist-compact-qa/compact-qa.html > qa-results/ui-20261105/file-sha256.txt
           tar -czf qa-results/ui-20261105/html-qa.tar.gz dist dist-compact-qa
           sha256sum qa-results/ui-20261105/html-qa.tar.gz > qa-results/ui-20261105/package-sha256.txt
           printf '%s\n' "$GITHUB_SHA" > qa-results/ui-20261105/source-sha.txt
