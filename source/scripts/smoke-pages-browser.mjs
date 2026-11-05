@@ -2642,7 +2642,7 @@ try{
       // the entire mixed-permission stage row. Assert a visible, 2px
       // high-contrast focus outline while its own dialog is expanded.
       stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
-      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 108, 139)'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 109, 134)'&&
       parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
       checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
