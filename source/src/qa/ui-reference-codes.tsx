@@ -90,6 +90,15 @@ export function uiReferenceRecordSuffix(row:Element|null):string|null{
   const id=row?.getAttribute('data-ui-reference-record-id');
   return id&&id.trim()?('@'+keySuffix(id)):null;
 }
+/** A compact on-screen preview, while the full semantic key remains in
+ * data-ui-ref-code, aria-label, title and clipboard. Numeric report cells
+ * otherwise cannot fit their long record-backed identities inside 150px. */
+export function uiReferenceShortCode(code:string):string{
+  if(!/^R[0-9]{2}\\.CELL\\./.test(code))return code.split('@')[0];
+  let hash=2166136261;
+  for(let i=0;i<code.length;i++)hash=Math.imul(hash^code.charCodeAt(i),16777619)>>>0;
+  return code.slice(0,3)+'·'+hash.toString(36).padStart(7,'0');
+}
 export type UiReferenceAnchor={code:string;element:Element};
 export function resolveUiReferenceAnchors(root:ParentNode):UiReferenceAnchor[]{
   const result:UiReferenceAnchor[]=[];
@@ -413,7 +422,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       }
       current=next;
       value.textContent=next.code;
-      short.textContent=next.code.split('@')[0];
+      short.textContent=uiReferenceShortCode(next.code);
       badge.dataset.uiRefCode=next.code;
       copy.setAttribute('aria-label','Sao chép mã '+next.code);
       copy.title='Sao chép '+next.code;
