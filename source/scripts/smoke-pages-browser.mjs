@@ -3420,7 +3420,7 @@ try{
   if(textGeometry.grip<13||textGeometry.progressAlign!=='left'||
     textGeometry.progressButtonAlign!=='left'||textGeometry.noteAlign!=='left'||
     textGeometry.noteButtonAlign!=='left'||textGeometry.contentAlign!=='left'||
-    textGeometry.headingAlign!=='baseline'||textGeometry.badgeY===null||
+    textGeometry.headingAlign!=='center'||textGeometry.badgeY===null||
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
