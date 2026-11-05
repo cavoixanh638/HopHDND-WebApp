@@ -375,10 +375,14 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     let dialog:HTMLDialogElement|null=null;
     let pending=0,disposed=false;
     let hovered:Element|null=null,focused:Element|null=null,lastPointer:Element|null=null;
+    let keyboardFocusPriority=false;
     let current:UiReferenceTarget|null=null;
+    // Preserve keyboard focus until a real pointer enters another target.
+    // A stale focused nav button must not hide the code of a hovered report.
     const active=()=>copy.contains(document.activeElement)?current?.element??hovered:
-      focused&&root.contains(focused)?focused:
-      hovered&&root.contains(hovered)?hovered:null;
+      keyboardFocusPriority&&focused&&root.contains(focused)?focused:
+      hovered&&root.contains(hovered)?hovered:
+      focused&&root.contains(focused)?focused:null;
     const schedule=()=>{
       if(!disposed&&!pending)pending=requestAnimationFrame(redraw);
     };
@@ -418,7 +422,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       const node=event.target;
       if(!(node instanceof Element)||!root.contains(node))return;
       if(node===lastPointer)return;
-      lastPointer=node;hovered=node;schedule();
+      lastPointer=node;hovered=node;keyboardFocusPriority=false;schedule();
     };
     const onLeave=(event:Event)=>{
       // Crossing to the copy button must not dismiss the marker before click.
@@ -428,7 +432,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       hovered=null;lastPointer=null;schedule();
     };
     const onFocus=(event:FocusEvent)=>{
-      if(event.target instanceof Element){focused=event.target;schedule();}
+      if(event.target instanceof Element){focused=event.target;keyboardFocusPriority=true;schedule();}
     };
     const onBlur=()=>{
       queueMicrotask(()=>{
