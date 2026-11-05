@@ -1,13 +1,22 @@
-# Tracker UI 05/11 — khởi tạo
+# Tracker UI 05/11 — kiểm theo sự kiện
 
-Baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9`; tested code/test baseline `3bfb28e0f8496732424898ae6186ea807af961fb`, Verify #41957942551 PASS. Chênh lệch chỉ docs. Đây là **baseline cũ**, không tính PASS cho yêu cầu mới. Site hiện v2/stale, chưa có bản mới.
+Baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9`; mốc chung trước worker `aa135cfb07fbc29fe642da8710bfb11d61941927`. Baseline tested code `3bfb28e0f8496732424898ae6186ea807af961fb`, [Verify #41957942551](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942551) PASS chỉ là **baseline cũ**, không nghiệm thu delta 05/11. Theo sự kiện kiểm GitHub 05/11/2026, không coi checkpoint khảo sát là PASS code.
 
-| Luồng | Nhánh | Trạng thái | Code SHA/test SHA | Bằng chứng mới | Còn thiếu |
+| Owner/nhánh | HEAD mới nhất lúc kiểm | Code SHA / test SHA | Test/CI delta | Run/artifact | Tiêu chí còn thiếu |
 |---|---|---|---|---|---|
-| REF | `ui/20261105-ref-codes` | NOT_STARTED | — | — | Registry/mã con, placement/copy, browser |
-| UI | `ui/20261105-picker-layout` | NOT_STARTED | — | — | Picker, L03 alignment/compact, Chrome |
-| WIDTH | `ui/20261105-column-width` | NOT_STARTED | — | — | Hai width toàn cụm, persist, browser |
-| DATA | `ui/20261105-party-data` | NOT_STARTED | — | — | Transaction, Emulator, migration dry-run |
-| Commander | `ui/20261105-coordination` | NOT_STARTED | — | — | Integration exact SHA, package, private Site |
+| REF — `ui/20261105-ref-codes` | [`9ba79d8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/9ba79d8feab90b28d59bd65e5d70bc8bef74bac8) | code `9ba79d8`; test SHA **chưa xác minh** | **NOT RUN** (0 workflow runs) | [nhánh REF](https://github.com/cavoixanh638/HopHDND-WebApp/tree/ui/20261105-ref-codes); chưa có run/artifact | Registry/mã con/copy tests Chrome; stable record ID attr từ UI/commander; nhận checkpoint sau code và test |
+| UI — `ui/20261105-picker-layout` | [`a1408d7`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/a1408d79779c4402306575e9df38d885bcbc1ef8) | code `2a7fe5da3fc19e7b2233e550c2c474f55183a670`; test `a1408d7` (test file thêm, chưa thực thi) | **NOT RUN** (0 workflow runs); checkpoint tự nêu local typecheck/build/Chrome NOT RUN | [nhánh UI](https://github.com/cavoixanh638/HopHDND-WebApp/tree/ui/20261105-picker-layout); chưa có run/artifact | Chrome list/popup và rect 1440/900/390; picker parity, contract DATA, test thực chạy |
+| WIDTH — `ui/20261105-column-width` | [`6e298b1`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6e298b102441edf736e5f98c5f70173446a25c16) | code `6e298b1`; test SHA **chưa xác minh** | **NOT RUN** (0 workflow runs) | [nhánh WIDTH](https://github.com/cavoixanh638/HopHDND-WebApp/tree/ui/20261105-column-width); chưa có run/artifact | ItemList physical width, hai mode/admin persistence UI, mixed permissions, browser; WIDTH đã mở rộng `item-layout-merge.ts` có ghi checkpoint |
+| DATA — `ui/20261105-party-data` | [`aa135cf`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/aa135cfb07fbc29fe642da8710bfb11d61941927) | chưa có code/test SHA mới | **NOT RUN** (0 workflow runs) | [nhánh DATA](https://github.com/cavoixanh638/HopHDND-WebApp/tree/ui/20261105-party-data); chưa có run/artifact | Danh mục, transaction hẹp, emulator, migration dry-run/backup/rollback, contract App.tsx; worker chưa ghi code |
+| Commander — `ui/20261105-coordination` | [`9b75cb1`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/9b75cb1fd2af66f51251b5a6d458a189cbcb7995) trước tracker | chưa có integration code/test SHA | **NOT RUN** (0 workflow runs) | [checkpoint đầu phiên](https://github.com/cavoixanh638/HopHDND-WebApp/blob/ui/20261105-coordination/source/docs/tasks/parallel-20261105-ui/checkpoints/COMMANDER.md) | Chờ worker kết thúc, integrate App glue/attrs, exact SHA CI/Chrome/Emulator, hash package, Site owner-only |
 
-Commander là writer duy nhất của file này. Chỉ cập nhật khi có commit/test/lỗi/chặn mới; ghi timestamp, link đúng SHA và việc còn thiếu. Worker writer duy nhất checkpoint trên nhánh của mình. Không dùng lời “xong” để đổi trạng thái.
+## Mốc sự kiện và kiểm ownership
+
+- Kiểm ban đầu: cả 4 HEAD ở `aa135cf`, checkpoint NOT_STARTED, 0 workflow runs; commander lưu checkpoint commit `9b75cb1`.
+- Kiểm lại: REF/UI/WIDTH xuất hiện commit code; DATA chưa chuyển; **bốn worker vẫn độc lập, không tự động nhận làm xong**. Diff so `aa135cf`: REF chỉ registry + CSS + checkpoint; UI chỉ CompactGroupedValue + item-frame + test riêng + checkpoint; WIDTH chỉ preferences, layout merge + checkpoint; DATA không có diff. Không phát hiện chồng chéo các file thay đổi đã commit. `item-layout-merge.ts` là mở rộng WIDTH công bố trước trong checkpoint. REF yêu cầu `data-ui-reference-record-id` trên list và popup; phần này dành commander sau khi không có xung đột.
+- Toàn bộ CI delta hiện **NOT RUN** vì truy vấn GitHub Actions theo mỗi nhánh trả `total_count=0`; **không gọi FAIL** nếu chưa chạy, không gọi PASS từ baseline.
+- **SITE_PENDING**: Site ID `appgprj_6ae93f17c2e48191815caef8a642fa14` theo README còn v2; chưa có build tích hợp và chưa xác thực quyền owner-only; không tuyên bố deploy.
+
+## Điều kiện tiếp tục
+
+Mỗi worker tiếp tục theo `WORKER-<ID>.md` và checkpoint trên đúng nhánh, báo code/test SHA + test PASS/FAIL/NOT RUN + run/artifact + criteria. Commander chỉ tích hợp khi diff và ownership rõ; không merge main/production và không chạy migration live. Nếu chat worker dừng/hit limit, chat mới thay writer và đọc cùng entrypoint/checkpoint, **không chạy hai writer trên một nhánh**.
