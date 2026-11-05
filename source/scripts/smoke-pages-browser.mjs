@@ -790,8 +790,16 @@ try{
     const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
     const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
     const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    const ok=text==='rgb(161, 0, 34)'&&background==='rgb(241, 203, 219)'&&
-      inherited==='#A10022'&&frameBackground==='rgba(0, 0, 0, 0)';
+    // REV2: this is a guest/read-only status. The source text inherits the
+    // palette ink, but only a real editable CellPicker button gets a filled
+    // palette background. Never require a fake filled guest affordance.
+    const isReadonly=sample.getAttribute('data-editable')!=='true'&&
+      !sample.querySelector('button.cell-picker-trigger');
+    const inheritedBg=style.getPropertyValue('--hdnd-status-not-submitted-bg').trim();
+    const ok=isReadonly&&text==='rgb(161, 0, 34)'&&
+      background==='rgba(0, 0, 0, 0)'&&
+      inherited==='#A10022'&&inheritedBg==='#F1CBDB'&&
+      frameBackground==='rgba(0, 0, 0, 0)';
     if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
     else owner.style.removeProperty('--hdnd-status-not-submitted-text');
     if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
