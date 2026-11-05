@@ -24,3 +24,16 @@ Baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9` (Verify [#41957942551](https
 - DATA migration offline fixture 5 hồ sơ, 2 record thay đổi, 1 status thay đổi — **chỉ fixture**, không phải số lượng Firebase thật. Live target `hophdnd-8b7b2/default-rtdb` bị HOLD: chưa kiểm inventory/backup production, chưa phê duyệt rollout. **Không có live write**.
 - Site demo riêng tư `appgprj_6ae93f17c2e48191815caef8a642fa14`: **SITE_PENDING** do không có Sites API trong tools; chưa xác minh owner-only hoặc deployment. Không thay bằng Pages/Hosting production.
 - Chưa gọi DONE, chưa merge `main`, chưa deploy Firebase hoặc chạy migration thật. Mọi test chỉ PASS khi exact integration SHA có run/job/artifact, không lấy baseline hay "code done" thay runtime chứng cứ.
+
+## Mốc Chrome REF và CI — sau 14:50+07
+
+| Owner | Code/test SHA mới | Test/run | Tình trạng và thiếu |
+|---|---|---|---|
+| REF+Commander glue | [`31db8aa`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/31db8aaa41e072d4e01234157e519e77c2bec5d6) | [run #41990700952](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41990700952) **RUNNING**, NOT YET PASS | Real Chrome phát hiện test hover dùng mouse giả và expectation `L06` thay vì mã con `L06.TITLE`. Đã chuyển tất cả hover list/after-reorder/report/popup thành CDP real pointer, giữ exact L06.TITLE + không che glyph/control. Cần chờ QA screenshots/rects và kiểm popup/guest trên SHA mới. |
+| UI/WIDTH glue | Code ở [`9844db8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/9844db80737219f7d44e16057d1b3bb1f29a8137), CSS/glue sau đó | [run #41989277121](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41989277121) | **TYPECHECK PASS, 878 unit PASS/116 skipped, BUILD PASS** exact run SHA `6d79558`, but REF Chrome FAIL nên UI Chrome chưa đến; chưa có package hash đầy đủ. Cần exact `31db8aa` repeat. |
+| DATA (source handoff) | `b95f97c` code/test, integration on coordination | [CI worker #41986984189](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41986984189) và [CI integration #41990321470](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41990321470) | **Emulator/offline migration PASS**; live HOLD, không ghi live. |
+| Commander | `31db8aa` | [run #41990700952](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41990700952) | **IN_PROGRESS**; exact final code SHA/typecheck+unit+build+real Chrome+Firebase/CI + package file/hash and private Site all needed. |
+
+- New code commits include `6d79558` fixing CI package path to actual `dist/Dashboard_HĐND.html`, `413c60c` positioning REF badge at unused header center, `74fd1a1` pointer vs keyboard focus priority, `e2aa8e0` actual CDP hover all contexts, `333a835` expected exact L06.TITLE, `31db8aa` pointing at real label element.
+- Case [#41990321470](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41990321470): REF real Chrome screenshot shows **painted `L06.TITLE` without overlap**, but old test searched `L06` and failed. Exact semantic subfield assertion now corrected (not relaxed).
+- **Site:** `SITE_PENDING` without Sites API/owner-only. **Package hash:** NOT AVAILABLE until QA/Chrome PASS. **Migration live:** HOLD; no Firebase live writes, no main merge, no production deployment.
