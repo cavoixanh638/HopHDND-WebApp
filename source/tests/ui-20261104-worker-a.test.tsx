@@ -77,7 +77,7 @@ describe('Worker A REV2 — L01 source metadata',()=>{
    expect(css).toContain('overflow-x:auto;overflow-y:hidden');
    expect(css).toContain('--ui-picker-bg:var(--type-bg,#F1F5F9);');
    expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
-   expect(css).toContain('outline:2px solid #356d86!important');
+   expect(css).toContain('outline:2px solid #356D86!important');
  });
 });
 
@@ -135,7 +135,9 @@ describe('Worker A REV2 — L03 permission drives entire group geometry',()=>{
    expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
    expect(css).toContain('--ui-picker-fg:var(--workflow-text,#426274);');
    expect(css).toContain('color:var(--ui-picker-fg,#426274)!important');
-   expect(css).toContain('content:none!important;display:none!important;background:none!important');
+   expect(css).toMatch(/button\.cell-picker-trigger::before\{\s*content:none!important;display:none!important;/s);
+   expect(css).toContain('border:0;border-right:1.8px solid currentColor');
+   expect(css).toContain('background:transparent!important');
    expect(css).toContain('grid-template-columns:subgrid!important');
    expect(css).toContain('overflow-x:auto;overflow-y:hidden');
  });
