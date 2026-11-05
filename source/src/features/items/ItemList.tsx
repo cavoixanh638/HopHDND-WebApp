@@ -432,7 +432,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // next physical neighbor and the final *other* column as backup.
   const resizeKeys=displayedColumns.filter(c=>c.key!==l03Key).map(c=>c.key);
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
-  const tableWidth=compactOn?Math.max(500,shownWidth):
+  const tableWidth=compactOn?shownWidth:
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
