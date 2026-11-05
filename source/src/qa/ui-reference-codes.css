@@ -73,3 +73,10 @@
   .ui-reference-copy{min-width:18px;min-height:18px;}
 }
 @media print{.ui-reference-layer{display:none!important;}}
+
+/* Code inspection only: a native report header is just ~22px tall.
+   Reserve a tiny in-header placement lane so the badge can be INSIDE it,
+   without obscuring the title or Print/PDF button. Ordinary UI is unchanged. */
+[data-ui-reference-active="true"] .report-surface > .card-header{
+  min-height:36px;
+}
