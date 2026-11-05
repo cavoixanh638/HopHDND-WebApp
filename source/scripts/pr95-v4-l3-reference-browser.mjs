@@ -63,6 +63,16 @@ const click=async selector=>{
   await send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',x,y,clickCount:1});
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',x,y,clickCount:1});
 };
+// Exercise an actual pointer hit on the target rather than dispatching a
+// synthetic event while Chrome's real cursor is still over a different node.
+const hover=async selector=>{
+  const rect=await js('(()=>{const x=document.querySelector('+JSON.stringify(selector)+
+    ');if(!x)throw Error("Missing "+'+JSON.stringify(selector)+
+    ');x.scrollIntoView({block:"center",inline:"nearest"});return x.getBoundingClientRect().toJSON()})()');
+  await sleep(130);
+  const x=rect.left+rect.width/2,y=rect.top+rect.height/2;
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y});
+};
 const all=()=>js('[...document.querySelectorAll("[data-ui-ref-code]")].map(x=>({code:x.dataset.uiRefCode,hidden:x.hidden,rect:x.getBoundingClientRect().toJSON()}))');
 const noRef=()=>js('!document.querySelector("[data-ui-reference-layer], [data-ui-ref-code]")');
 
@@ -247,8 +257,8 @@ try{
     const found=await js('!!document.querySelector(".report-surface[data-ui-reference-report='+id+']")');
     assert(found,'stable report registry '+id);
   }
-  await call('(()=>{const head=document.querySelector(".report-surface[data-ui-reference-report=party] > .card-header");head.scrollIntoView({block:"center"});head.dispatchEvent(new PointerEvent("pointerover",{bubbles:true}));})()');
-  await until('document.querySelector(\'[data-ui-ref-code="R01.HEADER"]\')','report header hover');
+  await hover('.report-surface[data-ui-reference-report=party] > .card-header');
+  await until('document.querySelector(\'[data-ui-ref-code="R01.HEADER"]:not([hidden])\')','report header hover');
   await verifyNoOcclusion('desktop-reports');
   await screenshot('pr95-v4-l3-admin-reports.png');
   await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
