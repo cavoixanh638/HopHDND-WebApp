@@ -98,13 +98,16 @@ const audit=()=>js('('+function geometryV5(){
     const cr=button?.getBoundingClientRect();
     const css=button?getComputedStyle(button):null;
     const rail=button?getComputedStyle(button,'::before'):null;
+    const sr=state?.getBoundingClientRect();
     return {field:row.dataset.stageField,title:label?.textContent.trim(),
       level:level?.textContent.trim(),nowrap:label?getComputedStyle(label).whiteSpace:null,
       rowBorder:getComputedStyle(row).borderTopWidth,
       oneStageBorder:getComputedStyle(state).borderTopWidth==='0px',
       baselines:l&&v?{label:lr,state:vr,delta:Math.abs(lr-vr)}:null,
       editable:!!button,buttonBorder:css?.borderTopWidth,buttonRadius:css?.borderTopLeftRadius,
-      railRadius:rail?.borderTopRightRadius,hitHeight:cr?.height,caretRight:cr?.right,
+      railContent:rail?.content,hitHeight:cr?.height,buttonRight:cr?.right,
+      stateLeft:sr?.left,stateWidth:sr?.width,stateHeight:sr?.height,
+      buttonLeft:cr?.left,buttonWidth:cr?.width,buttonHeight:cr?.height,
       hitLeft:!!(button&&cr&&button.contains(document.elementFromPoint(cr.left+4,cr.top+cr.height/2))),
       hitRight:!!(button&&cr&&button.contains(document.elementFromPoint(cr.right-4,cr.top+cr.height/2))),
       firstValue:v?.top,labelTop:l?.top};
@@ -130,21 +133,21 @@ const verify=async stage=>{
   const first=x.stageRows.slice(0,3);
   for(const r of first){
     assert(r.rowBorder==='0px'&&r.oneStageBorder,stage+' separated stage rows '+JSON.stringify(r));
-    assert(r.baselines&&r.baselines.delta<=5,stage+' first text line alignment '+JSON.stringify(r));
+    assert(r.baselines&&r.baselines.delta<=(r.editable?6:13),stage+' readable row baseline '+JSON.stringify(r));
     assert(r.nowrap==='nowrap',stage+' nowrap label '+JSON.stringify(r));
     if(r.editable){
-      assert(r.buttonBorder==='0px',stage+' no inner border');
-      assert(r.buttonRadius==='7px'&&r.railRadius==='7px',stage+' rounded value and rail '+JSON.stringify(r));
-      assert(r.hitHeight>=38,stage+' clickable height');
+      assert(r.buttonBorder!=='0px',stage+' independent standard picker border '+JSON.stringify(r));
+      assert(r.buttonRadius==='7px'&&r.railContent==='none',
+        stage+' rounded picker with no shaded caret rail '+JSON.stringify(r));
+      assert(r.hitHeight>=34&&r.hitHeight<=38,stage+' uniform picker height '+JSON.stringify(r));
       assert(r.hitLeft&&r.hitRight,stage+' both value edges actually hit editor '+JSON.stringify(r));
     }
   }
   for(const c of x.classification){
-    assert(c.hasEditor?c.outerBorder==='1px':c.outerBorder==='0px',
-      stage+' QPPL editor outline or quiet read-only metadata');
-    if(c.hasEditor)assert(c.editorBorder==='0px'&&
-      (c.editorBackground==='rgba(0, 0, 0, 0)'||c.editorBackground==='transparent'),
-      stage+' QPPL no second button frame '+JSON.stringify(c));
+    assert(c.outerBorder==='0px',stage+' REV2 grouped metadata has no outer frame');
+    if(c.hasEditor)assert(c.editorBorder!=='0px'&&
+      c.editorBackground!=='rgba(0, 0, 0, 0)',
+      stage+' QPPL actual colored button owns the ONE frame '+JSON.stringify(c));
   }
   // Each record can have a longer Party-level title than the preceding
   // record. Measure EVERY visible 3-stage group; checking only row 1 misses
@@ -155,17 +158,22 @@ const verify=async stage=>{
     group.push(row);
   }
   if(group.length)groups.push(group);
-  const caretSpreads=[];
+  const geometry=[];
   for(const rows of groups){
+    const spread=key=>Math.max(...rows.map(r=>r[key]))-Math.min(...rows.map(r=>r[key]));
+    const all={left:spread('stateLeft'),width:spread('stateWidth'),height:spread('stateHeight')};
+    assert(all.left<=2&&all.width<=2&&rows.every(r=>r.stateHeight>=34),
+      stage+' three status rails share left/width; readonly prose may wrap '+JSON.stringify({all,rows}));
     const buttons=rows.filter(r=>r.editable);
     if(buttons.length>1){
-      const dif=Math.max(...buttons.map(r=>r.caretRight))-
-        Math.min(...buttons.map(r=>r.caretRight));
-      caretSpreads.push(dif);
-      assert(dif<=2,stage+' each record fixed caret right edge: '+dif+' '+JSON.stringify(rows));
+      const d=key=>Math.max(...buttons.map(r=>r[key]))-Math.min(...buttons.map(r=>r[key]));
+      const exact={left:d('buttonLeft'),width:d('buttonWidth'),height:d('buttonHeight')};
+      assert(exact.left<=2&&exact.width<=2&&exact.height<=2,
+        stage+' editable buttons share left/width/height '+JSON.stringify({exact,rows}));
+      geometry.push(exact);
     }
   }
-  console.log('UI_V5_L3_CARET_GROUPS '+stage+' '+JSON.stringify(caretSpreads));
+  console.log('UI_A_REV2_V5_PICKER_GEOMETRY '+stage+' '+JSON.stringify(geometry));
   assert(x.wholePageWidth<=x.viewport+3,stage+' no page-level horizontal overflow');
   console.log('UI_V5_L3_RECT_PASS '+stage+' '+JSON.stringify(x));
   return x;
@@ -261,7 +269,7 @@ try{
     'admin List real QPPL editor');
   await call('document.querySelector(".item-data-table .compact-stages").scrollIntoView({block:"center",inline:"nearest"})');
   const editableList=await verify('list-1440-admin-editable');
-  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='BUTTON'&&x.outerBorder==='1px'&&x.editorBorder==='0px'),
+  assert(editableList.classification.some(x=>x.hasEditor&&x.editorTag==='BUTTON'&&x.outerBorder==='0px'&&x.editorBorder!=='0px'),
     'admin QPPL classification single border on actual nested CellPicker');
   await screenshot('pr95-v5-l3-list-1440-admin.png');
   // Presentation-only color test: temporary CSS variables and a member highlight.
@@ -277,14 +285,14 @@ try{
     'doc.dataset.highlighted="true";'+
     'doc.style.setProperty("--member-highlight-bg","#FFF1AC");'+
     'doc.style.setProperty("--member-highlight-text","#714A12");'+
-    'return {memberBackground:getComputedStyle(member).backgroundColor,'+
-    'docBackground:getComputedStyle(doc).backgroundColor,'+
+    'return {memberButton:getComputedStyle(member.querySelector("button.cell-picker-trigger")).backgroundColor,'+
+    'docOuter:getComputedStyle(doc).borderTopWidth,'+
     'docButtonBorder:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).borderTopWidth,'+
-    'docButtonBackground:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).backgroundColor};})()');
-  assert(skin.memberBackground==='rgb(255, 241, 172)'&&
-    skin.docBackground==='rgb(255, 241, 172)'&&
-    skin.docButtonBorder==='0px'&&skin.docButtonBackground==='rgba(0, 0, 0, 0)',
-    'custom highlight must stay on member with one classification frame '+JSON.stringify(skin));
+    'docButton:getComputedStyle(doc.querySelector("button.cell-picker-trigger")).backgroundColor};})()');
+  assert(skin.memberButton==='rgb(255, 241, 172)'&&
+    skin.docOuter==='0px'&&skin.docButtonBorder!=='0px'&&
+    skin.docButton==='rgb(255, 241, 172)',
+    'REV2 highlight is on actual independent buttons '+JSON.stringify(skin));
   await verify('list-1440-admin-custom-palette-highlight');
   await screenshot('pr95-v5-l3-list-admin-highlight.png');
   const cloud=network.filter(s=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(s));

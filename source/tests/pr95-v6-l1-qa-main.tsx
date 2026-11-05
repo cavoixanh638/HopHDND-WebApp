@@ -51,10 +51,17 @@ if(view==='popup'){
 }
 const palette=defaultStatusPaletteStore();
 const patches:{id:string;changes:object}[]=[];
+// REV2 synthetic-only metadata grants exercise all four permission combinations
+// without granting any other source field or affecting the existing mixed fixture.
 const writable=(id:string,field:EditableField)=>role==='admin'||
   role==='mixed'&&(
     (id===original[0].recordId&&field==='type')||
     (id===original[1].recordId&&field==='partyLevel')
+  )||
+  id===original[0].recordId&&(
+    (role==='metadata-department'&&field==='department')||
+    (role==='metadata-type'&&field==='type')||
+    (role==='metadata-both'&&(field==='department'||field==='type'))
   );
 function App(){
   const [items,setItems]=useState(original);

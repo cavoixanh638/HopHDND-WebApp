@@ -2,6 +2,7 @@ import type {CSSProperties,ReactNode} from 'react';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
 import {normalizeSearch} from '../../domain/search';
+import {isNotRequiredStatus} from '../../domain/status-contract';
 
 type MemberHighlight={color:string;backgroundColor:string}|undefined;
 /** R05 is presentation-only. Never reuse the report's completed bucket for
@@ -34,48 +35,76 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    style:memberStyle(key), 'data-highlighted':highlight(key)?'true':undefined
  });
  if(pair.variant==='contentDetails'){
-   const metadata=includes('type')&&(!!item.type||editable('type'))||
-     includes('department')&&(!!item.department||editable('department'));
+   const hasDepartment=includes('department')&&!!item.department.trim();
+   const hasType=includes('type')&&!!item.type.trim();
+   // A cleared but writable member must remain reachable as its OWN editor.
+   const showDepartment=hasDepartment||(includes('department')&&editable('department'));
+   const showType=hasType||(includes('type')&&editable('type'));
+   const hasSourceMetadata=hasDepartment||hasType;
+   const metadataEditable=(includes('department')&&editable('department'))||
+     (includes('type')&&editable('type'));
    return <div className="compact-document-group">
      {includes('content')&&<div className="compact-document-content"
        {...memberAttributes('content')}>{shown('content')}</div>}
-     {metadata&&<div className="compact-document-heading">
-       {includes('department')&&(!!item.department||editable('department'))&&
-         <span className="compact-document-department" data-editable={editable('department')?'true':undefined} {...memberAttributes('department')}>
-           {shown('department')}
-         </span>}
-       {includes('type')&&(!!item.type||editable('type'))&&
-         <span className="compact-document-badge" data-kind={compactTypeTone(item.type)}
-           data-editable={editable('type')?'true':undefined}
-           {...memberAttributes('type')}>{shown('type')}</span>}
+     {(showDepartment||showType)&&<div className="compact-document-heading"
+       data-source-metadata={hasSourceMetadata?'true':'false'}
+       data-metadata-mode={metadataEditable?'editable':'readonly'}>
+       {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">(</span>}
+       {showDepartment&&<span className="compact-document-department"
+         data-editable={editable('department')?'true':undefined}
+         {...memberAttributes('department')}>{shown('department')}</span>}
+       {!metadataEditable&&hasDepartment&&hasType&&<span className="compact-document-meta-separator" aria-hidden="true"> - </span>}
+       {showType&&<span className="compact-document-badge" data-kind={compactTypeTone(item.type)}
+         data-editable={editable('type')?'true':undefined}
+         {...memberAttributes('type')}>{shown('type')}</span>}
+       {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">)</span>}
      </div>}
-
    </div>;
  }
  if(pair.variant==='partyTogether'){
+   const levelEditable=includes('partyLevel')&&editable('partyLevel');
+   // All rows use the SAME track geometry, based exclusively on the
+   // party-level permission. Status grants never shift their sibling rails.
    const stages:{key:TextField;label:string}[]=[
      {key:'progressParty',label:'Thành ủy'},
-     {key:'progressBuild',label:'Xây dựng NQ'},
-     {key:'progressCouncil',label:'Ban hành NQ'}
+     {key:'progressBuild',label:'Trình Xây dựng NQ'},
+     {key:'progressCouncil',label:'Trình ban hành NQ'}
    ];
-   return <div className="compact-stages">
-     {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>
-       <div className="compact-stage-row" key={stage.key}
+   return <div className="compact-stages" data-rev2="true"
+     data-level-layout={levelEditable?'editable':'readonly'}>
+     {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>{
+       const isParty=stage.key==='progressParty';
+       const levelIncluded=isParty&&includes('partyLevel');
+       const levelNotRequired=levelIncluded&&!levelEditable&&
+         isNotRequiredStatus('partyLevel',item.partyLevel);
+       const showLevel=levelIncluded&&!levelNotRequired&&
+         (!!item.partyLevel||levelEditable);
+       const stageTone=compactStageVisualTone(item[stage.key],tone(stage.key));
+       return <div className="compact-stage-row" key={stage.key}
          data-stage-field={stage.key}
-         data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}>
+         data-level-editable={isParty&&levelEditable?'true':undefined}
+         data-level-not-required={levelNotRequired?'true':undefined}
+         data-progress-tone={stageTone}>
          <span className="compact-stage-label">
-           <span className="compact-stage-title">{stage.label}{stage.key==='progressParty'&&includes('partyLevel')?' ':null}{stage.key==='progressParty'&&includes('partyLevel')&&
-             (!!item.partyLevel||editable('partyLevel'))&&
-             <span className="compact-stage-level" {...memberAttributes('partyLevel')}>
-               <span className="compact-stage-level-open" aria-hidden="true">(</span>
-               {shown('partyLevel')}
-               <span className="compact-stage-level-close" aria-hidden="true">)</span>
-             </span>}</span>
+           <span className="compact-stage-title">{stage.label}
+             {showLevel&&!levelEditable&&<>
+               {' '}<span className="compact-stage-level" {...memberAttributes('partyLevel')}>
+                 <span className="compact-stage-level-open" aria-hidden="true">(</span>
+                 {shown('partyLevel')}
+                 <span className="compact-stage-level-close" aria-hidden="true">)</span>
+               </span>
+             </>}
+           </span>
          </span>
-         {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={compactStageVisualTone(item[stage.key],tone(stage.key))}
+         {showLevel&&levelEditable&&<span className="compact-stage-level"
+           data-level-editor="true" {...memberAttributes('partyLevel')}>
+           {shown('partyLevel')}
+         </span>}
+         {includes(stage.key)&&<span className="compact-stage-state" data-progress-tone={stageTone}
            data-editable={editable(stage.key)?'true':undefined}
            {...memberAttributes(stage.key)}>{shown(stage.key)}</span>}
-       </div>)}
+       </div>;
+     })}
    </div>;
  }
  if(pair.variant==='teamTogether'&&cvRoomInline&&includes('room')&&includes('specialist')){

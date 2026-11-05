@@ -1,17 +1,35 @@
 .item-list-card[data-hide-party="true"] [data-summary-card="party"],
 .item-list-card[data-hide-build="true"] [data-summary-card="build"],
 .item-list-card[data-hide-nq="true"] [data-summary-card="nq"] {display:none}
-.admin-list-controls {max-width:100%}
-.admin-list-controls summary {cursor:pointer;padding:8px}
-.admin-list-controls-body {padding:12px;border:1px solid #dfe9e2;border-radius:6px}
-.admin-list-controls form,.admin-list-controls fieldset {display:flex;flex-wrap:wrap;gap:12px;align-items:end}
-.admin-list-controls form label {display:grid;gap:6px;flex:1;min-width:180px}
-.admin-list-controls input:not([type="checkbox"]) {width:100%;min-height:36px}
-.admin-list-controls fieldset {margin:12px 0 0;border:0;padding:0}
-.admin-list-controls fieldset label {display:flex;align-items:center;gap:6px;min-height:36px}
 
-/* Hidden workflow cards remain mounted (so active filters survive toggles).
-   Give visible cards real grid tracks instead of leaving empty slots. */
+/* Admin affordances belong beside the actual page heading, not a collapsed details. */
+.admin-list-heading {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  box-sizing:border-box;width:100%;max-width:100%;margin:8px 0 10px;
+  padding:3px 8px 7px;border-bottom:1px solid #d7e5e3}
+.admin-list-heading .item-list-page-title {flex:1 1 280px;min-width:0;margin:0;
+  background:transparent;color:#234f5f;font-size:clamp(16px,1.45vw,21px);
+  font-weight:750;line-height:1.3;letter-spacing:-.015em;text-align:center;overflow-wrap:anywhere}
+.admin-list-rename-trigger {flex-shrink:0;min-height:38px}
+.admin-list-controls {max-width:100%;padding:10px 12px;margin:6px 0 10px;
+  border:1px solid #d7e5dc;border-radius:8px;background:#f8fbf9}
+.admin-list-title-editor {display:flex;align-items:end;gap:10px;flex-wrap:wrap;
+  margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid #dce9e1}
+.admin-list-title-editor label {font-weight:600;flex:0 1 170px}
+.admin-list-title-editor input {flex:1 1 230px;min-width:0;min-height:38px}
+.admin-list-title-editor .button {min-height:38px}
+.admin-list-title-editor [role="alert"] {flex-basis:100%;margin:0;color:#9c2632}
+.admin-summary-visibility {display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;
+  min-width:0;margin:0;padding:0;border:0}
+.admin-summary-visibility legend {font-weight:650;padding:0 0 6px}
+.admin-summary-visibility label {display:inline-flex;align-items:center;gap:7px;min-height:38px;
+  cursor:pointer;white-space:normal}
+.admin-summary-visibility label input {width:17px;height:17px;flex-shrink:0}
+.admin-summary-fixed {font-size:.92em;color:#43574b}
+.admin-summary-visibility :focus-visible,.admin-list-rename-trigger:focus-visible {
+  outline:2px solid #12694b;outline-offset:2px}
+
+/* Hidden cards remain mounted, preserving active filters and source data.
+   Redistribute tracks when a stage is hidden instead of reserving an empty slot. */
 @media (min-width:981px) {
   .item-list-card[data-visible-stages="0"] .item-summary-grid,
   .item-list-card[data-visible-stages="1"] .item-summary-grid {
@@ -22,7 +40,14 @@
   }
 }
 @media (max-width:560px) {
-  .admin-list-controls-body {padding:10px}
-  .admin-list-controls form label {min-width:0;flex-basis:100%}
-  .admin-list-controls form .button {width:100%}
+  .admin-list-heading {align-items:stretch;padding:3px 2px 7px;margin:6px 0 8px}
+  .admin-list-heading .item-list-page-title {flex-basis:100%;font-size:16px}
+  .admin-list-rename-trigger {width:100%}
+  .admin-list-controls {padding:10px}
+  .admin-list-title-editor {align-items:stretch}
+  .admin-list-title-editor label,.admin-list-title-editor input,.admin-list-title-editor .button {
+    flex:1 1 100%;width:100%}
+  .admin-summary-visibility {align-items:stretch;gap:3px}
+  .admin-summary-visibility legend {margin-bottom:4px}
+  .admin-summary-fixed,.admin-summary-visibility label {flex:1 1 100%;width:100%}
 }
