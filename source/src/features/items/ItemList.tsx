@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type {CSSProperties} from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyGroupWidths,partyGroupPhysicalWidth,DEFAULT_PARTY_GROUP_WIDTHS,PARTY_GROUP_WIDTH_LIMITS } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -90,6 +91,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [titleValidationError,setTitleValidationError]=useState('');
+  const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
+  const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:'',editable:''});
+  const [l03WidthError,setL03WidthError]=useState('');
   const listTitleBaseline=useRef<ItemLayout|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
@@ -386,15 +390,33 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
-  const baseWidths=displayedColumns.map(c=>({key:c.key,width:baseVisualWidth(c.width,c.key)}));
+  // A single physical <col> per group: all visible readonly rows use the 2-track
+  // width, but one editable party-level row requires the larger mode width.
+  // Status editability alone must NOT switch a row to the three-track layout.
+  const l03Pair=compactPairs.find(pair=>pair.variant==='partyTogether');
+  const l03Key=l03Pair?.anchor;
+  const l03Widths=activeLayout.partyGroupWidths??DEFAULT_PARTY_GROUP_WIDTHS;
+  const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
+    rows.some(item=>canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'partyLevel')));
+  const l03PhysicalWidth=partyGroupPhysicalWidth(l03Widths,hasEditablePartyLevel);
+  const baseWidths=displayedColumns.map(c=>({key:c.key,
+    width:l03Key===c.key?l03PhysicalWidth:baseVisualWidth(c.width,c.key)}));
   const fitWeights=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,
     pair.variant==='contentDetails'||pair.variant==='partyTogether'?3:2]));
   const weights:Record<string,number>={content:3,specificProgress:2,...fitWeights};
   const fitGrowth=useRef<{signature:string;growth:Record<string,number>}|null>(null);
   const fitSignature=JSON.stringify(baseWidths.map(c=>[c.key,weights[c.key]??1]));
-  const fittedWidths=fitTableColumns(baseWidths,
-    !customizing&&!showAllSourceColumns?Math.max(500,viewportWidth):0,weights,
-    fitGrowth.current?.signature===fitSignature?fitGrowth.current.growth:undefined);
+  // L03 is an explicit shared setting, never a flexible 1fr viewport filler.
+  // Give any spare viewport pixels to OTHER columns while respecting their cap.
+  const flexibleWidths=baseWidths.filter(c=>c.key!==l03Key);
+  const priorGrowth=fitGrowth.current?.signature===fitSignature
+    ?Object.fromEntries(flexibleWidths.map(c=>[c.key,fitGrowth.current!.growth[c.key]??0])):undefined;
+  const fittedOther=fitTableColumns(flexibleWidths,
+    !customizing&&!showAllSourceColumns
+      ?Math.max(0,Math.max(500,viewportWidth)-(l03Key?l03PhysicalWidth:0)):0,
+    weights,priorGrowth);
+  const fittedWidths=l03Key
+    ?{...fittedOther,[l03Key]:l03PhysicalWidth}:fittedOther;
   fitGrowth.current={signature:fitSignature,growth:Object.fromEntries(baseWidths.map(c=>
     [c.key,fittedWidths[c.key]-c.width]))};
   const visualWidth=(value:number,key?:string)=>key&&fittedWidths[key]!==undefined
@@ -517,6 +539,25 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
+  const openL03WidthEditor=()=>{
+    const saved=activeLayout.partyGroupWidths??DEFAULT_PARTY_GROUP_WIDTHS;
+    setL03WidthsDraft({readonly:String(saved.readonly),editable:String(saved.editable)});
+    setL03WidthError('');setL03WidthEditorOpen(true);
+  };
+  const saveL03Widths=async()=>{
+    let widths;
+    try{
+      const parse=(value:string)=>/^\\d+$/.test(value.trim())?Number(value.trim()):NaN;
+      widths=validatePartyGroupWidths({
+        readonly:parse(l03WidthsDraft.readonly),editable:parse(l03WidthsDraft.editable)
+      });
+    }catch(error){
+      setL03WidthError(error instanceof Error?error.message:'Độ rộng L03 không hợp lệ.');
+      return;
+    }
+    const saved=await applyViewerLayout(base=>({...base,partyGroupWidths:widths}));
+    if(saved){setL03WidthEditorOpen(false);setL03WidthError('');}
+  };
   const editableField=(item:Item,field:TextField)=>
     canEdit&&!locked&&!(field==='progressBuild'&&buildLocked(item))&&
       (!canEditCell||canEditCell(item.recordId,field));
@@ -666,6 +707,35 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset>
+        {canEditListSettings&&<div className="admin-l03-widths">
+          <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
+            aria-controls="admin-l03-width-editor" onClick={()=>{
+              if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthError('');}
+              else openL03WidthEditor();
+            }}>L03 · Chỉnh độ rộng cụm Tiến độ 3 khâu</button>
+          <span className="admin-l03-width-summary">
+            Hai track: {l03Widths.readonly}px · Ba track: {l03Widths.editable}px
+          </span>
+          {l03WidthEditorOpen&&<form id="admin-l03-width-editor" className="admin-l03-width-editor"
+            onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
+            {(['readonly','editable'] as const).map(mode=><label key={mode}>
+              <strong>{mode==='readonly'?'Hai track · chỉ xem cấp trình':'Ba track · được sửa cấp trình'}</strong>
+              <span>Độ rộng toàn cụm (px), {PARTY_GROUP_WIDTH_LIMITS[mode].min}–{PARTY_GROUP_WIDTH_LIMITS[mode].max}</span>
+              <input type="number" step="1" min={PARTY_GROUP_WIDTH_LIMITS[mode].min}
+                max={PARTY_GROUP_WIDTH_LIMITS[mode].max}
+                value={l03WidthsDraft[mode]} aria-label={'Độ rộng L03 '+(mode==='readonly'?'hai track':'ba track')}
+                onChange={event=>{setL03WidthError('');setL03WidthsDraft(previous=>({
+                  ...previous,[mode]:event.currentTarget.value
+                }));}} disabled={viewSaving}/>
+              <span className="admin-l03-width-preview" aria-hidden="true"
+                style={{width:`${Math.min(100,Math.max(18,
+                  Number(l03WidthsDraft[mode]) / PARTY_GROUP_WIDTH_LIMITS[mode].max*100))}%`}}/>
+            </label>)}
+            <button className="button" type="submit" disabled={viewSaving}>Lưu hai độ rộng dùng chung</button>
+            {l03WidthError&&<p role="alert">{l03WidthError}</p>}
+            <small>Không thay đổi độ rộng riêng của từng tiến độ. Khi có quyền hỗn hợp, cột vật lý chọn mode rộng hơn.</small>
+          </form>}
+        </div>}
       </div>}
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
@@ -765,12 +835,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,tableLayout:'fixed',
+  '--hdnd-l03-width-readonly':`${l03Widths.readonly}px`,
+  '--hdnd-l03-width-editable':`${l03Widths.editable}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
+    // No per-track or indirect neighbor resize may silently alter the L03 modes.
+    column.key!==l03Key&&displayedColumns[index+1]?.key!==l03Key&&
+    displayedColumns.at(-1)?.key!==l03Key&&
     projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
       projectedExtras,compactOn,groupExtras)&&
     <ColumnResizeHandle windowDragFallback columnIndex={index} width={visualWidth(column.width,column.key)}
@@ -819,9 +894,14 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(pair){
           const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));
           return <td key={column.key} data-col-key={column.key}
+            data-l03-layout={pair.variant==='partyTogether'
+              ?editableField(item,'partyLevel')?'editable':'readonly':undefined}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
-            style={undefined}>
+            style={pair.variant==='partyTogether'?{
+              '--hdnd-l03-inner-width':`${Math.max(0,editableField(item,'partyLevel')?
+                l03Widths.editable:l03Widths.readonly)-16}px`
+            } as CSSProperties:undefined}>
             <CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
