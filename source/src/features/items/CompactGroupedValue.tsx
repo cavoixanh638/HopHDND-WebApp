@@ -134,17 +134,17 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
  }
  if(pair.variant==='teamTogether'&&cvRoomInline&&includes('room')&&includes('specialist')){
    const leadFields=(['ubndLeader','vpLeader'] as TextField[]).filter(includes);
-   return <div className="compact-pair-lines">
+   return <div className="compact-pair-lines" data-ui-reference-group="L04">
      {leadFields.map((key,index)=><div key={key}>
        <span className="compact-pair-tag">{index===0?'UBND':'VP'}</span>
-       <span className="compact-highlight-member" data-ui-picker-skin={editable(key)?'standard':undefined}
+       <span className="compact-highlight-member" data-ui-reference-part={key} data-ui-picker-skin={editable(key)?'standard':undefined}
          {...memberAttributes(key)}>{shown(key)}</span>
      </div>)}
      <div className="compact-cv-room-line">
        <span className="compact-pair-tag">{item.specialist?'CV':'Phòng'}</span>
-       {(item.specialist||editable('specialist'))&&<span className="compact-highlight-member" data-ui-picker-skin={editable('specialist')?'standard':undefined}
+       {(item.specialist||editable('specialist'))&&<span className="compact-highlight-member" data-ui-reference-part="specialist" data-ui-picker-skin={editable('specialist')?'standard':undefined}
          {...memberAttributes('specialist')}>{shown('specialist')}</span>}
-       {(!!item.room||editable('room'))&&<span className="compact-cv-room-name"
+       {(!!item.room||editable('room'))&&<span className="compact-cv-room-name" data-ui-reference-part="room"
          {...memberAttributes('room')}>
          {item.specialist?' (':''}{shown('room')}{item.specialist?')':''}
        </span>}
@@ -152,10 +152,10 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
      </div>
    </div>;
  }
- return <div className="compact-pair-lines">
+ return <div className="compact-pair-lines" data-ui-reference-group="L04">
    {pair.memberFields.map((key,index)=><div key={key}>
      <span className="compact-pair-tag">{pair.tags[index]}</span>
-     <span className="compact-highlight-member" data-ui-picker-skin={editable(key as TextField)?'standard':undefined}
+     <span className="compact-highlight-member" data-ui-reference-part={key} data-ui-picker-skin={editable(key as TextField)?'standard':undefined}
        {...memberAttributes(key as TextField)}>
        {shown(key as TextField)}
      </span>
