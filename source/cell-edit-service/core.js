@@ -83,6 +83,12 @@ function validateChanges(changes,baseValues){
   }
   return entries.map(([field])=>field);
 }
+const PARTY_LEVELS=new Set(['Không','TTTU','BTV','BCH']);
+const PARTY_STATUSES=new Set(['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL']);
+function isNoParty(v){return v==='Không'||v==='Không phải trình';}
+function dependentProgress(previous,next){
+  return next==='Không'?'Không phải trình':isNoParty(previous)?'Sở chưa trình':null;
+}
 function identityFromAuth(auth){
   const token=auth.token??{};
   const provider=token.firebase?.sign_in_provider;
@@ -269,6 +275,13 @@ export async function dispatchCellEdit(auth,request,testHooks=undefined){
     if(!patch||patch.recordId!==id||!UUID_RE.test(opId))
       fail('invalid-argument','Nháp sửa không hợp lệ.');
     const fields=validateChanges(patch.changes,patch.baseValues);
+    if(fields.includes('partyLevel')&&!PARTY_LEVELS.has(patch.changes.partyLevel))
+      fail('invalid-argument','Cấp trình không thuộc danh mục.');
+    if(fields.includes('progressParty')&&!PARTY_STATUSES.has(patch.changes.progressParty))
+      fail('invalid-argument','Tiến độ Thành ủy không thuộc danh mục.');
+    if(fields.includes('partyLevel')&&fields.includes('progressParty'))
+      fail('invalid-argument','Chỉ gửi cấp trình; tiến độ phụ thuộc do máy chủ quyết định.');
+
     const secrets=request.leases;
     if(!secrets||typeof secrets!=='object')fail('failed-precondition','Thiếu khóa ô.');
     const checked=new Map();
@@ -289,19 +302,30 @@ export async function dispatchCellEdit(auth,request,testHooks=undefined){
       if(raw.operationId===opId){abort('ACK đã ghi trước đó.');return undefined;}
       const outdated=fields.find(field=>raw[field]!==patch.baseValues[field]);
       if(outdated){abort('Ô '+outdated+' đã thay đổi, bản nháp vẫn được giữ.');return undefined;}
-      const changed=fields.filter(field=>raw[field]!==patch.changes[field]);
+      const requested={...patch.changes};
+      if(fields.includes('partyLevel')&&raw.partyLevel!==requested.partyLevel){
+        const dependent=dependentProgress(raw.partyLevel,requested.partyLevel);
+        if(dependent!==null)requested.progressParty=dependent;
+      }
+      if(fields.includes('progressParty')&&isNoParty(raw.partyLevel)){
+        abort('Cấp Không khóa sửa riêng tiến độ.');return undefined;
+      }
+      if(fields.includes('progressParty')&&requested.progressParty==='Không phải trình'){
+        abort('Chỉ cấp Không tự thiết lập trạng thái Không phải trình.');return undefined;
+      }
+      const changed=Object.keys(requested).filter(field=>raw[field]!==requested[field]);
       if(!changed.length){abort('Không có thay đổi dữ liệu.');return undefined;}
       if(prohibitedBuild(raw,patch.changes)){abort('Loại VB HC/BC không phải trình xây dựng NQ nên trạng thái này không thể chỉnh sửa.');return undefined;}
       const nextRev=raw.revision+1;
       const editProofs={...(raw.editProofs??{})};
-      for(const field of changed)editProofs[field]=checked.get(field).stored.token;
+      for(const field of fields.filter(f=>changed.includes(f)))editProofs[field]=checked.get(field).stored.token;
       const history={...(raw.history??{})};
       history[String(nextRev%50)]={
         operationId:opId,recordId:id,at,actor:identity.uid,
-        changes:Object.fromEntries(changed.map(f=>[f,patch.changes[f]])),
+        changes:Object.fromEntries(changed.map(f=>[f,requested[f]])),
         oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))
       };
-      return {...raw,...patch.changes,editProofs,revision:nextRev,
+      return {...raw,...requested,editProofs,revision:nextRev,
         operationId:opId,updatedAt:at,updatedBy:identity.uid,history};
     }).catch(async error=>{
       // A lost ACK may have committed. Read-only resolve; never issue a new op ID.
