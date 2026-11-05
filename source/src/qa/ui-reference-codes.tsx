@@ -115,6 +115,13 @@ const matchWithin=(target:Element,selector:string,container:Element)=>{
 };
 const stageCode=(key:string)=>UI_REFERENCE_STAGES[key]??null;
 const reportCode=(id:string)=>UI_REFERENCE_REPORT_IDS[id]??null;
+/** Exact matrix-cell ID. Invalid/missing business keys are unidentifiable,
+ * not a generic Rxx.TABLE code shared by unrelated numerical cells. */
+export function uiReferenceReportCellCode(reportId:string,rowKey:string,columnKey:string):string|null{
+  const base=reportCode(reportId);
+  if(!base||!rowKey.trim()||!columnKey.trim())return null;
+  return base+'.CELL.'+keySuffix(rowKey)+'.'+keySuffix(columnKey);
+}
 const getExplicitPart=(target:Element,cell:Element)=>{
   const node=matchWithin(target,'[data-ui-reference-part]',cell);
   const part=node?.getAttribute('data-ui-reference-part')??'';
@@ -211,12 +218,11 @@ export function resolveUiReferenceTarget(target:Element,root:Element):UiReferenc
       if(cell){
         const row=cell.closest('[data-ui-reference-report-row]');
         const column=cell.getAttribute('data-ui-reference-report-column');
-        if(row&&column)return {code:base+'.CELL.'+
-          keySuffix(row.getAttribute('data-ui-reference-report-row')??'')+'.'+keySuffix(column),
-          element:cell,instance:false};
-        // A unique report-cell code needs semantic row + column attributes;
-        // never invent identity from cell index or a mutable row heading.
-        return {code:base+'.TABLE',element:cell,instance:false};
+        const code=row&&column?uiReferenceReportCellCode(
+          report.getAttribute('data-ui-reference-report')??'',
+          row.getAttribute('data-ui-reference-report-row')??'',column):null;
+        // Never invent one shared generic code for different numerical cells.
+        return code?{code,element:cell,instance:false}:null;
       }
       const print=matchWithin(target,'.card-header button',report);
       if(print)return {code:base+'.PRINT',element:print,instance:false};
