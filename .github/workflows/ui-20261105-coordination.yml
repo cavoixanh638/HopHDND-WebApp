@@ -140,6 +140,7 @@ jobs:
       FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
       GCLOUD_PROJECT: demo-hdnd
       CI: 'true'
+      VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
       VITE_PARENT_REPLACEMENT_ENABLED: 'true'
       VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
     steps:
