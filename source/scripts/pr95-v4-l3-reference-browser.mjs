@@ -219,10 +219,10 @@ try{
   assert(await js('document.querySelector(".item-data-table").textContent')===before,
     'reference mode changed table text');
   await hover('.item-data-table th[data-column-key=note]');
-  await until('document.querySelector("[data-ui-ref-code=L06]")','note hovered reference');
+  await until('document.querySelector("[data-ui-ref-code=\"L06.TITLE\"]")','note hovered reference');
   let badgeList=await all();
   assert(badgeList.length===1,'only one hover marker allowed');
-  assert(badgeList[0].code==='L06','note semantic header code');
+  assert(badgeList[0].code==='L06.TITLE','note semantic title code retains L06');
   await screenshot('pr95-v4-l3-r-v4-01-desktop-list.png');
   await verifyNoOcclusion('desktop-list');
   await click('[data-summary-kind=qppl]');
@@ -248,7 +248,7 @@ try{
   const order=await js('[...document.querySelectorAll(".item-data-table thead th[data-column-key]")].map(x=>x.dataset.columnKey)');
   assert(order.includes('note'),'reorder preserved note field');
   await hover('.item-data-table th[data-column-key=note]');
-  await until('document.querySelector("[data-ui-ref-code=L06]")','note semantic code after reorder');
+  await until('document.querySelector("[data-ui-ref-code=\"L06.TITLE\"]")','note semantic code after reorder');
   await verifyNoOcclusion('desktop-reordered-list');
   console.log('REF_LIST_SEMANTIC_PASS '+JSON.stringify({before:reordered,after:order,scrollLeft:horizontal}));
   await nav('Báo cáo tổng hợp');
