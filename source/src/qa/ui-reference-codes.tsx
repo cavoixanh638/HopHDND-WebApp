@@ -304,11 +304,19 @@ function positionMarker(badge:HTMLElement,anchor:Element):boolean{
     metrics=badge.getBoundingClientRect();
   }
   if(rect.width<metrics.width+4||rect.height<metrics.height+3)return false;
+  // Large headers can have a title on the left and a print action on the
+  // right. Try open interior slots too; every candidate is still rejected
+  // if it overlaps a glyph, caret or interactive control.
+  const centered=rect.left+(rect.width-metrics.width)/2;
   const candidates=[
     {left:rect.left+rect.width-metrics.width-2,top:rect.top+2},
     {left:rect.left+2,top:rect.top+2},
     {left:rect.left+rect.width-metrics.width-2,top:rect.top+rect.height-metrics.height-2},
-    {left:rect.left+2,top:rect.top+rect.height-metrics.height-2}
+    {left:rect.left+2,top:rect.top+rect.height-metrics.height-2},
+    {left:centered,top:rect.top+2},
+    {left:centered,top:rect.top+rect.height-metrics.height-2},
+    {left:rect.left+rect.width*0.25-metrics.width/2,top:rect.top+2},
+    {left:rect.left+rect.width*0.75-metrics.width/2,top:rect.top+2}
   ].map(p=>({...p,width:metrics.width,height:metrics.height}));
   const blocked=obstacles(anchor);
   const place=candidates.find(p=>p.left>=rect.left+1&&p.top>=rect.top+1&&
