@@ -80,3 +80,16 @@
 [data-ui-reference-active="true"] .report-surface > .card-header{
   min-height:36px;
 }
+
+
+/* Numeric reports: reserve a 26px interior reference lane ONLY when an
+   authenticated admin enables code inspection. The standard report remains
+   unchanged. Count buttons remain clickable below the lane; do not place
+   the code on top of a number, progress bar or pointer target. */
+[data-ui-reference-active="true"] .report-table tbody td[data-ui-reference-report-column],
+[data-ui-reference-active="true"] .report-table tfoot td[data-ui-reference-report-column]{
+  padding-top:28px!important;
+}
+[data-ui-reference-active="true"] .report-table td.report-clickable-cell .count-drill{
+  top:28px!important;
+}
