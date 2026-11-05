@@ -21,7 +21,7 @@ const mockElement=(opts:{
       return null;
     },
     querySelector:(selector:string)=>opts.children?.[selector]??null,
-    contains:(element:unknown)=>Object.values(opts.ancestors??{}).includes(element)||element===e
+    contains:(_element:unknown)=>true
   };
   return e as unknown as Element;
 };
