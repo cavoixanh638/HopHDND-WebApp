@@ -94,7 +94,7 @@ export function uiReferenceRecordSuffix(row:Element|null):string|null{
  * data-ui-ref-code, aria-label, title and clipboard. Numeric report cells
  * otherwise cannot fit their long record-backed identities inside 150px. */
 export function uiReferenceShortCode(code:string):string{
-  if(!/^R[0-9]{2}\\.CELL\\./.test(code))return code.split('@')[0];
+  if(!/^R[0-9]{2}\.CELL\./.test(code))return code.split('@')[0];
   let hash=2166136261;
   for(let i=0;i<code.length;i++)hash=Math.imul(hash^code.charCodeAt(i),16777619)>>>0;
   return code.slice(0,3)+'·'+hash.toString(36).padStart(7,'0');
