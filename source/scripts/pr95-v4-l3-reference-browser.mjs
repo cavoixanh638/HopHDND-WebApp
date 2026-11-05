@@ -218,7 +218,7 @@ try{
   assert((await all()).length===0,'no permanent markers may be painted without hover');
   assert(await js('document.querySelector(".item-data-table").textContent')===before,
     'reference mode changed table text');
-  await call('(()=>{const head=document.querySelector(".item-data-table th[data-column-key=note]");head.scrollIntoView({block:"center",inline:"nearest"});head.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerId:1}));})()');
+  await hover('.item-data-table th[data-column-key=note]');
   await until('document.querySelector("[data-ui-ref-code=L06]")','note hovered reference');
   let badgeList=await all();
   assert(badgeList.length===1,'only one hover marker allowed');
@@ -233,7 +233,8 @@ try{
     'click-through filter restored');
   // Without the UI worker's record-id contract, an instance code must not
   // silently fall back to displayCode, STT or row index.
-  const rowCode=await js('(()=>{const cell=document.querySelector(".item-data-table tbody td[data-col-key=note]");if(!cell)return null;cell.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerId:1}));return cell.closest("tr")?.getAttribute("data-ui-reference-record-id")})()');
+  const rowCode=await js('document.querySelector(".item-data-table tbody td[data-col-key=note]")?.closest("tr")?.getAttribute("data-ui-reference-record-id")??null');
+  await hover('.item-data-table tbody td[data-col-key=note]');
   await sleep(150);
   if(!rowCode)assert(!await js('document.querySelector("[data-ui-ref-code]")?.dataset.uiRefCode?.startsWith("L06.1@")'),
     'missing record-id must suppress instance code');
@@ -246,7 +247,7 @@ try{
   await sleep(400);
   const order=await js('[...document.querySelectorAll(".item-data-table thead th[data-column-key]")].map(x=>x.dataset.columnKey)');
   assert(order.includes('note'),'reorder preserved note field');
-  await call('(()=>{const head=document.querySelector(".item-data-table th[data-column-key=note]");head.scrollIntoView({block:"center",inline:"nearest"});head.dispatchEvent(new PointerEvent("pointerover",{bubbles:true,pointerId:1}));})()');
+  await hover('.item-data-table th[data-column-key=note]');
   await until('document.querySelector("[data-ui-ref-code=L06]")','note semantic code after reorder');
   await verifyNoOcclusion('desktop-reordered-list');
   console.log('REF_LIST_SEMANTIC_PASS '+JSON.stringify({before:reordered,after:order,scrollLeft:horizontal}));
@@ -266,7 +267,7 @@ try{
   await until('document.querySelector("dialog.report-grid-modal [data-ui-reference-layer]")',
     'popup layer inside native dialog');
   assert(await layerOk(),'popup overlay layer must preserve pointer behavior');
-  await call('(()=>{const cell=document.querySelector("dialog.report-grid-modal .report-detail-grid tbody td[data-col-key]");cell?.dispatchEvent(new PointerEvent("pointerover",{bubbles:true}));})()');
+  await hover('dialog.report-grid-modal .report-detail-grid tbody td[data-col-key]');
   await sleep(120);
   const popupCount=(await all()).filter(m=>!m.hidden).length;
   assert(popupCount<=1,'popup shows at most one reference marker');
@@ -276,7 +277,7 @@ try{
   await call('document.querySelector("dialog.report-grid-modal .modal-header button").click()');
   await until('!document.querySelector("dialog.report-grid-modal[open]")','popup closed');
   await until('!!document.querySelector("body > [data-ui-reference-layer]")','persistent body overlay after popup close');
-  await call('(()=>{const head=document.querySelector(".report-surface[data-ui-reference-report=party] > .card-header");head.scrollIntoView({block:"center"});head.dispatchEvent(new PointerEvent("pointerover",{bubbles:true}));})()');
+  await hover('.report-surface[data-ui-reference-report=party] > .card-header');
   await until('document.querySelector("body > [data-ui-reference-layer] [data-ui-ref-code]")',
     'body overlay resumes after popup closes');
   await gear();
