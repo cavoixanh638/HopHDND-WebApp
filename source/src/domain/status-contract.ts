@@ -36,7 +36,7 @@ export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
 export const BUILD_STATUS_ALIASES:Readonly<Record<string,string>>={
   'VP đang thực hiện':'VP đang xử lý',
   'Văn phòng đang thực hiện':'VP đang xử lý',
-  'Không phải trình xây dựng NQ':'Không',
+  'Không phải trình xây dựng NQ':'Không phải trình',
   'Đã trình HĐND, chưa có QĐ':'Đã trình, chờ QĐ',
   'Đã trình, chưa có QĐ':'Đã trình, chờ QĐ',
   'Đã có QĐ chấp thuận':'Đã có QĐ',
