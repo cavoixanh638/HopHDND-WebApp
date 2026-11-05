@@ -6,6 +6,31 @@ export interface ItemColumn {
   /** Independent column values keyed by stable app row ID; never written to Excel. */
   values?:Record<string,string>;
 }
+/** Shared administrator settings for the *entire* L03 three-stage group.
+ * These are physical-column modes, NOT individual party/status track widths. */
+export interface PartyGroupWidths { readonly:number; editable:number }
+export const DEFAULT_PARTY_GROUP_WIDTHS:PartyGroupWidths={readonly:420,editable:570};
+export const PARTY_GROUP_WIDTH_LIMITS={
+  readonly:{min:360,max:1400},editable:{min:500,max:1600}
+} as const;
+/** Saved Firebase/local layouts from before L03 mode widths use safe defaults. */
+export function validatePartyGroupWidths(value:unknown):PartyGroupWidths{
+  if(value===undefined)return {...DEFAULT_PARTY_GROUP_WIDTHS};
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+     Object.keys(value).some(key=>key!=='readonly'&&key!=='editable'))
+    throw new Error('Hai độ rộng nhóm Tiến độ 3 khâu không hợp lệ.');
+  const input=value as Record<string,unknown>;
+  for(const key of ['readonly','editable'] as const){
+    const width=input[key],limits=PARTY_GROUP_WIDTH_LIMITS[key];
+    if(typeof width!=='number'||!Number.isInteger(width)||width<limits.min||width>limits.max)
+      throw new Error('Độ rộng L03 '+(key==='readonly'?'hai track':'ba track')+
+        ' cần từ '+limits.min+' đến '+limits.max+' px.');
+  }
+  return {readonly:input.readonly as number,editable:input.editable as number};
+}
+export const partyGroupPhysicalWidth=(widths:PartyGroupWidths,hasEditableLevel:boolean)=>
+  hasEditableLevel?Math.max(widths.readonly,widths.editable):widths.readonly;
+
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
@@ -38,6 +63,8 @@ export interface ItemLayout {
   summaryCards?:SummaryCardVisibility;
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
   compactDisplay?:SharedCompactDisplay;
+  /** Shared L03 widths for level-readonly (2 tracks) and editable (3 tracks). */
+  partyGroupWidths?:PartyGroupWidths;
   /** Administrator-owned titles; never rename source Excel fields. */
   groupLabels?:CompactGroupLabels;
   cellHighlights?:CellHighlightRule[];
@@ -95,7 +122,8 @@ export function validateCompactGroupLabels(value:unknown):CompactGroupLabels {
 }
 export const defaultItemLayout=():ItemLayout=>({
   listTitle:DEFAULT_LIST_TITLE,summaryCards:{party:true,build:true,nq:true},
-  tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},groupLabels:{}, 
+  tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},
+  partyGroupWidths:{...DEFAULT_PARTY_GROUP_WIDTHS},groupLabels:{}, 
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
   })),
@@ -200,9 +228,10 @@ export function validateItemLayout(value:unknown):ItemLayout{
   const compactDisplay=Object.fromEntries((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[])
     .map(key=>[key,compactSource[key]??false])) as SharedCompactDisplay;
   const groupLabels=validateCompactGroupLabels(input.groupLabels);
+  const partyGroupWidths=validatePartyGroupWidths(input.partyGroupWidths);
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */
