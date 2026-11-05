@@ -83,6 +83,12 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const compactDisplay=Object.fromEntries((Object.keys(base.compactDisplay??{}) as (keyof NonNullable<ItemLayout['compactDisplay']>)[]).map(key=>
     [key,merge(base.compactDisplay?.[key],edited.compactDisplay?.[key],remote.compactDisplay?.[key],
       `compactDisplay.${key}`,`gộp cột: ${key}`)])) as NonNullable<ItemLayout['compactDisplay']>;
+  const partyGroupWidths={
+    readonly:merge(base.partyGroupWidths!.readonly,edited.partyGroupWidths!.readonly,
+      remote.partyGroupWidths!.readonly,'partyGroupWidths.readonly','L03 · toàn cụm hai track'),
+    editable:merge(base.partyGroupWidths!.editable,edited.partyGroupWidths!.editable,
+      remote.partyGroupWidths!.editable,'partyGroupWidths.editable','L03 · toàn cụm ba track')
+  };
   const groupLabels=Object.fromEntries(COMPACT_GROUP_LABEL_KEYS.flatMap(key=>{
     const value=merge(base.groupLabels?.[key],edited.groupLabels?.[key],remote.groupLabels?.[key],
       `groupLabels.${key}`,`tên nhóm gộp: ${key}`);
@@ -93,5 +99,5 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
     merge(base.summaryCards![key],edited.summaryCards![key],remote.summaryCards![key],
       'summaryCards.'+key,'hiển thị thẻ '+key)]));
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,groupLabels,listTitle,summaryCards});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,groupLabels,listTitle,summaryCards});
 }
