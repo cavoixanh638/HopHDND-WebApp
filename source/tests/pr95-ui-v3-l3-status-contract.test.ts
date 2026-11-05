@@ -32,7 +32,7 @@ const excelRow=(code:string,stt:number,level:string,party:string,build:string,co
 
 describe('V3 L3 official status contract, no source rewrites',()=>{
   it('exposes exactly four fields and official labels in approved order',()=>{
-    expect(PARTY_LEVEL_OPTIONS).toEqual(['TTTU','BTV TU','BCH','Không phải trình']);
+    expect(PARTY_LEVEL_OPTIONS).toEqual(['Không','TTTU','BTV','BCH']);
     expect(STATUS_OPTIONS.progressParty).toEqual([
       'Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
       'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL']);
@@ -48,8 +48,8 @@ describe('V3 L3 official status contract, no source rewrites',()=>{
   it('accepts safe field-specific old aliases while preserving unknown/ambiguous originals',()=>{
     const scenarios=[
       ['partyLevel','Ban Chấp hành','BCH'],
-      ['partyLevel','BTV','BTV TU'],
-      ['partyLevel','Không phải xin ý kiến','Không phải trình'],
+      ['partyLevel','BTV TU','BTV'],
+      ['partyLevel','Không phải xin ý kiến','Không'],
       ['progressParty','VP đang thực hiện','VP đang xử lý'],
       ['progressParty','ĐU đã gửi TU, chưa họp','ĐU gửi TU, chưa họp'],
       ['progressParty','Đã họp/xin phiếu, chưa có TBKL','Đã xin ý kiến, chờ TBKL'],

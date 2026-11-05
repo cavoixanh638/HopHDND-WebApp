@@ -28,7 +28,7 @@ export const GROUP_OPTIONS: readonly { key: GroupField; label: string }[] = [
  * partyLevel is a catalog (not a StatusField or a new backend schema field).
  */
 export const PARTY_LEVEL_OPTIONS:readonly string[]=[
-  'TTTU','BTV TU','BCH','Không phải trình'
+  'Không','TTTU','BTV','BCH'
 ];
 export const STATUS_OPTIONS: Record<StatusField, string[]> = {
   progressParty: [
