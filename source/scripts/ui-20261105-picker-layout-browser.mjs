@@ -95,11 +95,31 @@ try{
    assert(refs.includes(part),'Reference part absent: '+part);
   const snap=await shot('ui-picker-edit-'+width);
   summary.push({viewport:width,mode:'editable',layout,screenshot:snap});
+  // The picker is a real control. Click with real CDP pointer events,
+  // and capture focus/disabled/lease evidence if the dialog does not open.
   const trigger=await evalJs(`(()=>{
-   const b=document.querySelector('.compact-stages[data-level-layout=editable] button.cell-picker-trigger');
-   if(!b)return false;b.click();return true;
+   const b=document.querySelector('.compact-stages[data-level-layout=editable] [data-level-editor=true] button.cell-picker-trigger');
+   if(!b)return null;
+   b.scrollIntoView({block:'center',inline:'nearest'});
+   const r=b.getBoundingClientRect();
+   return {x:r.left+r.width/2,y:r.top+r.height/2,
+    disabled:b.disabled,aria:b.getAttribute('aria-expanded'),
+    text:b.textContent.trim().slice(0,60)};
   })()`);
-  assert(trigger,'Missing editable level picker');
+  assert(trigger&&!trigger.disabled,'Missing or disabled editable level picker '+JSON.stringify(trigger));
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:trigger.x,y:trigger.y});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',
+   button:'left',x:trigger.x,y:trigger.y,clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',
+   button:'left',x:trigger.x,y:trigger.y,clickCount:1});
+  const openState=await evalJs(`(()=>{
+    const b=document.querySelector('.compact-stages[data-level-layout=editable] [data-level-editor=true] button.cell-picker-trigger');
+    return {expanded:b?.getAttribute('aria-expanded'),busy:b?.getAttribute('aria-busy'),
+      connected:b?.isConnected,active:document.activeElement?.tagName,
+      popovers:document.querySelectorAll('.cell-picker-popover').length,
+      errors:[...document.querySelectorAll('[role=alert]')].map(x=>x.textContent?.slice(0,150))};
+  })()`);
+  console.log('UI_20261105_PICKER_POINTER '+JSON.stringify({viewport:width,trigger,openState}));
   await waitFor("document.querySelector('.cell-picker-popover:popover-open')",
    'picker opened');
   const count=await evalJs("document.querySelectorAll('.cell-picker-popover:popover-open [role=option]').length");
