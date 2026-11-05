@@ -259,6 +259,19 @@ try{
     assert(found,'stable report registry '+id);
   }
   await hover('.report-surface[data-ui-reference-report=party] > .card-header');
+  const reportProbe=await js(`(()=>{
+    const h=document.querySelector('.report-surface[data-ui-reference-report=party] > .card-header');
+    const b=document.querySelector('[data-ui-reference-hover]');
+    const r=h.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+    const mouse=document.elementFromPoint(x,y);
+    return {active:document.querySelector('[data-ui-reference-active]')?.dataset.uiReferenceActive,
+      header:{x:r.x,y:r.y,width:r.width,height:r.height},hoverElement:mouse?.outerHTML.slice(0,130),
+      focused:document.activeElement?.outerHTML.slice(0,130),
+      badge:{code:b?.dataset.uiRefCode,hidden:b?.hidden,
+        placement:b?.dataset.uiRefPlacement,rect:b?.getBoundingClientRect().toJSON()},
+      layers:document.querySelectorAll('[data-ui-reference-layer]').length};
+  })()`);
+  console.log('REF_REPORT_POINTER_PROBE '+JSON.stringify(reportProbe));
   await until('document.querySelector(\'[data-ui-ref-code="R01.HEADER"]:not([hidden])\')','report header hover');
   await verifyNoOcclusion('desktop-reports');
   await screenshot('pr95-v4-l3-admin-reports.png');
