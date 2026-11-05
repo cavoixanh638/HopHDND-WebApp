@@ -1,4 +1,26 @@
-# Tracker UI Danh sách — 04/11/2026, chốt code/test
+# Tracker UI Danh sách — REV2 chốt nghiệm thu 05/11/2026
+
+## REV2 FINAL — CODE_PASS / SITE_PENDING (05/11/2026)
+
+**Pinned integrated code+test SHA: `3bfb28e0f8496732424898ae6186ea807af961fb`.** A REV2 scoped DONE; chỉ A L01/L03 delta mới từ accepted A HEAD `9a78244ee09df782a9835fffae181249e8fc1371` đã có trong coordination trước lần kiểm cuối. Đối chiếu blob SHA của `CompactGroupedValue.tsx`, `item-frame.css`, browser scripts V5/V6 và unit A với nhánh A: **giống hệt**. Không merge lại lần hai, không sửa B, không merge `main` hoặc deploy production.
+
+| Gate REV2 | Owner | Kết quả nghiệm thu trên SHA tích hợp | Bằng chứng |
+|---|---|---|---|
+| L01 readonly `(Sở - Loại VB)`; ít nhất một editable thì 2 field cùng hàng, không dấu nối/ngoặc; đúng 4 matrix quyền | A | **PASS** | [V6 L1 #41957942602](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942602), [A scoped evidence](evidence/A/REV2_L01_L03.md) |
+| Loại VB hover/focus/picker giống Sở, giữ màu/lease/Escape | A | **PASS** | [V6 L1 #41957942602](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942602) + Chrome screenshots 1440/900/390 |
+| L03 3 tracks cấp trình editable / 2 tracks readonly, nhãn và nguồn data-driven, mixed grants, `Không phải trình` | A | **PASS** | [V6 L1 #41957942602](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942602), [V5 L3 #41957942594](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942594) |
+| 3 status dropdown cùng trục/size, palette trên nút thật, không ép readonly 48px | A | **PASS** | A measured left/width/height spread **0/0/0px** for editable controls 186×36px List/Popup; [integrated V6 screenshot ZIP #13383074299](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942602/artifacts/13383074299) |
+| B admin rename/toggle C01–C03, guest/CAS/offline/denied | B (đã DONE đợt cũ) | **PASS regression, không mở lại B** | [Integrated B real-App E2E #41957942519](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942519) |
+| Typecheck/full unit/docs, Emulator, Chrome smoke, build/QA trên exact SHA | Commander | **PASS — 9/9 applicable workflows** | [Verify #41957942551](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942551), [CI table trong báo cáo](REV2_INTEGRATION_2026-11-05.md) |
+| Offline HTML QA/package exact SHA | Commander | **PASS** | [ZIP #13383449402](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942551/artifacts/13383449402), file SHA-256 `c341c7cee525c9dec5761a4875f5fd6e76d8c81d88c10a6a6f5e85ff78c3a364` (1,087,511 bytes) |
+| Private ChatGPT Site `appgprj_6ae93f17c2e48191815caef8a642fa14` | Commander | **SITE_PENDING** | Không có Site action/API trong phiên; owner-only, version, URL và deployment `succeeded` chưa xác minh. **Không tự nhận đã deploy**. |
+
+**CI exact-SHA summary:** Verify [#41957942551](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942551) PASS; V5 L3 [#41957942594](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942594) PASS; V5 L4 [#41957942771](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942771) PASS attempt 2 (attempt 1 một browser assertion flaky, không sửa mã); V5 L5 [#41957942611](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942611) PASS; V6 L1 [#41957942602](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942602) PASS; V6 L3 [#41957942676](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942676) PASS; V6 L4 [#41957942515](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942515) PASS; Firebase operational [#41957942637](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942637) PASS; B E2E [#41957942519](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41957942519) PASS. 3 scoped PR142/PR147 skipped không tính.
+
+**Gói và bằng chứng:** Offline HTML `HopHDND_GopCot_XemThu.html`, **1,087,511 bytes**, SHA256 `c341c7cee525c9dec5761a4875f5fd6e76d8c81d88c10a6a6f5e85ff78c3a364`; ZIP digest `sha256:dace002253a17d6492f25011cf25c09cfabe1263f73a9df26670029844e5e60e`. Verified hosting candidate ZIP digest `sha256:8bac7a3a7c9df3414d5f259139f61ea36947991e8b71c8528d6bc6b38a53bf46`. [Báo cáo tổng kết REV2](REV2_INTEGRATION_2026-11-05.md). Site chưa cập nhật.
+
+---
+
 
 **Trạng thái chung: CODE/INTEGRATION PASS — PRIVATE SITE PENDING.** Worker A và B đều DONE. Tổng chỉ huy đã tích hợp và có bằng chứng 9/9 workflow áp dụng PASS trên **cùng code SHA `c5ad9e7c4d57aecac47102ea0df3de75bf642fe9`**. Tuy nhiên **không đánh dấu toàn bộ dự án DONE**: Site demo riêng tư chưa có phiên bản/deployment succeeded/URL được xác minh.
 
@@ -52,9 +74,9 @@ Xem [báo cáo tích hợp](INTEGRATION_2026-11-04.md) và [checkpoint tổng ch
 - CI trên pinned source+test SHA vẫn **9/9 applicable SUCCESS**. Tại docs-only SHA `1265b768`, [V6 L3 #41773822188](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41773822188) attempt 1 FAIL *Chrome CDP unavailable* trước UI asserts; commander đã rerun failed jobs, **attempt 2 SUCCESS cùng SHA**, không đổi source/test/oracle. 8 workflow applicable còn lại trên docs-only SHA cũng SUCCESS; 3 workflow scope-limited SKIPPED, không tính PASS.
 - **Trạng thái không đổi: CODE/INTEGRATION PASS — PRIVATE SITE PENDING.** Không có connector/action Sites trong phiên; không chứng minh owner-only, version, URL hoặc deployment `succeeded`. Tránh push mã/commit vô nghĩa; Site chỉ được cập nhật trong môi trường có quyền.
 
-## REV2 — L01/L03 (đợt yêu cầu mới 04/11/2026, tổng chỉ huy)
+## REV2 — nhật ký lịch sử kiểm thử (đã được thay thế bởi REV2 FINAL ở trên)
 
-**Trạng thái REV2: A_SCOPED_CI_PASS / HANDOFF_PENDING / SHARED_VERIFY_PENDING.** Đã đọc [REV2-COMMANDER](REV2-COMMANDER.md), [REV2-REQUIREMENTS](REV2-REQUIREMENTS.md), [REV2-WORKER-A](REV2-WORKER-A.md). *Không kế thừa PASS đợt trước làm PASS REV2.*
+**Trạng thái tại mốc lịch sử: A_SCOPED_CI_PASS / HANDOFF_PENDING / SHARED_VERIFY_PENDING; đã supersede bởi REV2 FINAL phía trên.** Đã đọc [REV2-COMMANDER](REV2-COMMANDER.md), [REV2-REQUIREMENTS](REV2-REQUIREMENTS.md), [REV2-WORKER-A](REV2-WORKER-A.md). *Không kế thừa PASS đợt trước làm PASS REV2.*
 
 | Gate REV2 mới | Owner | Trạng thái | HEAD/test SHA/bằng chứng | Còn thiếu |
 |---|---|---|---|---|
