@@ -3044,6 +3044,7 @@ try{
       return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopWidth,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
         pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
+        editable:!!pill.querySelector('button.cell-picker-trigger'),
         labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1};
     });
   })()`);
@@ -3051,14 +3052,16 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=['not-submitted','office','done'];
+  const targetInks=['rgb(177, 64, 82)','rgb(128, 92, 34)','rgb(52, 110, 72)'];
+  const clear='rgba(0, 0, 0, 0)';
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
       x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
-      x.pill!=='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&
-       x.labelFits&&x.stateFits)||
-    new Set(r05List.map(x=>x.pill)).size!==3||
+      x.pill===clear&&x.pillBorder==='0px'&&!x.editable&&
+      x.pillText===targetInks[i]&&x.labelFits&&x.stateFits)||
+    new Set(r05List.map(x=>x.pillText)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
-    r05Neutral[0].pill==='rgba(0, 0, 0, 0)'||
+    r05Neutral[0].pill!==clear||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
     r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
     throw Error('R05 status colors / neutral / independent stages: '+
@@ -3102,7 +3105,10 @@ try{
       bcBuild?.textContent?.trim()==='Không phải trình'&&
       !bcBuild?.hasAttribute('data-highlighted');
     return {kind,bcLocked,row:stage&&getComputedStyle(stage).backgroundColor,
-      pill:pill&&getComputedStyle(pill).backgroundColor,highlight:pill?.dataset.highlighted,
+      pill:pill&&getComputedStyle(pill).backgroundColor,
+      pillText:pill&&getComputedStyle(pill).color,
+      editable:!!pill?.querySelector('button.cell-picker-trigger'),
+      highlight:pill?.dataset.highlighted,
       level:getComputedStyle(first).backgroundColor,
       levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
@@ -3111,7 +3117,8 @@ try{
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
     r05Highlight.row!=='rgba(0, 0, 0, 0)'||
-    r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
+    r05Highlight.pill!==clear||r05Highlight.pillText!=='rgb(0, 0, 0)'||
+    r05Highlight.editable||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
@@ -3121,9 +3128,9 @@ try{
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
-    r05Custom[1].pill!=='rgb(252, 221, 160)'||r05Custom[1].pillBorder!=='0px'||
+    r05Custom[1].pill!==clear||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].pill!==r05List[0].pill)
+    r05Custom[0].pillText!==r05List[0].pillText)
     throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
@@ -3133,7 +3140,7 @@ try{
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
     x.border==='0px'&&x.tone===target[i]&&
-     x.pill===r05List[i].pill&&x.pillBorder==='0px'))
+     x.pill===clear&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
     throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
@@ -3165,7 +3172,8 @@ try{
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
     if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
-      x.tone===target[i]&&x.pill===r05List[i].pill&&
+      x.tone===target[i]&&x.pill===clear&&!x.editable&&
+      x.pillText===r05List[i].pillText&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
       throw Error('R05 responsive colored stage overflows '+vw+' '+JSON.stringify({samples,geometry}));
