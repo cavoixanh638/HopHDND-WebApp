@@ -51,7 +51,8 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(html).not.toContain('cell-picker-trigger');
     expect(html).not.toContain('data-editable="true"');
     expect(html).not.toContain('aria-haspopup');
-    expect(html).toContain('Ban Chấp hành');
+    expect(html).toContain('BCH');
+    expect(html).not.toContain('Ban Chấp hành');
     expect(html).toContain('ĐU gửi TU, chưa họp');
   });
   it('supports old long labels and new canonical labels with the same hit-region structure',()=>{
@@ -72,9 +73,10 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
   });
   it('keeps independently accessible full-width 36px buttons in the common grid track',()=>{
     expect(css).toContain('.compact-stages[data-rev2="true"]');
-    expect(css).toContain('min-height:36px!important;height:36px!important');
-    expect(css).toContain('grid-template-columns:max-content 132px minmax(186px,1fr)');
-    expect(css).toContain('grid-template-columns:max-content minmax(186px,1fr)');
+    expect(css).toContain('min-height:36px!important;height:auto!important');
+    expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-level-track) var(--ui-stage-status-track)!important');
+    expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-status-track)!important');
+    expect(css).toContain('width:min(100%,var(--hdnd-l03-inner-width,100%));');
     expect(css).toContain('grid-template-columns:subgrid!important');
     expect(css).toContain('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
     expect(css).not.toContain('.compact-stage-row[role="button"]');
@@ -95,9 +97,12 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(html).toContain('background-color:#FCDDA0');
     expect(html).toContain('--member-highlight-text:#884422');
     expect(html).not.toMatch(/class="compact-stage-row"[^>]*style=/);
-    expect(css).toContain('background:var(--workflow-bg)!important');
-    expect(css).toContain('color:var(--workflow-text)!important');
-    expect(css).toContain('background:var(--member-highlight-bg)!important;color:var(--member-highlight-text)!important');
+    expect(css).toContain('--ui-picker-bg:var(--workflow-bg,#F2F6F9);');
+    expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
+    expect(css).toContain('--ui-picker-fg:var(--workflow-text,#426274);');
+    expect(css).toContain('color:var(--ui-picker-fg,#426274)!important');
+    expect(css).toContain('background:var(--member-highlight-bg)!important');
+    expect(css).toContain('color:var(--member-highlight-text)!important');
     expect(css).toContain('content:none!important;display:none!important;background:none!important');
     expect(css).toContain('outline:2px solid #356d86!important');
   });
