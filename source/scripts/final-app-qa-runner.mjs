@@ -460,7 +460,10 @@ async function grantAndGuestEdit(){
   await settings(admin,'Phân quyền chỉnh sửa');
   const permission=admin.locator('.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Ghi chú"]').first();
   await permission.selectOption('allow');
-  await admin.locator('.permission-risk-confirm input').check();
+  // Risk acknowledgement is needed only when row/cell scope changes.
+  // Column-only grants have no risk checkbox; server readback below is the gate.
+  const risk=admin.locator('.permission-risk-confirm input');
+  if(await risk.count())await risk.check();
   await click(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
   const path='hdnd/datasetV2/permissions/'+seedPointer.generationId;
   await wait(async()=>{const x=await bodyOf(path);return x?.cells?.[sourceRows[0].recordId]?.note===true;},
