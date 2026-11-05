@@ -8,6 +8,7 @@ import { MockRepository } from '../data/mock-repository';
 import { createDemoItems } from '../data/demo-items';
 import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
+import {canonicalStatus} from '../domain/status-contract';
 import { MemoReportTable } from '../features/reports/ReportTable';
 import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
@@ -360,7 +361,17 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     const timer=window.setTimeout(()=>{void workspace.save();},1200);
     return()=>window.clearTimeout(timer);
   },[firebase?.freezeControl?.revision,selectedSource]);
+  /** A stored Không level locks progressParty regardless of admin/status grant;
+   * the partyLevel-only server transaction owns its dependent status. */
+  const partyStatusLocked=(id:string,field:string)=>field==='progressParty'&&
+    canonicalStatus('partyLevel',workspace.workingItems.find(item=>item.recordId===id)?.partyLevel)==='Không';
   const updateDataDraft=(id:string,changes:Changes)=>{
+    if('progressParty' in changes&&partyStatusLocked(id,'progressParty')){
+      setLayoutMessage('Cấp trình Không: Tiến độ Thành ủy được khóa sửa trực tiếp.');return;
+    }
+    if('partyLevel' in changes&&'progressParty' in changes){
+      setLayoutMessage('Chỉ gửi thay đổi Cấp trình; dịch vụ tự cập nhật tiến độ phụ thuộc trong cùng giao dịch.');return;
+    }
     if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return;
     }
@@ -665,6 +676,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           ?async(next,baseline,choices)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline,choices);}
           :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={guestViewer} permissions={adminTools&&isFirebase?firebase!.permissions:undefined} onSavePermissions={adminTools&&isFirebase?firebase!.savePermissions:undefined} onReloadPermissions={adminTools&&isFirebase?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>
+          !partyStatusLocked(id,field)&&
           (firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
           mayEdit(firebase!.permissions,id,field,firebase!.isAdmin):undefined} allowLayout={adminTools} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} leaseManager={leaseManager} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={adminTools&&(page === 'items-customize'||page==='items-permissions')} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
@@ -700,9 +712,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         (!firebase||selectedSource==='primary'&&(!firebase.editingLocked||firebase.isAdmin))}
       guestViewer={guestViewer}
       readOnlyViewer={isFirebase&&!adminTools&&!viewerMayEditText}
-      canEditCell={(id,field)=>!firebase||selectedSource==='primary'&&
+      canEditCell={(id,field)=>!partyStatusLocked(id,field)&&(!firebase||selectedSource==='primary'&&
         ((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
-        mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
+        mayEdit(firebase.permissions,id,field,firebase.isAdmin)))}
       onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
       onHistory={adminTools?(item)=>setHistory({item}):undefined}
       onCellHistory={(item,field)=>setHistory({item,field})}
