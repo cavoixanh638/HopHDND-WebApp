@@ -103,7 +103,9 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(css).toContain('color:var(--ui-picker-fg,#426274)!important');
     expect(css).toContain('background:var(--member-highlight-bg)!important');
     expect(css).toContain('color:var(--member-highlight-text)!important');
-    expect(css).toContain('content:none!important;display:none!important;background:none!important');
+    expect(css).toMatch(/button\.cell-picker-trigger::before\{\s*content:none!important;display:none!important;/s);
+    expect(css).toContain('border:0;border-right:1.8px solid currentColor');
+    expect(css).toContain('background:transparent!important');
     expect(css).toContain('outline:2px solid #356d86!important');
   });
   it('retains unchanged CellPicker aria, keyboard, lease/save/clear contracts',()=>{
