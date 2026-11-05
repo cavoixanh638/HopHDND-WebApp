@@ -551,7 +551,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const saveL03Widths=async()=>{
     let widths;
     try{
-      const parse=(value:string)=>/^\\d+$/.test(value.trim())?Number(value.trim()):NaN;
+      const parse=(value:string)=>/^\d+$/.test(value.trim())?Number(value.trim()):NaN;
       widths=validatePartyGroupWidths({
         readonly:parse(l03WidthsDraft.readonly),editable:parse(l03WidthsDraft.editable)
       });
