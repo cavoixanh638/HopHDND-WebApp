@@ -99,6 +99,7 @@ describe('REF 05/11 semantic registry',()=>{
       const cell=mockElement({attrs:{'data-col-key':'partyLevel'},
         ancestors:{'table':table,'tr':row}});
       const stage=mockElement({attrs:{'data-stage-field':field}});
+      (stage as Element & {contains:(node:Node|null)=>boolean}).contains=()=>true;
       const state=mockElement({});
       const target=mockElement({ancestors:{
         'td[data-col-key]':cell,'table':table,
