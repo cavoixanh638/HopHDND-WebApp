@@ -368,7 +368,8 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     let pending=0,disposed=false;
     let hovered:Element|null=null,focused:Element|null=null,lastPointer:Element|null=null;
     let current:UiReferenceTarget|null=null;
-    const active=()=>focused&&root.contains(focused)?focused:
+    const active=()=>copy.contains(document.activeElement)?current?.element??hovered:
+      focused&&root.contains(focused)?focused:
       hovered&&root.contains(hovered)?hovered:null;
     const schedule=()=>{
       if(!disposed&&!pending)pending=requestAnimationFrame(redraw);
@@ -384,7 +385,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       const parent=dialog?dialogLayer:bodyLayer;
       if(badge.parentElement!==parent)parent.appendChild(badge);
       const source=active();
-      const next=source?resolveUiReferenceTarget(source,root):null;
+      const next=source===current?.element?current:source?resolveUiReferenceTarget(source,root):null;
       if(!next||(dialog&&!dialog.contains(next.element))||
         (!dialog&&next.element.closest('dialog'))||!next.element.isConnected){
         current=null;badge.hidden=true;return;
@@ -400,6 +401,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
       copy.title='Sao chép '+next.code;
       badge.title=next.code;
       badge.dataset.uiRefPlacement='suppressed';
+      badge.hidden=false;
       if(positionMarker(badge,next.element)){
         badge.dataset.uiRefPlacement='inside';
       }else badge.hidden=true;
@@ -423,7 +425,7 @@ export function UiReferenceOverlay({enabled,rootRef}:{
     const onBlur=()=>{
       queueMicrotask(()=>{
         const next=document.activeElement;
-        focused=next instanceof Element&&root.contains(next)?next:null;
+        focused=next instanceof Element&&root.contains(next)&&!next.closest('[data-ui-reference-layer]')?next:null;
         schedule();
       });
     };
