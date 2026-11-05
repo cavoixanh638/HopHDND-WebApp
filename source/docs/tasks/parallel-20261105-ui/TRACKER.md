@@ -20,3 +20,13 @@ Baseline `d8c994c44f7bd11b685d82f8f955ffab99065ea9`; mốc chung trước worker
 ## Điều kiện tiếp tục
 
 Mỗi worker tiếp tục theo `WORKER-<ID>.md` và checkpoint trên đúng nhánh, báo code/test SHA + test PASS/FAIL/NOT RUN + run/artifact + criteria. Commander chỉ tích hợp khi diff và ownership rõ; không merge main/production và không chạy migration live. Nếu chat worker dừng/hit limit, chat mới thay writer và đọc cùng entrypoint/checkpoint, **không chạy hai writer trên một nhánh**.
+
+## Sự kiện bổ sung — kiểm HEAD sau tracker đầu
+
+- REF tiến tới [`71df0d4`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/71df0d4d2bfdb519660af7f0bd93534fccba6b35) (test fixture/identity); checkpoint vẫn ở pha khảo sát, chưa có run thực. Code/test **NOT RUN**.
+- UI chốt handoff [`dd05d21`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/dd05d21a25b6ef852d525d3249af5e94212fe6ba). Code `2a7fe5da`, unit test `a1408d7`, browser script `5cf1721`, checkpoint `dd05d21`; static source checks 9/9 chỉ là static, **typecheck/unit/build/Chrome actual NOT RUN**. Browser script chỉ synthetic compact-QA, không thay real App + Emulator. [Checkpoint UI](https://github.com/cavoixanh638/HopHDND-WebApp/blob/ui/20261105-picker-layout/source/docs/tasks/parallel-20261105-ui/checkpoints/UI.md).
+- WIDTH tiến tới [`f3427cc`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/f3427cc4cb0345b67cf0e1c207eb93b5861d8e16) (test legacy migration/physical modes/CAS), chưa xác minh kết quả thực thi: **NOT RUN**.
+- DATA vẫn `aa135cf`, checkpoint NOT_STARTED: **BLOCKED_DATA_HANDOFF**. Cả 4 nhánh khi truy vấn CI đều 0 runs; không có artifact CI. Không thể khóa SHA tích hợp chính xác hay dựng package từ SHA PASS. Không tích hợp code chưa có dependency.
+- Kiểm công cụ kết nối: không có action Site/deployment trong bộ connector hiện hữu; giữ **SITE_PENDING** ngay cả khi code sau này đạt test, cần khả năng thao tác Site riêng tư và kiểm owner-only trước deployment.
+
+Các SHA ở bảng trên là snapshot theo thời điểm kiểm trước; mục sự kiện bổ sung này ghi mốc mới hơn. Luôn refresh HEAD/checkpoint trước khi tích hợp.
