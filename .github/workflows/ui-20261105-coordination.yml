@@ -39,8 +39,11 @@ jobs:
         env:
           SHA: ${{ github.sha }}
         run: test "$(git rev-parse HEAD)" = "$SHA"
-      - name: Install frozen frontend dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Install frozen frontend and pinned Playwright Chromium (CDP pipe)
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
       - name: Typecheck and entire unit suite
         run: |
           npm run typecheck
@@ -51,8 +54,9 @@ jobs:
           npm run build:compact:qa
           test -s dist/Dashboard_HĐND.html
           test -s dist-compact-qa/compact-qa.html
-      - name: Verify real Chrome available
-        run: command -v google-chrome-stable || command -v google-chrome || command -v chromium
+      - name: Verify pinned Chromium real executable (no TCP debug port)
+        run: |
+          node -e "const fs=require('node:fs');const {chromium}=require('./cell-edit-service/node_modules/playwright');const p=chromium.executablePath();console.log('QA_CHROMIUM_BINARY='+p);if(!fs.existsSync(p))process.exit(1)"
       - name: Real Chrome - REF hover/focus/copy/list/popup
         run: node scripts/pr95-v4-l3-reference-browser.mjs
       - name: Real Chrome - UI L03 alignment and 1440/900/390 screenshots
