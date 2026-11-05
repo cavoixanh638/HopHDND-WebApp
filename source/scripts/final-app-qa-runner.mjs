@@ -17,7 +17,7 @@ import * as XLSX from 'xlsx';
 
 const requirePlaywright=createRequire(resolve('cell-edit-service/package.json'));
 const {chromium}=requirePlaywright('playwright');
-const PROJECT='demo-hdnd',NAMESPACE='demo-hdnd';
+const PROJECT='demo-hdnd',NAMESPACE='demo-hdnd-default-rtdb';
 const DB='http://127.0.0.1:9000',SITE='http://127.0.0.1:4179';
 const ROOT=resolve('qa-results/final-app-review');
 const RULES=resolve(ROOT,'generated/shared.rules.json');
@@ -259,10 +259,10 @@ async function startServices(){
     writeFileSync(config,JSON.stringify(contents,null,2));
   }
   const env={...process.env,CI:'true',GCLOUD_PROJECT:PROJECT,
-    FIREBASE_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    FIREBASE_DATABASE_URL:'https://demo-hdnd-default-rtdb.firebaseio.com',
     FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
     FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
-    PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    PARENT_DATABASE_URL:'https://demo-hdnd-default-rtdb.firebaseio.com',
     PARENT_ALLOWED_ORIGINS:SITE,PARENT_COMMIT_ENABLED:'true'};
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
