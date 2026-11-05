@@ -811,7 +811,13 @@ async function narrowPartyLevelGrantJourney(){
   const original=await bodyOf(rowPath);
   assert.ok(Number.isInteger(original?.revision)&&original.revision>=1,
     'QA09 must capture a real persisted base revision before permission-limited edits');
-  const oldHistory=Object.keys(original.history??{}).length;
+  // REST can materialize numeric revision keys as sparse arrays with null
+  // slots (e.g. [null,null,audit2,audit3]); count actual audit events,
+  // never array positions or synthetic holes.
+  const audits=(item)=>Object.values(item?.history??{}).filter(entry=>
+    entry&&typeof entry==='object'&&typeof entry.operationId==='string'&&
+    entry.changes&&typeof entry.changes==='object');
+  const oldHistory=audits(original).length;
   record('QA09_BASELINE',{revision:original.revision,auditCount:oldHistory});
   const row=guest.locator('.item-data-table tbody tr[data-ui-reference-record-id="'+recordId+'"]');
   const level=row.locator('.compact-stage-level button.cell-picker-trigger').first();
@@ -826,7 +832,13 @@ async function narrowPartyLevelGrantJourney(){
     return row?.partyLevel==='Không' && row?.progressParty==='Không phải trình' ? row : false;
   },'Level-only grant atomically sets Không / Không phải trình',25000);
   assert.equal(levelNone.revision,original.revision+1,'One server revision for both dependent fields');
-  assert.equal(Object.keys(levelNone.history??{}).length,oldHistory+1,'One audit addition for level+status');
+  assert.equal(audits(levelNone).length,oldHistory+1,'One valid audit addition for level+status');
+  const firstAudit=audits(levelNone).find(entry=>entry.operationId===levelNone.operationId);
+  assert.ok(firstAudit,'First revision must expose its committed operation audit');
+  assert.deepEqual(
+    {partyLevel:firstAudit.changes.partyLevel,progressParty:firstAudit.changes.progressParty},
+    {partyLevel:'Không',progressParty:'Không phải trình'},
+    'First audit must contain both dependent fields in one operation');
   await guest.locator('.draft-bar').waitFor({state:'detached',timeout:16000});
   assert.equal(await row.locator('.compact-stage-state[data-ui-reference-part="progressParty"] button.cell-picker-trigger').count(),0,
     'Không level must make dependent progress readonly');
@@ -840,7 +852,14 @@ async function narrowPartyLevelGrantJourney(){
     return row?.partyLevel==='TTTU' && row?.progressParty==='Sở chưa trình' ? row : false;
   },'Level-only grant atomically restores TTTU / Sở chưa trình',25000);
   assert.equal(reopened.revision,levelNone.revision+1,'Second level-only save increments exactly once');
-  assert.equal(Object.keys(reopened.history??{}).length,oldHistory+2,'Exactly two audit additions across both saves');
+  assert.equal(audits(reopened).length,oldHistory+2,'Exactly two real audit records across both saves');
+  const secondAudit=audits(reopened).find(entry=>entry.operationId===reopened.operationId);
+  assert.ok(secondAudit,'Second revision must expose its committed operation audit');
+  assert.deepEqual(
+    {partyLevel:secondAudit.changes.partyLevel,progressParty:secondAudit.changes.progressParty},
+    {partyLevel:'TTTU',progressParty:'Sở chưa trình'},
+    'Second audit must contain both dependent fields in one operation');
+  assert.notEqual(firstAudit.operationId,secondAudit.operationId,'Two saves need distinct operation IDs');
   await screenshot(guest,'21-party-status-reopened');
   return {grant:'partyLevel only',noStatusGrant:true,
     first:{revision:levelNone.revision,level:levelNone.partyLevel,status:levelNone.progressParty},
