@@ -2958,9 +2958,10 @@ try{
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
       qpplKind==='QPPL'&&hcLocked&&
+      // This default fixture has NO edit grant: highlighted source is
+      // labeled and has semantic ink, but cannot look like a clickable button.
       p?.background==='rgba(0, 0, 0, 0)'&&p?.tag==='true'&&
-      !!highlightedTrigger&&triggerPaint?.background==='rgb(255, 238, 85)'&&
-      triggerPaint?.text==='rgb(0, 0, 0)',
+      !highlightedTrigger&&p?.text==='rgb(0, 0, 0)',
       dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p,highlightedTrigger:triggerPaint};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
@@ -2994,6 +2995,23 @@ try{
   })()`);
   if(editColor.background!=='rgb(204, 0, 0)'||editColor.text!=='rgb(255, 255, 255)')
     throw Error('R03 editable member lost rule: '+JSON.stringify(editColor));
+  // On an actually editable status, REV2 moves the highlighted fill to
+  // the real CellPicker. Preserve the strict yellow/black paint assertion.
+  const editableStatusPaint=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')]
+      .find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    const status=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const trigger=status?.querySelector('button.cell-picker-trigger');
+    return {hasTrigger:!!trigger,tag:status?.dataset.highlighted??null,
+      wrapper:status?getComputedStyle(status).backgroundColor:null,
+      background:trigger?getComputedStyle(trigger).backgroundColor:null,
+      ink:trigger?getComputedStyle(trigger).color:null};
+  })()`);
+  if(!editableStatusPaint.hasTrigger||editableStatusPaint.tag!=='true'||
+    editableStatusPaint.wrapper!=='rgba(0, 0, 0, 0)'||
+    editableStatusPaint.background!=='rgb(255, 238, 85)'||
+    editableStatusPaint.ink!=='rgb(0, 0, 0)')
+    throw Error('R03 editable progress highlight lost its picker fill: '+JSON.stringify(editableStatusPaint));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&popup=1'});
   await eventually("!!document.querySelector('.report-detail-grid .compact-document-department')",
     'R03 popup renderer did not mount');
