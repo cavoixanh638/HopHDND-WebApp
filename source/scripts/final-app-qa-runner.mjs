@@ -807,6 +807,12 @@ async function narrowPartyLevelGrantJourney(){
     return p?.cells?.[recordId]?.partyLevel===true &&
       p?.cells?.[recordId]?.progressParty!==true ? p : false;
   },'Server has partyLevel-only cell grant',21000);
+  const rowPath='hdnd/datasetV2/generations/'+seedPointer.generationId+'/items/'+recordId;
+  const original=await bodyOf(rowPath);
+  assert.ok(Number.isInteger(original?.revision)&&original.revision>=1,
+    'QA09 must capture a real persisted base revision before permission-limited edits');
+  const oldHistory=Object.keys(original.history??{}).length;
+  record('QA09_BASELINE',{revision:original.revision,auditCount:oldHistory});
   const row=guest.locator('.item-data-table tbody tr[data-ui-reference-record-id="'+recordId+'"]');
   const level=row.locator('.compact-stage-level button.cell-picker-trigger').first();
   await level.waitFor({state:'visible',timeout:22000});
@@ -815,13 +821,12 @@ async function narrowPartyLevelGrantJourney(){
   await guest.locator('.draft-bar').waitFor({state:'visible',timeout:12000});
   await screenshot(guest,'19-party-level-only-guest-draft');
   await saveDraft(guest);
-  const rowPath='hdnd/datasetV2/generations/'+seedPointer.generationId+'/items/'+recordId;
   const levelNone=await wait(async()=>{
     const row=await bodyOf(rowPath);
     return row?.partyLevel==='Không' && row?.progressParty==='Không phải trình' ? row : false;
   },'Level-only grant atomically sets Không / Không phải trình',25000);
-  assert.equal(levelNone.revision,2);
-  assert.equal(Object.keys(levelNone.history??{}).length,1,'Only one audit revision for level+status');
+  assert.equal(levelNone.revision,original.revision+1,'One server revision for both dependent fields');
+  assert.equal(Object.keys(levelNone.history??{}).length,oldHistory+1,'One audit addition for level+status');
   await guest.locator('.draft-bar').waitFor({state:'detached',timeout:16000});
   assert.equal(await row.locator('.compact-stage-state[data-ui-reference-part="progressParty"] button.cell-picker-trigger').count(),0,
     'Không level must make dependent progress readonly');
@@ -834,8 +839,8 @@ async function narrowPartyLevelGrantJourney(){
     const row=await bodyOf(rowPath);
     return row?.partyLevel==='TTTU' && row?.progressParty==='Sở chưa trình' ? row : false;
   },'Level-only grant atomically restores TTTU / Sở chưa trình',25000);
-  assert.equal(reopened.revision,3);
-  assert.equal(Object.keys(reopened.history??{}).length,2);
+  assert.equal(reopened.revision,levelNone.revision+1,'Second level-only save increments exactly once');
+  assert.equal(Object.keys(reopened.history??{}).length,oldHistory+2,'Exactly two audit additions across both saves');
   await screenshot(guest,'21-party-status-reopened');
   return {grant:'partyLevel only',noStatusGrant:true,
     first:{revision:levelNone.revision,level:levelNone.partyLevel,status:levelNone.progressParty},
