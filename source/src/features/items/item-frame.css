@@ -1656,7 +1656,10 @@
   --ui-stage-level-track:90px; /* Không (5 chars) + padding + caret */
   --ui-stage-status-track:238px; /* longest official status + caret */
   box-sizing:border-box;display:grid;align-content:start;justify-content:start;
-  gap:5px;min-width:0;width:100%;max-width:100%;
+  gap:5px;min-width:0;
+  /* WIDTH provides one whole-cluster budget per row; mixed-mode read-only
+     stays compact instead of occupying the wider editable physical col. */
+  width:min(100%,var(--hdnd-l03-inner-width,100%));max-width:100%;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;
   scrollbar-width:thin;
 }
