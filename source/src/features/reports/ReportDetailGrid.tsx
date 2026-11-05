@@ -440,12 +440,13 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               })}/>)}</tr>
         </thead>
         <tbody>
-          {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
+          {visible.map(item=><tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               mayEditField(item,c.key as TextField);
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               return <td key={c.key} data-col-key={c.key}
+                data-ui-reference-part={c.key==='note'||c.key==='specificProgress'?c.key:undefined}
                 data-progress-tone={c.key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(c.key,effectiveItemField(item,c.key),statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
                 data-edit-hint={writable?'Bấm để sửa':undefined}
