@@ -126,6 +126,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   full-app:
+    needs: [app-qa, data-emulator]
     runs-on: ubuntu-latest
     timeout-minutes: 40
     defaults:
