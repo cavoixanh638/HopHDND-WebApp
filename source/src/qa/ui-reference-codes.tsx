@@ -344,11 +344,33 @@ function positionMarker(badge:HTMLElement,anchor:Element):boolean{
   return true;
 }
 async function copyReferenceCode(value:string):Promise<boolean>{
+  // Async Clipboard can be unavailable in restrictive/headless browsers.
+  // Fallback is still a direct user-initiated click and copies only this UI
+  // reference code (never cell contents, data rows or credentials).
   try{
-    if(!navigator.clipboard?.writeText)return false;
-    await navigator.clipboard.writeText(value);
-    return true;
-  }catch{return false;}
+    if(navigator.clipboard?.writeText){
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  }catch{ /* Try the browser's user-gesture copy fallback below. */ }
+  const field=document.createElement('textarea');
+  const prior=document.activeElement;
+  field.value=value;
+  field.setAttribute('aria-hidden','true');
+  field.setAttribute('readonly','');
+  field.style.cssText='position:fixed;left:-10000px;top:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(field);
+  let copied=false;
+  try{
+    field.focus();
+    field.select();
+    copied=document.execCommand('copy');
+  }catch{copied=false;}
+  finally{
+    field.remove();
+    if(prior instanceof HTMLElement&&prior.isConnected)prior.focus({preventScroll:true});
+  }
+  return copied;
 }
 
 /** Portal is visual only except for ONE small explicit copy button.
