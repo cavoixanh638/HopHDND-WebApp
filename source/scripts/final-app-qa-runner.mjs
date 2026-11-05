@@ -632,6 +632,28 @@ async function excelJourney(){
       operationId:op,confirmation,ui:(await stage.innerText().catch(()=>'')).slice(-1800),
       server:await state(),parentServiceLog:logs.parent.slice(-3700),
       emulatorLog:logs.firebase.slice(-950)});
+    // The Emulator is isolated; export Rules evaluation evidence and only
+    // non-sensitive QA fixture keys. Never derive a broad client write path
+    // or alter Rules to make a red CI job green.
+    try{
+      const r=await fetch(DB+'/.inspect/coverage.json?ns='+NAMESPACE,{
+        signal:AbortSignal.timeout(6000)});
+      if(r.ok){
+        const coverage=await r.json(),destination=resolve(ROOT,'rules-coverage.json');
+        writeFileSync(destination,JSON.stringify(coverage,null,2));
+        record('QA_PARENT_RULES_COVERAGE',{path:'rules-coverage.json',
+          topLevelKeys:Object.keys(coverage),bytes:readFileSync(destination).byteLength});
+      }else record('QA_PARENT_RULES_COVERAGE_UNAVAILABLE',{httpStatus:r.status});
+    }catch(cause){record('QA_PARENT_RULES_COVERAGE_ERROR',{error:safeError(cause)});}
+    try{
+      const raw=await bodyOf('hdnd/datasetV2/candidates/'+op);
+      const backup=await bodyOf('hdnd/datasetV2/backups/'+op);
+      record('QA_PARENT_STAGING_STRUCTURE',{
+        keys:Object.keys(raw??{}),
+        backupKeys:Object.keys(backup??{}),
+        itemFields:Object.keys(Object.values(raw?.items??{})[0]??{}),
+        candidateLength:JSON.stringify(raw??{}).length});
+    }catch(cause){record('QA_PARENT_STAGING_STRUCTURE_ERROR',{error:safeError(cause)});}
     await screenshot(admin,'FAIL-EXCEL-PARENT-CAS-409');
     throw error;
   }
