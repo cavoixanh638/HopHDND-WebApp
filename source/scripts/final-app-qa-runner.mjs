@@ -792,7 +792,9 @@ async function narrowPartyLevelGrantJourney(){
   await resetPages();
   await menu(admin,'Chỉnh sửa');
   await settings(admin,'Phân quyền chỉnh sửa');
-  const grant=admin.locator('.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Cấp trình"]').first();
+  // The real business field label is "Cấp Thành ủy cho ý kiến"; "Cấp trình"
+  // is an internal short name, not the accessible aria-label in the permission grid.
+  const grant=admin.locator('.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Cấp Thành ủy cho ý kiến"]').first();
   await grant.waitFor({state:'visible',timeout:16000});
   await grant.selectOption('allow');
   const risk=admin.locator('.permission-risk-confirm input');
