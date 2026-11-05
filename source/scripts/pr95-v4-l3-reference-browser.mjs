@@ -238,6 +238,35 @@ try{
   await until('document.querySelector(\'[data-ui-ref-code="R01.HEADER"]:not([hidden])\')','report header hover');
   await verifyNoOcclusion('desktop-reports');
   await screenshot('pr95-v4-l3-admin-reports.png');
+  // Every report numeric intersection has a stable full semantic code. Test
+  // two real percentage cells on different rows, not an index-derived alias.
+  const matrixCodes=[];
+  try{await send('Browser.grantPermissions',{origin:'http://127.0.0.1:'+port,
+    permissions:['clipboardReadWrite','clipboardSanitizedWrite']});}
+  catch(error){console.log('REF_MATRIX_CLIPBOARD_GRANT_UNAVAILABLE '+String(error).slice(0,220));}
+  for(const row of [1,2]){
+    const selector='.report-surface[data-ui-reference-report=party] .report-table tbody tr:nth-child('+row+') td[data-ui-reference-report-column="__PERCENT__"]';
+    await hover(selector);
+    await until('(()=>{const b=document.querySelector("[data-ui-reference-hover]");return !!b&&!b.hidden&&b.dataset.uiRefCode?.startsWith("R01.CELL.")})()',
+      'report numeric cell '+row+' displayed its full semantic code');
+    const full=await js('document.querySelector("[data-ui-reference-hover]")?.dataset.uiRefCode??null');
+    const compact=await js('document.querySelector("[data-ui-reference-hover] .ui-reference-short")?.textContent??null');
+    assert(full&&compact&&compact.length<20,'Matrix code must have distinct compact preview');
+    await verifyNoOcclusion('report-matrix-cell-'+row);
+    matrixCodes.push({row,full,compact});
+  }
+  assert(matrixCodes[0].full!==matrixCodes[1].full,'Two different report cells shared a code');
+  assert(matrixCodes[0].compact!==matrixCodes[1].compact,'Two visible report codes collided');
+  await click('.ui-reference-copy');
+  await until('document.querySelector("[data-ui-reference-hover]")?.dataset.uiRefCopy==="ok"',
+    'report cell full semantic code copied');
+  const clipboard=await js('navigator.clipboard.readText().catch(()=>null)');
+  if(clipboard!==null)assert(clipboard===matrixCodes[1].full,'Clipboard differs from full report code');
+  await screenshot('pr95-v4-l3-r-v4-01-report-matrix-cells.png');
+  console.log('REF_REPORT_MATRIX_CHROME_PASS '+JSON.stringify({
+    twoDistinct:true,clipboardWrite:true,readback:clipboard===null?'permission-unavailable':'match',
+    rows:matrixCodes.map(({row,compact})=>({row,compact}))}));
+
   await click('.report-surface[data-ui-reference-report=party] button.count-drill:not([disabled])');
   await until('document.querySelector("dialog.report-grid-modal[open]")','actual popup opened');
   await until('document.querySelector("dialog.report-grid-modal [data-ui-reference-layer]")',
