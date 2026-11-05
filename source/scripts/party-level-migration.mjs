@@ -39,7 +39,19 @@ export function plan(snapshot){
     progressChanges:patches.filter(p=>'progressParty'in p.changes).length,
     inventory,unknown,unknownCount:Object.values(unknown).reduce((a,b)=>a+b,0)};
   // Only redacted output is eligible for logs or commits.
-  const publicManifest={...report,patches:patches.map(({idDigest,changes})=>({idDigest,fields:Object.keys(changes)}))};
+  // Inventory preserves recognized catalog labels, but redacts arbitrary
+  // unknown strings (they may have been used for personal free-text).
+  const safeInventory=Object.fromEntries(Object.entries(inventory).map(([field,counts])=>[
+    field,Object.fromEntries(Object.entries(counts).map(([value,n])=>[
+      field==='partyLevel'&&(allowed.has(value)||Object.hasOwn(oldToNew,value))||
+      field==='progressParty'&&new Set(['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL']).has(value)
+        ?value:'UNRECOGNIZED_'+sha(value).slice(0,12),n
+    ]))
+  ]));
+  const publicManifest={...report,inventory:safeInventory,unknown:{
+    redactedDistinctValues:Object.keys(unknown).length,
+    redactedTotal:report.unknownCount
+  },patches:patches.map(({idDigest,changes})=>({idDigest,fields:Object.keys(changes)}))};
   return {report,publicManifest,privatePlan:{target:TARGET,sourceDigest:report.sourceDigest,patches}};
 }
 export function verify(snapshot,planData){
