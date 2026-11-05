@@ -14,3 +14,21 @@
 2. Ghi prompt tiếp quản thực thi độc lập cho REF/UI/WIDTH/DATA, không đụng file worker; chỉ tiếp nhận bằng commit/checkpoint và CI thực.
 3. Kiểm diff ownership, bằng chứng QA, rồi mới lập SHA tích hợp; nếu chưa có worker/code thì giữ **BLOCKED_WORKERS**, tuyệt đối không tuyên bố nghiệm thu.
 4. Trước mọi tích hợp, đọc lại HEAD/checkpoint và CI để tránh ghi đè worker đang hoạt động; sau mỗi mốc ý nghĩa cập nhật checkpoint/tracker. Không tạo no-op.
+
+## Mốc tiếp theo: worker bắt đầu commit, integration vẫn bị chặn
+
+- Commander tracker commit [`95ef5f4`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/95ef5f4e7073bd54826c2f46361f4e3ab615b117). Diff so mốc chung `aa135cf`: REF sở hữu registry CSS/component/test; UI sở hữu CompactGroupedValue/CSS/test; WIDTH sở hữu preferences, `item-layout-merge.ts` đã được owner công bố mở rộng, và sau đó ItemList/admin CSS; DATA vẫn chưa có diff lúc quan sát.
+- Quan sát sự kiện mới tiếp theo: REF HEAD [`06d3b37`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/06d3b37e97ed4e78c7d5e3db294bba6dc54f4aff), UI HEAD [`5cf1721`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/5cf172171229d2b77928fb27c37db58ff3b9e1b2), WIDTH HEAD [`dfbd170`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/dfbd17039e75795d7123e438d3053f5a055463e4), DATA HEAD `aa135cf`. **Worker đang ghi; không cherry-pick/import snapshot chưa chốt.** Các HEAD cập nhật nhanh hơn tracker; phải refresh cùng checkpoint/CI khi nghiệm thu.
+- Chưa có external Site API trong tập connector được công bố qua discovery (không tìm thấy action Site/deploy). **SITE_PENDING**: cần kết nối quyền thao tác Site riêng tư hiện có, kiểm owner-only và deployment status, trước khi gọi DONE. Không dùng GitHub Pages production thay Site.
+
+### Prompt tiếp tục đúng owner nếu luồng mất writer
+
+**REF trên `ui/20261105-ref-codes`:** Đọc `README.md`, `WORKER-REF.md`, checkpoint REF, HEAD mới nhất. Hoàn tất registry semantic L03/L04/L06, subfields mọi ô/popup và copy chỉ admin hover/focus; kiểm mã ổn định qua reorder, identity qua `data-ui-reference-record-id`; chạy typecheck/unit/Chrome hoặc ghi chính xác blocker; commit/push và cập nhật checkpoint SHA + evidence. Không sửa UI/ItemList.
+
+**UI trên `ui/20261105-picker-layout`:** Đọc `README.md`, `WORKER-UI.md`, checkpoint UI và HEAD; hoàn thành parity mẫu UBND ở sáu picker, L03 compact 2/3 aligned, attr L01/L03, permission/keyboard/list/popup/screenshot/rects. Không sửa WIDTH, DATA, registry. Chạy tests thực, ghi SHA/run hoặc blocker và commit checkpoint.
+
+**WIDTH trên `ui/20261105-column-width`:** Đọc `README.md`, `WORKER-WIDTH.md`, checkpoint WIDTH, HEAD; hoàn tất 2 whole-cluster widths persist CAS, admin control, per-row mode, cột vật lý compact readonly/mixed, 1440/900/390 browser/refresh, test. Giữ CSS variables contract; không sửa CompactGroupedValue; ghi test SHA/run/artifact và commit checkpoint.
+
+**DATA trên `ui/20261105-party-data`:** Đọc `README.md`, `WORKER-DATA.md`, checkpoint DATA, HEAD; làm catalog `Không/TTTU/BTV/BCH`, transaction quyền hẹp và race/lease/CAS, Firebase Emulator tests, dry-run migration inventory/manifest/idempotency/rollback; đưa patch contract App.tsx cho commander. **Không ghi live**; commit/push code/test/evidence và checkpoint với SHA. Không sửa App.tsx hay UI.
+
+**Commander next:** Chờ các worker đóng checkpoint với bằng chứng; update tracker theo HEAD/CI thực; sau đó kiểm diff file ownership, tích hợp App.tsx/glue và attr recordId trên coordination, test exact SHA, build + hash, thử Site chỉ khi owner-only được xác minh. Không chấm DONE cho integration hoặc Site hiện tại.
