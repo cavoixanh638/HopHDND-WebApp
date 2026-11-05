@@ -2,11 +2,10 @@
  * Run: npm run build:compact:qa && node scripts/ui-20261105-picker-layout-browser.mjs
  * Local synthetic data ONLY; no Firebase or other production endpoint.
  */
-import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,statSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
-import {tmpdir} from 'node:os';
+import {readFileSync,statSync,mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,join,extname} from 'node:path';
+import {launchRealChromiumCdp} from './ui-20261105-cdp-driver.mjs';
 import {setTimeout as delay} from 'node:timers/promises';
 import assert from 'node:assert/strict';
 const ROOT=resolve('dist-compact-qa');
@@ -26,25 +25,12 @@ const server=createServer((req,res)=>{
 });
 await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const base='http://127.0.0.1:'+server.address().port+'/compact-qa.html';
-const bin=['google-chrome','google-chrome-stable','chromium','chromium-browser'].find(n=>
- spawnSync('which',[n],{encoding:'utf8'}).status===0);
-assert(bin,'Chromium is required');
-const tmp=mkdtempSync(join(tmpdir(),'ui-20261105-picker-'));
-const free=createServer();await new Promise(ok=>free.listen(0,'127.0.0.1',ok));
-const port=free.address().port;await new Promise(ok=>free.close(ok));
-const browser=spawn(bin,['--headless=new','--no-sandbox','--disable-dev-shm-usage',
- '--disable-gpu','--disable-extensions','--disable-background-networking',
- '--no-first-run','--no-default-browser-check','--remote-allow-origins=*',
- '--remote-debugging-address=127.0.0.1',
- '--remote-debugging-port='+port,'--user-data-dir='+tmp,'about:blank'],
- {stdio:['ignore','ignore','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
-const chromeStderr=[];
-browser.stderr.on('data',buf=>{if(chromeStderr.length<25)chromeStderr.push(String(buf).slice(0,400));});
-let ws,seq=0;const jobs=new Map(),requests=[];
-const send=(method,params={})=>new Promise((done,fail)=>{
- const id=++seq;jobs.set(id,{done,fail});ws.send(JSON.stringify({id,method,params}));
- setTimeout(()=>{if(jobs.has(id)){jobs.delete(id);fail(Error('CDP '+method+' timeout'));}},15000);
-});
+let driver=null;
+const requests=[];
+const send=(method,params={})=>{
+ if(!driver)throw Error('Real Chromium CDP pipe not ready');
+ return driver.send(method,params);
+};
 const evalJs=async expression=>{
  const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
  if(r.exceptionDetails)throw Error('Browser exception: '+JSON.stringify(r.exceptionDetails));
@@ -99,22 +85,8 @@ const navigate=async(query,width,height)=>{
 };
 let summary=[];
 try{
- let tab;
- for(let i=0;i<100;i++){
-  try{tab=(await (await fetch('http://127.0.0.1:'+port+'/json/list')).json()).find(t=>t.type==='page');if(tab)break;}catch{}
-  await delay(130);
- }
- assert(tab,'Chrome debugger endpoint unavailable: executable='+bin+' stderr='+chromeStderr.join(' | ').slice(0,1300));
- ws=new WebSocket(tab.webSocketDebuggerUrl);
- await new Promise((ok,bad)=>{ws.addEventListener('open',ok,{once:true});
-  ws.addEventListener('error',bad,{once:true});});
- ws.addEventListener('message',ev=>{
-  const p=JSON.parse(ev.data);
-  if(p.method==='Network.requestWillBeSent')requests.push(p.params.request.url);
-  if(p.id&&jobs.has(p.id)){const j=jobs.get(p.id);jobs.delete(p.id);
-   p.error?j.fail(Error(JSON.stringify(p.error))):j.done(p.result);}
- });
- await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
+ driver=await launchRealChromiumCdp({name:'PICKER',
+  onRequest:url=>requests.push(url)});
  for(const width of [1440,900,390]){
   await navigate('edit=1',width,Math.min(900,width===390?844:900));
   const layout=await rects();aligned(layout,'editable');
@@ -154,7 +126,6 @@ try{
  console.error('UI_20261105_PICKER_BROWSER_FAIL '+e.stack);
  process.exitCode=1;
 }finally{
- for(const job of jobs.values())job.fail(Error('Chrome closed'));jobs.clear();
- ws?.close();browser.kill('SIGKILL');server.close();
- rmSync(tmp,{recursive:true,force:true,maxRetries:3});
+ try{await driver?.close();}catch{}
+ server.close();
 }
