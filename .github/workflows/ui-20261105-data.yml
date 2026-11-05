@@ -1,0 +1,65 @@
+name: UI 20261105 DATA — offline fixture and isolated Firebase Emulators
+on:
+  push:
+    branches: [ui/20261105-party-data]
+    paths:
+      - 'source/shared/field-definitions.ts'
+      - 'source/src/domain/status-contract.ts'
+      - 'source/tests/pr95-ui-v3-l3-status-contract.test.ts'
+      - 'source/cell-edit-service/**'
+      - 'source/firebase/database.exclusive-candidate.rules.json'
+      - 'source/scripts/party-level-migration*.mjs'
+      - '.github/workflows/ui-20261105-data.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-and-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '21'}
+      - name: Frozen client dependencies
+        working-directory: source
+        run: npm ci --no-audit --no-fund
+      - name: Offline migration replay, interruption, unknown and CAS
+        working-directory: source
+        run: node scripts/party-level-migration.fixture.mjs
+      - name: TypeScript and domain status contract
+        working-directory: source
+        run: |
+          npm run typecheck
+          npm exec -- vitest run tests/pr95-ui-v3-l3-status-contract.test.ts
+      - name: Frozen isolated Functions dependencies
+        working-directory: source/cell-edit-service
+        run: npm ci --no-audit --no-fund
+      - name: Syntax and FULL candidate Rules generator
+        working-directory: source/cell-edit-service
+        run: |
+          npm run check
+          node scripts/make-test-rules.mjs
+      - name: Real Auth + RTDB + Functions Emulator tests
+        working-directory: source/cell-edit-service
+        run: |
+          npm run test:isolated >stdout.local.txt 2>&1 || { tail -n 120 stdout.local.txt; exit 1; }
+          tail -n 30 stdout.local.txt
+      - name: Keep isolated witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261105-data-emulator-${{ github.run_id }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
