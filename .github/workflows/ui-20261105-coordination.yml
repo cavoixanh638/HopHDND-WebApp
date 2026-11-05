@@ -2,6 +2,17 @@ name: UI 20261105 coordination - exact SHA checks (NO deploy)
 on:
   push:
     branches: [ui/20261105-coordination]
+    paths:
+      - 'source/src/**'
+      - 'source/shared/**'
+      - 'source/cell-edit-service/**'
+      - 'source/firebase/**'
+      - 'source/parent-commit-service/**'
+      - 'source/tests/**'
+      - 'source/scripts/**'
+      - 'source/package*.json'
+      - 'source/vite.config*'
+      - '.github/workflows/ui-20261105-coordination.yml'
   workflow_dispatch:
 permissions:
   contents: read
