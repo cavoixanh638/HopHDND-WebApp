@@ -1,10 +1,9 @@
 // UI V4 L3 — full in-memory preview exercised by REAL headless Chrome.
 // Loopback-only, no Firebase, Google, deployment or real record mutation.
-import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,mkdtempSync,rmSync,statSync,writeFileSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {resolve,join,extname} from 'node:path';
+import {readFileSync,statSync,writeFileSync} from 'node:fs';
+import {resolve,extname} from 'node:path';
+import {launchRealChromiumCdp} from './ui-20261105-cdp-driver.mjs';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const root=resolve('dist-compact-qa');
@@ -21,17 +20,12 @@ const server=createServer((req,res)=>{
 });
 await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const port=server.address().port;
-const chrome=['google-chrome','google-chrome-stable','chromium','chromium-browser']
-  .find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
-if(!chrome)throw Error('UI V4 L3 needs real Chrome');
-const profile=mkdtempSync(join(tmpdir(),'pr95-v4-l3-'));
-let browser,ws,seq=0;
-const promises=new Map(),network=[];
-const send=(method,params={})=>new Promise((resolve,reject)=>{
-  const id=++seq;promises.set(id,{resolve,reject});
-  ws.send(JSON.stringify({id,method,params}));
-  setTimeout(()=>{if(promises.has(id)){promises.delete(id);reject(Error('CDP timeout '+method));}},16000);
-});
+let driver=null;
+const network=[];
+const send=(method,params={})=>{
+  if(!driver)throw Error('Real Chromium CDP pipe is not ready');
+  return driver.send(method,params);
+};
 const js=async expression=>{
   const result=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
   if(result.exceptionDetails)throw Error('Chrome script exception '+JSON.stringify(result.exceptionDetails));
@@ -163,39 +157,8 @@ const toggle=()=>call('[...document.querySelectorAll(".pr95-preview-gear-menu bu
 const login=()=>call('[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(b=>b.textContent.includes("Đăng nhập quản trị")).click()');
 const logout=()=>call('[...document.querySelectorAll(".pr95-preview-gear-menu button")].find(b=>b.textContent.includes("Đăng xuất mô phỏng")).click()');
 try{
-  const probe=createServer();await new Promise(ok=>probe.listen(0,'127.0.0.1',ok));
-  const debug=probe.address().port;await new Promise(ok=>probe.close(ok));
-  const chromeStderr=[];
-  browser=spawn(chrome,['--headless=new','--no-sandbox','--disable-dev-shm-usage',
-    '--disable-gpu','--disable-extensions','--disable-background-networking',
-    '--no-first-run','--no-default-browser-check','--remote-allow-origins=*',
-    '--remote-debugging-address=127.0.0.1','--remote-debugging-port='+debug,
-    '--user-data-dir='+profile,'about:blank'],{
-      stdio:['ignore','ignore','pipe'],env:{...process.env,DBUS_SESSION_BUS_ADDRESS:''}});
-  browser.stderr.on('data',buf=>{if(chromeStderr.length<30)
-    chromeStderr.push(String(buf).slice(0,450));});
-  let tab;
-  for(let i=0;i<100;i++){
-    try{
-      const response=await fetch('http://127.0.0.1:'+debug+'/json/list',{signal:AbortSignal.timeout(850)});
-      tab=(await response.json()).find(x=>x.type==='page');
-      if(tab)break;
-    }catch{}
-    await sleep(100);
-  }
-  assert(!!tab,'Chrome CDP unavailable: executable='+chrome+
-    ' exit='+String(browser.exitCode)+' stderr='+JSON.stringify(chromeStderr.slice(-8)));
-  ws=new WebSocket(tab.webSocketDebuggerUrl);
-  await new Promise((ok,fail)=>{ws.addEventListener('open',ok,{once:true});ws.addEventListener('error',fail,{once:true});});
-  ws.addEventListener('message',event=>{
-    const message=JSON.parse(event.data);
-    if(message.method==='Network.requestWillBeSent')network.push(message.params.request.url);
-    if(message.id&&promises.has(message.id)){
-      const entry=promises.get(message.id);promises.delete(message.id);
-      message.error?entry.reject(Error(JSON.stringify(message.error))):entry.resolve(message.result);
-    }
-  });
-  await send('Page.enable');await send('Runtime.enable');await send('Network.enable');
+  driver=await launchRealChromiumCdp({name:'REF',
+    onRequest:url=>network.push(url)});
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:920,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1'});
   await until('document.querySelector("[data-preview=pr95-l4-full]")&&document.querySelector(".item-data-table tbody tr")',
@@ -341,11 +304,9 @@ try{
   }));
 }catch(err){
   console.error('PR95_UI_V4_L3_REFERENCE_OVERLAY_FAIL',err);
-  try{if(ws?.readyState===WebSocket.OPEN)await screenshot('pr95-v4-l3-failure.png');}catch{}
+  try{if(driver)await screenshot('pr95-v4-l3-failure.png');}catch{}
   process.exitCode=1;
 }finally{
-  try{ws?.close();}catch{}
-  try{browser?.kill('SIGKILL');}catch{}
+  try{await driver?.close();}catch{}
   server.close();
-  rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:120});
 }
