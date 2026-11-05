@@ -326,6 +326,7 @@ async function run(){
        baseValues:{partyLevel:'BCH'},changes:{partyLevel:'Không'}},
        leases:{partyLevel:{token:l.token,secret:l.secret}}});
      assert.equal(replay.row.revision,2);
+     await ownerPut(perms+'/progressParty',true);
      const statusLease=await acquire(scope,'r1','progressParty');
      await sameState(scope,'PARTY direct status frozen by level Không',()=>call(a,scope,'save',{
        patch:{recordId:'r1',baseRevision:2,baseValues:{progressParty:'Không phải trình'},
@@ -364,9 +365,10 @@ async function run(){
    await step(scope+' PARTY: denied level grant and racing level CAS preserve state',async()=>{
      await seed(scope);const p=paths(scope);
      const perms=scope==='legacy'?'hdnd/permissions/columns':'hdnd/datasetV2/permissions/'+scopeInfo(scope).generation.generationId+'/columns';
-     await ownerPut(perms+'/partyLevel',false);
+     await ownerPut(perms+'/partyLevel',true);
      await ownerPut(perms+'/progressParty',true);
      const lease=await acquire(scope,'r1','partyLevel');
+     await ownerPut(perms+'/partyLevel',false);
      await sameState(scope,'PARTY denied level',()=>call(a,scope,'save',{
        patch:{recordId:'r1',baseRevision:1,baseValues:{partyLevel:'BCH'},
          changes:{partyLevel:'Không'}},
