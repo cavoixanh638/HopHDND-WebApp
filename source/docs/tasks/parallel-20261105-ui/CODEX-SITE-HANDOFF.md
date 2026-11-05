@@ -26,3 +26,15 @@
 - Không merge main, không deploy Firebase Hosting/Functions/RTDB Rules production, không ghi RTDB production, không chạy migration live.
 - DATA migration chỉ PREPARED_OFFLINE / LIVE_HOLD, cần GO và backup/inventory/rollback riêng.
 - Không upload secrets, private credentials hoặc live data vào Site.
+
+## FINAL supersedes prior candidate — 05/11/2026
+
+**BẢN FINAL ĐÃ PASS CI, CHƯA DEPLOY SITE.** Mọi SHA/hash/candidate `ba18de6` ở phần trên là lịch sử, **KHÔNG dùng phát hành**.
+
+- **Immutable code/test SHA:** `4bccba5992cc36e1cfc3da146711fe718e44adf8`.
+- [CI #42060684280](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280): `app-qa`, `data-emulator`, `full-app` đều **SUCCESS cùng SHA**. Chrome REF/UI và 1440/900/390 PASS; real-App **QA01–QA10 PASS**, 27 screenshots; local Emulator only, no production used or published.
+- [**Artifact gói HTML + hashes + Chrome images #13432341158**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13432341158); [**full-App witness #13432047195**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13432047195); [DATA #13430972026](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13430972026).
+- **Byte-verified SHA256:** `dist/Dashboard_HĐND.html` = `78a3187004e64c39973cb49180d0b4cbafcdf65039932d21c2b13b11d7f48c5a`; `dist-compact-qa/compact-qa.html` = `cc9246a0cc39272a1817aa7f9761c6494fb6701b32f3d18d28310bbef5fff1e3`; `qa-results/ui-20261105/html-qa.tar.gz` = `fa45e38b9d9838a05be7f63e4985e8028b13c8ecf3e61bbed5cd53b61c0552ce`. Đã chạy `sha256sum` trên downloaded archive và `sha256sum -c` trên 2 HTML bên trong, tất cả OK.
+- Source SHA thực nằm `qa-results/ui-20261105/source-sha.txt`. Repo HEAD có thể tăng chỉ vì tài liệu: **không build lại từ HEAD**.
+- **Codex action:** tải artifact final, xác minh hash và Site **private owner-only** ID `appgprj_6ae93f17c2e48191815caef8a642fa14` trước upload; chỉ publish `dist/Dashboard_HĐND.html` đúng SHA, chờ `deployment succeeded`, ghi version/URL/timestamp và smoke owner-only (list/popup/admin/guest, không Firebase production). Nếu không có quyền xác minh private: STOP và giữ `SITE_PENDING`, không tạo Site public.
+- **BẢO VỆ:** không upload witness/credential/Excel lên Site; không merge main, không deploy Firebase production hoặc Rules; DATA migration `PREPARED_OFFLINE / LIVE_HOLD`, không có GO/live write.
