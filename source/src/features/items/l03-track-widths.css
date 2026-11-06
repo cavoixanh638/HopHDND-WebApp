@@ -6,9 +6,12 @@
   box-sizing:border-box;
   padding-left:11px;
   padding-right:11px;
-  border-right:1px solid #dfe9e2;
+  border-right-width:1px;
+  border-right-style:solid;
   min-width:0;
 }
+.item-data-table tbody td[data-l03-layout] {border-right-color:#dfe9e2}
+.report-detail-grid tbody td[data-l03-layout] {border-right-color:#e3ebe6}
 /* The 23px cell chrome is 11+11 padding and 1px right border. A mode's
    inner rail sum = sum(px tracks) + 8px*(N-1). Do not add legacy group width. */
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
