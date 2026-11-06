@@ -1,0 +1,232 @@
+/* STAGES-only parity (07/11/2026).
+ * Imported BEFORE the legacy L03 track rules; every override is scoped to
+ * a real L03 cell and the stable field/editability data attributes.
+ * No column-width model, field mapping, or L04 personnel selector is changed. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] {
+  row-gap:5px;
+  column-gap:8px;
+  align-content:start;
+  /* Keep horizontal scrolling on a narrow saved rail. Compensated vertical
+     paint room lets the 3px lift and 16px shadow render without growing rows. */
+  padding-block:12px 20px;
+  margin-block:-12px -20px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row {
+  align-items:center;
+  row-gap:5px;
+  transform:none!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-label {
+  align-self:center!important;
+  align-items:center!important;
+  padding:0!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-title {
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-title .compact-stage-level {
+  font-size:13px!important;
+  font-weight:400!important;
+  line-height:1.35!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > .compact-stage-level[data-level-editor="true"] {
+  align-self:center!important;
+  align-items:center!important;
+  min-width:0!important;
+  width:100%;
+  padding:0!important;
+  margin:0!important;
+  --ui-picker-bg:var(--hdnd-status-other-bg,#F2F6F9);
+  --ui-picker-fg:var(--hdnd-status-other-text,#426274);
+  --ui-picker-border:#B7CBD6;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state {
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:0!important;
+  align-self:center!important;
+  align-items:center!important;
+  justify-self:stretch!important;
+  margin:0!important;
+  padding:0!important;
+  overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"]) > .compact-part {
+  display:flex;
+  align-items:center!important;
+  width:100%;
+  min-width:0;
+  min-height:0!important;
+  height:auto!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"]) {
+  display:flex;
+  min-height:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:6px;
+  background:var(--workflow-bg)!important;
+  color:var(--workflow-text)!important;
+  font-size:13px!important;
+  font-weight:400!important;
+  line-height:1.35!important;
+  cursor:default;
+  transform:none!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+/* Read-only payload is real text, including popup's legacy wrapper. Only the
+ * colored MEMBER behind it survives; no fake caret or second tinted pill. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  :is(.compact-part,.workflow-status-value) {
+  font-size:13px!important;
+  font-weight:400!important;
+  line-height:1.35!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  .workflow-status-value {
+  border:0!important;
+  background:transparent!important;
+  padding:0!important;
+}
+/* Independent 2/3 rails are supplied by l03-track-widths.css (later in the
+ * cascade). The four editors STRETCH their own saved track, not their content. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger {
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box;
+  flex:1 1 auto;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:26px!important;
+  height:auto!important;
+  padding:4px 7px!important;
+  margin:0!important;
+  gap:8px!important;
+  border:1px solid var(--ui-picker-border,#B7CBD6)!important;
+  border-radius:6px!important;
+  background:var(--ui-picker-bg,#F2F6F9)!important;
+  color:var(--ui-picker-fg,#426274)!important;
+  box-shadow:inset 0 1px 0 #ffffffd0!important;
+  font-family:"Segoe UI",system-ui,sans-serif;
+  font-size:11px!important;
+  font-weight:550!important;
+  line-height:1.35!important;
+  text-align:center!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  transform:none!important;
+  transition:transform 180ms ease,box-shadow 180ms ease,border-color 180ms ease!important;
+  cursor:pointer;
+  position:relative;
+  z-index:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger .cell-picker-value-text {
+  display:block;
+  flex:1 1 auto;
+  width:auto;
+  min-width:0;
+  max-width:100%;
+  text-align:center;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  white-space:normal!important;
+  grid-column:auto!important;
+}
+/* A single filled 5x3 triangle: erase the old grid column and 34px rail,
+   including the legacy 7x7 rotated V-chevron. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger::before {
+  content:none!important;display:none!important;background:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after {
+  content:""!important;
+  display:block!important;
+  position:static!important;
+  grid-column:auto!important;
+  flex:0 0 5px!important;
+  width:5px!important;
+  min-width:5px!important;
+  height:3px!important;
+  margin:0!important;
+  border:0!important;
+  background:currentColor!important;
+  clip-path:polygon(0 0,100% 0,50% 100%);
+  transform:none!important;
+  pointer-events:none;
+}
+/* Only the field being interacted with lifts; the stage row never lifts.
+   Background stays the target's own status/level palette on every state. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible):not(:disabled) {
+  border-color:#2E6F95!important;
+  outline:2px solid #2E6F95!important;
+  outline-offset:0!important;
+  box-shadow:0 8px 16px rgba(41,89,112,.17),0 0 0 2px #F2F8FC!important;
+  background:var(--ui-picker-bg,#F2F6F9)!important;
+  color:var(--ui-picker-fg,#426274)!important;
+  transform:translateY(-3px)!important;
+  z-index:1;
+}
+/* Expanded alone or pointer focus alone is not a sticky hover lift. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"] button.cell-picker-trigger:is([aria-expanded="true"],:focus):not(:hover):not(:focus-visible) {
+  border-color:var(--ui-picker-border,#B7CBD6)!important;
+  outline:none!important;
+  box-shadow:inset 0 1px 0 #ffffffd0!important;
+  background:var(--ui-picker-bg,#F2F6F9)!important;
+  transform:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > [data-ui-picker-skin="standard"][data-highlighted="true"] button.cell-picker-trigger {
+  --ui-picker-bg:var(--member-highlight-bg);
+  --ui-picker-fg:var(--member-highlight-text);
+}
+@media(prefers-reduced-motion:reduce) {
+  :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+    .compact-stages[data-rev2="true"] > .compact-stage-row
+    > [data-ui-picker-skin="standard"] button.cell-picker-trigger {
+    transition:none!important;
+    transform:none!important;
+  }
+}
+@media print {
+  :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+    .compact-stages[data-rev2="true"] > .compact-stage-row
+    > [data-ui-picker-skin="standard"] button.cell-picker-trigger {
+    transform:none!important;transition:none!important;
+    box-shadow:none!important;outline:none!important;
+  }
+}
