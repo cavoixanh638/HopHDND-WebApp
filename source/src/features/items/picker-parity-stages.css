@@ -214,10 +214,12 @@
   --ui-picker-bg:var(--member-highlight-bg);
   --ui-picker-fg:var(--member-highlight-text);
 }
+/* Equal/higher specificity than the interactive :hover/:focus-visible
+   rule is essential because both contain !important transform declarations. */
 @media(prefers-reduced-motion:reduce) {
   :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
     .compact-stages[data-rev2="true"] > .compact-stage-row
-    > [data-ui-picker-skin="standard"] button.cell-picker-trigger {
+    > [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible):not(:disabled) {
     transition:none!important;
     transform:none!important;
   }
@@ -225,7 +227,7 @@
 @media print {
   :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
     .compact-stages[data-rev2="true"] > .compact-stage-row
-    > [data-ui-picker-skin="standard"] button.cell-picker-trigger {
+    > [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible):not(:disabled) {
     transform:none!important;transition:none!important;
     box-shadow:none!important;outline:none!important;
   }
