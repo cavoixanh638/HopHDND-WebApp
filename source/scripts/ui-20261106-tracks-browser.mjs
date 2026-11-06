@@ -54,7 +54,7 @@ const measure=()=>evaluate(`(()=>{
    statuses:rows.map(row=>r(row.querySelector('.compact-stage-state'))),
    rowCount:rows.length};
  });
-})`);
+})()`);
 const assertGeometry=(measurements,{expected=null,mode=null}={})=>{
  assert(measurements.length>0,'L03 cells not found');
  for(const c of measurements){
