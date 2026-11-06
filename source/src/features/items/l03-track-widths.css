@@ -75,6 +75,14 @@
   max-width:100%;
   white-space:normal;
   overflow-wrap:anywhere;
+  flex-wrap:wrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-level:not([data-level-editor="true"]) {
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
 }
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
   .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"] {
