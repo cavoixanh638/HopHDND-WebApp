@@ -11,7 +11,7 @@ export interface ItemColumn {
 export interface PartyGroupWidths { readonly:number; editable:number }
 export const DEFAULT_PARTY_GROUP_WIDTHS:PartyGroupWidths={readonly:420,editable:570};
 export const PARTY_GROUP_WIDTH_LIMITS={
-  readonly:{min:360,max:1400},editable:{min:500,max:1600}
+  readonly:{min:180,max:1400},editable:{min:260,max:1600}
 } as const;
 /** Saved Firebase/local layouts from before L03 mode widths use safe defaults. */
 export function validatePartyGroupWidths(value:unknown):PartyGroupWidths{
