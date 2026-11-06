@@ -1,24 +1,37 @@
 # CONTENT checkpoint — 07/11/2026
 
-Status: **IN_PROGRESS — waiting for exact-SHA CI verdict**.
-Branch: `ui/20261107-picker-parity-content`. Baseline/reference: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
-Last code SHA: `9b5a1aff438ab3fe4cfdd4c1fafff1286752920e`.
-Last workflow/tested candidate SHA: `7e9cb3c04d0f6647ff8d7c12c5bbdbecb3fa526f` (workflow-only update after code).
-Tests: **NOT YET PASS**; active GitHub Actions run [#42265269031](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42265269031).
-Prior run [#42265155753](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42265155753) was **CANCELLED BY CONCURRENCY** due to subsequent test changes, not PASS.
+**Status: IN_PROGRESS — implementation + own-SHA CI PASS; some acceptance evidence still outstanding.**
+Branch / sole writer: `ui/20261107-picker-parity-content`.
+Reference baseline: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
+**Latest code SHA = tested SHA = `877705c8b2f1b716b04f73912b2b6730a5c2bdee`.**
+Docs-only checkpoint commit after tested code does not modify application.
+CI [run #42267562286](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42267562286): **SUCCESS** at exact SHA. Artifact [#13527941494](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42267562286/artifacts/13527941494), named `picker-parity-content-42267562286-877705c8b2f1b716b04f73912b2b6730a5c2bdee`, 6,770,469 bytes (screenshots + JSON computed styles/rects).
+Prior run #42267336801 exposed actual reduced-motion hover lift and FAIL; fixed within CONTENT CSS; latest Chrome PASS. Earlier failures/cancellations superseded by this run.
 
-## Implemented on this branch
-- `source/src/features/items/picker-parity-content.css`: isolated L01 geometry, field-level hover/keyboard focus, carets, preserve type business tone and member highlight, genuine plain readonly, reduced-motion/print.
-- `source/src/features/items/CompactGroupedValue.tsx`: one CSS import only; partyTogether/teamTogether untouched.
-- `source/tests/picker-parity-content.test.tsx`: independent editable/mixed/readonly and empty metadata markup cases.
-- `source/scripts/picker-parity-content-browser.mjs`: real ItemList + ReportDetailGrid synthetic fixture, 1440/900/390, edit/mixed/guest, screenshots+computed rect/style, hover/focus/open/Escape/outside; compares L04 in same page.
-- `.github/workflows/picker-parity-content.yml`: isolated GitHub Actions exact-source SHA; npm ci, typecheck, relevant unit, compact build and browser screenshots/rects artifacts.
+## Committed deliverables (owned files only)
+- `source/src/features/items/picker-parity-content.css`: isolated L01 metadata geometry (26px min, 4x7 padding, Segoe11/550, radius6, filled5x3 caret), two-field one row centered; separate member backgrounds/type tone/highlight, plain readonly 13/400, hover/focus field lift and unchanged target fill, real reduced motion and print.
+- `source/src/features/items/CompactGroupedValue.tsx`: sole CSS import; no modification to L03 partyTogether, L04 teamTogether or permissions.
+- `source/tests/picker-parity-content.test.tsx`: markup/permission cases both editable, mixed both directions, readonly, empty writable and empty readonly.
+- `source/scripts/picker-parity-content-browser.mjs`: real List and popup synthetic React components + full synthetic App navigation and report drill popup; screenshot+computed-style+rect every 1440/900/390 variant; normal/hover/focus/open, guest/admin/mixed, L04 same page where present; real option click RAM patch, keyboard Enter/Arrow/Escape, outside click, viewport popover fit, print and reduced-motion checks; prohibits production traffic.
+- `.github/workflows/picker-parity-content.yml`: independent push CI, exact-SHA pin + npm ci + Chromium + artifacts.
+- `source/docs/tasks/parallel-20261107-picker-parity/handoffs/CONTENT.md` (this checkpoint).
 
-## Evidence pending and mandatory next actions
-1. Inspect run #42265269031 exact step failures, fetch job logs, correct actual test/build/browser defects; never treat queued/running as PASS.
-2. Verify permissions/empty editable and no negative page overflow; extend browser click selection, keyboard navigation, scroll placement / long text / custom palette on full synthetic App (current script uses **real ItemList and popup components** in provided synthetic fixture, not entire App shell workflow; full-App coverage remains **NOT RUN**).
-3. Preserve original L04, L03, CellPicker and shared CSS; no production writes or merge/publish.
-4. When all own-SHA validations pass record exact code and tested SHA, logs, screenshots and measurements, update DONE only if every acceptance item met. Commander owns integration/package/demo; notify of residual gaps, do not claim demo done.
+## Exact validation #42267562286 (PASS)
+1. `npm run typecheck` — PASS.
+2. `npm test -- tests/picker-parity-content.test.tsx tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx` — PASS, 4 files / **40 tests**.
+3. `npm run build:compact:qa` — PASS; full synthetic QA output.
+4. `node scripts/picker-parity-content-browser.mjs` — PASS; 18 List/popup admin/mixed/guest fixture cases; 6 full synthetic App List admin/guest cases; 3 full-App admin report-drill popup cases; additional screen vs reduced-motion/print. Screenshots and computed rects/style JSON in artifact. Real click selected a different Type and reached RAM patch; Escape/outside click and horizontal placement verified.
+5. Unchanged reference L04 measured where source group exists; read-only no fake buttons. No production write/merge/publish.
 
-## Runtime limitation
-This ChatGPT container does not resolve github.com for clone; writing performed through connected GitHub API, validation delegated to GitHub Actions. No local npm or browser success claimed.
+## Remaining acceptance gaps; **do not mistake CI PASS for complete user acceptance**
+- Browser **before/after** matched fixtures from baseline SHA are not yet exported as independent baseline screenshots; current artifact is AFTER only.
+- Dedicated **long Sở name / HC / BC / QPPL / empty field**, custom status palette, and field highlight browser matrix is **NOT RUN**; current tests cover empty markup and baseline full-App values, but not a comprehensive edge matrix.
+- Scroll/resize dropdown placement beyond horizontal viewport fit is **NOT RUN** as dedicated dynamic scroll/resize interaction.
+- Guest full-App report drill is not directly reachable from guest's intentionally restricted navigation; guest popup covered via real ReportDetailGrid component fixture. Browser role-specific matrix is not a production permission/lease/Emulator verification.
+- Integration, integrated exact-SHA E2E, package and public demo remain solely COMMANDER scope. No merge or publish allowed by worker.
+
+## Next action to finish worker acceptance
+Extend only `picker-parity-content-browser.mjs` or new `picker-parity-content*.test.ts*` with deterministic full synthetic App edge data/permission scenarios, dynamic scroll/resize, matched baseline screenshots; rerun same isolated CI, update exact tested SHA and artifact; change status to DONE only when every criterion covered. Commander should cherry-pick code SHA only after review and test same final integration SHA.
+
+## Runtime
+Local container DNS cannot clone github.com; source writes performed by connected GitHub connector; validation run on GitHub Actions. No local test falsely claimed.
