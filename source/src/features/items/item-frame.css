@@ -1856,9 +1856,9 @@
    The box is paint-only; keyboard and pointer hit target remain the BUTTON. */
 :is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:not(:disabled)::after{
   content:""!important;display:block!important;position:static!important;
-  flex:0 0 6px!important;grid-column:auto;
-  width:6px!important;height:4px!important;min-width:6px;
-  margin:0 2px 0 5px!important;align-self:center!important;justify-self:center;
+  flex:0 0 5px!important;grid-column:auto;
+  width:5px!important;height:3px!important;min-width:5px;
+  margin:0!important;align-self:center!important;justify-self:center;
   border:0!important;border-radius:0!important;
   background:currentColor!important;
   clip-path:polygon(0 0,100% 0,50% 100%);

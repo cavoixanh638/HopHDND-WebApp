@@ -139,7 +139,7 @@ describe('Worker A REV2 — L03 permission drives entire group geometry',()=>{
    // 06/11 control contract replaces the old V chevron, not the hit area,
    // status colors, permission gates or the 3-track grid alignment.
    expect(css).toContain('clip-path:polygon(0 0,100% 0,50% 100%)');
-   expect(css).toContain('width:6px!important;height:4px!important');
+   expect(css).toContain('width:5px!important;height:3px!important');
    expect(css).toContain('background:currentColor!important');
    expect(css).not.toContain('border:0;border-right:1.8px solid currentColor');
    expect(css).toContain('grid-template-columns:subgrid!important');

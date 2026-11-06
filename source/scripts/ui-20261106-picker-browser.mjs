@@ -115,6 +115,10 @@ async function scenario(page,{surface,mode,width,height=900,long=false}){
  const id=[surface,mode,width,long?'long':'short'].join('-');
  const rootSelector=surface==='popup'?'.report-detail-grid':'.item-data-table';
  await page.locator(rootSelector).waitFor();
+ // Move cursor away from the previous scenario's target and let UI
+ // transitions settle before a neutral-state skin comparison.
+ await page.mouse.move(0,0);
+ await page.waitForTimeout(400);
  const p=await snapshot(page,id+'-normal');
  const editable=mode==='edit';
  if(editable)for(const k of fieldKeys)
@@ -133,11 +137,14 @@ async function scenario(page,{surface,mode,width,height=900,long=false}){
   .locator('.compact-highlight-member button.cell-picker-trigger').first();
  await trigger.scrollIntoViewIfNeeded();
  await trigger.hover({force:true});
+ await page.waitForTimeout(400);
  const hover=await snapshot(page,id+'-hover');
  await trigger.focus();
+ await page.waitForTimeout(400);
  const focus=await snapshot(page,id+'-focus');
  await trigger.click({force:true});
  await page.locator('.cell-picker-popover:popover-open').waitFor({timeout:10000});
+ await page.waitForTimeout(400);
  const expanded=await snapshot(page,id+'-expanded');
  assert.equal(expanded.fields[first].expanded,'true',id+' not expanded');
  const pop=page.locator('.cell-picker-popover:popover-open');
