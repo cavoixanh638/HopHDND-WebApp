@@ -275,7 +275,7 @@ try{
      cell.style.setProperty('--hdnd-l03-inner-width','${inner}px');
      return getComputedStyle(stage).gridTemplateColumns;
    })()`);
-   const actualRails=actual.trim().split(/\\s+/).map(Number.parseFloat);
+   const actualRails=actual.trim().split(/\s+/).map(Number.parseFloat);
    assert.equal(actualRails.length,rails.length,'Exact 2/3 narrow rails');
    for(let i=0;i<rails.length;i++)assert(Math.abs(actualRails[i]-rails[i])<1,
      'Narrow rail changed: '+JSON.stringify({mode,rails,actualRails}));
