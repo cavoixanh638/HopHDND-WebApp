@@ -43,7 +43,7 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
       - name: Own unit and existing five-rail regression
-        run: npm test -- tests/picker-parity-stages.test.ts tests/ui-20261106-tracks.test.ts
+        run: npm test -- tests/picker-parity-stages.test.ts tests/picker-parity-stages-permissions.test.tsx tests/ui-20261106-tracks.test.ts
       - name: Build full synthetic App
         run: |
           npm run build:compact:qa
