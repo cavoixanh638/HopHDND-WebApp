@@ -28,3 +28,8 @@ Run [#42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/4
 - [Run #42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245720825): `completed / success` cho cả `controls-and-package`, `isolated-cas`, `real-app-emulator` trên exact SHA **`9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`**.
 - 3 artifact: `ui-20261106-controls-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13518385649), `ui-20261106-cas-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13518945326), `ui-20261106-real-app-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13517841387).
 - **GIỚI HẠN:** source SHA đó chỉ có script/CI điều phối, chưa có code PICKER + TRACKS. Đây là `BASELINE_COORDINATION_PASS`, **KHÔNG phải FINAL_INTEGRATION_PASS hoặc DEMO_DONE**. Cần rerun toàn bộ gates trên SHA tích hợp mới.
+
+## 06/11 — PICKER user follow-up / candidate QA
+- PICKER worker HEAD `dae2051c39ebf595d6f79f31d28125b8db04b5ca`; task code commit `f270cbd86f337f6397288856af19f9709f6e8a7e`. Worker checkpoint ghi **CODE_WIP_TEST_PENDING / NOT DONE**, tested SHA NONE, chưa có screenshot/reference compare/CI riêng.
+- COMMANDER chọn đúng 5 file thay đổi code/fixture của PICKER vào candidate commit `2518d71e54ef8c9153f88265613bab8550e7929f` trên **chỉ nhánh coordination** (không sửa nhánh worker). [CI #42248060058](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42248060058) đang chạy khi ghi: đã thấy job isolated-cas PASS; app/browser PICKER script chưa kết luận.
+- Cần CHECK thực computed style ::after/cascade L01/L03; exact SHA reference visual `ab8629c` cần before/reference/after. Chưa chấp nhận C01–C03; DEMO_PENDING.
