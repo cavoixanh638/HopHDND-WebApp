@@ -79,17 +79,28 @@ function CompactVisualQa(){
       ?staff.map((item,index)=>index===6&&item.type==='QPPL'
         ?{...item,progressBuild:'Sở chưa trình'}:item)
       :staff;
-    if(params.get('r05')!=='1')return r03;
+    const wrap=params.get('wrap-status')==='1'
+      ?r03.map((item,index)=>index===0?{...item,
+        progressCouncil:'Đang xử lý hồ sơ thử nghiệm rất dài để kiểm tra trạng thái xuống dòng mà không bị cắt chữ trong cụm ba khâu'}:item)
+      :r03;
+    if(params.get('r05')!=='1')return wrap;
     // Synthetic only: red / amber / green in one record, neutral and
     // unknown in a second. The third includes an R03 source-specific rule.
-    return r03.map((item,index)=>index===0?{...item,
+    return wrap.map((item,index)=>index===0?{...item,
       progressParty:'Sở chưa trình',progressBuild:'VP đang thực hiện',
       progressCouncil:'Đã trình HĐND'}:index===1?{...item,
       progressParty:'Không phải xin ý kiến',progressBuild:'Không phải trình',
       progressCouncil:'Đã trình HĐND'}:index===2?{...item,
       progressParty:'Đang rà soát',progressBuild:'Sở chưa trình'}:item);
   });
-  const editing=params.get('edit')==='1';
+  // REVIEW-3 Codex: emulate field-granular rights for a mixed 3-track /
+  // 2-track stage test without touching production permissions or records.
+  const mixed=params.get('mixed')==='1';
+  const popupMixed=params.get('popup-mixed')==='1';
+  const editing=params.get('edit')==='1'||mixed;
+  const mixedGrant=(id:string,field:string)=>id===items[0].recordId
+    ?field==='partyLevel'||field==='progressCouncil'
+    :id===items[1].recordId?field==='progressParty':false;
   // R-V3-01: optional-assignment clear proof in the real List/popup, RAM only.
   const clearQa=params.get('clear-qa')==='1';
   const popupClearQa=params.get('popup-clear-qa')==='1';
@@ -109,11 +120,11 @@ function CompactVisualQa(){
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey="compact-qa-synthetic-popup-only"
-        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&params.get('popup-settings')!=='1'}
+        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&!popupMixed&&params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
-        allowDraft={popupClearQa} canEditCell={(_id,field)=>popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
+        allowDraft={popupClearQa||popupMixed} canEditCell={(id,field)=>popupMixed?mixedGrant(id,field):popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
         onUpdate={(recordId,changes)=>{
-          if(!popupClearQa)throw Error('QA read-only');
+          if(!popupClearQa&&!popupMixed)throw Error('QA read-only');
           Object.assign(window,{__l2LastPatch:{recordId,changes}});
           setRecords(previous=>previous.map(item=>item.recordId===recordId?{...item,...changes}:item));
         }}
@@ -123,7 +134,7 @@ function CompactVisualQa(){
         sourceKind="demo" sourceKey="compact-qa-synthetic-only"
         catalog={catalog}
         readOnly={!editing} canEditDraft={editing}
-        canEditCell={editing?(_id,field)=>!clearQa||field==='vpLeader'||field==='ubndLeader':undefined}
+        canEditCell={editing?(id,field)=>mixed?mixedGrant(id,field):!clearQa||field==='vpLeader'||field==='ubndLeader':undefined}
         customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
@@ -156,7 +167,7 @@ const query=new URLSearchParams(window.location.search);
 const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
   'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
   'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings',
-  'clear-qa','popup-clear-qa'];
+  'clear-qa','popup-clear-qa','mixed','popup-mixed','wrap-status'];
 // The pre-existing source smoke hosts this fixture under /compact-qa/ and
 // checks the original read-only 8-row component. Do not change L1's runner or
 // undermine that regression suite. Public /preview/pr95/ and the root QA entry
