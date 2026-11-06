@@ -1778,7 +1778,7 @@
   [data-ui-picker-skin="standard"] button.cell-picker-trigger,
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
-  [data-ui-picker-skin="standard"] button.cell-picker-trigger,
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger{
   display:inline-flex!important;align-items:center!important;
   justify-content:flex-start!important;position:relative;isolation:auto;
   flex:1 1 auto;box-sizing:border-box;
@@ -1815,7 +1815,7 @@
   [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after,
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
-  [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after,
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after{
   content:"";display:block!important;position:static;z-index:auto;
   flex:0 0 7px;align-self:center;
   width:7px;height:7px;margin:0 2px 3px auto!important;
@@ -1828,7 +1828,7 @@
   [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
-  [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
   border-color:#356D86!important;
   background:var(--ui-picker-bg,#F2F6F9)!important;
   color:var(--ui-picker-fg,#426274)!important;
