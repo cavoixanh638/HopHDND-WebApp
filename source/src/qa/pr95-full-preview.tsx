@@ -7,7 +7,7 @@ import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from './ui-reference-codes';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
-import {catalogFromItems,loadCatalog,saveCatalog,validateCatalog,type CatalogConfig} from '../data/catalogs';
+import {catalogFromItems,loadCatalog,saveCatalog as saveCatalogLocally,validateCatalog,type CatalogConfig} from '../data/catalogs';
 import {renameReportGroupIdentity} from '../domain/report-reference-identity';
 import {defaultItemLayout,validateItemLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
@@ -177,7 +177,7 @@ export function Pr95FullPreview(){
       const options={...registered.options,room:registered.options.room.map(value=>
         value==='Phòng thử A'?'Phòng A đổi tên':value)};
       const next=validateCatalog({...registered,groupIdentities:updated,options});
-      if(!saveCatalog(identityQaSource,next))throw Error('QA registry reload save failed');
+      if(!saveCatalogLocally(identityQaSource,next))throw Error('QA registry reload save failed');
       setCatalogOverride(next);
       setItems(previous=>previous.map(item=>item.room==='Phòng thử A'
         ?{...item,room:'Phòng A đổi tên'}:item));
