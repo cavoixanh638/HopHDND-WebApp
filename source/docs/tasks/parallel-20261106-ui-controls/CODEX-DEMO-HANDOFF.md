@@ -1,3 +1,13 @@
+# CURRENT — CODE ACCEPTED / PUBLIC DEMO V4 PUBLISHED — 07/11/2026
+
+Codex đã kiểm bàn giao và cập nhật [demo admin mô phỏng](https://hophdnd-demo-20261106.charmingscone.chatgpt.site/?full=1&preview-role=admin) trên **Site hiện có**, phiên bản **4**, deployment `appgdep_6aee09f2c7308191a83b6c9843b2b486` **succeeded** lúc 07/11/2026 00:10:25 UTC+7. Thay thế trạng thái SITE_DEMO_PENDING ở lịch sử phía dưới.
+
+Source/test SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`, CI #42256616362 **3/3 SUCCESS**. Đã đối chiếu bytes artifact và JS/CSS trên URL live, HTTP 200 không login, thử 5 widths lưu riêng + grid đúng 120/80/180, skin nhân sự cũ + caret tam giác 5×3, dropdown mở/Escape và popup 4 hồ sơ. Site source SHA `c85a23330e1dabbe40fdfabe81be3bb3c3a6c619`.
+
+[Receipt đầy đủ và phạm vi kiểm chứng](CODEX-DEMO-RECEIPT.md). Responsive/guest/mixed/reference/persistence/CAS có CI đúng SHA; live smoke ở viewport mặc định, không tuyên bố lặp toàn bộ matrix live. Worker PICKER own-checkpoint vẫn WIP; accepted/fixed trên COMMANDER integration, không sửa giả trạng thái worker. Không main merge/Firebase production/Excel/migration live.
+
+---
+
 # CODEX-DEMO-HANDOFF — code/package PASS; trạng thái triển khai Site chưa xác minh
 
 **Status: CODE_AND_PACKAGE_PASS / SITE_DEMO_PENDING.** Điều kiện CI và full synthetic package đã PASS cùng SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`. Môi trường hiện tại không có Sites API; nhiệm vụ **xác minh/cập nhật Site hiện có** là bước còn lại, không tạo Site mới.
