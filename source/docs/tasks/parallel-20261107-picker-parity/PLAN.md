@@ -47,7 +47,7 @@ Tất cả cùng application baseline e095205c; mỗi chat nhánh riêng, một 
 ### Ranh giới tránh phụ thuộc writer
 - CONTENT thêm stylesheet riêng chỉ scope metadata/cột nội dung và browser/unit test prefix parity-content; không sửa CellPicker/shared app.css/item-frame.css, không width model L03.
 - STAGES thêm stylesheet riêng chỉ scope stage controls/layout và test prefix parity-stages; không sửa CellPicker/shared app.css/item-frame.css, không metadata.
-- Mỗi stylesheet có thể import qua module/component do luồng sở hữu: CONTENT CompactGroupedValue.tsx; STAGES CompactThreeStageValue.tsx nếu xác minh đúng module trên baseline. Khi lập prompt phải xác minh path thực, không giao path đoán.
+- Đã xác minh baseline: cả L01/L03 dùng chung CompactGroupedValue.tsx; không tồn tại CompactThreeStageValue.tsx. Không giao hai writer sửa chung component. CONTENT chỉ thêm import stylesheet riêng vào CompactGroupedValue.tsx và sở hữu nhánh contentDetails nếu thực sự cần markup. STAGES nối stylesheet riêng qua l03-track-widths.css hiện có (CSS import đúng vị trí đầu file), không sửa CompactGroupedValue.tsx. Nếu cần markup L03 ngoài DOM hiện có, commander xử lý nối nhỏ sau tích hợp; worker vẫn tự kiểm hoàn chỉnh phần CSS dựa DOM baseline.
 - Dùng stable data-col-key/data-stage-field/data-ui-reference-part và selector scope, không nth-child; không tạo geometry phụ thuộc thứ tự kéo cột.
 - Hai worker tự kiểm trên baseline với stylesheet của mình, không import/cherry-pick commit worker kia, không đợi helper mới của nhau.
 - Shared CellPicker/popover/reference nhân sự giữ baseline. Nếu thực sự cần shared change, ghi đề xuất có tái hiện; commander xử lý trên nhánh tích hợp, không lấy đó làm gate worker bắt đầu.
