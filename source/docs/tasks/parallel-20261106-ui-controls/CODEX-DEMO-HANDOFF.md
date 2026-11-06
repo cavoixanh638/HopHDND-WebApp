@@ -1,6 +1,6 @@
-# CODEX-DEMO-HANDOFF — code/package PASS; Site hiện có CHƯA ĐƯỢC DEPLOY
+# CODEX-DEMO-HANDOFF — code/package PASS; trạng thái triển khai Site chưa xác minh
 
-**Status: CODE_AND_PACKAGE_PASS / SITE_DEMO_PENDING.** Điều kiện CI và full synthetic package đã PASS cùng SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`. Môi trường hiện tại không có Sites API; đây là nhiệm vụ triển khai **duy nhất còn lại**, không tạo Site mới.
+**Status: CODE_AND_PACKAGE_PASS / SITE_DEMO_PENDING.** Điều kiện CI và full synthetic package đã PASS cùng SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`. Môi trường hiện tại không có Sites API; nhiệm vụ **xác minh/cập nhật Site hiện có** là bước còn lại, không tạo Site mới.
 
 ## Đích cố định
 - Site ID: `appgprj_6aed474532b081919e39ba36909bf6bf`.
@@ -10,7 +10,7 @@
 - Nguồn GitHub: `cavoixanh638/HopHDND-WebApp`, branch `ui/20261106-controls-command`, path `source/`.
 
 ## Trước khi chạy Sites
-1. Nhận **final source SHA từ checkpoint COMMANDER** và xác minh HEAD đúng SHA đó; không dùng branch tip đã đổi. Mọi gate ACCEPTANCE-MATRIX.md C01–C14 phải PASS cùng SHA, CI run success kèm artifact immutable `ui-20261106-controls-<runid>-<sha>`; tải ZIP artifact và kiểm lại manifest.
+1. Checkout **exact final tested source SHA** từ checkpoint COMMANDER; HEAD tài liệu trên coordination có thể mới hơn và KHÔNG phải build SHA. Không dùng branch tip đã đổi. Mọi gate ACCEPTANCE-MATRIX.md C01–C14 phải PASS cùng SHA, CI run success kèm artifact immutable `ui-20261106-controls-<runid>-<sha>`; tải ZIP artifact và kiểm lại manifest.
 2. Lấy `source/qa-results/ui-20261106/source-sha.txt` và đối chiếu source SHA, `asset-sha256.txt` đối chiếu **từng file** trong `dist-compact-qa`, `package-sha256.txt` đối chiếu tarball. Chặn nếu có chênh SHA hoặc thiếu asset.
 3. Sử dụng **full synthetic preview** `dist-compact-qa/compact-qa.html` và JS/CSS assets tương ứng, entry `source/compact-qa.html` → `source/src/qa/compact-qa-main.tsx` → `Pr95FullPreview`. Không dùng `dist/Dashboard_HĐND.html` làm demo (standalone có thể có Google Sheets và không phải full RAM demo). Giữ request nội bộ/local-only và RAM data; không cài Firebase credentials.
 4. Kiểm trên local `?full=1&preview-role=admin`: menu quản trị, 5 inputs L03, save/reload local synthetic; `?full=1&preview-role=guest`: không tùy chỉnh; bật/sửa quyền mô phỏng và kiểm mixed; list/popup 1440/900/390, bốn picker theo reference `ab8629c` ngoại trừ caret nhỏ.
@@ -33,7 +33,7 @@ Site demo chỉ synthetic RAM và không kết nối production. KHÔNG main mer
 - **FULL synthetic public assets SHA256**: HTML `af29df30d12015e8b73d0c05cc68896723a1b0bc4695314c18c3c36a5d34cc68`; JS `67f2552d6775cdfaa025f2b40f5fbeee7f0165bdf9f518870491d4dff1b4f015`; CSS `5362f1c5e74d0e241058357f846cd1b3df85302c1af0ccbcb7e009b2872f4d4c`. Path `dist-compact-qa/compact-qa.html`, asset URLs `./assets/...`, ensure root resolves correctly and root entry opens `?full=1` not standalone `Dashboard_HĐND.html`.
 - **User package** `HopHDND_UI_Controls_Full_Synthetic_e095205c.zip` ZIP SHA256 `0258f2838da5799ad988c9ef42442790e2a732f64882c02c373b0b85b78ab605`. Created from verified CI asset bytes; includes README, per-file hashes, sample screenshots, exact browser rects. Also see `DEMO_PACKAGE_README.md` in branch for testing instructions.
 - **Offline local HTTP smoke**: admin/guest HTML + JS/CSS HTTP 200 from local `dist-compact-qa`; asset bytes match GitHub CI hashes. **Not a substitute for live public Site smoke.**
-- **Site source SHA / live Site version / deployment ID / succeeded / URL smoke**: **ALL PENDING**. Sites tool absent in this session; no operation on Site attempted. URL HTTP fetch unavailable from this runtime due DNS/cache error; **do not infer site is live-updated**.
+- **Site source SHA / live Site version / deployment ID / succeeded / URL smoke**: **ALL PENDING**. Sites tool absent in this session; COMMANDER performed no operation on Site. The current live deployment state cannot be established. URL HTTP fetch unavailable from this runtime due DNS/cache error; **do not infer site is live-updated**.
 
 ## Codex Sites completion checklist
 1. Query **existing Site ID** `appgprj_6aed474532b081919e39ba36909bf6bf`, verify current source, version, public access, previous deployment. Preserve Site identity and no-login policy.

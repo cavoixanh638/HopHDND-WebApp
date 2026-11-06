@@ -18,6 +18,6 @@
 - User-delivery ZIP `HopHDND_UI_Controls_Full_Synthetic_e095205c.zip`, SHA256 `0258f2838da5799ad988c9ef42442790e2a732f64882c02c373b0b85b78ab605`, 19 files and per-file manifest; downloaded in conversation. GitHub artifact is authoritative for rebuilding package.
 
 ## Unresolved / external dependency
-- Public Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` and URL https://hophdnd-demo-20261106.charmingscone.chatgpt.site/ must remain the **same Site**. This environment has no Sites API and cannot verify live URL via DNS; no Site deployment occurred. No Site source SHA, version, deployment status or smoke proof. Exact next steps in CODEX-DEMO-HANDOFF.md.
+- Public Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` and URL https://hophdnd-demo-20261106.charmingscone.chatgpt.site/ must remain the **same Site**. This environment has no Sites API and cannot verify live URL via DNS; COMMANDER did not deploy the Site; current live deployment state is unverified. No Site source SHA, version, deployment status or smoke proof. Exact next steps in CODEX-DEMO-HANDOFF.md.
 - Legacy workflows on TRACKS worker tip reported failures unrelated to dedicated acceptance runs (PR95 V6 L1, V5 L4, broader Verify-source Firebase 403/400). Their root cause/scope equivalence was not fully established; don't call these green or weaken them. The required dedicated, exact combined SHA CI is PASS.
 - No merge main, Firebase production Hosting/Rules/Functions/RTDB writes, real Excel, live migration or new Site. **Entire wave NOT DONE until Site deploy/smoke proof.**
