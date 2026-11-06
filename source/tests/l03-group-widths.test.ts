@@ -6,6 +6,13 @@ import {
 import {mergeItemLayout,LayoutConflictError} from '../src/data/item-layout-merge';
 
 describe('L03 shared 2/3-track physical widths',()=>{
+  it('preserves narrow administrator widths instead of restoring oversized minimums',()=>{
+    const widths={readonly:180,editable:260};
+    const saved=validateItemLayout({...defaultItemLayout(),partyGroupWidths:widths});
+    expect(saved.partyGroupWidths).toEqual(widths);
+    expect(partyGroupPhysicalWidth(saved.partyGroupWidths!,false)).toBe(180);
+    expect(partyGroupPhysicalWidth(saved.partyGroupWidths!,true)).toBe(260);
+  });
   it('migrates old layouts without changing column order, source widths or visibility',()=>{
     const old=defaultItemLayout();
     delete old.partyGroupWidths;
