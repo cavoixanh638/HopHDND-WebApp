@@ -238,7 +238,7 @@ export function Pr95FullPreview(){
         <p>Nhấp số đếm trong bảng để xem popup bằng ReportDetailGrid thật;
           dữ liệu, tỷ lệ và nhóm tính bằng domain/reporting hiện hành.</p>
         {configs.map(config=><ReportTable key={config.id} items={items} config={config}
-          group={group} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
+          group={group} groupIdentities={catalog.groupIdentities} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
       </section>}
       {(page==='items'||(page==='items-customize'&&admin))&&<section aria-label="Danh sách hồ sơ demo">
         {page==='items-customize'&&<div className="pr95-preview-section-heading">
