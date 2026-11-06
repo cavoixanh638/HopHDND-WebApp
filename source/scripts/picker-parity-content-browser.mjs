@@ -38,7 +38,7 @@ const probe=async page=>page.evaluate(()=>{
   refs[field]={wrapper:sty(wrapper),button:sty(button),editable:!!button,disabled:button?.disabled??null,
    expanded:button?.getAttribute('aria-expanded'),text:wrapper?.textContent?.trim()??''};
  }
- const l04=document.querySelector('[data-ui-reference-group="L04"] .compact-highlight-member button.cell-picker-trigger');
+ const l04=document.querySelector('[data-ui-reference-group="L04"] .compact-highlight-member');
  return {heading:sty(heading),mode:heading?.dataset.metadataMode,department:refs.department,type:refs.type,
   reference:sty(l04),popovers:document.querySelectorAll('.cell-picker-popover:popover-open').length,
   patches:document.querySelector('[data-qa="last-patch"]')?.textContent??'',
