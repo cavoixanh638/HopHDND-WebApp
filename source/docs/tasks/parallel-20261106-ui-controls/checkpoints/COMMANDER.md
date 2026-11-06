@@ -1,10 +1,10 @@
 # COMMANDER checkpoint — UI controls 06/11/2026
 
-Status: IN_PROGRESS_COORDINATION / CODE_TEST_PENDING / DEMO_PENDING
+Status: PICKER_GATE_PASS_ON_COORDINATION / TRACKS_PENDING / FINAL_INTEGRATION_PENDING / DEMO_PENDING
 Owner/branch: COMMANDER / `ui/20261106-controls-command`
 Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
 HEAD tại khảo sát đầu: `0eede66c4f8c05d416084aeab08fd5a030f5bc80` (khởi tạo/điều phối; chưa có code tính năng mới)
-Code/tested SHA mới: NOT YET TESTED
+PICKER-only code/tested SHA: `102fd250aee050be2d51f9a3bc736bb7ab60bf99` (CI #42252326012 3/3 PASS); final combined code SHA NOT YET TESTED
 Reference 4 nhân sự: `ab8629c7575debd494c908c14bde9967a575a82a` (KHÔNG dùng `91c2dd4`); caret nhỏ là ngoại lệ có chủ ý.
 Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42238116883), 3/3 SUCCESS theo README, **không dùng thay PASS đợt mới**.
 
@@ -73,3 +73,11 @@ Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/action
 - Inspected measured artifacts: reference/restored NORMAL four staff have matching fontSize, lineHeight, padding, borderRadius and semantic colors; reference caret 5×5 V, restored 6×4 filled with extra 7px margin caused room popup 44.375→60.5625 px and some long names 39.6875→54.53125px. Difference is in caret footprint; not acceptable without correction.
 - COMMANDER fix `102fd250aee050be2d51f9a3bc736bb7ab60bf99` shrinks new triangle to **5×3px, margin 0** (inside requested 5–6×3–4px); stabilizes real browser normal/hover/focus/expanded snapshots after 400ms transition; updates 2 obsolete unit expectations. Does NOT roll back stable IDs, permissions/CAS, L03 geometry or person skin. Reference comparison CI [#42252326012](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42252326012) newly queued at exact code SHA; **NOT YET PASS**.
 - Neither PICKER branch nor demo Site changed. No main merge, production writes or site deployment. Continue gate C01–C03 before integration DONE.
+
+## PICKER final verifier event — 06/11/2026, CI 3/3 success
+- **PICKER_GATE_PASS_ON_COMMANDER** for **integrated PICKER-only candidate SHA `102fd250aee050be2d51f9a3bc736bb7ab60bf99`**, not a completed two-worker source SHA. Gold visual reference `ab8629c7575debd494c908c14bde9967a575a82a`; baseline `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`.
+- [GitHub Actions #42252326012](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42252326012), source SHA `102fd250...`: **COMPLETED/SUCCESS, 3/3 jobs** (controls-and-package, isolated-cas, real-app-emulator). TypeScript, **897 unit PASS / 116 skipped**, builds, full synthetic browser smoke PASS.
+- Reproducible Chrome fixture: **reference 24/24 PASS, baseline 24/24 PASS, restored 24/24 PASS**, admin/guest/mixed, list/popup at widths 1440/900/390 with long names; `UI_20261106_PICKER_REFERENCE_DIFF_PASS ... 48 snapshots`. Verified archive directly: `reference-vs-baseline-vs-after.json` says **compared=48, errors=0**, **252 PNG**, `after/summary.json` says PASS/24 scenarios/0 external requests. Single small filled 5×3px triangle is intentional difference, outside compared old skin signature.
+- Exact archive (asset/geometry/screenshot evidence): `ui-20261106-controls-42252326012-102fd250aee050be2d51f9a3bc736bb7ab60bf99` **artifact ID 13520928045**; isolated CAS **13520058644**, full-app Emulator **13520823559**. Manifest `source-sha.txt` directly inspected: `102fd250aee050be2d51f9a3bc736bb7ab60bf99`.
+- PICKER worker-owned branch remains untouched: HEAD `dae2051c39ebf595d6f79f31d28125b8db04b5ca`; its checkpoint still `CODE_WIP_TEST_PENDING — NOT DONE` and no own CI. Verified and fixed **cross-contract** only on COMMANDER: invisible Sở caret caused by obsolete V pseudo selector, fixed 2 old contradictory CSS unit assertions, ref selector absent on historical SHA, Vite test-child exit, caret extra wrapping and CSS transition sampling.
+- Status boundary: **PICKER accepted as integrated QA on coordination; TRACKS not yet integrated or PASS on same final code SHA, public Site version not updated. Overall IN_PROGRESS / DEMO_PENDING.** No main merge, production writes, migration or deployed Site change.
