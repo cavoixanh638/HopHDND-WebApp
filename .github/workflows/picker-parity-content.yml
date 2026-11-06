@@ -43,7 +43,7 @@ jobs:
       - name: Typecheck and relevant unit tests
         run: |
           npm run typecheck
-          npm test -- tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx
+          npm test -- tests/picker-parity-content.test.tsx tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx
       - name: Compact full synthetic build
         run: npm run build:compact:qa
       - name: Real Chromium L01 and L04 within same List/popup
