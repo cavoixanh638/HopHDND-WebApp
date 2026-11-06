@@ -97,8 +97,8 @@ describe('UI 05/11 — compact grouped picker/party-level projection',()=>{
     const added=css.split('/* UI 2026-11-05 / PICKER.')[1]??'';
     expect(added).not.toBe('');
     expect(added).not.toMatch(/minmax\([^)]*,\s*1fr\)/);
-    expect(added).toContain('--ui-stage-level-track:90px');
-    expect(added).toContain('--ui-stage-status-track:238px');
+    expect(added).toContain('--ui-stage-level-track:70px');
+    expect(added).toContain('--ui-stage-status-track:min(238px,calc(100% - var(--ui-stage-reserved)))');
     expect(added).toContain('grid-template-columns:subgrid!important');
     expect(added).not.toContain('resize:');
   });
