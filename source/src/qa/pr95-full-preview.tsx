@@ -7,7 +7,8 @@ import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from './ui-reference-codes';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
-import {catalogFromItems,validateCatalog,type CatalogConfig} from '../data/catalogs';
+import {catalogFromItems,loadCatalog,saveCatalog,validateCatalog,type CatalogConfig} from '../data/catalogs';
+import {renameReportGroupIdentity} from '../domain/report-reference-identity';
 import {defaultItemLayout,validateItemLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
@@ -66,22 +67,33 @@ const nav:readonly {key:'items'|'reports';label:string}[]=[
   {key:'reports',label:'Báo cáo tổng hợp'},
   {key:'items',label:'Danh sách các ND trình HĐND'},
 ];
+const identityQaSource='review3-group-identity-synthetic';
+const identityQaItems=():Item[]=>createDemoItems(3).map((item,i)=>({
+  ...item,recordId:['r02','r03','r09'][i],
+  room:i<2?'Phòng thử A':'Phòng thử B',
+  department:'Sở giả lập',documentKind:'NQ',
+  isDropped:false,archivedAt:null,progressCouncil:'Hoàn thành'
+}));
 export function Pr95FullPreview(){
-  const [items,setItems]=useState<Item[]>(()=>createDemoItems(27));
+  // Activated only in the isolated synthetic QA entrypoint, never real App.
+  const groupQa=typeof window!=='undefined'&&
+    new URLSearchParams(window.location.search).get('qa-group-identity')==='1';
+  const [items,setItems]=useState<Item[]>(()=>groupQa?identityQaItems():createDemoItems(27));
   const [confirmedItems,setConfirmedItems]=useState<Item[]>(items);
   // Explicit URL fixture for browser QA; default preview stays guest.
   const [role,setRole]=useState<Role>(()=>typeof window!=='undefined'&&
     new URLSearchParams(window.location.search).get('preview-role')==='admin'?'admin':'guest');
   const [menuOpen,setMenuOpen]=useState(false);
   const referenceRoot=useRef<HTMLDivElement|null>(null);
-  const [referenceCodesOn,setReferenceCodesOn]=useState(false);
+  const [referenceCodesOn,setReferenceCodesOn]=useState(groupQa);
   const gearZone=useRef<HTMLDivElement|null>(null);
   const [sessionScope]=useState(()=>Math.random().toString(36).slice(2));
-  const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(null);
-  const [page,setPage]=useState<Page>('items');
+  const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(()=>groupQa?loadCatalog(identityQaSource,items):null);
+  const [groupQaStage,setGroupQaStage]=useState('baseline');
+  const [page,setPage]=useState<Page>(groupQa?'reports':'items');
   const [permissions,setPermissions]=useState<CellPermissions>(permissionsInitial);
   const [layout,setLayout]=useState<ItemLayout>(baseLayout);
-  const [group,setGroup]=useState<GroupField>('department');
+  const [group,setGroup]=useState<GroupField>(groupQa?'room':'department');
   const [drill,setDrill]=useState<Drill|null>(null);
   const [dirtyIds,setDirtyIds]=useState<Set<string>>(new Set());
   const [notice,setNotice]=useState('');
@@ -149,6 +161,29 @@ export function Pr95FullPreview(){
     const checked=validateItemLayout(next);setLayout(checked);return checked;
   };
   const saveCatalog=async(next:CatalogConfig)=>{setCatalogOverride(validateCatalog(next));};
+  const groupQaAction=(action:'add'|'remove'|'move'|'reorder'|'rename')=>{
+    if(!groupQa||!admin)return;
+    if(action==='add')setItems(previous=>[
+      {...previous[0],recordId:'r01',room:'Phòng thử A'},...previous
+    ]);
+    if(action==='remove')setItems(previous=>previous.filter(item=>item.recordId!=='r02'));
+    if(action==='move')setItems(previous=>previous.map(item=>item.recordId==='r01'
+      ?{...item,room:'Phòng thử B'}:item));
+    if(action==='reorder')setItems(previous=>[...previous].reverse());
+    if(action==='rename'){
+      const registered=validateCatalog(catalog);
+      const updated=renameReportGroupIdentity(registered.groupIdentities,'room',
+        'Phòng thử A','Phòng A đổi tên');
+      const options={...registered.options,room:registered.options.room.map(value=>
+        value==='Phòng thử A'?'Phòng A đổi tên':value)};
+      const next=validateCatalog({...registered,groupIdentities:updated,options});
+      if(!saveCatalog(identityQaSource,next))throw Error('QA registry reload save failed');
+      setCatalogOverride(next);
+      setItems(previous=>previous.map(item=>item.room==='Phòng thử A'
+        ?{...item,room:'Phòng A đổi tên'}:item));
+    }
+    setGroupQaStage(action);
+  };
   const saveRAM=async()=>{
     setConfirmedItems(items);setDirtyIds(new Set());
     setNotice('Đã xác nhận phần sửa trong RAM, không ghi lên hệ thống thật.');return true;
@@ -235,6 +270,10 @@ export function Pr95FullPreview(){
             </select>
           </label>
         </div>
+        {groupQa&&admin&&<div className="top-actions" data-qa-group-controls="true" data-qa-group-stage={groupQaStage}>
+          {(['add','remove','move','reorder','rename'] as const).map(action=><button key={action}
+            type="button" data-qa-group-action={action} onClick={()=>groupQaAction(action)}>{action}</button>)}
+        </div>}
         <p>Nhấp số đếm trong bảng để xem popup bằng ReportDetailGrid thật;
           dữ liệu, tỷ lệ và nhóm tính bằng domain/reporting hiện hành.</p>
         {configs.map(config=><ReportTable key={config.id} items={items} config={config}
