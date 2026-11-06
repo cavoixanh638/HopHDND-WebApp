@@ -1739,6 +1739,17 @@
   padding:0!important;border:0!important;box-shadow:none!important;
   background:transparent!important;color:inherit!important;
 }
+/* REVIEW-3 Codex visual verification: in a read-only stage the real text is
+   nested inside a 36px .compact-part flex box. Its historical stretch
+   alignment pinned the glyph at the TOP even though the outer status wrapper
+   and label were centered. Center the actual flex CONTENT in both List and
+   ReportDetailGrid; do not resize picker hit targets or change text leading,
+   and let multiline values expand naturally. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  > .compact-part{
+  align-items:center;
+}
 /* Default tokens are the current UBND picker colors. The SAME actual button
    receives status/type palette tokens; disabled/read-only has no edit cue. */
 :is(.item-data-table,.report-detail-grid) tbody td
