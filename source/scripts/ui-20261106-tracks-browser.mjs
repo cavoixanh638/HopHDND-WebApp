@@ -119,6 +119,8 @@ try{
   await screenshot('tracks-admin-'+viewport);
   records.push({viewport,role:'admin',inputSnapshot,actual});
   // Role switches re-mount ItemList with the same confirmed shared layout.
+  await evaluate(`document.querySelector('.pr95-preview-gear')?.click()`);
+  await wait("document.querySelector('.pr95-preview-menu-user')",'open synthetic menu');
   await evaluate(`(()=>{
     const button=[...document.querySelectorAll('button')].find(el=>el.textContent.trim()==='Đăng xuất mô phỏng');
     if(!button)throw Error('No synthetic role switch');button.click();return true;
