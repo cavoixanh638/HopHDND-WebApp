@@ -39,3 +39,9 @@ Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/action
 1. Theo dõi worker checkpoints/HEAD/CI; yêu cầu họ tự khép C01–C10, không bắt chờ nhau, không chiếm phạm vi.
 2. Khi có code bàn giao, tích hợp lên branch COMMANDER, required feature scripts và full SHA CI/Emulator/browser, kiểm ảnh/rects/CAS, sửa cross-contract.
 3. Đóng gói hash đúng SHA final và hoàn thiện Codex handoff/deploy chính Site hiện có (nếu Sites API được cấp); chỉ DONE sau live smoke và version/deployment proof.
+
+### Sự kiện CI/trigger sau smoke cập nhật
+- Run `#42245332228` bị `cancelled` do concurrency khi run mới `#42245720825` bắt đầu; chỉ giữ các witness job đã báo thành công để khảo sát, không coi toàn run success.
+- Run `#42245720825`, source SHA `9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`: `controls-and-package` SUCCESS và `isolated-cas` SUCCESS; `real-app-emulator` IN_PROGRESS, tại bước thực thi full real app Emulator khi kiểm gần nhất. Có artifacts `ui-20261106-controls-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` và `ui-20261106-cas-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`. Không coi smoke này là final feature test.
+- **Trigger nuance:** GitHub on-push không chạy workflow từ coordination cho push worker nếu workflow file không tồn tại trong HEAD worker. Hai worker tự test với toolchain hoặc tự đặt YAML trên nhánh mình; COMMANDER sẽ test sau khi tích hợp. Ghi trong TRACKER. Không sửa nhánh worker.
+- Hiện TRACKS đang sửa `item-layout-merge.ts`, `item-preferences.ts`, `ItemList.tsx`, `l03-track-widths.css`; PICKER vẫn checkpoint khảo sát, chưa có code để tích hợp. COMMANDER không cherry-pick WIP.
