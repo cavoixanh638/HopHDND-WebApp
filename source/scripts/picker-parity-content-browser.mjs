@@ -117,6 +117,24 @@ async function main(){
    const popupRect=await page.locator('.cell-picker-popover:popover-open').boundingBox();
    assert(popupRect&&popupRect.x>=-1&&popupRect.x+popupRect.width<=width+1,
     id+' popover outside horizontal viewport '+JSON.stringify(popupRect));
+   // Resize/scroll an already-confirmed-open picker, rather than attempting
+   // a second open after changing fixture/navigation state.
+   if(width===390&&surface==='list'&&mode==='edit'){
+    await page.setViewportSize({width:420,height:740});
+    await page.waitForTimeout(260);
+    if(await page.locator('.cell-picker-popover:popover-open').count()){
+     const rect=await page.locator('.cell-picker-popover:popover-open').boundingBox();
+     assert(rect&&rect.x>=-1&&rect.x+rect.width<=421,
+      id+' dynamic resize overflow '+JSON.stringify(rect));
+    }
+    await page.mouse.wheel(0,280);await page.waitForTimeout(260);
+    if(await page.locator('.cell-picker-popover:popover-open').count()){
+     const rect=await page.locator('.cell-picker-popover:popover-open').boundingBox();
+     assert(rect&&rect.x>=-1&&rect.x+rect.width<=421,
+      id+' dynamic scroll overflow '+JSON.stringify(rect));
+    }
+    await shot(page,id+'-resize-scroll');
+   }
    const options=page.locator('.cell-picker-popover:popover-open [role="option"]');
    assert(await options.count()>0,id+' no options');
    await page.keyboard.press('Escape');
@@ -213,28 +231,6 @@ async function main(){
   check(long,'edit','long-label-fixture-'+width);
   results.push({width,surface:'long-label-fixture',states:{long}});
  }
- // Real scroll and viewport resize while the dropdown is visible.
- const placementPage=await browser.newPage();
- await placementPage.setViewportSize({width:390,height:844});
- await placementPage.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
- const placementTarget=placementPage.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="type"] button.cell-picker-trigger').first();
- await placementTarget.scrollIntoViewIfNeeded();await placementTarget.hover();await placementTarget.click();
- await placementPage.locator('.cell-picker-popover:popover-open').waitFor();
- await placementPage.setViewportSize({width:420,height:740});
- await placementPage.waitForTimeout(300);
- let visible=placementPage.locator('.cell-picker-popover:popover-open');
- if(await visible.count()){
-  let r=await visible.boundingBox();
-  assert(r&&r.x>=-1&&r.x+r.width<=421,'resize popover outside viewport '+JSON.stringify(r));
- }
- await placementPage.mouse.wheel(0,400);await placementPage.waitForTimeout(300);
- if(await visible.count()){
-  let r=await visible.boundingBox();
-  assert(r&&r.x>=-1&&r.x+r.width<=421,'scroll popover outside viewport '+JSON.stringify(r));
- }
- const resized=await shot(placementPage,'scroll-resize');
- results.push({surface:'scroll-resize',states:{resized}});
- await placementPage.close();
  // Reduced motion / print: affordance cannot lift or cast a drop shadow.
  await page.setViewportSize({width:900,height:900});
  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
