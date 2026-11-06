@@ -1,5 +1,19 @@
 # UI 05/11 — hợp đồng chung cho Gemini
 
+## Tiếp tục sau review ngày 06/11/2026
+
+**Nguồn hiện hành:** [REVIEW-3-END-TO-END.md](REVIEW-3-END-TO-END.md). CI `4bccba5992cc36e1cfc3da146711fe718e44adf8` PASS 3/3; yêu cầu mã nhóm cố định vẫn chưa đạt vì hàm identity còn dùng recordId nhỏ nhất trong nhóm. Không dùng kết luận “chỉ còn Site” trong checkpoint cũ để bỏ qua yêu cầu này.
+
+**Owner phần còn lại:** chat Gemini tổng chỉ huy hiện có tự làm trọn sửa identity/model/đường lưu/renderer cần thiết, kiểm thử nghiệp vụ và browser, chạy CI, dựng gói/hash mới. Không mở lại bốn worker hoặc chia chuỗi chờ nhau. Codex tiếp nhận gói đủ bằng chứng để phát hành Site riêng tư. Giữ migration LIVE_HOLD, không merge main hoặc triển khai Firebase production.
+
+### Quy tắc độc lập từ đầu đến cuối
+
+- Mỗi luồng sở hữu một kết quả hoàn chỉnh: khảo sát → môi trường chạy được → mã → test/browser → sửa lỗi → bằng chứng đúng SHA.
+- Trước khi phân luồng phải xác nhận mỗi luồng tự kiểm được bằng baseline và giao diện đã có. Nếu phải chờ luồng khác thêm selector/CSS/state/transaction thì gộp phạm vi gắn chặt vào một owner hoặc chuẩn bị giao diện ổn định trước khi giao.
+- Không ghi DONE khi chỉ có code; thiếu kiểm thử bắt buộc phải ghi IN_PROGRESS/BLOCKED kèm điều kiện gỡ chặn. Không dồn toàn bộ việc kiểm thử worker chưa làm sang tổng chỉ huy.
+- Tổng chỉ huy nhận các đầu ra đã tự kiểm để review, tích hợp và nghiệm thu kết hợp. Nghiệm thu kết hợp ở cuối là mốc chung, không phải điều kiện để worker bắt đầu hoặc tự hoàn tất.
+- Các đoạn phân bốn worker bên dưới là hợp đồng lịch sử của đợt đã tích hợp. Với công việc tiếp tục, quy tắc tại mục này có ưu tiên; không tạo chat hoặc lịch nền mới.
+
 Repo: `cavoixanh638/HopHDND-WebApp`. Baseline chung `d8c994c44f7bd11b685d82f8f955ffab99065ea9` trên `ui/20261104-coordination`. Mã và test tích hợp cuối đã PASS tại `3bfb28e0f8496732424898ae6186ea807af961fb`; chênh lệch đến baseline chỉ là ba file tài liệu. PR #155 vẫn draft, chưa merge. Không làm lại tính năng đã PASS nếu delta mới không tác động.
 
 ## Đích cuối
