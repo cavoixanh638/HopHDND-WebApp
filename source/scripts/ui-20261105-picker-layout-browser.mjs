@@ -224,8 +224,22 @@ try{
      if(!trigger)throw Error('Missing popup edit-mode toggle');
      trigger.click();return true;
    })()`);
+   const popupProbe=await evalJs(`(()=>{
+     const toggle=[...document.querySelectorAll('button')].find(button=>
+       button.textContent?.trim()==='Về chế độ xem'||button.textContent?.trim()==='Chỉnh sửa nháp');
+     return {toggle:toggle?.textContent?.trim(),pressed:toggle?.getAttribute('aria-pressed'),
+       tables:document.querySelectorAll('.report-detail-grid').length,
+       stages:[...document.querySelectorAll('.compact-stages[data-rev2]')].slice(0,4)
+         .map(stage=>({mode:stage.dataset.levelLayout,
+           rows:[...stage.querySelectorAll('.compact-stage-row')].map(row=>({
+             key:row.dataset.stageField,levelEditor:!!row.querySelector('[data-level-editor=true]'),
+             editable:row.querySelector('.compact-stage-state')?.dataset.editable??'false'
+           }))})),
+       errors:[...document.querySelectorAll('[role=alert]')].map(el=>el.textContent?.slice(0,80))}
+   })()`);
+   console.log('REVIEW3_L03_POPUP_MIXED_PROBE '+JSON.stringify({width,...popupProbe}));
    await waitFor("document.querySelector('.report-detail-grid .compact-stages[data-level-layout=editable]')",
-     'real popup mixed permission mode');
+     'real popup mixed permission mode '+JSON.stringify(popupProbe));
    const popupThree=await rects(0),popupTwo=await rects(1);
    aligned(popupThree,'editable');aligned(popupTwo,'readonly');
    glyphAligned(popupThree,'popup-mixed-3-track-'+width);
