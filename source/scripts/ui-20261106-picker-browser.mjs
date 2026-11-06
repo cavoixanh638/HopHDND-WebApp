@@ -19,7 +19,10 @@ const root=resolve(process.env.PICKER_ARTIFACT_DIR??'qa-results/ui-20261106-pick
 mkdirSync(root,{recursive:true});
 const port=Number(process.env.PICKER_PORT||'5196');
 const origin='http://127.0.0.1:'+port;
-const server=spawn('npm',['run','dev','--','--host','127.0.0.1','--port',String(port),'--strictPort'],{
+// Launch Vite directly: killing the npm wrapper can leave Vite alive with
+// inherited stdout/stderr pipes, preventing CI from ending after browser PASS.
+const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--mode','preact',
+ '--host','127.0.0.1','--port',String(port),'--strictPort'],{
  cwd:resolve('.'),env:{...process.env,BROWSER:'none'},stdio:['ignore','pipe','pipe']});
 let serverLog='';
 for(const stream of [server.stdout,server.stderr])
@@ -192,4 +195,6 @@ try{await run()}catch(error){
 }finally{
  await browser?.close().catch(()=>{});
  server.kill('SIGTERM');
+ server.stdout?.destroy();
+ server.stderr?.destroy();
 }
