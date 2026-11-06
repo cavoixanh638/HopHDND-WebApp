@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -39,7 +40,7 @@ jobs:
       - name: Print exact tested SHA
         run: |
           echo "TRACKS_SHA=$(git rev-parse HEAD)"
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
       - name: Frozen install and pinned Chromium
         run: |
           npm ci --no-audit --no-fund
@@ -75,6 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -99,7 +101,7 @@ jobs:
           tail -n 25 stdout.local.txt
       - name: Real FULL App admin guest and RTDB Functions Emulator
         env:
-          FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+          FINAL_APP_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GCLOUD_PROJECT: demo-hdnd
           CI: 'true'
           VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
