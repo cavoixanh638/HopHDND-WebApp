@@ -126,7 +126,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     subset.some(item=>!readOnlyViewer&&allowDraft&&editing&&mayEditField(item,'partyLevel'));
   const l03PopupPhysicalWidth=partyTrackPhysicalWidth(l03PopupWidths,popupHasEditableLevel);
   const physicalPopupColumns=renderedColumns.map(c=>({
-    ...c,width:c.key===l03PopupPair?.anchor?Math.max(c.width,l03PopupPhysicalWidth):c.width
+    ...c,width:c.key===l03PopupPair?.anchor?l03PopupPhysicalWidth:c.width
   }));
   const gridWidth=physicalPopupColumns.reduce((sum,c)=>sum+c.width,0);
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
