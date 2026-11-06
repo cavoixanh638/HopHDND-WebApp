@@ -122,6 +122,8 @@ async function main(){
    await page.locator('.cell-picker-popover:popover-open').waitFor();
    await page.mouse.click(2,2);
    assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' outside click');
+   // The picker coordinator settles the outside-pointer dismissal asynchronously.
+   await page.waitForTimeout(280);
    // Real option selection and RAM patch, not a synthetic change event.
    // Exercise this on one canonical admin List fixture before other views.
    if(width===1440&&surface==='list'&&mode==='edit'){
