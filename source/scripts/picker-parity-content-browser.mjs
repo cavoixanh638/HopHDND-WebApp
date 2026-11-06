@@ -122,6 +122,28 @@ async function main(){
    await page.locator('.cell-picker-popover:popover-open').waitFor();
    await page.mouse.click(2,2);
    assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' outside click');
+   // Real option selection and RAM patch, not a synthetic change event.
+   // Exercise this on one canonical admin List fixture before other views.
+   if(width===1440&&surface==='list'&&mode==='edit'){
+    await target.click();
+    await page.locator('.cell-picker-popover:popover-open').waitFor();
+    const available=page.locator('.cell-picker-popover:popover-open [role="option"]');
+    let chosen=false;
+    for(let i=0;i<await available.count();i++){
+     const candidate=available.nth(i);
+     if(await candidate.getAttribute('aria-selected')!=='true'&&(await candidate.innerText()).trim()){
+      await candidate.click();chosen=true;break;
+     }
+    }
+    assert(chosen,id+' no alternative option');
+    await page.waitForFunction(()=>document.querySelector('[data-qa="last-patch"]')?.textContent?.includes('type'),{timeout:7000});
+    await target.focus();
+    await page.keyboard.press('Enter');
+    await page.locator('.cell-picker-popover:popover-open').waitFor();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' keyboard Escape');
+   }
    states={normal,hover,focus,opened};
   }
   results.push({width,surface,mode,states});
