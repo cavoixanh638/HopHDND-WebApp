@@ -182,6 +182,57 @@ async function main(){
    results.push({width,role,surface:'full-app-popup',states:{popup}});
   }
  }
+ // Business palette and per-member highlight on actual compact synthetic App.
+ for(const width of [1440,900,390]){
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto(origin+'/compact-qa.html?highlight=1&edit=1');
+  const decorated=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="department"][data-highlighted="true"]').first();
+  await decorated.waitFor({timeout:12000});
+  const highlighted=decorated.locator('button.cell-picker-trigger');
+  const initialBg=await highlighted.evaluate(el=>getComputedStyle(el).backgroundColor);
+  await highlighted.hover();await page.waitForTimeout(220);
+  const hoverBg=await highlighted.evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.equal(hoverBg,initialBg,'custom highlight background changed on hover '+width);
+  await highlighted.focus();await page.waitForTimeout(220);
+  assert.equal(await highlighted.evaluate(el=>getComputedStyle(el).backgroundColor),initialBg,
+   'custom highlight background changed on focus '+width);
+  const visual=await shot(page,'highlight-'+width);
+  results.push({width,surface:'highlight',states:{visual,initialBg,hoverBg}});
+  await page.goto(origin+'/compact-qa.html?r05-palette=1&edit=1');
+  await page.locator('[data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
+  const palette=await shot(page,'palette-'+width);
+  assert(palette.heading,'palette variant lost document metadata '+width);
+  results.push({width,surface:'custom-status-palette',states:{palette}});
+ }
+ // A long personnel fixture also keeps L01 metadata aligned at phone size.
+ for(const width of [1440,900,390]){
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit&long=1');
+  await page.locator('[data-ui-reference-group="L01"]').first().waitFor();
+  const long=await shot(page,'long-label-fixture-'+width);
+  check(long,'edit','long-label-fixture-'+width);
+  results.push({width,surface:'long-label-fixture',states:{long}});
+ }
+ // Real scroll and viewport resize while the dropdown is visible.
+ await page.setViewportSize({width:390,height:844});
+ await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
+ const placementTarget=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="department"] button.cell-picker-trigger').first();
+ await placementTarget.scrollIntoViewIfNeeded();await placementTarget.click();
+ await page.locator('.cell-picker-popover:popover-open').waitFor();
+ await page.setViewportSize({width:420,height:740});
+ await page.waitForTimeout(300);
+ let visible=page.locator('.cell-picker-popover:popover-open');
+ if(await visible.count()){
+  let r=await visible.boundingBox();
+  assert(r&&r.x>=-1&&r.x+r.width<=421,'resize popover outside viewport '+JSON.stringify(r));
+ }
+ await page.mouse.wheel(0,400);await page.waitForTimeout(300);
+ if(await visible.count()){
+  let r=await visible.boundingBox();
+  assert(r&&r.x>=-1&&r.x+r.width<=421,'scroll popover outside viewport '+JSON.stringify(r));
+ }
+ const resized=await shot(page,'scroll-resize');
+ results.push({surface:'scroll-resize',states:{resized}});
  // Reduced motion / print: affordance cannot lift or cast a drop shadow.
  await page.setViewportSize({width:900,height:900});
  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
