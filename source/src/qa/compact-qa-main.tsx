@@ -1,7 +1,8 @@
 /** QA-only standalone mount of the REAL ItemList component, synthetic data.
  * Never included in production Pages or executed against Firebase.
  */
-import {useState,type CSSProperties} from 'react';
+import {useEffect,useState,type CSSProperties} from 'react';
+import {defaultDetailGridPreferences,saveDetailGridPreferences} from '../data/report-detail-preferences';
 import {createRoot} from 'react-dom/client';
 import {createDemoItems} from '../data/demo-items';
 import {catalogFromItems} from '../data/catalogs';
@@ -97,6 +98,19 @@ function CompactVisualQa(){
   // 2-track stage test without touching production permissions or records.
   const mixed=params.get('mixed')==='1';
   const popupMixed=params.get('popup-mixed')==='1';
+  // Popup's ordinary default hides partyLevel, so its synthetic mixed fixture
+  // explicitly enables that REAL source column before mounting ReportDetailGrid.
+  // Dedicated QA-only source key prevents any change to production preferences.
+  const popupMixedSource='compact-qa-synthetic-popup-mixed-only';
+  const [popupPrefsReady,setPopupPrefsReady]=useState(!popupMixed);
+  useEffect(()=>{
+    if(!popupMixed)return;
+    const seed=defaultDetailGridPreferences();
+    seed.columns=seed.columns.map(col=>col.key==='partyLevel'?{...col,visible:true}:col);
+    if(!saveDetailGridPreferences(popupMixedSource,seed))
+      throw Error('Cannot create isolated mixed popup view preference');
+    setPopupPrefsReady(true);
+  },[popupMixed]);
   const editing=params.get('edit')==='1'||mixed;
   const mixedGrant=(id:string,field:string)=>id===items[0].recordId
     ?field==='partyLevel'||field==='progressCouncil'
@@ -108,6 +122,7 @@ function CompactVisualQa(){
   const palette=defaultStatusPaletteStore();
   if(params.get('r05-palette')==='1')palette.active.office={
     text:'#884422',background:'#FCDDA0'};
+  if(!popupPrefsReady)return <div data-qa="popup-preparing">Đang thiết lập quyền mô phỏng popup</div>;
   return <div className={'app-shell imperial-sky-theme'+
     (params.get('app-shell')==='1'?' wide-table-page list-fit-page':'')}
     data-qa="compact-real-itemlist"
@@ -119,7 +134,7 @@ function CompactVisualQa(){
     <main style={{maxWidth:1440,margin:'0 auto',padding:'14px'}}>
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
-        items={records} sourceKey="compact-qa-synthetic-popup-only"
+        items={records} sourceKey={popupMixed?popupMixedSource:"compact-qa-synthetic-popup-only"}
         catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&!popupMixed&&params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
         allowDraft={popupClearQa||popupMixed} canEditCell={(id,field)=>popupMixed?mixedGrant(id,field):popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
