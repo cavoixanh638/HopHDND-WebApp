@@ -132,13 +132,36 @@ async function scenario(page,{surface,mode,width,height=900,long=false}){
  await page.waitForTimeout(100);
  const afterKeyboard=await getProbe(page);
  assert(!await page.locator('.cell-picker-popover:popover-open').count(),id+' Enter did not close');
+ // A real click/Enter selection must reach the in-memory draft writer,
+ // not just toggle aria-expanded. It may be unchanged if the first option
+ // is the current value, so force a distinct option if necessary.
+ if(!afterKeyboard.patch){
+   await trigger.click({force:true});
+   await page.locator('.cell-picker-popover:popover-open').waitFor();
+   const pop=page.locator('.cell-picker-popover:popover-open');
+   const initial=await trigger.innerText();
+   const choices=pop.getByRole('option');
+   let picked=false;
+   for(let i=0;i<await choices.count();i++){
+     const text=(await choices.nth(i).innerText()).trim();
+     if(text&&text!==initial&&text!=='—'){
+       await choices.nth(i).click();
+       picked=true;
+       break;
+     }
+   }
+   assert(picked,id+' no distinct synthetic choice');
+   await page.waitForTimeout(100);
+ }
+ const saved=await getProbe(page);
+ assert(saved.patch&&saved.patch.includes(first),id+' choice did not update RAM draft: '+saved.patch);
  // Focus and Escape leave the underlying persisted value unchanged.
  await trigger.focus();await page.keyboard.press('Enter');
  await page.locator('.cell-picker-popover:popover-open').waitFor();
  await page.keyboard.press('Escape');
  await page.waitForTimeout(100);
  assert.equal(await trigger.getAttribute('aria-expanded'),'false',id+' Escape failed');
- results.at(-1).states={hover,focus,expanded,afterKeyboard};
+ results.at(-1).states={hover,focus,expanded,afterKeyboard,saved};
 }
 async function run(){
  await ready();
