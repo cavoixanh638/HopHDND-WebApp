@@ -333,6 +333,72 @@ try{
   await until('document.querySelector("dialog.report-grid-modal[open]")','mobile popup opened');
   await verifyNoOcclusion('mobile-popup');
   await screenshot('pr95-v4-l3-r-v4-01-mobile-popup.png');
+  // REVIEW-3: a real DOM/browser report must keep the same code after group
+  // membership changes, explicit catalog rename and a profile reload.
+  // This dedicated fixture is loopback-only and does not touch live Firebase.
+  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:920,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa.html?full=1&preview-role=admin&qa-group-identity=1'});
+  await until('document.querySelector("[data-qa-group-controls=true]")&&'+
+    'document.querySelector("[data-ui-reference-active=true]")',
+    'review3 isolated identity fixture ready');
+  const groupRow=async label=>js(`(()=>{
+    const row=[...document.querySelectorAll('.report-surface[data-ui-reference-report=council] .report-table tbody tr')]
+      .find(x=>x.querySelector('th')?.textContent?.trim()===${JSON.stringify(label)});
+    return row?{key:row.dataset.uiReferenceReportRow,label:row.querySelector('th')?.textContent?.trim(),
+      total:row.querySelector('td[data-ui-reference-report-column="__TOTAL__"]')?.textContent?.trim()}:null;
+  })()`);
+  const baseGroup=await groupRow('Phòng thử A');
+  const otherGroup=await groupRow('Phòng thử B');
+  assert(baseGroup?.key?.startsWith('group:room:'),'review3 missing namespaced row business ID');
+  assert(otherGroup?.key&&baseGroup.key!==otherGroup.key,'review3 distinct group IDs collided');
+  const groupCellSelector=key=>'.report-surface[data-ui-reference-report=council] '+
+    '.report-table tbody tr[data-ui-reference-report-row='+JSON.stringify(key)+'] '+
+    'td[data-ui-reference-report-column="__PERCENT__"]';
+  await hover(groupCellSelector(baseGroup.key));
+  await until('document.querySelector("[data-ui-reference-hover]:not([hidden])")?.dataset.uiRefCode?.startsWith("R03.CELL.")',
+    'review3 full numeric code visible in group row');
+  const baselineMarker=await js('document.querySelector("[data-ui-reference-hover]")?.dataset.uiRefCode??null');
+  assert(baselineMarker?.includes(encodeURIComponent(baseGroup.key)),
+    'review3 numeric badge not bound to immutable group ID');
+  await click('.ui-reference-copy');
+  await until('document.querySelector("[data-ui-reference-hover]")?.dataset.uiRefCopy==="ok"',
+    'review3 group code copy confirmed');
+  const groupClipboard=await js('navigator.clipboard.readText().catch(()=>null)');
+  if(groupClipboard!==null)assert(groupClipboard===baselineMarker,
+    'review3 clipboard lost full group/column semantic identity');
+  for(const [action,label] of [
+    ['add','Phòng thử A'],['remove','Phòng thử A'],
+    ['move','Phòng thử A'],['reorder','Phòng thử A'],
+    ['rename','Phòng A đổi tên']
+  ]){
+    await click('[data-qa-group-action="'+action+'"]');
+    await until('document.querySelector("[data-qa-group-controls]")?.dataset.qaGroupStage==='+
+      JSON.stringify(action),'review3 UI action '+action);
+    const observed=await groupRow(label);
+    assert(observed?.key===baseGroup.key,'review3 group ID changed on '+action+' '+JSON.stringify(observed));
+    await hover(groupCellSelector(baseGroup.key));
+    await until('document.querySelector("[data-ui-reference-hover]:not([hidden])")?.dataset.uiRefCode==='+
+      JSON.stringify(baselineMarker),'review3 marker changed on '+action);
+    await verifyNoOcclusion('review3-group-'+action);
+    console.log('REVIEW3_GROUP_ID_STEP '+JSON.stringify({action,...observed,marker:baselineMarker}));
+  }
+  await screenshot('pr95-v4-l3-review3-group-identity-rename.png');
+  await send('Page.reload',{ignoreCache:true});
+  await until('document.querySelector("[data-qa-group-controls=true]")',
+    'review3 reload with persisted catalog registry');
+  const reloadGroup=await groupRow('Phòng A đổi tên');
+  assert(reloadGroup?.key===baseGroup.key,
+    'review3 registry ID was not preserved through local profile reload');
+  await hover(groupCellSelector(baseGroup.key));
+  await until('document.querySelector("[data-ui-reference-hover]:not([hidden])")?.dataset.uiRefCode==='+
+    JSON.stringify(baselineMarker),'review3 persisted report marker not restored');
+  await verifyNoOcclusion('review3-group-reloaded');
+  await screenshot('pr95-v4-l3-review3-group-identity-reload.png');
+  console.log('REVIEW3_GROUP_IDENTITY_BROWSER_PASS '+JSON.stringify({
+    id:baseGroup.key,marker:baselineMarker,add:true,remove:true,move:true,
+    sort:true,rename:true,reload:true,clipboard:groupClipboard===null?'write-only':'match'
+  }));
   const forbidden=network.filter(url=>/firebaseio|firebasedatabase|identitytoolkit|securetoken|docs\.google\.com\/spreadsheets/i.test(url));
   assert(!forbidden.length,'never contact cloud Firebase or Sheets '+JSON.stringify(forbidden));
   console.log('PR95_UI_V4_L3_REFERENCE_OVERLAY_CHROME_PASS '+JSON.stringify({
