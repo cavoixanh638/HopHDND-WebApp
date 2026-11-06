@@ -38,10 +38,22 @@ async function ready(){
   await delay(175);
  }throw Error('Vite did not become ready '+serverLog);
 }
-const searchSelector=(field)=>`[data-ui-reference-group="L04"] [data-ui-reference-part="${field}"] button.cell-picker-trigger`;
-const getProbe=async page=>page.evaluate(({fields,extra})=>{
- const find=(key)=>document.querySelector(
-  '[data-ui-reference-group="L04"] [data-ui-reference-part="'+key+'"] button.cell-picker-trigger');
+// The reference SHA predates data-ui-reference-group/part attributes.
+// These human-visible tags are stable in all three real versions (not CSS
+// nth-child hooks): UBND, VP, Phòng and CV. Reuse the same fixture/source.
+const fieldTags={ubndLeader:'UBND',vpLeader:'VP',room:'Phòng',specialist:'CV'};
+const getProbe=async page=>page.evaluate(({fields,extra,fieldTags})=>{
+ const wrapperFor=(key)=>{
+  const modern=document.querySelector(
+   '[data-ui-reference-group="L04"] [data-ui-reference-part="'+key+'"]');
+  if(modern)return modern;
+  const tag=fieldTags[key];
+  if(!tag)return null;
+  const row=[...document.querySelectorAll('.compact-pair-lines > div')].find(el=>
+   el.querySelector(':scope > .compact-pair-tag')?.textContent?.trim()===tag);
+  return row?.querySelector('.compact-highlight-member')??null;
+ };
+ const find=(key)=>wrapperFor(key)?.querySelector('button.cell-picker-trigger')??null;
  const rc=e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height};};
  const st=e=>{const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),p=getComputedStyle(e,'::before');
  return {rect:rc(e),background:s.backgroundColor,border:s.borderColor,borderWidth:s.borderWidth,
@@ -55,8 +67,7 @@ const getProbe=async page=>page.evaluate(({fields,extra})=>{
   '.item-data-table tbody td button.cell-picker-trigger, .report-detail-grid tbody td button.cell-picker-trigger').length,
   disabled:document.querySelector('[data-qa="disabled-case"] button.cell-picker-trigger')?.disabled,
   patch:document.querySelector('[data-qa="last-patch"]')?.textContent};
- for(const f of fields){const b=find(f),wrapper=document.querySelector(
-  '[data-ui-reference-group="L04"] [data-ui-reference-part="'+f+'"]');
+ for(const f of fields){const b=find(f),wrapper=wrapperFor(f);
   out.fields[f]={editable:!!b,text:wrapper?.textContent?.trim(),wrapper:wrapper?st(wrapper):null,
    trigger:b?st(b):null,expanded:b?.getAttribute('aria-expanded'),disabled:b?.disabled};
  }
@@ -66,7 +77,7 @@ const getProbe=async page=>page.evaluate(({fields,extra})=>{
   out.other[f]={editable:!!b,trigger:b?st(b):null,wrapper:wrapper?st(wrapper):null};
  }
  return out;
-},{fields:fieldKeys,extra:inputFields});
+},{fields:fieldKeys,extra:inputFields,fieldTags});
 const cssSize=s=>Number.parseFloat(s??'0');
 async function assertCaret(probe,scope){
  if(variant!=='after')return;
@@ -116,8 +127,10 @@ async function scenario(page,{surface,mode,width,height=900,long=false}){
  if(mode==='guest')return;
  let first=fieldKeys.find(k=>p.fields[k].editable);
  assert(first,id+' no permitted personnel field');
- const selector=searchSelector(first);
- const trigger=page.locator(selector).first();
+ const tag=fieldTags[first];
+ const trigger=page.locator('.compact-pair-lines > div')
+  .filter({has:page.locator('.compact-pair-tag',{hasText:tag})})
+  .locator('.compact-highlight-member button.cell-picker-trigger').first();
  await trigger.scrollIntoViewIfNeeded();
  await trigger.hover({force:true});
  const hover=await snapshot(page,id+'-hover');
