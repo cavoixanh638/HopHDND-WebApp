@@ -52,3 +52,9 @@ Chưa đủ DONE; tiếp tục HEAD, không reset/cherry-pick CONTENT. Không me
 - Bộ 5widths thứ hai đã có unit JSON reload PASS, nhưng **chưa có browser config persistence backend/emulator** trên own SHA (browser track test dùng một bộ giá trị mô phỏng). Không được khẳng định dữ liệu demo RAM tương đương backend.
 - Không chạy full unit suite, Firebase Emulator, L01/L04 diff và public demo deployment trên STAGES; commander chịu trách nhiệm acceptance tích hợp sau khi nhận nhánh.
 - Do các bằng chứng bắt buộc chưa đủ, trạng thái worker vẫn **IN_PROGRESS**, chưa đánh dấu DONE. Không merge/publish.
+
+## Batch tăng độ phủ và sửa lỗi (sau CI #42266019366)
+- React SSR permission/Không unit: `source/tests/picker-parity-stages-permissions.test.tsx`, 3 tests PASS tại run #42266486528; total **15/15 unit PASS**.
+- Browser test mở rộng 8 cases 2 bộ width × List/popup × 2/3 tracks; thêm reduced-motion/print. Đã chạy đến reduced-motion, kiểm tra browser tìm được sai khác thật.
+- Run #42266486528 tại SHA `5249f0e528c9f65c6a879b42075299ee8c9a8cf1`: typecheck/15 unit/build PASS; browser FAIL đúng assertion `Reduced motion must remove lift` (computed transform `matrix(1,0,0,1,0,-3)`). Lỗi do selector media giảm chuyển động kém specificity hơn selector hover !important.
+- Đã sửa CSS media :hover/:focus-visible specificity tại code commit `bdb77cbefa91e6f044845fcfbafc8ab8b5ce5f95`; đang chờ exact-SHA CI mới. **Không gọi SHA sửa này PASS khi chưa chạy**.
