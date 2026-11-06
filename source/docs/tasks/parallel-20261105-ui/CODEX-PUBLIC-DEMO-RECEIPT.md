@@ -1,3 +1,9 @@
+# CURRENT — L03 COMPACT WIDTHS PASS / PUBLIC DEMO V3 — 06/11/2026
+
+[Demo](https://hophdnd-demo-20261106.charmingscone.chatgpt.site/) phiên bản **3** đã phát hành thành công. Tối thiểu hai track **180px**, ba track **260px**; các track trong L03 co theo budget, giữ căn hàng và chữ xuống dòng. Source/test SHA `5d3aacebfadae89fd00a08f734d79e842bb45daa`, [CI #42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42238116883) **3/3 SUCCESS**, UI Chrome 28 scenarios gồm 6 mức hẹp; full-App PASS. [Receipt/hash/smoke](CODEX-L03-NARROW-WIDTHS.md). Đã thử lưu 260/340px trên link live. Dữ liệu demo RAM; Firebase production và migration live vẫn HOLD. Các mục dưới là lịch sử.
+
+---
+
 # Phát hành demo công khai — 06/11/2026
 
 **DEMO_PUBLISH_PASS.** [Mở demo không cần tài khoản](https://hophdnd-demo-20261106.charmingscone.chatgpt.site/).
