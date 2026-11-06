@@ -1,40 +1,41 @@
-# Codex — bàn giao Site demo UI 05/11/2026
+# Codex — phát hành bản demo riêng tư (REVIEW-3 FINAL — 06/11/2026)
 
-**SITE_PENDING. Không phát hành từ chat tổng chỉ huy này, chưa xác nhận owner-only.**
+**CODE/TEST/ARTIFACT PASS, SITE_PENDING. Chưa có deployment succeeded.** Tài liệu này **thay thế hoàn toàn** candidate/hash cũ `4bccba5`, `6676d00`, `ba18de6` và mọi chỉ dẫn triển khai trước ngày 06/11. Không sử dụng `HEAD` di động làm nguồn build.
 
-## Nguồn và điều kiện bắt buộc
-- Repository: cavoixanh638/HopHDND-WebApp, branch: ui/20261105-coordination.
-- Site demo riêng tư HIỆN CÓ: appgprj_6ae93f17c2e48191815caef8a642fa14. Không tạo site công khai.
-- Chỉ triển khai khi GitHub Actions app-qa, data-emulator, full-app đều SUCCESS trên CÙNG code/test SHA. Skipped không tính PASS.
-- Candidate source SHA ba18de621e70974732aa6d53c7371132c1371026; [CI 42009964402](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42009964402), [artifact 13407065444](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42009964402/artifacts/13407065444). app-qa + Emulator PASS, full-app chưa chốt khi soạn — **KHÔNG deploy nếu chưa PASS**.
+## Version duy nhất được phép phát hành
 
-## Candidate bytes được kiểm thực tế (thay bằng hash cuối nếu SHA thay đổi)
-- dist/Dashboard_HĐND.html: SHA-256 78a3187004e64c39973cb49180d0b4cbafcdf65039932d21c2b13b11d7f48c5a.
-- dist-compact-qa/compact-qa.html: SHA-256 cc9246a0cc39272a1817aa7f9761c6494fb6701b32f3d18d28310bbef5fff1e3.
-- qa-results/ui-20261105/html-qa.tar.gz: SHA-256 e67ef2c35d3efe95b4a1a2c82d7fa0590c8d59311f227970ec81956eca781d26.
-- Source SHA, file-sha256.txt, package-sha256.txt, screenshots, rects.json ở cùng artifact GitHub Actions. Đã đối chiếu hashes với file bytes tải về.
+- Repository `cavoixanh638/HopHDND-WebApp`, branch `ui/20261105-coordination`.
+- **IMMUTABLE CODE/TEST SHA `bc5f5b4ef5eb89084f68e11e242d86a59c1ff8cc`.**
+- [GitHub Actions #42147453000](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42147453000): **3/3 jobs SUCCESS trên cùng SHA**, `app-qa`, `data-emulator`, `full-app`.
+- 896 unit PASS (116 skipped baseline), typecheck/build/real Chrome REF/UI 1440/900/390 PASS; Review-3 business group identity add/remove/move/reorder/rename/reload/clipboard PASS; Full-App real App **QA01–QA10 PASS**, 27 screenshots, Firebase Emulator only.
+- [Báo cáo nghiệm thu chi tiết](REVIEW-3-FINAL-ACCEPTANCE.md) và [TRACKER](TRACKER.md).
 
-## Checklist Codex thực hiện khi được giao
-1. Đọc REVIEW-AND-CONTINUE.md, TRACKER.md, checkpoints/COMMANDER.md; xác nhận 3 CI jobs SUCCESS đúng một SHA và không còn blocker kiểm thử. Nếu FAIL hoặc skipped, STOP và báo kết quả.
-2. Tải artifact của CI PASS cuối, xác thực source-sha.txt và SHA-256 thực của HTML + archive; không dùng lại hash cũ nếu code thay đổi.
-3. Mở Site ID trên bằng Sites API/owner connector; xác minh Site vẫn private owner-only TRƯỚC khi upload/publish. Không thay đổi visibility hoặc thêm viewers.
-4. Chỉ upload bản demo HTML từ artifact đúng SHA, đợi deployment succeeded. Ghi version, URL riêng tư, timestamp, và SHA triển khai.
-5. Smoke trên URL triển khai bằng tài khoản owner; kiểm app tải, quyền guest/admin, không có yêu cầu network Firebase production không được phép.
-6. Cập nhật tracker/checkpoint yêu cầu→commit/file→test/run/ảnh→hash→Site evidence. Nếu thiếu Sites/owner permission: SITE_PENDING, không tuyên bố DONE.
+## Artifact GitHub Actions gốc
 
-## Tuyệt đối không làm
-- Không merge main, không deploy Firebase Hosting/Functions/RTDB Rules production, không ghi RTDB production, không chạy migration live.
-- DATA migration chỉ PREPARED_OFFLINE / LIVE_HOLD, cần GO và backup/inventory/rollback riêng.
-- Không upload secrets, private credentials hoặc live data vào Site.
+1. [**Visual/HTML/manifest #13469864753**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42147453000/artifacts/13469864753) — `source-sha.txt`, `file-sha256.txt`, `package-sha256.txt`, `html-qa.tar.gz`, các screenshot, `rects.json`.
+2. [**Full-app witness #13471036176**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42147453000/artifacts/13471036176) — `witness.json` với `checkedOutSha=bc5f5b4...`, `FULL_APP_QA_PASS`, `productionUsed=false`, `published=false`, `emulator=true`; QA01–QA10 PASS.
+3. [**DATA Emulator #13470578325**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42147453000/artifacts/13470578325) — rules/offline migration/RTDB/Callable Emulator.
 
-## FINAL supersedes prior candidate — 05/11/2026
+## Hash thực đã xác minh từ bytes tải về
 
-**BẢN FINAL ĐÃ PASS CI, CHƯA DEPLOY SITE.** Mọi SHA/hash/candidate `ba18de6` ở phần trên là lịch sử, **KHÔNG dùng phát hành**.
+| File | SHA-256 |
+| --- | --- |
+| **Chỉ upload** `dist/Dashboard_HĐND.html` | `0f1d1044d1572ff3eb4acb2ae2b5aa9368b553ce1f101f730e4a69bac3f2106d` |
+| `dist-compact-qa/compact-qa.html` — KHÔNG upload | `6ddbe54181e24c34143a214948eab3fab8142cd682f6fdb5441dceadfbdf43bd` |
+| `qa-results/ui-20261105/html-qa.tar.gz` — KHÔNG upload | `a1203a2bf3933777d2393b67c2909d2f525ab56a2f4ced23548cbf997a656805` |
+| **Gói giao Codex** `HopHDND_REVIEW3_CODEX_SITE_HANDOFF_bc5f5b4.zip` (trao qua chat) | `5fa39fcce006c96ba1924da61b1ec9d9eadb4f3535e94dbe6898a6fbd6b7e967` |
 
-- **Immutable code/test SHA:** `4bccba5992cc36e1cfc3da146711fe718e44adf8`.
-- [CI #42060684280](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280): `app-qa`, `data-emulator`, `full-app` đều **SUCCESS cùng SHA**. Chrome REF/UI và 1440/900/390 PASS; real-App **QA01–QA10 PASS**, 27 screenshots; local Emulator only, no production used or published.
-- [**Artifact gói HTML + hashes + Chrome images #13432341158**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13432341158); [**full-App witness #13432047195**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13432047195); [DATA #13430972026](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42060684280/artifacts/13430972026).
-- **Byte-verified SHA256:** `dist/Dashboard_HĐND.html` = `78a3187004e64c39973cb49180d0b4cbafcdf65039932d21c2b13b11d7f48c5a`; `dist-compact-qa/compact-qa.html` = `cc9246a0cc39272a1817aa7f9761c6494fb6701b32f3d18d28310bbef5fff1e3`; `qa-results/ui-20261105/html-qa.tar.gz` = `fa45e38b9d9838a05be7f63e4985e8028b13c8ecf3e61bbed5cd53b61c0552ce`. Đã chạy `sha256sum` trên downloaded archive và `sha256sum -c` trên 2 HTML bên trong, tất cả OK.
-- Source SHA thực nằm `qa-results/ui-20261105/source-sha.txt`. Repo HEAD có thể tăng chỉ vì tài liệu: **không build lại từ HEAD**.
-- **Codex action:** tải artifact final, xác minh hash và Site **private owner-only** ID `appgprj_6ae93f17c2e48191815caef8a642fa14` trước upload; chỉ publish `dist/Dashboard_HĐND.html` đúng SHA, chờ `deployment succeeded`, ghi version/URL/timestamp và smoke owner-only (list/popup/admin/guest, không Firebase production). Nếu không có quyền xác minh private: STOP và giữ `SITE_PENDING`, không tạo Site public.
-- **BẢO VỆ:** không upload witness/credential/Excel lên Site; không merge main, không deploy Firebase production hoặc Rules; DATA migration `PREPARED_OFFLINE / LIVE_HOLD`, không có GO/live write.
+Đã đối chiếu `source-sha.txt`; chạy `sha256sum -c` trên tar và hai HTML sau giải nén: **OK**. Gói Codex tự chứa file upload, 3 artifact ZIP, ảnh rename/reload, rects, README và manifest SHA-256; mọi file bên trong đã kiểm lại. Không dùng gói cũ.
+
+## Codex thực hiện đúng thứ tự
+
+1. Đọc `REVIEW-3-END-TO-END.md`, `REVIEW-3-FINAL-ACCEPTANCE.md`, `TRACKER.md`, `checkpoints/COMMANDER.md`; đối chiếu 3 CI jobs **SUCCESS trên exact SHA** và manifest hash.
+2. Mở Site **hiện có** `appgprj_6ae93f17c2e48191815caef8a642fa14` bằng **Sites API có quyền owner**. **Xác minh quyền chỉ owner (owner-only) TRƯỚC khi upload**. Nếu không kiểm chứng được: STOP và tiếp tục `SITE_PENDING`; không tự tạo Site công khai, không nới quyền.
+3. Upload **chỉ** `site_upload/Dashboard_HĐND.html` từ gói Codex (hoặc đúng file `dist/Dashboard_HĐND.html` từ artifact cùng SHA), hash chính xác như bảng. Không upload screenshots, witness, JSON, Excel, thông tin xác thực hoặc dữ liệu thật.
+4. Chờ sự kiện `deployment succeeded`, ghi version/URL (redact private token), timestamp, tài khoản/visibility owner-only, source SHA, HTML SHA-256 đã triển khai. Không báo deploy nếu thiếu.
+5. Smoke URL bằng owner: tải app, danh sách/báo cáo/popup, mã vùng admin, role guest/admin và no Firebase production writes. Lưu screenshot/log smoke.
+6. Chỉ sau deployment+owner-only smoke: cập nhật `TRACKER.md` và `checkpoints/COMMANDER.md` trên coordination hoặc bàn giao report đủ bằng chứng cho writer; `SITE_PASS` mới đóng toàn nhiệm vụ.
+
+## Ràng buộc bất biến
+
+DATA migration **PREPARED_OFFLINE / LIVE_HOLD**; không chạy migration live, không deploy Firebase production Hosting/Functions/RTDB Rules, không ghi live RTDB/Excel, không merge `main`. Không tạo site public hay công khai quyền owner. 
