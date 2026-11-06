@@ -182,6 +182,59 @@ try{
     await scenario(page,{width,surface,mode});
    await scenario(page,{width,surface,mode:'edit',long:true});
   }
+ // Exercise TWO distinct five-rail configurations against actual CSS subgrid
+ // in BOTH surfaces and 2/3-track modes. This is an in-page geometry probe,
+ // not a claim that an injected value was persisted to Firebase.
+ const railPresets=[
+  {readonly:{label:122,status:225},editable:{label:145,level:82,status:279}},
+  {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}}
+ ];
+ for(const preset of railPresets)for(const surface of ['list','popup'])
+  for(const mode of ['edit','guest']){
+   await page.setViewportSize({width:900,height:900});
+   await page.goto(base+'/ui-20261106-picker-fixture.html?'+
+    new URLSearchParams({surface,mode}),{waitUntil:'networkidle'});
+   const root=surface==='popup'?'.report-detail-grid':'.item-data-table';
+   await page.locator(root+' .compact-stages[data-rev2="true"]').first().waitFor();
+   if(surface==='popup'&&mode==='edit')
+    await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+   const values=mode==='edit'?preset.editable:preset.readonly;
+   const widths=mode==='edit'?[values.label,values.level,values.status]:
+    [values.label,values.status];
+   const inner=widths.reduce((a,b)=>a+b,0)+8*(widths.length-1);
+   await page.evaluate(({root,values,inner})=>{
+    const td=document.querySelector(root+' .compact-stages[data-rev2="true"]')?.closest('td');
+    if(!td)throw Error('No L03 td to probe saved rail geometry');
+    td.style.setProperty('--hdnd-l03-label-track',values.label+'px');
+    td.style.setProperty('--hdnd-l03-level-track',(values.level??76)+'px');
+    td.style.setProperty('--hdnd-l03-status-track',values.status+'px');
+    td.style.setProperty('--hdnd-l03-inner-width',inner+'px');
+   },{root,values,inner});
+   const actual=await probe(page);
+   check(actual,'rail-'+mode+'-'+surface+'-'+inner);
+   const numbers=actual.grid.trim().split(/\\s+/).map(n);
+   assert(numbers.length===widths.length&&
+    numbers.every((x,i)=>near(x,widths[i])), 'Asymmetric rail mismatch '+JSON.stringify({surface,mode,widths,actual:actual.grid}));
+   assert(near(actual.rect.w,inner,1.25),'Saved rail sum drift '+JSON.stringify({inner,actual:actual.rect}));
+   results.push({name:'rail-'+mode+'-'+surface+'-'+inner,initial:actual,states:{preset}});
+  }
+ // Reduced-motion still has the outline, but never lifts an editable stage.
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto(base+'/ui-20261106-picker-fixture.html?surface=list&mode=edit',
+  {waitUntil:'networkidle'});
+ const reduced=page.locator('.item-data-table .compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"] button.cell-picker-trigger').first();
+ await reduced.hover();await page.waitForTimeout(220);
+ let motion=await reduced.evaluate(el=>({transform:getComputedStyle(el).transform,
+  outline:getComputedStyle(el).outlineStyle}));
+ assert.equal(motion.transform,'none','Reduced motion must remove lift');
+ assert.equal(motion.outline,'solid','Reduced motion must preserve focus affordance');
+ await page.emulateMedia({reducedMotion:'no-preference',media:'print'});
+ motion=await reduced.evaluate(el=>({transform:getComputedStyle(el).transform,
+  shadow:getComputedStyle(el).boxShadow}));
+ assert.equal(motion.transform,'none','Print must not lift');
+ assert.equal(motion.shadow,'none','Print must not shadow');
+ await page.emulateMedia({media:'screen'});
+
  assert.equal(external.length,0,'Blocked production requests: '+external);
  writeFileSync(join(out,'computed-rects.json'),JSON.stringify({result:'PASS',results,external},null,2));
  console.log('PICKER_PARITY_STAGES_BROWSER_PASS scenarios='+results.length);
