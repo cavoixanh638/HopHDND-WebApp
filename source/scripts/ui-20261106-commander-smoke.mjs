@@ -86,6 +86,30 @@ try{
   results.push({page:'mixed-list',width,editable:await page.locator(
    '.compact-stages[data-level-layout="editable"]').count(),
    readonly:await page.locator('.compact-stages[data-level-layout="readonly"]').count()});
+  for(const mode of ['readonly','mixed']){
+   const url=base+'?popup=1'+(mode==='mixed'?'&popup-mixed=1':'');
+   await page.goto(url,{waitUntil:'networkidle'});
+   await page.locator('.report-detail-grid').first().waitFor();
+   if(mode==='mixed'){
+    await page.getByRole('button',{name:'Chỉnh sửa nháp'}).first().click();
+    await page.locator('.report-detail-grid .compact-stages[data-level-layout="editable"]').first().waitFor();
+   }else{
+    await page.locator('.report-detail-grid .compact-stages[data-level-layout="readonly"]').first().waitFor();
+   }
+   const popup=await page.evaluate(()=>{
+    const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();
+      return {x:r.x,y:r.y,width:r.width,height:r.height};};
+    return [...document.querySelectorAll('.report-detail-grid .compact-stages')].slice(0,4)
+      .map(stage=>({mode:stage.getAttribute('data-level-layout'),rect:rect(stage),
+        stages:[...stage.querySelectorAll('.compact-stage-row')].map(row=>({
+         key:row.dataset.stageField,label:rect(row.querySelector('.compact-stage-label')),
+         status:rect(row.querySelector('.compact-stage-state'))}))}));
+   });
+   assert(popup.length>0,'Missing popup stage '+mode+' '+width);
+   const screenshot=join(out,'popup-'+mode+'-'+width+'.png');
+   await page.screenshot({path:screenshot,fullPage:false});
+   results.push({page:'popup',width,mode,popup,screenshot});
+  }
   await page.close();
  }
  assert.equal(errors.length,0,'Browser errors '+JSON.stringify(errors));
