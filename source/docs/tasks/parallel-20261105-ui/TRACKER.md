@@ -1,3 +1,13 @@
+# CURRENT — DEMO_PUBLISH_PASS / PUBLIC V2 — 06/11/2026
+
+**Mốc hiện hành, thay thế SITE_PENDING_ACCESS và chỉ dẫn không tạo Site mới/owner-only bên dưới.** Theo yêu cầu mới của người dùng, Codex đã phát hành [demo công khai không cần tài khoản](https://hophdnd-demo-20261106.charmingscone.chatgpt.site/) trên Site mới `appgprj_6aed474532b081919e39ba36909bf6bf`, phiên bản **2**, deployment `appgdep_6aed862c53e88191bab67c8d7695473b` **succeeded**.
+
+Giữ code/test SHA `91c2dd47de85c76fad53d1778e06c2786aaa136d`, CI 3/3 SUCCESS. Entry phát hành là **Pr95FullPreview dữ liệu giả từ compact-qa artifact cùng SHA**; standalone HTML của handoff cũ không đủ vì mặc định mở Google Sheet và không vào được admin. Không sửa code UI đã PASS. JS/CSS tải qua HTTP không cookie khớp hash CI; URL trả 200 không chuyển login. Smoke trình duyệt khách → admin mô phỏng → báo cáo → popup PASS.
+
+[Biên bản đầy đủ: version, source SHA, artifact/hash, phạm vi smoke và giới hạn](CODEX-PUBLIC-DEMO-RECEIPT.md). Demo không thay thế kiểm thử backend; migration **PREPARED_OFFLINE / LIVE_HOLD**, không merge main, không Firebase production/RTDB/Excel writes. Người dùng có thể bắt đầu thử; các lần sau cập nhật đúng Site ID này. Các mục dưới là lịch sử.
+
+---
+
 # CURRENT / REVIEW-3 L03 CLOSED — CODE_ACCEPTANCE_PASS / SITE_PENDING_ACCESS (06/11/2026)
 
 **Mốc mới nhất, thay thế mọi mục PENDING về L03 và Site bên dưới.** Codex đã chấp nhận ID nhóm cố định ở `bc5f5b4`; vấn đề glyph read-only L03 trong [Codex verification](CODEX-REVIEW3-VERIFICATION.md) **đã sửa, test và đóng**. Source code/test SHA bất biến [`91c2dd47de85c76fad53d1778e06c2786aaa136d`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/91c2dd47de85c76fad53d1778e06c2786aaa136d); [CI #42154518752](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42154518752) **SUCCESS 3/3 jobs chính xác SHA**: app-qa (896 unit PASS, 116 baseline skipped, build/Chrome REF/UI), data-emulator, full-app (QA01–QA10 PASS, 27 screenshots). Diff L03 chỉ CSS `item-frame.css` và hai file QA `compact-qa-main.tsx`, `ui-20261105-picker-layout-browser.mjs`. Chromium đo **Range glyph thật: 22 kịch bản, 78 cặp một dòng lệch tâm Y tối đa 0,3px; 6 wrap không cắt; list/popup 1440/900/390; guest/editable/mixed; 0 production requests**. Picker/REF/DATA/WIDTH và fixed group ID trước đó giữ PASS.
