@@ -1,0 +1,137 @@
+/** L01 full real ItemList + ReportDetailGrid RAM-only visual/interaction regression.
+ * Runs against unchanged ui-20261106-picker-fixture.html (NOT a CSS mock).
+ */
+import {spawn} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {resolve,join} from 'node:path';
+import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+import {setTimeout as delay} from 'node:timers/promises';
+const require=createRequire(import.meta.url);
+const {chromium}=require('../cell-edit-service/node_modules/playwright');
+const root=resolve('qa-results/picker-parity-content');
+mkdirSync(root,{recursive:true});
+const port=5199,origin='http://127.0.0.1:'+port;
+const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--mode','preact','--host','127.0.0.1','--port',String(port),'--strictPort'],{cwd:resolve('.'),stdio:['ignore','pipe','pipe']});
+let log='',browser;
+for(const s of [server.stdout,server.stderr])s.on('data',b=>log=(log+String(b)).slice(-20000));
+const results=[];
+async function waitServer(){
+ for(let i=0;i<120;i++){
+  if(server.exitCode!==null)throw Error('Vite quit '+log);
+  try{if((await fetch(origin+'/ui-20261106-picker-fixture.html')).ok)return}catch{}
+  await delay(200);
+ }throw Error('Vite unavailable '+log);
+}
+const probe=async page=>page.evaluate(()=>{
+ const sty=e=>{if(!e)return null;const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),b=e.getBoundingClientRect();return {
+  x:b.x,y:b.y,w:b.width,h:b.height,bg:s.backgroundColor,color:s.color,border:s.borderColor,
+  radius:s.borderRadius,padding:s.padding,fs:s.fontSize,fw:s.fontWeight,lh:s.lineHeight,
+  shadow:s.boxShadow,outline:s.outlineColor,outlineWidth:s.outlineWidth,transform:s.transform,
+  caret:{width:a.width,height:a.height,display:a.display,clip:a.clipPath,bg:a.backgroundColor}}};
+ const group=document.querySelector('[data-ui-reference-group="L01"]');
+ const heading=group?.querySelector('.compact-document-heading');
+ const refs={};
+ for(const field of ['department','type']){
+  const wrapper=group?.querySelector('[data-ui-reference-part="'+field+'"]');
+  const button=wrapper?.querySelector('button.cell-picker-trigger');
+  refs[field]={wrapper:sty(wrapper),button:sty(button),editable:!!button,disabled:button?.disabled??null,
+   expanded:button?.getAttribute('aria-expanded'),text:wrapper?.textContent?.trim()??''};
+ }
+ const l04=document.querySelector('[data-ui-reference-group="L04"] .compact-highlight-member button.cell-picker-trigger');
+ return {heading:sty(heading),mode:heading?.dataset.metadataMode,department:refs.department,type:refs.type,
+  reference:sty(l04),popovers:document.querySelectorAll('.cell-picker-popover:popover-open').length,
+  patches:document.querySelector('[data-qa="last-patch"]')?.textContent??'',
+  pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
+});
+async function shot(page,name){
+ const data=await probe(page);
+ writeFileSync(join(root,name+'.json'),JSON.stringify(data,null,2));
+ writeFileSync(join(root,name+'.png'),await page.screenshot({fullPage:false}));
+ return data;
+}
+function approx(s,n,epsilon=1){return Math.abs(Number.parseFloat(s)-n)<=epsilon}
+function check(p,mode,id){
+ assert(p.heading,id+' missing L01');
+ assert(p.reference,id+' missing L04 reference');
+ const edit=mode==='edit',guest=mode==='guest';
+ const n=[p.department,p.type].filter(f=>f.editable).length;
+ assert.equal(n,edit?2:guest?0:1,id+' permission count');
+ if(n>0)assert.equal(p.mode,'editable',id+' mixed editable group');
+ else assert.equal(p.mode,'readonly',id+' readonly group');
+ for(const f of [p.department,p.type]){
+  if(f.editable){
+   assert(!f.disabled,id+' disabled editable');
+   assert(approx(f.button.fs,11,.3),id+' font size '+f.button.fs);
+   assert(approx(f.button.fw,550,1),id+' font weight '+f.button.fw);
+   assert(approx(f.button.radius,6,.6),id+' radius '+f.button.radius);
+   assert(approx(f.button.h,26,5)||f.button.h>26,id+' height '+f.button.h);
+   assert(approx(f.button.caret.width,5,.5)&&approx(f.button.caret.height,3,.5),id+' caret');
+  }else {
+   assert.equal(f.button,null,id+' fake readonly picker');
+   assert(f.wrapper&&approx(f.wrapper.fs,13,.4),id+' readonly font');
+  }
+ }
+ if(n===2||n===1){
+  const a=p.department.wrapper,b=p.type.wrapper;
+  if(a&&b)assert(Math.abs((a.y+a.h/2)-(b.y+b.h/2))<9,id+' metadata not same line');
+ }
+ if(n===0)assert(p.department.text||p.type.text,id+' missing readonly metadata');
+}
+async function main(){
+ await waitServer();
+ browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const page=await browser.newPage();
+ const blocked=[];
+ await page.route(/https?:\/\/(?!127\.0\.0\.1)/,route=>{blocked.push(route.request().url());return route.abort()});
+ for(const width of [1440,900,390])for(const surface of ['list','popup'])for(const mode of ['edit','mixed','guest']){
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface='+surface+'&mode='+mode);
+  await page.locator('[data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
+  if(surface==='popup'&&mode!=='guest'){
+   const toggle=page.getByRole('button',{name:'Chỉnh sửa nháp'});
+   if(await toggle.count())await toggle.click();
+  }
+  const id=[width,surface,mode].join('-');
+  const normal=await shot(page,id+'-normal');
+  check(normal,mode,id);
+  let states={normal};
+  const key=mode==='mixed'?'department':'type';
+  const target=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="'+key+'"] button.cell-picker-trigger').first();
+  if(mode!=='guest'){
+   await target.scrollIntoViewIfNeeded();
+   await target.hover();
+   await page.waitForTimeout(220);
+   const hover=await shot(page,id+'-hover');
+   const before=normal[key].button,after=hover[key].button;
+   assert.equal(after.bg,before.bg,id+' hover changed background');
+   assert(after.transform!=='none',id+' hover missing lift');
+   await target.focus();
+   await page.waitForTimeout(220);
+   const focus=await shot(page,id+'-focus');
+   assert.equal(focus[key].button.bg,before.bg,id+' focus changed background');
+   await target.click();
+   await page.locator('.cell-picker-popover:popover-open').waitFor({timeout:10000});
+   const opened=await shot(page,id+'-open');
+   assert(opened.popovers>0,id+' popover not open');
+   const options=page.locator('.cell-picker-popover:popover-open [role="option"]');
+   assert(await options.count()>0,id+' no options');
+   await page.keyboard.press('Escape');
+   assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' Escape');
+   await target.click();
+   await page.locator('.cell-picker-popover:popover-open').waitFor();
+   await page.mouse.click(2,2);
+   assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' outside click');
+   states={normal,hover,focus,opened};
+  }
+  results.push({width,surface,mode,states});
+ }
+ assert.equal(blocked.filter(x=>/firebaseio|firebasedatabase|sheets.googleapis/i.test(x)).length,0,'Production traffic');
+ writeFileSync(join(root,'summary.json'),JSON.stringify({result:'PASS',scenarios:results.length,results,blocked},null,2));
+ console.log('PICKER_PARITY_CONTENT_BROWSER_PASS scenarios='+results.length);
+}
+try{await main()}catch(e){
+ writeFileSync(join(root,'failure.txt'),String(e?.stack??e)+'\n'+log);
+ console.error('PICKER_PARITY_CONTENT_BROWSER_FAIL '+(e?.stack??e));
+ process.exitCode=1;
+}finally{await browser?.close().catch(()=>{});server.kill('SIGTERM');server.stdout?.destroy();server.stderr?.destroy()}
