@@ -235,6 +235,51 @@ async function main(){
   check(long,'edit','long-label-fixture-'+width);
   results.push({width,surface:'long-label-fixture',states:{long}});
  }
+ // Dedicated real-component fixture covers genuinely long Sở names,
+ // blank editable metadata, and every QPPL/HC/BC type at all widths.
+ for(const width of [1440,900,390])for(const surface of ['list','popup'])
+ for(const edge of ['long','empty','kinds'])for(const mode of ['edit','guest']){
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto(origin+'/tests/picker-parity-content-fixture.html?surface='+surface+'&mode='+mode+'&edge='+edge);
+  await page.locator('[data-edge="'+edge+'"]').waitFor({timeout:12000});
+  if(surface==='popup'&&mode==='edit'){
+   const toggle=page.getByRole('button',{name:'Chỉnh sửa nháp'});
+   if(await toggle.count())await toggle.click();
+  }
+  const groups=page.locator('[data-ui-reference-group="L01"]');
+  await groups.first().waitFor({timeout:12000});
+  const first=groups.first();
+  const id='edge-'+width+'-'+surface+'-'+mode+'-'+edge;
+  const kindCount=await groups.count();
+  assert(kindCount>0,id+' missing contentDetails group');
+  if(edge==='empty'){
+   const metadata=first.locator('.compact-document-heading');
+   if(mode==='edit'){
+    await metadata.waitFor();
+    assert.equal(await metadata.locator('button.cell-picker-trigger').count(),2,id+' missing blank pickers');
+   }else{
+    assert.equal(await metadata.count(),0,id+' phantom readonly heading');
+   }
+  }
+  if(edge==='long'){
+   const department=first.locator('[data-ui-reference-part="department"]');
+   await department.waitFor();
+   assert((await department.innerText()).includes('Sở Kế hoạch'),id+' missing truly long department');
+   const heading=first.locator('.compact-document-heading');
+   if(await heading.count()){
+    const box=await heading.boundingBox();
+    const inner=await first.boundingBox();
+    assert(box&&inner&&box.width<=inner.width+2,id+' metadata breaks column width');
+   }
+  }
+  if(edge==='kinds'){
+   const values=await groups.locator('[data-ui-reference-part="type"]').evaluateAll(
+    elements=>elements.map(el=>el.getAttribute('data-kind')).filter(Boolean));
+   for(const kind of ['QPPL','HC','BC'])assert(values.includes(kind),id+' missing '+kind);
+  }
+  const state=await shot(page,id);
+  results.push({width,surface,mode,edge,states:{state}});
+ }
  // Reduced motion / print: affordance cannot lift or cast a drop shadow.
  await page.setViewportSize({width:900,height:900});
  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
