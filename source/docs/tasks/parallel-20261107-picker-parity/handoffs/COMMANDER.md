@@ -20,3 +20,12 @@ Code SHA new: **NONE**; final tested SHA: **NONE**; picker parity acceptance **N
 5. Update this checkpoint and TRACKER at each material event; docs-only changes separate from code SHA.
 
 Scope guard: no merge main, Firebase production, migration, RTDB/Excel writes, source changes, new agent/chat. Continue HEAD, do not reset.
+
+## Tiến độ đã commit (07/11)
+- Tracker HEAD updates: `a738f50` (initial), `5512f6a` (worker IN_PROGRESS verified).
+- Workflow exact-SHA acceptance + package + isolated CAS: [`6559a21`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/6559a218a5bd0b3958662c91d1ceec0009be7357); tạo thành công, file đã được fetch lại/verify. **Chưa chạy**; workflow chỉ push trigger khi source/scripts/tests thay đổi hoặc workflow_dispatch, tránh báo FAIL giả do worker chưa bàn giao.
+- Worker docs-only HEAD: CONTENT `b2ed2e9`, STAGES `a514eed`; cả hai IN_PROGRESS, code SHA NONE và tests NOT RUN, không tích hợp sớm. Checkpoint của mỗi worker là source of truth tiếp theo.
+- Tên script mà workflow đòi là `source/scripts/picker-parity-content-browser.mjs` và `source/scripts/picker-parity-stages-browser.mjs`. Trước chạy CI phải đối chiếu tên script thực tế worker; không hạ yêu cầu browser acceptance xuống optional.
+- Public Site demo vẫn v4; DEMO_PENDING về mặt nhiệm vụ, chưa có gói final SHA, artifact hoặc deployment mới.
+
+Tiếp quản ngay: đọc lại worker HEAD/checkpoint, sửa workflow nếu script contract khác, tích hợp khi có code+evidence, chạy workflow ở integrated exact SHA, dựng gói và ghi DEMO_HANDOFF nếu Sites API không có. Không claim DONE từ checkpoint docs-only.
