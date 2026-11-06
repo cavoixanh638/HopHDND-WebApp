@@ -1,10 +1,10 @@
 # COMMANDER checkpoint — UI controls 06/11/2026
 
-Status: PICKER_GATE_PASS / TRACKS_WORKER_PASS / INTEGRATED_QA_RUNNING / DEMO_PENDING
+Status: PICKER_PASS / TRACKS_PASS / INTEGRATION_CODE_PACKAGE_PASS / SITE_DEMO_PENDING
 Owner/branch: COMMANDER / `ui/20261106-controls-command`
 Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
 HEAD tại khảo sát đầu: `0eede66c4f8c05d416084aeab08fd5a030f5bc80` (khởi tạo/điều phối; chưa có code tính năng mới)
-PICKER-only code/tested SHA: `102fd250aee050be2d51f9a3bc736bb7ab60bf99` (CI #42252326012 3/3 PASS); final combined code SHA NOT YET TESTED
+Final combined source/code-tested SHA: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa` (CI #42256616362, 3/3 SUCCESS). Earlier PICKER-only SHA `102fd250aee050be2d51f9a3bc736bb7ab60bf99` PASS.
 Reference 4 nhân sự: `ab8629c7575debd494c908c14bde9967a575a82a` (KHÔNG dùng `91c2dd4`); caret nhỏ là ngoại lệ có chủ ý.
 Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42238116883), 3/3 SUCCESS theo README, **không dùng thay PASS đợt mới**.
 
@@ -89,3 +89,17 @@ Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/action
 - [Integrated CI #42255472845](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42255472845) triggered at exact SHA `003b25ae...`. At first check: isolated CAS SUCCESS; frontend TypeScript/unit/build/browser scripts/reference compare/full-app Emulator pending; **do not claim integrated PASS yet**.
 - On TRACKS worker tip, dedicated CI is green, but independent legacy workflow jobs are red: V6 L1 grouped type frame, V5 L4 guest canonical value, broad firebase-emulator 403/400. These are *not hidden or lowered*. Need assess scope relevance against combined CI/known baseline, without scope expansion.
 - Sites API not exposed by connected tools; can't save-version/deploy to existing Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` from here. Retain `DEMO_PENDING`, update Codex handoff after integrated exact SHA QA/package; no new Site, no production writes or main merge.
+
+## Final source QA / artifact package — 07/11/2026 00:00:13 UTC+7
+- **INTEGRATION_CODE_AND_PACKAGE_PASS** on final tested source SHA **`e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`**. This includes PICKER restoration, 5 independent TRACKS rail widths, and coordination CI + README packaging. Two-worker feature source was first combined at `003b25ae9f34b62c8fdca5c4bc176992ae8b6753` and also passed 3/3 CI [#42255472845](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42255472845).
+- FINAL exact-SHA [CI #42256616362](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42256616362) **completed SUCCESS, 3/3 jobs** at 2026-11-06 17:00:13 UTC: `controls-and-package`, `isolated-cas`, `real-app-emulator`. TypeScript, 905 Vitest PASS (116 pre-existing skips), both builds, synthetic browser 18 PNG, PICKER 24/24 (reference and baseline each 24/24) + gold-reference 48 snapshots/0 diff, TRACKS six modes 5 asymmetric widths (1440/900/390), CAS, full-app Emulator QA01–QA10 incl persisted five widths and guest/mixed 390/900, **all PASS**.
+- Artifacts SAME SHA: controls/package [13523312297](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42256616362/artifacts/13523312297) (incl screenshots/rects, `ui-20261106-tracks`), isolated CAS [13523391580](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42256616362/artifacts/13523391580), full-App Emulator [13522538680](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42256616362/artifacts/13522538680). GitHub artifact retention 14 days.
+- Built exact SHA: `dist-compact-qa/compact-qa.html` `af29df30d12015e8b73d0c05cc68896723a1b0bc4695314c18c3c36a5d34cc68`; JS `67f2552d6775cdfaa025f2b40f5fbeee7f0165bdf9f518870491d4dff1b4f015`; CSS `5362f1c5e74d0e241058357f846cd1b3df85302c1af0ccbcb7e009b2872f4d4c` (SHA256). CI tarball `0c57bf08a6f45de00f81d83dd19b76c1af7badd4ffbad5540169695374014820`. Full synthetic READY; default standalone `Dashboard_HĐND.html` is **NOT** the demo entry.
+- User-delivery ZIP `HopHDND_UI_Controls_Full_Synthetic_e095205c.zip`, **SHA256 `0258f2838da5799ad988c9ef42442790e2a732f64882c02c373b0b85b78ab605`**, has 19 files (tested full synthetic assets byte-identical to CI, README, manifest per file, representative PNG and browser rects). Verified ZIP integrity, source SHA, 48/48 visual diff, 24 PICKER and 6 TRACKS cases; local HTTP smoke admin+guest HTML/JS/CSS 200, asset bytes match hashes. The ZIP is available in the conversation's attached outputs, not committed to GitHub; Codex can use GitHub Actions artifact to reconstruct it.
+- Outside acceptance-scope historical workflows on TRACKS worker tip reported failures (V6 L1 grouped type, V5 L4 guest canonical, broad Firebase suite with 403/400). These were **not suppressed or claimed green**; the dedicated full integrated 3-job acceptance above is green. No merge to main, no production write or live migration.
+- Existing public Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` **NOT UPDATED**: Sites API/tool unavailable; public URL unable to be smoke-tested from this runtime (DNS resolution/cache miss). **Sites source SHA, saved version, deployment ID, succeeded state, asset hashes at live URL, public-no-login smoke all PENDING.** No new Site. **Entire wave remains DEMO_PENDING, NOT DONE**, despite code/package completion.
+
+### Next (only Site dependency)
+1. Codex with Sites API: inspect existing Site ID and source; use FULL SYNTHETIC built artifacts at exact source SHA, save new version/deploy same Site until `succeeded`. Do not create new Site.
+2. Verify Site public no login and live asset hashes, screenshot list/popup on 1440/900/390 with admin/guest/mixed and 5 widths; capture Sites source SHA distinct from GitHub source SHA, version/deployment ID/time/URL.
+3. Only with proof, update tracker/checkpoint from DEMO_PENDING to DONE. If no Sites access, keep pending without touching already accepted code/package.
