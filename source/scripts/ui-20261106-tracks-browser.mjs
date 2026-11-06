@@ -37,10 +37,11 @@ const navigate=async(search,viewport)=>{
  await delay(200);
 };
 const measure=()=>evaluate(`(()=>{
- const cells=[...document.querySelectorAll('.item-data-table td[data-l03-layout],.report-detail-grid td[data-l03-layout]')];
+ const stages=[...document.querySelectorAll('.compact-stages[data-rev2]')];
  const r=e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height};};
- return cells.slice(0,8).map(td=>{
-  const stage=td.querySelector('.compact-stages');
+ return stages.slice(0,8).map(stage=>{
+  const td=stage.closest('td');
+  if(!td)throw Error('L03 stage missing ancestor TD');
   const rows=[...td.querySelectorAll('.compact-stage-row')];
   return {mode:td.dataset.l03Layout,physical:r(td),stage:r(stage),
    computed:getComputedStyle(stage).gridTemplateColumns,
