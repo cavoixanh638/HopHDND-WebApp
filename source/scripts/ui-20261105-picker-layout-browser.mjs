@@ -255,6 +255,25 @@ try{
      screenshot:await shot('ui-picker-popup-wrapped-'+width)});
  }
 
+ // Exercise actual stage CSS at the newly allowed whole-column budgets.
+ // Existing QA10 verifies persistence and physical column projection separately.
+ for(const [mode,budgets] of [['readonly',[180,260,320]],['editable',[260,340,420]]]){
+  for(const budget of budgets){
+   await navigate(mode==='readonly'?'guest=1':'edit=1',900,900);
+   await evalJs(`document.querySelector('.compact-stages[data-rev2=true]').style.width='${budget-16}px'`);
+   const narrow=await rects();
+   assert.equal(narrow.mode,mode);
+   assert(Math.abs(narrow.stage.w-(budget-16))<1,'Whole-cluster width ignored');
+   const states=narrow.rows.map(row=>row.status);
+   assert(states.every(state=>Math.abs(state.x-states[0].x)<1&&Math.abs(state.w-states[0].w)<1),
+     'Narrow status controls must share aligned columns and equal widths');
+   assert(states.every(state=>state.x+state.w<=narrow.stage.x+narrow.stage.w+1),
+     'Narrow status extends beyond requested whole-cluster width');
+   glyphAligned(narrow,'narrow-'+mode+'-'+budget,{wrap:true});
+   summary.push({mode:'narrow-'+mode,budget,layout:narrow,
+     screenshot:await shot('ui-picker-narrow-'+mode+'-'+budget)});
+  }
+ }
  assert(requests.every(url=>!/(?:firebaseio|firebasedatabase|identitytoolkit|sheets.googleapis)/i.test(url)),
   'Production data request detected');
  const log={result:'PASS',summary,productionRequests:0};
