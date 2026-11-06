@@ -1,5 +1,8 @@
 > **CURRENT CHECKPOINT — 06/11/2026 / REVIEW-3 RESUME.** Read `REVIEW-3-END-TO-END.md`: source SHA `4bccba5` 3/3 CI PASS for *previous scope*, but stable report row code still based on min(member recordId) and violates membership churn. Coordination HEAD when resumed `0a6d795849d3bc4bc56b861c15955cde04e51261`; no new source changes at checkpoint. Single owner commander completing real group ID persistence, rename path, renderer, unit/Chrome/full-App, package/hash and Codex handoff. Current status: **GROUP-ID REMEDIATION IN_PROGRESS / SITE_PENDING / LIVE_HOLD**. No worker restarted; no main merge/prod Firebase writes. This block supersedes historical statements below that “only Site remains.”
 
+**MỐC REVIEW-3 SAU SỬA (06/11):** [RED CI #42146057835](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42146057835) xác nhận 2 FAIL (`record:r02→r01/r03`) khi thêm/xóa/chuyển thành viên. Đã thay anchor bằng registry ID có namespace ở `report-reference-identity.ts`, giữ trong `CatalogConfig.groupIdentities` (Firebase/Google profile/local), đổi tên xác nhận qua `CatalogPanel`, alias đồng nhất dòng báo cáo và ID ô; QA preview/CDP có bài add/remove/move/reorder/rename/reload/copy. Code/test mới [`92f5ed5`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/92f5ed5f5393dd358e3e7a1f2ff19d6ed52a1f25), [CI #42147188811](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42147188811) **IN_PROGRESS chưa PASS**. Chưa khóa package/hash/Site. Chỉ thêm code trên coordination; không sửa worker, không main merge, không Firebase production, migration LIVE_HOLD.
+
+
 # COMMANDER checkpoint — 05/11/2026 (đầu phiên)
 
 ## Checkpoint đầu tiên, trước kiểm sâu
