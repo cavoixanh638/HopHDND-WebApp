@@ -148,6 +148,29 @@ async function scenario(page,{surface,mode,width,long=false}){
  assert(await popup.getByRole('option').count()>=2,name+' missing real choices');
  await page.keyboard.press('Escape');
  assert.equal(await target.getAttribute('aria-expanded'),'false',name+' Escape');
+ if(surface==='list'&&mode==='edit'&&width===1440&&!long){
+  // Genuine outside pointer (not dispatchEvent), then test repositioning
+  // while a real CellPicker is open. Never assert a fake overlay remains.
+  await target.click();
+  await page.locator('.cell-picker-popover:popover-open').waitFor();
+  await page.mouse.click(5,5);
+  assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,
+   name+' outside click did not close');
+  await target.click();
+  await page.locator('.cell-picker-popover:popover-open').waitFor();
+  await page.evaluate(()=>window.scrollBy(0,200));
+  await page.setViewportSize({width:900,height:900});
+  await page.waitForTimeout(150);
+  const visible=page.locator('.cell-picker-popover:popover-open');
+  if(await visible.count()){
+   const rect=await visible.boundingBox();
+   assert(rect&&rect.x>=-1&&rect.y>=-1&&rect.x+rect.width<=901&&
+    rect.y+rect.height<=901,name+' scroll/resize off-screen popover: '+JSON.stringify(rect));
+  }
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({width,height:900});
+  await target.scrollIntoViewIfNeeded();
+ }
  await target.click();
  await page.locator('.cell-picker-popover:popover-open').waitFor();
  const choices=page.locator('.cell-picker-popover:popover-open [role="option"]');
