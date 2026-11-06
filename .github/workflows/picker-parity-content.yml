@@ -1,0 +1,58 @@
+name: Picker parity CONTENT isolated acceptance
+on:
+  push:
+    branches:
+      - ui/20261107-picker-parity-content
+    paths:
+      - 'source/src/features/items/CompactGroupedValue.tsx'
+      - 'source/src/features/items/picker-parity-content.css'
+      - 'source/scripts/picker-parity-content*.mjs'
+      - 'source/tests/picker-parity-content*.test.ts*'
+      - '.github/workflows/picker-parity-content.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: picker-parity-content-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-and-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Pin exact source SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Locked dependencies and headless Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Typecheck and relevant unit tests
+        run: |
+          npm run typecheck
+          npm test -- tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx
+      - name: Compact full synthetic build
+        run: npm run build:compact:qa
+      - name: Real Chromium L01 and L04 within same List/popup
+        run: node scripts/picker-parity-content-browser.mjs
+      - name: Upload own-SHA measurement JSON and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-content-${{ github.run_id }}-${{ github.sha }}
+          path: source/qa-results/picker-parity-content/
+          if-no-files-found: warn
+          retention-days: 14
