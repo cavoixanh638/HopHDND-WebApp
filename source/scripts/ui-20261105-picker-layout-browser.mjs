@@ -48,16 +48,47 @@ const shot=async name=>{
  const file=join(OUT,name+'.png');writeFileSync(file,png);
  return {file,bytes:png.length};
 };
-const rects=()=>evalJs(`(()=>{
- const stage=document.querySelector('.compact-stages[data-rev2=true]');
+const rects=(at=0)=>evalJs(`(()=>{
+ const stage=[...document.querySelectorAll('.compact-stages[data-rev2=true]')][${at}];
  if(!stage)return null;
  const r=el=>{if(!el)return null;const b=el.getBoundingClientRect();
   return {x:Math.round(b.x*10)/10,y:Math.round(b.y*10)/10,
    w:Math.round(b.width*10)/10,h:Math.round(b.height*10)/10};};
+ const glyph=el=>{
+   if(!el)return null;
+   const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+   const fragments=[];
+   while(walker.nextNode()){
+     const node=walker.currentNode;
+     if(!node.textContent?.trim()||node.parentElement?.closest('[hidden],[aria-hidden="true"]'))continue;
+     const range=document.createRange();range.selectNodeContents(node);
+     for(const box of range.getClientRects()){
+       if(box.width>.2&&box.height>.2)fragments.push({
+         x:Math.round(box.x*10)/10,y:Math.round(box.y*10)/10,
+         w:Math.round(box.width*10)/10,h:Math.round(box.height*10)/10,
+         cy:Math.round((box.y+box.height/2)*10)/10
+       });
+     }
+   }
+   fragments.sort((a,b)=>a.y-b.y||a.x-b.x);
+   const lines=fragments.filter((entry,index,list)=>
+     !list.slice(0,index).some(previous=>Math.abs(previous.y-entry.y)<2));
+   return {first:lines[0]??null,lines:lines.length,fragments,
+     lastBottom:Math.max(0,...fragments.map(x=>x.y+x.h)),
+     firstX:Math.min(Infinity,...fragments.map(x=>x.x)),
+     lastRight:Math.max(0,...fragments.map(x=>x.x+x.w)),
+     text:el.textContent?.trim().slice(0,95)};
+ };
  const rows=[...stage.querySelectorAll('.compact-stage-row')];
  return {mode:stage.dataset.levelLayout,grid:getComputedStyle(stage).gridTemplateColumns,
   cell:r(stage.closest('td')),stage:r(stage),
   rows:rows.map(row=>({key:row.dataset.stageField,
+   row:r(row),
+   titleText:glyph(row.querySelector('.compact-stage-title')),
+   statusText:glyph(row.querySelector('.compact-stage-state')),
+   partAlign:(()=>{const part=row.querySelector('.compact-stage-state > .compact-part');
+     return part?getComputedStyle(part).alignItems:null;})(),
+   part:r(row.querySelector('.compact-stage-state > .compact-part')),
    label:r(row.querySelector('.compact-stage-label')),
    level:r(row.querySelector('[data-level-editor=true]')),
    status:r(row.querySelector('.compact-stage-state')),
@@ -77,6 +108,31 @@ const aligned=(a,mode)=>{
  const buttonWidths=a.rows.filter(x=>x.button).map(x=>x.button.w);
  assert(buttonWidths.every(w=>Math.abs(w-buttonWidths[0])<1),'Unequal picker widths');
 };
+const glyphAligned=(layout,context,{wrap=false}={})=>{
+ assert(layout&&layout.rows.length===3,'Missing stage glyphs '+context);
+ for(const member of layout.rows){
+   const label=member.titleText,state=member.statusText,outer=member.row,value=member.status;
+   assert(label?.first&&state?.first,'Missing REAL text rect '+context+' '+JSON.stringify(member));
+   assert(value&&outer,'Missing text container '+context);
+   assert(state.first.y>=outer.y-2&&state.lastBottom<=outer.y+outer.h+2,
+     'Value text clipped vertically '+context+' '+JSON.stringify(member));
+   assert(state.firstX>=value.x-2&&state.lastRight<=value.x+value.w+2,
+     'Value text clipped horizontally '+context+' '+JSON.stringify(member));
+   if(label.lines===1&&state.lines===1){
+     const delta=Math.abs(label.first.cy-state.first.cy);
+     assert(delta<=2.8,'REAL L03 glyph center drift '+context+' '+member.key+
+       ' delta='+delta+' text='+JSON.stringify({label,state,partAlign:member.partAlign,
+       row:outer,status:value}));
+   }else if(wrap){
+     assert(state.lines>=1&&state.lastBottom<=outer.y+outer.h+2,
+       'Multiline must stay legible '+context+' '+JSON.stringify(member));
+   }
+   if(member.editable!=='true'&&member.part){
+     assert(member.partAlign==='center',
+       'Read-only content still stretches at top '+context+' '+member.key);
+   }
+ }
+};
 const navigate=async(query,width,height)=>{
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:width<600});
  await send('Page.navigate',{url:base+'?'+query});
@@ -89,7 +145,7 @@ try{
   onRequest:url=>requests.push(url)});
  for(const width of [1440,900,390]){
   await navigate('edit=1',width,Math.min(900,width===390?844:900));
-  const layout=await rects();aligned(layout,'editable');
+  const layout=await rects();aligned(layout,'editable');glyphAligned(layout,'editable-'+width);
   const refs=await evalJs(`(()=>[...document.querySelectorAll('.compact-stages[data-rev2] [data-ui-reference-part]')].map(e=>e.dataset.uiReferencePart))()`);
   for(const part of ['partyLevel','progressParty','progressBuild','progressCouncil'])
    assert(refs.includes(part),'Reference part absent: '+part);
@@ -130,12 +186,12 @@ try{
   const isClosed=await evalJs("document.querySelector('.compact-stages button.cell-picker-trigger')?.getAttribute('aria-expanded')");
   assert.equal(isClosed,'false','Escape did not reset expanded state');
   await navigate('guest=1',width,Math.min(900,width===390?844:900));
-  const readonly=await rects();aligned(readonly,'readonly');
+  const readonly=await rects();aligned(readonly,'readonly');glyphAligned(readonly,'readonly-'+width);
   assert(readonly.rows.every(row=>row.button===null),'Guest stage created picker');
   summary.push({viewport:width,mode:'readonly',layout:readonly,screenshot:await shot('ui-picker-readonly-'+width)});
  }
  await navigate('popup=1',1440,900);
- const popup=await rects();aligned(popup,'readonly');
+ const popup=await rects();aligned(popup,'readonly');glyphAligned(popup,'popup-readonly-1440');
  summary.push({mode:'popup',layout:popup,screenshot:await shot('ui-picker-popup-1440')});
  assert(requests.every(url=>!/(?:firebaseio|firebasedatabase|identitytoolkit|sheets.googleapis)/i.test(url)),
   'Production data request detected');
