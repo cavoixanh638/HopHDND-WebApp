@@ -23,3 +23,8 @@ GitHub Actions on-push chỉ tự nhận workflow khi file workflow có mặt tr
 
 ### CI event cập nhật
 Run [#42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245720825) exact commit `9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`: `controls-and-package` **success** (full synthetic/list/popup browser baseline smoke + SHA256 artifact `ui-20261106-controls-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`), `isolated-cas` **success** (artifact `ui-20261106-cas-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`), `real-app-emulator` đang chạy khi quan sát. Tính năng PICKER/TRACKS **chưa tích hợp**, không tính C01–C10/C15 PASS.
+
+### CI confirmed 3/3 SUCCESS (source BEFORE feature integration)
+- [Run #42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245720825): `completed / success` cho cả `controls-and-package`, `isolated-cas`, `real-app-emulator` trên exact SHA **`9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`**.
+- 3 artifact: `ui-20261106-controls-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13518385649), `ui-20261106-cas-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13518945326), `ui-20261106-real-app-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc` (ID 13517841387).
+- **GIỚI HẠN:** source SHA đó chỉ có script/CI điều phối, chưa có code PICKER + TRACKS. Đây là `BASELINE_COORDINATION_PASS`, **KHÔNG phải FINAL_INTEGRATION_PASS hoặc DEMO_DONE**. Cần rerun toàn bộ gates trên SHA tích hợp mới.
