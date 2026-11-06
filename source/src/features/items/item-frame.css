@@ -1810,19 +1810,10 @@
   [data-ui-picker-skin="standard"] button.cell-picker-trigger::before{
   content:none!important;display:none!important;
 }
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-stages[data-rev2="true"] > .compact-stage-row >
-  [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after,
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-document-heading[data-metadata-mode="editable"]
-  [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after{
-  content:"";display:block!important;position:static;z-index:auto;
-  flex:0 0 7px;align-self:center;
-  width:7px;height:7px;margin:0 2px 3px auto!important;
-  border:0;border-right:1.8px solid currentColor;border-bottom:1.8px solid currentColor;
-  border-radius:0;background:transparent!important;
-  transform:rotate(45deg)!important;pointer-events:none;
-}
+/* 06/11 integration: remove the old higher-specificity V-chevron pseudo
+   from standard L01/L03 pickers. Its transparent !important background made
+   the shared filled triangle invisible (real Chrome witness #42248060058).
+   The scoped shared ::after below now owns ONE caret on all editable fields. */
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stages[data-rev2="true"] > .compact-stage-row >
   [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
