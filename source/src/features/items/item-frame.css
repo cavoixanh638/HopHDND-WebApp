@@ -1716,7 +1716,7 @@
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stages[data-rev2="true"] .compact-stage-state{
   display:flex;align-items:center;align-self:center;justify-self:start;
-  box-sizing:border-box;width:var(--ui-stage-status-track);min-height:36px;
+  box-sizing:border-box;width:100%;max-width:238px;min-height:36px;
   min-width:0;margin:0!important;padding:0!important;
   border:0!important;border-radius:0;background:transparent!important;
   color:var(--workflow-text);
