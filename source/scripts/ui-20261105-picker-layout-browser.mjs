@@ -103,7 +103,10 @@ const aligned=(a,mode)=>{
  const labels=a.rows.map(x=>x.label?.x),states=a.rows.map(x=>x.status?.x);
  assert(labels.every(x=>Math.abs(x-labels[0])<1),'Label x not aligned: '+JSON.stringify(a));
  assert(states.every(x=>Math.abs(x-states[0])<1),'Status x not aligned: '+JSON.stringify(a));
- assert(a.rows.every(x=>x.status.w>=230&&x.status.w<=245),'Wrong progress width');
+ const available=a.stage.x+a.stage.w-states[0];
+ const expected=Math.min(238,available);
+ assert(expected>0&&a.rows.every(x=>Math.abs(x.status.w-expected)<1),
+  'Progress width must fit the remaining whole-cluster budget: '+JSON.stringify(a));
  assert(a.stage.w<=a.cell.w+1,'Stage extends beyond physical column');
  const buttonWidths=a.rows.filter(x=>x.button).map(x=>x.button.w);
  assert(buttonWidths.every(w=>Math.abs(w-buttonWidths[0])<1),'Unequal picker widths');
