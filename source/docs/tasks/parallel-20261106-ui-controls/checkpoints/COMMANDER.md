@@ -1,6 +1,6 @@
 # COMMANDER checkpoint — UI controls 06/11/2026
 
-Status: PICKER_GATE_PASS_ON_COORDINATION / TRACKS_PENDING / FINAL_INTEGRATION_PENDING / DEMO_PENDING
+Status: PICKER_GATE_PASS / TRACKS_WORKER_PASS / INTEGRATED_QA_RUNNING / DEMO_PENDING
 Owner/branch: COMMANDER / `ui/20261106-controls-command`
 Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
 HEAD tại khảo sát đầu: `0eede66c4f8c05d416084aeab08fd5a030f5bc80` (khởi tạo/điều phối; chưa có code tính năng mới)
@@ -81,3 +81,11 @@ Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/action
 - Exact archive (asset/geometry/screenshot evidence): `ui-20261106-controls-42252326012-102fd250aee050be2d51f9a3bc736bb7ab60bf99` **artifact ID 13520928045**; isolated CAS **13520058644**, full-app Emulator **13520823559**. Manifest `source-sha.txt` directly inspected: `102fd250aee050be2d51f9a3bc736bb7ab60bf99`.
 - PICKER worker-owned branch remains untouched: HEAD `dae2051c39ebf595d6f79f31d28125b8db04b5ca`; its checkpoint still `CODE_WIP_TEST_PENDING — NOT DONE` and no own CI. Verified and fixed **cross-contract** only on COMMANDER: invisible Sở caret caused by obsolete V pseudo selector, fixed 2 old contradictory CSS unit assertions, ref selector absent on historical SHA, Vite test-child exit, caret extra wrapping and CSS transition sampling.
 - Status boundary: **PICKER accepted as integrated QA on coordination; TRACKS not yet integrated or PASS on same final code SHA, public Site version not updated. Overall IN_PROGRESS / DEMO_PENDING.** No main merge, production writes, migration or deployed Site change.
+
+## 06/11 23:44+07 — TRACKS worker DONE, COMMANDER integration candidate
+- Worker TRACKS branch `ui/20261106-l03-tracks` HEAD `d0a54f3957f02c9a6238eb73737f5a4384df961e` records `DONE`. Last **code-tested** SHA `ea9758dfe0bb25cb97d888ef3d0890bf68997555`, [dedicated CI #42251062095](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095) **2/2 PASS**. Since tested SHA, only checkpoint changed. Tested 905 unit PASS / 116 skipped, 5 independent widths, isolated CAS/real-app QA01–QA10 (27 screenshots), browser viewports 1440/900/390 incl mixed/popup/wrap.
+- PICKER worker checkpoint itself remains WIP without own test, **but COMMANDER had already accepted/corrected it** on SHA `102fd250aee050be2d51f9a3bc736bb7ab60bf99` with [#42252326012](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42252326012) **3/3 PASS** and gold reference visual diff `ab8629c` 48/48 matched; owner branch unchanged.
+- Cross-branch compare of baseline shows **zero overlapping modified paths** (TRACKS 10 feature/test paths, PICKER paths separate). COMMANDER imported exactly 10 tested TRACKS source/test blobs from SHA `ea9758d...` into **own branch only**, commit **`003b25ae9f34b62c8fdca5c4bc176992ae8b6753`**. Excluded worker-only workflow; COMMANDER's own path-filtered workflow already exists.
+- [Integrated CI #42255472845](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42255472845) triggered at exact SHA `003b25ae...`. At first check: isolated CAS SUCCESS; frontend TypeScript/unit/build/browser scripts/reference compare/full-app Emulator pending; **do not claim integrated PASS yet**.
+- On TRACKS worker tip, dedicated CI is green, but independent legacy workflow jobs are red: V6 L1 grouped type frame, V5 L4 guest canonical value, broad firebase-emulator 403/400. These are *not hidden or lowered*. Need assess scope relevance against combined CI/known baseline, without scope expansion.
+- Sites API not exposed by connected tools; can't save-version/deploy to existing Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` from here. Retain `DEMO_PENDING`, update Codex handoff after integrated exact SHA QA/package; no new Site, no production writes or main merge.
