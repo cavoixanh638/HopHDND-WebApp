@@ -731,7 +731,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
               else openL03WidthEditor();
             }}>L03 · Chỉnh 5 độ rộng cột nhỏ</button>
           <span className="admin-l03-width-summary">Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
-          {l03WidthEditorOpen&&<form id="admin-l03-width-editor" className="admin-l03-width-editor"
+          {l03WidthEditorOpen&&<form noValidate id="admin-l03-width-editor" className="admin-l03-width-editor"
             onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
             {(['readonly','editable'] as const).map(mode=><fieldset className="admin-l03-mode" key={mode}>
               <legend>{mode==='readonly'?'Chỉ xem cấp trình (2 cột)':'Được sửa cấp trình (3 cột)'}</legend>
@@ -746,9 +746,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
                       value={(l03WidthsDraft[mode] as Record<string,string>)[field]}
                       aria-label={'L03 '+(mode==='readonly'?'Chỉ xem':'Được sửa')+' · '+name}
                       aria-invalid={!!l03WidthErrors[id]}
-                      onChange={event=>{setL03WidthErrors(previous=>{
-                        const next={...previous};delete next[id];delete next.global;return next;});
-                        setL03WidthsDraft(previous=>({...previous,[mode]:{...previous[mode],[field]:event.currentTarget.value}}));
+                      onChange={event=>{const value=event.currentTarget.value;
+                        setL03WidthErrors(previous=>{
+                          const next={...previous};delete next[id];delete next.global;return next;});
+                        setL03WidthsDraft(previous=>({...previous,[mode]:{...previous[mode],[field]:value}}));
                       }} disabled={viewSaving}/>
                     {l03WidthErrors[id]&&<small className="admin-l03-field-error" role="alert">{l03WidthErrors[id]}</small>}
                   </label>;
