@@ -176,7 +176,13 @@ export function Pr95FullPreview(){
         'Phòng thử A','Phòng A đổi tên');
       const options={...registered.options,room:registered.options.room.map(value=>
         value==='Phòng thử A'?'Phòng A đổi tên':value)};
-      const next=validateCatalog({...registered,groupIdentities:updated,options});
+      // The catalog's specialist-room links must follow the explicit room
+      // rename too; otherwise validateCatalog correctly refuses a stale
+      // relationship to the former display label.
+      const specialistRooms=Object.fromEntries(Object.entries(registered.specialistRooms)
+        .map(([person,rooms])=>[person,rooms.map(room=>room==='Phòng thử A'
+          ?'Phòng A đổi tên':room)]));
+      const next=validateCatalog({...registered,groupIdentities:updated,options,specialistRooms});
       if(!saveCatalogLocally(identityQaSource,next))throw Error('QA registry reload save failed');
       setCatalogOverride(next);
       setItems(previous=>previous.map(item=>item.room==='Phòng thử A'
