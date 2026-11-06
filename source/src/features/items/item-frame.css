@@ -1779,10 +1779,6 @@
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
   [data-ui-picker-skin="standard"] button.cell-picker-trigger,
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-pair-lines [data-ui-picker-skin="standard"] button.cell-picker-trigger,
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="ubndLeader"] button.cell-picker-trigger,
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="vpLeader"] button.cell-picker-trigger{
   display:inline-flex!important;align-items:center!important;
   justify-content:flex-start!important;position:relative;isolation:auto;
   flex:1 1 auto;box-sizing:border-box;
@@ -1820,10 +1816,6 @@
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
   [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after,
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-pair-lines [data-ui-picker-skin="standard"] button.cell-picker-trigger:not(:disabled)::after,
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="ubndLeader"] button.cell-picker-trigger:not(:disabled)::after,
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="vpLeader"] button.cell-picker-trigger:not(:disabled)::after{
   content:"";display:block!important;position:static;z-index:auto;
   flex:0 0 7px;align-self:center;
   width:7px;height:7px;margin:0 2px 3px auto!important;
@@ -1837,10 +1829,6 @@
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode="editable"]
   [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
-:is(.item-data-table,.report-detail-grid) tbody td
-  .compact-pair-lines [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="ubndLeader"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
-:is(.item-data-table,.report-detail-grid) tbody td[data-col-key="vpLeader"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
   border-color:#356D86!important;
   background:var(--ui-picker-bg,#F2F6F9)!important;
   color:var(--ui-picker-fg,#426274)!important;
@@ -1863,4 +1851,38 @@
     .compact-stages[data-rev2="true"] > .compact-stage-row{
     grid-template-columns:subgrid!important;
   }
+}
+
+/* PICKER 06/11: the four L04 personnel fields deliberately keep their
+   pre-unification CellPicker skin (reference ab8629c). Removing them from the
+   multi-field "standard" selector above restores existing app.css + 609
+   compact-pair-lines rules, including normal/hover/focus/popover/list/popup.
+   Do not set geometry on .compact-stages here. */
+
+/* ONE small filled down-triangle per editable data picker, shared by List and
+   popup. Field selectors, never nth-child, prevent filter/nav/settings drift.
+   One ::after only: buttons have no native select marker or nested SVG caret.
+   The box is paint-only; keyboard and pointer hit target remain the BUTTON. */
+:is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:not(:disabled)::after{
+  content:""!important;display:block!important;position:static!important;
+  flex:0 0 6px!important;grid-column:auto;
+  width:6px!important;height:4px!important;min-width:6px;
+  margin:0 2px 0 5px!important;align-self:center!important;justify-self:center;
+  border:0!important;border-radius:0!important;
+  background:currentColor!important;
+  clip-path:polygon(0 0,100% 0,50% 100%);
+  transform:none!important;pointer-events:none;
+}
+/* L03 status uses the existing 2-track button grid: keep its shared width
+   and align its triangle in column 2. Erase only its former shaded caret rail. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{
+  content:none!important;display:none!important;background:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:not(:disabled)::after{
+  grid-column:2!important;margin:0!important;justify-self:center!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:disabled::after{
+  content:none!important;display:none!important;
 }
