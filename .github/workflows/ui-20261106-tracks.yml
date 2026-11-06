@@ -87,13 +87,33 @@ jobs:
           npm ci --no-audit --no-fund
           npm ci --prefix cell-edit-service --no-audit --no-fund
           npm ci --prefix parent-commit-service --no-audit --no-fund
-      - name: Real Auth/RTDB/Functions Emulator regression
-        run: npm run test:firebase
-      - name: Preserve emulator evidence
+      - name: Install pinned isolated Chromium
+        run: npx --prefix cell-edit-service playwright install chromium
+      - name: Real isolated Auth RTDB Callable backend regression
+        run: |
+          cd cell-edit-service
+          npm run test:isolated > stdout.local.txt 2>&1 || { tail -n 100 stdout.local.txt; exit 1; }
+          tail -n 25 stdout.local.txt
+      - name: Real FULL App admin guest and RTDB Functions Emulator
+        env:
+          FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+          GCLOUD_PROJECT: demo-hdnd
+          CI: 'true'
+          VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+          VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+          VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+        run: |
+          node scripts/final-app-qa-rules.mjs
+          node scripts/final-app-qa-runner.mjs
+      - name: Preserve isolated Emulator and full real App evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-20261106-tracks-emulator-${{ github.run_id }}
-          path: source/qa-results/
+          path: |
+            source/qa-results/
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
           if-no-files-found: warn
           retention-days: 14
