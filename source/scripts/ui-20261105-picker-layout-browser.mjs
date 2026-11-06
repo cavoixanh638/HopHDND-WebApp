@@ -189,10 +189,58 @@ try{
   const readonly=await rects();aligned(readonly,'readonly');glyphAligned(readonly,'readonly-'+width);
   assert(readonly.rows.every(row=>row.button===null),'Guest stage created picker');
   summary.push({viewport:width,mode:'readonly',layout:readonly,screenshot:await shot('ui-picker-readonly-'+width)});
+  await navigate('mixed=1',width,Math.min(900,width===390?844:900));
+  const mixedThree=await rects(0),mixedTwo=await rects(1);
+  aligned(mixedThree,'editable');aligned(mixedTwo,'readonly');
+  glyphAligned(mixedThree,'mixed-3-track-'+width);
+  glyphAligned(mixedTwo,'mixed-2-track-'+width);
+  assert(mixedThree.rows[0].editable==='false'&&mixedThree.rows[2].editable==='true',
+    'Three-track mixed row lost independent progress grants');
+  assert(mixedTwo.rows[0].editable==='true'&&mixedTwo.rows[2].editable==='false',
+    'Two-track mixed row lost independent progress grants');
+  summary.push({viewport:width,mode:'mixed',three:mixedThree,two:mixedTwo,
+    screenshot:await shot('ui-picker-mixed-'+width)});
+  await navigate('guest=1&wrap-status=1',width,Math.min(900,width===390?844:900));
+  const wrapped=await rects();
+  aligned(wrapped,'readonly');glyphAligned(wrapped,'wrapped-readonly-'+width,{wrap:true});
+  assert(wrapped.rows[2].statusText.lines>=2,'Expected genuine multiline read-only value');
+  summary.push({viewport:width,mode:'wrapped-readonly',layout:wrapped,
+    screenshot:await shot('ui-picker-wrapped-readonly-'+width)});
  }
  await navigate('popup=1',1440,900);
  const popup=await rects();aligned(popup,'readonly');glyphAligned(popup,'popup-readonly-1440');
  summary.push({mode:'popup',layout:popup,screenshot:await shot('ui-picker-popup-1440')});
+ for(const width of [1440,900,390]){
+   await navigate('popup=1',width,Math.min(900,width===390?844:900));
+   const readonlyPopup=await rects();
+   aligned(readonlyPopup,'readonly');
+   glyphAligned(readonlyPopup,'popup-readonly-'+width);
+   summary.push({viewport:width,mode:'popup-readonly',layout:readonlyPopup,
+     screenshot:await shot('ui-picker-popup-readonly-'+width)});
+   await navigate('popup=1&popup-mixed=1',width,Math.min(900,width===390?844:900));
+   await evalJs(`(()=>{
+     const trigger=[...document.querySelectorAll('button')]
+       .find(button=>button.textContent?.trim()==='Chỉnh sửa nháp');
+     if(!trigger)throw Error('Missing popup edit-mode toggle');
+     trigger.click();return true;
+   })()`);
+   await waitFor("document.querySelector('.report-detail-grid .compact-stages[data-level-layout=editable]')",
+     'real popup mixed permission mode');
+   const popupThree=await rects(0),popupTwo=await rects(1);
+   aligned(popupThree,'editable');aligned(popupTwo,'readonly');
+   glyphAligned(popupThree,'popup-mixed-3-track-'+width);
+   glyphAligned(popupTwo,'popup-mixed-2-track-'+width);
+   summary.push({viewport:width,mode:'popup-mixed',three:popupThree,two:popupTwo,
+     screenshot:await shot('ui-picker-popup-mixed-'+width)});
+   await navigate('popup=1&wrap-status=1',width,Math.min(900,width===390?844:900));
+   const popupWrapped=await rects();
+   glyphAligned(popupWrapped,'popup-wrapped-'+width,{wrap:true});
+   assert(popupWrapped.rows[2].statusText.lines>=2,
+     'Expected multiline status in actual read-only popup');
+   summary.push({viewport:width,mode:'popup-wrapped',layout:popupWrapped,
+     screenshot:await shot('ui-picker-popup-wrapped-'+width)});
+ }
+
  assert(requests.every(url=>!/(?:firebaseio|firebasedatabase|identitytoolkit|sheets.googleapis)/i.test(url)),
   'Production data request detected');
  const log={result:'PASS',summary,productionRequests:0};
