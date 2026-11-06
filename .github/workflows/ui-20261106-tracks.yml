@@ -53,6 +53,8 @@ jobs:
         run: npm run build:compact:qa
       - name: Real Chromium five rail editor and measured geometry
         run: node scripts/ui-20261106-tracks-browser.mjs
+      - name: Real Chromium L03 mixed roles popup wrapping glyph regression
+        run: node scripts/ui-20261105-picker-layout-browser.mjs
       - name: Preserve measured rectangles and screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -60,6 +62,7 @@ jobs:
           name: ui-20261106-tracks-browser-${{ github.run_id }}
           path: |
             source/qa-results/ui-20261106-tracks/
+            source/ui-20261105-artifacts/
             source/qa-results/ui-20261105/chrome-cdp.jsonl
           if-no-files-found: warn
           retention-days: 14
