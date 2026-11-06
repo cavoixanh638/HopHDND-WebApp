@@ -216,8 +216,8 @@ async function main(){
  // Real scroll and viewport resize while the dropdown is visible.
  await page.setViewportSize({width:390,height:844});
  await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
- const placementTarget=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="department"] button.cell-picker-trigger').first();
- await placementTarget.scrollIntoViewIfNeeded();await placementTarget.click();
+ const placementTarget=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="type"] button.cell-picker-trigger').first();
+ await placementTarget.scrollIntoViewIfNeeded();await placementTarget.hover();await placementTarget.click();
  await page.locator('.cell-picker-popover:popover-open').waitFor();
  await page.setViewportSize({width:420,height:740});
  await page.waitForTimeout(300);
