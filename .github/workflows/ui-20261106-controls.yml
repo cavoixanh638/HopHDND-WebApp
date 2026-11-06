@@ -34,6 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0 # reference ab8629c and baseline 8a201c for exact UI render
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -71,6 +72,30 @@ jobs:
               echo "FEATURE_WITNESS_PENDING $witness (not an acceptance PASS)"
             fi
           done
+      - name: Reference vs baseline vs restored four-person skin (REAL Chromium)
+        run: |
+          set -euo pipefail
+          for variant in reference baseline; do
+            if [ "$variant" = reference ]; then
+              sha=ab8629c7575debd494c908c14bde9967a575a82a
+              port=5197
+            else
+              sha=8a201c1bf48c7916e4d0af9e1c0ca60cd6737632
+              port=5198
+            fi
+            root="$RUNNER_TEMP/ui-20261106-picker-$variant"
+            git worktree add --detach "$root" "$sha"
+            cp tests/ui-20261106-picker-fixture.tsx "$root/source/tests/"
+            cp ui-20261106-picker-fixture.html "$root/source/"
+            cp scripts/ui-20261106-picker-browser.mjs "$root/source/scripts/"
+            ln -s "$PWD/node_modules" "$root/source/node_modules"
+            ln -s "$PWD/cell-edit-service/node_modules" "$root/source/cell-edit-service/node_modules"
+            ( cd "$root/source" && \
+              PICKER_VARIANT="$variant" PICKER_PORT="$port" \
+              PICKER_ARTIFACT_DIR="$GITHUB_WORKSPACE/source/qa-results/ui-20261106-picker/$variant" \
+              node scripts/ui-20261106-picker-browser.mjs )
+          done
+          node scripts/ui-20261106-picker-diff.mjs
       - name: File-level SHA256 and immutable candidate package
         run: |
           set -eu
@@ -87,6 +112,7 @@ jobs:
           name: ui-20261106-controls-${{ github.run_id }}-${{ github.sha }}
           path: |
             source/qa-results/ui-20261106/
+            source/qa-results/ui-20261106-picker/
             source/ui-20261106-artifacts/
           if-no-files-found: warn
           retention-days: 14
