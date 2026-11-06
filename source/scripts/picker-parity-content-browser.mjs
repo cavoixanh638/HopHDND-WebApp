@@ -126,6 +126,20 @@ async function main(){
   }
   results.push({width,surface,mode,states});
  }
+ // Full synthetic App route, not merely the isolated component fixture.
+ // Navigation is the real preview's two-tab shell; do not change the fixture.
+ for(const width of [1440,900,390])for(const role of ['admin','guest']){
+  await page.setViewportSize({width,height:width===390?844:900});
+  await page.goto(origin+'/compact-qa.html?full=1&preview-role='+role);
+  await page.locator('[data-preview="pr95-l4-full"]').waitFor({timeout:12000});
+  await page.locator('[data-ui-reference-nav="items"]').click();
+  await page.locator('.item-data-table [data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
+  const id='full-app-'+width+'-'+role;
+  const measured=await shot(page,id+'-list');
+  assert(measured.heading,id+' missing real L01');
+  assert(measured.reference,id+' missing unchanged L04');
+  results.push({width,role,surface:'full-app-list',states:{measured}});
+ }
  assert.equal(blocked.filter(x=>/firebaseio|firebasedatabase|sheets.googleapis/i.test(x)).length,0,'Production traffic');
  writeFileSync(join(root,'summary.json'),JSON.stringify({result:'PASS',scenarios:results.length,results,blocked},null,2));
  console.log('PICKER_PARITY_CONTENT_BROWSER_PASS scenarios='+results.length);
