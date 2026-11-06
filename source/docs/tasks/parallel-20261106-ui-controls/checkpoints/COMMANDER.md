@@ -25,3 +25,17 @@ Baseline CI: [42238116883](https://github.com/cavoixanh638/HopHDND-WebApp/action
 1. Xây workflow `ui-20261106-controls.yml` và fixtures/ma trận nghiệm thu trên coordination, kiểm tra toolchain trên code hiện tại.
 2. Theo dõi HEAD/checkpoints/CI hai worker, nhận bàn giao kiểm ảnh/test đúng SHA, rồi tích hợp trên coordination.
 3. Kiểm full synthetic, đóng gói exact-tested SHA/hash; bàn giao Codex cập nhật Site public hiện có nếu Sites API vẫn vắng.
+
+## Checkpoint sự kiện tiếp theo — workflow, fixtures, CI
+- Đã thêm workflow riêng `.github/workflows/ui-20261106-controls.yml` có path filters và hỗ trợ cùng CI cho 3 nhánh; không động tới workflow 05/11.
+- Đã thêm `source/scripts/ui-20261106-commander-smoke.mjs`, full synthetic (role guest/admin), fixture mixed, và popup readonly/mixed 1440/900/390 (script update commit `9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`). Ảnh/rects được upload theo source SHA của run. Chỉ là baseline smoke, không thay C01–C10.
+- Đã thêm `ACCEPTANCE-MATRIX.md` nêu 15 gates, `CODEX-DEMO-HANDOFF.md` chỉ đích Site existing ID và quy trình deploy/hash/smoke.
+- GitHub run #42245221036 ở `15295e` bị cancel do concurrency; run [#42245332228](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245332228) tại `1343f3d`: jobs `controls-and-package` và `isolated-cas` **SUCCESS**, job `real-app-emulator` IN_PROGRESS lúc quan sát; chưa tính full run PASS hoặc feature acceptance.
+- Run [#42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245720825) trigger tại `9bbf451` sau bổ sung popup, đang PENDING khi quan sát. Docs commits sau script không tự trigger path-only CI.
+- PICKER checkpoint `IN_PROGRESS_SURVEY`, HEAD `4feba0b4d19e7955fc9af894ff27ea617b6d910f` lúc khảo sát; TRACKS `IN_PROGRESS`, HEAD đã tiến tới `1fc34fc9eb39233b59de6775b91442d7308d1216` khi quan sát, chưa có bàn giao PASS/tested SHA. Không ghi nhánh worker.
+- Container hiện không resolve DNS github.com; GitHub connector vẫn read/write và GitHub Actions là môi trường test phù hợp. Không có Sites API, Site ID `appgprj_6aed474532b081919e39ba36909bf6bf` vẫn **DEMO_PENDING**, version 3 chưa được thay.
+
+### Next (tối đa 3)
+1. Theo dõi worker checkpoints/HEAD/CI; yêu cầu họ tự khép C01–C10, không bắt chờ nhau, không chiếm phạm vi.
+2. Khi có code bàn giao, tích hợp lên branch COMMANDER, required feature scripts và full SHA CI/Emulator/browser, kiểm ảnh/rects/CAS, sửa cross-contract.
+3. Đóng gói hash đúng SHA final và hoàn thiện Codex handoff/deploy chính Site hiện có (nếu Sites API được cấp); chỉ DONE sau live smoke và version/deployment proof.
