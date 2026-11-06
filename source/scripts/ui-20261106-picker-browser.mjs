@@ -28,18 +28,6 @@ let browser;
 const results=[];
 const fieldKeys=['ubndLeader','vpLeader','room','specialist'];
 const inputFields=['department','type','partyLevel','progressParty','progressBuild','progressCouncil'];
-const rect=e=>{const b=e.getBoundingClientRect();return {x:b.x,y:b.y,w:b.width,h:b.height};};
-const styles=e=>{
- const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),before=getComputedStyle(e,'::before');
- return {rect:rect(e),background:s.backgroundColor,border:s.borderColor,
-  borderWidth:s.borderWidth,borderRadius:s.borderRadius,padding:s.padding,
-  font:s.font,fontWeight:s.fontWeight,fontSize:s.fontSize,lineHeight:s.lineHeight,
-  color:s.color,display:s.display,boxShadow:s.boxShadow,transform:s.transform,
-  caret:{content:a.content,display:a.display,width:a.width,height:a.height,
-    color:a.color,background:a.backgroundColor,clip:a.clipPath,border:a.borderRight,
-    margin:a.margin,transform:a.transform},rail:{content:before.content,
-      display:before.display,background:before.backgroundColor}};
-};
 async function ready(){
  for(let i=0;i<120;i++){
   if(server.exitCode!==null)throw Error('Vite exited '+server.exitCode+' '+serverLog);
@@ -88,7 +76,7 @@ async function assertCaret(probe,scope){
   assert(cssSize(a.height)>=3&&cssSize(a.height)<=4.1,scope+' caret height '+name);
   assert(a.clip.includes('polygon'),scope+' caret is a filled triangle '+name);
   assert(a.background!=='rgba(0, 0, 0, 0)',scope+' caret invisible '+name);
-  assert.equal(t.rail.content,'none',scope+' rail remains '+name);
+  assert(['none','normal'].includes(t.rail.content),scope+' rail remains '+name);
  }
 }
 const snapshot=async(page,id)=>{
