@@ -1,10 +1,10 @@
 # TRACKS checkpoint — UI controls 06/11/2026
 
-Status: **IN_PROGRESS — CODE COMPLETE, FINAL QA IN FLIGHT (do not merge/deploy yet)**
+Status: **DONE — TRACKS worker acceptance PASS; NO MERGE/DEPLOY**
 Worker branch: `ui/20261106-l03-tracks` only
 Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
-Latest code candidate: `e706f7beed6e3ab4f2c74b345a5db92b5548533c` (CI 42249786788)
-Known green tested UI SHA: `297f2cc93514096f289e80698f9420d9a140cd51` (CI 42248771926; UI PASS)
+Latest code/tested SHA: `ea9758dfe0bb25cb97d888ef3d0890bf68997555` (CI 42251062095, both jobs PASS)
+Earlier green UI SHA: `297f2cc93514096f289e80698f9420d9a140cd51` (CI 42248771926; superseded)
 PR for commander: https://github.com/cavoixanh638/HopHDND-WebApp/pull/158 (draft, NO merge)
 
 ## Implemented on branch
@@ -40,3 +40,12 @@ PR for commander: https://github.com/cavoixanh638/HopHDND-WebApp/pull/158 (draft
 - **Never touched** PICKER worker-owned `CellPicker.tsx`, `CompactGroupedValue.tsx`, or shared `item-frame.css` / `app.css`.
 - No production write, deploy, or merge; draft PR #158 only.
 - Next: inspect run 42249786788; repair failures in owner scope; persist tested SHA/run/screenshot/rects; mark DONE only when isolated App/Emulator + real browser mixed/popup all PASS.
+
+## Final acceptance update — 2026-11-06 UTC 16:20+
+- Verified HEAD `ea9758dfe0bb25cb97d888ef3d0890bf68997555`, branch ahead of baseline by 37 commits, no merge/deploy. GitHub contents/commit API provides clean committed tree snapshot; does not prove any external local worktree is clean.
+- **Dedicated TRACKS CI [42251062095](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095) SUCCESS at exact HEAD**: `tracks-ui` and `tracks-emulator` both SUCCESS, every step green. Typecheck and `npm test` **905 PASS, 116 skipped**. `UI_20261106_TRACKS_PASS` measures six modes, readonly `{label:122,status:225}`, editable `{label:145,level:82,status:279}`, six screenshots. Real Chromium mixed/popup/wrapping/compact regression also PASS.
+- Real isolated Auth/RTDB/Callable Emulator PASS and full real App **QA01–QA10 PASS**; QA10 `FIVE_TRACK_WIDTHS_PERSIST_GUEST_390_900` PASS, including admin and guest reload; 27 final-App screenshots. Production requests: 0.
+- Browser artifact [13521245991](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095/artifacts/13521245991): 35 files, screenshots/rects/CDP; Emulator/App artifact [13521390720](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095/artifacts/13521390720): 34 files, 27 App screenshots, test witnesses. Artifacts retained 14 days per workflow.
+- Earlier run 42249786788 was **cancelled**, superseded by latest passing run. Some legacy/non-owned workflows at exact SHA still report failures (e.g. Verify source, PR95 suites). Dedicated TRACKS acceptance green does **not** establish every repository-wide workflow green; commander must triage those independently before overall integration.
+- Existing scope contract remains: five field schema, legacy RAM fallback, computed physical widths, popup/list, admin-only save, per-field CAS. No changes to PICKER worker files. Draft [PR #158](https://github.com/cavoixanh638/HopHDND-WebApp/pull/158) remains unmerged.
+- **Commander handoff:** pick exact code SHA `ea9758dfe0bb25cb97d888ef3d0890bf68997555` (this checkpoint-only commit will move HEAD), validate integrated PICKER skin/caret against L03 measured rails, rerun integrated CI, then update existing public demo separately. Do not equate worker DONE with combined demo DONE.
