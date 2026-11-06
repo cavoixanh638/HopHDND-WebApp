@@ -1,0 +1,72 @@
+name: picker-parity-stages - exact-SHA isolated stage acceptance (NO deploy)
+on:
+  push:
+    branches:
+      - ui/20261107-picker-parity-stages
+    paths:
+      - 'source/src/features/items/picker-parity-stages.css'
+      - 'source/src/features/items/l03-track-widths.css'
+      - 'source/tests/picker-parity-stages*'
+      - 'source/scripts/picker-parity-stages*'
+      - '.github/workflows/picker-parity-stages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: picker-parity-stages-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Verify exact checkout
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Install locked dependencies and real Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Own unit and existing five-rail regression
+        run: npm test -- tests/picker-parity-stages.test.ts tests/ui-20261106-tracks.test.ts
+      - name: Build full synthetic App
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chromium picker parity List/popup and fields
+        run: node scripts/picker-parity-stages-browser.mjs
+      - name: Real Chromium five-input track-width regression
+        run: node scripts/ui-20261106-tracks-browser.mjs
+      - name: Export exact-source evidence
+        if: always()
+        run: |
+          mkdir -p qa-results/picker-parity-stages
+          printf '%s\n' "$GITHUB_SHA" > qa-results/picker-parity-stages/tested-sha.txt
+          if [ -d dist-compact-qa ]; then
+            find dist-compact-qa -type f -print0 | sort -z | xargs -0 sha256sum > qa-results/picker-parity-stages/assets-sha256.txt
+          fi
+      - name: Upload browser screenshots and computed rectangles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-stages-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/qa-results/picker-parity-stages/
+            source/qa-results/ui-20261106-tracks/
+          if-no-files-found: warn
+          retention-days: 14
