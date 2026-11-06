@@ -10,7 +10,8 @@ import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {canonicalStatus} from '../../domain/status-contract';
 import {reportReferenceGroupRows,reportReferenceStatusColumn,
-  REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR} from '../../domain/report-reference-identity';
+  REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR,
+  type ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
 
 /** Report-specific chip wording. These are presentation labels, NEVER Item
  * statuses or a migration of legacy source cells. Custom report titles stay intact. */
@@ -37,7 +38,7 @@ const quietPartyMilestones=new Set([
 const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ');
 const excludedMilestone=normalizeSearch('Không phải trình');
 
-export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; onColumnResize?:(column:string,width:number)=>void }) {
+export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void }) {
   const heading=()=>{
     const target=config.titleAccentText?.trim();
     if(!target)return config.title;
@@ -55,7 +56,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     if(offset<source.length)parts.push(source.slice(offset));
     return parts;
   };
-  const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
+  const report = useMemo(() => aggregateReport(items, config, group, groupIdentities), [items, config, group, groupIdentities]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
   // One tooltip instance serves all mounted reports, not one per cell.
@@ -69,7 +70,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     return groups;
   },[report.items,config]);
   const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder));
-  const rowReferences=useMemo(()=>reportReferenceGroupRows(items,group),[items,group]);
+  const rowReferences=useMemo(()=>reportReferenceGroupRows(items,group,groupIdentities),[items,group,groupIdentities]);
   const emphasize=config.emphasizeProgress!==false;
   const hasNextStage=config.columns.some(column=>reportStage(column,config)==='next');
   const visualStyle=config.reportVariant??'classic';
