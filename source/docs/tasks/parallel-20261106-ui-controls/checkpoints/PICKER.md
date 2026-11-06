@@ -6,7 +6,7 @@ Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
 Reference: `ab8629c7575debd494c908c14bde9967a575a82a`
 Initial remote HEAD: `0eede66c4f8c05d416084aeab08fd5a030f5bc80` (branch ahead baseline 9 commits, docs only).
 Initial checkpoint SHA: `4feba0b4d19e7955fc9af894ff27ea617b6d910f`
-Current code SHA (before this checkpoint): `494c1e74320a3dd124d99eb3b32b0d49d67c59f2`
+Current code SHA (before this checkpoint): `f270cbd86f337f6397288856af19f9709f6e8a7e`
 Tested SHA: **NONE**; no DONE.
 Dirty tree: GitHub remote ref is committed; **no verified local worktree**. Container DNS cannot resolve github.com, so clone/real-build blocked. GitHub connector read/write succeeds.
 
@@ -14,7 +14,9 @@ Dirty tree: GitHub remote ref is committed; **no verified local worktree**. Cont
 
 - `source/src/features/items/item-frame.css` (code commits `5b7c952e`, `83bdd57c`): remove only L04/staff and standalone leader selectors from multi-field unified picker skin. Existing reference skin remains in `app.css` and early `item-frame.css` rules. Keep all metadata and L03 geometry/width selectors as baseline. Append *data-button-only* triangle pseudo rules for editable CellPicker, not select/filter/nav/settings. One 6×4 px filled downward `currentColor` triangle, no border glyph/rail. `::before` rail suppressed only on L03 status picker, not neighboring fields; disabled `::after` hidden. All schema/data/lease code untouched.
 - Deterministic real React `ItemList`/`ReportDetailGrid` test fixture `source/tests/ui-20261106-picker-fixture.tsx`, `source/ui-20261106-picker-fixture.html`: synthetic, same data/layout on reference/baseline/after, list/popup, mixed/guest/edit, short/long personnel, no Firebase; independent test prefix.
-- New `source/scripts/ui-20261106-picker-browser.mjs`: local Vite + real Playwright Chromium, 1440/900/390, four L04 fields, popup, hover/focus/open, pointer and keyboard ArrowDown/Enter/Escape, caret computed style, screenshots, rects and JSON; no network outside localhost. **Script committed but not executed.**
+- New `source/scripts/ui-20261106-picker-browser.mjs`: local Vite + real Playwright Chromium, 1440/900/390, four L04 fields, popup, hover/focus/open, pointer and keyboard ArrowDown/Enter/Escape, verified RAM patch, caret computed style, screenshots, rects and JSON; no network outside localhost. **Script committed but not executed.**
+
+- New `source/scripts/ui-20261106-picker-diff.mjs` compares computed style and rects across independent reference/baseline/after browser captures of the same fixture; **not executed**. Comparison must not be called PASS without real JSON and screenshots.
 
 ## Selector/skin contract
 
@@ -32,3 +34,9 @@ Current unified rules previously forced `:is(.item-data-table,.report-detail-gri
 1. Validate script and TypeScript via isolated installed deps/CI (runtime container cannot clone via DNS; avoid claiming testing).
 2. Re-render same fixture on ab8629c, baseline and final SHA; inspect differences and fix any CSS, test failures and caret geometry.
 3. Store screenshots/rects/tested SHA, update checkpoint to DONE only after PASS; report commit/checkpoint to COMMANDER without merge/deploy.
+
+## Checkpoint after test-harness commits
+- HEAD at latest WIP code: `f270cbd86f337f6397288856af19f9709f6e8a7e`, then this docs commit; verified via GitHub connector. No local checkout was available for runtime code checks.
+- Browser/reference/baseline/after screenshots: **NOT PRODUCED**; measured rects: **NOT PRODUCED**; TypeScript/unit: **NOT RUN**; Emulator: **NOT RUN** (UI-only changes).
+- External blocker: local shell DNS `git ls-remote` cannot resolve github.com and no source worktree exists. Connector supports text edits, not a runnable checkout. Never confuse presence of a browser script with passing browser acceptance.
+- Commander handoff: link this checkpoint and latest commit. No merge/deploy; status remains CODE_WIP_TEST_PENDING.
