@@ -7,6 +7,13 @@ on:
       - 'source/tests/**'
       - 'source/scripts/ui-20261106-tracks-browser.mjs'
       - '.github/workflows/ui-20261106-tracks.yml'
+  pull_request:
+    branches: [ui/20261106-controls-command]
+    paths:
+      - 'source/src/**'
+      - 'source/tests/**'
+      - 'source/scripts/ui-20261106-tracks-browser.mjs'
+      - '.github/workflows/ui-20261106-tracks.yml'
   workflow_dispatch:
 permissions:
   contents: read
