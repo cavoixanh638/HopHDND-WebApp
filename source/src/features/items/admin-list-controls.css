@@ -57,25 +57,30 @@
 .admin-l03-widths {display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;
   margin-top:12px;padding-top:12px;border-top:1px solid #dce9e1}
 .admin-l03-width-summary {font-size:12px;color:#436452;font-variant-numeric:tabular-nums}
-.admin-l03-width-editor {width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px 16px;align-items:start;padding:10px;border:1px solid #d5e4dc;
-  border-radius:8px;background:#fff}
-.admin-l03-width-editor label {display:flex;flex-direction:column;min-width:0;gap:5px;font-size:12px}
-.admin-l03-width-editor label strong {font-size:13px;color:#245846}
-.admin-l03-width-editor label > span:not(.admin-l03-width-preview) {color:#53685e}
-.admin-l03-width-editor input {box-sizing:border-box;width:100%;max-width:240px;min-height:37px;
-  padding:5px 8px;font:inherit;font-size:14px}
-.admin-l03-width-preview {display:block;height:12px;max-width:100%;
-  min-width:0;background:#b2d5c4;border:1px solid #5a9880;border-radius:3px;
-  transition:width 120ms}
-.admin-l03-width-editor .button,.admin-l03-width-editor small,
-.admin-l03-width-editor [role="alert"] {grid-column:1/-1;justify-self:start}
-.admin-l03-width-editor [role="alert"] {color:#9c2632;margin:0}
-.admin-l03-width-editor small {line-height:1.5;color:#54695e}
-@media(max-width:560px) {
-  .admin-l03-width-editor {grid-template-columns:minmax(0,1fr)}
-}
+.admin-l03-width-editor {width:100%;display:grid;grid-template-columns:minmax(0,1fr);
+  gap:12px;padding:12px;border:1px solid #d5e4dc;border-radius:8px;background:#fff}
+.admin-l03-mode {min-width:0;box-sizing:border-box;margin:0;border:1px solid #d5e4dc;border-radius:8px;
+  padding:10px 12px 12px}
+.admin-l03-mode legend {font-size:13px;font-weight:700;color:#245846;padding:0 5px}
+.admin-l03-rails {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));
+  gap:10px;align-items:start}
+.admin-l03-rails label {display:flex;flex-direction:column;min-width:0;gap:5px;font-size:12px}
+.admin-l03-rails label strong {font-size:13px;color:#245846}
+.admin-l03-rails label>span {color:#53685e}
+.admin-l03-rails input {box-sizing:border-box;width:100%;max-width:250px;min-width:0;min-height:37px;
+  padding:5px 8px;font:inherit;font-size:14px;font-variant-numeric:tabular-nums}
+.admin-l03-rails input[aria-invalid="true"] {border-color:#b8463b;outline-color:#b8463b}
+.admin-l03-field-error {display:block;color:#9c2632;line-height:1.4}
+.admin-l03-mode-total {display:block;margin-top:9px;color:#245846;font-size:12px;
+  font-variant-numeric:tabular-nums;font-weight:650}
+.admin-l03-width-editor>.button {justify-self:start}
+.admin-l03-width-editor>small {line-height:1.5;color:#54695e}
+.admin-l03-width-editor>[role="alert"] {margin:0;color:#9c2632}
+@media(max-width:560px) {.admin-l03-width-editor {padding:8px}
+  .admin-l03-mode {padding:8px}}
 
+/* L03 widths now come from five px rails in l03-track-widths.css.
+   Two saved whole-group values are legacy-only, not editable controls. */
 /* UI worker consumes --hdnd-l03-inner-width inside .compact-stages.
    Do not add per-track resize handles or make table cells row-dependent. */
 .item-data-table td.compact-merged-cell[data-l03-layout] {--hdnd-l03-track-count:2}

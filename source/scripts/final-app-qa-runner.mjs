@@ -865,54 +865,82 @@ async function narrowPartyLevelGrantJourney(){
     first:{revision:levelNone.revision,level:levelNone.partyLevel,status:levelNone.progressParty},
     second:{revision:reopened.revision,level:reopened.partyLevel,status:reopened.progressParty}};
 }
-/** UI 05/11: save both real admin whole-cluster widths, reload real App and
- * check guest synchronization and physical two/three-track geometry. */
+/** UI 06/11 TRACKS: save the five actual fields through the verified
+ * Admin App + RTDB profile transaction, reload admin and guest from the
+ * server, verify mode-independent computed rails and 390/900 viewport. */
 async function sharedPartyWidthsJourney(){
   await resetPages();
+  const widths={readonly:{label:124,status:222},
+    editable:{label:142,level:80,status:271}};
   const controls=admin.locator('.admin-l03-widths');
   await controls.waitFor({state:'visible',timeout:16000});
-  await controls.getByRole('button',{name:/L03.*Chỉnh độ rộng/}).click();
-  await controls.getByRole('spinbutton',{name:'Độ rộng L03 hai track'}).fill('440');
-  await controls.getByRole('spinbutton',{name:'Độ rộng L03 ba track'}).fill('630');
-  await controls.getByRole('button',{name:'Lưu hai độ rộng dùng chung'}).click();
-  await wait(async()=>((await controls.locator('.admin-l03-width-summary').innerText())||'').includes('440px') &&
-    ((await controls.locator('.admin-l03-width-summary').innerText())||'').includes('630px'),
-    'Both whole-cluster widths saved in admin',21000);
+  await controls.getByRole('button',{name:/L03.*Chỉnh 5 độ rộng/}).click();
+  const input=controls.locator('.admin-l03-width-editor');
+  await input.getByRole('spinbutton',{name:'L03 Chỉ xem · Nhãn + cấp trình'}).fill(String(widths.readonly.label));
+  await input.getByRole('spinbutton',{name:'L03 Chỉ xem · Tiến độ'}).fill(String(widths.readonly.status));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Nhãn'}).fill(String(widths.editable.label));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Cấp trình TU'}).fill(String(widths.editable.level));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Tiến độ'}).fill(String(widths.editable.status));
+  assert.equal(await input.getByRole('spinbutton').count(),5,'Exactly five admin rail controls');
+  await input.getByRole('button',{name:'Lưu 5 độ rộng dùng chung'}).click();
+  const readonlySum=377,editableSum=532;
+  await wait(async()=>((await controls.locator('.admin-l03-width-summary').innerText())||'').includes(readonlySum+'px') &&
+    ((await controls.locator('.admin-l03-width-summary').innerText())||'').includes(editableSum+'px'),
+    'Five independent rail widths committed via real admin profile',21000);
   await admin.reload({waitUntil:'domcontentloaded'});
   await waitRow(admin,sourceRows[0].displayCode);
   await guest.reload({waitUntil:'domcontentloaded'});
   await waitRow(guest,sourceRows[0].displayCode);
-  const geometry=page=>page.evaluate(()=>{
+  const measure=page=>page.evaluate(()=>{
     const table=document.querySelector('.item-data-table');
-    const cell=table?.querySelector('tbody tr:first-child td[data-col-key="partyLevel"]');
+    const cell=table?.querySelector('tbody tr:first-child td[data-l03-layout]');
     const stage=cell?.querySelector('.compact-stages');
     const style=table?getComputedStyle(table):null;
     const rect=cell?.getBoundingClientRect(),inner=stage?.getBoundingClientRect();
-    return {width:innerWidth,mode:table?.getAttribute('data-l03-physical-mode')??null,
+    const rails=stage?getComputedStyle(stage).gridTemplateColumns.trim().split(/\s+/).map(Number.parseFloat):[];
+    const rows=[...(stage?.querySelectorAll('.compact-stage-row')??[])];
+    const statuses=rows.map(row=>{const rect=row.querySelector('.compact-stage-state')?.getBoundingClientRect();
+      return rect?{x:rect.x,width:rect.width}:null;});
+    return {viewport:innerWidth,mode:table?.getAttribute('data-l03-physical-mode')??null,
       readonly:style?.getPropertyValue('--hdnd-l03-width-readonly').trim(),
       editable:style?.getPropertyValue('--hdnd-l03-width-editable').trim(),
       stageMode:stage?.getAttribute('data-level-layout')??null,
-      cellWidth:rect?.width??null,stageWidth:inner?.width??null};
+      cellWidth:rect?.width??null,stageWidth:inner?.width??null,rails,statuses};
   });
-  const a=await geometry(admin),g=await geometry(guest);
-  for(const proof of [a,g]){
-    assert.equal(proof.readonly,'440px');
-    assert.equal(proof.editable,'630px');
-    assert.ok(proof.cellWidth>0 && proof.stageWidth>0,'L03 physical and inner rects must exist');
-    assert.ok(proof.stageWidth<=proof.cellWidth+1,'L03 inner grid must fit its physical column');
-  }
-  assert.equal(g.mode,'readonly','Guest L03 physical column must use smaller readonly width');
+  const a=await measure(admin),g=await measure(guest);
+  const check=proof=>{
+    assert.equal(proof.readonly,readonlySum+'px');
+    assert.equal(proof.editable,editableSum+'px');
+    assert.ok(proof.cellWidth>0&&proof.stageWidth>0,'L03 actual cell and grid rects');
+    assert.ok(proof.stageWidth<=proof.cellWidth+1,'Subgrid fits common physical column');
+    const wanted=proof.stageMode==='editable'
+      ?[widths.editable.label,widths.editable.level,widths.editable.status]
+      :[widths.readonly.label,widths.readonly.status];
+    assert.equal(proof.rails.length,wanted.length,'Exact 2/3 independent tracks');
+    for(let i=0;i<wanted.length;i++)assert.ok(Math.abs(proof.rails[i]-wanted[i])<1,
+      'Computed rail '+i+' must match server persisted value '+JSON.stringify(proof));
+    assert.equal(proof.statuses.length,3,'All three stage statuses present');
+    for(const status of proof.statuses){
+      assert.ok(status&&Math.abs(status.x-proof.statuses[0].x)<1,
+        'Three statuses vertically share x coordinate');
+      assert.ok(Math.abs(status.width-wanted.at(-1))<1,
+        'Three statuses share exact configured width');
+    }
+  };
+  check(a);check(g);
+  assert.equal(g.mode,'readonly','Guest L03 physical column uses readonly mode');
   assert.equal(g.stageMode,'readonly');
-  assert.ok(Math.abs(g.cellWidth-440)<40,'Guest readonly physical column did not shrink to saved width');
-  await screenshot(admin,'22-admin-l03-630-after-reload');
-  await screenshot(guest,'23-guest-l03-440-after-reload');
+  assert.ok(Math.abs(g.cellWidth-readonlySum)<1.5,
+    'Guest physical width must equal 124+222+8gap+23chrome');
+  await screenshot(admin,'22-admin-l03-5-rails-reload');
+  await screenshot(guest,'23-guest-l03-5-rails-reload');
   await guest.setViewportSize({width:900,height:900});
+  const tablet=await measure(guest);check(tablet);
   await screenshot(guest,'24-guest-l03-900');
   await guest.setViewportSize({width:390,height:844});
-  const mobile=await geometry(guest);
-  assert.ok(mobile.stageWidth<=mobile.cellWidth+1);
+  const mobile=await measure(guest);check(mobile);
   await screenshot(guest,'25-guest-l03-390');
-  return {admin:a,guest:g,mobile,serverBackedAcrossReload:true};
+  return {widths,admin:a,guest:g,tablet,mobile,serverBackedAcrossReload:true};
 }
 async function run(){
   record('QA_MODE',{kind:PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
@@ -931,7 +959,7 @@ async function run(){
   await checks.task('QA07_EXCEL_FILE_PREVIEW_STAGE_COMMIT_RESTORE_LOOKUP',excelJourney,admin);
   await checks.task('QA08_GENERATION_CHANGE_WITH_UNSAVED_EDITOR',generationWithDraft,secondAdmin??admin);
   await checks.task('QA09_PARTYLEVEL_ONLY_GRANT_ATOMIC_DEPENDENCY',narrowPartyLevelGrantJourney,guest??admin);
-  await checks.task('QA10_TWO_CLUSTER_WIDTHS_PERSIST_GUEST_390_900',sharedPartyWidthsJourney,admin);
+  await checks.task('QA10_FIVE_TRACK_WIDTHS_PERSIST_GUEST_390_900',sharedPartyWidthsJourney,admin);
   // All cases require the actual App route and independent owner server reads.
   const outcome=cases.every(x=>x.status==='PASS')?'QA_CHECKOUT_PASS':'QA_CHECKOUT_HAS_GAPS';
   record('FINAL_APP_REVIEW_RESULT',{outcome,cases:cases.map(c=>({name:c.name,status:c.status})),

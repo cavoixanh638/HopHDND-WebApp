@@ -1,0 +1,124 @@
+name: UI 20261106 TRACKS five L03 rails - isolated checks (NO deploy)
+on:
+  push:
+    branches: [ui/20261106-l03-tracks]
+    paths:
+      - 'source/src/**'
+      - 'source/tests/**'
+      - 'source/scripts/ui-20261106-tracks-browser.mjs'
+      - '.github/workflows/ui-20261106-tracks.yml'
+  pull_request:
+    branches: [ui/20261106-controls-command]
+    paths:
+      - 'source/src/**'
+      - 'source/tests/**'
+      - 'source/scripts/ui-20261106-tracks-browser.mjs'
+      - '.github/workflows/ui-20261106-tracks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-20261106-tracks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tracks-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Print exact tested SHA
+        run: |
+          echo "TRACKS_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - name: Frozen install and pinned Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Typecheck and all unit tests
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build full synthetic UI and live compact ItemList
+        run: npm run build:compact:qa
+      - name: Real Chromium five rail editor and measured geometry
+        run: node scripts/ui-20261106-tracks-browser.mjs
+      - name: Real Chromium L03 mixed roles popup wrapping glyph regression
+        run: node scripts/ui-20261105-picker-layout-browser.mjs
+      - name: Preserve measured rectangles and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-tracks-browser-${{ github.run_id }}
+          path: |
+            source/qa-results/ui-20261106-tracks/
+            source/ui-20261105-artifacts/
+            source/qa-results/ui-20261105/chrome-cdp.jsonl
+          if-no-files-found: warn
+          retention-days: 14
+  tracks-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Firebase emulator dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Install pinned isolated Chromium
+        run: npx --prefix cell-edit-service playwright install chromium
+      - name: Real isolated Auth RTDB Callable backend regression
+        run: |
+          cd cell-edit-service
+          npm run test:isolated > stdout.local.txt 2>&1 || { tail -n 100 stdout.local.txt; exit 1; }
+          tail -n 25 stdout.local.txt
+      - name: Real FULL App admin guest and RTDB Functions Emulator
+        env:
+          FINAL_APP_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GCLOUD_PROJECT: demo-hdnd
+          CI: 'true'
+          VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+          VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+          VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+        run: |
+          node scripts/final-app-qa-rules.mjs
+          node scripts/final-app-qa-runner.mjs
+      - name: Preserve isolated Emulator and full real App evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-tracks-emulator-${{ github.run_id }}
+          path: |
+            source/qa-results/
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14

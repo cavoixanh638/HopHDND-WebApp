@@ -1,9 +1,51 @@
-# TRACKS checkpoint
+# TRACKS checkpoint — UI controls 06/11/2026
 
-Status: READY_NOT_STARTED
-Baseline: 8a201c1bf48c7916e4d0af9e1c0ca60cd6737632
-Branch: ui/20261106-l03-tracks
-Code/tested SHA: NOT RUN for new task
-Entry: ../WORKER-TRACKS.md + ../README.md
+Status: **DONE — TRACKS worker acceptance PASS; NO MERGE/DEPLOY**
+Worker branch: `ui/20261106-l03-tracks` only
+Baseline: `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`
+Latest code/tested SHA: `ea9758dfe0bb25cb97d888ef3d0890bf68997555` (CI 42251062095, both jobs PASS)
+Earlier green UI SHA: `297f2cc93514096f289e80698f9420d9a140cd51` (CI 42248771926; superseded)
+PR for commander: https://github.com/cavoixanh638/HopHDND-WebApp/pull/158 (draft, NO merge)
 
-Đây là checkpoint khởi tạo, không phải kết quả triển khai. Chat chủ sở hữu đọc HEAD, nhiệm vụ và README rồi ghi checkpoint khảo sát đầu tiên. Không reset khi tiếp quản. Chỉ chốt DONE sau tiêu chí và bằng chứng trong entrypoint.
+## Implemented on branch
+- `source/src/data/item-preferences.ts`: optional `ItemLayout.partyTrackWidths={readonly:{label,status}, editable:{label,level,status}}` in **CSS px**, integer validation each field, asymmetric mode values and no silent sync.
+- `source/src/data/item-layout-merge.ts`: merge/CAS conflict each 5 fields separately. Keep original/remote explicit setting precedence. `shared-config`, `use-firebase`, `App` already traverse `validateItemLayout`/merge.
+- `source/src/features/items/ItemList.tsx`, `admin-list-controls.css`, **new** `l03-track-widths.css`: administrator-only five-input editor grouped by readonly/editable, computed totals, single persist, per-field errors, draft retained on failed CAS; list `col` physical width from mode totals; each row independent subgrid width.
+- `source/src/features/reports/ReportDetailGrid.tsx`: popup uses shared 5 rails but retains separate popup frame. Existing L03 DOM/data attributes untouched.
+- `source/tests/ui-20261106-tracks.test.ts` (8 tests); browser `source/scripts/ui-20261106-tracks-browser.mjs` for real full synthetic preview, five-field save, guest role, 3 viewports, screenshots/rects.
+- `source/scripts/final-app-qa-runner.mjs` QA10 updated from 2 legacy totals to 5 fields, authentic app/RTDB/reload/admin/guest, with physical/computed-width proofs.
+- `source/scripts/ui-20261105-picker-layout-browser.mjs`: removed obsolete 238px hardcoded assertion, now computed CSS track.
+- `.github/workflows/ui-20261106-tracks.yml`: branch+draft-PR CI, typecheck/all unit, real Chromium full preview plus mixed/popup wrapping regression, isolated backend and real full App Emulator. No production deployment.
+
+## Geometry contract and deterministic old-profile fallback
+`L03_CELL_CHROME_PX=23` = TD left padding 11 + right padding 11 + right border 1. `L03_RAIL_GAP_PX=8`.
+- readonly physical = readonly.label + readonly.status + 8 + 23.
+- editable physical = editable.label + editable.level + editable.status + 2×8 + 23.
+- one HTML physical column: readonly-only uses readonly physical; where editable appears, max(readonly physical, editable physical). Each inner subgrid retains own rail widths. If one mode narrower, unused space is unavoidable in common HTML `<col>`.
+- CSS rail `grid-template-columns` pixel values, `box-sizing:border-box`, `subgrid` aligns three progress states. Empty level track reserved on rows 2/3.
+- Minimum per-rail: readonly label 84/status 112; editable label 84/level 76/status 112. These fit basic wrapping; level 76 allows Không/TTTU + small caret/padding, avoids viewport-driven 1fr and old 360/500 group min. Max status/label 1400, level 900 allows user-requested wide values.
+- Legacy-only `partyGroupWidths` is **read in RAM only**; no automatic migration/save. For each mode, subtract above chrome/gaps once; readonly label = clamp(round(48% of remaining),84..1400), status=remaining-label clamped 112..1400; editable level=clamp(round(18% of remaining),76..900); label=clamp(round(43% of remaining minus level),84..1400), status=remainder clamped 112..1400. Small legacy totals may expand due per-rail minimum; explicit five fields always override legacy totals on reload.
+
+## Evidence (at current checkpoint)
+- CI 42248771926 at UI SHA `297f2cc9`: real Chromium **PASS**, admin+guest viewport 1440/900/390. 6 PNG and JSON rects: artifact ID 13517973653 (GitHub Actions).
+- Measured 5 asymmetric rail inputs readonly {label:122,status:225} => 378px physical; editable {label:145,level:82,status:279} => 545px physical. All 3 status rectangles per mode share x and width, measured grid lengths equal inputs.
+- `npm run typecheck` PASS; `npm test` **905 passed, 116 skipped**; new `ui-20261106-tracks.test.ts` **8/8 PASS**. Confirmed CI runs 42248771926 and 42249122107.
+- Canonical `cell-edit-service/npm run test:isolated` PASS in CI 42249122107, real App QA01–QA09 PASS. QA10 in that run failed because original test used old two-field control selector; QA10 updated and committed, awaiting latest CI.
+- Broader legacy `npm run test:firebase` produced 40/92 failures (403 lease, 400 generation) in run 42247805382, outside 5-rail model; do not suppress, distinguish from canonical isolated suite. No production writes.
+
+## Latest QA
+`42249786788`: branch candidate after updating QA10 and adding actual mixed/popup/wrap regression step. **Pending**. Inspect jobs, screenshots and artifacts before DONE.
+
+## Safety and ownership
+- **Never touched** PICKER worker-owned `CellPicker.tsx`, `CompactGroupedValue.tsx`, or shared `item-frame.css` / `app.css`.
+- No production write, deploy, or merge; draft PR #158 only.
+- Next: inspect run 42249786788; repair failures in owner scope; persist tested SHA/run/screenshot/rects; mark DONE only when isolated App/Emulator + real browser mixed/popup all PASS.
+
+## Final acceptance update — 2026-11-06 UTC 16:20+
+- Verified HEAD `ea9758dfe0bb25cb97d888ef3d0890bf68997555`, branch ahead of baseline by 37 commits, no merge/deploy. GitHub contents/commit API provides clean committed tree snapshot; does not prove any external local worktree is clean.
+- **Dedicated TRACKS CI [42251062095](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095) SUCCESS at exact HEAD**: `tracks-ui` and `tracks-emulator` both SUCCESS, every step green. Typecheck and `npm test` **905 PASS, 116 skipped**. `UI_20261106_TRACKS_PASS` measures six modes, readonly `{label:122,status:225}`, editable `{label:145,level:82,status:279}`, six screenshots. Real Chromium mixed/popup/wrapping/compact regression also PASS.
+- Real isolated Auth/RTDB/Callable Emulator PASS and full real App **QA01–QA10 PASS**; QA10 `FIVE_TRACK_WIDTHS_PERSIST_GUEST_390_900` PASS, including admin and guest reload; 27 final-App screenshots. Production requests: 0.
+- Browser artifact [13521245991](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095/artifacts/13521245991): 35 files, screenshots/rects/CDP; Emulator/App artifact [13521390720](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42251062095/artifacts/13521390720): 34 files, 27 App screenshots, test witnesses. Artifacts retained 14 days per workflow.
+- Earlier run 42249786788 was **cancelled**, superseded by latest passing run. Some legacy/non-owned workflows at exact SHA still report failures (e.g. Verify source, PR95 suites). Dedicated TRACKS acceptance green does **not** establish every repository-wide workflow green; commander must triage those independently before overall integration.
+- Existing scope contract remains: five field schema, legacy RAM fallback, computed physical widths, popup/list, admin-only save, per-field CAS. No changes to PICKER worker files. Draft [PR #158](https://github.com/cavoixanh638/HopHDND-WebApp/pull/158) remains unmerged.
+- **Commander handoff:** pick exact code SHA `ea9758dfe0bb25cb97d888ef3d0890bf68997555` (this checkpoint-only commit will move HEAD), validate integrated PICKER skin/caret against L03 measured rails, rerun integrated CI, then update existing public demo separately. Do not equate worker DONE with combined demo DONE.
