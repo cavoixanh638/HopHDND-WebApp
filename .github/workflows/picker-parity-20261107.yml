@@ -1,0 +1,149 @@
+name: Picker parity 20261107 - exact SHA integration and package (NO DEPLOY)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ui/20261107-picker-parity-command
+    paths:
+      - 'source/src/**'
+      - 'source/tests/picker-parity-content*'
+      - 'source/tests/picker-parity-stages*'
+      - 'source/scripts/picker-parity-content*'
+      - 'source/scripts/picker-parity-stages*'
+      - 'source/scripts/ui-20261106-*'
+      - 'source/package*.json'
+      - 'source/compact-qa.html'
+permissions:
+  contents: read
+concurrency:
+  group: picker-parity-20261107-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integrated-browser-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Pin checkout to workflow source SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git status --porcelain
+      - name: Install locked dependencies and Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Exact SHA TypeScript, full unit and both builds
+        run: |
+          set -eu
+          npm run typecheck
+          npm test
+          npm run build
+          npm run build:compact:qa
+          test -s dist/Dashboard_HĐND.html
+          test -s dist-compact-qa/compact-qa.html
+      - name: Mandatory independent browser witnesses plus integrated regression
+        run: |
+          set -eu
+          for file in scripts/picker-parity-content-browser.mjs scripts/picker-parity-stages-browser.mjs; do
+            test -s "$file" || { echo "NOT_RUN missing mandatory feature browser witness: $file"; exit 1; }
+            node "$file"
+          done
+          node scripts/ui-20261106-commander-smoke.mjs
+          # Baseline L04 reference scripts, only when supplied by same source SHA.
+          node scripts/ui-20261106-picker-browser.mjs
+          node scripts/ui-20261106-tracks-browser.mjs
+      - name: Hash full synthetic assets and create immutable bundle
+        env:
+          EXACT_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          root=qa-results/picker-parity-20261107
+          mkdir -p "$root"
+          printf '%s\n' "$EXACT_SOURCE_SHA" > "$root/source-sha.txt"
+          find dist dist-compact-qa -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$root/asset-sha256.txt"
+          test -s "$root/asset-sha256.txt"
+          cat > "$root/PACKAGE_README.md" <<EOF
+          # Picker parity 20261107 — isolated QA package
+          Source Git SHA: $EXACT_SOURCE_SHA
+          Entry for public demo: dist-compact-qa/compact-qa.html (full synthetic App).
+          Also included: dist/Dashboard_HĐND.html (standalone artifact; NOT demo entry).
+          Roles: synthetic preview admin, guest, mixed; no credentials.
+          Data: in-memory synthetic QA only; no live persistence, no production source or write.
+          This package does NOT assert public Site deployment.
+          Use the asset-sha256.txt manifest to verify bytes before and after publishing.
+          EOF
+          sha256sum "$root/PACKAGE_README.md" > "$root/readme-sha256.txt"
+          tar -czf "$root/picker-parity-20261107-full-qa.tar.gz" dist dist-compact-qa "$root/source-sha.txt" "$root/asset-sha256.txt" "$root/readme-sha256.txt" "$root/PACKAGE_README.md"
+          sha256sum "$root/picker-parity-20261107-full-qa.tar.gz" > "$root/package-sha256.txt"
+          cat "$root/package-sha256.txt"
+      - name: Upload tests screenshots and exact SHA package (NO DEPLOY)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/qa-results/picker-parity-content/
+            source/qa-results/picker-parity-stages/
+            source/qa-results/picker-parity-20261107/
+            source/ui-20261106-artifacts/
+            source/qa-results/ui-20261106-picker/
+            source/qa-results/ui-20261106-tracks/
+          if-no-files-found: warn
+          retention-days: 14
+  isolated-cas-and-permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install isolated test dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Isolated rules, Auth RTDB and CAS (no production)
+        run: |
+          set -eu
+          npm run check --prefix cell-edit-service
+          node cell-edit-service/scripts/make-test-rules.mjs
+          ( cd cell-edit-service && npm run test:isolated > stdout.local.txt 2>&1 ) || { tail -n 100 cell-edit-service/stdout.local.txt; exit 1; }
+          tail -n 30 cell-edit-service/stdout.local.txt
+      - name: Upload isolated permission/CAS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-cas-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
