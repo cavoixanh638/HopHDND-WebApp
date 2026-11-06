@@ -1652,9 +1652,10 @@
    Both the 2-track and 3-track modes consume the owner's physical column width
    but never stretch their final progress rail to fill spare whitespace. */
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]{
-  --ui-stage-label-track:138px;
-  --ui-stage-level-track:90px; /* Không (5 chars) + padding + caret */
-  --ui-stage-status-track:238px; /* longest official status + caret */
+  --ui-stage-label-track:min(138px,34%);
+  --ui-stage-level-track:70px; /* five characters, padding and caret */
+  --ui-stage-reserved:calc(var(--ui-stage-label-track) + 8px);
+  --ui-stage-status-track:min(238px,calc(100% - var(--ui-stage-reserved)));
   box-sizing:border-box;display:grid;align-content:start;justify-content:start;
   gap:5px;min-width:0;
   /* WIDTH provides one whole-cluster budget per row; mixed-mode read-only
@@ -1665,6 +1666,7 @@
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stages[data-rev2="true"][data-level-layout="editable"]{
+  --ui-stage-reserved:calc(var(--ui-stage-label-track) + var(--ui-stage-level-track) + 16px);
   grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-level-track) var(--ui-stage-status-track)!important;
   column-gap:8px;
 }
