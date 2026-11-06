@@ -1,0 +1,92 @@
+name: UI 20261106 TRACKS five L03 rails - isolated checks (NO deploy)
+on:
+  push:
+    branches: [ui/20261106-l03-tracks]
+    paths:
+      - 'source/src/**'
+      - 'source/tests/**'
+      - 'source/scripts/ui-20261106-tracks-browser.mjs'
+      - '.github/workflows/ui-20261106-tracks.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-20261106-tracks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tracks-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Print exact tested SHA
+        run: |
+          echo "TRACKS_SHA=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Frozen install and pinned Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Typecheck and all unit tests
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build full synthetic UI and live compact ItemList
+        run: npm run build:compact:qa
+      - name: Real Chromium five rail editor and measured geometry
+        run: node scripts/ui-20261106-tracks-browser.mjs
+      - name: Preserve measured rectangles and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-tracks-browser-${{ github.run_id }}
+          path: |
+            source/qa-results/ui-20261106-tracks/
+            source/qa-results/ui-20261105/chrome-cdp.jsonl
+          if-no-files-found: warn
+          retention-days: 14
+  tracks-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Firebase emulator dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Real Auth/RTDB/Functions Emulator regression
+        run: npm run test:firebase
+      - name: Preserve emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-tracks-emulator-${{ github.run_id }}
+          path: source/qa-results/
+          if-no-files-found: warn
+          retention-days: 14
