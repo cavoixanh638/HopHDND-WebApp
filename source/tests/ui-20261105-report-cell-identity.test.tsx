@@ -1,9 +1,10 @@
 import {describe,expect,it} from 'vitest';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createDemoItems} from '../src/data/demo-items';
+import {catalogFromItems,validateCatalog} from '../src/data/catalogs';
 import {ReportTable} from '../src/features/reports/ReportTable';
 import {DEFAULT_REPORTS} from '../src/domain/reporting';
-import {reportReferenceGroupRows,reportReferenceStatusColumn,
+import {reportReferenceGroupRows,reportReferenceStatusColumn,renameReportGroupIdentity,
   REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR} from '../src/domain/report-reference-identity';
 import {uiReferenceReportCellCode,uiReferenceShortCode} from '../src/qa/ui-reference-codes';
 import type {Item} from '../shared/types';
@@ -16,21 +17,27 @@ const base=():Item[]=>createDemoItems(6).map((item,i)=>({
 }));
 
 describe('UI 05/11 report matrix semantic identity (no label/index keys)',()=>{
-  it('maps display-name groups to stable member-record anchors across rename and reorder',()=>{
-    const items=base();
-    const original=reportReferenceGroupRows(items,'room');
+  it('keeps confirmed registry group IDs across member churn, explicit rename and reload',()=>{
+    const items=base(),catalog=catalogFromItems(items);
+    const original=reportReferenceGroupRows(items,'room',catalog.groupIdentities);
+    const afterAdd=reportReferenceGroupRows([{...items[0],recordId:'r00'},...items],'room',catalog.groupIdentities);
+    const afterRemove=reportReferenceGroupRows(items.filter((_,index)=>index!==0),'room',catalog.groupIdentities);
+    expect(afterAdd.get('Phòng A')).toBe(original.get('Phòng A'));
+    expect(afterRemove.get('Phòng A')).toBe(original.get('Phòng A'));
+    let registry=renameReportGroupIdentity(catalog.groupIdentities,'room','Phòng A','Tên phòng sau đổi');
+    registry=renameReportGroupIdentity(registry,'room','Phòng B','Phòng B mới');
     const renamed=JSON.parse(JSON.stringify(items)).map((item:Item)=>({
       ...item,room:item.room==='Phòng A'?'Tên phòng sau đổi':'Phòng B mới'
     })) as Item[];
-    const changed=reportReferenceGroupRows(renamed.reverse(),'room');
+    const changed=reportReferenceGroupRows(renamed.reverse(),'room',registry);
     expect(changed.get('Tên phòng sau đổi')).toBe(original.get('Phòng A'));
     expect(changed.get('Phòng B mới')).toBe(original.get('Phòng B'));
     expect(original.get('Phòng A')).not.toBe(original.get('Phòng B'));
-    // A reloaded source of the same recordIds retains identities without
-    // writing names or record content to storage.
-    expect(reportReferenceGroupRows(JSON.parse(JSON.stringify(items)),'room'))
-      .toEqual(original);
-    expect([...original.values()].every(x=>x.startsWith('record:'))).toBe(true);
+    // Persisted shared/catalog profile survives JSON round trip and source sort.
+    const saved=validateCatalog({...catalog,groupIdentities:registry});
+    expect(reportReferenceGroupRows(renamed,'room',
+      validateCatalog(JSON.parse(JSON.stringify(saved))).groupIdentities)).toEqual(changed);
+    expect([...original.values()].every(x=>x.startsWith('group:room:'))).toBe(true);
   });
   it('uses source status field + canonical business value, not displayed report title',()=>{
     const cfg=DEFAULT_REPORTS[2];
