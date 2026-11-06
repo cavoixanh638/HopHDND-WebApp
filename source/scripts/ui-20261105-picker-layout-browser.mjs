@@ -103,10 +103,10 @@ const aligned=(a,mode)=>{
  const labels=a.rows.map(x=>x.label?.x),states=a.rows.map(x=>x.status?.x);
  assert(labels.every(x=>Math.abs(x-labels[0])<1),'Label x not aligned: '+JSON.stringify(a));
  assert(states.every(x=>Math.abs(x-states[0])<1),'Status x not aligned: '+JSON.stringify(a));
- const available=a.stage.x+a.stage.w-states[0];
- const expected=Math.min(238,available);
- assert(expected>0&&a.rows.every(x=>Math.abs(x.status.w-expected)<1),
-  'Progress width must fit the remaining whole-cluster budget: '+JSON.stringify(a));
+ const railColumns=a.grid.trim().split(/\s+/).map(value=>Number.parseFloat(value));
+ const expected=railColumns.at(-1);
+ assert(Number.isFinite(expected)&&expected>0&&a.rows.every(x=>Math.abs(x.status.w-expected)<1),
+  'Progress width must equal configured rail, not historical 238px cap: '+JSON.stringify(a));
  assert(a.stage.w<=a.cell.w+1,'Stage extends beyond physical column');
  const buttonWidths=a.rows.filter(x=>x.button).map(x=>x.button.w);
  assert(buttonWidths.every(w=>Math.abs(w-buttonWidths[0])<1),'Unequal picker widths');
@@ -258,24 +258,38 @@ try{
      screenshot:await shot('ui-picker-popup-wrapped-'+width)});
  }
 
- // Exercise actual stage CSS at the newly allowed whole-column budgets.
- // Existing QA10 verifies persistence and physical column projection separately.
- for(const [mode,budgets] of [['readonly',[180,260,320]],['editable',[260,340,420]]]){
-  for(const budget of budgets){
+ // Test per-rail minimums, not obsolete 180/260px whole-group budgets.
+ for(const [mode,rails] of [
+   ['readonly',[84,112]],['editable',[84,76,112]],
+   ['readonly',[93,127]],['editable',[93,87,133]]
+ ]){
    await navigate(mode==='readonly'?'guest=1':'edit=1',900,900);
-   await evalJs(`document.querySelector('.compact-stages[data-rev2=true]').style.width='${budget-16}px'`);
+   const inner=rails.reduce((sum,value)=>sum+value,0)+(rails.length-1)*8;
+   const actual=await evalJs(`(()=>{
+     const stage=document.querySelector('.compact-stages[data-rev2=true]');
+     const cell=stage?.closest('td[data-l03-layout]');
+     if(!stage||!cell)throw Error('No real L03 stage cell for narrow rails');
+     cell.style.setProperty('--hdnd-l03-label-track','${rails[0]}px');
+     cell.style.setProperty('--hdnd-l03-status-track','${rails.at(-1)}px');
+     cell.style.setProperty('--hdnd-l03-level-track','${mode==='editable'?rails[1]:76}px');
+     cell.style.setProperty('--hdnd-l03-inner-width','${inner}px');
+     return getComputedStyle(stage).gridTemplateColumns;
+   })()`);
+   const actualRails=actual.trim().split(/\s+/).map(Number.parseFloat);
+   assert.equal(actualRails.length,rails.length,'Exact 2/3 narrow rails');
+   for(let i=0;i<rails.length;i++)assert(Math.abs(actualRails[i]-rails[i])<1,
+     'Narrow rail changed: '+JSON.stringify({mode,rails,actualRails}));
    const narrow=await rects();
    assert.equal(narrow.mode,mode);
-   assert(Math.abs(narrow.stage.w-(budget-16))<1,'Whole-cluster width ignored');
+   assert(Math.abs(narrow.stage.w-inner)<1,'Inner width must equal rails plus gaps');
    const states=narrow.rows.map(row=>row.status);
    assert(states.every(state=>Math.abs(state.x-states[0].x)<1&&Math.abs(state.w-states[0].w)<1),
-     'Narrow status controls must share aligned columns and equal widths');
+     'Narrow statuses must share x and width');
    assert(states.every(state=>state.x+state.w<=narrow.stage.x+narrow.stage.w+1),
-     'Narrow status extends beyond requested whole-cluster width');
-   glyphAligned(narrow,'narrow-'+mode+'-'+budget,{wrap:true});
-   summary.push({mode:'narrow-'+mode,budget,layout:narrow,
-     screenshot:await shot('ui-picker-narrow-'+mode+'-'+budget)});
-  }
+     'Narrow status extends beyond rails');
+   glyphAligned(narrow,'narrow-'+mode+'-'+rails.join('-'),{wrap:true});
+   summary.push({mode:'narrow-'+mode,rails,layout:narrow,
+     screenshot:await shot('ui-picker-narrow-'+mode+'-'+rails.join('-'))});
  }
  assert(requests.every(url=>!/(?:firebaseio|firebasedatabase|identitytoolkit|sheets.googleapis)/i.test(url)),
   'Production data request detected');

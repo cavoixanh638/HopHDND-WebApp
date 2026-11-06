@@ -1,0 +1,120 @@
+/* L03 only: rail geometry is owned by 5 explicit px values on the cell.
+   This file imports AFTER item-frame.css; specificity intentionally overrides
+   V6's intrinsic 138/238px and 1fr rules without touching PICKER skin.
+   List and popup share rail dimensions; popup frame/other columns remain local. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout] {
+  box-sizing:border-box;
+  padding-left:11px;
+  padding-right:11px;
+  border-right-width:1px;
+  border-right-style:solid;
+  min-width:0;
+}
+.item-data-table tbody td[data-l03-layout] {border-right-color:#dfe9e2}
+.report-detail-grid tbody td[data-l03-layout] {border-right-color:#e3ebe6}
+/* The 23px cell chrome is 11+11 padding and 1px right border. A mode's
+   inner rail sum = sum(px tracks) + 8px*(N-1). Do not add legacy group width. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] {
+  --ui-stage-label-track:var(--hdnd-l03-label-track);
+  --ui-stage-level-track:var(--hdnd-l03-level-track);
+  --ui-stage-status-track:var(--hdnd-l03-status-track);
+  --ui-stage-reserved:0px;
+  box-sizing:border-box;
+  width:min(100%,var(--hdnd-l03-inner-width));
+  max-width:100%;
+  min-width:0;
+  grid-auto-rows:auto;
+  grid-auto-flow:row;
+  column-gap:8px;
+  row-gap:5px;
+  justify-content:start;
+  overflow-x:auto;
+  overflow-y:hidden;
+}
+/* Fixed pixel tracks. No percentage, auto, max-content, 1fr or hidden
+   viewport redistribution is allowed in this specific L03 subgrid. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout="readonly"]
+  .compact-stages[data-rev2="true"][data-level-layout="readonly"] {
+  grid-template-columns:var(--hdnd-l03-label-track) var(--hdnd-l03-status-track)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout="editable"]
+  .compact-stages[data-rev2="true"][data-level-layout="editable"] {
+  grid-template-columns:var(--hdnd-l03-label-track) var(--hdnd-l03-level-track) var(--hdnd-l03-status-track)!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row {
+  grid-column:1/-1;
+  grid-template-columns:subgrid!important;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state {
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  max-width:none;
+  justify-self:stretch;
+  align-self:center;
+  overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-label {
+  box-sizing:border-box;
+  min-width:0;
+  overflow-wrap:anywhere;
+  white-space:normal;
+  align-self:center;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-title {
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  flex-wrap:wrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-level:not([data-level-editor="true"]) {
+  min-width:0;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"] {
+  min-width:0;
+  width:100%;
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"] .compact-part {
+  min-width:0;
+  width:100%;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"]
+  button.cell-picker-trigger {
+  max-width:100%;
+  min-width:0;
+  width:100%!important;
+  white-space:normal;
+}
+/* Keep all three statuses equal to their configured rail width, irrespective
+   of the first row's optional level editor and regardless of viewport size. */
+@media (max-width:620px) {
+  :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+    .compact-stages[data-rev2="true"] > .compact-stage-row {
+    grid-template-columns:subgrid!important;
+  }
+}
+@container (max-width:280px) {
+  :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+    .compact-stages[data-rev2="true"] > .compact-stage-row {
+    grid-template-columns:subgrid!important;
+  }
+}

@@ -5,7 +5,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyGroupWidths,partyGroupPhysicalWidth,DEFAULT_PARTY_GROUP_WIDTHS,PARTY_GROUP_WIDTH_LIMITS } from '../../data/item-preferences';
+import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyTrackWidths,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,PARTY_TRACK_WIDTH_LIMITS,PARTY_TRACK_NAMES } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -37,6 +37,7 @@ import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
 import './admin-list-controls.css';
+import './l03-track-widths.css';
 import './pr95-v6-l3-page-layout.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
@@ -92,8 +93,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
-  const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:'',editable:''});
-  const [l03WidthError,setL03WidthError]=useState('');
+  const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
+  const [l03WidthErrors,setL03WidthErrors]=useState<Record<string,string>>({});
+  const l03EditBaseline=useRef<ItemLayout|null>(null);
   const listTitleBaseline=useRef<ItemLayout|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
@@ -395,10 +397,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Status editability alone must NOT switch a row to the three-track layout.
   const l03Pair=compactPairs.find(pair=>pair.variant==='partyTogether');
   const l03Key=l03Pair?.anchor;
-  const l03Widths=activeLayout.partyGroupWidths??DEFAULT_PARTY_GROUP_WIDTHS;
+  const l03Widths=resolvedPartyTrackWidths(activeLayout);
   const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
     rows.some(item=>canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'partyLevel')));
-  const l03PhysicalWidth=partyGroupPhysicalWidth(l03Widths,hasEditablePartyLevel);
+  const l03PhysicalWidth=partyTrackPhysicalWidth(l03Widths,hasEditablePartyLevel);
   const baseWidths=displayedColumns.map(c=>({key:c.key,
     width:l03Key===c.key?l03PhysicalWidth:baseVisualWidth(c.width,c.key)}));
   const fitWeights=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,
@@ -544,23 +546,34 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
   const openL03WidthEditor=()=>{
-    const saved=activeLayout.partyGroupWidths??DEFAULT_PARTY_GROUP_WIDTHS;
-    setL03WidthsDraft({readonly:String(saved.readonly),editable:String(saved.editable)});
-    setL03WidthError('');setL03WidthEditorOpen(true);
+    const snapshot=validateItemLayout(sharedBase.current),saved=resolvedPartyTrackWidths(snapshot);
+    l03EditBaseline.current=snapshot;
+    setL03WidthsDraft({readonly:{label:String(saved.readonly.label),status:String(saved.readonly.status)},
+      editable:{label:String(saved.editable.label),level:String(saved.editable.level),status:String(saved.editable.status)}});
+    setL03WidthErrors({});setL03WidthEditorOpen(true);
   };
   const saveL03Widths=async()=>{
+    if(!canEditListSettings||viewSaving)return;
+    const errors:Record<string,string>={};
+    const parse=(mode:'readonly'|'editable',field:'label'|'level'|'status')=>{
+      const value=(l03WidthsDraft[mode] as Record<string,string>)[field]??'';
+      const lim=(PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>)[field];
+      const n=/^\d+$/.test(value.trim())?Number(value.trim()):NaN;
+      if(!Number.isInteger(n)||n<lim.min||n>lim.max)
+        errors[mode+'.'+field]=(PARTY_TRACK_NAMES[mode] as Record<string,string>)[field]+
+          ': nhập số nguyên '+lim.min+'–'+lim.max+' px.';
+      return n;
+    };
+    const input={readonly:{label:parse('readonly','label'),status:parse('readonly','status')},
+      editable:{label:parse('editable','label'),level:parse('editable','level'),status:parse('editable','status')}};
+    if(Object.keys(errors).length){setL03WidthErrors(errors);return;}
     let widths;
-    try{
-      const parse=(value:string)=>/^\d+$/.test(value.trim())?Number(value.trim()):NaN;
-      widths=validatePartyGroupWidths({
-        readonly:parse(l03WidthsDraft.readonly),editable:parse(l03WidthsDraft.editable)
-      });
-    }catch(error){
-      setL03WidthError(error instanceof Error?error.message:'Độ rộng L03 không hợp lệ.');
-      return;
-    }
-    const saved=await applyViewerLayout(base=>({...base,partyGroupWidths:widths}));
-    if(saved){setL03WidthEditorOpen(false);setL03WidthError('');}
+    try{widths=validatePartyTrackWidths(input);}
+    catch(error){setL03WidthErrors({global:saveIssue(error)});return;}
+    const saved=await applyViewerLayout(base=>({...base,partyTrackWidths:widths}),
+      l03EditBaseline.current??undefined);
+    if(saved){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
+    else setL03WidthErrors({global:'Chưa xác nhận lưu. Đã giữ nguyên 5 số nháp.'});
   };
   const editableField=(item:Item,field:TextField)=>
     canEdit&&!locked&&!(field==='progressBuild'&&buildLocked(item))&&
@@ -713,31 +726,44 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         </fieldset>
         {canEditListSettings&&<div className="admin-l03-widths">
           <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
-            aria-controls="admin-l03-width-editor" onClick={()=>{
-              if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthError('');}
+            aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
+              if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
               else openL03WidthEditor();
-            }}>L03 · Chỉnh độ rộng cụm Tiến độ 3 khâu</button>
-          <span className="admin-l03-width-summary">
-            Hai track: {l03Widths.readonly}px · Ba track: {l03Widths.editable}px
-          </span>
-          {l03WidthEditorOpen&&<form id="admin-l03-width-editor" className="admin-l03-width-editor"
+            }}>L03 · Chỉnh 5 độ rộng cột nhỏ</button>
+          <span className="admin-l03-width-summary">Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
+          {l03WidthEditorOpen&&<form noValidate id="admin-l03-width-editor" className="admin-l03-width-editor"
             onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
-            {(['readonly','editable'] as const).map(mode=><label key={mode}>
-              <strong>{mode==='readonly'?'Hai track · chỉ xem cấp trình':'Ba track · được sửa cấp trình'}</strong>
-              <span>Độ rộng toàn cụm (px), {PARTY_GROUP_WIDTH_LIMITS[mode].min}–{PARTY_GROUP_WIDTH_LIMITS[mode].max}</span>
-              <input type="number" step="1" min={PARTY_GROUP_WIDTH_LIMITS[mode].min}
-                max={PARTY_GROUP_WIDTH_LIMITS[mode].max}
-                value={l03WidthsDraft[mode]} aria-label={'Độ rộng L03 '+(mode==='readonly'?'hai track':'ba track')}
-                onChange={event=>{setL03WidthError('');setL03WidthsDraft(previous=>({
-                  ...previous,[mode]:event.currentTarget.value
-                }));}} disabled={viewSaving}/>
-              <span className="admin-l03-width-preview" aria-hidden="true"
-                style={{width:`${Math.min(100,Math.max(18,
-                  Number(l03WidthsDraft[mode]) / PARTY_GROUP_WIDTH_LIMITS[mode].max*100))}%`}}/>
-            </label>)}
-            <button className="button" type="submit" disabled={viewSaving}>Lưu hai độ rộng dùng chung</button>
-            {l03WidthError&&<p role="alert">{l03WidthError}</p>}
-            <small>Không thay đổi độ rộng riêng của từng tiến độ. Khi có quyền hỗn hợp, cột vật lý chọn mode rộng hơn.</small>
+            {(['readonly','editable'] as const).map(mode=><fieldset className="admin-l03-mode" key={mode}>
+              <legend>{mode==='readonly'?'Chỉ xem cấp trình (2 cột)':'Được sửa cấp trình (3 cột)'}</legend>
+              <div className="admin-l03-rails">
+                {(Object.keys(PARTY_TRACK_WIDTH_LIMITS[mode]) as ('label'|'level'|'status')[]).map(field=>{
+                  const name=(PARTY_TRACK_NAMES[mode] as Record<string,string>)[field];
+                  const lim=(PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>)[field];
+                  const id=mode+'.'+field;
+                  return <label key={id}>
+                    <strong>{name}</strong><span>Riêng (px) · {lim.min}–{lim.max}</span>
+                    <input type="number" step="1" min={lim.min} max={lim.max}
+                      value={(l03WidthsDraft[mode] as Record<string,string>)[field]}
+                      aria-label={'L03 '+(mode==='readonly'?'Chỉ xem':'Được sửa')+' · '+name}
+                      aria-invalid={!!l03WidthErrors[id]}
+                      onChange={event=>{const value=event.currentTarget.value;
+                        setL03WidthErrors(previous=>{
+                          const next={...previous};delete next[id];delete next.global;return next;});
+                        setL03WidthsDraft(previous=>({...previous,[mode]:{...previous[mode],[field]:value}}));
+                      }} disabled={viewSaving}/>
+                    {l03WidthErrors[id]&&<small className="admin-l03-field-error" role="alert">{l03WidthErrors[id]}</small>}
+                  </label>;
+                })}
+              </div>
+              <output className="admin-l03-mode-total">Tổng cụm: {
+                Object.values(l03WidthsDraft[mode]).every(value=>/^\d+$/.test(value.trim()))
+                  ?Object.values(l03WidthsDraft[mode]).reduce((sum,value)=>sum+Number(value),
+                    23+(mode==='readonly'?8:16))+' px':'—'
+              }</output>
+            </fieldset>)}
+            <button className="button" type="submit" disabled={viewSaving}>Lưu 5 độ rộng dùng chung</button>
+            {l03WidthErrors.global&&<p role="alert">{l03WidthErrors.global}</p>}
+            <small>Tổng = rail + 8px mỗi khoảng + 23px padding/viền. Khi mode khác nhau, cột vật lý chọn tổng lớn nhất.</small>
           </form>}
         </div>}
       </div>}
@@ -840,8 +866,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
     }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
-  '--hdnd-l03-width-readonly':`${l03Widths.readonly}px`,
-  '--hdnd-l03-width-editable':`${l03Widths.editable}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+  '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
+  '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
@@ -903,9 +929,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
             style={pair.variant==='partyTogether'?{
-              '--hdnd-l03-inner-width':`${Math.max(0,editableField(item,'partyLevel')?
-                l03Widths.editable:l03Widths.readonly)-16}px`
-            } as CSSProperties:undefined}>
+               '--hdnd-l03-label-track':`${editableField(item,'partyLevel')?l03Widths.editable.label:l03Widths.readonly.label}px`,
+               '--hdnd-l03-level-track':`${l03Widths.editable.level}px`,
+               '--hdnd-l03-status-track':`${editableField(item,'partyLevel')?l03Widths.editable.status:l03Widths.readonly.status}px`,
+               '--hdnd-l03-inner-width':`${partyTrackModeWidth(l03Widths,editableField(item,'partyLevel')?'editable':'readonly')-23}px`
+             } as CSSProperties:undefined}>
             <CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
