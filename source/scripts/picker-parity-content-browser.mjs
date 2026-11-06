@@ -114,6 +114,9 @@ async function main(){
    await page.locator('.cell-picker-popover:popover-open').waitFor({timeout:10000});
    const opened=await shot(page,id+'-open');
    assert(opened.popovers>0,id+' popover not open');
+   const popupRect=await page.locator('.cell-picker-popover:popover-open').boundingBox();
+   assert(popupRect&&popupRect.x>=-1&&popupRect.x+popupRect.width<=width+1,
+    id+' popover outside horizontal viewport '+JSON.stringify(popupRect));
    const options=page.locator('.cell-picker-popover:popover-open [role="option"]');
    assert(await options.count()>0,id+' no options');
    await page.keyboard.press('Escape');
@@ -179,6 +182,21 @@ async function main(){
    results.push({width,role,surface:'full-app-popup',states:{popup}});
   }
  }
+ // Reduced motion / print: affordance cannot lift or cast a drop shadow.
+ await page.setViewportSize({width:900,height:900});
+ await page.goto(origin+'/ui-20261106-picker-fixture.html?surface=list&mode=edit');
+ const motion=page.locator('[data-ui-reference-group="L01"] [data-ui-reference-part="type"] button.cell-picker-trigger').first();
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await motion.hover();await page.waitForTimeout(220);
+ const reduced=await shot(page,'reduced-motion');
+ assert.equal(reduced.type.button.transform,'none','reduced-motion lifted editable picker');
+ await page.emulateMedia({media:'print',reducedMotion:'no-preference'});
+ await motion.hover();await page.waitForTimeout(220);
+ const printed=await shot(page,'print');
+ assert.equal(printed.type.button.transform,'none','print lifted picker');
+ assert.equal(printed.type.button.shadow,'none','print left shadow');
+ await page.emulateMedia({media:'screen',reducedMotion:'no-preference'});
+ results.push({surface:'accessibility-media',states:{reduced,printed}});
  assert.equal(blocked.filter(x=>/firebaseio|firebasedatabase|sheets.googleapis/i.test(x)).length,0,'Production traffic');
  writeFileSync(join(root,'summary.json'),JSON.stringify({result:'PASS',scenarios:results.length,results,blocked},null,2));
  console.log('PICKER_PARITY_CONTENT_BROWSER_PASS scenarios='+results.length);
