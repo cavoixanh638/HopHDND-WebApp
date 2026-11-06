@@ -164,6 +164,18 @@ async function main(){
   assert(measured.heading,id+' missing real L01');
   assert(measured.reference,id+' missing unchanged L04');
   results.push({width,role,surface:'full-app-list',states:{measured}});
+  // Open the full App's REAL ReportDetailGrid through a report drill action.
+  // Guest has no admin nav; guest popup is covered in RAM component fixture.
+  if(role==='admin'){
+   await page.locator('[data-ui-reference-nav="reports"]').click();
+   const drill=page.locator('.report-table button.count-drill').first();
+   await drill.waitFor({timeout:10000});
+   await drill.click();
+   await page.locator('.report-detail-grid [data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
+   const popup=await shot(page,id+'-popup');
+   assert(popup.heading&&popup.reference,id+' full-App popup missing L01/L04');
+   results.push({width,role,surface:'full-app-popup',states:{popup}});
+  }
  }
  assert.equal(blocked.filter(x=>/firebaseio|firebasedatabase|sheets.googleapis/i.test(x)).length,0,'Production traffic');
  writeFileSync(join(root,'summary.json'),JSON.stringify({result:'PASS',scenarios:results.length,results,blocked},null,2));
