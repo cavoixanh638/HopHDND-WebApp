@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -48,6 +49,17 @@ jobs:
         run: npm run build:compact:qa
       - name: Real Chromium L01 and L04 within same List/popup
         run: node scripts/picker-parity-content-browser.mjs
+      - name: Capture matching BEFORE images from untouched e095 reference
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/picker-content-before"
+          git worktree add --detach "$base" e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          cp scripts/picker-parity-content-baseline.mjs "$base/source/scripts/"
+          ln -s "$PWD/node_modules" "$base/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$base/source/cell-edit-service/node_modules"
+          ( cd "$base/source" &&
+            PICKER_CONTENT_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-content/before" node scripts/picker-parity-content-baseline.mjs )
+          test -s qa-results/picker-parity-content/before/summary.json
       - name: Upload own-SHA measurement JSON and screenshots
         if: always()
         uses: actions/upload-artifact@v4
