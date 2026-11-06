@@ -100,9 +100,23 @@ jobs:
         run: |
           set -eu
           mkdir -p qa-results/ui-20261106
+          # Final coordination has BOTH feature scripts. Witnessless smoke
+          # must not be mistaken for integrated acceptance.
+          if [ "$GITHUB_REF" = "refs/heads/ui/20261106-controls-command" ]; then
+            test -s qa-results/ui-20261106-picker/after/summary.json
+            test -s qa-results/ui-20261106-picker/reference-vs-baseline-vs-after.json
+            test -s qa-results/ui-20261106-tracks/measured-rects.json
+          fi
+          test -s docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md
           find dist dist-compact-qa -type f -print0 | sort -z | xargs -0 sha256sum > qa-results/ui-20261106/asset-sha256.txt
           printf '%s\n' "$GITHUB_SHA" > qa-results/ui-20261106/source-sha.txt
-          tar -czf qa-results/ui-20261106/full-synthetic-and-standalone.tar.gz dist dist-compact-qa
+          sha256sum docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md > qa-results/ui-20261106/readme-sha256.txt
+          tar -czf qa-results/ui-20261106/full-synthetic-and-standalone.tar.gz \
+            dist dist-compact-qa \
+            docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md \
+            qa-results/ui-20261106/source-sha.txt \
+            qa-results/ui-20261106/asset-sha256.txt \
+            qa-results/ui-20261106/readme-sha256.txt
           sha256sum qa-results/ui-20261106/full-synthetic-and-standalone.tar.gz > qa-results/ui-20261106/package-sha256.txt
           cat qa-results/ui-20261106/package-sha256.txt
       - name: Archive exact source/SHA/screenshots/rects (not deployed)
@@ -113,6 +127,7 @@ jobs:
           path: |
             source/qa-results/ui-20261106/
             source/qa-results/ui-20261106-picker/
+            source/qa-results/ui-20261106-tracks/
             source/ui-20261106-artifacts/
           if-no-files-found: warn
           retention-days: 14
