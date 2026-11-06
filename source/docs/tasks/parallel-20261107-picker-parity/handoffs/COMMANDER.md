@@ -29,3 +29,10 @@ Scope guard: no merge main, Firebase production, migration, RTDB/Excel writes, s
 - Public Site demo vẫn v4; DEMO_PENDING về mặt nhiệm vụ, chưa có gói final SHA, artifact hoặc deployment mới.
 
 Tiếp quản ngay: đọc lại worker HEAD/checkpoint, sửa workflow nếu script contract khác, tích hợp khi có code+evidence, chạy workflow ở integrated exact SHA, dựng gói và ghi DEMO_HANDOFF nếu Sites API không có. Không claim DONE từ checkpoint docs-only.
+
+## STAGES verification — 07/11 (new event; supersedes worker's "CI pending" note)
+- Stage tested source SHA `8c0d9fbc7284493dcb31018aa117595362b61119` fully passed [CI #42267219205](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42267219205) with 15 unit, 32 browser cases, 6 width editor scenarios, exact SHA pin and build; checked GitHub workflow job/log, not the worker claim alone.
+- Run artifact `13527872811` exists and is unexpired; [download page](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42267219205/artifacts/13527872811). HEAD `25fbef378c5c2cd9152c6e8218a7887dac27fc4c` is docs-only after tested code; diff confirms no source delta.
+- Scope diff from shared seed has only new STAGES CSS, L03 CSS import, own browser/units/workflow/handoff; no shared CellPicker/L04/backend/width model touched.
+- Decision: mark stage **core implementation PASS** and do NOT repeat those verified PASS tests. Worker checkpoint still **IN_PROGRESS**, lacks browser evidence dedicated `Không`/highlight-custom-palette and matched before/after baseline. Owner STAGES to complete/explicitly justify those gates; commander owns full integrated exact SHA and emulator. Never elevate DONE on words or run success alone.
+- Tracker committed as [`b2c9376`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/b2c93761701722af8949db843c493882ed145404). No source integration yet, no package/demo release.
