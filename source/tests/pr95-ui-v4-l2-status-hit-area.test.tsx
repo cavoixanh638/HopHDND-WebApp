@@ -104,8 +104,12 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(css).toContain('background:var(--member-highlight-bg)!important');
     expect(css).toContain('color:var(--member-highlight-text)!important');
     expect(css).toMatch(/button\.cell-picker-trigger::before\{\s*content:none!important;display:none!important;/s);
-    expect(css).toContain('border:0;border-right:1.8px solid currentColor');
-    expect(css).toContain('background:transparent!important');
+    // 06/11 control contract replaces the old V chevron, not the hit area,
+    // status colors, permission gates or the 3-track grid alignment.
+    expect(css).toContain('clip-path:polygon(0 0,100% 0,50% 100%)');
+    expect(css).toContain('width:6px!important;height:4px!important');
+    expect(css).toContain('background:currentColor!important');
+    expect(css).not.toContain('border:0;border-right:1.8px solid currentColor');
     expect(css).toContain('outline:2px solid #356D86!important');
   });
   it('retains unchanged CellPicker aria, keyboard, lease/save/clear contracts',()=>{
