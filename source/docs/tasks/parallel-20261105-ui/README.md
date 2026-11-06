@@ -1,3 +1,5 @@
+> **CẬP NHẬT 06/11/2026 — REVIEW-3 L03 CLOSED.** Các mục “tiếp tục sau review” ở dưới là hợp đồng lịch sử, đã được nghiệm thu qua [REVIEW-3-L03-FINAL-ACCEPTANCE.md](REVIEW-3-L03-FINAL-ACCEPTANCE.md). Code/test SHA cuối `91c2dd47de85c76fad53d1778e06c2786aaa136d` có [CI #42154518752](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42154518752) **SUCCESS 3/3**, 896 unit PASS, Chrome glyph thực L03 list/popup/mixed/wrap 1440/900/390 PASS, Full App QA01–QA10 PASS; registry mã nhóm `bc5f5b4` giữ PASS. [CODEX-REVIEW3-VERIFICATION.md](CODEX-REVIEW3-VERIFICATION.md) đã ghi trạng thái sửa xong. HTML mới SHA `ae334d63e537a1e0f3421be27f1d4c574ddf46e6783cc93411296bc91f91e724`; [Site handoff](CODEX-SITE-HANDOFF.md) có gói/hashes mới. **SITE_PENDING_ACCESS** do Codex chưa truy cập được Site cũ; không thay audience/ép đăng nhập/tạo Site, không merge main/Firebase production, migration LIVE_HOLD. Đây là chỉ dẫn hiện hành, ưu tiên hơn mốc cũ phía dưới.
+
 # UI 05/11 — hợp đồng chung cho Gemini
 
 ## Tiếp tục sau review ngày 06/11/2026
