@@ -1,36 +1,33 @@
 # CONTENT checkpoint — 07/11/2026
 
-**Status: IN_PROGRESS (own feature + isolated CI PASS; remaining final acceptance boundary listed).**
-Branch sole writer: `ui/20261107-picker-parity-content`.
-Reference App SHA: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
-**Own code SHA / tested SHA: `fa9dbbe5a0ea0e5ff1805947717c5eb9145c939e`.**
-Workflow: [run #42269339502](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42269339502) — **SUCCESS**, exact tested SHA.
-Evidence artifact: [#13529360146](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42269339502/artifacts/13529360146) — `picker-parity-content-42269339502-fa9dbbe5a0ea0e5ff1805947717c5eb9145c939e`; 9,551,324 bytes, PNG screenshots plus geometry/computed styles JSON, baseline and after.
+## Own scope: DONE — standalone feature accepted on GitHub Actions
+Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
+**Own application + test code SHA / exact tested SHA: `9fb74b7fda1ab4492011dc675df5d656e74f6000`**. This subsequent checkpoint commit is docs-only and does not change tested code.
 
-## Implementation, files committed
-1. `source/src/features/items/picker-parity-content.css`: scoped L01 geometry, max-width/content-fit, 26px min height, padding4x7, Segoe11/550, radius6, filled caret5x3, 8px gap, centered/nowrap row; editable field-only hover/focus lift -3, blue outline/shadow 180ms without changing member fill; readonly 13/400 with type swatch/member highlight; reduced-motion/print behavior.
-2. `source/src/features/items/CompactGroupedValue.tsx`: import role-specific CSS only; L03/L04 branches unchanged.
-3. `source/tests/picker-parity-content.test.tsx`: two editable, two mixed permissions, both readonly, empty writable and empty readonly DOM. Source logic remains real CellPicker, not a fork.
-4. `source/scripts/picker-parity-content-browser.mjs`: real Chromium 1440/900/390 real ItemList+ReportDetailGrid synthetic List/popup admin/guest/mixed normal/hover/focus/open; 6 full synthetic App List and 3 report-drill popup; real alternate option click -> RAM update, Enter/ArrowDown/Escape/outside, open picker background and viewport checks, highlight and palette variation, long-label fixture, resize/scroll of open picker, reduced motion and print. PNG/rects/computed styles after.
-5. `source/scripts/picker-parity-content-baseline.mjs`: 18 matched **BEFORE** normal scenes against untouched e095 source in detached worktree. In artifact `before/` vs corresponding AFTER screenshots/JSON.
-6. `.github/workflows/picker-parity-content.yml`: exact-SHA browser/unit/build and baseline detached-worktree capture, artifact upload. Does not mutate shared/required workflow.
-7. This checkpoint only under `handoffs/CONTENT.md`.
+**CI:** [run #42269772715](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42269772715) — **SUCCESS** at `9fb74b7fda1ab4492011dc675df5d656e74f6000` (each step completed/success).
+**Evidence artifact:** [#13527674364](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42269772715/artifacts/13527674364), `picker-parity-content-42269772715-9fb74b7fda1ab4492011dc675df5d656e74f6000`, 13,083,947 bytes. Includes browser PNG/JSON computed styles/rects, normal/hover/focus/open and `before/` matching baseline screenshots from untouched e095 detached worktree.
 
-## PASS evidence at own-SHA
-- `npm run typecheck` — PASS.
-- `npm test -- tests/picker-parity-content.test.tsx tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx` — PASS 40 tests / 4 files.
-- `npm run build:compact:qa` — PASS.
-- `node scripts/picker-parity-content-browser.mjs` — PASS. Includes hover and keyboard-focus no change to member background; readonly absence of fake buttons; screenshots+styles+rects 1440/900/390, List/popup and full App, real selection RAM, Escape/outside, horizontal dropdown fit, popover resize/scroll, highlight/custom palette, long-personnel fixture, reduced motion/print.
-- Baseline `node scripts/picker-parity-content-baseline.mjs` on reference SHA — PASS 18 matched BEFORE normal scenes (real components unchanged).
-- All tests are isolated synthetic RAM only. No production credentials, Firebase/Sheets writes, merge or publish.
+## Implementation: own files only
+1. `source/src/features/items/picker-parity-content.css`: L01 Sở trình + Loại VB, field-only 26px min height / 4px×7px / Segoe11/550/1.35 / 6px radius / 5px×3px filled caret / 8px gap / content-fit + max100%, centered one row, readonly 13/400 and original parenthesized metadata; preserves type tones and individual highlight, field-only hover/focus lift 3px, blue outline/shadow 180ms, preserves background, reduced-motion/print.
+2. `source/src/features/items/CompactGroupedValue.tsx`: only scoped CSS import; no other shared DOM changes.
+3. `source/tests/picker-parity-content.test.tsx`: markup + permissions/empty data (both editable, mixed both directions, both readonly, empty writable/readonly).
+4. `source/tests/picker-parity-content-fixture.tsx`, `source/tests/picker-parity-content-fixture.html`: extra real ItemList/ReportDetailGrid synthetic RAM-only fixture for truly long Sở, empty field, and QPPL/HC/BC values at different permissions.
+5. `source/scripts/picker-parity-content-browser.mjs`: 1440/900/390, original real List/popup fixture admin/edit/mixed/guest and full synthetic App List admin/guest plus admin report drill popup, browser normal/hover/focus/open + photos/computed-style/rects; real alternative choice -> RAM patch, keyboard Enter/Arrow/Escape and outside, horizontal dropdown placement, scroll/resize when open, highlight and custom palette, long personnel and true long department, empty metadata, QPPL/HC/BC in dedicated fixture, print/reduced-motion.
+6. `source/scripts/picker-parity-content-baseline.mjs`: BEFORE matched screenshots and JSON for 18 scenes using e095 detached worktree with unchanged actual App components.
+7. `.github/workflows/picker-parity-content.yml`: isolated exact-SHA CI and baseline worktree; only role-specific workflow, no changes to required checks.
+8. `source/docs/tasks/parallel-20261107-picker-parity/handoffs/CONTENT.md` (this checkpoint). No unrelated files changed.
 
-## Honest remaining coverage / integration gates
-- **NOT RUN**: targeted *long department metadata* and specifically empty-writable metadata as real browser interaction; DOM unit covers empty writable; fixture `long=1` stresses personnel text rather than a specially extended Sở name. The default synthetic dataset/palette tests exercise document-kind values but the browser script does not explicitly assert each HC/BC/QPPL type swatch.
-- The browser captures baseline vs after in identical fixture viewports, but no automated pixel-diff threshold; geometry comparisons are computed in JSON and live CSS assertions, visual reviewer can compare PNGs.
-- Guest full-App report drill navigation unavailable by intentional role restriction; guest ReportDetailGrid tested as actual mounted component, not a fake.
-- Real production permission/lease/Emulator conditions and entire integration final-SHA QA not demonstrated by CONTENT worker and remain COMMANDER scope.
-- Dedicated repeated keyboard option-selection beyond the real selection + Enter/Arrow/Escape described above is not separately asserted.
+## Verified commands and output on exact tested SHA
+- `npm run typecheck` — **PASS**.
+- `npm test -- tests/picker-parity-content.test.tsx tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx` — **PASS**, 40 unit tests / 4 files.
+- `npm run build:compact:qa` — **PASS**.
+- `node scripts/picker-parity-content-browser.mjs` — **PASS**, including 18 main List/popup scenes, 6 full App List and 3 full App report-drill popup scenes, additional highlight/custom palette/long/blank/type edge browser matrix, resize/scroll and accessibility-media.
+- `node scripts/picker-parity-content-baseline.mjs` copied to detached baseline e095 — **PASS**, 18 before scenes, identical fixture/viewport.
+- No production traffic/data changes, merge, or publish performed.
 
-## Handoff
-COMMANDER owns cherry-pick/integration, final-SHA comprehensive acceptance, package hash/Site demo. No worker merge/publish. If stricter acceptance requires remaining long-department/empty browser matrix or explicit per-kind CSS screenshots, continue on HEAD, add only owned prefix scripts/tests/fixtures, run exact-SHA CI again, then change status to DONE. Do not redo unrelated historical tests already PASS.
-Last `git clone` locally unavailable due container DNS, so source writes were through connected GitHub connector; npm/Chromium PASS are verified CI logs, not claimed locally.
+## Distinctions, risks, and next owner
+- Browser captures before and after matching views, but does **not** use an automatic pixel-diff tolerance; the screenshots and rect/style JSON are for visual inspection. Geometry/hover/background/permissions tests are programmatic.
+- Tests are real React components running with synthetic RAM-only data, not proof of production Firebase lease/CAS/ACL. Guest full-App admin navigation is intentionally restricted; guest popup uses real ReportDetailGrid fixture and succeeds. Popup position checked for viewport horizontal fit, resizing/scrolling and absence of overflow when popover remains open; valid native dismissal on resize/scroll is allowed.
+- Separate dedicated edge fixture is required for long department, empty metadata, QPPL/HC/BC because the full-App preview has fixed synthetic records. Full App itself is still exercised for normal admin/guest List and admin drill popup.
+- **COMMANDER owns integration**: cherry-pick feature (not worker checkpoint), integrate STAGES, final combined source SHA checks, full unit/regression/Emulator where appropriate, package/hash and public demo publication. All COMMANDER items remain **NOT RUN here**, not implied by worker DONE. Do not merge/publish from this branch.
+- Local container GitHub DNS disabled, so all commits via connected GitHub API; npm/browser evidence is GitHub Actions at exact tested SHA, not local run.
