@@ -132,7 +132,8 @@ async function main(){
   await page.setViewportSize({width,height:width===390?844:900});
   await page.goto(origin+'/compact-qa.html?full=1&preview-role='+role);
   await page.locator('[data-preview="pr95-l4-full"]').waitFor({timeout:12000});
-  await page.locator('[data-ui-reference-nav="items"]').click();
+  // Guest intentionally has no admin navigation; its initial page is List.
+  if(role==='admin')await page.locator('[data-ui-reference-nav="items"]').click();
   await page.locator('.item-data-table [data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
   const id='full-app-'+width+'-'+role;
   const measured=await shot(page,id+'-list');
