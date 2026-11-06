@@ -17,3 +17,9 @@ Baseline `8a201c1bf48c7916e4d0af9e1c0ca60cd6737632`; code baseline đã PASS 5d3
 - **Sites API vắng mặt trong môi trường hiện tại**: không deploy, không tạo Site mới; giữ `DEMO_PENDING` cho Site ID `appgprj_6aed474532b081919e39ba36909bf6bf`.
 
 DONE toàn đợt chỉ khi code/tests/screenshots/package đều chung SHA final, Site hiện có triển khai `succeeded`, smoke live public và asset hash khớp. Không main/Firebase prod/RTDB/Excel thật/live migration.
+
+## CI on worker refs — lưu ý kỹ thuật
+GitHub Actions on-push chỉ tự nhận workflow khi file workflow có mặt trên **chính ref của commit push**. Workflow mới đã commit trên coordination nhưng hiện **chưa có trên hai nhánh worker** đang ghi; không ngộ nhận rằng mọi push worker đã được CI kiểm. PICKER và TRACKS tự chạy toolchain chuẩn bằng môi trường riêng hoặc **tự thêm workflow riêng/cherry-pick YAML vào chính nhánh của mình** (owner tự quyết định), không cần chờ COMMANDER; phần browser script phải kiểm đúng HEAD/SHA và upload evidence. COMMANDER không sửa nhánh worker. Khi có bàn giao, COMMANDER tích hợp và chạy workflow đã đặt trên coordination. Không tính CI absence là PASS.
+
+### CI event cập nhật
+Run [#42245720825](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42245720825) exact commit `9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`: `controls-and-package` **success** (full synthetic/list/popup browser baseline smoke + SHA256 artifact `ui-20261106-controls-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`), `isolated-cas` **success** (artifact `ui-20261106-cas-42245720825-9bbf45104c6a7b8696609eaf13cc2d5912cd37bc`), `real-app-emulator` đang chạy khi quan sát. Tính năng PICKER/TRACKS **chưa tích hợp**, không tính C01–C10/C15 PASS.
