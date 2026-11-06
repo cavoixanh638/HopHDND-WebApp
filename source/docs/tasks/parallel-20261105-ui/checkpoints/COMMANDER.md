@@ -1,3 +1,5 @@
+> **CURRENT CHECKPOINT — 06/11/2026 / REVIEW-3 RESUME.** Read `REVIEW-3-END-TO-END.md`: source SHA `4bccba5` 3/3 CI PASS for *previous scope*, but stable report row code still based on min(member recordId) and violates membership churn. Coordination HEAD when resumed `0a6d795849d3bc4bc56b861c15955cde04e51261`; no new source changes at checkpoint. Single owner commander completing real group ID persistence, rename path, renderer, unit/Chrome/full-App, package/hash and Codex handoff. Current status: **GROUP-ID REMEDIATION IN_PROGRESS / SITE_PENDING / LIVE_HOLD**. No worker restarted; no main merge/prod Firebase writes. This block supersedes historical statements below that “only Site remains.”
+
 # COMMANDER checkpoint — 05/11/2026 (đầu phiên)
 
 ## Checkpoint đầu tiên, trước kiểm sâu
