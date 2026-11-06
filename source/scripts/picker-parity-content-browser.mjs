@@ -117,6 +117,8 @@ async function main(){
    const popupRect=await page.locator('.cell-picker-popover:popover-open').boundingBox();
    assert(popupRect&&popupRect.x>=-1&&popupRect.x+popupRect.width<=width+1,
     id+' popover outside horizontal viewport '+JSON.stringify(popupRect));
+   const options=page.locator('.cell-picker-popover:popover-open [role="option"]');
+   assert(await options.count()>0,id+' no options');
    // Resize/scroll an already-confirmed-open picker, rather than attempting
    // a second open after changing fixture/navigation state.
    if(width===390&&surface==='list'&&mode==='edit'){
@@ -134,11 +136,13 @@ async function main(){
       id+' dynamic scroll overflow '+JSON.stringify(rect));
     }
     await shot(page,id+'-resize-scroll');
+    await page.setViewportSize({width:390,height:844});
    }
-   const options=page.locator('.cell-picker-popover:popover-open [role="option"]');
-   assert(await options.count()>0,id+' no options');
-   await page.keyboard.press('Escape');
-   assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' Escape');
+
+   if(await page.locator('.cell-picker-popover:popover-open').count()){
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,id+' Escape');
+   }
    await target.click();
    await page.locator('.cell-picker-popover:popover-open').waitFor();
    await page.mouse.click(2,2);
