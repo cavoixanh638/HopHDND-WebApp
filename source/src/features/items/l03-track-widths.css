@@ -18,7 +18,7 @@
   --ui-stage-status-track:var(--hdnd-l03-status-track);
   --ui-stage-reserved:0px;
   box-sizing:border-box;
-  width:100%;
+  width:min(100%,var(--hdnd-l03-inner-width));
   max-width:100%;
   min-width:0;
   grid-auto-rows:auto;
