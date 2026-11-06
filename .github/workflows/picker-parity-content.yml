@@ -7,7 +7,7 @@ on:
       - 'source/src/features/items/CompactGroupedValue.tsx'
       - 'source/src/features/items/picker-parity-content.css'
       - 'source/scripts/picker-parity-content*.mjs'
-      - 'source/tests/picker-parity-content*.test.ts*'
+      - 'source/tests/picker-parity-content*'
       - '.github/workflows/picker-parity-content.yml'
   workflow_dispatch:
 permissions:
