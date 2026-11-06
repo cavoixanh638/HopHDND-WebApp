@@ -212,7 +212,7 @@ try{
    },{root,values,inner});
    const actual=await probe(page);
    check(actual,'rail-'+mode+'-'+surface+'-'+inner);
-   const numbers=actual.grid.trim().split(/\\s+/).map(n);
+   const numbers=actual.grid.trim().split(/\s+/).map(n);
    assert(numbers.length===widths.length&&
     numbers.every((x,i)=>near(x,widths[i])), 'Asymmetric rail mismatch '+JSON.stringify({surface,mode,widths,actual:actual.grid}));
    assert(near(actual.rect.w,inner,1.25),'Saved rail sum drift '+JSON.stringify({inner,actual:actual.rect}));
