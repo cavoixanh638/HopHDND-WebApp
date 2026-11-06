@@ -1,3 +1,13 @@
+# CURRENT — DEMO_PUBLISH_PASS / PUBLIC V2 — 06/11/2026
+
+**Mốc hiện hành, thay thế SITE_PENDING_ACCESS và chỉ dẫn không tạo Site mới/owner-only bên dưới.** Theo yêu cầu mới của người dùng, Codex đã phát hành [demo công khai không cần tài khoản](https://hophdnd-demo-20261106.charmingscone.chatgpt.site/) trên Site mới `appgprj_6aed474532b081919e39ba36909bf6bf`, phiên bản **2**, deployment `appgdep_6aed862c53e88191bab67c8d7695473b` **succeeded**.
+
+Giữ code/test SHA `91c2dd47de85c76fad53d1778e06c2786aaa136d`, CI 3/3 SUCCESS. Entry phát hành là **Pr95FullPreview dữ liệu giả từ compact-qa artifact cùng SHA**; standalone HTML của handoff cũ không đủ vì mặc định mở Google Sheet và không vào được admin. Không sửa code UI đã PASS. JS/CSS tải qua HTTP không cookie khớp hash CI; URL trả 200 không chuyển login. Smoke trình duyệt khách → admin mô phỏng → báo cáo → popup PASS.
+
+[Biên bản đầy đủ: version, source SHA, artifact/hash, phạm vi smoke và giới hạn](CODEX-PUBLIC-DEMO-RECEIPT.md). Demo không thay thế kiểm thử backend; migration **PREPARED_OFFLINE / LIVE_HOLD**, không merge main, không Firebase production/RTDB/Excel writes. Người dùng có thể bắt đầu thử; các lần sau cập nhật đúng Site ID này. Các mục dưới là lịch sử.
+
+---
+
 # Codex — REVIEW-3 L03: bàn giao Site demo (06/11/2026)
 
 **CODE/CI/ARTIFACT PASS — SITE_PENDING_ACCESS; CHƯA PHÁT HÀNH.** Tài liệu này thay thế mọi SHA/hash, yêu cầu owner-only tự suy diễn và chỉ dẫn phát hành cũ ở các lần Review-3 trước. Không dùng nhánh HEAD di động làm mã nguồn cần deploy.
