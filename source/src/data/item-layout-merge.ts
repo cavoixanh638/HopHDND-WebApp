@@ -1,4 +1,4 @@
-import {SUMMARY_CARD_KEYS,COMPACT_GROUP_LABEL_KEYS,validateItemLayout,type ItemLayout} from './item-preferences';
+import {SUMMARY_CARD_KEYS,COMPACT_GROUP_LABEL_KEYS,validateItemLayout,resolvedPartyTrackWidths,type ItemLayout} from './item-preferences';
 
 export type LayoutConflictChoice = 'local'|'remote';
 export type LayoutConflictChoices = Record<string,LayoutConflictChoice>;
@@ -89,6 +89,29 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
     editable:merge(base.partyGroupWidths!.editable,edited.partyGroupWidths!.editable,
       remote.partyGroupWidths!.editable,'partyGroupWidths.editable','L03 · toàn cụm ba track')
   };
+  // Compare each rail independently. Legacy profiles resolve in RAM, but only
+  // an explicit new-schema edit ever persists five fields. A remote new-schema
+  // profile always wins over untouched fallback values from an old draft.
+  const oldTracks=resolvedPartyTrackWidths(base);
+  const localTracks=resolvedPartyTrackWidths(edited);
+  const serverTracks=resolvedPartyTrackWidths(remote);
+  const mergedTracks={
+    readonly:{
+      label:merge(oldTracks.readonly.label,localTracks.readonly.label,
+        serverTracks.readonly.label,'partyTrackWidths.readonly.label','L03 · Chỉ xem · Nhãn + cấp trình'),
+      status:merge(oldTracks.readonly.status,localTracks.readonly.status,
+        serverTracks.readonly.status,'partyTrackWidths.readonly.status','L03 · Chỉ xem · Tiến độ')
+    },
+    editable:{
+      label:merge(oldTracks.editable.label,localTracks.editable.label,
+        serverTracks.editable.label,'partyTrackWidths.editable.label','L03 · Được sửa · Nhãn'),
+      level:merge(oldTracks.editable.level,localTracks.editable.level,
+        serverTracks.editable.level,'partyTrackWidths.editable.level','L03 · Được sửa · Cấp trình TU'),
+      status:merge(oldTracks.editable.status,localTracks.editable.status,
+        serverTracks.editable.status,'partyTrackWidths.editable.status','L03 · Được sửa · Tiến độ')
+    }
+  };
+  const persistTracks=edited.partyTrackWidths!==undefined||remote.partyTrackWidths!==undefined;
   const groupLabels=Object.fromEntries(COMPACT_GROUP_LABEL_KEYS.flatMap(key=>{
     const value=merge(base.groupLabels?.[key],edited.groupLabels?.[key],remote.groupLabels?.[key],
       `groupLabels.${key}`,`tên nhóm gộp: ${key}`);
@@ -99,5 +122,5 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
     merge(base.summaryCards![key],edited.summaryCards![key],remote.summaryCards![key],
       'summaryCards.'+key,'hiển thị thẻ '+key)]));
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,groupLabels,listTitle,summaryCards});
+  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,...(persistTracks?{partyTrackWidths:mergedTracks}:{}),groupLabels,listTitle,summaryCards});
 }
