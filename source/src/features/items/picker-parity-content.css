@@ -139,14 +139,14 @@
 @media(prefers-reduced-motion:reduce){
   :is(.item-data-table,.report-detail-grid) tbody td
     .compact-document-heading[data-metadata-mode="editable"]
-    [data-editable="true"][data-ui-picker-skin="standard"] button.cell-picker-trigger{
+    [data-editable="true"][data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible){
     transition:none!important;transform:none!important;
   }
 }
 @media print {
   :is(.item-data-table,.report-detail-grid) tbody td
     .compact-document-heading[data-metadata-mode="editable"]
-    [data-editable="true"][data-ui-picker-skin="standard"] button.cell-picker-trigger{
+    [data-editable="true"][data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible){
     transition:none!important;transform:none!important;
     box-shadow:none!important;outline:0!important;
   }
