@@ -31,6 +31,89 @@ export function validatePartyGroupWidths(value:unknown):PartyGroupWidths{
 export const partyGroupPhysicalWidth=(widths:PartyGroupWidths,hasEditableLevel:boolean)=>
   hasEditableLevel?Math.max(widths.readonly,widths.editable):widths.readonly;
 
+/** L03 independent rail lengths in CSS px (border-box), never percentage/1fr.
+ * A legacy 2-number profile is interpreted in memory only; the persisted
+ * partyTrackWidths property is never synthesized by validateItemLayout. */
+export interface PartyTrackWidths {
+  readonly: {label:number;status:number};
+  editable: {label:number;level:number;status:number};
+}
+export const L03_RAIL_GAP_PX=8;
+/** List+popup L03 cells explicitly use 11px padding on each side and one
+ * 1px right border (see l03-track-widths.css). No hidden legacy total. */
+export const L03_CELL_CHROME_PX=23;
+export const PARTY_TRACK_WIDTH_LIMITS={
+  readonly:{label:{min:84,max:1400},status:{min:112,max:1400}},
+  editable:{label:{min:84,max:1400},level:{min:76,max:900},status:{min:112,max:1400}}
+} as const;
+export const DEFAULT_PARTY_TRACK_WIDTHS:PartyTrackWidths={
+  readonly:{label:187,status:202},
+  editable:{label:187,level:96,status:248}
+};
+export const PARTY_TRACK_NAMES={
+  readonly:{label:'Nhãn + cấp trình',status:'Tiến độ'},
+  editable:{label:'Nhãn',level:'Cấp trình TU',status:'Tiến độ'}
+} as const;
+export function validatePartyTrackWidths(value:unknown):PartyTrackWidths{
+  if(!value||typeof value!=='object'||Array.isArray(value)||
+     Object.keys(value).some(key=>key!=='readonly'&&key!=='editable'))
+    throw new Error('L03 · Bộ 5 độ rộng rail không hợp lệ.');
+  const root=value as Record<string,unknown>;
+  const result={} as PartyTrackWidths;
+  for(const mode of ['readonly','editable'] as const){
+    const raw=root[mode];
+    const keys=Object.keys(PARTY_TRACK_WIDTH_LIMITS[mode]);
+    if(!raw||typeof raw!=='object'||Array.isArray(raw)||
+      Object.keys(raw).some(key=>!keys.includes(key))||
+      keys.some(key=>!Object.hasOwn(raw,key)))
+      throw new Error('L03 · Cấu hình '+(mode==='readonly'?'chỉ xem':'được sửa')+' cần đủ '+keys.length+' cột nhỏ.');
+    const values=raw as Record<string,unknown>;
+    const next:Record<string,number>={};
+    for(const name of keys){
+      const limits=(PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>)[name];
+      const width=values[name];
+      if(typeof width!=='number'||!Number.isInteger(width)||width<limits.min||width>limits.max)
+        throw new Error('L03 · '+(mode==='readonly'?'Chỉ xem':'Được sửa')+' · '+
+          (PARTY_TRACK_NAMES[mode] as Record<string,string>)[name]+
+          ' cần từ '+limits.min+' đến '+limits.max+' px.');
+      next[name]=width;
+    }
+    (result as unknown as Record<string,unknown>)[mode]=next;
+  }
+  return result;
+}
+export function fallbackPartyTrackWidths(legacy:PartyGroupWidths):PartyTrackWidths{
+  const group=validatePartyGroupWidths(legacy);
+  const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
+  // Deterministic historical split: subtract *one* gap and chrome per mode,
+  // allocate level 18% in editable mode, label 48% of readonly content or
+  // 43% of remaining editable content; remainder goes to status. Tiny old
+  // totals are clamped to usable rail minima (no 360/500px group floor).
+  const r=group.readonly-L03_RAIL_GAP_PX-L03_CELL_CHROME_PX;
+  const rl=clamp(Math.round(r*.48),84,1400);
+  const e=group.editable-2*L03_RAIL_GAP_PX-L03_CELL_CHROME_PX;
+  const el=clamp(Math.round(e*.18),76,900);
+  const en=clamp(Math.round((e-el)*.43),84,1400);
+  return {
+    readonly:{label:rl,status:clamp(r-rl,112,1400)},
+    editable:{label:en,level:el,status:clamp(e-en-el,112,1400)}
+  };
+}
+export function resolvedPartyTrackWidths(layout:Pick<ItemLayout,'partyTrackWidths'|'partyGroupWidths'>):PartyTrackWidths{
+  return layout.partyTrackWidths
+    ?validatePartyTrackWidths(layout.partyTrackWidths)
+    :fallbackPartyTrackWidths(layout.partyGroupWidths??DEFAULT_PARTY_GROUP_WIDTHS);
+}
+export function partyTrackModeWidth(widths:PartyTrackWidths,mode:'readonly'|'editable'):number{
+  const rails=widths[mode];
+  return Object.values(rails).reduce((sum,width)=>sum+width,0)+
+    (mode==='readonly'?1:2)*L03_RAIL_GAP_PX+L03_CELL_CHROME_PX;
+}
+export function partyTrackPhysicalWidth(widths:PartyTrackWidths,hasEditableLevel:boolean):number{
+  const two=partyTrackModeWidth(widths,'readonly');
+  return hasEditableLevel?Math.max(two,partyTrackModeWidth(widths,'editable')):two;
+}
+
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
@@ -65,6 +148,8 @@ export interface ItemLayout {
   compactDisplay?:SharedCompactDisplay;
   /** Shared L03 widths for level-readonly (2 tracks) and editable (3 tracks). */
   partyGroupWidths?:PartyGroupWidths;
+  /** Five independent L03 rail widths; if absent, read legacy fallback in RAM only. */
+  partyTrackWidths?:PartyTrackWidths;
   /** Administrator-owned titles; never rename source Excel fields. */
   groupLabels?:CompactGroupLabels;
   cellHighlights?:CellHighlightRule[];
@@ -123,7 +208,9 @@ export function validateCompactGroupLabels(value:unknown):CompactGroupLabels {
 export const defaultItemLayout=():ItemLayout=>({
   listTitle:DEFAULT_LIST_TITLE,summaryCards:{party:true,build:true,nq:true},
   tableWidth:1500,frameWidth:'auto',cellHighlights:[],compactDisplay:{...EMPTY_COMPACT},
-  partyGroupWidths:{...DEFAULT_PARTY_GROUP_WIDTHS},groupLabels:{}, 
+  partyGroupWidths:{...DEFAULT_PARTY_GROUP_WIDTHS},
+  partyTrackWidths:{readonly:{...DEFAULT_PARTY_TRACK_WIDTHS.readonly},
+    editable:{...DEFAULT_PARTY_TRACK_WIDTHS.editable}},groupLabels:{}, 
   columns:EXCEL_SOURCE_COLUMNS.map(column=>({...column,
     visible:true
   })),
@@ -229,9 +316,14 @@ export function validateItemLayout(value:unknown):ItemLayout{
     .map(key=>[key,compactSource[key]??false])) as SharedCompactDisplay;
   const groupLabels=validateCompactGroupLabels(input.groupLabels);
   const partyGroupWidths=validatePartyGroupWidths(input.partyGroupWidths);
+  // Do not materialize an old profile into persisted partyTrackWidths merely
+  // because someone edited a different preference. Runtime uses resolver.
+  const partyTrackWidths=input.partyTrackWidths===undefined?undefined:
+    validatePartyTrackWidths(input.partyTrackWidths);
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
+  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,
+    ...(partyTrackWidths?{partyTrackWidths}:{}),groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */
