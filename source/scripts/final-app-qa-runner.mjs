@@ -897,7 +897,7 @@ async function sharedPartyWidthsJourney(){
     const stage=cell?.querySelector('.compact-stages');
     const style=table?getComputedStyle(table):null;
     const rect=cell?.getBoundingClientRect(),inner=stage?.getBoundingClientRect();
-    const rails=stage?getComputedStyle(stage).gridTemplateColumns.trim().split(/\\s+/).map(Number.parseFloat):[];
+    const rails=stage?getComputedStyle(stage).gridTemplateColumns.trim().split(/\s+/).map(Number.parseFloat):[];
     const rows=[...(stage?.querySelectorAll('.compact-stage-row')??[])];
     const statuses=rows.map(row=>{const rect=row.querySelector('.compact-stage-state')?.getBoundingClientRect();
       return rect?{x:rect.x,width:rect.width}:null;});
