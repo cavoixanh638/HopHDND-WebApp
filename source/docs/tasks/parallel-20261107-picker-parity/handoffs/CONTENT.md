@@ -1,6 +1,6 @@
 # CONTENT checkpoint — 07/11/2026
 
-## Previous standalone milestone: PASS at 9fb74b7 (superseded by F01 review)
+## Own CONTENT scope: DONE — F01 paint clipping also verified
 Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
 **Own application + test code SHA / exact tested SHA: `9fb74b7fda1ab4492011dc675df5d656e74f6000`**. This subsequent checkpoint commit is docs-only and does not change tested code.
 
@@ -35,7 +35,7 @@ Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79e
 
 ## F01 reopened after Codex review (2026-11-07)
 
-**Status: IN_PROGRESS (F01 paint clipping), previous 9fb74b7 acceptance remains PASS for unchanged behaviors.**
+**Status: DONE for CONTENT including Codex F01; 9fb74b7 previous acceptance remains PASS.**
 Review source: `docs/20261107-picker-parity-review/source/docs/tasks/parallel-20261107-picker-parity/reviews/codex-20261107/CONTENT.md`.
 Baseline witness: run #42269772715, artifact #13527674364, `1440-list-edit-hover.json/png`: heading y728.1875/h26 but translated QPPL button y725.1875/h26; vertical overflow:hidden clips outline and shadow. Previous browser asserted computed transform but not actual paint room. **F01 NOT YET PASS.**
 
@@ -48,4 +48,24 @@ Status **IN_PROGRESS / own F01 CI running**. Old 9fb74b7 PASS is preserved, only
 - New `scripts/picker-parity-content-f01-browser.mjs`: 24 List/popup x edit/mixed x Sở/Loại x 1440/900/390 real Chrome scenes; normal/hover/true keyboard Tab focus (pointer away); screenshot full/details, computed clipping ancestor/outline+shadow painted bounds, row/next-row dimensions, document width.
 - New `scripts/picker-parity-content-f01-diff.mjs`: strict baseline vs after normal/hover/focus rect and style comparison, permitted pixel delta 1.1; background, lift, shadow invariance; document scroll width never grows; old version must reproduce clip.
 - Separate workflow step runs **BEFORE** fixture at former tested SHA `9fb74b7fda1ab4492011dc675df5d656e74f6000` with the same F01 script in a detached worktree, after against new SHA; archives both PNG+JSON and machine-comparison report. Existing 73 browser scenes + 40 unit tests + build unchanged.
-- Current CI [run #42377854275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42377854275), tested candidate `d3f94475eb07ad684078483cf25d19544838f012` (workflow fix). Typecheck/unit/build PASS so far; browser/F01 verdict not yet completed. Not DONE until complete run is SUCCESS and screenshot/diff supports claim.
+- Final exact tested SHA `23fefefb5ae73a75c12634c336e64c1b94e3996e`, GitHub Actions [#42382463641](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641) **SUCCESS**. The originally cited #42377854275 was an earlier failed intermediate run; do not use it as acceptance evidence.
+
+
+## F01 final acceptance and handoff — 2026-11-07
+
+**Final own implementation/tested code SHA:** `23fefefb5ae73a75c12634c336e64c1b94e3996e`.
+**CI run:** [#42382463641](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641) — **SUCCESS**, every job step PASS.
+**Evidence:** [artifact #13578111725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641/artifacts/13578111725) (`picker-parity-content-42382463641-23fefefb5ae73a75c12634c336e64c1b94e3996e`, 29,835,928 bytes). Includes F01 screenshots/crops and clip/style/rect JSON under `f01/before/`, `f01/after/`, `f01/before-vs-after.json`, plus pre-existing 73 browser scenario evidence and 18 e095 baseline captures.
+
+**F01 numeric results (real Chromium, old worker SHA vs fixed worker SHA):**
+- BEFORE on unchanged prior accepted SHA `9fb74b7fda1ab4492011dc675df5d656e74f6000`: `PICKER_PARITY_CONTENT_F01_BEFORE_REPRODUCED scenes=24 clipped=24` (heading own overflow clips lift/outline/shadow).
+- AFTER at exact tested SHA `23fefefb...`: `PICKER_PARITY_CONTENT_F01_AFTER_PASS scenes=24 clipped=0`.
+- Diff: `PICKER_PARITY_CONTENT_F01_DIFF_PASS`, **maxLayoutDeltaPx = 0** across **1440 compared rect values** (heading, button, group, row, next row; normal, hover, true Tab focus); unchanged button fill, shadow specification and -3px lift; no new document horizontal scroll.
+- Every effective clip ancestor must contain the complete transformed button + its 2px outline; the heading itself and other non-scrollport ancestors must also contain the whole requested shadow. At the physical edge of a scrollable modal/table/viewport, the outer halo may be naturally cropped by the existing scrollport; this is separately measured as `scrollportShadowCrops` and **not misreported as internal F01 clipping**.
+- True keyboard `Tab` after pointer moves away verifies `:focus-visible`; List and real popup, Sở and Loại VB, editable and mixed, 1440/900/390. The exact original CSS geometry remains min-height26, padding4×7, font11/550, radius6, caret5×3, hover/focus lift-3 and transition180ms. The fix is exclusively scoped heading `overflow:visible` instead of `overflow-x:auto;overflow-y:hidden`, with no layout padding/height increase.
+
+**Unchanged checks rerun on same tested SHA:** `npm run typecheck` PASS; 4 files/**40 unit tests** PASS; `npm run build:compact:qa` PASS; prior browser script **73 cases PASS**; baseline e095 detached worktree **18 captures PASS**.
+
+**F01 owned file changes since old PASS:** `source/src/features/items/picker-parity-content.css`, `source/scripts/picker-parity-content-f01-browser.mjs`, `source/scripts/picker-parity-content-f01-diff.mjs`, `.github/workflows/picker-parity-content.yml`, and this own checkpoint. The existing broad browser script has one additional failure diagnostic only; no weakened assertions. No changes in L03/L04/shared CellPicker, backend, permissions, width model or production.
+
+**Next owner:** COMMANDER may cherry-pick/review implementation from own final code SHA and execute combined-SHA CI/packaging/demo; worker has **not** merged, deployed or published. This checkpoint commit is docs-only and follows the tested code SHA; code and tests have no unvalidated changes.
