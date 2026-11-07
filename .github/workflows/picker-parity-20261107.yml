@@ -13,6 +13,7 @@ on:
       - 'source/scripts/ui-20261106-*'
       - 'source/package*.json'
       - 'source/compact-qa.html'
+      - '.github/workflows/picker-parity-20261107.yml'
 permissions:
   contents: read
 concurrency:
@@ -45,6 +46,8 @@ jobs:
       - name: Reject unexpected application and backend scope drift
         run: |
           set -euo pipefail
+          # Git pathspecs below are repository-root relative, not source/ relative.
+          cd "$GITHUB_WORKSPACE"
           ref=e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
           git cat-file -e "$ref^{commit}"
           while IFS= read -r path; do
