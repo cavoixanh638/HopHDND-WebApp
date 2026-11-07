@@ -7,8 +7,14 @@
   display:flex;flex-direction:row;flex-wrap:nowrap;
   align-items:center;justify-content:center;align-content:center;
   gap:8px;min-width:0;max-width:100%;width:100%;
-  line-height:1.35;overflow-x:auto;overflow-y:hidden;
-  overscroll-behavior-inline:contain;scrollbar-width:thin;
+  /* F01: the former x:auto / y:hidden scrollport clipped the button as
+   * soon as the reference lift moved it -3px above the 26px row, and also
+   * cut its 2px outline and 8px/16px shadow. Keep the row's ORIGINAL
+   * block-size and let only painted overflow escape. The two flex children
+   * already have min-width:0/max-width:100% and wrap long values, while
+   * the owning table remains the horizontal scroll container. Do not pair
+   * overflow-x:auto with overflow-y:visible: Chrome computes y as auto. */
+  line-height:1.35;overflow:visible!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-document-heading[data-metadata-mode] >
