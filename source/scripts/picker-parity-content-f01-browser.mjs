@@ -174,7 +174,12 @@ async function run(){
     await target.waitFor({timeout:12000});
     // Long/narrow tables use THEIR existing horizontal scroll owner.
     await target.evaluate(el=>el.scrollIntoView({behavior:'instant',block:'center',inline:'center'}));
-    await page.mouse.move(1,1);await page.waitForTimeout(230);
+    // A native Playwright hover can scroll a nested popup again even after
+    // scrollIntoView (the popup has multiple sticky scroll regions). Warm up
+    // auto-scroll before the non-hover reference and return the pointer away.
+    // This prevents confusing scroll position with a hover-induced reflow.
+    await target.hover();await page.mouse.move(1,1);
+    await page.waitForTimeout(230);
     const normal=await measurement(target);
     await screenshot(page,normal.heading,label+'-normal');
     await target.hover();await page.waitForTimeout(230);
