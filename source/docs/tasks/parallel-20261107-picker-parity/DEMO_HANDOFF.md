@@ -1,6 +1,6 @@
 # DEMO_HANDOFF — picker parity 07/11/2026 (public Site hiện có)
 
-**Status: DEMO_PENDING; chưa có tích hợp source hoặc gói final SHA; không được deploy file cũ.**
+**Status: INTEGRATED_QA_PASS / DEMO_PENDING.** Đã có source SHA, 3/3 CI SUCCESS và gói có SHA256. **Chưa có bằng chứng Site đã được deploy**, không dùng phiên bản cũ làm bản parity.
 COMMANDER là writer duy nhất file này trên `ui/20261107-picker-parity-command`. Cập nhật đầy đủ phần receipt ở cuối **sau** khi tất cả integration jobs và package artifact PASS đúng source SHA.
 
 ## Điều kiện trước khi phát hành (hard gate)
@@ -39,17 +39,20 @@ COMMANDER là writer duy nhất file này trên `ui/20261107-picker-parity-comma
 4. Popup/list 1440×900, 900×900, 390×844; scroll/resize, long Sở/type HC/BC/QPPL, palette/highlight, 2/3 tracks, widths config thử ít nhất hai bộ theo spec. Kiểm không overflow trang, không biến đổi dữ liệu.
 5. Record screenshots/measurements + timestamp (Asia/Bangkok), actual public deployment version + ID, source SHA + asset hashes. Ghi rõ RAM demo **không chứng minh persistence production**.
 
-## Receipts — vẫn CHƯA CÓ
-| Trường | Giá trị |
+## Receipts — mã và CI ĐÃ ĐỦ, Site vẫn PENDING
+| Trường | Giá trị đã kiểm chứng |
 |---|---|
-| Integrated final source/tested SHA | **PENDING** |
-| CI integrated run URL / exact SHA / 3 job conclusions | **PENDING** |
-| Artifact ID, file name, artifact digest | **PENDING** |
-| `source-sha.txt` / `asset-sha256.txt` | **PENDING** |
-| Package tar SHA256 | **PENDING** |
-| CONTENT F01 exact SHA / run / screenshot+paint PASS | **PENDING** |
-| STAGES F02 exact SHA / run / baseline+keyboard PASS | **PENDING** |
-| Site version / deployment ID / status | **PENDING — NOT DEPLOYED** |
-| Public URL HTTP/assets/smoke source proof | **PENDING — NOT TESTED FOR PARITY** |
+| Integrated final source/tested SHA | **`a6aa9f13aeac8a12add4a479dc7c1f97e91180db`**. Integration 19-file import commit `d743097c03feee733192a399121af699528fd1ea`, followed by workflow root guard and mounted-popup test harness fix; only docs changes after exact SHA. |
+| CI integrated run URL / exact SHA / 3 job conclusions | [#42387329892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892), head_sha exact above, **completed/success; 3/3 jobs SUCCESS**: integrated-browser-and-package, isolated-cas-and-permissions, real-app-emulator |
+| Full QA artifact ID, file name and ZIP digest | [#13580282257](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13580282257); `picker-parity-20261107-42387329892-a6aa9f13aeac8a12add4a479dc7c1f97e91180db`, 56,456,894 bytes, **ZIP SHA256 `5a5fb114ea3995d6ff01287e2510f1738a3282de38c6ac50761f12072885e048`** |
+| `source-sha.txt` / `asset-sha256.txt` | Inside full QA artifact at `qa-results/picker-parity-20261107/`; `source-sha.txt` created from `GITHUB_SHA=a6aa9f13...`; per-file asset manifest created from `dist` + `dist-compact-qa` and **`sha256sum -c asset-sha256.txt` succeeded** in same CI. Operator must independently recheck extracted bytes before publishing |
+| Package TAR SHA256 | `picker-parity-20261107-full-qa.tar.gz`: **`7feb06bc2e33fbf5d007336c8e71787d46d08da08dd2ad99321bb599851bec01`** (from CI package step); file digest receipt stored in `package-sha256.txt` |
+| CONTENT F01 exact SHA / run / paint proof | `23fefefb5ae73a75c12634c336e64c1b94e3996e` / [#42382463641 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641), artifact [13578111725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641/artifacts/13578111725); integrated F01 24 real Chrome scenes 0 clipped, prior 24/24 clipped |
+| STAGES F02 exact SHA / run / proof | `835b45c623014c31315504be9bfa34355c0d5be7` / [#42378516213 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42378516213), artifact [13576553352](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42378516213/artifacts/13576553352); integrated F02 54/54 real Chrome, STAGES before-after 12 pairs PASS |
+| Full real App / CAS evidence | Real-App Emulator **QA01–QA10 all PASS**, 27 screenshots, artifact [#13580123622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13580123622), ZIP SHA256 `2e369c28e9dddab14952701b7c4ff091f574ce1471afe422f245498d68cb425d`. Isolated CAS artifact [#13579768906](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13579768906), SHA256 `125fa5e37f24f49f60ae36cbe96c0c97f80365cf6255b91a3dd36082b79f0ddc` |
+| Public Site ID / original URL | **`appgprj_6aed474532b081919e39ba36909bf6bf`**, https://hophdnd-demo-20261106.charmingscone.chatgpt.site/ . Existing Site only, no new Site |
+| Site saved-version / deployment ID / status | **PENDING — NOT DEPLOYED BY COMMANDER**. Sites API/permissions unavailable in current connector; do not infer published version from past records |
+| Live public URL HTTP / asset hashes / admin-guest-mixed smoke | **PENDING — NOT RUN FOR THIS SHA**. Must verify correct deployed saved version + HTTP 200 no login, correct asset SHA, 1440/900/390 List/popup and capture receipts |
 
-No false DONE: until receipts are filled and deployment proven `succeeded`, this file remains a **future executable handoff**, not a release attestation.
+## Only remaining action: existing Site deployment and post-deployment verification
+**Do not rerun or modify previously PASS worker/integration source/test suites.** The operator with Sites API can take exactly `FINAL_TESTED_SHA` and `artifact 13580282257`, independently verify the ZIP and TAR digests above, extract `dist-compact-qa/compact-qa.html` with its `assets/*`, publish as a new saved version to **existing Site ID only**, deploy saved version, poll to `succeeded`, perform public live HTTP and actual browser QA, then fill Site/version/deployment/live receipts here and [COMMANDER checkpoint](handoffs/COMMANDER.md). Do not claim Site DONE, merge main, or deploy production Firebase/Excel before that proof.
