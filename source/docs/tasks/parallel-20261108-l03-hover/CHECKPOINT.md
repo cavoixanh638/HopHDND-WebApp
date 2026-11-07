@@ -13,6 +13,13 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 2. `source/scripts/picker-parity-stages-browser.mjs`: assert actual computed `translateY=-3px` AND getBoundingClientRect delta `-3px` at rest after transition. Verify parent row/status remain fixed, shadow and outline belong to button, palette and saved width remain stable. Save real hover screenshots and check expanded-state reset.
 3. Dedicated GitHub Actions workflow `l03-hover-lift-20261108.yml`: scope guard, typecheck, full unit, both builds and real Chromium L03/L04/content/width regressions, capture artifacts.
 
-## Acceptance / checkpoint
-- At source commit creation: **CODE_PATCHED; CI NOT YET VERIFIED**.
-- Required: exact-SHA GitHub workflow success and hover geometry evidence at List and popup, viewport1440/900/390, editable and mixed. Mark release **DEMO_PENDING** until public Site is rebuilt/published and independently verified.
+## Acceptance / checkpoint — FINAL CODE QA PASS
+- **Final code/test exact SHA:** `264d516d79bb60974a0124be5d99c72fde9e5976`.
+- First intermediate SHA `3745170f5c35c02a00cd6f13ca4beb4137ca7097` had a duplicate JS variable in new browser probe. All TypeScript/917 unit/both builds passed; Chromium was blocked by script syntax. Corrected without touching CSS at `264d516...`.
+- **GitHub Actions PASS:** [run #42394687395](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42394687395), one job success with exact head SHA `264d516d79bb60974a0124be5d99c72fde9e5976`.
+- Strict scope guard PASS; TypeScript PASS; full 917 unit PASS (116 skipped baseline); both builds PASS.
+- Real Chromium: L03 original parity 32 scenarios PASS; independent reviewer 54 scenarios PASS (Không6, palette36, keyboard12); four L04 picker reference 24 scenarios PASS; rail width6 PASS; CONTENT 73 browser scenarios PASS; commander smoke18 screenshots, 45 requests PASS.
+- New first-party browser probe measures resting real DOM rect + computed DOMMatrix, then hover rect+matrix after transition. Confirms exactly -3px (tolerances .15 CSS computed and .35 CSS rect), constant status wrapper/row y, unchanged rail width/status background, button shadow+outline, row outline none, nonsticky expanded lift. This passed on real synthetic React List and popup in viewport1440/900/390.
+- [Artifact #13582463240](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42394687395/artifacts/13582463240) contains actual browser screenshots, JSON probes and regressions; size30,876,877 bytes, SHA256 `7ca1ce68c04b7fa843edbe1d23cbf6bda521ba1c6e4ed3e69a65bca9f116e2a2`.
+- The CSS patch itself is in `source/src/features/items/item-frame.css`; the test changes are in `source/scripts/picker-parity-stages-browser.mjs`. NO shared L04 component/permissions/backend changes.
+- **Public demo/production remains DEMO_PENDING, NOT DONE**: no Site publish, no main merge, no Firebase live writes; even PASS on synthetic real-browser fixture is not proof of the old publicly deployed Site. Use this source SHA when preparing a newly verified public package. A later docs-only checkpoint commit must not be confused with the tested code commit.
