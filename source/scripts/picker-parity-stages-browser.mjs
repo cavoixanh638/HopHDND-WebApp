@@ -133,9 +133,9 @@ async function scenario(page,{surface,mode,width,long=false}){
  await page.mouse.move(0,0);
  await page.waitForTimeout(230);
  const beforeHover=await probe(page);
- const original=beforeHover.rows.find(r=>r.editable);
- assert(original?.button&&original?.buttonStyle,name+' missing normal button');
- assert(near(original.buttonStyle.translateY,0,.15),name+' button lifted before hover');
+ const beforeActive=beforeHover.rows.find(r=>r.editable);
+ assert(beforeActive?.button&&beforeActive?.buttonStyle,name+' missing normal button');
+ assert(near(beforeActive.buttonStyle.translateY,0,.15),name+' button lifted before hover');
  await target.hover();
  await page.waitForTimeout(250);
  let now=await probe(page);
@@ -143,15 +143,15 @@ async function scenario(page,{surface,mode,width,long=false}){
  assert(active?.button&&active?.buttonStyle,name+' hover button disappeared');
  // A non-identity matrix alone is NOT proof of 3px movement. Verify actual
  // button geometry and computed CSS, while the row and wrapper remain fixed.
- const deltaY=active.button.y-original.button.y;
+ const deltaY=active.button.y-beforeActive.button.y;
  assert(near(active.buttonStyle.translateY,-3,.15),
    name+' hover CSS lift != -3px: '+active.buttonStyle.transform);
  assert(near(deltaY,-3,.35),name+' hover painted lift != -3px: '+deltaY);
- assert(near(active.rect.y,original.rect.y,.35),
+ assert(near(active.rect.y,beforeActive.rect.y,.35),
    name+' hover moved the stage row instead of just its button');
- assert(near(active.status.y,original.status.y,.35),
+ assert(near(active.status.y,beforeActive.status.y,.35),
    name+' hover moved the colored status wrapper');
- assert(near(active.button.w,original.button.w,.35),
+ assert(near(active.button.w,beforeActive.button.w,.35),
    name+' hover changed saved status track width');
  assert.equal(active.rowStyle.outline,'none',
    name+' hover outlined the stage row, not the button');
@@ -161,7 +161,7 @@ async function scenario(page,{surface,mode,width,long=false}){
  assert.equal(active.buttonStyle.background,initial.rows.find(r=>r.editable).buttonStyle.background,
   name+' hover changed business fill');
  rec.states.hover={style:active.buttonStyle,deltaY,button:active.button,
-  row:active.rect,status:active.status,before:original.button};
+  row:active.rect,status:active.status,before:beforeActive.button};
  await screenshot(page,name+'-hover');
  await target.focus();
  await page.waitForTimeout(220);
