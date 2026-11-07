@@ -1,18 +1,18 @@
 # COMMANDER checkpoint — 2026-11-07
 
-Status: **IN_PROGRESS** (coordination/acceptance preparation only).
+Status: **INTEGRATED_QA_PASS / DEMO_PENDING** (source + 3/3 CI PASS; public Site deployment not performed).
 Branch: `ui/20261107-picker-parity-command`.
 Application/reference baseline: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
 Inherited docs-only seed HEAD (before this checkpoint): `2c20202236e557a82368924bf63f382a3e521912`.
-Code SHA new: **NONE**; final tested SHA: **NONE**; picker parity acceptance **NOT RUN**.
+Integrated code import SHA: `d743097c03feee733192a399121af699528fd1ea`; **FINAL EXACT TESTED SHA**: `a6aa9f13aeac8a12add4a479dc7c1f97e91180db`; picker parity acceptance [CI #42387329892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892) **SUCCESS (3/3 jobs)**.
 
-## Confirmed, not inferred
+## Historical initial intake — superseded by final section below
 - Read `COMMANDER.md`, `README.md`, `PLAN.md`, `TRACKER.md`, both worker task files and checkpoints; verified 3 branch refs at same seed SHA on 07/11.
 - CONTENT and STAGES are **READY_NOT_STARTED**, tested SHA NONE, NOT RUN. Do not count either as DONE until full own-SHA acceptance/evidence.
 - Earlier reference CI run [#42256616362](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42256616362) remains baseline evidence, not current code acceptance.
 - GitHub clone from execution container failed DNS (`Could not resolve host: github.com`); GitHub connector supports writing and GitHub Actions can test; do not assert local/browser passes.
 
-## Next execution sequence
+## Historical execution plan — completed except public Site deployment
 1. Create new isolated acceptance workflow `.github/workflows/picker-parity-20261107.yml` on COMMANDER, exact SHA, typecheck/full tests/both builds, real browser feature scripts mandatory (no silent skip), unchanged L04 reference & permission/CAS regression, SHA manifest/package; CI artifact outputs retained.
 2. Re-read both worker branch refs/checkpoints and CI before integration; leave READY until commit+evidence. Where deficits: owner + repro + acceptance in command task file, do not edit worker branches.
 3. When BOTH pass, integrate their actual committed source into COMMANDER (not main), audit diff L04/coreCellPicker/backend, run acceptance at **same final source SHA**; rerun affected checks if source changes.
@@ -81,3 +81,27 @@ Recovery: inspect new worker HEADs and their checkpoint/run IDs; compare tested 
 - Integrated [CI #42387047881](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387047881) at exact SHA `a323db66cde2e5a9469845f06e918b64abcaf2d3`: **isolated CAS/permissions PASS**, strict source gate, TypeScript, full unit and both builds PASS. Browser step FAIL at `edge-1440-popup-edit-empty blank picker visibility`: captured DOM shows L01 group content but metadata heading omitted because popup editing false. This was a **test fixture mount race**: in `picker-parity-content-browser.mjs` `if(await toggle.count())await toggle.click()` ran just after `page.goto` but `ReportDetailGrid` renders after `useEffect` config save; zero-count skipped edit button.
 - Patched ONLY COMMANDER owned integrated **browser harness** at [`a6aa9f13aeac8a12add4a479dc7c1f97e91180db`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/a6aa9f13aeac8a12add4a479dc7c1f97e91180db): both popup editor steps now `await getByRole('Chỉnh sửa nháp').waitFor(...)`, real click and `waitFor('Về chế độ xem')`. NO removal of blank-metadata assertions, no modification of React app, styles, permissions or worker branches. New full integrated [CI #42387329892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892) in progress; isolated CAS job SUCCESS, typecheck/unit/both build SUCCESS, browser running at last read.
 - Current accepted **worker** states BOTH DONE; combined source/test acceptance remains **PENDING**, final package/tested SHA **PENDING**; public Site unchanged/DEMO_PENDING. Use latest exact CI run SHA `a6aa9f13...`, not earlier `d743097` or docs-only HEAD, for eventual proof.
+
+## FINAL COMMANDER CHECKPOINT — 2026-11-07
+**Scope DONE**: accepted CONTENT F01 + STAGES F02 source integration and exact-SHA 3-job QA. **External/public demo remains DEMO_PENDING**; this is the only release dependency.
+
+### Immutable SHA provenance
+- CONTENT tested `23fefefb5ae73a75c12634c336e64c1b94e3996e`, [CI #42382463641](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641) SUCCESS, [artifact 13578111725](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42382463641/artifacts/13578111725). F01 painted clip 24/24 prior -> 0/24 after, zero geometry delta across 1440 comparisons; old 73 browser/40unit/18 baseline PASS.
+- STAGES tested `835b45c623014c31315504be9bfa34355c0d5be7`, [CI #42378516213](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42378516213) SUCCESS, [artifact 13576553352](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42378516213/artifacts/13576553352). F02 real Không 6, palette 36, keyboard12, 12 matched baseline, old 32 browser/15unit/6width PASS.
+- On COMMANDER, integrate 19 **exact worker blob SHAs**, no worker checkpoints/workflows, no shared L04/CellPicker/backend or width-model source change: commit `d743097c03feee733192a399121af699528fd1ea`.
+- Workflow strict-guard path correction `a323db66cde2e5a9469845f06e918b64abcaf2d3` and integrated harness `a6aa9f13aeac8a12add4a479dc7c1f97e91180db` (only waits for actual popup editor mount, without removing any test). **Final exact tested SHA** = `a6aa9f13aeac8a12add4a479dc7c1f97e91180db`. This and all later checkpoint changes (docs) are distinguishable; do not rebuild from moving HEAD.
+
+### Final verification (ALL 3/3 PASS on same SHA)
+[GitHub Actions run #42387329892](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892), status `completed`, conclusion `success`, `head_sha=a6aa9f13aeac8a12add4a479dc7c1f97e91180db`.
+1. `integrated-browser-and-package` SUCCESS: strict source allowlist, full unit/TypeScript, both builds, 73 CONTENT browser, F01 24 AFTER 0 clip, STAGES 32, F02 54, L04 picker 24, widths 6, combined commander smoke 18 screenshots/45 requests, e095 CONTENT BEFORE18 and STAGES paired12, prior F01 BEFORE24 all clip. Every required gate exercised; no silent skip.
+2. `isolated-cas-and-permissions` SUCCESS, no production credentials or writes.
+3. `real-app-emulator` SUCCESS, **QA01–QA10 all PASS**, 27 screenshots, isolated `demo-hdnd` Auth/RTDB/Functions and unchanged pinned Rules SHA `868c2fbc523c06ec06f2e21b5c16db261755b178c2cdc4736fed54e7c299c818`. QA09 real partyLevel-only permission; QA10 5 widths persist through real App reload and guest 900/390.
+
+### Packages (CI generated, not deployed)
+- [Full synthetic + standalone package artifact #13580282257](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13580282257), size 56,456,894 bytes, ZIP SHA256 `5a5fb114ea3995d6ff01287e2510f1738a3282de38c6ac50761f12072885e048`. Embedded TAR SHA256 `7feb06bc2e33fbf5d007336c8e71787d46d08da08dd2ad99321bb599851bec01`; SHA256 of each asset successfully checked by `sha256sum -c` before archive, manifest `qa-results/picker-parity-20261107/asset-sha256.txt`; embedded `source-sha.txt` = final exact SHA above. Public entry **`dist-compact-qa/compact-qa.html`**, NOT `dist/Dashboard_HĐND.html`.
+- [Real App evidence #13580123622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13580123622), 2,982,536 bytes; ZIP digest `2e369c28e9dddab14952701b7c4ff091f574ce1471afe422f245498d68cb425d`.
+- [Isolated CAS #13579768906](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42387329892/artifacts/13579768906), 7,888 bytes; ZIP digest `125fa5e37f24f49f60ae36cbe96c0c97f80365cf6255b91a3dd36082b79f0ddc`.
+
+### Final external release blocker (no false DONE)
+Public Site existing `appgprj_6aed474532b081919e39ba36909bf6bf`, URL https://hophdnd-demo-20261106.charmingscone.chatgpt.site/ . **No Sites action in available connectors**: never claimed saved Site version or deployment ID, HTTP/assets live smoke NOT RUN for this SHA. No merge main, no Firebase production deploy, no Excel real writes.
+Use [DEMO_HANDOFF.md](../DEMO_HANDOFF.md) receipt and exact linked artifact to publish full synthetic assets to existing ID only after checksum, poll Sites status `succeeded`, run public anonymous/admin/guest/mixed/1440/900/390 live smoke and record version/deployment/asset hashes. Until then `DEMO_PENDING`. Do not re-run worker or integrated PASS tests without source changes.
