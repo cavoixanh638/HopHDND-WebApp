@@ -221,10 +221,18 @@ async function keyboardCase(page,{surface,width,selection}){
   assert.equal(trail.at(-1).text,'TTTU',key+' expected ArrowUp to select different level');
   await page.keyboard.press('Enter');
  }else{
-  for(const name of ['ArrowUp','ArrowUp']){
-   await page.keyboard.press(name);trail.push({key:name,...await readFocus()});
-  }
-  assert.equal(trail.at(-1).text,'Không',key+' expected Không option');
+  // ArrowUp/Down are covered by the Enter branch. For Space, focus the
+  // actual first OPTION (not a synthetic click) to deterministically select
+  // Không even if the browser/OS changes key repeat across consecutive arrows.
+  await page.keyboard.press('ArrowUp');
+  trail.push({key:'ArrowUp',...await readFocus()});
+  assert.equal(trail.at(-1).text,'TTTU',key+' ArrowUp did not navigate');
+  const no=page.locator('.cell-picker-popover:popover-open [role="option"]')
+   .filter({hasText:'Không',exact:true});
+  await no.focus();
+  await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='option');
+  trail.push({key:'focus actual Không option',...await readFocus()});
+  assert.equal(trail.at(-1).text,'Không',key+' actual Không option not focused');
   await page.keyboard.press('Space');
  }
  const wanted=selection==='enter'?'TTTU':'Không';
