@@ -77,7 +77,15 @@ async function measurement(target){
     });
     const border=fits(outlineBox),shadow=fits(shadowBox);
     ancestors.push({name:node.tagName.toLowerCase()+'.'+String(node.className).split(' ').join('.').slice(0,120),
-     isHeading:node===heading,overflowX:s.overflowX,overflowY:s.overflowY,
+     isHeading:node===heading,
+     // A real popup/table/viewport scrollport is allowed to crop the
+     // OUTER halo at its physical edge. It must NEVER crop the outlined
+     // hit target itself; metadata ancestors must not crop either.
+     isIntentionalScrollport:node===document.documentElement||
+      node.classList.contains('report-grid-scroll')||
+      node.classList.contains('item-table-scroll')||
+      node.classList.contains('table-wrap'),
+     overflowX:s.overflowX,overflowY:s.overflowY,
      paintContain:s.contain,clipPath:s.clipPath,rect:box(node),scrollWidth:node.scrollWidth,
      clientWidth:node.clientWidth,clipRect:rectangle,
      outlineFits:border.horizontal&&border.vertical,shadowFits:shadow.horizontal&&shadow.vertical,
@@ -143,14 +151,19 @@ function validateState(initial,state,label){
  // Regression: a 26px-high clip at the heading has NO paint room for
  // the lifted borderbox/outline. Inspect EVERY effective clip ancestor.
  const lostOutline=state.clips.filter(c=>!c.outlineFits);
- const lostShadow=state.clips.filter(c=>!c.shadowFits);
+ const scrollportShadowCrops=state.clips.filter(c=>!c.shadowFits&&c.isIntentionalScrollport);
+ // F01 is an INTERNAL metadata paint clip, not the expected crop at the
+ // physical edge of the App's scroll container. Keep the latter measured
+ // and archived, and require the 2px focus/hover outline to fit EVERY clip.
+ const lostShadow=state.clips.filter(c=>!c.shadowFits&&!c.isIntentionalScrollport);
  if(mode==='after'){
   assert.equal(state.headingCss.overflowX,'visible',label+' horizontal heading clips');
   assert.equal(state.headingCss.overflowY,'visible',label+' vertical heading clips');
   assert.equal(lostOutline.length,0,label+' outline clipped '+JSON.stringify(lostOutline));
-  assert.equal(lostShadow.length,0,label+' shadow clipped '+JSON.stringify(lostShadow));
+  assert.equal(lostShadow.length,0,label+' internal metadata shadow clipped '+JSON.stringify(lostShadow));
  }
- return {lostOutline:lostOutline.map(c=>c.name),lostShadow:lostShadow.map(c=>c.name)};
+ return {lostOutline:lostOutline.map(c=>c.name),lostShadow:lostShadow.map(c=>c.name),
+  scrollportShadowCrops:scrollportShadowCrops.map(c=>c.name)};
 }
 async function run(){
  await ready();
