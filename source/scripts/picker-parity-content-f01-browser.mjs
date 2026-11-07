@@ -63,10 +63,14 @@ async function measurement(target){
    if(clipX||clipY||s.contain.includes('paint')||s.clipPath!=='none'){
     const margin=(s.overflowX==='clip'||s.overflowY==='clip')
       ?parseFloat(s.overflowClipMargin)||0:0;
-    const rectangle={left:r.left+node.clientLeft-margin,
-      right:r.left+node.clientLeft+node.clientWidth+margin,
-      top:r.top+node.clientTop-margin,
-      bottom:r.top+node.clientTop+node.clientHeight+margin};
+    // The root html box moves with document scroll. Its CLIP PORT is
+    // always the viewport, not the translated document bounding rect.
+    const rectangle=node===document.documentElement
+      ?{left:0,right:window.innerWidth,top:0,bottom:window.innerHeight}
+      :{left:r.left+node.clientLeft-margin,
+       right:r.left+node.clientLeft+node.clientWidth+margin,
+       top:r.top+node.clientTop-margin,
+       bottom:r.top+node.clientTop+node.clientHeight+margin};
     const fits=(q)=>({
      horizontal:!clipX||(q.left>=rectangle.left-1&&q.right<=rectangle.right+1),
      vertical:!clipY||(q.top>=rectangle.top-1&&q.bottom<=rectangle.bottom+1)
