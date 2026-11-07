@@ -49,6 +49,24 @@ jobs:
         run: npm run build:compact:qa
       - name: Real Chromium L01 and L04 within same List/popup
         run: node scripts/picker-parity-content-browser.mjs
+      - name: F01 real List and popup hover plus keyboard Tab paint and clip regression
+        run: PICKER_CONTENT_F01_MODE=after node scripts/picker-parity-content-f01-browser.mjs
+      - name: F01 capture BEFORE from original CONTENT passing SHA and compare geometry
+        run: |
+          set -euo pipefail
+          prior="9fb74b7fda1ab4492011dc675df5d656e74f6000"
+          base="$RUNNER_TEMP/picker-content-f01-prior"
+          git worktree add --detach "$base" "$prior"
+          cp scripts/picker-parity-content-f01-browser.mjs "$base/source/scripts/"
+          ln -s "$PWD/node_modules" "$base/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$base/source/cell-edit-service/node_modules"
+          ( cd "$base/source" &&
+            PICKER_CONTENT_F01_SOURCE_SHA="$prior" PICKER_CONTENT_F01_MODE=before \\
+            node scripts/picker-parity-content-f01-browser.mjs )
+          mkdir -p qa-results/picker-parity-content/f01/before
+          cp "$base/source/qa-results/picker-parity-content/f01/before/"* \\
+            qa-results/picker-parity-content/f01/before/
+          node scripts/picker-parity-content-f01-diff.mjs
       - name: Capture matching BEFORE images from untouched e095 reference
         run: |
           set -euo pipefail
