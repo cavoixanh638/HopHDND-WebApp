@@ -113,6 +113,27 @@ async function screenshot(page,rect,name){
  if(w>0&&h>0)await page.screenshot({path:join(out,name+'-detail.png'),
   clip:{x,y,width:w,height:h}});
 }
+async function centerInNearestScrollport(target){
+ // ReportDetailGrid has a 361px-wide scrollport around a ~1762px table.
+ // Ensure the complete 2px outline has room inside that real scrollport
+ // before measuring F01. Native scrollIntoView can leave the RIGHT 2px at
+ // the viewport edge (especially for the type badge on a 390px screen).
+ return target.evaluate(button=>{
+  const el=button.closest('.report-grid-scroll,.item-table-scroll,.table-wrap');
+  if(!el)return null;
+  const targetRect=button.getBoundingClientRect(),port=el.getBoundingClientRect();
+  const before={scrollLeft:el.scrollLeft,scrollTop:el.scrollTop,
+   maxLeft:el.scrollWidth-el.clientWidth,maxTop:el.scrollHeight-el.clientHeight};
+  const pad=22;
+  if(targetRect.right>port.right-pad)el.scrollLeft+=targetRect.right-(port.right-pad);
+  else if(targetRect.left<port.left+pad)el.scrollLeft-=port.left+pad-targetRect.left;
+  if(targetRect.bottom>port.bottom-pad)el.scrollTop+=targetRect.bottom-(port.bottom-pad);
+  else if(targetRect.top<port.top+pad)el.scrollTop-=port.top+pad-targetRect.top;
+  return {...before,afterLeft:el.scrollLeft,afterTop:el.scrollTop,
+   button:button.getBoundingClientRect().toJSON(),
+   viewport:el.getBoundingClientRect().toJSON()};
+ });
+}
 async function keyboardTabTo(page,target,label){
  await page.mouse.move(2,2);
  const info=await target.evaluate(button=>{
@@ -192,6 +213,7 @@ async function run(){
     // auto-scroll before the non-hover reference and return the pointer away.
     // This prevents confusing scroll position with a hover-induced reflow.
     await target.hover();await page.mouse.move(1,1);
+    const scrollAlignment=await centerInNearestScrollport(target);
     await page.waitForTimeout(230);
     const normal=await measurement(target);
     await screenshot(page,normal.heading,label+'-normal');
@@ -207,7 +229,7 @@ async function run(){
     const focusLoss=validateState(normal,focus,label+' Tab focus');
     await screenshot(page,focus.heading,label+'-keyboard-focus');
     cases.push({id:label,width,surface,permission,field,
-     normal,hover,focus,hoverLoss,focusLoss});
+     scrollAlignment,normal,hover,focus,hoverLoss,focusLoss});
     writeFileSync(join(out,label+'.json'),JSON.stringify(cases[cases.length-1],null,2));
     await page.keyboard.press('Escape');
     await page.mouse.move(1,1);
