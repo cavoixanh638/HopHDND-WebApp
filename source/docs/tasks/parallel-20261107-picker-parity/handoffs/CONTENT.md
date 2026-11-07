@@ -40,3 +40,12 @@ Review source: `docs/20261107-picker-parity-review/source/docs/tasks/parallel-20
 Baseline witness: run #42269772715, artifact #13527674364, `1440-list-edit-hover.json/png`: heading y728.1875/h26 but translated QPPL button y725.1875/h26; vertical overflow:hidden clips outline and shadow. Previous browser asserted computed transform but not actual paint room. **F01 NOT YET PASS.**
 
 Scope: alter `picker-parity-content.css` plus role-specific regression browser/test, preserve L01 geometry, cell permissions, unrelated UI, reduced-motion/print. Add real keyboard Tab focus without hover, List/popup 1440/900/390 edit/mixed, screenshot normal/hover/focus and clip ancestor/scroll/layout checks. Run own CI on new exact tested source SHA before returning DONE. Do not reset earlier work. Commander owns integration, not this worker.
+
+
+## F01 progress checkpoint — 07/11/2026
+Status **IN_PROGRESS / own F01 CI running**. Old 9fb74b7 PASS is preserved, only clipping acceptance reopened.
+- Scoped CSS commit `7b34893fcf401d2a69bc5632ac0f40f91b5c8320`: change heading overflow to visible on both axes (the two flex members already shrink/wrap), no padding, height, transform, shadow or business color changes. Do not claim complete until real paint gate.
+- New `scripts/picker-parity-content-f01-browser.mjs`: 24 List/popup x edit/mixed x Sở/Loại x 1440/900/390 real Chrome scenes; normal/hover/true keyboard Tab focus (pointer away); screenshot full/details, computed clipping ancestor/outline+shadow painted bounds, row/next-row dimensions, document width.
+- New `scripts/picker-parity-content-f01-diff.mjs`: strict baseline vs after normal/hover/focus rect and style comparison, permitted pixel delta 1.1; background, lift, shadow invariance; document scroll width never grows; old version must reproduce clip.
+- Separate workflow step runs **BEFORE** fixture at former tested SHA `9fb74b7fda1ab4492011dc675df5d656e74f6000` with the same F01 script in a detached worktree, after against new SHA; archives both PNG+JSON and machine-comparison report. Existing 73 browser scenes + 40 unit tests + build unchanged.
+- Current CI [run #42377854275](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42377854275), tested candidate `d3f94475eb07ad684078483cf25d19544838f012` (workflow fix). Typecheck/unit/build PASS so far; browser/F01 verdict not yet completed. Not DONE until complete run is SUCCESS and screenshot/diff supports claim.
