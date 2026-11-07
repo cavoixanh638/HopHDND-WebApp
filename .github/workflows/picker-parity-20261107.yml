@@ -67,6 +67,24 @@ jobs:
           # Baseline L04 reference scripts, only when supplied by same source SHA.
           node scripts/ui-20261106-picker-browser.mjs
           node scripts/ui-20261106-tracks-browser.mjs
+      - name: Capture matched BEFORE using unchanged baseline components
+        run: |
+          set -euo pipefail
+          base="$RUNNER_TEMP/picker-parity-20261107-reference"
+          test -s scripts/picker-parity-content-baseline.mjs
+          test -s scripts/picker-parity-stages-baseline.mjs || { echo "NOT_RUN: STAGES baseline script absent; reconcile exact worker filename"; exit 1; }
+          git worktree add --detach "$base" e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          cp scripts/picker-parity-content-baseline.mjs "$base/source/scripts/"
+          cp scripts/picker-parity-stages-baseline.mjs "$base/source/scripts/"
+          ln -s "$PWD/node_modules" "$base/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$base/source/cell-edit-service/node_modules"
+          ( cd "$base/source"
+            PICKER_CONTENT_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-content/before" node scripts/picker-parity-content-baseline.mjs
+            PICKER_STAGE_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages/before" PICKER_STAGES_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages/before" node scripts/picker-parity-stages-baseline.mjs
+          )
+          test -s qa-results/picker-parity-content/before/summary.json
+          test -d qa-results/picker-parity-stages/before
+          find qa-results/picker-parity-stages/before -name '*.png' -print -quit | grep -q .
       - name: Hash full synthetic assets and create immutable bundle
         env:
           EXACT_SOURCE_SHA: ${{ github.sha }}
@@ -88,6 +106,9 @@ jobs:
           Use the asset-sha256.txt manifest to verify bytes before and after publishing.
           EOF
           sha256sum "$root/PACKAGE_README.md" > "$root/readme-sha256.txt"
+          # Recheck source and asset digests immediately before archiving.
+          test "$(git rev-parse HEAD)" = "$EXACT_SOURCE_SHA"
+          sha256sum -c "$root/asset-sha256.txt"
           tar -czf "$root/picker-parity-20261107-full-qa.tar.gz" dist dist-compact-qa "$root/source-sha.txt" "$root/asset-sha256.txt" "$root/readme-sha256.txt" "$root/PACKAGE_README.md"
           sha256sum "$root/picker-parity-20261107-full-qa.tar.gz" > "$root/package-sha256.txt"
           cat "$root/package-sha256.txt"
@@ -145,5 +166,52 @@ jobs:
             source/cell-edit-service/stdout.local.txt
             source/cell-edit-service/test/witness.local.json
             source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
+  real-app-emulator:
+    needs: [integrated-browser-and-package, isolated-cas-and-permissions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Pin exact source SHA for real App Emulator
+        run: test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+      - name: Install locked emulator and real-browser dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Generate local-only QA rules (not deployed)
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Verify real App admin guest CAS and rights against isolated Emulator
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Archive real-App and Emulator witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-real-app-${{ github.run_id }}-${{ github.sha }}
+          path: source/qa-results/final-app-review/
           if-no-files-found: warn
           retention-days: 14
