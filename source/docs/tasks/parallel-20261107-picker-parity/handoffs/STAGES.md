@@ -1,11 +1,11 @@
 # STAGES checkpoint — 07/11/2026
 
-**Status: IN_PROGRESS — latest browser addition pending exact-SHA CI.**
+**Status: IN_PROGRESS — core exact-SHA CI PASS; review F02 evidence gates in progress.**
 Branch (duy nhất được ghi): `ui/20261107-picker-parity-stages`.
 Reference application SHA: `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
 Start HEAD: `2c20202236e557a82368924bf63f382a3e521912`.
 **Code SHA latest:** `8c0d9fbc7284493dcb31018aa117595362b61119`.
-**Latest fully tested code SHA:** `bdb77cbefa91e6f044845fcfbafc8ab8b5ce5f95`.
+**Latest fully tested code SHA:** `8c0d9fbc7284493dcb31018aa117595362b61119` (CI #42267219205).
 Checkpoint này docs-only; code không bị reset.
 
 ## Scope và kết quả
@@ -37,3 +37,9 @@ CI https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42266838889
 
 ## Recovery
 Continue this branch HEAD, inspect https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42267219205 ; no reset/cherry-pick cross-worker; preserve working CSS and only update own files. No DONE claim until verifiable evidence.
+
+## 07/11/2026 — Codex STAGES F02 review accepted
+- Nguồn nhiệm vụ: https://github.com/cavoixanh638/HopHDND-WebApp/blob/docs/20261107-picker-parity-review/source/docs/tasks/parallel-20261107-picker-parity/reviews/codex-20261107/STAGES.md .
+- Đã recheck GitHub API: CI #42267219205 `completed/success`, tested SHA `8c0d9fbc7284493dcb31018aa117595362b61119`, artifact `13527872811`. Dòng pending trong checkpoint cũ là lịch sử, **không còn blocker**; không sửa/lặp CSS và outside-click/scroll/resize đã PASS.
+- Phạm vi F02: thêm fixture/browser riêng prefix `picker-parity-stages` cho `partyLevel=Không` dù grant progressParty, keyboard cấp trình ArrowUp/Down + Enter/Space, palette/highlight 2/3 tracks List/popup, before/after trên detached baseline e095205c cùng fixture ở 1440/900/390, exact SHA CI và artifact; không sửa source ngoài scope, không merge/deploy. 
+- Trạng thái thêm gates: NOT RUN tại thời điểm checkpoint này; sẽ cập nhật kết quả thật sau CI.
