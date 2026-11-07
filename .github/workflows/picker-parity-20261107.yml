@@ -59,32 +59,69 @@ jobs:
       - name: Mandatory independent browser witnesses plus integrated regression
         run: |
           set -eu
-          for file in scripts/picker-parity-content-browser.mjs scripts/picker-parity-stages-browser.mjs; do
-            test -s "$file" || { echo "NOT_RUN missing mandatory feature browser witness: $file"; exit 1; }
-            node "$file"
+          for file in \
+            scripts/picker-parity-content-browser.mjs \
+            scripts/picker-parity-content-f01-browser.mjs \
+            scripts/picker-parity-stages-browser.mjs \
+            scripts/picker-parity-stages-review-browser.mjs \
+            scripts/picker-parity-stages-before-after.mjs \
+            scripts/picker-parity-stages-compare.mjs; do
+            test -s "$file" || { echo "NOT_RUN missing mandatory integrated witness: $file"; exit 1; }
           done
+          node scripts/picker-parity-content-browser.mjs
+          PICKER_CONTENT_F01_MODE=after node scripts/picker-parity-content-f01-browser.mjs
+          node scripts/picker-parity-stages-browser.mjs
+          node scripts/picker-parity-stages-review-browser.mjs
+          STAGES_VARIANT=after node scripts/picker-parity-stages-before-after.mjs
+          test -s qa-results/picker-parity-content/f01/after/summary.json
+          test -s qa-results/picker-parity-stages/review/review-witness.json
+          test -s qa-results/picker-parity-stages/comparison/after/measurements.json
           node scripts/ui-20261106-commander-smoke.mjs
           # Baseline L04 reference scripts, only when supplied by same source SHA.
           node scripts/ui-20261106-picker-browser.mjs
           node scripts/ui-20261106-tracks-browser.mjs
-      - name: Capture matched BEFORE using unchanged baseline components
+      - name: Capture baseline e095 + original F01 error, then compare STAGES
         run: |
           set -euo pipefail
-          base="$RUNNER_TEMP/picker-parity-20261107-reference"
-          test -s scripts/picker-parity-content-baseline.mjs
-          test -s scripts/picker-parity-stages-baseline.mjs || { echo "NOT_RUN: STAGES baseline script absent; reconcile exact worker filename"; exit 1; }
-          git worktree add --detach "$base" e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
-          cp scripts/picker-parity-content-baseline.mjs "$base/source/scripts/"
-          cp scripts/picker-parity-stages-baseline.mjs "$base/source/scripts/"
-          ln -s "$PWD/node_modules" "$base/source/node_modules"
-          ln -s "$PWD/cell-edit-service/node_modules" "$base/source/cell-edit-service/node_modules"
-          ( cd "$base/source"
+          prior="9fb74b7fda1ab4492011dc675df5d656e74f6000"
+          reference="$RUNNER_TEMP/picker-parity-reference-e095"
+          broken="$RUNNER_TEMP/picker-parity-content-prior-f01"
+          for file in scripts/picker-parity-content-baseline.mjs \
+                      scripts/picker-parity-content-f01-browser.mjs \
+                      scripts/picker-parity-stages-before-after.mjs \
+                      scripts/picker-parity-stages-compare.mjs \
+                      tests/picker-parity-stages-review-fixture.tsx \
+                      picker-parity-stages-review-fixture.html; do
+            test -s "$file" || { echo "NOT_RUN missing before/after contract: $file"; exit 1; }
+          done
+          git worktree add --detach "$reference" e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          cp scripts/picker-parity-content-baseline.mjs "$reference/source/scripts/"
+          cp scripts/picker-parity-stages-before-after.mjs "$reference/source/scripts/"
+          cp tests/picker-parity-stages-review-fixture.tsx "$reference/source/tests/"
+          cp picker-parity-stages-review-fixture.html "$reference/source/"
+          ln -s "$PWD/node_modules" "$reference/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$reference/source/cell-edit-service/node_modules"
+          ( cd "$reference/source"
             PICKER_CONTENT_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-content/before" node scripts/picker-parity-content-baseline.mjs
-            PICKER_STAGE_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages/before" PICKER_STAGES_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages/before" node scripts/picker-parity-stages-baseline.mjs
+            STAGES_VARIANT=before STAGES_ARTIFACT_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages" node scripts/picker-parity-stages-before-after.mjs
           )
           test -s qa-results/picker-parity-content/before/summary.json
-          test -d qa-results/picker-parity-stages/before
-          find qa-results/picker-parity-stages/before -name '*.png' -print -quit | grep -q .
+          test -s qa-results/picker-parity-stages/comparison/before/measurements.json
+          node scripts/picker-parity-stages-compare.mjs
+          git worktree add --detach "$broken" "$prior"
+          cp scripts/picker-parity-content-f01-browser.mjs "$broken/source/scripts/"
+          ln -s "$PWD/node_modules" "$broken/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$broken/source/cell-edit-service/node_modules"
+          ( cd "$broken/source"
+            PICKER_CONTENT_F01_MODE=before node scripts/picker-parity-content-f01-browser.mjs
+          )
+          mkdir -p qa-results/picker-parity-content/f01/before
+          cp "$broken/source/qa-results/picker-parity-content/f01/before/"* qa-results/picker-parity-content/f01/before/
+          test -s qa-results/picker-parity-content/f01/before/summary.json
+          # The prior F01 standalone CSS/diff passed in CONTENT's own CI.
+          # Do NOT require unchanged absolute row heights vs the prior CONTENT-only
+          # SHA here: integrated L03 legitimately changes same-row geometry.
+          # Instead enforce F01 no-clip browser on THIS combined SHA above.
       - name: Hash full synthetic assets and create immutable bundle
         env:
           EXACT_SOURCE_SHA: ${{ github.sha }}
