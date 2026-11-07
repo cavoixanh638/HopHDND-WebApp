@@ -203,8 +203,14 @@ async function keyboardCase(page,{surface,width,selection}){
  assert.equal(await page.locator('.cell-picker-popover:popover-open').count(),0,
   key+' level outside click failed');
  await target.click();await page.locator('.cell-picker-popover:popover-open').waitFor();
- const selected=await page.locator('.cell-picker-popover:popover-open [role="option"][aria-selected="true"]').textContent();
+ const selectedOption=page.locator('.cell-picker-popover:popover-open [role="option"][aria-selected="true"]');
+ await selectedOption.waitFor();
+ const selected=await selectedOption.textContent();
  assert.equal(selected?.trim(),'BTV',key+' unexpected starting level');
+ // Popover visibility is immediate; focusFirstOption is on next RAF. Focus
+ // the REAL selected option before sending real Chromium Arrow/Enter/Space.
+ await selectedOption.focus();
+ await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='option');
  const trail=[];
  const readFocus=()=>page.evaluate(()=>({text:document.activeElement?.textContent?.trim(),
   role:document.activeElement?.getAttribute('role')}));
