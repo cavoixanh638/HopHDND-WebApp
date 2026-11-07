@@ -42,6 +42,241 @@ jobs:
           set -eu
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           git status --porcelain
+      - name: Reject unexpected application and backend scope drift
+        run: |
+          set -euo pipefail
+          ref=e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          git cat-file -e "$ref^{commit}"
+          while IFS= read -r path; do
+            case "$path" in
+              source/src/features/items/CompactGroupedValue.tsx|\
+              source/src/features/items/l03-track-widths.css|\
+              source/src/features/items/picker-parity-content.css|\
+              source/src/features/items/picker-parity-stages.css|\
+              source/tests/picker-parity-content*|\
+              source/tests/picker-parity-stages*|\
+              source/scripts/picker-parity-content*|\
+              source/scripts/picker-parity-stages*|\
+              source/picker-parity-stages-review-fixture.html|\
+              source/docs/tasks/parallel-20261107-picker-parity/*) ;;
+              *) echo "OUT_OF_SCOPE source changed from reference: $path"; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$ref" HEAD -- source)
+          changes="$(git diff --unified=0 "$ref" HEAD -- source/src/features/items/CompactGroupedValue.tsx | grep '^+' | grep -v '^+++' || true)"
+          test "$changes" = "+import './picker-parity-content.css';" || { echo "Unexpected shared CompactGroupedValue source delta: $changes"; exit 1; }
+          changes="$(git diff --unified=0 "$ref" HEAD -- source/src/features/items/l03-track-widths.css | grep '^+' | grep -v '^+++' | grep -v '^+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Exact SHA TypeScript, full unit and both builds
+        run: |
+          set -eu
+          npm run typecheck
+          npm test
+          npm run build
+          npm run build:compact:qa
+          test -s dist/Dashboard_HĐND.html
+          test -s dist-compact-qa/compact-qa.html
+      - name: Mandatory independent browser witnesses plus integrated regression
+        run: |
+          set -eu
+          for file in \
+            scripts/picker-parity-content-browser.mjs \
+            scripts/picker-parity-content-f01-browser.mjs \
+            scripts/picker-parity-stages-browser.mjs \
+            scripts/picker-parity-stages-review-browser.mjs \
+            scripts/picker-parity-stages-before-after.mjs \
+            scripts/picker-parity-stages-compare.mjs; do
+            test -s "$file" || { echo "NOT_RUN missing mandatory integrated witness: $file"; exit 1; }
+          done
+          node scripts/picker-parity-content-browser.mjs
+          PICKER_CONTENT_F01_MODE=after node scripts/picker-parity-content-f01-browser.mjs
+          node scripts/picker-parity-stages-browser.mjs
+          node scripts/picker-parity-stages-review-browser.mjs
+          STAGES_VARIANT=after node scripts/picker-parity-stages-before-after.mjs
+          test -s qa-results/picker-parity-content/f01/after/summary.json
+          test -s qa-results/picker-parity-stages/review/review-witness.json
+          test -s qa-results/picker-parity-stages/comparison/after/measurements.json
+          node scripts/ui-20261106-commander-smoke.mjs
+          # Baseline L04 reference scripts, only when supplied by same source SHA.
+          node scripts/ui-20261106-picker-browser.mjs
+          node scripts/ui-20261106-tracks-browser.mjs
+      - name: Capture baseline e095 + original F01 error, then compare STAGES
+        run: |
+          set -euo pipefail
+          prior="9fb74b7fda1ab4492011dc675df5d656e74f6000"
+          reference="$RUNNER_TEMP/picker-parity-reference-e095"
+          broken="$RUNNER_TEMP/picker-parity-content-prior-f01"
+          for file in scripts/picker-parity-content-baseline.mjs \
+                      scripts/picker-parity-content-f01-browser.mjs \
+                      scripts/picker-parity-stages-before-after.mjs \
+                      scripts/picker-parity-stages-compare.mjs \
+                      tests/picker-parity-stages-review-fixture.tsx \
+                      picker-parity-stages-review-fixture.html; do
+            test -s "$file" || { echo "NOT_RUN missing before/after contract: $file"; exit 1; }
+          done
+          git worktree add --detach "$reference" e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          cp scripts/picker-parity-content-baseline.mjs "$reference/source/scripts/"
+          cp scripts/picker-parity-stages-before-after.mjs "$reference/source/scripts/"
+          cp tests/picker-parity-stages-review-fixture.tsx "$reference/source/tests/"
+          cp picker-parity-stages-review-fixture.html "$reference/source/"
+          ln -s "$PWD/node_modules" "$reference/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$reference/source/cell-edit-service/node_modules"
+          ( cd "$reference/source"
+            PICKER_CONTENT_BASELINE_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-content/before" node scripts/picker-parity-content-baseline.mjs
+            STAGES_VARIANT=before STAGES_ARTIFACT_DIR="$GITHUB_WORKSPACE/source/qa-results/picker-parity-stages" node scripts/picker-parity-stages-before-after.mjs
+          )
+          test -s qa-results/picker-parity-content/before/summary.json
+          test -s qa-results/picker-parity-stages/comparison/before/measurements.json
+          node scripts/picker-parity-stages-compare.mjs
+          git worktree add --detach "$broken" "$prior"
+          cp scripts/picker-parity-content-f01-browser.mjs "$broken/source/scripts/"
+          ln -s "$PWD/node_modules" "$broken/source/node_modules"
+          ln -s "$PWD/cell-edit-service/node_modules" "$broken/source/cell-edit-service/node_modules"
+          ( cd "$broken/source"
+            PICKER_CONTENT_F01_MODE=before node scripts/picker-parity-content-f01-browser.mjs
+          )
+          mkdir -p qa-results/picker-parity-content/f01/before
+          cp "$broken/source/qa-results/picker-parity-content/f01/before/"* qa-results/picker-parity-content/f01/before/
+          test -s qa-results/picker-parity-content/f01/before/summary.json
+          # The prior F01 standalone CSS/diff passed in CONTENT's own CI.
+          # Do NOT require unchanged absolute row heights vs the prior CONTENT-only
+          # SHA here: integrated L03 legitimately changes same-row geometry.
+          # Instead enforce F01 no-clip browser on THIS combined SHA above.
+      - name: Hash full synthetic assets and create immutable bundle
+        env:
+          EXACT_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          root=qa-results/picker-parity-20261107
+          mkdir -p "$root"
+          printf '%s\n' "$EXACT_SOURCE_SHA" > "$root/source-sha.txt"
+          find dist dist-compact-qa -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$root/asset-sha256.txt"
+          test -s "$root/asset-sha256.txt"
+          cat > "$root/PACKAGE_README.md" <<EOF
+          # Picker parity 20261107 — isolated QA package
+          Source Git SHA: $EXACT_SOURCE_SHA
+          Entry for public demo: dist-compact-qa/compact-qa.html (full synthetic App).
+          Also included: dist/Dashboard_HĐND.html (standalone artifact; NOT demo entry).
+          Roles: synthetic preview admin, guest, mixed; no credentials.
+          Data: in-memory synthetic QA only; no live persistence, no production source or write.
+          This package does NOT assert public Site deployment.
+          Use the asset-sha256.txt manifest to verify bytes before and after publishing.
+          EOF
+          sha256sum "$root/PACKAGE_README.md" > "$root/readme-sha256.txt"
+          # Recheck source and asset digests immediately before archiving.
+          test "$(git rev-parse HEAD)" = "$EXACT_SOURCE_SHA"
+          sha256sum -c "$root/asset-sha256.txt"
+          tar -czf "$root/picker-parity-20261107-full-qa.tar.gz" dist dist-compact-qa "$root/source-sha.txt" "$root/asset-sha256.txt" "$root/readme-sha256.txt" "$root/PACKAGE_README.md"
+          sha256sum "$root/picker-parity-20261107-full-qa.tar.gz" > "$root/package-sha256.txt"
+          cat "$root/package-sha256.txt"
+      - name: Upload tests screenshots and exact SHA package (NO DEPLOY)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/qa-results/picker-parity-content/
+            source/qa-results/picker-parity-stages/
+            source/qa-results/picker-parity-20261107/
+            source/ui-20261106-artifacts/
+            source/qa-results/ui-20261106-picker/
+            source/qa-results/ui-20261106-tracks/
+          if-no-files-found: warn
+          retention-days: 14
+  isolated-cas-and-permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install isolated test dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Isolated rules, Auth RTDB and CAS (no production)
+        run: |
+          set -eu
+          npm run check --prefix cell-edit-service
+          node cell-edit-service/scripts/make-test-rules.mjs
+          ( cd cell-edit-service && npm run test:isolated > stdout.local.txt 2>&1 ) || { tail -n 100 cell-edit-service/stdout.local.txt; exit 1; }
+          tail -n 30 cell-edit-service/stdout.local.txt
+      - name: Upload isolated permission/CAS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-cas-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
+  real-app-emulator:
+    needs: [integrated-browser-and-package, isolated-cas-and-permissions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Pin exact source SHA for real App Emulator
+        run: test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+      - name: Install locked emulator and real-browser dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Generate local-only QA rules (not deployed)
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Verify real App admin guest CAS and rights against isolated Emulator
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Archive real-App and Emulator witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: picker-parity-20261107-real-app-${{ github.run_id }}-${{ github.sha }}
+          path: source/qa-results/final-app-review/
+          if-no-files-found: warn
+          retention-days: 14
+ || true)"
+          test "$changes" = '+@import "./picker-parity-stages.css";' || { echo "Unexpected L03 width model source delta: $changes"; exit 1; }
+          test -z "$(git diff --name-only "$ref" HEAD -- source/shared source/cell-edit-service source/parent-commit-service source/firebase source/server source/package-lock.json)"
+          echo "PICKER_PARITY_ALLOWED_SCOPE_ONLY"
       - name: Install locked dependencies and Chromium
         run: |
           npm ci --no-audit --no-fund
