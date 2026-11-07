@@ -61,10 +61,10 @@ jobs:
           ln -s "$PWD/node_modules" "$base/source/node_modules"
           ln -s "$PWD/cell-edit-service/node_modules" "$base/source/cell-edit-service/node_modules"
           ( cd "$base/source" &&
-            PICKER_CONTENT_F01_SOURCE_SHA="$prior" PICKER_CONTENT_F01_MODE=before \\
+            PICKER_CONTENT_F01_SOURCE_SHA="$prior" PICKER_CONTENT_F01_MODE=before \
             node scripts/picker-parity-content-f01-browser.mjs )
           mkdir -p qa-results/picker-parity-content/f01/before
-          cp "$base/source/qa-results/picker-parity-content/f01/before/"* \\
+          cp "$base/source/qa-results/picker-parity-content/f01/before/"* \
             qa-results/picker-parity-content/f01/before/
           node scripts/picker-parity-content-f01-diff.mjs
       - name: Capture matching BEFORE images from untouched e095 reference
