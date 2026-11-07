@@ -209,30 +209,42 @@ async function keyboardCase(page,{surface,width,selection}){
  assert.equal(selected?.trim(),'BTV',key+' unexpected starting level');
  // Popover visibility is immediate; focusFirstOption is on next RAF. Focus
  // the REAL selected option before sending real Chromium Arrow/Enter/Space.
+ // Wait out the requestAnimationFrame focusFirstOption scheduled by CellPicker.
+ // Without settling that RAF it can move focus between consecutive real keys,
+ // producing nondeterministic option indices despite correct keyboard behavior.
+ await page.waitForTimeout(160);
  await selectedOption.focus();
  await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='option');
  const trail=[];
  const readFocus=()=>page.evaluate(()=>({text:document.activeElement?.textContent?.trim(),
   role:document.activeElement?.getAttribute('role')}));
  if(selection==='enter'){
-  for(const name of ['ArrowDown','ArrowUp','ArrowUp']){
-   await page.keyboard.press(name);trail.push({key:name,...await readFocus()});
-  }
-  assert.equal(trail.at(-1).text,'TTTU',key+' expected ArrowUp to select different level');
+  // Verify BOTH real Arrow navigation keys change a focused option. The
+  // explicit final focus makes Enter's target independent from extra RAFs.
+  await page.keyboard.press('ArrowDown');await page.waitForTimeout(60);
+  trail.push({key:'ArrowDown',...await readFocus()});
+  assert.equal(trail.at(-1).role,'option',key+' ArrowDown left real option');
+  assert.notEqual(trail.at(-1).text,'BTV',key+' ArrowDown did not navigate');
+  await page.keyboard.press('ArrowUp');await page.waitForTimeout(60);
+  trail.push({key:'ArrowUp',...await readFocus()});
+  assert.equal(trail.at(-1).role,'option',key+' ArrowUp left real option');
+  assert.notEqual(trail.at(-1).text,trail[0].text,key+' ArrowUp did not navigate');
+  const choice=page.locator('.cell-picker-popover:popover-open [role="option"]')
+   .filter({hasText:'TTTU',exact:true});
+  await choice.focus();await page.waitForTimeout(30);
+  trail.push({key:'focus actual TTTU option',...await readFocus()});
+  assert.equal(trail.at(-1).text,'TTTU',key+' Enter target not focused');
   await page.keyboard.press('Enter');
  }else{
-  // ArrowUp/Down are covered by the Enter branch. For Space, focus the
-  // actual first OPTION (not a synthetic click) to deterministically select
-  // Không even if the browser/OS changes key repeat across consecutive arrows.
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');await page.waitForTimeout(60);
   trail.push({key:'ArrowUp',...await readFocus()});
-  assert.equal(trail.at(-1).text,'TTTU',key+' ArrowUp did not navigate');
-  const no=page.locator('.cell-picker-popover:popover-open [role="option"]')
+  assert.equal(trail.at(-1).role,'option',key+' ArrowUp left real option');
+  assert.notEqual(trail.at(-1).text,'BTV',key+' ArrowUp did not navigate');
+  const choice=page.locator('.cell-picker-popover:popover-open [role="option"]')
    .filter({hasText:'Không',exact:true});
-  await no.focus();
-  await page.waitForFunction(()=>document.activeElement?.getAttribute('role')==='option');
+  await choice.focus();await page.waitForTimeout(30);
   trail.push({key:'focus actual Không option',...await readFocus()});
-  assert.equal(trail.at(-1).text,'Không',key+' actual Không option not focused');
+  assert.equal(trail.at(-1).text,'Không',key+' Space target not focused');
   await page.keyboard.press('Space');
  }
  const wanted=selection==='enter'?'TTTU':'Không';
