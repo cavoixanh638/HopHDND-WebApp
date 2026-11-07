@@ -1045,9 +1045,9 @@
   .compact-stage-state .workflow-status-value::before{
   content:none;display:none;
 }
-/* UI V3 L2: no nested pill/button/editor boxes inside a colored grouped stage.
-   These rules intentionally override the historical 3D individual-button hover
-   skin in app.css without changing that skin in unrelated standalone fields. */
+/* UI V3 L2 legacy defaults: a grouped stage used to be one flat surface.
+   Revised standard-skinned L03 editors have their OWN 3px hover/focus skin
+   in picker-parity-stages.css. Never apply V3's hover suppression to them. */
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
   :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger {
   display:inline-flex;width:100%;min-width:0;max-width:100%;min-height:0;
@@ -1059,17 +1059,18 @@
   cursor:pointer;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  :is(.compact-stage-state,.compact-stage-level):not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
   border:0!important;background:transparent!important;
   box-shadow:none!important;outline:0!important;transform:none!important;
   color:inherit!important;
 }
-/* One deliberate focus/hover affordance, on the actual shared ROW, not a nested box.
-   A read-only row has no button and therefore never gains an edit affordance. */
-:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:hover){
+/* Legacy V3 only: the row was the single hover/focus surface.
+   Revised L03 (data-rev2=true) instead lifts ONLY the hovered standard
+   field button; the parent stage row must never receive an extra outline. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages:not([data-rev2="true"]) .compact-stage-row:has(button.cell-picker-trigger:hover){
   border-color:#356C8B;
 }
-:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages:not([data-rev2="true"]) .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
   outline:2px solid #356C8B;outline-offset:1px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row button.cell-picker-trigger:not(:disabled)::after{
@@ -1087,7 +1088,8 @@
   .compact-stage-row .compact-stage-state{margin-left:0}
 }
 
-/* UI V4 L2 — the OUTER stage row remains the one and only framed surface.
+/* UI V4 L2 legacy rail: its flat HOVER styling is only for nonstandard skins.
+   Revised L03 keeps its configured rail geometry but uses individual buttons.
    Status edits fill the entire value column; long legacy/canonical labels
    wrap to the left of a fixed 22px caret track, not around the caret.
    This is scoped to the grouped status member, not partyLevel or other fields. */
@@ -1137,13 +1139,13 @@
   pointer-events:none;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  .compact-stage-state[data-editable="true"]:not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
   border:0!important;outline:0!important;box-shadow:none!important;
   transform:none!important;
   background:color-mix(in srgb,currentColor 13%,transparent)!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
+  .compact-stage-state[data-editable="true"]:not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
   background:color-mix(in srgb,currentColor 12%,transparent);
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row

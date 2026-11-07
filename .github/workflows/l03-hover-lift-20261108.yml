@@ -1,0 +1,74 @@
+name: L03 editable status hover 3px - exact browser proof (NO DEPLOY)
+on:
+  push:
+    branches:
+      - ui/20261108-l03-hover-lift-fix
+permissions:
+  contents: read
+jobs:
+  hover-lift-ui-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Source pin and permitted CSS/browser scope
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          cd "$GITHUB_WORKSPACE"
+          baseline=a6aa9f13aeac8a12add4a479dc7c1f97e91180db
+          git cat-file -e "$baseline^{commit}"
+          while IFS= read -r file; do
+            case "$file" in
+              source/src/features/items/item-frame.css|\
+              source/scripts/picker-parity-stages-browser.mjs|\
+              source/docs/tasks/parallel-20261108-l03-hover/*) ;;
+              *) echo "OUT_OF_SCOPE source modification: $file"; exit 1 ;;
+            esac
+          done < <(git diff --name-only "$baseline" HEAD -- source)
+          test -z "$(git diff --name-only "$baseline" HEAD -- source/src/features/items/CellPicker.tsx source/src/features/items/CompactGroupedValue.tsx source/src/features/items/picker-parity-stages.css source/src/features/items/l03-track-widths.css source/src/styles/app.css source/shared source/firebase source/server)"
+          echo "L03_HOVER_SCOPE_GUARD_PASS"
+      - name: Install pinned dependencies and Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Typecheck, full unit suite and both applications
+        run: |
+          set -eu
+          npm run typecheck
+          npm test
+          npm run build
+          npm run build:compact:qa
+          test -s dist/Dashboard_HĐND.html
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chromium L03 geometry, palette, permissions and L04 untouched
+        run: |
+          set -eu
+          node scripts/picker-parity-stages-browser.mjs
+          node scripts/picker-parity-stages-review-browser.mjs
+          node scripts/ui-20261106-picker-browser.mjs
+          node scripts/ui-20261106-tracks-browser.mjs
+          node scripts/picker-parity-content-browser.mjs
+          node scripts/ui-20261106-commander-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l03-hover-geometry-and-regression
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            source/qa-results/picker-parity-stages/**
+            source/qa-results/picker-parity-content/**
+            source/qa-results/ui-20261106-*/**

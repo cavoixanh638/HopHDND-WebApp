@@ -37,7 +37,9 @@ const probe=async page=>page.evaluate(()=>{
  return {display:s.display,width:s.width,minHeight:s.minHeight,height:s.height,padding:s.padding,
   border:s.borderWidth,borderRadius:s.borderRadius,color:s.color,background:s.backgroundColor,
   fontSize:s.fontSize,fontWeight:s.fontWeight,lineHeight:s.lineHeight,gap:s.gap,
-  alignItems:s.alignItems,transform:s.transform,transition:s.transition,
+  alignItems:s.alignItems,transform:s.transform,
+  translateY:s.transform==='none'?0:new DOMMatrixReadOnly(s.transform).m42,
+  transition:s.transition,
   boxShadow:s.boxShadow,outline:s.outlineStyle,overflowX:s.overflowX,
   after:{content:a.content,width:a.width,height:a.height,display:a.display,clip:a.clipPath,
    gridColumn:a.gridColumn,background:a.backgroundColor},before:{content:b.content,display:b.display}};};
@@ -45,7 +47,7 @@ const probe=async page=>page.evaluate(()=>{
   const label=r.querySelector('.compact-stage-label'),status=r.querySelector('.compact-stage-state');
   const level=r.querySelector('.compact-stage-level[data-level-editor="true"]');
   const button=status?.querySelector('button.cell-picker-trigger'),levelButton=level?.querySelector('button.cell-picker-trigger');
-  return {field:r.dataset.stageField,rect:rc(r),label:rc(label),status:rc(status),
+  return {field:r.dataset.stageField,rect:rc(r),rowStyle:cs(r),label:rc(label),status:rc(status),
    level:rc(level),button:rc(button),levelButton:rc(levelButton),
    editable:status?.dataset.editable==='true',
    labelStyle:label?cs(label):null,statusStyle:status?cs(status):null,
@@ -128,22 +130,53 @@ async function scenario(page,{surface,mode,width,long=false}){
  if(mode==='guest')return;
  const target=page.locator(root+' .compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"] button.cell-picker-trigger').first();
  await target.scrollIntoViewIfNeeded();
+ await page.mouse.move(0,0);
+ await page.waitForTimeout(230);
+ const beforeHover=await probe(page);
+ const original=beforeHover.rows.find(r=>r.editable);
+ assert(original?.button&&original?.buttonStyle,name+' missing normal button');
+ assert(near(original.buttonStyle.translateY,0,.15),name+' button lifted before hover');
  await target.hover();
- await page.waitForTimeout(220);
+ await page.waitForTimeout(250);
  let now=await probe(page);
  const active=now.rows.find(r=>r.editable);
- assert(active?.buttonStyle.transform.includes('matrix'),name+' hover missing lift');
+ assert(active?.button&&active?.buttonStyle,name+' hover button disappeared');
+ // A non-identity matrix alone is NOT proof of 3px movement. Verify actual
+ // button geometry and computed CSS, while the row and wrapper remain fixed.
+ const deltaY=active.button.y-original.button.y;
+ assert(near(active.buttonStyle.translateY,-3,.15),
+   name+' hover CSS lift != -3px: '+active.buttonStyle.transform);
+ assert(near(deltaY,-3,.35),name+' hover painted lift != -3px: '+deltaY);
+ assert(near(active.rect.y,original.rect.y,.35),
+   name+' hover moved the stage row instead of just its button');
+ assert(near(active.status.y,original.status.y,.35),
+   name+' hover moved the colored status wrapper');
+ assert(near(active.button.w,original.button.w,.35),
+   name+' hover changed saved status track width');
+ assert.equal(active.rowStyle.outline,'none',
+   name+' hover outlined the stage row, not the button');
+ assert.notEqual(active.buttonStyle.boxShadow,'none',
+   name+' hover missing individual button shadow');
  assert(active.buttonStyle.outline==='solid'||active.buttonStyle.outline.includes('solid'),name+' hover missing outline');
  assert.equal(active.buttonStyle.background,initial.rows.find(r=>r.editable).buttonStyle.background,
   name+' hover changed business fill');
- rec.states.hover=active.buttonStyle;
+ rec.states.hover={style:active.buttonStyle,deltaY,button:active.button,
+  row:active.rect,status:active.status,before:original.button};
+ await screenshot(page,name+'-hover');
  await target.focus();
  await page.waitForTimeout(220);
  now=await probe(page);rec.states.focus=now.rows.find(r=>r.editable).buttonStyle;
  await target.click();
  await page.locator('.cell-picker-popover:popover-open').waitFor();
  now=await probe(page);rec.states.open=now.rows.find(r=>r.editable).buttonStyle;
- assert.equal(rec.states.open.background,rec.states.hover.background,name+' open changed fill');
+ assert.equal(rec.states.open.background,rec.states.hover.style.background,name+' open changed fill');
+ // aria-expanded by itself must not keep a 3px lift after pointer exit.
+ await page.mouse.move(0,0);
+ await page.waitForTimeout(230);
+ const expandedAfterExit=(await probe(page)).rows.find(r=>r.editable);
+ assert(near(expandedAfterExit.buttonStyle.translateY,0,.15),
+  name+' expanded picker stuck lifted: '+expandedAfterExit.buttonStyle.transform);
+ rec.states.openAfterPointerExit=expandedAfterExit.buttonStyle;
  const popup=page.locator('.cell-picker-popover:popover-open');
  assert(await popup.getByRole('option').count()>=2,name+' missing real choices');
  await page.keyboard.press('Escape');
