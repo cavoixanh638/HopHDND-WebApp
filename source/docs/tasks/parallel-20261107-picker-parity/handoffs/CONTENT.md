@@ -37,13 +37,13 @@ Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79e
 
 **Status: DONE for CONTENT including Codex F01; 9fb74b7 previous acceptance remains PASS.**
 Review source: `docs/20261107-picker-parity-review/source/docs/tasks/parallel-20261107-picker-parity/reviews/codex-20261107/CONTENT.md`.
-Baseline witness: run #42269772715, artifact #13527674364, `1440-list-edit-hover.json/png`: heading y728.1875/h26 but translated QPPL button y725.1875/h26; vertical overflow:hidden clips outline and shadow. Previous browser asserted computed transform but not actual paint room. **F01 NOT YET PASS.**
+Baseline witness: run #42269772715, artifact #13527674364, `1440-list-edit-hover.json/png`: heading y728.1875/h26 but translated QPPL button y725.1875/h26; vertical overflow:hidden clips outline and shadow. Previous browser asserted computed transform but not actual paint room. **Historical F01 FAIL at prior SHA; closed by final exact-SHA PASS below.**
 
 Scope: alter `picker-parity-content.css` plus role-specific regression browser/test, preserve L01 geometry, cell permissions, unrelated UI, reduced-motion/print. Add real keyboard Tab focus without hover, List/popup 1440/900/390 edit/mixed, screenshot normal/hover/focus and clip ancestor/scroll/layout checks. Run own CI on new exact tested source SHA before returning DONE. Do not reset earlier work. Commander owns integration, not this worker.
 
 
-## F01 progress checkpoint — 07/11/2026
-Status **IN_PROGRESS / own F01 CI running**. Old 9fb74b7 PASS is preserved, only clipping acceptance reopened.
+## F01 historical start checkpoint — 07/11/2026 (superseded by final acceptance)
+Status **DONE — F01 exact-SHA CI PASS #42382463641**. Old 9fb74b7 PASS is preserved, only clipping acceptance reopened.
 - Scoped CSS commit `7b34893fcf401d2a69bc5632ac0f40f91b5c8320`: change heading overflow to visible on both axes (the two flex members already shrink/wrap), no padding, height, transform, shadow or business color changes. Do not claim complete until real paint gate.
 - New `scripts/picker-parity-content-f01-browser.mjs`: 24 List/popup x edit/mixed x Sở/Loại x 1440/900/390 real Chrome scenes; normal/hover/true keyboard Tab focus (pointer away); screenshot full/details, computed clipping ancestor/outline+shadow painted bounds, row/next-row dimensions, document width.
 - New `scripts/picker-parity-content-f01-diff.mjs`: strict baseline vs after normal/hover/focus rect and style comparison, permitted pixel delta 1.1; background, lift, shadow invariance; document scroll width never grows; old version must reproduce clip.
