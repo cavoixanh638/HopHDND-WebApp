@@ -90,7 +90,12 @@ async function main(){
   await page.locator('[data-ui-reference-group="L01"]').first().waitFor({timeout:12000});
   if(surface==='popup'&&mode!=='guest'){
    const toggle=page.getByRole('button',{name:'Chỉnh sửa nháp'});
-   if(await toggle.count())await toggle.click();
+   // A freshly mounted popup prepares its local columns asynchronously.
+   // count() immediately after page.goto races that mount and silently leaves
+   // editing=false, hiding blank but writable metadata. Wait for the real UI.
+   await toggle.waitFor({state:'visible',timeout:12000});
+   await toggle.click();
+   await page.getByRole('button',{name:'Về chế độ xem'}).waitFor({state:'visible',timeout:12000});
   }
   const id=[width,surface,mode].join('-');
   const normal=await shot(page,id+'-normal');
@@ -244,7 +249,12 @@ async function main(){
   await page.locator('[data-edge="'+edge+'"]').waitFor({timeout:12000});
   if(surface==='popup'&&mode==='edit'){
    const toggle=page.getByRole('button',{name:'Chỉnh sửa nháp'});
-   if(await toggle.count())await toggle.click();
+   // A freshly mounted popup prepares its local columns asynchronously.
+   // count() immediately after page.goto races that mount and silently leaves
+   // editing=false, hiding blank but writable metadata. Wait for the real UI.
+   await toggle.waitFor({state:'visible',timeout:12000});
+   await toggle.click();
+   await page.getByRole('button',{name:'Về chế độ xem'}).waitFor({state:'visible',timeout:12000});
   }
   const groups=page.locator('[data-ui-reference-group="L01"]');
   await groups.first().waitFor({timeout:12000});
