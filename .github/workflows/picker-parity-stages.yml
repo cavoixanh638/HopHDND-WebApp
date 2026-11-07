@@ -50,10 +50,10 @@ jobs:
         run: |
           npm run build:compact:qa
           test -s dist-compact-qa/compact-qa.html
-      - name: Real Chromium picker parity List/popup and fields
-        run: node scripts/picker-parity-stages-browser.mjs
-      - name: Codex F02 runtime Não/Không, keyboard Enter/Space, palette/highlight (REAL Chromium)
+      - name: Codex F02 real Không, keyboard Enter/Space, palette/highlight
         run: node scripts/picker-parity-stages-review-browser.mjs
+      - name: Existing 32-scenario Chromium regression (unchanged)
+        run: node scripts/picker-parity-stages-browser.mjs
       - name: Real Chromium five-input track-width regression
         run: node scripts/ui-20261106-tracks-browser.mjs
       - name: Capture baseline vs STAGES on ONE fixture, 12 matched cases
