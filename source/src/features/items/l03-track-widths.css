@@ -1,3 +1,5 @@
+@import "./picker-parity-stages.css";
+
 /* L03 only: rail geometry is owned by 5 explicit px values on the cell.
    This file imports AFTER item-frame.css; specificity intentionally overrides
    V6's intrinsic 138/238px and 1fr rules without touching PICKER skin.

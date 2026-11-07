@@ -1,3 +1,4 @@
+import './picker-parity-content.css';
 import type {CSSProperties,ReactNode} from 'react';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
