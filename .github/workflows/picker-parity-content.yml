@@ -47,10 +47,10 @@ jobs:
           npm test -- tests/picker-parity-content.test.tsx tests/compact-group-highlights.test.tsx tests/pr95-v6-l1-type-level.test.tsx tests/pr95-v5-l1-dropdown.test.tsx
       - name: Compact full synthetic build
         run: npm run build:compact:qa
-      - name: Real Chromium L01 and L04 within same List/popup
-        run: node scripts/picker-parity-content-browser.mjs
       - name: F01 real List and popup hover plus keyboard Tab paint and clip regression
         run: PICKER_CONTENT_F01_MODE=after node scripts/picker-parity-content-f01-browser.mjs
+      - name: Real Chromium L01 and L04 within same List/popup
+        run: node scripts/picker-parity-content-browser.mjs
       - name: F01 capture BEFORE from original CONTENT passing SHA and compare geometry
         run: |
           set -euo pipefail
