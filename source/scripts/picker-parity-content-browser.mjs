@@ -255,7 +255,21 @@ async function main(){
   if(edge==='empty'){
    const metadata=first.locator('.compact-document-heading');
    if(mode==='edit'){
-    await metadata.waitFor();
+    try{await metadata.waitFor({timeout:12000});}
+    catch(error){
+     const evidence=await first.evaluate(el=>{
+      const heading=el.querySelector('.compact-document-heading');
+      const rect=heading?.getBoundingClientRect();
+      return {groupHtml:el.outerHTML.slice(0,3000),
+       heading:heading?{rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},
+        display:getComputedStyle(heading).display,
+        overflowX:getComputedStyle(heading).overflowX,
+        overflowY:getComputedStyle(heading).overflowY}:null,
+       role:document.querySelector('[data-edge]')?.getAttribute('data-mode')};
+     });
+     writeFileSync(join(root,id+'-diagnostic.json'),JSON.stringify(evidence,null,2));
+     throw Error(id+' blank picker visibility failed '+JSON.stringify(evidence).slice(0,1700)+' '+error);
+    }
     assert.equal(await metadata.locator('button.cell-picker-trigger').count(),2,id+' missing blank pickers');
    }else{
     assert.equal(await metadata.count(),0,id+' phantom readonly heading');
