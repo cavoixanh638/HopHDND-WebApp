@@ -1,6 +1,6 @@
 # CONTENT checkpoint — 07/11/2026
 
-## Own scope: DONE — standalone feature accepted on GitHub Actions
+## Previous standalone milestone: PASS at 9fb74b7 (superseded by F01 review)
 Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa`.
 **Own application + test code SHA / exact tested SHA: `9fb74b7fda1ab4492011dc675df5d656e74f6000`**. This subsequent checkpoint commit is docs-only and does not change tested code.
 
@@ -31,3 +31,12 @@ Branch: `ui/20261107-picker-parity-content`; reference App SHA `e095205c1f4ea79e
 - Separate dedicated edge fixture is required for long department, empty metadata, QPPL/HC/BC because the full-App preview has fixed synthetic records. Full App itself is still exercised for normal admin/guest List and admin drill popup.
 - **COMMANDER owns integration**: cherry-pick feature (not worker checkpoint), integrate STAGES, final combined source SHA checks, full unit/regression/Emulator where appropriate, package/hash and public demo publication. All COMMANDER items remain **NOT RUN here**, not implied by worker DONE. Do not merge/publish from this branch.
 - Local container GitHub DNS disabled, so all commits via connected GitHub API; npm/browser evidence is GitHub Actions at exact tested SHA, not local run.
+
+
+## F01 reopened after Codex review (2026-11-07)
+
+**Status: IN_PROGRESS (F01 paint clipping), previous 9fb74b7 acceptance remains PASS for unchanged behaviors.**
+Review source: `docs/20261107-picker-parity-review/source/docs/tasks/parallel-20261107-picker-parity/reviews/codex-20261107/CONTENT.md`.
+Baseline witness: run #42269772715, artifact #13527674364, `1440-list-edit-hover.json/png`: heading y728.1875/h26 but translated QPPL button y725.1875/h26; vertical overflow:hidden clips outline and shadow. Previous browser asserted computed transform but not actual paint room. **F01 NOT YET PASS.**
+
+Scope: alter `picker-parity-content.css` plus role-specific regression browser/test, preserve L01 geometry, cell permissions, unrelated UI, reduced-motion/print. Add real keyboard Tab focus without hover, List/popup 1440/900/390 edit/mixed, screenshot normal/hover/focus and clip ancestor/scroll/layout checks. Run own CI on new exact tested source SHA before returning DONE. Do not reset earlier work. Commander owns integration, not this worker.
