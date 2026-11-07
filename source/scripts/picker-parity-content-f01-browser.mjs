@@ -200,7 +200,7 @@ async function run(){
  else assert.equal(clipped,0,'F01 clipping still present');
  writeFileSync(join(out,'summary.json'),JSON.stringify({
   result:mode==='after'?'PASS':'EXPECTED_CLIPPING_REPRODUCED',mode,
-  sourceSha:process.env.GITHUB_SHA??null,scenes:cases.length,clipped,external,cases},null,2));
+  sourceSha:process.env.PICKER_CONTENT_F01_SOURCE_SHA??process.env.GITHUB_SHA??null,scenes:cases.length,clipped,external,cases},null,2));
  console.log('PICKER_PARITY_CONTENT_F01_'+(mode==='before'?'BEFORE_REPRODUCED':'AFTER_PASS')+
   ' scenes='+cases.length+' clipped='+clipped);
 }
