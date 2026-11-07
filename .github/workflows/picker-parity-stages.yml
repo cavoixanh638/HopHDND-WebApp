@@ -4,6 +4,7 @@ on:
     branches:
       - ui/20261107-picker-parity-stages
     paths:
+      - 'source/picker-parity-stages-*.html'
       - 'source/src/features/items/picker-parity-stages.css'
       - 'source/src/features/items/l03-track-widths.css'
       - 'source/tests/picker-parity-stages*'
@@ -26,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0 # detached immutable e095205c reference for matching snapshots
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,8 +52,34 @@ jobs:
           test -s dist-compact-qa/compact-qa.html
       - name: Real Chromium picker parity List/popup and fields
         run: node scripts/picker-parity-stages-browser.mjs
+      - name: Codex F02 runtime Não/Không, keyboard Enter/Space, palette/highlight (REAL Chromium)
+        run: node scripts/picker-parity-stages-review-browser.mjs
       - name: Real Chromium five-input track-width regression
         run: node scripts/ui-20261106-tracks-browser.mjs
+      - name: Capture baseline vs STAGES on ONE fixture, 12 matched cases
+        run: |
+          set -euo pipefail
+          baseline=e095205c1f4ea79ef81e8d2cd7b386dcfdb259fa
+          worktree="$RUNNER_TEMP/picker-parity-stages-baseline"
+          main="$PWD"
+          git worktree add --detach "$worktree" "$baseline"
+          trap 'git worktree remove --force "$worktree" 2>/dev/null || true' EXIT
+          cp tests/picker-parity-stages-review-fixture.tsx "$worktree/source/tests/"
+          cp picker-parity-stages-review-fixture.html "$worktree/source/"
+          cp scripts/picker-parity-stages-before-after.mjs "$worktree/source/scripts/"
+          ln -s "$main/node_modules" "$worktree/source/node_modules"
+          ln -s "$main/cell-edit-service/node_modules" "$worktree/source/cell-edit-service/node_modules"
+          test "$(git -C "$worktree" rev-parse HEAD)" = "$baseline"
+          (
+            cd "$worktree/source"
+            STAGES_VARIANT=before STAGES_ARTIFACT_DIR="$main/qa-results/picker-parity-stages" \
+              node scripts/picker-parity-stages-before-after.mjs
+          )
+          # Check never edited existing application components/CSS in baseline.
+          test -z "$(git -C "$worktree" diff --name-only -- source/src)"
+          STAGES_VARIANT=after node scripts/picker-parity-stages-before-after.mjs
+          node scripts/picker-parity-stages-compare.mjs
+          test -s qa-results/picker-parity-stages/comparison/matched-diff.json
       - name: Export exact-source evidence
         if: always()
         run: |
