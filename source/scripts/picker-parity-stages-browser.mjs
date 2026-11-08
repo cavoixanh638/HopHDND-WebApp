@@ -523,10 +523,16 @@ try{
    guest.gear.width<=29,'Small gear no longer tucked in top right '+JSON.stringify(guest));
   assert(guest.pageScroll<=width+3,'Guest overflow at '+width);
   assert.equal(guest.footer,false,'Removed demo footer still visible');
-  await page.getByRole('button',{name:'Mở cài đặt demo'}).click();
-  await page.locator('.pr95-preview-gear-menu').waitFor();
+  const gear=page.getByRole('button',{name:'Mở cài đặt demo'});
+  await gear.click();
+  const menu=page.locator('.pr95-preview-gear-menu');
+  await menu.waitFor();
+  await gear.focus();
+  // React attaches the document-level Escape listener in a passive effect
+  // after committing the opened menu. Wait a paint before firing the key.
+  await page.waitForTimeout(170);
   await page.keyboard.press('Escape');
-  await page.locator('.pr95-preview-gear-menu').waitFor({state:'detached'});
+  await menu.waitFor({state:'detached',timeout:5000});
   results.push({name:'guest-no-gear-row-'+width,initial:guest,states:{gearMenuUsable:true}});
   await screenshot(page,'guest-compact-gear-'+width);
  }
