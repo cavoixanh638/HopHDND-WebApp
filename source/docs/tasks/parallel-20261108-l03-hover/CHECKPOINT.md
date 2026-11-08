@@ -81,3 +81,18 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 - Full synthetic preview: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
 - [LIVE screenshots+measurements artifact #13601910622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441188588/artifacts/13601910622), digest `sha256:4271547e5e76513bd3bcd1142daec8cdc0b2ce4210360db15f8c983a09da2369`.
 - **Status: CODE QA PASS + ISOLATED PUBLIC PREVIEW LIVE PASS; NOT PRODUCTION DEPLOYED**. Do not confuse workflow/docs commits with exact source SHA. No production root app, Sheets or Firebase changes.
+
+
+## READONLY L03 TYPOGRAPHY PARITY — LIVE VERIFIED 2026-11-08
+
+- User provided a screenshot showing the readonly status "Không phải trình" visually larger than the editable status cells in the SAME L03 stage group.
+- Root cause was explicit CSS, not text rendering: readonly `.compact-stage-state:not([data-editable="true"])` and its nested `.compact-part,.workflow-status-value` used **font-size:13px;font-weight:400**, while real editable `button.cell-picker-trigger` used **11px/550**.
+- Changed only `source/src/features/items/picker-parity-stages.css`: readonly status and all nested readonly payloads now use exactly the editable typography `font-family:"Segoe UI",system-ui,sans-serif; font-size:11px; font-weight:550; line-height:1.35` with scoped `!important`. Stage LABELS/levels, status text values, highlights, palette colors, readonly center, saved widths, hover border/shadow/lift, roles/leases and external data are unchanged.
+- Added independent browser assertions on actual `getComputedStyle`: readonly wrapper and nested text both match editable status's font size, weight, family and line height in mixed-rights List and Report popup, plus explicit readonly-only check. Unit test prevents regression.
+- **Exact tested source SHA:** [`9d7771125a2c47893bd1f31360fdf2e697899316`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/9d7771125a2c47893bd1f31360fdf2e697899316), branch `ui/20261108-l03-hover-lift-fix`.
+- [Exact-SHA CI #42441577890](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441577890) **PASS**: 920 unit PASS, 116 skipped, TypeScript and both builds PASS; 34 L03 Chromium scenarios, 54 reviewer, 24 reference picker, 6 saved widths, 73 L01 CONTENT, commander smoke PASS.
+- Preview publish workflow commit [`5caf2cf77096743a2789c843c291a74717e1e89b`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/5caf2cf77096743a2789c843c291a74717e1e89b), pinned exact source and added LIVE font equality checks.
+- [LIVE GitHub Pages + Chromium #42441967930](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441967930) **PASS**: HTTP 200 and public HTML/JS/CSS byte-for-byte same as built source; at List 1440, List 390, Report mixed popup and guest-only readonly, measured readonly + nested + editable all `11px/550/"Segoe UI",system-ui,sans-serif/14.85px`. Live hover still -3px, 1px status border, 2px outline; statuses centered, saved column widths and colors retained. No external network requests.
+- [Live screenshots and measurements artifact #13602071059](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441967930/artifacts/13602071059); verified preview: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
+- Pages commit `3f3743148a1805db042c6850bbbb33120024aae9` changed **only preview/l03-hover-20261108/** assets/index/source marker. No root site/index or production data touched; production application not deployed/merged.
+- **CHECKPOINT: SOURCE_QA_PASS + LIVE_PREVIEW_PASS; PRODUCTION_NOT_DEPLOYED.** This checkpoint itself is docs-only, so do not confuse its SHA with exact QA source SHA.
