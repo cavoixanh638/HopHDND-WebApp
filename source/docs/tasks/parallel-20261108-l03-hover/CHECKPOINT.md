@@ -61,3 +61,23 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 - [LIVE screenshots & measurements artifact #13599827921](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42437620579/artifacts/13599827921), digest `sha256:ef98eb6a1ea6ac9e81a983f6e8f4eae53afa5d0d2015fdc375df371b4e15dd05`.
 - Pages-only [main commit `7e3a4e2e44ffe861cc2a89fc04f3b79b08813b2b`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/7e3a4e2e44ffe861cc2a89fc04f3b79b08813b2b) altered **only `preview/l03-hover-20261108/`**; production root index/assets/source not touched. Original separate ChatGPT Site remains independent/old until its owner publishes.
 - **Final status:** `SOURCE_QA_PASS / ISOLATED_PUBLIC_PREVIEW_LIVE_PASS / PRODUCTION_NOT_DEPLOYED`. This checkpoint commit itself is docs-only, different from the exact source/tested SHA.
+
+
+## L03 PICKER SPACE OPTIMIZATION — LIVE VERIFIED 2026-11-08
+
+### User clarification / design
+- **Do NOT require a single line** at the approved 76px (level) or 120px (status) defaults. Allow natural wraps; user may change and save track width to fit a long label.
+- Previous L03 shared button CSS used 7px left/right padding + 8px text/caret gap + 5px caret + 2px border = **29px** nontext. Original 120px status had only **91px** label width.
+- New **moderately compact** picker uses `padding:4px 4px`, `gap:3px`, retains 5px caret and 1px border each side, for **18px** nontext. A 120px status now has **102px** for text (+11px), a 76px level has **58px**. Maintain 4px vertical padding, 11px standard font, original arrow and all hover/focus/rights colors. Applies equally to L03 status and level pickers in both List and popup; no user track width or production data changes.
+- Example `ĐU gửi TU, chưa họp` has actual natural ink width ~126.4px at installed font; it may validly wrap at 120px. It fits when the user sets status track to 160px. Never use `nowrap`, clipping, ellipsis or artificial font shrink to force one line.
+- Real Chromium browser packing test checks computed 4px/3px values, 120px status/76px level widths, horizontal overflow and wrap allowed, and single-line text when the status track expands to 160px in List AND popup. Former erroneous `lines===1` at 120px removed.
+
+### Exact QA / publishing checkpoint
+- **Tested source commit:** [`521a4d49e1c4216681144173ed217489bddf510b`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/521a4d49e1c4216681144173ed217489bddf510b) on `ui/20261108-l03-hover-lift-fix`, changes ONLY `picker-parity-stages.css`, `picker-parity-stages-browser.mjs`, and `picker-parity-stages.test.ts`.
+- [Full QA GitHub Actions #42440753743](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42440753743) **SUCCESS**: TypeScript and builds PASS; 919 unit PASS/116 previously skipped, L03 34 real-browser scenarios PASS (including 2 packing/widened), independent L03 reviewer 54 cases PASS, L04 reference 24, saved tracks 6, L01 CONTENT 73, commander smoke PASS. [QA artifact #13600674925](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42440753743/artifacts/13600674925).
+- Preview workflow updated at [`adabbc0c7357558080a298530a4884afe71b3fd3`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/adabbc0c7357558080a298530a4884afe71b3fd3), pinned to the exact tested SHA and tests live computed 4px/4px padding and 3px caret gap.
+- [**LIVE preview publish+Chromium #42441188588**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441188588) **SUCCESS**: HTTP 200, identical build/public HTML+JS+CSS, source pin checked. Chromium navigated the real Pages site at 1440px, 390px and popup, measured 4px left+right and 3px gap, confirmed prior -3px lift, semantic border/outline colors and thickness, 120/76/120 rails and readonly 128/164; no external requests.
+- Viewable public preview for editable L03: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
+- Full synthetic preview: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
+- [LIVE screenshots+measurements artifact #13601910622](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441188588/artifacts/13601910622), digest `sha256:4271547e5e76513bd3bcd1142daec8cdc0b2ce4210360db15f8c983a09da2369`.
+- **Status: CODE QA PASS + ISOLATED PUBLIC PREVIEW LIVE PASS; NOT PRODUCTION DEPLOYED**. Do not confuse workflow/docs commits with exact source SHA. No production root app, Sheets or Firebase changes.
