@@ -166,3 +166,14 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
   * **Popup with these exact fields editable:** https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?popup=1&inner-hit=1
 - Pages-only `main` commit [`0a4bac3d860d1cc3d34ecdaa4270f01abf87cf8f`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/0a4bac3d860d1cc3d34ecdaa4270f01abf87cf8f) touched ONLY paths under `preview/l03-hover-20261108/`. The root Pages index/assets, production application code and Firebase data were not deployed/merged.
 - **STATUS `SOURCE_QA_PASS / ISOLATED_PUBLIC_PREVIEW_LIVE_PASS / PRODUCTION_NOT_DEPLOYED`.** Maintain exact source pin. History of intermediate failed runs were **browser test script mistakes only**, corrected in final verified SHA; do not consider them live defects.
+
+
+## PUBLIC LINK FOLLOW-UP — 2026-11-08
+
+User reported the prior query URL `?full=1&preview-role=admin&utm_source=chatgpt.com` did not open for them. Never assume that GitHub Pages tests reflect every user's network/browser environment.
+
+- Published a **query-free admin entry point** [`/preview/l03-hover-20261108/admin.html`](https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/admin.html) on Pages `main` **commit [`47916397eaea45a7ce984c50a761facb1b74421f`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/47916397eaea45a7ce984c50a761facb1b74421f)**. This file lives only in the existing synthetic preview subfolder, loads the same versioned JS/CSS, and sets `full=1`, `preview-role=admin` through `history.replaceState` before the app module executes. Neither production root nor main source was modified.
+- GitHub Pages `pages build and deployment` run **#42481790168 SUCCESS**.
+- [Dedicated independent live Chromium check #42481867592](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42481867592) **SUCCESS** on the actual public site, with 3 trials: (1) **admin.html HTTP 200, role=admin, no JS page errors**, (2) original properly separated full URL including `utm_source=chatgpt.com` **HTTP 200, role=admin, no JS page errors**, (3) unqualified preview root **HTTP 200, role=guest, no JS page errors**.
+- If the user still cannot open it, request the browser's exact visible error (404, page white, DNS error, extension block, etc.) and whether GitHub Pages host is reachable from their connection. An exact URL pasted with **literal backslashes before `&`** can break client-side query parsing; the query-free `admin.html` avoids this. Do not call an unconfirmed network/device issue resolved solely on CI evidence.
+- Test/check workflow added at `.github/workflows/l03-admin-link-check.yml` on the feature branch; it checks the public site in read-only mode without publishing or touching data.
