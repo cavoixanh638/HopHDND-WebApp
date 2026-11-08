@@ -25,7 +25,9 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(html).toContain('data-active-filter-id="department"');
     expect(html).toContain('data-active-filter-id="summary"');
     expect(html).toContain('Đang lọc ');
-    expect(html).toContain('0/27</span> nội dung');
+    expect(html).toContain('0/27</span>');
+    expect(html).toContain('class="list-active-filter-emphasis"');
+    expect(html).toContain('class="list-active-filter-noun"> nội dung</span>');
     expect(html).toContain('list-active-filter-signal');
     expect(html).toContain('aria-hidden="true"');
     expect(html).toContain('0');
@@ -40,16 +42,19 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(inactive).toContain('Hiển thị ');
     expect(inactive).not.toContain('Xóa tất cả');
   });
-  it('centers the active chip group and warns with exactly two short pulses',()=>{
+  it('centers active values, uses persistent red emphasis and loops the red dot safely',()=>{
     expect(style).toMatch(/\.list-active-filter-chips\s*\{[^}]*justify-content:center/s);
     expect(style).toContain('margin-inline:auto');
     expect(style).toMatch(/\.list-active-filter-empty\s*\{[^}]*justify-content:center/s);
-    expect(style).toContain('animation:hdnd-filter-ack 720ms ease-out 2');
+    expect(style).toContain('animation:hdnd-filter-red-pulse 1150ms ease-in-out infinite');
+    expect(style).toContain('background:#f3273f');
+    expect(style).toContain('color:#c72037');
     expect(style).toContain('grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr)');
-    expect(style).toContain('border-left:4px solid #237bad');
+    expect(style).toContain('border-left:3px solid #e12b43');
     expect(style).toContain('font-size:12px;line-height:1.3');
     expect(style).toContain('@media(prefers-reduced-motion:reduce)');
-    expect(style).not.toMatch(/animation:hdnd-filter-ack[^;]*infinite/);
+    expect(style).toContain('.list-active-filter-signal{animation:none;opacity:1;transform:none}');
+    expect(style).not.toContain('hdnd-filter-ack');
   });
   it('removes the exact bottom note, keeps account safety in the menu',()=>{
     expect(preview).not.toContain('<footer className="pr95-preview-footnote">');

@@ -8,8 +8,8 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
   onClearAll:()=>void;
 }){
   const count=conditions.length;
-  // Key only the decorative dot so changed filters get two short pulses.
-  // The stronger banner/chips stay visible without endless animation.
+  // The red dot pulses only while conditions exist. Motion-sensitive users
+  // receive an always-visible static red dot via prefers-reduced-motion.
   const signalKey=conditions.map(c=>c.id+':'+c.value).join('|');
   return <section className={'list-active-filters'+(count?' has-active-filters':'')}
     data-active-filter-count={count}
@@ -18,10 +18,15 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
       <div className={'list-active-filter-summary'+(count?' is-active':' is-idle')}>
         {count>0&&<span key={signalKey} className="list-active-filter-signal"
           aria-hidden="true"/>}
-        <strong>{count>0?'Đang lọc ':'Hiển thị '}
-          <span className="list-active-filter-results" role="status" aria-live="polite">
-            {visibleCount}/{sourceCount}
-          </span> nội dung</strong>
+        <strong>
+          <span className={count>0?'list-active-filter-emphasis':'list-active-filter-idle-text'}>
+            {count>0?'Đang lọc ':'Hiển thị '}
+            <span className="list-active-filter-results" role="status" aria-live="polite">
+              {visibleCount}/{sourceCount}
+            </span>
+          </span>
+          <span className="list-active-filter-noun"> nội dung</span>
+        </strong>
       </div>
       {count>0&&<button type="button" className="list-active-filter-clear-all"
         aria-label={'Xóa tất cả '+count+' điều kiện lọc'}

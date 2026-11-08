@@ -471,12 +471,33 @@ try{
    const prefilterLayout=await page.evaluate(()=>{
     const td=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
     const f01=document.querySelector('.list-filter-search');
+    const b=document.querySelector('.item-summary-total-count');
+    const bcard=document.querySelector('.item-summary-total');
+    const title=document.querySelector('.item-summary-total h3');
+    const pc=document.querySelector('.item-summary-card[data-summary-card="party"] .item-summary-percent');
+    const ch=document.querySelector('.item-summary-card[data-summary-card="party"] .item-summary-card-head');
     return {contentVAlign:td?getComputedStyle(td).verticalAlign:null,
-      f01Font:f01?getComputedStyle(f01).fontSize:null};
+      f01Font:f01?getComputedStyle(f01).fontSize:null,
+      baseTableColor:document.querySelector('.item-data-table')?getComputedStyle(document.querySelector('.item-data-table')).color:null,
+      totalFont:b?getComputedStyle(b).fontSize:null,totalColor:b?getComputedStyle(b).color:null,
+      totalBG:bcard?getComputedStyle(bcard).backgroundImage:null,
+      totalLabelColor:title?getComputedStyle(title).color:null,
+      pctFont:pc?getComputedStyle(pc).fontSize:null,
+      pctColor:pc?getComputedStyle(pc).color:null,
+      pctHeaderHeight:ch?.getBoundingClientRect().height};
    });
    assert.equal(prefilterLayout.contentVAlign,'middle',
     'L01 content is not vertically centered before filtering');
    assert.equal(prefilterLayout.f01Font,'12px','F01 font size not compact');
+   assert.equal(prefilterLayout.totalFont,'38px','B00 total count is not 38px');
+   assert.equal(prefilterLayout.totalColor,'rgb(8, 117, 83)','B00 count is not deep green');
+   assert(prefilterLayout.totalBG?.includes('linear-gradient'),'B00 ribbon lacks gentle emphasis');
+   assert.equal(prefilterLayout.totalLabelColor,'rgb(31, 41, 55)','B00 label is not neutral');
+   assert.equal(prefilterLayout.baseTableColor,'rgb(36, 49, 61)','Ordinary list text is not neutral');
+   assert.equal(prefilterLayout.pctFont,'24px','C01 completion percentage not enlarged');
+   assert.equal(prefilterLayout.pctColor,'rgb(21, 134, 77)','C01 completion green changed');
+   assert(prefilterLayout.pctHeaderHeight<=28,
+    'C01 header became taller after font enlargement: '+JSON.stringify(prefilterLayout));
    await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
    await page.locator('[data-summary-report="party"][data-summary-stage="source"]').click();
    await page.locator('[data-active-filter-count="2"]').waitFor();
@@ -499,6 +520,10 @@ try{
      bannerCenterDeviation:(b.left+b.right-zr.left-zr.right)/2,
      title:badge.textContent.replace(/\s+/g,' ').trim(),
      visibleChips:chips.map(e=>e.querySelector('.list-active-filter-chip-value')?.textContent.trim()),
+     chipColors:chips.map(e=>getComputedStyle(e.querySelector('.list-active-filter-chip-value')).color),
+     emphasisColor:getComputedStyle(badge.querySelector('.list-active-filter-emphasis')).color,
+     nounColor:getComputedStyle(badge.querySelector('.list-active-filter-noun')).color,
+     dotColor:style?.backgroundColor,
      hasVisibleFieldLabels:chips.some(e=>e.querySelector('.list-active-filter-chip-label')),
      c01HeadDeviation:(first+last-hr.left-hr.right)/2,
      c01PercentColor:getComputedStyle(pct).color,
@@ -514,11 +539,15 @@ try{
     'Noncompact filtering label: '+filterGeometry.title);
    assert.equal(filterGeometry.hasVisibleFieldLabels,false,'Chip labels still visibly repeated');
    assert(filterGeometry.visibleChips.every(Boolean),'Filter values missing');
+   assert.equal(filterGeometry.emphasisColor,'rgb(199, 32, 55)','Active filter count is not red');
+   assert.equal(filterGeometry.nounColor,'rgb(38, 52, 66)','Normal noun must not be red');
+   assert(filterGeometry.chipColors.every(c=>c==='rgb(199, 32, 55)'),'Filter values are not red');
+   assert.equal(filterGeometry.dotColor,'rgb(243, 39, 63)','Pulse dot is not bright red');
    assert(Math.abs(filterGeometry.c01HeadDeviation)<2,'C01 title/percentage not centered');
    assert.equal(filterGeometry.c01PercentColor,'rgb(21, 134, 77)','C01 percent not brighter green');
-   assert.equal(filterGeometry.animation,'hdnd-filter-ack',
-    'Finite attention signal missing when F/C filters active');
-   assert.equal(filterGeometry.iterations,'2','Attention signal repeats endlessly');
+   assert.equal(filterGeometry.animation,'hdnd-filter-red-pulse',
+    'Continuous red attention signal missing for active filters');
+   assert.equal(filterGeometry.iterations,'infinite','Red signal must keep pulsing while filtered');
    await page.emulateMedia({reducedMotion:'reduce'});
    const reducedFilter=await page.locator('.list-active-filter-signal').first().evaluate(el=>
     getComputedStyle(el).animationName);

@@ -207,7 +207,8 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
     const html=renderToStaticMarkup(<ActiveListFilters conditions={conditions}
       visibleCount={0} sourceCount={27} onRemove={onRemove} onClearAll={onClearAll}/>);
     expect(html).toContain('Đang lọc ');
-    expect(html).toContain('0/27</span> nội dung');
+    expect(html).toContain('0/27</span>');
+    expect(html).toContain('class="list-active-filter-noun"> nội dung</span>');
     expect(html).not.toContain('list-active-filter-chip-label');
     expect(html).toContain('Không có kết quả phù hợp');
     expect(html).toContain('aria-label="Xóa tất cả 10 điều kiện lọc"');
@@ -222,7 +223,8 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
     const html=renderToStaticMarkup(<ActiveListFilters conditions={[]}
       visibleCount={27} sourceCount={27} onRemove={()=>{}} onClearAll={()=>{}}/>);
     expect(html).toContain('Hiển thị ');
-    expect(html).toContain('27/27</span> nội dung');
+    expect(html).toContain('27/27</span>');
+    expect(html).toContain('class="list-active-filter-noun"> nội dung</span>');
     expect(html).not.toContain('Xóa tất cả');
   });
   it('only caller requesting consolidated bar removes duplicated summary footers',()=>{
