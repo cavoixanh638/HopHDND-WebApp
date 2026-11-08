@@ -306,7 +306,20 @@ try{
      buttons:e.querySelectorAll('button.inline-note-trigger').length
     }))};
   });
-  console.log('INLINE_HIT_MOUNT_DIAGNOSTIC '+JSON.stringify({surface,field,diagnostic}));
+  const geometry=await page.locator(root+' tbody td[data-col-key="'+field+'"].editable-cell')
+   .evaluateAll(cells=>cells.slice(0,5).map(cell=>{
+    const btn=cell.querySelector('button.inline-note-trigger');
+    const info=el=>{
+     if(!el)return null;
+     const st=getComputedStyle(el),r=el.getBoundingClientRect();
+     return {tag:el.tagName,className:el.className,display:st.display,
+      visibility:st.visibility,opacity:st.opacity,overflow:st.overflow,
+      width:st.width,height:st.height,rect:{x:r.x,y:r.y,w:r.width,h:r.height}};
+    };
+    return {row:info(cell.parentElement),td:info(cell),wrapper:info(btn?.parentElement),
+      button:info(btn),matches:btn?.matches(':hover')};
+   }));
+  console.log('INLINE_HIT_MOUNT_DIAGNOSTIC '+JSON.stringify({surface,field,diagnostic,geometry}));
   await btn.waitFor({timeout:3000});
   await td.scrollIntoViewIfNeeded();
   const blank=await td.evaluate(cell=>{
