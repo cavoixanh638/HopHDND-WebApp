@@ -324,10 +324,10 @@ try{
   });
   const lift=s=>{
    if(s.transform==='none')return 0;
-   const m=s.transform.match(/^matrix(3d)?\\(([^)]+)\\)$/);
-   if(!m)return NaN;
-   const values=m[2].split(',').map(Number);
-   return m[1]?values[13]:values[5];
+   const raw=s.transform,open=raw.indexOf('('),close=raw.lastIndexOf(')');
+   if(open<0||close<=open)return NaN;
+   const parts=raw.slice(open+1,close).split(',').map(Number);
+   return raw.startsWith('matrix3d(')?parts[13]:parts[5];
   };
   const blankHover=await style();
   assert(near(lift(blankHover),0,.15)&&blankHover.shadow==='none',
