@@ -37,8 +37,8 @@ describe('STAGES scoped picker parity contract',()=>{
  });
  it('keeps 76/120px picker labels readable by minimizing horizontal reservations',()=>{
   const css=source();
-  expect(css).toContain('padding:4px 2px!important;');
-  expect(css).toContain('gap:2px!important;');
+  expect(css).toContain('padding:4px 4px!important;');
+  expect(css).toContain('gap:3px!important;');
   expect(css).toContain('width:5px!important;');
   // Distinct from the 8px GROUP gap between independently sized L03 tracks.
   expect(track()).toContain('column-gap:8px;');

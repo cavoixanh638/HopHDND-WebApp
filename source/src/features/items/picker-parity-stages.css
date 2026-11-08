@@ -147,9 +147,12 @@
   /* Narrow user-approved 76/120px pickers need their pixels for the
      business label, not decorative whitespace. The full BUTTON remains the
      hit target; the 5px arrow and fixed track sizes are unchanged. */
-  padding:4px 2px!important;
+  /* Small but comfortable spacing: 4px at each edge and 3px before the
+     caret, without hard-coding any one-line requirement. Long Vietnamese
+     labels wrap naturally; the saved width can be increased by the user. */
+  padding:4px 4px!important;
   margin:0!important;
-  gap:2px!important;
+  gap:3px!important;
   border:1px solid var(--ui-picker-border,#B7CBD6)!important;
   border-radius:6px!important;
   background:var(--ui-picker-bg,#F2F6F9)!important;

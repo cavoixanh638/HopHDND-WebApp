@@ -93,8 +93,8 @@ function check(p,context){
    assert.equal(n(s.fontSize),11,context+' font '+row.field);
    assert.equal(n(s.fontWeight),550,context+' weight '+row.field);
    assert.equal(n(s.borderRadius),6,context+' radius '+row.field);
-   assert.equal(s.padding,'4px 2px',context+' compact L03 padding '+s.padding);
-   assert.equal(s.gap,'2px',context+' L03 value/caret gap '+s.gap);
+   assert.equal(s.padding,'4px',context+' compact L03 padding '+s.padding);
+   assert.equal(s.gap,'3px',context+' L03 value/caret gap '+s.gap);
    assert.equal(s.after.width,'5px',context+' caret width '+row.field);
    assert.equal(s.after.height,'3px',context+' caret height '+row.field);
    assert(s.after.clip.includes('polygon'),context+' caret '+row.field);
@@ -107,8 +107,8 @@ function check(p,context){
   assert(first.levelButton&&first.levelStyle,context+' missing level picker');
   assert.equal(n(first.levelStyle.minHeight),26,context+' level height');
   assert.equal(n(first.levelStyle.fontSize),11,context+' level font');
-  assert.equal(first.levelStyle.padding,'4px 2px',context+' level padding');
-  assert.equal(first.levelStyle.gap,'2px',context+' level caret gap');
+  assert.equal(first.levelStyle.padding,'4px',context+' level padding');
+  assert.equal(first.levelStyle.gap,'3px',context+' level caret gap');
   assert(near(first.levelButton.w,first.level.w),context+' level track fill');
  }else assert(p.rows.every(r=>r.levelButton===null),context+' readonly level fake picker');
 }
@@ -254,10 +254,9 @@ try{
     await scenario(page,{width,surface,mode});
    await scenario(page,{width,surface,mode:'edit',long:true});
   }
- // Text must occupy available horizontal room before wrapping: in particular
- // "ĐU gửi TU, chưa họp" should fit inside the APPROVED 120px rail. Probe
- // actual React controls with their real computed typography in Chromium,
- // without modifying source data or picker behavior.
+ // Text uses the available 120px rail and may wrap, without clipping.
+ // A user can expand that rail (e.g. to 160px) for a single-line display.
+ // Probe actual React pickers in Chromium, but never write source data.
  for(const surface of ['list','popup']){
   await page.setViewportSize({width:1440,height:900});
   await page.goto(base+'/ui-20261106-picker-fixture.html?'+
@@ -287,17 +286,37 @@ try{
    }
    const status=stage.querySelector('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
    const level=stage.querySelector('.compact-stage-level[data-level-editor="true"] button.cell-picker-trigger');
-   return {status:measure(status,'ĐU gửi TU, chưa họp'),level:measure(level,'BCH')};
+   const atDefault={status:measure(status,'ĐU gửi TU, chưa họp'),level:measure(level,'BCH')};
+   // Simulate only the configurable status rail becoming 160px. The actual
+   // app persists rails via its layout editor; this is a visual CSS probe.
+   const td=stage.closest('td');
+   td.style.setProperty('--hdnd-l03-status-track','160px');
+   td.style.setProperty('--hdnd-l03-inner-width','372px'); // 120+76+160+2*8
+   const widenedStatus=measure(status,'ĐU gửi TU, chưa họp');
+   return {...atDefault,widenedStatus};
   });
   writeFileSync(join(out,'packing-'+surface+'.json'),JSON.stringify(packing,null,2));
   assert(near(packing.status.width,120,.3),'Status physical rail not 120px '+surface);
   assert(near(packing.level.width,76,.3),'Level physical rail not 76px '+surface);
-  assert.equal(packing.status.paddingLeft,'2px','Status left padding not compact');
-  assert.equal(packing.status.paddingRight,'2px','Status right padding not compact');
-  assert.equal(packing.status.gap,'2px','Excess caret gap');
-  assert.equal(packing.status.lines,1,'Unnecessary line wrap at 120px '+surface+
-   ': '+JSON.stringify(packing.status));
+  assert.equal(packing.status.paddingLeft,'4px','Status left padding must be 4px');
+  assert.equal(packing.status.paddingRight,'4px','Status right padding must be 4px');
+  assert.equal(packing.status.gap,'3px','Status caret gap must be 3px');
+  // Wrapping is acceptable if the text cannot physically fit. Reject only
+  // clipping/overflow, excessive wasted space or unintended truncation.
+  assert(packing.status.lines>=1&&packing.status.lines<=3,
+   'Status unexpectedly wraps or clips '+surface+': '+JSON.stringify(packing.status));
+  assert(packing.status.lineRects.every(x=>x.w<=packing.status.valueWidth+1.5),
+   'Status has horizontally overflowing text '+surface+': '+JSON.stringify(packing.status));
+  assert(packing.status.valueWidth>=100,
+   'Status lost too much horizontal room to decoration '+surface);
   assert.equal(packing.level.lines,1,'BCH not on one line '+surface);
+  assert.equal(packing.level.paddingLeft,'4px','Level left padding');
+  assert.equal(packing.level.paddingRight,'4px','Level right padding');
+  assert.equal(packing.level.gap,'3px','Level caret gap');
+  assert(near(packing.widenedStatus.width,160,.3),
+   'User-adjusted status rail not 160px '+surface);
+  assert.equal(packing.widenedStatus.lines,1,
+   'User-adjusted 160px rail still wraps '+surface+': '+JSON.stringify(packing.widenedStatus));
   results.push({name:'packing-'+surface,initial:packing,states:{}});
   await screenshot(page,'packing-'+surface);
  }
