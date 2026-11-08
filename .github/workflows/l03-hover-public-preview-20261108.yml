@@ -553,6 +553,9 @@ jobs:
                 await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:0});
                 // The actual published administrator width editor must offer
                 // the five smaller minima, not just have new source constants.
+                // On-demand preview tools intentionally start COLLAPSED.
+                await page.locator('.admin-preview-options-toggle').click();
+                await page.locator('.admin-list-controls').waitFor({state:'visible'});
                 const editor=page.locator('button[aria-controls="admin-l03-width-editor"]');
                 await editor.waitFor({timeout:25000});
                 await editor.click();
