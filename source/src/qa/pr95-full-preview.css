@@ -127,3 +127,12 @@
 
 /* A00 simulated shell only: subtle tighter line spacing, no width change. */
 .pr95-full-preview .pr95-preview-main{line-height:1.42}
+
+/* The old bottom stack was: 24px page padding + 18px card margin +
+   18px card padding + 10px preview padding. Tighten only the desktop
+   list preview so the table can approach the viewport footer. */
+@media(min-width:900px){
+  .pr95-full-preview:has(.item-list-card){padding-bottom:8px}
+  .pr95-full-preview .pr95-preview-main:has(.item-list-card){padding-bottom:6px}
+  .pr95-full-preview .item-list-card{padding-bottom:8px;margin-bottom:0}
+}
