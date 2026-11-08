@@ -362,8 +362,7 @@ export function Pr95FullPreview(){
         </label>
         <button type="button" className="button ghost" onClick={reset}>Khôi phục dữ liệu và quyền giả</button>
       </section>}
-      <footer className="pr95-preview-footnote">Dữ liệu giả · Chỉ lưu trong bộ nhớ
-        <span>Không đăng nhập hoặc kết nối Firebase/Google Sheets</span></footer>
+ 
     </main>
     {drill&&<ReportDetailGrid key={'pr95-popup-'+drill.title+'-'+role}
       title={drill.title} selectedIds={drill.ids} items={items}
