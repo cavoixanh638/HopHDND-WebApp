@@ -156,7 +156,7 @@ jobs:
               return {
                 meta:heading?{justify:css(heading).justifyContent,textAlign:css(heading).textAlign,
                   typeFirst:!type||!dep||!!(type.compareDocumentPosition(dep)&Node.DOCUMENT_POSITION_FOLLOWING)}:null,
-                grid:stage?css(stage).gridTemplateColumns.split(/\s+/).map(Number):null,
+                grid:stage?css(stage).gridTemplateColumns.split(/\s+/).map(parseFloat):null,
                 levelMode:stage?.dataset.levelLayout,
                 readonly:readonly?{justify:css(readonly).justifyContent,textAlign:css(readonly).textAlign,
                   nested:css(readonly.querySelector('.compact-part,.workflow-status-value'))?.textAlign}:null,
