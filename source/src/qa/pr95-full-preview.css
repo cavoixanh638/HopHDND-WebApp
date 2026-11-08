@@ -1,8 +1,8 @@
 /* PR95 UI V3 / L5. Synthetic preview shell only; no App or shared theme changes. */
-.pr95-full-preview{min-height:100dvh;padding-bottom:24px}
+.pr95-full-preview{position:relative;min-height:100dvh;padding-bottom:24px}
 .pr95-full-preview .pr95-preview-header{
-  position:relative;display:block;height:72px;min-height:72px;margin:0;
-  padding:10px 20px;background:transparent;border:0;
+  position:relative;display:block;height:60px;min-height:60px;margin:0;
+  padding:5px 12px;background:transparent;border:0;
 }
 .pr95-full-preview .pr95-preview-nav{
   display:flex;gap:12px;max-width:920px;margin:0 auto;padding:0;align-items:stretch;
@@ -29,16 +29,21 @@
   color:inherit;border:1px solid #ffffff52;border-radius:16px;
   padding:3px 10px;background:#ffffff14;
 }
-.pr95-preview-gear-zone{position:absolute;right:20px;top:10px;z-index:30}
-.pr95-preview-gear{display:grid;place-items:center;width:34px;height:34px;
-  background:#fff;border:1px solid #d8e2de;border-radius:8px;color:#52717e;
-  padding:0;font-size:18px;line-height:1;cursor:pointer}
-.pr95-preview-gear:hover,.pr95-preview-gear[aria-expanded=true]{
-  background:#eaf1f5;border-color:#b7cdd9}
+.pr95-preview-gear-zone{position:absolute;right:-4px;top:8px;z-index:30}
+.pr95-preview-gear{
+  display:grid;place-items:center;width:28px;height:28px;
+  background:transparent;border:1px solid transparent;border-radius:7px;
+  color:#52717e;opacity:.53;padding:0;font-size:16px;line-height:1;cursor:pointer;
+  transition:opacity 160ms ease,background-color 160ms ease,border-color 160ms ease;
+}
+.pr95-preview-gear:hover,.pr95-preview-gear[aria-expanded=true],
+.pr95-preview-gear:focus-visible{
+  opacity:1;background:#eaf1f5;border-color:#b7cdd9;
+}
 .pr95-full-preview .pr95-preview-gear:focus-visible,
 .pr95-full-preview .pr95-preview-nav button:focus-visible,
 .pr95-preview-gear-menu button:focus-visible{outline:2px solid #356c8b;outline-offset:2px}
-.pr95-preview-gear-menu{position:absolute;top:41px;right:0;width:260px;
+.pr95-preview-gear-menu{position:absolute;top:33px;right:0;width:260px;
   background:#fff;border:1px solid #dce5e0;border-radius:9px;
   padding:6px;box-shadow:0 9px 30px #2547561a;z-index:40}
 .pr95-preview-gear-menu button{display:flex;align-items:center;min-height:36px;width:100%;
@@ -50,7 +55,7 @@
 .pr95-preview-menu-user strong{display:block;font-size:13px;color:#294957}
 .pr95-preview-menu-footer{border-top:1px solid #edf0ee;margin-top:4px;padding-top:4px}
 .pr95-full-preview .pr95-preview-main{
-  width:auto;max-width:1720px;box-sizing:border-box;margin:0 16px;
+  width:calc(100% - 32px);max-width:2200px;box-sizing:border-box;margin:0 auto;
   background:#fff;border:1px solid #dce5e0;border-radius:12px;
   padding:11px 14px 10px;min-height:300px;
 }
@@ -72,9 +77,6 @@
 .pr95-preview-unsaved button{border:1px solid #cbdbe3;border-radius:5px;
   background:white;padding:5px 10px;cursor:pointer}
 .pr95-preview-unsaved button:last-child{background:#356c8b;border-color:#356c8b;color:white}
-.pr95-preview-footnote{display:flex;justify-content:space-between;gap:12px;
-  border-top:1px solid #eef1ef;margin-top:12px;padding:8px 1px 0;
-  color:#617783;font-size:11px}
 .pr95-preview-file-state,.pr95-preview-file-result{padding:10px 0}
 .pr95-preview-excel .field{max-width:520px}
 .pr95-preview-file-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
@@ -92,14 +94,14 @@
   .pr95-full-preview .pr95-preview-nav .section-card-title{font-size:14px}
 }
 @media(max-width:900px){
-  .pr95-full-preview .pr95-preview-header{height:69px;min-height:69px;padding:10px 14px}
-  .pr95-preview-gear-zone{right:14px}
+  .pr95-full-preview .pr95-preview-header{height:58px;min-height:58px;padding:6px 10px}
+  .pr95-preview-gear-zone{right:-5px}
   .pr95-full-preview .pr95-preview-nav{max-width:calc(100% - 48px);
     margin:0 48px 0 0;gap:8px}
   .pr95-full-preview .pr95-preview-nav .primary-section-card{
     height:48px;min-height:48px;padding:0 11px;border-radius:9px}
   .pr95-full-preview .pr95-preview-nav .section-card-state{display:none}
-  .pr95-full-preview .pr95-preview-main{margin:0 10px;padding:9px 10px}
+  .pr95-full-preview .pr95-preview-main{width:calc(100% - 20px);margin:0 auto;padding:9px 10px}
 }
 @media(max-width:640px){
   .pr95-full-preview .pr95-preview-nav .section-card-title{font-size:12px;
@@ -108,6 +110,17 @@
   .pr95-preview-section-heading h2{font-size:15px}
   .pr95-preview-context{font-size:11px}
   .pr95-preview-unsaved{align-items:flex-start;flex-direction:column}
-  .pr95-preview-footnote{flex-direction:column;gap:2px}
   .pr95-preview-gear-menu{width:min(260px,calc(100vw - 28px))}
+}
+/* Guest mode has no navigation cards. Keep the 28px discreet gear in the
+   exterior right gutter instead of reserving an otherwise EMPTY top row.
+   The relative header still anchors the accessible menu and focus target. */
+.pr95-full-preview[data-role="guest"] .pr95-preview-header{
+  height:0;min-height:0;padding:0;margin:0;z-index:31;
+}
+.pr95-full-preview[data-role="guest"] .pr95-preview-gear-zone{
+  right:-9px;top:5px;
+}
+@media(prefers-reduced-motion:reduce){
+  .pr95-preview-gear{transition:none}
 }
