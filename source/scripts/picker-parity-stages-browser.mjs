@@ -61,6 +61,7 @@ const probe=async page=>page.evaluate(()=>{
  const rootStyle=getComputedStyle(stage);
  return {table,mode:stage.dataset.levelLayout,rect:rc(stage),grid:rootStyle.gridTemplateColumns,
   columnGap:rootStyle.columnGap,rowGap:rootStyle.rowGap,
+  scrollWidth:stage.scrollWidth,clientWidth:stage.clientWidth,overflowX:rootStyle.overflowX,
   rows,reference:ref?cs(ref):null,widthInputs:document.querySelectorAll('#admin-l03-width-editor input').length,
   bodyOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
 });
@@ -283,7 +284,19 @@ try{
    const numbers=actual.grid.trim().split(/\s+/).map(n);
    assert(numbers.length===widths.length&&
     numbers.every((x,i)=>near(x,widths[i])), 'Asymmetric rail mismatch '+JSON.stringify({surface,mode,widths,actual:actual.grid}));
-   assert(near(actual.rect.w,inner,1.25),'Saved rail sum drift '+JSON.stringify({inner,actual:actual.rect}));
+   // A saved 5-rail configuration may be wider than a deliberately narrow
+   // outer L03 column. The real app grows the column when an administrator
+   // saves widths; this direct CSS-variable probe deliberately does not.
+   // In that case, all px tracks must remain exact and scroll internally,
+   // rather than forcing the field or the whole table to reflow.
+   assert(actual.rect.w<=inner+1.25,
+    'Saved rail overexpanded narrow host '+JSON.stringify({inner,actual:actual.rect}));
+   if(inner>actual.rect.w+1.25){
+    assert.equal(actual.overflowX,'auto','Constrained saved rails lost inner scroll');
+    assert(actual.scrollWidth>=inner-2,
+      'Saved rails clipped rather than scrolled '+JSON.stringify({inner,scrollWidth:actual.scrollWidth,viewport:actual.rect.w}));
+   }else assert(near(actual.rect.w,inner,1.25),
+    'Saved rail sum drift '+JSON.stringify({inner,actual:actual.rect}));
    results.push({name:'rail-'+mode+'-'+surface+'-'+inner,initial:actual,states:{preset}});
   }
  // Reduced-motion still has the outline, but never lifts an editable stage.
