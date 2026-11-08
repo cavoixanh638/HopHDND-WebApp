@@ -42,9 +42,14 @@ export const L03_RAIL_GAP_PX=8;
 /** List+popup L03 cells explicitly use 11px padding on each side and one
  * 1px right border (see l03-track-widths.css). No hidden legacy total. */
 export const L03_CELL_CHROME_PX=23;
+/** Smallest usable rails for the now-unified 11px status typography.
+ * Labels and long statuses can wrap (no clipping/ellipsis); the 48px level
+ * rail still leaves 30px for "BCH" beside the 5px caret and 4px side padding.
+ * Only the administrator's MINIMUM changes; existing saved values/defaults
+ * (readonly 128/164, editable 120/76/120) remain exactly as before. */
 export const PARTY_TRACK_WIDTH_LIMITS={
-  readonly:{label:{min:84,max:1400},status:{min:112,max:1400}},
-  editable:{label:{min:84,max:1400},level:{min:76,max:900},status:{min:112,max:1400}}
+  readonly:{label:{min:64,max:1400},status:{min:72,max:1400}},
+  editable:{label:{min:64,max:1400},level:{min:48,max:900},status:{min:72,max:1400}}
 } as const;
 /** Screenshot-proportioned 08/11/2026 defaults: readonly 128/164 and
  * editable 120/76/120. Existing saved 5-rail profiles remain untouched. */

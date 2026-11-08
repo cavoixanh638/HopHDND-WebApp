@@ -83,6 +83,7 @@ const screenshot=async name=>{
  writeFileSync(join(out,name+'.png'),Buffer.from(result.data,'base64'));
 };
 const wanted={readonly:{label:122,status:225},editable:{label:145,level:82,status:279}};
+const narrow={readonly:{label:64,status:72},editable:{label:64,level:48,status:72}};
 const records=[];
 try{
  driver=await launchRealChromiumCdp({name:'TRACKS',onRequest:url=>{
@@ -132,9 +133,59 @@ try{
   await screenshot('tracks-guest-'+viewport);
   records.push({viewport,role:'guest',actual:readonly});
  }
+ // A second admin pass proves the newly LOWERED HTML input.min values are
+ // not just schema changes: save five physical minimum rails via REAL UI,
+ // verify both edit + readonly layouts, and repeat on mobile.
+ for(const viewport of [900,390]){
+  await navigate('?full=1&preview-role=admin',viewport);
+  await wait("document.querySelector('button[aria-controls=admin-l03-width-editor]')",'narrow editor trigger');
+  await evaluate("document.querySelector('button[aria-controls=admin-l03-width-editor]').click()");
+  await wait("document.querySelectorAll('#admin-l03-width-editor input').length===5",'narrow five inputs');
+  const bounds=await evaluate(`[...document.querySelectorAll('#admin-l03-width-editor input')].map(e=>({label:e.getAttribute('aria-label'),min:Number(e.min),max:Number(e.max)}))`);
+  assert.deepEqual(bounds.map(e=>e.min),[64,72,64,48,72],
+   'Admin HTML form must expose FIVE smaller rail minima');
+  await evaluate(`(()=>{
+    const values=${JSON.stringify({
+      'L03 Chỉ xem · Nhãn + cấp trình':64,
+      'L03 Chỉ xem · Tiến độ':72,
+      'L03 Được sửa · Nhãn':64,
+      'L03 Được sửa · Cấp trình TU':48,
+      'L03 Được sửa · Tiến độ':72
+    })};
+    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    for(const input of document.querySelectorAll('#admin-l03-width-editor input')){
+      const value=String(values[input.getAttribute('aria-label')]);
+      if(value==='undefined')throw Error('Unexpected minimum rail '+input.getAttribute('aria-label'));
+      setter.call(input,value);input.dispatchEvent(new Event('input',{bubbles:true}));
+      input.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  })()`);
+  await delay(150);
+  assert.deepEqual(await evaluate("[...document.querySelectorAll('#admin-l03-width-editor input')].map(e=>e.value)"),
+   ['64','72','64','48','72'],'Five independent minimum values entered');
+  await evaluate("document.querySelector('#admin-l03-width-editor button[type=submit]').click()");
+  await wait("!document.querySelector('#admin-l03-width-editor')",'minimum rail save');
+  const admin=await measure();
+  assertGeometry(admin,{expected:narrow,mode:'editable'});
+  assert(admin.every(cell=>cell.physical.w>=223-.5),'Three-track group physically too narrow');
+  await screenshot('tracks-min-admin-'+viewport);
+  records.push({viewport,role:'admin-min',bounds,actual:admin});
+  await evaluate("document.querySelector('.pr95-preview-gear')?.click()");
+  await wait("document.querySelector('.pr95-preview-menu-user')",'narrow guest menu');
+  await evaluate(`(()=>{
+    const button=[...document.querySelectorAll('button')].find(el=>el.textContent.trim()==='Đăng xuất mô phỏng');
+    if(!button)throw Error('No role-switch button');button.click();
+  })()`);
+  await wait("document.querySelector('.pr95-full-preview[data-role=guest]')",'narrow guest role');
+  const guest=await measure();
+  assertGeometry(guest,{expected:narrow,mode:'readonly'});
+  assert(guest.every(cell=>cell.physical.w>=167-.5),'Two-track group physically too narrow');
+  await screenshot('tracks-min-guest-'+viewport);
+  records.push({viewport,role:'guest-min',actual:guest});
+ }
  writeFileSync(join(out,'measured-rects.json'),JSON.stringify(records,null,2));
  console.log('UI_20261106_TRACKS_PASS '+JSON.stringify({modes:records.length,
-  widths:wanted,screenshots:records.length}));
+  widths:wanted,minimum:narrow,screenshots:records.length}));
 }catch(error){
  console.error('UI_20261106_TRACKS_FAIL',error);
  try{await screenshot('failure')}catch{}

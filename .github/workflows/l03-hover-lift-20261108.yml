@@ -41,9 +41,11 @@ jobs:
               source/tests/compact-group-highlights.test.tsx|\
               source/tests/ui-20261104-worker-a.test.tsx|\
               source/tests/picker-parity-stages.test.ts|\
+              source/tests/ui-20261106-tracks.test.ts|\
               source/tests/status-palettes.test.ts|\
               source/scripts/picker-parity-content-browser.mjs|\
               source/scripts/picker-parity-stages-browser.mjs|\
+              source/scripts/ui-20261106-tracks-browser.mjs|\
               source/docs/tasks/parallel-20261108-l03-hover/*) ;;
               *) echo "OUT_OF_SCOPE source modification: $file"; exit 1 ;;
             esac

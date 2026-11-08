@@ -12,6 +12,38 @@ const widths={
 };
 
 describe('UI 06/11 TRACKS: five independently persisted L03 rails',()=>{
+  it('allows the new narrow per-mode minimums without changing defaults, legacy or saved widths',()=>{
+    const minimum={
+      readonly:{label:64,status:72},
+      editable:{label:64,level:48,status:72}
+    };
+    expect(PARTY_TRACK_WIDTH_LIMITS).toEqual({
+      readonly:{label:{min:64,max:1400},status:{min:72,max:1400}},
+      editable:{label:{min:64,max:1400},level:{min:48,max:900},status:{min:72,max:1400}}
+    });
+    expect(validatePartyTrackWidths(minimum)).toEqual(minimum);
+    expect(partyTrackModeWidth(minimum,'readonly')).toBe(167);
+    expect(partyTrackModeWidth(minimum,'editable')).toBe(223);
+    const persisted=validateItemLayout({...defaultItemLayout(),partyTrackWidths:minimum});
+    expect(resolvedPartyTrackWidths(JSON.parse(JSON.stringify(persisted)))).toEqual(minimum);
+    // The saved 5 rails are independent of obsolete legacy total-group floors.
+    expect(persisted.partyGroupWidths).toEqual(defaultItemLayout().partyGroupWidths);
+    const defaults=resolvedPartyTrackWidths(defaultItemLayout());
+    expect(defaults).toEqual({
+      readonly:{label:128,status:164},
+      editable:{label:120,level:76,status:120}
+    });
+    expect(validatePartyTrackWidths(widths)).toEqual(widths);
+    for(const mode of ['readonly','editable'] as const){
+      for(const field of Object.keys(minimum[mode])){
+        const under={
+          ...minimum,
+          [mode]:{...minimum[mode],[field]:(minimum[mode] as Record<string,number>)[field]-1}
+        };
+        expect(()=>validatePartyTrackWidths(under)).toThrow();
+      }
+    }
+  });
   it('accepts five asymmetric rails and yields exact rail+gap+chrome physical sums',()=>{
     const rails=validatePartyTrackWidths(widths);
     expect(rails).toEqual(widths);

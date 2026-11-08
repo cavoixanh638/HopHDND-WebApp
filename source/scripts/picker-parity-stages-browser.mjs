@@ -338,12 +338,13 @@ try{
   results.push({name:'packing-'+surface,initial:packing,states:{}});
   await screenshot(page,'packing-'+surface);
  }
- // Exercise TWO distinct five-rail configurations against actual CSS subgrid
+ // Exercise standard, previously saved and NEW MINIMUM five-rail configurations against actual CSS subgrid
  // in BOTH surfaces and 2/3-track modes. This is an in-page geometry probe,
  // not a claim that an injected value was persisted to Firebase.
  const railPresets=[
   {readonly:{label:122,status:225},editable:{label:145,level:82,status:279}},
-  {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}}
+  {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}},
+  {readonly:{label:64,status:72},editable:{label:64,level:48,status:72}}
  ];
  for(const preset of railPresets)for(const surface of ['list','popup'])
   for(const mode of ['edit','guest']){

@@ -11,7 +11,8 @@ const source=()=>readFileSync(resolve('src/features/items/picker-parity-stages.c
 const track=()=>readFileSync(resolve('src/features/items/l03-track-widths.css'),'utf8');
 const presets=[
  {readonly:{label:122,status:225},editable:{label:145,level:82,status:279}},
- {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}}
+ {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}},
+ {readonly:{label:64,status:72},editable:{label:64,level:48,status:72}}
 ];
 describe('STAGES scoped picker parity contract',()=>{
  it('uses screenshot-proportioned defaults without overwriting saved rails',()=>{
