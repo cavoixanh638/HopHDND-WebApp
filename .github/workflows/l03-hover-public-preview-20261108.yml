@@ -20,17 +20,17 @@ jobs:
       - name: Checkout immutable exact QA-passed source, not docs-only HEAD
         uses: actions/checkout@v4
         with:
-          ref: b815535d1772f2d1457382970e5dad039b59ff10
+          ref: 521a4d49e1c4216681144173ed217489bddf510b
           persist-credentials: true
           fetch-depth: 0
       - name: Verify pinned feature revision and offline QA entry
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "b815535d1772f2d1457382970e5dad039b59ff10"
+          test "$(git rev-parse HEAD)" = "521a4d49e1c4216681144173ed217489bddf510b"
           test -f source/compact-qa.html
           test -f .nojekyll
           grep -Fq "RAM demo" source/docs/tasks/parallel-20261108-l03-hover/CHECKPOINT.md 2>/dev/null || true
-          echo "L03_PREVIEW_SOURCE_SHA b815535d1772f2d1457382970e5dad039b59ff10"
+          echo "L03_PREVIEW_SOURCE_SHA 521a4d49e1c4216681144173ed217489bddf510b"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,7 +50,7 @@ jobs:
           test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
           grep -Fq 'Dữ liệu giả' dist-compact-qa/compact-qa.html
           ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
-          echo "b815535d1772f2d1457382970e5dad039b59ff10" > dist-compact-qa/source-sha.txt
+          echo "521a4d49e1c4216681144173ed217489bddf510b" > dist-compact-qa/source-sha.txt
           (cd dist-compact-qa && sha256sum compact-qa.html assets/* > asset-sha256.txt)
       - name: Check Pages uses main root before touching any public branch
         env:
@@ -93,7 +93,7 @@ jobs:
           git -C "$dest" commit -m 'docs(preview): publish isolated synthetic L03 -3px hover preview'
           git -C "$dest" push origin HEAD:main
           echo "L03_PREVIEW_PAGES_SUBPATH_ONLY preview/l03-hover-20261108"
-          echo "L03_PREVIEW_PAGES_SOURCE_SHA b815535d1772f2d1457382970e5dad039b59ff10"
+          echo "L03_PREVIEW_PAGES_SOURCE_SHA 521a4d49e1c4216681144173ed217489bddf510b"
       - name: Request Pages rebuild and verify public HTML plus actual JS/CSS bytes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +123,7 @@ jobs:
               { echo "::error::Public asset hash mismatches candidate: $asset";exit 1; }
             echo "L03_PREVIEW_PUBLIC_ASSET_HASH_MATCH $asset"
           done
-          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq 'b815535d1772f2d1457382970e5dad039b59ff10'
+          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq '521a4d49e1c4216681144173ed217489bddf510b'
           echo "L03_PREVIEW_PUBLIC_HTTP_ASSETS_SOURCE_PASS $base"
       - name: Real Chromium LIVE UI smoke and measured -3px hover on GitHub Pages
         working-directory: source
@@ -196,6 +196,8 @@ jobs:
             const before=await btn.evaluate(el=>{
               const s=getComputedStyle(el);return {y:el.getBoundingClientRect().y,
                 w:el.getBoundingClientRect().width,borderWidth:s.borderTopWidth,
+                paddingLeft:s.paddingLeft,paddingRight:s.paddingRight,
+                caretGap:s.columnGap,
                 borderColor:s.borderTopColor,color:s.color,background:s.backgroundColor};
             });
             await btn.hover();
@@ -218,6 +220,9 @@ jobs:
             assert(near(before.w,after.w),label+' changed width');
             assert(after.shadow!=='none'&&after.outline==='solid',label+' no visible shadow/outline');
             assert.equal(before.borderWidth,'1px',label+' resting border unexpectedly changed');
+            assert.equal(before.paddingLeft,'4px',label+' status left padding is not compact');
+            assert.equal(before.paddingRight,'4px',label+' status right padding is not compact');
+            assert.equal(before.caretGap,'3px',label+' unnecessary caret gap');
             assert.equal(after.borderWidth,'1px',label+' hover border thickness not preserved');
             assert.equal(after.outlineWidth,'2px',label+' hover outline thickness not preserved');
             assert.equal(after.borderColor,after.color,label+' hover border not semantic');
@@ -266,7 +271,7 @@ jobs:
               await ctx.close();
             }
             assert.deepEqual(external,[],'Live site made external network requests');
-            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'b815535d1772f2d1457382970e5dad039b59ff10',url:base,record,external},null,2));
+            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'521a4d49e1c4216681144173ed217489bddf510b',url:base,record,external},null,2));
             console.log('L03_PUBLIC_REAL_BROWSER_HOVER_3PX_AND_QA_ROLES_PASS',JSON.stringify(record));
           } finally {await browser.close();}
           NODE
