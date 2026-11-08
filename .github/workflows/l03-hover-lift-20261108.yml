@@ -38,6 +38,10 @@ jobs:
               source/src/features/reports/ReportDetailGrid.tsx|\
               source/src/components/SharedEditTooltip.ts|\
               source/src/qa/compact-qa-main.tsx|\
+              source/src/qa/pr95-full-preview.tsx|\
+              source/src/qa/pr95-full-preview.css|\
+              source/src/features/items/ActiveListFilters.tsx|\
+              source/src/features/items/list-filter-toolbar.css|\
               source/src/features/items/CompactGroupedValue.tsx|\
               source/src/features/items/picker-parity-content.css|\
               source/src/features/items/picker-parity-stages.css|\
@@ -53,6 +57,8 @@ jobs:
               source/tests/item-summary.test.ts|\
               source/tests/pr95-ui-v2-l2-palette.test.ts|\
               source/tests/pr95-v6-l3-layout.test.ts|\
+              source/tests/pr95-20261108-filter-shell.test.tsx|\
+              source/scripts/pr95-v6-l3-guest-layout-browser.mjs|\
               source/scripts/picker-parity-content-browser.mjs|\
               source/scripts/picker-parity-stages-browser.mjs|\
               source/scripts/ui-20261106-tracks-browser.mjs|\
