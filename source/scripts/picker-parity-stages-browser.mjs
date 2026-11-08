@@ -320,8 +320,12 @@ try{
       button:info(btn),matches:btn?.matches(':hover')};
    }));
   console.log('INLINE_HIT_MOUNT_DIAGNOSTIC '+JSON.stringify({surface,field,diagnostic,geometry}));
-  await btn.waitFor({timeout:3000});
-  await td.scrollIntoViewIfNeeded();
+  // The horizontally scrollable List can defer offscreen rendering.
+  // Bring the actual TD/button into the scroll viewport BEFORE waiting for
+  // browser visibility (never force an invisible editor into a click).
+  await td.evaluate(cell=>cell.scrollIntoView({block:'center',inline:'center'}));
+  await btn.evaluate(button=>button.scrollIntoView({block:'center',inline:'center'}));
+  await btn.waitFor({timeout:7000});
   const blank=await td.evaluate(cell=>{
    const rect=cell.getBoundingClientRect(),button=cell.querySelector('button.inline-note-trigger');
    if(!button)throw Error('Missing real inline prose editor trigger');
