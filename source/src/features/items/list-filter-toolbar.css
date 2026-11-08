@@ -284,7 +284,7 @@
 /* Imperial theme has a stronger generic input:focus shadow. Prevent that
    second ring only inside F01-F05; do not change the app's other editors. */
 .app-shell.imperial-sky-theme .list-filter-toolbar :is(input,select):is(:focus,:focus-visible){
-  border-color:#285f87;outline:none;box-shadow:none;
+  border-color:#285f87;outline:none!important;box-shadow:none!important;
 }
 .list-filter-toolbar .list-filter-other[data-filter-active="true"]>summary{
   box-shadow:none;
