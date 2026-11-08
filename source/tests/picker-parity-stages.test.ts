@@ -35,6 +35,18 @@ describe('STAGES scoped picker parity contract',()=>{
   expect(css).toContain('row-gap:5px');
   expect(css).toContain('grid-template-columns:subgrid!important');
  });
+ it('matches readonly L03 status typography to editable status without changing rights',()=>{
+  const css=source();
+  const start=css.indexOf('.compact-stage-state:not([data-editable="true"]) {');
+  const end=css.indexOf('/* L03-only default',start);
+  expect(start).toBeGreaterThan(0);
+  expect(end).toBeGreaterThan(start);
+  const readonlyBlock=css.slice(start,end);
+  expect(readonlyBlock).toContain('font-size:11px!important;');
+  expect(readonlyBlock).toContain('font-weight:550!important;');
+  expect(readonlyBlock).toContain('font-family:"Segoe UI",system-ui,sans-serif!important;');
+  expect(readonlyBlock).not.toContain('font-size:13px!important;');
+ });
  it('keeps 76/120px picker labels readable by minimizing horizontal reservations',()=>{
   const css=source();
   expect(css).toContain('padding:4px 4px!important;');

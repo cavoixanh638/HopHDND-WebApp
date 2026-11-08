@@ -38,7 +38,8 @@ const probe=async page=>page.evaluate(()=>{
   border:s.borderWidth,borderColor:s.borderColor,borderRadius:s.borderRadius,
   outlineColor:s.outlineColor,justifyContent:s.justifyContent,textAlign:s.textAlign,
   color:s.color,background:s.backgroundColor,
-  fontSize:s.fontSize,fontWeight:s.fontWeight,lineHeight:s.lineHeight,gap:s.gap,
+  fontSize:s.fontSize,fontWeight:s.fontWeight,fontFamily:s.fontFamily,
+  lineHeight:s.lineHeight,gap:s.gap,
   alignItems:s.alignItems,transform:s.transform,
   translateY:s.transform==='none'?0:new DOMMatrixReadOnly(s.transform).m42,
   transition:s.transition,
@@ -53,6 +54,10 @@ const probe=async page=>page.evaluate(()=>{
    level:rc(level),button:rc(button),levelButton:rc(levelButton),
    editable:status?.dataset.editable==='true',
    labelStyle:label?cs(label):null,statusStyle:status?cs(status):null,
+   // In List this may be .compact-part; popup can use a nested
+   // .workflow-status-value with legacy font declarations.
+   readonlyTextStyle:!button&&status?
+    cs(status.querySelector('.workflow-status-value,.compact-part')||status):null,
    buttonStyle:button?cs(button):null,levelStyle:levelButton?cs(levelButton):null,
    buttonExpanded:button?.getAttribute('aria-expanded'),
    statusText:status?.textContent?.trim().slice(0,80)};
@@ -79,8 +84,21 @@ function check(p,context){
  for(const row of p.rows){
   if(!row.editable){
    assert.equal(row.button,null,context+' forbidden fake picker '+row.field);
-   assert.equal(n(row.statusStyle.fontSize),13,context+' readonly size '+row.field);
-   assert.equal(n(row.statusStyle.fontWeight),400,context+' readonly weight '+row.field);
+   assert.equal(n(row.statusStyle.fontSize),11,context+' readonly status size '+row.field);
+   assert.equal(n(row.statusStyle.fontWeight),550,context+' readonly status weight '+row.field);
+   assert.equal(n(row.readonlyTextStyle.fontSize),11,
+    context+' readonly nested text size '+row.field);
+   assert.equal(n(row.readonlyTextStyle.fontWeight),550,
+    context+' readonly nested text weight '+row.field);
+   const editableButton=p.rows.find(r=>r.editable)?.buttonStyle;
+   if(editableButton){
+    for(const property of ['fontSize','fontWeight','fontFamily','lineHeight']){
+     assert.equal(row.statusStyle[property],editableButton[property],
+      context+' mixed readonly/status picker typography mismatch '+row.field+' '+property);
+     assert.equal(row.readonlyTextStyle[property],editableButton[property],
+      context+' mixed nested readonly/picker typography mismatch '+row.field+' '+property);
+    }
+   }
    assert.equal(row.statusStyle.transform,'none',context+' readonly lifted '+row.field);
    assert.equal(row.statusStyle.boxShadow,'none',context+' readonly shadow '+row.field);
    assert.equal(row.statusStyle.justifyContent,'center',context+' readonly wrapper not centered '+row.field);

@@ -82,8 +82,11 @@
   border-radius:6px;
   background:var(--workflow-bg)!important;
   color:var(--workflow-text)!important;
-  font-size:13px!important;
-  font-weight:400!important;
+  /* Read-only status uses exactly the same typography as its editable
+     CellPicker counterpart. Permission affects interaction, NOT font size. */
+  font-family:"Segoe UI",system-ui,sans-serif!important;
+  font-size:11px!important;
+  font-weight:550!important;
   line-height:1.35!important;
   cursor:default;
   transform:none!important;
@@ -95,8 +98,9 @@
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
   .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
   :is(.compact-part,.workflow-status-value) {
-  font-size:13px!important;
-  font-weight:400!important;
+  font-family:"Segoe UI",system-ui,sans-serif!important;
+  font-size:11px!important;
+  font-weight:550!important;
   line-height:1.35!important;
   box-shadow:none!important;
   outline:none!important;
