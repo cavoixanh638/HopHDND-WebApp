@@ -30,8 +30,8 @@ describe('UI 06/11 TRACKS: five independently persisted L03 rails',()=>{
     expect(persisted.partyGroupWidths).toEqual(defaultItemLayout().partyGroupWidths);
     const defaults=resolvedPartyTrackWidths(defaultItemLayout());
     expect(defaults).toEqual({
-      readonly:{label:128,status:164},
-      editable:{label:120,level:76,status:120}
+      readonly:{label:110,status:135},
+      editable:{label:110,level:55,status:145}
     });
     expect(validatePartyTrackWidths(widths)).toEqual(widths);
     for(const mode of ['readonly','editable'] as const){
