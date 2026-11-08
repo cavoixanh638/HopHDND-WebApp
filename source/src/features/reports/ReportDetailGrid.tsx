@@ -33,6 +33,7 @@ import {assignmentIssue} from '../../data/catalogs';
 import {popupFieldOptions} from './pr95-l1-popup-options';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
 import '../items/l03-track-widths.css';
+import '../items/inline-note-hit-area.css';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
 type Props={
@@ -461,7 +462,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                 data-ui-reference-part={c.key==='note'||c.key==='specificProgress'?c.key:undefined}
                 data-progress-tone={c.key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(c.key,effectiveItemField(item,c.key),statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
-                data-edit-hint={writable?'Bấm để sửa':undefined}
+                data-edit-hint={writable&&c.key!=='note'&&c.key!=='specificProgress'?'Bấm để sửa':undefined}
                 style={isL03?{
                    '--hdnd-l03-label-track':`${levelEditable?l03PopupWidths.editable.label:l03PopupWidths.readonly.label}px`,
                    '--hdnd-l03-level-track':`${l03PopupWidths.editable.level}px`,

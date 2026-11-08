@@ -39,6 +39,7 @@ import './item-frame.css';
 import './admin-list-controls.css';
 import './l03-track-widths.css';
 import './pr95-v6-l3-page-layout.css';
+import './inline-note-hit-area.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
@@ -974,7 +975,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
            data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
           data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
-          data-edit-hint={writable?'Bấm để sửa':undefined}
+          data-edit-hint={writable&&key!=='note'&&key!=='specificProgress'?'Bấm để sửa':undefined}
           style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
           ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
             data-editable={writable?'true':undefined}

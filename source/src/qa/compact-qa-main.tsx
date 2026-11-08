@@ -98,6 +98,8 @@ function CompactVisualQa(){
   // 2-track stage test without touching production permissions or records.
   const mixed=params.get('mixed')==='1';
   const popupMixed=params.get('popup-mixed')==='1';
+  // RAM-only test of the real Note/Current Progress inline hit boxes.
+  const innerHitQa=params.get('inner-hit')==='1';
   // Popup's ordinary default hides partyLevel, so its synthetic mixed fixture
   // explicitly enables that REAL source column before mounting ReportDetailGrid.
   // Dedicated QA-only source key prevents any change to production preferences.
@@ -135,11 +137,13 @@ function CompactVisualQa(){
       {params.get('popup')==='1'?<ReportDetailGrid
         title="QA popup dữ liệu giả" selectedIds={records.map(item=>item.recordId)}
         items={records} sourceKey={popupMixed?popupMixedSource:"compact-qa-synthetic-popup-only"}
-        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&!popupMixed&&params.get('popup-settings')!=='1'}
+        catalog={catalog} listLayout={layout} readOnlyViewer={!popupClearQa&&!popupMixed&&!innerHitQa&&params.get('popup-settings')!=='1'}
         statusPaletteStore={palette}
-        allowDraft={popupClearQa||popupMixed} canEditCell={(id,field)=>popupMixed?mixedGrant(id,field):popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
+        allowDraft={popupClearQa||popupMixed||innerHitQa} canEditCell={(id,field)=>innerHitQa
+          ?(field==='note'||field==='specificProgress')
+          :popupMixed?mixedGrant(id,field):popupClearQa&&(field==='vpLeader'||field==='ubndLeader')}
         onUpdate={(recordId,changes)=>{
-          if(!popupClearQa&&!popupMixed)throw Error('QA read-only');
+          if(!popupClearQa&&!popupMixed&&!innerHitQa)throw Error('QA read-only');
           Object.assign(window,{__l2LastPatch:{recordId,changes}});
           setRecords(previous=>previous.map(item=>item.recordId===recordId?{...item,...changes}:item));
         }}

@@ -32,11 +32,18 @@ jobs:
           while IFS= read -r file; do
             case "$file" in
               source/src/features/items/item-frame.css|\
+              source/src/features/items/inline-note-hit-area.css|\
+              source/src/features/items/activate-editable-cell.ts|\
+              source/src/features/items/ItemList.tsx|\
+              source/src/features/reports/ReportDetailGrid.tsx|\
+              source/src/components/SharedEditTooltip.ts|\
+              source/src/qa/compact-qa-main.tsx|\
               source/src/features/items/CompactGroupedValue.tsx|\
               source/src/features/items/picker-parity-content.css|\
               source/src/features/items/picker-parity-stages.css|\
               source/src/data/item-preferences.ts|\
               source/src/data/status-palettes.ts|\
+              source/tests/activate-editable-cell.test.ts|\
               source/tests/picker-parity-content.test.tsx|\
               source/tests/compact-group-highlights.test.tsx|\
               source/tests/ui-20261104-worker-a.test.tsx|\

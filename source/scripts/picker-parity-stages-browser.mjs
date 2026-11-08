@@ -278,6 +278,81 @@ try{
   return route.continue();
  });
  const page=await context.newPage();
+ // Exactly two prose fields use a small hit target (NOT the whole TD).
+ // This tests real mouse events and real InlineNoteEditor controls in both
+ // operational surfaces. Synthetic fixture uses RAM, no production writes.
+ for(const surface of ['list','popup'])for(const field of ['specificProgress','note']){
+  await page.setViewportSize({width:1440,height:900});
+  const url=surface==='popup'
+   ?base+'/compact-qa.html?popup=1&inner-hit=1'
+   :base+'/compact-qa.html?edit=1';
+  await page.goto(url,{waitUntil:'networkidle'});
+  if(surface==='popup'){
+   await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+   await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+  }
+  const root=surface==='popup'?'.report-detail-grid':'.item-data-table';
+  const td=page.locator(root+' tbody td[data-col-key="'+field+'"].editable-cell').first();
+  const btn=td.locator('button.inline-note-trigger').first();
+  await btn.waitFor({timeout:25000});
+  await td.scrollIntoViewIfNeeded();
+  const blank=await td.evaluate(cell=>{
+   const rect=cell.getBoundingClientRect(),button=cell.querySelector('button.inline-note-trigger');
+   if(!button)throw Error('Missing real inline prose editor trigger');
+   const b=button.getBoundingClientRect();
+   const points=[
+    {x:rect.left+3,y:rect.top+3},{x:rect.right-3,y:rect.top+3},
+    {x:rect.left+3,y:rect.bottom-3},{x:rect.right-3,y:rect.bottom-3}
+   ];
+   const point=points.find(p=>{
+    if(p.x<0||p.y<0||p.x>=innerWidth||p.y>=innerHeight)return false;
+    if(p.x>=b.left&&p.x<=b.right&&p.y>=b.top&&p.y<=b.bottom)return false;
+    const hit=document.elementFromPoint(p.x,p.y);
+    return hit&&cell.contains(hit)&&!hit.closest('button,input,textarea,select,a,[role="button"]');
+   });
+   if(!point)throw Error('No blank TD padding outside inner editor');
+   return {...point,tdWidth:rect.width,buttonWidth:b.width};
+  });
+  assert(blank.buttonWidth<blank.tdWidth-5,
+   'Inner prose editor extends into all TD padding '+surface+'/'+field+JSON.stringify(blank));
+  await page.mouse.move(0,0);await page.waitForTimeout(80);
+  await page.mouse.move(blank.x,blank.y);await page.waitForTimeout(230);
+  const style=()=>btn.evaluate(el=>{
+   const c=getComputedStyle(el);
+   return {transform:c.transform,shadow:c.boxShadow,border:c.borderColor,
+    background:c.backgroundColor};
+  });
+  const lift=s=>s.transform==='none'?0:new DOMMatrixReadOnly(s.transform).m42;
+  const blankHover=await style();
+  assert(near(lift(blankHover),0,.15)&&blankHover.shadow==='none',
+   'Blank TD paints editor hover '+surface+'/'+field+JSON.stringify(blankHover));
+  assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),0,
+   'Blank TD incorrectly displays edit tooltip '+surface+'/'+field);
+  await page.mouse.click(blank.x,blank.y);
+  assert.equal(await td.locator('textarea.inline-note-textarea').count(),0,
+   'Click on blank TD unexpectedly opened editing '+surface+'/'+field);
+  await btn.hover();await page.waitForTimeout(230);
+  const hovered=await style();
+  assert(lift(hovered)<-1.4&&hovered.shadow!=='none',
+   'Actual editor did not lift on button hover '+surface+'/'+field+JSON.stringify(hovered));
+  assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),1,
+   'Hover on actual button no longer offers edit tooltip '+surface+'/'+field);
+  await page.mouse.move(blank.x,blank.y);await page.waitForTimeout(230);
+  const afterExit=await style();
+  assert(near(lift(afterExit),0,.15)&&afterExit.shadow==='none',
+   'Glow remains after pointer leaves editor for blank TD '+surface+'/'+field);
+  assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),0,
+   'Edit tooltip remains on blank TD '+surface+'/'+field);
+  await btn.click();
+  await td.locator('textarea.inline-note-textarea').waitFor({timeout:15000});
+  await page.keyboard.press('Escape');
+  await btn.waitFor({timeout:15000});
+  assert.equal(await td.locator('textarea.inline-note-textarea').count(),0,
+   'Escape did not dismiss inline editor '+surface+'/'+field);
+  results.push({name:'inner-hit-'+surface+'-'+field,
+   initial:{blank,blankHover},states:{hovered,afterExit,clickedRealButton:true}});
+  await screenshot(page,'inner-hit-'+surface+'-'+field);
+ }
  for(const width of [1440,900,390])
   for(const surface of ['list','popup']){
    for(const mode of ['edit','guest','mixed'])

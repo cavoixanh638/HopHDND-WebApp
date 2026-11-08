@@ -28,6 +28,14 @@ function fromTarget(target:EventTarget|null):HTMLElement|null{
     return editable instanceof HTMLElement?editable:null;
   }
   const td=target.closest('td.editable-cell');
+  // For multiline prose, show "Bấm để sửa" only on the INNER little button,
+  // never on the TD padding or the wrapper; history/locked keep priorities.
+  if(td instanceof HTMLTableCellElement&&
+      (td.dataset.colKey==='note'||td.dataset.colKey==='specificProgress')){
+    const button=target.closest('button.inline-note-trigger');
+    return button instanceof HTMLButtonElement&&!button.disabled&&td.contains(button)
+      ?button:null;
+  }
   return td instanceof HTMLTableCellElement&&
     !!td.closest('table.item-data-table,table.report-detail-grid')?td:null;
 }

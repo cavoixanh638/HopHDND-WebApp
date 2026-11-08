@@ -1,0 +1,42 @@
+/* Only the inner multiline editors of "Tiến độ hiện tại" and "Ghi chú"
+ * are actionable. The surrounding TD is an inert layout surface.
+ * Previous theme CSS lifts the inner trigger whenever the TD is hovered;
+ * undo that ONLY when the trigger itself is not hovered or focus-visible.
+ * Keep every other column's established editable-cell behavior unchanged.
+ */
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) {
+  cursor:default!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]):is(:hover,:focus-within) {
+  box-shadow:none!important;
+  outline:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
+  button.inline-note-trigger {
+  display:inline-flex!important;
+  width:fit-content!important;
+  max-width:100%!important;
+  cursor:pointer!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
+  button.inline-note-trigger:not(:hover):not(:focus-visible) {
+  position:static!important;
+  z-index:auto!important;
+  transform:none!important;
+  border-color:#A5BEB5!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+/* An open textarea keeps its legitimate own hover and editing focus.
+ * Moving over blank TD padding must not fabricate a textarea hover halo. */
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
+  textarea.inline-note-textarea:not(:hover):not(:focus) {
+  border-color:#CDD9D4!important;
+  box-shadow:none!important;
+}
