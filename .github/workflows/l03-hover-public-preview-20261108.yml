@@ -152,6 +152,7 @@ jobs:
               const stage=el.querySelector('.compact-stages[data-rev2="true"]');
               const readonly=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])');
               const notSubmitted=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state[data-progress-tone="not-submitted"]:not([data-highlighted="true"])');
+              const paintedStatus=notSubmitted?.querySelector('button.cell-picker-trigger')??notSubmitted;
               const css=node=>node?getComputedStyle(node):null;
               return {
                 meta:heading?{justify:css(heading).justifyContent,textAlign:css(heading).textAlign,
@@ -160,7 +161,7 @@ jobs:
                 levelMode:stage?.dataset.levelLayout,
                 readonly:readonly?{justify:css(readonly).justifyContent,textAlign:css(readonly).textAlign,
                   nested:css(readonly.querySelector('.compact-part,.workflow-status-value'))?.textAlign}:null,
-                source:notSubmitted?{bg:css(notSubmitted).backgroundColor,color:css(notSubmitted).color}:null
+                source:paintedStatus?{bg:css(paintedStatus).backgroundColor,color:css(paintedStatus).color}:null
               };
             });
             assert(state.meta,label+' missing L01 metadata');
