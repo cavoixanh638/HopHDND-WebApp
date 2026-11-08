@@ -398,8 +398,50 @@ try{
     await scenario(page,{width,surface,mode});
    await scenario(page,{width,surface,mode:'edit',long:true});
   }
- // Text uses the available 120px rail and may wrap, without clipping.
- // A user can expand that rail (e.g. to 160px) for a single-line display.
+
+ // B00 and C01-C03 must show SOURCE totals, independently of F01/F02
+ // filters, even when the List becomes empty. Uses real React controls.
+ await page.setViewportSize({width:1440,height:900});
+ await page.goto(base+'/compact-qa.html?full=1&preview-role=admin',{waitUntil:'networkidle'});
+ await page.locator('[data-preview="pr95-l4-full"]').waitFor();
+ const summaryState=()=>page.evaluate(()=>{
+  const blocks=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
+  const normalize=s=>String(s??'').replace(/\\s+/g,' ').trim();
+  return {cards:blocks.map(c=>({id:c.dataset.summaryCard,text:normalize(c.textContent)})),
+   rows:document.querySelectorAll('.item-data-table tbody td[data-col-key="displayCode"]').length,
+   visible:normalize(document.querySelector('.list-active-filter-results')?.textContent)};
+ });
+ const totals=await summaryState();
+ assert.deepEqual(totals.cards.map(x=>x.id),['total','party','build','nq'],
+  'Expected four summary cards B00/C01-C03');
+ assert(totals.rows>1,'Source list fixture has insufficient rows');
+ await page.locator('.list-filter-search').fill('NONEXISTENT_F_20261108');
+ await page.waitForTimeout(170);
+ const noResults=await summaryState();
+ assert.equal(noResults.rows,0,'F01 did not filter the List down to zero');
+ assert.deepEqual(noResults.cards,totals.cards,
+  'B00/C01-C03 card values changed when F01 filtered to zero rows');
+ await page.locator('.list-filter-search').fill('');
+ await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
+ await page.waitForTimeout(170);
+ const byDepartment=await summaryState();
+ assert(byDepartment.rows<totals.rows,'F02 department filter did not reduce List rows');
+ assert.deepEqual(byDepartment.cards,totals.cards,
+  'B00/C01-C03 changed when F02 filtered List rows');
+ const defaultColors=await page.locator('[data-preview="pr95-l4-full"]').evaluate(el=>{
+  const v=getComputedStyle(el);
+  return {office:[v.getPropertyValue('--hdnd-status-office-text').trim(),
+    v.getPropertyValue('--hdnd-status-office-bg').trim()],
+   done:[v.getPropertyValue('--hdnd-status-done-text').trim(),
+    v.getPropertyValue('--hdnd-status-done-bg').trim()]};
+ });
+ assert.deepEqual(defaultColors,{office:['#80531F','#FFEEDA'],done:['#256441','#DEF3E5']},
+  'Synthetic default palette did not adopt clearer VP/completion swatches');
+ results.push({name:'summary-F-independent',initial:totals,
+  states:{F01:noResults,F02:byDepartment,colors:defaultColors}});
+ await screenshot(page,'summary-F-independent');
+ // Text uses the approved 145px rail and may wrap, without clipping.
+ // A user can expand it (e.g. to 170px) for a single-line display.
  // Probe actual React pickers in Chromium, but never write source data.
  for(const surface of ['list','popup']){
   await page.setViewportSize({width:1440,height:900});
@@ -434,14 +476,14 @@ try{
    // Simulate only the configurable status rail becoming 160px. The actual
    // app persists rails via its layout editor; this is a visual CSS probe.
    const td=stage.closest('td');
-   td.style.setProperty('--hdnd-l03-status-track','160px');
-   td.style.setProperty('--hdnd-l03-inner-width','372px'); // 120+76+160+2*8
+   td.style.setProperty('--hdnd-l03-status-track','170px');
+   td.style.setProperty('--hdnd-l03-inner-width','351px'); // 110+55+170+2*8
    const widenedStatus=measure(status,'ĐU gửi TU, chưa họp');
    return {...atDefault,widenedStatus};
   });
   writeFileSync(join(out,'packing-'+surface+'.json'),JSON.stringify(packing,null,2));
-  assert(near(packing.status.width,120,.3),'Status physical rail not 120px '+surface);
-  assert(near(packing.level.width,76,.3),'Level physical rail not 76px '+surface);
+  assert(near(packing.status.width,145,.3),'Status physical rail not 145px '+surface);
+  assert(near(packing.level.width,55,.3),'Level physical rail not 55px '+surface);
   assert.equal(packing.status.paddingLeft,'4px','Status left padding must be 4px');
   assert.equal(packing.status.paddingRight,'4px','Status right padding must be 4px');
   assert.equal(packing.status.gap,'3px','Status caret gap must be 3px');
@@ -457,10 +499,10 @@ try{
   assert.equal(packing.level.paddingLeft,'4px','Level left padding');
   assert.equal(packing.level.paddingRight,'4px','Level right padding');
   assert.equal(packing.level.gap,'3px','Level caret gap');
-  assert(near(packing.widenedStatus.width,160,.3),
-   'User-adjusted status rail not 160px '+surface);
+  assert(near(packing.widenedStatus.width,170,.3),
+   'User-adjusted status rail not 170px '+surface);
   assert.equal(packing.widenedStatus.lines,1,
-   'User-adjusted 160px rail still wraps '+surface+': '+JSON.stringify(packing.widenedStatus));
+   'User-adjusted 170px rail still wraps '+surface+': '+JSON.stringify(packing.widenedStatus));
   results.push({name:'packing-'+surface,initial:packing,states:{}});
   await screenshot(page,'packing-'+surface);
  }
