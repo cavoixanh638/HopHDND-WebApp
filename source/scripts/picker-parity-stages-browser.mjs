@@ -322,7 +322,13 @@ try{
    return {transform:c.transform,shadow:c.boxShadow,border:c.borderColor,
     background:c.backgroundColor};
   });
-  const lift=s=>s.transform==='none'?0:new DOMMatrixReadOnly(s.transform).m42;
+  const lift=s=>{
+   if(s.transform==='none')return 0;
+   const m=s.transform.match(/^matrix(3d)?\\(([^)]+)\\)$/);
+   if(!m)return NaN;
+   const values=m[2].split(',').map(Number);
+   return m[1]?values[13]:values[5];
+  };
   const blankHover=await style();
   assert(near(lift(blankHover),0,.15)&&blankHover.shadow==='none',
    'Blank TD paints editor hover '+surface+'/'+field+JSON.stringify(blankHover));
