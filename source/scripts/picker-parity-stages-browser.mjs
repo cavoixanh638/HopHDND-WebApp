@@ -406,7 +406,7 @@ try{
  await page.locator('[data-preview="pr95-l4-full"]').waitFor();
  const summaryState=()=>page.evaluate(()=>{
   const blocks=[...document.querySelectorAll('.item-summary-grid [data-summary-card]')];
-  const normalize=s=>String(s??'').replace(/\\s+/g,' ').trim();
+  const normalize=s=>String(s??'').replace(/\s+/g,' ').trim();
   return {cards:blocks.map(c=>({id:c.dataset.summaryCard,text:normalize(c.textContent)})),
    rows:document.querySelectorAll('.item-data-table tbody td[data-col-key="displayCode"]').length,
    visible:normalize(document.querySelector('.list-active-filter-results')?.textContent)};
