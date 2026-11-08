@@ -8,11 +8,15 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
   onClearAll:()=>void;
 }){
   const count=conditions.length;
+  // Key only the decorative signal so a changed F/B/C predicate gets two
+  // brief pulses; no persistent blinking and no new announcement to readers.
+  const signalKey=conditions.map(c=>c.id+':'+c.value).join('|');
   return <section className={'list-active-filters'+(count?' has-active-filters':'')}
     data-active-filter-count={count}
     aria-label="Điều kiện lọc Danh sách đang áp dụng">
     <div className="list-active-filter-heading">
-      <strong>Đang lọc ({count})</strong>
+      <strong>{count>0&&<span key={signalKey} className="list-active-filter-signal"
+        aria-hidden="true"/>}Đang lọc ({count})</strong>
       <span className="list-active-filter-results" role="status" aria-live="polite">
         <strong>{visibleCount}</strong> / {sourceCount} nội dung trong nguồn trước lọc
       </span>
