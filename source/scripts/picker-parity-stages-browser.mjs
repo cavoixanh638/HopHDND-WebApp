@@ -380,9 +380,12 @@ try{
   assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),0,
    'Edit tooltip remains on blank TD '+surface+'/'+field);
   await btn.click();
-  await td.locator('textarea.inline-note-textarea').waitFor({timeout:15000});
-  await page.keyboard.press('Escape');
-  await btn.waitFor({timeout:15000});
+  const textarea=td.locator('textarea.inline-note-textarea');
+  await textarea.waitFor({timeout:15000});
+  // Press through the actual focused editor rather than trusting a stale
+  // page-level activeElement after opening the tooltip/inner edit control.
+  await textarea.press('Escape');
+  await btn.waitFor({timeout:5000});
   assert.equal(await td.locator('textarea.inline-note-textarea').count(),0,
    'Escape did not dismiss inline editor '+surface+'/'+field);
   results.push({name:'inner-hit-'+surface+'-'+field,
