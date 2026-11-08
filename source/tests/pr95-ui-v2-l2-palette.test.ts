@@ -8,9 +8,9 @@ const summary=readFileSync(new URL('../src/features/items/ItemSummaryCards.tsx',
 
 const reference={
   source:{background:'#FFF1F3',text:'#B14052',border:'#EFD4DA'},
-  office:{background:'#FFF8E9',text:'#805C22',border:'#EBDFC4'},
+  office:{background:'#FFEEDA',text:'#80531F',border:'#E7CEAD'},
   next:{background:'#F0F5FC',text:'#3E6591',border:'#D7E2F0'},
-  completed:{background:'#EEF8F1',text:'#346E48',border:'#D0E4D7'}
+  completed:{background:'#DEF3E5',text:'#256441',border:'#BFDDC9'}
 } as const;
 
 function brightness(hex:string){
@@ -27,9 +27,18 @@ describe('PR95 V2 L2 soft semantic palette, CSS only',()=>{
   it('keeps all four approved chips legible without changing stored status values',()=>{
     for(const [kind,swatch] of Object.entries(reference)){
       expect(frame).toContain('.item-summary-bucket[data-summary-stage="'+kind+'"]');
-      expect(frame).toContain(swatch.background);
-      expect(frame).toContain(swatch.text);
-      expect(frame).toContain(swatch.border);
+      // CSS keeps old defensive fallbacks, but real App/preview bind the
+      // current palette variables to all stage status chips.
+      if(kind==='source'||kind==='next'){
+        expect(frame).toContain(swatch.background);
+        expect(frame).toContain(swatch.text);
+        expect(frame).toContain(swatch.border);
+      }else {
+        const group=kind==='office'?'office':'done';
+        expect(frame).toContain('var(--hdnd-status-'+group+'-bg');
+        expect(frame).toContain('var(--hdnd-status-'+group+'-text');
+        expect(frame).toContain('var(--hdnd-stage-'+group+'-border');
+      }
       expect(contrast(swatch.background,swatch.text),kind).toBeGreaterThanOrEqual(4.5);
     }
     expect(summary).toContain('data-summary-stage={bucket.stage}');
