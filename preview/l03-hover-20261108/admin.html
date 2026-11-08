@@ -1,20 +1,14 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>HopHDND — Bản xem thử · Dữ liệu giả</title>
-  <script>
-    // Query-free entry for the exact synthetic administrator preview.
-    // Normalizes broken copied links such as ?full=1\\&preview-role=admin.
-    const url = new URL(window.location.href);
-    url.searchParams.set('full', '1');
-    url.searchParams.set('preview-role', 'admin');
-    history.replaceState(null, '', url.pathname + url.search + url.hash);
-  </script>
-  <script type="module" crossorigin src="./assets/compact-qa-B3jcvNP-.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/style-C8fnE1NV.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Họp HĐND — Mở bản quản trị mô phỏng</title>
+  <!-- Asset-independent entry: future builds may change JS/CSS file hashes. -->
+  <meta http-equiv="refresh" content="0;url=./?full=1&amp;preview-role=admin"/>
+  <script>window.location.replace(new URL('./?full=1&preview-role=admin',window.location.href).href);</script>
 </head>
 <body>
-  <div id="root"></div>
+  <p>Đang mở <a href="./?full=1&amp;preview-role=admin">bản quản trị mô phỏng</a>.</p>
 </body>
 </html>
