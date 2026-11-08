@@ -96,3 +96,25 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 - [Live screenshots and measurements artifact #13602071059](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42441967930/artifacts/13602071059); verified preview: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
 - Pages commit `3f3743148a1805db042c6850bbbb33120024aae9` changed **only preview/l03-hover-20261108/** assets/index/source marker. No root site/index or production data touched; production application not deployed/merged.
 - **CHECKPOINT: SOURCE_QA_PASS + LIVE_PREVIEW_PASS; PRODUCTION_NOT_DEPLOYED.** This checkpoint itself is docs-only, so do not confuse its SHA with exact QA source SHA.
+
+
+## L03 FIVE-RAIL MINIMUMS REDUCED — LIVE VERIFIED 2026-11-08
+
+### Decision and scope
+- User requested lower **MINIMUM allowed widths for each L03 subcolumn**, after editable and readonly status fonts were unified at 11px. This is NOT a change to default widths.
+- Previously hardcoded limits: readonly `label=84/status=112`; editable `label=84/level=76/status=112`.
+- **New minimums**: readonly `label=64/status=72`; editable `label=64/level=48/status=72` (px). Mode physical minimums = `167px` readonly (`64+72+8+23`) and `223px` editable (`64+48+72+16+23`).
+- **Preserved new-layout defaults**: readonly `128/164px`; editable `120/76/120px`. Existing saved explicit five widths, maximum limits, current user custom layout, shared merge/CAS and older group-mode legacy fallback are unchanged.
+- The `PARTY_GROUP_WIDTH_LIMITS` for **legacy total-group settings** remain separate and unchanged; they DO NOT enforce min values on 5-rail physical widths. The UI for five editable minima uses `PARTY_TRACK_WIDTH_LIMITS` directly for HTML `min`, validation, save and shared layout.
+- Long labels/status text wrap naturally; statuses never become fake editable controls. The level minimum 48px retains 30px available for text after 4px left/right padding, 3px caret gap, 5px caret and 1px each border.
+- Changed files: `source/src/data/item-preferences.ts`, `source/tests/ui-20261106-tracks.test.ts`, `source/tests/picker-parity-stages.test.ts`, `source/scripts/picker-parity-stages-browser.mjs`, `source/scripts/ui-20261106-tracks-browser.mjs`, `.github/workflows/l03-hover-lift-20261108.yml`. No changes to L04, Firebase, backend, production root pages or unrelated column constraints.
+
+### Exact evidence and acceptance
+- **Source exact QA-passed code SHA:** [`3a96431d034ffb6c45a895e8c32882eb45db5a8f`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/3a96431d034ffb6c45a895e8c32882eb45db5a8f).
+- [GitHub Actions source QA #42443321377](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42443321377) **PASS**: 922 unit tests PASS (116 skipped), both builds and TypeScript PASS; 38 L03 parity browser scenarios (includes minimums for List/popup, readonly/editable) PASS; independent L03 reviewer 54 PASS; original L04 picker 24 PASS; 10 admin/guest L03 track scenarios PASS, including actual React form input minima, entering/saving 5 minima on 900px and 390px and role-switch to guest; CONTENT 73 PASS, commander screenshots 18 PASS. [QA artifact #13602253878](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42443321377/artifacts/13602253878), digest `sha256:2f0c407be43449e83639abd457c8a6cf163d402898071b8cc1d09f1888d95ef4`.
+- [Public preview workflow #42443749618](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42443749618) **PASS**, published pinned exact source `3a96431...`, public HTTP HTML/JS/CSS bytewise exact compared to build, and Playwright measured actual public preview form `input.min=[64,72,64,48,72]` and kept all prior hover/font/layout checks PASS.
+- Preview publish workflow definition commit [`bb8f760317c0eb5ad3630a2c288d7992ac7da9bd`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/bb8f760317c0eb5ad3630a2c288d7992ac7da9bd); Pages-only main commit [`a7ccbefaf404b687470ba53220041a787a97a8f8`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/a7ccbefaf404b687470ba53220041a787a97a8f8) changes only four `preview/l03-hover-20261108/*` paths (no production root, app source or backend).
+- View public full admin: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
+- View editable: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
+- [LIVE screenshots & DOM measurements #13602622021](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42443749618/artifacts/13602622021), digest `sha256:d23d940c12b3b179521fa8e9eb3ebca8a99346213c24bc3022704f126a2063ff`.
+- **Status:** `SOURCE_QA_PASS / ISOLATED_PUBLIC_PREVIEW_LIVE_PASS / PRODUCTION_NOT_DEPLOYED`. This checkpoint docs-only commit differs from tested source SHA; future implementers MUST NOT retest/reship the prior SHA as if latest.
