@@ -440,6 +440,96 @@ try{
  results.push({name:'summary-F-independent',initial:totals,
   states:{F01:noResults,F02:byDepartment,colors:defaultColors}});
  await screenshot(page,'summary-F-independent');
+ // 08/11: verify actual responsive preview shell across 21/24/27-inch
+ // typical CSS viewport widths. Physical inches are not browser pixels.
+ for(const width of [390,1280,1920,2560]){
+  await page.setViewportSize({width,height:900});
+  await page.goto(base+'/compact-qa.html?full=1&preview-role=admin',
+   {waitUntil:'networkidle'});
+  await page.locator('.pr95-preview-main').waitFor();
+  const measure=await page.evaluate(()=>{
+   const shell=document.querySelector('.pr95-full-preview');
+   const main=shell.querySelector('.pr95-preview-main');
+   const nav=shell.querySelector('.pr95-preview-nav');
+   const rect=e=>e.getBoundingClientRect();
+   const root=rect(shell),body=rect(main);
+   return {window:innerWidth,root:{left:root.left,right:root.right},
+    main:{left:body.left,right:body.right,width:body.width,top:body.top},
+    gutters:[body.left-root.left,root.right-body.right],
+    nav:!!nav,footer:shell.querySelectorAll('.pr95-preview-footnote').length,
+    scroll:document.documentElement.scrollWidth};
+  });
+  assert(near(measure.gutters[0],measure.gutters[1],1.4),
+   'Unequal left/right gutters at '+width+': '+JSON.stringify(measure));
+  assert(measure.main.width<=2200.5,
+   'Main exceeds max width 2200px at '+width);
+  assert.equal(measure.footer,0,'Removed bottom demo footnote still present');
+  assert(measure.nav,'Admin navigation missing at '+width);
+  assert(measure.scroll<=width+3,'Full page overflow at '+width);
+  results.push({name:'responsive-centered-admin-'+width,initial:measure,states:{}});
+  if(width===1920){
+   await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
+   await page.locator('[data-summary-report="party"][data-summary-stage="source"]').click();
+   await page.locator('[data-active-filter-count="2"]').waitFor();
+   const filterGeometry=await page.evaluate(()=>{
+    const zone=document.querySelector('.list-active-filters');
+    const chips=[...zone.querySelectorAll('.list-active-filter-chip')];
+    const dots=[...zone.querySelectorAll('.list-active-filter-signal')];
+    const zr=zone.getBoundingClientRect(),rr=chips.map(e=>e.getBoundingClientRect());
+    const left=Math.min(...rr.map(r=>r.left)),right=Math.max(...rr.map(r=>r.right));
+    const style=dots[0]?getComputedStyle(dots[0]):null;
+    return {count:chips.length,centerDeviation:((left+right)/2)-((zr.left+zr.right)/2),
+     centered:Math.abs(((left+right)/2)-((zr.left+zr.right)/2))<4,
+     animation:style?.animationName,iterations:style?.animationIterationCount,
+     background:getComputedStyle(zone).backgroundImage};
+   });
+   assert(filterGeometry.centered,
+    'Active condition chips not centered: '+JSON.stringify(filterGeometry));
+   assert.equal(filterGeometry.count,2,'Must show exactly two active filters');
+   assert.equal(filterGeometry.animation,'hdnd-filter-ack',
+    'Finite attention signal missing when F/C filters active');
+   assert.equal(filterGeometry.iterations,'2','Attention signal repeats endlessly');
+   await page.emulateMedia({reducedMotion:'reduce'});
+   const reducedFilter=await page.locator('.list-active-filter-signal').first().evaluate(el=>
+    getComputedStyle(el).animationName);
+   assert.equal(reducedFilter,'none','Reduced-motion users see flashing filters');
+   await page.emulateMedia({reducedMotion:'no-preference'});
+   results.push({name:'filter-chips-centered-finite-pulse',
+    initial:filterGeometry,states:{reducedFilter}});
+   await screenshot(page,'filter-chips-centered-desktop');
+  }
+ }
+ // Without admin nav there must be NO empty top row for the small gear.
+ for(const width of [390,1440,2560]){
+  await page.setViewportSize({width,height:900});
+  await page.goto(base+'/compact-qa.html?full=1',{waitUntil:'networkidle'});
+  await page.locator('[data-preview="pr95-l4-full"][data-role="guest"]').waitFor();
+  const guest=await page.evaluate(()=>{
+   const shell=document.querySelector('.pr95-full-preview');
+   const header=shell.querySelector('.pr95-preview-header');
+   const main=shell.querySelector('.pr95-preview-main');
+   const gear=shell.querySelector('.pr95-preview-gear');
+   const rect=e=>e.getBoundingClientRect(),p=rect(main),r=rect(shell),g=rect(gear);
+   return {viewport:innerWidth,headerHeight:rect(header).height,
+    gutters:[p.left-r.left,r.right-p.right],mainTop:p.top,
+    gear:{left:g.left,right:g.right,top:g.top,width:g.width},
+    opacity:getComputedStyle(gear).opacity,footer:!!shell.querySelector('.pr95-preview-footnote'),
+    pageScroll:document.documentElement.scrollWidth};
+  });
+  assert(guest.headerHeight<=1,'Guest gear still occupies a full header row '+JSON.stringify(guest));
+  assert(near(guest.gutters[0],guest.gutters[1],1.4),
+   'Guest shell is not centered at '+width+': '+JSON.stringify(guest));
+  assert(guest.gear.right<=width+2&&guest.gear.left>=width-70&&
+   guest.gear.width<=29,'Small gear no longer tucked in top right '+JSON.stringify(guest));
+  assert(guest.pageScroll<=width+3,'Guest overflow at '+width);
+  assert.equal(guest.footer,false,'Removed demo footer still visible');
+  await page.getByRole('button',{name:'Mở cài đặt demo'}).click();
+  await page.locator('.pr95-preview-gear-menu').waitFor();
+  await page.keyboard.press('Escape');
+  await page.locator('.pr95-preview-gear-menu').waitFor({state:'detached'});
+  results.push({name:'guest-no-gear-row-'+width,initial:guest,states:{gearMenuUsable:true}});
+  await screenshot(page,'guest-compact-gear-'+width);
+ }
  // Text uses the approved 145px rail and may wrap, without clipping.
  // A user can expand it (e.g. to 170px) for a single-line display.
  // Probe actual React pickers in Chromium, but never write source data.
