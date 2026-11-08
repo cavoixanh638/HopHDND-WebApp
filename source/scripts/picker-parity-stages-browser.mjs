@@ -283,9 +283,10 @@ try{
  // operational surfaces. Synthetic fixture uses RAM, no production writes.
  for(const surface of ['list','popup'])for(const field of ['specificProgress','note']){
   await page.setViewportSize({width:1440,height:900});
-  const url=surface==='popup'
-   ?base+'/compact-qa.html?popup=1&inner-hit=1'
-   :base+'/compact-qa.html?edit=1';
+  // Reuse the established RAM-only fixture that already mounts both
+  // REAL editors with explicit field permissions in List and popup.
+  const url=base+'/ui-20261106-picker-fixture.html?'+
+   new URLSearchParams({surface,mode:'edit'});
   await page.goto(url,{waitUntil:'networkidle'});
   if(surface==='popup'){
    await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
