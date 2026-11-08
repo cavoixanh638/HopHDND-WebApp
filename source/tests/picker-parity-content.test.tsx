@@ -30,6 +30,7 @@ describe('CONTENT L01 independent field permissions and semantics',()=>{
   expect(html).not.toContain('compact-document-meta-mark');
   expect(html).not.toContain('compact-document-meta-separator');
   expect(html).toContain('data-ui-picker-skin="standard"');
+  expect(html.indexOf('data-ui-reference-part="type"')).toBeLessThan(html.indexOf('data-ui-reference-part="department"'));
  });
  it('mixed authority retains a plain sibling and no false caret',()=>{
   for(const [d,t] of [[true,false],[false,true]]){
@@ -38,6 +39,7 @@ describe('CONTENT L01 independent field permissions and semantics',()=>{
    expect(html).toContain('data-metadata-mode="editable"');
    expect(html).not.toContain('compact-document-meta-separator');
    expect(html).not.toContain('compact-document-meta-mark');
+   expect(html.indexOf('data-ui-reference-part="type"')).toBeLessThan(html.indexOf('data-ui-reference-part="department"'));
   }
  });
  it('both readonly preserve parentheses, separator and individual type token',()=>{
@@ -47,6 +49,7 @@ describe('CONTENT L01 independent field permissions and semantics',()=>{
   expect(html).toContain('compact-document-meta-separator');
   expect(html).toContain('data-kind="QPPL"');
   expect(html).not.toContain('cell-picker-trigger');
+  expect(html.indexOf('data-ui-reference-part="type"')).toBeLessThan(html.indexOf('data-ui-reference-part="department"'));
  });
  it('empty editable members remain individually reachable',()=>{
   const html=render(true,true,true);

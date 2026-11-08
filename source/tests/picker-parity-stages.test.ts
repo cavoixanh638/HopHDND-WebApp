@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {defaultItemLayout,validateItemLayout,validatePartyTrackWidths,
-  resolvedPartyTrackWidths,partyTrackModeWidth,L03_RAIL_GAP_PX,L03_CELL_CHROME_PX
+  DEFAULT_PARTY_TRACK_WIDTHS,resolvedPartyTrackWidths,partyTrackModeWidth,L03_RAIL_GAP_PX,L03_CELL_CHROME_PX
 } from '../src/data/item-preferences';
 
 /* Guards against accidentally moving L03 widths into CSS or modifying the
@@ -14,6 +14,17 @@ const presets=[
  {readonly:{label:93,status:127},editable:{label:93,level:87,status:133}}
 ];
 describe('STAGES scoped picker parity contract',()=>{
+ it('uses screenshot-proportioned defaults without overwriting saved rails',()=>{
+  expect(DEFAULT_PARTY_TRACK_WIDTHS).toEqual({
+   readonly:{label:128,status:164},editable:{label:120,level:76,status:120}
+  });
+  expect(resolvedPartyTrackWidths(defaultItemLayout())).toEqual(DEFAULT_PARTY_TRACK_WIDTHS);
+  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'readonly')).toBe(323);
+  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'editable')).toBe(355);
+  expect(resolvedPartyTrackWidths(validateItemLayout({
+   ...defaultItemLayout(),partyTrackWidths:presets[0]
+  }))).toEqual(presets[0]);
+ });
  it('imports parity at the top and retains five independent CSS rail variables',()=>{
   const css=track();
   expect(css.startsWith('@import "./picker-parity-stages.css";')).toBe(true);

@@ -35,7 +35,9 @@ const probe=async page=>page.evaluate(()=>{
  const rc=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
  const cs=e=>{const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),b=getComputedStyle(e,'::before');
  return {display:s.display,width:s.width,minHeight:s.minHeight,height:s.height,padding:s.padding,
-  border:s.borderWidth,borderRadius:s.borderRadius,color:s.color,background:s.backgroundColor,
+  border:s.borderWidth,borderColor:s.borderColor,borderRadius:s.borderRadius,
+  outlineColor:s.outlineColor,justifyContent:s.justifyContent,textAlign:s.textAlign,
+  color:s.color,background:s.backgroundColor,
   fontSize:s.fontSize,fontWeight:s.fontWeight,lineHeight:s.lineHeight,gap:s.gap,
   alignItems:s.alignItems,transform:s.transform,
   translateY:s.transform==='none'?0:new DOMMatrixReadOnly(s.transform).m42,
@@ -80,6 +82,8 @@ function check(p,context){
    assert.equal(n(row.statusStyle.fontWeight),400,context+' readonly weight '+row.field);
    assert.equal(row.statusStyle.transform,'none',context+' readonly lifted '+row.field);
    assert.equal(row.statusStyle.boxShadow,'none',context+' readonly shadow '+row.field);
+   assert.equal(row.statusStyle.justifyContent,'center',context+' readonly wrapper not centered '+row.field);
+   assert.equal(row.statusStyle.textAlign,'center',context+' readonly text not centered '+row.field);
    assert.notEqual(row.statusStyle.background,'rgba(0, 0, 0, 0)',context+' readonly lost member tint '+row.field);
   }else{
    assert(row.button&&row.buttonStyle,context+' missing picker '+row.field);
@@ -157,6 +161,14 @@ async function scenario(page,{surface,mode,width,long=false}){
    name+' hover outlined the stage row, not the button');
  assert.notEqual(active.buttonStyle.boxShadow,'none',
    name+' hover missing individual button shadow');
+ assert(near(n(active.buttonStyle.border),n(beforeActive.buttonStyle.border),.01),
+   name+' hover changed border thickness');
+ assert(near(n(active.buttonStyle.border),1,.01),
+   name+' status border must remain 1px');
+ assert.equal(active.buttonStyle.borderColor,active.buttonStyle.color,
+   name+' hover border not matched to own text');
+ assert.equal(active.buttonStyle.outlineColor,active.buttonStyle.color,
+   name+' hover outline not matched to own text');
  assert(active.buttonStyle.outline==='solid'||active.buttonStyle.outline.includes('solid'),name+' hover missing outline');
  assert.equal(active.buttonStyle.background,initial.rows.find(r=>r.editable).buttonStyle.background,
   name+' hover changed business fill');

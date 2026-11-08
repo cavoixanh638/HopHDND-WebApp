@@ -96,6 +96,8 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
     const css=statusPaletteCssVariables(defaultStatusPalette());
     expect(css['--hdnd-status-done-text']).toBe('#346E48');
     expect(css['--hdnd-status-not-submitted-bg']).toBe('#FFF1F3');
+    expect(css['--hdnd-l03-not-submitted-bg']).toBe('#FFE3E9');
+    expect(css['--hdnd-l03-not-submitted-text']).toBe('#A32D46');
     expect(css['--hdnd-status-other-bg']).toBe('#F2F6F9');
     expect(css['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F3');
     expect(css['--hdnd-stage-not-submitted-border']).toBe('#EFD4DA');
@@ -108,8 +110,12 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
     expect(custom['--hdnd-stage-office-bg']).toContain('#FCDDA0');
     expect(custom['--hdnd-stage-office-border']).toContain('#884422');
     expect(custom['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F3');
-    expect(Object.keys(css)).toHaveLength(14);
+    const chosen=statusPaletteCssVariables({...defaultStatusPalette(),
+      'not-submitted':{text:'#A10021',background:'#F4DDEE'}});
+    expect(chosen['--hdnd-l03-not-submitted-bg']).toBe('#F4DDEE');
+    expect(chosen['--hdnd-l03-not-submitted-text']).toBe('#A10021');
+    expect(Object.keys(css)).toHaveLength(16);
     expect(Object.keys(css).every(key=>key.startsWith('--hdnd-status-')||
-      key.startsWith('--hdnd-stage-'))).toBe(true);
+      key.startsWith('--hdnd-stage-')||key.startsWith('--hdnd-l03-'))).toBe(true);
   });
 });

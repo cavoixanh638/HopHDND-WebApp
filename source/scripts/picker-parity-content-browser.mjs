@@ -26,6 +26,7 @@ async function waitServer(){
 const probe=async page=>page.evaluate(()=>{
  const sty=e=>{if(!e)return null;const s=getComputedStyle(e),a=getComputedStyle(e,'::after'),b=e.getBoundingClientRect();return {
   x:b.x,y:b.y,w:b.width,h:b.height,bg:s.backgroundColor,color:s.color,border:s.borderColor,
+  justifyContent:s.justifyContent,textAlign:s.textAlign,
   radius:s.borderRadius,padding:s.padding,fs:s.fontSize,fw:s.fontWeight,lh:s.lineHeight,
   shadow:s.boxShadow,outline:s.outlineColor,outlineWidth:s.outlineWidth,transform:s.transform,
   caret:{width:a.width,height:a.height,display:a.display,clip:a.clipPath,bg:a.backgroundColor}}};
@@ -39,7 +40,11 @@ const probe=async page=>page.evaluate(()=>{
    expanded:button?.getAttribute('aria-expanded'),text:wrapper?.textContent?.trim()??''};
  }
  const l04=document.querySelector('[data-ui-reference-group="L04"] .compact-highlight-member');
- return {heading:sty(heading),mode:heading?.dataset.metadataMode,department:refs.department,type:refs.type,
+ const type=group?.querySelector('[data-ui-reference-part="type"]');
+ const department=group?.querySelector('[data-ui-reference-part="department"]');
+ return {heading:sty(heading),mode:heading?.dataset.metadataMode,
+  metadataTypeFirst:!type||!department||!!(type.compareDocumentPosition(department)&Node.DOCUMENT_POSITION_FOLLOWING),
+  department:refs.department,type:refs.type,
   reference:sty(l04),popovers:document.querySelectorAll('.cell-picker-popover:popover-open').length,
   patches:document.querySelector('[data-qa="last-patch"]')?.textContent??'',
   pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};
@@ -53,6 +58,9 @@ async function shot(page,name){
 function approx(s,n,epsilon=1){return Math.abs(Number.parseFloat(s)-n)<=epsilon}
 function check(p,mode,id){
  assert(p.heading,id+' missing L01');
+ assert.equal(p.heading.justifyContent,'flex-start',id+' L01 metadata is not left-aligned');
+ assert.equal(p.heading.textAlign,'left',id+' L01 metadata text is not left');
+ assert.equal(p.metadataTypeFirst,true,id+' L01 type does not precede department');
  assert(p.reference,id+' missing L04 reference');
  const edit=mode==='edit',guest=mode==='guest';
  const n=[p.department,p.type].filter(f=>f.editable).length;
