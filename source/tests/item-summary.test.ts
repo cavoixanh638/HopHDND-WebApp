@@ -15,7 +15,7 @@ function make(id:string,overrides:Partial<Item>={}):Item{
 describe('Four list cards reuse report scopes and normalization',()=>{
  it('B00 and C01-C03 use original items, never F-filtered table rows',()=>{
   const list=readFileSync(new URL('../src/features/items/ItemList.tsx',import.meta.url),'utf8');
-  const block=list.match(/<ItemSummaryCards[\\s\\S]*?showFilterFooters=\\{false\\}\\/>/)?.[0];
+  const block=list.split('<ItemSummaryCards ')[1]?.split('showFilterFooters={false}/>')[0];
   expect(block).toBeTruthy();
   expect(block).toContain('items={items}');
   expect(block).not.toContain('items={toolbarBase}');
