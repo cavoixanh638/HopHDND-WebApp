@@ -20,17 +20,17 @@ jobs:
       - name: Checkout immutable exact QA-passed source, not docs-only HEAD
         uses: actions/checkout@v4
         with:
-          ref: 3a96431d034ffb6c45a895e8c32882eb45db5a8f
+          ref: b11f18adb41ff0eb12219377fa6d2e8c174ff07f
           persist-credentials: true
           fetch-depth: 0
       - name: Verify pinned feature revision and offline QA entry
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "3a96431d034ffb6c45a895e8c32882eb45db5a8f"
+          test "$(git rev-parse HEAD)" = "b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
           test -f source/compact-qa.html
           test -f .nojekyll
           grep -Fq "RAM demo" source/docs/tasks/parallel-20261108-l03-hover/CHECKPOINT.md 2>/dev/null || true
-          echo "L03_PREVIEW_SOURCE_SHA 3a96431d034ffb6c45a895e8c32882eb45db5a8f"
+          echo "L03_PREVIEW_SOURCE_SHA b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,7 +50,7 @@ jobs:
           test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
           grep -Fq 'Dữ liệu giả' dist-compact-qa/compact-qa.html
           ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
-          echo "3a96431d034ffb6c45a895e8c32882eb45db5a8f" > dist-compact-qa/source-sha.txt
+          echo "b11f18adb41ff0eb12219377fa6d2e8c174ff07f" > dist-compact-qa/source-sha.txt
           (cd dist-compact-qa && sha256sum compact-qa.html assets/* > asset-sha256.txt)
       - name: Check Pages uses main root before touching any public branch
         env:
@@ -93,7 +93,7 @@ jobs:
           git -C "$dest" commit -m 'docs(preview): publish isolated synthetic L03 -3px hover preview'
           git -C "$dest" push origin HEAD:main
           echo "L03_PREVIEW_PAGES_SUBPATH_ONLY preview/l03-hover-20261108"
-          echo "L03_PREVIEW_PAGES_SOURCE_SHA 3a96431d034ffb6c45a895e8c32882eb45db5a8f"
+          echo "L03_PREVIEW_PAGES_SOURCE_SHA b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
       - name: Request Pages rebuild and verify public HTML plus actual JS/CSS bytes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +123,7 @@ jobs:
               { echo "::error::Public asset hash mismatches candidate: $asset";exit 1; }
             echo "L03_PREVIEW_PUBLIC_ASSET_HASH_MATCH $asset"
           done
-          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq '3a96431d034ffb6c45a895e8c32882eb45db5a8f'
+          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq 'b11f18adb41ff0eb12219377fa6d2e8c174ff07f'
           echo "L03_PREVIEW_PUBLIC_HTTP_ASSETS_SOURCE_PASS $base"
       - name: Real Chromium LIVE UI smoke and measured -3px hover on GitHub Pages
         working-directory: source
@@ -155,7 +155,20 @@ jobs:
               const paintedStatus=notSubmitted?.querySelector('button.cell-picker-trigger')??notSubmitted;
               const editableStatus=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"] button.cell-picker-trigger');
               const readonlyText=readonly?.querySelector('.workflow-status-value,.compact-part')??readonly;
+              const editableText=editableStatus?.querySelector('.cell-picker-value-text');
               const css=node=>node?getComputedStyle(node):null;
+              // Verify equal ACTUAL painted heights with identical one-line
+              // text in mixed-rights mode, then restore the synthetic UI DOM.
+              let sameTextHeight=null;
+              if(readonlyText&&editableText){
+                const oldReadonly=readonlyText.textContent,oldEditable=editableText.textContent;
+                readonlyText.textContent='Hoàn thành';editableText.textContent='Hoàn thành';
+                sameTextHeight={
+                  readonly:readonly.getBoundingClientRect().height,
+                  editable:editableStatus.getBoundingClientRect().height
+                };
+                readonlyText.textContent=oldReadonly;editableText.textContent=oldEditable;
+              }
               const typography=node=>node?{
                 size:css(node).fontSize,weight:css(node).fontWeight,
                 family:css(node).fontFamily,lineHeight:css(node).lineHeight
@@ -167,7 +180,10 @@ jobs:
                 levelMode:stage?.dataset.levelLayout,
                 readonly:readonly?{justify:css(readonly).justifyContent,textAlign:css(readonly).textAlign,
                   nested:css(readonlyText)?.textAlign,
+                  minHeight:css(readonly).minHeight,padding:css(readonly).padding,
+                  border:css(readonly).borderTopWidth,
                   typography:typography(readonly),textTypography:typography(readonlyText)}:null,
+                sameTextHeight,
                 editableTypography:typography(editableStatus),
                 source:paintedStatus?{bg:css(paintedStatus).backgroundColor,color:css(paintedStatus).color}:null
               };
@@ -190,6 +206,15 @@ jobs:
               if(state.readonly.nested)assert.equal(state.readonly.nested,'center',label+' readonly nested text not centered');
               assert.equal(state.readonly.typography.size,'11px',label+' readonly font-size mismatch');
               assert.equal(state.readonly.typography.weight,'550',label+' readonly font weight mismatch');
+              assert.equal(state.readonly.minHeight,'26px',label+' readonly minimum status height differs from picker');
+              assert.equal(state.readonly.padding,'5px 4px',label+' readonly height compensation is missing');
+              assert.equal(state.readonly.border,'0px',label+' readonly must remain borderless');
+              if(state.sameTextHeight){
+                assert(near(state.sameTextHeight.readonly,state.sameTextHeight.editable,.35),
+                  label+' READONLY HEIGHT DIFFERS FROM EDITABLE '+JSON.stringify(state.sameTextHeight));
+                assert(near(state.sameTextHeight.readonly,26,.35),
+                  label+' single-line status height should be 26px');
+              }
               assert.deepEqual(state.readonly.textTypography,state.readonly.typography,
                 label+' nested readonly typography differs from its wrapper');
               if(state.editableTypography)assert.deepEqual(state.readonly.typography,state.editableTypography,
@@ -295,7 +320,7 @@ jobs:
               await ctx.close();
             }
             assert.deepEqual(external,[],'Live site made external network requests');
-            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'3a96431d034ffb6c45a895e8c32882eb45db5a8f',url:base,record,external},null,2));
+            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'b11f18adb41ff0eb12219377fa6d2e8c174ff07f',url:base,record,external},null,2));
             console.log('L03_PUBLIC_REAL_BROWSER_HOVER_3PX_AND_QA_ROLES_PASS',JSON.stringify(record));
           } finally {await browser.close();}
           NODE
