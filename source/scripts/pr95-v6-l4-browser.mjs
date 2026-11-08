@@ -139,7 +139,7 @@ try {
   // Real React-input events: manual ID + department + room + detail + B/C.
   await setInput('.list-filter-search','NQ-MẪU-001');
   let condition=await expectInventory(1,1,'ID search unique');
-  assert(condition.ids[0]==='search'&&condition.results.includes('/ 27'),JSON.stringify(condition));
+  assert(condition.ids[0]==='search'&&condition.results.includes('/27'),JSON.stringify(condition));
   await setSelect('select[aria-label="Lọc Sở, ngành"]','Sở mẫu A');
   await expectInventory(2,1,'department AND search');
   await setSelect('select[aria-label="Lọc Phòng"]','Phòng mẫu 1');
@@ -190,7 +190,7 @@ try {
   // A true zero result still announces all conditions and the clear action.
   await setInput('.list-filter-search','NONEXISTENT-L4-ZERO-RESULT');
   condition=await expectInventory(4,0,'zero result with four active filters');
-  assert(condition.noResults&&condition.results.includes('0')&&condition.results.includes('/ 27'),
+  assert(condition.noResults&&condition.results.includes('0')&&condition.results.includes('/27'),
     'zero state must offer clear '+JSON.stringify(condition));
   await screenshot('pr95-v6-l4-desktop-zero-results.png');
   await click('.list-active-filter-empty button');

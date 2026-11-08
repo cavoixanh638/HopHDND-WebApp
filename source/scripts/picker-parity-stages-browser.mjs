@@ -478,14 +478,39 @@ try{
     const zr=zone.getBoundingClientRect(),rr=chips.map(e=>e.getBoundingClientRect());
     const left=Math.min(...rr.map(r=>r.left)),right=Math.max(...rr.map(r=>r.right));
     const style=dots[0]?getComputedStyle(dots[0]):null;
+    const badge=zone.querySelector('.list-active-filter-summary');
+    const b=badge.getBoundingClientRect();
+    const head=document.querySelector('.item-summary-card[data-summary-card="party"] .item-summary-card-head');
+    const h3=head.querySelector('h3'),pct=head.querySelector('.item-summary-percent');
+    const first=Math.min(h3.getBoundingClientRect().left,pct.getBoundingClientRect().left);
+    const last=Math.max(h3.getBoundingClientRect().right,pct.getBoundingClientRect().right);
+    const hr=head.getBoundingClientRect();
     return {count:chips.length,centerDeviation:((left+right)/2)-((zr.left+zr.right)/2),
      centered:Math.abs(((left+right)/2)-((zr.left+zr.right)/2))<4,
+     bannerCenterDeviation:(b.left+b.right-zr.left-zr.right)/2,
+     title:badge.textContent.replace(/\s+/g,' ').trim(),
+     visibleChips:chips.map(e=>e.querySelector('.list-active-filter-chip-value')?.textContent.trim()),
+     hasVisibleFieldLabels:chips.some(e=>e.querySelector('.list-active-filter-chip-label')),
+     c01HeadDeviation:(first+last-hr.left-hr.right)/2,
+     c01PercentColor:getComputedStyle(pct).color,
+     contentVAlign:getComputedStyle(document.querySelector('.item-data-table tbody td[data-col-key="content"]')).verticalAlign,
+     f01Font:getComputedStyle(document.querySelector('.list-filter-search')).fontSize,
      animation:style?.animationName,iterations:style?.animationIterationCount,
      background:getComputedStyle(zone).backgroundImage};
    });
    assert(filterGeometry.centered,
     'Active condition chips not centered: '+JSON.stringify(filterGeometry));
    assert.equal(filterGeometry.count,2,'Must show exactly two active filters');
+   assert(Math.abs(filterGeometry.bannerCenterDeviation)<2,
+    'Filter banner not centered: '+JSON.stringify(filterGeometry));
+   assert(filterGeometry.title.startsWith('Đang lọc ')&&filterGeometry.title.endsWith('/27 nội dung'),
+    'Noncompact filtering label: '+filterGeometry.title);
+   assert.equal(filterGeometry.hasVisibleFieldLabels,false,'Chip labels still visibly repeated');
+   assert(filterGeometry.visibleChips.every(Boolean),'Filter values missing');
+   assert(Math.abs(filterGeometry.c01HeadDeviation)<2,'C01 title/percentage not centered');
+   assert.equal(filterGeometry.c01PercentColor,'rgb(21, 134, 77)','C01 percent not brighter green');
+   assert.equal(filterGeometry.contentVAlign,'middle','L01 content not vertically centered');
+   assert.equal(filterGeometry.f01Font,'12px','F01 font size not compact');
    assert.equal(filterGeometry.animation,'hdnd-filter-ack',
     'Finite attention signal missing when F/C filters active');
    assert.equal(filterGeometry.iterations,'2','Attention signal repeats endlessly');

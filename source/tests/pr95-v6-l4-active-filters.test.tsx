@@ -206,8 +206,9 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
     const onRemove=vi.fn(),onClearAll=vi.fn();
     const html=renderToStaticMarkup(<ActiveListFilters conditions={conditions}
       visibleCount={0} sourceCount={27} onRemove={onRemove} onClearAll={onClearAll}/>);
-    expect(html).toContain('Đang lọc (10)');
-    expect(html).toContain('0</strong> / 27 nội dung');
+    expect(html).toContain('Đang lọc ');
+    expect(html).toContain('0/27</span> nội dung');
+    expect(html).not.toContain('list-active-filter-chip-label');
     expect(html).toContain('Không có kết quả phù hợp');
     expect(html).toContain('aria-label="Xóa tất cả 10 điều kiện lọc"');
     expect((html.match(/class="list-active-filter-remove"/g)??[])).toHaveLength(10);
@@ -220,8 +221,8 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
   it('zero conditions stays visible but no fake Xóa tất cả action',()=>{
     const html=renderToStaticMarkup(<ActiveListFilters conditions={[]}
       visibleCount={27} sourceCount={27} onRemove={()=>{}} onClearAll={()=>{}}/>);
-    expect(html).toContain('Đang lọc (0)');
-    expect(html).toContain('Chưa áp dụng điều kiện lọc nào.');
+    expect(html).toContain('Hiển thị ');
+    expect(html).toContain('27/27</span> nội dung');
     expect(html).not.toContain('Xóa tất cả');
   });
   it('only caller requesting consolidated bar removes duplicated summary footers',()=>{

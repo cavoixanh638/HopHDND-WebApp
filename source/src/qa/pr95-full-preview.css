@@ -124,3 +124,6 @@
 @media(prefers-reduced-motion:reduce){
   .pr95-preview-gear{transition:none}
 }
+
+/* A00 simulated shell only: subtle tighter line spacing, no width change. */
+.pr95-full-preview .pr95-preview-main{line-height:1.42}

@@ -1879,3 +1879,20 @@
 :is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:disabled::after{
   content:none!important;display:none!important;
 }
+
+/* 08/11: A00 List reading rhythm tightened slightly; no width/data edits. */
+.item-list-card>.item-data-region{line-height:1.42}
+.item-list-card .compact-content-line,
+.item-list-card .content-button{line-height:1.44}
+/* C01-C03 centered title and greener completion percentage. */
+.item-summary-card-head{
+  align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:6px;text-align:center;min-height:26px;
+}
+.item-summary-card-head h3{line-height:1.25}
+.item-summary-percent{font-size:20px;line-height:1.1;color:#15864d}
+/* L01 content now matches the Note column's middle vertical alignment. */
+.item-data-table tbody td[data-col-key="content"],
+.item-data-table tbody td.compact-merged-cell[data-col-key="content"]{
+  vertical-align:middle;
+}
