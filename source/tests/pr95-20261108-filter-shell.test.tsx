@@ -40,9 +40,8 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(html).toContain('title="Sở, ngành: Đơn vị mẫu D"');
     expect(html).toContain('class="list-active-filter-chip-value">Đơn vị mẫu D</span>');
     const inactive=render([]);
-    expect(inactive).not.toContain('list-active-filter-signal');
-    expect(inactive).toContain('Hiển thị ');
-    expect(inactive).not.toContain('Xóa tất cả');
+    expect(inactive).toBe('');
+    expect(inactive).not.toContain('Hiển thị 27/27');
   });
   it('centers active values, uses persistent red emphasis and loops the red dot safely',()=>{
     expect(style).toMatch(/\.list-active-filter-chips\s*\{[^}]*justify-content:center/s);
@@ -65,6 +64,8 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
   it('removes the exact bottom note, keeps account safety in the menu',()=>{
     expect(preview).not.toContain('<footer className="pr95-preview-footnote">');
     expect(preview).toContain('Không đăng nhập Google · chỉ dữ liệu giả');
+    expect(preview).toContain('compactPreview');
+    expect(preview).toContain('pr95-preview-technical-details');
     expect(preview).toContain('role='); // simulated role still explicit
   });
   it('centers max-2200 layout instead of leaving fixed 16px left margin and a huge right gutter',()=>{
@@ -72,6 +73,9 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(shell).not.toContain('max-width:1720px');
     expect(shell).toMatch(/\.pr95-full-preview\[data-role="guest"\] \.pr95-preview-header\s*\{\s*height:0;min-height:0/);
     expect(shell).toContain('opacity:.53');
+    expect(shell).toContain('.pr95-full-preview .pr95-preview-main:has(.item-list-card)');
+    expect(shell).toContain('border:0;border-radius:0;box-shadow:none;background:transparent');
+    expect(shell).toContain('.pr95-preview-technical-details');
     expect(shell).toContain('.pr95-preview-gear:hover');
   });
 });

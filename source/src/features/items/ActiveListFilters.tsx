@@ -8,6 +8,7 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
   onClearAll:()=>void;
 }){
   const count=conditions.length;
+  if(count===0)return null; // Unfiltered List has no banner, pill or empty wrapper.
   // The red dot pulses only while conditions exist. Motion-sensitive users
   // receive an always-visible static red dot via prefers-reduced-motion.
   const signalKey=conditions.map(c=>c.id+':'+c.value).join('|');

@@ -96,7 +96,7 @@ try {
     'V6 full preview mounted 27 rows');
   const inventory=async()=>evaluate(`(()=>{
     const zone=document.querySelector('.list-active-filters');
-    return {count:Number(zone?.getAttribute('data-active-filter-count')??-1),
+    return {count:zone?Number(zone.getAttribute('data-active-filter-count')):0,
       ids:[...zone?.querySelectorAll('[data-active-filter-id]')??[]].map(x=>x.getAttribute('data-active-filter-id')),
       results:zone?.querySelector('.list-active-filter-results')?.textContent?.trim()??'',
       visible:document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length,
@@ -105,7 +105,10 @@ try {
       noResults:!!zone?.querySelector('.list-active-filter-empty')};
   })()`);
   const expectInventory=async(count,visible,label)=>{
-    await waitFor(`document.querySelector('.list-active-filters')?.dataset.activeFilterCount===${JSON.stringify(String(count))}
+    const activeCheck=count===0
+      ?"!document.querySelector('.list-active-filters')"
+      :`document.querySelector('.list-active-filters')?.dataset.activeFilterCount===${JSON.stringify(String(count))}`;
+    await waitFor(`${activeCheck}
       && document.querySelectorAll('.item-data-table tbody tr:not(:has(td.empty))').length===${visible}`,label);
     const actual=await inventory();
     assert(actual.count===count&&actual.visible===visible,label+': '+JSON.stringify(actual));
@@ -133,7 +136,7 @@ try {
     assert(found,'missing select '+selector);
   };
   const initial=await expectInventory(0,27,'initial 27 unfiltered rows');
-  assert(initial.results.includes('27')&&!initial.ids.length,'default zero conditions');
+  assert(initial.results===''&&!initial.ids.length,'Default List must have no inactive filter banner');
   await screenshot('pr95-v6-l4-desktop-before-active.png');
 
   // Real React-input events: manual ID + department + room + detail + B/C.
@@ -272,7 +275,7 @@ try {
     if(!target)throw Error('Return to main List missing');
     target.click();
   })()`);
-  await waitFor("document.querySelector('.list-active-filters') && !document.querySelector('.column-manager-grid')",
+  await waitFor("document.querySelector('.list-filter-toolbar') && !document.querySelector('.column-manager-grid')",
     'return to ordinary main List without saving layout');
   await expectInventory(0,27,'normal list after unsaved hidden-column draft');
 
@@ -284,7 +287,7 @@ try {
       .find(x=>x.textContent.includes('Đăng xuất mô phỏng'));
     if(!b)throw Error('Logout missing');b.click();
   })()`);
-  await waitFor("document.querySelector('[data-role=guest]') && document.querySelector('.list-active-filters')",'guest list reset');
+  await waitFor("document.querySelector('[data-role=guest]') && document.querySelector('.list-filter-toolbar')",'guest list reset');
   await expectInventory(0,27,'guest initial list zero filters');
 
   // Mobile: several chips wrap INSIDE the list region, never full-page overflow.

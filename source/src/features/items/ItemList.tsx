@@ -60,7 +60,7 @@ import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,proj
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -92,6 +92,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
+  const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
   const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
@@ -433,7 +434,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       window.visualViewport?.removeEventListener('resize',schedule);
       table.style.removeProperty('--hdnd-preview-table-fill-height');
     };
-  },[customizing,permissionMode,otherFiltersOpen]);
+  },[customizing,permissionMode,otherFiltersOpen,previewOptionsOpen,activeConditions.length]);
   // A single physical <col> per group: all visible readonly rows use the 2-track
   // width, but one editable party-level row requires the larger mode width.
   // Status editability alone must NOT switch a row to the three-track layout.
@@ -708,7 +709,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 </div>}
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
-    <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
+    <div className="item-data-region"
+      data-preview-options={compactPreview?(previewOptionsOpen?'open':'closed'):undefined}
+      style={{width:visibleWidth,maxWidth:'100%'}}>
     {/* B00–B03 and C01–C03 summarize all source items, regardless of F
         filters. Keep toolbarBase for filtered table rows / visible count. */}
     {!customizing&&!permissionMode&&<>
@@ -719,19 +722,30 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         showFilterFooters={false}/>
       {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
         <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
+        {compactPreview&&<button type="button"
+          className="button ghost admin-preview-options-toggle"
+          aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
+          title="Tùy chọn hiển thị bảng, thẻ tổng hợp và độ rộng L03"
+          aria-expanded={previewOptionsOpen} aria-controls="admin-list-controls"
+          onClick={()=>setPreviewOptionsOpen(open=>!open)}>
+          {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
+        </button>}
         <button type="button"
           className="button ghost admin-list-rename-trigger"
           aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
           disabled={!canEditListSettings||viewSaving}
           onClick={()=>{if(titleEditorOpen){setTitleEditorOpen(false);setListTitleDraft(null);
             listTitleBaseline.current=null;setTitleValidationError('');}
-          else {listTitleBaseline.current=validateItemLayout(sharedBase.current);
+          else {if(compactPreview)setPreviewOptionsOpen(true);
+            listTitleBaseline.current=validateItemLayout(sharedBase.current);
             setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
             setTitleEditorOpen(true);setTitleValidationError('');}}}>
           {titleEditorOpen?'Đóng sửa tên':'Đổi tên danh sách'}
         </button>
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
-      {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div className="admin-list-controls"
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
+        className="admin-list-controls" id={compactPreview?'admin-list-controls':undefined}
+        hidden={compactPreview&&!previewOptionsOpen}
         aria-label="Tùy chọn quản trị danh sách">
         {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
           onSubmit={event=>{event.preventDefault();

@@ -412,6 +412,29 @@ try{
    visible:normalize(document.querySelector('.list-active-filter-results')?.textContent)};
  });
  const totals=await summaryState();
+ const quietLayout=await page.evaluate(()=>{
+   const main=document.querySelector('.pr95-preview-main');
+   const card=document.querySelector('.item-list-card');
+   const region=document.querySelector('.item-data-region');
+   return {
+     filterAbsent:!document.querySelector('.list-active-filters'),
+     technicalAbsent:!document.querySelector('.pr95-preview-main .pr95-preview-context'),
+     outerBorder:getComputedStyle(main).borderTopWidth,
+     cardBorder:getComputedStyle(card).borderTopWidth,
+     cardPadding:getComputedStyle(card).paddingTop,
+     toolsHidden:region.dataset.previewOptions==='closed'&&
+       getComputedStyle(region.querySelector('.admin-list-controls')).display==='none'&&
+       getComputedStyle(region.querySelector(':scope>.card-header')).display==='none'
+   };
+ });
+ assert.deepEqual(quietLayout,{
+   filterAbsent:true,technicalAbsent:true,outerBorder:'0px',cardBorder:'0px',
+   cardPadding:'0px',toolsHidden:true
+ },'Unfiltered List still wastes vertical screen space: '+JSON.stringify(quietLayout));
+ await page.getByRole('button',{name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'}).click();
+ await page.locator('.admin-list-controls').waitFor({state:'visible'});
+ await page.getByRole('button',{name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'}).click();
+ await page.locator('.admin-list-controls').waitFor({state:'hidden'});
  assert.deepEqual(totals.cards.map(x=>x.id),['total','party','build','nq'],
   'Expected four summary cards B00/C01-C03');
  assert(totals.rows>1,'Source list fixture has insufficient rows');

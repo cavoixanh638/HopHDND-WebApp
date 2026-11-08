@@ -219,13 +219,10 @@ describe('PR95 UI V6 L4 — accessible consolidated view',()=>{
     expect(html).not.toContain('>customTracking<');
     expect(html).not.toContain('>customRemoved<');
   });
-  it('zero conditions stays visible but no fake Xóa tất cả action',()=>{
+  it('zero conditions has no rendered filter banner or wasted vertical slot',()=>{
     const html=renderToStaticMarkup(<ActiveListFilters conditions={[]}
       visibleCount={27} sourceCount={27} onRemove={()=>{}} onClearAll={()=>{}}/>);
-    expect(html).toContain('Hiển thị ');
-    expect(html).toContain('27/27</span>');
-    expect(html).toContain('class="list-active-filter-noun"> nội dung</span>');
-    expect(html).not.toContain('Xóa tất cả');
+    expect(html).toBe('');
   });
   it('only caller requesting consolidated bar removes duplicated summary footers',()=>{
     const state=configured();

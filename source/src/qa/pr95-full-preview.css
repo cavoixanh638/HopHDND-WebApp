@@ -136,3 +136,46 @@
   .pr95-full-preview .pr95-preview-main:has(.item-list-card){padding-bottom:6px}
   .pr95-full-preview .item-list-card{padding-bottom:8px;margin-bottom:0}
 }
+
+
+/* 09/11 reading-density pass. Only the isolated List preview loses the
+   redundant PAGE and CARD frames; real app and all other screens unchanged. */
+.pr95-full-preview .pr95-preview-main:has(.item-list-card){
+  border:0;border-radius:0;box-shadow:none;background:transparent;
+  padding:0;min-height:0;
+}
+.pr95-full-preview .pr95-preview-main .item-list-card{
+  border:0;border-radius:0;box-shadow:none;background:transparent;
+  margin:0;padding:0;
+}
+/* Legacy technical debug counters belong inside the discreet admin gear. */
+.pr95-preview-technical-details{margin:5px 0 3px;font-size:12px}
+.pr95-preview-technical-details>summary{
+  cursor:pointer;padding:7px 9px;border-radius:5px;color:#355768;
+}
+.pr95-preview-technical-details>summary:hover{background:#eff4f6}
+.pr95-preview-technical-details>summary:focus-visible{
+  outline:2px solid #356c8b;outline-offset:1px;
+}
+.pr95-preview-technical-details .pr95-preview-context{
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  margin:3px 0 0;padding:8px;border:1px solid #e0e9ed;border-radius:6px;
+  background:#f7fafc;color:#455c68;font-size:11px;
+}
+.pr95-full-preview .item-data-region>.admin-list-heading{
+  margin:4px 0 6px;padding:2px 4px 4px;gap:7px;
+}
+.pr95-full-preview .item-data-region>.item-list-page-title{
+  margin:4px 0 6px;padding:2px 4px 4px;
+}
+.pr95-full-preview .item-data-region .list-filter-toolbar{
+  padding:4px 0;
+}
+@media(min-width:1100px){
+  .pr95-full-preview .item-summary-card:not(.item-summary-total){
+    padding:8px 6px 7px;
+  }
+  .pr95-full-preview .item-summary-fraction{margin:3px 0 4px}
+  .pr95-full-preview .item-summary-progress{height:5px;margin-bottom:5px}
+  .pr95-full-preview .item-summary-bucket{min-height:41px}
+}

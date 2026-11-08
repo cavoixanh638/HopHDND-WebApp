@@ -244,6 +244,15 @@ export function Pr95FullPreview(){
               {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
               Trỏ vào ô để xem mã và ID đang hiển thị (dữ liệu giả).
             </p>}
+            <details className="pr95-preview-technical-details">
+              <summary>Thông tin mô phỏng</summary>
+              <div className="pr95-preview-context" role="note">
+                <span>Quản trị <strong>MÔ PHỎNG</strong></span>
+                <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
+                <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
+                <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
+              </div>
+            </details>
             <div className="pr95-preview-menu-footer">
               <button type="button" onClick={()=>switchRole('guest')}>Đăng xuất mô phỏng</button>
             </div>
@@ -253,12 +262,7 @@ export function Pr95FullPreview(){
       </div>
     </header>
     <main className="pr95-preview-main">
-      {admin&&<div className="pr95-preview-context" role="note">
-        <span>Quản trị <strong>MÔ PHỎNG</strong></span>
-        <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
-        <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
-        <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
-      </div>}
+
       <span data-testid="guest-edits" className="pr95-preview-qa-only" hidden>{guestEditCount}</span>
       {notice&&<p className="notice pr95-preview-notice" role="status">{notice}</p>}
       {dirtyIds.size>0&&<div className="pr95-preview-unsaved" role="status">
@@ -295,7 +299,7 @@ export function Pr95FullPreview(){
           catalog={catalog} initialLayout={layout}
           canEditDraft canEditCell={canEdit} customizing={page==='items-customize'}
           anonymousViewer={!admin} viewerScope={'pr95-v3-'+role+'-'+sessionScope}
-          allowPersonalCompact={false} allowLayout={admin}
+          allowPersonalCompact={false} allowLayout={admin} compactPreview
           permissions={admin?permissions:undefined}
           onSavePermissions={admin?savePermissions:undefined}
           onReloadPermissions={admin?async()=>permissions:undefined}
