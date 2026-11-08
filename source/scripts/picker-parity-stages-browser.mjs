@@ -553,9 +553,9 @@ try{
     const first=Math.min(h3.getBoundingClientRect().left,pct.getBoundingClientRect().left);
     const last=Math.max(h3.getBoundingClientRect().right,pct.getBoundingClientRect().right);
     const hr=head.getBoundingClientRect();
-    return {count:chips.length,centerDeviation:((left+right)/2)-((zr.left+zr.right)/2),
-     centered:Math.abs(((left+right)/2)-((zr.left+zr.right)/2))<4,
-     bannerCenterDeviation:(b.left+b.right-zr.left-zr.right)/2,
+    const combinedLeft=Math.min(left,b.left),combinedRight=Math.max(right,b.right);
+    return {count:chips.length,centerDeviation:(combinedLeft+combinedRight-zr.left-zr.right)/2,
+     centered:Math.abs((combinedLeft+combinedRight-zr.left-zr.right)/2)<4,
      title:badge.textContent.replace(/\s+/g,' ').trim(),
      visibleChips:chips.map(e=>e.querySelector('.list-active-filter-chip-value')?.textContent.trim()),
      sameLine:Math.abs(b.top-chips[0].getBoundingClientRect().top)<5,
@@ -571,12 +571,10 @@ try{
      background:getComputedStyle(zone).backgroundImage};
    });
    assert(filterGeometry.centered,
-    'Active condition chips not centered: '+JSON.stringify(filterGeometry));
+    'Combined filter header and values not centered: '+JSON.stringify(filterGeometry));
    assert.equal(filterGeometry.count,2,'Must show exactly two active filters');
    assert(filterGeometry.inlineLayout&&filterGeometry.sameLine,
     'Desktop active-filter heading/chips should share a row '+JSON.stringify(filterGeometry));
-   assert(Math.abs(filterGeometry.bannerCenterDeviation)<2,
-    'Filter banner not centered: '+JSON.stringify(filterGeometry));
    assert(filterGeometry.title.startsWith('Đang lọc ')&&filterGeometry.title.endsWith('/27 nội dung'),
     'Noncompact filtering label: '+filterGeometry.title);
    assert.equal(filterGeometry.hasVisibleFieldLabels,false,'Chip labels still visibly repeated');
@@ -595,7 +593,7 @@ try{
     getComputedStyle(el).animationName);
    assert.equal(reducedFilter,'none','Reduced-motion users see flashing filters');
    await page.emulateMedia({reducedMotion:'no-preference'});
-   results.push({name:'filter-chips-centered-finite-pulse',
+   results.push({name:'filter-chips-inline-continuous-pulse',
     initial:filterGeometry,states:{reducedFilter}});
    await screenshot(page,'filter-chips-centered-desktop');
   }
