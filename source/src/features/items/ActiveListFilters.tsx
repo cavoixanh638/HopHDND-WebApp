@@ -15,7 +15,8 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
     data-active-filter-count={count}
     aria-label="Điều kiện lọc Danh sách đang áp dụng">
     <div className="list-active-filter-heading">
-      <div className={'list-active-filter-summary'+(count?' is-active':' is-idle')}>
+      <div className="list-active-filter-inline">
+        <div className={'list-active-filter-summary'+(count?' is-active':' is-idle')}>
         {count>0&&<span key={signalKey} className="list-active-filter-signal"
           aria-hidden="true"/>}
         <strong>
@@ -27,12 +28,8 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
           </span>
           <span className="list-active-filter-noun"> nội dung</span>
         </strong>
-      </div>
-      {count>0&&<button type="button" className="list-active-filter-clear-all"
-        aria-label={'Xóa tất cả '+count+' điều kiện lọc'}
-        onClick={onClearAll}>Xóa tất cả</button>}
-    </div>
-    {count>0&&<div className="list-active-filter-chips" role="group"
+        </div>
+        {count>0&&<div className="list-active-filter-chips" role="group"
       aria-label={'Các điều kiện đang áp dụng: '+count}>
       {conditions.map(condition=><div key={condition.id} className="list-active-filter-chip"
         data-active-filter-id={condition.id} data-active-filter-category={condition.category}
@@ -53,7 +50,12 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
           </svg>
         </button>
       </div>)}
-    </div>}
+        </div>}
+      </div>
+      {count>0&&<button type="button" className="list-active-filter-clear-all"
+        aria-label={'Xóa tất cả '+count+' điều kiện lọc'}
+        onClick={onClearAll}>Xóa tất cả</button>}
+    </div>
     {count>0&&visibleCount===0&&<p className="list-active-filter-empty" role="status">
       Không có kết quả phù hợp với {count} điều kiện đang lọc. Bỏ từng chip hoặc chọn
       <button type="button" onClick={onClearAll}>Xóa tất cả</button>

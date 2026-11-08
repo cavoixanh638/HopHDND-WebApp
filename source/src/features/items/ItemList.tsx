@@ -393,6 +393,45 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
+
+  // UI preview-only: fit the internal table viewport to the remaining screen
+  // without changing the source data, column widths or production layout.
+  // Measure DOCUMENT top, not viewport top, so scrolling does not make the
+  // table grow recursively. Recompute on zoom, resize or filter wrapping.
+  useEffect(()=>{
+    const table=document.querySelector<HTMLElement>(
+      '.pr95-full-preview .item-data-region .item-table-scroll');
+    if(!table)return;
+    let frame=0;
+    const sync=()=>{
+      if(window.innerWidth<900||window.innerHeight<650){
+        table.style.removeProperty('--hdnd-preview-table-fill-height');return;
+      }
+      const documentTop=table.getBoundingClientRect().top+window.scrollY;
+      const remaining=window.innerHeight-documentTop-32;
+      const height=Math.min(1300,Math.max(320,Math.round(remaining)));
+      table.style.setProperty('--hdnd-preview-table-fill-height',height+'px');
+    };
+    const schedule=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(sync);
+    };
+    const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(schedule);
+    for(const selector of ['.item-summary-grid','.item-list-page-title',
+      '.list-filter-toolbar','.list-active-filters']){
+      const target=table.closest('.item-data-region')?.querySelector(selector);
+      if(target)observer?.observe(target);
+    }
+    window.addEventListener('resize',schedule);
+    window.visualViewport?.addEventListener('resize',schedule);
+    schedule();
+    return ()=>{
+      cancelAnimationFrame(frame);observer?.disconnect();
+      window.removeEventListener('resize',schedule);
+      window.visualViewport?.removeEventListener('resize',schedule);
+      table.style.removeProperty('--hdnd-preview-table-fill-height');
+    };
+  },[customizing,permissionMode,otherFiltersOpen]);
   // A single physical <col> per group: all visible readonly rows use the 2-track
   // width, but one editable party-level row requires the larger mode width.
   // Status editability alone must NOT switch a row to the three-track layout.

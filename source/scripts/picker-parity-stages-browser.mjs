@@ -489,6 +489,44 @@ try{
    assert.equal(prefilterLayout.contentVAlign,'middle',
     'L01 content is not vertically centered before filtering');
    assert.equal(prefilterLayout.f01Font,'12px','F01 font size not compact');
+   const filterLine=await page.evaluate(()=>{
+     const f=document.querySelector('.list-filter-search');
+     const s=document.querySelector('select[aria-label="Lọc Phòng"]');
+     return {
+       searchHeight:f.getBoundingClientRect().height,
+       selectHeight:s.getBoundingClientRect().height,
+       selectedOutline:getComputedStyle(s).outlineStyle
+     };
+   });
+   assert.equal(filterLine.searchHeight,28,'F search input is too high');
+   assert.equal(filterLine.selectHeight,28,'F selector is too high');
+   await page.locator('select[aria-label="Lọc Phòng"]').selectOption({index:1});
+   const selected=await page.locator('select[aria-label="Lọc Phòng"]').evaluate(el=>{
+     const s=getComputedStyle(el);
+     return {border:s.borderTopWidth,shadow:s.boxShadow};
+   });
+   assert.equal(selected.shadow,'none','Selected filter has duplicate inset stroke');
+   await page.locator('select[aria-label="Lọc Phòng"]').focus();
+   const focused=await page.locator('select[aria-label="Lọc Phòng"]').evaluate(el=>{
+     const s=getComputedStyle(el);
+     return {border:s.borderTopWidth,outline:s.outlineStyle,shadow:s.boxShadow,height:el.getBoundingClientRect().height};
+   });
+   assert.deepEqual(focused,{border:'2px',outline:'none',shadow:'none',height:28},
+     'Filter focus draws multiple rings '+JSON.stringify(focused));
+   await page.locator('select[aria-label="Lọc Phòng"]').selectOption({index:0});
+   await page.locator('select[aria-label="Lọc Phòng"]').blur();
+   await page.waitForFunction(()=>{
+     const el=document.querySelector('.item-data-region .item-table-scroll');
+     return !!el?.style.getPropertyValue('--hdnd-preview-table-fill-height');
+   });
+   const fit=await page.evaluate(()=>{
+     const el=document.querySelector('.item-data-region .item-table-scroll');
+     const rect=el.getBoundingClientRect();
+     return {height:rect.height,topDoc:rect.top+scrollY,viewport:innerHeight,
+       variable:el.style.getPropertyValue('--hdnd-preview-table-fill-height')};
+   });
+   const expected=Math.min(1300,Math.max(320,Math.round(fit.viewport-fit.topDoc-32)));
+   assert(Math.abs(fit.height-expected)<=2,'Preview table does not fill remaining viewport '+JSON.stringify(fit));
    assert.equal(prefilterLayout.totalFont,'38px','B00 total count is not 38px');
    assert.equal(prefilterLayout.totalColor,'rgb(8, 117, 83)','B00 count is not deep green');
    assert(prefilterLayout.totalBG?.includes('linear-gradient'),'B00 ribbon lacks gentle emphasis');
@@ -520,6 +558,8 @@ try{
      bannerCenterDeviation:(b.left+b.right-zr.left-zr.right)/2,
      title:badge.textContent.replace(/\s+/g,' ').trim(),
      visibleChips:chips.map(e=>e.querySelector('.list-active-filter-chip-value')?.textContent.trim()),
+     sameLine:Math.abs(b.top-chips[0].getBoundingClientRect().top)<5,
+     inlineLayout:!!zone.querySelector('.list-active-filter-inline'),
      chipColors:chips.map(e=>getComputedStyle(e.querySelector('.list-active-filter-chip-value')).color),
      emphasisColor:getComputedStyle(badge.querySelector('.list-active-filter-emphasis')).color,
      nounColor:getComputedStyle(badge.querySelector('.list-active-filter-noun')).color,
@@ -533,6 +573,8 @@ try{
    assert(filterGeometry.centered,
     'Active condition chips not centered: '+JSON.stringify(filterGeometry));
    assert.equal(filterGeometry.count,2,'Must show exactly two active filters');
+   assert(filterGeometry.inlineLayout&&filterGeometry.sameLine,
+    'Desktop active-filter heading/chips should share a row '+JSON.stringify(filterGeometry));
    assert(Math.abs(filterGeometry.bannerCenterDeviation)<2,
     'Filter banner not centered: '+JSON.stringify(filterGeometry));
    assert(filterGeometry.title.startsWith('Đang lọc ')&&filterGeometry.title.endsWith('/27 nội dung'),

@@ -1918,3 +1918,15 @@
 .item-summary-percent{
   font-size:24px;line-height:1;font-weight:800;color:#15864d;
 }
+
+
+/* L03 preview desktop: the scrollable table should use the remaining
+   vertical viewport, not a fixed 64vh disconnected from its page position.
+   JavaScript writes only a temporary CSS custom property, never the saved
+   column widths. Short/small viewports retain the previous height rules. */
+@media(min-width:900px){
+  .pr95-full-preview .item-data-region .item-table-scroll{
+    height:var(--hdnd-preview-table-fill-height,clamp(360px,64vh,720px));
+    max-height:none;
+  }
+}

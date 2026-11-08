@@ -27,6 +27,8 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(html).toContain('Đang lọc ');
     expect(html).toContain('0/27</span>');
     expect(html).toContain('class="list-active-filter-emphasis"');
+    expect(html).toContain('class="list-active-filter-inline"');
+    expect(html).toContain('class="list-active-filter-chips"');
     expect(html).toContain('class="list-active-filter-noun"> nội dung</span>');
     expect(html).toContain('list-active-filter-signal');
     expect(html).toContain('aria-hidden="true"');
@@ -52,6 +54,10 @@ describe('2026-11-08 centered filter signal and responsive demo shell',()=>{
     expect(style).toContain('grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr)');
     expect(style).toContain('border-left:3px solid #e12b43');
     expect(style).toContain('font-size:12px;line-height:1.3');
+    expect(style).toContain('height:28px;min-height:28px');
+    expect(style).toContain('border:2px solid #285f87;outline:none;box-shadow:none');
+    expect(style).toContain('content:"·"');
+    expect(style).toContain('flex-wrap:wrap');
     expect(style).toContain('@media(prefers-reduced-motion:reduce)');
     expect(style).toContain('.list-active-filter-signal{animation:none;opacity:1;transform:none}');
     expect(style).not.toContain('hdnd-filter-ack');
