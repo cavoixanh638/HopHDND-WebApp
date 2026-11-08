@@ -35,6 +35,14 @@ describe('STAGES scoped picker parity contract',()=>{
   expect(css).toContain('row-gap:5px');
   expect(css).toContain('grid-template-columns:subgrid!important');
  });
+ it('keeps 76/120px picker labels readable by minimizing horizontal reservations',()=>{
+  const css=source();
+  expect(css).toContain('padding:4px 2px!important;');
+  expect(css).toContain('gap:2px!important;');
+  expect(css).toContain('width:5px!important;');
+  // Distinct from the 8px GROUP gap between independently sized L03 tracks.
+  expect(track()).toContain('column-gap:8px;');
+ });
  it('isolates all overrides to L03 and leaves L04/control rules unchanged',()=>{
   const css=source();
   expect(css).toMatch(/td\[data-l03-layout\]/);

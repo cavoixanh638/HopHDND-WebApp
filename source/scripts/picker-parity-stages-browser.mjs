@@ -93,7 +93,8 @@ function check(p,context){
    assert.equal(n(s.fontSize),11,context+' font '+row.field);
    assert.equal(n(s.fontWeight),550,context+' weight '+row.field);
    assert.equal(n(s.borderRadius),6,context+' radius '+row.field);
-   assert(n(s.padding.split(' ')[0])===4&&s.padding.includes('7px'),context+' padding '+s.padding);
+   assert.equal(s.padding,'4px 2px',context+' compact L03 padding '+s.padding);
+   assert.equal(s.gap,'2px',context+' L03 value/caret gap '+s.gap);
    assert.equal(s.after.width,'5px',context+' caret width '+row.field);
    assert.equal(s.after.height,'3px',context+' caret height '+row.field);
    assert(s.after.clip.includes('polygon'),context+' caret '+row.field);
@@ -106,6 +107,8 @@ function check(p,context){
   assert(first.levelButton&&first.levelStyle,context+' missing level picker');
   assert.equal(n(first.levelStyle.minHeight),26,context+' level height');
   assert.equal(n(first.levelStyle.fontSize),11,context+' level font');
+  assert.equal(first.levelStyle.padding,'4px 2px',context+' level padding');
+  assert.equal(first.levelStyle.gap,'2px',context+' level caret gap');
   assert(near(first.levelButton.w,first.level.w),context+' level track fill');
  }else assert(p.rows.every(r=>r.levelButton===null),context+' readonly level fake picker');
 }
@@ -251,6 +254,53 @@ try{
     await scenario(page,{width,surface,mode});
    await scenario(page,{width,surface,mode:'edit',long:true});
   }
+ // Text must occupy available horizontal room before wrapping: in particular
+ // "ĐU gửi TU, chưa họp" should fit inside the APPROVED 120px rail. Probe
+ // actual React controls with their real computed typography in Chromium,
+ // without modifying source data or picker behavior.
+ for(const surface of ['list','popup']){
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto(base+'/ui-20261106-picker-fixture.html?'+
+   new URLSearchParams({surface,mode:'edit'}),{waitUntil:'networkidle'});
+  if(surface==='popup'){
+   await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+   await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+  }
+  const root=surface==='popup'?'.report-detail-grid':'.item-data-table';
+  const packing=await page.locator(root+' .compact-stages[data-rev2="true"]').first().evaluate(stage=>{
+   function measure(button,text){
+    if(!button)throw Error('Missing editable L03 button for packing check');
+    const value=button.querySelector('.cell-picker-value-text');
+    if(!value)throw Error('Missing actual CellPicker value span');
+    value.textContent=text; // browser-only fixture, never writes Item or server
+    const s=getComputedStyle(button),vs=getComputedStyle(value);
+    const r=button.getBoundingClientRect(),vr=value.getBoundingClientRect();
+    const range=document.createRange();range.selectNodeContents(value);
+    const lineRects=[...range.getClientRects()].map(x=>({w:x.width,h:x.height,y:x.y}));
+    const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+    ctx.font=vs.font;
+    return {text,width:r.width,paddingLeft:s.paddingLeft,paddingRight:s.paddingRight,
+      gap:s.columnGap,caretWidth:getComputedStyle(button,'::after').width,
+      valueWidth:vr.width,valueHeight:vr.height,lineHeight:vs.lineHeight,
+      estimatedInkWidth:ctx.measureText(text).width,lines:lineRects.length,
+      lineRects};
+   }
+   const status=stage.querySelector('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
+   const level=stage.querySelector('.compact-stage-level[data-level-editor="true"] button.cell-picker-trigger');
+   return {status:measure(status,'ĐU gửi TU, chưa họp'),level:measure(level,'BCH')};
+  });
+  writeFileSync(join(out,'packing-'+surface+'.json'),JSON.stringify(packing,null,2));
+  assert(near(packing.status.width,120,.3),'Status physical rail not 120px '+surface);
+  assert(near(packing.level.width,76,.3),'Level physical rail not 76px '+surface);
+  assert.equal(packing.status.paddingLeft,'2px','Status left padding not compact');
+  assert.equal(packing.status.paddingRight,'2px','Status right padding not compact');
+  assert.equal(packing.status.gap,'2px','Excess caret gap');
+  assert.equal(packing.status.lines,1,'Unnecessary line wrap at 120px '+surface+
+   ': '+JSON.stringify(packing.status));
+  assert.equal(packing.level.lines,1,'BCH not on one line '+surface);
+  results.push({name:'packing-'+surface,initial:packing,states:{}});
+  await screenshot(page,'packing-'+surface);
+ }
  // Exercise TWO distinct five-rail configurations against actual CSS subgrid
  // in BOTH surfaces and 2/3-track modes. This is an in-page geometry probe,
  // not a claim that an injected value was persisted to Firebase.
