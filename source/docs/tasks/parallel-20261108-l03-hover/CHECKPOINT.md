@@ -36,3 +36,28 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 - Real Playwright Chromium navigated **the live Pages URL**, not merely local test fixtures. DOM and actual hover computed+rect were checked: List 1440 **dy=-3, computedY=-3**; List 390 **dy=-3, computedY=-3**; popup mixed **dy=-3, computedY=-3**. All actual button widths unchanged `248px`, status background `rgb(255, 241, 243)` preserved and shadow/outline present. Guest readonly and full synthetic V2 mounted. Browser blocked non-origin requests; test failed on any external request, but none occurred.
 - Live-browser screenshot + measurements artifact [#13582679777](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42395526474/artifacts/13582679777), digest `sha256:b6b61378af7744ca9d9fc56e69b694aebb30a0605bb7067194f026d5a604e9bd`.
 - **STATUS:** L03 hover fix CODE QA PASS and isolated preview **LIVE VERIFIED**. Original ChatGPT Site `hophdnd-demo-20261106.charmingscone.chatgpt.site` remains a separate older version. Production application `main` source remains unchanged; no release/merge/production database write. Keep this distinction for any subsequent deployment.
+
+## UI L01/L03 SCREENSHOT-BASED CORRECTIONS — LIVE PASS 2026-11-08
+
+### User-approved design, applied in code
+- L01 (Nội dung trình): type **before** department/Sở, metadata `justify-content:flex-start; text-align:left` in editable, readonly and mixed permissions; punctuation retained only in readonly.
+- L03 screenshot-sized new default rails (px): **readonly label=128,status=164**; **editable label=120,level=76,status=120**. Five explicit saved rails are never overwritten or "auto-normalized." A wider saved subgrid scrolls within a narrow outer column during direct CSS-only probes; real admin save also grows the outer grouped column.
+- L03 readonly statuses: center both wrapper and text in List and popup, with no fake picker/caret.
+- "Sở chưa trình" **L03 default only**: ink `#A32D46`, background `#FFE3E9`; resting 1px border is subtle (16% ink mix). Existing user-defined swatch colors and per-field highlights retain precedence, other sections/palette defaults untouched.
+- Hover/focus on the three status editors: existing `border-width:1px`, `outline-width:2px`, shadow and `translateY(-3px)` unchanged; border/outline **COLORS** match the corresponding status's own ink, including custom swatches. Level picker remains neutral. Motion remains **180ms**, changed to `ease-out` for softer response, reduced-motion/print exemptions retained.
+- L04 personnel selectors, permissions, business logic, Firebase/Sheets/production have not been modified.
+
+### Exact code and evidence
+- **QA-passed source SHA:** `b815535d1772f2d1457382970e5dad039b59ff10`.
+- Source commit `fc7cb62835ff18941e0634a0c2b874bc11aa40da`; test commit `314da0be31dc89f980660ddbaa704384511ad957`; legacy expectation updates `6e5193751124516e026bab6558304af0ca1c04ad`; test rail-scroll fix `b815535d1772f2d1457382970e5dad039b59ff10`.
+- [CI #42436988277](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42436988277) **SUCCESS**, exact tested SHA: 918 unit PASS (116 skipped), TypeScript and both builds PASS; 32 real-browser L03 scenarios, 54 L03 reviewer cases, 24 L04 picker scenarios, 6 track-width modes, 73 L01 CONTENT scenarios and 18 commander screenshots PASS.
+- [CI proof artifact #13599971874](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42436988277/artifacts/13599971874), digest `sha256:a8e8951d4a70f140b26da5f563660e8892437bb493e7457d888bdab21c58ca1b`.
+- **Public preview LIVE VERIFICATION:** [publish+Chromium #42437620579](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42437620579) **SUCCESS**, source pin `b815535...`, public HTTP 200 and byte-for-byte SHA-consistent HTML/JS/CSS; Pages root source unchanged `main:/`.
+- Public homepage entry: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
+- Editable direct UI: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
+- Readonly direct UI: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?guest=1
+- Popup mixed: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?popup=1&popup-mixed=1
+- LIVE Chromium at widths 1440/390 List, mixed popup and guest verified L01 type-first/left; 3-track `[120,76,120]`, 2-track `[128,164]`; readonly center + nested text center; "Sở chưa trình" painted background `rgb(255,227,233)` and ink `rgb(163,45,70)`; resting border **1px subtle**, hover border **1px** and outline **2px** same status text color, shadow visible; actual button `dy=-3` and DOMMatrix computed `-3`; width stays exactly **120px** at all measured editable surfaces. Public guest has no fake picker. No external-network requests from preview.
+- [LIVE screenshots & measurements artifact #13599827921](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42437620579/artifacts/13599827921), digest `sha256:ef98eb6a1ea6ac9e81a983f6e8f4eae53afa5d0d2015fdc375df371b4e15dd05`.
+- Pages-only [main commit `7e3a4e2e44ffe861cc2a89fc04f3b79b08813b2b`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/7e3a4e2e44ffe861cc2a89fc04f3b79b08813b2b) altered **only `preview/l03-hover-20261108/`**; production root index/assets/source not touched. Original separate ChatGPT Site remains independent/old until its owner publishes.
+- **Final status:** `SOURCE_QA_PASS / ISOLATED_PUBLIC_PREVIEW_LIVE_PASS / PRODUCTION_NOT_DEPLOYED`. This checkpoint commit itself is docs-only, different from the exact source/tested SHA.
