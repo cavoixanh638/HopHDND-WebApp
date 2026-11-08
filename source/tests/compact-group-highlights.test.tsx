@@ -112,10 +112,11 @@ describe('R05: grouped source statuses retain field-level tones',()=>{
 });
 
 describe('STREAM A metadata and stage rows',()=>{
- it.each([false,true])('content precedes department and type (editing=%s)',editing=>{
+ it.each([false,true])('content precedes type and department (editing=%s)',editing=>{
    const html=draw('contentDetails',[],[],false,editing);
-   expect(html.indexOf('compact-document-content')).toBeLessThan(html.indexOf('compact-document-department'));
-   expect(html.indexOf('compact-document-department')).toBeLessThan(html.indexOf('compact-document-badge'));
+   expect(html.indexOf('compact-document-content')).toBeLessThan(html.indexOf('compact-document-badge'));
+   expect(html.indexOf('compact-document-badge')).toBeLessThan(html.indexOf('compact-document-department'));
+   // New approved L01 semantics: Loại VB first, then Sở, in both modes.
    expect(html).toContain('Sở mẫu A');expect(html).toContain('QPPL');
    expect(html.match(/class="compact-document-content"/g)).toHaveLength(1);
  });

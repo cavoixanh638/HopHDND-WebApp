@@ -38,6 +38,8 @@ jobs:
               source/src/data/item-preferences.ts|\
               source/src/data/status-palettes.ts|\
               source/tests/picker-parity-content.test.tsx|\
+              source/tests/compact-group-highlights.test.tsx|\
+              source/tests/ui-20261104-worker-a.test.tsx|\
               source/tests/picker-parity-stages.test.ts|\
               source/tests/status-palettes.test.ts|\
               source/scripts/picker-parity-content-browser.mjs|\

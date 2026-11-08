@@ -30,7 +30,7 @@ const count=(html:string,needle:string)=>html.split(needle).length-1;
 describe('Worker A REV2 — L01 source metadata',()=>{
  it('read-only retains approved source-driven parentheses/hyphen and quiet type',()=>{
    const html=render(doc,fixture);
-   expect(plain(html)).toContain(fixture.content+'(Sở Nông nghiệp và Môi trường - HC)');
+   expect(plain(html)).toContain(fixture.content+'(HC - Sở Nông nghiệp và Môi trường)');
    expect(html).toContain('data-metadata-mode="readonly"');
    expect(html).not.toContain('cell-picker-trigger');
  });
@@ -38,7 +38,7 @@ describe('Worker A REV2 — L01 source metadata',()=>{
    [{department:'',type:'HC'},'(HC)'],
    [{department:'Sở Mẫu',type:''},'(Sở Mẫu)'],
    [{department:'',type:''},''],
-   [{department:'Sở rất dài '.repeat(16),type:'Báo cáo'},'(Sở rất dài ']
+   [{department:'Sở rất dài '.repeat(16),type:'Báo cáo'},'(Báo cáo - Sở rất dài ']
  ])('only nonempty read-only fields get punctuation: %j',(values,expected)=>{
    const html=render(doc,{...fixture,...values});
    if(expected)expect(plain(html)).toContain(expected);
