@@ -295,7 +295,19 @@ try{
   const root=surface==='popup'?'.report-detail-grid':'.item-data-table';
   const td=page.locator(root+' tbody td[data-col-key="'+field+'"].editable-cell').first();
   const btn=td.locator('button.inline-note-trigger').first();
-  await btn.waitFor({timeout:25000});
+  // Capture the real mounted table and visibility before assuming a field
+  // is editable: a compact view may project/hide one of the Excel columns.
+  await page.waitForTimeout(400);
+  const diagnostic=await page.evaluate(()=>{
+   const table=document.querySelector('.item-data-table,.report-detail-grid');
+   return {title:document.title,table:!!table,body:document.body.innerText.slice(0,650),
+    keys:[...document.querySelectorAll('tbody td[data-col-key]')].slice(0,35).map(e=>({
+     key:e.getAttribute('data-col-key'),editable:e.classList.contains('editable-cell'),
+     buttons:e.querySelectorAll('button.inline-note-trigger').length
+    }))};
+  });
+  console.log('INLINE_HIT_MOUNT_DIAGNOSTIC '+JSON.stringify({surface,field,diagnostic}));
+  await btn.waitFor({timeout:3000});
   await td.scrollIntoViewIfNeeded();
   const blank=await td.evaluate(cell=>{
    const rect=cell.getBoundingClientRect(),button=cell.querySelector('button.inline-note-trigger');
