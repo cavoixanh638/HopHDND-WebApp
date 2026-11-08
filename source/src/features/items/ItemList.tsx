@@ -399,6 +399,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Measure DOCUMENT top, not viewport top, so scrolling does not make the
   // table grow recursively. Recompute on zoom, resize or filter wrapping.
   useEffect(()=>{
+    // Some source-only/SSR tests intentionally expose a minimal document.
+    if(typeof document==='undefined'||typeof document.querySelector!=='function')return;
     const table=document.querySelector<HTMLElement>(
       '.pr95-full-preview .item-data-region .item-table-scroll');
     if(!table)return;
