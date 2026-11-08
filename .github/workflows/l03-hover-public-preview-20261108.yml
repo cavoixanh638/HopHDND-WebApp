@@ -326,8 +326,8 @@ jobs:
               {id:'editable-390',query:'?edit=1',width:390,kind:'hover'},
               {id:'popup-mixed',query:'?popup=1&popup-mixed=1',width:1440,kind:'popup'},
               {id:'popup-inline-hit',query:'?popup=1&inner-hit=1',width:1440,kind:'inline-popup'},
-              {id:'guest',query:'?guest=1',width:900,kind:'guest'},
-              {id:'guest-mobile',query:'?guest=1',width:390,kind:'guest'},
+              {id:'guest',query:'?full=1',width:900,kind:'guest'},
+              {id:'guest-mobile',query:'?full=1',width:390,kind:'guest'},
               {id:'full-preview',query:'?full=1&preview-role=admin',width:1440,kind:'full'},
               {id:'admin-alias',query:'admin.html',width:1440,kind:'alias'}
             ]){
