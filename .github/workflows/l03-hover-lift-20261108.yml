@@ -50,6 +50,8 @@ jobs:
               source/tests/picker-parity-stages.test.ts|\
               source/tests/ui-20261106-tracks.test.ts|\
               source/tests/status-palettes.test.ts|\
+              source/tests/item-summary.test.ts|\
+              source/tests/pr95-ui-v2-l2-palette.test.ts|\
               source/scripts/picker-parity-content-browser.mjs|\
               source/scripts/picker-parity-stages-browser.mjs|\
               source/scripts/ui-20261106-tracks-browser.mjs|\
