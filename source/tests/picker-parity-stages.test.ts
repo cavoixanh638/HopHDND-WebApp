@@ -36,6 +36,21 @@ describe('STAGES scoped picker parity contract',()=>{
   expect(css).toContain('row-gap:5px');
   expect(css).toContain('grid-template-columns:subgrid!important');
  });
+ it('keeps readonly 26px height equal to editable without inventing border/button',()=>{
+  const css=source();
+  const start=css.indexOf('.compact-stage-state:not([data-editable="true"]) {');
+  const end=css.indexOf('/* Read-only payload',start);
+  expect(start).toBeGreaterThan(0);
+  expect(end).toBeGreaterThan(start);
+  const status=css.slice(start,end);
+  expect(status).toContain('min-height:26px!important;');
+  expect(status).toContain('padding:5px 4px!important;');
+  expect(status).toContain('border:0!important;');
+  const editable=css.slice(css.indexOf('button.cell-picker-trigger {',end));
+  expect(editable).toContain('min-height:26px!important;');
+  expect(editable).toContain('padding:4px 4px!important;');
+  expect(editable).toContain('border:1px solid');
+ });
  it('matches readonly L03 status typography to editable status without changing rights',()=>{
   const css=source();
   const start=css.indexOf('.compact-stage-state:not([data-editable="true"]) {');

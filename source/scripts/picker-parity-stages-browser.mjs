@@ -99,6 +99,18 @@ function check(p,context){
       context+' mixed nested readonly/picker typography mismatch '+row.field+' '+property);
     }
    }
+   // Height parity with the interactive 26px picker: borderless readonly
+   // compensates the 1px top/bottom button borders with 5px padding.
+   assert.equal(n(row.statusStyle.minHeight),26,context+' readonly min-height '+row.field);
+   assert.equal(row.statusStyle.padding,'5px 4px',
+    context+' readonly must match editable vertical box model '+row.field);
+   assert.equal(n(row.statusStyle.border),0,context+' readonly must remain borderless '+row.field);
+   assert(row.status.h>=25.75,context+' readonly actual height under 26px '+row.field);
+   const otherEditable=p.rows.find(r=>r.editable&&near(r.button?.h,26,.35));
+   if(otherEditable&&near(row.status.h,26,.35)){
+    assert(near(row.status.h,otherEditable.button.h,.35),
+     context+' one-line readonly height differs from editable '+row.field);
+   }
    assert.equal(row.statusStyle.transform,'none',context+' readonly lifted '+row.field);
    assert.equal(row.statusStyle.boxShadow,'none',context+' readonly shadow '+row.field);
    assert.equal(row.statusStyle.justifyContent,'center',context+' readonly wrapper not centered '+row.field);
@@ -337,6 +349,43 @@ try{
    'User-adjusted 160px rail still wraps '+surface+': '+JSON.stringify(packing.widenedStatus));
   results.push({name:'packing-'+surface,initial:packing,states:{}});
   await screenshot(page,'packing-'+surface);
+ }
+ // Compare actual one-line readonly and editable status box heights for BOTH
+ // real surfaces. The source value is mutated only in this browser fixture.
+ for(const surface of ['list','popup']){
+  await page.setViewportSize({width:1440,height:900});
+  await page.goto(base+'/ui-20261106-picker-fixture.html?'+
+   new URLSearchParams({surface,mode:'mixed'}),{waitUntil:'networkidle'});
+  const root=surface==='popup'?'.report-detail-grid':'.item-data-table';
+  await page.locator(root+' .compact-stages[data-rev2="true"]').first().waitFor();
+  if(surface==='popup'){
+   await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+   await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+  }
+  const parity=await page.locator(root+' .compact-stages[data-rev2="true"]').first().evaluate(stage=>{
+   const readonly=stage.querySelector('.compact-stage-state:not([data-editable="true"])');
+   const editable=stage.querySelector('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
+   if(!readonly||!editable)throw Error('Missing mixed rights for status height equality');
+   const roText=readonly.querySelector('.workflow-status-value,.compact-part')||readonly;
+   const editText=editable.querySelector('.cell-picker-value-text');
+   if(!editText)throw Error('No real editable CellPicker value span');
+   roText.textContent='Hoàn thành';editText.textContent='Hoàn thành';
+   const a=readonly.getBoundingClientRect(),b=editable.getBoundingClientRect();
+   return {readonly:{height:a.height,width:a.width,
+      minHeight:getComputedStyle(readonly).minHeight,padding:getComputedStyle(readonly).padding,
+      border:getComputedStyle(readonly).borderTopWidth},
+    editable:{height:b.height,width:b.width,
+      minHeight:getComputedStyle(editable).minHeight,padding:getComputedStyle(editable).padding,
+      border:getComputedStyle(editable).borderTopWidth}};
+  });
+  assert(near(parity.readonly.height,parity.editable.height,.35),
+   'L03 mixed one-line statuses differ in height '+surface+': '+JSON.stringify(parity));
+  assert(near(parity.readonly.height,26,.35),'One-line readonly is not 26px '+surface);
+  assert.equal(parity.readonly.padding,'5px 4px','Readonly vertical compensation '+surface);
+  assert.equal(parity.readonly.border,'0px','Readonly unexpectedly has button border '+surface);
+  writeFileSync(join(out,'height-parity-'+surface+'.json'),JSON.stringify(parity,null,2));
+  results.push({name:'height-parity-'+surface,initial:parity,states:{}});
+  await screenshot(page,'height-parity-'+surface);
  }
  // Exercise standard, previously saved and NEW MINIMUM five-rail configurations against actual CSS subgrid
  // in BOTH surfaces and 2/3-track modes. This is an in-page geometry probe,

@@ -76,8 +76,13 @@
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
   .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"]) {
   display:flex;
-  min-height:0!important;
-  padding:0!important;
+  box-sizing:border-box;
+  /* Match the editable picker height WITHOUT making read-only a button:
+     editable has 4px vertical padding + 1px border on each edge;
+     read-only stays BORDERLESS and uses 5px vertical padding instead.
+     Both are 26px minimum and grow naturally for multiline values. */
+  min-height:26px!important;
+  padding:5px 4px!important;
   border:0!important;
   border-radius:6px;
   background:var(--workflow-bg)!important;
