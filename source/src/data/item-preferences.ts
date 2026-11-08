@@ -51,11 +51,12 @@ export const PARTY_TRACK_WIDTH_LIMITS={
   readonly:{label:{min:64,max:1400},status:{min:72,max:1400}},
   editable:{label:{min:64,max:1400},level:{min:48,max:900},status:{min:72,max:1400}}
 } as const;
-/** Screenshot-proportioned 08/11/2026 defaults: readonly 128/164 and
- * editable 120/76/120. Existing saved 5-rail profiles remain untouched. */
+/** Owner-selected L03 defaults: readonly 110/135; editable 110/55/145.
+ * Applies to fresh/reset layouts only. Existing explicit saved five rails
+ * and legacy-only RAM fallback are not overwritten. */
 export const DEFAULT_PARTY_TRACK_WIDTHS:PartyTrackWidths={
-  readonly:{label:128,status:164},
-  editable:{label:120,level:76,status:120}
+  readonly:{label:110,status:135},
+  editable:{label:110,level:55,status:145}
 };
 export const PARTY_TRACK_NAMES={
   readonly:{label:'Nhãn + cấp trình',status:'Tiến độ'},
