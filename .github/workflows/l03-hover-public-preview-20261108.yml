@@ -20,17 +20,17 @@ jobs:
       - name: Checkout immutable exact QA-passed source, not docs-only HEAD
         uses: actions/checkout@v4
         with:
-          ref: fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a
+          ref: 3121e2bee130f0c39046e6a312c0c036b923dade
           persist-credentials: true
           fetch-depth: 0
       - name: Verify pinned feature revision and offline QA entry
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
+          test "$(git rev-parse HEAD)" = "3121e2bee130f0c39046e6a312c0c036b923dade"
           test -f source/compact-qa.html
           test -f .nojekyll
           grep -Fq "RAM demo" source/docs/tasks/parallel-20261108-l03-hover/CHECKPOINT.md 2>/dev/null || true
-          echo "L03_PREVIEW_SOURCE_SHA fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
+          echo "L03_PREVIEW_SOURCE_SHA 3121e2bee130f0c39046e6a312c0c036b923dade"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,7 +50,7 @@ jobs:
           test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
           grep -Fq 'Dữ liệu giả' dist-compact-qa/compact-qa.html
           ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
-          echo "fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a" > dist-compact-qa/source-sha.txt
+          echo "3121e2bee130f0c39046e6a312c0c036b923dade" > dist-compact-qa/source-sha.txt
           (cd dist-compact-qa && sha256sum compact-qa.html assets/* > asset-sha256.txt)
       - name: Check Pages uses main root before touching any public branch
         env:
@@ -93,7 +93,7 @@ jobs:
           git -C "$dest" commit -m 'docs(preview): publish isolated synthetic L03 -3px hover preview'
           git -C "$dest" push origin HEAD:main
           echo "L03_PREVIEW_PAGES_SUBPATH_ONLY preview/l03-hover-20261108"
-          echo "L03_PREVIEW_PAGES_SOURCE_SHA fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
+          echo "L03_PREVIEW_PAGES_SOURCE_SHA 3121e2bee130f0c39046e6a312c0c036b923dade"
       - name: Request Pages rebuild and verify public HTML plus actual JS/CSS bytes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +123,7 @@ jobs:
               { echo "::error::Public asset hash mismatches candidate: $asset";exit 1; }
             echo "L03_PREVIEW_PUBLIC_ASSET_HASH_MATCH $asset"
           done
-          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq 'fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a'
+          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq '3121e2bee130f0c39046e6a312c0c036b923dade'
           echo "L03_PREVIEW_PUBLIC_HTTP_ASSETS_SOURCE_PASS $base"
       - name: Real Chromium LIVE UI smoke and measured -3px hover on GitHub Pages
         working-directory: source
@@ -193,11 +193,11 @@ jobs:
             assert.equal(state.meta.textAlign,'left',label+' L01 metadata text not left');
             assert(state.meta.typeFirst,label+' L01 type not before department');
             if(mode==='editable'){
-              assert.deepEqual(state.grid,[120,76,120],label+' editable rails differ from screenshot');
+              assert.deepEqual(state.grid,[110,55,145],label+' editable defaults incorrect');
               assert.equal(state.levelMode,'editable',label+' expected 3-track level');
             }
             if(mode==='readonly'){
-              assert.deepEqual(state.grid,[128,164],label+' readonly rails wrong');
+              assert.deepEqual(state.grid,[110,135],label+' readonly defaults incorrect');
               assert.equal(state.levelMode,'readonly',label+' expected 2 tracks');
             }
             if(state.readonly){
@@ -327,7 +327,8 @@ jobs:
               {id:'popup-mixed',query:'?popup=1&popup-mixed=1',width:1440,kind:'popup'},
               {id:'popup-inline-hit',query:'?popup=1&inner-hit=1',width:1440,kind:'inline-popup'},
               {id:'guest',query:'?guest=1',width:900,kind:'guest'},
-              {id:'full-preview',query:'?full=1&preview-role=admin',width:1440,kind:'full'}
+              {id:'full-preview',query:'?full=1&preview-role=admin',width:1440,kind:'full'},
+              {id:'admin-alias',query:'admin.html',width:1440,kind:'alias'}
             ]){
               const ctx=await browser.newContext({viewport:{width:c.width,height:c.width===390?844:900}});
               const page=await ctx.newPage();
@@ -352,6 +353,11 @@ jobs:
                 await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
                 await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
                 await verifyInnerOnly(page,'.report-detail-grid',c.id);
+              } else if(c.kind==='alias'){
+                await page.locator('[data-preview="pr95-l4-full"][data-role="admin"]').waitFor();
+                assert.equal(page.url().includes('preview-role=admin'),true,
+                  'Query-free admin.html did not redirect to current admin preview');
+                record.push({label:c.id,queryFreeAlias:true,url:page.url()});
               } else if(c.kind==='guest'){
                 await page.locator('[data-qa="compact-real-itemlist"]').waitFor();
                 assert.equal(await page.locator('.item-data-table .compact-stages button.cell-picker-trigger').count(),0,'guest fake editor');
@@ -360,6 +366,40 @@ jobs:
                 record.push({label:c.id,readonly:true});
               } else {
                 await page.locator('[data-preview="pr95-l4-full"]').waitFor({timeout:25000});
+                // B00 and C01-C03 numbers are invariant under F toolbar filters.
+                const capture=()=>page.evaluate(()=>({
+                  cards:[...document.querySelectorAll('.item-summary-grid [data-summary-card]')]
+                    .map(el=>({id:el.dataset.summaryCard,text:el.textContent.trim()})),
+                  rows:document.querySelectorAll('.item-data-table tbody td[data-col-key="displayCode"]').length
+                }));
+                const before=await capture();
+                assert.deepEqual(before.cards.map(x=>x.id),['total','party','build','nq'],
+                  'Missing four source-wide summary cards');
+                assert(before.rows>1,'No source table rows for F filtering test');
+                await page.locator('.list-filter-search').fill('NO_RESULT_PUBLIC_F01');
+                await page.waitForTimeout(160);
+                const afterSearch=await capture();
+                assert.equal(afterSearch.rows,0,'F01 has not filtered List rows');
+                assert.deepEqual(afterSearch.cards,before.cards,
+                  'B00/C01-C03 totals changed after F01 filtering');
+                await page.locator('.list-filter-search').fill('');
+                await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
+                await page.waitForTimeout(160);
+                const afterDept=await capture();
+                assert(afterDept.rows<before.rows,'F02 did not filter List');
+                assert.deepEqual(afterDept.cards,before.cards,
+                  'B00/C01-C03 totals changed after F02 filtering');
+                const colors=await page.locator('[data-preview="pr95-l4-full"]').evaluate(el=>{
+                  const css=getComputedStyle(el);
+                  return {office:[css.getPropertyValue('--hdnd-status-office-text').trim(),
+                    css.getPropertyValue('--hdnd-status-office-bg').trim()],
+                    done:[css.getPropertyValue('--hdnd-status-done-text').trim(),
+                    css.getPropertyValue('--hdnd-status-done-bg').trim()]};
+                });
+                assert.deepEqual(colors,{office:['#80531F','#FFEEDA'],
+                  done:['#256441','#DEF3E5']},'New semantic status palette is not active');
+                // Reset F controls before measuring the five admin track inputs.
+                await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:0});
                 // The actual published administrator width editor must offer
                 // the five smaller minima, not just have new source constants.
                 const editor=page.locator('button[aria-controls="admin-l03-width-editor"]');
@@ -371,12 +411,13 @@ jobs:
                 assert.deepEqual(minLimits.map(x=>x.min),[64,72,64,48,72],
                   'Published L03 editor still enforces outdated five-rail minima');
                 await page.screenshot({path:dir+'/full-preview.png'});
-                record.push({label:c.id,fullSynthetic:true,minLimits});
+                record.push({label:c.id,fullSynthetic:true,minLimits,
+                  fixedCards:before.cards,afterSearch,afterDept,colors});
               }
               await ctx.close();
             }
             assert.deepEqual(external,[],'Live site made external network requests');
-            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a',url:base,record,external},null,2));
+            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'3121e2bee130f0c39046e6a312c0c036b923dade',url:base,record,external},null,2));
             console.log('L03_PUBLIC_REAL_BROWSER_HOVER_3PX_AND_QA_ROLES_PASS',JSON.stringify(record));
           } finally {await browser.close();}
           NODE
