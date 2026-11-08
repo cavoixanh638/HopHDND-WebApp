@@ -20,17 +20,17 @@ jobs:
       - name: Checkout immutable exact QA-passed source, not docs-only HEAD
         uses: actions/checkout@v4
         with:
-          ref: b11f18adb41ff0eb12219377fa6d2e8c174ff07f
+          ref: fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a
           persist-credentials: true
           fetch-depth: 0
       - name: Verify pinned feature revision and offline QA entry
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
+          test "$(git rev-parse HEAD)" = "fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
           test -f source/compact-qa.html
           test -f .nojekyll
           grep -Fq "RAM demo" source/docs/tasks/parallel-20261108-l03-hover/CHECKPOINT.md 2>/dev/null || true
-          echo "L03_PREVIEW_SOURCE_SHA b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
+          echo "L03_PREVIEW_SOURCE_SHA fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,7 +50,7 @@ jobs:
           test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
           grep -Fq 'Dữ liệu giả' dist-compact-qa/compact-qa.html
           ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
-          echo "b11f18adb41ff0eb12219377fa6d2e8c174ff07f" > dist-compact-qa/source-sha.txt
+          echo "fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a" > dist-compact-qa/source-sha.txt
           (cd dist-compact-qa && sha256sum compact-qa.html assets/* > asset-sha256.txt)
       - name: Check Pages uses main root before touching any public branch
         env:
@@ -93,7 +93,7 @@ jobs:
           git -C "$dest" commit -m 'docs(preview): publish isolated synthetic L03 -3px hover preview'
           git -C "$dest" push origin HEAD:main
           echo "L03_PREVIEW_PAGES_SUBPATH_ONLY preview/l03-hover-20261108"
-          echo "L03_PREVIEW_PAGES_SOURCE_SHA b11f18adb41ff0eb12219377fa6d2e8c174ff07f"
+          echo "L03_PREVIEW_PAGES_SOURCE_SHA fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a"
       - name: Request Pages rebuild and verify public HTML plus actual JS/CSS bytes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -123,7 +123,7 @@ jobs:
               { echo "::error::Public asset hash mismatches candidate: $asset";exit 1; }
             echo "L03_PREVIEW_PUBLIC_ASSET_HASH_MATCH $asset"
           done
-          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq 'b11f18adb41ff0eb12219377fa6d2e8c174ff07f'
+          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq 'fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a'
           echo "L03_PREVIEW_PUBLIC_HTTP_ASSETS_SOURCE_PASS $base"
       - name: Real Chromium LIVE UI smoke and measured -3px hover on GitHub Pages
         working-directory: source
@@ -270,11 +270,62 @@ jobs:
             await page.screenshot({path:dir+'/'+label+'.png'});
             record.push({label,dy:after.y-before.y,computedY:parsed,rectBefore:before,rectAfter:after});
           }
+          async function verifyInnerOnly(page,root,label){
+            for(const field of ['note','specificProgress']){
+              const td=page.locator(root+' tbody td[data-col-key="'+field+'"].editable-cell').first();
+              await td.waitFor({state:'attached',timeout:30000});
+              const btn=td.locator('button.inline-note-trigger').first();
+              await btn.evaluate(el=>el.scrollIntoView({block:'center',inline:'center'}));
+              const geometry=await td.evaluate(cell=>{
+                const outer=cell.getBoundingClientRect();
+                const btn=cell.querySelector('button.inline-note-trigger');
+                if(!btn)throw Error('No editable inner button for '+cell.dataset.colKey);
+                const inner=btn.getBoundingClientRect();
+                const candidates=[{x:outer.left+3,y:outer.top+3},
+                  {x:outer.right-3,y:outer.top+3},
+                  {x:outer.left+3,y:outer.bottom-3}];
+                const blank=candidates.find(p=>{
+                  if(p.x<0||p.y<0||p.x>=innerWidth||p.y>=innerHeight)return false;
+                  if(p.x>=inner.left&&p.x<=inner.right&&p.y>=inner.top&&p.y<=inner.bottom)return false;
+                  const hit=document.elementFromPoint(p.x,p.y);
+                  return hit&&cell.contains(hit)&&!hit.closest('button,input,textarea,a,[role="button"]');
+                });
+                if(!blank)throw Error('No blank TD area distinct from prose edit button');
+                return {...blank,outerWidth:outer.width,innerWidth:inner.width};
+              });
+              assert(geometry.innerWidth<geometry.outerWidth-5,
+                label+'/'+field+' button still covers full parent cell');
+              await page.mouse.move(geometry.x,geometry.y);await page.waitForTimeout(240);
+              const appearance=async()=>btn.evaluate(el=>{
+                const s=getComputedStyle(el);
+                return {transform:s.transform,shadow:s.boxShadow};
+              });
+              const blankHover=await appearance();
+              assert(blankHover.transform==='none'&&blankHover.shadow==='none',
+                label+'/'+field+' blank area triggers hover '+JSON.stringify(blankHover));
+              assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),0,
+                label+'/'+field+' blank area shows edit tooltip');
+              await page.mouse.click(geometry.x,geometry.y);
+              assert.equal(await td.locator('textarea.inline-note-textarea').count(),0,
+                label+'/'+field+' blank area opens editor');
+              await btn.hover();await page.waitForTimeout(220);
+              const hovered=await appearance();
+              assert(hovered.transform!=='none'&&hovered.shadow!=='none',
+                label+'/'+field+' inner button lost hover effect');
+              await btn.click();
+              const textarea=td.locator('textarea.inline-note-textarea');
+              await textarea.waitFor({timeout:15000});
+              await textarea.press('Escape');
+              await btn.waitFor({timeout:7000});
+              record.push({label:label+'-'+field,geometry,blankHover,hovered,innerOnly:true});
+            }
+          }
           try {
             for(const c of [
               {id:'editable-1440',query:'?edit=1',width:1440,kind:'hover'},
               {id:'editable-390',query:'?edit=1',width:390,kind:'hover'},
               {id:'popup-mixed',query:'?popup=1&popup-mixed=1',width:1440,kind:'popup'},
+              {id:'popup-inline-hit',query:'?popup=1&inner-hit=1',width:1440,kind:'inline-popup'},
               {id:'guest',query:'?guest=1',width:900,kind:'guest'},
               {id:'full-preview',query:'?full=1&preview-role=admin',width:1440,kind:'full'}
             ]){
@@ -290,12 +341,17 @@ jobs:
                 await page.locator('[data-qa="compact-real-itemlist"]').waitFor();
                 await verifyLayout(page,'.item-data-table',c.id,'editable');
                 await checkLift(page,'.item-data-table',c.id);
+                if(c.width===1440)await verifyInnerOnly(page,'.item-data-table',c.id);
               } else if(c.kind==='popup'){
                 await page.getByRole('button',{name:'Chỉnh sửa nháp'}).waitFor();
                 await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
                 await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
                 await verifyLayout(page,'.report-detail-grid',c.id,'popup');
                 await checkLift(page,'.report-detail-grid',c.id);
+              } else if(c.kind==='inline-popup'){
+                await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+                await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+                await verifyInnerOnly(page,'.report-detail-grid',c.id);
               } else if(c.kind==='guest'){
                 await page.locator('[data-qa="compact-real-itemlist"]').waitFor();
                 assert.equal(await page.locator('.item-data-table .compact-stages button.cell-picker-trigger').count(),0,'guest fake editor');
@@ -320,7 +376,7 @@ jobs:
               await ctx.close();
             }
             assert.deepEqual(external,[],'Live site made external network requests');
-            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'b11f18adb41ff0eb12219377fa6d2e8c174ff07f',url:base,record,external},null,2));
+            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a',url:base,record,external},null,2));
             console.log('L03_PUBLIC_REAL_BROWSER_HOVER_3PX_AND_QA_ROLES_PASS',JSON.stringify(record));
           } finally {await browser.close();}
           NODE
