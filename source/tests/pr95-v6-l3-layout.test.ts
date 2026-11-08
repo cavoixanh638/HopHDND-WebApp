@@ -25,9 +25,9 @@ describe('PR95 UI V6 L3 — owner-only layout changes',()=>{
     expect(demo).toContain("setPage('items');");
     expect(demo).not.toContain("'Đã chuyển sang '+(next==='admin'?'quản trị':'khách')");
   });
-  it('keeps ONE summary call with the original toolbarBase scope and positions it before one heading and F toolbar',()=>{
+  it('keeps ONE source-wide summary before the heading/F filters, with filtered list count',()=>{
     expect((item.match(/<ItemSummaryCards /g)||[])).toHaveLength(1);
-    const summary=item.indexOf('<ItemSummaryCards items={toolbarBase}');
+    const summary=item.indexOf('<ItemSummaryCards items={items}');
     const title=item.indexOf('<h2 className="item-list-page-title">');
     const adminControls=item.indexOf('{adminControls&&<div className="card-header">');
     const toolbar=item.indexOf('<div className="list-filter-toolbar"');
@@ -40,6 +40,8 @@ describe('PR95 UI V6 L3 — owner-only layout changes',()=>{
     expect(item.slice(summary,title)).toContain('selection={summarySelection}');
     expect(item.slice(summary,title)).toContain('kindSelection={kindSelection}');
     expect(item.slice(summary,title)).toContain('visibleCount={filtered.length}');
+    expect(item).toContain('filterByChips(toolbarBase,kindSelection,summarySelection)');
+    expect(item).not.toContain('<ItemSummaryCards items={toolbarBase}');
     expect(demo).not.toContain(":'Danh sách các ND trình HĐND'</h2>");
     expect(css).toContain('.item-list-page-title');
   });
