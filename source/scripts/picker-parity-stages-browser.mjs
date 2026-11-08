@@ -468,6 +468,15 @@ try{
   assert(measure.scroll<=width+3,'Full page overflow at '+width);
   results.push({name:'responsive-centered-admin-'+width,initial:measure,states:{}});
   if(width===1920){
+   const prefilterLayout=await page.evaluate(()=>{
+    const td=document.querySelector('.item-data-table tbody td[data-col-key="content"]');
+    const f01=document.querySelector('.list-filter-search');
+    return {contentVAlign:td?getComputedStyle(td).verticalAlign:null,
+      f01Font:f01?getComputedStyle(f01).fontSize:null};
+   });
+   assert.equal(prefilterLayout.contentVAlign,'middle',
+    'L01 content is not vertically centered before filtering');
+   assert.equal(prefilterLayout.f01Font,'12px','F01 font size not compact');
    await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
    await page.locator('[data-summary-report="party"][data-summary-stage="source"]').click();
    await page.locator('[data-active-filter-count="2"]').waitFor();
@@ -493,8 +502,6 @@ try{
      hasVisibleFieldLabels:chips.some(e=>e.querySelector('.list-active-filter-chip-label')),
      c01HeadDeviation:(first+last-hr.left-hr.right)/2,
      c01PercentColor:getComputedStyle(pct).color,
-     contentVAlign:getComputedStyle(document.querySelector('.item-data-table tbody td[data-col-key="content"]')).verticalAlign,
-     f01Font:getComputedStyle(document.querySelector('.list-filter-search')).fontSize,
      animation:style?.animationName,iterations:style?.animationIterationCount,
      background:getComputedStyle(zone).backgroundImage};
    });
@@ -509,8 +516,6 @@ try{
    assert(filterGeometry.visibleChips.every(Boolean),'Filter values missing');
    assert(Math.abs(filterGeometry.c01HeadDeviation)<2,'C01 title/percentage not centered');
    assert.equal(filterGeometry.c01PercentColor,'rgb(21, 134, 77)','C01 percent not brighter green');
-   assert.equal(filterGeometry.contentVAlign,'middle','L01 content not vertically centered');
-   assert.equal(filterGeometry.f01Font,'12px','F01 font size not compact');
    assert.equal(filterGeometry.animation,'hdnd-filter-ack',
     'Finite attention signal missing when F/C filters active');
    assert.equal(filterGeometry.iterations,'2','Attention signal repeats endlessly');
