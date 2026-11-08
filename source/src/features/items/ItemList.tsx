@@ -668,10 +668,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    {/* DOM/reading order: B00–B03, C01–C03, heading, F01–F05, active filters, table.
-        Preserve toolbarBase scope, state, selected filters and all callbacks. */}
+    {/* B00–B03 and C01–C03 summarize all source items, regardless of F
+        filters. Keep toolbarBase for filtered table rows / visible count. */}
     {!customizing&&!permissionMode&&<>
-      <ItemSummaryCards items={toolbarBase}
+      <ItemSummaryCards items={items}
         selection={summarySelection} onSelect={selectSummary}
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
