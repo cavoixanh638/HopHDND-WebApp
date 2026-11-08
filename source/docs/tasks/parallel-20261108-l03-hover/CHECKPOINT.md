@@ -135,3 +135,34 @@ User observed that editable statuses in **Tiến độ 3 khâu (L03)** did not v
 - Public mixed popup: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?popup=1&popup-mixed=1
 - Pages-only main commit [`f4b92ba5e4a77601bf7c8ae8345de089f38d65fb`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/f4b92ba5e4a77601bf7c8ae8345de089f38d65fb) changes ONLY `preview/l03-hover-20261108/*` assets/index/source marker, NOT production app root/source or Firebase database.
 - **STATUS: SOURCE_QA_PASS / LIVE_PREVIEW_VERIFIED / PRODUCTION_NOT_DEPLOYED**. This checkpoint is a docs-only commit; keep source pin at b11f18a and do not mistake latest docs SHA as the tested code.
+
+
+## CURRENT PROGRESS + NOTE INNER-ONLY INTERACTION — LIVE VERIFIED 2026-11-08
+
+### Owner-directed behavior and implementation
+- Two source fields ONLY: **`specificProgress` ("Tiến độ hiện tại") and `note` ("Ghi chú")**. Hovering/clicking TD outer padding/blank space must not lift/outline the little editor, show the "Bấm để sửa" tooltip, or begin text editing. Hovering/clicking the real, small `button.inline-note-trigger` must retain hover/lift, tooltip, click-to-open `InlineNoteEditor` textarea; Escape cancels as before. No change to status pickers, L03, L04, Content, history action, locked statuses, keyboard rights, long-text values or source data.
+- Root causes: `activateEditableCell` used to forward blank TD clicks to its single action; broad legacy `app.css` highlighted the inner control when **the whole TD** was hovered; `SharedEditTooltip.fromTarget` chose the whole editable TD for pointer hints.
+- Scoped fix:
+  * `source/src/features/items/activate-editable-cell.ts`: return early for those exact `data-col-key` values, preserving all other generic TD click-forwarding.
+  * `source/src/components/SharedEditTooltip.ts`: only return the enabled **inner `button.inline-note-trigger`** for these two columns; retain history/locked and merged-field logic for all others.
+  * `source/src/features/items/inline-note-hit-area.css` NEW, imported explicitly by `ItemList.tsx` and `ReportDetailGrid.tsx`: TD cursor/default and blank hover no shadow; small button `width:fit-content` and `max-width:100%`; cancel inherited TD:hover uplift when the inner trigger is not hovered/focus-visible, preserving real trigger hover/focus, editor's own focus ring and reduced-motion rules. No changes to global `app.css`.
+  * `ItemList.tsx` and `ReportDetailGrid.tsx` remove parent TD `data-edit-hint` for these fields; `CellHistoryAction` remains independent.
+  * `source/tests/activate-editable-cell.test.ts` protects parent blank clicks (non-note status forwarding unchanged). `source/scripts/picker-parity-stages-browser.mjs` tests **four** mouse cases (two fields × List/popup), checking real geometry, blank hover no transform/shadow/tooltip, blank click no textarea, actual button hover/lift + tooltip, actual button click opens textarea, Escape returns trigger. Both List and popup use REAL components with synthetic RAM-only fixture (no Firebase).
+  * `.github/workflows/l03-hover-lift-20261108.yml` extends allowlist to exactly the new L01/L03-constrained files; production root, Firestore/RTDB/Sheets, `source/src/styles/app.css`, `CellPicker.tsx`, source field names and permissions remain unmodified.
+
+### Exact QA, preview and release boundary
+- **Tested source code SHA:** [`fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/fae5946d9dc0d031a8b6f45c7a26a6f3c60ca99a) (branch `ui/20261108-l03-hover-lift-fix`; subsequent workflow/docs commits are NOT code modifications).
+- [Source QA and real Chromium #42446957341](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42446957341) **SUCCESS**: 925 unit PASS /116 preexisting skipped, TS and both builds PASS; **44 L03 browser scenarios** including all four new cases; 54 independent L03 reviewer cases; 24 personnel picker, 10 width presets, 73 Content scenarios, commander smoke PASS. [QA screenshots artifact #13604550262](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42446957341/artifacts/13604550262).
+- Public preview workflow was repinned to the EXACT QA code in [`8a8610400c7d49ea073bc36ec305993bd96fd899`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/8a8610400c7d49ea073bc36ec305993bd96fd899) and extended to live proof of the same inner-only interactions in List and popup, not just L03's prior hover.
+- [**LIVE Pages deploy + real Chromium #42447324623**](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42447324623) **SUCCESS**, public HTTP 200 and byte-for-byte HTML/JS/CSS comparison to the built immutable pinned code; browser measured:
+  * List status: `specificProgress` **200px outer / 172.31px inner**; `note` **240px outer / 169.30px inner**;
+  * Popup status: `specificProgress` **200px outer / 160.28px inner**; `note` **240px outer / 157.5px inner**;
+  * All four cases blank hover **transform=none, shadow=none**, blank clicks **do NOT open editor** and **no tooltip**; actual button hover lifts **-3px** and creates shadow; actual click opens textarea; Escape restores button.
+  * Original L03 -3px/status outline and 11px/26px readonly parity, five rail minima, colors, permissions, Lists at 1440/390, guest, mixed popup all remain PASS; no external production requests.
+- [LIVE screenshots/measurements artifact #13603879187](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/42447324623/artifacts/13603879187), digest `sha256:850917c641637aa3d0356eb7e66b35460b879466a857225aa6e203bfd132b8d5`.
+- User-check URLs (published website, NOT GitHub Actions artifact ZIP):
+  * Full interactive synthetic WebApp: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
+  * **List inline edit:** https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?edit=1
+  * **Popup with these exact fields editable:** https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?popup=1&inner-hit=1
+- Pages-only `main` commit [`0a4bac3d860d1cc3d34ecdaa4270f01abf87cf8f`](https://github.com/cavoixanh638/HopHDND-WebApp/commit/0a4bac3d860d1cc3d34ecdaa4270f01abf87cf8f) touched ONLY paths under `preview/l03-hover-20261108/`. The root Pages index/assets, production application code and Firebase data were not deployed/merged.
+- **STATUS `SOURCE_QA_PASS / ISOLATED_PUBLIC_PREVIEW_LIVE_PASS / PRODUCTION_NOT_DEPLOYED`.** Maintain exact source pin. History of intermediate failed runs were **browser test script mistakes only**, corrected in final verified SHA; do not consider them live defects.
