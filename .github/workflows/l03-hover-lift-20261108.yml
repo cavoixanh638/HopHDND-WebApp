@@ -43,6 +43,14 @@ jobs:
               source/src/features/items/ActiveListFilters.tsx|\
               source/src/features/items/ItemSummaryCards.tsx|\
               source/src/features/items/list-filter-toolbar.css|\
+              source/src/features/items/list-toolbar-filters.ts|\
+              source/src/features/items/list-print.ts|\
+              source/src/qa/pr95-operator-workbook.ts|\
+              source/src/qa/pr95-preview-excel.tsx|\
+              source/src/data/business-excel.ts|\
+              source/tests/pr95-operator-workbook.test.ts|\
+              source/tests/list-search-scope.test.ts|\
+              source/tests/list-print.test.ts|\
               source/src/features/items/CompactGroupedValue.tsx|\
               source/src/features/items/picker-parity-content.css|\
               source/src/features/items/picker-parity-stages.css|\
