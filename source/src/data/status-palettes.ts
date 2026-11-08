@@ -97,7 +97,13 @@ const stageBorder=(current:StatusSwatch,base:StatusSwatch,exact:string)=>
 /** Presentation only: vars cascade into the normal table AND the report modal. */
 export function statusPaletteCssVariables(colors:StatusPalette):Record<string,string>{
   const base=defaultStatusPalette();
+  // Enhance default "Sở chưa trình" only in L03; never recolor custom swatches.
+  const source=colors['not-submitted'],original=base['not-submitted'];
+  const sourceIsDefault=source.text.toUpperCase()===original.text &&
+    source.background.toUpperCase()===original.background;
   return {
+    '--hdnd-l03-not-submitted-text':sourceIsDefault?'#A32D46':source.text,
+    '--hdnd-l03-not-submitted-bg':sourceIsDefault?'#FFE3E9':source.background,
     '--hdnd-stage-not-submitted-bg':stageColor(colors['not-submitted'],base['not-submitted'],'#FFF1F3'),
     '--hdnd-stage-not-submitted-border':stageBorder(colors['not-submitted'],base['not-submitted'],'#EFD4DA'),
     '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFF8E9'),

@@ -108,6 +108,27 @@
   background:transparent!important;
   padding:0!important;
 }
+/* L03-only default "Sở chưa trình": stronger ink and background, quiet
+ * resting 1px border, exact user-custom swatches/highlights respected. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state[data-progress-tone="not-submitted"] {
+  --workflow-bg:var(--hdnd-l03-not-submitted-bg,var(--hdnd-status-not-submitted-bg,#FFE3E9));
+  --workflow-text:var(--hdnd-l03-not-submitted-text,var(--hdnd-status-not-submitted-text,#A32D46));
+  --ui-picker-border:color-mix(in srgb,var(--workflow-text) 16%,var(--workflow-bg));
+}
+/* All readonly L03 values are centered inside their own saved px track,
+ * including nested .compact-part and popup .workflow-status-value. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"]) {
+  justify-content:center!important;
+  text-align:center!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  :is(.compact-part,.workflow-status-value) {
+  justify-content:center!important;
+  text-align:center!important;
+}
 /* Independent 2/3 rails are supplied by l03-track-widths.css (later in the
  * cascade). The four editors STRETCH their own saved track, not their content. */
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
@@ -140,7 +161,7 @@
   overflow-wrap:anywhere;
   word-break:normal;
   transform:none!important;
-  transition:transform 180ms ease,box-shadow 180ms ease,border-color 180ms ease!important;
+  transition:transform 180ms ease-out,box-shadow 180ms ease-out,border-color 180ms ease-out!important;
   cursor:pointer;
   position:relative;
   z-index:0;
@@ -197,6 +218,16 @@
   color:var(--ui-picker-fg,#426274)!important;
   transform:translateY(-3px)!important;
   z-index:1;
+}
+/* Hover/focus changes COLORS ONLY for L03 status editors:
+ * 1px border, 2px outline, -3px lift and shadows remain unchanged.
+ * The Cấp trình editor retains its neutral-blue outline. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] > .compact-stage-row
+  > .compact-stage-state[data-ui-picker-skin="standard"]
+  button.cell-picker-trigger:is(:hover,:focus-visible):not(:disabled) {
+  border-color:var(--ui-picker-fg,#426274)!important;
+  outline-color:var(--ui-picker-fg,#426274)!important;
 }
 /* Expanded alone or pointer focus alone is not a sticky hover lift. */
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]

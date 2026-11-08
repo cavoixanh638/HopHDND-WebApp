@@ -57,16 +57,16 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
        data-source-metadata={hasSourceMetadata?'true':'false'}
        data-metadata-mode={metadataEditable?'editable':'readonly'}>
        {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">(</span>}
-       {showDepartment&&<span className="compact-document-department" data-ui-reference-part="department"
-         data-ui-picker-skin={editable('department')?'standard':undefined}
-         data-editable={editable('department')?'true':undefined}
-         {...memberAttributes('department')}>{shown('department')}</span>}
-       {!metadataEditable&&hasDepartment&&hasType&&<span className="compact-document-meta-separator" aria-hidden="true"> - </span>}
        {showType&&<span className="compact-document-badge" data-ui-reference-part="type"
          data-ui-picker-skin={editable('type')?'standard':undefined}
          data-kind={compactTypeTone(item.type)}
          data-editable={editable('type')?'true':undefined}
          {...memberAttributes('type')}>{shown('type')}</span>}
+       {!metadataEditable&&hasDepartment&&hasType&&<span className="compact-document-meta-separator" aria-hidden="true"> - </span>}
+       {showDepartment&&<span className="compact-document-department" data-ui-reference-part="department"
+         data-ui-picker-skin={editable('department')?'standard':undefined}
+         data-editable={editable('department')?'true':undefined}
+         {...memberAttributes('department')}>{shown('department')}</span>}
        {!metadataEditable&&hasSourceMetadata&&<span className="compact-document-meta-mark" aria-hidden="true">)</span>}
      </div>}
    </div>;
