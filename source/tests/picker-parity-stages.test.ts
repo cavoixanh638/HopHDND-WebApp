@@ -17,11 +17,11 @@ const presets=[
 describe('STAGES scoped picker parity contract',()=>{
  it('uses screenshot-proportioned defaults without overwriting saved rails',()=>{
   expect(DEFAULT_PARTY_TRACK_WIDTHS).toEqual({
-   readonly:{label:128,status:164},editable:{label:120,level:76,status:120}
+   readonly:{label:110,status:135},editable:{label:110,level:55,status:145}
   });
   expect(resolvedPartyTrackWidths(defaultItemLayout())).toEqual(DEFAULT_PARTY_TRACK_WIDTHS);
-  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'readonly')).toBe(323);
-  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'editable')).toBe(355);
+  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'readonly')).toBe(276);
+  expect(partyTrackModeWidth(DEFAULT_PARTY_TRACK_WIDTHS,'editable')).toBe(349);
   expect(resolvedPartyTrackWidths(validateItemLayout({
    ...defaultItemLayout(),partyTrackWidths:presets[0]
   }))).toEqual(presets[0]);
@@ -63,7 +63,7 @@ describe('STAGES scoped picker parity contract',()=>{
   expect(readonlyBlock).toContain('font-family:"Segoe UI",system-ui,sans-serif!important;');
   expect(readonlyBlock).not.toContain('font-size:13px!important;');
  });
- it('keeps 76/120px picker labels readable by minimizing horizontal reservations',()=>{
+ it('keeps 55/145px editable picker labels readable by minimizing horizontal reservations',()=>{
   const css=source();
   expect(css).toContain('padding:4px 4px!important;');
   expect(css).toContain('gap:3px!important;');
