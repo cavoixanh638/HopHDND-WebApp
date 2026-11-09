@@ -36,7 +36,7 @@ export const newToolbarState=():ListToolbarState=>({
   details:{partyLevel:'',progressParty:'',progressBuild:'',progressCouncil:'',
     specialist:'',vpLeader:'',ubndLeader:''}
 });
-const searchable:readonly (keyof Item)[]=['displayCode','content','department','room',
+export const SEARCHABLE_ITEM_FIELDS:readonly (keyof Item)[]=['displayCode','content','department','room',
   'specialist','vpLeader','ubndLeader','partyLevel','progressParty','progressBuild',
   'progressCouncil','specificProgress','note','type'];
 export function kindOf(item:Item):ListKind {
@@ -51,7 +51,8 @@ const isWorkflowField=(key:string):key is StatusCatalogField=>
   Object.prototype.hasOwnProperty.call(OFFICIAL_STATUS_CHOICES,key);
 export function filterToolbarRows(
   items:readonly Item[],state:ListToolbarState,
-  customValue?:(item:Item,field:string)=>string
+  customValue?:(item:Item,field:string)=>string,
+  allowedSearchColumns?:readonly string[]
 ):Item[]{
   const needle=normalizeSearch(state.search.trim());
   return items.filter(item=>{
@@ -64,8 +65,11 @@ export function filterToolbarRows(
       return false;
     if(!needle)return true;
     const values=state.field==='all'
-      ?[displayId(item),...searchable.map(key=>effectiveItemField(item,key)),...(customValue
-        ?[customValue(item,'*')]:[])]
+      ?[...(allowedSearchColumns&&!allowedSearchColumns.includes('displayCode')?[]:[displayId(item)]),
+        ...SEARCHABLE_ITEM_FIELDS.filter(key=>!allowedSearchColumns||allowedSearchColumns.includes(key))
+          .map(key=>effectiveItemField(item,key)),
+        ...(customValue&&(!allowedSearchColumns||allowedSearchColumns.includes('*'))
+          ?[customValue(item,'*')]:[])]
       :[...(state.field==='displayCode'?[displayId(item)]:[]),
         state.field in item?effectiveItemField(item,state.field):
         customValue?.(item,state.field)??''];
