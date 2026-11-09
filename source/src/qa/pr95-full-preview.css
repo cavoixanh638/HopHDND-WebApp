@@ -199,3 +199,35 @@
     flex:1 1 auto;width:auto;
   }
 }
+
+
+/* Browser-only A4 and TSV bulk paste controls (original List CSS untouched). */
+.pr95-full-preview .admin-list-print-trigger{min-height:28px;padding:3px 8px;font-size:12px}
+.pr95-full-preview .admin-search-scope,
+.pr95-full-preview .admin-bulk-paste-tools{
+  margin:5px 0;border:1px solid #d9e6e2;border-radius:7px;
+  padding:8px 10px;background:#fff;
+}
+.pr95-full-preview .admin-search-scope>legend{font-size:12px;font-weight:700;color:#243b46}
+.pr95-full-preview .admin-search-scope-options{
+  display:flex;flex-wrap:wrap;gap:5px 12px;margin:5px 0 8px;
+}
+.pr95-full-preview .admin-search-scope-options label{
+  display:inline-flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;
+}
+.pr95-full-preview .admin-search-scope-options input{width:14px;height:14px;margin:0}
+.pr95-full-preview .admin-search-scope small,
+.pr95-full-preview .admin-bulk-paste-tools small{display:block;color:#526672;font-size:11px}
+.pr95-full-preview .admin-bulk-paste-tools button{min-height:28px;margin-bottom:5px}
+.bulk-paste-modal{width:min(880px,95vw);max-height:90vh}
+.bulk-paste-modal .bulk-paste-body{max-height:62vh;overflow:auto}
+.bulk-paste-modal .bulk-paste-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.bulk-paste-modal .bulk-paste-settings select{width:100%;max-width:100%;min-width:0}
+.bulk-paste-modal textarea{width:100%;min-height:140px;resize:vertical;font-family:inherit;font-size:13px}
+.bulk-paste-modal .bulk-paste-review{padding:8px 0}
+.bulk-paste-modal .bulk-paste-review .table-wrap{max-height:260px;overflow:auto}
+.bulk-paste-modal .bulk-paste-review th,.bulk-paste-modal .bulk-paste-review td{
+  font-size:12px;padding:5px 8px;vertical-align:middle;
+}
+.bulk-paste-modal .bulk-paste-cell-text{max-width:310px;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:560px){.bulk-paste-modal .bulk-paste-settings{grid-template-columns:minmax(0,1fr)}}
