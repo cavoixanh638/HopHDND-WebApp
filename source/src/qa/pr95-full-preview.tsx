@@ -14,6 +14,7 @@ import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/statu
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
 import type {CellPermissions} from '../data/firebase-repository';
 import {ItemList} from '../features/items/ItemList';
+import type {BulkPatch} from '../features/items/bulk-paste';
 import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import {ReportTable} from '../features/reports/ReportTable';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
@@ -117,6 +118,26 @@ export function Pr95FullPreview(){
     setDirtyIds(previous=>new Set([...previous,id]));
     if(!admin)setGuestEditCount(v=>v+1);
     setNotice('Đã sửa dữ liệu giả trong bộ nhớ. Tải lại trang sẽ trả về dữ liệu ban đầu.');
+  };
+  const applyBulkRAM=(patches:readonly BulkPatch[])=>{
+    if(!admin)throw Error('Chỉ quản trị viên demo mới được dán hàng loạt.');
+    if(!patches.length)throw Error('Không có ô thay đổi.');
+    const originals=new Map(items.map(item=>[item.recordId,item]));
+    const seen=new Set<string>();
+    for(const patch of patches){
+      const original=originals.get(patch.recordId);
+      if(!original||seen.has(patch.recordId)||original.revision!==patch.baseRevision)
+        throw Error('Dữ liệu đã thay đổi hoặc trùng mã: cần xem trước lại.');
+      seen.add(patch.recordId);
+      const fields=Object.keys(patch.changes) as EditableField[];
+      if(!fields.length||fields.some(field=>!canEdit(patch.recordId,field)))
+        throw Error('Không đủ quyền sửa toàn bộ vùng đã chọn.');
+    }
+    const byId=new Map(patches.map(p=>[p.recordId,p.changes]));
+    setItems(current=>current.map(item=>byId.has(item.recordId)
+      ?{...item,...byId.get(item.recordId),revision:item.revision+1}:item));
+    setDirtyIds(current=>new Set([...current,...patches.map(p=>p.recordId)]));
+    setNotice('Đã áp dụng '+patches.length+' hồ sơ vào RAM; không ghi hệ thống thật.');
   };
   // Escape is handled before the list's own global filter shortcut when gear is open.
   useEffect(()=>{
@@ -300,6 +321,7 @@ export function Pr95FullPreview(){
           canEditDraft canEditCell={canEdit} customizing={page==='items-customize'}
           anonymousViewer={!admin} viewerScope={'pr95-v3-'+role+'-'+sessionScope}
           allowPersonalCompact={false} allowLayout={admin} compactPreview
+          onBulkApply={admin?applyBulkRAM:undefined}
           permissions={admin?permissions:undefined}
           onSavePermissions={admin?savePermissions:undefined}
           onReloadPermissions={admin?async()=>permissions:undefined}
