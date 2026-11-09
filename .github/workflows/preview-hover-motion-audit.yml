@@ -10,6 +10,10 @@ on:
       - source/src/features/items/picker-parity-content.css
       - source/src/features/items/preview-hover-motion.css
       - source/src/qa/pr95-full-preview.css
+      - source/src/qa/pr95-full-preview.tsx
+      - source/src/features/items/ItemList.tsx
+      - source/src/features/items/item-frame.css
+      - source/src/styles/app.css
 jobs:
   hover-motion:
     runs-on: ubuntu-latest
@@ -32,4 +36,8 @@ jobs:
           npx --prefix cell-edit-service playwright install --with-deps chromium
           npm run build:compact:qa
       - name: Probe computed transforms and motion on REAL editable cells
+        run: node scripts/hover-motion-audit-browser.mjs
+      - name: Verify the published GitHub Pages preview has identical motion
+        env:
+          HDND_AUDIT_URL: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/?full=1&preview-role=admin
         run: node scripts/hover-motion-audit-browser.mjs
