@@ -117,3 +117,4 @@ jobs:
             source/qa-results/picker-parity-stages/**
             source/qa-results/picker-parity-content/**
             source/qa-results/ui-20261106-*/**
+            source/qa-results/print-a4/**

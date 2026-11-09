@@ -1,7 +1,8 @@
 /** Real Chromium acceptance for PREVIEW-ONLY clipboard paste, search-column
  * selection and A4 landscape print. Never contacts a production backend. */
 import {createServer} from 'node:http';
-import {readFileSync,statSync} from 'node:fs';
+import {readFileSync,statSync,writeFileSync,mkdirSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
 import {resolve,extname} from 'node:path';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
@@ -89,7 +90,15 @@ try{
       printedColumns:table?.tHead?.rows[0]?.cells.length,
       sourceColumns:document.querySelector('.item-data-table')?.tHead?.rows[0]?.cells.length,
       content:table?.textContent??'',
-      style:document.getElementById('hdnd-a4-print-root-style')?.textContent??''
+      style:document.getElementById('hdnd-a4-print-root-style')?.textContent??'',
+      id:table?.tBodies[0]?.rows[0]?.querySelector('[data-print-kind="displayCode"]')?.textContent?.trim(),
+      codeCol:table?.querySelector('col.hdnd-print-id-col')?.style.width,
+      stages:Array.from(table?.tBodies[0]?.rows[0]?.querySelectorAll('.hdnd-print-stage-row')??[])
+        .map(row=>({label:row.querySelector('.hdnd-print-stage-label')?.textContent?.trim(),
+          status:row.querySelector('.hdnd-print-stage-state')?.textContent?.trim()})),
+      staff:Array.from(table?.tBodies[0]?.rows[0]?.querySelectorAll('.hdnd-print-staff-row')??[])
+        .map(row=>({tag:row.querySelector('.hdnd-print-staff-tag')?.textContent?.trim(),
+          value:row.querySelector('.hdnd-print-staff-value')?.textContent?.trim()}))
     };
   });
   assert.equal(printed.invoked,1,'Print command not invoked');
@@ -98,7 +107,56 @@ try{
   assert.equal(printed.printRows,printed.screenRows,'Printed rows differ from visible table');
   assert.equal(printed.printedColumns,printed.sourceColumns,'Print omitted visible column');
   assert(printed.content.includes('Nội dung QA dán số 1'),'Print did not use updated visible data');
-  assert(printed.style.includes('@page{size:A4 landscape;margin:8mm}'),'Paper size wrong');
+  assert(printed.style.includes('size:A4 landscape;'),'Paper size wrong');
+  assert(printed.style.includes('@page:first{@top-center{content:none}}'),
+    'First-page number suppression missing');
+  assert(printed.style.includes('content:counter(page)'),'Bare page number missing');
+  assert(Number.parseFloat(printed.codeCol)>=5,'ID column not reserved at least 15mm');
+  assert(printed.id&&!printed.id.includes('\n'),'Print ID still splits into lines');
+  assert.equal(printed.stages.length,3,'Three L03 stage rows not reconstructed');
+  assert(printed.stages.every(s=>s.label&&s.status),
+    'Some L03 stage labels or status values lost');
+  assert(printed.stages[0].label.includes('Thành ủy'),'L03 first label changed');
+  assert(printed.stages[1].label.includes('Trình'),'L03 second label changed');
+  assert(printed.stages[2].label.includes('Trình'),'L03 third label changed');
+  assert.deepEqual(printed.staff.map(s=>s.tag),['UBND','VP','Phòng','CV'],
+    'L04 personnel must retain the four labeled rows in web order');
+  assert(printed.staff.every(s=>s.value),'L04 lost a displayed name');
+  await page.emulateMedia({media:'print'});
+  const renderInfo=await page.evaluate(()=>{
+    const c=document.querySelector('#hdnd-a4-print-root td[data-print-kind="displayCode"]');
+    const st=c?getComputedStyle(c):null;
+    return {noWrap:st?.whiteSpace,break:st?.wordBreak};
+  });
+  assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
+  const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
+  const info=spawnSync('pdfinfo',['-'],{input:pdf,encoding:'utf8'});
+  assert.equal(info.status,0,'PDF info failed: '+(info.stderr??''));
+  const pages=Number(info.stdout.match(/^Pages:\s*(\d+)/m)?.[1]??0);
+  assert(pages>=2,'Multipage PDF test requires at least 2 pages');
+  assert(/Page size:\s*84[012]\.?\d* x 59[45]/.test(info.stdout),
+    'Generated PDF not A4 landscape: '+info.stdout);
+  const readPage=index=>{
+    const result=spawnSync('pdftotext',
+      ['-f',String(index),'-l',String(index),'-layout','-','-'],
+      {input:pdf,encoding:'utf8'});
+    assert.equal(result.status,0,'pdftotext failed: '+(result.stderr??''));
+    return result.stdout.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  };
+  const first=readPage(1),secondPage=readPage(2);
+  assert(first[0].includes('Danh sách các ND trình HĐND'),
+    'Page 1 heading lost or unexpected number above title: '+JSON.stringify(first.slice(0,4)));
+  assert.equal(secondPage[0],'2',
+    'Page 2 must start with a BARE number 2: '+JSON.stringify(secondPage.slice(0,6)));
+  if(pages>=3)assert.equal(readPage(3)[0],'3','Page 3 counter not 3');
+  assert(first.join(' ').includes(printed.id),
+    'Canonical first ID broke across lines in physical PDF: '+printed.id);
+  mkdirSync('qa-results/print-a4',{recursive:true});
+  writeFileSync('qa-results/print-a4/hdnd-current-visible-a4.pdf',pdf);
+  const png=spawnSync('pdftoppm',['-f','1','-l','2','-r','100','-png',
+    'qa-results/print-a4/hdnd-current-visible-a4.pdf',
+    'qa-results/print-a4/page'],{encoding:'utf8'});
+  assert.equal(png.status,0,'Unable to render the first two printed pages: '+(png.stderr??''));
   assert(!printed.content.includes('Tổng số nội dung'),'Added a summary into print');
   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Print DOM not cleaned');
@@ -107,7 +165,10 @@ try{
   console.log('HDND_CLIPBOARD_A4_CHROME_PASS '+JSON.stringify({
     initialRows:initial,searchColumns:count,bulkRows:2,
     printRows:printed.printRows,printColumns:printed.printedColumns,paper:'A4 landscape',
-    extraneousPrintElements:0,externalRequests:0
+    extraneousPrintElements:0,externalRequests:0,
+    stageRows:printed.stages.length,staffRows:printed.staff.length,
+    code:printed.id,pageCount:pages,secondPageNumber:secondPage[0],
+    codeColumn:printed.codeCol
   }));
 }finally{
   await context?.close().catch(()=>{});
