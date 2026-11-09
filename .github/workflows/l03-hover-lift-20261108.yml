@@ -74,6 +74,7 @@ jobs:
               source/scripts/picker-parity-stages-browser.mjs|\
               source/scripts/pr95-v6-l4-browser.mjs|\
               source/scripts/pr95-clipboard-print-browser.mjs|\
+              source/scripts/hover-motion-audit-browser.mjs|\
               source/scripts/ui-20261106-tracks-browser.mjs|\
               source/docs/tasks/parallel-20261108-l03-hover/*) ;;
               *) echo "OUT_OF_SCOPE source modification: $file"; exit 1 ;;

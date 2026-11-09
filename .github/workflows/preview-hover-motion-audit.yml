@@ -1,0 +1,35 @@
+name: Preview motion audit - isolated Chromium
+on:
+  push:
+    branches:
+      - ui/20261108-l03-hover-lift-fix
+    paths:
+      - source/scripts/hover-motion-audit-browser.mjs
+      - .github/workflows/preview-hover-motion-audit.yml
+      - source/src/features/items/picker-parity-stages.css
+      - source/src/features/items/picker-parity-content.css
+      - source/src/features/items/preview-hover-motion.css
+      - source/src/qa/pr95-full-preview.css
+jobs:
+  hover-motion:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Build isolated synthetic QA
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install --with-deps chromium
+          npm run build:compact:qa
+      - name: Probe computed transforms and motion on REAL editable cells
+        run: node scripts/hover-motion-audit-browser.mjs
