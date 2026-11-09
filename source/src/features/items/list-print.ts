@@ -193,7 +193,7 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
   const screenCols=Array.from(table.querySelectorAll('colgroup col')).slice(0,headers.length);
   const sizes=screenCols.map(col=>Math.max(1,col.getBoundingClientRect().width));
   const screenHeaders=Array.from(table.tHead?.rows[0]?.cells??[]);
-  const codeIndex=screenHeaders.findIndex(c=>c.getAttribute('data-col-key')==='displayCode');
+  const codeIndex=screenHeaders.findIndex(c=>c.getAttribute('data-column-key')==='displayCode');
   const codeShare=codeIndex<0?0:100*15/(297-16); // 15 mm ID rail on A4 landscape
   const otherTotal=sizes.reduce((total,width,index)=>
     total+(index===codeIndex?0:width),0)||1;
