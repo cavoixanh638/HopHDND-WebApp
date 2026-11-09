@@ -173,32 +173,3 @@ export function createBusinessExcelTemplate():Uint8Array {
   XLSX.utils.book_append_sheet(workbook,sheet,'Du lieu HĐND');
   return new Uint8Array(XLSX.write(workbook,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
 }
-
-/** Exact business A–O export for users (not the internal recordId format). */
-export function createBusinessExcel(items:readonly Item[]):Uint8Array {
-  if(items.length>LIMIT_ROWS)throw Error('Không xuất quá 1.000 hồ sơ.');
-  const seen=new Set<string>();
-  const records:unknown[][]=[[...BUSINESS_HEADERS]];
-  for(const item of items){
-    if(!item.displayCode||seen.has(item.displayCode)||
-      !Number.isSafeInteger(item.stt)||item.stt<1)
-      throw Error('Mã hoặc STT không hợp lệ/trùng, dừng xuất Excel.');
-    seen.add(item.displayCode);
-    records.push([item.displayCode,item.stt,item.content,item.department,item.type,
-      item.partyLevel,item.progressParty,item.progressBuild,item.progressCouncil,
-      item.specialist,item.room,item.vpLeader,item.ubndLeader,item.specificProgress,item.note]);
-  }
-  const sheet=XLSX.utils.aoa_to_sheet(records);
-  for(const [pos,value] of Object.entries(sheet)){
-    if(pos.startsWith('!'))continue;
-    const cell=value as XLSX.CellObject;
-    if(typeof cell.v==='string'){cell.t='s';delete cell.f;}
-  }
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,sheet,'Du lieu HĐND');
-  const output=new Uint8Array(XLSX.write(wb,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
-  const check=parseBusinessExcel(output,'Du lieu HĐND');
-  if(check.count!==items.length||check.items.some((v,i)=>v.displayCode!==items[i].displayCode||
-    v.content!==items[i].content||v.note!==items[i].note))
-    throw Error('Sai khác khi xuất Excel A–O; không cho tải.');
-  return output;
-}
