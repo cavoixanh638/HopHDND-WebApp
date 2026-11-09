@@ -96,6 +96,10 @@ jobs:
           npm run build:compact:qa
           test -s dist/Dashboard_HĐND.html
           test -s dist-compact-qa/compact-qa.html
+      - name: Install PDF page inspection and render utilities
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends poppler-utils
       - name: Real Chromium L03 geometry, palette, permissions and L04 untouched
         run: |
           set -eu
