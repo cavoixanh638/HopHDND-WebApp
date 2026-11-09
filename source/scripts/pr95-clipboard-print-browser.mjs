@@ -130,7 +130,11 @@ try{
   });
   assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
-  const info=spawnSync('pdfinfo',['-'],{input:pdf,encoding:'utf8'});
+  mkdirSync('qa-results/print-a4',{recursive:true});
+  const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';
+  // Always archive the real PDF, even if pagination inspection finds a defect.
+  writeFileSync(pdfPath,pdf);
+  const info=spawnSync('pdfinfo',[pdfPath],{encoding:'utf8'});
   assert.equal(info.status,0,'PDF info failed: '+(info.stderr??''));
   const pages=Number(info.stdout.match(/^Pages:\s*(\d+)/m)?.[1]??0);
   assert(pages>=2,'Multipage PDF test requires at least 2 pages');
@@ -138,8 +142,8 @@ try{
     'Generated PDF not A4 landscape: '+info.stdout);
   const readPage=index=>{
     const result=spawnSync('pdftotext',
-      ['-f',String(index),'-l',String(index),'-layout','-','-'],
-      {input:pdf,encoding:'utf8'});
+      ['-f',String(index),'-l',String(index),'-layout',pdfPath,'-'],
+      {encoding:'utf8'});
     assert.equal(result.status,0,'pdftotext failed: '+(result.stderr??''));
     return result.stdout.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   };
@@ -151,8 +155,6 @@ try{
   if(pages>=3)assert.equal(readPage(3)[0],'3','Page 3 counter not 3');
   assert(first.join(' ').includes(printed.id),
     'Canonical first ID broke across lines in physical PDF: '+printed.id);
-  mkdirSync('qa-results/print-a4',{recursive:true});
-  writeFileSync('qa-results/print-a4/hdnd-current-visible-a4.pdf',pdf);
   const png=spawnSync('pdftoppm',['-f','1','-l','2','-r','100','-png',
     'qa-results/print-a4/hdnd-current-visible-a4.pdf',
     'qa-results/print-a4/page'],{encoding:'utf8'});
