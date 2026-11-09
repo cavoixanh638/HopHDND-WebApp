@@ -5,7 +5,7 @@ import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyTrackWidths,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,PARTY_TRACK_WIDTH_LIMITS,PARTY_TRACK_NAMES } from '../../data/item-preferences';
+import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyTrackWidths,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,PARTY_TRACK_WIDTH_LIMITS,PARTY_TRACK_NAMES } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -47,11 +47,14 @@ import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeP
 import {fitTableColumns} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
 import {summarizeListItems,type SummarySelection} from '../../domain/item-summary';
-import {DETAIL_FIELDS,SEARCH_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
+import {DETAIL_FIELDS,SEARCH_FIELDS,SEARCHABLE_ITEM_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
   exactChoices,shouldClearListOnEscape,
   type ListKind} from './list-toolbar-filters';
 import './list-filter-toolbar.css';
 import {ActiveListFilters} from './ActiveListFilters';
+import {BulkPasteModal} from './BulkPasteModal';
+import type {BulkPatch} from './bulk-paste';
+import {printVisibleListA4} from './list-print';
 import {activeListConditions,activeOtherFilterCount,removeActiveListCondition,
   type ActiveListCondition} from './pr95-v6-l4-active-filters';
 import {useElementWidth} from '../../components/useElementWidth';
@@ -60,7 +63,7 @@ import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,proj
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -93,6 +96,24 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
+  const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
+  const searchStorageKey='hdnd-preview-search-columns:'+sourceKey;
+  const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
+  const [selectedSearchColumns,setSelectedSearchColumns]=useState<string[]>(()=>{
+    if(typeof window==='undefined'||!compactPreview)return searchChoices;
+    try{
+      const saved=JSON.parse(window.localStorage.getItem(searchStorageKey)??'null');
+      if(Array.isArray(saved)&&saved.length&&saved.every((x:unknown)=>typeof x==='string')&&
+         saved.every((x:string)=>searchChoices.includes(x)))
+        return [...new Set(saved)] as string[];
+    }catch{/* settings unavailable, use all columns */}
+    return searchChoices;
+  });
+  useEffect(()=>{
+    if(!compactPreview||typeof window==='undefined')return;
+    try{window.localStorage.setItem(searchStorageKey,JSON.stringify(selectedSearchColumns));}
+    catch{/* browser storage denied, state still works */}
+  },[compactPreview,searchStorageKey,selectedSearchColumns]);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
   const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
@@ -325,7 +346,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
-    }),[columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts]);
+    },compactPreview?selectedSearchColumns:undefined),
+    [columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts,
+      compactPreview,selectedSearchColumns]);
   const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
@@ -730,6 +753,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           onClick={()=>setPreviewOptionsOpen(open=>!open)}>
           {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
         </button>}
+        {compactPreview&&<button type="button" className="button ghost admin-list-print-trigger"
+          aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
+          onClick={()=>{
+            const table=document.querySelector<HTMLTableElement>(
+              '.pr95-full-preview .item-data-region .item-data-table');
+            if(!table){onLayoutSaved('Không có bảng để in.');return;}
+            try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
+              displayedColumns.map(col=>col.label));}
+            catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
+          }}>In / PDF A4</button>}
         <button type="button"
           className="button ghost admin-list-rename-trigger"
           aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
@@ -768,6 +801,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           </button>
           {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
         </form>}
+        {compactPreview&&<fieldset className="admin-search-scope">
+          <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
+          <div className="admin-search-scope-options">
+            {searchChoices.map(key=><label key={key}>
+              <input type="checkbox" aria-label={'Tìm trong '+(
+                key==='*'?'Cột tùy chỉnh':EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key)}
+                checked={selectedSearchColumns.includes(key)}
+                onChange={event=>{
+                  const next=event.currentTarget.checked
+                    ?searchChoices.filter(value=>value===key||selectedSearchColumns.includes(value))
+                    :selectedSearchColumns.filter(value=>value!==key);
+                  if(next.length)setSelectedSearchColumns(next);
+                }}/>
+              <span>{key==='*'?'Cột tùy chỉnh':
+                EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key}</span>
+            </label>)}
+          </div>
+          <button type="button" className="button ghost" onClick={()=>
+            setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
+          <small>Áp dụng khi chọn “Tất cả trường”; lưu trên trình duyệt hiện tại.</small>
+        </fieldset>}
+        {compactPreview&&onBulkApply&&<div className="admin-bulk-paste-tools">
+          <button type="button" className="button ghost" disabled={locked||!rows.length}
+            onClick={()=>setBulkPasteOpen(true)}>Dán nhiều ô từ Excel</button>
+          <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận.</small>
+        </div>}
         <fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
           <legend>Hiện/ẩn thẻ tổng hợp</legend>
           <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
@@ -1072,6 +1131,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
+    {bulkPasteOpen&&compactPreview&&onBulkApply&&<BulkPasteModal rows={rows}
+      canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}
+      onApply={onBulkApply} onClose={()=>setBulkPasteOpen(false)}/>}
     {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={closeGroupLabelEditor}>
       <form className="modal-body group-label-quick-editor" onSubmit={event=>{event.preventDefault();void saveGroupLabels();}}>
         <p className="muted">Chỉ đổi tiêu đề các cột gộp. Không đổi dữ liệu, quyền sửa hoặc tên trường Excel. Bỏ trống để dùng tên mặc định.</p>
