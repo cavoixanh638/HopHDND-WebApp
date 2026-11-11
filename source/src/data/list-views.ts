@@ -81,3 +81,8 @@ export function itemColor(item:Item,rules:ColorRule[]):ColorRule['color']|undefi
   }
   return undefined;
 }
+
+/** One-time retirement hook: stops stale personal presets being reactivated. */
+export function retireActivePersonalListView(source:string):void{
+  saveActiveListView(source,'');
+}
