@@ -23,9 +23,22 @@ export const GROUP_OPTIONS: readonly { key: GroupField; label: string }[] = [
   { key: 'ubndLeader', label: 'Lãnh đạo UBND TP' },
 ];
 
+/** Official V3 menus. Stored Item fields retain their original text; the
+ * domain status contract interprets recognized old values at read time only.
+ * partyLevel is a catalog (not a StatusField or a new backend schema field).
+ */
+export const PARTY_LEVEL_OPTIONS:readonly string[]=[
+  'TTTU','BTV TU','BCH','Không phải trình'
+];
 export const STATUS_OPTIONS: Record<StatusField, string[]> = {
-  progressParty: ['Sở chưa trình', 'VP đang thực hiện', 'Đã gửi ĐU', 'ĐU đã gửi TU, chưa họp', 'Đã họp/xin phiếu, chưa có TBKL', 'Đã có TBKL', 'Không phải xin ý kiến'],
-  progressBuild: ['Không phải trình xây dựng NQ', 'Sở chưa trình', 'VP đang thực hiện', 'Đã trình HĐND, chưa có QĐ', 'Đã có QĐ chấp thuận'],
-  progressCouncil: ['Sở chưa trình', 'VP đang thực hiện', 'Hoàn thành'],
+  progressParty: [
+    'Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+    'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'
+  ],
+  progressBuild: [
+    'Không phải trình','Sở chưa trình','VP đang xử lý',
+    'Đã trình, chờ QĐ','Đã có QĐ'
+  ],
+  progressCouncil: ['Sở chưa trình','VP đang xử lý','Hoàn thành'],
 };
 

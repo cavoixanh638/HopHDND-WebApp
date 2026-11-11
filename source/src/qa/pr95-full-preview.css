@@ -1,0 +1,116 @@
+/* PR95 UI V3 / L5. Synthetic preview shell only; no App or shared theme changes. */
+.pr95-full-preview{min-height:100dvh;padding-bottom:24px}
+.pr95-full-preview .pr95-preview-header{
+  position:relative;display:block;height:72px;min-height:72px;margin:0;
+  padding:10px 20px;background:transparent;border:0;
+}
+.pr95-preview-product{position:absolute;left:20px;top:25px;white-space:nowrap;
+  font-size:12px;font-weight:750;color:#426271}
+.pr95-preview-product span{font-size:10px;font-weight:600;margin-left:5px;color:#647c87}
+.pr95-full-preview .pr95-preview-nav{
+  display:flex;gap:12px;max-width:920px;margin:0 auto;padding:0;align-items:stretch;
+  border:0;background:none;
+}
+.pr95-full-preview .pr95-preview-nav .primary-section-card{
+  flex:1 1 0;min-width:0;height:50px;min-height:50px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:0 20px;border:1px solid #cbdde7;border-radius:12px;
+  background:#f3f8fc;color:#315e7b;text-align:left;box-shadow:none;
+}
+.pr95-full-preview .pr95-preview-nav .primary-section-card.active{
+  background:linear-gradient(105deg,#2a5e7a,#326f91);border-color:#2a607d;color:white;
+}
+.pr95-full-preview .pr95-preview-nav .primary-section-card:not(.active):hover{
+  background:#eaf2f8;
+}
+.pr95-full-preview .pr95-preview-nav .section-card-copy{min-width:0}
+.pr95-full-preview .pr95-preview-nav .section-card-title{
+  display:block;font-size:16px;line-height:1.25;font-weight:700;
+}
+.pr95-full-preview .pr95-preview-nav .section-card-state{
+  flex:none;white-space:nowrap;font-size:11px;font-weight:600;
+  color:inherit;border:1px solid #ffffff52;border-radius:16px;
+  padding:3px 10px;background:#ffffff14;
+}
+.pr95-preview-gear-zone{position:absolute;right:20px;top:10px;z-index:30}
+.pr95-preview-gear{display:grid;place-items:center;width:34px;height:34px;
+  background:#fff;border:1px solid #d8e2de;border-radius:8px;color:#52717e;
+  padding:0;font-size:18px;line-height:1;cursor:pointer}
+.pr95-preview-gear:hover,.pr95-preview-gear[aria-expanded=true]{
+  background:#eaf1f5;border-color:#b7cdd9}
+.pr95-full-preview .pr95-preview-gear:focus-visible,
+.pr95-full-preview .pr95-preview-nav button:focus-visible,
+.pr95-preview-gear-menu button:focus-visible{outline:2px solid #356c8b;outline-offset:2px}
+.pr95-preview-gear-menu{position:absolute;top:41px;right:0;width:260px;
+  background:#fff;border:1px solid #dce5e0;border-radius:9px;
+  padding:6px;box-shadow:0 9px 30px #2547561a;z-index:40}
+.pr95-preview-gear-menu button{display:flex;align-items:center;min-height:36px;width:100%;
+  text-align:left;border:0;border-radius:5px;background:transparent;color:#355768;
+  padding:7px 9px;font-size:13px;font-weight:550;cursor:pointer}
+.pr95-preview-gear-menu button:hover{background:#eff4f6}
+.pr95-preview-menu-user{margin:0 0 5px;padding:7px 9px 10px;
+  border-bottom:1px solid #edf0ee;color:#657781;font-size:11px}
+.pr95-preview-menu-user strong{display:block;font-size:13px;color:#294957}
+.pr95-preview-menu-footer{border-top:1px solid #edf0ee;margin-top:4px;padding-top:4px}
+.pr95-full-preview .pr95-preview-main{
+  width:auto;max-width:1720px;box-sizing:border-box;margin:0 16px;
+  background:#fff;border:1px solid #dce5e0;border-radius:12px;
+  padding:11px 14px 10px;min-height:300px;
+}
+.pr95-preview-main>section{min-width:0}
+.pr95-preview-context{display:flex;flex-wrap:wrap;gap:6px 17px;
+  margin:0 0 9px;padding:4px 1px 9px;border-bottom:1px solid #e5ece8;
+  color:#59727e;font-size:11px}
+.pr95-preview-section-heading{display:flex;justify-content:space-between;
+  align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+.pr95-preview-section-heading h2,.pr95-preview-main h2{
+  font-size:17px;margin:4px 0 9px;line-height:1.35}
+.pr95-preview-section-heading label{display:flex;align-items:center;gap:8px}
+.pr95-preview-section-heading small{font-size:11px;color:#637b85}
+.pr95-preview-main .pr95-preview-notice{margin:0 0 8px}
+.pr95-preview-unsaved{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin:4px 0 8px;padding:7px 10px;border:1px solid #d2e1e8;
+  border-radius:7px;background:#f0f5f8;font-size:12px}
+.pr95-preview-unsaved>div{display:flex;gap:7px;flex-wrap:wrap}
+.pr95-preview-unsaved button{border:1px solid #cbdbe3;border-radius:5px;
+  background:white;padding:5px 10px;cursor:pointer}
+.pr95-preview-unsaved button:last-child{background:#356c8b;border-color:#356c8b;color:white}
+.pr95-preview-footnote{display:flex;justify-content:space-between;gap:12px;
+  border-top:1px solid #eef1ef;margin-top:12px;padding:8px 1px 0;
+  color:#617783;font-size:11px}
+.pr95-preview-file-state,.pr95-preview-file-result{padding:10px 0}
+.pr95-preview-excel .field{max-width:520px}
+.pr95-preview-file-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.pr95-preview-file-result .table-wrap{max-height:360px;overflow:auto}
+.pr95-full-preview .report-surface{margin-bottom:18px}
+/* Shared baseline currently mounts a view-only local resize handle for guest.
+   QA preview suppresses its pointer AND keyboard affordance until L1's App guard
+   is integrated. It cannot persist any shared layout (no persistence callbacks). */
+.pr95-full-preview[data-role=guest] .item-data-table .column-resizer,
+.pr95-full-preview[data-role=guest] .report-detail-grid .column-resizer{display:none!important}
+.pr95-full-preview[data-role=guest] .guest-compact-menu-bar:empty{display:none}
+@media(max-width:1250px){
+  .pr95-preview-product{display:none}
+  .pr95-full-preview .pr95-preview-nav{max-width:820px;margin-left:auto;margin-right:50px}
+  .pr95-full-preview .pr95-preview-nav .section-card-title{font-size:14px}
+}
+@media(max-width:900px){
+  .pr95-full-preview .pr95-preview-header{height:69px;min-height:69px;padding:10px 14px}
+  .pr95-preview-gear-zone{right:14px}
+  .pr95-full-preview .pr95-preview-nav{max-width:calc(100% - 48px);
+    margin:0 48px 0 0;gap:8px}
+  .pr95-full-preview .pr95-preview-nav .primary-section-card{
+    height:48px;min-height:48px;padding:0 11px;border-radius:9px}
+  .pr95-full-preview .pr95-preview-nav .section-card-state{display:none}
+  .pr95-full-preview .pr95-preview-main{margin:0 10px;padding:9px 10px}
+}
+@media(max-width:640px){
+  .pr95-full-preview .pr95-preview-nav .section-card-title{font-size:12px;
+    overflow-wrap:normal;white-space:normal;line-height:1.25}
+  .pr95-full-preview .pr95-preview-nav .primary-section-card{padding:0 8px}
+  .pr95-preview-section-heading h2{font-size:15px}
+  .pr95-preview-context{font-size:11px}
+  .pr95-preview-unsaved{align-items:flex-start;flex-direction:column}
+  .pr95-preview-footnote{flex-direction:column;gap:2px}
+  .pr95-preview-gear-menu{width:min(260px,calc(100vw - 28px))}
+}

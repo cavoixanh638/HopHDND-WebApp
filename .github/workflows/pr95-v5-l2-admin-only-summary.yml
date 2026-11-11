@@ -1,0 +1,58 @@
+name: PR95 V5 L2 — admin-only summary diagnostics (isolated App + Chrome)
+on:
+  pull_request:
+    paths:
+      - 'source/src/features/items/ItemSummaryCards.tsx'
+      - 'source/src/features/items/summary-diagnostic-visibility.tsx'
+      - 'source/src/app/App.tsx'
+      - 'source/src/qa/pr95-full-preview.tsx'
+      - 'source/tests/pr95-v5-l2-*'
+      - 'source/scripts/pr95-v5-l2-*'
+      - '.github/workflows/pr95-v5-l2-admin-only-summary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verified-admin-only-summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install exact project dependencies
+        run: npm ci
+      - name: Verify frozen public props/role context typecheck
+        run: npm run typecheck
+      - name: SSR role/context, unknown QPPL, 4-4-3 counts, chips and filter IDs
+        run: npm exec -- vitest run tests/pr95-v5-l2-admin-summary-diagnostics.test.tsx tests/item-summary.test.ts tests/pr95-ui-v2-l1-summary-render.test.tsx tests/pr95-ui-v3-l5-preview-shell.test.ts
+      - name: Build real ItemList/summary component in-memory QA
+        run: npm run build:compact:qa
+      - name: Real Chrome full synthetic preview - guest to admin to logout, mouse and filters
+        run: node scripts/pr95-v5-l2-summary-preview-browser.mjs
+      - name: Build isolated REAL App with Firebase Auth/RTDB Emulator config
+        run: npm run build:pages:test
+      - name: Real App verified admin, anonymous editable guest and logout (local Emulator only)
+        run: node scripts/pr95-v5-l2-real-app-browser.mjs
+      - name: Preserve independently captured role-transition screenshots (NO publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v5-l2-guest-admin-screens
+          path: |
+            source/pr95-v5-l2-*.png
+            source/pr95-v5-l2-real-app-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 14

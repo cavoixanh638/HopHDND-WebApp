@@ -1,0 +1,42 @@
+name: PR95 RTDB network ACK loss - isolated Emulator
+on:
+  pull_request:
+    paths:
+      - "source/scripts/pr95-network-ack-proxy.mjs"
+      - "source/scripts/run-pr95-network-ack-loss.mjs"
+      - "source/tests/pr95-network-ack-loss.test.ts"
+      - "source/src/data/firebase-versioned-replacement.ts"
+      - ".github/workflows/pr95-network-ack-loss.yml"
+      - "source/src/app/App.tsx"
+      - "source/src/state/use-firebase.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  network-ack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pinned dependencies (never deploy)
+        run: npm ci
+      - name: Syntax-check real WebSocket frame proxy and isolated runner
+        run: |
+          node --check scripts/pr95-network-ack-proxy.mjs
+          node --check scripts/run-pr95-network-ack-loss.mjs
+      - name: Test independent server COMMITTED witness and actual server-to-SDK ACK loss
+        run: node scripts/run-pr95-network-ack-loss.mjs

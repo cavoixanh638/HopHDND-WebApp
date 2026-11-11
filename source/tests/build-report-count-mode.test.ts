@@ -4,12 +4,13 @@ import {createDemoItems} from '../src/data/demo-items';
 import {configuredReports,defaultReportLayout,validateReportLayout,reportHiddenColumns} from '../src/data/report-preferences';
 
 const build=DEFAULT_REPORTS.find(report=>report.id==='build')!;
+// Scope test is about explicit QPPL milestones; new V5 HC/BC exclusion has independent negative tests.
 const fixture=()=>{
   const [a,b,c]=createDemoItems(3);
   return [
-    {...a,documentKind:'NQ' as const,progressBuild:'Không phải trình',isDropped:false,archivedAt:null},
-    {...b,documentKind:'NQ' as const,progressBuild:'Sở chưa trình',isDropped:false,archivedAt:null},
-    {...c,documentKind:'NQ' as const,progressBuild:'Đã có QĐ chấp thuận',isDropped:false,archivedAt:null},
+    {...a,documentKind:'NQ' as const,type:'QPPL',progressBuild:'Không phải trình',isDropped:false,archivedAt:null},
+    {...b,documentKind:'NQ' as const,type:'QPPL',progressBuild:'Sở chưa trình',isDropped:false,archivedAt:null},
+    {...c,documentKind:'NQ' as const,type:'QPPL',progressBuild:'Đã có QĐ chấp thuận',isDropped:false,archivedAt:null},
   ];
 };
 describe('Build NQ excludes non-required items by default without touching the source',()=>{

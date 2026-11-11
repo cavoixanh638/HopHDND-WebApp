@@ -1,0 +1,63 @@
+name: PR95 UI V5 L4 HC-BC Build effective (NO PUBLISH)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pr95-v5-l4-hc-bc.yml'
+      - 'source/src/domain/pr95-v5-l4-build-effective.ts'
+      - 'source/src/domain/reporting.ts'
+      - 'source/src/domain/item-summary.ts'
+      - 'source/src/features/items/status-display.ts'
+      - 'source/src/features/items/list-toolbar-filters.ts'
+      - 'source/src/features/items/ItemList.tsx'
+      - 'source/src/features/reports/ReportDetailGrid.tsx'
+      - 'source/src/components/SharedEditTooltip.ts'
+      - 'source/src/data/demo-items.ts'
+      - 'source/tests/pr95-v5-l4-hc-bc-build.test.ts'
+      - 'source/scripts/pr95-v5-l4-browser.mjs'
+      - 'source/scripts/pr95-v5-l4-full-preview-regression.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hc-bc-effective:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install locked dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck entire app
+        working-directory: source
+        run: npm run typecheck
+      - name: HC BC legacy effective status / filter / report / UI guard unit tests
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-v5-l4-hc-bc-build.test.ts tests/reporting.test.ts tests/item-summary.test.ts tests/pr95-ui-v4-l4-current-demo.test.ts
+      - name: Build actual synthetic UI
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chrome HC BC guard and accessible tooltip screenshots
+        working-directory: source
+        run: node scripts/pr95-v5-l4-browser.mjs
+      - name: Full preview Chrome RAM / roles / A-O regression
+        working-directory: source
+        run: |
+          node scripts/package-compact-qa.mjs
+          node scripts/pr95-v5-l4-full-preview-regression.mjs
+      - name: Keep real Chrome evidence (NO publish/deploy)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v5-l4-chrome-hc-bc-build
+          path: |
+            source/pr95-v5-l4-*.png
+          if-no-files-found: warn
+          retention-days: 14

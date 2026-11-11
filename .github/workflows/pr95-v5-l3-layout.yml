@@ -1,0 +1,47 @@
+name: PR95 UI V5 L3 — grouped cell layout (isolated synthetic Chrome)
+on:
+  pull_request:
+    paths:
+      - 'source/src/features/items/CompactGroupedValue.tsx'
+      - 'source/src/features/items/item-frame.css'
+      - 'source/tests/pr95-v5-l3-layout.test.tsx'
+      - 'source/scripts/pr95-v5-l3-layout-browser.mjs'
+      - '.github/workflows/pr95-v5-l3-layout.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v5-l3-isolated-visual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install frozen dependencies
+        working-directory: source
+        run: npm ci
+      - name: Typecheck
+        working-directory: source
+        run: npm run typecheck
+      - name: Test V5 L3 and unchanged V4 grouping contracts
+        working-directory: source
+        run: npm exec -- vitest run tests/pr95-v5-l3-layout.test.tsx tests/pr95-ui-v4-l2-status-hit-area.test.tsx tests/pr95-ui-v4-l1-status-display.test.tsx
+      - name: Build synthetic UI only
+        working-directory: source
+        run: |
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chrome first-line, border, radius, caret, read-only and narrow geometry
+        working-directory: source
+        run: node scripts/pr95-v5-l3-layout-browser.mjs
+      - name: Preserve desktop, narrow, mobile and popup evidence without publishing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr95-v5-l3-visual-geometry
+          path: source/pr95-v5-l3-*.png
+          if-no-files-found: warn
+          retention-days: 14

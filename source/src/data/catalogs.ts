@@ -1,13 +1,12 @@
 import type { Item, TextField } from '../../shared/types';
-import { STATUS_OPTIONS } from '../../shared/field-definitions';
-import { PARTY_STATUS_ALIASES } from '../domain/reporting';
-// Source options were renamed in the latest Excel. Saved dropdown choices,
-// unlike source cells, can be migrated safely to the new canonical label.
-const PARTY_CATALOG_ALIASES:Readonly<Record<string,string>>={
-  ...PARTY_STATUS_ALIASES,
-  'TU đã cho ý kiến':'Đã có TBKL',
-  'Đã báo cáo TU':'Đã có TBKL',
-};
+import {OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../domain/status-contract';
+
+/** The four workflow catalogs are an authoritative ordered menu, not a union
+ * of old saved profile choices or arbitrary source labels. The current value
+ * still displays unchanged in its own ItemList editor (selected value).
+ */
+const isWorkflowCatalog=(key:CatalogKey):key is StatusCatalogField=>
+  Object.prototype.hasOwnProperty.call(OFFICIAL_STATUS_CHOICES,key);
 export type CatalogKey = Exclude<TextField, 'content' | 'note'>;
 export const CATALOG_KEYS: CatalogKey[] = ['department','type','partyLevel','progressParty','progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress'];
 export interface CatalogConfig { options: Record<CatalogKey, string[]>; specialistRooms: Record<string, string[]> }
@@ -33,10 +32,10 @@ const uniqueChoices=(values:Iterable<unknown>):string[]=>{
 };
 
 export function catalogFromItems(items: Item[]): CatalogConfig {
-  const options=Object.fromEntries(CATALOG_KEYS.map(key=>[key,uniqueChoices([
-    ...(key in STATUS_OPTIONS ? STATUS_OPTIONS[key as keyof typeof STATUS_OPTIONS]:[]),
-    ...items.map(item=>key==='progressParty'?PARTY_CATALOG_ALIASES[item[key]]??item[key]:item[key])
-  ])])) as CatalogConfig['options'];
+  const options=Object.fromEntries(CATALOG_KEYS.map(key=>[key,
+    isWorkflowCatalog(key)?[...OFFICIAL_STATUS_CHOICES[key]]:
+      uniqueChoices(items.map(item=>item[key]))
+  ])) as CatalogConfig['options'];
   const specialistRooms:Record<string,string[]>=Object.create(null);
   const findCanonical=(choices:string[],value:string)=>choices.find(choice=>
     choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
@@ -84,20 +83,12 @@ export function validateCatalog(value: unknown): CatalogConfig {
 const key = (source:string) => `hdnd.catalogs.v1:${source}`;
 export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfig {
   const saved=validateCatalog(value),observed=catalogFromItems(items);
-  // Migrate only recognizably old Party lists. The newly supported BTV/TU
-  // milestones come from the Excel Sheet2 legend, including its punctuation.
-  // Do not re-add manually removed presets to an already migrated profile.
-  const partyOptions=saved.options.progressParty;
-  const isLegacy=partyOptions.some(value=>Object.hasOwn(PARTY_CATALOG_ALIASES,value));
-  saved.options.progressParty=uniqueChoices([
-    ...partyOptions.map(value=>PARTY_CATALOG_ALIASES[value]??value),
-    ...(isLegacy?['Đã có TBKL']:[]),
-  ]);
-  // Include valid source values, but never reintroduce deleted status presets.
-  // Comparing trimmed values avoids duplicate dropdowns after a Sheets refresh.
+  // A saved pre-V3 profile may contain obsolete labels; do not let a
+  // profile/read-refresh bring those back as selectable official statuses.
+  // This is a *projection* of choices, not a Firebase/profile migration.
   for(const key of CATALOG_KEYS)
-    saved.options[key]=uniqueChoices([...saved.options[key],
-      ...items.map(item=>key==='progressParty'?PARTY_CATALOG_ALIASES[item[key]]??item[key]:item[key])]);
+    saved.options[key]=isWorkflowCatalog(key)?[...OFFICIAL_STATUS_CHOICES[key]]:
+      uniqueChoices([...saved.options[key],...items.map(item=>item[key])]);
   const canonical=(choices:string[],value:string)=>choices.find(choice=>
     choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));
   for(const [observedPerson,observedRooms] of Object.entries(observed.specialistRooms)){

@@ -1,0 +1,47 @@
+name: PR95 V5 L5 — HC BC Build RTDB write guard (Emulator only)
+on:
+  pull_request:
+    paths:
+      - "source/src/data/firebase-repository.ts"
+      - "source/src/data/pr95-v5-l5-progress-build-policy.ts"
+      - "source/firebase/database.exclusive-candidate.rules.json"
+      - "source/tests/pr95-v5-l5-progress-build-write-guard.test.ts"
+      - ".github/workflows/pr95-v5-l5-progress-build-emulator.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v5-l5-security:
+    name: Real SDK grant/lease/audit + V2 replacement Emulator regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: TypeScript source and test imports
+        run: npm run typecheck
+      - name: Ensure the RTDB test is NEVER silently skipped
+        run: |
+          node -e "const fs=require('node:fs');const text=fs.readFileSync('tests/pr95-v5-l5-progress-build-write-guard.test.ts','utf8');if(!text.includes('describe.skipIf(!enabled)') || !text.includes('FIREBASE_DATABASE_EMULATOR_HOST'))process.exit(1);"
+      - name: SDK + repo + immutable legacy + replacement in local Auth and RTDB Emulator
+        run: >
+          node node_modules/firebase-tools/lib/bin/firebase.js emulators:exec
+          --project demo-hdnd --only database,auth --config firebase.staging.json
+          "node node_modules/vitest/vitest.mjs run
+          tests/pr95-v5-l5-progress-build-write-guard.test.ts
+          tests/firebase-versioned-replacement.test.ts
+          tests/pr95-independent-rules.test.ts
+          tests/exclusive-cell-freeze.test.ts --no-file-parallelism"
