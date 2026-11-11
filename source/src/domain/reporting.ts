@@ -101,12 +101,22 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
 }
 export function getKpis(items: Item[]) {
   const active = items.filter(isActive);
-  const count = (value: string) => active.filter(i => canonical(i.progressCouncil.trim() || 'Sở chưa trình') === canonical(value)).length;
+  // The list KPI and the Council/NQ/BC report must count the same canonical
+  // Council completion, including legacy "Hoàn thành" and other saved aliases.
+  const council = DEFAULT_REPORTS.find(config => config.id === 'council')!;
+  let pending = 0, doing = 0, completed = 0;
+  for (const item of active) {
+    const status = canonical(normalizeReportStatus(item.progressCouncil, council));
+    if (status === canonical('Sở chưa trình')) pending++;
+    else if (status === canonical('VP đang thực hiện')) doing++;
+    else if (status === canonical('Đã trình HĐND thành phố')) completed++;
+    // Unrecognized states remain unclassified, never counted as completed.
+  }
   return {
     total: active.length,
     nq: active.filter(i => i.documentKind === 'NQ').length,
     bc: active.filter(i => i.documentKind === 'BC').length,
     unclassified: active.filter(i => i.documentKind === 'UNCLASSIFIED').length,
-    pending: count('Sở chưa trình'), doing: count('VP đang thực hiện'), completed: count('Hoàn thành'),
+    pending, doing, completed,
   };
 }

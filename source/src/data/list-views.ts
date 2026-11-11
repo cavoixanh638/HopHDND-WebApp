@@ -81,3 +81,8 @@ export function itemColor(item:Item,rules:ColorRule[]):ColorRule['color']|undefi
   }
   return undefined;
 }
+
+/** Retire only the active personal preset, never erase saved presets or colors. */
+export function clearActivePersonalView(source:string):void{
+  saveActiveListView(source,'');
+}
