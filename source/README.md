@@ -1,3 +1,5 @@
+> **Chuyển giao AI ngày 31/10/2026:** xem [Hồ sơ tri thức PR95/UI V2–V6](docs/tasks/HOPHDND_HANDOFF_2026-10-31.md). Preview công khai V5 chỉ synthetic, PR95 Draft/unmerged, năm worker V6 cần ghép và Codex nghiệm thu riêng. Các mô tả phiên bản cũ bên dưới được giữ để tra cứu lịch sử.
+
 ## Chỉ đạo phạm vi 25/10/2026 — WebApp/Firebase là hệ thống duy nhất sau cutover
 Tài liệu có hiệu lực: [Firebase-only](docs/decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md). Nhân viên đang dùng file Sheet chỉ là **giai đoạn chuyển tiếp trong khi WebApp chưa hoàn thiện**. Sau cutover, tất cả xem/sửa/nhập và báo cáo **duy nhất qua WebApp**, `hdnd/items` là nguồn dữ liệu chính, không dùng đồng bộ Sheets lâu dài. Chỉ nhập dữ liệu khởi tạo **một lần khi phát hành**; các cảnh báo mirror 55/57 trước đây không phải blocker coding. PR #71/#72 đang Draft, production chưa kích hoạt.
 

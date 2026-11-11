@@ -1,3 +1,9 @@
+## BÀN GIAO MỚI NHẤT 31/10/2026 — PR95 / UI V2–V6 (docs-only)
+
+Đọc [HOPHDND_HANDOFF_2026-10-31](docs/tasks/HOPHDND_HANDOFF_2026-10-31.md) và [WORKBOARD](docs/WORKBOARD.md) trước khi làm PR95. Snapshot: PR95 Draft V5 HEAD c79da8f34e0cb1f774cf1b73f5eff31b65b727f2; Pages chỉ có synthetic V5; năm worker V6 đã Codex VERIFIED riêng nhưng **candidate chưa nghiệm thu**. [Codex giao L1 ghép đúng 5 SHA](https://github.com/cavoixanh638/HopHDND-WebApp/pull/95#issuecomment-6544932225). Giữ mọi release gate, không tự merge/publish/deploy hoặc production IO. Trước khi làm tiếp fetch exact HEAD/CI mới; hồ sơ này là snapshot, không thay nguồn nghiệp vụ và nhật ký cũ.
+
+---
+
 ## OWNER DIRECTIVE — 29/10/2026: Adjacent-first manual column resize (PR #92, Lượt 019)
 
 **This instruction supersedes only the 23/10 rule below requiring the last visible column to compensate every drag.** Keep all other restrictions and release gates unchanged.

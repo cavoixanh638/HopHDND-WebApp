@@ -1,3 +1,5 @@
+> **CHECKPOINT 31/10/2026:** [Hồ sơ tri thức/bàn giao UI V2–V6 và PR95](tasks/HOPHDND_HANDOFF_2026-10-31.md) tổng hợp latest exact SHA/PR/CI, hai finding Codex đã VERIFIED, năm worker V6 và việc tích hợp còn mở. PR95 Draft, preview V5 synthetic, V6 candidate và Firebase production **chưa nghiệm thu**. Chỉ dẫn bổ sung này không ghi đè hoặc xóa nhật ký lịch sử bên dưới; xem WORKBOARD để biết người nhận việc.
+
 ## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
 
 Khách vào web không cần đăng nhập Google; Firebase **Anonymous Auth** tự xác thực nền. Admin bật quyền theo cột/dòng/ô, khách chỉ sửa những trường đã được mở quyền khi dùng Firebase **primary**, không bị khóa và có lease; khách không được sửa cấu hình/duyệt UID/chuyển nguồn. Popup guest giữ giao diện gọn nhưng hiện nút sửa ô được cấp. `hdnd/editors/{UID}` là luồng nhân viên Google riêng, không áp dụng cho khách ẩn danh.

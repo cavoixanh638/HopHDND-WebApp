@@ -1,3 +1,5 @@
+> **Hồ sơ bàn giao hiện hành 31/10/2026:** [HOPHDND_HANDOFF_2026-10-31](tasks/HOPHDND_HANDOFF_2026-10-31.md) là điểm vào cho AI/luồng mới, PR92/PR95, UI V2–V6, SHA/CI/decision và backlog. Đọc cùng WORKBOARD; các mục cũ phía dưới là lịch sử/đặc tả tại thời điểm ghi, không tự coi production GO.
+
 ## BÀN GIAO SCOPE FIREBASE-ONLY — 25/10/2026
 Theo [quyết định kiến trúc](decisions/FIREBASE_ONLY_POST_CUTOVER_2026-10-25.md), PR #71/#72 chỉ được nghiệm thu khi WebApp sử dụng Firebase chính cho toàn bộ nghiệp vụ; không yêu cầu Google Sheet sau cutover. Nhân viên hiện còn làm trên Sheet là biện pháp chuyển tiếp, không phải mục tiêu kỹ thuật. Checklist bàn giao production cần có một lần chốt/import dữ liệu nhân viên đang làm, test khả năng khôi phục và chứng nhận Rules, không truy đuổi lịch sử snapshot 55/57 trong lúc code.
 
