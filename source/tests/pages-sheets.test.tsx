@@ -410,7 +410,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='div'&&n.props?.className==='options-popover')).toBe(true);
-    tree=open('Excel · Trích xuất');
+    tree=open('Nhập Excel');
     expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&n.props.className==='options-menu')).toBe(true);
   });
@@ -426,9 +426,14 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=open('Danh sách dữ liệu');
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
-  it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
-    firebase.isAdmin=true;render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
-    open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
-    const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
+  it('shows a Firebase Excel preflight without exposing a Google Sheets source switch or data replace',async()=>{
+    firebase.isAdmin=true;render();respond();await settle();
+    const account=open('Tài khoản và dữ liệu');
+    expect(nodes(account).filter(n=>n.type==='button').some(n=>text(n)==='Google Sheets')).toBe(false);
+    const tree=open('Nhập Excel'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);
+    expect(panel).toBeDefined();
+    expect(panel.props.importEnabled).toBe(false);
+    expect(panel.props.replacementEnabled).toBe(false);
+    await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');
   });
 });
