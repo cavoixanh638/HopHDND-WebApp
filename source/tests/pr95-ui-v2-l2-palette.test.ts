@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {describe,expect,it} from 'vitest';
 import {defaultStatusPalette,statusPaletteCssVariables} from '../src/data/status-palettes';
 
-const frame=readFileSync(new URL('../src/features/items/item-frame.css',import.meta.url),'utf8');
+const frame=readFileSync(new URL('../src/features/items/item-frame.css',import.meta.url),'utf8').replace(/\r\n/g,'\n');
 const app=readFileSync(new URL('../src/styles/app.css',import.meta.url),'utf8');
 const summary=readFileSync(new URL('../src/features/items/ItemSummaryCards.tsx',import.meta.url),'utf8');
 

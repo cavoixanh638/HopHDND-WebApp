@@ -7,10 +7,10 @@ import {handleParentAction} from './commit.mjs';
 const ADMIN_EMAIL='cavoixanh638@gmail.com';
 const MAX_BODY=8*1024;
 const project=()=>process.env.GCLOUD_PROJECT||process.env.GCP_PROJECT||process.env.FIREBASE_PROJECT_ID;
-const authApp=()=>{
+const authApp=credential=>{
   const id=project();
   if(!id)throw Error('PARENT_BACKEND_CONFIG_MISSING projectId');
-  return getApps().find(a=>a.name==='parent-auth')??initializeApp({projectId:id},'parent-auth');
+  return getApps().find(a=>a.name==='parent-auth')??initializeApp({projectId:id,...(credential?{credential}:{})},'parent-auth');
 };
 const json=(res,code,body,origin)=>{
   if(origin){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
@@ -44,7 +44,7 @@ function verifiedGoogleAdmin(decoded){
  * databaseAuthVariableOverride MUST be shown by Emulator witness to be
  * subject to FULL RTDB Rules. A plain privileged Admin SDK write is forbidden.
  */
-function scopedDatabase(decoded){
+function scopedDatabase(decoded,credential){
   const p=project();
   const databaseURL=process.env.PARENT_DATABASE_URL??`https://${p}-default-rtdb.firebaseio.com`;
   if(process.env.FIREBASE_DATABASE_EMULATOR_HOST&&!p.startsWith('demo-'))
@@ -54,11 +54,11 @@ function scopedDatabase(decoded){
     firebase:{sign_in_provider:decoded.firebase.sign_in_provider},
     parentCasService:true
   }};
-  const app=initializeApp({projectId:p,databaseURL,databaseAuthVariableOverride:override},
+  const app=initializeApp({projectId:p,databaseURL,databaseAuthVariableOverride:override,...(credential?{credential}:{})},
     'parent-scoped-'+randomUUID());
   return {app,db:getDatabase(app)};
 }
-export async function handleParentRequest(req,res){
+export async function handleParentRequest(req,res,operatorOptions=undefined){
   const origin=req.headers.origin;
   const allowOrigin=allowableOrigin(origin);
   if(origin&&!allowOrigin){json(res,403,{error:'ORIGIN_DENIED'},null);return;}
@@ -83,7 +83,7 @@ export async function handleParentRequest(req,res){
     json(res,401,{error:'MISSING_FIREBASE_ID_TOKEN'},allowOrigin);return;
   }
   let claims;
-  try {claims=await getAuth(authApp()).verifyIdToken(auth.slice(7),true);}
+  try {claims=await getAuth(authApp(operatorOptions?.credential)).verifyIdToken(auth.slice(7),true);}
   catch{json(res,401,{error:'INVALID_FIREBASE_ID_TOKEN'},allowOrigin);return;}
   if(!verifiedGoogleAdmin(claims)){
     json(res,403,{error:'VERIFIED_GOOGLE_ADMIN_REQUIRED'},allowOrigin);return;
@@ -93,7 +93,7 @@ export async function handleParentRequest(req,res){
   catch(error){json(res,error.statusCode??400,{error:'INVALID_REQUEST_BODY'},allowOrigin);return;}
   let scoped;
   try{
-    scoped=scopedDatabase(claims);
+    scoped=scopedDatabase(claims,operatorOptions?.credential);
     const result=await handleParentAction(scoped.db,{uid:claims.uid},body);
     if(process.env.FIREBASE_DATABASE_EMULATOR_HOST)console.log('PARENT_SCOPED_ENDPOINT_RESULT',JSON.stringify({action:body.action,operationId:body.operationId,status:result.status}));
     json(res,200,result,allowOrigin);

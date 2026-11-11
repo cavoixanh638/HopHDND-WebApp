@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:spark": "node scripts/build-spark-pages.mjs",
+    "build:spark:operator": "node scripts/build-spark-pages.mjs --operator",
+    "rules:spark": "node scripts/build-spark-rules.mjs",
+    "test:spark": "firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database \"node scripts/test-spark-emulator.mjs\"",
     "dev": "vite --host 127.0.0.1 --mode preact",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

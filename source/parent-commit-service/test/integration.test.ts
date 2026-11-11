@@ -84,12 +84,13 @@ const seeded=async(value:any)=>env.withSecurityRulesDisabled(async ctx=>{
 });
 async function realAdmin(){const s=await sdk('admin');admin=await google(s,'real-google-admin-test');db=s.database;}
 beforeAll(async()=>{env=await initializeTestEnvironment({projectId:PROJECT,database:{host:'127.0.0.1',port:9000,
- rules:readFileSync('firebase/database.exclusive-candidate.rules.json','utf8')}});
+ rules:readFileSync(process.env.VITE_FIREBASE_WRITE_MODE==='spark'?'firebase/database.spark.rules.json':'firebase/database.exclusive-candidate.rules.json','utf8')}});
  await realAdmin();});
 beforeEach(async()=>{await env.clearDatabase();});
 afterAll(async()=>{
  mkdirSync('parent-commit-service/evidence',{recursive:true});
- const data={sourceSha:'98ead3ef8e2a94ed9b3d4c7e0be30cc3d2a0e847',
+ const data={sourceSha:FRV_SHA,
+  backend:process.env.VITE_FIREBASE_WRITE_MODE==='spark'?'spark-local-operator':'functions',
   service:'real Auth Emulator ID token / Admin SDK databaseAuthVariableOverride',
   fixture:'withSecurityRulesDisabled used ONLY for synthetic setup',
   witnesses:records};

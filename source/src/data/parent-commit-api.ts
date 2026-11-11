@@ -26,6 +26,9 @@ function endpoint(database:Database):string {
       throw Error('Parent commit thử nghiệm chỉ dùng tại localhost.');
     return configured||'http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit';
   }
+  if(import.meta.env.MODE==='pages-operator'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&
+    typeof location!=='undefined'&&location.origin==='http://127.0.0.1:4173'&&
+    configured==='http://127.0.0.1:8787/parentDatasetCommit')return configured;
   if(!configured||!configured.startsWith('https://'))
     throw Error('Dịch vụ commit V2 chưa được cấu hình và duyệt; không được ghi bằng SDK trực tiếp.');
   return configured;

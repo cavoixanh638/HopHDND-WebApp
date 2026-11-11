@@ -18,7 +18,8 @@ import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import type {Changes,Item,EditableField} from '../shared/types';
 
-const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
+const spark=process.env.VITE_FIREBASE_WRITE_MODE==='spark';
+const candidate=JSON.parse(readFileSync(spark?'firebase/database.spark.rules.json':'firebase/database.exclusive-candidate.rules.json','utf8'));
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000'&&
   process.env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9099';
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,

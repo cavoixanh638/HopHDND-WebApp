@@ -170,7 +170,16 @@ export function useFirebase(){
     const {loginWithGooglePopup}=await import('./google-popup-login');
     await loginWithGooglePopup(auth);
   };
-  const logout=async()=>{clearSessionMirrors();await signOut(auth);};
+  const logout=async()=>{
+    try{
+      if(import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+        const {closeSparkSession}=await import('../data/spark-session');
+        await closeSparkSession(database);
+      }
+    }finally{
+      clearSessionMirrors();await signOut(auth);
+    }
+  };
   const saveProfile=async(section:ConfigSection|'dataSource',value:unknown,expectedRevision=profile?.revision??0,originalSection?:unknown,resolutions:LayoutConflictChoices={})=>{
     if(!firebaseAdmin(auth.currentUser))throw new Error('Chỉ tài khoản Google quản trị được lưu bố trí và danh mục.');
     if(!profileReady)throw new Error('Chưa đọc được cấu hình gốc; không khởi tạo hoặc ghi đè. Đọc lại danh mục và bố trí trước.');

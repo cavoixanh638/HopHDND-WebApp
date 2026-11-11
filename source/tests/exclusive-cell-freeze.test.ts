@@ -15,7 +15,7 @@ import {migrateMirrorToPrimary,bootstrapApprovedRowsToPrimary} from '../src/data
 import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
-const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
+const candidate=JSON.parse(readFileSync(process.env.VITE_FIREBASE_WRITE_MODE==='spark'?'firebase/database.spark.rules.json':'firebase/database.exclusive-candidate.rules.json','utf8'));
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
 const realActorByTag=new Map<string,User>();
 const actor=(id:string,admin=false)=>realActorByTag.get(id)??({
@@ -487,6 +487,45 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   // the private 256-bit secret owned by the first manager may authorize any
   // RENEW / RELEASE / SAVE. No expected-failure, skip or fake service claims.
   it('REGRESSION PASS: second tab same UID cannot replay lease or editProofs for SAVE/RENEW/RELEASE',async()=>{
+    if(process.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+      const {sparkSession,closeSparkSession}=await import('../src/data/spark-session');
+      const first=manager('a'),writer=repo('a',first);
+      const secondApp=initializeApp(real('a').app.options,'spark-second-google-tab');
+      const secondAuth=getAuth(secondApp);
+      connectAuthEmulator(secondAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const secondDb=getDatabase(secondApp);connectDatabaseEmulator(secondDb,'127.0.0.1',9000);
+      try{
+        const signed=await signInWithCredential(secondAuth,GoogleAuthProvider.credential(JSON.stringify({sub:'a',email:'a@example.test',email_verified:true})));
+        expect(signed.user.uid).toBe(real('a').user.uid);
+        await first.acquire('r1','note','multiline');
+        const owner=await sparkSession(real('a').db),other=await sparkSession(secondDb);
+        expect(owner.uid).not.toBe(other.uid);
+        const visible=(await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val();
+        expect(visible.uid).toBe(owner.uid);
+        expect(visible).not.toHaveProperty('secret');
+        const baseline=(await writer.list())[0];
+        const denied=async()=>{
+          const rowBefore=(await get(ref(secondDb,'hdnd/items/r1'))).val();
+          const lockBefore=(await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val();
+          for(const action of ['renew','release','save'] as const){
+            const patch=updateDraft((await writer.list())[0],undefined,{note:'same-account replay'})!;
+            await expect(callCellEdit(action==='save'?{
+              action,scope:'legacy',recordId:'r1',operationId:patch.operationId,patch,
+              leases:{note:{token:visible.token,secret:visible.token}}
+            }:{action,scope:'legacy',recordId:'r1',operationId:crypto.randomUUID(),field:'note',token:visible.token,secret:visible.token},secondDb)).rejects.toThrow();
+          }
+          await assertFails(set(ref(other.database,'hdnd/editLocks/r1/note'),{...visible,revision:visible.revision+1,expiresAt:0}));
+          expect((await get(ref(secondDb,'hdnd/items/r1'))).val()).toEqual(rowBefore);
+          expect((await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val()).toEqual(lockBefore);
+        };
+        await denied();
+        const saved=(await writer.save([updateDraft(baseline,undefined,{note:'owner Spark save'})!]))[0];
+        expect(saved.ok,saved.message).toBe(true);
+        await denied();
+        await first.finish('r1','note');
+      }finally{await first.dispose();await closeSparkSession(secondDb);await deleteApp(secondApp);}
+      return;
+    }
     const first=manager('a'),writer=repo('a',first);
     const secondTab=guest('a');
     const initial=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();

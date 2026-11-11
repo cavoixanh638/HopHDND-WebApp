@@ -674,7 +674,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {adminTools&&page==='connection'&&isFirebase&&<FirebasePanel firebaseDatabase={firebase!.database} userUid={firebase!.user?.uid??''} editorAuthorized={firebase!.editorAuthorized} editors={firebase!.editors} onSaveEditorAccess={firebase!.saveEditorAccess} dataSource={legacySourceTests?firebase!.profile?.dataSource??'excel':'primary'} onChangeDataSource={legacySourceTests?changeDataSource:undefined} onBootstrapPrimary={undefined} userLabel={firebase!.user?.isAnonymous?`Khách ẩn danh · ${firebase!.user.uid.slice(0,8)}`:firebase!.user?.email??''} isAdmin={firebase!.isAdmin} connected={firebase!.connected} permissions={firebase!.permissions} items={workspace.items} busy={workspace.busy||common.busy} onLogin={firebase!.login} onLogout={firebase!.logout} onSavePermissions={firebase!.savePermissions} onOpenItemsCustomize={()=>openOptions('items-permissions',{currentTarget:document.body})} onClose={()=>setPage('overview')}/>}
       {adminTools&&page==='transfer'&&isFirebase&&TransferPanel&&<TransferPanel versioned={firebase!.isAdmin&&firebase!.datasetEpochReady&&
           (firebase!.emulator||(import.meta.env.VITE_PARENT_REPLACEMENT_ENABLED==='true'&&
-          String(import.meta.env.VITE_PARENT_COMMIT_ENDPOINT??'').startsWith('https://')))?{
+          (String(import.meta.env.VITE_PARENT_COMMIT_ENDPOINT??'').startsWith('https://')||
+            (import.meta.env.MODE==='pages-operator'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&
+             typeof location!=='undefined'&&location.origin==='http://127.0.0.1:4173'&&
+             import.meta.env.VITE_PARENT_COMMIT_ENDPOINT==='http://127.0.0.1:8787/parentDatasetCommit'))))?{
           database:firebase!.database,user:firebase!.user,active:firebase!.datasetActive,
           reports,enabled:true,
           readyForMutation:!workspace.busy&&!workspace.cachePending&&

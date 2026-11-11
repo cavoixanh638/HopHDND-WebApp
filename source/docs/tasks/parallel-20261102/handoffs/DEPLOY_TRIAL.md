@@ -1,5 +1,10 @@
 # Checkpoint — triển khai thử sau bản tích hợp
 
+> Tiếp quản ngày 11/11/2026: owner yêu cầu Spark, không Blaze/billing. Xem
+> [Spark takeover](../../../operations/SPARK_ROLLOUT_2026-11-11.md) để tiếp tục
+> nhánh Emulator đã PASS. Production vẫn HOLD; không áp dụng đề xuất bật
+> Cloud Functions/billing ở checkpoint lịch sử bên dưới.
+
 - Status: HOLD_EXTERNAL / DEPLOY_NOT_RUN; ngày 03/11/2026 Asia/Saigon.
 - Owner: chat điều phối tiếp tục khi có đích/GO và gate; không mở lại 5 phần đã PASS.
 - Candidate branch: `integration/20261102-five-streams`; tested/rebuilt code SHA `66e33b85a3424b2316f090e214e813cd04331afc`; docs-only HEAD trước checkpoint `16115998af6a9d2a75d60c7fcea4823a0a0f8d09`.

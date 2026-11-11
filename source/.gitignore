@@ -12,6 +12,13 @@ server/dist-test/
 server/dist-enable/
 dist-pages/
 dist-pages-test/
+dist-spark/
+dist-spark-operator/
+spark-*-tests.log
+spark-build.log
+spark-*.log
+parent-commit-service/evidence/
+pr149-ops-evidence/
 *-debug.log
 firebase-debug.*
 dist-hosting/

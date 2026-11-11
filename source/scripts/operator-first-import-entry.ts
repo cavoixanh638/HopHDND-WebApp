@@ -68,7 +68,7 @@ try{
     approval.project!==project||approval.databaseURL!==url.href||
     approval.sourceSha!==git||approval.workbookSha256!==workbookSha||
     approval.sheet!==sheet||approval.expectedRows!==parsed.count||
-    approval.expectedState!=='EMPTY_ROOT_CONFIRMED_IN_SNAPSHOT'||
+    !['EMPTY_ROOT_CONFIRMED_IN_SNAPSHOT','LEGACY_ITEMS_EMPTY_IN_FULL_SNAPSHOT'].includes(approval.expectedState)||
     !/^[a-f0-9]{64}$/.test(approval.fullRootSnapshotSha256??'')||
     approval.operatorEmail!==FIREBASE_ADMIN_EMAIL||
     approval.approved!==true)fail('APPROVAL_DOES_NOT_BIND_SOURCE_PROJECT_EMPTY_STATE');
@@ -108,7 +108,7 @@ try{
       option('--app-id')!==firebaseConfig.appId)
      fail('PRODUCTION_WEB_PROJECT_DATABASE_BINDING_UNVERIFIED');
    const required=['independentRulesApproved','publishedRulesHashReadbackVerified',
-    'bothFunctionsAndIamVerified','liveFreshBackupRestoreVerified',
+    ...(approval.backend==='spark'?['sparkRulesAndOperatorVerified']:['bothFunctionsAndIamVerified']),'liveFreshBackupRestoreVerified',
     'ownerSourceAndHistoryPolicyApproved','maintenanceWindowApproved',
     'operatorAuthorizedForThisExactImport'];
    if(required.some(k=>approval[k]!==true))fail('INDEPENDENT_PRODUCTION_GATES_REQUIRED');
@@ -145,7 +145,13 @@ try{
   'hdnd/control','hdnd/freezeControl'];
  const values=await bounded(Promise.all(paths.map(async p=>(await get(ref(db,p))).val())),
    'LIVE_EMPTY_ROOT_READ_TIMEOUT',15000);
- if(values.some(x=>x!==null))fail('LIVE_TARGET_NOT_TRULY_EMPTY');
+ if(approval.expectedState==='EMPTY_ROOT_CONFIRMED_IN_SNAPSHOT'){
+   if(values.some(x=>x!==null))fail('LIVE_TARGET_NOT_TRULY_EMPTY');
+ }else{
+   // Preserve existing mirrors, grants, profile and unrelated roots. The
+   // normal protected bootstrap API still enforces edit/freeze controls.
+   if(values[0]!==null||values[1]!==null||values[3]!==null)fail('LIVE_PRIMARY_V2_OR_LOCKS_NOT_EMPTY');
+ }
  // Re-open both inputs immediately before a potential write. In particular,
  // an operator may have updated the Excel while the CLI awaited stdin/Auth.
  if(sha(localFile(workbookPath,'APPROVED_WORKBOOK',5*1024*1024))!==workbookSha)

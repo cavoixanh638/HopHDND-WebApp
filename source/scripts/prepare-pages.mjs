@@ -3,7 +3,7 @@
 import {readFile,readdir,rename,stat} from 'node:fs/promises';
 import {resolve,relative} from 'node:path';
 const target=process.argv[2];
-if(!['dist-pages','dist-pages-test'].includes(target))throw Error('Unexpected Pages target.');
+if(!['dist-pages','dist-pages-test','dist-spark','dist-spark-operator'].includes(target))throw Error('Unexpected Pages target.');
 const dir=resolve(target);
 if(relative(process.cwd(),dir)!==target)throw Error('Invalid build directory.');
 const source=resolve(dir,'pages.html'),dest=resolve(dir,'index.html');

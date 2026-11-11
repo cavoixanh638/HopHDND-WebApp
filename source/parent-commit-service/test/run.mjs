@@ -11,8 +11,10 @@ const env={...process.env,GCLOUD_PROJECT:'demo-hdnd',GCP_PROJECT:'demo-hdnd',
  FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
  PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
  PARENT_COMMIT_ENABLED:'true',PARENT_ALLOWED_ORIGINS:'http://127.0.0.1:4173',PARENT_PORT:'8787',
- PARENT_ENDPOINT:'http://127.0.0.1:8787/parentDatasetCommit'};
-const service=spawn(process.execPath,[prefix+'/dev-server.mjs'],{env,stdio:'inherit'});
+ PARENT_ENDPOINT:'http://127.0.0.1:8787/parentDatasetCommit',
+ ...(process.env.VITE_FIREBASE_WRITE_MODE==='spark'?{VITE_PARENT_COMMIT_ENDPOINT:'http://127.0.0.1:8787/parentDatasetCommit'}:{})};
+const service=spawn(process.execPath,process.env.VITE_FIREBASE_WRITE_MODE==='spark'
+ ?[prefix+'/operator-server.mjs','--emulator']:[prefix+'/dev-server.mjs'],{env,stdio:'inherit'});
 let exit=1;
 try{
  const start=Date.now();let ok=false;
