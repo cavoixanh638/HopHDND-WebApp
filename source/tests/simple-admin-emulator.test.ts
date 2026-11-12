@@ -72,6 +72,42 @@ describe.skipIf(!enabled)('small-data direct Firebase admin maintenance / real A
     expect(snapshot.hdnd.mirrors.legacy.keep).toBe('mirror');
     expect(snapshot.hdnd.freezeControl.mode).toBe('OPEN');
   },45000);
+  it('first import 59 rows to empty primary preserves prior mirror and nine root records',async()=>{
+    await env.withSecurityRulesDisabled(async ctx=>{
+      await set(ref(ctx.database() as never,'hdnd/items'),null);
+      await set(ref(ctx.database() as never,'items'),Object.fromEntries(
+        Array.from({length:9},(_,i)=>['legacy_'+i,{name:'old source '+i}])));
+      await set(ref(ctx.database() as never,'hdnd/mirrors'),{
+        'previous':Object.fromEntries(Array.from({length:55},(_,i)=>
+          ['row_'+i,{code:'OLD'+i}]))
+      });
+    });
+    const seed=createDemoItems()[0];
+    const next=Array.from({length:59},(_,i)=>({
+      ...seed,recordId:'x-'+String(i+1).padStart(6,'0'),
+      displayCode:i<47?'NQ'+(i+1):'BC'+String(i-46).padStart(2,'0'),
+      stt:i+1,documentKind:i<47?'NQ' as const:'BC' as const,
+      type:i<47?'HC':'BC',revision:1,isDropped:false,archivedAt:null,
+      content:'Nội dung thử '+(i+1)
+    }));
+    const candidate=simpleExcelCandidate(next,user.uid);
+    const draft=await prepareSimpleChange(db,user,'excel',candidate);
+    expect(draft.oldCount).toBe(0);
+    expect(draft.newCount).toBe(59);
+    expect(await commitSimpleChange(db,user,draft)).toBe(59);
+    const backup=await createSimpleBackup(db,user);
+    expect(backup.payload.count).toBe(59);
+    const parsed=await inspectSimpleBackup(JSON.stringify(backup),db);
+    expect(Object.keys(parsed.payload.items??{})).toHaveLength(59);
+    let snapshot:Record<string,any>={};
+    await env.withSecurityRulesDisabled(async ctx=>{
+      snapshot=(await get(ref(ctx.database() as never))).val() as Record<string,any>;
+    });
+    expect(Object.keys(snapshot.items)).toHaveLength(9);
+    expect(Object.keys(snapshot.hdnd.mirrors.previous)).toHaveLength(55);
+    expect(Object.keys(snapshot.hdnd.items)).toHaveLength(59);
+    expect(snapshot.hdnd.freezeControl.mode).toBe('OPEN');
+  },45000);
   it('replace Excel when already populated and reject guest permit creation',async()=>{
     const raw=createDemoItems()[0];
     const candidate=simpleExcelCandidate([{...raw,content:'Đã đổi từ Excel',revision:1,
