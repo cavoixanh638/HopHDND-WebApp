@@ -225,12 +225,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   useEffect(()=>{
     if(compactMenuOpen&&compactMenuPlacement)compactPanelRef.current?.focus({preventScroll:true});
   },[compactMenuOpen,!!compactMenuPlacement]);
-  useEffect(()=>{
-    if(!compactOn||customizing||permissionMode){
-      setCompactMenuOpen(false);
-      setCompactMenuPlacement(null);
-    }
-  },[compactOn,customizing,permissionMode]);
+
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay,activeLayout.groupLabels):columns;
   // Preserve per-source filters even when projection hides their physical columns.
   const updateCompact=(option:CompactOption,checked:boolean)=>{
@@ -266,6 +261,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [viewLayoutChoices,setViewLayoutChoices]=useState<LayoutConflictChoices>({});
   const pendingViewLayout=useRef<{baseline:ItemLayout;next:ItemLayout;kind:'title'|'cards'|'layout'}|null>(null);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
+  useEffect(()=>{
+    if(!compactOn||customizing||permissionMode){
+      setCompactMenuOpen(false);
+      setCompactMenuPlacement(null);
+    }
+  },[compactOn,customizing,permissionMode]);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
   const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
