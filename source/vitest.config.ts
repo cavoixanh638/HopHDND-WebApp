@@ -11,6 +11,9 @@ export default defineConfig({
   test:{
     // node:test runs this unchanged suite in the dedicated Linux/Windows CLI gate.
     exclude:[...configDefaults.exclude,'parent-commit-service/test/integration.test.ts',
-      'parallel-qa/chat3/operator-receipt-path.test.mjs']
+      'parallel-qa/chat3/operator-receipt-path.test.mjs',
+      // Worker uses node:test; it is executed unchanged via node --test in the
+      // maintenance-worker CI job, not as a Vitest suite.
+      'maintenance-worker/test/**/*.test.mjs']
   }
 });
