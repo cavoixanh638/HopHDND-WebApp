@@ -1,9 +1,9 @@
 name: Simple admin backup and direct Firebase maintenance (NO DEPLOY)
 on:
   push:
-    branches: ["feat/20261112-simple-admin-file-backup"]
+    branches: ["release/20261112-spark-simple-admin-main-candidate"]
   pull_request:
-    branches: ["integration/20261112-spark-ui-69ceb"]
+    branches: ["main"]
 permissions:
   contents: read
 jobs:
