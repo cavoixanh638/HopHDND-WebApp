@@ -159,6 +159,7 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
       setVerifiedStatus(outcome);
       if(outcome.status==='committed-active'||outcome.status==='committed-historical'){
         setFinalized(true);setPrepared(null);
+        setBackupDownloaded(false);setBackedUpEpoch('');
       }
     }catch(e){setError((e as Error).message);}
     finally{setBusy(false);}
