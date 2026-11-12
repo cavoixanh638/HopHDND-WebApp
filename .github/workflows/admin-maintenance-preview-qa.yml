@@ -1,0 +1,39 @@
+name: Admin maintenance preflight phase 2 (no deployment)
+on:
+  push:
+    branches: ["feat/20261112-admin-online-maintenance-contract"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  safe-preview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Backup tamper and maintenance preview suites
+        run: npx vitest run tests/admin-backup-format.test.ts tests/admin-maintenance-preview.test.ts
+      - name: Spark public build
+        run: npm run build:spark
+      - name: Assert read-only maintenance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          paths = ['src/data/admin-maintenance-preview.ts', 'src/features/settings/AdminBackupManager.tsx']
+          for path in paths:
+              s = Path(path).read_text()
+              for forbidden in ["runTransaction(", "remove(ref(", "update(ref(", "set(ref("]:
+                  assert forbidden not in s, f"Forbidden direct database mutation in {path}: {forbidden}"
+          print("READ_ONLY_MAINTENANCE_PREVIEW_PASS")
+          PY
