@@ -660,6 +660,23 @@
           }
         }
       },
+      "simpleMaintenancePermit": {
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
+        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && ((newData.exists() && newData.child('uid').val() === auth.uid && newData.child('token').isString() && newData.child('token').val().matches(/^[0-9a-f-]{36}$/) && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 60000 && (!data.exists() || data.child('expiresAt').val() <= now)) || (!newData.exists() && data.child('uid').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['uid','token','expiresAt'])",
+        "uid": {
+          ".validate": "newData.isString()"
+        },
+        "token": {
+          ".validate": "newData.isString()"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      },
       "sparkSessions": {
         "$session": {
           ".read": "auth != null && (auth.uid === $session || (auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))",
@@ -680,23 +697,6 @@
           "$other": {
             ".validate": false
           }
-        }
-      },
-      "simpleMaintenancePermit": {
-        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
-        ".write": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com') && ((newData.exists() && newData.child('uid').val() === auth.uid && newData.child('token').isString() && newData.child('token').val().matches(/^[0-9a-f-]{36}$/) && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 60000 && (!data.exists() || data.child('expiresAt').val() <= now)) || (!newData.exists() && data.child('uid').val() === auth.uid))",
-        ".validate": "newData.hasChildren(['uid','token','expiresAt'])",
-        "uid": {
-          ".validate": "newData.isString()"
-        },
-        "token": {
-          ".validate": "newData.isString()"
-        },
-        "expiresAt": {
-          ".validate": "newData.isNumber()"
-        },
-        "$other": {
-          ".validate": false
         }
       }
     },
