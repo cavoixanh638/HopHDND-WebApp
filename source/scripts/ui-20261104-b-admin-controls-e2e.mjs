@@ -286,6 +286,14 @@ async function insert(tab,selector,value){
   assert.equal(await tab.evalJs('document.querySelector('+JSON.stringify(selector)+').value'),value);
 }
 async function keyboardSpace(tab,selector){
+  // Real App may remount a newly collapsed List after offline reconnect.
+  // Reopen settings with an actual pointer gesture before keyboard focusing.
+  if(selector.includes('.admin-summary-visibility')&&
+    await tab.evalJs('document.querySelector(".item-data-region")?.dataset.previewOptions==="closed"')){
+    await pointer(tab,'.admin-preview-options-toggle');
+    await tab.until('document.querySelector(".item-data-region")?.dataset.previewOptions==="open"',
+      'keyboard checkbox panel reopened after reconnect');
+  }
   await tab.evalJs('document.querySelector('+JSON.stringify(selector)+').focus()');
   assert.equal(await tab.evalJs('document.activeElement===document.querySelector('+JSON.stringify(selector)+')'),true);
   await tab.send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',text:' '});
