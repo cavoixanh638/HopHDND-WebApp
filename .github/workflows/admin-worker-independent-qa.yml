@@ -1,0 +1,73 @@
+name: Independent Worker fix verification (no deploy)
+
+on:
+  push:
+    branches: ["qa/20261112-worker-fixes-recheck"]
+  pull_request:
+    branches: ["feat/20261112-online-maintenance-worker"]
+    paths:
+      - ".github/workflows/admin-worker-independent-qa.yml"
+      - "source/maintenance-worker/**"
+      - "source/firebase/**"
+      - "source/src/data/online-maintenance-client.ts"
+      - "source/src/features/settings/**"
+      - "source/tests/admin-worker-independent-*.test.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  independent-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            source/package-lock.json
+            source/parent-commit-service/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm ci --prefix parent-commit-service
+      - name: Independent live Emulator gate
+        shell: bash
+        run: node maintenance-worker/test/independent-emulator.test.mjs --run-emulators | tee independent-worker-qa.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-worker-emulator
+          path: source/independent-worker-qa.log
+
+  existing-spark-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            source/package-lock.json
+            source/parent-commit-service/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm ci --prefix parent-commit-service
+      - run: npm run typecheck
+      - run: npm run build:spark
+      - run: npm run test:spark
