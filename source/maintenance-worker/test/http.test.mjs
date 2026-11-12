@@ -33,6 +33,27 @@ test('write capability remains off even if flag is true but offsite backup bindi
   assert.equal((await stage.json()).error,'MAINTENANCE_NOT_APPROVED');
 });
 
+test('rate limit is required for write readiness and rejects before privileged OAuth',async()=>{
+  let oauthCalls=0;
+  const store={get:async()=>null,put:async()=>undefined};
+  const cfg={...config,ENABLE_MUTATIONS:'true',MAINTENANCE_ARCHIVE_BUCKET:store};
+  const health=await handleRequest(request('/health'),cfg);
+  assert.equal((await health.json()).mutationsEnabled,false);
+  const noLimiter=await handleRequest(request('/v1/prepare',{method:'POST',body:{}}),cfg);
+  assert.equal(noLimiter.status,503);
+  const limit={limit:async({key})=>{assert.equal(key,'uid-verified-admin-0001:prepare');return {success:false};}};
+  const denied=await handleRequest(request('/v1/prepare',{method:'POST',body:{}}),
+    {...cfg,MAINTENANCE_RATE_LIMIT:limit},{
+      verifyAdmin:async()=>({uid:'uid-verified-admin-0001'}),
+      getToken:async()=>{oauthCalls++;return 's'.repeat(60);}
+    });
+  assert.equal(denied.status,429);
+  assert.equal((await denied.json()).error,'MAINTENANCE_RATE_LIMIT_EXCEEDED');
+  assert.equal(oauthCalls,0);
+  const healthy=await handleRequest(request('/health'),{...cfg,MAINTENANCE_RATE_LIMIT:limit});
+  assert.equal((await healthy.json()).mutationsEnabled,true);
+});
+
 test('invalid user authorization is denied before any privileged OAuth token is requested',async()=>{
   let tokenCalls=0;
   const result=await handleRequest(request('/v1/status?operationId=maint_1234567890123456'),config,{
