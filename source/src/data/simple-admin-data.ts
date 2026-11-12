@@ -175,10 +175,21 @@ export async function commitSimpleChange(database:Database,user:User|null,
     permitToken=token;
     const expected=stableBackupJson(baseline.items);
     const target=stableBackupJson(draft.candidate);
-    await get(ref(database,DATA_PATH)); // warm transaction cache
+    await get(ref(database,DATA_PATH)); // server read before optimistic commit
+    // The RTDB SDK may invoke an updater once against a COLD null local cache
+    // despite get() having just returned a nonempty server snapshot. Allow a
+    // single tentative proposal; the server will compare/retry its transaction
+    // against the actual current state. Our short-lived exclusive Admin permit
+    // and FROZEN mode block other ordinary writers during this window.
+    let firstColdProposal=true;
     const tx=await runTransaction(ref(database,DATA_PATH),raw=>{
-      if(stableBackupJson(raw??null)!==expected)return undefined;
-      return draft.candidate; // null intentionally clears current items only
+      const actual=stableBackupJson(raw??null);
+      if(actual===expected)return draft.candidate;
+      if(raw===null&&baseline.items!==null&&firstColdProposal){
+        firstColdProposal=false;
+        return draft.candidate;
+      }
+      return undefined;
     },{applyLocally:false});
     if(!tx.committed)throw Error('Dữ liệu đã thay đổi hoặc Rules từ chối ghi.');
     const result=await readSnapshot(database);
