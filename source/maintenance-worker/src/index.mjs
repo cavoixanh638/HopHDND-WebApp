@@ -55,7 +55,10 @@ export async function handleRequest(request,env,{
   const callerOrigin=request.headers.get('Origin');
   const url=new URL(request.url);
   if(request.method==='GET'&&url.pathname==='/health')return json({service:'hophdnd-maintenance',
-    ready:env.ENABLE_READS==='true',mutationsEnabled:env.ENABLE_MUTATIONS==='true'},200,origin);
+    ready:env.ENABLE_READS==='true',
+    mutationsEnabled:env.ENABLE_MUTATIONS==='true'&&
+      typeof env.MAINTENANCE_ARCHIVE_BUCKET?.put==='function'&&
+      typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get==='function'},200,origin);
   if(callerOrigin!==origin)return json({error:'ORIGIN_NOT_ALLOWED'},403,origin);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:responseHeaders(origin)});
   let action;
@@ -64,7 +67,9 @@ export async function handleRequest(request,env,{
   else if(request.method==='POST'&&url.pathname==='/v1/prepare')action='prepare';
   else if(request.method==='POST'&&url.pathname==='/v1/commit')action='commit';
   else return json({error:'ROUTE_NOT_FOUND'},404,origin);
-  if(env.ENABLE_READS!=='true'||(mutating(action)&&env.ENABLE_MUTATIONS!=='true'))
+  if(env.ENABLE_READS!=='true'||(mutating(action)&&
+    (env.ENABLE_MUTATIONS!=='true'||typeof env.MAINTENANCE_ARCHIVE_BUCKET?.put!=='function'||
+     typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get!=='function')))
     return json({error:'MAINTENANCE_NOT_APPROVED'},503,origin);
   const auth=request.headers.get('Authorization')||'';
   if(!/^Bearer [^\s]{50,15000}$/.test(auth))return json({error:'FIREBASE_ID_TOKEN_REQUIRED'},401,origin);
