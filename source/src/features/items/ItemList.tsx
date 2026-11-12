@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {createPortal} from 'react-dom';
 import type {CSSProperties} from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
@@ -64,6 +65,7 @@ import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,proj
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 import {createReferenceListLayout} from '../../data/reference-list-layout';
+import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
 
 export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
@@ -168,6 +170,62 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // Visual projection only; administrative configuration keeps every Excel source field.
   const compactOn=(!customizing||anonymousViewer)&&!showAllSourceColumns;
   const compactPairs=compactOn?activeCompactPairs(columns,compactDisplay):[];
+  // The old absolutely positioned menu was clipped by the viewport-fit List's
+  // overflow:hidden containers. Only this display-options popup uses a body portal.
+  const compactDetailsRef=useRef<HTMLDetailsElement>(null);
+  const compactSummaryRef=useRef<HTMLElement>(null);
+  const compactPanelRef=useRef<HTMLDivElement>(null);
+  const [compactMenuOpen,setCompactMenuOpen]=useState(false);
+  const [compactMenuPlacement,setCompactMenuPlacement]=useState<CompactMenuPlacement|null>(null);
+  useLayoutEffect(()=>{
+    if(!compactMenuOpen||typeof window==='undefined')return;
+    let animationFrame=0;
+    const updatePosition=()=>{
+      const summary=compactSummaryRef.current;
+      if(!summary)return;
+      const next=placeCompactMenu(summary.getBoundingClientRect(),window.innerWidth,window.innerHeight);
+      setCompactMenuPlacement(previous=>
+        previous&&Object.keys(next).every(key=>previous[key as keyof CompactMenuPlacement]===
+          next[key as keyof CompactMenuPlacement])?previous:next);
+    };
+    const schedulePosition=()=>{
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame=window.requestAnimationFrame(updatePosition);
+    };
+    const close=()=>{
+      if(compactDetailsRef.current)compactDetailsRef.current.open=false;
+      setCompactMenuOpen(false);
+    };
+    const onPointerDown=(event:PointerEvent)=>{
+      const node=event.target;
+      if(!(node instanceof Node))return;
+      if(compactDetailsRef.current?.contains(node)||compactPanelRef.current?.contains(node))return;
+      close();
+    };
+    const onKeyDown=(event:KeyboardEvent)=>{
+      if(event.key!=='Escape')return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+      compactSummaryRef.current?.focus();
+    };
+    updatePosition();
+    window.addEventListener('resize',schedulePosition);
+    window.addEventListener('scroll',schedulePosition,true);
+    document.addEventListener('pointerdown',onPointerDown,true);
+    document.addEventListener('keydown',onKeyDown,true);
+    return()=>{
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener('resize',schedulePosition);
+      window.removeEventListener('scroll',schedulePosition,true);
+      document.removeEventListener('pointerdown',onPointerDown,true);
+      document.removeEventListener('keydown',onKeyDown,true);
+    };
+  },[compactMenuOpen]);
+  useEffect(()=>{
+    if(compactMenuOpen&&compactMenuPlacement)compactPanelRef.current?.focus({preventScroll:true});
+  },[compactMenuOpen,!!compactMenuPlacement]);
+
   const displayedColumns=compactOn?compactVisibleColumns(columns,compactDisplay,activeLayout.groupLabels):columns;
   // Preserve per-source filters even when projection hides their physical columns.
   const updateCompact=(option:CompactOption,checked:boolean)=>{
@@ -203,6 +261,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [viewLayoutChoices,setViewLayoutChoices]=useState<LayoutConflictChoices>({});
   const pendingViewLayout=useRef<{baseline:ItemLayout;next:ItemLayout;kind:'title'|'cards'|'layout'}|null>(null);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
+  useEffect(()=>{
+    if(!compactOn||customizing||permissionMode){
+      setCompactMenuOpen(false);
+      setCompactMenuPlacement(null);
+    }
+  },[compactOn,customizing,permissionMode]);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
   const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
@@ -683,31 +747,49 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
   const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
-    (<details className="compact-columns-menu">
-      <summary aria-label="Tùy chọn gộp cột">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
-      <div className="compact-columns-options" role="group" aria-label="Hiển thị gọn cột">
-        <strong>Hồ sơ và tiến độ 3 khâu luôn gộp khi xem</strong>
-        {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
-          (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
-          <input type="checkbox" checked={compactDisplay[option.key]}
-            onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-          <span>{option.label}<small>{option.detail}</small></span>
-        </label>)}
-        <details className="compact-more-options">
-          <summary>Viết tắt tên</summary>
-          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
+    (<>
+      <details className="compact-columns-menu" ref={compactDetailsRef}
+        onToggle={event=>{
+          const opened=event.currentTarget.open;
+          setCompactMenuOpen(opened);
+          if(!opened)setCompactMenuPlacement(null);
+        }}>
+        <summary ref={compactSummaryRef} aria-label="Tùy chọn gộp cột"
+          aria-controls="hdnd-compact-columns-popup">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
+      </details>
+      {compactMenuOpen&&compactMenuPlacement&&typeof document!=='undefined'&&createPortal(
+        <div id="hdnd-compact-columns-popup" ref={compactPanelRef} tabIndex={-1}
+          className="compact-columns-options compact-columns-options-floating"
+          role="group" aria-label="Hiển thị gọn cột"
+          data-popover-side={compactMenuPlacement.side}
+          style={{
+            top:compactMenuPlacement.top,
+            left:compactMenuPlacement.left,
+            width:compactMenuPlacement.width,
+            maxHeight:compactMenuPlacement.maxHeight,
+          }}>
+          <strong>Hồ sơ và tiến độ 3 khâu luôn gộp khi xem</strong>
+          {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
+            (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-        </details>
-        <p>{shareCompact?'Quản trị: lưu bố cục dùng chung qua Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
-        {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
-        {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
-          setPersonalCompact(null);setCompactStorageWarning(clearPersonalCompactDisplay(viewerCompactScope)?'':
-            'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
-      </div>
-    </details>);
+          <details className="compact-more-options">
+            <summary>Viết tắt tên</summary>
+            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
+              <input type="checkbox" checked={compactDisplay[option.key]}
+                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+              <span>{option.label}<small>{option.detail}</small></span>
+            </label>)}
+          </details>
+          <p>{shareCompact?'Quản trị: lưu bố cục dùng chung qua Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
+          {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
+          {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
+            setPersonalCompact(null);setCompactStorageWarning(clearPersonalCompactDisplay(viewerCompactScope)?'':
+              'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
+        </div>,document.body)}
+    </>);
   return <section className="card item-list-card" data-compact-chrome={denseChrome?"true":undefined} data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>

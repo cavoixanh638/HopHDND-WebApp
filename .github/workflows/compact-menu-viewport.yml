@@ -1,0 +1,41 @@
+name: Responsible-person menu viewport QA (NO DEPLOY)
+on:
+  push:
+    branches: ["fix/20261112-compact-menu-viewport"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  floating-menu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Placement and portal unit tests
+        run: npx vitest run tests/compact-menu-viewport.test.ts
+      - name: Build synthetic full preview
+        run: npm run build:compact:qa
+      - name: Real Chrome geometry, scrolling, keyboard and pointer tests
+        run: node scripts/compact-menu-viewport-browser.mjs
+      - name: Build Spark public App without deployment
+        run: npm run build:spark
+      - name: Preserve browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compact-responsibility-popup
+          path: source/compact-menu-viewport-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 14
