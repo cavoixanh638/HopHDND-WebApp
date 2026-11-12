@@ -64,8 +64,10 @@ describe.skipIf(!enabled)('small-data direct Firebase admin maintenance / real A
     const restore=await prepareSimpleChange(db,user,'restore',parsed.payload.items);
     expect(await commitSimpleChange(db,user,restore)).toBe(1);
     expect((await get(ref(db,'hdnd/items'))).val()).not.toBe(null);
-    const snapshot=await env.withSecurityRulesDisabled(async ctx=>
-      (await get(ref(ctx.database() as never))).val());
+    let snapshot:Record<string,any>={};
+    await env.withSecurityRulesDisabled(async ctx=>{
+      snapshot=(await get(ref(ctx.database() as never))).val() as Record<string,any>;
+    });
     expect(snapshot.items.historical.keep).toBe('root legacy');
     expect(snapshot.hdnd.mirrors.legacy.keep).toBe('mirror');
     expect(snapshot.hdnd.freezeControl.mode).toBe('OPEN');
