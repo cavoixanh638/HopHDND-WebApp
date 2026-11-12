@@ -201,6 +201,29 @@ test('CAS prevents simultaneous mutation; ambiguous ACK must be queried',async()
   assert.equal((await inspectOperation(unknown,op())).status,'committed-active');
 });
 
+test('status cannot report a committed generation when archived business data is corrupted',async()=>{
+  const db=new MemoryDb(),operationId=op('8765432187654325');
+  const p=await prepareMaintenance(db,env,identity,{action:'replace',operationId,
+    expected:db.root.hdnd.datasetV2.active,rows:[row()],sourceName:'New.xlsx'},{now});
+  await commitMaintenance(db,env,identity,{operationId,confirmation:p.confirmation},{now:now+1000});
+  assert.equal((await inspectOperation(db,operationId)).status,'committed-active');
+  // Do not trust matching receipts/pointer when a row has changed.
+  db.root.hdnd.datasetV2.generations['gen_'+operationId].items[row().recordId].note='Corrupt';
+  assert.equal((await inspectOperation(db,operationId)).status,'unknown');
+  await assert.rejects(()=>commitMaintenance(db,env,identity,
+    {operationId,confirmation:p.confirmation},{now:now+2000}),/COMMIT_UNKNOWN_CHECK_STATUS/);
+  // Restore intact data for historical integrity check.
+  db.root.hdnd.datasetV2.generations['gen_'+operationId].items[row().recordId].note='Ghi chú';
+  assert.equal((await inspectOperation(db,operationId)).status,'committed-active');
+  const next=op('8765432187654326');
+  const p2=await prepareMaintenance(db,env,identity,{action:'clear',operationId:next,
+    expected:db.root.hdnd.datasetV2.active},{now:now+3000});
+  await commitMaintenance(db,env,identity,{operationId:next,confirmation:p2.confirmation},{now:now+4000});
+  assert.equal((await inspectOperation(db,operationId)).status,'committed-historical');
+  db.root.hdnd.datasetV2.generations['gen_'+operationId].items[row().recordId].note='Tamper history';
+  assert.equal((await inspectOperation(db,operationId)).status,'unknown');
+});
+
 test('post-CAS readback mismatch is an unknown ACK, not a success or blind retry',async()=>{
   const db=new MemoryDb(),operationId=op('8765432187654324');
   const prepared=await prepareMaintenance(db,env,identity,{
