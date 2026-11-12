@@ -36,6 +36,8 @@ describe('online maintenance source gates',()=>{
     expect(panel).toContain('<AdminBackupManager database={database}');
     expect(panel).toContain('approvalChecklist');
     expect(panel).toContain('statusOnlineMaintenance');
+    expect(panel).toContain('backedUpEpoch!==currentEpoch');
+    expect(panel).toContain('setBackupDownloaded(false)');
     expect(worker).toContain('ENABLE_MUTATIONS = "false"');
     expect(rules.rules['.write']).toBe(false);
     expect(rules.rules.hdnd.datasetV2.active['.validate']).toContain("rowCount').val() >= 0");
