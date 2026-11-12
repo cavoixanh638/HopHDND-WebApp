@@ -86,6 +86,19 @@ test('privileged Firebase backend is never reached if session revocation check f
   assert.equal((await denied.json()).error,'ADMIN_SESSION_REVOKED');
   assert.equal(dbCalls,0);
 });
+test('P2: Firebase REST refuses >3 MiB of actual UTF-8 bytes',async()=>{
+  const responseBody=JSON.stringify({emoji:'😀'.repeat(800000)});
+  assert.ok(responseBody.length<3*1024*1024);
+  assert.ok(new TextEncoder().encode(responseBody).length>3*1024*1024);
+  const db=firebaseRest({
+    databaseURL:config.FIREBASE_DATABASE_URL,accessToken:'s'.repeat(60),
+    fetchImpl:async()=>new Response(responseBody,{status:200,
+      headers:{ETag:'"v1"','Content-Type':'application/json'}})
+  });
+  await assert.rejects(()=>db.getWithEtag('hdnd'),
+    /FIREBASE_DATASET_TOO_LARGE_FOR_WORKER_FREE/);
+});
+
 test('Firebase REST client uses conditional PUT /hdnd not blind PATCH/DELETE or root',async()=>{
   const calls=[];
   const fakeFetch=async(url,init)=>{
