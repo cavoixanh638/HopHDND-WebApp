@@ -95,9 +95,7 @@ const after=dom.slice(rootIndex+9,rootIndex+6000);
 ensure(/<div|<main|<section|<header/.test(after)&&!/^\s*><\/div>/.test(after),
   'Chrome saw an empty React root');
 const rootToBody=dom.slice(rootIndex+9,dom.indexOf('</body>',rootIndex));
-const visible=rootToBody.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi,'')
-  .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi,'')
-  .replace(/<[^>]+>/g,' ').replace(/&[^; ]+;/g,' ').replace(/\\s+/g,' ').trim();
+const visible=rootToBody.replace(/<[^>]+>/g,' ').replace(/&[^; ]+;/g,' ').replace(/\s+/g,' ').trim();
 const markers={
   title:/HĐND|Nội dung trình|Danh sách|Dữ liệu/i.test(visible),
   loading:/Đang|Đợi|Tải/i.test(visible),
