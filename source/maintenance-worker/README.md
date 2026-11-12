@@ -29,6 +29,10 @@ Emulator + security review and an explicit release approval.
 The service validates the RSA signature on Firebase ID tokens with Google's
 public JWKS, project issuer/audience, verified email, Google provider and the
 allowlisted admin UID. Destructive actions also require a recent Google login.
+Before ANY privileged Firebase data access, the server also checks the admin
+user's disabled/revoked status via Identity Toolkit's read-only
+`accounts:lookup` (`firebaseauth.users.get` IAM permission plus the
+`identitytoolkit` OAuth scope). Failure of this independent check denies access.
 Browser CORS only allows the canonical GitHub Pages origin. Tokens are in
 Authorization headers, never query strings. All production credentials must be
 entered into Cloudflare Secret bindings, not source, GitHub secrets or the UI.
@@ -46,9 +50,11 @@ revocation checks, credential rotation and 3-MB / 10-ms free-tier bounds.
    freeze + zero-row pointer, unknown ACK, restore-file tampering, and 59/885
    independent readback. The webapp validators and candidate Rules must allow
    `rowCount:0` before an empty generation may go live.
-3. HTML UI must authenticate/re-authenticate, review Excel preview and backup,
-   require second confirmation and call this API only on a RELEASE-APPROVED
-   public endpoint. The old local operator is retained until this is ready.
+3. HTML UI is now connected in source: verified Google admin reauthentication,
+   Excel/backup preview, staged confirmation and status lookup. All API actions
+   are DISABLED until a release-approved HTTPS Worker URL is configured and
+   the server's separate READ/WRITE gates pass. The old local operator remains
+   in place until end-to-end Emulator and independent production review pass.
 4. Deployment requires one-time explicit approval and secret provisioning by
    an authorized operator; no credential key pasted into ChatGPT or GitHub.
 5. The free plan has 10ms CPU/request and 128MB; stage/commit with a large
@@ -57,4 +63,8 @@ revocation checks, credential rotation and 3-MB / 10-ms free-tier bounds.
    usage without approval.
 
 `node --test maintenance-worker/test/*.test.mjs` runs offline pure tests, with
-fake OAuth/JWKS and in-memory ETag Firebase REST (no external calls).
+fake OAuth/JWKS/Identity Toolkit and in-memory ETag Firebase REST (no external
+calls). There is also a 59-row × 15 A–O synthetic end-to-end scenario,
+which is **NOT evidence that the real 59-row production workbook was imported**.
+Release remains HOLD until real Firebase/Auth/Rules and Worker free-tier latency
+are verified by an independently authorized operator.
