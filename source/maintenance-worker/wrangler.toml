@@ -16,3 +16,18 @@ ENABLE_MUTATIONS = "false"
 # ADMIN_UID               - exact preverified Firebase Auth UID
 # SERVICE_ACCOUNT_JSON    - least-privileged key JSON, if an external key is approved
 # BACKUP_HMAC_SECRET      - >=32 random secret characters, securely retained for restore
+
+# Approximate location-local rate limiting; not a replacement for CAS, dedupe
+# or a strict global operation journal. Review namespace uniqueness before GO.
+[[ratelimits]]
+name = "MAINTENANCE_RATE_LIMIT"
+namespace_id = "319085"
+[ratelimits.simple]
+limit = 6
+period = 60
+
+# Private offsite backup bucket binding must be provisioned only after
+# cost/data-retention approval. DO NOT uncomment until explicitly approved.
+# [[r2_buckets]]
+# binding = "MAINTENANCE_ARCHIVE_BUCKET"
+# bucket_name = "hophdnd-private-maintenance-backups"
