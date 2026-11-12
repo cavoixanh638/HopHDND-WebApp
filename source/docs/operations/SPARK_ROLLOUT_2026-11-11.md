@@ -1,5 +1,8 @@
 # Spark takeover — 11/11/2026
 
+> Active integration since 12/11/2026: [PR159 Spark + latest UI](PR159_SPARK_UI_INTEGRATION_2026-11-12.md).
+> Continue that branch/checkpoint; this document retains the earlier Spark evidence.
+
 Status: **EMULATOR PASS / PRODUCTION HOLD / UI IN PROGRESS**. Owner forbids Blaze,
 billing and chargeable infrastructure. No production data, Rules, API, billing or
 Pages deployment changed by this work. The local-operator alternative is awaiting
