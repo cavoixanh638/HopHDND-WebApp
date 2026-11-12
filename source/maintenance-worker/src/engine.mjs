@@ -83,6 +83,38 @@ export async function verifySignedArchive(archive,env){
     env.BACKUP_HMAC_SECRET),'BACKUP_AUTHENTICITY_FAILED');
   return payload;
 }
+/** Verify committed immutable generation independently of a status receipt.
+ * All 15 business-source fields must match the operation's SHA256 manifest.
+ * Historical operation lookups also verify the preserved generation.
+ */
+async function verifyOperationGeneration(hdnd,operationId){
+  const record=hdnd?.maintenanceOps?.[operationId];
+  const manifest=record?.manifest;
+  const receipt=hdnd?.datasetV2?.operations?.[operationId];
+  requireCondition(object(record)&&object(manifest)&&object(receipt)&&
+    manifest.operationId===operationId&&manifest.generationId==='gen_'+operationId&&
+    receipt.to===manifest.generationId&&receipt.actor===record.uid&&
+    receipt.at===record.committedAt,'OPERATION_READBACK_RECEIPT_MISMATCH');
+  const generation=hdnd?.datasetV2?.generations?.[manifest.generationId];
+  requireCondition(object(generation),'OPERATION_READBACK_GENERATION_MISSING');
+  const saved=generation.items??{};
+  requireCondition(object(saved),'OPERATION_READBACK_ROWS_INVALID');
+  const readRows=Object.entries(saved).map(([key,value])=>{
+    requireCondition(object(value)&&value.recordId===key&&
+      value.operationId===operationId&&value.updatedBy===record.uid&&
+      value.updatedAt===record.committedAt&&value.revision===1,
+      'OPERATION_READBACK_METADATA_MISMATCH');
+    return value;
+  });
+  requireCondition(readRows.length===manifest.rowCount&&
+    (readRows.length!==0||generation.emptyGeneration===true),
+    'OPERATION_READBACK_ROW_COUNT_MISMATCH');
+  const normalized=sanitizeRows(readRows,{mode:readRows.length===0?'clear':'restore'});
+  const readManifest=await manifestForRows(normalized,operationId);
+  requireCondition(stableJson(readManifest)===stableJson(manifest),
+    'OPERATION_READBACK_DIGEST_MISMATCH');
+  return true;
+}
 function operationStatus(hdnd,operationId){
   const record=hdnd?.maintenanceOps?.[operationId];
   if(!object(record))return {status:'not-found',operationId};
@@ -99,7 +131,20 @@ function operationStatus(hdnd,operationId){
 export async function inspectOperation(db,operationId){
   assertOperationId(operationId);
   const root=await db.get('hdnd');
-  return operationStatus(root,operationId);
+  const status=operationStatus(root,operationId);
+  if(status.status==='committed-active'||status.status==='committed-historical'){
+    try{
+      await verifyOperationGeneration(root,operationId);
+      if(status.status==='committed-active'){
+        const manifest=root.maintenanceOps[operationId].manifest;
+        const active=root.datasetV2.active;
+        requireCondition(active.generationId===manifest.generationId&&
+          active.digest===manifest.digest&&active.rowCount===manifest.rowCount,
+          'OPERATION_READBACK_ACTIVE_POINTER_MISMATCH');
+      }
+    }catch{return {status:'unknown',operationId};}
+  }
+  return status;
 }
 export async function prepareMaintenance(db,env,identity,input,{now=Date.now()}={}){
   const body=expectBody(input);
@@ -182,8 +227,13 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
   const before=await db.getWithEtag('hdnd');
   const root=clone(before.data);
   const status=operationStatus(root,op);
-  if(status.status==='committed-active'||status.status==='committed-historical')return {
-    status:'already-committed',operationId:op,newCount:status.rowCount};
+  if(status.status==='committed-active'||status.status==='committed-historical'){
+    // A duplicate commit request must never imply success from a receipt
+    // if its immutable data or count is corrupted.
+    const checked=await inspectOperation(db,op);
+    requireCondition(checked.status===status.status,'COMMIT_UNKNOWN_CHECK_STATUS');
+    return {status:'already-committed',operationId:op,newCount:status.rowCount};
+  }
   requireCondition(status.status==='prepared','MAINTENANCE_OPERATION_NOT_PREPARED');
   const prep=root.maintenanceOps[op];
   requireCondition(prep.uid===identity.uid&&prep.expiresAt>=now,'PREPARATION_EXPIRED_OR_DIFFERENT_ADMIN');
@@ -247,29 +297,14 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
   if(result.conflict)throw Error('COMMIT_ETAG_CONFLICT_CHECK_STATUS');
   const observed=await db.get('hdnd');
   const outcome=operationStatus(observed,op);
-  // Verify real server readback of every business field rather than trusting
-  // a pointer/operation receipt alone. This also covers the 0-row generation.
-  // An anomaly after a successful PUT is an UNKNOWN ACK, NOT a safe retry.
-  try {
+  // A post-CAS verification error is an UNKNOWN outcome, never permission
+  // to start another destructive operation. Recheck the original operation.
+  try{
     requireCondition(outcome.status==='committed-active'&&
-      samePointer(observed?.datasetV2?.active,nextPointer),'READBACK_POINTER_MISMATCH');
-    const generation=observed.datasetV2.generations?.[newGeneration];
-    requireCondition(object(generation),'READBACK_GENERATION_MISSING');
-    const saved=generation.items??{};
-    requireCondition(object(saved),'READBACK_ROWS_INVALID');
-    const readRows=Object.entries(saved).map(([key,value])=>{
-      requireCondition(object(value)&&value.recordId===key&&
-        value.operationId===op&&value.updatedBy===identity.uid&&
-        value.updatedAt===now&&value.revision===1,'READBACK_METADATA_MISMATCH');
-      return value;
-    });
-    const normalized=sanitizeRows(readRows,{mode:rows.length===0?'clear':'restore'});
-    const readManifest=await manifestForRows(normalized,op);
-    requireCondition(stableJson(readManifest)===stableJson(recalculated),
-      'READBACK_BUSINESS_DIGEST_MISMATCH');
-  }catch {
-    throw Error('COMMIT_UNKNOWN_CHECK_STATUS');
-  }
+      samePointer(observed?.datasetV2?.active,nextPointer),
+      'READBACK_POINTER_MISMATCH');
+    await verifyOperationGeneration(observed,op);
+  }catch{throw Error('COMMIT_UNKNOWN_CHECK_STATUS');}
   return {status:'committed',operationId:op,newCount:rows.length,
     from:old,to:newGeneration};
 }
