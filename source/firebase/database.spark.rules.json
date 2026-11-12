@@ -125,8 +125,7 @@
             }
           }
         },
-        ".read": true,
-        ".validate": "!newData.exists() || newData.numChildren() <= 1000"
+        ".read": true
       },
       "permissions": {
         ".write": "(!root.child('hdnd/datasetV2/active').exists() && root.child('hdnd/freezeControl/mode').val() !== 'FROZEN') && (auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
