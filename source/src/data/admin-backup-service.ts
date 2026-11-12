@@ -1,5 +1,5 @@
 /** Read-only admin data export. Firebase Rules remain unchanged.
- * Deliberately no root get()/set()/update(), delete() or import action.
+ * Deliberately no whole-root read, writes, deletion or batch import action.
  * A full Firebase project backup (Auth/Rules/unknown branches) still needs a
  * privileged online service; this is an enumerated WebApp data archive.
  */
