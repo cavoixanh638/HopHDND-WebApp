@@ -45,7 +45,8 @@ export function samePointer(a,b){return !!a&&!!b&&
   ['generationId','operationId','revision','rowCount','digest'].every(k=>a[k]===b[k]);}
 export function sanitizeRows(value,{mode='excel'}={}){
   requireCondition(Array.isArray(value)&&value.length<=(MAX_ROWS)&&
-    (mode==='clear'?value.length===0:value.length>=1),'INVALID_ROW_COUNT');
+    (mode==='clear'?value.length===0:mode==='restore'||value.length>=1),
+    'INVALID_ROW_COUNT');
   const ids=new Set(),codes=new Set();
   return value.map((row,i)=>{
     requireCondition(object(row),'INVALID_ROW_OBJECT');
@@ -95,6 +96,13 @@ function activeRowsFromV2(v2){
   const items=generation?.items??{};
   requireCondition(object(items),'INVALID_ACTIVE_GENERATION');
   requireCondition(Object.keys(items).length===active.rowCount,'ACTIVE_ROW_COUNT_MISMATCH');
+  if(active.rowCount===0){
+    // RTDB omits empty objects: only an explicit marker and the canonical
+    // SHA256 of [] prove this is an intentional empty generation.
+    requireCondition(generation.emptyGeneration===true&&
+      active.digest==='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+      'INVALID_SIGNED_EMPTY_GENERATION');
+  }
   return {active,items};
 }
 export function assertFrozenTree(hdnd,{now=Date.now()}={}){
