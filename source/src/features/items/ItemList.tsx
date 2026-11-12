@@ -37,6 +37,7 @@ import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
 import './admin-list-controls.css';
+import './real-list-visual-parity.css';
 import './l03-track-widths.css';
 import './pr95-v6-l3-page-layout.css';
 import './inline-note-hit-area.css';
@@ -62,9 +63,13 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
+import {createReferenceListLayout} from '../../data/reference-list-layout';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
+  // Dense visual chrome is independent of RAM-only preview tools.
+  const denseChrome=compactPreview||compactChrome;
+  const [referencePresetConfirm,setReferencePresetConfirm]=useState(false);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
     void leaseManager.acquire(item.recordId,field,'long').then(()=>setContentItem({item,field}))
@@ -703,7 +708,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
       </div>
     </details>);
-  return <section className="card item-list-card" data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
+  return <section className="card item-list-card" data-compact-chrome={denseChrome?"true":undefined} data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -733,7 +738,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region"
-      data-preview-options={compactPreview?(previewOptionsOpen?'open':'closed'):undefined}
+      data-preview-options={denseChrome?(previewOptionsOpen?'open':'closed'):undefined}
       style={{width:visibleWidth,maxWidth:'100%'}}>
     {/* B00–B03 and C01–C03 summarize all source items, regardless of F
         filters. Keep toolbarBase for filtered table rows / visible count. */}
@@ -745,7 +750,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         showFilterFooters={false}/>
       {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
         <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
-        {compactPreview&&<button type="button"
+        {denseChrome&&<button type="button"
           className="button ghost admin-preview-options-toggle"
           aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
           title="Tùy chọn hiển thị bảng, thẻ tổng hợp và độ rộng L03"
@@ -769,7 +774,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           disabled={!canEditListSettings||viewSaving}
           onClick={()=>{if(titleEditorOpen){setTitleEditorOpen(false);setListTitleDraft(null);
             listTitleBaseline.current=null;setTitleValidationError('');}
-          else {if(compactPreview)setPreviewOptionsOpen(true);
+          else {if(denseChrome)setPreviewOptionsOpen(true);
             listTitleBaseline.current=validateItemLayout(sharedBase.current);
             setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
             setTitleEditorOpen(true);setTitleValidationError('');}}}>
@@ -777,9 +782,32 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         </button>
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
-        className="admin-list-controls" id={compactPreview?'admin-list-controls':undefined}
-        hidden={compactPreview&&!previewOptionsOpen}
+        className="admin-list-controls" id={denseChrome?'admin-list-controls':undefined}
+        hidden={denseChrome&&!previewOptionsOpen}
         aria-label="Tùy chọn quản trị danh sách">
+        {compactChrome&&<div className="admin-reference-preset" aria-label="Bố cục mẫu giống demo">
+          {referencePresetConfirm?<div className="admin-reference-preset-confirm" role="group"
+            aria-label="Xác nhận áp dụng bố cục mẫu">
+            <strong>Áp dụng thứ tự cột, độ rộng và chế độ gộp như bản demo?</strong>
+            <span>Chỉ thay cấu hình hiển thị chung. Không sửa dữ liệu Excel, phân quyền,
+              ghi chú hoặc lịch sử. Tên cột đã đổi và các cột tự tạo được giữ lại.</span>
+            <div className="admin-reference-preset-actions">
+              <button type="button" className="button primary"
+                disabled={!canEditListSettings||personalViewActive}
+                onClick={()=>{void applyViewerLayout(createReferenceListLayout).then(saved=>{
+                  if(saved){setReferencePresetConfirm(false);setShowAllSourceColumns(false);}
+                });}}>Xác nhận áp dụng mẫu</button>
+              <button type="button" className="button ghost"
+                onClick={()=>setReferencePresetConfirm(false)}>Hủy</button>
+            </div>
+          </div>:<button type="button" className="button ghost"
+            aria-label="Áp dụng bố cục mẫu như bản demo đã duyệt"
+            disabled={!canEditListSettings||personalViewActive}
+            title={personalViewActive?'Đóng giao diện cá nhân trước khi đổi bố cục dùng chung':
+              !canEditListSettings?'Chờ quyền quản trị và kết nối cấu hình dùng chung':'Không thay đổi dữ liệu nghiệp vụ'}
+            onClick={()=>setReferencePresetConfirm(true)}>Áp dụng bố cục mẫu (như demo)</button>}
+          <small>Chỉ lưu khi quản trị xác nhận và Firebase phản hồi thành công.</small>
+        </div>}
         {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
           onSubmit={event=>{event.preventDefault();
             try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
