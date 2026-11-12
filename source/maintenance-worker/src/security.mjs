@@ -41,8 +41,8 @@ async function publicKey(kid,fetchImpl){
   return crypto.subtle.importKey('jwk',key,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
 }
 /** Independent RSA signature & Firebase issuer/claims check, including fresh
- * Google sign-in for destructive operations. Checks NO revocation by itself:
- * the operator must assess optional Identity Toolkit revocation lookup. */
+ * Google sign-in for destructive operations. The caller MUST additionally
+ * use assertFirebaseSessionCurrent() before accessing privileged RTDB APIs. */
 export async function verifyFirebaseAdmin(token,env,{fetchImpl=fetch,now=Math.floor(Date.now()/1000),fresh=false}={}){
   const {parts,header,payload}=jwtHeaderPayload(token);
   requireCondition(header.alg==='RS256'&&typeof header.kid==='string'&&header.kid.length>4&&
@@ -68,6 +68,37 @@ export async function verifyFirebaseAdmin(token,env,{fetchImpl=fetch,now=Math.fl
     'FRESH_GOOGLE_REAUTH_REQUIRED');
   return {uid:payload.sub,email:payload.email,issuedAt:payload.iat,authTime:payload.auth_time};
 }
+/** Fail-closed revocation + disabled-user check after JWT RSA signature
+ * verification. Service IAM requires firebaseauth.users.get. Never rely only
+ * on a still-unexpired JWT after the admin's refresh token was revoked.
+ * Google Identity Toolkit account lookup is read-only and uses server OAuth.
+ */
+export async function assertFirebaseSessionCurrent(identity,env,oauthToken,{fetchImpl=fetch}={}){
+  requireCondition(typeof identity?.uid==='string'&&identity.uid===env.ADMIN_UID&&
+    typeof oauthToken==='string'&&oauthToken.length>20,'INVALID_SESSION_REVOCATION_REQUEST');
+  const endpoint='https://identitytoolkit.googleapis.com/v1/accounts:lookup';
+  let response;
+  try{
+    response=await fetchImpl(endpoint,{
+      method:'POST',
+      headers:{Authorization:'Bearer '+oauthToken,'Content-Type':'application/json'},
+      body:JSON.stringify({localId:[identity.uid],targetProjectId:env.FIREBASE_PROJECT_ID}),
+    });
+  }catch{throw Error('SESSION_REVOCATION_CHECK_UNAVAILABLE')}
+  requireCondition(response.ok,'SESSION_REVOCATION_CHECK_UNAVAILABLE');
+  let data;try{data=await response.json()}catch{throw Error('SESSION_REVOCATION_CHECK_UNAVAILABLE')}
+  requireCondition(Array.isArray(data?.users)&&data.users.length===1,
+    'ADMIN_USER_NOT_FOUND');
+  const found=data.users[0];
+  requireCondition(found?.localId===identity.uid&&found?.email===env.ADMIN_EMAIL&&
+    found.emailVerified===true&&found.disabled!==true,
+    'ADMIN_USER_DISABLED_OR_CHANGED');
+  const validSince=Number(found.validSince??'0');
+  requireCondition(Number.isSafeInteger(validSince)&&validSince>=0&&
+    Number.isFinite(identity.authTime)&&identity.authTime>=validSince,
+    'ADMIN_SESSION_REVOKED');
+  return true;
+}
 function pemBytes(pem){
   requireCondition(typeof pem==='string'&&pem.includes('BEGIN PRIVATE KEY'),'INVALID_SERVICE_ACCOUNT_KEY');
   return Uint8Array.from(atob(pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s+/g,'')),c=>c.charCodeAt(0));
@@ -84,7 +115,7 @@ export async function getServiceAccountAccessToken(env,{fetchImpl=fetch,now=Math
   const head=bytesToBase64url(ENCODER.encode(JSON.stringify({alg:'RS256',typ:'JWT'})));
   const body=bytesToBase64url(ENCODER.encode(JSON.stringify({iss:creds.client_email,sub:creds.client_email,
     aud:'https://oauth2.googleapis.com/token',
-    scope:'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/firebase.database',
+    scope:'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/identitytoolkit',
     iat:now,exp:now+300})));
   const data=head+'.'+body;
   const signature=bytesToBase64url(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,ENCODER.encode(data)));
