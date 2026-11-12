@@ -16,7 +16,11 @@ const snapshotData=(hdnd,now=Date.now())=>{
   const gen=state.active.generationId;
   const permissions=hdnd.datasetV2.permissions?.[gen]??null;
   const leases=hdnd.datasetV2.leases?.[gen]??null;
-  return {state,baseline:stableJson({active:state.active,items:state.items,permissions,leases})};
+  // Freeze epoch/revision and timestamps are part of the immutable prepare
+  // fence: a thaw/refreeze against the SAME active pointer invalidates the draft.
+  return {state,baseline:stableJson({
+    active:state.active,items:state.items,permissions,leases,freeze:state.freeze
+  })};
 };
 // The independent archive must contain the *exact* active rows, permissions
 // and leases captured for CAS, not just a pointer with the same generation ID.
@@ -32,7 +36,8 @@ function archiveActiveBaseline(archive){
   return stableJson({
     active:v2.active,items,
     permissions:v2.permissions?.[generationId]??null,
-    leases:v2.leases?.[generationId]??null
+    leases:v2.leases?.[generationId]??null,
+    freeze:archive.payload.nodes['hdnd/freezeControl']
   });
 }
 function safeJsonSize(payload){
@@ -203,6 +208,7 @@ export async function prepareMaintenance(db,env,identity,input,{now=Date.now()}=
   root.maintenanceOps??={};
   root.maintenanceOps[operationId]={status:'PREPARED',action,uid:identity.uid,at:now,
     expiresAt:now+MAX_STAGE_AGE_MS,expected:state.active,oldCount:state.active.rowCount,
+    freezeEpoch:state.freeze.epoch,freezeRevision:state.freeze.revision,
     newCount:rows.length,manifest,baselineHash:await sha256(baseline),
     backupHash:await sha256(backupJson),candidateHash:await sha256(candidateJson),
     offsiteBackup:{...offsiteRef,operationId},
@@ -240,6 +246,10 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
   requireCondition(typeof body.confirmation==='string'&&body.confirmation===
     confirmationText(prep.action,op,prep.oldCount,prep.newCount),'CONFIRMATION_MISMATCH');
   const {state,baseline}=snapshotData(root,now);
+  requireCondition(state.freeze.mode==='FROZEN'&&
+    state.freeze.epoch===prep.freezeEpoch&&
+    state.freeze.revision===prep.freezeRevision,
+    'FREEZE_EPOCH_CHANGED_SINCE_PREPARE');
   requireCondition(samePointer(state.active,prep.expected)&&state.active.rowCount===prep.oldCount,
     'ACTIVE_GENERATION_CHANGED');
   requireCondition(await sha256(baseline)===prep.baselineHash,
