@@ -7,7 +7,7 @@ const expected={
   generationId:'gen_'+sourceOp,operationId:sourceOp,revision:4,
   rowCount:2,digest:'1'.repeat(64)
 };
-function snapshot(){
+function snapshot():any{
   return {
     active:{...expected},
     generations:{[expected.generationId]:{items:{
