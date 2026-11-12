@@ -1,0 +1,38 @@
+name: PR159 real App UI/demo parity (no deployment)
+on:
+  push:
+    branches: ["fix/20261112-real-ui-parity"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  ui-parity:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Display preset + production safety regression
+        run: npx vitest run tests/real-demo-visual-parity.test.ts
+      - name: Build isolated QA demo
+        run: npm run build:compact:qa
+      - name: Build Spark public viewer without Functions
+        run: npm run build:spark
+      - name: Build Spark local operator without Functions
+        run: npm run build:spark:operator
+      - name: Verify no accidental production deployment
+        run: |
+          test -s dist-spark/index.html
+          test -s dist-spark-operator/index.html
+          echo "VISUAL_PARITY_SOURCE_QA_PASS / NO_FIREBASE_DEPLOY"

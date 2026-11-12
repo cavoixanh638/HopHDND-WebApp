@@ -254,6 +254,16 @@ const stageState=async(tab)=>tab.evalJs('(()=>{const outer=document.querySelecto
   'filter:document.querySelector(".list-filter-toolbar")?.textContent.trim().slice(0,100),'+
   'reportTables:document.querySelectorAll(".report-table").length};})()');
 async function pointer(tab,selector){
+  // The real List now matches the demo: rarely used admin controls are collapsed.
+  // Open them with a real mouse click before targeting an inner checkbox.
+  if(selector.includes('.admin-summary-visibility')||selector.includes('.admin-reference-preset')){
+    const collapsed=await tab.evalJs('document.querySelector(".item-data-region")?.dataset.previewOptions==="closed"');
+    if(collapsed){
+      await pointer(tab,'.admin-preview-options-toggle');
+      await tab.until('document.querySelector(".item-data-region")?.dataset.previewOptions==="open"',
+        'admin options opened by pointer');
+    }
+  }
   const rect=await tab.evalJs('(()=>{const e=document.querySelector('+JSON.stringify(selector)+');'+
     'if(!e)throw Error("Missing pointer target: "+'+JSON.stringify(selector)+');'+
     'e.scrollIntoView({block:"center",inline:"nearest"});return e.getBoundingClientRect().toJSON();})()');
@@ -276,6 +286,14 @@ async function insert(tab,selector,value){
   assert.equal(await tab.evalJs('document.querySelector('+JSON.stringify(selector)+').value'),value);
 }
 async function keyboardSpace(tab,selector){
+  // Real App may remount a newly collapsed List after offline reconnect.
+  // Reopen settings with an actual pointer gesture before keyboard focusing.
+  if(selector.includes('.admin-summary-visibility')&&
+    await tab.evalJs('document.querySelector(".item-data-region")?.dataset.previewOptions==="closed"')){
+    await pointer(tab,'.admin-preview-options-toggle');
+    await tab.until('document.querySelector(".item-data-region")?.dataset.previewOptions==="open"',
+      'keyboard checkbox panel reopened after reconnect');
+  }
   await tab.evalJs('document.querySelector('+JSON.stringify(selector)+').focus()');
   assert.equal(await tab.evalJs('document.activeElement===document.querySelector('+JSON.stringify(selector)+')'),true);
   await tab.send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space',text:' '});
@@ -348,6 +366,9 @@ async function runControlsE2E(admin,guest,url){
   await admin.until('!!document.querySelector(".admin-summary-visibility input")&&'+
     '!document.querySelector(".admin-summary-visibility").disabled',
     'verified admin controls enabled',20000);
+  // New production chrome must start collapsed; never silently reveal admin settings.
+  assert.equal(await admin.evalJs('document.querySelector(".item-data-region")?.dataset.previewOptions'),
+    'closed','real App admin settings should be collapsed at first paint');
   const prior=await saved();
   assert.equal(prior.profile.items.listTitle,'Danh sách các ND trình HĐND');
   const guest0=await stageState(guest),admin0=await stageState(admin);
