@@ -661,7 +661,7 @@
         }
       },
       "maintenanceOps": {
-        ".read": "auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'",
+        ".read": "(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')",
         ".write": false
       },
       "sparkSessions": {
