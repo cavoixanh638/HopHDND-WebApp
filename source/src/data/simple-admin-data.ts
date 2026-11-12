@@ -91,7 +91,7 @@ export async function inspectSimpleBackup(json:string,database:Database):Promise
     p.projectId!==database.app.options.projectId||
     p.databaseURL!==(database.app.options.databaseURL??firebaseConfig.databaseURL)||
     typeof p.createdAt!=='string'||!Number.isFinite(Date.parse(p.createdAt))||
-    !Number.isSafeInteger(p.count)||p.count<0)
+    typeof p.count!=='number'||!Number.isSafeInteger(p.count)||p.count<0)
     throw Error('Backup không thuộc đúng Firebase/project hoặc sai phiên bản.');
   const items=checkedRows(p.items);
   if((items?Object.keys(items).length:0)!==p.count)
