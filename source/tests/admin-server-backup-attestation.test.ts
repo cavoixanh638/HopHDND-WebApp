@@ -6,7 +6,7 @@ const scope={projectId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com
 const secret=randomBytes(48);
 const keys={key_test_2026:secret};
 const input=()=>{
-  const nodes=Object.fromEntries(SERVER_BACKUP_PATHS.map(p=>[p,null]));
+  const nodes:Record<string,any>=Object.fromEntries(SERVER_BACKUP_PATHS.map(p=>[p,null]));
   nodes['hdnd/freezeControl']={mode:'FROZEN',revision:7,epoch:2};
   nodes['hdnd/items']={r1:{recordId:'r1',displayCode:'NQ01'}};
   return {format:'hophdnd-admin-archive',schemaVersion:1,
