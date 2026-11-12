@@ -156,6 +156,69 @@ test('wrong confirmation / expired preparation / another UID fails',async()=>{
   await assert.rejects(()=>commitMaintenance(db,env,identity,{operationId:op(),confirmation:p.confirmation}, {now:now+700000}),/PREPARATION_EXPIRED_OR_DIFFERENT_ADMIN/);
 });
 
+test('59-row x 15-source-column synthetic fixture survives replace, signed backup, clear and restore',async()=>{
+  const db=new MemoryDb();
+  const sourceRows=Array.from({length:59},(_,i)=>{
+    const n=i+1,code='NQ'+String(n).padStart(2,'0');
+    const initial=row(code);
+    return {...initial,recordId:'record_'+String(n).padStart(3,'0'),stt:n,
+      content:'Nội dung trình '+n,
+      department:'Sở/ngành '+n,type:'HC',partyLevel:'BTV',
+      progressParty:'Sở chưa trình',progressBuild:'VP đang xử lý',
+      progressCouncil:'Hoàn thành',specialist:'Chuyên viên '+n,
+      room:'Phòng '+n,vpLeader:'Lãnh đạo VP '+n,ubndLeader:'Lãnh đạo UBND '+n,
+      specificProgress:'Đang xử lý '+n,note:'Ghi chú Unicode '+n};
+  });
+  const originalPointer=clone(db.root.hdnd.datasetV2.active);
+  const replaceOp=op('5555555555555555');
+  const prepared=await prepareMaintenance(db,env,identity,{
+    operationId:replaceOp,action:'replace',expected:originalPointer,
+    rows:sourceRows,sourceName:'Test-A-O-59-row.xlsx',
+  },{now});
+  assert.equal(prepared.oldCount,1);
+  assert.equal(prepared.newCount,59);
+  await commitMaintenance(db,env,identity,{operationId:replaceOp,
+    confirmation:prepared.confirmation},{now:now+300});
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,59);
+  const archive=await exportArchive(db,env,{now:now+400});
+  assert.equal(await verifySignedArchive(archive,env),archive.payload);
+  const fields=['displayCode','stt','content','department','type','partyLevel',
+    'progressParty','progressBuild','progressCouncil','specialist','room',
+    'vpLeader','ubndLeader','specificProgress','note'];
+  assert.equal(fields.length,15);
+  let checked=0;
+  const verify=rows=>{
+    assert.equal(Object.keys(rows).length,59);
+    for(const source of sourceRows){
+      const target=rows[source.recordId];
+      assert.ok(target,'missing '+source.recordId);
+      for(const field of fields){
+        assert.equal(target[field],source[field],
+          'Mismatch '+source.recordId+':'+field);
+        checked++;
+      }
+    }
+  };
+  verify(db.root.hdnd.datasetV2.generations['gen_'+replaceOp].items);
+  const clearOp=op('6666666666666666');
+  const clear=await prepareMaintenance(db,env,identity,{operationId:clearOp,
+    action:'clear',expected:clone(db.root.hdnd.datasetV2.active)},{now:now+600});
+  await commitMaintenance(db,env,identity,{operationId:clearOp,
+    confirmation:clear.confirmation},{now:now+800});
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,0);
+  const restoreOp=op('7777777777777777');
+  const restored=await prepareMaintenance(db,env,identity,{
+    operationId:restoreOp,action:'restore',archive,
+    expected:clone(db.root.hdnd.datasetV2.active)},{now:now+1000});
+  await commitMaintenance(db,env,identity,{operationId:restoreOp,
+    confirmation:restored.confirmation},{now:now+1200});
+  verify(db.root.hdnd.datasetV2.generations['gen_'+restoreOp].items);
+  assert.equal(checked,1770); // each of 885 A–O values verified before and after restore
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,59);
+  assert.equal(db.root.outside.secret,'unchanged');
+  assert.ok(db.root.hdnd.datasetV2.generations[originalPointer.generationId]);
+});
+
 test('rows parser rejects duplicate ID/code, imported metadata and prototype keys',()=>{
   const r=row();
   assert.throws(()=>sanitizeRows([r,{...r,recordId:'x-other'}]),/DUPLICATE_RECORD_ID_OR_CODE/);
