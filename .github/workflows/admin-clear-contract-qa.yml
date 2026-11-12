@@ -1,0 +1,37 @@
+name: Clear generation contract safe prototype (NO DEPLOY)
+on:
+  push:
+    branches: ["feat/20261112-admin-clear-generation-emulator"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  pure-clear-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Backend clear invariants tests (no Firebase touched)
+        run: npx vitest run tests/admin-clear-generation-contract.test.ts
+      - name: Assert no production write code in the pure contract
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('parent-commit-service/src/clear-contract.mjs').read_text()
+          for dangerous in ('db.ref(', 'transaction(', 'initializeApp(', 'handleParentRequest(', 'fetch('):
+              assert dangerous not in s, 'PROTOTYPE_HOLD: unreviewed network/DB mutation: '+dangerous
+          print('PURE_EMPTY_GENERATION_CONTRACT_PASS')
+          PY
+      - name: Spark frontend stays buildable
+        run: npm run build:spark
