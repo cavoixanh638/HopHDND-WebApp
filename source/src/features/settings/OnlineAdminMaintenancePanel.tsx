@@ -8,6 +8,7 @@ import {inspectBackupJson,type BackupInspection} from '../../data/admin-backup-f
 import {inspectBusinessExcel,parseBusinessExcel,type BusinessExcelInspection} from '../../data/business-excel';
 import {previewDatasetReplacement} from '../../data/dataset-replacement-preview';
 import {firebaseAdmin} from '../../data/firebase-repository';
+import {AdminBackupManager} from './AdminBackupManager';
 import {maintenanceApiUrl,exportOnlineAdminBackup,prepareOnlineMaintenance,
   commitOnlineMaintenance,statusOnlineMaintenance,type MaintenanceAction,
   type PreparedMaintenance,type MaintenanceOperationView} from '../../data/online-maintenance-client';
@@ -154,6 +155,16 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     finally{setBusy(false);}
   };
   if(!admin)return null;
+  // Do not hide the existing safe browser backup/export when a Worker URL is
+  // configured but the service is offline or not approved for reads yet.
+  // This fallback cannot write/delete/restore Firebase data.
+  if(!capabilities?.reads)return <section className="card online-maintenance-panel"
+    aria-label="Dịch vụ quản trị chưa sẵn sàng">
+    <p className="notice" role="status">Dịch vụ quản trị online chưa hoạt động hoặc chưa được phê duyệt.
+      Bạn vẫn có thể sao lưu và kiểm tra file bằng chế độ an toàn trên trình duyệt.
+      Không có thao tác xóa, thay thế hoặc khôi phục dữ liệu trực tiếp nào được bật.</p>
+    <AdminBackupManager database={database} user={user} disabled={disabled}/>
+  </section>;
   return <section className="card online-maintenance-panel" aria-label="Quản trị dữ liệu trực tuyến">
     <h3>Quản lý dữ liệu online — tài khoản admin</h3>
     <p>Thao tác tại website duy nhất. Việc ghi dữ liệu thực hiện qua dịch vụ HTTPS xác thực độc lập, không cấp quyền xóa Firebase trực tiếp cho trình duyệt.</p>
