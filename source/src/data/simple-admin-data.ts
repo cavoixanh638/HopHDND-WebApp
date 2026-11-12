@@ -5,7 +5,7 @@
  * the authoritative permission boundary. Never mutates root /items, mirrors,
  * profile, grants or V2 generations.
  */
-import {get,ref,runTransaction,type Database} from 'firebase/database';
+import {get,ref,runTransaction,remove,type Database} from 'firebase/database';
 import {getIdToken,type User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
 import {firebaseAdmin,validateFirebaseItem} from './firebase-repository';
@@ -199,11 +199,9 @@ export async function commitSimpleChange(database:Database,user:User|null,
   }finally{
     if(permitToken){
       try{
-        await get(permitRef);
-        await runTransaction(permitRef,current=>{
-          if(current?.token!==permitToken||current?.uid!==user?.uid)return undefined;
-          return null; // release our own capability, not another Admin's
-        },{applyLocally:false});
+        const current=(await get(permitRef)).val();
+        if(current?.token===permitToken&&current?.uid===user?.uid)
+          await remove(permitRef); // Rules only allow the current owner
       }catch{/* The permit expires automatically; never delete another owner's. */}
     }
     if(ourFreeze){
