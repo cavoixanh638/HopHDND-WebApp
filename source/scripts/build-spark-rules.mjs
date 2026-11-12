@@ -49,6 +49,16 @@ for(const versioned of [false,true]){
   row['.write']=`${identity} && (${epoch}) && data.exists() && newData.exists() && ${mode} !== 'FROZEN' && ${notPaused}`;
   lease['.write']=`${identity} && (${epoch}) && ${item}.exists() && newData.exists() && ${mode} !== 'FROZEN' && (!data.exists() || data.child('expiresAt').val() <= now || (${owned})) && (${release} || (${notPaused} && ${grant} && (!root.child('hdnd/freezeControl/mode').exists() || ${mode} === 'OPEN' || ${draining})))`;
 }
+// Server-only online maintenance uses an active-generation pointer that may
+// legitimately have zero business rows. Keep the browser V2 parent-CAS grant
+// unchanged: only the approved service account can commit a new generation.
+const pointerRule=h.datasetV2.active['.validate'];
+const oldCountCheck="newData.child('rowCount').val() > 0 && newData.child('rowCount').val() <= 1000";
+if(pointerRule.split(oldCountCheck).length!==2)throw Error('Spark Rules source pointer count contract changed.');
+h.datasetV2.active['.validate']=pointerRule.replace(oldCountCheck,
+  "newData.child('rowCount').val() >= 0 && newData.child('rowCount').val() <= 1000");
+// Admin can inspect maintenance receipts; never allow direct browser writes.
+h.maintenanceOps={'.read':googleAdmin,'.write':false};
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,
