@@ -48,6 +48,8 @@ jobs:
           PY
       - name: Install exact dependencies
         run: npm ci
+      - name: Install locked local parent-operator dependencies for Spark Emulator tests
+        run: npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
