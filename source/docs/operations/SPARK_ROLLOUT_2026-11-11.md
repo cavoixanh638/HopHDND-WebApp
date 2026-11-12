@@ -1,6 +1,6 @@
 # Spark takeover — 11/11/2026
 
-Status: **EMULATOR PASS / PRODUCTION HOLD / UI BLOCKED**. Owner forbids Blaze,
+Status: **EMULATOR PASS / PRODUCTION HOLD / UI IN PROGRESS**. Owner forbids Blaze,
 billing and chargeable infrastructure. No production data, Rules, API, billing or
 Pages deployment changed by this work. The local-operator alternative is awaiting
 the owner's acceptance; the owner's question about import duration is not consent.
@@ -61,7 +61,10 @@ retention is unchanged; this does not promise permanent unlimited history.
 | Cold full-root live backup and live Rules restore | PASS on isolated RTDB Emulator 9198, exact canonical data and compiled Rules readback |
 | Post-import snapshot restore | PASS on isolated Emulator through the inherited hardened backup auditor |
 | TypeScript and public/operator Spark builds | PASS; existing bundle-size advisory remains |
-| Actual browser List/popup/operator flow | BLOCKED: Work reports local browser use disabled, including retry after owner said they would enable it |
+| Actual browser guest List and note flow | PASS: on `http://127.0.0.1:4173` against `demo-hdnd` Auth/RTDB Emulator, guest note save received server ACK and appeared in real history; a second independent tab was denied the same-cell edit lease; edits to different fields on the same row merged at revision 4 and the owner Emulator readback confirmed both values |
+| Actual browser admin/freeze/report flow | PASS: explicit visible `(Emulator)` sign-in via the Auth Emulator helper; admin completed OPEN → DRAINING → FROZEN, received a three-row receipt, guest became read-only in realtime, admin reopened editing, and report popup showed both edits |
+| Actual browser editable popup | PASS after clean reload: note save received server ACK, appeared in the other guest tab in realtime, and real history listed the new entry |
+| Actual browser Excel | PASS selecting the normalized approved workbook, explicitly selecting its sheet, parsing and previewing 59 records; UI staging/activation/restore NOT RUN |
 | Production deploy/import/real two-user smoke | NOT RUN |
 
 `test:spark` starts only Auth and RTDB; the runner explicitly refuses a Functions
@@ -114,12 +117,27 @@ project `demo-hdnd`, config `firebase.spark-test.json`, and command
 `node scripts/start-spark-operator.mjs --emulator`. Run
 `node scripts/seed-spark-browser.mjs` with `GCLOUD_PROJECT=demo-hdnd` for a disposable
 three-row fixture. These seed/test tools have fixed loopback endpoints and guards.
+The UI fixture and dev server must use separate Vite caches (`.cache/spark-fixtures`
+and `.cache/spark-dev`); sharing `.vite` caused the earlier missing `useEffect`
+startup error. Emulator administrator sign-in is the explicit visible `(Emulator)`
+choice backed by the existing Auth Emulator helper, enabled only for pages-test,
+Spark, and emulator services. Production Google popup login is unchanged.
+
+## Coordination preferences
+
+The owner requests parallel work across independent scopes and Luna for simple
+tasks. The root agent owns integration and security decisions. Do not repeat a
+completed PASS without a changed scope, and do not infer production authorization
+from emulator work or other approvals.
 
 ## Remaining release gates; do not mark them PASS
 
 1. Owner accepts the local operator workflow. Finish actual browser acceptance:
-   List, popup, login/logout, administrator import preview, concurrent tabs/users,
-   refresh, history and freeze. Record screenshots and readback.
+   Excel operator preview, editable popup, login/logout, refresh, and any remaining
+   acceptance evidence. Record screenshots and readback. Guest List/note/history,
+   same-cell two-tab denial, merged different-field edits, admin freeze/receipt,
+   realtime read-only, and report popup have emulator browser evidence; they are
+   not production OAuth or real-user evidence.
 2. Independent security review of the generated complete Spark Rules and local
    operator credential/IAM behavior. Do not weaken Rules to fix an IAM failure.
 3. Fresh private full-root + original Rules backup, double read and restore drill,
@@ -149,6 +167,27 @@ architecture implementation/review is not repeated for every workbook. Still tak
 and validate a fresh backup before replacement; never skip safety for speed.
 
 ## Spark operating limits
+
+### Checkpoint 12/11/2026
+
+- Root coordinated two Luna agents for scoped verification and handoff review.
+  Latest delta: TypeScript PASS, 46 relevant unit tests PASS, docs links PASS,
+  public and local-operator builds PASS. No emulator test assertion/helper in
+  either production output. Earlier 846-unit and 59-Emulator results are inherited,
+  not newly rerun for this UI-only delta.
+- Fixed separate fixture/dev Vite caches; added visible, strictly pages-test +
+  Spark + connected-Emulator admin login; production OAuth popup remains unchanged.
+  Local-operator copy now accurately identifies writes to configured Firebase.
+- Browser Use was removed from the available tools before UI bulk staging.
+  Windows Computer Use fallback stopped because it could not confidently determine
+  Chrome's current URL to enforce policy. No bypass attempted. This is distinct
+  from the previously resolved browser permission setting.
+- Remaining: resume UI staging/activation/restore when supported browser control
+  returns; complete logout/refresh acceptance and independent Rules/IAM review;
+  obtain local-operator workflow acceptance and production GO, refresh private
+  backups/restore evidence before deploying Rules or importing production.
+- Production mutations, billing changes and deployments remain zero. The owner
+  authorized publishing code/checkpoints on the separate GitHub branch only.
 
 Official [pricing](https://firebase.google.com/pricing) and
 [RTDB limits](https://firebase.google.com/docs/database/usage/limits) list Spark

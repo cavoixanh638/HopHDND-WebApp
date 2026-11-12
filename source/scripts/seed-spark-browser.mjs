@@ -1,7 +1,7 @@
 import {createServer} from 'vite';
 import fs from 'node:fs';
 if(process.env.GCLOUD_PROJECT!=='demo-hdnd')throw Error('Demo-only browser fixture');
-const server=await createServer({configFile:false,server:{middlewareMode:true},appType:'custom'});
+const server=await createServer({configFile:false,cacheDir:'.cache/spark-fixtures',server:{middlewareMode:true},appType:'custom'});
 try{
  const {createDemoItems}=await server.ssrLoadModule('/src/data/demo-items.ts');
  const {defaultItemLayout}=await server.ssrLoadModule('/src/data/item-preferences.ts');

@@ -576,7 +576,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
               </p>}
             </>:<>
               <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
-                onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':'Đăng nhập quản trị'}</button>
+                onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':
+                  import.meta.env.MODE==='pages-test'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&firebase?.emulator?'Đăng nhập quản trị (Emulator)':'Đăng nhập quản trị'}</button>
               {gearLoginError&&<p className="v3-gear-status" role="status">{gearLoginError}</p>}
             </>}
           </div>

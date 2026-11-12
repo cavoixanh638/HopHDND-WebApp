@@ -14,6 +14,8 @@ import {datasetPreviewFingerprint} from '../../data/dataset-preview-fingerprint'
 export function BusinessExcelReviewPanel({current,versioned}:{current:readonly Item[];
   versioned?:{database:Database;user:User|null;active?:ActiveDatasetPointer|null;
     reports:readonly ReportConfig[];enabled:boolean;readyForMutation:boolean}}){
+  const localSparkOperator=import.meta.env.MODE==='pages-operator'&&
+    import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark';
   const [file,setFile]=useState<{name:string;bytes:Uint8Array;inspection:BusinessExcelInspection}|null>(null);
   const [sheet,setSheet]=useState('');
   const [result,setResult]=useState<BusinessExcelResult|null>(null);
@@ -54,7 +56,9 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
   };
   return <section className="card business-excel-review">
     <h3>Kiểm tra file Excel nghiệp vụ (chưa áp dụng)</h3>
-    <p>Chọn sheet, xác minh toàn bộ cột A–O và xem trước trước khi ghi. Chỉ tài khoản quản trị trên Firebase Emulator mới được staging, kích hoạt, thay thế hoặc khôi phục; không dùng mẫu recordId kỹ thuật.</p>
+    <p>Chọn sheet, xác minh toàn bộ cột A–O và xem trước trước khi ghi. {localSparkOperator
+      ?'Luồng vận hành cục bộ ghi vào Firebase đang cấu hình, có thể là production; staging tạo bản sao lưu cần được xác minh trước khi kích hoạt/thay thế. Kích hoạt/thay thế yêu cầu FROZEN và xác nhận đúng nội dung. Không dùng mẫu recordId kỹ thuật.'
+      :'Chỉ tài khoản quản trị trên Firebase Emulator mới được staging, kích hoạt, thay thế hoặc khôi phục; không dùng mẫu recordId kỹ thuật.'}</p>
     <button type="button" className="button ghost" onClick={download}>Tải mẫu Excel A–O</button>
     <label className="field">Chọn file .xlsx
       <input type="file" accept=".xlsx" onChange={e=>{
@@ -100,8 +104,9 @@ export function BusinessExcelReviewPanel({current,versioned}:{current:readonly I
         readyForMutation={versioned.readyForMutation}
         comparisonStale={reviewedSnapshot!==currentSnapshot}
         fileName={file?.name??''} current={current} items={result.items}/>
-      :<p className="notice">Chỉ hỗ trợ staging/kích hoạt qua Firebase Emulator trong phiên quản trị đã xác thực;
-        không áp dụng bản Excel vào production.</p>}
+      :<p className="notice">{localSparkOperator
+        ?'Luồng vận hành cục bộ ghi vào Firebase đang cấu hình, có thể là production. Staging tạo bản sao lưu cần xác minh; kích hoạt/thay thế yêu cầu FROZEN và xác nhận rõ thao tác.'
+        :'Chỉ hỗ trợ staging/kích hoạt qua Firebase Emulator trong phiên quản trị đã xác thực; không áp dụng bản Excel vào production.'}</p>}
     </section>}
     {versioned&&(!result||!comparison)&&
       <VersionedExcelReplacementPanel key="operation-recovery-without-workbook"

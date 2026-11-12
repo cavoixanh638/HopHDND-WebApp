@@ -165,6 +165,13 @@ export function useFirebase(){
   };
   const login=async()=>{
     setError('');
+    // Explicit local QA sign-in uses the existing real Auth Emulator helper.
+    // Production builds cannot enter this branch or load the test assertion.
+    if(import.meta.env.MODE==='pages-test'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&services.emulator){
+      const {signInAsEmulatorGoogleAdmin}=await import('./firebase-emulator-admin-auth');
+      await signInAsEmulatorGoogleAdmin(auth);
+      return;
+    }
     // The Google popup resolver is not used by public/anonymous visitors.
     // Load it only when the admin explicitly presses Sign in.
     const {loginWithGooglePopup}=await import('./google-popup-login');

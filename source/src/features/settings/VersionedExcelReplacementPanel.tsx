@@ -70,6 +70,8 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
   active?:ActiveDatasetPointer|null;enabled:boolean;
   readyForMutation?:boolean;comparisonStale?:boolean;
 }){
+  const localSparkOperator=import.meta.env.MODE==='pages-operator'&&
+    import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark';
   const [approval,setApproval]=useState<ReplacementApproval|InitialActivationApproval|null>(null);
   const [initialFreeze,setInitialFreeze]=useState<FreezeControl|null>(null);
   const [staged,setStaged]=useState<Item[]|null>(null);
@@ -234,8 +236,11 @@ export function VersionedExcelReplacementPanel({database,user,items,current,
     }finally{setBusy(false);}
   };
   return <section className="card" aria-label="Thử nghiệm thế hệ Firebase">
-    <h4>{active?'Thay dữ liệu theo thế hệ':'Kích hoạt V2 lần đầu từ legacy'} — chỉ Firebase Emulator</h4>
-    <p>Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.</p>
+    <h4>{active?'Thay dữ liệu theo thế hệ':'Kích hoạt V2 lần đầu từ legacy'}{localSparkOperator
+      ?' — vận hành cục bộ':' — chỉ Firebase Emulator'}</h4>
+    <p>{localSparkOperator
+      ?'Luồng vận hành cục bộ ghi vào Firebase đang cấu hình và có thể là production. Hãy xác minh bản sao lưu mới trước khi staging; kích hoạt/thay thế yêu cầu FROZEN đã được Firebase xác nhận và nhập đúng nội dung xác nhận. Hồ sơ mới không kế thừa quyền hoặc lịch sử từ mã cũ.'
+      :'Chức năng ghi thật trên Emulator, không có quyền ghi production trong bản Draft. Hồ sơ mới không được kế thừa quyền hoặc lịch sử từ mã cũ.'}</p>
     {!active&&<p role="status">Chỉ sử dụng sau khi quản trị đã chủ động đóng băng FROZEN ở mục Quản trị; không tự chốt dữ liệu hoặc kích hoạt V2.</p>}
     {!readyForMutation&&<p role="alert" className="notice">Còn bản nháp, thao tác đang chạy hoặc dữ liệu chưa được xác minh; không ghi staging/commit.</p>}
     {!hasWorkbook&&<p className="muted">Để staging, chọn và kiểm tra file Excel A–O trước.
