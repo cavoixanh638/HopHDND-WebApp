@@ -138,7 +138,8 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     finally{setBusy(false);}
   };
   const commit=async()=>{
-    if(!canMutate||!prepared||stale||confirmation!==prepared.confirmation)return;
+    if(!canMutate||!prepared||stale||backedUpEpoch!==currentEpoch||
+      confirmation!==prepared.confirmation)return;
     setBusy(true);setError('');setNotice('');
     try{
       const result=await commitOnlineMaintenance(user,prepared.operationId,confirmation);
