@@ -28,6 +28,7 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
   const [notice,setNotice]=useState('');
   const [reauthenticated,setReauthenticated]=useState(false);
   const [backupDownloaded,setBackupDownloaded]=useState(false);
+  const [backedUpEpoch,setBackedUpEpoch]=useState('');
   const [excel,setExcel]=useState<UploadExcel|null>(null);
   const [sheet,setSheet]=useState('');
   const [restoreFile,setRestoreFile]=useState<{name:string;payload:unknown;inspection:BackupInspection}|null>(null);
@@ -58,6 +59,10 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     if(!parsed)return null;
     try{return previewDatasetReplacement(items,parsed.items)}catch{return null;}
   },[parsed,items]);
+  const currentEpoch=active?JSON.stringify({
+    generationId:active.generationId,operationId:active.operationId,
+    revision:active.revision,rowCount:active.rowCount,digest:active.digest
+  }):'';
   const stale=prepared&&active?[
     'generationId','operationId','revision','rowCount','digest'
   ].some(key=>prepared.expected[key as keyof ActiveDatasetPointer]!==active[key as keyof ActiveDatasetPointer]):false;
@@ -68,8 +73,9 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     if(!canRead)return;
     setBusy(true);setError('');setNotice('');
     try{
-      const result=await exportOnlineAdminBackup(user);
+      const result=await exportOnlineAdminBackup(user,database,active??null);
       setBackupDownloaded(true);
+      setBackedUpEpoch(currentEpoch);
       setNotice('Đã tải backup được niêm phong bằng chữ ký máy chủ: '+result.name+
         '. Hãy lưu file ở hai nơi riêng tư và kiểm tra có thể mở file.');
     }catch(e){setError((e as Error).message);}
@@ -113,7 +119,8 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     }catch(e){setError((e as Error).message);}
   };
   const stage=async()=>{
-    if(!canMutate||!active||!approvalChecklist||!backupDownloaded)return;
+    if(!canMutate||!active||!approvalChecklist||!backupDownloaded||
+      backedUpEpoch!==currentEpoch)return;
     setError('');setNotice('');setBusy(true);setPrepared(null);
     const operationId='maint_'+crypto.randomUUID().replaceAll('-','');
     setLastOperation(operationId);
@@ -136,6 +143,7 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
     try{
       const result=await commitOnlineMaintenance(user,prepared.operationId,confirmation);
       setFinalized(true);setPrepared(null);setConfirmation('');
+      setBackupDownloaded(false);setBackedUpEpoch('');
       setNotice('Đã được máy chủ xác nhận '+result.status+' cho '+result.operationId+
         '. Chờ WebApp đồng bộ thế hệ mới rồi kiểm tra dữ liệu và đóng/mở băng.');
     }catch(e){
@@ -207,6 +215,7 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
       Tôi đã đóng băng chỉnh sửa, tải backup từ máy chủ và hiểu rằng thay thế có thể làm mất nội dung mới hơn trong Excel/backup.</label>
     <div className="top-actions">
       <button type="button" className="button primary" disabled={!canMutate||!approvalChecklist||!backupDownloaded||
+        backedUpEpoch!==currentEpoch||
         operation==='replace'&&!parsed||operation==='restore'&&!restoreFile||!!prepared}
         onClick={()=>void stage()}>{busy?'Đang xử lý…':'Chuẩn bị (chưa áp dụng)'}</button>
     </div>
@@ -218,7 +227,8 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
           disabled={!canMutate||!!stale} autoComplete="off" placeholder="Nhập chính xác câu xác nhận"/>
       </label>
       {stale&&<p className="notice">Con trỏ dữ liệu đã thay đổi trong khi xem trước. Không được xác nhận tiếp.</p>}
-      <button type="button" className="button danger" disabled={!canMutate||!!stale||confirmation!==prepared.confirmation}
+      <button type="button" className="button danger" disabled={!canMutate||!!stale||
+        backedUpEpoch!==currentEpoch||confirmation!==prepared.confirmation}
         onClick={()=>void commit()}>{busy?'Đang xác minh…':'Xác nhận thay thế trên máy chủ'}</button>
     </section>}
     {lastOperation&&<section className="card" aria-label="Tra cứu trạng thái giao dịch">
@@ -227,6 +237,15 @@ export function OnlineAdminMaintenancePanel({database,user,active,items,disabled
         onClick={()=>void resolve()}>Tra cứu trạng thái trên máy chủ</button>
       {verifiedStatus&&<p role="status">Trạng thái: <strong>{verifiedStatus.status}</strong>. Không tạo mã mới nếu trạng thái chưa rõ.</p>}
     </section>}
+    {backupDownloaded&&backedUpEpoch!==currentEpoch&&
+      <p className="notice" role="alert">Bản backup vừa tải thuộc thế hệ khác.
+        Hãy tải bản sao mới trước khi tiếp tục.</p>}
+    {finalized&&<button type="button" className="button ghost"
+      disabled={busy} onClick={()=>{
+        resetReview();setBackupDownloaded(false);setBackedUpEpoch('');
+        setReauthenticated(false);setApprovalChecklist(false);
+        setExcel(null);setSheet('');setRestoreFile(null);setLastOperation('');
+      }}>Bắt đầu thao tác quản trị mới</button>}
     {notice&&<p className="notice" role="status">{notice}</p>}
     {error&&<p className="notice" role="alert">{error}</p>}
   </section>;
