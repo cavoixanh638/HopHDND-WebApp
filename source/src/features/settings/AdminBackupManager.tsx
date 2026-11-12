@@ -35,7 +35,7 @@ export function AdminBackupManager({database,user,disabled=false}:{
         throw Error('Chọn backup JSON HopHDND hợp lệ, tối đa 30 MB.');
       const inspected=await inspectBackupJson(await file.text(),activeBackupScope(database));
       setChecked(inspected);
-      setMessage('SHA-256 và định danh Firebase khớp. Đây mới là bước đọc thử file trên thiết bị, không nhập dữ liệu.');
+      setMessage('Định dạng, SHA-256 và định danh Firebase khớp. SHA-256 không xác thực người tạo file; trước khi khôi phục vẫn phải qua dịch vụ kiểm tra độc lập.');
     }catch(e){setMessage(e instanceof Error?e.message:'File backup không hợp lệ.');}
     finally{setBusy(false);}
   };
@@ -69,7 +69,7 @@ export function AdminBackupManager({database,user,disabled=false}:{
         </label>
         {fileName&&<p className="muted">File đã chọn: {fileName}</p>}
         {checked&&<div role="status">
-          <p><strong>Backup hợp lệ</strong> · {checked.mode==='v2'?'Nguồn V2':'Nguồn legacy'}</p>
+          <p><strong>Đã đọc và đối chiếu checksum</strong> · {checked.mode==='v2'?'Nguồn V2':'Nguồn legacy'}</p>
           <p>V2: {checked.activeRows} hồ sơ · Legacy: {checked.legacyRows} hồ sơ</p>
           <p>Ngày tạo: {new Date(checked.createdAt).toLocaleString('vi-VN')}</p>
           <p>SHA-256: <code>{checked.envelope.sha256}</code></p>
