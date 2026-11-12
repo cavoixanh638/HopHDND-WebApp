@@ -18,6 +18,7 @@ const responseHeaders=(origin,extras={})=>({
 const json=(payload,status,origin,extras={})=>new Response(JSON.stringify(payload),{
   status,headers:responseHeaders(origin,{'Content-Type':'application/json; charset=utf-8',...extras})});
 function httpStatus(code){
+  if(code==='MAINTENANCE_RATE_LIMIT_EXCEEDED')return 429;
   if(/^(INVALID|UNEXPECTED|BACKUP_|DUPLICATE_RECORD|EMPTY_CONTENT|MAINTENANCE_LIMIT|PREPARED_PAYLOAD|ARCHIVE_TOO)/.test(code))return 400;
   if(/^(VERIFIED_GOOGLE_ADMIN|MISSING_ADMIN_POLICY|FRESH_GOOGLE_REAUTH|INVALID_TOKEN|INVALID_FIREBASE_ID_TOKEN|INVALID_SIGNING_KEY|ADMIN_SESSION_REVOKED|ADMIN_USER_DISABLED_OR_CHANGED|ADMIN_USER_NOT_FOUND)/.test(code))return 403;
   if(/^(STALE|CONCURRENT|DUPLICATE_OPERATION|COMMIT_ETAG|ACTIVE_DATA|ACTIVE_GENERATION|OPERATION_ALREADY|CONFIRMATION_MISMATCH|BACKUP_NO_LONGER|PREPARATION_EXPIRED)/.test(code))return 409;
@@ -58,7 +59,8 @@ export async function handleRequest(request,env,{
     ready:env.ENABLE_READS==='true',
     mutationsEnabled:env.ENABLE_MUTATIONS==='true'&&
       typeof env.MAINTENANCE_ARCHIVE_BUCKET?.put==='function'&&
-      typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get==='function'},200,origin);
+      typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get==='function'&&
+      typeof env.MAINTENANCE_RATE_LIMIT?.limit==='function'},200,origin);
   if(callerOrigin!==origin)return json({error:'ORIGIN_NOT_ALLOWED'},403,origin);
   if(request.method==='OPTIONS')return new Response(null,{status:204,headers:responseHeaders(origin)});
   let action;
@@ -69,13 +71,22 @@ export async function handleRequest(request,env,{
   else return json({error:'ROUTE_NOT_FOUND'},404,origin);
   if(env.ENABLE_READS!=='true'||(mutating(action)&&
     (env.ENABLE_MUTATIONS!=='true'||typeof env.MAINTENANCE_ARCHIVE_BUCKET?.put!=='function'||
-     typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get!=='function')))
+     typeof env.MAINTENANCE_ARCHIVE_BUCKET?.get!=='function'||
+     typeof env.MAINTENANCE_RATE_LIMIT?.limit!=='function')))
     return json({error:'MAINTENANCE_NOT_APPROVED'},503,origin);
   const auth=request.headers.get('Authorization')||'';
   if(!/^Bearer [^\s]{50,15000}$/.test(auth))return json({error:'FIREBASE_ID_TOKEN_REQUIRED'},401,origin);
   try{
     // Authentication runs BEFORE obtaining privileged Firebase OAuth access.
     const identity=await verifyAdmin(auth.slice(7),env,{fresh:mutating(action)});
+    if(mutating(action)){
+      // Cloudflare's native limiter is approximate and location-local; it is
+      // defense-in-depth only. ETag/CAS + operation journal remain authoritative.
+      const limited=await env.MAINTENANCE_RATE_LIMIT.limit({
+        key:identity.uid+':'+action
+      });
+      requireCondition(limited?.success===true,'MAINTENANCE_RATE_LIMIT_EXCEEDED');
+    }
     const accessToken=await getToken(env);
     // Even a valid RSA-signed ID token may belong to a revoked or disabled user.
     // Query authoritative Firebase Auth before access to privileged database credentials.
