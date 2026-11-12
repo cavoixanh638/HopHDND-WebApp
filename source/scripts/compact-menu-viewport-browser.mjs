@@ -92,7 +92,12 @@ try{
   });
   await send('Runtime.enable');await send('Page.enable');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa.html?full=1&preview-role=admin'});
-  await wait('document.querySelector(".compact-columns-menu>summary")','full List menu');
+  await wait('document.querySelector(".admin-preview-options-toggle")','List admin options toggle');
+  // The approved compact demo intentionally hides seldom-used settings at rest.
+  // Expose the controls by a REAL pointer click, not DOM mutation.
+  await click('.admin-preview-options-toggle');
+  await wait('document.querySelector(".compact-columns-menu>summary")?.getClientRects().length>0',
+    'responsible-person menu visible after opening admin options');
   for(const [width,height] of [[1440,900],[453,420],[390,560]]){
     await setViewport(width,height);
     await evaluate('document.querySelector(".compact-columns-menu>summary").scrollIntoView({block:"center",inline:"nearest"})');
