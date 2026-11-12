@@ -66,7 +66,6 @@ function allowOnlyAdminFrozenReplacementValidation(node){
   }
 }
 allowOnlyAdminFrozenReplacementValidation(h.items);
-h.items['.validate']=`!newData.exists() || newData.numChildren() <= 1000`;
 
 h.sparkSessions={
   $session:{
