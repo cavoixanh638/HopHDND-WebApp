@@ -22,6 +22,17 @@ test('maintenance is disabled by default, and origin is never wildcard',async()=
   const disabled=await handleRequest(request('/v1/prepare',{method:'POST',body:{}}),config);
   assert.equal(disabled.status,503);assert.equal((await disabled.json()).error,'MAINTENANCE_NOT_APPROVED');
 });
+test('write capability remains off even if flag is true but offsite backup binding is absent',async()=>{
+  const missingStore={...config,ENABLE_MUTATIONS:'true'};
+  const health=await handleRequest(request('/health'),missingStore);
+  const capability=await health.json();
+  assert.equal(capability.ready,true);
+  assert.equal(capability.mutationsEnabled,false);
+  const stage=await handleRequest(request('/v1/prepare',{method:'POST',body:{}}),missingStore);
+  assert.equal(stage.status,503);
+  assert.equal((await stage.json()).error,'MAINTENANCE_NOT_APPROVED');
+});
+
 test('invalid user authorization is denied before any privileged OAuth token is requested',async()=>{
   let tokenCalls=0;
   const result=await handleRequest(request('/v1/status?operationId=maint_1234567890123456'),config,{
