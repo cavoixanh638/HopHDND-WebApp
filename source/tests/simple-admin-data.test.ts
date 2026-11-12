@@ -52,7 +52,8 @@ describe('Simple admin file-only maintenance',()=>{
     expect(items['.write']).toContain("root.child('hdnd/freezeControl/mode').val() === 'FROZEN'");
     expect(items['.write']).toContain("!root.child('hdnd/datasetV2/active').exists()");
     expect(items['.write']).toContain("auth.token.firebase.sign_in_provider === 'google.com'");
-    expect(items['.validate']).toContain('<= 1000');
+    expect(items['.validate']).toBeUndefined();
+    expect(readFileSync('src/data/simple-admin-data.ts','utf8')).toContain('MAX_ROWS=1000');
     expect(items.$id['.write']).toContain("sign_in_provider === 'anonymous'");
     expect(items.$id['.validate']).toContain("'FROZEN'");
     expect(rules.hdnd.datasetV2['.write']).not.toContain('hdnd/items');
