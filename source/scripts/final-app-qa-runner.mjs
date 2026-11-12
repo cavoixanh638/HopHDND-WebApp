@@ -228,11 +228,16 @@ async function seed(){
       updatedAt:1,updatedBy:'qa-only'}];
   });
   const v2={[a[0]]:a[1],[b[0]]:b[1]};
+  const profile=structuredClone(baseProfile);
+  if(process.env.FINAL_APP_QA_PRESET_FIXTURE==='true')
+    profile.items.columns.push({key:'custom_pr160qa01',label:'Cột tùy chỉnh QA',
+      width:151,visible:false,origin:'custom',kind:'text',
+      values:{'demo-0001':'Giữ nguyên'}});
   const initial={hdnd:{
     items:{legacy_different:{...a[1],recordId:'legacy_different',
       displayCode:'LEGACY-QA',note:'LEGACY_NOT_V2'}},
     permissions:{columns:{}},
-    profile:{revision:1,payload:JSON.stringify(baseProfile)},
+    profile:{revision:1,payload:JSON.stringify(profile)},
     control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()},
     freezeControl:{mode:'OPEN',revision:1,epoch:1,actor:'qa-only',
       changedAt:1,deadline:0,closedAt:0},
@@ -890,6 +895,13 @@ async function sharedPartyWidthsJourney(){
   const widths={readonly:{label:124,status:222},
     editable:{label:142,level:80,status:271}};
   const controls=admin.locator('.admin-l03-widths');
+  // PR #160 intentionally collapses the low-frequency admin panel in the
+  // real List. Open it through the visible control before testing its fields.
+  const optionsToggle=admin.getByRole('button',{
+    name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'});
+  await optionsToggle.waitFor({state:'visible',timeout:16000});
+  if(await optionsToggle.getAttribute('aria-expanded')!=='true')
+    await optionsToggle.click();
   await controls.waitFor({state:'visible',timeout:16000});
   await controls.getByRole('button',{name:/L03.*Chỉnh 5 độ rộng/}).click();
   const input=controls.locator('.admin-l03-width-editor');
@@ -959,13 +971,102 @@ async function sharedPartyWidthsJourney(){
   await screenshot(guest,'25-guest-l03-390');
   return {widths,admin:a,guest:g,tablet,mobile,serverBackedAcrossReload:true};
 }
+
+/** PR #160 real-App preset journey: explicit confirm, shared CAS, preserved
+ * administrator content/custom columns and actual projected table order. */
+async function referenceLayoutPresetJourney(){
+  process.env.FINAL_APP_QA_PRESET_FIXTURE='true';
+  await resetPages();
+  delete process.env.FINAL_APP_QA_PRESET_FIXTURE;
+  const profilePath='hdnd/profile';
+  const custom={key:'custom_pr160qa01',label:'Cột tùy chỉnh QA',width:151,
+    visible:false,origin:'custom',kind:'text',values:{'demo-0001':'Giữ nguyên'}};
+  const stored=await bodyOf(profilePath);
+  assert.ok(JSON.parse(stored.payload).items.columns.some(column=>column.key===custom.key),
+    'Custom-column fixture is present before the App loads its shared profile');
+
+  const title='QA giữ tên danh sách PR160';
+  await admin.locator('.admin-list-rename-trigger').waitFor({state:'visible',timeout:12000});
+  await admin.locator('.admin-list-rename-trigger').click();
+  await admin.locator('#admin-list-title-input').fill(title);
+  await admin.getByRole('button',{name:'Lưu tên danh sách'}).click();
+  const titled=await wait(async()=>{
+    const current=await bodyOf(profilePath),layout=JSON.parse(current.payload).items;
+    return layout.listTitle===title?current:false;
+  },'Administrator title saved by shared Firebase CAS',16000);
+
+  const beforeRows=await state();
+  const baseline=JSON.parse(titled.payload).items;
+  const baselineRevision=titled.revision;
+  const toggle=admin.getByRole('button',{
+    name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'});
+  if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();
+  const apply=admin.getByRole('button',{
+    name:'Áp dụng bố cục mẫu như bản demo đã duyệt'});
+  await apply.waitFor({state:'visible',timeout:12000});
+  await apply.click();
+  const confirmation=admin.getByRole('group',{name:'Xác nhận áp dụng bố cục mẫu'});
+  await confirmation.waitFor({state:'visible',timeout:8000});
+  assert.ok(await confirmation.getByText(/Không sửa dữ liệu Excel, phân quyền/).isVisible(),
+    'Confirmation explains the preset scope');
+  await confirmation.getByRole('button',{name:'Hủy'}).click();
+  await confirmation.waitFor({state:'hidden',timeout:8000});
+  assert.equal((await bodyOf(profilePath)).revision,baselineRevision,
+    'Cancel must not write shared profile');
+
+  await apply.click();
+  const confirmationAgain=admin.getByRole('group',{name:'Xác nhận áp dụng bố cục mẫu'});
+  await confirmationAgain.waitFor({state:'visible',timeout:8000});
+  await confirmationAgain.getByRole('button',{name:'Xác nhận áp dụng mẫu'}).click();
+  const savedProfile=await wait(async()=>{
+    const current=await bodyOf(profilePath);
+    return current.revision===baselineRevision+1?current:false;
+  },'Confirmed preset committed once through Firebase CAS',18000);
+  const savedLayout=JSON.parse(savedProfile.payload).items;
+  const {createReferenceListLayout}=await vite.ssrLoadModule('/src/data/reference-list-layout.ts');
+  const {compactVisibleColumns}=await vite.ssrLoadModule('/src/features/items/compact-columns.ts');
+  const expected=createReferenceListLayout(baseline);
+  assert.deepEqual(savedLayout,expected,'Firebase persisted the confirmed reference preset');
+  assert.equal(savedLayout.listTitle,title,'Preset preserves the renamed list title');
+  assert.deepEqual(savedLayout.columns.at(-1),custom,
+    'Preset retains the administrator-created hidden column and its values');
+  const expectedKeys=compactVisibleColumns(expected.columns.filter(column=>
+    column.visible&&!column.removed&&column.key!=='stt'),
+    expected.compactDisplay,expected.groupLabels).map(column=>column.key);
+  const actualKeys=await admin.locator('.item-data-table .item-heading-row th')
+    .evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-column-key')));
+  assert.deepEqual(actualKeys,expectedKeys,
+    'Actual real-App table header order matches projected preset columns');
+  const afterRows=await state();
+  assert.deepEqual(afterRows.rows,beforeRows.rows,
+    'Applying a display preset leaves every business-row revision/history unchanged');
+  assert.deepEqual(afterRows.permissionCells,beforeRows.permissionCells,
+    'Applying a display preset leaves cell permissions unchanged');
+
+  await admin.reload({waitUntil:'domcontentloaded'});
+  await waitRow(admin,sourceRows[0].displayCode);
+  const reloadedProfile=await bodyOf(profilePath);
+  assert.equal(reloadedProfile.revision,savedProfile.revision,
+    'Reload does not create another shared profile write');
+  assert.equal(JSON.parse(reloadedProfile.payload).items.listTitle,title);
+  const reloadedKeys=await admin.locator('.item-data-table .item-heading-row th')
+    .evaluateAll(nodes=>nodes.map(node=>node.getAttribute('data-column-key')));
+  assert.deepEqual(reloadedKeys,expectedKeys,
+    'Projected preset order remains active after actual App reload');
+  return {confirmedCasRevision:savedProfile.revision,
+    canceledWithoutWrite:true,titlePreserved:true,customColumnPreserved:true,
+    projectedColumnKeys:actualKeys,businessRowsUnchanged:true,
+    permissionsUnchanged:true,persistsAfterReload:true};
+}
 async function run(){
   record('QA_MODE',{kind:SPARK?'SPARK_INTEGRATION_NO_PRODUCTION':PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
     localCheckoutSha:checkout,refs,manifest});
   await seedWorkbook();await startServices();
   browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
   await resetPages();
-  await checks.task('QA01_DESKTOP_MOBILE_GUEST_ADMIN',desktopMobileEvidence,admin);
+  const onlyPreset=process.env.FINAL_APP_QA_ONLY==='QA11';
+  if(!onlyPreset)await checks.task('QA01_DESKTOP_MOBILE_GUEST_ADMIN',desktopMobileEvidence,admin);
+  if(!onlyPreset){
   await checks.task('QA02_GRANT_GUEST_LIST_EDIT_SAVE_READBACK',grantAndGuestEdit,guest);
   // Same-UID admin collision is independently runnable even when guest-grant
   // path has an application error. Never suppress this security test.
@@ -977,6 +1078,8 @@ async function run(){
   await checks.task('QA08_GENERATION_CHANGE_WITH_UNSAVED_EDITOR',generationWithDraft,secondAdmin??admin);
   await checks.task('QA09_PARTYLEVEL_ONLY_GRANT_ATOMIC_DEPENDENCY',narrowPartyLevelGrantJourney,guest??admin);
   await checks.task('QA10_FIVE_TRACK_WIDTHS_PERSIST_GUEST_390_900',sharedPartyWidthsJourney,admin);
+  }
+  await checks.task('QA11_CONFIRMED_REFERENCE_LAYOUT_PRESET_CAS',referenceLayoutPresetJourney,admin);
   // All cases require the actual App route and independent owner server reads.
   const outcome=cases.every(x=>x.status==='PASS')?'QA_CHECKOUT_PASS':'QA_CHECKOUT_HAS_GAPS';
   record('FINAL_APP_REVIEW_RESULT',{outcome,cases:cases.map(c=>({name:c.name,status:c.status})),
