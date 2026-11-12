@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {bytesToBase64url,verifyFirebaseAdmin,getServiceAccountAccessToken,
-  hmacSignature,verifyHmac} from '../src/security.mjs';
+  assertFirebaseSessionCurrent,hmacSignature,verifyHmac} from '../src/security.mjs';
 const encoder=new TextEncoder();
 const now=1800000000;
 const config={FIREBASE_PROJECT_ID:'hophdnd-8b7b2',ADMIN_UID:'uid-verified-admin-0001',ADMIN_EMAIL:'admin@example.invalid'};
@@ -60,6 +60,7 @@ test('service-account OAuth is minted only from server secret with required narr
     const claims=JSON.parse(Buffer.from(body,'base64url').toString());
     assert.match(claims.scope,/firebase.database/);
     assert.match(claims.scope,/userinfo.email/);
+    assert.match(claims.scope,/identitytoolkit/);
     assert.equal(claims.aud,'https://oauth2.googleapis.com/token');
     assert.equal(signature.length>40,true);
     asserted=true;
@@ -70,6 +71,35 @@ test('service-account OAuth is minted only from server secret with required narr
   assert.equal(token,'abcdefghij'.repeat(6));assert.equal(asserted,true);
   await assert.rejects(()=>getServiceAccountAccessToken({...config,SERVICE_ACCOUNT_JSON:JSON.stringify({...account,project_id:'other'})},
     {fetchImpl:fetchToken,now}),/INVALID_SERVICE_ACCOUNT_SCOPE/);
+});
+test('Firebase Auth lookup rejects disabled, revoked, deleted and changed admin account',async()=>{
+  const identity={uid:config.ADMIN_UID,email:config.ADMIN_EMAIL,authTime:now-100};
+  const oauth='s'.repeat(60);
+  const lookup=account=>async(url,options)=>{
+    assert.equal(url,'https://identitytoolkit.googleapis.com/v1/accounts:lookup');
+    assert.equal(options.method,'POST');
+    assert.equal(options.headers.Authorization,'Bearer '+oauth);
+    assert.deepEqual(JSON.parse(options.body),{
+      localId:[config.ADMIN_UID],targetProjectId:config.FIREBASE_PROJECT_ID,
+    });
+    return new Response(JSON.stringify({users:account==null?[]:[account]}),{status:200});
+  };
+  const record={localId:config.ADMIN_UID,email:config.ADMIN_EMAIL,emailVerified:true,
+    disabled:false,validSince:String(now-150)};
+  assert.equal(await assertFirebaseSessionCurrent(identity,config,oauth,
+    {fetchImpl:lookup(record)}),true);
+  for(const [user,code] of [
+    [{...record,disabled:true},'ADMIN_USER_DISABLED_OR_CHANGED'],
+    [{...record,email:'forged@example.invalid'},'ADMIN_USER_DISABLED_OR_CHANGED'],
+    [{...record,emailVerified:false},'ADMIN_USER_DISABLED_OR_CHANGED'],
+    [{...record,validSince:String(now-50)},'ADMIN_SESSION_REVOKED'],
+    [null,'ADMIN_USER_NOT_FOUND'],
+  ]){
+    await assert.rejects(()=>assertFirebaseSessionCurrent(identity,config,oauth,
+      {fetchImpl:lookup(user)}),new RegExp(code));
+  }
+  await assert.rejects(()=>assertFirebaseSessionCurrent(identity,config,oauth,
+    {fetchImpl:async()=>new Response('',{status:403})}),/SESSION_REVOCATION_CHECK_UNAVAILABLE/);
 });
 test('HMAC signature rejects altered payloads and wrong signing keys',async()=>{
   const secret='valid-long-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
