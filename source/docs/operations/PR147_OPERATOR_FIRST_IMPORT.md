@@ -86,7 +86,7 @@ For a server reconciliation: obtain a fresh independently authorized **read-only
 
 ### Synthetic rehearsal (never production)
 
-The dedicated workflow [parallel-chat3-operator.yml](../../../.github/workflows/parallel-chat3-operator.yml) tests the **actual** `node scripts/operator-first-import.mjs` with a synthetic A–O workbook on demo Auth/RTDB/Functions and FULL Rules. It includes negative preflight cases, wrong/unverified admin, seeded nonempty root and server no-change witness, and the existing FRV-02 empty-root CAS, readback and repeated-import block. Its triggers include only this branch and manual dispatch and it never deploys. The full command in an isolated Node22 checkout with emulator dependencies installed is:
+The dedicated workflow [parallel-chat3-operator.yml](https://github.com/cavoixanh638/HopHDND-WebApp/blob/66e33b85a3424b2316f090e214e813cd04331afc/.github/workflows/parallel-chat3-operator.yml) tests the **actual** `node scripts/operator-first-import.mjs` with a synthetic A–O workbook on demo Auth/RTDB/Functions and FULL Rules. It includes negative preflight cases, wrong/unverified admin, seeded nonempty root and server no-change witness, and the existing FRV-02 empty-root CAS, readback and repeated-import block. Its triggers include only this branch and manual dispatch and it never deploys. The full command in an isolated Node22 checkout with emulator dependencies installed is:
 
 ```sh
 npx firebase emulators:exec --project demo-hdnd --only database,auth,functions \
