@@ -31,7 +31,7 @@ export function parseActiveDatasetPointer(value:unknown):ActiveDatasetPointer|nu
   if(typeof x.operationId!=='string'||!/^[A-Za-z0-9_-]{12,80}$/.test(x.operationId)||
     x.generationId!=='gen_'+x.operationId||
     !Number.isSafeInteger(x.revision)||Number(x.revision)<1||
-    !Number.isSafeInteger(x.rowCount)||Number(x.rowCount)<1||Number(x.rowCount)>1000||
+    !Number.isSafeInteger(x.rowCount)||Number(x.rowCount)<0||Number(x.rowCount)>1000||
     typeof x.digest!=='string'||!/^[a-f0-9]{64}$/.test(x.digest))
     throw new Error('Con trỏ thế hệ Firebase sai cấu trúc; không được coi là legacy.');
   return x as ActiveDatasetPointer;
