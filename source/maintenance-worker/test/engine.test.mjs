@@ -7,7 +7,13 @@ import {
   exportArchive,verifySignedArchive,prepareMaintenance,commitMaintenance,inspectOperation
 } from '../src/engine.mjs';
 
-const env={FIREBASE_PROJECT_ID:'hophdnd-8b7b2',
+// R2-like memory store used ONLY in offline tests, never an external service.
+const archiveObjects=new Map();
+const archiveStore={
+  async get(key){const value=archiveObjects.get(key);return value===undefined?null:{text:async()=>value};},
+  async put(key,value){archiveObjects.set(key,value);}
+};
+const env={MAINTENANCE_ARCHIVE_BUCKET:archiveStore,FIREBASE_PROJECT_ID:'hophdnd-8b7b2',
   FIREBASE_DATABASE_URL:'https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app',
   BACKUP_HMAC_SECRET:'test-only-32-byte-strong-HMAC-key-never-deploy'};
 const initialId='initial_123456789012';
@@ -54,6 +60,34 @@ class MemoryDb{
 }
 const op=(suffix='1234567890123456')=>'maint_'+suffix;
 const now=1700000100000;
+
+test('missing independent archive store blocks preparation without any database write',async()=>{
+  const db=new MemoryDb();
+  await assert.rejects(()=>prepareMaintenance(db,{...env,MAINTENANCE_ARCHIVE_BUCKET:null},identity,
+    {operationId:op('8765432187654321'),action:'clear',expected:db.root.hdnd.datasetV2.active},{now}),
+    /OFFSITE_BACKUP_STORE_NOT_CONFIGURED/);
+  assert.equal(db.rev,1);
+  assert.equal(db.root.hdnd.maintenanceOps,undefined);
+});
+
+test('deleted or corrupted offsite backup blocks commit and preserves active pointer',async()=>{
+  const db=new MemoryDb(),operationId=op('8765432187654322');
+  const expected=clone(db.root.hdnd.datasetV2.active);
+  const prepared=await prepareMaintenance(db,env,identity,{operationId,action:'clear',expected},{now});
+  const reference=db.root.hdnd.maintenanceOps[operationId].offsiteBackup;
+  const original=archiveObjects.get(reference.key);
+  archiveObjects.delete(reference.key);
+  await assert.rejects(()=>commitMaintenance(db,env,identity,
+    {operationId,confirmation:prepared.confirmation},{now:now+1000}),/OFFSITE_BACKUP_MISSING/);
+  assert.deepEqual(db.root.hdnd.datasetV2.active,expected);
+  archiveObjects.set(reference.key,original+' ');
+  await assert.rejects(()=>commitMaintenance(db,env,identity,
+    {operationId,confirmation:prepared.confirmation},{now:now+1000}),/OFFSITE_BACKUP_CORRUPTED/);
+  assert.deepEqual(db.root.hdnd.datasetV2.active,expected);
+  archiveObjects.set(reference.key,original);
+  assert.equal((await commitMaintenance(db,env,identity,
+    {operationId,confirmation:prepared.confirmation},{now:now+1000})).status,'committed');
+});
 
 test('archive includes app paths but never unknown root/auth/sessions and is signed',async()=>{
   const db=new MemoryDb();
