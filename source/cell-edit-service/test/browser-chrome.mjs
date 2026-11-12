@@ -4,7 +4,7 @@ import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 
-const PROJECT='demo-hdnd',NS=PROJECT;
+const PROJECT='demo-pr142-cell-edit',NS=PROJECT+'-default-rtdb';
 if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
    process.env.FIREBASE_DATABASE_EMULATOR_HOST!=='127.0.0.1:9000')
  throw Error('EMULATOR_ONLY Chrome test');
@@ -76,6 +76,19 @@ try{
    assert.equal(held,false,'same UID B acquired A lease');
    assert.equal(await B.evaluate(()=>window.qa.copiedHashAttack()),'DENIED');
    await B.screenshot({path:resolve(import.meta.dirname,'browser-other-tab-denied.local.png')});
+ });
+ await step('OFFLINE callable failure keeps original draft and does not touch RTDB',async()=>{
+   const before=await owner('GET','hdnd/items/r1');
+   await A.route('**/cellEdit',route=>route.abort('failed'));
+   await A.locator('#draft').fill('MẪU Chrome chưa có mạng');
+   const result=await A.evaluate(()=>window.qa.save());
+   await A.unrouteAll({behavior:'wait'});
+   assert.equal(result.ok,false,'Offline save got a false success');
+   const pending=await A.evaluate(()=>window.qa.draft());
+   assert.equal(pending.text,'MẪU Chrome chưa có mạng');
+   assert.ok(pending.operationId,'Offline draft operationId lost');
+   const after=await owner('GET','hdnd/items/r1');
+   assert.deepEqual(after,before,'Offline request mutated server');
  });
  await step('ACK lost after server commit retains draft and original operationId',async()=>{
    await A.locator('#draft').fill('MẪU Chrome sau mất ACK');

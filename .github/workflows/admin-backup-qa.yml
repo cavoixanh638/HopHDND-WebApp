@@ -1,0 +1,42 @@
+name: Admin backup/restore intake UI (NO PRODUCTION WRITES)
+on:
+  push:
+    branches: ["feat/20261112-admin-backup-recovery-ui"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  backup-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Verify JSON backup SHA/source/freeze/path guards
+        run: npx vitest run tests/admin-backup-format.test.ts
+      - name: Build Spark public UI with no privileged operator embedded
+        run: npm run build:spark
+      - name: Verify backup UI can never directly delete database paths
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('src/data/admin-backup-service.ts').read_text()
+          ui=Path('src/features/settings/AdminBackupManager.tsx').read_text()
+          for name in ('runTransaction(', 'update(', 'remove(', 'set('):
+              assert name not in s, f"Destructive call in backup read-only service: {name}"
+          assert "disabled" in ui and "Rules yêu cầu dịch vụ" in ui
+          assert "createPortal" not in s
+          print('NO_BROWSER_ROOT_DELETE_OR_BULK_RESTORE_PASS')
+          PY

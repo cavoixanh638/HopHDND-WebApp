@@ -7,6 +7,9 @@ import type {CellLease,EditorKind} from './cell-edit-leases';
 
 const MAX_EDIT_MS:Record<EditorKind,number>={status:45000,search:90000,short:120000,multiline:300000,long:600000};
 const TTL=45000;
+const PARTY_LEVELS=new Set(['Không','TTTU','BTV','BCH']);
+const PARTY_STATUSES=new Set(['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL']);
+const isNoParty=(value:unknown)=>value==='Không'||value==='Không phải trình';
 const inFlight=new WeakMap<Database,Map<string,{input:string;result:Promise<CellEditAnswer>}>>();
 async function holdValue(database:Database,path:string):Promise<()=>void>{
   let release=()=>{};
@@ -31,7 +34,13 @@ export async function callSparkCellEdit(request:CellEditEnvelope,database:Databa
     if(pending.input!==input)throw Error('Mã thao tác đang xử lý với nội dung khác.');
     return pending.result;
   }
-  const result=performSparkCellEdit(request,database).finally(()=>operations!.delete(request.operationId));
+  const result=performSparkCellEdit(request,database).then(async answer=>{
+    if(import.meta.env.MODE==='pages-test'||import.meta.env.MODE==='test'){
+      const {maybeLoseSparkCellCallerAck}=await import('./spark-cell-ack-test');
+      maybeLoseSparkCellCallerAck(database,request.action,answer.status);
+    }
+    return answer;
+  }).finally(()=>operations!.delete(request.operationId));
   operations.set(request.operationId,{input,result});
   return result;
 }
@@ -88,6 +97,9 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   if(issue)throw Error(issue);
   const fields=Object.keys(patch.changes) as (keyof typeof patch.changes)[];
   if(!fields.length||fields.some(f=>!Object.hasOwn(patch.baseValues,f)||!request.leases?.[f]))throw Error('Thiếu giá trị gốc hoặc khóa ô.');
+  if(fields.includes('partyLevel')&&!PARTY_LEVELS.has(String(patch.changes.partyLevel)))throw Error('Cấp trình không thuộc danh mục.');
+  if(fields.includes('progressParty')&&!PARTY_STATUSES.has(String(patch.changes.progressParty)))throw Error('Tiến độ Thành ủy không thuộc danh mục.');
+  if(fields.includes('partyLevel')&&fields.includes('progressParty'))throw Error('Chỉ gửi cấp trình; tiến độ phụ thuộc do giao dịch quyết định.');
   if(before?.operationId===request.operationId&&fields.every(f=>before[f]===patch.changes[f]))
     return {status:'committed',row:before,operationId:request.operationId};
   // get() can return data without populating the transaction cache. Hold a
@@ -97,13 +109,19 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   try{result=await runTransaction(location,(raw:any)=>{
     if(!raw||raw.operationId===request.operationId)return undefined;
     if(fields.some(f=>raw[f]!==patch.baseValues[f])||violatesProgressBuildWritePolicy(raw,patch.changes))return undefined;
-    const changed=fields.filter(f=>raw[f]!==patch.changes[f]);
+    const requested={...patch.changes};
+    if(fields.includes('partyLevel')&&raw.partyLevel!==requested.partyLevel){
+      if(requested.partyLevel==='Không')requested.progressParty='Không phải trình';
+      else if(isNoParty(raw.partyLevel))requested.progressParty='Sở chưa trình';
+    }
+    if(fields.includes('progressParty')&&(isNoParty(raw.partyLevel)||requested.progressParty==='Không phải trình'))return undefined;
+    const changed=(Object.keys(requested) as typeof fields).filter(f=>raw[f]!==requested[f]);
     if(!changed.length)return undefined;
     const revision=raw.revision+1,at=serverTimestamp();
-    return {...raw,...patch.changes,revision,operationId:request.operationId,updatedAt:at,updatedBy:session.uid,
-      editProofs:{...(raw.editProofs??{}),...Object.fromEntries(changed.map(f=>[f,request.leases![f].token]))},
+    return {...raw,...requested,revision,operationId:request.operationId,updatedAt:at,updatedBy:session.uid,
+      editProofs:{...(raw.editProofs??{}),...Object.fromEntries(fields.filter(f=>changed.includes(f)).map(f=>[f,request.leases![f].token]))},
       history:{...(raw.history??{}),[String(revision%50)]:{operationId:request.operationId,recordId:id,at,actor:session.uid,
-        changes:Object.fromEntries(changed.map(f=>[f,patch.changes[f]])),oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))}}};
+        changes:Object.fromEntries(changed.map(f=>[f,requested[f]])),oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))}}};
   },{applyLocally:false});}finally{release();}
   const row=(await get(location)).val();
   if(!row||row.operationId!==request.operationId||fields.some(f=>row[f]!==patch.changes[f]))

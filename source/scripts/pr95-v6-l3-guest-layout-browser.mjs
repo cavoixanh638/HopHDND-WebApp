@@ -146,7 +146,7 @@ const inspectLayout=async (label,expectedRole,hasNav)=>{
   assert(x.gear&&x.gearName==='Mở cài đặt demo'&&x.gearRight>=x.viewport-65,
     label+' accessible top-right gear '+JSON.stringify(x));
   assert(x.pageScrollWidth<=x.viewport+3,label+' no full page horizontal overflow');
-  assert(x.fakeNotice,label+' synthetic-data identity preserved');
+  assert(!x.fakeNotice,label+' redundant synthetic-only bottom footer must be absent');
   assert(!x.oldGuestSwitchNotice,label+' obsolete guest transition notice absent');
   console.log('UI_V6_L3_DOM_RECT_PASS '+label+' '+JSON.stringify(x));
   return x;

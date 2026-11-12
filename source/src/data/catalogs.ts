@@ -1,4 +1,5 @@
 import type { Item, TextField } from '../../shared/types';
+import {validateReportGroupIdentities,type ReportGroupIdentityRegistry} from '../domain/report-reference-identity';
 import {OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../domain/status-contract';
 
 /** The four workflow catalogs are an authoritative ordered menu, not a union
@@ -9,7 +10,7 @@ const isWorkflowCatalog=(key:CatalogKey):key is StatusCatalogField=>
   Object.prototype.hasOwnProperty.call(OFFICIAL_STATUS_CHOICES,key);
 export type CatalogKey = Exclude<TextField, 'content' | 'note'>;
 export const CATALOG_KEYS: CatalogKey[] = ['department','type','partyLevel','progressParty','progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader','specificProgress'];
-export interface CatalogConfig { options: Record<CatalogKey, string[]>; specialistRooms: Record<string, string[]> }
+export interface CatalogConfig { options: Record<CatalogKey, string[]>; specialistRooms: Record<string, string[]>; groupIdentities?:ReportGroupIdentityRegistry }
 /** Source values can contain whitespace-only cells, trailing spaces and very
  * long free text. These must not make the saved dropdown config invalid.
  * This normalization changes choices only, never the Sheets source rows. */
@@ -46,7 +47,7 @@ export function catalogFromItems(items: Item[]): CatalogConfig {
     if(!person||!room)continue;
     specialistRooms[person]=uniqueChoices([...(specialistRooms[person]??[]),room]);
   }
-  return {options,specialistRooms};
+  return {options,specialistRooms,groupIdentities:validateReportGroupIdentities(undefined,options)};
 }
 
 export function validateCatalog(value: unknown): CatalogConfig {
@@ -78,7 +79,7 @@ export function validateCatalog(value: unknown): CatalogConfig {
       throw new Error('Quan hệ có chuyên viên hoặc phòng ngoài danh mục.');
     specialistRooms[person]=[...new Set(rooms)];
   }
-  return {options,specialistRooms};
+  return {options,specialistRooms,groupIdentities:validateReportGroupIdentities(input.groupIdentities,options)};
 }
 const key = (source:string) => `hdnd.catalogs.v1:${source}`;
 export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfig {
@@ -99,6 +100,7 @@ export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfi
     saved.specialistRooms[person]=uniqueChoices(observedRooms
       .map(room=>canonical(saved.options.room,room))).filter(room=>saved.options.room.includes(room));
   }
+  saved.groupIdentities=validateReportGroupIdentities(saved.groupIdentities,saved.options);
   return saved;
 }
 export function loadCatalog(source: string, items: Item[]): CatalogConfig {

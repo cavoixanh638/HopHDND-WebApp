@@ -25,10 +25,10 @@ concurrency:
 
 jobs:
   publish:
-    # NEVER publish a new Pages build just because code was merged into main.
-    # Operator must first certify BOTH functions + FULL Rules deployment and
-    # whitelist the exact new main SHA for a separate, controlled web release.
-    if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
+    # Fail closed until the ONE-TIME Spark RTDB security/data cutover is
+    # independently verified and the exact main source SHA is approved.
+    # Never use the historic Functions approval in a no-billing Spark release.
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,33 +49,40 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm ci
+      - name: Install locked local parent-operator dependencies for Spark Emulator tests
+        run: npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Unit tests
         run: npm test
-      - name: Firebase emulator tests
-        run: npm run test:firebase
+      - name: Firebase Spark Auth/RTDB Emulator tests (no Cloud Functions)
+        run: npm run test:spark
       - name: Check documentation
         run: npm run docs:check
-      - name: Verify approved public HTTPS parent endpoint BEFORE any web build
+      - name: Build the Spark PUBLIC Pages client only (never the local operator)
         env:
-          APPROVED_PARENT_ENDPOINT: ${{ vars.HOPHDND_PARENT_COMMIT_ENDPOINT }}
+          VITE_PARENT_REPLACEMENT_ENABLED: 'false'
+          VITE_PARENT_COMMIT_ENDPOINT: ''
+        run: npm run build:spark
+      - name: Verify publishable Spark bundle without localhost operator endpoint
         run: |
-          node -e "const u=process.env.APPROVED_PARENT_ENDPOINT;if(!u||!u.startsWith('https://'))throw Error('PAGES_RELEASE_HOLD: approved HTTPS parent endpoint missing');const a=new URL(u);if(a.protocol!=='https:'||a.username||a.password||a.hash||a.search)throw Error('PAGES_RELEASE_HOLD: endpoint unsafe')"
-      - name: Build Pages from TypeScript with explicitly approved V2 flags
-        env:
-          VITE_PARENT_REPLACEMENT_ENABLED: 'true'
-          VITE_PARENT_COMMIT_ENDPOINT: ${{ vars.HOPHDND_PARENT_COMMIT_ENDPOINT }}
-        run: npm run build:pages
+          test -s dist-spark/index.html
+          test -d dist-spark/assets
+          if grep -R -E 'http://127[.]0[.]0[.]1:8787/parentDatasetCommit|http://localhost:8787/parentDatasetCommit' dist-spark/assets; then
+            echo "::error::SPARK_PAGES_HOLD: local operator endpoint leaked into PUBLIC build"
+            exit 1
+          fi
+          echo "SPARK_PUBLIC_BUNDLE_PASS"
       - name: Copy split Pages build while keeping older hashed assets for cached HTML
         run: |
           # GitHub Pages/browser/CDN may still serve the previous index.html.
           # Deleting its hashed JS breaks the entire app before Firebase can start.
           # Keep previously published hashed assets, never replace the data/rules.
           cp ../index.html /tmp/hophdnd-previous-index.html
-          cp dist-pages/index.html ../index.html
+          cp dist-spark/index.html ../index.html
           mkdir -p ../assets
-          rsync -a dist-pages/assets/ ../assets/
+          rsync -a dist-spark/assets/ ../assets/
+          printf '{"mode":"spark","source_sha":"%s"}\n' "$GITHUB_SHA" > ../version.json
           test -s ../index.html
           test -f ../.nojekyll || { echo "::error::Missing .nojekyll; GitHub Pages Jekyll will parse TypeScript documentation and fail."; exit 1; }
           echo "PAGES_JEKYLL_DISABLED_PASS"
@@ -86,13 +93,13 @@ jobs:
         shell: bash
         env:
           APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
-          BACKENDS_CONFIRMED: ${{ vars.HOPHDND_RELEASE_BACKENDS_CONFIRMED }}
+          SPARK_PRODUCTION_CONFIRMED: ${{ vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED }}
         run: |
           set -euo pipefail
           # An approval is bound to one exact main commit, not merely a source tree.
           if [ "$GITHUB_REF" != "refs/heads/main" ] ||
              [ "$APPROVED_MAIN_SHA" != "$GITHUB_SHA" ] ||
-             [ "$BACKENDS_CONFIRMED" != "true" ]; then
+             [ "$SPARK_PRODUCTION_CONFIRMED" != "true" ]; then
             echo "::error::PAGES_RELEASE_HOLD: main ref or approval does not match job SHA"
             exit 1
           fi
@@ -102,14 +109,14 @@ jobs:
             echo "::error::PAGES_RELEASE_HOLD: main advanced; new SHA requires new approval"
             exit 1
           fi
-          git add -A -- index.html assets
-          if git diff --cached --quiet -- index.html assets; then
+          git add -A -- index.html assets version.json
+          if git diff --cached --quiet -- index.html assets version.json; then
             echo "Pages assets already match exactly approved main SHA; nothing to publish."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "build(pages): publish verified split HopHDND source"
+          git commit -m "build(pages): publish verified Spark WebApp from approved source"
           # Race-safe: no rebase onto newer main, even if only docs changed.
           # If main advances after this fetch, non-force push will fail closed.
           git fetch origin main

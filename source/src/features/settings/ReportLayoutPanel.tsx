@@ -1,4 +1,5 @@
 import type { GroupField, Item } from '../../../shared/types';
+import type {ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
 import {configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,
   TABLE_FONT_OPTIONS,REPORT_VARIANTS,MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,reportPageWidth,withReportPageWidth,
   type ReportLayout,type TableFont,type ReportVariant} from '../../data/report-preferences';
@@ -12,9 +13,10 @@ type ReportLayoutPanelProps = {
   group: GroupField;
   sourceLabel: string;
   groupOrder:string[];
+  groupIdentities?:ReportGroupIdentityRegistry;
 };
 
-export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, groupOrder }: ReportLayoutPanelProps) {
+export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, groupOrder, groupIdentities }: ReportLayoutPanelProps) {
   const update = (index: number, change: Partial<ReportLayout>) => {
     onChange(draft.map((report, current) => current === index ? { ...report, ...change } : report));
   };
@@ -183,7 +185,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
             </div>
             <div className="report-layout-preview">
               <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'} · Kéo đường phân cách ở tiêu đề để thay đổi độ rộng cột.</p>
-              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} sourceLabel={sourceLabel} onSelect={() => {}} preview
+              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
                  onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
             </div>
           </article>;

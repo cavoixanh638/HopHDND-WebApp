@@ -9,7 +9,7 @@ function StageCard({stage,selection,onSelect,showDiagnostics}: {stage:SummarySta
   const pct=stage.percent??0;
   return <article className={'item-summary-card item-summary-'+stage.id}
     data-summary-card={stage.id}>
-    <div className="item-summary-card-head"><h3>{stage.title}</h3>
+    <div className="item-summary-card-head"><h3>{stage.title}:</h3>
       <strong className="item-summary-percent">{pct}%</strong></div>
     <p className="item-summary-fraction"><strong>{stage.complete}</strong> / {stage.total} hoàn thành</p>
     <div className="item-summary-progress" role="progressbar"

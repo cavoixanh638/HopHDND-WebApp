@@ -1,0 +1,224 @@
+name: UI 20261106 controls - isolated exact-SHA acceptance (NO deploy)
+on:
+  push:
+    branches:
+      - ui/20261106-controls-command
+      - ui/20261106-picker-restore
+      - ui/20261106-l03-tracks
+    paths:
+      - 'source/src/**'
+      - 'source/shared/**'
+      - 'source/tests/**'
+      - 'source/scripts/**'
+      - 'source/cell-edit-service/**'
+      - 'source/parent-commit-service/**'
+      - 'source/firebase/**'
+      - 'source/compact-qa.html'
+      - 'source/vite.config.ts'
+      - 'source/package*.json'
+      - '.github/workflows/ui-20261106-controls.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-20261106-controls-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  controls-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # reference ab8629c and baseline 8a201c for exact UI render
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Pin exact source SHA
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Install locked frontend and real browser (isolated)
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: TypeScript and full frontend unit suite
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build standalone and FULL synthetic preview
+        run: |
+          npm run build
+          npm run build:compact:qa
+          test -s dist/Dashboard_HĐND.html
+          test -s dist-compact-qa/compact-qa.html
+      - name: Real Chromium list/popup/admin/guest/mixed visual witness (1440/900/390)
+        run: node scripts/ui-20261106-commander-smoke.mjs
+      - name: Independent worker browser witnesses if supplied
+        run: |
+          set -eu
+          for witness in scripts/ui-20261106-picker-browser.mjs scripts/ui-20261106-tracks-browser.mjs; do
+            if [ -f "$witness" ]; then
+              echo "Running provided $witness"
+              node "$witness"
+            else
+              echo "FEATURE_WITNESS_PENDING $witness (not an acceptance PASS)"
+            fi
+          done
+      - name: Reference vs baseline vs restored four-person skin (REAL Chromium)
+        run: |
+          set -euo pipefail
+          for variant in reference baseline; do
+            if [ "$variant" = reference ]; then
+              sha=ab8629c7575debd494c908c14bde9967a575a82a
+              port=5197
+            else
+              sha=8a201c1bf48c7916e4d0af9e1c0ca60cd6737632
+              port=5198
+            fi
+            root="$RUNNER_TEMP/ui-20261106-picker-$variant"
+            git worktree add --detach "$root" "$sha"
+            cp tests/ui-20261106-picker-fixture.tsx "$root/source/tests/"
+            cp ui-20261106-picker-fixture.html "$root/source/"
+            cp scripts/ui-20261106-picker-browser.mjs "$root/source/scripts/"
+            ln -s "$PWD/node_modules" "$root/source/node_modules"
+            ln -s "$PWD/cell-edit-service/node_modules" "$root/source/cell-edit-service/node_modules"
+            ( cd "$root/source" && \
+              PICKER_VARIANT="$variant" PICKER_PORT="$port" \
+              PICKER_ARTIFACT_DIR="$GITHUB_WORKSPACE/source/qa-results/ui-20261106-picker/$variant" \
+              node scripts/ui-20261106-picker-browser.mjs )
+          done
+          node scripts/ui-20261106-picker-diff.mjs
+      - name: File-level SHA256 and immutable candidate package
+        run: |
+          set -eu
+          mkdir -p qa-results/ui-20261106
+          # Final coordination has BOTH feature scripts. Witnessless smoke
+          # must not be mistaken for integrated acceptance.
+          if [ "$GITHUB_REF" = "refs/heads/ui/20261106-controls-command" ]; then
+            test -s qa-results/ui-20261106-picker/after/summary.json
+            test -s qa-results/ui-20261106-picker/reference-vs-baseline-vs-after.json
+            test -s qa-results/ui-20261106-tracks/measured-rects.json
+          fi
+          test -s docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md
+          find dist dist-compact-qa -type f -print0 | sort -z | xargs -0 sha256sum > qa-results/ui-20261106/asset-sha256.txt
+          printf '%s\n' "$GITHUB_SHA" > qa-results/ui-20261106/source-sha.txt
+          sha256sum docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md > qa-results/ui-20261106/readme-sha256.txt
+          tar -czf qa-results/ui-20261106/full-synthetic-and-standalone.tar.gz \
+            dist dist-compact-qa \
+            docs/tasks/parallel-20261106-ui-controls/DEMO_PACKAGE_README.md \
+            qa-results/ui-20261106/source-sha.txt \
+            qa-results/ui-20261106/asset-sha256.txt \
+            qa-results/ui-20261106/readme-sha256.txt
+          sha256sum qa-results/ui-20261106/full-synthetic-and-standalone.tar.gz > qa-results/ui-20261106/package-sha256.txt
+          cat qa-results/ui-20261106/package-sha256.txt
+      - name: Archive exact source/SHA/screenshots/rects (not deployed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-controls-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/qa-results/ui-20261106/
+            source/qa-results/ui-20261106-picker/
+            source/qa-results/ui-20261106-tracks/
+            source/ui-20261106-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
+  isolated-cas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Locked dependencies and isolated browser
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Source rules generated for emulator only, and service checks
+        run: |
+          npm run check --prefix cell-edit-service
+          node cell-edit-service/scripts/make-test-rules.mjs
+      - name: Real isolated Auth RTDB Callable CAS and permissions
+        run: |
+          cd cell-edit-service
+          npm run test:isolated > stdout.local.txt 2>&1 || { tail -n 120 stdout.local.txt; exit 1; }
+          tail -n 40 stdout.local.txt
+      - name: Archive isolated witness (never live)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-cas-${{ github.run_id }}-${{ github.sha }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
+  real-app-emulator:
+    needs: [controls-and-package, isolated-cas]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Pin exact app SHA
+        run: test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+      - name: Install locked dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Generate local QA rules ONLY
+        run: node scripts/final-app-qa-rules.mjs
+      - name: Real app emulator guest/admin/CAS/freeze/permissions
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Archive full-app witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261106-real-app-${{ github.run_id }}-${{ github.sha }}
+          path: source/qa-results/final-app-review/
+          if-no-files-found: warn
+          retention-days: 14

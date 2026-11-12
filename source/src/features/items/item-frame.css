@@ -715,6 +715,15 @@
   letter-spacing:.015em;
 }
 .compact-columns-options {max-height:min(75vh,560px);overflow-y:auto;overscroll-behavior:contain}
+/* Portaled menu escapes the List's overflow:hidden ancestor. Fixed geometry
+   is computed from the trigger and live visual viewport, including short
+   windows and responsive widths. Only this menu is promoted, not all popups. */
+.compact-columns-options.compact-columns-options-floating{
+  position:fixed;right:auto;bottom:auto;z-index:10060;
+  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-gutter:stable;max-width:calc(100vw - 24px);
+  outline:none;
+}
 .compact-content-group {display:grid;gap:5px;min-width:0}
 .compact-content-department {display:flex;align-items:flex-start;gap:6px;min-width:0;
   color:#4b6358;font-size:11px;line-height:1.4;text-align:left}
@@ -1045,9 +1054,9 @@
   .compact-stage-state .workflow-status-value::before{
   content:none;display:none;
 }
-/* UI V3 L2: no nested pill/button/editor boxes inside a colored grouped stage.
-   These rules intentionally override the historical 3D individual-button hover
-   skin in app.css without changing that skin in unrelated standalone fields. */
+/* UI V3 L2 legacy defaults: a grouped stage used to be one flat surface.
+   Revised standard-skinned L03 editors have their OWN 3px hover/focus skin
+   in picker-parity-stages.css. Never apply V3's hover suppression to them. */
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
   :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger {
   display:inline-flex;width:100%;min-width:0;max-width:100%;min-height:0;
@@ -1059,17 +1068,18 @@
   cursor:pointer;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  :is(.compact-stage-state,.compact-stage-level) button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
+  :is(.compact-stage-state,.compact-stage-level):not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus,:focus-visible,[aria-expanded="true"]) {
   border:0!important;background:transparent!important;
   box-shadow:none!important;outline:0!important;transform:none!important;
   color:inherit!important;
 }
-/* One deliberate focus/hover affordance, on the actual shared ROW, not a nested box.
-   A read-only row has no button and therefore never gains an edit affordance. */
-:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:hover){
+/* Legacy V3 only: the row was the single hover/focus surface.
+   Revised L03 (data-rev2=true) instead lifts ONLY the hovered standard
+   field button; the parent stage row must never receive an extra outline. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages:not([data-rev2="true"]) .compact-stage-row:has(button.cell-picker-trigger:hover){
   border-color:#356C8B;
 }
-:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages:not([data-rev2="true"]) .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
   outline:2px solid #356C8B;outline-offset:1px;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row button.cell-picker-trigger:not(:disabled)::after{
@@ -1087,7 +1097,8 @@
   .compact-stage-row .compact-stage-state{margin-left:0}
 }
 
-/* UI V4 L2 — the OUTER stage row remains the one and only framed surface.
+/* UI V4 L2 legacy rail: its flat HOVER styling is only for nonstandard skins.
+   Revised L03 keeps its configured rail geometry but uses individual buttons.
    Status edits fill the entire value column; long legacy/canonical labels
    wrap to the left of a fixed 22px caret track, not around the caret.
    This is scoped to the grouped status member, not partyLevel or other fields. */
@@ -1137,13 +1148,13 @@
   pointer-events:none;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  .compact-stage-state[data-editable="true"]:not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
   border:0!important;outline:0!important;box-shadow:none!important;
   transform:none!important;
   background:color-mix(in srgb,currentColor 13%,transparent)!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
-  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
+  .compact-stage-state[data-editable="true"]:not([data-ui-picker-skin="standard"]) button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"])::before{
   background:color-mix(in srgb,currentColor 12%,transparent);
 }
 :is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row
@@ -1434,3 +1445,497 @@
 }
 :is(.item-data-table,.report-detail-grid) tbody td
   .compact-stage-level button.cell-picker-trigger:disabled::after{display:none}
+
+/* STREAM A: content first, source metadata secondary; permissions and
+   conditional highlights remain owned by each original field. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading {
+  gap:5px 8px;align-items:baseline;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-department {
+  flex:0 1 auto;font-weight:500;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-department:not([data-editable="true"]) {
+  color:#607467;min-height:0;font-size:12px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge:not([data-editable="true"]) {
+  min-height:0;padding:0;border:0;border-radius:0;background:transparent;
+  color:#607467;font-size:12px;font-weight:500;
+}
+/* Shared subgrid keeps all three value origins aligned, even for mixed
+   permissions. Narrow saved columns scroll internally rather than overlap. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row {
+  padding:0;border:0;border-radius:0;background:transparent;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-label {
+  font-weight:600;color:#607467;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-title .compact-stage-level {
+  margin-left:4px;gap:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row .compact-stage-state:not([data-editable="true"]) {
+  padding:5px 0 5px 8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(.compact-stage-state:not([data-editable="true"])) .compact-stage-label {
+  padding-top:5px;
+}
+/* app.css is included after this feature stylesheet in the real QA bundle.
+   Its generic long-text selector must not move these two fields back to top.
+   The extra source-key attribute makes this override win regardless of import
+   order without changing left text alignment, text wrapping or edit controls. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-col-key]:is([data-col-key="specificProgress"],[data-col-key="note"]) {
+  vertical-align:middle;
+}
+/* At the standard 52px ID width, reserve only the actual sort target,
+   rather than the generic symmetric 46px inset. */
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] {
+  padding-inline:2px;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-heading-content {
+  padding-inline:0;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-heading-content.has-sort {
+  padding-left:0;padding-right:20px;
+}
+.item-data-table thead .item-heading-row th[data-column-key="displayCode"] .column-sort-button {
+  width:18px;min-width:18px;padding-inline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row .compact-stage-state[data-progress-tone] {
+  background:var(--workflow-bg);border-radius:7px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row .compact-stage-state:not([data-editable="true"]) {
+  padding-left:9px;
+}
+
+/* UI 2026-11-04 / A — Metadata remains one quiet parenthesized text line.
+   Every member retains its own editor/highlight; no phantom punctuation for
+   absent fields and no floating type badge in read-only views. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:0;
+  min-width:0;max-width:100%;font-size:12px;line-height:1.5;
+  color:#607467;overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-meta-mark,
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-meta-separator{
+  flex:none;color:#607467;font-weight:400;white-space:pre;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-department{
+  display:inline-flex;align-items:baseline;flex:0 1 auto;
+  min-width:0;max-width:100%;min-height:0;font-weight:500;
+  font-size:inherit;line-height:inherit;overflow-wrap:anywhere;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-badge:not([data-editable="true"]){
+  display:inline;min-height:0;padding:0;border:0;border-radius:0;
+  background:transparent;color:inherit;font:inherit;line-height:inherit;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]{
+  margin-inline:2px;align-self:center;max-width:100%;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  .compact-document-department[data-editable="true"] :is(.compact-part,.cell-picker-trigger,input){
+  min-width:0;max-width:100%;box-sizing:border-box;
+}
+/* A single missing member does not create a fake '-' or empty parentheses.
+   A blank editable member is still a real CellPicker, not a plain caret. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-document-heading
+  .compact-document-badge[data-editable="true"]{
+  display:inline-flex;flex:0 1 auto;min-width:0;
+}
+
+/* L03 shares ONE geometry across all three progress rows. The optional
+   party-level editor gets the middle column, not the first-row label's width.
+   Read-only caption spans two columns, leaving the status in the same x track. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages{
+  grid-template-columns:max-content max-content minmax(166px,1fr);
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+  grid-column:1 / -1;grid-template-columns:subgrid;column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stage-row > .compact-stage-label{
+  grid-column:1 / 3;
+  align-self:start;min-width:0;white-space:nowrap;
+  font-weight:650;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row[data-level-editable="true"] > .compact-stage-label{
+  grid-column:1;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]{
+  grid-column:2;display:inline-flex;align-self:start;align-items:center;
+  gap:0;margin:0;min-width:max-content;white-space:nowrap;
+  padding-top:5px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]
+  button.cell-picker-trigger{
+  display:inline-flex!important;min-height:30px!important;box-sizing:border-box;
+  padding:4px 6px!important;border:1px solid #B7CBD6!important;
+  border-radius:7px!important;background:var(--hdnd-status-other-bg,#F2F6F9)!important;
+  color:var(--hdnd-status-other-text,#426274)!important;
+  align-items:center!important;gap:6px;white-space:nowrap;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-level[data-level-editor="true"]
+  button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border:1px solid #648CA3!important;
+  background:#E6F0F6!important;
+  outline:2px solid #356C8B!important;outline-offset:1px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-state{
+  grid-column:3;margin-left:0!important;min-width:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row > .compact-stage-state[data-editable="true"]
+  button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"]){
+  outline:2px solid #356C8B!important;outline-offset:1px;
+}
+/* Never substitute a row-wide hover/focus border for independent buttons. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(button.cell-picker-trigger:hover){
+  border-color:transparent;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-row:has(button.cell-picker-trigger:is(:focus-visible,[aria-expanded="true"])){
+  outline:0;
+}
+/* Container queries and phone rules must not collapse a row into one column:
+   narrow saved widths continue to scroll inside .compact-stages. */
+@media(max-width:620px){
+  :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+    grid-template-columns:subgrid;
+  }
+}
+@container(max-width:280px){
+  :is(.item-data-table,.report-detail-grid) tbody td .compact-stages > .compact-stage-row{
+    grid-template-columns:subgrid;
+  }
+}
+
+/* UI 2026-11-05 / PICKER. Replace per-field REV2 overrides with a SINGLE
+   CellPicker skin, shared by Lãnh đạo UBND and L01/L03. CellPicker.tsx keeps
+   all lease, pointer, keyboard, popover and Escape behavior unchanged. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]{
+  display:flex;flex-flow:row nowrap;align-items:center;gap:8px;
+  min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-inline:contain;scrollbar-width:thin;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge){
+  box-sizing:border-box;display:inline-flex;align-items:center;align-self:center;
+  flex:0 0 auto;min-width:0;max-width:min(66%,420px);margin:0;
+  overflow-wrap:break-word;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge)[data-editable="true"]{
+  min-width:92px;
+}
+/* The picker BUTTON, not metadata/type wrappers, owns the sole outline.
+   Read-only text is still plain text with no fake caret or hover. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"] .compact-document-badge,
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"] .pr95-v6-type-cell{
+  border:0!important;border-radius:0;padding:0!important;
+  background:transparent!important;box-shadow:none!important;
+  outline:0!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge):has(button.cell-picker-trigger:hover),
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  :is(.compact-document-department,.compact-document-badge):has(button.cell-picker-trigger:focus-visible){
+  outline:0!important;
+}
+
+/* L03 is a COMPACT subgrid, never a second source of persisted column width.
+   Both the 2-track and 3-track modes consume the owner's physical column width
+   but never stretch their final progress rail to fill spare whitespace. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]{
+  --ui-stage-label-track:min(138px,34%);
+  --ui-stage-level-track:70px; /* five characters, padding and caret */
+  --ui-stage-reserved:calc(var(--ui-stage-label-track) + 8px);
+  --ui-stage-status-track:min(238px,calc(100% - var(--ui-stage-reserved)));
+  box-sizing:border-box;display:grid;align-content:start;justify-content:start;
+  gap:5px;min-width:0;
+  /* WIDTH provides one whole-cluster budget per row; mixed-mode read-only
+     stays compact instead of occupying the wider editable physical col. */
+  width:min(100%,var(--hdnd-l03-inner-width,100%));max-width:100%;
+  overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;
+  scrollbar-width:thin;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="editable"]{
+  --ui-stage-reserved:calc(var(--ui-stage-label-track) + var(--ui-stage-level-track) + 16px);
+  grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-level-track) var(--ui-stage-status-track)!important;
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="readonly"]{
+  grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-status-track)!important;
+  column-gap:8px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row{
+  display:grid;grid-column:1/-1;grid-template-columns:subgrid!important;
+  column-gap:8px;box-sizing:border-box;width:100%;min-width:0;
+  padding:0;border:0;border-radius:0;background:transparent;
+  align-items:center;box-shadow:none;outline:0;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-label{
+  grid-column:1!important;min-width:0;align-self:center;display:flex;
+  align-items:center;padding:0!important;margin:0!important;
+  font-weight:650;line-height:1.4;white-space:normal;
+  overflow-wrap:break-word;color:#53695e;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-title{
+  display:inline;min-width:0;max-width:100%;white-space:normal;
+  overflow-wrap:break-word;line-height:inherit;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-title .compact-stage-level{
+  display:inline;min-width:0;margin:0 0 0 3px;padding:0;
+  white-space:nowrap;overflow-wrap:normal;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-level[data-level-editor="true"]{
+  grid-column:2;display:flex;align-items:center;align-self:center;
+  box-sizing:border-box;width:var(--ui-stage-level-track);min-width:0;
+  padding:0;margin:0;white-space:normal;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="editable"] .compact-stage-state{
+  grid-column:3!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"][data-level-layout="readonly"] .compact-stage-state{
+  grid-column:2!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state{
+  display:flex;align-items:center;align-self:center;justify-self:start;
+  box-sizing:border-box;width:100%;max-width:238px;min-height:36px;
+  min-width:0;margin:0!important;padding:0!important;
+  border:0!important;border-radius:0;background:transparent!important;
+  color:var(--workflow-text);
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-state,.compact-stage-level[data-level-editor="true"])
+  .compact-part{
+  display:flex;align-items:stretch;min-width:0;width:100%;
+  height:auto;min-height:36px;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"]){
+  display:flex;align-items:center;min-height:36px;
+  padding:5px 0!important;white-space:normal;overflow-wrap:break-word;
+  background:transparent!important;border:0!important;
+  cursor:default;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  .workflow-status-value{
+  padding:0!important;border:0!important;box-shadow:none!important;
+  background:transparent!important;color:inherit!important;
+}
+/* REVIEW-3 Codex visual verification: in a read-only stage the real text is
+   nested inside a 36px .compact-part flex box. Its historical stretch
+   alignment pinned the glyph at the TOP even though the outer status wrapper
+   and label were centered. Center the actual flex CONTENT in both List and
+   ReportDetailGrid; do not resize picker hit targets or change text leading,
+   and let multiline values expand naturally. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])
+  > .compact-part{
+  align-items:center;
+}
+/* Default tokens are the current UBND picker colors. The SAME actual button
+   receives status/type palette tokens; disabled/read-only has no edit cue. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  [data-ui-picker-skin="standard"]{
+  --ui-picker-bg:#F2F6F9;--ui-picker-fg:#426274;
+  --ui-picker-border:#B7CBD6;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-badge[data-ui-picker-skin="standard"]{
+  --ui-picker-bg:var(--type-bg,#F1F5F9);
+  --ui-picker-fg:var(--type-ink,#334155);
+  --ui-picker-border:var(--type-border,#94A3B8);
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stage-state[data-ui-picker-skin="standard"]{
+  --ui-picker-bg:var(--workflow-bg,#F2F6F9);
+  --ui-picker-fg:var(--workflow-text,#426274);
+  --ui-picker-border:var(--workflow-border,#CBD5E1);
+}
+/* One physical CellPicker control for department/type/level/three statuses and
+   the UBND/VP picker, including when leader fields are separate columns. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row >
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger,
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger{
+  display:inline-flex!important;align-items:center!important;
+  justify-content:flex-start!important;position:relative;isolation:auto;
+  flex:1 1 auto;box-sizing:border-box;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  min-height:36px!important;height:auto!important;
+  margin:0!important;padding:7px 9px!important;gap:8px;
+  border:1.5px solid var(--ui-picker-border,#B7CBD6)!important;
+  border-radius:7px!important;
+  background:var(--ui-picker-bg,#F2F6F9)!important;
+  color:var(--ui-picker-fg,#426274)!important;
+  box-shadow:inset 0 1px 0 #ffffffd0!important;
+  font-size:12px;line-height:1.4;font-weight:600;
+  text-align:left;white-space:normal!important;overflow-wrap:break-word;
+  word-break:normal;cursor:pointer;transform:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row >
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger .cell-picker-value-text,
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger .cell-picker-value-text{
+  display:block;flex:1 1 auto;min-width:0;max-width:100%;
+  position:static;grid-column:auto;white-space:normal!important;
+  overflow:visible!important;text-overflow:clip!important;
+  overflow-wrap:break-word;word-break:normal;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row >
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger::before{
+  content:none!important;display:none!important;
+}
+/* 06/11 integration: remove the old higher-specificity V-chevron pseudo
+   from standard L01/L03 pickers. Its transparent !important background made
+   the shared filled triangle invisible (real Chrome witness #42248060058).
+   The scoped shared ::after below now owns ONE caret on all editable fields. */
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-stages[data-rev2="true"] > .compact-stage-row >
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]),
+:is(.item-data-table,.report-detail-grid) tbody td
+  .compact-document-heading[data-metadata-mode="editable"]
+  [data-ui-picker-skin="standard"] button.cell-picker-trigger:is(:hover,:focus-visible,[aria-expanded="true"]){
+  border-color:#356D86!important;
+  background:var(--ui-picker-bg,#F2F6F9)!important;
+  color:var(--ui-picker-fg,#426274)!important;
+  outline:2px solid #356D86!important;outline-offset:1px;
+  box-shadow:none!important;transform:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td
+  [data-ui-picker-skin="standard"][data-highlighted="true"] button.cell-picker-trigger{
+  background:var(--member-highlight-bg)!important;
+  color:var(--member-highlight-text)!important;
+}
+@media(max-width:620px){
+  :is(.item-data-table,.report-detail-grid) tbody td
+    .compact-stages[data-rev2="true"] > .compact-stage-row{
+    grid-template-columns:subgrid!important;
+  }
+}
+@container(max-width:280px){
+  :is(.item-data-table,.report-detail-grid) tbody td
+    .compact-stages[data-rev2="true"] > .compact-stage-row{
+    grid-template-columns:subgrid!important;
+  }
+}
+
+/* PICKER 06/11: the four L04 personnel fields deliberately keep their
+   pre-unification CellPicker skin (reference ab8629c). Removing them from the
+   multi-field "standard" selector above restores existing app.css + 609
+   compact-pair-lines rules, including normal/hover/focus/popover/list/popup.
+   Do not set geometry on .compact-stages here. */
+
+/* ONE small filled down-triangle per editable data picker, shared by List and
+   popup. Field selectors, never nth-child, prevent filter/nav/settings drift.
+   One ::after only: buttons have no native select marker or nested SVG caret.
+   The box is paint-only; keyboard and pointer hit target remain the BUTTON. */
+:is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:not(:disabled)::after{
+  content:""!important;display:block!important;position:static!important;
+  flex:0 0 5px!important;grid-column:auto;
+  width:5px!important;height:3px!important;min-width:5px;
+  margin:0!important;align-self:center!important;justify-self:center;
+  border:0!important;border-radius:0!important;
+  background:currentColor!important;
+  clip-path:polygon(0 0,100% 0,50% 100%);
+  transform:none!important;pointer-events:none;
+}
+/* L03 status uses the existing 2-track button grid: keep its shared width
+   and align its triangle in column 2. Erase only its former shaded caret rail. */
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger::before{
+  content:none!important;display:none!important;background:none!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td .compact-stages[data-rev2="true"]
+  .compact-stage-state[data-editable="true"] button.cell-picker-trigger:not(:disabled)::after{
+  grid-column:2!important;margin:0!important;justify-self:center!important;
+}
+:is(.item-data-table,.report-detail-grid) tbody td button.cell-picker-trigger:disabled::after{
+  content:none!important;display:none!important;
+}
+
+/* 08/11: A00 List reading rhythm tightened slightly; no width/data edits. */
+.item-list-card>.item-data-region{line-height:1.42}
+.item-list-card .compact-content-line,
+.item-list-card .content-button{line-height:1.44}
+/* C01-C03 centered title and greener completion percentage. */
+.item-summary-card-head{
+  align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:6px;text-align:center;min-height:26px;
+}
+.item-summary-card-head h3{line-height:1.25}
+.item-summary-percent{font-size:20px;line-height:1.1;color:#15864d}
+/* L01 content now matches the Note column's middle vertical alignment. */
+.item-data-table tbody td[data-col-key="content"],
+.item-data-table tbody td.compact-merged-cell[data-col-key="content"]{
+  vertical-align:middle;
+}
+ 
+
+/* 08/11 B00/C01-C03: information hierarchy and neutral reading ink.
+   Scope only to the List; do not recolor status badges or custom palettes. */
+.item-list-card .item-data-table{color:#24313d}
+.item-list-card .item-summary-card h3{color:#1f2937}
+.item-list-card .item-summary-fraction{color:#475569}
+.item-list-card .item-summary-fraction strong{color:#1f2937}
+.item-list-card .item-summary-kind-chip:not([aria-pressed="true"]){color:#334155}
+.item-list-card .item-summary-kind-chip:not([aria-pressed="true"]) strong{color:#1f2937}
+.item-summary-total{
+  border-color:#b8d4c3;
+  background:linear-gradient(108deg,#f5fbf7 0%,#fff 69%);
+  box-shadow:0 2px 10px #155c3d12;
+}
+.item-summary-total-count{
+  font-size:38px;line-height:1;font-weight:800;
+  color:#087553;letter-spacing:-.025em;
+}
+.item-summary-percent{
+  font-size:24px;line-height:1;font-weight:800;color:#15864d;
+}
+
+
+/* L03 preview desktop: the scrollable table should use the remaining
+   vertical viewport, not a fixed 64vh disconnected from its page position.
+   JavaScript writes only a temporary CSS custom property, never the saved
+   column widths. Short/small viewports retain the previous height rules. */
+@media(min-width:900px){
+  .pr95-full-preview .item-data-region .item-table-scroll{
+    height:var(--hdnd-preview-table-fill-height,clamp(360px,64vh,720px));
+    max-height:none;
+  }
+}

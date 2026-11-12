@@ -22,3 +22,7 @@ pr149-ops-evidence/
 *-debug.log
 firebase-debug.*
 dist-hosting/
+/dist-compact-qa/
+/qa-results/
+/ui-20261106-artifacts/
+/pr95-v6-l4-*.png

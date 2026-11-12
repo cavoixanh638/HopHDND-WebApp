@@ -72,7 +72,7 @@ describe('R03: grouped source fields retain independent highlight precedence',()
  });
 });
 
-describe('R05: entire stage frames carry independent visual tones',()=>{
+describe('R05: grouped source statuses retain field-level tones',()=>{
  it('applies source-specific tones to the whole frame, not just the pill',()=>{
    const html=draw('partyTogether');
    expect(html).toMatch(/compact-stage-row"[^>]*data-progress-tone="not-submitted"/);
@@ -108,5 +108,31 @@ describe('R05: entire stage frames carry independent visual tones',()=>{
    const editable=draw('partyTogether',rules,[],false,true);
    expect(editable).toContain('cell-picker-trigger');
    expect(editable).toMatch(/compact-stage-row"[^>]*data-progress-tone="office"/);
+ });
+});
+
+describe('STREAM A metadata and stage rows',()=>{
+ it.each([false,true])('content precedes type and department (editing=%s)',editing=>{
+   const html=draw('contentDetails',[],[],false,editing);
+   expect(html.indexOf('compact-document-content')).toBeLessThan(html.indexOf('compact-document-badge'));
+   expect(html.indexOf('compact-document-badge')).toBeLessThan(html.indexOf('compact-document-department'));
+   // New approved L01 semantics: Loại VB first, then Sở, in both modes.
+   expect(html).toContain('Sở mẫu A');expect(html).toContain('QPPL');
+   expect(html.match(/class="compact-document-content"/g)).toHaveLength(1);
+ });
+ it.each([false,true])('keeps three named rows without numbered cards (editing=%s)',editing=>{
+   const html=draw('partyTogether',[],[],false,editing);
+   expect(html).not.toContain('compact-stage-number');
+   for(const label of ['Thành ủy','Trình Xây dựng NQ','Trình ban hành NQ'])expect(html).toContain(label);
+   expect(html).toContain('data-level-layout="'+(editing?'editable':'readonly')+'"');
+   if(editing){
+     expect(html).not.toContain('compact-stage-level-open');
+     expect(html).not.toContain('compact-stage-level-close');
+     expect(html).toContain('data-level-editor="true"');
+   }else{
+     expect(html).toContain('compact-stage-level-open');
+     expect(html).toContain('compact-stage-level-close');
+   }
+   expect((html.match(/data-editable="true"/g)||[]).length).toBe(editing?3:0);
  });
 });

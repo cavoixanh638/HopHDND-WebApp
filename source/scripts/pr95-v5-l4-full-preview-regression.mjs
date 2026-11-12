@@ -249,11 +249,11 @@ try{
   // or source-row mutation), then an explicit one-member highlight.
   await interact('const root=document.querySelector(".pr95-full-preview");'+
     'root.style.setProperty("--hdnd-status-done-text","#14539A");'+
-    'root.style.setProperty("--hdnd-stage-done-bg","#E7F3FF");'+
+    'root.style.setProperty("--hdnd-status-done-bg","#E7F3FF");'+
     'root.style.setProperty("--hdnd-stage-done-border","#94A8C9")');
   await ensure('(()=>{const row=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done]");'+
     'const member=row?.querySelector(".compact-stage-state"),inner=member?.querySelector(".workflow-status-value");'+
-    'return !!inner&&getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
+    'return !!inner&&getComputedStyle(member).backgroundColor==="rgba(0, 0, 0, 0)"&&'+
     'getComputedStyle(member).color==="rgb(20, 83, 154)"&&getComputedStyle(inner).color===getComputedStyle(member).color})()',
     'custom palette per-stage text/frame, no nested pill');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-custom-palette',true);
@@ -263,10 +263,10 @@ try{
   await ensure('(()=>{const member=document.querySelector("dialog.report-grid-modal .compact-stage-state[data-highlighted=true]");'+
     'const row=member.closest(".compact-stage-row"),inner=member.querySelector(".workflow-status-value");'+
     'const other=[...row.parentElement.querySelectorAll(".compact-stage-row")].find(x=>x!==row);'+
-    'return !!other&&getComputedStyle(member).backgroundColor==="rgb(255, 241, 172)"&&'+
+    'return !!other&&getComputedStyle(member).backgroundColor==="rgba(0, 0, 0, 0)"&&'+
     'getComputedStyle(inner).color==="rgb(113, 74, 18)"&&'+
-    'getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
-    'getComputedStyle(other).backgroundColor!==getComputedStyle(member).backgroundColor})()',
+    'getComputedStyle(row).backgroundColor==="rgba(0, 0, 0, 0)"&&'+
+    'getComputedStyle(other.querySelector(".compact-stage-state")).color!==getComputedStyle(member).color})()',
     'one-member highlight does not repaint neighboring stage or outer frame');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-member-highlight',true);
   await screenshot('pr95-v5-l4-regression-desktop-popup-custom-highlight.png');
@@ -289,10 +289,10 @@ try{
     'const s=r.querySelector(".compact-stage-state"),b=s?.querySelector("button.cell-picker-trigger");'+
     'if(!s||!b)return {ok:false};const v=getComputedStyle(b),br=b.getBoundingClientRect(),sr=s.getBoundingClientRect(),'+
     'arrow=getComputedStyle(b,"::after"),rail=getComputedStyle(b,"::before"),dot=getComputedStyle(s,"::before");'+
-    'return {ok:s.dataset.editable==="true"&&v.display==="grid"&&v.borderTopWidth==="0px"&&v.boxShadow==="none"&&'+
-    'v.backgroundColor!=="rgba(0, 0, 0, 0)"&&br.height>=38&&Math.abs(br.width-sr.width)<1&&'+
-    'dot.content==="none"&&arrow.content==="\\\"\\\""&&arrow.gridColumnStart==="2"&&'+
-    'rail.content==="\\\"\\\""&&parseFloat(rail.width)>=33,'+
+    'return {ok:s.dataset.editable==="true"&&v.display==="flex"&&v.borderTopWidth!=="0px"&&'+
+    'v.backgroundColor!=="rgba(0, 0, 0, 0)"&&br.height>=34&&br.height<=38&&Math.abs(br.width-sr.width)<1&&'+
+    'dot.content==="none"&&arrow.content==="\\\"\\\""&&arrow.display==="block"&&'+
+    'rail.content==="none",'+
     'right:br.right,fill:v.backgroundColor,stage:r.dataset.stageField};});'+
     'const byStage=new Map();for(const m of metrics){if(!byStage.has(m.stage))byStage.set(m.stage,m.right);'+
     'else if(Math.abs(byStage.get(m.stage)-m.right)>5)m.ok=false;}'+

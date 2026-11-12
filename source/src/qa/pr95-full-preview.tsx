@@ -7,12 +7,14 @@ import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from './ui-reference-codes';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
 import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
-import {catalogFromItems,validateCatalog,type CatalogConfig} from '../data/catalogs';
-import {defaultItemLayout,validateItemLayout,type ItemLayout} from '../data/item-preferences';
+import {catalogFromItems,loadCatalog,saveCatalog as saveCatalogLocally,validateCatalog,type CatalogConfig} from '../data/catalogs';
+import {renameReportGroupIdentity} from '../domain/report-reference-identity';
+import {defaultItemLayout,validateItemLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import {DEFAULT_REPORTS,isActive} from '../domain/reporting';
 import type {CellPermissions} from '../data/firebase-repository';
 import {ItemList} from '../features/items/ItemList';
+import type {BulkPatch} from '../features/items/bulk-paste';
 import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import {ReportTable} from '../features/reports/ReportTable';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
@@ -66,22 +68,33 @@ const nav:readonly {key:'items'|'reports';label:string}[]=[
   {key:'reports',label:'Báo cáo tổng hợp'},
   {key:'items',label:'Danh sách các ND trình HĐND'},
 ];
+const identityQaSource='review3-group-identity-synthetic';
+const identityQaItems=():Item[]=>createDemoItems(3).map((item,i)=>({
+  ...item,recordId:['r02','r03','r09'][i],
+  room:i<2?'Phòng thử A':'Phòng thử B',
+  department:'Sở giả lập',documentKind:'NQ',
+  isDropped:false,archivedAt:null,progressCouncil:'Hoàn thành'
+}));
 export function Pr95FullPreview(){
-  const [items,setItems]=useState<Item[]>(()=>createDemoItems(27));
+  // Activated only in the isolated synthetic QA entrypoint, never real App.
+  const groupQa=typeof window!=='undefined'&&
+    new URLSearchParams(window.location.search).get('qa-group-identity')==='1';
+  const [items,setItems]=useState<Item[]>(()=>groupQa?identityQaItems():createDemoItems(27));
   const [confirmedItems,setConfirmedItems]=useState<Item[]>(items);
   // Explicit URL fixture for browser QA; default preview stays guest.
   const [role,setRole]=useState<Role>(()=>typeof window!=='undefined'&&
     new URLSearchParams(window.location.search).get('preview-role')==='admin'?'admin':'guest');
   const [menuOpen,setMenuOpen]=useState(false);
   const referenceRoot=useRef<HTMLDivElement|null>(null);
-  const [referenceCodesOn,setReferenceCodesOn]=useState(false);
+  const [referenceCodesOn,setReferenceCodesOn]=useState(groupQa);
   const gearZone=useRef<HTMLDivElement|null>(null);
   const [sessionScope]=useState(()=>Math.random().toString(36).slice(2));
-  const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(null);
-  const [page,setPage]=useState<Page>('items');
+  const [catalogOverride,setCatalogOverride]=useState<CatalogConfig|null>(()=>groupQa?loadCatalog(identityQaSource,items):null);
+  const [groupQaStage,setGroupQaStage]=useState('baseline');
+  const [page,setPage]=useState<Page>(groupQa?'reports':'items');
   const [permissions,setPermissions]=useState<CellPermissions>(permissionsInitial);
   const [layout,setLayout]=useState<ItemLayout>(baseLayout);
-  const [group,setGroup]=useState<GroupField>('department');
+  const [group,setGroup]=useState<GroupField>(groupQa?'room':'department');
   const [drill,setDrill]=useState<Drill|null>(null);
   const [dirtyIds,setDirtyIds]=useState<Set<string>>(new Set());
   const [notice,setNotice]=useState('');
@@ -105,6 +118,26 @@ export function Pr95FullPreview(){
     setDirtyIds(previous=>new Set([...previous,id]));
     if(!admin)setGuestEditCount(v=>v+1);
     setNotice('Đã sửa dữ liệu giả trong bộ nhớ. Tải lại trang sẽ trả về dữ liệu ban đầu.');
+  };
+  const applyBulkRAM=(patches:readonly BulkPatch[])=>{
+    if(!admin)throw Error('Chỉ quản trị viên demo mới được dán hàng loạt.');
+    if(!patches.length)throw Error('Không có ô thay đổi.');
+    const originals=new Map(items.map(item=>[item.recordId,item]));
+    const seen=new Set<string>();
+    for(const patch of patches){
+      const original=originals.get(patch.recordId);
+      if(!original||seen.has(patch.recordId)||original.revision!==patch.baseRevision)
+        throw Error('Dữ liệu đã thay đổi hoặc trùng mã: cần xem trước lại.');
+      seen.add(patch.recordId);
+      const fields=Object.keys(patch.changes) as EditableField[];
+      if(!fields.length||fields.some(field=>!canEdit(patch.recordId,field)))
+        throw Error('Không đủ quyền sửa toàn bộ vùng đã chọn.');
+    }
+    const byId=new Map(patches.map(p=>[p.recordId,p.changes]));
+    setItems(current=>current.map(item=>byId.has(item.recordId)
+      ?{...item,...byId.get(item.recordId),revision:item.revision+1}:item));
+    setDirtyIds(current=>new Set([...current,...patches.map(p=>p.recordId)]));
+    setNotice('Đã áp dụng '+patches.length+' hồ sơ vào RAM; không ghi hệ thống thật.');
   };
   // Escape is handled before the list's own global filter shortcut when gear is open.
   useEffect(()=>{
@@ -149,6 +182,35 @@ export function Pr95FullPreview(){
     const checked=validateItemLayout(next);setLayout(checked);return checked;
   };
   const saveCatalog=async(next:CatalogConfig)=>{setCatalogOverride(validateCatalog(next));};
+  const groupQaAction=(action:'add'|'remove'|'move'|'reorder'|'rename')=>{
+    if(!groupQa||!admin)return;
+    if(action==='add')setItems(previous=>[
+      {...previous[0],recordId:'r01',room:'Phòng thử A'},...previous
+    ]);
+    if(action==='remove')setItems(previous=>previous.filter(item=>item.recordId!=='r02'));
+    if(action==='move')setItems(previous=>previous.map(item=>item.recordId==='r01'
+      ?{...item,room:'Phòng thử B'}:item));
+    if(action==='reorder')setItems(previous=>[...previous].reverse());
+    if(action==='rename'){
+      const registered=validateCatalog(catalog);
+      const updated=renameReportGroupIdentity(registered.groupIdentities,'room',
+        'Phòng thử A','Phòng A đổi tên');
+      const options={...registered.options,room:registered.options.room.map(value=>
+        value==='Phòng thử A'?'Phòng A đổi tên':value)};
+      // The catalog's specialist-room links must follow the explicit room
+      // rename too; otherwise validateCatalog correctly refuses a stale
+      // relationship to the former display label.
+      const specialistRooms=Object.fromEntries(Object.entries(registered.specialistRooms)
+        .map(([person,rooms])=>[person,rooms.map(room=>room==='Phòng thử A'
+          ?'Phòng A đổi tên':room)]));
+      const next=validateCatalog({...registered,groupIdentities:updated,options,specialistRooms});
+      if(!saveCatalogLocally(identityQaSource,next))throw Error('QA registry reload save failed');
+      setCatalogOverride(next);
+      setItems(previous=>previous.map(item=>item.room==='Phòng thử A'
+        ?{...item,room:'Phòng A đổi tên'}:item));
+    }
+    setGroupQaStage(action);
+  };
   const saveRAM=async()=>{
     setConfirmedItems(items);setDirtyIds(new Set());
     setNotice('Đã xác nhận phần sửa trong RAM, không ghi lên hệ thống thật.');return true;
@@ -173,16 +235,13 @@ export function Pr95FullPreview(){
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <UiReferenceOverlay enabled={admin&&referenceCodesOn} rootRef={referenceRoot}/>
     <header className="pr95-preview-header">
-      <div className="pr95-preview-product" aria-label="HopHDND bản xem thử">
-        HopHDND <span>UI V3 · DEMO</span>
-      </div>
       {admin&&<nav className="nav-tabs primary-section-switcher pr95-preview-nav"
         aria-label="Hai phần dữ liệu chính">
         {nav.map(entry=><button key={entry.key} data-ui-reference-nav={entry.key} type="button"
           className={'primary-section-card'+(page===entry.key?' active':'')}
           aria-current={page===entry.key?'page':undefined}
           onClick={()=>openPage(entry.key)}>
-          <span className="section-card-copy"><strong className="section-card-title">{entry.label}</strong></span>
+          <span className="section-card-copy"><strong className="section-card-title">{entry.key==='items'?layout.listTitle??DEFAULT_LIST_TITLE:entry.label}</strong></span>
           {page===entry.key&&<span className="section-card-state">Đang xem</span>}
         </button>)}
       </nav>}
@@ -206,6 +265,15 @@ export function Pr95FullPreview(){
               {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
               Trỏ vào ô để xem mã và ID đang hiển thị (dữ liệu giả).
             </p>}
+            <details className="pr95-preview-technical-details">
+              <summary>Thông tin mô phỏng</summary>
+              <div className="pr95-preview-context" role="note">
+                <span>Quản trị <strong>MÔ PHỎNG</strong></span>
+                <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
+                <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
+                <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
+              </div>
+            </details>
             <div className="pr95-preview-menu-footer">
               <button type="button" onClick={()=>switchRole('guest')}>Đăng xuất mô phỏng</button>
             </div>
@@ -215,12 +283,7 @@ export function Pr95FullPreview(){
       </div>
     </header>
     <main className="pr95-preview-main">
-      {admin&&<div className="pr95-preview-context" role="note">
-        <span>Quản trị <strong>MÔ PHỎNG</strong></span>
-        <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
-        <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
-        <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
-      </div>}
+
       <span data-testid="guest-edits" className="pr95-preview-qa-only" hidden>{guestEditCount}</span>
       {notice&&<p className="notice pr95-preview-notice" role="status">{notice}</p>}
       {dirtyIds.size>0&&<div className="pr95-preview-unsaved" role="status">
@@ -238,10 +301,14 @@ export function Pr95FullPreview(){
             </select>
           </label>
         </div>
+        {groupQa&&admin&&<div className="top-actions" data-qa-group-controls="true" data-qa-group-stage={groupQaStage}>
+          {(['add','remove','move','reorder','rename'] as const).map(action=><button key={action}
+            type="button" data-qa-group-action={action} onClick={()=>groupQaAction(action)}>{action}</button>)}
+        </div>}
         <p>Nhấp số đếm trong bảng để xem popup bằng ReportDetailGrid thật;
           dữ liệu, tỷ lệ và nhóm tính bằng domain/reporting hiện hành.</p>
         {configs.map(config=><ReportTable key={config.id} items={items} config={config}
-          group={group} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
+          group={group} groupIdentities={catalog.groupIdentities} onSelect={onSelect} sourceLabel="Dữ liệu giả PR95" />)}
       </section>}
       {(page==='items'||(page==='items-customize'&&admin))&&<section aria-label="Danh sách hồ sơ demo">
         {page==='items-customize'&&<div className="pr95-preview-section-heading">
@@ -253,7 +320,8 @@ export function Pr95FullPreview(){
           catalog={catalog} initialLayout={layout}
           canEditDraft canEditCell={canEdit} customizing={page==='items-customize'}
           anonymousViewer={!admin} viewerScope={'pr95-v3-'+role+'-'+sessionScope}
-          allowPersonalCompact={false} allowLayout={admin}
+          allowPersonalCompact={false} allowLayout={admin} compactPreview
+          onBulkApply={admin?applyBulkRAM:undefined}
           permissions={admin?permissions:undefined}
           onSavePermissions={admin?savePermissions:undefined}
           onReloadPermissions={admin?async()=>permissions:undefined}
@@ -320,8 +388,7 @@ export function Pr95FullPreview(){
         </label>
         <button type="button" className="button ghost" onClick={reset}>Khôi phục dữ liệu và quyền giả</button>
       </section>}
-      <footer className="pr95-preview-footnote">Dữ liệu giả · Chỉ lưu trong bộ nhớ
-        <span>Không đăng nhập hoặc kết nối Firebase/Google Sheets</span></footer>
+ 
     </main>
     {drill&&<ReportDetailGrid key={'pr95-popup-'+drill.title+'-'+role}
       title={drill.title} selectedIds={drill.ids} items={items}

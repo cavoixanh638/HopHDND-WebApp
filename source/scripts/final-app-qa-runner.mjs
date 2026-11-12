@@ -17,9 +17,16 @@ import * as XLSX from 'xlsx';
 
 const requirePlaywright=createRequire(resolve('cell-edit-service/package.json'));
 const {chromium}=requirePlaywright('playwright');
-const PROJECT='demo-hdnd',NAMESPACE='demo-hdnd';
-const DB='http://127.0.0.1:9000',SITE='http://127.0.0.1:4179';
-const ROOT=resolve('qa-results/final-app-review');
+const SPARK=process.env.FINAL_APP_SPARK==='true';
+if(SPARK){
+  process.env.VITE_FIREBASE_WRITE_MODE='spark';
+  process.env.VITE_QA_DEFAULT_RTDB_NAMESPACE='false';
+  process.env.VITE_PARENT_REPLACEMENT_ENABLED='true';
+  process.env.VITE_PARENT_COMMIT_ENDPOINT='http://127.0.0.1:8787/parentDatasetCommit';
+}
+const PROJECT='demo-hdnd',NAMESPACE=SPARK?'demo-hdnd':'demo-hdnd-default-rtdb';
+const DB='http://127.0.0.1:9000',SITE=SPARK?'http://127.0.0.1:4173':'http://127.0.0.1:4179';
+const ROOT=resolve(SPARK?'qa-results/spark-final-app-review':'qa-results/final-app-review');
 const RULES=resolve(ROOT,'generated/shared.rules.json');
 const reportPath=resolve(ROOT,'witness.json');
 const hash=s=>createHash('sha256').update(s).digest('hex');
@@ -35,7 +42,12 @@ const checkout=git('rev-parse','HEAD');
 const manifest=JSON.parse(readFileSync(resolve(ROOT,'generated/rules-manifest.json'),'utf8'));
 const expected=JSON.parse(readFileSync(RULES,'utf8'));
 assert.equal(manifest.combinedSha256,hash(readFileSync(RULES)));
-if(PIN){
+if(SPARK){
+  assert.equal(PIN,null,'Do not mix Spark integration QA and PR147 pin');
+  assert.equal(manifest.kind,'SPARK_INTEGRATION_RULES_UNMODIFIED_NOT_RELEASE');
+  assert.equal(manifest.candidateSha,checkout);
+  assert.equal(hash(readFileSync('firebase/database.spark.rules.json')),manifest.combinedSha256);
+}else if(PIN){
   assert.match(PIN,/^[a-f0-9]{40}$/);
   assert.equal(checkout,PIN,'QA must checkout the precise PR147 SHA; no moving branch');
   assert.equal(manifest.kind,'PINNED_PR147_CANDIDATE_RULES_UNMODIFIED_NOT_RELEASE');
@@ -174,7 +186,7 @@ function monitor(page,role){
   }).catch(error=>record('ROUTE_MONITOR_ERROR',{role,error:safeError(error)}));
 }
 async function seedWorkbook(){
-  const seedVite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',
+  const seedVite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',cacheDir:'.cache/full-app-qa-fixtures',
     server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   try{
     const [demo,catalog,reports,item,integrity,business]=await Promise.all([
@@ -191,10 +203,13 @@ async function seedWorkbook(){
       reports:reports.defaultReportLayout(),items:item.defaultItemLayout()};
     const rows=[
       [...business.BUSINESS_HEADERS],
+      // F/G must be a valid four-level party/status pair. Empty F is
+      // permitted by the legacy read parser but REJECTED by the new-generation
+      // RTDB Rules. Repair the synthetic fixture, never relax production Rules.
       ['NQQA001',1,'Nghị quyết kiểm thử kết nối','Sở mẫu A','HC',
-        '','','','','','','','','Chờ xử lý','Bộ hồ sơ QA A'],
+        'TTTU','Sở chưa trình','','','','','','','Chờ xử lý','Bộ hồ sơ QA A'],
       ['BCQA002',2,'Báo cáo kiểm thử toàn ứng dụng','Sở mẫu B','BC',
-        '','','','','','','','','Chờ xử lý','Bộ hồ sơ QA B']
+        'BTV','VP đang xử lý','','','','','','','Chờ xử lý','Bộ hồ sơ QA B']
     ];
     const workbook=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet(rows),'QA A-O');
@@ -248,25 +263,24 @@ async function startServices(){
       manifest.combinedSha256,'Pinned candidate Rules changed since QA pin');
   }else{
     const contents={
-      functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',
-        runtime:'nodejs22'}],
+      ...(!SPARK?{functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',runtime:'nodejs22'}]}:{}),
       database:{rules:RULES},
       emulators:{database:{host:'127.0.0.1',port:9000},
         auth:{host:'127.0.0.1',port:9099},
-        functions:{host:'127.0.0.1',port:5001},
+        ...(!SPARK?{functions:{host:'127.0.0.1',port:5001}}:{}),
         ui:{enabled:false},singleProjectMode:true}
     };
     writeFileSync(config,JSON.stringify(contents,null,2));
   }
   const env={...process.env,CI:'true',GCLOUD_PROJECT:PROJECT,
-    FIREBASE_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    FIREBASE_DATABASE_URL:`https://${NAMESPACE}.firebaseio.com`,
     FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
     FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
-    PARENT_DATABASE_URL:'https://demo-hdnd.firebaseio.com',
+    PARENT_DATABASE_URL:`https://${NAMESPACE}.firebaseio.com`,
     PARENT_ALLOWED_ORIGINS:SITE,PARENT_COMMIT_ENABLED:'true'};
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
-    '--only','auth,database,functions','--project',PROJECT,'--config',config
+    '--only',SPARK?'auth,database':'auth,database,functions','--project',PROJECT,'--config',config
   ],{stdio:['ignore','pipe','pipe'],env});
   for(const out of [emulator.stdout,emulator.stderr])
     out.on('data',chunk=>{logs.firebase=(logs.firebase+String(chunk)).slice(-12000)});
@@ -275,10 +289,11 @@ async function startServices(){
     const res=await fetch('http://127.0.0.1:4400/emulators',{signal:AbortSignal.timeout(900)});
     if(!res.ok)return false;
     const ports=await res.json();
+    if(SPARK&&ports.functions)throw Error('Spark QA forbids Functions Emulator');
     return ports.auth?.port===9099&&ports.database?.port===9000&&
-      ports.functions?.port===5001;
+      (SPARK?!ports.functions:ports.functions?.port===5001);
   },'Auth+Functions+RTDB Emulator ready',100000);
-  await wait(async()=>{
+  if(!SPARK)await wait(async()=>{
     const reply=await fetch('http://127.0.0.1:5001/'+PROJECT+
       '/asia-southeast1/cellEdit',{method:'POST',headers:{'Content-Type':'application/json'},
       body:'{}',signal:AbortSignal.timeout(2500)});
@@ -301,7 +316,7 @@ async function startServices(){
     },'PR147 onRequest parentDatasetCommit available',45000);
   }else{
     const parentEnv={...env,PARENT_PORT:'8787'};
-    parentServer=spawn(process.execPath,['parent-commit-service/dev-server.mjs'],
+    parentServer=spawn(process.execPath,SPARK?['parent-commit-service/operator-server.mjs','--emulator']:['parent-commit-service/dev-server.mjs'],
       {stdio:['ignore','pipe','pipe'],env:parentEnv});
     for(const out of [parentServer.stdout,parentServer.stderr])
       out.on('data',chunk=>{logs.parent=(logs.parent+String(chunk)).slice(-10000)});
@@ -312,12 +327,12 @@ async function startServices(){
     },'Real authenticated parent endpoint',35000);
   }
   vite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',
-    server:{host:'127.0.0.1',port:4179,strictPort:true},
+    server:{host:'127.0.0.1',port:SPARK?4173:4179,strictPort:true},
     logLevel:'error'});
   await vite.listen();
   await wait(async()=>{const r=await fetch(SITE+'/pages.html');
     return r.ok&&(await r.text()).includes('pages-main');},'Real business App pages.html',30000);
-  record('FULL_EMULATOR_READY',{project:PROJECT,functions:5001,database:9000,auth:9099,
+  record('FULL_EMULATOR_READY',{project:PROJECT,functions:SPARK?false:5001,database:9000,auth:9099,
     parentEndpoint:PIN?5001:8787,rulesHash:manifest.combinedSha256,site:SITE,
     pinnedCandidateSha:PIN,disclaimer:PIN
       ?'PR147 Draft candidate exact SHA; not READY, no release authorization'
@@ -457,7 +472,10 @@ async function grantAndGuestEdit(){
   await settings(admin,'Phân quyền chỉnh sửa');
   const permission=admin.locator('.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Ghi chú"]').first();
   await permission.selectOption('allow');
-  await admin.locator('.permission-risk-confirm input').check();
+  // Risk acknowledgement is needed only when row/cell scope changes.
+  // Column-only grants have no risk checkbox; server readback below is the gate.
+  const risk=admin.locator('.permission-risk-confirm input');
+  if(await risk.count())await risk.check();
   await click(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
   const path='hdnd/datasetV2/permissions/'+seedPointer.generationId;
   await wait(async()=>{const x=await bodyOf(path);return x?.cells?.[sourceRows[0].recordId]?.note===true;},
@@ -518,7 +536,12 @@ async function ackLostAndRetry(){
     '/items/'+sourceRows[0].recordId;
   const value='QA ACK LOST committed once';
   let intercepted=false,postDataAction='';
-  await admin.route('**/cellEdit',async route=>{
+  if(SPARK){
+    await wait(async()=>admin.evaluate(()=>typeof window.__pr159ArmSparkCellCallerAckLoss==='function'),
+      'Local Auth Emulator caller-ACK fault hook ready',12000);
+    await admin.evaluate(()=>window.__pr159ArmSparkCellCallerAckLoss());
+    intercepted=true;postDataAction='Spark save caller callback after server readback';
+  }else await admin.route('**/cellEdit',async route=>{
     let action='';
     try{action=route.request().postDataJSON()?.data?.action??'';}catch{}
     if(action==='save'&&!intercepted){
@@ -541,7 +564,7 @@ async function ackLostAndRetry(){
   assert.ok((await admin.locator('.draft-bar').count())>0,
     'Do not clear draft just because server committed on lost ACK');
   await screenshot(admin,'07-ack-lost-draft-retained');
-  await admin.unroute('**/cellEdit');
+  if(!SPARK)await admin.unroute('**/cellEdit');
   await saveDraft(admin);
   await wait(async()=>!(await admin.locator('.draft-bar').count()),
     'User retry receives idempotent acknowledgement',16000);
@@ -550,7 +573,7 @@ async function ackLostAndRetry(){
   assert.equal(after.operationId,op,'Retry reuses original operationId');
   assert.equal(JSON.stringify(after.history),audit,'Retry must not duplicate audit');
   await screenshot(admin,'08-ack-retry-once');
-  return {action:postDataAction,operationId:op,revision:rev,
+  return {action:postDataAction,fault:SPARK?'postcommit-caller-callback-loss-not-physical-WebSocket-loss':'callable-HTTP-response-cut',operationId:op,revision:rev,
     auditSlots:Object.keys(after.history??{}).length,retainedDraft:true};
 }
 async function openAdminRoute(label){
@@ -632,6 +655,33 @@ async function excelJourney(){
       operationId:op,confirmation,ui:(await stage.innerText().catch(()=>'')).slice(-1800),
       server:await state(),parentServiceLog:logs.parent.slice(-3700),
       emulatorLog:logs.firebase.slice(-950)});
+    // The Emulator is isolated; export Rules evaluation evidence and only
+    // non-sensitive QA fixture keys. Never derive a broad client write path
+    // or alter Rules to make a red CI job green.
+    try{
+      const r=await fetch(DB+'/.inspect/coverage.json?ns='+NAMESPACE,{
+        signal:AbortSignal.timeout(6000)});
+      if(r.ok){
+        const coverage=await r.json(),destination=resolve(ROOT,'rules-coverage.json');
+        writeFileSync(destination,JSON.stringify(coverage,null,2));
+        record('QA_PARENT_RULES_COVERAGE',{path:'rules-coverage.json',
+          topLevelKeys:Object.keys(coverage),bytes:readFileSync(destination).byteLength});
+      }else record('QA_PARENT_RULES_COVERAGE_UNAVAILABLE',{httpStatus:r.status});
+    }catch(cause){record('QA_PARENT_RULES_COVERAGE_ERROR',{error:safeError(cause)});}
+    try{
+      const raw=await bodyOf('hdnd/datasetV2/candidates/'+op);
+      const backup=await bodyOf('hdnd/datasetV2/backups/'+op);
+      const unpack=value=>typeof value==='string'?JSON.parse(value):value;
+      const candidate=unpack(raw),savedBackup=unpack(backup);
+      const first=Object.values(candidate?.items??{})[0];
+      record('QA_PARENT_STAGING_STRUCTURE',{
+        candidateKeys:Object.keys(candidate??{}).slice(0,12),
+        backupKeys:Object.keys(savedBackup??{}).slice(0,12),
+        recordCount:Object.keys(candidate?.items??{}).length,
+        itemFieldNames:Object.keys(first??{}).slice(0,35),
+        partyLevels:[...new Set(Object.values(candidate?.items??{}).map(x=>x.partyLevel))],
+        sourceBytes:typeof raw==='string'?Buffer.byteLength(raw):JSON.stringify(raw??{}).length});
+    }catch(cause){record('QA_PARENT_STAGING_STRUCTURE_ERROR',{error:safeError(cause)});}
     await screenshot(admin,'FAIL-EXCEL-PARENT-CAS-409');
     throw error;
   }
@@ -753,11 +803,167 @@ async function generationWithDraft(){
   return {old:prior.generation,newGeneration:next.generation,draftNotApplied:true,
     draftStillVisible:await secondAdmin.locator('.draft-bar').count()>0};
 }
+/** UI 05/11: grant only partyLevel to an anonymous guest and prove the
+ * dependent progressParty changes inside the same server transaction. */
+async function narrowPartyLevelGrantJourney(){
+  await resetPages();
+  await menu(admin,'Chỉnh sửa');
+  await settings(admin,'Phân quyền chỉnh sửa');
+  // The real business field label is "Cấp Thành ủy cho ý kiến"; "Cấp trình"
+  // is an internal short name, not the accessible aria-label in the permission grid.
+  const grant=admin.locator('.inline-permission-table select[aria-label^="Quyền ô"][aria-label*="Cấp Thành ủy cho ý kiến"]').first();
+  await grant.waitFor({state:'visible',timeout:16000});
+  await grant.selectOption('allow');
+  const risk=admin.locator('.permission-risk-confirm input');
+  if(await risk.count())await risk.check();
+  await click(admin,'.inline-permissions button','Lưu quyền chỉnh sửa');
+  const recordId=sourceRows[0].recordId;
+  const permissionsPath='hdnd/datasetV2/permissions/'+seedPointer.generationId;
+  await wait(async()=>{
+    const p=await bodyOf(permissionsPath);
+    return p?.cells?.[recordId]?.partyLevel===true &&
+      p?.cells?.[recordId]?.progressParty!==true ? p : false;
+  },'Server has partyLevel-only cell grant',21000);
+  const rowPath='hdnd/datasetV2/generations/'+seedPointer.generationId+'/items/'+recordId;
+  const original=await bodyOf(rowPath);
+  assert.ok(Number.isInteger(original?.revision)&&original.revision>=1,
+    'QA09 must capture a real persisted base revision before permission-limited edits');
+  // REST can materialize numeric revision keys as sparse arrays with null
+  // slots (e.g. [null,null,audit2,audit3]); count actual audit events,
+  // never array positions or synthetic holes.
+  const audits=(item)=>Object.values(item?.history??{}).filter(entry=>
+    entry&&typeof entry==='object'&&typeof entry.operationId==='string'&&
+    entry.changes&&typeof entry.changes==='object');
+  const oldHistory=audits(original).length;
+  record('QA09_BASELINE',{revision:original.revision,auditCount:oldHistory});
+  const row=guest.locator('.item-data-table tbody tr[data-ui-reference-record-id="'+recordId+'"]');
+  const level=row.locator('.compact-stage-level button.cell-picker-trigger').first();
+  await level.waitFor({state:'visible',timeout:22000});
+  await level.click();
+  await guest.locator('.cell-picker-popover:popover-open [role="option"]').filter({hasText:/^Không$/}).first().click();
+  await guest.locator('.draft-bar').waitFor({state:'visible',timeout:12000});
+  await screenshot(guest,'19-party-level-only-guest-draft');
+  await saveDraft(guest);
+  const levelNone=await wait(async()=>{
+    const row=await bodyOf(rowPath);
+    return row?.partyLevel==='Không' && row?.progressParty==='Không phải trình' ? row : false;
+  },'Level-only grant atomically sets Không / Không phải trình',25000);
+  assert.equal(levelNone.revision,original.revision+1,'One server revision for both dependent fields');
+  assert.equal(audits(levelNone).length,oldHistory+1,'One valid audit addition for level+status');
+  const firstAudit=audits(levelNone).find(entry=>entry.operationId===levelNone.operationId);
+  assert.ok(firstAudit,'First revision must expose its committed operation audit');
+  assert.deepEqual(
+    {partyLevel:firstAudit.changes.partyLevel,progressParty:firstAudit.changes.progressParty},
+    {partyLevel:'Không',progressParty:'Không phải trình'},
+    'First audit must contain both dependent fields in one operation');
+  await guest.locator('.draft-bar').waitFor({state:'detached',timeout:16000});
+  assert.equal(await row.locator('.compact-stage-state[data-ui-reference-part="progressParty"] button.cell-picker-trigger').count(),0,
+    'Không level must make dependent progress readonly');
+  await screenshot(guest,'20-party-none-status-locked');
+  await level.click();
+  await guest.locator('.cell-picker-popover:popover-open [role="option"]').filter({hasText:/^TTTU$/}).first().click();
+  await guest.locator('.draft-bar').waitFor({state:'visible',timeout:12000});
+  await saveDraft(guest);
+  const reopened=await wait(async()=>{
+    const row=await bodyOf(rowPath);
+    return row?.partyLevel==='TTTU' && row?.progressParty==='Sở chưa trình' ? row : false;
+  },'Level-only grant atomically restores TTTU / Sở chưa trình',25000);
+  assert.equal(reopened.revision,levelNone.revision+1,'Second level-only save increments exactly once');
+  assert.equal(audits(reopened).length,oldHistory+2,'Exactly two real audit records across both saves');
+  const secondAudit=audits(reopened).find(entry=>entry.operationId===reopened.operationId);
+  assert.ok(secondAudit,'Second revision must expose its committed operation audit');
+  assert.deepEqual(
+    {partyLevel:secondAudit.changes.partyLevel,progressParty:secondAudit.changes.progressParty},
+    {partyLevel:'TTTU',progressParty:'Sở chưa trình'},
+    'Second audit must contain both dependent fields in one operation');
+  assert.notEqual(firstAudit.operationId,secondAudit.operationId,'Two saves need distinct operation IDs');
+  await screenshot(guest,'21-party-status-reopened');
+  return {grant:'partyLevel only',noStatusGrant:true,
+    first:{revision:levelNone.revision,level:levelNone.partyLevel,status:levelNone.progressParty},
+    second:{revision:reopened.revision,level:reopened.partyLevel,status:reopened.progressParty}};
+}
+/** UI 06/11 TRACKS: save the five actual fields through the verified
+ * Admin App + RTDB profile transaction, reload admin and guest from the
+ * server, verify mode-independent computed rails and 390/900 viewport. */
+async function sharedPartyWidthsJourney(){
+  await resetPages();
+  const widths={readonly:{label:124,status:222},
+    editable:{label:142,level:80,status:271}};
+  const controls=admin.locator('.admin-l03-widths');
+  await controls.waitFor({state:'visible',timeout:16000});
+  await controls.getByRole('button',{name:/L03.*Chỉnh 5 độ rộng/}).click();
+  const input=controls.locator('.admin-l03-width-editor');
+  await input.getByRole('spinbutton',{name:'L03 Chỉ xem · Nhãn + cấp trình'}).fill(String(widths.readonly.label));
+  await input.getByRole('spinbutton',{name:'L03 Chỉ xem · Tiến độ'}).fill(String(widths.readonly.status));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Nhãn'}).fill(String(widths.editable.label));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Cấp trình TU'}).fill(String(widths.editable.level));
+  await input.getByRole('spinbutton',{name:'L03 Được sửa · Tiến độ'}).fill(String(widths.editable.status));
+  assert.equal(await input.getByRole('spinbutton').count(),5,'Exactly five admin rail controls');
+  await input.getByRole('button',{name:'Lưu 5 độ rộng dùng chung'}).click();
+  const readonlySum=377,editableSum=532;
+  await wait(async()=>((await controls.locator('.admin-l03-width-summary').innerText())||'').includes(readonlySum+'px') &&
+    ((await controls.locator('.admin-l03-width-summary').innerText())||'').includes(editableSum+'px'),
+    'Five independent rail widths committed via real admin profile',21000);
+  await admin.reload({waitUntil:'domcontentloaded'});
+  await waitRow(admin,sourceRows[0].displayCode);
+  await guest.reload({waitUntil:'domcontentloaded'});
+  await waitRow(guest,sourceRows[0].displayCode);
+  const measure=page=>page.evaluate(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cell=table?.querySelector('tbody tr:first-child td[data-l03-layout]');
+    const stage=cell?.querySelector('.compact-stages');
+    const style=table?getComputedStyle(table):null;
+    const rect=cell?.getBoundingClientRect(),inner=stage?.getBoundingClientRect();
+    const rails=stage?getComputedStyle(stage).gridTemplateColumns.trim().split(/\s+/).map(Number.parseFloat):[];
+    const rows=[...(stage?.querySelectorAll('.compact-stage-row')??[])];
+    const statuses=rows.map(row=>{const rect=row.querySelector('.compact-stage-state')?.getBoundingClientRect();
+      return rect?{x:rect.x,width:rect.width}:null;});
+    return {viewport:innerWidth,mode:table?.getAttribute('data-l03-physical-mode')??null,
+      readonly:style?.getPropertyValue('--hdnd-l03-width-readonly').trim(),
+      editable:style?.getPropertyValue('--hdnd-l03-width-editable').trim(),
+      stageMode:stage?.getAttribute('data-level-layout')??null,
+      cellWidth:rect?.width??null,stageWidth:inner?.width??null,rails,statuses};
+  });
+  const a=await measure(admin),g=await measure(guest);
+  const check=proof=>{
+    assert.equal(proof.readonly,readonlySum+'px');
+    assert.equal(proof.editable,editableSum+'px');
+    assert.ok(proof.cellWidth>0&&proof.stageWidth>0,'L03 actual cell and grid rects');
+    assert.ok(proof.stageWidth<=proof.cellWidth+1,'Subgrid fits common physical column');
+    const wanted=proof.stageMode==='editable'
+      ?[widths.editable.label,widths.editable.level,widths.editable.status]
+      :[widths.readonly.label,widths.readonly.status];
+    assert.equal(proof.rails.length,wanted.length,'Exact 2/3 independent tracks');
+    for(let i=0;i<wanted.length;i++)assert.ok(Math.abs(proof.rails[i]-wanted[i])<1,
+      'Computed rail '+i+' must match server persisted value '+JSON.stringify(proof));
+    assert.equal(proof.statuses.length,3,'All three stage statuses present');
+    for(const status of proof.statuses){
+      assert.ok(status&&Math.abs(status.x-proof.statuses[0].x)<1,
+        'Three statuses vertically share x coordinate');
+      assert.ok(Math.abs(status.width-wanted.at(-1))<1,
+        'Three statuses share exact configured width');
+    }
+  };
+  check(a);check(g);
+  assert.equal(g.mode,'readonly','Guest L03 physical column uses readonly mode');
+  assert.equal(g.stageMode,'readonly');
+  assert.ok(Math.abs(g.cellWidth-readonlySum)<1.5,
+    'Guest physical width must equal 124+222+8gap+23chrome');
+  await screenshot(admin,'22-admin-l03-5-rails-reload');
+  await screenshot(guest,'23-guest-l03-5-rails-reload');
+  await guest.setViewportSize({width:900,height:900});
+  const tablet=await measure(guest);check(tablet);
+  await screenshot(guest,'24-guest-l03-900');
+  await guest.setViewportSize({width:390,height:844});
+  const mobile=await measure(guest);check(mobile);
+  await screenshot(guest,'25-guest-l03-390');
+  return {widths,admin:a,guest:g,tablet,mobile,serverBackedAcrossReload:true};
+}
 async function run(){
-  record('QA_MODE',{kind:PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
+  record('QA_MODE',{kind:SPARK?'SPARK_INTEGRATION_NO_PRODUCTION':PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
     localCheckoutSha:checkout,refs,manifest});
   await seedWorkbook();await startServices();
-  browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
   await resetPages();
   await checks.task('QA01_DESKTOP_MOBILE_GUEST_ADMIN',desktopMobileEvidence,admin);
   await checks.task('QA02_GRANT_GUEST_LIST_EDIT_SAVE_READBACK',grantAndGuestEdit,guest);
@@ -769,6 +975,8 @@ async function run(){
   await checks.task('QA06_FREEZE_NORMAL_FORCED_RECEIPT',freezeJourney,admin);
   await checks.task('QA07_EXCEL_FILE_PREVIEW_STAGE_COMMIT_RESTORE_LOOKUP',excelJourney,admin);
   await checks.task('QA08_GENERATION_CHANGE_WITH_UNSAVED_EDITOR',generationWithDraft,secondAdmin??admin);
+  await checks.task('QA09_PARTYLEVEL_ONLY_GRANT_ATOMIC_DEPENDENCY',narrowPartyLevelGrantJourney,guest??admin);
+  await checks.task('QA10_FIVE_TRACK_WIDTHS_PERSIST_GUEST_390_900',sharedPartyWidthsJourney,admin);
   // All cases require the actual App route and independent owner server reads.
   const outcome=cases.every(x=>x.status==='PASS')?'QA_CHECKOUT_PASS':'QA_CHECKOUT_HAS_GAPS';
   record('FINAL_APP_REVIEW_RESULT',{outcome,cases:cases.map(c=>({name:c.name,status:c.status})),
@@ -781,7 +989,7 @@ catch(error){
     parentLog:logs.parent.slice(-1600)});
   process.exitCode=1;
 }finally{
-  const result={kind:PIN?'PR147_EXACT_SHA_DRAFT_NOT_APPROVED':'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',
+  const result={kind:SPARK?'SPARK_INTEGRATION_NO_PRODUCTION':PIN?'PR147_EXACT_SHA_DRAFT_NOT_APPROVED':'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',functionsEmulator:!SPARK,
     checkedOutSha:checkout,refs,sharedRules:manifest,
     cases,events,screenshots:screenshots.map(x=>x.replace(ROOT+'/','')),
     logSummary:{firebase:logs.firebase.slice(-1600),parent:logs.parent.slice(-1600)},
@@ -792,7 +1000,13 @@ catch(error){
   for(const ctx of [contextGuest,contextAdmin])try{await ctx?.close()}catch{}
   try{await browser?.close()}catch{}
   try{await vite?.close()}catch{}
-  for(const proc of [parentServer,emulator])try{proc?.kill('SIGTERM')}catch{}
+  for(const proc of [parentServer,emulator])try{
+    if(!proc||proc.exitCode!==null)continue;
+    if(process.platform==='win32')spawnSync('taskkill',['/PID',String(proc.pid),'/T','/F'],{stdio:'ignore'});
+    else proc.kill('SIGTERM');
+  }catch{}
   await delay(450);
+  assert.equal(resolve(dirname(session)),resolve(tmpdir()),'QA cleanup must stay in temporary directory');
+  assert.ok(session.startsWith(join(tmpdir(),'hophdnd-full-app-qa-')),'Unexpected QA cleanup target');
   rmSync(session,{recursive:true,force:true});
 }

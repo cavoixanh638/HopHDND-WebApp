@@ -80,9 +80,28 @@
   border:1px solid #d7e4ee;border-radius:9px;
   background:var(--surface,#fff);color:inherit;
 }
-.list-active-filters.has-active-filters{border-color:#9fbdd3}
+.list-active-filters.has-active-filters{
+  border-color:#92b6d0;
+  background:linear-gradient(90deg,#f7fbfe 0%,#fff 44%,#f7fbfe 100%);
+  box-shadow:inset 0 0 0 1px #e5f0f8;
+}
 .list-active-filter-heading{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
-.list-active-filter-heading>strong{font-size:13px;color:#244967;white-space:nowrap}
+.list-active-filter-heading>strong{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;color:#244967;white-space:nowrap;
+}
+.list-active-filter-signal{
+  display:inline-block;flex:none;width:8px;height:8px;border-radius:50%;
+  background:#f3273f;box-shadow:0 0 0 2px #ffdde2;
+  animation:hdnd-filter-red-pulse 1150ms ease-in-out infinite;
+}
+@keyframes hdnd-filter-red-pulse{
+  0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 0 2px #ffdde2}
+  50%{opacity:.26;transform:scale(.77);box-shadow:0 0 0 6px #f3273f00}
+}
+@media(prefers-reduced-motion:reduce){
+  .list-active-filter-signal{animation:none;opacity:1;transform:none}
+}
 .list-active-filter-results{font-size:12px;color:var(--muted,#5b6b75);font-variant-numeric:tabular-nums}
 .list-active-filter-results strong{font-size:13px;color:#244967}
 .list-active-filter-clear-all {
@@ -91,27 +110,32 @@
   color:#215173;font-family:inherit;font-weight:600;font-size:12px;line-height:1.3;cursor:pointer;
 }
 .list-active-filter-clear-all:hover{background:#e0effa;border-color:#285f87}
-.list-active-filter-chips{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0}
+.list-active-filter-chips{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:7px;min-width:0;width:100%;max-width:1250px;margin-inline:auto;
+}
 .list-active-filter-chip {
-  display:inline-flex;align-items:stretch;max-width:100%;min-width:0;
+  display:inline-flex;align-items:center;max-width:100%;min-width:0;
   border:1px solid #9fbdd3;border-radius:7px;background:#edf5fb;
   font-family:inherit;font-weight:500;font-size:12px;line-height:1.4;color:#244967;
 }
-.list-active-filter-chip-label{padding:6px 6px 6px 9px;white-space:nowrap;font-weight:700}
+.list-active-filter-chip-label{padding:6px 6px 6px 9px;font-weight:700;
+  min-width:0;max-width:min(42vw,360px);white-space:normal;overflow-wrap:anywhere;flex:0 1 auto}
 .list-active-filter-chip-value{padding:6px 7px 6px 0;min-width:0;
   max-width:min(36vw,360px);overflow-wrap:anywhere;white-space:normal;color:#142f44}
 .list-active-filter-remove {
-  align-self:stretch;display:inline-flex;align-items:center;justify-content:center;
+  align-self:stretch;display:inline-flex;align-items:center;justify-content:center;flex:0 0 31px;
   min-width:31px;min-height:31px;margin:0;padding:0 5px;
   border:0;border-left:1px solid #b6cddd;border-radius:0 6px 6px 0;
   background:transparent;color:#244967;cursor:pointer;
-  font:bold 20px/1 system-ui,sans-serif;
+  font:inherit;line-height:1;
 }
+.list-active-filter-remove>svg{display:block;flex:none}
 .list-active-filter-remove:hover{background:#d9e9f5;color:#163d5e}
 .list-active-filter-idle{margin:0;color:var(--muted,#65717c);font-size:12px}
 .list-active-filter-empty {
-  display:flex;align-items:center;flex-wrap:wrap;gap:4px;
-  margin:1px 0 0;font-size:12px;color:#8a3f22;
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px;
+  margin:1px 0 0;font-size:12px;color:#8a3f22;text-align:center;line-height:1.5;
 }
 .list-active-filter-empty button{
   padding:2px 6px;border:1px solid #9fbdd3;border-radius:5px;
@@ -123,8 +147,145 @@
   .list-active-filter-clear-all{margin-left:auto}
   /* A long Vietnamese detail label must wrap instead of pushing X off-screen. */
   .list-active-filter-chip{max-width:100%;min-width:0}
-  .list-active-filter-chip-label{white-space:normal;overflow-wrap:anywhere;
-    max-width:42vw;flex:0 1 auto}
   .list-active-filter-chip-value{max-width:40vw;flex:1 1 auto;min-width:0}
-  .list-active-filter-remove{flex:0 0 31px}
+}
+
+/* 08/11 UX: F01-F05 font/line rhythm is secondary to the data grid. */
+.list-filter-toolbar{gap:7px;padding:6px 0}
+.list-filter-toolbar input,.list-filter-toolbar select{
+  min-height:32px;padding:6px 9px;font-size:12px;line-height:1.3;
+}
+.list-filter-toolbar .list-filter-other>summary{
+  min-height:32px;box-sizing:border-box;padding:6px 10px;font-size:12px;line-height:1.3;
+}
+.list-filter-toolbar .list-filter-clear{
+  min-height:32px;padding:6px 9px;font-size:12px;line-height:1.3;
+}
+.list-filter-other-panel label{font-size:12px;line-height:1.35}
+
+/* Active filters: permanent red meaning, with red dot pulsing continuously only when active. */
+.list-active-filters{gap:6px;margin:3px 0 9px;padding:7px 12px 9px}
+.list-active-filters.has-active-filters{
+  border-color:#e6c7cc;border-left:3px solid #e12b43;
+  background:linear-gradient(90deg,#fff9fa 0%,#fff 50%,#fff9fa 100%);
+  box-shadow:inset 0 0 0 1px #f9e9eb;
+}
+.list-active-filter-heading{
+  display:grid;grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr);
+  align-items:center;column-gap:9px;width:100%;min-width:0;
+}
+.list-active-filter-summary{
+  grid-column:2;justify-self:center;display:inline-flex;align-items:center;
+  gap:8px;min-width:0;padding:4px 12px;border:1px solid #edbac2;
+  border-radius:999px;background:#fff3f4;color:#263442;
+  box-shadow:0 1px 4px #a7304514;white-space:nowrap;
+}
+.list-active-filter-summary>strong{font-size:12px;font-weight:550;line-height:1.3}
+.list-active-filter-emphasis{font-weight:700;color:#c72037}
+.list-active-filter-summary .list-active-filter-results{
+  font-size:12px;font-weight:700;color:inherit;font-variant-numeric:tabular-nums;
+}
+.list-active-filter-noun{font-weight:500;color:#263442}
+.list-active-filter-summary.is-idle{
+  background:#f6f8f9;border-color:#e1e8ec;color:#5f7180;
+  padding:3px 11px;box-shadow:none;
+}
+.list-active-filter-summary.is-idle>strong,
+.list-active-filter-summary.is-idle .list-active-filter-results{font-size:12px;color:#5f7180}
+.list-active-filter-clear-all{grid-column:3;justify-self:end;margin-left:0}
+.list-active-filter-chips{gap:8px}
+.list-active-filter-chip{
+  border-color:#e4bfc6;border-radius:8px;background:#fff7f8;
+  font-size:12px;font-weight:500;line-height:1.35;color:#263442;
+  box-shadow:none;
+}
+.list-active-filter-chip-value{
+  padding:5px 10px;max-width:min(46vw,420px);font-weight:650;
+  color:#c72037;white-space:normal;overflow-wrap:anywhere;
+}
+.list-active-filter-remove{border-left-color:#e3c5c9;min-height:30px;color:#374151}
+.list-active-filter-remove:hover{background:#fee4e8;color:#253041}
+@media(max-width:680px){
+  .list-active-filter-heading{grid-template-columns:minmax(0,1fr);row-gap:6px}
+  .list-active-filter-summary{grid-column:1;justify-self:center;white-space:normal;text-align:center}
+  .list-active-filter-clear-all{grid-column:1;justify-self:center}
+  .list-active-filter-results{order:unset;flex-basis:auto}
+  .list-active-filter-chip-value{max-width:min(66vw,360px)}
+}
+
+
+/* 08/11 L03 F-toolbar parity: one visible 2px focus BORDER, no secondary
+   outline/outer glow/inset stroke. Active filters keep their light-blue fill. */
+.list-filter-toolbar :is(input,select){
+  box-sizing:border-box;height:28px;min-height:28px;
+  padding:3px 8px;font-size:12px;line-height:1.2;
+}
+.list-filter-toolbar :is(input,select).is-filter-active{
+  border:1px solid #285f87;background:#edf5fb;box-shadow:none;
+}
+.list-filter-toolbar :is(input,select):focus,
+.list-filter-toolbar :is(input,select):focus-visible{
+  border:2px solid #285f87;outline:none;box-shadow:none;padding:3px 7px;
+}
+.list-filter-toolbar .list-filter-other>summary{
+  box-sizing:border-box;height:28px;min-height:28px;
+  display:inline-flex;align-items:center;gap:3px;padding:3px 9px;
+  font-size:12px;line-height:1.2;
+}
+.list-filter-toolbar .list-filter-other>summary:focus,
+.list-filter-toolbar .list-filter-other>summary:focus-visible{
+  border:2px solid #285f87;outline:none;box-shadow:none;padding:3px 8px;
+}
+.list-filter-toolbar .list-filter-clear{min-height:28px;padding:3px 8px;line-height:1.2}
+
+/* Single-row-on-desktop filter overview. Preserve independent X buttons
+   and readable values, wrap only when there is insufficient width. */
+.list-active-filters{padding:7px 10px;margin:3px 0 7px}
+.list-active-filter-heading{
+  position:relative;display:flex;align-items:center;justify-content:center;
+  width:100%;min-width:0;padding:0 111px;column-gap:0;row-gap:0;
+}
+.list-active-filter-inline{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+  gap:6px 9px;min-width:0;max-width:100%;margin-inline:auto;
+}
+.list-active-filter-summary{
+  grid-column:auto;flex:0 0 auto;min-height:28px;
+  padding:4px 10px;box-shadow:none;
+}
+.list-active-filter-chips{
+  display:inline-flex;flex:0 1 auto;align-items:center;justify-content:center;
+  flex-wrap:wrap;gap:5px 7px;width:auto;min-width:0;max-width:100%;
+  margin:0;
+}
+.list-active-filter-chips::before{
+  content:"·";align-self:center;color:#687581;font-weight:700;
+  font-size:15px;line-height:1;
+}
+.list-active-filter-chip-value{padding:4px 9px}
+.list-active-filter-remove{min-height:28px;flex-basis:28px;min-width:28px}
+.list-active-filter-clear-all{
+  position:absolute;top:50%;right:0;transform:translateY(-50%);
+  grid-column:auto;justify-self:auto;margin:0;min-height:28px;
+  padding:3px 9px;
+}
+@media(max-width:760px){
+  .list-active-filter-heading{
+    flex-direction:column;padding:0;gap:6px;
+  }
+  .list-active-filter-inline{width:100%;gap:6px}
+  .list-active-filter-summary{flex:0 1 auto;white-space:normal;text-align:center}
+  .list-active-filter-chips{width:auto;max-width:100%;justify-content:center}
+  .list-active-filter-clear-all{
+    position:static;transform:none;align-self:center;
+  }
+}
+
+/* Imperial theme has a stronger generic input:focus shadow. Prevent that
+   second ring only inside F01-F05; do not change the app's other editors. */
+.app-shell.imperial-sky-theme .list-filter-toolbar :is(input,select):is(:focus,:focus-visible){
+  border-color:#285f87;outline:none!important;box-shadow:none!important;
+}
+.list-filter-toolbar .list-filter-other[data-filter-active="true"]>summary{
+  box-shadow:none;
 }

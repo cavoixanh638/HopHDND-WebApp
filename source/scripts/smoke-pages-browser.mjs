@@ -275,7 +275,9 @@ const server=createServer((req,res)=>{
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const port=server.address().port;
 const candidates=['google-chrome','google-chrome-stable','chromium','chromium-browser'];
-const binary=candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
+const binary=process.env.CHROME_PATH||
+  (process.platform==='win32'?'C:/Program Files/Google/Chrome/Application/chrome.exe':
+    candidates.find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0));
 if(!binary){server.close();throw Error('Chromium/Chrome not found on runner');}
 const userDir=mkdtempSync(join(tmpdir(),'hophdnd-ui-'));
 let chrome;
@@ -564,7 +566,7 @@ try{
       !headings.some(x=>x.includes('Rút')||x.includes('Loại VB +'))&&
       !!doc?.querySelector('.compact-document-group')&&
       stages?.querySelectorAll('.compact-stage-row').length===3&&
-      text.includes('Thành ủy')&&text.includes('Xây dựng NQ')&&text.includes('Ban hành NQ')&&
+      text.includes('Thành ủy')&&text.includes('Trình Xây dựng NQ')&&text.includes('Trình ban hành NQ')&&
       !document.querySelector('.source-column-visibility button'),
       headings,stages:text.slice(0,180),toolbar:!!search,stt:!!stt};
   })()`);
@@ -592,9 +594,9 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgb(255, 241, 243)'&&
-      colors[1].background==='rgb(255, 248, 233)'&&
-      colors[2].background==='rgb(238, 248, 241)'&&
+      colors[0].background==='rgba(0, 0, 0, 0)'&&
+      colors[1].background==='rgba(0, 0, 0, 0)'&&
+      colors[2].background==='rgba(0, 0, 0, 0)'&&
       colors[0].color==='rgb(177, 64, 82)'&&
       colors[1].color==='rgb(128, 92, 34)'&&
       colors[2].color==='rgb(52, 110, 72)'&&
@@ -788,8 +790,16 @@ try{
     const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
     const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
     const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    const ok=text==='rgb(161, 0, 34)'&&background==='rgba(0, 0, 0, 0)'&&
-      inherited==='#A10022'&&frameBackground!=='rgba(0, 0, 0, 0)';
+    // REV2: this is a guest/read-only status. The source text inherits the
+    // palette ink, but only a real editable CellPicker button gets a filled
+    // palette background. Never require a fake filled guest affordance.
+    const isReadonly=sample.getAttribute('data-editable')!=='true'&&
+      !sample.querySelector('button.cell-picker-trigger');
+    const inheritedBg=style.getPropertyValue('--hdnd-status-not-submitted-bg').trim();
+    const ok=isReadonly&&text==='rgb(161, 0, 34)'&&
+      background==='rgba(0, 0, 0, 0)'&&
+      inherited==='#A10022'&&inheritedBg==='#F1CBDB'&&
+      frameBackground==='rgba(0, 0, 0, 0)';
     if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
     else owner.style.removeProperty('--hdnd-status-not-submitted-text');
     if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
@@ -809,8 +819,8 @@ try{
     const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||!sort||stt||nav)
-      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, nav or STT unexpectedly present'};
+    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||sort||stt||nav)
+      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, sort/nav/STT unexpectedly present'};
     const rects=[topbar,summary,heading,toolbar,activeBar,viewport].map(x=>x.getBoundingClientRect());
     const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
     const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
@@ -850,23 +860,18 @@ try{
       widths:[border(first),border(td)]};
   })()`);
   if(!listHeadingAndLines.ok)throw Error('V2 list header/toolbar or subtle separators regression: '+JSON.stringify(listHeadingAndLines));
-  // V3: every viewer sorts, without getting header drag/reorder rights.
-  const viewerSortEnabled=await evaluate(`(()=>{
+  // Current owner requirement: only verified admins receive column sort.
+  const guestSortAbsent=await evaluate(`(()=>{
     const header=document.querySelector('.item-heading-row th[data-column-key="displayCode"]');
     const button=header?.querySelector('.column-sort-button');
-    if(!header||!button||header.classList.contains('column-movable'))return false;
-    button.click();return true;
+    if(!header||button||header.classList.contains('column-movable')||header.hasAttribute('aria-sort'))return false;
+    const before=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    header.click();header.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    const after=[...document.querySelectorAll('.item-data-table tbody tr')].map(row=>row.querySelector('td[data-col-key="displayCode"]')?.textContent).join('|');
+    return before===after&&!header.hasAttribute('aria-sort');
   })()`);
-  if(!viewerSortEnabled)throw Error('Guest must have sort but no column rearrange');
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='ascending'",
-    'Guest ascending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='descending'",
-    'Guest descending view sort unavailable');
-  await evaluate("document.querySelector('th[data-column-key=displayCode] .column-sort-button')?.click()");
-  await eventually("document.querySelector('th[data-column-key=displayCode]')?.getAttribute('aria-sort')==='none'",
-    'Guest sort must reset without changing saved column layout');
-  console.log('V3_L1_GUEST_SORT_WITHOUT_LAYOUT_CONTROL_PASS');
+  if(!guestSortAbsent)throw Error('Guest must not see or activate column sort');
+  console.log('GUEST_SORT_ABSENT_PASS');
   const guestEditMarkers=await evaluate(`document.querySelectorAll('.item-data-table tbody td.editable-cell').length`);
   if(guestEditMarkers)throw Error('Read-only guest must not see editable-cell markers');
   // Synthetic marked cell tests the one shared editing tooltip without granting
@@ -1233,11 +1238,11 @@ try{
 
 
   // V3: anonymous and non-admin viewers MUST NOT receive any personal
-  // compact column menu or a stale layout write path, but can still sort.
+  // compact column menu, sort, or a stale layout write path.
   const compactGuestSafe=await evaluate(`(()=>{
     const menu=document.querySelector('.guest-compact-menu-bar,.compact-columns-menu');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    return !menu&&!!sort&&!!document.querySelector('.list-filter-toolbar')&&
+    return !menu&&!sort&&!!document.querySelector('.list-filter-toolbar')&&
       !document.querySelector('.admin-column-arrange-hint,.item-column-panel,.source-column-visibility')&&
       !document.querySelector('.status-palette-trigger,.column-resizer');
   })()`);
@@ -2111,8 +2116,8 @@ try{
       !!kind&&!!department&&!!doc?.querySelector('.compact-document-content')&&
       kind.textContent?.includes('QPPL')&&department.textContent?.includes('Sở mẫu A')&&
       stages?.querySelectorAll('.compact-stage-row').length===3&&
-      labels.some(x=>x.includes('Thành ủy'))&&labels.some(x=>x.includes('Xây dựng NQ'))&&
-      labels.some(x=>x.includes('Ban hành NQ'))&&
+      labels.some(x=>x.includes('Thành ủy'))&&labels.some(x=>x.includes('Trình Xây dựng NQ'))&&
+      labels.some(x=>x.includes('Trình ban hành NQ'))&&
       team?.textContent?.includes('Phòng mẫu 1')&&
       !table.querySelector('.editable-cell')&&
       !!document.querySelector('.compact-columns-menu'),
@@ -2284,10 +2289,10 @@ try{
     if(!row||!state||!button||!level)return {ok:false,reason:'missing independently permitted editors'};
     const rs=getComputedStyle(row),vs=getComputedStyle(state),bs=getComputedStyle(button);
     const arrow=getComputedStyle(button,'::after');
-    return {ok:rs.borderTopWidth==='1px'&&rs.backgroundColor!=='rgba(0, 0, 0, 0)'&&
-      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&vs.paddingTop==='0px'&&
-      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth==='0px'&&
-      bs.boxShadow==='none'&&bs.transform==='none'&&bs.display==='grid'&&
+    return {ok:rs.borderTopWidth==='0px'&&rs.backgroundColor==='rgba(0, 0, 0, 0)'&&
+      vs.backgroundColor==='rgba(0, 0, 0, 0)'&&vs.borderTopWidth==='0px'&&
+      bs.backgroundColor!=='rgba(0, 0, 0, 0)'&&bs.borderTopWidth!=='0px'&&
+      bs.transform==='none'&&bs.display==='flex'&&
       arrow.content==='""'&&button.getAttribute('aria-haspopup')==='dialog'&&
       level!==button&&level.getAttribute('aria-haspopup')==='dialog',
       rowBackground:rs.backgroundColor,stateBackground:vs.backgroundColor,
@@ -2317,18 +2322,18 @@ try{
       const style=getComputedStyle(button),arrow=getComputedStyle(button,'::after');
       const rail=getComputedStyle(button,'::before'),dot=getComputedStyle(state,'::before');
       const cols=style.gridTemplateColumns.split(' ').map(parseFloat);
-      const track=cols.at(-1);
-      const caretX=b.right-parseFloat(style.paddingRight)-track/2;
+      const track=0;
+      const caretX=b.right;
       const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
       const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
-      return {ok:style.display==='grid'&&cols.length===2&&Math.abs(track-22)<1&&
-        b.height>=37.9&&Math.abs(b.width-s.width)<1&&
+      return {ok:style.display==='flex'&&style.borderTopWidth!=='0px'&&
+        b.height>=34&&b.height<=38&&Math.abs(b.width-s.width)<1&&
         b.left>=frame.left-1&&b.right<=frame.right+1&&
-        style.borderTopWidth==='0px'&&style.boxShadow==='none'&&
+        style.borderTopWidth!=='0px'&&
         style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
         dot.content==='none'&&dot.display==='none'&&
-        rail.content==='""'&&parseFloat(rail.width)>=33&&
-        arrow.content==='""'&&arrow.gridColumnStart==='2'&&
+        rail.content==='none'&&
+        arrow.content==='""'&&arrow.display==='block'&&
         hit(leftX)&&hit(rightX),
         stage:row.dataset.stageField,caretX,leftX,rightX,midY,
         hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
@@ -2430,10 +2435,10 @@ try{
       if(!button)return {ok:false,stage:row.dataset.stageField};
       const b=button.getBoundingClientRect(),frame=row.getBoundingClientRect();
       const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
-      const track=parseFloat(style.gridTemplateColumns.split(' ').at(-1));
-      return {stage:row.dataset.stageField,caret:b.right-parseFloat(style.paddingRight)-track/2,
-        ok:b.height>=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
-          Math.abs(track-22)<1&&dot.content==='none'&&style.display==='grid',
+      const track=0;
+      return {stage:row.dataset.stageField,caret:b.right,
+        ok:b.height>=34&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+          style.borderTopWidth!=='0px'&&dot.content==='none'&&style.display==='flex',
         width:b.width,height:b.height,frameWidth:frame.width,track};
     });
     return {ok:metrics.length===3&&metrics.every(x=>x.ok)&&
@@ -2450,11 +2455,12 @@ try{
     'V4 saved narrow-column status editors missing');
   const v4Narrow=await evaluate(`(()=>{
     const rows=[...document.querySelectorAll('.item-data-table tbody tr:first-child .compact-stage-row')];
+    const stageScroll=rows[0]?.closest('.compact-stages');if(stageScroll&&stageScroll.scrollWidth>stageScroll.clientWidth)stageScroll.scrollLeft=stageScroll.scrollWidth-stageScroll.clientWidth;
     const data=rows.map(row=>{
       const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
       const frame=row.getBoundingClientRect();
       return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
-        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=38};
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=34&&b.height<=38};
     });
     return {ok:data.length===3&&data.every(x=>x.ok)&&
       Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
@@ -2474,9 +2480,9 @@ try{
     if(!member||!button||!other)return {ok:false,reason:'missing custom editable stages'};
     const m=getComputedStyle(member),b=getComputedStyle(button),arrow=getComputedStyle(button,'::after'),r=getComputedStyle(row);
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
-      arrow.borderRightColor===m.color&&r.backgroundColor!=='rgb(255, 248, 233)'&&
-      b.borderTopWidth==='0px'&&b.boxShadow==='none'&&
-      getComputedStyle(other).backgroundColor==='rgb(255, 241, 243)',
+      arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
+      b.borderTopWidth!=='0px'&&getComputedStyle(button,'::before').content==='none'&&
+      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 241, 243)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);
@@ -2607,6 +2613,24 @@ try{
     const stage=row?.querySelector('[data-stage-field=progressBuild]');
     const expected=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'];
     const labels=choices.map(x=>x.textContent?.trim());
+    const trigger=stage?.querySelector('.compact-stage-state button.cell-picker-trigger');
+    const stageComputed=stage?getComputedStyle(stage):null;
+    const triggerComputed=trigger?getComputedStyle(trigger):null;
+    const checks={
+      choicesOnly:p?.dataset.choicesOnly==='true',
+      popupAria:!!p?.getAttribute('aria-label')&&p.getAttribute('aria-label').includes('NQ07'),
+      onlyChoicesList:children.length===1&&children[0].classList.contains('cell-picker-options'),
+      exactOptions:JSON.stringify(labels)===JSON.stringify(expected),
+      selectedMatches:selected.length===1&&selected[0].textContent?.trim()===trigger?.textContent?.trim(),
+      optionAria:choices.every(x=>x.getAttribute('role')==='option'),
+      popupTextOnly:p?.textContent?.trim()===choices.map(x=>x.textContent).join('').trim(),
+      rowOutline:stageComputed?.outlineStyle==='solid',
+      triggerOutline:triggerComputed?.outlineStyle==='solid'&&parseFloat(triggerComputed?.outlineWidth||'0')>=2,
+      triggerExpanded:trigger?.getAttribute('aria-expanded')==='true',
+      triggerHaspopup:trigger?.getAttribute('aria-haspopup')==='dialog',
+      popupRole:p?.getAttribute('role')==='dialog',
+      noDecorations:!p?.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search')
+    };
     return {ok:p?.dataset.choicesOnly==='true'&&!!p.getAttribute('aria-label')&&
       p.getAttribute('aria-label').includes('NQ07')&&
       children.length===1&&children[0].classList.contains('cell-picker-options')&&
@@ -2614,8 +2638,22 @@ try{
       selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      getComputedStyle(stage).outlineStyle==='solid'&&
+      // UI A: L03 keeps the focus ring on the ACTIVE state trigger, not
+      // the entire mixed-permission stage row. Assert a visible, 2px
+      // high-contrast focus outline while its own dialog is expanded.
+      stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 109, 134)'&&
+      parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
+      checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
+      stageOutline:{style:stageComputed?.outlineStyle,width:stageComputed?.outlineWidth,color:stageComputed?.outlineColor},
+      stateTriggerOutline:{style:triggerComputed?.outlineStyle,width:triggerComputed?.outlineWidth,
+        color:triggerComputed?.outlineColor,offset:triggerComputed?.outlineOffset},
+      expanded:trigger?.getAttribute('aria-expanded'),
+      choices:checks,
+      aria:{trigger:trigger?.getAttribute('aria-label'),haspopup:trigger?.getAttribute('aria-haspopup'),
+        popup:p?.getAttribute('aria-label'),popupRole:p?.getAttribute('role')},
+      focusedElement:document.activeElement?.outerHTML?.slice(0,220),
       id:row?.querySelector('td[data-col-key=displayCode]')?.textContent?.trim(),
       optionCount:choices.length,labels,selected:selected.map(x=>x.textContent?.trim()),
       ariaLabel:p?.getAttribute('aria-label'),children:children.map(x=>x.className)};
@@ -2766,7 +2804,7 @@ try{
       sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
   })()`);
   if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
-    guestInitial.localSaved!==null||!guestInitial.sortable)
+    guestInitial.localSaved!==null||guestInitial.sortable)
     throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));
@@ -2906,6 +2944,10 @@ try{
     const color=el=>el?{background:getComputedStyle(el).backgroundColor,
       text:getComputedStyle(el).color,tag:el.dataset.highlighted??null}:null;
     const d=color(dept),t=color(type),c=color(content),l=color(level),p=color(stage);
+    // REV2 places the highlighted progress fill on the actual CellPicker
+    // while keeping its wrapper transparent (no fake row affordance).
+    const highlightedTrigger=stage?.querySelector('button.cell-picker-trigger');
+    const triggerPaint=color(highlightedTrigger);
     // V4 default demo stores BCH, not old "Ban Chấp hành". The QA wildcard
     // deliberately still targets that LEGACY source string: it MUST NOT leak
     // onto a new canonical label. Separate unit fixtures prove the same
@@ -2916,8 +2958,11 @@ try{
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
       qpplKind==='QPPL'&&hcLocked&&
-      p?.background==='rgb(255, 238, 85)'&&p?.text==='rgb(0, 0, 0)',
-      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p};
+      // This default fixture has NO edit grant: highlighted source is
+      // labeled and has semantic ink, but cannot look like a clickable button.
+      p?.background==='rgba(0, 0, 0, 0)'&&p?.tag==='true'&&
+      !highlightedTrigger&&p?.text==='rgb(0, 0, 0)',
+      dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p,highlightedTrigger:triggerPaint};
   })()`);
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
@@ -2950,6 +2995,23 @@ try{
   })()`);
   if(editColor.background!=='rgb(204, 0, 0)'||editColor.text!=='rgb(255, 255, 255)')
     throw Error('R03 editable member lost rule: '+JSON.stringify(editColor));
+  // On an actually editable status, REV2 moves the highlighted fill to
+  // the real CellPicker. Preserve the strict yellow/black paint assertion.
+  const editableStatusPaint=await evaluate(`(()=>{
+    const row=[...document.querySelectorAll('.item-data-table tbody tr')]
+      .find(x=>x.querySelector('td[data-col-key=displayCode]')?.textContent?.trim()==='NQ07');
+    const status=row?.querySelector('[data-stage-field=progressBuild] .compact-stage-state');
+    const trigger=status?.querySelector('button.cell-picker-trigger');
+    return {hasTrigger:!!trigger,tag:status?.dataset.highlighted??null,
+      wrapper:status?getComputedStyle(status).backgroundColor:null,
+      background:trigger?getComputedStyle(trigger).backgroundColor:null,
+      ink:trigger?getComputedStyle(trigger).color:null};
+  })()`);
+  if(!editableStatusPaint.hasTrigger||editableStatusPaint.tag!=='true'||
+    editableStatusPaint.wrapper!=='rgba(0, 0, 0, 0)'||
+    editableStatusPaint.background!=='rgb(255, 238, 85)'||
+    editableStatusPaint.ink!=='rgb(0, 0, 0)')
+    throw Error('R03 editable progress highlight lost its picker fill: '+JSON.stringify(editableStatusPaint));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&popup=1'});
   await eventually("!!document.querySelector('.report-detail-grid .compact-document-department')",
     'R03 popup renderer did not mount');
@@ -2967,8 +3029,7 @@ try{
 
 
 
-  // Codex Lượt 013 / R05: verify the FULL stage frame (left number/label
-  // AND right status) is tinted. All fixtures are local synthetic ItemList.
+  // R05: three separate named rows retain independent status colors.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1'});
   await eventually("document.querySelector('.item-data-table tbody tr .compact-stage-row[data-progress-tone=office]')!==null",
     'R05 multitone list fixture missing');
@@ -2980,31 +3041,30 @@ try{
       const css=getComputedStyle(el),p=getComputedStyle(pill);
       const label=el.querySelector('.compact-stage-label').getBoundingClientRect();
       const state=pill.getBoundingClientRect(),frame=el.getBoundingClientRect();
-      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopColor,
+      return {tone:el.dataset.progressTone,bg:css.backgroundColor,border:css.borderTopWidth,
         gradient:css.backgroundImage,pill:p.backgroundColor,pillText:p.color,
         pillBorder:p.borderTopWidth,pillPadding:p.paddingTop,
-        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1,
-        numberBg:getComputedStyle(el.querySelector('.compact-stage-number')).backgroundColor};
+        editable:!!pill.querySelector('button.cell-picker-trigger'),
+        labelFits:label.right<=frame.right+1,stateFits:state.right<=frame.right+1};
     });
   })()`);
   const r05List=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
-  const target=[
-    {tone:'not-submitted',bg:'rgb(255, 241, 243)',border:'rgb(239, 212, 218)'},
-    {tone:'office',bg:'rgb(255, 248, 233)',border:'rgb(235, 223, 196)'},
-    {tone:'done',bg:'rgb(238, 248, 241)',border:'rgb(208, 228, 215)'}
-  ];
-  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i].tone&&
-      x.bg===target[i].bg&&x.border===target[i].border&&x.gradient==='none'&&
-      x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'&&
-       x.labelFits&&x.stateFits)||
+  const target=['not-submitted','office','done'];
+  const targetInks=['rgb(177, 64, 82)','rgb(128, 92, 34)','rgb(52, 110, 72)'];
+  const clear='rgba(0, 0, 0, 0)';
+  if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
+      x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
+      x.pill===clear&&x.pillBorder==='0px'&&!x.editable&&
+      x.pillText===targetInks[i]&&x.labelFits&&x.stateFits)||
+    new Set(r05List.map(x=>x.pillText)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
-    r05Neutral[0].bg!=='rgb(248, 250, 252)'||
-    r05Neutral[0].border!=='rgb(203, 213, 225)'||
+    r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
+    r05Neutral[0].pill!==clear||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
-    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgb(248, 250, 252)')
-    throw Error('R05 entire-frame colors / neutral / independent stages: '+
+    r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
+    throw Error('R05 status colors / neutral / independent stages: '+
       JSON.stringify({r05List,r05Neutral,r05Unknown}));
 
   // The "before" is an explicitly simulated CSS-only replay of the old
@@ -3045,7 +3105,10 @@ try{
       bcBuild?.textContent?.trim()==='Không phải trình'&&
       !bcBuild?.hasAttribute('data-highlighted');
     return {kind,bcLocked,row:stage&&getComputedStyle(stage).backgroundColor,
-      pill:pill&&getComputedStyle(pill).backgroundColor,highlight:pill?.dataset.highlighted,
+      pill:pill&&getComputedStyle(pill).backgroundColor,
+      pillText:pill&&getComputedStyle(pill).color,
+      editable:!!pill?.querySelector('button.cell-picker-trigger'),
+      highlight:pill?.dataset.highlighted,
       level:getComputedStyle(first).backgroundColor,
       levelValue:first?.textContent??'',levelHighlighted:first?.dataset.highlighted??null};
   })()`);
@@ -3053,8 +3116,9 @@ try{
   // V4's new synthetic BCH cannot match that old source string. Keep exact
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
-    r05Highlight.row!=='rgb(255, 241, 243)'||
-    r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.highlight!=='true'||
+    r05Highlight.row!=='rgba(0, 0, 0, 0)'||
+    r05Highlight.pill!==clear||r05Highlight.pillText!=='rgb(0, 0, 0)'||
+    r05Highlight.editable||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
     throw Error('R05 stage color overrode R03 field highlight: '+JSON.stringify(r05Highlight));
@@ -3063,22 +3127,21 @@ try{
   await eventually("document.querySelector('.compact-stage-row[data-progress-tone=office]')!==null",
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
-  if(r05Custom[1].bg==='rgb(255, 248, 233)'||
-    r05Custom[1].border==='rgb(235, 223, 196)'||
-    r05Custom[1].pill!=='rgba(0, 0, 0, 0)'||r05Custom[1].pillBorder!=='0px'||
+  if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
+    r05Custom[1].pill!==clear||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
-    r05Custom[0].bg!=='rgb(255, 241, 243)')
-    throw Error('R05 custom palette did not tint its own frame: '+JSON.stringify(r05Custom));
+    r05Custom[0].pillText!==r05List[0].pillText)
+    throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
 
   // Popup uses the SAME CompactGroupedValue renderer, with a separate table.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?r05=1&popup=1&highlight=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stage-row')!==null",
     'R05 real popup stage rows missing');
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
-  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg===target[i].bg&&
-    x.border===target[i].border&&x.tone===target[i].tone&&
-     x.pill==='rgba(0, 0, 0, 0)'&&x.pillBorder==='0px'&&x.pillPadding==='0px'))
-    throw Error('R05 popup and list stage frames differ: '+JSON.stringify(r05Popup));
+  if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
+    x.border==='0px'&&x.tone===target[i]&&
+     x.pill===clear&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
+    throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
   const popupClip=await evaluate(`(()=>{
@@ -3108,7 +3171,9 @@ try{
         idWidth:id?.getBoundingClientRect().width,
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
-    if(!samples.every((x,i)=>x.bg===target[i].bg&&x.border===target[i].border&&
+    if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
+      x.tone===target[i]&&x.pill===clear&&!x.editable&&
+      x.pillText===r05List[i].pillText&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
       throw Error('R05 responsive colored stage overflows '+vw+' '+JSON.stringify({samples,geometry}));
@@ -3394,24 +3459,22 @@ try{
     '/compact-qa/compact-qa.html?progress-before-staff=1&guest=1';
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
-    'V3 guest table must remain viewable and sortable');
+    'V3 guest table must remain viewable');
   const guestBefore=await widthSnapshot();
   const storedBefore=await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')");
   const noGuestResize=await evaluate(`(()=>{
     const heading=document.querySelector('th[data-column-key=specificProgress]');
     const sort=heading?.querySelector('.column-sort-button');
-    if(!heading||!sort||heading.querySelector('.column-resizer')||
+    if(!heading||sort||heading.hasAttribute('aria-sort')||heading.querySelector('.column-resizer')||
       document.querySelector('.source-column-visibility,.compact-columns-menu'))
       return false;
-    sort.click();return true;
+    return true;
   })()`);
-  if(!noGuestResize)throw Error('Guest must sort but cannot resize or choose columns');
-  await eventually("document.querySelector('th[data-column-key=specificProgress]')?.getAttribute('aria-sort')==='ascending'",
-    'V3 guest sort failed');
+  if(!noGuestResize)throw Error('Guest must not sort, resize or choose columns');
   const guestAfter=await widthSnapshot();
   if(JSON.stringify(guestBefore.widths)!==JSON.stringify(guestAfter.widths)||
     storedBefore!==await evaluate("localStorage.getItem('hdnd.qa.group-labels-synthetic')"))
-    throw Error('V3 guest sort changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
+    throw Error('V3 guest view changed physical widths or shared storage: '+JSON.stringify({guestBefore,guestAfter}));
   await send('Page.navigate',{url:guestResizeUrl});
   await eventually("document.querySelector('td[data-col-key=specificProgress]')!==null",
     'V3 guest remount missing');
@@ -3419,7 +3482,7 @@ try{
   if(JSON.stringify(guestReload.widths)!==JSON.stringify(guestBefore.widths)||
     await evaluate("!!document.querySelector('.column-resizer,.guest-compact-menu-bar,.compact-columns-menu')"))
     throw Error('V3 guest private column UI returned after reload: '+JSON.stringify({guestBefore,guestReload}));
-  console.log('V3_GUEST_SORT_ONLY_NO_RESIZE_OR_SHARED_WRITE_PASS',
+  console.log('V3_GUEST_NO_SORT_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
   // Codex 008 / R02: 1600px physical cap on a grouped source field.
@@ -4105,7 +4168,7 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
-  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='grid'&&br.height>=38&&st.borderTopWidth==='0px'&&st.boxShadow==='none'&&dot.content==='none'&&arrow.gridColumnStart==='2'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=34&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
   if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
   const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
@@ -4713,7 +4776,13 @@ try{
   if(ws)ws.close();
   if(chrome)chrome.kill('SIGKILL');
   server.close();
-  if(emulator&&emulator.exitCode===null)emulator.kill('SIGTERM');
-  rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
+  if(emulator&&emulator.exitCode===null){
+    if(process.platform==='win32'&&emulator.pid)
+      spawnSync('taskkill',['/PID',String(emulator.pid),'/T','/F'],{stdio:'ignore'});
+    else emulator.kill('SIGTERM');
+  }
+  try{rmSync(userDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});}
+  catch(error){if(!['EPERM','EBUSY'].includes(error.code))throw error;
+    console.warn('CHROME_PROFILE_CLEANUP_PENDING',error.code);}
   rmSync(emulatorConfigDir,{recursive:true,force:true,maxRetries:8,retryDelay:120});
 }

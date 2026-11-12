@@ -1,0 +1,66 @@
+name: Check public L03 admin link (read-only, no deploy)
+on:
+  push:
+    branches:
+      - ui/20261108-l03-hover-lift-fix
+    paths:
+      - .github/workflows/l03-admin-link-check.yml
+permissions:
+  contents: read
+jobs:
+  check-user-link:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Browser tooling for actual public HTTP, not source simulation
+        run: |
+          npm ci --prefix source/cell-edit-service --no-audit --no-fund
+          npx --prefix source/cell-edit-service playwright install chromium
+      - name: Verify clean alias and exact original user query on public site
+        run: |
+          set -eu
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {createRequire} from 'node:module';
+          const require=createRequire(import.meta.url);
+          const {chromium}=require('./source/cell-edit-service/node_modules/playwright');
+          const base='https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/';
+          const probes=[
+            {id:'admin-alias',url:base+'admin.html'},
+            {id:'full-admin-query',url:base+'?full=1&preview-role=admin&utm_source=chatgpt.com'},
+            {id:'clean-default',url:base}
+          ];
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          try{
+            for(const test of probes){
+              let result=null,error=null;
+              for(let attempt=0;attempt<12;attempt++){
+                const context=await browser.newContext({viewport:{width:1366,height:800}});
+                const page=await context.newPage();
+                const pageErrors=[];
+                page.on('pageerror',e=>pageErrors.push(String(e)));
+                try {
+                  const response=await page.goto(test.url,{waitUntil:'networkidle',timeout:30000});
+                  const status=response?.status()??0;
+                  if(status!==200)throw Error('HTTP '+status);
+                  await page.locator('[data-preview="pr95-l4-full"]').waitFor({timeout:12000});
+                  const props=await page.locator('[data-preview="pr95-l4-full"]').getAttribute('data-role');
+                  const expected=test.id==='clean-default'?'guest':'admin';
+                  assert.equal(props,expected,'Wrong demo role');
+                  assert.equal(pageErrors.length,0,'JS errors: '+pageErrors.join(' | '));
+                  result={test:test.id,http:status,role:props,publicURL:page.url(),pageErrors};
+                  await context.close();break;
+                }catch(e){error=String(e);await context.close();
+                  await new Promise(resolve=>setTimeout(resolve,4000));}
+              }
+              if(!result)throw Error('PUBLIC_LINK_FAILURE '+test.id+' '+error);
+              console.log('PUBLIC_ADMIN_LINK_PASS '+JSON.stringify(result));
+            }
+          }finally{await browser.close()}
+          NODE

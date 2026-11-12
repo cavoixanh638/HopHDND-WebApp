@@ -17,8 +17,9 @@ const validHex=/^#[0-9a-f]{6}$/i;
 const color=(v:unknown)=>typeof v==='string'&&validHex.test(v)?v.toUpperCase():null;
 export const defaultStatusPalette=():StatusPalette=>({
   'not-submitted':{text:'#B14052',background:'#FFF1F3'},
-  office:{text:'#805C22',background:'#FFF8E9'},
-  done:{text:'#346E48',background:'#EEF8F1'},
+  // More legible defaults; existing user-saved custom palettes are untouched.
+  office:{text:'#80531F',background:'#FFEEDA'},
+  done:{text:'#256441',background:'#DEF3E5'},
   other:{text:'#426274',background:'#F2F6F9'},
   otherEnabled:false,
 });
@@ -97,13 +98,19 @@ const stageBorder=(current:StatusSwatch,base:StatusSwatch,exact:string)=>
 /** Presentation only: vars cascade into the normal table AND the report modal. */
 export function statusPaletteCssVariables(colors:StatusPalette):Record<string,string>{
   const base=defaultStatusPalette();
+  // Enhance default "Sở chưa trình" only in L03; never recolor custom swatches.
+  const source=colors['not-submitted'],original=base['not-submitted'];
+  const sourceIsDefault=source.text.toUpperCase()===original.text &&
+    source.background.toUpperCase()===original.background;
   return {
+    '--hdnd-l03-not-submitted-text':sourceIsDefault?'#A32D46':source.text,
+    '--hdnd-l03-not-submitted-bg':sourceIsDefault?'#FFE3E9':source.background,
     '--hdnd-stage-not-submitted-bg':stageColor(colors['not-submitted'],base['not-submitted'],'#FFF1F3'),
     '--hdnd-stage-not-submitted-border':stageBorder(colors['not-submitted'],base['not-submitted'],'#EFD4DA'),
-    '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFF8E9'),
-    '--hdnd-stage-office-border':stageBorder(colors.office,base.office,'#EBDFC4'),
-    '--hdnd-stage-done-bg':stageColor(colors.done,base.done,'#EEF8F1'),
-    '--hdnd-stage-done-border':stageBorder(colors.done,base.done,'#D0E4D7'),
+    '--hdnd-stage-office-bg':stageColor(colors.office,base.office,'#FFF2DD'),
+    '--hdnd-stage-office-border':stageBorder(colors.office,base.office,'#E7CEAD'),
+    '--hdnd-stage-done-bg':stageColor(colors.done,base.done,'#EAF6ED'),
+    '--hdnd-stage-done-border':stageBorder(colors.done,base.done,'#BFDDC9'),
     '--hdnd-status-not-submitted-text':colors['not-submitted'].text,
     '--hdnd-status-not-submitted-bg':colors['not-submitted'].background,
     '--hdnd-status-office-text':colors.office.text,

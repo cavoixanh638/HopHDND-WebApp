@@ -2,7 +2,7 @@ import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} fro
 import type {Changes,Item,TextField} from '../../../shared/types';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import type {CatalogConfig} from '../../data/catalogs';
-import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,type ItemLayout} from '../../data/item-preferences';
+import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,cellHighlightStyle,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,type ItemLayout} from '../../data/item-preferences';
 import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,validateDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
@@ -32,6 +32,8 @@ import {reorderByKey} from '../../domain/reorder-columns';
 import {assignmentIssue} from '../../data/catalogs';
 import {popupFieldOptions} from './pr95-l1-popup-options';
 import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views';
+import '../items/l03-track-widths.css';
+import '../items/inline-note-hit-area.css';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
 
 type Props={
@@ -119,7 +121,15 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const popupPairs=popupCompact?activeCompactPairs(popupSource,popupPrefs):[];
   const popupTitles={...listLayout?.groupLabels,...displayedLayout.groupLabels};
   const renderedColumns=popupCompact?compactVisibleColumns(popupSource,popupPrefs,popupTitles):popupSource;
-  const gridWidth=renderedColumns.reduce((sum,c)=>sum+c.width,0);
+  const l03PopupPair=popupPairs.find(pair=>pair.variant==='partyTogether');
+  const l03PopupWidths=resolvedPartyTrackWidths(listLayout??{});
+  const popupHasEditableLevel=!!l03PopupPair&&l03PopupPair.memberFields.includes('partyLevel')&&
+    subset.some(item=>!readOnlyViewer&&allowDraft&&editing&&mayEditField(item,'partyLevel'));
+  const l03PopupPhysicalWidth=partyTrackPhysicalWidth(l03PopupWidths,popupHasEditableLevel);
+  const physicalPopupColumns=renderedColumns.map(c=>({
+    ...c,width:c.key===l03PopupPair?.anchor?l03PopupPhysicalWidth:c.width
+  }));
+  const gridWidth=physicalPopupColumns.reduce((sum,c)=>sum+c.width,0);
   const [confirmSettingsExit,setConfirmSettingsExit]=useState(false);
   const settingsDirty=settings&&JSON.stringify(pending)!==JSON.stringify(applied);
   const visible=useMemo(()=>{
@@ -414,7 +424,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     <div className="report-grid-scroll" role="region" tabIndex={0} aria-label="Bảng chi tiết các nội dung trong ô báo cáo">
       <table className="data-table report-detail-grid"
         style={{width:gridWidth+'px',minWidth:gridWidth+'px',tableLayout:'fixed'}}>
-        <colgroup>{renderedColumns.map(c=><col key={c.key} style={{width:c.width+'px'}}/>)}</colgroup>
+        <colgroup>{physicalPopupColumns.map(c=><col key={c.key} style={{width:c.width+'px'}}/>)}</colgroup>
         <thead>
           <tr className="report-grid-heading-row">{renderedColumns.map((c,index)=>
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
@@ -440,16 +450,25 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               })}/>)}</tr>
         </thead>
         <tbody>
-          {visible.map(item=><tr key={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
+          {visible.map(item=><tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               mayEditField(item,c.key as TextField);
               const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
-              return <td key={c.key} data-col-key={c.key}
+              const isL03=pair?.variant==='partyTogether';
+               const levelEditable=!!isL03&&editing&&popupMayEdit&&mayEditField(item,'partyLevel');
+               return <td key={c.key} data-col-key={c.key}
+                 data-l03-layout={isL03?(levelEditable?'editable':'readonly'):undefined}
+                data-ui-reference-part={c.key==='note'||c.key==='specificProgress'?c.key:undefined}
                 data-progress-tone={c.key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(c.key,effectiveItemField(item,c.key),statusPaletteStore?.active.otherEnabled??false)??undefined}
                 className={[writable?'editable-cell':'',showCellHistory||showRowHistory?'has-history-action':''].filter(Boolean).join(' ')}
-                data-edit-hint={writable?'Bấm để sửa':undefined}
-                style={pair?undefined:cellHighlightStyle(effectiveItemField(item,c.key),c.key,listLayout?.cellHighlights)}>
+                data-edit-hint={writable&&c.key!=='note'&&c.key!=='specificProgress'?'Bấm để sửa':undefined}
+                style={isL03?{
+                   '--hdnd-l03-label-track':`${levelEditable?l03PopupWidths.editable.label:l03PopupWidths.readonly.label}px`,
+                   '--hdnd-l03-level-track':`${l03PopupWidths.editable.level}px`,
+                   '--hdnd-l03-status-track':`${levelEditable?l03PopupWidths.editable.status:l03PopupWidths.readonly.status}px`,
+                   '--hdnd-l03-inner-width':`${partyTrackModeWidth(l03PopupWidths,levelEditable?'editable':'readonly')-23}px`
+                 } as CSSProperties:pair?undefined:cellHighlightStyle(effectiveItemField(item,c.key),c.key,listLayout?.cellHighlights)}>
                 {pair?<CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
                   field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&mayEditField(item,field)}
                   tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}

@@ -22,7 +22,11 @@ function createServices(){
   const config=emulator?{
     apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',
     projectId:'demo-hdnd',appId:'demo-hdnd',
-    databaseURL:'https://demo-hdnd.firebaseio.com'
+    // QA full-App uses the SAME isolated default RTDB namespace as the
+    // Functions Emulator. Other pages-test smoke retains its old namespace.
+    databaseURL:import.meta.env.VITE_QA_DEFAULT_RTDB_NAMESPACE==='true'
+      ?'https://demo-hdnd-default-rtdb.firebaseio.com'
+      :'https://demo-hdnd.firebaseio.com'
   }:firebaseConfig;
   const longpoll=!emulator&&typeof window!=='undefined'&&
     new URLSearchParams(window.location?.search??'').get('dbTransport')==='longpoll';
@@ -64,6 +68,12 @@ function createServices(){
           testing.__pr95EmulatorArmLostCallerAck=(operationId:string)=>
             armEmulatorPostCommitCallerAckLoss(database,operationId);
         });
+      if(import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+        void import('../data/spark-cell-ack-test').then(({armSparkCellCallerAckLoss})=>{
+          const testing=window as Window & {__pr159ArmSparkCellCallerAckLoss?:()=>void};
+          testing.__pr159ArmSparkCellCallerAckLoss=()=>armSparkCellCallerAckLoss(database);
+        });
+      }
     }
   }
   markStartup('firebase-initialized');
