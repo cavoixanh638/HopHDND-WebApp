@@ -49,6 +49,36 @@ for(const versioned of [false,true]){
   row['.write']=`${identity} && (${epoch}) && data.exists() && newData.exists() && ${mode} !== 'FROZEN' && ${notPaused}`;
   lease['.write']=`${identity} && (${epoch}) && ${item}.exists() && newData.exists() && ${mode} !== 'FROZEN' && (!data.exists() || data.child('expiresAt').val() <= now || (${owned})) && (${release} || (${notPaused} && ${grant} && (!root.child('hdnd/freezeControl/mode').exists() || ${mode} === 'OPEN' || ${draining})))`;
 }
+// SIMPLE OWNER MAINTENANCE (legacy primary only): directly replace/clear
+// /hdnd/items from the existing verified Google Admin. No R2, Worker, paid
+// hosting or privileged browser credential. Never grant parent /hdnd writes.
+// A freeze + absent V2 pointer are required. Ordinary per-cell editing rules
+// for staff and visitors are unchanged; validation bypass is Admin/FROZEN only.
+const maintenancePermit="root.child('hdnd/simpleMaintenancePermit')";
+const simpleAdminMaintenance=`(${googleAdmin} && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && !root.child('hdnd/datasetV2/active').exists() && ${maintenancePermit}.child('uid').val() === auth.uid && ${maintenancePermit}.child('token').isString() && ${maintenancePermit}.child('expiresAt').val() > now)`;
+h.simpleMaintenancePermit={
+  '.read':googleAdmin,
+  // A short-lived capability is available only to the existing Google Admin.
+  // Normal FROZEN tests and per-cell rules cannot bypass the lock without it.
+  '.write':`${googleAdmin} && ((newData.exists() && newData.child('uid').val() === auth.uid && newData.child('token').isString() && newData.child('token').val().matches(/^[0-9a-f-]{36}$/) && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() > now && newData.child('expiresAt').val() <= now + 60000 && (!data.exists() || data.child('expiresAt').val() <= now)) || (!newData.exists() && data.child('uid').val() === auth.uid))`,
+  '.validate':"newData.hasChildren(['uid','token','expiresAt'])",
+  uid:{'.validate':"newData.isString()"},
+  token:{'.validate':"newData.isString()"},
+  expiresAt:{'.validate':"newData.isNumber()"},
+  '$other':{'.validate':false}
+};
+h.items['.write']=`(${h.items['.write']}) || ${simpleAdminMaintenance}`;
+function allowOnlyAdminFrozenReplacementValidation(node){
+  for(const [key,value] of Object.entries(node)){
+    if(key==='.validate'&&typeof value==='string'){
+      node[key]=`(${simpleAdminMaintenance}) || (${value})`;
+    }else if(value&&typeof value==='object'){
+      allowOnlyAdminFrozenReplacementValidation(value);
+    }
+  }
+}
+allowOnlyAdminFrozenReplacementValidation(h.items);
+
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,

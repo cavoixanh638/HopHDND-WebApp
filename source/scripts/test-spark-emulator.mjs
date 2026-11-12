@@ -8,7 +8,7 @@ const active=await reply.json();
 if(active.functions)throw Error('Spark verification must run without Functions Emulator');
 const env={...process.env,VITE_FIREBASE_WRITE_MODE:'spark'};
 const commands=[
- ['node_modules/vitest/vitest.mjs','run','tests/firebase-emulator.test.ts','tests/exclusive-cell-freeze.test.ts','tests/spark-party-contract.test.ts','--pool=threads','--maxWorkers=1','--no-file-parallelism'],
+ ['node_modules/vitest/vitest.mjs','run','tests/firebase-emulator.test.ts','tests/exclusive-cell-freeze.test.ts','tests/spark-party-contract.test.ts','tests/simple-admin-emulator.test.ts','--pool=threads','--maxWorkers=1','--no-file-parallelism'],
  ['parent-commit-service/test/run.mjs']
 ];
 if(process.env.SPARK_APPROVED_XLSX)commands.push(['node_modules/vitest/vitest.mjs','run','tests/spark-approved-import.test.ts','--pool=threads','--maxWorkers=1']);
