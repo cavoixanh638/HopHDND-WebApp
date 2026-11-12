@@ -69,7 +69,7 @@ export function AdminBackupManager({database,user,disabled=false}:{
         </label>
         {fileName&&<p className="muted">File đã chọn: {fileName}</p>}
         {checked&&<div role="status">
-          <p><strong>Đã đọc và đối chiếu checksum</strong> · {checked.mode==='v2'?'Nguồn V2':'Nguồn legacy'}</p>
+          <p><strong>Đã đọc và đối chiếu checksum</strong> · {checked.mode==='v2'?'Nguồn V2':checked.mode==='empty'?'Thế hệ rỗng V2':'Nguồn legacy'}</p>
           <p>V2: {checked.activeRows} hồ sơ · Legacy: {checked.legacyRows} hồ sơ</p>
           <p>Ngày tạo: {new Date(checked.createdAt).toLocaleString('vi-VN')}</p>
           <p>SHA-256: <code>{checked.envelope.sha256}</code></p>
