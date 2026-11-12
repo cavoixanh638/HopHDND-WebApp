@@ -1,0 +1,72 @@
+name: One-link Spark Pages release preflight (NO PUBLISH)
+on:
+  push:
+    branches: ["release/20261112-single-pages-spark"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  source-and-spark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Verify the production Pages workflow is gated for Spark
+        working-directory: .
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          flow = Path('.github/workflows/publish-pages.yml').read_text()
+          required = [
+              "vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'",
+              'vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha',
+              'npm run build:spark',
+              'npm run test:spark',
+              'dist-spark/index.html',
+              'SPARK_PUBLIC_BUNDLE_PASS',
+          ]
+          for needle in required:
+              assert needle in flow, f"SPARK_RELEASE_HOLD missing guard: {needle}"
+          forbidden = ['npm run build:pages', 'npm run build:spark:operator',
+                       'HOPHDND_PARENT_COMMIT_ENDPOINT', 'HOPHDND_RELEASE_BACKENDS_CONFIRMED']
+          for needle in forbidden:
+              assert needle not in flow, f"SPARK_RELEASE_HOLD unsafe legacy build or approval: {needle}"
+          print('SPARK_PAGES_APPROVAL_GATES_PRESENT')
+          PY
+      - name: Install exact dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Auth and RTDB Emulator Spark tests
+        run: npm run test:spark
+      - name: Documentation references
+        run: npm run docs:check
+      - name: Build public Spark Pages (NEVER operator)
+        env:
+          VITE_PARENT_REPLACEMENT_ENABLED: "false"
+          VITE_PARENT_COMMIT_ENDPOINT: ""
+        run: npm run build:spark
+      - name: Assert single-site release artifact is public-only
+        run: |
+          test -s dist-spark/index.html
+          test -n "$(find dist-spark/assets -type f -name '*.js' -print -quit)"
+          if grep -R -E 'http://127[.]0[.]0[.]1:8787/parentDatasetCommit|http://localhost:8787/parentDatasetCommit' dist-spark/assets; then
+            echo "::error::SPARK_RELEASE_HOLD: local admin operator URL bundled in public site"
+            exit 1
+          fi
+          echo "SINGLE_URL_SPARK_RELEASE_BUILD_PASS — no deploy"
