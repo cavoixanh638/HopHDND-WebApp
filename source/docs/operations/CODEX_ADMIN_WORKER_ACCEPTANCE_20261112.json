@@ -1,0 +1,222 @@
+{
+  "schema": "hophdnd.independent-worker-acceptance.v1",
+  "status": "NO_GO",
+  "productHead": "22ffe174babfb5ad6a312d041803a0cccf464f19",
+  "qaBranch": "qa/20261112-worker-independent-acceptance",
+  "qaTestCommit": "b7a46825677bf59847f911fb093599d295051c93",
+  "draftPR": 169,
+  "production": {
+    "start": "2026-11-12T10:18:48.409Z",
+    "end": "2026-11-12T10:18:49.901Z",
+    "http": {
+      "active1": 200,
+      "rootKeys": 200,
+      "profile": 200,
+      "mirrors": 200,
+      "legacyRoot": 200,
+      "hdndKeys": 200,
+      "rules1": 200,
+      "primary": 200,
+      "google": 200,
+      "project": 200,
+      "authConfig": 200,
+      "billing": 200,
+      "instances": 200,
+      "rules2": 200,
+      "active2": 200
+    },
+    "source": {
+      "fingerprint": "df91c303156ddcab7ade143ea21e0dd5110e7ed8dd7dfe7614689cd194dd8fca",
+      "records": 59,
+      "cells": 885,
+      "uniqueIds": 59,
+      "verifiedCachedFormulas": 47
+    },
+    "projectState": "ACTIVE",
+    "instance": [
+      {
+        "instance": "hophdnd-8b7b2-default-rtdb",
+        "region": "asia-southeast1",
+        "state": "ACTIVE",
+        "hostMatches": true
+      }
+    ],
+    "billingEnabled": false,
+    "google": {
+      "enabled": true,
+      "domainCount": 4,
+      "pagesAuthorized": true
+    },
+    "rules": {
+      "sha256": "2654ac663f154c24f32bb3a68fea307b68e333eb24664459d7ecb861f794e662",
+      "bytes": 24243,
+      "repeated": true,
+      "hasV2": false,
+      "hasParentCasService": false
+    },
+    "active": {
+      "present": false,
+      "stable": true,
+      "declaredRows": null,
+      "rows": null
+    },
+    "primary": {
+      "rows": 0,
+      "uniqueCodes": 0,
+      "overlappingCodes": 0,
+      "comparedCells": 0,
+      "sameRawSourceCells": 0,
+      "sameNormalizedCells": 0
+    },
+    "legacyRoot": {
+      "children": 9,
+      "legacy12StringRecords": 9,
+      "currentBusinessRecords": 0
+    },
+    "profileSource": "excel",
+    "mirrors": [
+      {
+        "rows": 55,
+        "uniqueCodes": 55,
+        "overlappingCodes": 44,
+        "comparedCells": 660,
+        "sameRawSourceCells": 445,
+        "sameNormalizedCells": 445
+      }
+    ],
+    "rootKeys": {
+      "known": [
+        "hdnd",
+        "items",
+        "settings"
+      ],
+      "unknownCount": 0
+    },
+    "hdndKeys": {
+      "known": [
+        "mirrors",
+        "permissions",
+        "profile"
+      ],
+      "unknownCount": 0
+    },
+    "productionWrites": 0
+  },
+  "normalizedWorkbook": {
+    "sha256": "3d30bb7ab0363a958f30db51c7df7f29591b8fba610bfc4055270230a4cd1d4d",
+    "records": 59,
+    "cells": 885,
+    "matchedPriorEvidence": true,
+    "imported": false
+  },
+  "candidateRules": {
+    "linuxRawSha256": "6db111f3669be17c91032d6a7d20c178dd29800ab40da47f89bcdd6b0d7c2441",
+    "windowsRawSha256": "8be88e210f53cd4631d42447d8397ccf7fd150d1832c4e436c3acf981ce3b03e",
+    "canonicalSha256": "135200385509da817002e729fd64b9a3dcb8a6155d9b6539647458192d34292b",
+    "exactInstalledOnEmulator": true
+  },
+  "checks": {
+    "npmCi": {
+      "status": "PASS",
+      "exit": 0
+    },
+    "typecheck": {
+      "status": "PASS",
+      "exit": 0
+    },
+    "buildSpark": {
+      "status": "PASS",
+      "exit": 0
+    },
+    "workerOffline": {
+      "status": "PASS",
+      "node": "22.23.5",
+      "passed": 27,
+      "failed": 0,
+      "exit": 0
+    },
+    "sourceGates": {
+      "status": "PASS",
+      "passed": 3,
+      "exit": 0
+    },
+    "sparkBaseline": {
+      "status": "PASS",
+      "ruleCell": 54,
+      "operator": 14,
+      "exit": 0,
+      "ciJob": 131124784507,
+      "localAttempt": "BLOCKED_BY_OCCUPIED_PORTS_9099_9000"
+    },
+    "independent": {
+      "status": "FAIL",
+      "passed": 6,
+      "failed": 3,
+      "exit": 1,
+      "ciJob": 131124785087,
+      "realAuthEmulator": true,
+      "realRtdbEmulator": true,
+      "realGoogleBrowser": false,
+      "workerRestRulesBypassSimulated": true,
+      "realR2": false
+    },
+    "ciRun": 43201204173
+  },
+  "releaseBlockers": [
+    {
+      "severity": "P1",
+      "key": "STALE_FREEZE_EPOCH_COMMIT",
+      "actualHttp": 200
+    },
+    {
+      "severity": "P1",
+      "key": "SIGNED_EMPTY_RESTORE_REJECTED",
+      "actualHttp": 400,
+      "error": "INVALID_ROW_COUNT"
+    },
+    {
+      "severity": "P2",
+      "key": "REST_UTF8_RESPONSE_CAP_BYPASS"
+    },
+    {
+      "key": "RULES_SCOPED_EMPTY_GENERATION_DENIED"
+    },
+    {
+      "key": "LIVE_RULES_LEGACY_NO_V2"
+    },
+    {
+      "key": "HOST_ACCOUNT_AND_IMMUTABLE_STORE_UNCONFIRMED"
+    },
+    {
+      "key": "RUNTIME_IAM_AND_WORKERS_CPU_UNVERIFIED"
+    },
+    {
+      "key": "FRESH_BACKUP_RESTORE_DRILL_AND_RELEASE_AUTHORIZATION_PENDING"
+    }
+  ],
+  "limits": {
+    "workersFree": {
+      "requestPerDay": 100000,
+      "cpuMsPerRequest": 10,
+      "memoryMb": 128,
+      "subrequestsPerRequest": 50
+    },
+    "localCiProfile": [
+      {
+        "rows": 59,
+        "wallMs": 168,
+        "processCpuMs": 66
+      },
+      {
+        "rows": 1000,
+        "wallMs": 253,
+        "processCpuMs": 214
+      }
+    ],
+    "hostedCpu": "BLOCKED_NO_ACCOUNT_OR_APPROVED_DEPLOY",
+    "r2": "BLOCKED_CHECKOUT_AND_RETENTION_APPROVAL",
+    "agencyHost": "UNCONFIRMED"
+  },
+  "productionMutations": 0,
+  "deployed": false
+}
