@@ -34,6 +34,7 @@ export interface RestoreDraftPreview {
 export function previewBackupRestore(current:readonly Item[],inspection:BackupInspection):
   RestoreDraftPreview {
   const {envelope,mode}=inspection;
+  if(mode==='empty')throw Error('Backup không có hồ sơ đang hoạt động để khôi phục.');
   const nodes=envelope.payload.nodes;
   let rows:unknown;
   if(mode==='v2'){
