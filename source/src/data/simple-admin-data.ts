@@ -152,6 +152,8 @@ export async function commitSimpleChange(database:Database,user:User|null,
     throw Error('Dữ liệu đã thay đổi; hãy tải backup và đối chiếu lại.');
   // If already FROZEN, preserve that state. Otherwise close edits briefly.
   let ourFreeze:FreezeControl|null=null;
+  let permitToken='';
+  const permitRef=ref(database,'hdnd/simpleMaintenancePermit');
   try{
     if(beforeFreeze.mode==='OPEN')
       ourFreeze=await setFreezeMode(database,user,beforeFreeze,'FROZEN',true);
@@ -159,6 +161,18 @@ export async function commitSimpleChange(database:Database,user:User|null,
       throw Error('Đang chờ khóa sửa kết thúc. Hãy thử lại sau.');
     if(await activeEditLeaseCount(database)!==0)
       throw Error('Vẫn còn ô đang được sửa. Không thay dữ liệu.');
+    // Permit exists for a single brief Admin operation, so ordinary frozen
+    // raw cell/collection writes still fail the existing Firebase Rules.
+    const token=crypto.randomUUID(),uid=user?.uid??'';
+    await get(permitRef);
+    const lease=await runTransaction(permitRef,current=>{
+      const entry=current as {expiresAt?:number}|null;
+      if(entry&&Number(entry.expiresAt)>Date.now())return undefined;
+      return {uid,token,expiresAt:Date.now()+45000};
+    },{applyLocally:false});
+    if(!lease.committed||lease.snapshot.val()?.token!==token)
+      throw Error('Đang có một thao tác quản trị khác. Thử lại sau.');
+    permitToken=token;
     const expected=stableBackupJson(baseline.items);
     const target=stableBackupJson(draft.candidate);
     await get(ref(database,DATA_PATH)); // warm transaction cache
@@ -172,6 +186,15 @@ export async function commitSimpleChange(database:Database,user:User|null,
       throw Error('Chưa xác nhận được nội dung đã ghi. Hãy đọc lại trước khi thử lần nữa.');
     return result.count;
   }finally{
+    if(permitToken){
+      try{
+        await get(permitRef);
+        await runTransaction(permitRef,current=>{
+          if(current?.token!==permitToken||current?.uid!==user?.uid)return undefined;
+          return null; // release our own capability, not another Admin's
+        },{applyLocally:false});
+      }catch{/* The permit expires automatically; never delete another owner's. */}
+    }
     if(ourFreeze){
       // Do not reopen if another admin has changed the freeze epoch.
       const live=await readFreeze(database);
