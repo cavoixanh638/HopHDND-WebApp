@@ -1,21 +1,25 @@
 import {useState} from 'react';
+import type {Item} from '../../../shared/types';
 import type {Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import {firebaseAdmin} from '../../data/firebase-repository';
 import {activeBackupScope,buildAdminAppBackup,saveBackupFile} from '../../data/admin-backup-service';
 import {inspectBackupJson,type BackupInspection} from '../../data/admin-backup-format';
+import {previewBackupRestore,previewClearActive,type RestoreDraftPreview,type ClearDraftPreview} from '../../data/admin-maintenance-preview';
 
 /** This screen is intentionally public-site SAFE: read/export and local file
  * inspection only. No direct RTDB root writes, no backup upload to a service,
  * no delete button which silently bypasses the protected parent operation.
  */
-export function AdminBackupManager({database,user,disabled=false}:{
-  database:Database;user:User|null;disabled?:boolean;
+export function AdminBackupManager({database,user,items,disabled=false}:{
+  database:Database;user:User|null;items:readonly Item[];disabled?:boolean;
 }){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const [fileName,setFileName]=useState('');
   const [checked,setChecked]=useState<BackupInspection|null>(null);
+  const [restorePreview,setRestorePreview]=useState<RestoreDraftPreview|null>(null);
+  const [clearPreview,setClearPreview]=useState<ClearDraftPreview|null>(null);
   const isAdmin=firebaseAdmin(user);
   const download=async()=>{
     if(!isAdmin||disabled||busy)return;
@@ -29,11 +33,14 @@ export function AdminBackupManager({database,user,disabled=false}:{
     finally{setBusy(false);}
   };
   const examine=async(file:File)=>{
-    setFileName(file.name);setChecked(null);setMessage('');setBusy(true);
+    setFileName(file.name);setChecked(null);setRestorePreview(null);setClearPreview(null);
+    setMessage('');setBusy(true);
     try{
       if(!/\.json$/i.test(file.name)||file.size>30*1024*1024||file.size===0)
         throw Error('Chọn backup JSON HopHDND hợp lệ, tối đa 30 MB.');
       const inspected=await inspectBackupJson(await file.text(),activeBackupScope(database));
+      const preview=previewBackupRestore(items,inspected);
+      setRestorePreview(preview);
       setChecked(inspected);
       setMessage('Định dạng, SHA-256 và định danh Firebase khớp. SHA-256 không xác thực người tạo file; trước khi khôi phục vẫn phải qua dịch vụ kiểm tra độc lập.');
     }catch(e){setMessage(e instanceof Error?e.message:'File backup không hợp lệ.');}
@@ -74,6 +81,16 @@ export function AdminBackupManager({database,user,disabled=false}:{
           <p>Ngày tạo: {new Date(checked.createdAt).toLocaleString('vi-VN')}</p>
           <p>SHA-256: <code>{checked.envelope.sha256}</code></p>
           <p className="muted">File chỉ được đọc trên trình duyệt, chưa gửi lên Firebase.</p>
+          {restorePreview&&<div aria-label="So sánh backup với dữ liệu đang dùng">
+            <strong>Bản xem trước khôi phục · KHÔNG GHI</strong>
+            <p>Đang dùng: {restorePreview.comparison.oldCount} hồ sơ · Trong backup: {restorePreview.comparison.newCount} hồ sơ</p>
+            <p>Thêm {restorePreview.comparison.difference.added.length},
+               sửa {restorePreview.comparison.difference.changed.length},
+               loại khỏi tập hoạt động {restorePreview.comparison.difference.removed.length},
+               giữ nguyên {restorePreview.comparison.difference.unchanged.length}.</p>
+            <button type="button" className="button primary" disabled
+              title="Chờ dịch vụ quản trị trực tuyến đã thẩm định">Khôi phục từ backup (chưa mở)</button>
+          </div>}
         </div>}
       </section>
       <section className="card" aria-label="Xóa và nạp dữ liệu có bảo vệ">
@@ -81,8 +98,20 @@ export function AdminBackupManager({database,user,disabled=false}:{
         <p>Đây là thao tác có thể làm mất dữ liệu đã chỉnh sửa. Bản hiện tại
           <strong> chưa mở quyền xóa hoặc ghi đè trực tiếp trên website</strong> vì
           Rules yêu cầu dịch vụ giao dịch quản trị xác thực.</p>
-        <button type="button" className="button danger" disabled
-          title="Chưa có dịch vụ quản trị trực tuyến đã thẩm định">Xóa toàn bộ hồ sơ (chưa khả dụng)</button>
+        <button type="button" className="button ghost" disabled={busy||disabled}
+          onClick={()=>{
+            try{setClearPreview(previewClearActive(items));setMessage('Đây chỉ là bản xem trước. Không có hồ sơ nào bị xóa.');}
+            catch(e){setClearPreview(null);setMessage(e instanceof Error?e.message:'Không tạo được xem trước.');}
+          }}>Xem trước xóa danh sách hồ sơ</button>
+        {clearPreview&&<div role="status">
+          <p><strong>Chỉ xem trước: {clearPreview.count} hồ sơ sẽ ngừng hoạt động.</strong></p>
+          <p>{clearPreview.explanation}</p>
+          {clearPreview.codes.length>0&&<details><summary>Xem mã hồ sơ ({clearPreview.codes.length})</summary>
+            <p>{clearPreview.codes.join(', ')}</p>
+          </details>}
+          <button type="button" className="button danger" disabled
+            title="Chờ dịch vụ quản trị trực tuyến được thẩm định">Xác nhận xóa (chưa mở)</button>
+        </div>}
         <p className="muted">Nạp Excel mới: sử dụng bộ kiểm tra A–O ngay phía dưới.
           Khôi phục từ backup JSON sẽ được bật sau khi dịch vụ quản trị trực tuyến
           xác minh backup, sao lưu bản hiện tại và kiểm tra phiên dữ liệu.</p>
