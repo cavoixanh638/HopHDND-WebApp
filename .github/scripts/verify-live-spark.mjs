@@ -78,6 +78,40 @@ ensure(value===null||(value&&typeof value==='object'&&!Array.isArray(value)),
 const count=value?Object.keys(value).length:0;
 ensure(count<=1000,'RTDB count over supported limit');
 console.log('LIVE_GUEST_READ_PASS','primary_record_count='+count,'business_writes=0');
+// For the post-import re-run: verify all 15 A-O business fields are structurally
+// intact in Firebase, without logging their personal/business contents.
+if(count>0){
+  const fullURL=new URL(databaseURL+'/hdnd/items.json');
+  fullURL.searchParams.set('auth',auth.idToken);
+  const allResponse=await request(fullURL.toString());
+  ensure(allResponse.ok,'Full guest dataset read HTTP '+allResponse.status);
+  const all=await allResponse.json();
+  ensure(all&&typeof all==='object'&&!Array.isArray(all),
+    'Populated Firebase source is not a record map');
+  const rows=Object.entries(all);
+  ensure(rows.length===count,'Shallow and full read row counts differ');
+  const fields=['displayCode','stt','content','department','type',
+    'partyLevel','progressParty','progressBuild','progressCouncil',
+    'specialist','room','vpLeader','ubndLeader','specificProgress','note'];
+  const codes=new Set();
+  for(const [id,item] of rows){
+    ensure(item&&typeof item==='object'&&!Array.isArray(item) && item.recordId===id,
+      'Firebase recordId mismatch');
+    ensure(typeof item.displayCode==='string'&&item.displayCode.trim()!=='',
+      'Firebase record code missing');
+    ensure(!codes.has(item.displayCode),'Duplicate displayCode');
+    codes.add(item.displayCode);
+    ensure(Number.isSafeInteger(item.stt)&&item.stt>0,'Invalid business STT');
+    for(const field of fields){
+      ensure(Object.hasOwn(item,field),'Missing A-O business field '+field);
+      ensure(field==='stt'||typeof item[field]==='string',
+        'Incorrect business text field '+field);
+    }
+  }
+  console.log('LIVE_PRIMARY_STRUCTURE_PASS','rows='+rows.length,
+    'A_to_O_fields='+rows.length*fields.length,'unique_codes='+codes.size);
+}
+
 
 const browsers=['google-chrome','google-chrome-stable','chromium','chromium-browser'];
 const chosen=browsers.find(bin=>spawnSync(bin,['--version'],{encoding:'utf8',timeout:3000}).status===0);
