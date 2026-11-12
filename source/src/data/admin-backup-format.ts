@@ -14,6 +14,7 @@ export const BACKUP_PATHS=[
   'hdnd/editors',
   'hdnd/mirrors',
   'hdnd/datasetV2',
+  'hdnd/maintenanceOps',
   'hdndReviews',
 ] as const;
 export type BackupPath=typeof BACKUP_PATHS[number];
@@ -32,6 +33,7 @@ export interface BackupPayload extends BackupScope {
 export interface BackupEnvelope {
   payload:BackupPayload;
   sha256:string;
+  serverSeal?:{algorithm:'HMAC-SHA256';keyId:'v1';signature:string};
 }
 export interface BackupInspection {
   envelope:BackupEnvelope;
@@ -97,7 +99,12 @@ export async function inspectBackupJson(json:string,expected?:BackupScope):Promi
     throw Error('File backup vượt giới hạn xem trước 30 MB.');
   let raw:unknown;
   try{raw=JSON.parse(json);}catch{throw Error('File backup không phải JSON hợp lệ.');}
-  if(!isRecord(raw)||Object.keys(raw).length!==2||
+  if(!isRecord(raw)||!([2,3].includes(Object.keys(raw).length))||
+    Object.keys(raw).some(key=>!['payload','sha256','serverSeal'].includes(key))||
+    (Object.hasOwn(raw,'serverSeal')&&(!isRecord(raw.serverSeal)||
+      raw.serverSeal.algorithm!=='HMAC-SHA256'||raw.serverSeal.keyId!=='v1'||
+      typeof raw.serverSeal.signature!=='string'||
+      !/^[A-Za-z0-9_-]{43}$/.test(raw.serverSeal.signature)))||
     !Object.prototype.hasOwnProperty.call(raw,'payload')||
     !Object.prototype.hasOwnProperty.call(raw,'sha256')||
     typeof raw.sha256!=='string'||!shaPattern.test(raw.sha256))
@@ -113,20 +120,22 @@ export async function inspectBackupJson(json:string,expected?:BackupScope):Promi
   let activeRows=0;
   if(pointer){
     if(typeof pointer.generationId!=='string'||!/^gen_[A-Za-z0-9_-]{12,80}$/.test(pointer.generationId)||
-      !Number.isSafeInteger(pointer.rowCount)||Number(pointer.rowCount)<1||Number(pointer.rowCount)>1000)
+      !Number.isSafeInteger(pointer.rowCount)||Number(pointer.rowCount)<0||Number(pointer.rowCount)>1000)
       throw Error('Con trỏ thế hệ trong backup không hợp lệ.');
     const generation=isRecord(generations?.[pointer.generationId])
       ?generations[pointer.generationId] as Record<string,unknown>:null;
     const rows=isRecord(generation?.items)?generation.items:null;
-    if(!rows||Object.keys(rows).length!==pointer.rowCount)
+    if(!generation||(!rows&&pointer.rowCount!==0)||
+      Object.keys(rows??{}).length!==pointer.rowCount)
       throw Error('Số hồ sơ V2 không khớp con trỏ. Không thể khôi phục.');
     activeRows=Object.keys(rows).length;
   }
   const legacy=payload.nodes['hdnd/items'];
   const legacyRows=isRecord(legacy)?Object.keys(legacy).length:0;
-  if(!activeRows&&!legacyRows)throw Error('Backup không có hồ sơ đang quản lý; kiểm tra nguồn dữ liệu.');
-  return {envelope:{payload,sha256:digest},
-    activeRows,legacyRows,mode:activeRows?'v2':'legacy',
+  if(!pointer&&!legacyRows)throw Error('Backup thiếu con trỏ hoặc hồ sơ đang quản lý.');
+  return {envelope:{payload,sha256:digest,
+      ...(Object.hasOwn(raw,'serverSeal')?{serverSeal:raw.serverSeal as BackupEnvelope['serverSeal']}:{})},
+    activeRows,legacyRows,mode:pointer?(activeRows?'v2':'empty'):'legacy',
     freezeRevision:Number((payload.nodes['hdnd/freezeControl'] as Record<string,unknown>).revision),
     createdAt:payload.createdAt};
 }
