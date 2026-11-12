@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {sealServerBackup,verifyServerBackup,SERVER_BACKUP_PATHS}
   from '../parent-commit-service/src/backup-attestation.mjs';
 const scope={projectId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com'};
@@ -26,9 +26,14 @@ describe('backend-only signed HopHDND backup',()=>{
     const env=sealServerBackup(input(),{...scope,keyId:'key_test_2026',secret});
     const changed=structuredClone(env);
     changed.payload.nodes['hdnd/items'].r1.displayCode='NQ99';
-    // Do not give client ability to forge MAC: even a modified digest is denied.
-    changed.sha256='f'.repeat(64);
-    expect(()=>verifyServerBackup(changed,{...scope,keyRing:keys})).toThrow('digest');
+    // An attacker can recompute the unkeyed digest, but cannot mint the
+    // backend-held HMAC. Prove the server checks BOTH independently.
+    const sort=(v:any):any=>Array.isArray(v)?v.map(sort):
+      v&&typeof v==='object'?Object.fromEntries(Object.entries(v)
+        .sort(([a],[b])=>a.localeCompare(b,'en'))
+        .map(([k,x])=>[k,sort(x)])):v;
+    changed.sha256=createHash('sha256').update(JSON.stringify(sort(changed.payload))).digest('hex');
+    expect(()=>verifyServerBackup(changed,{...scope,keyRing:keys})).toThrow('HMAC');
   });
   it('rejects invented HMAC and wrong server key, unknown key id and wrong instance',()=>{
     const env=sealServerBackup(input(),{...scope,keyId:'key_test_2026',secret});
