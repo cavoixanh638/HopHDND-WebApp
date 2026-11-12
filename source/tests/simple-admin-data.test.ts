@@ -45,6 +45,13 @@ describe('Simple admin file-only maintenance',()=>{
       ...archive,payload:{...payload,projectId:'different'}
     }),db)).rejects.toThrow(/Firebase/);
   });
+  it('public Spark Pages offers Admin maintenance without privileged operator URL',()=>{
+    const app=readFileSync('src/app/App.tsx','utf8');
+    const transfer=readFileSync('src/features/settings/ExcelTransferPanel.tsx','utf8');
+    expect(app).toContain("firebase!.datasetActive===null&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'");
+    expect(transfer).toContain('<SimpleAdminDataPanel database={versioned.database}');
+    expect(transfer).toContain('versioned.active==null');
+  });
   it('keeps app-scoped rules guarded to verified Google admin only',()=>{
     const rules=JSON.parse(readFileSync('firebase/database.spark.rules.json','utf8')).rules;
     const items=rules.hdnd.items;
