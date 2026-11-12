@@ -23,7 +23,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Backend clear invariants tests (no Firebase touched)
-        run: npx vitest run tests/admin-clear-generation-contract.test.ts
+        run: npx vitest run tests/admin-clear-generation-contract.test.ts tests/admin-server-backup-attestation.test.ts
       - name: Assert no production write code in the pure contract
         run: |
           python3 - <<'PY'
