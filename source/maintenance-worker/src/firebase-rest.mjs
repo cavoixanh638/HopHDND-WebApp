@@ -18,10 +18,36 @@ export function firebaseRest({databaseURL,accessToken,fetchImpl=fetch}){
     const response=await fetchImpl(url(path),{method,headers,...(body===undefined?{}:{body:JSON.stringify(body)})});
     if(response.status===412)return {conflict:true,etag:response.headers.get('etag')};
     requireCondition(response.ok,'FIREBASE_REST_'+response.status);
-    const text=await response.text();
-    requireCondition(text.length<=MAX_GET_BYTES,'FIREBASE_DATASET_TOO_LARGE_FOR_WORKER_FREE');
+    // Limit the RAW UTF-8 response bytes while streaming, not JS UTF-16 code
+    // units (multibyte characters may be much larger than string.length).
+    // Never materialize an unbounded remote JSON body in Worker memory.
+    const declared=Number(response.headers.get('content-length'));
+    requireCondition(!Number.isFinite(declared)||declared<=MAX_GET_BYTES,
+      'FIREBASE_DATASET_TOO_LARGE_FOR_WORKER_FREE');
+    requireCondition(response.body&&typeof response.body.getReader==='function',
+      'FIREBASE_RESPONSE_STREAM_UNAVAILABLE');
+    const reader=response.body.getReader(),chunks=[];
+    let byteCount=0;
+    try{
+      for(;;){
+        const {done,value}=await reader.read();
+        if(done)break;
+        byteCount+=value.byteLength;
+        if(byteCount>MAX_GET_BYTES){
+          await reader.cancel().catch(()=>{});
+          throw Error('FIREBASE_DATASET_TOO_LARGE_FOR_WORKER_FREE');
+        }
+        chunks.push(value);
+      }
+    }finally{reader.releaseLock();}
+    const joined=new Uint8Array(byteCount);
+    let offset=0;
+    for(const chunk of chunks){joined.set(chunk,offset);offset+=chunk.byteLength;}
     let data;
-    try{data=text?JSON.parse(text):null}catch{throw Error('INVALID_FIREBASE_JSON');}
+    try{
+      const text=new TextDecoder('utf-8',{fatal:true}).decode(joined);
+      data=text?JSON.parse(text):null;
+    }catch{throw Error('INVALID_FIREBASE_JSON');}
     return {data,etag:response.headers.get('etag'),conflict:false};
   }
   return {
