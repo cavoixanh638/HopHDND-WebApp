@@ -95,7 +95,7 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
     setDraft(null);setBackupHash('');setExcel(null);setSheet('');
     setPreview('');
     setNotice('Firebase xác nhận '+(draft.action==='clear'?'đã xóa danh sách': 'đã cập nhật')+
-      ': '+count+' hồ sơ. Nếu bảng vẫn hiển thị dữ liệu Excel/mirror cũ, hãy chọn nguồn “Firebase chính” trong thiết lập (chỉ một lần).');
+      ': '+count+' hồ sơ. Website Spark luôn đọc từ Firebase chính; hãy kiểm tra lại danh sách.');
   });
   if(!firebaseAdmin(user))return null;
   return <section className="card admin-data-maintenance" aria-label="Sao lưu và thay dữ liệu đơn giản">
