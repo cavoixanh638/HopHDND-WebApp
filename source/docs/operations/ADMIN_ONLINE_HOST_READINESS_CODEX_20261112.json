@@ -1,0 +1,96 @@
+{
+  "schema": "hophdnd.admin_host_readiness.v1",
+  "assignedBranch": "qa/20261112-admin-service-host-readiness",
+  "baselineSha": "07b26f29d96ac1c9fa0d5f7024f703a582e2b405",
+  "status": "LIVE_READ_PASS_RELEASE_BLOCKED",
+  "observedUtc": {
+    "start": "2026-11-12T08:50:03.165Z",
+    "end": "2026-11-12T08:50:04.947Z"
+  },
+  "production": {
+    "project": "hophdnd-8b7b2",
+    "readOnly": true,
+    "mutations": 0,
+    "authMethod": "Existing Firebase CLI OAuth; Google API and RTDB requests GET only",
+    "sandbox": {
+      "default": "EPERM on Firebase CLI configstore",
+      "elevatedReadOnly": "PASS",
+      "remainingLiveReadPermissionBlock": null
+    },
+    "projectState": "ACTIVE",
+    "instance": {
+      "instance": "hophdnd-8b7b2-default-rtdb",
+      "region": "asia-southeast1",
+      "state": "ACTIVE",
+      "type": "DEFAULT_DATABASE",
+      "hostMatches": true
+    },
+    "instanceCount": 1,
+    "billingEnabled": false,
+    "publishedRules": {
+      "http": 200,
+      "reads": 2,
+      "stable": true,
+      "bytes": 24243,
+      "sha256": "2654ac663f154c24f32bb3a68fea307b68e333eb24664459d7ecb861f794e662",
+      "canonicalSha256": "005ee641bf70bcb15bf2300e4928cced4567374dcae745f2ab896d55a4f4ab3a",
+      "hasDatasetV2": false,
+      "hasParentCasService": false
+    },
+    "auth": {
+      "configHttp": 200,
+      "googleProviderHttp": 200,
+      "googleEnabled": true,
+      "googleOAuthClientConfigured": true,
+      "authorizedDomainCount": 4,
+      "authorizedDomainsSha256": "0f12f1440bb9bb418d3247ed10f01406ed6b1f44565e802fd2b4f93720dea999",
+      "canonicalPagesHostAuthorized": true,
+      "firebaseAuthHostAuthorized": true,
+      "localhostAuthorized": true,
+      "liveGoogleBrowserSignIn": "NOT_RUN_NO_PRODUCTION_AUTH_SESSION"
+    },
+    "dataset": {
+      "activePointerHttp": [
+        200,
+        200
+      ],
+      "activeGenerationExists": false,
+      "activeGenerationIdSha256": null,
+      "activeGenerationRows": null,
+      "activeRowsStatus": "NOT_APPLICABLE_NO_ACTIVE_POINTER",
+      "legacyPrimaryPath": "/hdnd/items",
+      "legacyPrimaryHttp": [
+        200,
+        200
+      ],
+      "legacyPrimaryRows": [
+        0,
+        0
+      ],
+      "legacyRootPath": "/items",
+      "legacyRootHttp": [
+        200,
+        200
+      ],
+      "legacyRootDirectChildren": [
+        9,
+        9
+      ],
+      "approved59ObservedInActiveOrPrimary": false
+    }
+  },
+  "host": {
+    "status": "BLOCKED_FOR_RELEASE",
+    "recommended": "Existing institution-managed HTTPS Node host and separate immutable backup storage, conditional on availability and approval",
+    "freeManagedCandidate": "Cloudflare Workers Free; synthetic pilot only until end-to-end CPU, credentials, persistence and restore verified",
+    "candidateHostAccountAccess": "NOT_PROVIDED",
+    "runtimeCredentialIam": "NOT_PROVISIONED_OR_VERIFIED",
+    "hostDeployment": "NOT_RUN",
+    "runtimeTests": "NOT_RUN_REPORT_ONLY"
+  },
+  "releaseBlockers": [
+    "Live Rules lack the V2 parent CAS boundary",
+    "Trusted HTTPS service, scoped identity and immutable independent backups require one-time setup",
+    "Exact release candidate must pass staging security and restore drills and receive explicit owner approval"
+  ]
+}
