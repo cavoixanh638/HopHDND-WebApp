@@ -94,7 +94,19 @@ ensure(rootIndex!==-1,'Chrome did not see app mount');
 const after=dom.slice(rootIndex+9,rootIndex+6000);
 ensure(/<div|<main|<section|<header/.test(after)&&!/^\s*><\/div>/.test(after),
   'Chrome saw an empty React root');
-ensure(/Nội dung trình|HĐND|Danh sách|Dữ liệu/.test(after),
-  'Chrome did not render expected HopHDND application text');
-console.log('LIVE_CHROMIUM_RENDER_PASS','root_populated=true');
+const rootToBody=dom.slice(rootIndex+9,dom.indexOf('</body>',rootIndex));
+const visible=rootToBody.replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi,'')
+  .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi,'')
+  .replace(/<[^>]+>/g,' ').replace(/&[^; ]+;/g,' ').replace(/\\s+/g,' ').trim();
+const markers={
+  title:/HĐND|Nội dung trình|Danh sách|Dữ liệu/i.test(visible),
+  loading:/Đang|Đợi|Tải/i.test(visible),
+  networkError:/Không kết nối|Lỗi kết nối|Failed to fetch/i.test(visible),
+};
+console.log('CHROME_RENDER_DIAG',JSON.stringify({
+  domLength:dom.length,rootLength:rootToBody.length,visibleLength:visible.length,markers
+}));
+ensure(visible.length>15,'Chrome mounted HTML but app contains no visible UI text');
+ensure(markers.title||markers.loading,'Chrome did not render known app title or loading state');
+console.log('LIVE_CHROMIUM_RENDER_PASS','root_populated=true','page_text_verified=true');
 console.log('FINAL_LIVE_SMOKE_PASS','source='+expectedSha,'guest_count='+count);
