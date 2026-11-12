@@ -18,6 +18,23 @@ const snapshotData=(hdnd,now=Date.now())=>{
   const leases=hdnd.datasetV2.leases?.[gen]??null;
   return {state,baseline:stableJson({active:state.active,items:state.items,permissions,leases})};
 };
+// The independent archive must contain the *exact* active rows, permissions
+// and leases captured for CAS, not just a pointer with the same generation ID.
+function archiveActiveBaseline(archive){
+  const v2=archive?.payload?.nodes?.['hdnd/datasetV2'];
+  requireCondition(object(v2)&&object(v2.active),'OFFSITE_BACKUP_ACTIVE_MISSING');
+  const generationId=v2.active.generationId;
+  const generation=v2.generations?.[generationId];
+  requireCondition(object(generation),'OFFSITE_BACKUP_GENERATION_MISSING');
+  const items=generation.items??{};
+  requireCondition(object(items)&&Object.keys(items).length===v2.active.rowCount,
+    'OFFSITE_BACKUP_ROW_COUNT_MISMATCH');
+  return stableJson({
+    active:v2.active,items,
+    permissions:v2.permissions?.[generationId]??null,
+    leases:v2.leases?.[generationId]??null
+  });
+}
 function safeJsonSize(payload){
   requireCondition(new TextEncoder().encode(JSON.stringify(payload)).length<=MAX_PAYLOAD_BYTES,
     'MAINTENANCE_LIMIT_3MB');
@@ -123,6 +140,8 @@ export async function prepareMaintenance(db,env,identity,input,{now=Date.now()}=
   // A root-level disaster recovery copy of other Firebase branches/Rules/Auth
   // is a separate operational requirement; this archive is app-scoped only.
   const offsiteArchive=await exportArchive(db,env,{now});
+  requireCondition(archiveActiveBaseline(offsiteArchive)===baseline,
+    'OFFSITE_BACKUP_ACTIVE_BASELINE_MISMATCH');
   const offsiteRef=await persistVerifiedArchive(env.MAINTENANCE_ARCHIVE_BUCKET,
     operationId,offsiteArchive);
   const oldGen=state.active.generationId;
@@ -184,6 +203,8 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
     offsite.payload.databaseURL===env.FIREBASE_DATABASE_URL&&
     samePointer(offsite.payload.nodes?.['hdnd/datasetV2']?.active,state.active),
     'OFFSITE_BACKUP_ORIGIN_OR_GENERATION_MISMATCH');
+  requireCondition(archiveActiveBaseline(offsite)===baseline,
+    'OFFSITE_BACKUP_ACTIVE_BASELINE_MISMATCH');
   const backupJson=root.datasetV2.backups?.[op];
   const candidateJson=root.datasetV2.candidates?.[op];
   requireCondition(typeof backupJson==='string'&&typeof candidateJson==='string'&&
