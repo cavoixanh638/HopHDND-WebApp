@@ -110,7 +110,7 @@ function validatePointer(pointer:ActiveDatasetPointer):void {
   checkOperationId(pointer.operationId);
   if(!pointer.generationId||!digestPattern.test(pointer.digest)||
     !Number.isSafeInteger(pointer.revision)||pointer.revision<1||
-    !Number.isSafeInteger(pointer.rowCount)||pointer.rowCount<1||pointer.rowCount>1000)
+    !Number.isSafeInteger(pointer.rowCount)||pointer.rowCount<0||pointer.rowCount>1000)
     throw Error('Con trỏ tập dữ liệu hiện tại không hợp lệ.');
 }
 /**
