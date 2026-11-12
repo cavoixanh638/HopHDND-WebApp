@@ -33,6 +33,7 @@ describe('online maintenance source gates',()=>{
     const rules=JSON.parse(readFileSync(new URL('../firebase/database.spark.rules.json',import.meta.url),'utf8'));
     expect(app).toContain('maintenanceApiConfigured()?');
     expect(panel).toContain('reauthenticateWithPopup');
+    expect(panel).toContain('<AdminBackupManager database={database}');
     expect(panel).toContain('approvalChecklist');
     expect(panel).toContain('statusOnlineMaintenance');
     expect(worker).toContain('ENABLE_MUTATIONS = "false"');
