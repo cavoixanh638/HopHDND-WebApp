@@ -50,7 +50,7 @@ test('privileged Firebase backend is never reached if session revocation check f
     checkSession:async()=>{throw Error('ADMIN_SESSION_REVOKED')},
     makeDb:()=>{dbCalls++;throw Error('SERVER_BYPASS')},
   });
-  assert.equal(denied.status,503); // fail closed; client must not infer success
+  assert.equal(denied.status,403); // revoked admin denied; client must not infer success
   assert.equal((await denied.json()).error,'ADMIN_SESSION_REVOKED');
   assert.equal(dbCalls,0);
 });
