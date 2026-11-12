@@ -39,7 +39,7 @@ export function createDemoItems(count = 24): Item[] {
       content: contents[isReport ? 'bc' : 'nq'][Math.floor((ordinal - 1) / (isReport ? 3 : 1)) % (isReport ? contents.bc.length : contents.nq.length)],
       department: assignment.department,
       type: isReport ? 'Báo cáo' : ordinal % 2 ? 'QPPL' : 'HC',
-      partyLevel: ordinal % 5 === 0 ? 'Không phải trình' : ['BCH', 'BTV TU', 'TTTU'][(ordinal - 1) % 3],
+      partyLevel: ordinal % 5 === 0 ? 'Không' : ['BCH', 'BTV', 'TTTU'][(ordinal - 1) % 3],
       progressParty: ordinal % 5 === 0 ? 'Không phải trình' : partyStatuses[(ordinal - 1) % partyStatuses.length],
       progressBuild: isReport || ordinal % 2 === 0 ? 'Không phải trình' :
         ['Không phải trình', 'Sở chưa trình', 'VP đang xử lý', 'Đã trình, chờ QĐ', 'Đã có QĐ'][(ordinal - 1) % 4],

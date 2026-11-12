@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Item } from '../../../shared/types';
+import type { Item,GroupField } from '../../../shared/types';
+import {REPORT_GROUP_FIELDS,renameReportGroupIdentity,validateReportGroupIdentities} from '../../domain/report-reference-identity';
 import { normalizeSearch } from '../../domain/search';
 import { CATALOG_KEYS, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
@@ -58,11 +59,14 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
   const visibleValues = useMemo(() => values.filter(value => normalizeSearch(value).includes(normalizeSearch(query))), [values, query]);
   const usageCount = (value: string) => items.filter(item => String(item[config.field] ?? '') === value).length;
 
-  const setOptions = (next: string[]) => onChange({ ...draft, options: { ...draft.options, [selected]: next } });
+  const groupField=REPORT_GROUP_FIELDS.includes(selected as GroupField)?selected as GroupField:null;
+  const setOptions = (next: string[]) => {const options={ ...draft.options, [selected]: next };onChange({ ...draft, options, groupIdentities:validateReportGroupIdentities(draft.groupIdentities,options) });};
   const validateValue = (value: string, excluding?: string) => {
     const trimmed = value.trim();
     if (!trimmed) return 'Tên danh mục không được để trống.';
-    if (values.some(option => option !== excluding && option.trim().toLocaleLowerCase('vi') === trimmed.toLocaleLowerCase('vi'))) return 'Tên này đã có trong danh mục.';
+    if (values.some(option => option !== excluding && option.trim().toLocaleLowerCase('vi') === trimmed.toLocaleLowerCase('vi')) &&
+      !(excluding&&groupField&&usageCount(excluding)===0&&usageCount(trimmed)>0))
+      return 'Tên này đã có trong danh mục.';
     return '';
   };
   const addValue = () => {
@@ -77,13 +81,22 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
     const nextValue = form.renameValue.trim();
     const message = validateValue(nextValue, oldValue);
     if (message) { setError(message); return; }
-    const options = values.map(value => value === oldValue ? nextValue : value);
+    // If the source was already renamed, reconcile the newly observed label
+    // explicitly instead of silently merging two source business groups.
+    const options = values.filter(value => value === oldValue || value !== nextValue)
+      .map(value => value === oldValue ? nextValue : value);
     const specialistRooms = selected === 'specialist'
       ? Object.fromEntries(Object.entries(draft.specialistRooms).map(([name, rooms]) => [name === oldValue ? nextValue : name, rooms]))
       : selected === 'room'
         ? Object.fromEntries(Object.entries(draft.specialistRooms).map(([name, rooms]) => [name, rooms.map(room => room === oldValue ? nextValue : room)]))
         : draft.specialistRooms;
-    onChange({ ...draft, options: { ...draft.options, [selected]: options }, specialistRooms });
+    let groupIdentities=draft.groupIdentities;
+    if(groupField){
+      try{groupIdentities=renameReportGroupIdentity(
+        validateReportGroupIdentities(draft.groupIdentities,draft.options),groupField,oldValue,nextValue);
+      }catch(cause){setError(cause instanceof Error?cause.message:'Không thể chuyển ID nhóm.');return;}
+    }
+    onChange({ ...draft, options: { ...draft.options, [selected]: options }, specialistRooms,groupIdentities });
     if (selected === 'specialist' && selectedSpecialist === oldValue) setSelectedSpecialist(nextValue);
     discardForm();
   };
@@ -127,6 +140,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
       </div>
       {error && <p className="error-text" role="alert">{error}</p>}
       <p className="muted" role="status">{selectedLabel}: {values.length} giá trị · số nội dung đang dùng được hiển thị bên cạnh từng giá trị.</p>
+      {groupField&&<p className="muted">ID nhóm báo cáo không phụ thuộc hồ sơ. Nếu nguồn đã đổi tên, chọn Đổi tên ở nhãn cũ (sau khi không còn hồ sơ mang nhãn cũ), nhập nhãn mới và Lưu danh mục chung để giữ ID. Không tự đoán hai nhóm là một.</p>}
       {visibleValues.length === 0 ? <p className="muted">Không có giá trị khớp tìm kiếm.</p> : <ol className="column-order-list">
         {visibleValues.map(value => {
           const index = values.indexOf(value);

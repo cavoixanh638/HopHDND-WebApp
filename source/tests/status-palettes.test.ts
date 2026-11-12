@@ -15,8 +15,8 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
   it('uses approved soft V2 default while keeping intermediate statuses opt-in',()=>{
     const colors=defaultStatusPalette();
     expect(colors['not-submitted']).toEqual({text:'#B14052',background:'#FFF1F3'});
-    expect(colors.office).toEqual({text:'#805C22',background:'#FFF8E9'});
-    expect(colors.done).toEqual({text:'#346E48',background:'#EEF8F1'});
+    expect(colors.office).toEqual({text:'#80531F',background:'#FFEEDA'});
+    expect(colors.done).toEqual({text:'#256441',background:'#DEF3E5'});
     expect(colors.otherEnabled).toBe(false);
     expect(statusPaletteTone('progressParty','Đang chờ xử lý',false)).toBeNull();
     expect(statusPaletteTone('department','Sở chưa trình',true)).toBeNull();
@@ -94,22 +94,31 @@ describe('Bộ màu trạng thái có thể lưu tên và khôi phục',()=>{
   });
   it('expresses foreground/background variables for both list and popup without changing dot/permissions',()=>{
     const css=statusPaletteCssVariables(defaultStatusPalette());
-    expect(css['--hdnd-status-done-text']).toBe('#346E48');
+    expect(css['--hdnd-status-done-text']).toBe('#256441');
+    expect(css['--hdnd-status-office-text']).toBe('#80531F');
+    expect(css['--hdnd-status-office-bg']).toBe('#FFEEDA');
+    expect(css['--hdnd-status-done-bg']).toBe('#DEF3E5');
     expect(css['--hdnd-status-not-submitted-bg']).toBe('#FFF1F3');
+    expect(css['--hdnd-l03-not-submitted-bg']).toBe('#FFE3E9');
+    expect(css['--hdnd-l03-not-submitted-text']).toBe('#A32D46');
     expect(css['--hdnd-status-other-bg']).toBe('#F2F6F9');
     expect(css['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F3');
     expect(css['--hdnd-stage-not-submitted-border']).toBe('#EFD4DA');
-    expect(css['--hdnd-stage-office-bg']).toBe('#FFF8E9');
-    expect(css['--hdnd-stage-office-border']).toBe('#EBDFC4');
-    expect(css['--hdnd-stage-done-bg']).toBe('#EEF8F1');
-    expect(css['--hdnd-stage-done-border']).toBe('#D0E4D7');
+    expect(css['--hdnd-stage-office-bg']).toBe('#FFF2DD');
+    expect(css['--hdnd-stage-office-border']).toBe('#E7CEAD');
+    expect(css['--hdnd-stage-done-bg']).toBe('#EAF6ED');
+    expect(css['--hdnd-stage-done-border']).toBe('#BFDDC9');
     const custom=statusPaletteCssVariables({...defaultStatusPalette(),
       office:{text:'#884422',background:'#FCDDA0'}});
     expect(custom['--hdnd-stage-office-bg']).toContain('#FCDDA0');
     expect(custom['--hdnd-stage-office-border']).toContain('#884422');
     expect(custom['--hdnd-stage-not-submitted-bg']).toBe('#FFF1F3');
-    expect(Object.keys(css)).toHaveLength(14);
+    const chosen=statusPaletteCssVariables({...defaultStatusPalette(),
+      'not-submitted':{text:'#A10021',background:'#F4DDEE'}});
+    expect(chosen['--hdnd-l03-not-submitted-bg']).toBe('#F4DDEE');
+    expect(chosen['--hdnd-l03-not-submitted-text']).toBe('#A10021');
+    expect(Object.keys(css)).toHaveLength(16);
     expect(Object.keys(css).every(key=>key.startsWith('--hdnd-status-')||
-      key.startsWith('--hdnd-stage-'))).toBe(true);
+      key.startsWith('--hdnd-stage-')||key.startsWith('--hdnd-l03-'))).toBe(true);
   });
 });

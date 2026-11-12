@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type {CSSProperties} from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
 import { ContentEditor } from './ContentEditor';
 import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
-import { EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout } from '../../data/item-preferences';
+import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyTrackWidths,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,PARTY_TRACK_WIDTH_LIMITS,PARTY_TRACK_NAMES } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
@@ -35,7 +36,10 @@ import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
 import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
+import './admin-list-controls.css';
+import './l03-track-widths.css';
 import './pr95-v6-l3-page-layout.css';
+import './inline-note-hit-area.css';
 // Legacy ListViewTools no longer appears in the operational list.
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
@@ -43,11 +47,14 @@ import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeP
 import {fitTableColumns} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
 import {summarizeListItems,type SummarySelection} from '../../domain/item-summary';
-import {DETAIL_FIELDS,SEARCH_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
+import {DETAIL_FIELDS,SEARCH_FIELDS,SEARCHABLE_ITEM_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
   exactChoices,shouldClearListOnEscape,
   type ListKind} from './list-toolbar-filters';
 import './list-filter-toolbar.css';
 import {ActiveListFilters} from './ActiveListFilters';
+import {BulkPasteModal} from './BulkPasteModal';
+import type {BulkPatch} from './bulk-paste';
+import {printVisibleListA4} from './list-print';
 import {activeListConditions,activeOtherFilterCount,removeActiveListCondition,
   type ActiveListCondition} from './pr95-v6-l4-active-filters';
 import {useElementWidth} from '../../components/useElementWidth';
@@ -56,7 +63,7 @@ import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,proj
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -86,6 +93,33 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [kindSelection,setKindSelection]=useState<ListKind|null>(null);
   const [toolbar,setToolbar]=useState(newToolbarState);
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
+  const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
+  const [titleEditorOpen,setTitleEditorOpen]=useState(false);
+  const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
+  const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
+  const searchStorageKey='hdnd-preview-search-columns:'+sourceKey;
+  const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
+  const [selectedSearchColumns,setSelectedSearchColumns]=useState<string[]>(()=>{
+    if(typeof window==='undefined'||!compactPreview)return searchChoices;
+    try{
+      const saved=JSON.parse(window.localStorage.getItem(searchStorageKey)??'null');
+      if(Array.isArray(saved)&&saved.length&&saved.every((x:unknown)=>typeof x==='string')&&
+         saved.every((x:string)=>searchChoices.includes(x)))
+        return [...new Set(saved)] as string[];
+    }catch{/* settings unavailable, use all columns */}
+    return searchChoices;
+  });
+  useEffect(()=>{
+    if(!compactPreview||typeof window==='undefined')return;
+    try{window.localStorage.setItem(searchStorageKey,JSON.stringify(selectedSearchColumns));}
+    catch{/* browser storage denied, state still works */}
+  },[compactPreview,searchStorageKey,selectedSearchColumns]);
+  const [titleValidationError,setTitleValidationError]=useState('');
+  const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
+  const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
+  const [l03WidthErrors,setL03WidthErrors]=useState<Record<string,string>>({});
+  const l03EditBaseline=useRef<ItemLayout|null>(null);
+  const listTitleBaseline=useRef<ItemLayout|null>(null);
   const [columnSort,setColumnSort]=useState<ColumnSort>(null);
   const personalViewActive=false;
   // An ordinary viewer should immediately see every A–R source field. Saved
@@ -106,7 +140,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const sharedBase=useRef<ItemLayout>(initialLayout??applied);
   const [restoredBase,setRestoredBase]=useState<ItemLayout|null>(null);
   const saveBaseline=restoredBase??sharedBase.current;
-  useEffect(()=>{if(initialLayout&&!customizing)setApplied(initialLayout);},[initialLayout,customizing]);
+  useEffect(()=>{if(initialLayout&&!customizing){setApplied(initialLayout);sharedBase.current=initialLayout;}},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : applied;
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
@@ -160,6 +194,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [groupLabelChoices,setGroupLabelChoices]=useState<LayoutConflictChoices>({});
   const [groupLabelsError,setGroupLabelsError]=useState('');
   const viewSavingRef=useRef(false);
+  const [viewLayoutConflicts,setViewLayoutConflicts]=useState<LayoutFieldConflict[]>([]);
+  const [viewLayoutChoices,setViewLayoutChoices]=useState<LayoutConflictChoices>({});
+  const pendingViewLayout=useRef<{baseline:ItemLayout;next:ItemLayout;kind:'title'|'cards'|'layout'}|null>(null);
   const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
   const [permissionDirty,setPermissionDirty] = useState(false);
@@ -309,7 +346,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
-    }),[columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts]);
+    },compactPreview?selectedSearchColumns:undefined),
+    [columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts,
+      compactPreview,selectedSearchColumns]);
   const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
@@ -354,12 +393,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   },[]);
   const selectSummary=(selection:SummarySelection)=>setSummarySelection(previous=>
     previous?.report===selection.report&&previous?.stage===selection.stage?null:selection);
-  const rows=useMemo(()=>sortItems(filtered,columnSort,(item,key)=>{
+  const rows=useMemo(()=>sortItems(filtered,adminControls?columnSort:null,(item,key)=>{
     const column=activeLayout.columns.find(c=>c.key===key&&c.origin==='custom');
     return column?.values?.[customRowKey(item)]??'';
-  }),[filtered,columnSort,activeLayout,codeCounts]);
-  const cycleSort=(key:string)=>setColumnSort(current=>
-    current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);
+  }),[filtered,columnSort,activeLayout,codeCounts,adminControls]);
+  const cycleSort=(key:string)=>{if(!adminControls)return;setColumnSort(current=>
+    current?.key!==key?{key,direction:'asc'}:current.direction==='asc'?{key,direction:'desc'}:null);};
   // CellPicker option lists used to be sorted once PER CELL PER KEYSTROKE.
   const optionCache=useMemo(()=>new Map<string,string[]>(),[catalog,items]);
   const options = (field: TextField,item:Item) => {
@@ -378,15 +417,74 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
-  const baseWidths=displayedColumns.map(c=>({key:c.key,width:baseVisualWidth(c.width,c.key)}));
+
+  // UI preview-only: fit the internal table viewport to the remaining screen
+  // without changing the source data, column widths or production layout.
+  // Measure DOCUMENT top, not viewport top, so scrolling does not make the
+  // table grow recursively. Recompute on zoom, resize or filter wrapping.
+  useEffect(()=>{
+    // Some source-only/SSR tests intentionally expose a minimal document.
+    if(typeof document==='undefined'||typeof document.querySelector!=='function')return;
+    const table=document.querySelector<HTMLElement>(
+      '.pr95-full-preview .item-data-region .item-table-scroll');
+    if(!table)return;
+    let frame=0;
+    const sync=()=>{
+      if(window.innerWidth<900||window.innerHeight<650){
+        table.style.removeProperty('--hdnd-preview-table-fill-height');return;
+      }
+      const documentTop=table.getBoundingClientRect().top+window.scrollY;
+      const remaining=window.innerHeight-documentTop-32;
+      const height=Math.min(1300,Math.max(320,Math.round(remaining)));
+      table.style.setProperty('--hdnd-preview-table-fill-height',height+'px');
+    };
+    const schedule=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(sync);
+    };
+    const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(schedule);
+    for(const selector of ['.item-summary-grid','.item-list-page-title',
+      '.list-filter-toolbar','.list-active-filters']){
+      const target=table.closest('.item-data-region')?.querySelector(selector);
+      if(target)observer?.observe(target);
+    }
+    window.addEventListener('resize',schedule);
+    window.visualViewport?.addEventListener('resize',schedule);
+    schedule();
+    return ()=>{
+      cancelAnimationFrame(frame);observer?.disconnect();
+      window.removeEventListener('resize',schedule);
+      window.visualViewport?.removeEventListener('resize',schedule);
+      table.style.removeProperty('--hdnd-preview-table-fill-height');
+    };
+  },[customizing,permissionMode,otherFiltersOpen,previewOptionsOpen,activeConditions.length]);
+  // A single physical <col> per group: all visible readonly rows use the 2-track
+  // width, but one editable party-level row requires the larger mode width.
+  // Status editability alone must NOT switch a row to the three-track layout.
+  const l03Pair=compactPairs.find(pair=>pair.variant==='partyTogether');
+  const l03Key=l03Pair?.anchor;
+  const l03Widths=resolvedPartyTrackWidths(activeLayout);
+  const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
+    rows.some(item=>canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'partyLevel')));
+  const l03PhysicalWidth=partyTrackPhysicalWidth(l03Widths,hasEditablePartyLevel);
+  const baseWidths=displayedColumns.map(c=>({key:c.key,
+    width:l03Key===c.key?l03PhysicalWidth:baseVisualWidth(c.width,c.key)}));
   const fitWeights=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,
     pair.variant==='contentDetails'||pair.variant==='partyTogether'?3:2]));
   const weights:Record<string,number>={content:3,specificProgress:2,...fitWeights};
   const fitGrowth=useRef<{signature:string;growth:Record<string,number>}|null>(null);
   const fitSignature=JSON.stringify(baseWidths.map(c=>[c.key,weights[c.key]??1]));
-  const fittedWidths=fitTableColumns(baseWidths,
-    !customizing&&!showAllSourceColumns?Math.max(500,viewportWidth):0,weights,
-    fitGrowth.current?.signature===fitSignature?fitGrowth.current.growth:undefined);
+  // L03 is an explicit shared setting, never a flexible 1fr viewport filler.
+  // Give any spare viewport pixels to OTHER columns while respecting their cap.
+  const flexibleWidths=baseWidths.filter(c=>c.key!==l03Key);
+  const priorGrowth=fitGrowth.current?.signature===fitSignature
+    ?Object.fromEntries(flexibleWidths.map(c=>[c.key,fitGrowth.current!.growth[c.key]??0])):undefined;
+  const fittedOther=fitTableColumns(flexibleWidths,
+    !customizing&&!showAllSourceColumns
+      ?Math.max(0,Math.max(500,viewportWidth)-(l03Key?l03PhysicalWidth:0)):0,
+    weights,priorGrowth);
+  const fittedWidths=l03Key
+    ?{...fittedOther,[l03Key]:l03PhysicalWidth}:fittedOther;
   fitGrowth.current={signature:fitSignature,growth:Object.fromEntries(baseWidths.map(c=>
     [c.key,fittedWidths[c.key]-c.width]))};
   const visualWidth=(value:number,key?:string)=>key&&fittedWidths[key]!==undefined
@@ -397,37 +495,63 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const projectedExtras=Object.fromEntries(displayedColumns.map(c=>[c.key,
     (compactPairs.find(pair=>pair.anchor===c.key)?.extraWidth??0)+
     fittedWidths[c.key]-baseVisualWidth(c.width,c.key)]));
+  // Do not let L03 become a resize reservoir: its widths belong only to the two
+  // explicit administrator modes. Ordinary columns still resize against their
+  // next physical neighbor and the final *other* column as backup.
+  const resizeKeys=displayedColumns.filter(c=>c.key!==l03Key).map(c=>c.key);
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
-  const tableWidth=compactOn?Math.max(500,shownWidth):
+  const tableWidth=compactOn?shownWidth:
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
   // Admin can commit a one-shot shared layout change in view mode; the Firebase
   // merge/CAS logic always compares the original shared layout, not local presets.
-  const canViewerArrange=!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
-    !personalViewActive&&!showAllSourceColumns&&!locked;
-  // A visual column drag is not a shared-layout write. All viewers may resize
-  // their current view; only authorized administrators use CAS to persist it.
-  // Personal/anonymous viewers never call the shared Firebase writer.
+  const isRamAdminList=effectiveSourceKind==='demo';
+  // Display settings are available even when the admin is viewing all source
+  // columns. Column drag/resize remains restricted by canViewerArrange.
+  const canEditListSettings=adminControls&&!customizing&&!permissionMode&&!locked&&
+    (!!onPersistViewerLayout||isRamAdminList);
+  const canViewerArrange=adminControls&&!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
+    !personalViewActive&&!showAllSourceColumns&&!locked&&!permissionMode;
+  // A visual column drag is not a shared-layout write. Only verified admins
+  // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=adminControls&&!customizing&&!showAllSourceColumns&&!permissionMode;
-  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout):Promise<boolean>=>{
-    if(!canViewerArrange||viewSavingRef.current||!onPersistViewerLayout||!initialLayout)return false;
-    const baseline=initialLayout;
+  const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
+    baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
+    kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
+    if(!canEditListSettings||viewSavingRef.current)return false;
+    // The locally confirmed layout can be newer than the last profile prop:
+    // rapid off/on toggles must not collapse into a false no-op.
+    const baseline=validateItemLayout(baselineOverride??sharedBase.current);
     let next:ItemLayout;
     try{next=validateItemLayout(transform(baseline));}
-    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình cột không hợp lệ.');return false;}
+    catch(error){setLayoutError(error instanceof Error?error.message:'Cấu hình danh sách không hợp lệ.');return false;}
     if(JSON.stringify(next)===JSON.stringify(baseline))return true;
     viewSavingRef.current=true;setViewSaving(true);setLayoutError('');
-    setSaveFeedback('Đang lưu vị trí/độ rộng cột dùng chung…');
-    setApplied(next); // optimistic only; revert on any failure
+    setSaveFeedback(isRamAdminList&&!onPersistViewerLayout
+      ?'Đang áp dụng cấu hình demo trong RAM…':'Đang lưu cấu hình Danh sách dùng chung…');
+    setApplied(next); // optimistic only; revert on conflict, denial or offline
     try{
-      const confirmed=await onPersistViewerLayout(next,baseline);
+      const confirmed=onPersistViewerLayout
+        ?await onPersistViewerLayout(next,baseline,choices):next;
       const valid=validateItemLayout(confirmed??next);
       setApplied(valid);sharedBase.current=valid;
-      setSaveFeedback('Đã lưu bố trí/tên cột dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.');
+      pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+      const message=onPersistViewerLayout
+        ?'Đã lưu cấu hình Danh sách dùng chung. Các tài khoản khác nhận khi cập nhật cấu hình.'
+        :'Đã áp dụng cấu hình vào RAM demo; tải lại trang sẽ khôi phục mặc định.';
+      setSaveFeedback(message);
+      if(!onPersistViewerLayout)onLayoutSaved(message);
       return true;
     }catch(error){
-      setApplied(initialLayout);
-      setLayoutError(saveIssue(error));
-      setSaveFeedback('Không lưu được thay đổi. Đã hoàn lại bố trí trước thao tác.');
+      setApplied(sharedBase.current);
+      if(error instanceof LayoutConflictError){
+        pendingViewLayout.current={baseline,next,kind};
+        setViewLayoutConflicts(error.conflicts);setViewLayoutChoices({});
+        setLayoutError('Cấu hình đã được sửa ở tab khác. Chọn giá trị cần giữ cho từng mục bên dưới; chưa có gì bị ghi đè.');
+      }else{
+        pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+        setLayoutError(saveIssue(error));
+      }
+      setSaveFeedback('Chưa lưu được thay đổi; bản hiển thị đã được hoàn lại.');
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
@@ -487,6 +611,36 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
+  const openL03WidthEditor=()=>{
+    const snapshot=validateItemLayout(sharedBase.current),saved=resolvedPartyTrackWidths(snapshot);
+    l03EditBaseline.current=snapshot;
+    setL03WidthsDraft({readonly:{label:String(saved.readonly.label),status:String(saved.readonly.status)},
+      editable:{label:String(saved.editable.label),level:String(saved.editable.level),status:String(saved.editable.status)}});
+    setL03WidthErrors({});setL03WidthEditorOpen(true);
+  };
+  const saveL03Widths=async()=>{
+    if(!canEditListSettings||viewSaving)return;
+    const errors:Record<string,string>={};
+    const parse=(mode:'readonly'|'editable',field:'label'|'level'|'status')=>{
+      const value=(l03WidthsDraft[mode] as Record<string,string>)[field]??'';
+      const lim=(PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>)[field];
+      const n=/^\d+$/.test(value.trim())?Number(value.trim()):NaN;
+      if(!Number.isInteger(n)||n<lim.min||n>lim.max)
+        errors[mode+'.'+field]=(PARTY_TRACK_NAMES[mode] as Record<string,string>)[field]+
+          ': nhập số nguyên '+lim.min+'–'+lim.max+' px.';
+      return n;
+    };
+    const input={readonly:{label:parse('readonly','label'),status:parse('readonly','status')},
+      editable:{label:parse('editable','label'),level:parse('editable','level'),status:parse('editable','status')}};
+    if(Object.keys(errors).length){setL03WidthErrors(errors);return;}
+    let widths;
+    try{widths=validatePartyTrackWidths(input);}
+    catch(error){setL03WidthErrors({global:saveIssue(error)});return;}
+    const saved=await applyViewerLayout(base=>({...base,partyTrackWidths:widths}),
+      l03EditBaseline.current??undefined);
+    if(saved){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
+    else setL03WidthErrors({global:'Chưa xác nhận lưu. Đã giữ nguyên 5 số nháp.'});
+  };
   const editableField=(item:Item,field:TextField)=>
     canEdit&&!locked&&!(field==='progressBuild'&&buildLocked(item))&&
       (!canEditCell||canEditCell(item.recordId,field));
@@ -549,7 +703,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
       </div>
     </details>);
-  return <section className="card item-list-card">
+  return <section className="card item-list-card" data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -578,16 +732,156 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
 </div>}
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
-    <div className="item-data-region" style={{width:visibleWidth,maxWidth:'100%'}}>
-    {/* DOM/reading order: B00–B03, C01–C03, heading, F01–F05, active filters, table.
-        Preserve toolbarBase scope, state, selected filters and all callbacks. */}
+    <div className="item-data-region"
+      data-preview-options={compactPreview?(previewOptionsOpen?'open':'closed'):undefined}
+      style={{width:visibleWidth,maxWidth:'100%'}}>
+    {/* B00–B03 and C01–C03 summarize all source items, regardless of F
+        filters. Keep toolbarBase for filtered table rows / visible count. */}
     {!customizing&&!permissionMode&&<>
-      <ItemSummaryCards items={toolbarBase}
+      <ItemSummaryCards items={items}
         selection={summarySelection} onSelect={selectSummary}
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
         showFilterFooters={false}/>
-      <h2 className="item-list-page-title">Danh sách các ND trình HĐND</h2>
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
+        <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
+        {compactPreview&&<button type="button"
+          className="button ghost admin-preview-options-toggle"
+          aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
+          title="Tùy chọn hiển thị bảng, thẻ tổng hợp và độ rộng L03"
+          aria-expanded={previewOptionsOpen} aria-controls="admin-list-controls"
+          onClick={()=>setPreviewOptionsOpen(open=>!open)}>
+          {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
+        </button>}
+        {compactPreview&&<button type="button" className="button ghost admin-list-print-trigger"
+          aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
+          onClick={()=>{
+            const table=document.querySelector<HTMLTableElement>(
+              '.pr95-full-preview .item-data-region .item-data-table');
+            if(!table){onLayoutSaved('Không có bảng để in.');return;}
+            try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
+              displayedColumns.map(col=>col.label));}
+            catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
+          }}>In / PDF A4</button>}
+        <button type="button"
+          className="button ghost admin-list-rename-trigger"
+          aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
+          disabled={!canEditListSettings||viewSaving}
+          onClick={()=>{if(titleEditorOpen){setTitleEditorOpen(false);setListTitleDraft(null);
+            listTitleBaseline.current=null;setTitleValidationError('');}
+          else {if(compactPreview)setPreviewOptionsOpen(true);
+            listTitleBaseline.current=validateItemLayout(sharedBase.current);
+            setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
+            setTitleEditorOpen(true);setTitleValidationError('');}}}>
+          {titleEditorOpen?'Đóng sửa tên':'Đổi tên danh sách'}
+        </button>
+      </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
+      {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
+        className="admin-list-controls" id={compactPreview?'admin-list-controls':undefined}
+        hidden={compactPreview&&!previewOptionsOpen}
+        aria-label="Tùy chọn quản trị danh sách">
+        {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
+          onSubmit={event=>{event.preventDefault();
+            try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
+              setTitleValidationError('');
+              void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
+                .then(saved=>{if(saved){setListTitleDraft(null);listTitleBaseline.current=null;
+                  setTitleEditorOpen(false);}});
+            }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
+          }}>
+          <label htmlFor="admin-list-title-input">Tên danh sách mới</label>
+          <input id="admin-list-title-input" aria-label="Tên danh sách mới" maxLength={100}
+            aria-invalid={!!titleValidationError}
+            aria-describedby={titleValidationError?'admin-list-title-error':undefined}
+            value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
+            onChange={event=>{setTitleValidationError('');setListTitleDraft(event.currentTarget.value);}}
+            disabled={!canEditListSettings||viewSaving}/>
+          <button type="submit" className="button" disabled={!canEditListSettings||viewSaving}>
+            Lưu tên danh sách
+          </button>
+          {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
+        </form>}
+        {compactPreview&&<fieldset className="admin-search-scope">
+          <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
+          <div className="admin-search-scope-options">
+            {searchChoices.map(key=><label key={key}>
+              <input type="checkbox" aria-label={'Tìm trong '+(
+                key==='*'?'Cột tùy chỉnh':EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key)}
+                checked={selectedSearchColumns.includes(key)}
+                onChange={event=>{
+                  const next=event.currentTarget.checked
+                    ?searchChoices.filter(value=>value===key||selectedSearchColumns.includes(value))
+                    :selectedSearchColumns.filter(value=>value!==key);
+                  if(next.length)setSelectedSearchColumns(next);
+                }}/>
+              <span>{key==='*'?'Cột tùy chỉnh':
+                EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key}</span>
+            </label>)}
+          </div>
+          <button type="button" className="button ghost" onClick={()=>
+            setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
+          <small>Áp dụng khi chọn “Tất cả trường”; lưu trên trình duyệt hiện tại.</small>
+        </fieldset>}
+        {compactPreview&&onBulkApply&&<div className="admin-bulk-paste-tools">
+          <button type="button" className="button ghost" disabled={locked||!rows.length}
+            onClick={()=>setBulkPasteOpen(true)}>Dán nhiều ô từ Excel</button>
+          <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận.</small>
+        </div>}
+        <fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
+          <legend>Hiện/ẩn thẻ tổng hợp</legend>
+          <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
+          {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}>
+            <input type="checkbox" checked={activeLayout.summaryCards?.[key]!==false}
+              aria-label={'Hiện C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}
+              onChange={event=>{const checked=event.currentTarget.checked;
+                void applyViewerLayout(base=>({...base,summaryCards:{
+                  party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
+            <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
+          </label>)}
+        </fieldset>
+        {canEditListSettings&&<div className="admin-l03-widths">
+          <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
+            aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
+              if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
+              else openL03WidthEditor();
+            }}>L03 · Chỉnh 5 độ rộng cột nhỏ</button>
+          <span className="admin-l03-width-summary">Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
+          {l03WidthEditorOpen&&<form noValidate id="admin-l03-width-editor" className="admin-l03-width-editor"
+            onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
+            {(['readonly','editable'] as const).map(mode=><fieldset className="admin-l03-mode" key={mode}>
+              <legend>{mode==='readonly'?'Chỉ xem cấp trình (2 cột)':'Được sửa cấp trình (3 cột)'}</legend>
+              <div className="admin-l03-rails">
+                {(Object.keys(PARTY_TRACK_WIDTH_LIMITS[mode]) as ('label'|'level'|'status')[]).map(field=>{
+                  const name=(PARTY_TRACK_NAMES[mode] as Record<string,string>)[field];
+                  const lim=(PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>)[field];
+                  const id=mode+'.'+field;
+                  return <label key={id}>
+                    <strong>{name}</strong><span>Riêng (px) · {lim.min}–{lim.max}</span>
+                    <input type="number" step="1" min={lim.min} max={lim.max}
+                      value={(l03WidthsDraft[mode] as Record<string,string>)[field]}
+                      aria-label={'L03 '+(mode==='readonly'?'Chỉ xem':'Được sửa')+' · '+name}
+                      aria-invalid={!!l03WidthErrors[id]}
+                      onChange={event=>{const value=event.currentTarget.value;
+                        setL03WidthErrors(previous=>{
+                          const next={...previous};delete next[id];delete next.global;return next;});
+                        setL03WidthsDraft(previous=>({...previous,[mode]:{...previous[mode],[field]:value}}));
+                      }} disabled={viewSaving}/>
+                    {l03WidthErrors[id]&&<small className="admin-l03-field-error" role="alert">{l03WidthErrors[id]}</small>}
+                  </label>;
+                })}
+              </div>
+              <output className="admin-l03-mode-total">Tổng cụm: {
+                Object.values(l03WidthsDraft[mode]).every(value=>/^\d+$/.test(value.trim()))
+                  ?Object.values(l03WidthsDraft[mode]).reduce((sum,value)=>sum+Number(value),
+                    23+(mode==='readonly'?8:16))+' px':'—'
+              }</output>
+            </fieldset>)}
+            <button className="button" type="submit" disabled={viewSaving}>Lưu 5 độ rộng dùng chung</button>
+            {l03WidthErrors.global&&<p role="alert">{l03WidthErrors.global}</p>}
+            <small>Tổng = rail + 8px mỗi khoảng + 23px padding/viền. Khi mode khác nhau, cột vật lý chọn tổng lớn nhất.</small>
+          </form>}
+        </div>}
+      </div>}
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
@@ -614,8 +908,21 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       </div>}
 
     </div></div>}
-    {!customizing&&onPersistViewerLayout&&(saveFeedback||layoutError)&&
+    {!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
+    {!customizing&&adminControls&&viewLayoutConflicts.length>0&&pendingViewLayout.current&&
+      <LayoutConflictResolver conflicts={viewLayoutConflicts} choices={viewLayoutChoices}
+        busy={viewSaving}
+        onChoose={(field,choice)=>setViewLayoutChoices(current=>({...current,[field]:choice}))}
+        onCancel={()=>{pendingViewLayout.current=null;setViewLayoutConflicts([]);setViewLayoutChoices({});
+          setLayoutError('');listTitleBaseline.current=null;}}
+        onConfirm={()=>{const request=pendingViewLayout.current;
+          if(request)void applyViewerLayout(()=>request.next,request.baseline,viewLayoutChoices,request.kind)
+            .then(saved=>{if(saved&&request.kind==='title'){
+              setListTitleDraft(null);listTitleBaseline.current=null;
+            }});
+        }}/>}
+
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
      {/* ColumnFilterCell remains accessible in editing and popup.
          Ordinary List uses compact AND toolbar, without a tall header row. */}
@@ -673,25 +980,30 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" style={{width:`${tableWidth}px`,tableLayout:'fixed'}}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
-  sortLabel={column.label} sortDirection={columnSort?.key===column.key?columnSort.direction:null} onSort={!permissionMode?cycleSort:undefined}
+    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
+  '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
+  '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+  sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
-    projectedAdjacentBounds(activeLayout,displayedColumns.map(col=>col.key),column.key,
+    // No per-track or indirect neighbor resize may silently alter the L03 modes.
+    column.key!==l03Key&&displayedColumns[index+1]?.key!==l03Key&&
+    resizeKeys.indexOf(column.key)<resizeKeys.length-1&&
+    projectedAdjacentBounds(activeLayout,resizeKeys,column.key,
       projectedExtras,compactOn,groupExtras)&&
     <ColumnResizeHandle windowDragFallback columnIndex={index} width={visualWidth(column.width,column.key)}
       adjacent={{index:index+1,
         width:visualWidth(displayedColumns[index+1].width,displayedColumns[index+1].key),
         ...projectedPhysicalLimits(displayedColumns[index+1].key,groupExtras,compactOn)}}
-      fallback={index+1<displayedColumns.length-1?{
-        index:displayedColumns.length-1,
-        width:visualWidth(displayedColumns.at(-1)!.width,displayedColumns.at(-1)!.key),
-        ...projectedPhysicalLimits(displayedColumns.at(-1)!.key,groupExtras,compactOn)}:undefined}
+      fallback={resizeKeys.indexOf(column.key)<resizeKeys.length-2?{
+        index:displayedColumns.findIndex(c=>c.key===resizeKeys.at(-1)),
+        width:visualWidth(activeLayout.columns.find(c=>c.key===resizeKeys.at(-1))!.width,resizeKeys.at(-1)),
+        ...projectedPhysicalLimits(resizeKeys.at(-1)!,groupExtras,compactOn)}:undefined}
       {...projectedPhysicalLimits(column.key,groupExtras,compactOn)}
       label={column.label} onCommit={width=>{
-        const keys=displayedColumns.map(col=>col.key);
+        const keys=resizeKeys;
         // Same pair-first transfer in preview and CAS commit. Bake viewport
         // growth only upon an explicit drag, so a wide neighbor can shrink.
         if(customizing)setLayout(previous=>resizeProjectedWithAdjacent(previous,keys,
@@ -722,14 +1034,21 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr>}</thead><tbody>
-      {rows.map(item => <tr key={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
+      {rows.map(item => <tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
           const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));
           return <td key={column.key} data-col-key={column.key}
+            data-l03-layout={pair.variant==='partyTogether'
+              ?editableField(item,'partyLevel')?'editable':'readonly':undefined}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
-            style={undefined}>
+            style={pair.variant==='partyTogether'?{
+               '--hdnd-l03-label-track':`${editableField(item,'partyLevel')?l03Widths.editable.label:l03Widths.readonly.label}px`,
+               '--hdnd-l03-level-track':`${l03Widths.editable.level}px`,
+               '--hdnd-l03-status-track':`${editableField(item,'partyLevel')?l03Widths.editable.status:l03Widths.readonly.status}px`,
+               '--hdnd-l03-inner-width':`${partyTrackModeWidth(l03Widths,editableField(item,'partyLevel')?'editable':'readonly')-23}px`
+             } as CSSProperties:undefined}>
             <CompactGroupedValue item={projectedBuildDisplayItem(item)} pair={pair}
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
@@ -767,9 +1086,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
         const writable=editableField(item,key);
         return <td key={column.key} data-col-key={column.key}
+           data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
           data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
-          data-edit-hint={writable?'Bấm để sửa':undefined}
+          data-edit-hint={writable&&key!=='note'&&key!=='specificProgress'?'Bấm để sửa':undefined}
           style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
           ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
             data-editable={writable?'true':undefined}
@@ -811,6 +1131,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
+    {bulkPasteOpen&&compactPreview&&onBulkApply&&<BulkPasteModal rows={rows}
+      canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}
+      onApply={onBulkApply} onClose={()=>setBulkPasteOpen(false)}/>}
     {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={closeGroupLabelEditor}>
       <form className="modal-body group-label-quick-editor" onSubmit={event=>{event.preventDefault();void saveGroupLabels();}}>
         <p className="muted">Chỉ đổi tiêu đề các cột gộp. Không đổi dữ liệu, quyền sửa hoặc tên trường Excel. Bỏ trống để dùng tên mặc định.</p>

@@ -1,0 +1,623 @@
+name: Publish isolated L01-L03 UI preview (RAM only - no production)
+on:
+  push:
+    branches:
+      - ui/20261108-l03-hover-lift-fix
+    paths:
+      - .github/workflows/l03-hover-public-preview-20261108.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: hophdnd-l03-hover-isolated-preview
+  cancel-in-progress: false
+jobs:
+  publish-isolated-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout immutable exact QA-passed source, not docs-only HEAD
+        uses: actions/checkout@v4
+        with:
+          ref: 0913d19c9837539a086f1225cca2cafdf21dc669
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Verify pinned feature revision and offline QA entry
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "0913d19c9837539a086f1225cca2cafdf21dc669"
+          test -f source/compact-qa.html
+          test -f .nojekyll
+          grep -Fq "RAM demo" source/docs/tasks/parallel-20261108-l03-hover/CHECKPOINT.md 2>/dev/null || true
+          echo "L03_PREVIEW_SOURCE_SHA 0913d19c9837539a086f1225cca2cafdf21dc669"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Compile synthetic-only preview and install browser tooling
+        working-directory: source
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+          npm run typecheck
+          npm run build:compact:qa
+          test -s dist-compact-qa/compact-qa.html
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.js' -print -quit)"
+          test -n "$(find dist-compact-qa/assets -maxdepth 1 -name '*.css' -print -quit)"
+          grep -Fq 'Dữ liệu giả' dist-compact-qa/compact-qa.html
+          ! grep -REiq 'https?://[^"[:space:]]*(firebaseio|firebasedatabase|docs.google.com/spreadsheets)' dist-compact-qa/assets
+          echo "0913d19c9837539a086f1225cca2cafdf21dc669" > dist-compact-qa/source-sha.txt
+          (cd dist-compact-qa && sha256sum compact-qa.html assets/* > asset-sha256.txt)
+      - name: Check Pages uses main root before touching any public branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/cavoixanh638/HopHDND-WebApp"
+          headers=(-H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json')
+          curl --fail --silent --show-error "${headers[@]}" "$api/pages" > "$RUNNER_TEMP/l03-pages-config.json"
+          node -e 'const p=require(process.env.RUNNER_TEMP+"/l03-pages-config.json");if(p.source?.branch!=="main"||p.source?.path!=="/")throw Error("PUBLIC_PAGES_SOURCE_NOT_MAIN_ROOT: "+JSON.stringify(p.source));console.log("PUBLIC_PAGES_CONFIGURATION_PASS",JSON.stringify(p.source));'
+      - name: Publish only preview/l03-hover-20261108 into main Pages tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          dest="$RUNNER_TEMP/l03-hover-pages"
+          git worktree add --detach "$dest" origin/main
+          test -f "$dest/.nojekyll"
+          test -s "$dest/index.html"
+          before_index="$(sha256sum "$dest/index.html" | cut -d' ' -f1)"
+          mkdir -p "$dest/preview/l03-hover-20261108/assets"
+          cp source/dist-compact-qa/compact-qa.html "$dest/preview/l03-hover-20261108/index.html"
+          cp source/dist-compact-qa/source-sha.txt "$dest/preview/l03-hover-20261108/source-sha.txt"
+          cp source/dist-compact-qa/asset-sha256.txt "$dest/preview/l03-hover-20261108/asset-sha256.txt"
+          rsync -a --delete source/dist-compact-qa/assets/ "$dest/preview/l03-hover-20261108/assets/"
+          test "$(sha256sum "$dest/index.html" | cut -d' ' -f1)" = "$before_index"
+          git -C "$dest" add -A -- preview/l03-hover-20261108
+          changed="$(git -C "$dest" diff --cached --name-only)"
+          if [ -z "$changed" ]; then echo "L03_PREVIEW_CONTENT_UNCHANGED"; exit 0; fi
+          while IFS= read -r file; do
+            case "$file" in
+              preview/l03-hover-20261108/*) ;;
+              *) echo "::error::Unsafe Pages file staged: $file"; exit 1 ;;
+            esac
+          done <<< "$changed"
+          git -C "$dest" diff --quiet -- index.html assets source .github .nojekyll
+          git -C "$dest" config user.name 'github-actions[bot]'
+          git -C "$dest" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$dest" commit -m 'docs(preview): publish isolated synthetic L03 -3px hover preview'
+          git -C "$dest" push origin HEAD:main
+          echo "L03_PREVIEW_PAGES_SUBPATH_ONLY preview/l03-hover-20261108"
+          echo "L03_PREVIEW_PAGES_SOURCE_SHA 0913d19c9837539a086f1225cca2cafdf21dc669"
+      - name: Request Pages rebuild and verify public HTML plus actual JS/CSS bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/cavoixanh638/HopHDND-WebApp"
+          headers=(-H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json')
+          curl --fail --silent --show-error -X POST "${headers[@]}" "$api/pages/builds" > "$RUNNER_TEMP/l03-pages-build.json"
+          base="https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/"
+          ok=0
+          for attempt in {1..40}; do
+            code="$(curl --location --silent --show-error --max-time 20 -o "$RUNNER_TEMP/l03-live.html" -w '%{http_code}' "$base" || true)"
+            if [ "$code" = 200 ] &&
+                cmp -s "$RUNNER_TEMP/l03-live.html" source/dist-compact-qa/compact-qa.html; then
+              ok=1;break
+            fi
+            echo "L03_PREVIEW_PAGES_PROPAGATION attempt=$attempt HTTP=$code"
+            sleep 5
+          done
+          test "$ok" -eq 1 || { echo "::error::Published HTML not yet served at exact URL";exit 1; }
+          for asset in $(grep -oE '\./assets/[^"]+\.(js|css)' "$RUNNER_TEMP/l03-live.html"); do
+            test -n "$asset"
+            curl --fail --location --silent --show-error --max-time 25 "$base$asset" > "$RUNNER_TEMP/l03-live-asset"
+            test -s "$RUNNER_TEMP/l03-live-asset"
+            cmp -s "$RUNNER_TEMP/l03-live-asset" "source/dist-compact-qa/${asset#./}" ||
+              { echo "::error::Public asset hash mismatches candidate: $asset";exit 1; }
+            echo "L03_PREVIEW_PUBLIC_ASSET_HASH_MATCH $asset"
+          done
+          curl --fail --silent --show-error "$base/source-sha.txt" | grep -Fxq '0913d19c9837539a086f1225cca2cafdf21dc669'
+          echo "L03_PREVIEW_PUBLIC_HTTP_ASSETS_SOURCE_PASS $base"
+      - name: Real Chromium LIVE UI smoke and measured -3px hover on GitHub Pages
+        working-directory: source
+        env:
+          L03_LIVE_BASE: https://cavoixanh638.github.io/HopHDND-WebApp/preview/l03-hover-20261108/
+        run: |
+          node --input-type=module <<'NODE'
+          import {createRequire} from 'node:module';
+          import {mkdirSync,writeFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const require=createRequire(import.meta.url);
+          const {chromium}=require('./cell-edit-service/node_modules/playwright');
+          const base=process.env.L03_LIVE_BASE;
+          const dir='qa-results/l03-live-public';
+          mkdirSync(dir,{recursive:true});
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const record=[];
+          const external=[];
+          const near=(a,b,t=.35)=>Math.abs(a-b)<=t;
+          // Verify the ACTUAL public React DOM, not source-code text or images.
+          async function verifyLayout(page,root,label,mode){
+            const state=await page.locator(root).first().evaluate(el=>{
+              const heading=el.querySelector('[data-ui-reference-group="L01"] .compact-document-heading');
+              const type=heading?.querySelector('[data-ui-reference-part="type"]');
+              const dep=heading?.querySelector('[data-ui-reference-part="department"]');
+              const stage=el.querySelector('.compact-stages[data-rev2="true"]');
+              const readonly=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state:not([data-editable="true"])');
+              const notSubmitted=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state[data-progress-tone="not-submitted"]:not([data-highlighted="true"])');
+              const paintedStatus=notSubmitted?.querySelector('button.cell-picker-trigger')??notSubmitted;
+              const editableStatus=el.querySelector('.compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"] button.cell-picker-trigger');
+              const readonlyText=readonly?.querySelector('.workflow-status-value,.compact-part')??readonly;
+              const editableText=editableStatus?.querySelector('.cell-picker-value-text');
+              const css=node=>node?getComputedStyle(node):null;
+              // Verify equal ACTUAL painted heights with identical one-line
+              // text in mixed-rights mode, then restore the synthetic UI DOM.
+              let sameTextHeight=null;
+              if(readonlyText&&editableText){
+                const oldReadonly=readonlyText.textContent,oldEditable=editableText.textContent;
+                readonlyText.textContent='Hoàn thành';editableText.textContent='Hoàn thành';
+                sameTextHeight={
+                  readonly:readonly.getBoundingClientRect().height,
+                  editable:editableStatus.getBoundingClientRect().height
+                };
+                readonlyText.textContent=oldReadonly;editableText.textContent=oldEditable;
+              }
+              const typography=node=>node?{
+                size:css(node).fontSize,weight:css(node).fontWeight,
+                family:css(node).fontFamily,lineHeight:css(node).lineHeight
+              }:null;
+              return {
+                meta:heading?{justify:css(heading).justifyContent,textAlign:css(heading).textAlign,
+                  typeFirst:!type||!dep||!!(type.compareDocumentPosition(dep)&Node.DOCUMENT_POSITION_FOLLOWING)}:null,
+                grid:stage?css(stage).gridTemplateColumns.split(/\s+/).map(parseFloat):null,
+                levelMode:stage?.dataset.levelLayout,
+                readonly:readonly?{justify:css(readonly).justifyContent,textAlign:css(readonly).textAlign,
+                  nested:css(readonlyText)?.textAlign,
+                  minHeight:css(readonly).minHeight,padding:css(readonly).padding,
+                  border:css(readonly).borderTopWidth,
+                  typography:typography(readonly),textTypography:typography(readonlyText)}:null,
+                sameTextHeight,
+                editableTypography:typography(editableStatus),
+                source:paintedStatus?{bg:css(paintedStatus).backgroundColor,color:css(paintedStatus).color}:null
+              };
+            });
+            assert(state.meta,label+' missing L01 metadata');
+            assert.equal(state.meta.justify,'flex-start',label+' L01 metadata not left');
+            assert.equal(state.meta.textAlign,'left',label+' L01 metadata text not left');
+            assert(state.meta.typeFirst,label+' L01 type not before department');
+            if(mode==='editable'){
+              assert.deepEqual(state.grid,[110,55,145],label+' editable defaults incorrect');
+              assert.equal(state.levelMode,'editable',label+' expected 3-track level');
+            }
+            if(mode==='readonly'){
+              assert.deepEqual(state.grid,[110,135],label+' readonly defaults incorrect');
+              assert.equal(state.levelMode,'readonly',label+' expected 2 tracks');
+            }
+            if(state.readonly){
+              assert.equal(state.readonly.justify,'center',label+' readonly status not centered');
+              assert.equal(state.readonly.textAlign,'center',label+' readonly status text not centered');
+              if(state.readonly.nested)assert.equal(state.readonly.nested,'center',label+' readonly nested text not centered');
+              assert.equal(state.readonly.typography.size,'11px',label+' readonly font-size mismatch');
+              assert.equal(state.readonly.typography.weight,'550',label+' readonly font weight mismatch');
+              assert.equal(state.readonly.minHeight,'26px',label+' readonly minimum status height differs from picker');
+              assert.equal(state.readonly.padding,'5px 4px',label+' readonly height compensation is missing');
+              assert.equal(state.readonly.border,'0px',label+' readonly must remain borderless');
+              if(state.sameTextHeight){
+                assert(near(state.sameTextHeight.readonly,state.sameTextHeight.editable,.35),
+                  label+' READONLY HEIGHT DIFFERS FROM EDITABLE '+JSON.stringify(state.sameTextHeight));
+                assert(near(state.sameTextHeight.readonly,26,.35),
+                  label+' single-line status height should be 26px');
+              }
+              assert.deepEqual(state.readonly.textTypography,state.readonly.typography,
+                label+' nested readonly typography differs from its wrapper');
+              if(state.editableTypography)assert.deepEqual(state.readonly.typography,state.editableTypography,
+                label+' mixed read-only/editable typography differs');
+            }
+            if(state.source){
+              assert.equal(state.source.bg,'rgb(255, 227, 233)',label+' source background not reinforced');
+              assert.equal(state.source.color,'rgb(163, 45, 70)',label+' source text not reinforced');
+            }
+            record.push({label:label+'-layout',state});
+          }
+          async function checkLift(page,root,label){
+            const btn=page.locator(root+' .compact-stages[data-rev2="true"] .compact-stage-state[data-editable="true"] button.cell-picker-trigger').first();
+            await btn.waitFor({timeout:25000});
+            await btn.scrollIntoViewIfNeeded();
+            await page.mouse.move(0,0);
+            await page.waitForTimeout(235);
+            const before=await btn.evaluate(el=>{
+              const s=getComputedStyle(el);return {y:el.getBoundingClientRect().y,
+                w:el.getBoundingClientRect().width,borderWidth:s.borderTopWidth,
+                paddingLeft:s.paddingLeft,paddingRight:s.paddingRight,
+                caretGap:s.columnGap,
+                borderColor:s.borderTopColor,color:s.color,background:s.backgroundColor};
+            });
+            await btn.hover();
+            await page.waitForTimeout(235);
+            const after=await btn.evaluate(el=>({y:el.getBoundingClientRect().y,
+              w:el.getBoundingClientRect().width,
+              transform:getComputedStyle(el).transform,
+              background:getComputedStyle(el).backgroundColor,
+              color:getComputedStyle(el).color,
+              borderColor:getComputedStyle(el).borderTopColor,
+              borderWidth:getComputedStyle(el).borderTopWidth,
+              outlineColor:getComputedStyle(el).outlineColor,
+              outlineWidth:getComputedStyle(el).outlineWidth,
+              shadow:getComputedStyle(el).boxShadow,
+              outline:getComputedStyle(el).outlineStyle}));
+            const parsed=after.transform==='none'?0:Number(after.transform.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,[^,]+,\s*([-\d.]+)/)?.[1]);
+            assert(Number.isFinite(parsed));
+            assert(near(after.y-before.y,-3),label+' painted dy '+(after.y-before.y));
+            assert(near(parsed,-3,.15),label+' computed translateY '+parsed);
+            assert(near(before.w,after.w),label+' changed width');
+            assert(after.shadow!=='none'&&after.outline==='solid',label+' no visible shadow/outline');
+            assert.equal(before.borderWidth,'1px',label+' resting border unexpectedly changed');
+            assert.equal(before.paddingLeft,'4px',label+' status left padding is not compact');
+            assert.equal(before.paddingRight,'4px',label+' status right padding is not compact');
+            assert.equal(before.caretGap,'3px',label+' unnecessary caret gap');
+            assert.equal(after.borderWidth,'1px',label+' hover border thickness not preserved');
+            assert.equal(after.outlineWidth,'2px',label+' hover outline thickness not preserved');
+            assert.equal(after.borderColor,after.color,label+' hover border not semantic');
+            assert.equal(after.outlineColor,after.color,label+' hover outline not semantic');
+            assert.equal(after.background,before.background,label+' hover changed own business fill');
+            await page.screenshot({path:dir+'/'+label+'.png'});
+            record.push({label,dy:after.y-before.y,computedY:parsed,rectBefore:before,rectAfter:after});
+          }
+          async function verifyInnerOnly(page,root,label){
+            for(const field of ['note','specificProgress']){
+              const td=page.locator(root+' tbody td[data-col-key="'+field+'"].editable-cell').first();
+              await td.waitFor({state:'attached',timeout:30000});
+              const btn=td.locator('button.inline-note-trigger').first();
+              await btn.evaluate(el=>el.scrollIntoView({block:'center',inline:'center'}));
+              const geometry=await td.evaluate(cell=>{
+                const outer=cell.getBoundingClientRect();
+                const btn=cell.querySelector('button.inline-note-trigger');
+                if(!btn)throw Error('No editable inner button for '+cell.dataset.colKey);
+                const inner=btn.getBoundingClientRect();
+                const candidates=[{x:outer.left+3,y:outer.top+3},
+                  {x:outer.right-3,y:outer.top+3},
+                  {x:outer.left+3,y:outer.bottom-3}];
+                const blank=candidates.find(p=>{
+                  if(p.x<0||p.y<0||p.x>=innerWidth||p.y>=innerHeight)return false;
+                  if(p.x>=inner.left&&p.x<=inner.right&&p.y>=inner.top&&p.y<=inner.bottom)return false;
+                  const hit=document.elementFromPoint(p.x,p.y);
+                  return hit&&cell.contains(hit)&&!hit.closest('button,input,textarea,a,[role="button"]');
+                });
+                if(!blank)throw Error('No blank TD area distinct from prose edit button');
+                return {...blank,outerWidth:outer.width,innerWidth:inner.width};
+              });
+              assert(geometry.innerWidth<geometry.outerWidth-5,
+                label+'/'+field+' button still covers full parent cell');
+              await page.mouse.move(geometry.x,geometry.y);await page.waitForTimeout(240);
+              const appearance=async()=>btn.evaluate(el=>{
+                const s=getComputedStyle(el);
+                return {transform:s.transform,shadow:s.boxShadow};
+              });
+              const blankHover=await appearance();
+              assert(blankHover.transform==='none'&&blankHover.shadow==='none',
+                label+'/'+field+' blank area triggers hover '+JSON.stringify(blankHover));
+              assert.equal(await page.locator('#edit-shared-tooltip:popover-open').count(),0,
+                label+'/'+field+' blank area shows edit tooltip');
+              await page.mouse.click(geometry.x,geometry.y);
+              assert.equal(await td.locator('textarea.inline-note-textarea').count(),0,
+                label+'/'+field+' blank area opens editor');
+              await btn.hover();await page.waitForTimeout(220);
+              const hovered=await appearance();
+              assert(hovered.transform!=='none'&&hovered.shadow!=='none',
+                label+'/'+field+' inner button lost hover effect');
+              await btn.click();
+              const textarea=td.locator('textarea.inline-note-textarea');
+              await textarea.waitFor({timeout:15000});
+              await textarea.press('Escape');
+              await btn.waitFor({timeout:7000});
+              record.push({label:label+'-'+field,geometry,blankHover,hovered,innerOnly:true});
+            }
+          }
+          try {
+            for(const c of [
+              {id:'editable-1440',query:'?edit=1',width:1440,kind:'hover'},
+              {id:'editable-390',query:'?edit=1',width:390,kind:'hover'},
+              {id:'popup-mixed',query:'?popup=1&popup-mixed=1',width:1440,kind:'popup'},
+              {id:'popup-inline-hit',query:'?popup=1&inner-hit=1',width:1440,kind:'inline-popup'},
+              {id:'guest',query:'?full=1',width:900,kind:'guest'},
+              {id:'guest-mobile',query:'?full=1',width:390,kind:'guest'},
+              {id:'full-preview',query:'?full=1&preview-role=admin',width:1440,kind:'full'},
+              {id:'admin-alias',query:'admin.html',width:1440,kind:'alias'}
+            ]){
+              const ctx=await browser.newContext({viewport:{width:c.width,height:c.width===390?844:900}});
+              const page=await ctx.newPage();
+              await page.route('**/*',route=>{
+                const u=new URL(route.request().url());
+                if(u.origin===new URL(base).origin)return route.continue();
+                external.push(u.href);return route.abort();
+              });
+              await page.goto(base+c.query,{waitUntil:'networkidle',timeout:40000});
+              if(c.kind==='hover') {
+                await page.locator('[data-qa="compact-real-itemlist"]').waitFor();
+                await verifyLayout(page,'.item-data-table',c.id,'editable');
+                await checkLift(page,'.item-data-table',c.id);
+                if(c.width===1440)await verifyInnerOnly(page,'.item-data-table',c.id);
+              } else if(c.kind==='popup'){
+                await page.getByRole('button',{name:'Chỉnh sửa nháp'}).waitFor();
+                await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+                await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+                await verifyLayout(page,'.report-detail-grid',c.id,'popup');
+                await checkLift(page,'.report-detail-grid',c.id);
+              } else if(c.kind==='inline-popup'){
+                await page.getByRole('button',{name:'Chỉnh sửa nháp'}).click();
+                await page.getByRole('button',{name:'Về chế độ xem'}).waitFor();
+                await verifyInnerOnly(page,'.report-detail-grid',c.id);
+              } else if(c.kind==='alias'){
+                await page.locator('[data-preview="pr95-l4-full"][data-role="admin"]').waitFor();
+                assert.equal(page.url().includes('preview-role=admin'),true,
+                  'Query-free admin.html did not redirect to current admin preview');
+                assert.equal(await page.locator('.pr95-preview-footnote').count(),0,
+                  'Removed bottom preview footer visible via admin alias');
+                record.push({label:c.id,queryFreeAlias:true,url:page.url(),footerAbsent:true});
+              } else if(c.kind==='guest'){
+                await page.locator('[data-qa="compact-real-itemlist"]').waitFor();
+                assert.equal(await page.locator('.item-data-table .compact-stages button.cell-picker-trigger').count(),0,'guest fake editor');
+                await verifyLayout(page,'.item-data-table',c.id,'readonly');
+                const guestShell=await page.evaluate(()=>{
+                  const root=document.querySelector('.pr95-full-preview');
+                  const header=root.querySelector('.pr95-preview-header').getBoundingClientRect();
+                  const body=root.querySelector('.pr95-preview-main').getBoundingClientRect();
+                  const r=root.getBoundingClientRect();
+                  const g=root.querySelector('.pr95-preview-gear').getBoundingClientRect();
+                  return {headerHeight:header.height,gutters:[body.left-r.left,r.right-body.right],
+                    gear:{left:g.left,right:g.right,width:g.width},
+                    footer:!!root.querySelector('.pr95-preview-footnote'),
+                    pageScroll:document.documentElement.scrollWidth};
+                });
+                assert(guestShell.headerHeight<=1,'Guest header still consumes a gear-only row');
+                assert(Math.abs(guestShell.gutters[0]-guestShell.gutters[1])<=1.5,
+                  'Guest gutters differ: '+JSON.stringify(guestShell));
+                assert(guestShell.gear.width<=29&&guestShell.gear.right<=c.width+2,
+                  'Discreet gear not at top right');
+                assert.equal(guestShell.footer,false,'Removed guest footer remains');
+                assert(guestShell.pageScroll<=c.width+3,'Guest horizontal page overflow');
+                await page.screenshot({path:dir+'/guest-'+c.width+'.png'});
+                record.push({label:c.id,readonly:true,guestShell});
+              } else {
+                await page.locator('[data-preview="pr95-l4-full"]').waitFor({timeout:25000});
+                // Responsive shell uses symmetric margins; physical screen inches are not CSS pixels.
+                const responsive=[];
+                for(const width of [390,1280,1920,2560]){
+                  await page.setViewportSize({width,height:900});
+                  const g=await page.evaluate(()=>{
+                    const root=document.querySelector('.pr95-full-preview');
+                    const content=root.querySelector('.pr95-preview-main');
+                    const a=root.getBoundingClientRect(),b=content.getBoundingClientRect();
+                    return {gutters:[b.left-a.left,a.right-b.right],width:b.width,
+                      footer:!!root.querySelector('.pr95-preview-footnote'),
+                      scroll:document.documentElement.scrollWidth};
+                  });
+                  assert(Math.abs(g.gutters[0]-g.gutters[1])<=1.5,
+                    'Public page gutters differ at '+width+': '+JSON.stringify(g));
+                  assert(g.width<=2200.5&&!g.footer&&g.scroll<=width+3,
+                    'Public responsive width/footer failed '+width+': '+JSON.stringify(g));
+                  responsive.push({width,...g});
+                }
+                await page.setViewportSize({width:1440,height:900});
+                // B00 and C01-C03 numbers are invariant under F toolbar filters.
+                const capture=()=>page.evaluate(()=>({
+                  cards:[...document.querySelectorAll('.item-summary-grid [data-summary-card]')]
+                    .map(el=>({id:el.dataset.summaryCard,text:el.textContent.trim()})),
+                  rows:document.querySelectorAll('.item-data-table tbody td[data-col-key="displayCode"]').length
+                }));
+                const before=await capture();
+                const typography=await page.evaluate(()=>{
+                  const css=selector=>{
+                    const el=document.querySelector(selector);
+                    return el?{font:getComputedStyle(el).fontSize,color:getComputedStyle(el).color}:null;
+                  };
+                  return {
+                    B00:css('.item-summary-total-count'),
+                    B00label:css('.item-summary-total h3'),
+                    C01:css('.item-summary-party .item-summary-percent'),
+                    normal:css('.item-data-table'),
+                    c01HeaderHeight:document.querySelector('.item-summary-party .item-summary-card-head')?.getBoundingClientRect().height
+                  };
+                });
+                assert.deepEqual(typography.B00,{font:'38px',color:'rgb(8, 117, 83)'},'Public B00 total typography');
+                assert.equal(typography.B00label?.color,'rgb(31, 41, 55)','Public B00 label ink');
+                assert.deepEqual(typography.C01,{font:'24px',color:'rgb(21, 134, 77)'},'Public C01 percent typography');
+                assert(typography.c01HeaderHeight<=28,'Public C01 header grew unexpectedly');
+                assert.equal(typography.normal?.color,'rgb(36, 49, 61)','Public body ink not neutral');
+                const density=await page.evaluate(()=>{
+                  const main=document.querySelector('.pr95-preview-main');
+                  const card=document.querySelector('.item-list-card');
+                  const region=document.querySelector('.item-data-region');
+                  const opts=region.querySelector('.admin-list-controls');
+                  const bar=region.querySelector(':scope>.card-header');
+                  return {
+                    noIdleBanner:!document.querySelector('.list-active-filters'),
+                    noDebugStrip:!main.querySelector('.pr95-preview-context'),
+                    mainBorder:getComputedStyle(main).borderTopWidth,
+                    cardBorder:getComputedStyle(card).borderTopWidth,
+                    cardPadding:getComputedStyle(card).paddingTop,
+                    adminToolsHidden:region.dataset.previewOptions==='closed'&&
+                      getComputedStyle(opts).display==='none'&&
+                      getComputedStyle(bar).display==='none'
+                  };
+                });
+                assert.deepEqual(density,{
+                  noIdleBanner:true,noDebugStrip:true,mainBorder:'0px',
+                  cardBorder:'0px',cardPadding:'0px',adminToolsHidden:true
+                },'Public unfiltered List is wasting vertical space: '+JSON.stringify(density));
+                const toggle=page.locator('.admin-preview-options-toggle');
+                await toggle.click();
+                await page.locator('.admin-list-controls').waitFor({state:'visible'});
+                assert.equal(await toggle.getAttribute('aria-expanded'),'true',
+                  'Admin options did not open on demand');
+                const countSearch=await page.locator('.admin-search-scope-options input').count();
+                assert(countSearch>=13,'Admin search column selectors not mounted');
+                const searchDepartment=page.getByRole('checkbox',{name:'Tìm trong Sở, ngành chủ trì'});
+                await searchDepartment.uncheck();
+                assert.equal(await searchDepartment.isChecked(),false,'Search field uncheck not applied');
+                await searchDepartment.check();
+                const paste=page.getByRole('button',{name:'Dán nhiều ô từ Excel'});
+                await paste.click();
+                const dialog=page.getByRole('dialog',{name:'Dán dữ liệu hàng loạt từ Excel'});
+                await dialog.waitFor();
+                await dialog.getByRole('textbox',{name:'Dán dữ liệu nhiều ô từ Excel'})
+                  .fill('Nội dung bản thử công khai\\tSở mẫu mới');
+                await dialog.getByRole('button',{name:'Kiểm tra và xem trước'}).click();
+                assert((await dialog.locator('.bulk-paste-review').textContent()).includes('hồ sơ'),
+                  'Public bulk paste preview missing');
+                await dialog.getByRole('button',{name:'Hủy, không thay dữ liệu'}).click();
+                await dialog.waitFor({state:'hidden'});
+                await page.evaluate(()=>{window.__qaPrintCalls=0;
+                  window.print=()=>{window.__qaPrintCalls++;};});
+                await page.getByRole('button',{name:'In hoặc lưu PDF A4 ngang'}).click();
+                const paper=await page.evaluate(()=>{
+                  const root=document.getElementById('hdnd-a4-print-root');
+                  return {calls:window.__qaPrintCalls,
+                    children:[...root?.children??[]].map(e=>e.tagName),
+                    title:root?.querySelector('h1')?.textContent,
+                    rows:root?.querySelector('table')?.tBodies[0]?.rows.length,
+                    columns:root?.querySelector('table')?.tHead?.rows[0]?.cells.length,
+                    sourceRows:document.querySelector('.item-data-table')?.tBodies[0]?.rows.length,
+                    style:document.getElementById('hdnd-a4-print-root-style')?.textContent??''};
+                });
+                assert.equal(paper.calls,1,'A4 Print callback not activated');
+                assert.deepEqual(paper.children,['H1','TABLE'],
+                  'Public print contains extra UI besides title and table');
+                assert.equal(paper.rows,paper.sourceRows,'Print rows differ from visible table');
+                assert(paper.columns>=6&&paper.title.includes('Danh sách các ND trình HĐND'),
+                  'Print must keep exact title and visible column headers');
+                assert(paper.style.includes('@page{size:A4 landscape;margin:8mm}'),
+                  'Missing A4 landscape print style');
+                await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+                await toggle.click();
+                await page.locator('.admin-list-controls').waitFor({state:'hidden'});
+                await page.locator('.pr95-preview-gear').click();
+                await page.locator('.pr95-preview-technical-details>summary').click();
+                assert((await page.locator('.pr95-preview-technical-details').textContent())
+                  .includes('Hồ sơ:'),'Technical counters missing from discreet gear');
+                await page.locator('.pr95-preview-gear').click();
+                await page.waitForFunction(()=>!!document.querySelector('.item-table-scroll')
+                  ?.style.getPropertyValue('--hdnd-preview-table-fill-height'));
+                const listGeometry=await page.evaluate(()=>{
+                  const el=document.querySelector('.item-table-scroll');
+                  const r=el.getBoundingClientRect();
+                  return {height:r.height,topDoc:r.top+scrollY,viewport:innerHeight,
+                    rootPadding:getComputedStyle(document.querySelector('.pr95-full-preview')).paddingBottom,
+                    cardPadding:getComputedStyle(document.querySelector('.item-list-card')).paddingBottom};
+                });
+                assert(Math.abs(listGeometry.height-Math.min(1300,
+                  Math.max(320,Math.round(listGeometry.viewport-listGeometry.topDoc-32))))<=2,
+                  'Public table did not fit remaining viewport: '+JSON.stringify(listGeometry));
+                assert.equal(listGeometry.rootPadding,'8px','Public preview bottom padding was not reduced');
+                assert.equal(listGeometry.cardPadding,'0px','Public List card should have no redundant frame padding');
+                assert.deepEqual(before.cards.map(x=>x.id),['total','party','build','nq'],
+                  'Missing four source-wide summary cards');
+                assert(before.rows>1,'No source table rows for F filtering test');
+                await page.locator('.list-filter-search').fill('NO_RESULT_PUBLIC_F01');
+                await page.waitForTimeout(160);
+                const afterSearch=await capture();
+                assert.equal(afterSearch.rows,0,'F01 has not filtered List rows');
+                assert.deepEqual(afterSearch.cards,before.cards,
+                  'B00/C01-C03 totals changed after F01 filtering');
+                await page.locator('.list-filter-search').fill('');
+                await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:1});
+                await page.waitForTimeout(160);
+                const afterDept=await capture();
+                assert(afterDept.rows<before.rows,'F02 did not filter List');
+                const focusInput=page.locator('select[aria-label="Lọc Sở, ngành"]');
+                await focusInput.focus();
+                const focusedFilter=await focusInput.evaluate(el=>{
+                  const css=getComputedStyle(el);
+                  return {height:el.getBoundingClientRect().height,
+                    border:css.borderTopWidth,outline:css.outlineStyle,shadow:css.boxShadow};
+                });
+                assert.deepEqual(focusedFilter,{height:28,border:'2px',outline:'none',shadow:'none'},
+                  'Public filter has duplicate focus ring: '+JSON.stringify(focusedFilter));
+                await focusInput.blur();
+                assert.deepEqual(afterDept.cards,before.cards,
+                  'B00/C01-C03 totals changed after F02 filtering');
+                await page.locator('[data-summary-report="party"][data-summary-stage="source"]').click();
+                await page.locator('[data-active-filter-count="2"]').waitFor();
+                const activeFilters=await page.locator('.list-active-filters').evaluate(zone=>{
+                  const rr=[...zone.querySelectorAll('.list-active-filter-chip')].map(e=>e.getBoundingClientRect());
+                  const zr=zone.getBoundingClientRect();
+                  const left=Math.min(...rr.map(r=>r.left)),right=Math.max(...rr.map(r=>r.right));
+                  const summary=zone.querySelector('.list-active-filter-summary').getBoundingClientRect();
+                  const combinedLeft=Math.min(summary.left,left),combinedRight=Math.max(summary.right,right);
+                  const dot=zone.querySelector('.list-active-filter-signal');
+                  return {count:rr.length,deviation:(combinedLeft+combinedRight-zr.left-zr.right)/2,
+                    sameLine:Math.abs(summary.top-rr[0].top)<5,
+                    inline:!!zone.querySelector('.list-active-filter-inline'),
+                    animation:getComputedStyle(dot).animationName,
+                    iterations:getComputedStyle(dot).animationIterationCount,
+                    pulseColor:getComputedStyle(dot).backgroundColor,
+                    emphasisColor:getComputedStyle(zone.querySelector('.list-active-filter-emphasis')).color,
+                    nounColor:getComputedStyle(zone.querySelector('.list-active-filter-noun')).color,
+                    valueColor:getComputedStyle(zone.querySelector('.list-active-filter-chip-value')).color};
+                });
+                assert.equal(activeFilters.count,2,'Expected two active filter chips');
+                assert(activeFilters.inline&&activeFilters.sameLine,
+                  'Public inline filter heading/chips did not share a line');
+                assert(Math.abs(activeFilters.deviation)<=4,
+                  'Combined filter heading and chips not centered on PUBLIC webpage');
+                assert.equal(activeFilters.animation,'hdnd-filter-red-pulse');
+                assert.equal(activeFilters.iterations,'infinite');
+                assert.equal(activeFilters.pulseColor,'rgb(243, 39, 63)');
+                assert.equal(activeFilters.emphasisColor,'rgb(199, 32, 55)');
+                assert.equal(activeFilters.valueColor,'rgb(199, 32, 55)');
+                assert.equal(activeFilters.nounColor,'rgb(38, 52, 66)');
+                await page.emulateMedia({reducedMotion:'reduce'});
+                assert.equal(await page.locator('.list-active-filter-signal')
+                  .evaluate(el=>getComputedStyle(el).animationName),'none',
+                  'Reduced-motion mode still shows animation');
+                await page.emulateMedia({reducedMotion:'no-preference'});
+                await page.locator('.list-active-filter-clear-all').click();
+                const colors=await page.locator('[data-preview="pr95-l4-full"]').evaluate(el=>{
+                  const css=getComputedStyle(el);
+                  return {office:[css.getPropertyValue('--hdnd-status-office-text').trim(),
+                    css.getPropertyValue('--hdnd-status-office-bg').trim()],
+                    done:[css.getPropertyValue('--hdnd-status-done-text').trim(),
+                    css.getPropertyValue('--hdnd-status-done-bg').trim()]};
+                });
+                assert.deepEqual(colors,{office:['#80531F','#FFEEDA'],
+                  done:['#256441','#DEF3E5']},'New semantic status palette is not active');
+                // Reset F controls before measuring the five admin track inputs.
+                await page.locator('select[aria-label="Lọc Sở, ngành"]').selectOption({index:0});
+                // The actual published administrator width editor must offer
+                // the five smaller minima, not just have new source constants.
+                // On-demand preview tools intentionally start COLLAPSED.
+                await page.locator('.admin-preview-options-toggle').click();
+                await page.locator('.admin-list-controls').waitFor({state:'visible'});
+                const editor=page.locator('button[aria-controls="admin-l03-width-editor"]');
+                await editor.waitFor({timeout:25000});
+                await editor.click();
+                const minLimits=await page.locator('#admin-l03-width-editor input').evaluateAll(nodes=>
+                  nodes.map(input=>({label:input.getAttribute('aria-label'),
+                    min:Number(input.min),max:Number(input.max)})));
+                assert.deepEqual(minLimits.map(x=>x.min),[64,72,64,48,72],
+                  'Published L03 editor still enforces outdated five-rail minima');
+                await page.screenshot({path:dir+'/full-preview.png'});
+                record.push({label:c.id,fullSynthetic:true,minLimits,responsive,activeFilters,
+                  fixedCards:before.cards,afterSearch,afterDept,colors});
+              }
+              await ctx.close();
+            }
+            assert.deepEqual(external,[],'Live site made external network requests');
+            writeFileSync(dir+'/public-measurements.json',JSON.stringify({sourceSha:'0913d19c9837539a086f1225cca2cafdf21dc669',url:base,record,external},null,2));
+            console.log('L03_PUBLIC_REAL_BROWSER_HOVER_3PX_AND_QA_ROLES_PASS',JSON.stringify(record));
+          } finally {await browser.close();}
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l03-public-preview-verified-live
+          path: source/qa-results/l03-live-public/**
+          retention-days: 14
+          if-no-files-found: warn

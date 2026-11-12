@@ -72,13 +72,13 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
     expect(rows.map(item=>[item.partyLevel,item.progressParty,item.progressBuild,item.progressCouncil]))
       .toEqual([
         ['BCH','Sở chưa trình','Không phải trình','Sở chưa trình'],
-        ['BTV TU','VP đang xử lý','Không phải trình','VP đang xử lý'],
+        ['BTV','VP đang xử lý','Không phải trình','VP đang xử lý'],
         ['TTTU','Đã gửi ĐU','Không phải trình','Hoàn thành'],
         ['BCH','ĐU gửi TU, chưa họp','Không phải trình','Sở chưa trình'],
-        ['Không phải trình','Không phải trình','Không phải trình','VP đang xử lý'],
+        ['Không','Không phải trình','Không phải trình','VP đang xử lý'],
         ['TTTU','Đã có TBKL','Không phải trình','Hoàn thành'],
         ['BCH','Sở chưa trình','VP đang xử lý','Sở chưa trình'],
-        ['BTV TU','VP đang xử lý','Không phải trình','VP đang xử lý'],
+        ['BTV','VP đang xử lý','Không phải trình','VP đang xử lý'],
       ]);
     expect(rows[7].isDropped).toBe(true);
     expect(rows.every(item=>item.progressBuild!=='Đã có QĐ')).toBe(true);

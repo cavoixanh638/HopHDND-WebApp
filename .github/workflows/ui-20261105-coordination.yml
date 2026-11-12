@@ -1,0 +1,178 @@
+name: UI 20261105 coordination - exact SHA checks (NO deploy)
+on:
+  push:
+    branches: [ui/20261105-coordination]
+    paths:
+      - 'source/src/**'
+      - 'source/shared/**'
+      - 'source/cell-edit-service/**'
+      - 'source/firebase/**'
+      - 'source/parent-commit-service/**'
+      - 'source/tests/**'
+      - 'source/scripts/**'
+      - 'source/package*.json'
+      - 'source/vite.config*'
+      - '.github/workflows/ui-20261105-coordination.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ui-20261105-coordination-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  app-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Pin source SHA
+        env:
+          SHA: ${{ github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$SHA"
+      - name: Install frozen frontend and pinned Playwright Chromium (CDP pipe)
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Typecheck and entire unit suite
+        run: |
+          npm run typecheck
+          npm test
+      - name: Build standalone HTML and real compact QA
+        run: |
+          npm run build
+          npm run build:compact:qa
+          test -s dist/Dashboard_HĐND.html
+          test -s dist-compact-qa/compact-qa.html
+      - name: Verify pinned Chromium real executable (no TCP debug port)
+        run: |
+          node -e "const fs=require('node:fs');const {chromium}=require('./cell-edit-service/node_modules/playwright');const p=chromium.executablePath();console.log('QA_CHROMIUM_BINARY='+p);if(!fs.existsSync(p))process.exit(1)"
+      - name: Real Chrome - REF hover/focus/copy/list/popup
+        run: node scripts/pr95-v4-l3-reference-browser.mjs
+      - name: Real Chrome - UI L03 alignment and 1440/900/390 screenshots
+        run: node scripts/ui-20261105-picker-layout-browser.mjs
+      - name: Immutable QA package with hashes (no publication)
+        run: |
+          mkdir -p qa-results/ui-20261105
+          sha256sum dist/Dashboard_HĐND.html dist-compact-qa/compact-qa.html > qa-results/ui-20261105/file-sha256.txt
+          tar -czf qa-results/ui-20261105/html-qa.tar.gz dist dist-compact-qa
+          sha256sum qa-results/ui-20261105/html-qa.tar.gz > qa-results/ui-20261105/package-sha256.txt
+          printf '%s\n' "$GITHUB_SHA" > qa-results/ui-20261105/source-sha.txt
+          cat qa-results/ui-20261105/*sha256.txt
+      - name: Keep code-test exact SHA screenshots and package (not deployed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261105-code-visual-package-${{ github.run_id }}
+          path: |
+            source/pr95-v4-l3-*.png
+            source/ui-20261105-artifacts/
+            source/qa-results/ui-20261105/
+          if-no-files-found: warn
+          retention-days: 14
+  data-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Frozen client and Functions dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Offline migration idempotency, resume, unknown and CAS
+        run: node scripts/party-level-migration.fixture.mjs
+      - name: Rules generator and status contracts
+        run: |
+          npm run typecheck
+          npm exec -- vitest run tests/pr95-ui-v3-l3-status-contract.test.ts
+          npm run check --prefix cell-edit-service
+          node cell-edit-service/scripts/make-test-rules.mjs
+      - name: Isolated Chrome / Playwright
+        run: npx --prefix cell-edit-service playwright install chromium
+      - name: Real isolated Auth, RTDB and Callable Emulator
+        run: |
+          cd cell-edit-service
+          npm run test:isolated >stdout.local.txt 2>&1 || { tail -n 110 stdout.local.txt; exit 1; }
+          tail -n 25 stdout.local.txt
+      - name: Preserve offline/emulator witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261105-data-integration-${{ github.run_id }}
+          path: |
+            source/cell-edit-service/stdout.local.txt
+            source/cell-edit-service/test/witness.local.json
+            source/cell-edit-service/test/browser-witness.local.json
+          if-no-files-found: warn
+          retention-days: 14
+  full-app:
+    needs: [app-qa, data-emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: source
+    env:
+      FINAL_APP_CANDIDATE_SHA: ${{ github.sha }}
+      GCLOUD_PROJECT: demo-hdnd
+      CI: 'true'
+      VITE_QA_DEFAULT_RTDB_NAMESPACE: 'true'
+      VITE_PARENT_REPLACEMENT_ENABLED: 'true'
+      VITE_PARENT_COMMIT_ENDPOINT: http://127.0.0.1:5001/demo-hdnd/us-central1/parentDatasetCommit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Pin exact integrated candidate SHA
+        run: test "$(git rev-parse HEAD)" = "$FINAL_APP_CANDIDATE_SHA"
+      - name: Install client, two Functions, and headless Chromium
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+          npx --prefix cell-edit-service playwright install chromium
+      - name: Generate exact offline shared Rules
+        run: node scripts/final-app-qa-rules.mjs
+      - name: FULL App guest/admin/tabs/ACK/freeze/browser using local emulators
+        run: node scripts/final-app-qa-runner.mjs
+      - name: Preserve real-app screenshot and witness (never publish)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-20261105-full-app-${{ github.run_id }}
+          path: source/qa-results/final-app-review/
+          if-no-files-found: warn
+          retention-days: 14

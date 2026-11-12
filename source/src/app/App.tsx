@@ -8,6 +8,7 @@ import { MockRepository } from '../data/mock-repository';
 import { createDemoItems } from '../data/demo-items';
 import { useWorkspace } from '../state/use-workspace';
 import { getKpis } from '../domain/reporting';
+import {canonicalStatus} from '../domain/status-contract';
 import { MemoReportTable } from '../features/reports/ReportTable';
 import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
@@ -28,7 +29,7 @@ import {loadSelectedWebFont} from '../data/on-demand-fonts';
 import { ReportSettings } from '../features/settings/ReportSettings';
 import { CatalogSettings } from '../features/catalogs/CatalogSettings';
 import { assignmentIssue, loadCatalog, saveCatalog, mergeCatalogItems,type CatalogConfig,type CatalogKey } from '../data/catalogs';
-import {loadItemLayout,saveItemLayout,overlayPersonalLayout,type ItemLayout} from '../data/item-preferences';
+import {loadItemLayout,saveItemLayout,overlayPersonalLayout,DEFAULT_LIST_TITLE,type ItemLayout} from '../data/item-preferences';
 import {loadActiveListView,loadListViews} from '../data/list-views';
 import {layoutRecoveryScope} from '../data/draft-checkpoints';
 import {readConfirmedPageWidths,rememberConfirmedPageWidths} from '../data/confirmed-page-widths';
@@ -360,7 +361,17 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     const timer=window.setTimeout(()=>{void workspace.save();},1200);
     return()=>window.clearTimeout(timer);
   },[firebase?.freezeControl?.revision,selectedSource]);
+  /** A stored Không level locks progressParty regardless of admin/status grant;
+   * the partyLevel-only server transaction owns its dependent status. */
+  const partyStatusLocked=(id:string,field:string)=>field==='progressParty'&&
+    canonicalStatus('partyLevel',workspace.workingItems.find(item=>item.recordId===id)?.partyLevel)==='Không';
   const updateDataDraft=(id:string,changes:Changes)=>{
+    if('progressParty' in changes&&partyStatusLocked(id,'progressParty')){
+      setLayoutMessage('Cấp trình Không: Tiến độ Thành ủy được khóa sửa trực tiếp.');return;
+    }
+    if('partyLevel' in changes&&'progressParty' in changes){
+      setLayoutMessage('Chỉ gửi thay đổi Cấp trình; dịch vụ tự cập nhật tiến độ phụ thuộc trong cùng giao dịch.');return;
+    }
     if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return;
     }
@@ -586,7 +597,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     </header>
     {adminTools&&<nav className="nav-tabs primary-section-switcher" aria-label="Hai phần dữ liệu chính">
       {([['overview','Báo cáo tổng hợp'],
-        ['items','Danh sách các ND trình HĐND']] as const)
+        ['items',itemLayout.listTitle??DEFAULT_LIST_TITLE]] as const)
         .map(([key,title])=><button type="button" key={key} data-ui-reference-nav={key}
           disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
@@ -655,10 +666,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang xử lý', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
         
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span></div>
-        {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}
+        {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}
         {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.</p>}
       </>}
-      {adminTools&&page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
+      {adminTools&&page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {adminTools&&page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
       {(page === 'items' || adminTools&&(page === 'items-customize' || page==='items-permissions')) && <ItemList key={`${sourceKey}:${page}:${adminTools?'admin':'guest'}`} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={adminTools?updateStatusPaletteStore:undefined} permissionModeOnly={adminTools&&page==='items-permissions'} externalSectionTabs={true} onPersistCatalog={adminTools?saveCatalogConfig:undefined} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&
           (!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={adminTools} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={adminTools?saveItemLayoutConfig:undefined} 
@@ -666,6 +677,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           ?async(next,baseline,choices)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline,choices);}
           :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} dataSaving={isFirebase&&workspace.busy} onFrameWidthChange={setListFramePreview} anonymousViewer={guestViewer} permissions={adminTools&&isFirebase?firebase!.permissions:undefined} onSavePermissions={adminTools&&isFirebase?firebase!.savePermissions:undefined} onReloadPermissions={adminTools&&isFirebase?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>
+          !partyStatusLocked(id,field)&&
           (firebase!.canEdit(id,field)||(firebase!.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
           mayEdit(firebase!.permissions,id,field,firebase!.isAdmin):undefined} allowLayout={adminTools} busy={workspace.busy||common.busy} onUpdate={updateDataDraft} leaseManager={leaseManager} onHistory={(item)=>setHistory({item})}
         onCellHistory={(item,field)=>setHistory({item,field})} readOnly={!!repository.readOnly} sourceKind={repository.sourceKind} customizing={adminTools&&(page === 'items-customize'||page==='items-permissions')} onClose={()=>{setEditorUnsaved(false);setListFramePreview(null);setPage('items');}} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onSaveData={saveData} onDiscardData={workspace.discard} onLayoutSaved={setLayoutMessage} />}
@@ -704,9 +716,9 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         (!firebase||selectedSource==='primary'&&(!firebase.editingLocked||firebase.isAdmin))}
       guestViewer={guestViewer}
       readOnlyViewer={isFirebase&&!adminTools&&!viewerMayEditText}
-      canEditCell={(id,field)=>!firebase||selectedSource==='primary'&&
+      canEditCell={(id,field)=>!partyStatusLocked(id,field)&&(!firebase||selectedSource==='primary'&&
         ((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
-        mayEdit(firebase.permissions,id,field,firebase.isAdmin))}
+        mayEdit(firebase.permissions,id,field,firebase.isAdmin)))}
       onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
       onHistory={adminTools?(item)=>setHistory({item}):undefined}
       onCellHistory={(item,field)=>setHistory({item,field})}

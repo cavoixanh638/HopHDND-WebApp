@@ -234,11 +234,11 @@ try{
   // or source-row mutation), then an explicit one-member highlight.
   await interact('const root=document.querySelector(".pr95-full-preview");'+
     'root.style.setProperty("--hdnd-status-done-text","#14539A");'+
-    'root.style.setProperty("--hdnd-stage-done-bg","#E7F3FF");'+
+    'root.style.setProperty("--hdnd-status-done-bg","#E7F3FF");'+
     'root.style.setProperty("--hdnd-stage-done-border","#94A8C9")');
   await ensure('(()=>{const row=document.querySelector("dialog.report-grid-modal .compact-stage-row[data-progress-tone=done]");'+
     'const member=row?.querySelector(".compact-stage-state"),inner=member?.querySelector(".workflow-status-value");'+
-    'return !!inner&&getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
+    'return !!inner&&getComputedStyle(member).backgroundColor==="rgb(231, 243, 255)"&&'+
     'getComputedStyle(member).color==="rgb(20, 83, 154)"&&getComputedStyle(inner).color===getComputedStyle(member).color})()',
     'custom palette per-stage text/frame, no nested pill');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-custom-palette',true);
@@ -250,8 +250,8 @@ try{
     'const other=[...row.parentElement.querySelectorAll(".compact-stage-row")].find(x=>x!==row);'+
     'return !!other&&getComputedStyle(member).backgroundColor==="rgb(255, 241, 172)"&&'+
     'getComputedStyle(inner).color==="rgb(113, 74, 18)"&&'+
-    'getComputedStyle(row).backgroundColor==="rgb(231, 243, 255)"&&'+
-    'getComputedStyle(other).backgroundColor!==getComputedStyle(member).backgroundColor})()',
+    'getComputedStyle(row).backgroundColor==="rgba(0, 0, 0, 0)"&&'+
+    'getComputedStyle(other.querySelector(".compact-stage-state")).backgroundColor!==getComputedStyle(member).backgroundColor})()',
     'one-member highlight does not repaint neighboring stage or outer frame');
   await inspectGroupedReadOnly('dialog.report-grid-modal .report-detail-grid','popup-member-highlight',true);
   await screenshot('pr95-v3-l5-desktop-popup-custom-highlight.png');

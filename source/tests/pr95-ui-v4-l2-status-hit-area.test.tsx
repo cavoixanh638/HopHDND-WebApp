@@ -35,7 +35,7 @@ const draw=(granted:readonly TextField[],record:Item=fixture)=>
       {backgroundColor:'#FCDDA0',color:'#884422'}:undefined
   }));
 
-describe('UI V4 L2 status row — fixed caret rail, one outer frame',()=>{
+describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()=>{
   it('marks only individually granted status members, not the group/nearby party-level editor',()=>{
     const html=draw(['progressBuild']);
     expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
@@ -51,7 +51,8 @@ describe('UI V4 L2 status row — fixed caret rail, one outer frame',()=>{
     expect(html).not.toContain('cell-picker-trigger');
     expect(html).not.toContain('data-editable="true"');
     expect(html).not.toContain('aria-haspopup');
-    expect(html).toContain('Ban Chấp hành');
+    expect(html).toContain('BCH');
+    expect(html).not.toContain('Ban Chấp hành');
     expect(html).toContain('ĐU gửi TU, chưa họp');
   });
   it('supports old long labels and new canonical labels with the same hit-region structure',()=>{
@@ -70,36 +71,46 @@ describe('UI V4 L2 status row — fixed caret rail, one outer frame',()=>{
     expect(canonical).toContain('Đã xin ý kiến, chờ TBKL');
     expect(canonical).toContain('Đã trình, chờ QĐ');
   });
-  it('keeps the 22px caret track fixed and hits the full 38px value member, not the parent row',()=>{
-    expect(css).toContain('--v4-caret-track:22px');
-    expect(css).toContain('grid-template-columns:minmax(0,1fr) var(--v4-caret-track)');
-    expect(css).toContain('min-height:38px;height:100%');
-    expect(css).toContain('width:100%;min-width:0;max-width:100%');
-    expect(css).toContain('grid-column:2;');
-    expect(css).toContain('padding:5px 6px 5px 9px!important');
+  it('keeps independently accessible full-width 36px buttons in the common grid track',()=>{
+    expect(css).toContain('.compact-stages[data-rev2="true"]');
+    expect(css).toContain('min-height:36px!important;height:auto!important');
+    expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-level-track) var(--ui-stage-status-track)!important');
+    expect(css).toContain('grid-template-columns:var(--ui-stage-label-track) var(--ui-stage-status-track)!important');
+    expect(css).toContain('width:min(100%,var(--hdnd-l03-inner-width,100%));');
+    expect(css).toContain('grid-template-columns:subgrid!important');
     expect(css).toContain('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
     expect(css).not.toContain('.compact-stage-row[role="button"]');
     expect(pickerCss).toContain('.cell-picker-value-text');
   });
-  it('removes status dots including legacy popup wrapper without touching stage numbers',()=>{
+  it('removes status dots while preserving three distinct workflow rows',()=>{
     expect(css).toMatch(/\.compact-stage-state\[data-progress-tone\]::before\s*\{[^}]*content:none;display:none;/s);
     expect(css).toContain('.compact-stage-state .workflow-status-value::before');
     expect(css).toContain('content:none!important;display:none!important;');
     const html=draw([]);
-    expect(html.match(/class="compact-stage-number"/g)).toHaveLength(3);
-    expect(html).toContain('>1</span>');
-    expect(html).toContain('>2</span>');
-    expect(html).toContain('>3</span>');
+    expect(html.match(/class="compact-stage-row"/g)).toHaveLength(3);
+    expect(html).toContain('Thành ủy');
+    expect(html).toContain('Trình Xây dựng NQ');
+    expect(html).toContain('Trình ban hành NQ');
   });
-  it('preserves custom member palette/highlight, flat no-border button and local focus styling',()=>{
+  it('preserves custom member highlight and semantic fill on the standard editable button',()=>{
     const html=draw(['progressBuild']);
     expect(html).toContain('background-color:#FCDDA0');
     expect(html).toContain('--member-highlight-text:#884422');
     expect(html).not.toMatch(/class="compact-stage-row"[^>]*style=/);
-    expect(css).toContain('background:color-mix(in srgb,currentColor 6%,transparent)!important');
-    expect(css).toContain('background:color-mix(in srgb,currentColor 13%,transparent)!important');
-    expect(css).toContain('border:0!important;outline:0!important;box-shadow:none!important');
-    expect(css).toContain('cursor:pointer');
+    expect(css).toContain('--ui-picker-bg:var(--workflow-bg,#F2F6F9);');
+    expect(css).toContain('background:var(--ui-picker-bg,#F2F6F9)!important');
+    expect(css).toContain('--ui-picker-fg:var(--workflow-text,#426274);');
+    expect(css).toContain('color:var(--ui-picker-fg,#426274)!important');
+    expect(css).toContain('background:var(--member-highlight-bg)!important');
+    expect(css).toContain('color:var(--member-highlight-text)!important');
+    expect(css).toMatch(/button\.cell-picker-trigger::before\{\s*content:none!important;display:none!important;/s);
+    // 06/11 control contract replaces the old V chevron, not the hit area,
+    // status colors, permission gates or the 3-track grid alignment.
+    expect(css).toContain('clip-path:polygon(0 0,100% 0,50% 100%)');
+    expect(css).toContain('width:5px!important;height:3px!important');
+    expect(css).toContain('background:currentColor!important');
+    expect(css).not.toContain('border:0;border-right:1.8px solid currentColor');
+    expect(css).toContain('outline:2px solid #356D86!important');
   });
   it('retains unchanged CellPicker aria, keyboard, lease/save/clear contracts',()=>{
     for(const source of ["aria-haspopup=\"dialog\"","aria-selected={value === option.value}",

@@ -9,6 +9,9 @@ export function activateEditableCell(event:{
 }):void{
   const cell=event.currentTarget;
   if(!cell.classList.contains('editable-cell'))return;
+  // Notes and Current Progress may be edited ONLY through their own
+  // inline-note-trigger, not by forwarding a click from blank TD padding.
+  if(cell.dataset.colKey==='note'||cell.dataset.colKey==='specificProgress')return;
   const target=event.target;
   if(!(target instanceof Element))return;
   // A real click on a control must not be forwarded twice (or hijack history).

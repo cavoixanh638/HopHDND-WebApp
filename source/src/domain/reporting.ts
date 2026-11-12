@@ -1,4 +1,5 @@
 import type { GroupField, Item, ReportConfig } from '../../shared/types';
+import {reportReferenceGroupValue,type ReportGroupIdentityRegistry} from './report-reference-identity';
 import {normalizeSearch} from './search';
 import {canonicalStatus,isNotRequiredStatus} from './status-contract';
 export {PARTY_STATUS_ALIASES} from './status-contract';
@@ -53,7 +54,7 @@ export function reportItems(items: Item[], config: ReportConfig): Item[] {
     }
   });
 }
-export function aggregateReport(items: Item[], config: ReportConfig, group: GroupField) {
+export function aggregateReport(items: Item[], config: ReportConfig, group: GroupField, groupIdentities?:ReportGroupIdentityRegistry) {
   const scoped = reportItems(items, config);
   const rows = new Map<string, Map<string, Item[]>>();
   const unknown = new Set<string>();
@@ -67,7 +68,7 @@ export function aggregateReport(items: Item[], config: ReportConfig, group: Grou
     const recognized=known.get(canonical(raw));
     const status=recognized??'Chưa chuẩn hóa';
     if (!recognized) unknown.add(raw);
-    const label = item[group].trim() || 'Chưa phân công';
+    const label = reportReferenceGroupValue(item[group],group,groupIdentities).label;
     if (!rows.has(label)) rows.set(label, new Map());
     const cells = rows.get(label)!;
     if (!cells.has(status)) cells.set(status, []);

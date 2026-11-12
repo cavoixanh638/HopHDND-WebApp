@@ -9,6 +9,9 @@ import { reportStage,reportStageLabels,type ReportStage } from '../../domain/rep
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {canonicalStatus} from '../../domain/status-contract';
+import {reportReferenceGroupRows,reportReferenceStatusColumn,
+  REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR,
+  type ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
 
 /** Report-specific chip wording. These are presentation labels, NEVER Item
  * statuses or a migration of legacy source cells. Custom report titles stay intact. */
@@ -35,7 +38,7 @@ const quietPartyMilestones=new Set([
 const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ');
 const excludedMilestone=normalizeSearch('Không phải trình');
 
-export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; onColumnResize?:(column:string,width:number)=>void }) {
+export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void }) {
   const heading=()=>{
     const target=config.titleAccentText?.trim();
     if(!target)return config.title;
@@ -53,7 +56,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     if(offset<source.length)parts.push(source.slice(offset));
     return parts;
   };
-  const report = useMemo(() => aggregateReport(items, config, group), [items, config, group]);
+  const report = useMemo(() => aggregateReport(items, config, group, groupIdentities), [items, config, group, groupIdentities]);
   const groupLabel=GROUP_OPTIONS.find(option=>option.key===group)?.label??'Nhóm phụ trách';
   const ref = useRef<HTMLElement>(null);
   // One tooltip instance serves all mounted reports, not one per cell.
@@ -67,6 +70,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     return groups;
   },[report.items,config]);
   const shownRows=[...report.rows.entries()].sort(([a],[b])=>compareCatalogValues(a,b,groupOrder));
+  const rowReferences=useMemo(()=>reportReferenceGroupRows(items,group,groupIdentities),[items,group,groupIdentities]);
   const emphasize=config.emphasizeProgress!==false;
   const hasNextStage=config.columns.some(column=>reportStage(column,config)==='next');
   const visualStyle=config.reportVariant??'classic';
@@ -162,22 +166,25 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         {report.columns.map((col,index)=><col key={col} style={{width:`${allColumnWidths[index+2]}px`}}/>)}
         <col className="report-percent-width" style={{width:`${allColumnWidths[allColumnWidths.length-1]}px`}}/>
       </colgroup>
-      <thead><tr>
-        <th scope="col" className="report-group-heading report-resizable-heading">{onColumnResize?<>{groupLabel}{grip('__group',0,groupLabel)}</>:groupLabel}</th>
-        <th scope="col" className="report-number-header report-total-col report-resizable-heading">{onColumnResize?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
+      <thead><tr data-ui-reference-report-row={RR.header}>
+        <th scope="col" data-ui-reference-report-column={RC.group} className="report-group-heading report-resizable-heading">{onColumnResize?<>{groupLabel}{grip('__group',0,groupLabel)}</>:groupLabel}</th>
+        <th scope="col" data-ui-reference-report-column={RC.total} className="report-number-header report-total-col report-resizable-heading">{onColumnResize?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
         {report.columns.map((column,index)=><th key={column} scope="col"
+          data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
           className={'report-number-header report-resizable-heading'+emphasis(column)}>{onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:<span className="report-heading-label">{column}</span>}</th>)}
-        <th scope="col" className="report-number-header report-percent-col report-resizable-heading">{onColumnResize?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
+        <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>
         {shownRows.map(([label,cells])=>{
           const metrics=rowMetrics(cells);
           const groupEntries=[...cells.values()].flat();
-          return <tr key={label}><th scope="row" className="report-group-heading">{label}</th>
-            <td className={'report-number report-total-col'+clickable(groupEntries)}>{drill(`${label} · Tổng số nội dung`,groupEntries)}</td>
+          return <tr key={label} data-ui-reference-report-row={rowReferences.get(label)}>
+            <th scope="row" data-ui-reference-report-column={RC.group} className="report-group-heading">{label}</th>
+            <td data-ui-reference-report-column={RC.total} className={'report-number report-total-col'+clickable(groupEntries)}>{drill(`${label} · Tổng số nội dung`,groupEntries)}</td>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
-              return <td key={column} className={'report-number'+emphasis(column)+clickable(entries)}
+              return <td key={column} data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
+                className={'report-number'+emphasis(column)+clickable(entries)}
                 style={entries.length&&emphasize&&visualStyle==='bars'
                   ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
                 {entries.length?<span className="report-count-mark">
@@ -185,25 +192,26 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
                 </span>:'—'}
               </td>;
             })}
-            <td className="report-number report-percent-col">
+            <td data-ui-reference-report-column={RC.percent} className="report-number report-percent-col">
               {percentCell(metrics.percent,`${label}: đã hoàn thành ${metrics.completed} trên ${metrics.total} nội dung`)}
             </td>
           </tr>;
         })}
-        {!shownRows.length&&<tr><td className="empty" colSpan={report.columns.length+3}>
+        {!shownRows.length&&<tr data-ui-reference-report-row={RR.empty}><td data-ui-reference-report-column={RC.empty} className="empty" colSpan={report.columns.length+3}>
           {report.total?'Không có đơn vị thuộc nhóm đang theo dõi.':'Không có nội dung trong phạm vi này.'}
         </td></tr>}
       </tbody>
-      <tfoot><tr>
-        <th scope="row">Tổng cộng</th>
-        <td className={'report-number report-total-col'+clickable(report.items)}>{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
+      <tfoot><tr data-ui-reference-report-row={RR.grand}>
+        <th scope="row" data-ui-reference-report-column={RC.group}>Tổng cộng</th>
+        <td data-ui-reference-report-column={RC.total} className={'report-number report-total-col'+clickable(report.items)}>{drill('Tổng cộng · Tất cả nội dung',report.items)}</td>
         {report.columns.map(column=>{
           const entries=[...report.rows.values()].flatMap(cells=>cells.get(column)??[]);
-          return <td className={'report-number'+emphasis(column)+clickable(entries)} key={column}>
+          return <td data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
+              className={'report-number'+emphasis(column)+clickable(entries)} key={column}>
             {drill(`Tổng cộng · ${column}`,entries)}
           </td>;
         })}
-        <td className="report-number report-percent-col">
+        <td data-ui-reference-report-column={RC.percent} className="report-number report-percent-col">
           {percentCell(report.percent??0,`Toàn báo cáo: đã hoàn thành ${report.completedCount} trên ${report.total} nội dung`)}
         </td>
       </tr></tfoot>

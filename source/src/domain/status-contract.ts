@@ -9,13 +9,15 @@ export type StatusCatalogField=StatusField|'partyLevel';
 export const PARTY_LEVEL_ALIASES:Readonly<Record<string,string>>={
   'Ban Chấp hành':'BCH',
   'Ban Chấp hành Thành ủy':'BCH',
-  'Ban Thường vụ Thành ủy':'BTV TU',
+  'Ban Thường vụ Thành ủy':'BTV',
   'Thường trực Thành ủy':'TTTU',
-  'BTV':'BTV TU',
-  'BTVTU':'BTV TU',
-  'Không phải xin ý kiến':'Không phải trình',
-  'Không xin ý kiến':'Không phải trình',
-  'Không':'Không phải trình',
+  'BTV':'BTV',
+  'BTVTU':'BTV',
+  'BTV TU':'BTV',
+  'Không phải trình':'Không',
+  'Không phải xin ý kiến':'Không',
+  'Không xin ý kiến':'Không',
+  'Không':'Không',
 };
 export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
   'VP đang thực hiện':'VP đang xử lý',
@@ -79,5 +81,5 @@ export function isRecognizedStatus(field:StatusCatalogField,raw:unknown):boolean
   return OFFICIAL_STATUS_CHOICES[field].includes(canonicalStatus(field,raw));
 }
 export function isNotRequiredStatus(field:StatusCatalogField,raw:unknown):boolean{
-  return field!=='progressCouncil'&&canonicalStatus(field,raw)==='Không phải trình';
+  return field!=='progressCouncil'&&(field==='partyLevel'?canonicalStatus(field,raw)==='Không':canonicalStatus(field,raw)==='Không phải trình');
 }
