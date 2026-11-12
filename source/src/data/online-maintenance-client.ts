@@ -3,6 +3,9 @@
  */
 import {getIdToken,type User} from 'firebase/auth';
 import type {Item} from '../../shared/types';
+import type {Database} from 'firebase/database';
+import {activeBackupScope} from './admin-backup-service';
+import {inspectBackupJson} from './admin-backup-format';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import {firebaseAdmin} from './firebase-repository';
 export type MaintenanceAction='clear'|'replace'|'restore';
@@ -54,17 +57,27 @@ async function invoke<T>(user:User|null,path:string,options:{method?:'POST'|'GET
   if(!payload||typeof payload!=='object')throw Error('Phản hồi dịch vụ không hợp lệ.');
   return payload as T;
 }
-export async function exportOnlineAdminBackup(user:User|null):Promise<{name:string;sha256:string}>{
-  const envelope=await invoke<{payload:{createdAt:string};sha256:string;serverSeal?:unknown}>(user,'/v1/archive');
-  if(!envelope.serverSeal||!/^[a-f0-9]{64}$/.test(envelope.sha256)||
-    !Number.isFinite(Date.parse(envelope.payload.createdAt)))
-    throw Error('Không nhận được bản backup đã niêm phong phía máy chủ.');
-  const filename='HopHDND-backup-signed-'+envelope.payload.createdAt.replace(/[:.]/g,'-')+'.json';
+export async function exportOnlineAdminBackup(
+  user:User|null,database:Database,expectedActive:ActiveDatasetPointer|null
+):Promise<{name:string;sha256:string;generationId:string}>{
+  if(!expectedActive)throw Error('Chưa có con trỏ thế hệ V2 hợp lệ để sao lưu online.');
+  const envelope=await invoke<unknown>(user,'/v1/archive');
+  const inspected=await inspectBackupJson(JSON.stringify(envelope),activeBackupScope(database));
+  const {serverSeal,payload,sha256}=inspected.envelope;
+  if(serverSeal?.algorithm!=='HMAC-SHA256'||serverSeal.keyId!=='v1'||
+    !/^[A-Za-z0-9_-]{43}$/.test(serverSeal.signature))
+    throw Error('Backup không có chữ ký máy chủ đúng định dạng.');
+  const v2=payload.nodes['hdnd/datasetV2'] as {active?:ActiveDatasetPointer}|null;
+  const pointer=v2?.active;
+  if(!pointer||['generationId','operationId','revision','rowCount','digest'].some(
+    key=>pointer[key as keyof ActiveDatasetPointer]!==expectedActive[key as keyof ActiveDatasetPointer]))
+    throw Error('Thế hệ đã đổi khi tải backup; đóng băng lại và tạo bản sao mới.');
+  const filename='HopHDND-backup-signed-'+payload.createdAt.replace(/[:.]/g,'-')+'.json';
   const blob=new Blob([JSON.stringify(envelope,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=filename;a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
-  return {name:filename,sha256:envelope.sha256};
+  return {name:filename,sha256,generationId:pointer.generationId};
 }
 export async function prepareOnlineMaintenance(user:User|null,parameters:{
   action:MaintenanceAction;operationId:string;expected:ActiveDatasetPointer;
