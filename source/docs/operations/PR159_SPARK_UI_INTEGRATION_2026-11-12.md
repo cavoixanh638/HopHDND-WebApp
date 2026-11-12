@@ -2,6 +2,9 @@
 
 Status: **INTEGRATED LOCAL QA PASS / OWNER ACCEPTANCE PENDING / NO PRODUCTION**.
 
+Post-merge acceptance for PR160 on the selected integration branch is recorded
+in [PR160 post-merge checkpoint](PR160_POST_MERGE_ACCEPTANCE_2026-11-12.md).
+
 - User-selected branch: `integration/20261112-spark-ui-69ceb`.
 - Immutable starting commit: `0c9aa57bdb96dc574c58bc1e5501043a288bb61d`.
 - Fixed source content committed as `f4042f2ce35dbbc881c4f88a25dfd774d0e32802`.
