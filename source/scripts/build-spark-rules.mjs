@@ -49,6 +49,25 @@ for(const versioned of [false,true]){
   row['.write']=`${identity} && (${epoch}) && data.exists() && newData.exists() && ${mode} !== 'FROZEN' && ${notPaused}`;
   lease['.write']=`${identity} && (${epoch}) && ${item}.exists() && newData.exists() && ${mode} !== 'FROZEN' && (!data.exists() || data.child('expiresAt').val() <= now || (${owned})) && (${release} || (${notPaused} && ${grant} && (!root.child('hdnd/freezeControl/mode').exists() || ${mode} === 'OPEN' || ${draining})))`;
 }
+// SIMPLE OWNER MAINTENANCE (legacy primary only): directly replace/clear
+// /hdnd/items from the existing verified Google Admin. No R2, Worker, paid
+// hosting or privileged browser credential. Never grant parent /hdnd writes.
+// A freeze + absent V2 pointer are required. Ordinary per-cell editing rules
+// for staff and visitors are unchanged; validation bypass is Admin/FROZEN only.
+const simpleAdminMaintenance=`(${googleAdmin} && root.child('hdnd/freezeControl/mode').val() === 'FROZEN' && !root.child('hdnd/datasetV2/active').exists())`;
+h.items['.write']=`(${h.items['.write']}) || ${simpleAdminMaintenance}`;
+function allowOnlyAdminFrozenReplacementValidation(node){
+  for(const [key,value] of Object.entries(node)){
+    if(key==='.validate'&&typeof value==='string'){
+      node[key]=`(${simpleAdminMaintenance}) || (${value})`;
+    }else if(value&&typeof value==='object'){
+      allowOnlyAdminFrozenReplacementValidation(value);
+    }
+  }
+}
+allowOnlyAdminFrozenReplacementValidation(h.items);
+h.items['.validate']=`!newData.exists() || newData.numChildren() <= 1000`;
+
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,
