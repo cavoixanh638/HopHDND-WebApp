@@ -3,7 +3,7 @@
  * All mutations are ETag CAS at /hdnd only; never blind root PATCH/DELETE.
  */
 import {assertOperationId,MAX_PAYLOAD_BYTES,requireCondition} from './domain.mjs';
-import {verifyFirebaseAdmin,getServiceAccountAccessToken} from './security.mjs';
+import {verifyFirebaseAdmin,getServiceAccountAccessToken,assertFirebaseSessionCurrent} from './security.mjs';
 import {firebaseRest} from './firebase-rest.mjs';
 import {commitMaintenance,exportArchive,inspectOperation,prepareMaintenance} from './engine.mjs';
 const responseHeaders=(origin,extras={})=>({
@@ -45,6 +45,7 @@ async function parseBody(request){
 export async function handleRequest(request,env,{
   verifyAdmin=verifyFirebaseAdmin,
   getToken=getServiceAccountAccessToken,
+  checkSession=assertFirebaseSessionCurrent,
   makeDb=opts=>firebaseRest(opts),
   now=()=>Date.now(),
 }={}){
@@ -71,6 +72,9 @@ export async function handleRequest(request,env,{
     // Authentication runs BEFORE obtaining privileged Firebase OAuth access.
     const identity=await verifyAdmin(auth.slice(7),env,{fresh:mutating(action)});
     const accessToken=await getToken(env);
+    // Even a valid RSA-signed ID token may belong to a revoked or disabled user.
+    // Query authoritative Firebase Auth before access to privileged database credentials.
+    await checkSession(identity,env,accessToken);
     const db=makeDb({databaseURL:env.FIREBASE_DATABASE_URL,accessToken});
     if(action==='archive'){
       const backup=await exportArchive(db,env,{now:now()});
