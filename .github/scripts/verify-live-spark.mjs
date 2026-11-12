@@ -1,0 +1,100 @@
+/**
+ * Production smoke: public HTML/assets and one anonymous guest business READ.
+ * Never writes the Realtime Database. Anonymous Auth creates a guest identity.
+ * Neither tokens nor business records/IDs are printed.
+ */
+import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+
+const base='https://cavoixanh638.github.io/HopHDND-WebApp/';
+const expectedSha=process.env.EXPECTED_SOURCE_SHA;
+if(!/^[a-f0-9]{40}$/.test(expectedSha??''))throw Error('Missing exact approved SHA');
+const ensure=(condition,message)=>{if(!condition)throw Error(message)};
+const request=async(url,init={})=>fetch(url,{...init,signal:AbortSignal.timeout(25000)});
+const noCache=(relative)=>{
+  const url=new URL(relative,base);
+  url.searchParams.set('qa','20261113-'+expectedSha.slice(0,12));
+  return url.toString();
+};
+const verReply=await request(noCache('version.json'),{headers:{'cache-control':'no-cache'}});
+ensure(verReply.ok,'Pages version HTTP '+verReply.status);
+const v=await verReply.json();
+ensure(v.mode==='spark'&&v.source_sha===expectedSha,
+  'Pages SHA/mode mismatch: expected '+expectedSha+' got '+v.source_sha+'/'+v.mode);
+console.log('LIVE_VERSION_PASS',v.mode,v.source_sha);
+
+const htmlReply=await request(noCache(''),{headers:{'cache-control':'no-cache'}});
+ensure(htmlReply.ok,'Pages root HTTP '+htmlReply.status);
+const html=await htmlReply.text();
+ensure(/<div id="root"><\/div>/.test(html),'Missing app mount');
+const js=html.match(/src=["'](\.\/assets\/[^"'<> ]+\.js)["']/)?.[1];
+const css=html.match(/href=["'](\.\/assets\/[^"'<> ]+\.css)["']/)?.[1];
+ensure(js&&css,'Missing hashed JS/CSS in public index');
+for(const [name,asset,minSize] of [['script',js,1000],['stylesheet',css,100]]){
+  const reply=await request(noCache(asset));
+  ensure(reply.ok,'Public '+name+' HTTP '+reply.status);
+  const content=await reply.text();
+  ensure(content.length>minSize,'Public '+name+' unexpectedly empty');
+  ensure(!/^\s*<!doctype html/i.test(content),'Public '+name+' returned HTML fallback');
+  ensure(!content.includes('http://127.0.0.1:8787/parentDatasetCommit'),
+    'Privileged localhost endpoint leaked in public asset');
+  console.log('LIVE_ASSET_PASS',name,asset,content.length);
+}
+
+const config=readFileSync('source/src/data/firebase-config.ts','utf8');
+const select=(key)=>{
+  const line=config.split('\n').find(x=>x.includes(key+':'));
+  const match=line?.match(/:\s*'([^']+)'/);
+  ensure(match,'Missing public Firebase config '+key);
+  return match[1];
+};
+const apiKey=select('apiKey'),projectId=select('projectId'),databaseURL=select('databaseURL');
+ensure(projectId==='hophdnd-8b7b2'&&
+  databaseURL==='https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app',
+  'Unexpected production instance');
+const authReply=await request(
+ 'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+encodeURIComponent(apiKey),
+ {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({returnSecureToken:true})});
+if(!authReply.ok){
+ const info=await authReply.text();
+ throw Error('Anonymous Auth smoke failed HTTP '+authReply.status+': '+info.slice(0,350));
+}
+const auth=await authReply.json();
+ensure(typeof auth.idToken==='string'&&auth.idToken.length>100,'Missing guest token');
+const claims=JSON.parse(Buffer.from(auth.idToken.split('.')[1],'base64url').toString('utf8'));
+ensure(claims.aud===projectId&&claims.firebase?.sign_in_provider==='anonymous',
+  'Guest identity belongs to unexpected project/provider');
+const dbURL=new URL(databaseURL+'/hdnd/items.json');
+dbURL.searchParams.set('shallow','true');
+dbURL.searchParams.set('auth',auth.idToken);
+const guestResponse=await request(dbURL.toString());
+if(!guestResponse.ok){
+ const info=await guestResponse.text();
+ throw Error('Guest RTDB read failed HTTP '+guestResponse.status+': '+info.slice(0,160));
+}
+const value=await guestResponse.json();
+ensure(value===null||(value&&typeof value==='object'&&!Array.isArray(value)),
+  'RTDB read shape mismatch');
+const count=value?Object.keys(value).length:0;
+ensure(count<=1000,'RTDB count over supported limit');
+console.log('LIVE_GUEST_READ_PASS','primary_record_count='+count,'business_writes=0');
+
+const browsers=['google-chrome','google-chrome-stable','chromium','chromium-browser'];
+const chosen=browsers.find(bin=>spawnSync(bin,['--version'],{encoding:'utf8',timeout:3000}).status===0);
+ensure(chosen,'No Chromium binary on GitHub runner');
+const chrome=spawnSync(chosen,[
+  '--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+  '--disable-extensions','--no-first-run','--no-default-browser-check',
+  '--window-size=1920,1080','--virtual-time-budget=15000','--dump-dom',base
+],{encoding:'utf8',timeout:85000,maxBuffer:12*1024*1024});
+ensure(chrome.status===0,'Headless Chrome failed: '+String(chrome.stderr).slice(-500));
+const dom=String(chrome.stdout);
+const rootIndex=dom.indexOf('id="root"');
+ensure(rootIndex!==-1,'Chrome did not see app mount');
+const after=dom.slice(rootIndex+9,rootIndex+6000);
+ensure(/<div|<main|<section|<header/.test(after)&&!/^\s*><\/div>/.test(after),
+  'Chrome saw an empty React root');
+ensure(/Nội dung trình|HĐND|Danh sách|Dữ liệu/.test(after),
+  'Chrome did not render expected HopHDND application text');
+console.log('LIVE_CHROMIUM_RENDER_PASS','root_populated=true');
+console.log('FINAL_LIVE_SMOKE_PASS','source='+expectedSha,'guest_count='+count);
