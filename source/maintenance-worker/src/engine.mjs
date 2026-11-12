@@ -4,6 +4,7 @@ import {
   rowsToMap,samePointer,sanitizeRows,sha256,stableJson
 } from './domain.mjs';
 import {hmacSignature,verifyHmac} from './security.mjs';
+import {persistVerifiedArchive,readVerifiedArchive} from './backup-store.mjs';
 
 const MAX_ARCHIVE_BYTES=MAX_PAYLOAD_BYTES;
 const MAX_STAGE_AGE_MS=10*60*1000;
@@ -117,6 +118,13 @@ export async function prepareMaintenance(db,env,identity,input,{now=Date.now()}=
       databaseURL:env.FIREBASE_DATABASE_URL});
   }
   const manifest=await manifestForRows(rows,operationId);
+  // Before ANY database staging write, take a server-signed, independently
+  // retained backup and verify the stored bytes. No external store = NO writes.
+  // A root-level disaster recovery copy of other Firebase branches/Rules/Auth
+  // is a separate operational requirement; this archive is app-scoped only.
+  const offsiteArchive=await exportArchive(db,env,{now});
+  const offsiteRef=await persistVerifiedArchive(env.MAINTENANCE_ARCHIVE_BUCKET,
+    operationId,offsiteArchive);
   const oldGen=state.active.generationId;
   const backup={previous:state.active,generation:{items:state.items},
     permissionsJson:stableJson(root.datasetV2.permissions?.[oldGen]??null),
@@ -133,6 +141,7 @@ export async function prepareMaintenance(db,env,identity,input,{now=Date.now()}=
     expiresAt:now+MAX_STAGE_AGE_MS,expected:state.active,oldCount:state.active.rowCount,
     newCount:rows.length,manifest,baselineHash:await sha256(baseline),
     backupHash:await sha256(backupJson),candidateHash:await sha256(candidateJson),
+    offsiteBackup:{...offsiteRef,operationId},
     sourceName:action==='replace'?body.sourceName:action};
   safeJsonSize(root);
   const response=await db.putIfMatch('hdnd',root,observed.etag);
@@ -166,6 +175,15 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
     'ACTIVE_GENERATION_CHANGED');
   requireCondition(await sha256(baseline)===prep.baselineHash,
     'ACTIVE_DATA_CHANGED_SINCE_PREPARE');
+  // A prepared same-RTDB backup alone does not protect against project loss.
+  // Refuse to commit when the independently stored signed backup is absent,
+  // corrupted, unverifiable, or does not belong to the current generation.
+  const offsite=await readVerifiedArchive(env.MAINTENANCE_ARCHIVE_BUCKET,prep.offsiteBackup);
+  await verifySignedArchive(offsite,env);
+  requireCondition(offsite.payload.projectId===env.FIREBASE_PROJECT_ID&&
+    offsite.payload.databaseURL===env.FIREBASE_DATABASE_URL&&
+    samePointer(offsite.payload.nodes?.['hdnd/datasetV2']?.active,state.active),
+    'OFFSITE_BACKUP_ORIGIN_OR_GENERATION_MISMATCH');
   const backupJson=root.datasetV2.backups?.[op];
   const candidateJson=root.datasetV2.candidates?.[op];
   requireCondition(typeof backupJson==='string'&&typeof candidateJson==='string'&&
