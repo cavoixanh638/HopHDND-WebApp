@@ -1,0 +1,50 @@
+/* 12/11/2026: REAL App List chrome parity with the isolated RAM-only preview.
+   Shared data, authentication, permissions, leases and history remain unchanged.
+   Never apply to report/customize pages or grant any demo-only write action. */
+.app-shell.list-visual-parity > main > .item-list-card {
+  border:0;border-radius:0;box-shadow:none;background:transparent;
+  padding:0;margin:0;
+}
+.app-shell.list-visual-parity .item-list-card > .item-data-region {
+  background:transparent;
+}
+.app-shell.list-visual-parity .item-data-region > .admin-list-heading,
+.app-shell.list-visual-parity .item-data-region > .item-list-page-title {
+  margin:4px 0 6px;padding:2px 4px 4px;
+}
+.app-shell.list-visual-parity .item-data-region > .admin-list-heading {gap:7px;}
+.app-shell.list-visual-parity .item-data-region .list-filter-toolbar {padding:4px 0;}
+/* Keep existing admin tools reachable, but hide the rarely used controls at rest. */
+.app-shell.list-visual-parity .admin-list-controls[hidden] {display:none!important;}
+.app-shell.list-visual-parity .item-data-region[data-preview-options="closed"] > .card-header {
+  display:none!important;
+}
+.app-shell.list-visual-parity .admin-preview-options-toggle {
+  flex-shrink:0;min-height:28px;padding:3px 9px;font-size:12px;font-weight:600;
+}
+.app-shell.list-visual-parity .admin-list-heading .admin-list-rename-trigger {
+  min-height:28px;padding:3px 9px;font-size:12px;
+}
+@media(min-width:1100px){
+  .app-shell.list-visual-parity .item-summary-card:not(.item-summary-total){
+    padding:8px 6px 7px;
+  }
+  .app-shell.list-visual-parity .item-summary-fraction{margin:3px 0 4px}
+  .app-shell.list-visual-parity .item-summary-progress{height:5px;margin-bottom:5px}
+  .app-shell.list-visual-parity .item-summary-bucket{min-height:41px}
+}
+/* No automatic override of previously saved Firebase column widths or order. */
+.app-shell.list-visual-parity .admin-reference-preset {
+  display:grid;gap:6px;margin:6px 0 12px;padding:9px 11px;
+  border:1px solid #c9dbe5;border-radius:7px;background:#f6f9fb;
+  color:#294957;font-size:12px;
+}
+.app-shell.list-visual-parity .admin-reference-preset > button{justify-self:start}
+.app-shell.list-visual-parity .admin-reference-preset small{color:#58717e;font-size:11px}
+.app-shell.list-visual-parity .admin-reference-preset-confirm{display:grid;gap:6px}
+.app-shell.list-visual-parity .admin-reference-preset-actions {
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+}
+@media(max-width:560px){
+  .app-shell.list-visual-parity .admin-preview-options-toggle {flex:1 1 auto;width:auto;}
+}

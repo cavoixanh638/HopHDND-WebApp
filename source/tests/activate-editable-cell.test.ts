@@ -12,8 +12,9 @@ class FakeInput extends FakeElement {
   disabled=false;
   focus=vi.fn();
 }
-function makeCell(controls:Array<FakeButton|FakeInput>,editable=true){
+function makeCell(controls:Array<FakeButton|FakeInput>,editable=true,colKey=''){
   return {classList:{contains:(name:string)=>editable&&name==='editable-cell'},
+    dataset:{colKey},
     querySelectorAll:(_selector:string)=>controls};
 }
 function invoke(cell:ReturnType<typeof makeCell>,target:FakeElement){
@@ -25,6 +26,11 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllGlobals());
 describe('click empty space in a writable detail-list cell',()=>{
+  it.each(['note','specificProgress'])('never forwards a blank %s TD click to its editor',(colKey)=>{
+    const editor=new FakeButton(),cell=makeCell([editor],true,colKey);
+    invoke(cell,new FakeElement());
+    expect(editor.click).not.toHaveBeenCalled();
+  });
   it('opens the only enabled status editor when the user clicks the parent cell',()=>{
     const button=new FakeButton(),cell=makeCell([button]);
     invoke(cell,new FakeElement());

@@ -1,0 +1,95 @@
+/* REF 05/11: one semantic reference inside the active region only.
+   The layer never intercepts table interactions; only its tiny copy button can. */
+.ui-reference-layer{
+  position:fixed;
+  inset:0;
+  height:0;
+  width:0;
+  overflow:visible;
+  z-index:2147483000;
+  pointer-events:none!important;
+  color:#173f56;
+}
+.ui-reference-layer [data-ui-reference-hover]{
+  position:fixed;
+  z-index:1;
+  display:flex;
+  gap:4px;
+  align-items:center;
+  box-sizing:border-box;
+  max-width:min(90vw,380px);
+  min-height:18px;
+  padding:1px 3px;
+  border:1px solid #8bb8d3;
+  border-radius:4px;
+  background:#eaf7fcf7;
+  box-shadow:0 1px 4px #0c30402c;
+  font:700 10px/14px ui-monospace,SFMono-Regular,Consolas,monospace;
+  letter-spacing:0;
+  pointer-events:none!important;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.ui-reference-badge[hidden]{display:none!important;}
+.ui-reference-value{
+  display:block;
+  max-width:250px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.ui-reference-short{display:none;white-space:nowrap;}
+.ui-reference-badge[data-ui-ref-compact="true"] .ui-reference-value{display:none;}
+.ui-reference-badge[data-ui-ref-compact="true"] .ui-reference-short{display:block;}
+.ui-reference-copy{
+  min-width:17px;
+  min-height:16px;
+  padding:0 2px;
+  border:1px solid #94b6c7;
+  border-radius:3px;
+  background:#fff;
+  color:#135279;
+  font-weight:700;font-size:12px;line-height:13px;font-family:inherit;
+  cursor:pointer;
+  pointer-events:auto!important;
+  user-select:none;
+}
+.ui-reference-copy:is(:focus-visible,:hover){outline:2px solid #176c9b;outline-offset:1px;}
+.ui-reference-feedback{font:600 9px/12px system-ui,sans-serif;white-space:nowrap;}
+.ui-reference-feedback:empty{display:none;}
+.ui-reference-help{
+  margin:4px 8px 7px;
+  padding:7px 8px;
+  border-radius:5px;
+  color:#446273;
+  background:#f3f8fb;
+  font-size:11px;
+  line-height:1.35;
+}
+.ui-reference-toggle[aria-pressed="true"]{background:#e9f3fa;color:#174c70;font-weight:700;}
+@media(max-width:720px){
+  .ui-reference-badge{font-size:9px;line-height:12px;gap:2px;}
+  .ui-reference-badge .ui-reference-value{max-width:140px;}
+  .ui-reference-copy{min-width:18px;min-height:18px;}
+}
+@media print{.ui-reference-layer{display:none!important;}}
+
+/* Code inspection only: a native report header is just ~22px tall.
+   Reserve a tiny in-header placement lane so the badge can be INSIDE it,
+   without obscuring the title or Print/PDF button. Ordinary UI is unchanged. */
+[data-ui-reference-active="true"] .report-surface > .card-header{
+  min-height:36px;
+}
+
+
+/* Numeric reports: reserve a 26px interior reference lane ONLY when an
+   authenticated admin enables code inspection. The standard report remains
+   unchanged. Count buttons remain clickable below the lane; do not place
+   the code on top of a number, progress bar or pointer target. */
+[data-ui-reference-active="true"] .report-table tbody td[data-ui-reference-report-column],
+[data-ui-reference-active="true"] .report-table tfoot td[data-ui-reference-report-column]{
+  padding-top:28px!important;
+}
+[data-ui-reference-active="true"] .report-table td.report-clickable-cell .count-drill{
+  top:28px!important;
+}

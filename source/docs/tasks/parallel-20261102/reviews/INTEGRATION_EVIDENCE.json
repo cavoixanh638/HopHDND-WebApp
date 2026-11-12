@@ -1,0 +1,227 @@
+{
+  "schema": "five-stream-integration.v1",
+  "status": "PASS",
+  "date": "2026-11-02",
+  "timezone": "Asia/Saigon",
+  "sourceSha": "66e33b85a3424b2316f090e214e813cd04331afc",
+  "package": {
+    "sourceSha": "66e33b85a3424b2316f090e214e813cd04331afc",
+    "sourceTreeSha": "763180ad21c5d947f081f088eac1df4e66395299",
+    "rulesRawSha256": "e19b8d7c395bc21a73ccb7499c3117bec034e6172f7f208754d474ce09f9a5b9",
+    "archiveCount": 6,
+    "archives": [
+      {
+        "file": "web-pages-default-disabled.tar.gz",
+        "sha256": "f73fd3a13e827fab80d4c5224dbc548c4f84958ef754a91c3ba742c52fb772f7",
+        "bytes": 398213
+      },
+      {
+        "file": "web-pages-test-emulator-only.tar.gz",
+        "sha256": "92e02a0751127e294fb0be068d3ec63a5d3752838b421a56c59eba03d5ec7169",
+        "bytes": 401335
+      },
+      {
+        "file": "functions-cellEdit-node22.tar.gz",
+        "sha256": "78886cb93220ad7bb7f668bddbd1aafa50f1ea010d697a7400d2f11e09fcb2cb",
+        "bytes": 90817
+      },
+      {
+        "file": "functions-parentDatasetCommit-node22.tar.gz",
+        "sha256": "040220681a612897cc021cb8ad60cb62682294ca9a52f526dffc109c325a0dc3",
+        "bytes": 37825
+      },
+      {
+        "file": "firebase-full-rules-frcr01.tar.gz",
+        "sha256": "8655cb2528d45c7da219f8b4051fc7e33226cd636b75b841f5669c5e6f79341d",
+        "bytes": 12321
+      },
+      {
+        "file": "operator-first-import-node22-sources.tar.gz",
+        "sha256": "8b4611ade34f3d025b06f21b9e617a7868c5308cdb8b758c0f98e9fe09ae08b1",
+        "bytes": 412606
+      }
+    ],
+    "productionWeb": "NOT_BUILT_NOT_AUTHORIZED",
+    "productionAuthorized": false
+  },
+  "runs": [
+    {
+      "id": 41451315451,
+      "name": "Chat4 isolated backup audit and emulator restore (NO production)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315451",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315381,
+      "name": "Chat 5 SHA-pinned release rehearsal (NO DEPLOY)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315381",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315289,
+      "name": "Parallel Chat 2 - scoped UI checks (no deploy)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315289",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315486,
+      "name": "Chat 1 backend — both Functions FULL Rules Auth RTDB",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315486",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315363,
+      "name": "Chat 3 isolated first-import CLI proof (NO DEPLOY)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315363",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315321,
+      "name": "Parallel Chat 2 - real App on isolated Firebase Emulator (NO deploy)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315321",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    },
+    {
+      "id": 41451315419,
+      "name": "Verify HopHDND source",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/41451315419",
+      "head_sha": "66e33b85a3424b2316f090e214e813cd04331afc"
+    }
+  ],
+  "jobs": [
+    {
+      "run_id": 41451315451,
+      "id": 125296946779,
+      "name": "rehearsal",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315381,
+      "id": 125296946587,
+      "name": "source-rebuild",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315289,
+      "id": 125296945705,
+      "name": "ui-checks",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315486,
+      "id": 125296947177,
+      "name": "backend-real-emulators",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315363,
+      "id": 125296947167,
+      "name": "windows-receipt-guard",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315363,
+      "id": 125296947624,
+      "name": "operator-cli",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315321,
+      "id": 125296946289,
+      "name": "chat2-full-app-emulator",
+      "conclusion": "success"
+    },
+    {
+      "run_id": 41451315419,
+      "id": 125296946629,
+      "name": "verify",
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 13144094697,
+      "name": "parallel-chat4-backup-41451315451-demo-only",
+      "digest": "sha256:10c299f58787668c525d576080a281d1f9578479219cb856b26cecb1cf2f29b2",
+      "run_id": 41451315451,
+      "expires_at": "2026-11-16T13:16:01Z",
+      "expired": false
+    },
+    {
+      "id": 13145110937,
+      "name": "chat5-release-rehearsal-66e33b85a3424b2316f090e214e813cd04331afc-1",
+      "digest": "sha256:1b6eb324b0a4f7ab033b6b43c914e103f5dfaa4a4a0603c1a9e58058bc831df6",
+      "run_id": 41451315381,
+      "expires_at": "2026-11-23T13:16:05Z",
+      "expired": false
+    },
+    {
+      "id": 13144064190,
+      "name": "parallel-chat2-full-app-41451315321",
+      "digest": "sha256:89b8b9ceb38beb9d1e768c3a592d80a3943f1f869389e64ebd2acfb065676d87",
+      "run_id": 41451315321,
+      "expires_at": "2026-11-16T13:17:12Z",
+      "expired": false
+    },
+    {
+      "id": 13144344140,
+      "name": "parallel-chat1-real-backend-41451315486-1",
+      "digest": "sha256:74f14210ac6d0e3690fc00f3e1bf452e32333c8cddf32b92869e7f05024dadff",
+      "run_id": 41451315486,
+      "expires_at": "2026-11-23T13:16:30Z",
+      "expired": false
+    },
+    {
+      "id": 13144996307,
+      "name": "chat2-component-chrome-41451315289",
+      "digest": "sha256:9edd71173fe89a296ce59f2fb7af80b282b53d15a76de41688f1fdfec8919292",
+      "run_id": 41451315289,
+      "expires_at": "2026-11-16T13:16:06Z",
+      "expired": false
+    },
+    {
+      "id": 13145410081,
+      "name": "hophdnd-compact-interactive-offline",
+      "digest": "sha256:a47de35b353274583864d496d8ea6fcbeea617deb0647d64abf9c49a175493c8",
+      "run_id": 41451315419,
+      "expires_at": "2026-11-16T13:18:35Z",
+      "expired": false
+    },
+    {
+      "id": 13144439119,
+      "name": "hophdnd-verified-hosting-candidates",
+      "digest": "sha256:bd1a3934e06e225d49ff85e92458ce41520774097c4da91b1616e8a62d66fe58",
+      "run_id": 41451315419,
+      "expires_at": "2026-11-16T13:16:38Z",
+      "expired": false
+    },
+    {
+      "id": 13144393973,
+      "name": "hophdnd-browser-smoke-preview",
+      "digest": "sha256:c9a392fbdf8378fef8c1e3718519de1b3a272e8a0112bb7f750f7dead8c879e5",
+      "run_id": 41451315419,
+      "expires_at": "2026-11-09T13:18:36Z",
+      "expired": false
+    }
+  ],
+  "production": {
+    "merge": false,
+    "deploy": false,
+    "publish": false,
+    "access": false
+  }
+}

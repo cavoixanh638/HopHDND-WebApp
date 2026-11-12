@@ -1,0 +1,6 @@
+interface:
+  display_name: "Điều phối chat song song"
+  short_description: "Phân việc độc lập, tự lưu checkpoint và tiếp quản chat"
+  default_prompt: "Dùng $parallel-workstreams để phân việc độc lập và duy trì checkpoint ngắn cho các luồng chat."
+policy:
+  allow_implicit_invocation: true

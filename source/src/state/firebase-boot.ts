@@ -22,7 +22,11 @@ function createServices(){
   const config=emulator?{
     apiKey:'demo-test-key',authDomain:'demo-hdnd.firebaseapp.com',
     projectId:'demo-hdnd',appId:'demo-hdnd',
-    databaseURL:'https://demo-hdnd.firebaseio.com'
+    // QA full-App uses the SAME isolated default RTDB namespace as the
+    // Functions Emulator. Other pages-test smoke retains its old namespace.
+    databaseURL:import.meta.env.VITE_QA_DEFAULT_RTDB_NAMESPACE==='true'
+      ?'https://demo-hdnd-default-rtdb.firebaseio.com'
+      :'https://demo-hdnd.firebaseio.com'
   }:firebaseConfig;
   const longpoll=!emulator&&typeof window!=='undefined'&&
     new URLSearchParams(window.location?.search??'').get('dbTransport')==='longpoll';
@@ -39,6 +43,38 @@ function createServices(){
   if(emulator){
     connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
     connectDatabaseEmulator(database,'127.0.0.1',9000);
+    // PR95 real-Chromium two-tab harness: a test-only SDK Google Auth login.
+    // Only the pages-test build on a loopback origin may install this hook;
+    // production does not load the module or expose an admin shortcut.
+    if(typeof window!=='undefined'&&import.meta.env.MODE==='pages-test'&&
+      ['localhost','127.0.0.1'].includes(window.location.hostname)){
+      void import('./firebase-emulator-admin-auth').then(({signInAsEmulatorGoogleAdmin})=>{
+        const testing=window as Window & {
+          __pr95EmulatorGoogleAdminSignIn?:()=>Promise<{
+            uid:string;email:string|null;emailVerified:boolean;providerIds:string[]
+          }>
+        };
+        testing.__pr95EmulatorGoogleAdminSignIn=async()=>{
+          const user=await signInAsEmulatorGoogleAdmin(auth);
+          return {uid:user.uid,email:user.email,emailVerified:user.emailVerified,
+            providerIds:user.providerData.map(p=>p.providerId)};
+        };
+      });
+      void import('../data/firebase-versioned-replacement').then(
+        ({armEmulatorPostCommitCallerAckLoss})=>{
+          const testing=window as Window & {
+            __pr95EmulatorArmLostCallerAck?:(operationId:string)=>void
+          };
+          testing.__pr95EmulatorArmLostCallerAck=(operationId:string)=>
+            armEmulatorPostCommitCallerAckLoss(database,operationId);
+        });
+      if(import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+        void import('../data/spark-cell-ack-test').then(({armSparkCellCallerAckLoss})=>{
+          const testing=window as Window & {__pr159ArmSparkCellCallerAckLoss?:()=>void};
+          testing.__pr159ArmSparkCellCallerAckLoss=()=>armSparkCellCallerAckLoss(database);
+        });
+      }
+    }
   }
   markStartup('firebase-initialized');
   return {auth,database,emulator};

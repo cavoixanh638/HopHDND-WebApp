@@ -2,6 +2,7 @@ import type {Item,ReportConfig} from '../../shared/types';
 import {DEFAULT_REPORTS,aggregateReport,getKpis,isActive,normalizeReportStatus,reportItems} from './reporting';
 import {reportStage,type ReportStage} from './report-workflow';
 import {normalizeSearch} from './search';
+import {effectiveBuildStatus} from './pr95-v5-l4-build-effective';
 
 /** Exactly the existing report scopes, normalizer and completion denominator.
  * The four summary tiles are a read-only projection of those same records. */
@@ -20,12 +21,12 @@ const definitions:Readonly<Record<SummaryStage['id'],{title:string;labels:readon
   build:{title:'Trình HĐND xây dựng NQ',labels:[
     {stage:'source',label:'Sở chưa trình'},
     {stage:'office',label:'VP đang xử lý'},
-    {stage:'next',label:'Đã trình - chưa có QĐ'},
+    {stage:'next',label:'Đã trình, chờ QĐ'},
     {stage:'completed',label:'Đã có QĐ'}]},
   nq:{title:'Trình HĐND ban hành NQ',labels:[
     {stage:'source',label:'Sở chưa trình'},
     {stage:'office',label:'VP đang xử lý'},
-    {stage:'completed',label:'Đã trình'}]},
+    {stage:'completed',label:'Hoàn thành'}]},
 };
 function buildStage(items:Item[],id:SummaryStage['id']):SummaryStage {
   const config=DEFAULT_REPORTS.find(report=>report.id===id) as ReportConfig;
@@ -34,7 +35,7 @@ function buildStage(items:Item[],id:SummaryStage['id']):SummaryStage {
   const bucketMap=new Map<ReportStage,Item[]>();
   const unmatched:Item[]=[];
   for(const item of report.items){
-    const normalized=normalizeReportStatus(item[config.statusField],config);
+    const normalized=normalizeReportStatus(config.id==='build'?effectiveBuildStatus(item):item[config.statusField],config);
     const stage=reportStage(normalized,config);
     if(known.labels.some(label=>label.stage===stage)){
       bucketMap.set(stage,[...(bucketMap.get(stage)??[]),item]);

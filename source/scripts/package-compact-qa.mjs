@@ -20,8 +20,17 @@ async function readAsset(path){
 const scripts=[...html.matchAll(/<script\s+type="module"\s+[^>]*src="([^"]+)"[^>]*><\/script>/g)];
 const styles=[...html.matchAll(/<link\s+[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
 if(scripts.length!==1||styles.length!==1)throw Error('QA must have exactly one local JS and CSS bundle');
-for(const [match,src] of scripts)html=html.replace(match,'<script type="module">'+(await readAsset(src)).replace(/<\/script/gi,'<\\/script')+'</script>');
-for(const [match,src] of styles)html=html.replace(match,'<style>'+(await readAsset(src)).replace(/<\/style/gi,'<\\/style')+'</style>');
+// Inline content exactly, never using a String.replace replacement template.
+// Compiled bundles may contain "$&", "$$", "$`", "$\u0027" as literal data;
+// a callback preserves these sequences rather than expanding substitutions.
+for(const [match,src] of scripts){
+  const js=(await readAsset(src)).replace(/<\/script/gi,'<\\/script');
+  html=html.replace(match,()=>'<script type="module">'+js+'</script>');
+}
+for(const [match,src] of styles){
+  const css=(await readAsset(src)).replace(/<\/style/gi,'<\\/style');
+  html=html.replace(match,()=>'<style>'+css+'</style>');
+}
 const other=await readdir(resolve(root,'assets'));
 if(other.length!==consumed.size||other.some(name=>!consumed.has('assets/'+name)))
   throw Error('Unexpected extra chunks or assets: '+other.filter(name=>!consumed.has('assets/'+name)).join(','));

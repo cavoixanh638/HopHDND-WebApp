@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import {describe,it,expect} from 'vitest';
 import {createDemoItems} from '../src/data/demo-items';
 import {summarizeListItems,filterListBySummary} from '../src/domain/item-summary';
@@ -12,6 +13,23 @@ function make(id:string,overrides:Partial<Item>={}):Item{
    isDropped:false,archivedAt:null,...overrides};
 }
 describe('Four list cards reuse report scopes and normalization',()=>{
+ it('B00 and C01-C03 use original items, never F-filtered table rows',()=>{
+  const list=readFileSync(new URL('../src/features/items/ItemList.tsx',import.meta.url),'utf8');
+  const block=list.split('<ItemSummaryCards ')[1]?.split('showFilterFooters={false}/>')[0];
+  expect(block).toBeTruthy();
+  expect(block).toContain('items={items}');
+  expect(block).not.toContain('items={toolbarBase}');
+  expect(block).not.toContain('items={filtered}');
+  expect(list).toContain('filterByChips(toolbarBase,kindSelection,summarySelection)');
+  const entire=[make('a',{room:'Phòng A',type:'HC'}),
+    make('b',{room:'Phòng B',type:'QPPL',progressParty:'VP đang xử lý'})];
+  const all=summarizeListItems(entire);
+  expect(all.total.total).toBe(2);
+  expect(all.stages[0].total).toBe(2);
+  // Filtering affects visible List rows, never the source aggregate.
+  expect(summarizeListItems(entire.filter(row=>row.room==='Phòng A')).total.total).toBe(1);
+ });
+
  const rows:Item[]=[
   make('nq1'),
   make('nq2',{progressParty:'VP đang xử lý',progressBuild:'VP đang thực hiện',progressCouncil:'VP đang thực hiện'}),

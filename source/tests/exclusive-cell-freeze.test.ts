@@ -1,45 +1,83 @@
 import {readFileSync} from 'node:fs';
 import {afterAll,beforeAll,beforeEach,describe,expect,it} from 'vitest';
 import {initializeTestEnvironment,assertFails,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {get,ref,set,update,serverTimestamp} from 'firebase/database';
+import {getDatabase,connectDatabaseEmulator,goOffline,get,ref,set,update,serverTimestamp} from 'firebase/database';
+import {initializeApp,deleteApp,type FirebaseApp} from 'firebase/app';
+import {getAuth,connectAuthEmulator,GoogleAuthProvider,signInWithCredential,signInAnonymously,signOut,type Auth} from 'firebase/auth';
 import type {User} from 'firebase/auth';
 import {createDemoItems} from '../src/data/demo-items';
 import {updateDraft} from '../src/domain/items';
 import {FirebaseRepository} from '../src/data/firebase-repository';
+import {callCellEdit} from '../src/data/cell-edit-api';
 import {CellEditSessionManager,lockPath} from '../src/data/cell-edit-leases';
 import {initialFreeze,readFreeze,setFreezeMode,activeEditLeaseCount} from '../src/data/freeze-control';
 import {migrateMirrorToPrimary,bootstrapApprovedRowsToPrimary} from '../src/data/firebase-primary-bootstrap';
 import {parseSheetConfig,DEFAULT_SHEET_URL} from '../src/data/sheet-config';
 
 const enabled=process.env.FIREBASE_DATABASE_EMULATOR_HOST==='127.0.0.1:9000';
-const candidate=JSON.parse(readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
+const candidate=JSON.parse(readFileSync(process.env.VITE_FIREBASE_WRITE_MODE==='spark'?'firebase/database.spark.rules.json':'firebase/database.exclusive-candidate.rules.json','utf8'));
 const adminClaims={email:'cavoixanh638@gmail.com',email_verified:true,firebase:{sign_in_provider:'google.com' as const}};
-const actor=(id:string,admin=false)=>({uid:id,email:admin?adminClaims.email:id+'@example.test',
-  emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]}) as User;
+const realActorByTag=new Map<string,User>();
+const actor=(id:string,admin=false)=>realActorByTag.get(id)??({
+  uid:id,email:admin?adminClaims.email:id+'@example.test',
+  emailVerified:true,isAnonymous:false,providerData:[{providerId:'google.com'}]
+} as User);
 const row={...createDemoItems()[0],recordId:'r1',displayCode:'NQ01',revision:1,archivedAt:null};
 describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB security',()=>{
   let env:RulesTestEnvironment;
-  const guest=(id:string)=>env.authenticatedContext(id,{email:id+'@example.test',email_verified:true,firebase:{sign_in_provider:'google.com'}}).database();
-  const anonymous=(id:string)=>env.authenticatedContext(id,{firebase:{sign_in_provider:'anonymous'}}).database();
-  const admin=()=>env.authenticatedContext('administrator',adminClaims).database();
+  const realClients=new Map<string,{app:FirebaseApp;auth:Auth;db:import('firebase/database').Database;user:User}>();
+  const guest=(id:string)=>realClients.get(id)?.db??env.authenticatedContext(id,{
+    email:id+'@example.test',email_verified:true,
+    firebase:{sign_in_provider:'google.com'}}).database();
+  const anonymous=(id:string)=>realClients.get(id)?.db??env.authenticatedContext(id,{
+    firebase:{sign_in_provider:'anonymous'}}).database();
+  const admin=()=>real('administrator').db;
+  const real=(id:string)=>{const client=realClients.get(id);
+    if(!client)throw Error('Real test Auth principal not initialized: '+id);
+    return client;
+  };
   const manager=(id:string,isAdmin=false)=>new CellEditSessionManager(
-    (isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin));
+    real(id).db,()=>real(id).user);
   const publicManager=(id:string)=>new CellEditSessionManager(
-    anonymous(id) as never,()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User));
+    real(id).db,()=>real(id).user);
   const publicRepo=(id:string,session:CellEditSessionManager)=>{
-    const r=new FirebaseRepository(anonymous(id) as never,
-      ()=>({uid:id,isAnonymous:true,providerData:[]} as unknown as User),
+    const c=real(id);
+    const r=new FirebaseRepository(c.db,()=>c.user,
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
     r.leaseManager=session;return r;
   };
   const repo=(id:string,session:CellEditSessionManager,isAdmin=false)=>{
-    const r=new FirebaseRepository((isAdmin?admin():guest(id)) as never,()=>actor(id,isAdmin),
+    const c=real(id);
+    const r=new FirebaseRepository(c.db,()=>c.user,
       ()=>({columns:{note:true,specificProgress:true,progressParty:true}}));
     r.leaseManager=session;return r;
   };
-  beforeAll(async()=>{env=await initializeTestEnvironment({projectId:'demo-hdnd-exclusivity',database:{
-    host:'127.0.0.1',port:9000,rules:JSON.stringify(candidate)
-  }});},30000);
+  beforeAll(async()=>{
+    if(process.env.FIREBASE_AUTH_EMULATOR_HOST!=='127.0.0.1:9099'||
+       !process.env.FIREBASE_EMULATOR_HUB)
+      throw Error('PR142 exclusive tests require real local Auth+Functions+FULL Rules');
+    env=await initializeTestEnvironment({projectId:'demo-hdnd',database:{
+      host:'127.0.0.1',port:9000,rules:JSON.stringify(candidate)
+    }});
+    const signed=['administrator','a','b','guest','forger','ungranted','untrusted'];
+    const anonymousUsers=['anon-a','anon-denied','anon-locked','anon-read'];
+    for(const id of [...signed,...anonymousUsers]){
+      const app=initializeApp({apiKey:'demo-exclusive-only',authDomain:'demo-hdnd.firebaseapp.com',
+        projectId:'demo-hdnd',databaseURL:'https://demo-hdnd.firebaseio.com',
+        appId:'exclusive-'+id},'pr142-exclusive-'+id);
+      const auth=getAuth(app);connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const db=getDatabase(app);connectDatabaseEmulator(db,'127.0.0.1',9000);
+      const user=anonymousUsers.includes(id)?
+        (await signInAnonymously(auth)).user:
+        (await signInWithCredential(auth,GoogleAuthProvider.credential(JSON.stringify({
+          sub:id,email:id==='administrator'?adminClaims.email:id+'@example.test',
+          email_verified:true})))).user;
+      realClients.set(id,{app,auth,db,user});
+      realActorByTag.set(id,user);
+    }
+    expect(real('administrator').user.emailVerified).toBe(true);
+    expect(real('anon-a').user.isAnonymous).toBe(true);
+  },60000);
   beforeEach(async()=>{
     await env.clearDatabase();
     await env.withSecurityRulesDisabled(async context=>{
@@ -47,12 +85,20 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await set(ref(context.database() as never),{
         hdnd:{items:{r1:{...record,operationId:'initial',updatedAt:Date.now(),updatedBy:'administrator'}},
           permissions:{columns:{note:true,specificProgress:true,progressParty:true}},
-          editors:{a:true,b:true,forger:true,ungranted:true,untrusted:true},
+          editors:Object.fromEntries(['a','b','guest','forger','ungranted','untrusted']
+            .map(tag=>[real(tag).user.uid,true])),
           control:{revision:1,editingLocked:false,changedAt:new Date().toISOString()}}
       });
     });
   });
-  afterAll(async()=>env?.cleanup());
+  afterAll(async()=>{
+    await env?.cleanup();
+    for(const c of realClients.values()){
+      try{goOffline(c.db);}catch{}
+      try{await signOut(c.auth);}catch{}
+      try{await deleteApp(c.app);}catch{}
+    }
+  });
   it('limits Firebase read scope without breaking ordinary ItemList, grants and freeze watchers',async()=>{
     const visitor=anonymous('anon-read'),staff=guest('a'),unknown=guest('stranger'),root=admin();
     // Public viewing is the product policy: anonymous, unknown Google and no auth can read business rows.
@@ -69,10 +115,10 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       await assertFails(get(ref(db as never,'hdnd/freezeReceipts')));
     }
     // Staff can only discover THEIR membership; anonymous visitors see no other UID.
-    expect((await get(ref(staff as never,'hdnd/editors/a'))).val()).toBe(true);
-    await assertFails(get(ref(staff as never,'hdnd/editors/b')));
-    await assertFails(get(ref(visitor as never,'hdnd/editors/a')));
-    expect((await get(ref(visitor as never,'hdnd/editors/anon-read'))).val()).toBe(null);
+    expect((await get(ref(staff as never,'hdnd/editors/'+real('a').user.uid))).val()).toBe(true);
+    await assertFails(get(ref(staff as never,'hdnd/editors/'+real('b').user.uid)));
+    await assertFails(get(ref(visitor as never,'hdnd/editors/'+real('a').user.uid)));
+    expect((await get(ref(visitor as never,'hdnd/editors/'+real('anon-read').user.uid))).val()).toBe(null);
     await assertFails(get(ref(unknown as never,'hdnd/editLocks/r1/note')));
     expect((await get(ref(visitor as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
     // An allowlisted editor must still read the exact lock node to perform CAS.
@@ -100,7 +146,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(saved.ok,saved.message).toBe(true);
     const fresh=(await get(ref(db as never,'hdnd/items/r1'))).val();
     expect(fresh.note).toBe('Khách cập nhật ô được phép');
-    expect(fresh.updatedBy).toBe(id);
+    expect(fresh.updatedBy).toBe(real(id).user.uid);
     expect(fresh.history[String(fresh.revision%50)].changes.note).toBe('Khách cập nhật ô được phép');
     await session.finish('r1','note');await session.dispose();
   });
@@ -153,13 +199,13 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     }));
   });
   it('admits only enrolled Google UID, admin can revoke without altering cell grants',async()=>{
-    const staff=guest('a'),list=ref(staff as never,'hdnd/editors/a');
+    const staff=guest('a'),list=ref(staff as never,'hdnd/editors/'+real('a').user.uid);
     expect((await get(list)).val()).toBe(true);
     await assertFails(set(list,false));
-    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),false);
     const managerA=manager('a');
     await expect(managerA.acquire('r1','note','multiline')).rejects.toThrow();
-    await set(ref(admin() as never,'hdnd/editors/a'),true);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),true);
     await managerA.acquire('r1','note','multiline');
     await managerA.cancel('r1','note');
     await managerA.dispose();
@@ -168,7 +214,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const editor=manager('a'),writer=repo('a',editor);
     const [initial]=await writer.list();
     await editor.acquire('r1','note','multiline');
-    await set(ref(admin() as never,'hdnd/editors/a'),false);
+    await set(ref(admin() as never,'hdnd/editors/'+real('a').user.uid),false);
     const [result]=await writer.save([updateDraft(initial,undefined,{note:'revoked UID must not write'})!]);
     expect(result.ok).toBe(false);
     const after=(await writer.list())[0];
@@ -245,7 +291,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
   it('only one of two different users (or two tabs same UID) can hold the same field',async()=>{
     const a=manager('a'),b=manager('b');
     expect(await a.acquire('r1','note','multiline')).toBe(true);
-    await expect(b.acquire('r1','note','multiline')).rejects.toThrow(/đang được sửa/);
+    await expect(b.acquire('r1','note','multiline')).rejects.toThrow(/Ô đang được phiên khác giữ khóa/);
     const otherTab=manager('a');
     await expect(otherTab.acquire('r1','note','multiline')).rejects.toThrow();
     expect(await b.acquire('r1','specificProgress','multiline')).toBe(true);
@@ -435,21 +481,81 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await session.dispose();
   });
 
-  // KNOWN NO-GO SECURITY LIMITATION: the owning user's read access exposes
-  // the lease token to another tab carrying the same Firebase auth.uid.
-  // RTDB Rules cannot distinguish two browser tabs sharing one auth identity.
-  // Vitest expected failure keeps this adversarial regression visible in CI,
-  // without hiding it as a PASS/solved security property. Do not remove the
-  // expected-failure marker without a server-enforced session isolation design.
-  it.fails('KNOWN BLOCKER: deny same-UID second tab replaying a visible foreign tab lease token',async()=>{
-    const first=manager('a');
-    await first.acquire('r1','note','multiline');
-    // Both tabs have the same Firebase UID, but NOT the same tab-local session.
-    // The second tab has not obtained a lease and must not be able to save.
+  // Former PR142 expected-failure is now an ordinary PASS regression.
+  // Both browsers carry the SAME verified Google Auth UID. The public lease
+  // and row.editProofs can be read, but neither is a bearer credential; only
+  // the private 256-bit secret owned by the first manager may authorize any
+  // RENEW / RELEASE / SAVE. No expected-failure, skip or fake service claims.
+  it('REGRESSION PASS: second tab same UID cannot replay lease or editProofs for SAVE/RENEW/RELEASE',async()=>{
+    if(process.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+      const {sparkSession,closeSparkSession}=await import('../src/data/spark-session');
+      const first=manager('a'),writer=repo('a',first);
+      const secondApp=initializeApp(real('a').app.options,'spark-second-google-tab');
+      const secondAuth=getAuth(secondApp);
+      connectAuthEmulator(secondAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+      const secondDb=getDatabase(secondApp);connectDatabaseEmulator(secondDb,'127.0.0.1',9000);
+      try{
+        const signed=await signInWithCredential(secondAuth,GoogleAuthProvider.credential(JSON.stringify({sub:'a',email:'a@example.test',email_verified:true})));
+        expect(signed.user.uid).toBe(real('a').user.uid);
+        await first.acquire('r1','note','multiline');
+        const owner=await sparkSession(real('a').db),other=await sparkSession(secondDb);
+        expect(owner.uid).not.toBe(other.uid);
+        const visible=(await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val();
+        expect(visible.uid).toBe(owner.uid);
+        expect(visible).not.toHaveProperty('secret');
+        const baseline=(await writer.list())[0];
+        const denied=async()=>{
+          const rowBefore=(await get(ref(secondDb,'hdnd/items/r1'))).val();
+          const lockBefore=(await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val();
+          for(const action of ['renew','release','save'] as const){
+            const patch=updateDraft((await writer.list())[0],undefined,{note:'same-account replay'})!;
+            await expect(callCellEdit(action==='save'?{
+              action,scope:'legacy',recordId:'r1',operationId:patch.operationId,patch,
+              leases:{note:{token:visible.token,secret:visible.token}}
+            }:{action,scope:'legacy',recordId:'r1',operationId:crypto.randomUUID(),field:'note',token:visible.token,secret:visible.token},secondDb)).rejects.toThrow();
+          }
+          await assertFails(set(ref(other.database,'hdnd/editLocks/r1/note'),{...visible,revision:visible.revision+1,expiresAt:0}));
+          expect((await get(ref(secondDb,'hdnd/items/r1'))).val()).toEqual(rowBefore);
+          expect((await get(ref(secondDb,'hdnd/editLocks/r1/note'))).val()).toEqual(lockBefore);
+        };
+        await denied();
+        const saved=(await writer.save([updateDraft(baseline,undefined,{note:'owner Spark save'})!]))[0];
+        expect(saved.ok,saved.message).toBe(true);
+        await denied();
+        await first.finish('r1','note');
+      }finally{await first.dispose();await closeSparkSession(secondDb);await deleteApp(secondApp);}
+      return;
+    }
+    const first=manager('a'),writer=repo('a',first);
     const secondTab=guest('a');
-    const original=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    const initial=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    await first.acquire('r1','note','multiline');
     const visibleLease=(await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val();
-    const revision=original.revision+1;
+    expect(typeof visibleLease.proofHash).toBe('string');
+    expect(visibleLease.proofHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(visibleLease).not.toHaveProperty('secret');
+    const realDb=real('a').db;
+    const denied=async(secret:string,label:string)=>{
+      const before=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+      const beforeLease=(await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val();
+      for(const action of ['renew','release','save'] as const){
+        const operationId=crypto.randomUUID();
+        const patch=updateDraft(
+          (await writer.list())[0],undefined,{note:'FORGED FROM '+label+' '+action})!;
+        const envelope=action==='save'?{
+          action,scope:'legacy' as const,recordId:'r1',operationId:patch.operationId,
+          patch,leases:{note:{token:visibleLease.token,secret}}
+        }:{
+          action,scope:'legacy' as const,recordId:'r1',operationId,
+          field:'note' as const,token:visibleLease.token,secret
+        };
+        await expect(callCellEdit(envelope,realDb),label+' '+action).rejects.toThrow();
+      }
+      expect((await get(ref(secondTab as never,'hdnd/items/r1'))).val()).toEqual(before);
+      expect((await get(ref(secondTab as never,'hdnd/editLocks/r1/note'))).val()).toEqual(beforeLease);
+    };
+    await denied(visibleLease.proofHash,'public lease hash');
+    const revision=initial.revision+1;
     await assertFails(update(ref(secondTab as never,'hdnd/items/r1'),{
       note:'Unauthorised same-UID second tab',
       revision,
@@ -460,12 +566,19 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
         operationId:'different-tab-lease-replay',recordId:'r1',
         at:serverTimestamp(),actor:'a',
         changes:{note:'Unauthorised same-UID second tab'},
-        oldValues:{note:original.note}
+        oldValues:{note:initial.note}
       }
     }));
-    const after=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
-    expect(after.revision).toBe(original.revision);
-    await first.cancel('r1','note');
+    const positive=(await writer.save([updateDraft((await writer.list())[0],undefined,{
+      note:'Owner still holds private secret and may save'
+    })!]))[0];
+    expect(positive.ok,positive.message).toBe(true);
+    const saved=(await get(ref(secondTab as never,'hdnd/items/r1'))).val();
+    expect(saved.revision).toBe(initial.revision+1);
+    expect(saved.note).toBe('Owner still holds private secret and may save');
+    expect(saved.editProofs.note).toBe(visibleLease.token);
+    await denied(saved.editProofs.note,'public editProofs token');
+    await first.finish('r1','note');
     await first.dispose();
   });
 
@@ -549,7 +662,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     const drain=await setFreezeMode(admin() as never,actor('administrator',true),initialFreeze,'DRAINING');
     expect((await readFreeze(guest('a') as never)).mode).toBe('DRAINING');
     const b=manager('b');
-    await expect(b.acquire('r1','progressParty','status')).rejects.toThrow(/chốt/);
+    await expect(b.acquire('r1','progressParty','status')).rejects.toThrow(/freeze đã đổi trước khi máy chủ xác nhận/);
     const saved=(await writer.save([updateDraft(baseline,undefined,{note:'Lưu trước chốt'})!]))[0];
     expect(saved.ok,saved.message).toBe(true);
     await a.finish('r1','note');

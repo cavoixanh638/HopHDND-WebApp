@@ -52,8 +52,8 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     saved.options.progressBuild.reverse();
     const merged=mergeCatalogItems(saved,items);
     expect(()=>validateCatalog(merged)).not.toThrow();
-    expect(merged.options.progressBuild.slice(0,saved.options.progressBuild.length))
-      .toEqual(saved.options.progressBuild);
+    expect(merged.options.progressBuild).toEqual(catalogs.options.progressBuild);
+    expect(saved.options.progressBuild).toEqual([...catalogs.options.progressBuild].reverse());
     expect(JSON.stringify(items)).toBe(originalItems);
   });
 
@@ -95,27 +95,27 @@ describe('Danh mục và quan hệ chuyên viên – phòng', () => {
     const old=catalogFromItems(items);
     old.options.progressParty=['Sở chưa trình','ĐU đã gửi TU chưa họp','Đã họp chưa có TBKL','Đã báo cáo TU'];
     const merged=mergeCatalogItems(old,items);
-    expect(merged.options.progressParty).toContain('ĐU đã gửi TU, chưa họp');
+    expect(merged.options.progressParty).toContain('ĐU gửi TU, chưa họp');
     expect(merged.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
     expect(merged.options.progressParty).not.toContain('TU đã cho ý kiến');
-    expect(merged.options.progressParty).toContain('Đã họp/xin phiếu, chưa có TBKL');
+    expect(merged.options.progressParty).toContain('Đã xin ý kiến, chờ TBKL');
     expect(merged.options.progressParty).toContain('Đã có TBKL');
     expect(merged.options.progressParty).not.toContain('Đã báo cáo TU');
     expect(old.options.progressParty).toContain('Đã báo cáo TU');
     const edited=catalogFromItems(items);
     edited.options.progressParty=['Sở chưa trình'];
-    expect(mergeCatalogItems(edited,items).options.progressParty).not.toContain('Đã có TBKL');
+    expect(mergeCatalogItems(edited,items).options.progressParty).toContain('Đã có TBKL'); // official fixed menu
   });
   it('merges the old and replacement Party milestone into ONE dropdown value',()=>{
     const items=createDemoItems(2).map((item,index)=>({...item,
-      progressParty:index===0?'Đã họp, chưa có TBKL':'Đã họp/xin phiếu, chưa có TBKL'}));
+      progressParty:index===0?'Đã họp, chưa có TBKL':'Đã xin ý kiến, chờ TBKL'}));
     const fromExcel=catalogFromItems(items);
-    expect(fromExcel.options.progressParty.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(fromExcel.options.progressParty.filter(value=>value==='Đã xin ý kiến, chờ TBKL')).toHaveLength(1);
     expect(fromExcel.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
     const stored=structuredClone(fromExcel);
     stored.options.progressParty.push('Đã họp, chưa có TBKL');
     const merged=mergeCatalogItems(stored,items);
-    expect(merged.options.progressParty.filter(value=>value==='Đã họp/xin phiếu, chưa có TBKL')).toHaveLength(1);
+    expect(merged.options.progressParty.filter(value=>value==='Đã xin ý kiến, chờ TBKL')).toHaveLength(1);
     expect(merged.options.progressParty).not.toContain('Đã họp, chưa có TBKL');
     expect(items[0].progressParty).toBe('Đã họp, chưa có TBKL'); // Excel source untouched
   });

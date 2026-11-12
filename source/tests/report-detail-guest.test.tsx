@@ -16,7 +16,7 @@ const hooks=vi.hoisted(()=>{
       return [slots[i],(v:any)=>{slots[i]=typeof v==='function'?v(slots[i]):v;}];},
     memo:(fn:any)=>fn()};
 });
-vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo,useEffect:()=>{}}));
+vi.mock('react',()=>({useState:hooks.state,useMemo:hooks.memo,useRef:()=>({current:null}),useEffect:()=>{}}));
 type Node={type:any;props:Record<string,any>};
 function nodes(v:any):Node[]{return Array.isArray(v)?v.flatMap(nodes):
   v&&typeof v==='object'&&'type' in v?[v,...nodes(v.props?.children)]:[];}
