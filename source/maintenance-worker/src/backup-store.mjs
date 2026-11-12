@@ -25,10 +25,15 @@ export async function persistVerifiedArchive(bucket,operationId,archive){
     'OFFSITE_BACKUP_TOO_LARGE');
   const digest=await sha256(body);
   const key=archiveRef(operationId,digest);
-  // Prevent accidental overwrite on this key; true immutability/retention must
-  // additionally be configured on the private bucket outside this code.
-  requireCondition(!(await bucket.get(key)),'OFFSITE_BACKUP_KEY_ALREADY_EXISTS');
-  await bucket.put(key,body,{httpMetadata:{contentType:'application/json'}});
+  // Idempotent re-staging may reuse an identical immutable archive. A different
+  // body at the same digest-addressed key is rejected; never overwrite it.
+  // True retention and delete protection must be configured on the private bucket.
+  const existing=await bucket.get(key);
+  if(existing){
+    requireCondition(await existing.text()===body,'OFFSITE_BACKUP_KEY_COLLISION');
+  }else{
+    await bucket.put(key,body,{httpMetadata:{contentType:'application/json'}});
+  }
   const stored=await bucket.get(key);
   requireCondition(stored&&typeof stored.text==='function','OFFSITE_BACKUP_READBACK_FAILED');
   const observed=await stored.text();
