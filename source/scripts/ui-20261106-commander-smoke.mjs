@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {createServer} from 'node:http';
 import {readFileSync,statSync,mkdirSync,writeFileSync} from 'node:fs';
-import {resolve,extname,join} from 'node:path';
+import {resolve,extname,join,sep} from 'node:path';
 const require=createRequire(import.meta.url);
 const {chromium}=require('../cell-edit-service/node_modules/playwright');
 const root=resolve('dist-compact-qa'),out=resolve('ui-20261106-artifacts');
@@ -16,7 +16,7 @@ const server=createServer((req,res)=>{
  try{
   const path=new URL(req.url,'http://localhost').pathname;
   const file=resolve(root,'.'+(path==='/'?'/compact-qa.html':path));
-  if(!file.startsWith(root+'/')||!statSync(file).isFile())throw Error('404');
+  if(!file.startsWith(root+sep)||!statSync(file).isFile())throw Error('404');
   res.writeHead(200,{'content-type':({
    '.html':'text/html','.js':'text/javascript','.css':'text/css',
    '.svg':'image/svg+xml','.png':'image/png'
@@ -28,7 +28,7 @@ await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const base='http://127.0.0.1:'+server.address().port+'/compact-qa.html';
 let browser;
 try{
- browser=await chromium.launch({headless:true,chromiumSandbox:false,
+ browser=await chromium.launch({headless:true,chromiumSandbox:false,executablePath:process.env.CHROME_PATH||undefined,
   args:['--no-sandbox','--disable-dev-shm-usage']});
  const context=await browser.newContext({serviceWorkers:'block'});
  context.on('request',request=>requests.push(request.url()));

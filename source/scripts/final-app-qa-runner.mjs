@@ -17,9 +17,16 @@ import * as XLSX from 'xlsx';
 
 const requirePlaywright=createRequire(resolve('cell-edit-service/package.json'));
 const {chromium}=requirePlaywright('playwright');
-const PROJECT='demo-hdnd',NAMESPACE='demo-hdnd-default-rtdb';
-const DB='http://127.0.0.1:9000',SITE='http://127.0.0.1:4179';
-const ROOT=resolve('qa-results/final-app-review');
+const SPARK=process.env.FINAL_APP_SPARK==='true';
+if(SPARK){
+  process.env.VITE_FIREBASE_WRITE_MODE='spark';
+  process.env.VITE_QA_DEFAULT_RTDB_NAMESPACE='false';
+  process.env.VITE_PARENT_REPLACEMENT_ENABLED='true';
+  process.env.VITE_PARENT_COMMIT_ENDPOINT='http://127.0.0.1:8787/parentDatasetCommit';
+}
+const PROJECT='demo-hdnd',NAMESPACE=SPARK?'demo-hdnd':'demo-hdnd-default-rtdb';
+const DB='http://127.0.0.1:9000',SITE=SPARK?'http://127.0.0.1:4173':'http://127.0.0.1:4179';
+const ROOT=resolve(SPARK?'qa-results/spark-final-app-review':'qa-results/final-app-review');
 const RULES=resolve(ROOT,'generated/shared.rules.json');
 const reportPath=resolve(ROOT,'witness.json');
 const hash=s=>createHash('sha256').update(s).digest('hex');
@@ -35,7 +42,12 @@ const checkout=git('rev-parse','HEAD');
 const manifest=JSON.parse(readFileSync(resolve(ROOT,'generated/rules-manifest.json'),'utf8'));
 const expected=JSON.parse(readFileSync(RULES,'utf8'));
 assert.equal(manifest.combinedSha256,hash(readFileSync(RULES)));
-if(PIN){
+if(SPARK){
+  assert.equal(PIN,null,'Do not mix Spark integration QA and PR147 pin');
+  assert.equal(manifest.kind,'SPARK_INTEGRATION_RULES_UNMODIFIED_NOT_RELEASE');
+  assert.equal(manifest.candidateSha,checkout);
+  assert.equal(hash(readFileSync('firebase/database.spark.rules.json')),manifest.combinedSha256);
+}else if(PIN){
   assert.match(PIN,/^[a-f0-9]{40}$/);
   assert.equal(checkout,PIN,'QA must checkout the precise PR147 SHA; no moving branch');
   assert.equal(manifest.kind,'PINNED_PR147_CANDIDATE_RULES_UNMODIFIED_NOT_RELEASE');
@@ -174,7 +186,7 @@ function monitor(page,role){
   }).catch(error=>record('ROUTE_MONITOR_ERROR',{role,error:safeError(error)}));
 }
 async function seedWorkbook(){
-  const seedVite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',
+  const seedVite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',cacheDir:'.cache/full-app-qa-fixtures',
     server:{middlewareMode:true},appType:'custom',logLevel:'error'});
   try{
     const [demo,catalog,reports,item,integrity,business]=await Promise.all([
@@ -251,25 +263,24 @@ async function startServices(){
       manifest.combinedSha256,'Pinned candidate Rules changed since QA pin');
   }else{
     const contents={
-      functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',
-        runtime:'nodejs22'}],
+      ...(!SPARK?{functions:[{source:relative(dirname(config),resolve('cell-edit-service')),codebase:'pr142-cell-edit',runtime:'nodejs22'}]}:{}),
       database:{rules:RULES},
       emulators:{database:{host:'127.0.0.1',port:9000},
         auth:{host:'127.0.0.1',port:9099},
-        functions:{host:'127.0.0.1',port:5001},
+        ...(!SPARK?{functions:{host:'127.0.0.1',port:5001}}:{}),
         ui:{enabled:false},singleProjectMode:true}
     };
     writeFileSync(config,JSON.stringify(contents,null,2));
   }
   const env={...process.env,CI:'true',GCLOUD_PROJECT:PROJECT,
-    FIREBASE_DATABASE_URL:'https://demo-hdnd-default-rtdb.firebaseio.com',
+    FIREBASE_DATABASE_URL:`https://${NAMESPACE}.firebaseio.com`,
     FIREBASE_AUTH_EMULATOR_HOST:'127.0.0.1:9099',
     FIREBASE_DATABASE_EMULATOR_HOST:'127.0.0.1:9000',
-    PARENT_DATABASE_URL:'https://demo-hdnd-default-rtdb.firebaseio.com',
+    PARENT_DATABASE_URL:`https://${NAMESPACE}.firebaseio.com`,
     PARENT_ALLOWED_ORIGINS:SITE,PARENT_COMMIT_ENABLED:'true'};
   emulator=spawn(process.execPath,[
     'node_modules/firebase-tools/lib/bin/firebase.js','emulators:start',
-    '--only','auth,database,functions','--project',PROJECT,'--config',config
+    '--only',SPARK?'auth,database':'auth,database,functions','--project',PROJECT,'--config',config
   ],{stdio:['ignore','pipe','pipe'],env});
   for(const out of [emulator.stdout,emulator.stderr])
     out.on('data',chunk=>{logs.firebase=(logs.firebase+String(chunk)).slice(-12000)});
@@ -278,10 +289,11 @@ async function startServices(){
     const res=await fetch('http://127.0.0.1:4400/emulators',{signal:AbortSignal.timeout(900)});
     if(!res.ok)return false;
     const ports=await res.json();
+    if(SPARK&&ports.functions)throw Error('Spark QA forbids Functions Emulator');
     return ports.auth?.port===9099&&ports.database?.port===9000&&
-      ports.functions?.port===5001;
+      (SPARK?!ports.functions:ports.functions?.port===5001);
   },'Auth+Functions+RTDB Emulator ready',100000);
-  await wait(async()=>{
+  if(!SPARK)await wait(async()=>{
     const reply=await fetch('http://127.0.0.1:5001/'+PROJECT+
       '/asia-southeast1/cellEdit',{method:'POST',headers:{'Content-Type':'application/json'},
       body:'{}',signal:AbortSignal.timeout(2500)});
@@ -304,7 +316,7 @@ async function startServices(){
     },'PR147 onRequest parentDatasetCommit available',45000);
   }else{
     const parentEnv={...env,PARENT_PORT:'8787'};
-    parentServer=spawn(process.execPath,['parent-commit-service/dev-server.mjs'],
+    parentServer=spawn(process.execPath,SPARK?['parent-commit-service/operator-server.mjs','--emulator']:['parent-commit-service/dev-server.mjs'],
       {stdio:['ignore','pipe','pipe'],env:parentEnv});
     for(const out of [parentServer.stdout,parentServer.stderr])
       out.on('data',chunk=>{logs.parent=(logs.parent+String(chunk)).slice(-10000)});
@@ -315,12 +327,12 @@ async function startServices(){
     },'Real authenticated parent endpoint',35000);
   }
   vite=await createViteServer({configFile:'vite.config.ts',mode:'pages-test',
-    server:{host:'127.0.0.1',port:4179,strictPort:true},
+    server:{host:'127.0.0.1',port:SPARK?4173:4179,strictPort:true},
     logLevel:'error'});
   await vite.listen();
   await wait(async()=>{const r=await fetch(SITE+'/pages.html');
     return r.ok&&(await r.text()).includes('pages-main');},'Real business App pages.html',30000);
-  record('FULL_EMULATOR_READY',{project:PROJECT,functions:5001,database:9000,auth:9099,
+  record('FULL_EMULATOR_READY',{project:PROJECT,functions:SPARK?false:5001,database:9000,auth:9099,
     parentEndpoint:PIN?5001:8787,rulesHash:manifest.combinedSha256,site:SITE,
     pinnedCandidateSha:PIN,disclaimer:PIN
       ?'PR147 Draft candidate exact SHA; not READY, no release authorization'
@@ -524,7 +536,12 @@ async function ackLostAndRetry(){
     '/items/'+sourceRows[0].recordId;
   const value='QA ACK LOST committed once';
   let intercepted=false,postDataAction='';
-  await admin.route('**/cellEdit',async route=>{
+  if(SPARK){
+    await wait(async()=>admin.evaluate(()=>typeof window.__pr159ArmSparkCellCallerAckLoss==='function'),
+      'Local Auth Emulator caller-ACK fault hook ready',12000);
+    await admin.evaluate(()=>window.__pr159ArmSparkCellCallerAckLoss());
+    intercepted=true;postDataAction='Spark save caller callback after server readback';
+  }else await admin.route('**/cellEdit',async route=>{
     let action='';
     try{action=route.request().postDataJSON()?.data?.action??'';}catch{}
     if(action==='save'&&!intercepted){
@@ -547,7 +564,7 @@ async function ackLostAndRetry(){
   assert.ok((await admin.locator('.draft-bar').count())>0,
     'Do not clear draft just because server committed on lost ACK');
   await screenshot(admin,'07-ack-lost-draft-retained');
-  await admin.unroute('**/cellEdit');
+  if(!SPARK)await admin.unroute('**/cellEdit');
   await saveDraft(admin);
   await wait(async()=>!(await admin.locator('.draft-bar').count()),
     'User retry receives idempotent acknowledgement',16000);
@@ -556,7 +573,7 @@ async function ackLostAndRetry(){
   assert.equal(after.operationId,op,'Retry reuses original operationId');
   assert.equal(JSON.stringify(after.history),audit,'Retry must not duplicate audit');
   await screenshot(admin,'08-ack-retry-once');
-  return {action:postDataAction,operationId:op,revision:rev,
+  return {action:postDataAction,fault:SPARK?'postcommit-caller-callback-loss-not-physical-WebSocket-loss':'callable-HTTP-response-cut',operationId:op,revision:rev,
     auditSlots:Object.keys(after.history??{}).length,retainedDraft:true};
 }
 async function openAdminRoute(label){
@@ -943,10 +960,10 @@ async function sharedPartyWidthsJourney(){
   return {widths,admin:a,guest:g,tablet,mobile,serverBackedAcrossReload:true};
 }
 async function run(){
-  record('QA_MODE',{kind:PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
+  record('QA_MODE',{kind:SPARK?'SPARK_INTEGRATION_NO_PRODUCTION':PIN?'PR147_EXACT_SHA_DRAFT_HOLD':'EPHEMERAL_QA_CHECKOUT_NOT_CHAT1_CANDIDATE',
     localCheckoutSha:checkout,refs,manifest});
   await seedWorkbook();await startServices();
-  browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{}),args:['--no-sandbox','--disable-dev-shm-usage']});
   await resetPages();
   await checks.task('QA01_DESKTOP_MOBILE_GUEST_ADMIN',desktopMobileEvidence,admin);
   await checks.task('QA02_GRANT_GUEST_LIST_EDIT_SAVE_READBACK',grantAndGuestEdit,guest);
@@ -972,7 +989,7 @@ catch(error){
     parentLog:logs.parent.slice(-1600)});
   process.exitCode=1;
 }finally{
-  const result={kind:PIN?'PR147_EXACT_SHA_DRAFT_NOT_APPROVED':'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',
+  const result={kind:SPARK?'SPARK_INTEGRATION_NO_PRODUCTION':PIN?'PR147_EXACT_SHA_DRAFT_NOT_APPROVED':'UNOFFICIAL_EPHEMERAL_QA_CHECKOUT_NOT_CANDIDATE',functionsEmulator:!SPARK,
     checkedOutSha:checkout,refs,sharedRules:manifest,
     cases,events,screenshots:screenshots.map(x=>x.replace(ROOT+'/','')),
     logSummary:{firebase:logs.firebase.slice(-1600),parent:logs.parent.slice(-1600)},
@@ -983,7 +1000,13 @@ catch(error){
   for(const ctx of [contextGuest,contextAdmin])try{await ctx?.close()}catch{}
   try{await browser?.close()}catch{}
   try{await vite?.close()}catch{}
-  for(const proc of [parentServer,emulator])try{proc?.kill('SIGTERM')}catch{}
+  for(const proc of [parentServer,emulator])try{
+    if(!proc||proc.exitCode!==null)continue;
+    if(process.platform==='win32')spawnSync('taskkill',['/PID',String(proc.pid),'/T','/F'],{stdio:'ignore'});
+    else proc.kill('SIGTERM');
+  }catch{}
   await delay(450);
+  assert.equal(resolve(dirname(session)),resolve(tmpdir()),'QA cleanup must stay in temporary directory');
+  assert.ok(session.startsWith(join(tmpdir(),'hophdnd-full-app-qa-')),'Unexpected QA cleanup target');
   rmSync(session,{recursive:true,force:true});
 }

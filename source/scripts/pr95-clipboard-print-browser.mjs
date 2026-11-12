@@ -3,7 +3,7 @@
 import {createServer} from 'node:http';
 import {readFileSync,statSync,writeFileSync,mkdirSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-import {resolve,extname} from 'node:path';
+import {resolve,extname,sep} from 'node:path';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 const require=createRequire(import.meta.url);
@@ -13,7 +13,7 @@ const server=createServer((req,res)=>{
   try{
     const location=new URL(req.url??'/','http://127.0.0.1').pathname;
     const file=resolve(root,'.'+(location==='/'?'/compact-qa.html':location));
-    if(!file.startsWith(root+'/')||!statSync(file).isFile())throw Error('not found');
+    if(!file.startsWith(root+sep)||!statSync(file).isFile())throw Error('not found');
     const types={'.html':'text/html','.js':'text/javascript','.css':'text/css',
       '.woff2':'font/woff2','.png':'image/png'};
     res.writeHead(200,{'content-type':types[extname(file)]??'application/octet-stream',
@@ -25,7 +25,7 @@ const address='http://127.0.0.1:'+server.address().port;
 let browser,context;
 const external=[];
 try{
-  browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+  browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
   context=await browser.newContext({viewport:{width:1440,height:900}});
   const page=await context.newPage();
   await page.route('**/*',route=>{
@@ -141,9 +141,14 @@ try{
   assert(/Page size:\s*84[012]\.?\d* x 59[45]/.test(info.stdout),
     'Generated PDF not A4 landscape: '+info.stdout);
   const readPage=index=>{
-    const result=spawnSync('pdftotext',
+    let result=spawnSync('pdftotext',
       ['-f',String(index),'-l',String(index),'-layout',pdfPath,'-'],
       {encoding:'utf8'});
+    if(result.error?.code==='ENOENT'&&process.env.PR159_PYTHON){
+      result=spawnSync(process.env.PR159_PYTHON,['-c',
+        'from pypdf import PdfReader; import sys; print(PdfReader(sys.argv[1]).pages[int(sys.argv[2])-1].extract_text(extraction_mode="layout") or "")',
+        pdfPath,String(index)],{encoding:'utf8'});
+    }
     assert.equal(result.status,0,'pdftotext failed: '+(result.stderr??''));
     return result.stdout.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   };
@@ -170,7 +175,8 @@ try{
     extraneousPrintElements:0,externalRequests:0,
     stageRows:printed.stages.length,staffRows:printed.staff.length,
     code:printed.id,pageCount:pages,secondPageNumber:secondPage[0],
-    codeColumn:printed.codeCol
+    codeColumn:printed.codeCol,
+    pdfTextExtractor:process.env.PR159_PYTHON?'pypdf-layout-fallback-when-pdftotext-absent':'pdftotext-layout'
   }));
 }finally{
   await context?.close().catch(()=>{});

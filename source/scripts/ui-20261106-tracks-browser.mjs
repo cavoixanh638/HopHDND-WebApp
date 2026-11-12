@@ -3,7 +3,7 @@
  */
 import {createServer} from 'node:http';
 import {readFileSync,statSync,mkdirSync,writeFileSync} from 'node:fs';
-import {resolve,join,extname} from 'node:path';
+import {resolve,join,extname,sep} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import assert from 'node:assert/strict';
 import {launchRealChromiumCdp} from './ui-20261105-cdp-driver.mjs';
@@ -12,7 +12,7 @@ mkdirSync(out,{recursive:true});
 const server=createServer((req,res)=>{
  try{const path=new URL(req.url??'/','http://127.0.0.1').pathname;
   const file=resolve(root,'.'+(path==='/'?'/compact-qa.html':path));
-  if(!file.startsWith(root+'/')||!statSync(file).isFile())throw Error('404');
+  if(!file.startsWith(root+sep)||!statSync(file).isFile())throw Error('404');
   res.writeHead(200,{'content-type':({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[extname(file)]??'application/octet-stream'});
   res.end(readFileSync(file));
  }catch{res.writeHead(404);res.end();}
@@ -87,7 +87,10 @@ const narrow={readonly:{label:64,status:72},editable:{label:64,level:48,status:7
 const records=[];
 try{
  driver=await launchRealChromiumCdp({name:'TRACKS',onRequest:url=>{
-   if(!url.startsWith('http://127.0.0.1'))throw Error('External request blocked: '+url);
+   const request=new URL(url);
+   if(request.protocol==='data:')return;
+   if(!['http:','https:','ws:','wss:'].includes(request.protocol)||
+    !['127.0.0.1','localhost'].includes(request.hostname))throw Error('External request blocked: '+url);
  }});
  for(const viewport of [1440,900,390]){
   await navigate('?full=1&preview-role=admin',viewport);

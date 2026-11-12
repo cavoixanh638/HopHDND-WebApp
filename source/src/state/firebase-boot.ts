@@ -68,6 +68,12 @@ function createServices(){
           testing.__pr95EmulatorArmLostCallerAck=(operationId:string)=>
             armEmulatorPostCommitCallerAckLoss(database,operationId);
         });
+      if(import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+        void import('../data/spark-cell-ack-test').then(({armSparkCellCallerAckLoss})=>{
+          const testing=window as Window & {__pr159ArmSparkCellCallerAckLoss?:()=>void};
+          testing.__pr159ArmSparkCellCallerAckLoss=()=>armSparkCellCallerAckLoss(database);
+        });
+      }
     }
   }
   markStartup('firebase-initialized');

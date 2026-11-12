@@ -88,7 +88,7 @@ function check(p,mode,id){
 }
 async function main(){
  await waitServer();
- browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||undefined,args:['--no-sandbox']});
  const page=await browser.newPage();
  const blocked=[];
  await page.route(/https?:\/\/(?!127\.0\.0\.1)/,route=>{blocked.push(route.request().url());return route.abort()});

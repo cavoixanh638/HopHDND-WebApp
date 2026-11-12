@@ -19,7 +19,7 @@ function witness(event,details){
 }
 export async function launchRealChromiumCdp({name,onRequest}){
   const start=performance.now();
-  const executable=chromium.executablePath();
+  const executable=process.env.CHROME_PATH||chromium.executablePath();
   const info={name,transport:'playwright-chromium-cdp-pipe',
     executable:realpathSync(executable),node:process.version,
     endpoint:'PIPE (no TCP listener)'};
@@ -28,7 +28,7 @@ export async function launchRealChromiumCdp({name,onRequest}){
   try{
     // Playwright allocates a new isolated temporary profile and owns cleanup.
     // Bounded launch timeout; don't retry indefinitely or downgrade tests.
-    browser=await chromium.launch({headless:true,timeout:45000,
+    browser=await chromium.launch({headless:true,timeout:45000,executablePath:process.env.CHROME_PATH||undefined,
       chromiumSandbox:false,args:['--no-sandbox','--disable-dev-shm-usage']});
     const context=await browser.newContext({viewport:{width:1440,height:920},
       serviceWorkers:'block'});

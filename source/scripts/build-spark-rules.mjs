@@ -9,6 +9,7 @@ function convert(node){
     if(typeof value==='object')convert(value);
     else if(typeof value==='string')node[key]=value
       .replaceAll('(auth != null && auth.token.cellService === true)',"(auth != null && auth.token.firebase.sign_in_provider === 'anonymous')")
+      .replaceAll('(auth != null && auth.token.cellService === true && auth.uid != null)',"(auth != null && auth.token.firebase.sign_in_provider === 'anonymous' && auth.uid != null)")
       .replaceAll(googleAdmin,`(${googleAdmin} || ${sessionAdmin})`)
       .replaceAll("auth != null && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com'", "auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true")
       .replaceAll("auth != null && auth.token.email ===", "auth != null && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email ===");
@@ -28,6 +29,16 @@ for(const versioned of [false,true]){
   const epoch=versioned?"root.child('hdnd/datasetV2/active/generationId').val() === $generation":"!root.child('hdnd/datasetV2/active').exists()";
   const item=versioned?"root.child('hdnd/datasetV2/generations').child($generation).child('items').child($id)":"root.child('hdnd/items').child($id)";
   const grants=versioned?"root.child('hdnd/datasetV2/permissions').child($generation)":"root.child('hdnd/permissions')";
+  const levelGrant=`(${grants}.child('cells').child($id).child('partyLevel').exists() ? ${grants}.child('cells').child($id).child('partyLevel').val() === true : (${grants}.child('rows').child($id).exists() ? ${grants}.child('rows').child($id).val() === true : ${grants}.child('columns/partyLevel').val() === true))`;
+  // Imports and immutable generation copies retain their exact approved source
+  // values, including historical aliases. Only existing-row edits canonicalize.
+  // Their write authorization stays at the original empty-primary Google-admin
+  // and protected parent-CAS boundaries; this adds no public creation path.
+  const partyContractStart=row['.validate'].lastIndexOf(" && (newData.child('partyLevel').val() === data.child('partyLevel').val() ||");
+  if(partyContractStart<0)throw Error('Missing integrated party contract');
+  row['.validate']=row['.validate'].slice(0,partyContractStart)+` && (!data.exists() || (${row['.validate'].slice(partyContractStart+4)}))`;
+  const sourceCreation=`(!data.parent().exists() && ${googleAdmin} && newData.isString() && newData.val().length <= 20000)`;
+  row.progressParty['.validate']=`(${sourceCreation} || (${row.progressParty['.validate'].replaceAll(levelGrant,`(${sessionAdmin} || ${levelGrant})`)})) && (!data.parent().exists() || newData.val() === data.val() || ${['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'].map(v=>`newData.val() === '${v}'`).join(' || ')})`;
   const grant=`(${sessionAdmin} || (${grants}.child('cells').child($id).child($field).exists() ? ${grants}.child('cells').child($id).child($field).val() === true : (${grants}.child('rows').child($id).exists() ? ${grants}.child('rows').child($id).val() === true : ${grants}.child('columns').child($field).val() === true)))`;
   const identity=`auth != null && auth.token.firebase.sign_in_provider === 'anonymous' && ${sessionAllowed}`;
   const notPaused=`(root.child('hdnd/control/editingLocked').val() !== true || ${sessionAdmin})`;

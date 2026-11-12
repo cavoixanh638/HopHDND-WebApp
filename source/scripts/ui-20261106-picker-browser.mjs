@@ -188,7 +188,7 @@ async function scenario(page,{surface,mode,width,height=900,long=false}){
 }
 async function run(){
  await ready();
- browser=await chromium.launch({headless:true,chromiumSandbox:false,args:['--no-sandbox','--disable-dev-shm-usage']});
+ browser=await chromium.launch({headless:true,chromiumSandbox:false,executablePath:process.env.CHROME_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
  const context=await browser.newContext({viewport:{width:1440,height:900},serviceWorkers:'block'});
  let external=[];
  await context.route('**/*',route=>{

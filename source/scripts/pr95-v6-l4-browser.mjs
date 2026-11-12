@@ -3,9 +3,9 @@
  */
 import {spawn,spawnSync} from 'node:child_process';
 import {createServer} from 'node:http';
-import {readFileSync,statSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {readFileSync,statSync,mkdtempSync,writeFileSync,rmSync,realpathSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {resolve,join,extname} from 'node:path';
+import {resolve,join,extname,sep} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 
 const root=resolve('dist-compact-qa');
@@ -13,7 +13,7 @@ const server=createServer((req,res)=>{
   try{
     const request=new URL(req.url??'/','http://127.0.0.1').pathname;
     const target=resolve(root,'.'+(request==='/'?'/compact-qa.html':request));
-    if(!target.startsWith(root+'/')||!statSync(target).isFile())throw Error('404');
+    if(!target.startsWith(root+sep)||!statSync(target).isFile())throw Error('404');
     res.writeHead(200,{'content-type':({
       '.html':'text/html','.js':'text/javascript','.css':'text/css',
       '.png':'image/png','.svg':'image/svg+xml','.woff2':'font/woff2'
@@ -23,7 +23,7 @@ const server=createServer((req,res)=>{
 });
 await new Promise(done=>server.listen(0,'127.0.0.1',done));
 const port=server.address().port;
-const chrome=['google-chrome','google-chrome-stable','chromium','chromium-browser']
+const chrome=process.env.CHROME_PATH||['google-chrome','google-chrome-stable','chromium','chromium-browser']
   .find(name=>spawnSync('which',[name],{encoding:'utf8'}).status===0);
 if(!chrome)throw Error('V6 L4 real Chrome not installed');
 const tmp=mkdtempSync(join(tmpdir(),'pr95-v6-l4-chrome-'));
@@ -328,5 +328,12 @@ try {
 }finally{
   for(const job of jobs.values())job.fail(Error('Chrome closing'));
   jobs.clear();ws?.close();browser?.kill('SIGKILL');server.close();
-  rmSync(tmp,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+  if(browser)await Promise.race([
+    new Promise(done=>browser.once('exit',done)),
+    delay(3000)
+  ]);
+  const cleanupTarget=realpathSync(tmp),cleanupRoot=realpathSync(tmpdir());
+  if(!cleanupTarget.startsWith(cleanupRoot+sep)||!cleanupTarget.startsWith(join(cleanupRoot,'pr95-v6-l4-chrome-')))
+    throw Error('Unexpected temporary Chrome profile cleanup target');
+  rmSync(cleanupTarget,{recursive:true,force:true,maxRetries:5,retryDelay:100});
 }

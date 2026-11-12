@@ -9,7 +9,24 @@ import {dirname,resolve} from 'node:path';
 import {createHash} from 'node:crypto';
 const sha256=x=>createHash('sha256').update(x).digest('hex');
 const pin=process.env.FINAL_APP_CANDIDATE_SHA;
-if(pin){
+const spark=process.env.FINAL_APP_SPARK==='true';
+if(spark){
+  if(pin)throw Error('Do not mix Spark integration QA and PR147 candidate pin');
+  const source=resolve('firebase/database.spark.rules.json');
+  const bytes=readFileSync(source);
+  const root=JSON.parse(bytes.toString('utf8'))?.rules?.hdnd;
+  if(!root?.sparkSessions||!root.freezeControl||!root.freezeReceipts||
+    !String(root.datasetV2?.['.write']??'').includes('parentCasService'))
+    throw Error('Missing complete Spark Rules contract');
+  const output=resolve('qa-results/spark-final-app-review/generated/shared.rules.json');
+  mkdirSync(dirname(output),{recursive:true});writeFileSync(output,bytes);
+  const manifest={kind:'SPARK_INTEGRATION_RULES_UNMODIFIED_NOT_RELEASE',
+    candidateSha:spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim(),
+    sourceSha256:sha256(bytes),combinedSha256:sha256(bytes),
+    sourceRulesPath:'firebase/database.spark.rules.json',touchedRulePaths:[],functionsEmulator:false};
+  writeFileSync(resolve('qa-results/spark-final-app-review/generated/rules-manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+  console.log('FINAL_APP_SPARK_RULES',JSON.stringify(manifest));
+}else if(pin){
   const p=spawnSync('git',['rev-parse','HEAD'],{encoding:'utf8'});
   if(p.status!==0||p.stdout.trim()!==pin||!/^[a-f0-9]{40}$/.test(pin))
     throw Error('Refusing QA: checkout is not exact pinned official PR147 SHA '+pin);
