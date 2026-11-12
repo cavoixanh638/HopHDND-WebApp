@@ -247,7 +247,29 @@ export async function commitMaintenance(db,env,identity,input,{now=Date.now()}={
   if(result.conflict)throw Error('COMMIT_ETAG_CONFLICT_CHECK_STATUS');
   const observed=await db.get('hdnd');
   const outcome=operationStatus(observed,op);
-  requireCondition(outcome.status==='committed-active','COMMIT_UNKNOWN_CHECK_STATUS');
+  // Verify real server readback of every business field rather than trusting
+  // a pointer/operation receipt alone. This also covers the 0-row generation.
+  // An anomaly after a successful PUT is an UNKNOWN ACK, NOT a safe retry.
+  try {
+    requireCondition(outcome.status==='committed-active'&&
+      samePointer(observed?.datasetV2?.active,nextPointer),'READBACK_POINTER_MISMATCH');
+    const generation=observed.datasetV2.generations?.[newGeneration];
+    requireCondition(object(generation),'READBACK_GENERATION_MISSING');
+    const saved=generation.items??{};
+    requireCondition(object(saved),'READBACK_ROWS_INVALID');
+    const readRows=Object.entries(saved).map(([key,value])=>{
+      requireCondition(object(value)&&value.recordId===key&&
+        value.operationId===op&&value.updatedBy===identity.uid&&
+        value.updatedAt===now&&value.revision===1,'READBACK_METADATA_MISMATCH');
+      return value;
+    });
+    const normalized=sanitizeRows(readRows,{mode:rows.length===0?'clear':'restore'});
+    const readManifest=await manifestForRows(normalized,op);
+    requireCondition(stableJson(readManifest)===stableJson(recalculated),
+      'READBACK_BUSINESS_DIGEST_MISMATCH');
+  }catch {
+    throw Error('COMMIT_UNKNOWN_CHECK_STATUS');
+  }
   return {status:'committed',operationId:op,newCount:rows.length,
     from:old,to:newGeneration};
 }
