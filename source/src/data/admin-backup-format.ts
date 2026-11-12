@@ -128,7 +128,7 @@ export async function inspectBackupJson(json:string,expected?:BackupScope):Promi
     if(!generation||(!rows&&pointer.rowCount!==0)||
       Object.keys(rows??{}).length!==pointer.rowCount)
       throw Error('Số hồ sơ V2 không khớp con trỏ. Không thể khôi phục.');
-    activeRows=Object.keys(rows).length;
+    activeRows=Object.keys(rows??{}).length;
   }
   const legacy=payload.nodes['hdnd/items'];
   const legacyRows=isRecord(legacy)?Object.keys(legacy).length:0;
