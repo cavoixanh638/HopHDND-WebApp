@@ -42,6 +42,32 @@ That is a privileged external credential and bypasses Firebase RTDB Rules; an
 independent review must validate Cloudflare account protection, API token scope,
 revocation checks, credential rotation and 3-MB / 10-ms free-tier bounds.
 
+## Independent backup before destructive operations (added 12 Nov)
+
+Every `/v1/prepare` now **fails closed** unless a private, independent object
+store is configured as the Worker binding `MAINTENANCE_ARCHIVE_BUCKET`.
+Before any RTDB staging write the Worker exports a server-signed app-scoped
+snapshot, persists it to an external content-addressed archive object, and
+reads the exact bytes back. `/v1/commit` retrieves that object again, verifies
+the digest and server HMAC, project/instance and expected active generation;
+missing, corrupted or altered objects block all mutations.
+
+**This is not activated by this code change.** A Cloudflare R2 binding is a
+possible adapter, but R2 requires separate signup/subscription and may incur
+fees; it is **not** automatically approved by the user's Spark/no-billing
+requirement. Other permitted private object stores need an equivalent
+`get(key)/put(key,value)` adapter with independent retention protection.
+No in-database copy alone is accepted as the independent backup.
+
+Before enabling this: choose/approve a private store, configure encrypted
+versioning and delete/overwrite protection outside the Worker, test retention
+and recovery using synthetic data, provision a scoped Worker bucket binding,
+verify budget/no-unapproved-billing requirements, and test production-like
+performance on the permitted free tier. Neither this backup nor the existing
+11/12 app-path backup contains full Firebase Auth users, published Rules,
+unknown root branches or all configuration; full disaster-recovery snapshot
+and an independent recovery drill are separate gates.
+
 ## Critical outstanding gates
 
 1. Codex read-only audit of live Firebase project/Rules, archived/active data,
