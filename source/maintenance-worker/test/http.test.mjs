@@ -35,11 +35,24 @@ test('approved readonly status may execute, never exposing other URL routes',asy
   const out=await handleRequest(request('/v1/status?operationId=maint_1234567890123456'),config,{
     verifyAdmin:async()=>({uid:'uid-verified-admin-0001'}),
     getToken:async()=>('s'.repeat(60)),
+    checkSession:async identity=>{assert.equal(identity.uid,'uid-verified-admin-0001');return true;},
     makeDb:()=>({get:async path=>{assert.equal(path,'hdnd');called++;return {} }}),
   });
   assert.equal(out.status,200);assert.equal((await out.json()).status,'not-found');
   assert.equal(called,1);
   assert.equal((await handleRequest(request('/v1/not-an-endpoint'),config)).status,404);
+});
+test('privileged Firebase backend is never reached if session revocation check fails',async()=>{
+  let dbCalls=0;
+  const denied=await handleRequest(request('/v1/status?operationId=maint_1234567890123456'),config,{
+    verifyAdmin:async()=>({uid:'uid-verified-admin-0001',authTime:1700000000}),
+    getToken:async()=>('s'.repeat(60)),
+    checkSession:async()=>{throw Error('ADMIN_SESSION_REVOKED')},
+    makeDb:()=>{dbCalls++;throw Error('SERVER_BYPASS')},
+  });
+  assert.equal(denied.status,503); // fail closed; client must not infer success
+  assert.equal((await denied.json()).error,'ADMIN_SESSION_REVOKED');
+  assert.equal(dbCalls,0);
 });
 test('Firebase REST client uses conditional PUT /hdnd not blind PATCH/DELETE or root',async()=>{
   const calls=[];
