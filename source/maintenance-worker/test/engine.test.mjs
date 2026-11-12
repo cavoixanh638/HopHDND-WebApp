@@ -1,0 +1,166 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  assertFrozenTree,sanitizeRows,manifestForRows,confirmationText,sha256,stableJson
+} from '../src/domain.mjs';
+import {
+  exportArchive,verifySignedArchive,prepareMaintenance,commitMaintenance,inspectOperation
+} from '../src/engine.mjs';
+
+const env={FIREBASE_PROJECT_ID:'hophdnd-8b7b2',
+  FIREBASE_DATABASE_URL:'https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app',
+  BACKUP_HMAC_SECRET:'test-only-32-byte-strong-HMAC-key-never-deploy'};
+const initialId='initial_123456789012';
+const uid='verified-admin-uid';
+const identity={uid};
+const clone=obj=>JSON.parse(JSON.stringify(obj));
+function row(code='NQ01'){
+  return {recordId:'x-4e513031',displayCode:code,stt:1,documentKind:'NQ',
+    content:'Kế hoạch đầu tư công',department:'Sở Tài chính',type:'HC',partyLevel:'BTV',
+    progressParty:'Sở chưa trình',progressBuild:'VP đang xử lý',progressCouncil:'Hoàn thành',
+    specialist:'Chuyên viên A',room:'Phòng TC',vpLeader:'Lãnh đạo B',ubndLeader:'Lãnh đạo C',
+    specificProgress:'Đang thực hiện',note:'Ghi chú',isDropped:false,
+    archivedAt:null,revision:1};
+}
+function fixture(){
+  const pointer={generationId:'gen_'+initialId,operationId:initialId,revision:1,
+    rowCount:1,digest:'a'.repeat(64)};
+  return {hdnd:{
+    datasetV2:{active:pointer,generations:{[pointer.generationId]:{items:{[row().recordId]:{...row(),
+      operationId:initialId,updatedAt:1700000000000,updatedBy:uid}}}},
+      permissions:{[pointer.generationId]:{columns:{}}},leases:{},operations:{[initialId]:{
+        status:'COMMITTED',from:'legacy',to:pointer.generationId,at:1700000000000}}},
+    freezeControl:{mode:'FROZEN',revision:4,epoch:1,actor:uid,
+      changedAt:1700000000000,deadline:0,closedAt:1700000000000,
+      datasetV2:pointer,closeKind:'forced'},
+    profile:{revision:1,payload:'{}'},items:{},permissions:{columns:{}},editLocks:{},
+    editors:{admin:true},control:{revision:1},sparkSessions:{inflight:'TEMP'},
+    unknownBranch:{preserveMe:true}
+  },hdndReviews:{revisions:{r1:true}},outside:{secret:'unchanged'}};
+}
+class MemoryDb{
+  constructor(root=fixture()){this.root=clone(root);this.rev=1;this.conflictNext=false;this.unknownAck=false;}
+  path(p){const keys=p.split('/');let cur=this.root;for(const k of keys){cur=cur?.[k];}return cur===undefined?null:clone(cur)}
+  async get(path){return this.path(path)}
+  async getWithEtag(path){return {data:this.path(path),etag:'"revision-'+this.rev+'"'}}
+  async putIfMatch(path,value,tag){
+    if(this.conflictNext){this.conflictNext=false;return {conflict:true}}
+    if(tag!=='"revision-'+this.rev+'"')return {conflict:true};
+    if(path!=='hdnd')throw Error('TEST_UNEXPECTED_ROOT_WRITE');
+    this.root.hdnd=clone(value);this.rev++;
+    if(this.unknownAck){this.unknownAck=false;throw Error('NETWORK_ACK_LOST_AFTER_SERVER_COMMIT')}
+    return {conflict:false};
+  }
+}
+const op=(suffix='1234567890123456')=>'maint_'+suffix;
+const now=1700000100000;
+
+test('archive includes app paths but never unknown root/auth/sessions and is signed',async()=>{
+  const db=new MemoryDb();
+  const archive=await exportArchive(db,env,{now});
+  assert.equal(archive.payload.projectId,env.FIREBASE_PROJECT_ID);
+  assert.equal(archive.payload.nodes['hdnd/profile'].revision,1);
+  assert.equal(archive.payload.nodes['hdnd/maintenanceOps'],null);
+  assert.equal(Object.hasOwn(archive.payload.nodes,'hdnd/sparkSessions'),false);
+  assert.equal(Object.hasOwn(archive.payload.nodes,'outside'),false);
+  assert.equal(await verifySignedArchive(archive,env),archive.payload);
+});
+
+test('signature rejects tampering even when attacker recomputes public SHA-256',async()=>{
+  const db=new MemoryDb();const archive=await exportArchive(db,env,{now});
+  const changed=clone(archive);changed.payload.nodes['hdnd/profile'].payload='malicious';
+  changed.sha256=await sha256(stableJson(changed.payload));
+  await assert.rejects(()=>verifySignedArchive(changed,env),/BACKUP_AUTHENTICITY_FAILED/);
+  const wrongProject=clone(archive);wrongProject.payload.projectId='other';
+  await assert.rejects(()=>verifySignedArchive(wrongProject,env),/BACKUP_SHA256_MISMATCH/);
+});
+
+test('clear is a reversible zero-record generation, not a root DELETE',async()=>{
+  const db=new MemoryDb();const expected=db.root.hdnd.datasetV2.active;
+  const prepared=await prepareMaintenance(db,env,identity,{operationId:op(),action:'clear',expected},{now});
+  assert.equal(prepared.oldCount,1);assert.equal(prepared.newCount,0);
+  assert.equal(prepared.confirmation,`XOA ${op()} 1 0`);
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,1); // staging never changes active
+  assert.equal(db.root.hdnd.datasetV2.backups[op()]!==undefined,true);
+  const result=await commitMaintenance(db,env,identity,{operationId:op(),confirmation:prepared.confirmation},{now:now+1000});
+  assert.equal(result.status,'committed');assert.equal(result.newCount,0);
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,0);
+  assert.equal(db.root.hdnd.datasetV2.generations['gen_'+op()].emptyGeneration,true);
+  assert.equal(db.root.hdnd.datasetV2.generations[expected.generationId].items[row().recordId].content,row().content);
+  assert.equal(db.root.hdnd.profile.revision,1);
+  assert.equal(db.root.hdnd.unknownBranch.preserveMe,true);
+  assert.equal(db.root.outside.secret,'unchanged');
+  assert.equal(db.root.hdnd.freezeControl.mode,'FROZEN');
+  assert.deepEqual(db.root.hdnd.freezeControl.datasetV2,db.root.hdnd.datasetV2.active);
+  assert.equal((await inspectOperation(db,op())).status,'committed-active');
+  assert.equal((await commitMaintenance(db,env,identity,{operationId:op(),confirmation:prepared.confirmation},{now:now+2000})).status,'already-committed');
+});
+
+test('restore from signed archive after clear makes new generation with exact business fields',async()=>{
+  const db=new MemoryDb();const backup=await exportArchive(db,env,{now});
+  const first=await prepareMaintenance(db,env,identity,{operationId:op('2222222222222222'),action:'clear',expected:db.root.hdnd.datasetV2.active},{now});
+  await commitMaintenance(db,env,identity,{operationId:first.operationId,confirmation:first.confirmation},{now:now+500});
+  const expected=clone(db.root.hdnd.datasetV2.active);
+  const prepared=await prepareMaintenance(db,env,identity,{operationId:op('3333333333333333'),action:'restore',archive:backup,expected},{now:now+2000});
+  assert.equal(prepared.oldCount,0);assert.equal(prepared.newCount,1);
+  assert.equal(prepared.confirmation,`KHOI PHUC ${op('3333333333333333')} 0 1`);
+  await commitMaintenance(db,env,identity,{operationId:prepared.operationId,confirmation:prepared.confirmation},{now:now+3000});
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,1);
+  const rows=db.root.hdnd.datasetV2.generations['gen_'+prepared.operationId].items;
+  assert.equal(Object.values(rows)[0].content,'Kế hoạch đầu tư công');
+  assert.equal(db.root.hdnd.datasetV2.generations['gen_'+first.operationId].emptyGeneration,true);
+  assert.equal((await inspectOperation(db,first.operationId)).status,'committed-historical');
+});
+
+test('Excel replacement checks record validity, CAS, reset grants and preserves old immutable generation',async()=>{
+  const db=new MemoryDb();db.root.hdnd.datasetV2.permissions[db.root.hdnd.datasetV2.active.generationId]={columns:{note:true}};
+  const r=row('NQ01');r.note='Hồ sơ cập nhật từ Excel';
+  const proposed=[r,{...row('NQ02'),recordId:'x-4e513032',stt:2,documentKind:'NQ',content:'Mở rộng đường'}];
+  const pre=await prepareMaintenance(db,env,identity,{operationId:op('4444444444444444'),action:'replace',
+    expected:db.root.hdnd.datasetV2.active,rows:proposed,sourceName:'Du lieu.xlsx'},{now});
+  assert.equal(pre.newCount,2);
+  await commitMaintenance(db,env,identity,{operationId:pre.operationId,confirmation:pre.confirmation},{now:now+2000});
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,2);
+  assert.deepEqual(db.root.hdnd.datasetV2.permissions['gen_'+pre.operationId],{columns:{}});
+  assert.equal(db.root.hdnd.datasetV2.permissions['gen_'+initialId].columns.note,true);
+  assert.equal(db.root.hdnd.datasetV2.generations['gen_'+initialId].items[row().recordId].note,'Ghi chú');
+});
+
+test('active edit lease, unfrozen state, stale pointer and changed data all fail closed',async()=>{
+  const locked=new MemoryDb();const pid=locked.root.hdnd.datasetV2.active.generationId;
+  locked.root.hdnd.datasetV2.leases[pid]={r1:{note:{expiresAt:now+600000}}};
+  await assert.rejects(()=>prepareMaintenance(locked,env,identity,{action:'clear',operationId:op(),expected:locked.root.hdnd.datasetV2.active},{now}),/ACTIVE_EDIT_LEASE/);
+  const open=new MemoryDb();open.root.hdnd.freezeControl.mode='OPEN';
+  await assert.rejects(()=>prepareMaintenance(open,env,identity,{action:'clear',operationId:op(),expected:open.root.hdnd.datasetV2.active},{now}),/FREEZE_OR_POINTER_STALE/);
+  const stale=new MemoryDb();const expected=clone(stale.root.hdnd.datasetV2.active);expected.revision++;
+  await assert.rejects(()=>prepareMaintenance(stale,env,identity,{action:'clear',operationId:op(),expected},{now}),/STALE_EXPECTED_POINTER/);
+  const changed=new MemoryDb();const pre=await prepareMaintenance(changed,env,identity,{action:'clear',operationId:op(),expected:changed.root.hdnd.datasetV2.active},{now});
+  changed.root.hdnd.datasetV2.generations['gen_'+initialId].items[row().recordId].note='CONCURRENT CHANGE';changed.rev++;
+  await assert.rejects(()=>commitMaintenance(changed,env,identity,{operationId:op(),confirmation:pre.confirmation},{now:now+3000}),/ACTIVE_DATA_CHANGED_SINCE_PREPARE/);
+});
+
+test('CAS prevents simultaneous mutation; ambiguous ACK must be queried',async()=>{
+  const conflict=new MemoryDb();conflict.conflictNext=true;
+  await assert.rejects(()=>prepareMaintenance(conflict,env,identity,{action:'clear',operationId:op(),expected:conflict.root.hdnd.datasetV2.active},{now}),/CONCURRENT_PREPARE_CONFLICT/);
+  assert.equal(conflict.root.hdnd.maintenanceOps,undefined);
+  const unknown=new MemoryDb();const pre=await prepareMaintenance(unknown,env,identity,{action:'clear',operationId:op(),expected:unknown.root.hdnd.datasetV2.active},{now});
+  unknown.unknownAck=true;
+  await assert.rejects(()=>commitMaintenance(unknown,env,identity,{operationId:op(),confirmation:pre.confirmation},{now:now+1000}),/NETWORK_ACK_LOST/);
+  assert.equal((await inspectOperation(unknown,op())).status,'committed-active');
+});
+
+test('wrong confirmation / expired preparation / another UID fails',async()=>{
+  const db=new MemoryDb();const p=await prepareMaintenance(db,env,identity,{action:'clear',operationId:op(),expected:db.root.hdnd.datasetV2.active},{now});
+  await assert.rejects(()=>commitMaintenance(db,env,identity,{operationId:op(),confirmation:'XOA TAT CA'}, {now:now+1000}),/CONFIRMATION_MISMATCH/);
+  await assert.rejects(()=>commitMaintenance(db,env,{uid:'other'},{operationId:op(),confirmation:p.confirmation}, {now:now+1000}),/PREPARATION_EXPIRED_OR_DIFFERENT_ADMIN/);
+  await assert.rejects(()=>commitMaintenance(db,env,identity,{operationId:op(),confirmation:p.confirmation}, {now:now+700000}),/PREPARATION_EXPIRED_OR_DIFFERENT_ADMIN/);
+});
+
+test('rows parser rejects duplicate ID/code, imported metadata and prototype keys',()=>{
+  const r=row();
+  assert.throws(()=>sanitizeRows([r,{...r,recordId:'x-other'}]),/DUPLICATE_RECORD_ID_OR_CODE/);
+  assert.throws(()=>sanitizeRows([{...r,recordId:'__proto__'}]),/INVALID_RECORD_ID/);
+  assert.throws(()=>sanitizeRows([{...r,revision:2}],{mode:'excel'}),/INVALID_NEW_EXCEL_METADATA/);
+  assert.throws(()=>sanitizeRows([{...r,note:50}],{mode:'excel'}),/INVALID_note/);
+  assert.equal(confirmationText('clear',op(),59,0),`XOA ${op()} 59 0`);
+});

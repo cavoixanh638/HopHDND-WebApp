@@ -1,0 +1,18 @@
+name = "hophdnd-maintenance-api"
+main = "src/index.mjs"
+compatibility_date = "2026-10-29"
+workers_dev = true
+
+[vars]
+WEB_ORIGIN = "https://cavoixanh638.github.io"
+FIREBASE_PROJECT_ID = "hophdnd-8b7b2"
+FIREBASE_DATABASE_URL = "https://hophdnd-8b7b2-default-rtdb.asia-southeast1.firebasedatabase.app"
+ADMIN_EMAIL = "cavoixanh638@gmail.com"
+ENABLE_READS = "false"
+ENABLE_MUTATIONS = "false"
+
+# SECRET keys never go into wrangler.toml, CI logs or frontend bundles.
+# Set in Cloudflare dashboard (Worker > Settings > Secrets), NOT in GitHub:
+# ADMIN_UID               - exact preverified Firebase Auth UID
+# SERVICE_ACCOUNT_JSON    - least-privileged key JSON, if an external key is approved
+# BACKUP_HMAC_SECRET      - >=32 random secret characters, securely retained for restore

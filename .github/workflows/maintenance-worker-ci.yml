@@ -1,0 +1,58 @@
+name: HopHDND online maintenance API offline security checks (NO DEPLOY)
+on:
+  push:
+    branches: ["feat/20261112-online-maintenance-worker"]
+  pull_request:
+    branches: ["integration/20261112-spark-ui-69ceb"]
+permissions:
+  contents: read
+jobs:
+  maintenance-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax check every Worker module
+        run: |
+          for script in source/maintenance-worker/src/*.mjs source/maintenance-worker/test/*.mjs; do
+            node --check "$script" || exit 1
+          done
+      - name: Offline auth, tamper, CAS, freeze, restore, zero-row tests
+        run: node --test source/maintenance-worker/test/*.test.mjs
+      - name: Security posture / no production activation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          cfg=Path('source/maintenance-worker/wrangler.toml').read_text()
+          assert 'ENABLE_READS = "false"' in cfg
+          assert 'ENABLE_MUTATIONS = "false"' in cfg
+          assert 'BACKUP_HMAC_SECRET =' not in cfg
+          assert 'SERVICE_ACCOUNT_JSON =' not in cfg
+          worker=Path('source/maintenance-worker/src/index.mjs').read_text()
+          assert 'env.ENABLE_MUTATIONS' in worker
+          assert 'verifyAdmin(' in worker
+          rest=Path('source/maintenance-worker/src/firebase-rest.mjs').read_text()
+          assert "method:'PUT'" in rest
+          assert "headers['if-match']" in rest
+          assert 'DELETE' not in rest and 'PATCH' not in rest.split('return {',1)[-1]
+          print('SECURE_ONLINE_MAINTENANCE_SOURCE_ONLY_PASS')
+          PY
+  spark-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build:spark
