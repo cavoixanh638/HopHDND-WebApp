@@ -715,6 +715,15 @@
   letter-spacing:.015em;
 }
 .compact-columns-options {max-height:min(75vh,560px);overflow-y:auto;overscroll-behavior:contain}
+/* Portaled menu escapes the List's overflow:hidden ancestor. Fixed geometry
+   is computed from the trigger and live visual viewport, including short
+   windows and responsive widths. Only this menu is promoted, not all popups. */
+.compact-columns-options.compact-columns-options-floating{
+  position:fixed;right:auto;bottom:auto;z-index:10060;
+  overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-gutter:stable;max-width:calc(100vw - 24px);
+  outline:none;
+}
 .compact-content-group {display:grid;gap:5px;min-width:0}
 .compact-content-department {display:flex;align-items:flex-start;gap:6px;min-width:0;
   color:#4b6358;font-size:11px;line-height:1.4;text-align:left}
