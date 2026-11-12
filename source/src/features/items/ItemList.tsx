@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {createPortal} from 'react-dom';
 import type {CSSProperties} from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
@@ -177,7 +177,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const compactPanelRef=useRef<HTMLDivElement>(null);
   const [compactMenuOpen,setCompactMenuOpen]=useState(false);
   const [compactMenuPlacement,setCompactMenuPlacement]=useState<CompactMenuPlacement|null>(null);
-  useLayoutEffect(()=>{
+  useEffect(()=>{
     if(!compactMenuOpen||typeof window==='undefined')return;
     let animationFrame=0;
     const updatePosition=()=>{
