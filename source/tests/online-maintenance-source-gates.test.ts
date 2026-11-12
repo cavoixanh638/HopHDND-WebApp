@@ -13,7 +13,7 @@ describe('online maintenance source gates',()=>{
       .not.toThrow();
   });
   it('allows a signed 0-row snapshot for integrity inspection; validates exact path allowlist',async()=>{
-    const nodes=Object.fromEntries(BACKUP_PATHS.map(path=>[path,null]));
+    const nodes:BackupPayload['nodes']=Object.fromEntries(BACKUP_PATHS.map(path=>[path,null])) as BackupPayload['nodes'];
     nodes['hdnd/freezeControl']={mode:'FROZEN',revision:8,epoch:2,closedAt:100};
     nodes['hdnd/datasetV2']={active:pointer,generations:{[pointer.generationId]:{emptyGeneration:true}}};
     const payload:BackupPayload={format:'hophdnd-admin-archive',schemaVersion:1,
