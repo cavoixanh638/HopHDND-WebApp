@@ -54,5 +54,10 @@ jobs:
           cache: npm
           cache-dependency-path: source/package-lock.json
       - run: npm ci
+      - name: Verify generated Spark Rules are reproducible and do not grant direct parent writes
+        run: |
+          npm run rules:spark
+          git diff --exit-code -- firebase/database.spark.rules.json
+          node -e "const r=require('./firebase/database.spark.rules.json').rules;if(r['.write']!==false||r.hdnd.maintenanceOps['.write']!==false||!r.hdnd.datasetV2.active['.validate'].includes('>= 0'))throw Error('Rules security gate failed');console.log('SPARK_MAINTENANCE_RULES_REPRODUCIBLE')"
       - run: npm run typecheck
       - run: npm run build:spark
