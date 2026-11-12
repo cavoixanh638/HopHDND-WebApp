@@ -114,7 +114,7 @@ export function useFirebase(){
       if(typeof raw.generationId!=='string'||!/^gen_[A-Za-z0-9_-]{12,80}$/.test(raw.generationId)||
         typeof raw.operationId!=='string'||raw.generationId!=='gen_'+raw.operationId||
         !Number.isSafeInteger(raw.revision)||raw.revision<1||
-        !Number.isSafeInteger(raw.rowCount)||raw.rowCount<1||raw.rowCount>1000||
+        !Number.isSafeInteger(raw.rowCount)||raw.rowCount<0||raw.rowCount>1000||
         typeof raw.digest!=='string'||!/^[a-f0-9]{64}$/.test(raw.digest)){
         setDatasetEpochReady(false);
         setError('Con trỏ tập dữ liệu Firebase không hợp lệ; dừng đọc và sửa.');
