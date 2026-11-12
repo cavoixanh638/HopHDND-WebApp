@@ -14,6 +14,22 @@
     "ui": {
       "enabled": false
     },
-    "singleProjectMode": true
-  }
+    "singleProjectMode": true,
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5001
+    }
+  },
+  "functions": [
+    {
+      "source": "cell-edit-service",
+      "codebase": "pr142-cell-edit",
+      "runtime": "nodejs22"
+    },
+    {
+      "source": "parent-commit-service",
+      "codebase": "parent-v2",
+      "runtime": "nodejs22"
+    }
+  ]
 }

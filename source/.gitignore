@@ -12,6 +12,17 @@ server/dist-test/
 server/dist-enable/
 dist-pages/
 dist-pages-test/
+dist-spark/
+dist-spark-operator/
+spark-*-tests.log
+spark-build.log
+spark-*.log
+parent-commit-service/evidence/
+pr149-ops-evidence/
 *-debug.log
 firebase-debug.*
 dist-hosting/
+/dist-compact-qa/
+/qa-results/
+/ui-20261106-artifacts/
+/pr95-v6-l4-*.png

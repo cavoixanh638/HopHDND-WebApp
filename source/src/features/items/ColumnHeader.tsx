@@ -13,7 +13,7 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
   // A drag must never also fire the sort action when the pointer is released.
   const justDragged=useRef(false);
   const cleanup=()=>{start.current=null;setDragging(false);};
-  return <th scope="col" aria-sort={sortDirection?(sortDirection==='asc'?'ascending':'descending'):'none'} data-column-key={columnKey} tabIndex={onSort||!disabled?0:undefined}
+  return <th scope="col" aria-sort={onSort?(sortDirection?(sortDirection==='asc'?'ascending':'descending'):'none'):undefined} data-column-key={columnKey} tabIndex={onSort||!disabled?0:undefined}
     className={disabled?undefined:`column-movable ${dragging?'column-dragging':''}`}
     title={onSort
       ?(disabled?'Bấm tiêu đề để sắp xếp':'Bấm để sắp xếp; giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.')

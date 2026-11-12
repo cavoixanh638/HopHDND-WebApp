@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDemoItems } from '../src/data/demo-items';
-import { catalogFromItems } from '../src/data/catalogs';
+import { catalogFromItems,validateCatalog } from '../src/data/catalogs';
 import { defaultItemLayout } from '../src/data/item-preferences';
 import { defaultReportLayout } from '../src/data/report-preferences';
 import { applyConfigSection, configFromRows, configRows, validateSharedConfig, type SharedConfig } from '../src/data/shared-config';
@@ -50,7 +50,10 @@ describe('cấu hình dùng chung', () => {
     const rows = committedRows(config);
     expect(rows.length).toBeGreaterThan(1);
     expect(rows.every(row => String(row[4]).length <= 4002)).toBe(true);
-    expect(configFromRows(rows, source)).toEqual(config);
+    const restored=configFromRows(rows, source);
+    expect(restored).toEqual(validateSharedConfig(config,source));
+    expect(restored?.catalogs.groupIdentities?.department?.length).toBeGreaterThanOrEqual(60);
+    expect(restored?.catalogs.options.department).toEqual(config.catalogs.options.department);
   });
 
   it('bỏ qua revision chưa commit', () => {
@@ -94,7 +97,8 @@ describe('cấu hình dùng chung', () => {
 
     const oneSection = applyConfigSection(base, 'catalogs', next.catalogs);
     expect(oneSection.catalogs.options.department).toContain('Đơn vị mới');
-    expect(oneSection).toMatchObject({ ...base, catalogs: next.catalogs });
-    expect(applyConfigSection(base, 'all', next)).toEqual({ ...base, catalogs: next.catalogs, reports: next.reports, items: next.items });
+    expect(oneSection).toMatchObject({ ...base, catalogs: validateCatalog(next.catalogs) });
+    expect(oneSection.catalogs.groupIdentities?.department?.some(row=>row.label==='Đơn vị mới')).toBe(true);
+    expect(applyConfigSection(base, 'all', next)).toEqual({ ...base, catalogs: validateCatalog(next.catalogs), reports: next.reports, items: next.items });
   });
 });

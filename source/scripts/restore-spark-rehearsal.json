@@ -1,0 +1,4 @@
+{
+  "database":{"rules":"restore-emulator/database.rules.json"},
+  "emulators":{"database":{"host":"127.0.0.1","port":9198},"hub":{"host":"127.0.0.1","port":4410},"logging":{"host":"127.0.0.1","port":4510},"ui":{"enabled":false},"singleProjectMode":true}
+}

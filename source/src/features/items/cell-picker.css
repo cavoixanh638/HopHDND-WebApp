@@ -73,3 +73,9 @@
   display: block;
   margin: 3px 2px;
 }
+
+/* V4 L2: keep text separate from the button's fixed-width caret slot.
+   Not a new input surface; this span is presentational only. */
+.cell-picker-value-text{
+  display:block;min-width:0;max-width:100%;overflow-wrap:break-word;word-break:normal;
+}

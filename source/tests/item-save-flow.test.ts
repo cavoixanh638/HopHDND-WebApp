@@ -3,7 +3,7 @@ import {createDemoItems} from '../src/data/demo-items';
 import {catalogFromItems} from '../src/data/catalogs';
 import {defaultItemLayout,EXCEL_COLUMN_KEYS} from '../src/data/item-preferences';
 const mock=vi.hoisted(()=>({dirty:false,markSaved:vi.fn()}));
-vi.mock('react',()=>({
+vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),
   useState:(initial:any)=>[typeof initial==='function'?initial():initial,vi.fn()],
   useRef:(initial:any)=>({current:initial}),useMemo:(fn:any)=>fn(),useEffect:vi.fn(),
 }));
@@ -16,7 +16,8 @@ import {ItemList} from '../src/features/items/ItemList';
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
-import {CompactGroupFilterCell} from '../src/features/items/CompactGroupFilterCell';
+import {ColumnFilterCell} from '../src/features/items/ColumnFilterCell';
+import {DETAIL_FIELDS,SEARCH_FIELDS} from '../src/features/items/list-toolbar-filters';
 import {CellHistoryAction} from '../src/components/CellHistoryAction';
 function nodes(v:any):any[]{
   return Array.isArray(v)?v.flatMap(nodes):v&&typeof v==='object'
@@ -93,12 +94,35 @@ describe('separate item layout save and data draft',()=>{
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
     const keys=nodes(tree).filter(n=>n.props?.columnKey).map(n=>n.props.columnKey);
     expect(keys).toEqual([...EXCEL_COLUMN_KEYS].reverse().filter(k=>
-      !['type','department','progressParty','progressBuild','progressCouncil'].includes(k)));
+      !['stt','type','department','progressParty','progressBuild','progressCouncil'].includes(k)));
+    // STT remains Excel column B and the Item source value, not a view column.
+    expect(EXCEL_COLUMN_KEYS[1]).toBe('stt');
+    expect(items[0].stt).toBeGreaterThan(0);
+    expect(keys).not.toContain('stt');
     expect(keys).not.toContain('history');
-    const compactFilters=nodes(tree).filter(n=>n.type===CompactGroupFilterCell);
-    expect(compactFilters.map(n=>n.props.fields)).toEqual(expect.arrayContaining([
-      ['type','department','content'],
-      ['partyLevel','progressParty','progressBuild','progressCouncil']
+    // V2 uses the single List toolbar rather than a second full table-filter row.
+    const controls=nodes(tree);
+    expect(controls.some(n=>n.props?.className==='list-filter-toolbar')).toBe(true);
+    expect(controls.some(n=>n.type==='input'&&n.props?.['aria-label']==='Tìm kiếm không dấu')).toBe(true);
+    for(const label of ['Lọc Sở, ngành','Lọc Phòng'])
+      expect(controls.some(n=>n.type==='select'&&n.props?.['aria-label']===label)).toBe(true);
+    expect(controls.some(n=>n.props?.className==='list-filter-other')).toBe(true);
+    expect(DETAIL_FIELDS.map(f=>f.key)).toEqual([
+      'partyLevel','progressParty','progressBuild','progressCouncil',
+      'specialist','vpLeader','ubndLeader'
+    ]);
+    expect(SEARCH_FIELDS.map(f=>f.key)).toEqual([
+      'all','displayCode','content','specificProgress','note'
+    ]);
+    // Existing source-level column filters are retained in the editing view.
+    const editTree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google',customizing:true,sourceKey:'old-layout-edit-filters',
+      catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
+      onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
+    const editFilters=nodes(editTree).filter(n=>n.type===ColumnFilterCell);
+    expect(editFilters.map(n=>n.props.field)).toEqual(expect.arrayContaining([
+      'type','department','content','partyLevel','progressParty',
+      'progressBuild','progressCouncil'
     ]));
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
@@ -158,7 +182,7 @@ describe('separate item layout save and data draft',()=>{
     expect(nodes(withoutFirebase).some(n=>n.props?.className==='content-button')).toBe(false);
   });
 
-  it('uses one source of truth for Excel dropdowns: the shared catalog, not legacy column options',()=>{
+  it('keeps official status dropdowns canonical even if old catalog and old column selections disagree',()=>{
     const items=createDemoItems(1),id=items[0].recordId;
     const catalog=catalogFromItems(items);
     catalog.options.progressParty.push('Giá trị từ danh mục chung');
@@ -173,8 +197,47 @@ describe('separate item layout save and data draft',()=>{
       initialLayout:layout,canEditCell:(_id:string,field:string)=>_id===id&&field==='progressParty'});
     const picker=nodes(tree).find(node=>node.type===CellPicker&&String(node.props?.label).includes('Tiến độ xin ý kiến Thành ủy'));
     expect(picker).toBeDefined();
-    expect(picker.props.options).toContain('Giá trị từ danh mục chung');
+    expect(picker.props.options).toEqual([
+      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+      'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'
+    ]);
+    expect(picker.props.options).not.toContain('Giá trị từ danh mục chung');
     expect(picker.props.options).not.toContain('Lựa chọn cũ không còn sử dụng');
+    // The raw alias is displayed as the canonical selected option, not written back.
+    expect(picker.props.value).toBe('Sở chưa trình');
+  });
+
+  it('V4 L1: List edits only a newly selected canonical status; alias display does not rewrite source',()=>{
+    const original=createDemoItems(1)[0];
+    const item={...original,partyLevel:'Ban Chấp hành',progressParty:'VP đang thực hiện',
+      progressBuild:'Đã trình HĐND, chưa có QĐ',progressCouncil:'Đã trình HĐND thành phố'};
+    const before=JSON.stringify(item),onUpdate=vi.fn();
+    const props={items:[item],drafts:{},errors:{},busy:false,onUpdate,onHistory:vi.fn(),
+      readOnly:true,sourceKind:'google' as const,customizing:false,anonymousViewer:true,
+      sourceKey:'v4-l1-status-legacy-list',catalog:catalogFromItems([item]),onClose:vi.fn(),
+      onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),
+      onLayoutSaved:vi.fn(),initialLayout:defaultItemLayout(),
+      canEditCell:(_id:string,field:string)=>_id===item.recordId&&field==='progressBuild'};
+    const tree=ItemList(props);
+    const buttons=nodes(tree).filter(node=>node.type===CellPicker&&node.props.field==='progressBuild');
+    expect(buttons).toHaveLength(1);
+    const picker=buttons[0].props;
+    expect(picker.value).toBe('Đã trình, chờ QĐ');
+    expect(picker.displayValue).toBe('Đã trình, chờ QĐ');
+    expect(picker.options).toEqual([
+      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'
+    ]);
+    expect(picker.options).not.toContain(item.progressBuild);
+    expect(onUpdate).not.toHaveBeenCalled(); // render/open/Esc is non-mutating
+    picker.onChange('Đã trình, chờ QĐ');
+    expect(onUpdate).not.toHaveBeenCalled(); // same canonical selection
+    picker.onChange('Đã có QĐ');
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(onUpdate).toHaveBeenCalledWith(item.recordId,{progressBuild:'Đã có QĐ'});
+    expect(JSON.stringify(item)).toBe(before);
+    const noGrant=nodes(ItemList({...props,canEditCell:()=>false}))
+      .filter(node=>node.type===CellPicker&&node.props.field==='progressBuild');
+    expect(noGrant).toHaveLength(0);
   });
 
 });

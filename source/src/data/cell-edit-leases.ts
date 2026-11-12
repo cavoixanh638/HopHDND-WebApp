@@ -1,7 +1,7 @@
-import {get,onValue,ref,runTransaction,update,type Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
+import {get,onValue,ref,type Database} from 'firebase/database';
 import type {EditableField} from '../../shared/types';
-import {parseFreeze,readFreeze,FREEZE_PATH} from './freeze-control';
+import {callCellEdit,newPrivateCellSecret} from './cell-edit-api';
 
 export type EditorKind='status'|'search'|'short'|'multiline'|'long';
 export const MAX_EDIT_MS:Record<EditorKind,number>={
@@ -10,8 +10,13 @@ export const LEASE_TTL_MS=45000;
 export type CellLease={
   uid:string;session:string;token:string;revision:number;kind:EditorKind;
   acquiredAt:number;expiresAt:number;
+  proofHash?:string;lastOperationId?:string;
+  /** PRIVATE, browser-memory-only; NEVER included in an RTDB write/read. */
+  secret?:string;
 };
-export const lockPath=(id:string,field:EditableField)=>`hdnd/editLocks/${id}/${field}`;
+export const lockPath=(id:string,field:EditableField,generationId?:string)=>generationId
+  ?`hdnd/datasetV2/leases/${generationId}/${id}/${field}`
+  :`hdnd/editLocks/${id}/${field}`;
 const validLease=(x:unknown):x is CellLease=>{
   if(!x||typeof x!=='object'||Array.isArray(x))return false;
   const y=x as CellLease;
@@ -20,6 +25,17 @@ const validLease=(x:unknown):x is CellLease=>{
     y.revision>0&&Object.hasOwn(MAX_EDIT_MS,y.kind)&&
     Number.isFinite(y.acquiredAt)&&Number.isFinite(y.expiresAt);
 };
+/** Reject old-generation lease acquire/renew even for the SAME verified admin UID.
+ * Rules scope direct generation writes; a foreground tab must additionally
+ * fence its own operations against the server-authoritative active pointer.
+ * This method is deliberately not a cached local generation comparison.
+ */
+async function assertActiveLeaseGeneration(database:Database,generationId?:string){
+  if(!generationId)return;
+  const pointer=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+  if(pointer?.generationId!==generationId)
+    throw new Error('Thế hệ dữ liệu đã thay đổi; khóa ô của phiên cũ không còn hiệu lực.');
+}
 const serverTime=async(database:Database)=>{
   const offset=await new Promise<number>((resolve,reject)=>{
     // Firebase's .info nodes are local connection metadata and must be
@@ -32,74 +48,53 @@ const serverTime=async(database:Database)=>{
   return Date.now()+offset;
 };
 
-/** Lease acquisition belongs to *an individual browser tab*, not merely UID.
- * Same authenticated user in two tabs cannot share one editing lease. */
+/** A key generated inside tab A, inaccessible from public RTDB lease/editProofs. */
+export type AcquireRetry={secret:string;operationId:string};
 export async function acquireCellLease(database:Database,user:User|null,session:string,
- id:string,field:EditableField,kind:EditorKind):Promise<CellLease>{
+ id:string,field:EditableField,kind:EditorKind,generationId?:string,
+ retry?:AcquireRetry):Promise<CellLease>{
   if(!user||!session)throw new Error('Chưa xác thực người sửa.');
-  const freeze=await readFreeze(database);
-  if(freeze.mode!=='OPEN')throw new Error('Hệ thống đang chuẩn bị chốt hoặc đã đóng băng dữ liệu.');
-  const now=await serverTime(database),token=crypto.randomUUID();
-  const location=ref(database,lockPath(id,field));
-  const existing=(await get(location)).val();
-  if(existing!=null&&!validLease(existing))throw new Error('Khóa ô bị lỗi; liên hệ quản trị.');
-  const confirmed=await runTransaction(location,raw=>{
-    if(raw!==null&&!validLease(raw))return undefined;
-    if(raw&&raw.expiresAt>now)return undefined;
-    return {uid:user.uid,session,token,kind,
-      revision:(raw?.revision??0)+1,acquiredAt:now,expiresAt:now+LEASE_TTL_MS};
-  },{applyLocally:false});
-  const entry=confirmed.snapshot.val();
-  if(!confirmed.committed||!validLease(entry)||entry.token!==token||
-    entry.session!==session||entry.uid!==user.uid)
-    throw new Error('Ô đang được sửa ở một phiên khác. Hãy thử sau khi người đó hoàn tất.');
-  // The mode may change between reading OPEN and the lock commit.
-  // If DRAINING/FROZEN, release the newly obtained lock and fail closed.
-  const state=await readFreeze(database);
-  if(state.mode!=='OPEN'){
-    await releaseCellLease(database,entry,id,field).catch(()=>{});
-    throw new Error('Quản trị đang chốt số liệu, không nhận thêm lượt sửa.');
-  }
-  return entry;
+  await assertActiveLeaseGeneration(database,generationId);
+  const secret=retry?.secret??newPrivateCellSecret();
+  const operationId=retry?.operationId??crypto.randomUUID();
+  const generation=await readActivePointer(database,generationId);
+  const result=await callCellEdit({action:'acquire',scope:generationId?'v2':'legacy',
+    generation,operationId,recordId:id,field,kind,secret},database);
+  if(result.status!=='acquired'||!result.lease||!validLease(result.lease))
+    throw new Error('Dịch vụ chưa xác nhận quyền giữ khóa.');
+  await assertActiveLeaseGeneration(database,generationId);
+  return {...result.lease,secret};
 }
-export async function renewCellLease(database:Database,lease:CellLease,id:string,field:EditableField){
-  const now=await serverTime(database);
-  if(now>=lease.acquiredAt+MAX_EDIT_MS[lease.kind])throw new Error('Đã hết thời gian sửa ô.');
-  const control=await readFreeze(database);
-  if(control.mode==='FROZEN')throw new Error('Dữ liệu đã đóng băng.');
-  const target=ref(database,lockPath(id,field));
-  await get(target); // make existing lease visible before applying CAS renewal
-  const result=await runTransaction(target,raw=>{
-    if(raw===null)return raw; // cold transaction cache must retry on server
-    if(!validLease(raw)||raw.token!==lease.token||raw.uid!==lease.uid||
-      raw.session!==lease.session||raw.expiresAt<=now)return undefined;
-    return {...raw,revision:raw.revision+1,expiresAt:now+LEASE_TTL_MS};
-  },{applyLocally:false});
-  if(!result.committed||result.snapshot.val()?.token!==lease.token)
-    throw new Error('Khóa ô đã chuyển cho người khác.');
-  return result.snapshot.val() as CellLease;
+async function readActivePointer(database:Database,generationId?:string){
+  if(!generationId)return undefined;
+  const current=(await get(ref(database,'hdnd/datasetV2/active'))).val();
+  if(!current||current.generationId!==generationId)
+    throw new Error('Thế hệ dữ liệu đã thay đổi khi sửa ô.');
+  return current as import('./dataset-replacement-integrity').ActiveDatasetPointer;
+}
+export async function renewCellLease(database:Database,lease:CellLease,id:string,field:EditableField,
+ generationId?:string,operationId=crypto.randomUUID()):Promise<CellLease>{
+  if(!lease.secret)throw new Error('Không có bí mật phiên riêng; không thể gia hạn.');
+  const generation=await readActivePointer(database,generationId);
+  const answer=await callCellEdit({action:'renew',scope:generationId?'v2':'legacy',
+    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token},database);
+  if(answer.status!=='renewed'||!answer.lease||!validLease(answer.lease))
+    throw new Error('Dịch vụ chưa xác nhận gia hạn.');
+  await assertActiveLeaseGeneration(database,generationId);
+  return {...answer.lease,secret:lease.secret};
 }
 export async function releaseCellLease(database:Database,lease:CellLease,
- id?:string,field?:EditableField):Promise<void>{
+ id?:string,field?:EditableField,generationId?:string,operationId=crypto.randomUUID()):Promise<void>{
   if(!id||!field)return;
-  const target=ref(database,lockPath(id,field));
-  const current=(await get(target)).val();
-  if(!validLease(current)||current.uid!==lease.uid||
-    current.session!==lease.session||current.token!==lease.token)return;
-  // Write a revisioned tombstone, not remove(). A security-rule check on
-  // current token + owner prevents an old session from clearing a newer lock.
-  // Send the expected token and session explicitly. If a different tab with
-  // the same UID has acquired the lock since get(), Security Rules reject
-  // this stale release instead of expiring the new tab's token.
-  await update(target,{token:lease.token,session:lease.session,expiresAt:0,
-    revision:current.revision+1});
-  const confirmed=(await get(target)).val();
-  if(!validLease(confirmed)||confirmed.token!==lease.token||confirmed.expiresAt!==0)
-    throw new Error('Khóa ô đã chuyển phiên hoặc Firebase chưa xác nhận giải phóng.');
+  if(!lease.secret)throw new Error('Thiếu bí mật phiên, không thể hủy khóa của người khác.');
+  const generation=await readActivePointer(database,generationId);
+  const result=await callCellEdit({action:'release',scope:generationId?'v2':'legacy',
+    generation,operationId,recordId:id,field,secret:lease.secret,token:lease.token},database);
+  if(result.status!=='released')throw new Error('Chưa xác nhận giải phóng khóa.');
 }
 export function watchCellLease(database:Database,id:string,field:EditableField,
- callback:(lease:CellLease|null)=>void,fail:(e:Error)=>void){
-  return onValue(ref(database,lockPath(id,field)),snap=>{
+ callback:(lease:CellLease|null)=>void,fail:(e:Error)=>void,generationId?:string){
+  return onValue(ref(database,lockPath(id,field,generationId)),snap=>{
     const raw=snap.val();
     if(raw===null){callback(null);return;}
     if(!validLease(raw)){fail(new Error('Khóa ô có dữ liệu không hợp lệ.'));return;}
@@ -110,8 +105,11 @@ export type HeldLease={id:string;field:EditableField;lease:CellLease;pending:boo
 export class CellEditSessionManager {
   private readonly tabSession=crypto.randomUUID();
   private held=new Map<string,HeldLease>();
+  private closed=false;
   private failed=new Map<string,string>();
-  constructor(private database:Database,private viewer:()=>User|null){}
+  private pendingAcquire=new Map<string,AcquireRetry>();
+  constructor(private database:Database,private viewer:()=>User|null,
+    private readonly generationId?:string){}
   private key(id:string,field:EditableField){return id+'|'+field;}
   private draftStorage(){
     // Transient anonymous UID is rotated per page/tab for exclusive editing,
@@ -121,12 +119,16 @@ export class CellEditSessionManager {
     return this.viewer()?.isAnonymous?globalThis.sessionStorage:globalThis.localStorage;
   }
   private draftKey(id:string,field:EditableField){
-    return this.viewer()?.isAnonymous
+    if(!this.generationId)return this.viewer()?.isAnonymous
       ?'hdnd.primary.unsaved-cell.tab.v2:'+id+':'+field
       :'hdnd.primary.unsaved-cell.v1:'+this.viewer()?.uid+':'+id+':'+field;
+    return this.viewer()?.isAnonymous
+      ?'hdnd.primary.unsaved-cell.tab.v3:'+this.generationId+':'+id+':'+field
+      :'hdnd.primary.unsaved-cell.v2:'+this.generationId+':'+this.viewer()?.uid+':'+id+':'+field;
   }
   /** Recovery is a local checkpoint, NEVER a database acknowledgement. */
   preserveDraft(id:string,field:EditableField,value:unknown){
+    if(this.closed)return false;
     try{
       const storage=this.draftStorage();if(!storage)return false;
       storage.setItem(this.draftKey(id,field),JSON.stringify({savedAt:Date.now(),value}));
@@ -134,6 +136,7 @@ export class CellEditSessionManager {
     }catch{return false;}
   }
   recoverDraft(id:string,field:EditableField):string|null{
+    if(this.closed)return null;
     try{
       const raw=this.draftStorage()?.getItem(this.draftKey(id,field));
       const parsed=raw?JSON.parse(raw):null;
@@ -143,23 +146,41 @@ export class CellEditSessionManager {
   private clearDraft(id:string,field:EditableField){
     try{this.draftStorage()?.removeItem(this.draftKey(id,field));}catch{}
   }
-  has(id:string,field:EditableField){return this.held.has(this.key(id,field));}
-  isPending(id:string,field:EditableField){return this.held.get(this.key(id,field))?.pending===true;}
-  proof(id:string,field:EditableField){return this.held.get(this.key(id,field))?.lease.token??null;}
+  has(id:string,field:EditableField){return !this.closed&&this.held.has(this.key(id,field));}
+  isPending(id:string,field:EditableField){return !this.closed&&this.held.get(this.key(id,field))?.pending===true;}
+  proof(id:string,field:EditableField){return this.closed?null:this.held.get(this.key(id,field))?.lease.secret??null;}
+  credential(id:string,field:EditableField){
+    const lease=this.closed?null:this.held.get(this.key(id,field))?.lease;
+    return lease?.secret?{token:lease.token,secret:lease.secret}:null;
+  }
   error(id:string,field:EditableField){return this.failed.get(this.key(id,field))??null;}
   activeCount(){return this.held.size;}
   async acquire(id:string,field:EditableField,kind:EditorKind):Promise<boolean>{
+    if(this.closed)throw new Error('Phiên sửa đã hết hiệu lực khi thay thế dữ liệu.');
+    // Existing in-memory lease is NOT authorization across an epoch change.
+    // Do this before the fast-path held.has() check.
+    await assertActiveLeaseGeneration(this.database,this.generationId);
     const key=this.key(id,field);
     if(this.held.has(key))return true;
-    const lease=await acquireCellLease(this.database,this.viewer(),this.tabSession,id,field,kind);
+    const retry=this.pendingAcquire.get(key)??{secret:newPrivateCellSecret(),operationId:crypto.randomUUID()};
+    this.pendingAcquire.set(key,retry);
+    let lease:CellLease;
+    try {lease=await acquireCellLease(this.database,this.viewer(),this.tabSession,id,field,kind,this.generationId,retry);this.pendingAcquire.delete(key);}
+    catch(cause){
+      // Keep a private retry handle only for ambiguous ACK; never persist it to shared storage.
+      if(!String(cause).includes('chưa xác nhận')&&!String(cause).includes('unavailable'))this.pendingAcquire.delete(key);
+      throw cause;
+    }
+    if(this.closed){await releaseCellLease(this.database,lease,id,field,this.generationId).catch(()=>{});throw new Error('Thế hệ đã đổi khi xin khóa; phiên cũ bị vô hiệu hóa.');}
     const entry:HeldLease={id,field,lease,pending:false,renewTimer:setInterval(()=>{
-      void renewCellLease(this.database,entry.lease,id,field).then(next=>{entry.lease=next;})
+      void renewCellLease(this.database,entry.lease,id,field,this.generationId).then(next=>{entry.lease=next;})
         .catch(e=>{this.failed.set(key,String(e));clearInterval(entry.renewTimer);
           this.held.delete(key);});
     },12000)};
     this.held.set(key,entry);this.failed.delete(key);return true;
   }
   markPending(id:string,field:EditableField){
+    if(this.closed)throw new Error('Phiên sửa đã hết hiệu lực khi thay thế dữ liệu.');
     const entry=this.held.get(this.key(id,field));
     if(!entry)throw new Error('Chưa giữ khóa ô để lưu.');
     entry.pending=true;
@@ -169,19 +190,23 @@ export class CellEditSessionManager {
     this.clearDraft(id,field); // only called after a confirmed server save
     if(!entry)return;
     clearInterval(entry.renewTimer);this.held.delete(key);
-    await releaseCellLease(this.database,entry.lease,id,field);
+    await releaseCellLease(this.database,entry.lease,id,field,this.generationId).catch(cause=>{
+      this.failed.set(key,'Đã lưu, nhưng chưa xác nhận giải phóng khóa: '+String(cause));
+    });
   }
   async cancel(id:string,field:EditableField){
     // Cancel must NEVER clear an unfinished local text draft.
     const key=this.key(id,field),entry=this.held.get(key);
     if(!entry)return;
     clearInterval(entry.renewTimer);this.held.delete(key);
-    await releaseCellLease(this.database,entry.lease,id,field);
+    await releaseCellLease(this.database,entry.lease,id,field,this.generationId);
   }
   async dispose(){
+    this.closed=true;
+    this.pendingAcquire.clear();
     const active=[...this.held.values()];
     this.held.clear();
     await Promise.allSettled(active.map(x=>{clearInterval(x.renewTimer);
-      return releaseCellLease(this.database,x.lease,x.id,x.field);}));
+      return releaseCellLease(this.database,x.lease,x.id,x.field,this.generationId);}));
   }
 }

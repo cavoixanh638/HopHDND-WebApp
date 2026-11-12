@@ -1,3 +1,9 @@
+## 02/11/2026 — Candidate tích hợp đủ 5 phần, chưa phát hành
+
+Nhánh `integration/20261102-five-streams`, tested/rebuilt SHA `66e33b85a3424b2316f090e214e813cd04331afc`: 7 workflow / 8 jobs SUCCESS; backend/FULL Rules, UI/full App, CLI Linux/Windows, backup/restore và gói dựng lại x2 đã đạt. [Bàn giao và checksum](tasks/parallel-20261102/reviews/INTEGRATION_2026-11-02.md), [checkpoint](tasks/parallel-20261102/handoffs/COORDINATOR.md). Các commit bàn giao sau SHA này chỉ đổi docs. Không merge, deploy/publish hoặc truy cập/ghi production; production GO vẫn ngoài phạm vi.
+
+---
+
 ## Lượt 025 — 29/10/2026: Khách công khai được sửa ô do admin cho phép, KHÔNG cần đăng nhập
 
 Khách vào web không cần đăng nhập Google; Firebase **Anonymous Auth** tự xác thực nền. Admin bật quyền theo cột/dòng/ô, khách chỉ sửa những trường đã được mở quyền khi dùng Firebase **primary**, không bị khóa và có lease; khách không được sửa cấu hình/duyệt UID/chuyển nguồn. Popup guest giữ giao diện gọn nhưng hiện nút sửa ô được cấp. `hdnd/editors/{UID}` là luồng nhân viên Google riêng, không áp dụng cho khách ẩn danh.
