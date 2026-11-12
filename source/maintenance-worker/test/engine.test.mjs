@@ -201,6 +201,30 @@ test('CAS prevents simultaneous mutation; ambiguous ACK must be queried',async()
   assert.equal((await inspectOperation(unknown,op())).status,'committed-active');
 });
 
+test('post-CAS readback mismatch is an unknown ACK, not a success or blind retry',async()=>{
+  const db=new MemoryDb(),operationId=op('8765432187654324');
+  const prepared=await prepareMaintenance(db,env,identity,{
+    operationId,action:'replace',expected:db.root.hdnd.datasetV2.active,
+    rows:[row()],sourceName:'Replacement.xlsx'
+  },{now});
+  const genuineGet=db.get.bind(db);
+  db.get=async path=>{
+    const result=await genuineGet(path);
+    if(path==='hdnd'&&result?.datasetV2?.active?.operationId===operationId){
+      const saved=result.datasetV2.generations['gen_'+operationId].items;
+      saved[row().recordId].note='Changed in readback only';
+    }
+    return result;
+  };
+  await assert.rejects(()=>commitMaintenance(db,env,identity,{
+    operationId,confirmation:prepared.confirmation},{now:now+1000}),
+    /COMMIT_UNKNOWN_CHECK_STATUS/);
+  // The fake server did commit. Caller must inspect the operation, NEVER
+  // create a new operation ID or blindly retry a replacement.
+  assert.equal(db.root.hdnd.datasetV2.active.operationId,operationId);
+  assert.equal(db.root.hdnd.datasetV2.generations['gen_'+operationId].items[row().recordId].note,'Ghi chú');
+});
+
 test('wrong confirmation / expired preparation / another UID fails',async()=>{
   const db=new MemoryDb();const p=await prepareMaintenance(db,env,identity,{action:'clear',operationId:op(),expected:db.root.hdnd.datasetV2.active},{now});
   await assert.rejects(()=>commitMaintenance(db,env,identity,{operationId:op(),confirmation:'XOA TAT CA'}, {now:now+1000}),/CONFIRMATION_MISMATCH/);
