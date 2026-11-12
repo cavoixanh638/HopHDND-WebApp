@@ -107,6 +107,52 @@ test('deleted or corrupted offsite backup blocks commit and preserves active poi
     {operationId,confirmation:prepared.confirmation},{now:now+1000})).status,'committed');
 });
 
+test('P1: freezing a different epoch or refreezing invalidates prepared confirmation',async()=>{
+  const db=new MemoryDb();
+  const operationId=op('9012345678901234');
+  const before=clone(db.root.hdnd.datasetV2.active);
+  const prepared=await prepareMaintenance(db,env,identity,{
+    action:'clear',operationId,expected:before
+  },{now});
+  db.root.hdnd.freezeControl={
+    ...db.root.hdnd.freezeControl,
+    revision:db.root.hdnd.freezeControl.revision+2,
+    epoch:db.root.hdnd.freezeControl.epoch+1,
+    changedAt:now+1,closedAt:now+1
+  };
+  db.rev++;
+  await assert.rejects(()=>commitMaintenance(db,env,identity,{
+    operationId,confirmation:prepared.confirmation
+  },{now:now+2000}),/FREEZE_EPOCH_CHANGED_SINCE_PREPARE/);
+  assert.deepEqual(db.root.hdnd.datasetV2.active,before);
+});
+
+test('P1: signed empty-generation backup can be restored after a replacement',async()=>{
+  const db=new MemoryDb();
+  const cleared=await prepareMaintenance(db,env,identity,{
+    action:'clear',operationId:op('9012345678901235'),
+    expected:db.root.hdnd.datasetV2.active},{now});
+  await commitMaintenance(db,env,identity,{
+    operationId:cleared.operationId,confirmation:cleared.confirmation},{now:now+1000});
+  const emptyArchive=await exportArchive(db,env,{now:now+2000});
+  const refill=await prepareMaintenance(db,env,identity,{
+    action:'replace',operationId:op('9012345678901236'),
+    expected:db.root.hdnd.datasetV2.active,rows:[row()],sourceName:'refill.xlsx'
+  },{now:now+3000});
+  await commitMaintenance(db,env,identity,{
+    operationId:refill.operationId,confirmation:refill.confirmation},{now:now+4000});
+  const restored=await prepareMaintenance(db,env,identity,{
+    action:'restore',operationId:op('9012345678901237'),
+    expected:db.root.hdnd.datasetV2.active,archive:emptyArchive
+  },{now:now+5000});
+  assert.equal(restored.newCount,0);
+  await commitMaintenance(db,env,identity,{
+    operationId:restored.operationId,confirmation:restored.confirmation},{now:now+6000});
+  assert.equal(db.root.hdnd.datasetV2.active.rowCount,0);
+  assert.equal(db.root.hdnd.datasetV2.generations['gen_'+restored.operationId].emptyGeneration,true);
+  assert.equal((await inspectOperation(db,restored.operationId)).status,'committed-active');
+});
+
 test('archive includes app paths but never unknown root/auth/sessions and is signed',async()=>{
   const db=new MemoryDb();
   const archive=await exportArchive(db,env,{now});
