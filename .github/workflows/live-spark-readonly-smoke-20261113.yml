@@ -1,0 +1,22 @@
+name: Live Spark Pages + Guest read-only verification (NO DATA MUTATION)
+on:
+  push:
+    branches: ["qa/20261113-live-spark-readonly"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify exact published SHA, public assets, guest RTDB read, headless Chrome render
+        env:
+          EXPECTED_SOURCE_SHA: bd28e19838f5a6c8ba04c3a67aa8859aba3d4952
+        run: node .github/scripts/verify-live-spark.mjs
