@@ -70,6 +70,24 @@ test('missing independent archive store blocks preparation without any database 
   assert.equal(db.root.hdnd.maintenanceOps,undefined);
 });
 
+test('offsite snapshot must match exact live business rows, not just pointer',async()=>{
+  const db=new MemoryDb(),originalGet=db.getWithEtag.bind(db);
+  let calls=0;
+  db.getWithEtag=async path=>{
+    if(++calls===2){
+      db.root.hdnd.datasetV2.generations['gen_'+initialId].items[row().recordId].note=
+        'Changed between initial read and signed backup';
+      db.rev++;
+    }
+    return originalGet(path);
+  };
+  await assert.rejects(()=>prepareMaintenance(db,env,identity,{
+    operationId:op('8765432187654323'),action:'clear',
+    expected:db.root.hdnd.datasetV2.active
+  },{now}),/OFFSITE_BACKUP_ACTIVE_BASELINE_MISMATCH/);
+  assert.equal(db.root.hdnd.maintenanceOps,undefined);
+});
+
 test('deleted or corrupted offsite backup blocks commit and preserves active pointer',async()=>{
   const db=new MemoryDb(),operationId=op('8765432187654322');
   const expected=clone(db.root.hdnd.datasetV2.active);
