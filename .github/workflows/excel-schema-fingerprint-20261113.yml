@@ -1,0 +1,29 @@
+name: Excel schema fingerprint - hidden rows columns sheets, no row-count matching
+on:
+  push:
+    branches: ["feat/20261113-excel-schema-fingerprint"]
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - run: npm ci
+      - name: Verify TypeScript
+        run: npm run typecheck
+      - name: Test fingerprint, original A-O and independent strict workbook contracts
+        run: npx vitest run tests/business-excel-schema-fingerprint.test.ts tests/business-excel-original-hdnd.test.ts tests/business-excel.test.ts tests/pr95-independent-parser.test.ts tests/pr95-l4-excel-contract.test.ts
+      - name: Build public Spark Pages
+        run: npm run build:spark
