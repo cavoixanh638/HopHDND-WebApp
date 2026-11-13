@@ -1,0 +1,46 @@
+name: Real Spark List UI parity (NO DEPLOY)
+on:
+  push:
+    branches: ["feat/20261113-production-ui-demo-parity"]
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+jobs:
+  real-spark-list:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: A4 print, clipboard, Admin lease and UI scope contracts
+        run: npx vitest run tests/live-spark-ui-parity.test.ts tests/bulk-paste.test.ts tests/list-print.test.ts tests/pr95-independent-ui.test.tsx tests/pr95-v6-l3-layout.test.ts
+      - name: Existing Auth and RTDB Emulator regression
+        run: npm run test:spark
+      - name: Build public Spark Pages
+        run: npm run build:spark
+      - name: No local privileged endpoint in public bundle
+        run: |
+          test -s dist-spark/index.html
+          if grep -R -E 'http://127[.]0[.]0[.]1:8787/parentDatasetCommit|http://localhost:8787/parentDatasetCommit' dist-spark/assets; then
+            echo "::error::Live UI accidentally bundled privileged local operator"
+            exit 1
+          fi
+          echo "REAL_LIST_SPARK_PARITY_PASS (NO DEPLOY)"
