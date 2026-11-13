@@ -100,7 +100,8 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
     expect(app).toContain("adminTools&&isFirebase&&selectedSource==='primary'&&firebase!.isAdmin?stageAdminBulkDraft:undefined");
     expect(app).toContain("live.freezeControl?.mode!=='OPEN'");
     expect(app).toContain("!leaseManager");
-    expect(list).toContain("tableViewportRef.current?.querySelector<HTMLTableElement>");
+    expect(list).toContain('const table=printTableRef.current;');
+    expect(list).toContain('<table ref={printTableRef} className="data-table item-data-table"');
     expect(list).toContain('{denseChrome&&<fieldset className="admin-search-scope">');
     expect(list).toContain('{denseChrome&&onBulkApply&&<div className="admin-bulk-paste-tools">');
     expect(list).toContain("denseChrome?selectedSearchColumns:undefined");
