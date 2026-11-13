@@ -486,6 +486,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
+  const printTableRef=useRef<HTMLTableElement|null>(null);
 
   // UI preview-only: fit the internal table viewport to the remaining screen
   // without changing the source data, column widths or production layout.
@@ -843,8 +844,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
           aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
           onClick={()=>{
-            const table=tableViewportRef.current?.querySelector<HTMLTableElement>(
-              '.item-data-table');
+            const table=printTableRef.current;
             if(!table){onLayoutSaved('Không có bảng để in.');return;}
             try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
               displayedColumns.map(col=>col.label));}
@@ -1090,7 +1090,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
+    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
