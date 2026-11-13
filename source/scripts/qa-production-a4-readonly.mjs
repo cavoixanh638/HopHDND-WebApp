@@ -14,7 +14,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
-import {transform} from 'esbuild';
+import ts from 'typescript';
 
 const require=createRequire(import.meta.url);
 const {chromium}=require('../cell-edit-service/node_modules/playwright');
@@ -31,9 +31,11 @@ const source=readFileSync('src/features/items/list-print.ts','utf8');
 assert(source.includes('size:A4 landscape;')&&
   source.includes('@page:first{@top-center{content:none}}'),
   'Approved print code no longer implements A4 landscape and page-one suppression');
-const transpiled=await transform(source,{
-  loader:'ts',format:'iife',globalName:'__approvedHDNDPrint',target:'es2022'
-});
+const output=ts.transpileModule(source,{
+  compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}
+}).outputText;
+const transpiled=output.replace(/\bexport\s+(?=(?:const|function)\s)/g,'')+
+  '\nwindow.__approvedHDNDPrint={printVisibleListA4};';
 const work=mkdtempSync(join(tmpdir(),'hophdnd-prod-a4-'));
 const pdfPath=join(work,'live-hdnd-private.pdf');
 let browser;
@@ -90,7 +92,7 @@ try{
   assert.deepEqual(data.rowCellCounts,[data.columns],'Some rows have different cell count');
   assert(data.title.includes('Danh sách'),'List heading not present');
   assert.equal(data.guestAdminBulkTools,0,'Guest unexpectedly sees Admin bulk edit tools');
-  await page.addScriptTag({content:transpiled.code});
+  await page.addScriptTag({content:transpiled});
   const libOk=await page.evaluate(()=>
     typeof window.__approvedHDNDPrint?.printVisibleListA4==='function');
   assert(libOk,'Approved print function did not load into isolated read-only QA frame');
