@@ -13,8 +13,7 @@ import {readFileSync,writeFileSync,rmSync,mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-import {createRequire} from 'node:module';
-import ts from 'typescript';
+import {createRequire,stripTypeScriptTypes} from 'node:module';
 
 const require=createRequire(import.meta.url);
 const {chromium}=require('../cell-edit-service/node_modules/playwright');
@@ -31,9 +30,7 @@ const source=readFileSync('src/features/items/list-print.ts','utf8');
 assert(source.includes('size:A4 landscape;')&&
   source.includes('@page:first{@top-center{content:none}}'),
   'Approved print code no longer implements A4 landscape and page-one suppression');
-const output=ts.transpileModule(source,{
-  compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}
-}).outputText;
+const output=stripTypeScriptTypes(source,{mode:'strip'});
 const transpiled=output.replace(/\bexport\s+(?=(?:const|function)\s)/g,'')+
   '\nwindow.__approvedHDNDPrint={printVisibleListA4};';
 const work=mkdtempSync(join(tmpdir(),'hophdnd-prod-a4-'));
