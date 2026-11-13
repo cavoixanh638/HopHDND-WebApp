@@ -1,0 +1,43 @@
+name: Live production A4 read-only PDF validation (NO DEPLOY)
+on:
+  push:
+    branches: ["qa/20261113-production-a4-readonly"]
+permissions:
+  contents: read
+jobs:
+  production-a4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install locked Playwright and Vite dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Verify headless Chrome and local-only PDF tools
+        run: |
+          command -v google-chrome
+          if ! command -v pdfinfo || ! command -v pdftotext || ! command -v pdftoppm; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq poppler-utils
+          fi
+          command -v pdfinfo
+          command -v pdftotext
+          command -v pdftoppm
+      - name: Verify actual published code / live 59-row Firebase guest List print without business writes
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node scripts/qa-production-a4-readonly.mjs
+      - name: Confirm source PDF is NOT committed or uploaded
+        if: always()
+        run: |
+          test ! -f qa-results/print-a4/hdnd-current-visible-a4.pdf
+          echo "PRODUCTION_PRIVATE_PDF_NOT_EXPORTED"
