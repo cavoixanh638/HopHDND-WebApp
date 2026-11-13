@@ -18,5 +18,5 @@ jobs:
           node-version: "24"
       - name: Verify exact published SHA, public assets, guest RTDB read, headless Chrome render
         env:
-          EXPECTED_SOURCE_SHA: bd28e19838f5a6c8ba04c3a67aa8859aba3d4952
+          EXPECTED_SOURCE_SHA: 5bdfae02f200dbfc84ad893696bff63ef43bbb61
         run: node .github/scripts/verify-live-spark.mjs
