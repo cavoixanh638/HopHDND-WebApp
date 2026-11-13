@@ -102,7 +102,7 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
     const approved=createReferenceListLayout(old);
     expect(referenceListLayoutNeedsSync(approved)).toBe(false);
     const oldShared={...approved,frameWidth:1500,
-      compactDisplay:{...approved.compactDisplay,shortLeaders:false,
+      compactDisplay:{...approved.compactDisplay!,shortLeaders:false,
         shortSpecialist:false,contentDetails:false}};
     expect(referenceListLayoutNeedsSync(oldShared)).toBe(true);
     const realList=readFileSync('src/features/items/ItemList.tsx','utf8');
