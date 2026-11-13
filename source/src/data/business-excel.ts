@@ -44,7 +44,7 @@ function rowsOf(book:XLSX.WorkBook,name:string):unknown[][] {
     if(address.startsWith('!'))continue;
     const cell=value as XLSX.CellObject;
     if(cell.f!==undefined&&!supportedCodeFormula(sheet,address,cell))
-      throw Error('Sheet "'+name+'", ô '+address+': chỉ chấp nhận công thức mã NQ =CONCATENATE("NQ",B[số dòng]) có kết quả khớp STT.');
+      throw Error('Sheet "'+name+'", ô '+address+': không chấp nhận công thức (chỉ chấp nhận công thức mã NQ =CONCATENATE("NQ",B[số dòng]) có kết quả khớp STT).');
     if(cell.t==='e')
       throw Error('Sheet "'+name+'", ô '+address+': ô Excel chứa lỗi tính toán.');
     const position=XLSX.utils.decode_cell(address);
