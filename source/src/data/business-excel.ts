@@ -18,7 +18,7 @@ export interface BusinessExcelResult {sheetName:string;items:Item[];count:number
 function readBook(bytes:Uint8Array):XLSX.WorkBook {
   if(!bytes.byteLength||bytes.byteLength>LIMIT_BYTES)
     throw Error('Excel: chỉ nhận tệp .xlsx không rỗng, tối đa 5 MB.');
-  try {return XLSX.read(bytes,{type:'array',cellFormula:true,cellDates:false});}
+  try {return XLSX.read(bytes,{type:'array',cellFormula:true,cellDates:false,cellStyles:true});}
   catch {throw Error('Excel: không đọc được file .xlsx hợp lệ.');}
 }
 /** Only the source workbook's exact NQ/B-row formula is supported.
