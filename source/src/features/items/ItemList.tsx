@@ -30,6 +30,7 @@ import {COMPACT_OPTIONS,activeCompactPairs,
   compactVisibleColumns,compactFilterText,compactTypeTone,abbreviateVietnameseName,abbreviateLeaderName,COMPACT_GROUP_DEFAULT_LABELS,DEFAULT_COMPACT_DISPLAY,toggleCompactOption,readPersonalCompactDisplay,writePersonalCompactDisplay,clearPersonalCompactDisplay,type CompactDisplay,type CompactOption} from './compact-columns';
 import { CellPicker } from './CellPicker';
 import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from './status-display';
+import {selectablePartyProgress,partyProgressEditIssue} from '../../domain/party-progress-edit';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {activateEditableCell} from './activate-editable-cell';
@@ -67,7 +68,7 @@ import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,i
 import {createReferenceListLayout,referenceListLayoutNeedsSync} from '../../data/reference-list-layout';
 import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   // Dense visual chrome is independent of RAM-only preview tools.
   const denseChrome=compactPreview||compactChrome;
@@ -315,10 +316,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   // the per-cell checker still enforces the live permission and lock state.
   const latestItems=useRef(items);
   latestItems.current=items;
-  const guardBuildUpdate=(id:string,changes:Changes):void=>{
+  const guardBuildUpdate=(id:string,changes:Changes):boolean=>{
     const latest=latestItems.current.find(entry=>entry.recordId===id);
-    if(latest&&rejectsBuildChange(latest,changes))return;
-    onUpdate(id,changes);
+    if(!latest||rejectsBuildChange(latest,changes))return false;
+    const issue=partyProgressEditIssue(latest,changes);
+    if(issue){onLayoutSaved(issue);return false;}
+    return onUpdate(id,changes)!==false;
   };
   const buildLockedHint=(item:Item)=><span className="business-build-locked"
     tabIndex={0} data-quick-tooltip={buildLockReason(item)??undefined}
@@ -475,8 +478,12 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     const cached=optionCache.get(cacheKey);
     if(cached)return cached;
     const list=field in catalog.options?catalog.options[field as CatalogKey]:field in STATUS_OPTIONS?STATUS_OPTIONS[field as keyof typeof STATUS_OPTIONS]:[];
-    const selected=statusPickerValues(field,orderValues([...new Set([...list,item[field]])].filter(Boolean),list)
+    const available=statusPickerValues(field,orderValues([...new Set([...list,item[field]])].filter(Boolean),list)
       .filter(value=>field!=='specialist'||value===item.specialist||!item.room||catalog.specialistRooms[value]?.includes(item.room)));
+    // A guest must never be offered an option that Spark rejects after
+    // acquiring a lease (BCH/BTV/TTTU + "Không phải trình").
+    const selected=field==='progressParty'
+      ?selectablePartyProgress(item.partyLevel,available):available;
     optionCache.set(cacheKey,selected);
     return selected;
   };
@@ -738,7 +745,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             :<CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={statusDisplayValue(field,rawValue)}
               displayValue={isStatusDisplayField(field)?statusDisplayValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
-              onChange={value=>{const next=statusEditSelection(field,rawValue,value);if(next!==null)guardBuildUpdate(item.recordId,{[field]:next});}}/>
+              onChange={value=>{const next=statusEditSelection(field,rawValue,value);
+                return next===null?false:guardBuildUpdate(item.recordId,{[field]:next});}}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/>:original}
       {onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
@@ -831,6 +839,21 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
         showFilterFooters={false}/>
+      {Object.keys(errors).length>0&&<section className="list-save-errors"
+        role="alert" aria-live="polite">
+        <strong>{Object.keys(errors).length} hồ sơ chưa được Firebase xác nhận lưu.</strong>
+        <span>Giá trị vừa chọn có thể chỉ là bản nháp trên máy, chưa phải dữ liệu đã lưu.
+          Không nhập lại hoặc gửi lặp khi chưa kiểm tra nguyên nhân.</span>
+        <details>
+          <summary>Xem nguyên nhân theo từng hồ sơ</summary>
+          <ul>{Object.entries(errors).map(([recordId,reason])=>{
+            const source=items.find(item=>item.recordId===recordId);
+            return <li key={recordId}>
+              <strong>{source?displayId(source):'Hồ sơ chưa xác định'}:</strong>{' '}{reason}
+            </li>;
+          })}</ul>
+        </details>
+      </section>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
         <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
         {denseChrome&&<button type="button"
@@ -1189,7 +1212,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             :<SearchHighlight value={value||'—'} query={columnFilters[column.key]}/>}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
-          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<p className="error-text" role="alert">{errors[item.recordId]}</p>}</td>;
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<span className="item-save-error-marker"
+              aria-label={'Lỗi lưu hồ sơ '+displayId(item)+'; xem thông báo trên bảng'}
+              title={errors[item.recordId]}>Lỗi lưu</span>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
         if(column.key==='isDropped')return <td key={column.key} data-col-key={column.key}
            className={canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'isDropped'))?'editable-cell':undefined}
@@ -1214,17 +1239,17 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
               ?<CellPicker leaseManager={leaseManager} recordId={item.recordId} field="type"
                 label={`${displayId(item)}: ${metadata.label}`} value={item.type}
                 options={options('type',item)} disabled={locked} highlightQuery={columnFilters.type}
-                onChange={next=>{if(next!==item.type)guardBuildUpdate(item.recordId,{type:next});}}/>
+                onChange={next=>next===item.type?false:guardBuildUpdate(item.recordId,{type:next})}/>
               :<SearchHighlight value={item.type||'—'} query={columnFilters.type}/>}
            </span>
           :key==='progressBuild'&&buildLocked(item)?buildLockedHint(item):writable?key==='content'?<button className="content-button" onClick={()=>openContentForEdit(item,'content')} disabled={locked}><SearchHighlight value={item.content||'—'} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/></button>:key==='note'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="note" value={item.note} highlightQuery={columnFilters.note}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
-      onUpdate(item.recordId,{note:value});return true;
+      return onUpdate(item.recordId,{note:value})!==false;
     }}/>:key==='specificProgress'?<InlineNoteEditor leaseManager={leaseManager} recordId={item.recordId} field="specificProgress" value={item.specificProgress} highlightQuery={columnFilters.specificProgress}
     label={`${displayId(item)}: ${metadata.label}`} onCommit={value=>{
       if(!writable)return false;
-      onUpdate(item.recordId,{specificProgress:value});return true;
+      return onUpdate(item.recordId,{specificProgress:value})!==false;
     }}/>:column.kind==='text'&&!isStatusDisplayField(key)
   ?<LeaseTextInput manager={leaseManager} id={item.recordId} field={key} label={`${displayId(item)}: ${column.label}`}
     maxLength={1000} value={String(item[key]??'')} disabled={locked}
@@ -1234,7 +1259,8 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}
-    onChange={value=>{const next=statusEditSelection(key,item[key],value);if(next!==null)guardBuildUpdate(item.recordId,{[key]:next});}}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
+    onChange={value=>{const next=statusEditSelection(key,item[key],value);
+      return next===null?false:guardBuildUpdate(item.recordId,{[key]:next});}}/>:key==='specialist'&&compactOn&&compactDisplay.shortSpecialist
       ?<span aria-label={item.specialist} title={item.specialist}>{abbreviateVietnameseName(item.specialist)||'—'}</span>
       :(key==='vpLeader'||key==='ubndLeader')&&compactOn&&compactDisplay.shortLeaders
         ?<span title={item[key]} aria-label={item[key]}>{abbreviateLeaderName(item[key])||'—'}</span>
