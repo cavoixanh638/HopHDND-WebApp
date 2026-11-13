@@ -1,6 +1,8 @@
 import {describe,it,expect,vi} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {createDemoItems} from '../src/data/demo-items';
+import {createReferenceListLayout,referenceListLayoutNeedsSync} from '../src/data/reference-list-layout';
+import {defaultItemLayout} from '../src/data/item-preferences';
 import {planBulkPaste} from '../src/features/items/bulk-paste';
 import {stageLiveBulkPaste,MAX_LIVE_BULK_ROWS,MAX_LIVE_BULK_CELLS} from '../src/features/items/live-bulk-staging';
 import type {Item,TextField,EditableField,Changes} from '../shared/types';
@@ -93,6 +95,19 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
     }));
     await expect(stageLiveBulkPaste(s.args)).rejects.toThrow('1 đến 20');
     expect(s.manager.acquire).not.toHaveBeenCalled();
+  });
+  it('detects an unsynchronized Firebase layout and recognizes exact demo alignment',()=>{
+    const old=defaultItemLayout();
+    expect(referenceListLayoutNeedsSync(old)).toBe(true);
+    const approved=createReferenceListLayout(old);
+    expect(referenceListLayoutNeedsSync(approved)).toBe(false);
+    const oldShared={...approved,frameWidth:1500,
+      compactDisplay:{...approved.compactDisplay,shortLeaders:false,
+        shortSpecialist:false,contentDetails:false}};
+    expect(referenceListLayoutNeedsSync(oldShared)).toBe(true);
+    const realList=readFileSync('src/features/items/ItemList.tsx','utf8');
+    expect(realList).toContain('referenceListLayoutNeedsSync(activeLayout)');
+    expect(realList).toContain('setPreviewOptionsOpen(true);setReferencePresetConfirm(true);');
   });
   it('only verified Admin gets the action; print and search use the actual List',()=>{
     const app=readFileSync('src/app/App.tsx','utf8');
