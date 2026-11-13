@@ -58,3 +58,24 @@
 .app-shell.list-visual-parity .admin-reference-sync-shortcut:focus-visible{
   outline:2px solid #147c58;outline-offset:2px;
 }
+
+/* Save failures are application messages, not business ID cell contents.
+ * Keep row heights and fixed ID widths stable even for long Firebase errors. */
+.app-shell .item-data-region .list-save-errors{
+  display:flex;flex-direction:column;gap:5px;
+  max-width:100%;min-width:0;margin:6px 0 10px;padding:9px 12px;
+  border:1px solid #efc3c3;border-radius:6px;background:#fff8f7;
+  color:#93312d;font-size:12px;line-height:1.45;
+}
+.app-shell .item-data-region .list-save-errors details{max-width:100%;min-width:0;}
+.app-shell .item-data-region .list-save-errors summary{cursor:pointer;font-weight:600;}
+.app-shell .item-data-region .list-save-errors ul{
+  max-height:150px;overflow:auto;margin:6px 0 0;padding-left:20px;
+}
+.app-shell .item-data-region .list-save-errors li{overflow-wrap:anywhere;white-space:normal;}
+.app-shell .item-data-table .item-save-error-marker{
+  display:inline-block;max-width:100%;margin-top:3px;padding:1px 3px;
+  border-radius:3px;color:#a12b35;background:#fff0f1;
+  font-size:9px;font-weight:700;line-height:1.2;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;vertical-align:middle;
+}
