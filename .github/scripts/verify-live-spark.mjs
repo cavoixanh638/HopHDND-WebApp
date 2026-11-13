@@ -79,6 +79,39 @@ ensure(value===null||(value&&typeof value==='object'&&!Array.isArray(value)),
 const count=value?Object.keys(value).length:0;
 ensure(count<=1000,'RTDB count over supported limit');
 console.log('LIVE_GUEST_READ_PASS','primary_record_count='+count,'business_writes=0');
+
+// Read ONLY non-sensitive shared UI presentation flags. This checks whether
+// production still stores the older column/layout preset despite newest JS.
+const profileURL=new URL(databaseURL+'/hdnd/profile.json');
+profileURL.searchParams.set('auth',auth.idToken);
+const profileResponse=await request(profileURL.toString());
+if(profileResponse.ok){
+  const wrapper=await profileResponse.json();
+  let profile=null;
+  try{profile=wrapper?.payload?JSON.parse(String(wrapper.payload)):null;}
+  catch{profile=null;}
+  const itemLayout=profile?.items;
+  const flags=itemLayout?.compactDisplay??{};
+  const required=['contentDetails','partyTogether','councilTogether',
+    'teamTogether','shortLeaders','shortSpecialist'];
+  const disabled=required.filter(key=>flags[key]!==true);
+  const columns=Array.isArray(itemLayout?.columns)?itemLayout.columns:[];
+  console.log('LIVE_SHARED_UI_LAYOUT_CHECK',JSON.stringify({
+    readable:!!itemLayout,revision:wrapper?.revision??null,
+    compactRequiredEnabled:required.length-disabled.length,
+    compactRequiredTotal:required.length,
+    missingDemoGroupFlags:disabled,
+    columnCount:columns.length,
+    visibleColumnCount:columns.filter(x=>x?.visible!==false&&x?.removed!==true).length,
+    frameWidthAuto:itemLayout?.frameWidth==='auto',
+    layoutPresetLooksApplied:disabled.length===0 && itemLayout?.frameWidth==='auto'
+  }));
+}else{
+  console.log('LIVE_SHARED_UI_LAYOUT_CHECK',JSON.stringify({
+    readable:false,status:profileResponse.status,reason:'Guest cannot inspect shared profile'
+  }));
+}
+
 // For the post-import re-run: verify all 15 A-O business fields are structurally
 // intact in Firebase, without logging their personal/business contents.
 if(count>0){
