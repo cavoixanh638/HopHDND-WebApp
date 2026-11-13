@@ -49,15 +49,17 @@ describe('real App display parity with accepted isolated preview',()=>{
     expect(result.columns.at(-1)?.visible).toBe(false);
   });
 
-  it('does not enable RAM-only editing/printing tools in real Firebase App',()=>{
+  it('uses the shared list controls with guarded Firebase bulk staging',()=>{
     const list=readFileSync(new URL('../src/features/items/ItemList.tsx',import.meta.url),'utf8');
     const app=readFileSync(new URL('../src/app/App.tsx',import.meta.url),'utf8');
     const css=readFileSync(new URL('../src/features/items/real-list-visual-parity.css',import.meta.url),'utf8');
     expect(app).toContain("compactChrome={page==='items'}");
     expect(app).toContain("list-fit-page list-visual-parity");
     expect(list).toContain("const denseChrome=compactPreview||compactChrome;");
-    expect(list).toContain('{compactPreview&&onBulkApply&&');
-    expect(list).toContain('{compactPreview&&<button type="button" className="button ghost admin-list-print-trigger"');
+    expect(app).toContain("onBulkApply={adminTools&&isFirebase&&selectedSource==='primary'&&firebase!.isAdmin?stageAdminBulkDraft:undefined}");
+    expect(list).toContain('{denseChrome&&onBulkApply&&');
+    expect(list).toContain("live={sourceKind==='firebase'}");
+    expect(list).toContain('{denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"');
     expect(list).toContain('hidden={denseChrome&&!previewOptionsOpen}');
     expect(list).toContain('applyViewerLayout(createReferenceListLayout)');
     expect(list).toContain('referencePresetConfirm');
