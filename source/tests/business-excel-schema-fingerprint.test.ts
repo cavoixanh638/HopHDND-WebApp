@@ -79,12 +79,13 @@ describe('A–O structural sheet fingerprints — no row count/name/visibility b
       styledTail:true,hiddenColumns:[15]}]);
     expect(inspectWorkbookSchema(harmless).validSheets).toEqual(['Dữ liệu A-O']);
     expect(parseBusinessExcel(harmless,'Dữ liệu A-O').count).toBe(1);
-    const workbook=XLSX.read(harmless,{type:'array',cellFormula:true});
+    const workbook=XLSX.read(harmless,{type:'array',cellFormula:true,cellStyles:true});
     const sheet=workbook.Sheets['Dữ liệu A-O'];
     sheet.P2={t:'s',v:'Không được âm thầm bỏ cột P ẩn'};
     sheet['!ref']='A1:P100000';
+    sheet['!cols']??=[];
     sheet['!cols']![15]={hidden:true};
-    const populated=new Uint8Array(XLSX.write(workbook,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
+    const populated=new Uint8Array(XLSX.write(workbook,{type:'array',bookType:'xlsx',cellStyles:true}) as ArrayBuffer);
     const found=inspectWorkbookSchema(populated);
     expect(found.sheets[0].score).toBe(100);
     expect(found.validSheets).toHaveLength(0);
