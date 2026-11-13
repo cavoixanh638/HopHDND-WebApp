@@ -1,4 +1,5 @@
 /**
+ * Re-verify current production count after user's request (2026-11-13 11:18 ICT).
  * Production smoke: public HTML/assets and one anonymous guest business READ.
  * Never writes the Realtime Database. Anonymous Auth creates a guest identity.
  * Neither tokens nor business records/IDs are printed.
