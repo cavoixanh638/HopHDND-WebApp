@@ -3,14 +3,15 @@ import type {Database} from 'firebase/database';
 import type {User} from 'firebase/auth';
 import type {Item} from '../../../shared/types';
 import {firebaseAdmin} from '../../data/firebase-repository';
-import {inspectBusinessExcel,parseBusinessExcel,type BusinessExcelInspection} from '../../data/business-excel';
+import {parseBusinessExcel} from '../../data/business-excel';
+import {inspectWorkbookSchema,type WorkbookSchemaInspection} from '../../data/business-excel-schema-fingerprint';
 import {previewDatasetReplacement} from '../../data/dataset-replacement-preview';
 import {sha256String,stableBackupJson} from '../../data/admin-backup-format';
 import {createSimpleBackup,downloadSimpleBackup,inspectSimpleBackup,
   simpleExcelCandidate,prepareSimpleChange,commitSimpleChange,
   type SimpleDraft} from '../../data/simple-admin-data';
 
-type LocalExcel={name:string;bytes:Uint8Array;inspection:BusinessExcelInspection};
+type LocalExcel={name:string;bytes:Uint8Array;inspection:WorkbookSchemaInspection};
 /** Small-data owner workflow: one JSON file + direct Google-admin RTDB transaction.
  * This is the legacy `hdnd/items` path only; no destructive root operation.
  */
@@ -56,11 +57,19 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
     if(!/\.xlsx$/i.test(file.name)||file.size>5*1024*1024||file.size===0)
       throw Error('Chọn file .xlsx tối đa 5 MB.');
     const bytes=new Uint8Array(await file.arrayBuffer());
-    const inspection=inspectBusinessExcel(bytes);
-    if(!inspection.validSheets.length)throw Error('Không có sheet Excel A–O hợp lệ.');
+    const inspection=inspectWorkbookSchema(bytes);
     setExcel({name:file.name,bytes,inspection});
-    setSheet(inspection.validSheets.length===1?inspection.validSheets[0]:'');
-    setNotice('Đã chọn Excel. Bấm “Xem trước nhập Excel” để kiểm tra.');
+    setSheet(inspection.recommendedSheet??'');
+    if(!inspection.validSheets.length){
+      const near=inspection.sheets.filter(sheet=>sheet.matchedColumns>=5)
+        .sort((a,b)=>b.score-a.score).slice(0,2)
+        .map(sheet=>sheet.name+': '+sheet.explanation);
+      throw Error('Không tìm thấy sheet A–O hợp lệ sau khi quét tất cả sheet (kể cả ẩn). '+
+        (near.length?near.join('; '):'Mở “Chi tiết nhận diện” để kiểm tra cấu trúc.'));
+    }
+    setNotice(inspection.ambiguous
+      ?'Nhiều sheet cùng khớp A–O, kể cả sheet ẩn: hãy chọn chính xác một sheet trước khi nhập.'
+      :'Đã nhận diện bảng A–O theo cấu trúc, không dựa tên file/sheet hay số dòng. Bấm “Xem trước nhập Excel”.');
   });
   const stageExcel=()=>withBusy(async()=>{
     if(!excel||!sheet)throw Error('Chưa chọn sheet Excel hợp lệ.');
@@ -129,6 +138,19 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
         </label>}
       <button className="button primary" type="button" disabled={!sheet||busy||disabled}
         onClick={()=>void stageExcel()}>Xem trước nhập Excel</button>
+      <details>
+        <summary>Chi tiết nhận diện {excel.inspection.sheets.length} sheet (gồm sheet ẩn)</summary>
+        <p className="muted">Điểm chỉ tính cấu trúc 15 trường A–O, không tính số hồ sơ,
+          tên file, tên sheet hay trạng thái ẩn/hiện. Dòng và cột ẩn luôn được đọc.</p>
+        <ul>{excel.inspection.sheets.map(candidate=><li key={candidate.name}>
+          <strong>{candidate.name}</strong>: {candidate.score}% · {candidate.matchedColumns}/15
+          cột · {candidate.visibility==='visible'?'Hiển thị':
+            candidate.visibility==='hidden'?'Sheet ẩn':'Sheet Very Hidden'}
+          · {candidate.hiddenRows} dòng ẩn · {candidate.hiddenColumns.length} cột ẩn
+          {candidate.hiddenColumns.length?' ('+candidate.hiddenColumns.join(', ')+')':''}.
+          {' '}{candidate.explanation}
+        </li>)}</ul>
+      </details>
     </div>}
     {!backupHash&&<p className="notice">Trước khi xóa hoặc nhập đè, tải một file backup của dữ liệu hiện tại.</p>}
     {backupHash&&<p className="muted">Đã tạo backup trong lượt này. Nếu dữ liệu đổi, hệ thống yêu cầu tải lại.</p>}
