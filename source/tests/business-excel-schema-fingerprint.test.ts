@@ -16,9 +16,9 @@ function build(sheets:{name:string;rows:unknown[][];hidden?:0|1|2;
     const sheet=XLSX.utils.aoa_to_sheet(candidate.rows);
     const last=BUSINESS_HEADERS.length;
     sheet['!rows']=Array.from({length:candidate.rows.length},(_,i)=>
-      candidate.hiddenRows?.includes(i+1)?{hidden:true}:undefined);
+      candidate.hiddenRows?.includes(i+1)?{hidden:true}:{});
     sheet['!cols']=Array.from({length:last+2},(_,i)=>
-      candidate.hiddenColumns?.includes(i)?{hidden:true}:undefined);
+      candidate.hiddenColumns?.includes(i)?{hidden:true}:{});
     if(candidate.styledTail)sheet['!ref']='A1:P100000';
     XLSX.utils.book_append_sheet(book,sheet,candidate.name);
   }
