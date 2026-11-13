@@ -2,7 +2,8 @@ import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import type {Database} from 'firebase/database';
 import type {Item} from '../shared/types';
-import {simpleExcelCandidate,inspectSimpleBackup} from '../src/data/simple-admin-data';
+import {simpleExcelCandidate,inspectSimpleBackup,
+  requiresSimpleBackup} from '../src/data/simple-admin-data';
 import {sha256String,stableBackupJson} from '../src/data/admin-backup-format';
 
 const db={app:{options:{
@@ -20,6 +21,20 @@ const row:Item={
   archivedAt:null,revision:1
 };
 describe('Simple admin file-only maintenance',()=>{
+  it('allows direct first Excel import without backup only when primary has 0 records',()=>{
+    expect(requiresSimpleBackup(0)).toBe(false);
+    expect(requiresSimpleBackup(1)).toBe(true);
+    expect(requiresSimpleBackup(59)).toBe(true);
+    expect(()=>requiresSimpleBackup(-1)).toThrow();
+    expect(()=>requiresSimpleBackup(NaN)).toThrow();
+    const panel=readFileSync('src/features/settings/SimpleAdminDataPanel.tsx','utf8');
+    expect(panel).toContain('requiresSimpleBackup(next.oldCount)');
+    expect(panel).toContain('requiresSimpleBackup(draft.oldCount)');
+    expect(panel).toContain('Nhập Excel lần đầu vào Firebase?');
+    expect(panel).toContain('Xác nhận nhập Excel');
+    expect(panel).toContain('Nhập Excel (.xlsx)');
+    expect(panel).toContain('Tải backup JSON');
+  });
   it('converts business Excel to clean current rows with server metadata',()=>{
     const records=simpleExcelCandidate([row],'verified-admin-uid')!;
     const record=records[row.recordId] as Record<string,unknown>;
