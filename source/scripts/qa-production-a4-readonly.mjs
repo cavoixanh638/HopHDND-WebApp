@@ -65,7 +65,7 @@ try{
     const table=document.querySelector('table.item-data-table');
     return !!table&&table.querySelectorAll('tbody tr').length>=59&&
       !document.querySelector('.layout-loading-placeholder');
-  },{timeout:100000});
+  },undefined,{timeout:100000});
   const data=await page.evaluate(()=>{
     const table=document.querySelector('table.item-data-table');
     const rows=[...table.querySelectorAll('tbody tr')];
@@ -82,7 +82,7 @@ try{
       url:location.origin+location.pathname
     };
   });
-  assert.equal(data.url,base.replace(/\/$/,''));
+  assert.equal(data.url,base);
   assert.equal(data.rows,59,'Live production guest list must show 59 records');
   assert.equal(data.uniqueRecords,59,'Live guest list has duplicate record IDs');
   assert(data.columns>=5,'No meaningful columns to print');
