@@ -37,9 +37,10 @@ function supportedCodeFormula(sheet:XLSX.WorkSheet,address:string,cell:XLSX.Cell
 function rowsOf(book:XLSX.WorkBook,name:string):unknown[][] {
   const sheet=book.Sheets[name];
   if(!sheet)throw Error('Excel: sheet "'+name+'" không tồn tại.');
-  const range=XLSX.utils.decode_range(sheet['!ref']??'A1');
-  if(range.e.r>LIMIT_ROWS+15)
-    throw Error('Sheet "'+name+'", dòng '+(range.e.r+1)+': vượt vùng kiểm tra 1.000 hồ sơ.');
+  // Excel can retain formatting across 100,000+ blank rows/columns. Do NOT
+  // classify a sheet by its declared dimensions or silently skip hidden rows.
+  // Bound the actual populated rectangle instead of the formatted !ref.
+  let lastPopulatedRow=0;
   for(const [address,value] of Object.entries(sheet)){
     if(address.startsWith('!'))continue;
     const cell=value as XLSX.CellObject;
@@ -48,14 +49,23 @@ function rowsOf(book:XLSX.WorkBook,name:string):unknown[][] {
     if(cell.t==='e')
       throw Error('Sheet "'+name+'", ô '+address+': ô Excel chứa lỗi tính toán.');
     const position=XLSX.utils.decode_cell(address);
-    if(position.c>=15&&cell.v!==undefined&&cell.v!==null&&String(cell.v)!=='')
+    const meaningful=cell.f!==undefined||
+      (cell.v!==undefined&&cell.v!==null&&String(cell.v)!=='');
+    if(position.c>=15&&meaningful)
       throw Error('Sheet "'+name+'", dòng '+(position.r+1)+', cột '+
-        XLSX.utils.encode_col(position.c)+': không hỗ trợ dữ liệu ngoài cột O.');
+        XLSX.utils.encode_col(position.c)+': không hỗ trợ dữ liệu ngoài cột O (kể cả cột ẩn).');
+    if(meaningful)lastPopulatedRow=Math.max(lastPopulatedRow,position.r+1);
   }
-  if(range.e.c>=15)
-    throw Error('Sheet "'+name+'", cột '+XLSX.utils.encode_col(range.e.c)+
-      ': vùng dữ liệu vượt cấu trúc A–O.');
-  return XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,raw:false,defval:'',blankrows:true});
+  // Resource guard is NOT a schema fingerprint. A sheet with 1,000 records
+  // and rows styled to 100,000 is valid; >10,000 physically populated rows
+  // require a manual data cleanup to stay inside the small-file import limits.
+  if(lastPopulatedRow>10000)
+    throw Error('Sheet "'+name+'": vùng ô có dữ liệu thực vượt 10.000 dòng.');
+  const end=Math.max(1,lastPopulatedRow);
+  return XLSX.utils.sheet_to_json<unknown[]>(sheet,{
+    header:1,raw:false,defval:'',blankrows:true,skipHidden:false,
+    range:'A1:O'+end
+  });
 }
 const normalized=(x:unknown)=>String(x??'').trim().toLocaleLowerCase('vi')
   .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/\s+/g,' ');
@@ -66,7 +76,7 @@ const HEADER_ANCHORS:readonly (readonly [number,string])[]=[
   [4,'Loại VB'],[5,'Cấp cho ý kiến Thành ủy'],[6,'Tiến độ xin ý kiến Thành ủy'],
   [9,'Chuyên viên'],[10,'Phòng'],[13,'Tiến độ hiện tại'],[14,'Ghi chú']
 ];
-const headerIndex=(rows:unknown[][])=>rows.slice(0,10).findIndex(row=>
+const headerIndex=(rows:unknown[][])=>rows.findIndex(row=>
   (normalized(row[2]).includes('noi dung')&&normalized(row[3]).includes('so'))||
   HEADER_ANCHORS.filter(([column,label])=>normalized(row[column])===normalized(label)).length>=3);
 function validateHeader(rows:unknown[][],name:string):number {
