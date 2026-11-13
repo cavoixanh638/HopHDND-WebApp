@@ -161,7 +161,7 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
       </details>
     </div>}
     {!backupHash&&<p className="notice">Nếu danh sách đang trống, chọn Excel để nhập trực tiếp.
-      Nếu đã có hồ sơ, ứng dụng yêu cầu tải backup trước khi thay thế.</p>
+      Nếu đã có hồ sơ, ứng dụng yêu cầu tải backup trước khi thay thế.</p>}
     {backupHash&&<p className="muted">Đã tạo backup trong lượt này. Nếu dữ liệu đổi, hệ thống yêu cầu tải lại.</p>}
     {draft&&<div role="status" className="card">
       <strong>Xem trước — chưa ghi Firebase</strong>
