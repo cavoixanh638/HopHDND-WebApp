@@ -21,6 +21,19 @@ function readBook(bytes:Uint8Array):XLSX.WorkBook {
   try {return XLSX.read(bytes,{type:'array',cellFormula:true,cellDates:false});}
   catch {throw Error('Excel: không đọc được file .xlsx hợp lệ.');}
 }
+/** Only the source workbook's exact NQ/B-row formula is supported.
+ * Its cached result and row STT must agree; arbitrary formulas stay rejected.
+ */
+function supportedCodeFormula(sheet:XLSX.WorkSheet,address:string,cell:XLSX.CellObject):boolean{
+  const position=XLSX.utils.decode_cell(address);
+  const formula=typeof cell.f==='string'?cell.f:'';
+  const match=/^CONCATENATE\(\s*"NQ"\s*,\s*B([1-9]\d*)\s*\)$/i.exec(formula);
+  if(position.c!==0||!match||Number(match[1])!==position.r+1)return false;
+  const ordinal=sheet[XLSX.utils.encode_cell({r:position.r,c:1})] as XLSX.CellObject|undefined;
+  const num=ordinal?.v;
+  return typeof num==='number'&&Number.isSafeInteger(num)&&num>0&&
+    cell.v==='NQ'+String(num);
+}
 function rowsOf(book:XLSX.WorkBook,name:string):unknown[][] {
   const sheet=book.Sheets[name];
   if(!sheet)throw Error('Excel: sheet "'+name+'" không tồn tại.');
@@ -30,8 +43,8 @@ function rowsOf(book:XLSX.WorkBook,name:string):unknown[][] {
   for(const [address,value] of Object.entries(sheet)){
     if(address.startsWith('!'))continue;
     const cell=value as XLSX.CellObject;
-    if(cell.f!==undefined)
-      throw Error('Sheet "'+name+'", ô '+address+': không chấp nhận công thức.');
+    if(cell.f!==undefined&&!supportedCodeFormula(sheet,address,cell))
+      throw Error('Sheet "'+name+'", ô '+address+': chỉ chấp nhận công thức mã NQ =CONCATENATE("NQ",B[số dòng]) có kết quả khớp STT.');
     if(cell.t==='e')
       throw Error('Sheet "'+name+'", ô '+address+': ô Excel chứa lỗi tính toán.');
     const position=XLSX.utils.decode_cell(address);
@@ -64,12 +77,17 @@ function validateHeader(rows:unknown[][],name:string):number {
   // "trình" (H/I) or "lãnh đạo" (L/M). An accidental swap must fail even
   // when the status values in both columns are otherwise valid.
   const allowed:readonly (readonly string[])[]=[
-    ['Mã nội dung'],['STT'],['Nội dung trình'],['Sở, ngành'],['Loại VB'],
-    ['Cấp cho ý kiến Thành ủy'],['Tiến độ xin ý kiến Thành ủy'],
-    ['Trình HĐND xây dựng NQ','Trình HĐND xây dựng nghị quyết'],
-    ['Trình HĐND ban hành NQ','Trình HĐND ban hành nghị quyết'],
-    ['Chuyên viên'],['Phòng'],['Lãnh đạo VP','Lãnh đạo Văn phòng'],
-    ['Lãnh đạo UBND','Lãnh đạo Ủy ban nhân dân'],
+    ['Mã nội dung','ID'],['STT'],['Nội dung trình'],
+    ['Sở, ngành','Sở, ngành chủ trì'],['Loại VB'],
+    ['Cấp cho ý kiến Thành ủy','Cấp Thành ủy cho ý kiến'],
+    ['Tiến độ xin ý kiến Thành ủy'],
+    ['Trình HĐND xây dựng NQ','Trình HĐND xây dựng nghị quyết',
+      'Tiến độ trình HĐND xây dựng NQ'],
+    ['Trình HĐND ban hành NQ','Trình HĐND ban hành nghị quyết',
+      'Tiến độ trình HĐND ban hành NQ/ BC'],
+    ['Chuyên viên','Chuyên viên VPUB'],['Phòng','Phòng chuyên môn'],
+    ['Lãnh đạo VP','Lãnh đạo Văn phòng'],
+    ['Lãnh đạo UBND','Lãnh đạo Ủy ban nhân dân','Lãnh đạo UBND TP'],
     ['Tiến độ hiện tại'],['Ghi chú']
   ];
   for(let column=0;column<allowed.length;column++){
@@ -97,13 +115,18 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
   const book=readBook(input instanceof Uint8Array?input:new Uint8Array(input));
   if(!sheetName||!book.SheetNames.includes(sheetName))
     throw Error('Phải chọn đúng sheet dữ liệu; ứng dụng không tự lấy sheet đầu tiên.');
-  const rows=rowsOf(book,sheetName),head=validateHeader(rows,sheetName),data=rows.slice(head+1);
+  const rows=rowsOf(book,sheetName),head=validateHeader(rows,sheetName);
+  // The original HĐND workbook has one decorative blank row immediately
+  // below its header (row 3). Never skip gaps BETWEEN business records.
+  const oneBlankSpacer=rows[head+1]?.every(cell=>!String(cell??'').trim())??false;
+  const firstDataRow=head+1+(oneBlankSpacer?1:0); // 0-based sheet row
+  const data=rows.slice(firstDataRow);
   if(!data.length)throw Error('Sheet "'+sheetName+'": file không chứa hồ sơ.');
   const seen=new Map<string,number>(),checked:unknown[][]=[];
   const lastDataIndex=data.reduce((last,values,index)=>
     values.some(cell=>String(cell??'').trim())?index:last,-1);
   for(let index=0;index<=lastDataIndex;index++){
-    const values=data[index],line=head+index+2;
+    const values=data[index],line=firstDataRow+index+1;
     if(values.every(cell=>!String(cell??'').trim()))
       throw Error('Sheet "'+sheetName+'", dòng '+line+': dòng trống nằm giữa vùng hồ sơ; không tự bỏ dòng.');
     const code=String(values[0]??'');
@@ -144,7 +167,10 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
   }
   if(!checked.length)throw Error('Sheet "'+sheetName+'": không có hồ sơ hợp lệ.');
   if(checked.length>LIMIT_ROWS)throw Error('Sheet "'+sheetName+'": vượt giới hạn 1.000 hồ sơ.');
-  const canonical=[rows[head],...checked];
+  // Once column order and source-header aliases have passed validation,
+  // the shared GViz decoder receives canonical headers; A–O cell values
+  // below remain verbatim and are never normalized or reordered.
+  const canonical=[[...BUSINESS_HEADERS],...checked];
   const payload={status:'ok',table:{cols:Array.from({length:15},()=>({})),
     rows:canonical.map(row=>({c:Array.from({length:15},(_,i)=>({v:String(row[i]??'')}))}))}};
   const parsed=parseGvizPayload(payload,'validated:business');
@@ -157,7 +183,7 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
     // GViz is used only for the shared classification and structure check.
     const asText=(column:number)=>String(source[column]??'');
     return {...item,
-      recordId:identifier(code,sheetName,head+index+2),displayCode:code,revision:1,
+      recordId:identifier(code,sheetName,firstDataRow+index+1),displayCode:code,revision:1,
       content:asText(2),department:asText(3),type:asText(4),
       partyLevel:asText(5),progressParty:asText(6),progressBuild:asText(7),
       progressCouncil:asText(8),specialist:asText(9),room:asText(10),
