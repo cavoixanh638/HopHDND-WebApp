@@ -9,7 +9,7 @@ import {previewDatasetReplacement} from '../../data/dataset-replacement-preview'
 import {sha256String,stableBackupJson} from '../../data/admin-backup-format';
 import {createSimpleBackup,downloadSimpleBackup,inspectSimpleBackup,
   simpleExcelCandidate,prepareSimpleChange,commitSimpleChange,
-  type SimpleDraft} from '../../data/simple-admin-data';
+  requiresSimpleBackup,type SimpleDraft} from '../../data/simple-admin-data';
 
 type LocalExcel={name:string;bytes:Uint8Array;inspection:WorkbookSchemaInspection};
 /** Small-data owner workflow: one JSON file + direct Google-admin RTDB transaction.
@@ -43,14 +43,16 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
   });
   const prepare=async(action:SimpleDraft['action'],candidate:SimpleDraft['candidate'])=>{
     const next=await prepareSimpleChange(database,user,action,candidate);
-    if(next.expectedSha256!==backupHash)
-      throw Error('Hãy bấm “Tải backup JSON” của dữ liệu hiện tại trước khi tiếp tục.');
+    if(requiresSimpleBackup(next.oldCount)&&next.expectedSha256!==backupHash)
+      throw Error('Danh sách đang có dữ liệu. Hãy tải backup JSON hiện tại trước khi thay thế.');
     setDraft(next);
     setPreview(action==='clear'
       ?'Xóa '+next.oldCount+' hồ sơ đang hoạt động (không xóa mirror/nguồn cũ).'
       :action==='restore'
         ?'Khôi phục '+next.newCount+' hồ sơ từ file backup; đang có '+next.oldCount+'.'
-        :'Thay '+next.oldCount+' hồ sơ đang có bằng '+next.newCount+' hồ sơ trong Excel.');
+        :next.oldCount===0
+          ?'Nhập lần đầu '+next.newCount+' hồ sơ từ Excel vào danh sách Firebase đang trống.'
+          :'Thay '+next.oldCount+' hồ sơ đang có bằng '+next.newCount+' hồ sơ trong Excel.');
   };
   const loadExcel=(file:File)=>withBusy(async()=>{
     clearResult();
@@ -94,11 +96,17 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
   });
   const confirm=()=>withBusy(async()=>{
     if(!draft)throw Error('Chưa có bản xem trước cần xác nhận.');
-    if(!backupHash||draft.expectedSha256!==backupHash)
+    if(requiresSimpleBackup(draft.oldCount)&&
+      (!backupHash||draft.expectedSha256!==backupHash))
       throw Error('Bản backup không còn trùng dữ liệu hiện tại.');
-    const word=draft.action==='clear'?'XÓA':'THAY THẾ';
-    if(!window.confirm(word+' danh sách hiện tại?\n'+preview+
-      '\nFile backup vừa tải giúp bạn khôi phục khi cần.'))
+    const question=draft.action==='clear'?'Xóa danh sách hiện tại?':
+      draft.action==='restore'?'Khôi phục dữ liệu từ JSON?':
+      draft.oldCount===0?'Nhập Excel lần đầu vào Firebase?':
+      'Thay thế dữ liệu hiện tại bằng Excel?';
+    if(!window.confirm(question+'\n'+preview+
+      (requiresSimpleBackup(draft.oldCount)
+        ?'\nFile backup vừa tải giúp bạn khôi phục khi cần.'
+        :'\nDanh sách hiện trống nên không cần sao lưu trước khi nhập.')))
       return;
     const count=await commitSimpleChange(database,user,draft);
     setDraft(null);setBackupHash('');setExcel(null);setSheet('');
@@ -109,23 +117,23 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
   if(!firebaseAdmin(user))return null;
   return <section className="card admin-data-maintenance" aria-label="Sao lưu và thay dữ liệu đơn giản">
     <h3>Quản lý dữ liệu — 3 thao tác</h3>
-    <p>Sao lưu bằng file JSON trên máy. Không cần Cloudflare hay dịch vụ ngoài.
-      Khi thay dữ liệu, ứng dụng tạm dừng chỉnh sửa để tránh ghi chồng.</p>
+    <p>Nhập trực tiếp Excel khi danh sách Firebase trống. Nếu đã có hồ sơ,
+      tải backup JSON trước khi thay thế. Không cần dịch vụ lưu trữ bên ngoài.</p>
     <div className="toolbar">
-      <button className="button primary" type="button" disabled={busy||disabled}
-        onClick={()=>void backup()}>1. Tải backup JSON</button>
-      <label className="field">2. Nhập Excel mới (.xlsx)
+      <label className="field">Nhập Excel (.xlsx)
         <input type="file" accept=".xlsx" disabled={busy||disabled}
           onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadExcel(file);
             e.currentTarget.value='';}}/>
       </label>
+      <button className="button ghost" type="button" disabled={busy||disabled}
+        onClick={()=>void backup()}>Tải backup JSON</button>
       <label className="field">Hoặc khôi phục file backup (.json)
         <input type="file" accept=".json,application/json" disabled={busy||disabled}
           onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadJson(file);
             e.currentTarget.value='';}}/>
       </label>
       <button className="button ghost" type="button" disabled={busy||disabled}
-        onClick={()=>void stageClear()}>3. Xóa danh sách hiện tại</button>
+        onClick={()=>void stageClear()}>Xóa danh sách hiện tại</button>
     </div>
     {excel&&<div className="toolbar">
       <span>Excel: <strong>{excel.name}</strong></span>
@@ -152,7 +160,8 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
         </li>)}</ul>
       </details>
     </div>}
-    {!backupHash&&<p className="notice">Trước khi xóa hoặc nhập đè, tải một file backup của dữ liệu hiện tại.</p>}
+    {!backupHash&&<p className="notice">Nếu danh sách đang trống, chọn Excel để nhập trực tiếp.
+      Nếu đã có hồ sơ, ứng dụng yêu cầu tải backup trước khi thay thế.</p>}
     {backupHash&&<p className="muted">Đã tạo backup trong lượt này. Nếu dữ liệu đổi, hệ thống yêu cầu tải lại.</p>}
     {draft&&<div role="status" className="card">
       <strong>Xem trước — chưa ghi Firebase</strong>
@@ -160,7 +169,8 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
       <button type="button" className="button danger" disabled={busy||disabled}
         onClick={()=>void confirm()}>{busy?'Đang cập nhật…':
           draft.action==='clear'?'Xác nhận xóa danh sách':
-          draft.action==='restore'?'Xác nhận khôi phục JSON':'Xác nhận thay bằng Excel'}</button>
+          draft.action==='restore'?'Xác nhận khôi phục JSON':
+          draft.oldCount===0?'Xác nhận nhập Excel':'Xác nhận thay bằng Excel'}</button>
       <button type="button" className="button ghost" disabled={busy}
         onClick={clearResult}>Hủy</button>
     </div>}

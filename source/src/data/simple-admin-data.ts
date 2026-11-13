@@ -120,6 +120,15 @@ export function simpleExcelCandidate(rows:readonly Item[],uid:string):RawItems {
     throw Error('Tệp Excel sau chuyển đổi vượt 5 MB.');
   return target;
 }
+/** A new, empty primary list contains nothing to protect with a backup.
+ * Once any active record exists, ask for a fresh file before overwriting.
+ * The server still uses the exact snapshot digest as a compare-and-swap fence.
+ */
+export function requiresSimpleBackup(oldCount:number):boolean{
+  if(!Number.isSafeInteger(oldCount)||oldCount<0)
+    throw Error('Số hồ sơ hiện tại không hợp lệ.');
+  return oldCount>0;
+}
 export type SimpleDraft={action:'clear'|'restore'|'excel';expectedSha256:string;
   oldCount:number;newCount:number;candidate:RawItems;freezeRevision:number;
   freezeEpoch:number;createdAt:number};
