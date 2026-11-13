@@ -1,0 +1,44 @@
+name: Guest cell edit status, save feedback and Spark performance (NO DEPLOY)
+on:
+  push:
+    branches: ["fix/20261113-guest-cell-save-status-ux"]
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+jobs:
+  guest-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Locked dependencies
+        run: |
+          npm ci
+          npm ci --prefix parent-commit-service --no-audit --no-fund
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Guest edit validation, status, picker and save UX regressions
+        run: npx vitest run tests/guest-edit-ux-contract.test.ts tests/real-demo-visual-parity.test.ts tests/pr95-v5-l4-build-effective.test.ts
+      - name: Emulator real anonymous grant, lock and status save
+        run: npm run test:spark
+      - name: Public Spark build; no deployment or Firebase writes
+        run: npm run build:spark
+      - name: Verify GitHub Pages release gate is unchanged
+        working-directory: .
+        run: |
+          grep -Fq "vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha" .github/workflows/publish-pages.yml
+          grep -Fq "vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'" .github/workflows/publish-pages.yml
+          echo "GUEST_CELL_EDIT_FIX_PASS_NO_DEPLOY"

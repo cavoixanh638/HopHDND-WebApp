@@ -197,10 +197,13 @@ describe('separate item layout save and data draft',()=>{
       initialLayout:layout,canEditCell:(_id:string,field:string)=>_id===id&&field==='progressParty'});
     const picker=nodes(tree).find(node=>node.type===CellPicker&&String(node.props?.label).includes('Tiến độ xin ý kiến Thành ủy'));
     expect(picker).toBeDefined();
+    // The official catalog remains canonical, but BCH/BTV/TTTU must not
+    // offer the special status which only a level='Không' write can derive.
     expect(picker.props.options).toEqual([
-      'Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
+      'Sở chưa trình','VP đang xử lý','Đã gửi ĐU',
       'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'
     ]);
+    expect(picker.props.options).not.toContain('Không phải trình');
     expect(picker.props.options).not.toContain('Giá trị từ danh mục chung');
     expect(picker.props.options).not.toContain('Lựa chọn cũ không còn sử dụng');
     // The raw alias is displayed as the canonical selected option, not written back.

@@ -56,11 +56,13 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       :active!==null;
     if(changed)throw Error('Thế hệ dữ liệu đã thay đổi.');
   }
-  await assertEpoch();
+  // The live generation fence and server clock are independent reads.
+  // Run them together to shorten the first editor's network wait without
+  // weakening either check or writing any unverified lease.
+  const [now]=await Promise.all([serverNow(db),assertEpoch()]);
   const rowPath=generation?`hdnd/datasetV2/generations/${generation.generationId}/items/${id}`:`hdnd/items/${id}`;
   const leaseRoot=generation?`hdnd/datasetV2/leases/${generation.generationId}/${id}`:`hdnd/editLocks/${id}`;
   const field=request.field;
-  const now=await serverNow(db);
   if(request.action==='acquire'||request.action==='renew'||request.action==='release'){
     if(!field||!EDITABLE_FIELDS.includes(field))throw Error('Trường sửa không hợp lệ.');
     if(request.action==='acquire'&&(!request.kind||!Object.hasOwn(MAX_EDIT_MS,request.kind)))throw Error('Loại khóa không hợp lệ.');
@@ -82,7 +84,10 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       if(String(error).includes('permission_denied'))throw Error('Quyền, khóa, generation hoặc freeze đã đổi trước khi máy chủ xác nhận.');
       throw error;
     }finally{release();}
-    const stored=(await get(location)).val() as CellLease|null;
+    // A committed transaction resolves only after the server accepted it;
+    // its returned snapshot is already authoritative. Avoid an additional
+    // round-trip on every picker open; retain readback for ambiguous retries.
+    const stored=(result.committed?result.snapshot.val():(await get(location)).val()) as CellLease|null;
     if(!stored||stored.uid!==session.uid||stored.lastOperationId!==request.operationId||(!result.committed&&stored.token!==request.token&&stored.token!==request.operationId))
       throw Error(stored&&stored.expiresAt>now?'Ô đang được phiên khác giữ khóa.':'Khóa đã hết hạn hoặc chưa xác nhận.');
     await assertEpoch();
@@ -100,6 +105,8 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   if(fields.includes('partyLevel')&&!PARTY_LEVELS.has(String(patch.changes.partyLevel)))throw Error('Cấp trình không thuộc danh mục.');
   if(fields.includes('progressParty')&&!PARTY_STATUSES.has(String(patch.changes.progressParty)))throw Error('Tiến độ Thành ủy không thuộc danh mục.');
   if(fields.includes('partyLevel')&&fields.includes('progressParty'))throw Error('Chỉ gửi cấp trình; tiến độ phụ thuộc do giao dịch quyết định.');
+  if(fields.includes('progressParty')&&patch.changes.progressParty==='Không phải trình')
+    throw Error('Không được chọn “Không phải trình” trực tiếp. Chỉ đổi Cấp trình sang “Không”; máy chủ sẽ cập nhật tiến độ cùng giao dịch.');
   if(before?.operationId===request.operationId&&fields.every(f=>before[f]===patch.changes[f]))
     return {status:'committed',row:before,operationId:request.operationId};
   // get() can return data without populating the transaction cache. Hold a
@@ -123,9 +130,13 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       history:{...(raw.history??{}),[String(revision%50)]:{operationId:request.operationId,recordId:id,at,actor:session.uid,
         changes:Object.fromEntries(changed.map(f=>[f,requested[f]])),oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))}}};
   },{applyLocally:false});}finally{release();}
-  const row=(await get(location)).val();
-  if(!row||row.operationId!==request.operationId||fields.some(f=>row[f]!==patch.changes[f]))
-    throw Error(result.committed?'Chưa xác minh bản ghi sau lưu.':'Ô đã thay đổi hoặc chưa xác nhận lưu, giữ bản nháp.');
+  const row=result.committed?result.snapshot.val():(await get(location)).val();
+  if(!row||row.operationId!==request.operationId||fields.some(f=>row[f]!==patch.changes[f])){
+    const changed=fields.some(f=>row&&row[f]!==patch.baseValues[f]);
+    throw Error(result.committed?'Chưa xác minh bản ghi sau lưu.':
+      changed?'Giá trị ô trên Firebase đã thay đổi; cần đọc lại dữ liệu trước khi sửa.':
+      'Máy chủ chưa chấp nhận giao dịch; có thể quyền hoặc khóa ô đã thay đổi. Giữ bản nháp để đối chiếu.');
+  }
   await assertEpoch();
   return {status:'committed',operationId:request.operationId,row};
 }

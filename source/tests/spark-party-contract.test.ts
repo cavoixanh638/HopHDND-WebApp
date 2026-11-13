@@ -103,6 +103,23 @@ describe.skipIf(!enabled)('Spark integrated party level contract: real Auth + co
    expect(session.uid).not.toBe(admin.user.uid);
    expect((await get(ref(admin.db,permissions(v2)+'/partyLevel'))).val()).toBe(false);
   });
+  it('anonymous guest can commit a VALID BCH status and note after acquiring exclusive leases',async()=>{
+   await setup(v2,'BCH','Sở chưa trình',{partyLevel:false,progressParty:true,note:true});
+   const m=model(A,v2);
+   await m.manager.acquire('r1','progressParty','status');
+   const next=await saved(m,{progressParty:'VP đang xử lý'});
+   expect(next.progressParty).toBe('VP đang xử lý');
+   expect(next.partyLevel).toBe('BCH');
+   expect(next.revision).toBe(2);
+   await m.manager.finish('r1','progressParty');
+   await m.manager.acquire('r1','note','multiline');
+   const noted=await saved(m,{note:'Khách đã cập nhật ghi chú hợp lệ'});
+   expect(noted.note).toBe('Khách đã cập nhật ghi chú hợp lệ');
+   expect(noted.progressParty).toBe('VP đang xử lý');
+   expect(noted.revision).toBe(3);
+   const server=(await get(ref(A.db,path(v2)))).val();
+   expect(server.history['3'].changes.note).toBe('Khách đã cập nhật ghi chú hợp lệ');
+  });
   it('invalid enum, combined patch and direct synthetic status are denied with no mutation',async()=>{
    await setup(v2,'BCH','Sở chưa trình',{partyLevel:true,progressParty:true,note:true});
    const m=model(A,v2);await m.manager.acquire('r1','partyLevel','status');await m.manager.acquire('r1','progressParty','status');
