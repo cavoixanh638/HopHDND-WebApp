@@ -104,10 +104,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
-  const searchStorageKey='hdnd-preview-search-columns:'+sourceKey;
+  const searchStorageKey=(compactPreview?'hdnd-preview-search-columns:':'hdnd-list-search-columns:')+sourceKey;
   const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
   const [selectedSearchColumns,setSelectedSearchColumns]=useState<string[]>(()=>{
-    if(typeof window==='undefined'||!compactPreview)return searchChoices;
+    if(typeof window==='undefined'||!denseChrome)return searchChoices;
     try{
       const saved=JSON.parse(window.localStorage.getItem(searchStorageKey)??'null');
       if(Array.isArray(saved)&&saved.length&&saved.every((x:unknown)=>typeof x==='string')&&
@@ -117,10 +117,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return searchChoices;
   });
   useEffect(()=>{
-    if(!compactPreview||typeof window==='undefined')return;
+    if(!denseChrome||typeof window==='undefined')return;
     try{window.localStorage.setItem(searchStorageKey,JSON.stringify(selectedSearchColumns));}
     catch{/* browser storage denied, state still works */}
-  },[compactPreview,searchStorageKey,selectedSearchColumns]);
+  },[denseChrome,searchStorageKey,selectedSearchColumns]);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
   const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
@@ -415,9 +415,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
-    },compactPreview?selectedSearchColumns:undefined),
+    },denseChrome?selectedSearchColumns:undefined),
     [columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts,
-      compactPreview,selectedSearchColumns]);
+      denseChrome,selectedSearchColumns]);
   const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
@@ -840,11 +840,11 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           onClick={()=>setPreviewOptionsOpen(open=>!open)}>
           {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
         </button>}
-        {compactPreview&&<button type="button" className="button ghost admin-list-print-trigger"
+        {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
           aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
           onClick={()=>{
-            const table=document.querySelector<HTMLTableElement>(
-              '.pr95-full-preview .item-data-region .item-data-table');
+            const table=tableViewportRef.current?.querySelector<HTMLTableElement>(
+              '.item-data-table');
             if(!table){onLayoutSaved('Không có bảng để in.');return;}
             try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
               displayedColumns.map(col=>col.label));}
@@ -911,7 +911,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           </button>
           {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
         </form>}
-        {compactPreview&&<fieldset className="admin-search-scope">
+        {denseChrome&&<fieldset className="admin-search-scope">
           <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
           <div className="admin-search-scope-options">
             {searchChoices.map(key=><label key={key}>
