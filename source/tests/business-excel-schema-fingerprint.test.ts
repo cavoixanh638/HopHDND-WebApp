@@ -23,7 +23,7 @@ function build(sheets:{name:string;rows:unknown[][];hidden?:0|1|2;
     XLSX.utils.book_append_sheet(book,sheet,candidate.name);
   }
   book.Workbook={Sheets:sheets.map(candidate=>({Hidden:candidate.hidden??0}))};
-  return new Uint8Array(XLSX.write(book,{type:'array',bookType:'xlsx'}) as ArrayBuffer);
+  return new Uint8Array(XLSX.write(book,{type:'array',bookType:'xlsx',cellStyles:true}) as ArrayBuffer);
 }
 describe('A–O structural sheet fingerprints — no row count/name/visibility bias',()=>{
   it('identifies the SAME schema with 1, 5 or 59 records and unrelated sheet names',()=>{
