@@ -30,7 +30,8 @@ type CellPickerProps = {
   searchable?: boolean;
   highlightQuery?: string;
   disabled?: boolean;
-  onChange: (value: string) => void;
+  /** false means the action was rejected before a draft was accepted. */
+  onChange: (value: string) => boolean|void;
   leaseManager?:CellEditSessionManager;recordId?:string;field?:EditableField;editorKind?:EditorKind;
 };
 
@@ -110,9 +111,13 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
 
   const choose = (nextValue: string) => {
     if(nextValue===value){chosen.current=false;close(true);return;}
-    chosen.current=true;
-    onChange(nextValue);
-    close(true);
+    try{
+      chosen.current=onChange(nextValue)!==false;
+    }catch(error){
+      chosen.current=false;
+      setLeaseError(error instanceof Error?error.message:'Không áp dụng được lựa chọn.');
+    }
+    void close(true);
   };
 
   useEffect(()=>{
