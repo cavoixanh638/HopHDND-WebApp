@@ -1,0 +1,48 @@
+name: Real List A4 print and clipboard Chromium QA (NO DEPLOY)
+on:
+  push:
+    branches: ["feat/20261113-production-ui-demo-parity"]
+  pull_request:
+    branches: ["main"]
+permissions:
+  contents: read
+jobs:
+  chromium-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Install package and Playwright driver
+        run: |
+          npm ci
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+      - name: Install PDF page inspection tools and verify Chromium
+        run: |
+          command -v google-chrome
+          if ! command -v pdfinfo || ! command -v pdftotext || ! command -v pdftoppm; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq poppler-utils
+          fi
+          command -v pdfinfo
+          command -v pdftotext
+          command -v pdftoppm
+      - name: Build real ItemList synthetic QA fixture
+        run: npm run build:compact:qa
+      - name: Chromium paste, search-column selector, A4 multipage print and PDF
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node scripts/pr95-clipboard-print-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: list-a4-print-qa
+          path: source/qa-results/print-a4/
+          if-no-files-found: ignore

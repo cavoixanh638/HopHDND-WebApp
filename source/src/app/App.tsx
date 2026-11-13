@@ -14,6 +14,8 @@ import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
   type StatusPaletteStore} from '../data/status-palettes';
 import { ItemList } from '../features/items/ItemList';
+import {stageLiveBulkPaste} from '../features/items/live-bulk-staging';
+import type {BulkPatch} from '../features/items/bulk-paste';
 import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import { HistoryDialog } from '../features/history/HistoryDialog';
 import { Modal } from '../components/Modal';
@@ -387,6 +389,40 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     ))){setLayoutMessage('Ô này chưa được cấp quyền sửa.');return;}
     workspace.update(id,changes);
   };
+  const stageAdminBulkDraft=async(patches:readonly BulkPatch[]):Promise<void>=>{
+    const live=firebaseLive.current;
+    if(!live?.isAdmin||!live.user||!live.connected||!live.datasetEpochReady||
+      live.freezeControl?.mode!=='OPEN'||selectedSource!=='primary'||!leaseManager||
+      repository.sourceKind!=='firebase'||workspace.busy||workspace.cachePending||
+      workspace.protectedRecovery||editorUnsaved||
+      Object.keys(workspace.drafts).length>0)
+      throw Error('Chỉ quản trị được dán vào Firebase chính đang mở sửa, khi không có bản nháp khác.');
+    const checked=(id:string,field:TextField)=>{
+      const current=firebaseLive.current;
+      return !!current?.isAdmin&&!!current.connected&&
+        current.freezeControl?.mode==='OPEN'&&!partyStatusLocked(id,field)&&
+        current.canEdit(id,field)&&mayEdit(current.permissions,id,field,true);
+    };
+    const result=await stageLiveBulkPaste({
+      patches,items:workspace.items,leaseManager,canEdit:checked,
+      getLiveItems:async()=>{
+        if(!firebaseLive.current?.connected||
+          firebaseLive.current.freezeControl?.mode!=='OPEN')
+          throw Error('Firebase đã mất kết nối hoặc khóa sửa trong khi chờ cấp khóa.');
+        return repository.list();
+      },
+      stageDraft:(id,changes)=>{
+        for(const [field,value] of Object.entries(changes)){
+          leaseManager.preserveDraft(id,field as EditableField,value);
+          leaseManager.markPending(id,field as EditableField);
+        }
+        workspace.update(id,changes);
+      }
+    });
+    setLayoutMessage('Đã kiểm tra và tạo bản nháp '+result.cells+' ô trên '+
+      result.rows+' hồ sơ. Firebase sẽ tự lưu; hãy kiểm tra thông báo xác nhận, '+
+      'không gửi lại vùng dán khi chưa biết kết quả.');
+  };
   const storedLayout = useMemo(() => loadReportLayout(sourceKey), [sourceKey]);
   const [layoutState, setLayoutState] = useState<{ source: string; layout: ReportLayout[] } | null>(null);
   const layout = common.config&&!isDemo?common.config.reports:layoutState?.source === sourceKey ? layoutState.layout : storedLayout;
@@ -672,7 +708,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {adminTools&&page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {adminTools&&page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
       {(page === 'items' || adminTools&&(page === 'items-customize' || page==='items-permissions')) && <ItemList key={`${sourceKey}:${page}:${adminTools?'admin':'guest'}`} compactChrome={page==='items'} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={adminTools?updateStatusPaletteStore:undefined} permissionModeOnly={adminTools&&page==='items-permissions'} externalSectionTabs={true} onPersistCatalog={adminTools?saveCatalogConfig:undefined} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&
-          (!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={adminTools} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={adminTools?saveItemLayoutConfig:undefined} 
+          (!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={adminTools} onBulkApply={adminTools&&isFirebase&&selectedSource==='primary'&&firebase!.isAdmin?stageAdminBulkDraft:undefined} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={adminTools?saveItemLayoutConfig:undefined} 
         onPersistViewerLayout={adminTools&&isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline,choices)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline,choices);}

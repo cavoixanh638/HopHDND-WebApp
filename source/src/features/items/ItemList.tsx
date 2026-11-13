@@ -64,10 +64,10 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
-import {createReferenceListLayout} from '../../data/reference-list-layout';
+import {createReferenceListLayout,referenceListLayoutNeedsSync} from '../../data/reference-list-layout';
 import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
 
-export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>void }) {
+export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; busy: boolean; onUpdate: (id: string, changes: Changes) => void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   // Dense visual chrome is independent of RAM-only preview tools.
   const denseChrome=compactPreview||compactChrome;
@@ -104,10 +104,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
-  const searchStorageKey='hdnd-preview-search-columns:'+sourceKey;
+  const searchStorageKey=(compactPreview?'hdnd-preview-search-columns:':'hdnd-list-search-columns:')+sourceKey;
   const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
   const [selectedSearchColumns,setSelectedSearchColumns]=useState<string[]>(()=>{
-    if(typeof window==='undefined'||!compactPreview)return searchChoices;
+    if(typeof window==='undefined'||!denseChrome)return searchChoices;
     try{
       const saved=JSON.parse(window.localStorage.getItem(searchStorageKey)??'null');
       if(Array.isArray(saved)&&saved.length&&saved.every((x:unknown)=>typeof x==='string')&&
@@ -117,10 +117,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     return searchChoices;
   });
   useEffect(()=>{
-    if(!compactPreview||typeof window==='undefined')return;
+    if(!denseChrome||typeof window==='undefined')return;
     try{window.localStorage.setItem(searchStorageKey,JSON.stringify(selectedSearchColumns));}
     catch{/* browser storage denied, state still works */}
-  },[compactPreview,searchStorageKey,selectedSearchColumns]);
+  },[denseChrome,searchStorageKey,selectedSearchColumns]);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
   const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
@@ -415,9 +415,9 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
-    },compactPreview?selectedSearchColumns:undefined),
+    },denseChrome?selectedSearchColumns:undefined),
     [columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts,
-      compactPreview,selectedSearchColumns]);
+      denseChrome,selectedSearchColumns]);
   const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
@@ -486,6 +486,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
     ?projectedIdWidth(Math.min(1600,Math.max(60,Number.isFinite(value)?value:68)))
     :Math.min(1600,Math.max(60,Number.isFinite(value)?value:170));
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
+  const printTableRef=useRef<HTMLTableElement|null>(null);
 
   // UI preview-only: fit the internal table viewport to the remaining screen
   // without changing the source data, column widths or production layout.
@@ -840,11 +841,16 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           onClick={()=>setPreviewOptionsOpen(open=>!open)}>
           {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
         </button>}
-        {compactPreview&&<button type="button" className="button ghost admin-list-print-trigger"
+        {compactChrome&&canEditListSettings&&referenceListLayoutNeedsSync(activeLayout)&&
+          <button type="button" className="button admin-reference-sync-shortcut"
+            title="Chỉ cập nhật cấu hình Danh sách; giữ nguyên dữ liệu, quyền và lịch sử"
+            onClick={()=>{setPreviewOptionsOpen(true);setReferencePresetConfirm(true);}}>
+            Đồng bộ bố cục demo
+          </button>}
+        {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
           aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
           onClick={()=>{
-            const table=document.querySelector<HTMLTableElement>(
-              '.pr95-full-preview .item-data-region .item-data-table');
+            const table=printTableRef.current;
             if(!table){onLayoutSaved('Không có bảng để in.');return;}
             try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
               displayedColumns.map(col=>col.label));}
@@ -911,7 +917,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
           </button>
           {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
         </form>}
-        {compactPreview&&<fieldset className="admin-search-scope">
+        {denseChrome&&<fieldset className="admin-search-scope">
           <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
           <div className="admin-search-scope-options">
             {searchChoices.map(key=><label key={key}>
@@ -932,10 +938,10 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
             setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
           <small>Áp dụng khi chọn “Tất cả trường”; lưu trên trình duyệt hiện tại.</small>
         </fieldset>}
-        {compactPreview&&onBulkApply&&<div className="admin-bulk-paste-tools">
+        {denseChrome&&onBulkApply&&<div className="admin-bulk-paste-tools">
           <button type="button" className="button ghost" disabled={locked||!rows.length}
             onClick={()=>setBulkPasteOpen(true)}>Dán nhiều ô từ Excel</button>
-          <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận.</small>
+          <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận. {sourceKind==='firebase'?'Firebase sẽ kiểm tra khóa và tự lưu sau khi duyệt.':''}</small>
         </div>}
         <fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
           <legend>Hiện/ẩn thẻ tổng hợp</legend>
@@ -1090,7 +1096,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
+    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
@@ -1241,7 +1247,7 @@ export function ItemList({ items, drafts, errors, busy, onUpdate, onCellHistory,
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
     </tbody></table></div></>}
     </div>
-    {bulkPasteOpen&&compactPreview&&onBulkApply&&<BulkPasteModal rows={rows}
+    {bulkPasteOpen&&denseChrome&&onBulkApply&&<BulkPasteModal rows={rows} live={sourceKind==='firebase'}
       canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}
       onApply={onBulkApply} onClose={()=>setBulkPasteOpen(false)}/>}
     {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={closeGroupLabelEditor}>

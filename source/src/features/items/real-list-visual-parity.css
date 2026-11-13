@@ -48,3 +48,13 @@
 @media(max-width:560px){
   .app-shell.list-visual-parity .admin-preview-options-toggle {flex:1 1 auto;width:auto;}
 }
+
+/* Admin sees the one-time shared-layout reconciliation without opening the
+ * advanced settings panel. The confirmation remains inside that panel. */
+.app-shell.list-visual-parity .admin-reference-sync-shortcut{
+  min-height:28px;padding:3px 10px;font-size:12px;font-weight:700;
+  border:1px solid #92bbad;border-radius:6px;background:#eff8f4;color:#205e4a;
+}
+.app-shell.list-visual-parity .admin-reference-sync-shortcut:focus-visible{
+  outline:2px solid #147c58;outline-offset:2px;
+}

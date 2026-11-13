@@ -36,3 +36,19 @@ export function createReferenceListLayout(baseline:ItemLayout):ItemLayout {
     },
   });
 }
+
+/** Read-only comparison of the persisted shared layout against the approved
+ * visual preset. No Firebase writes and no business data comparison. */
+export function referenceListLayoutNeedsSync(source:ItemLayout):boolean{
+  const selected=validateItemLayout(source),target=createReferenceListLayout(selected);
+  const signature=(layout:ItemLayout)=>JSON.stringify({
+    columns:layout.columns.map(col=>[col.key,col.width,col.visible,col.removed??false]),
+    tableWidth:layout.tableWidth,
+    frameWidth:layout.frameWidth,
+    summaryCards:[layout.summaryCards?.party,layout.summaryCards?.build,layout.summaryCards?.nq],
+    compactDisplay:Object.entries(layout.compactDisplay??{}).sort(([a],[b])=>a.localeCompare(b)),
+    partyGroupWidths:layout.partyGroupWidths,
+    partyTrackWidths:layout.partyTrackWidths
+  });
+  return signature(selected)!==signature(target);
+}

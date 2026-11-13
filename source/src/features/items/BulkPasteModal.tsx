@@ -6,9 +6,9 @@ import {BULK_PASTE_COLUMNS,planBulkPaste,
   type BulkPastePlan,type BulkPatch} from './bulk-paste';
 
 /** Browser-only staged paste. No file upload; no server or lease write. */
-export function BulkPasteModal({rows,onClose,onApply,canEdit}:{
-  rows:readonly Item[];onClose:()=>void;
-  onApply:(patches:readonly BulkPatch[])=>void;
+export function BulkPasteModal({rows,onClose,onApply,canEdit,live=false}:{
+  rows:readonly Item[];onClose:()=>void;live?:boolean;
+  onApply:(patches:readonly BulkPatch[])=>Promise<void>|void;
   canEdit:(id:string,field:TextField)=>boolean;
 }){
   const [rowId,setRowId]=useState(rows[0]?.recordId??'');
@@ -16,6 +16,7 @@ export function BulkPasteModal({rows,onClose,onApply,canEdit}:{
   const [clipboard,setClipboard]=useState('');
   const [plan,setPlan]=useState<BulkPastePlan|null>(null);
   const [error,setError]=useState('');
+  const [applying,setApplying]=useState(false);
   const reset=()=>{setPlan(null);setError('');};
   const preview=()=>{
     reset();
@@ -23,16 +24,18 @@ export function BulkPasteModal({rows,onClose,onApply,canEdit}:{
       text:clipboard,canEdit}));}
     catch(cause){setError(cause instanceof Error?cause.message:'Không kiểm tra được vùng dán.');}
   };
-  const apply=()=>{
-    if(!plan)return;
+  const apply=async()=>{
+    if(!plan||applying)return;
+    setApplying(true);
     try{
       const fresh=planBulkPaste({rows,startRecordId:rowId,startField:field,
         text:clipboard,canEdit});
       if(JSON.stringify(fresh)!==JSON.stringify(plan))
         throw Error('Dữ liệu đã thay đổi, cần xem trước lại.');
-      onApply(fresh.patches);
+      await onApply(fresh.patches);
       onClose();
     }catch(cause){setError(cause instanceof Error?cause.message:'Không áp dụng được dữ liệu.');setPlan(null);}
+    finally{setApplying(false);}
   };
   return <Modal title="Dán dữ liệu hàng loạt từ Excel" className="bulk-paste-modal" onClose={onClose}>
     <div className="modal-body bulk-paste-body">
@@ -64,7 +67,9 @@ export function BulkPasteModal({rows,onClose,onApply,canEdit}:{
       </label>
       <p className="muted">Ô trống luôn được bỏ qua (không xóa nội dung cũ).
         Một lỗi về số dòng, trạng thái hay quyền sửa sẽ chặn <strong>toàn bộ</strong> vùng dán.
-        Bản xem thử chỉ ghi vào bộ nhớ RAM, không gửi Firebase hoặc Google Sheets.</p>
+        {live
+          ?' Khi xác nhận, ứng dụng xin khóa ô, kiểm tra dữ liệu mới và tạo bản nháp để Firebase tự lưu từng hồ sơ. Nếu lưu bị lỗi, kiểm tra kết quả trước khi thử lại; không có cam kết giao dịch nhiều hồ sơ nguyên khối.'
+          :' Bản xem thử chỉ ghi vào bộ nhớ RAM, không gửi Firebase hoặc Google Sheets.'}</p>
       {error&&<p role="alert" className="notice error-text">{error}</p>}
       {plan&&<section className="bulk-paste-review" aria-label="Xem trước dữ liệu dán">
         <p role="status">Dự kiến sửa <strong>{plan.cells.length} ô</strong> trên
@@ -85,11 +90,13 @@ export function BulkPasteModal({rows,onClose,onApply,canEdit}:{
       </section>}
     </div>
     <div className="modal-footer">
-      <button type="button" className="button ghost" onClick={onClose}>Hủy, không thay dữ liệu</button>
-      <button type="button" className="button" disabled={!clipboard||!rowId}
+      <button type="button" className="button ghost" disabled={applying} onClick={onClose}>Hủy, không thay dữ liệu</button>
+      <button type="button" className="button" disabled={!clipboard||!rowId||applying}
         onClick={preview}>Kiểm tra và xem trước</button>
-      <button type="button" className="button primary" disabled={!plan}
-        onClick={apply}>Xác nhận dán {plan?.cells.length??0} ô vào RAM</button>
+      <button type="button" className="button primary" disabled={!plan||applying}
+        onClick={()=>void apply()}>{applying?'Đang xin khóa và kiểm tra…':
+          live?'Xác nhận áp dụng '+(plan?.cells.length??0)+' ô trên Firebase':
+          'Xác nhận dán '+(plan?.cells.length??0)+' ô vào RAM'}</button>
     </div>
   </Modal>;
 }
