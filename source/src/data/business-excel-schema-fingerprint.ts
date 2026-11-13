@@ -85,7 +85,7 @@ export function inspectWorkbookSchema(input:ArrayBuffer|Uint8Array):WorkbookSche
   if(!bytes.byteLength||bytes.byteLength>5*1024*1024)
     throw Error('Excel: chỉ nhận tệp .xlsx không rỗng, tối đa 5 MB.');
   let book:XLSX.WorkBook;
-  try{book=XLSX.read(bytes,{type:'array',cellFormula:true,cellDates:false});}
+  try{book=XLSX.read(bytes,{type:'array',cellFormula:true,cellDates:false,cellStyles:true});}
   catch{throw Error('Excel: không đọc được file .xlsx hợp lệ.');}
   const sheets=book.SheetNames.map((name,index):SheetSchemaFingerprint=>{
     const sheet=book.Sheets[name], state=book.Workbook?.Sheets?.[index]?.Hidden??0;
