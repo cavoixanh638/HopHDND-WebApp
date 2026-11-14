@@ -1,3 +1,13 @@
+## 14/11/2026 — PR #188, nghiệm thu lưu ô Spark
+
+Lựa chọn trạng thái được gửi ở lượt sự kiện kế tiếp. Nhập văn bản vẫn chờ 800 ms. Trong lúc một hồ sơ chờ Firebase xác nhận, các hồ sơ khác tiếp tục sửa được. Lần lưu thành công hiển thị giá trị trong ô. Lỗi và nháp chưa được xác nhận vẫn hiện để đối chiếu, kể cả khi hồ sơ khác lưu thành công. Phản hồi từ nguồn cũ bị chặn bằng epoch sau khi chuyển nguồn.
+
+Kiểm thử cục bộ dùng hai tiến trình Chromium và hai tài khoản Anonymous trên Emulator với 24 lần lưu dữ liệu giả. p50/p95 từ lựa chọn đến server ACK đạt 57/70 ms, đến trình duyệt nhận đạt 88/96 ms. Đã thử tranh chấp cùng ô, sửa hồ sơ khác khi CAS chờ, mất callback sau server commit và giữ nháp mà không tự gửi lặp. Đây là số đo Emulator. Kết quả CI theo SHA và biên nhận phát hành được lưu tại [PR #188](https://github.com/cavoixanh638/HopHDND-WebApp/pull/188).
+
+Generator Spark dùng đầu vào riêng `firebase/database.spark-base.rules.json`. SHA256 của Rules sinh ra vẫn là `024d77f6adea53b4878e0be65b75515624dbf4e87d3d8fbba0475916b30bd6c3`. Các sửa import của candidate Functions chỉ phục vụ ma trận legacy. Workflow khôi phục dùng snapshot và manifest giả gắn checksum, và các dịch vụ Emulator được cài từ lockfile.
+
+---
+
 ## 02/11/2026 — Candidate tích hợp đủ 5 phần, chưa phát hành
 
 Nhánh `integration/20261102-five-streams`, tested/rebuilt SHA `66e33b85a3424b2316f090e214e813cd04331afc`: 7 workflow / 8 jobs SUCCESS; backend/FULL Rules, UI/full App, CLI Linux/Windows, backup/restore và gói dựng lại x2 đã đạt. [Bàn giao và checksum](tasks/parallel-20261102/reviews/INTEGRATION_2026-11-02.md), [checkpoint](tasks/parallel-20261102/handoffs/COORDINATOR.md). Các commit bàn giao sau SHA này chỉ đổi docs. Không merge, deploy/publish hoặc truy cập/ghi production; production GO vẫn ngoài phạm vi.
