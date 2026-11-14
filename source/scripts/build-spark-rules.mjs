@@ -126,6 +126,20 @@ function appendDirectStatusRules(h){
 }
 appendDirectStatusRules(h);
 
+// RTDB does not run a leaf .validate rule when that leaf is deleted. Preserve
+// complete older audit payloads at the still-existing slot parent instead.
+// The current revision's ring slot may be replaced after 50 commits; the
+// existing verified-Admin/FROZEN maintenance route retains its restore rights.
+const legacyAuditFields=['content','department','type','partyLevel','progressParty',
+  'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
+  'specificProgress','note','documentKind','isDropped'];
+const preserveOldAudit=['changes','oldValues'].flatMap(section=>
+  legacyAuditFields.map(field=>
+    `newData.child('${section}/${field}').val() === data.child('${section}/${field}').val()`)
+).join(' && ');
+const auditSlot=h.items.$id.history.$slot;
+auditSlot['.validate']=`(${auditSlot['.validate']}) && (${simpleAdminMaintenance} || $slot === (newData.parent().parent().child('revision').val() % 50) + '' || (${preserveOldAudit}))`;
+
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,
