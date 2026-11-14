@@ -59,7 +59,9 @@ describe('Guest cell status and visible save feedback',()=>{
     const spark=readFileSync('src/data/spark-cell-api.ts','utf8');
     expect(spark).toContain('Promise.all([serverNow(db),assertEpoch()])');
     expect(spark).toContain('result.committed?result.snapshot.val()');
-    expect(spark).toContain('holdValue(db,rowPath)');
+    expect(spark).toContain('holdSnapshot(db,rowPath)');
+    expect(spark).toContain('const row=result.committed?result.snapshot.val()');
+    expect(spark).not.toContain('const before=(await get(location)).val();\n  if(request.action===\'resolve\')');
     expect(spark).toContain('holdValue(db,leaseRoot');
   });
 });
