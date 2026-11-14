@@ -98,12 +98,12 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   // Authoritative clock and generation checks run concurrently with the
   // lock snapshot subscription, never weakening server Rules or CAS checks.
   // No server-clock read on the one-CAS status path; Rules use server 'now'.
-  const guards=leaseAction?Promise.all([serverNow(db),assertEpoch()]):assertEpoch();
+  const guards=leaseAction?Promise.all([serverNow(db),assertEpoch()]):undefined;
   if(leaseAction){
     const location=ref(db,leaseRoot+'/'+field);
     const watched=holdValue(db,leaseRoot+'/'+field);
     try {
-      const [[now]]=await Promise.all([guards,watched]);
+      const [[now]]=await Promise.all([guards!,watched]);
       let result;
       try{result=await runTransaction(location,(raw:CellLease|null)=>{
       if(raw?.lastOperationId===request.operationId&&raw.uid===session.uid)return undefined;
@@ -134,7 +134,7 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       void watched.then(stop=>stop(),()=>{});
     }
   }
-  await guards;
+  if(!leaseAction)await assertEpoch();
   const location=ref(db,rowPath);
   // Resolve is a read-only path; it must not retain an unnecessary listener.
   if(request.action==='resolve'){
