@@ -626,12 +626,12 @@ try{
   if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
-    semanticCells.office.bg!=='rgb(255, 248, 233)'||
-    semanticCells.office.ink!=='rgb(128, 92, 34)')
+    semanticCells.office.bg!=='rgb(255, 238, 218)'||
+    semanticCells.office.ink!=='rgb(128, 83, 31)')
     throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
   const expectedBorder={ 'report-stage-source':'rgb(177, 64, 82)',
-    'report-stage-office':'rgb(128, 92, 34)',
-    'report-stage-completed':'rgb(52, 110, 72)'};
+    'report-stage-office':'rgb(128, 83, 31)',
+    'report-stage-completed':'rgb(37, 100, 65)'};
   for(const cell of semanticCells.statusCells){
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',
       x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
