@@ -21,6 +21,30 @@ async function holdValue(database:Database,path:string):Promise<()=>void>{
     return release;
   }catch(error){release();throw error;}
 }
+/** Subscribe once to obtain the authoritative row AND keep it in the RTDB
+ * transaction cache. The previous get(row) followed by holdValue(row) caused
+ * two sequential initial row reads for each save. Keep this listener until
+ * the transaction / uncertain-ACK readback has completed. */
+async function holdSnapshot(database:Database,path:string):Promise<{before:any;release:()=>void}>{
+  let release=()=>{};
+  try{
+    const before=await new Promise<any>((resolve,reject)=>{
+      let settled=false;
+      const timer=setTimeout(()=>{
+        if(settled)return;
+        settled=true;release();reject(Error('Chưa xác nhận dữ liệu máy chủ.'));
+      },10000);
+      release=onValue(ref(database,path),snapshot=>{
+        if(settled)return;
+        settled=true;clearTimeout(timer);resolve(snapshot.val());
+      },cause=>{
+        if(settled)return;
+        settled=true;clearTimeout(timer);reject(cause);
+      });
+    });
+    return {before,release};
+  }catch(error){release();throw error;}
+}
 async function serverNow(db:Database){
   const offset=await new Promise<number>((resolve,reject)=>onValue(ref(db,'.info/serverTimeOffset'),s=>resolve(Number(s.val()??0)),reject,{onlyOnce:true}));
   if(!Number.isFinite(offset)||Math.abs(offset)>600000)throw Error('Không xác minh được giờ máy chủ.');
@@ -94,8 +118,13 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     return {status:request.action==='acquire'?'acquired':request.action==='release'?'released':'renewed',lease:stored};
   }
   const location=ref(db,rowPath);
-  const before=(await get(location)).val();
-  if(request.action==='resolve')return {status:before?.operationId===request.operationId?'committed':Object.values(before?.history??{}).some((e:any)=>e.operationId===request.operationId)?'committed-historical':'unknown',row:before?.operationId===request.operationId?before:undefined,operationId:request.operationId};
+  // Resolve is a read-only path; it must not retain an unnecessary listener.
+  if(request.action==='resolve'){
+    const before=(await get(location)).val();
+    return {status:before?.operationId===request.operationId?'committed':Object.values(before?.history??{}).some((e:any)=>e.operationId===request.operationId)?'committed-historical':'unknown',row:before?.operationId===request.operationId?before:undefined,operationId:request.operationId};
+  }
+  const {before,release}=await holdSnapshot(db,rowPath);
+  try{
   const patch=request.patch;
   if(!patch||patch.recordId!==id||patch.operationId!==request.operationId)throw Error('Nháp sửa không hợp lệ.');
   const issue=validateChanges(patch.changes);
@@ -109,11 +138,10 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     throw Error('Không được chọn “Không phải trình” trực tiếp. Chỉ đổi Cấp trình sang “Không”; máy chủ sẽ cập nhật tiến độ cùng giao dịch.');
   if(before?.operationId===request.operationId&&fields.every(f=>before[f]===patch.changes[f]))
     return {status:'committed',row:before,operationId:request.operationId};
-  // get() can return data without populating the transaction cache. Hold a
-  // listener until CAS completes, so cold null never aborts a valid row save.
-  const release=await holdValue(db,rowPath);
+  // The row listener above already primed the transaction cache.
+  // Never start another get() / listener here.
   let result;
-  try{result=await runTransaction(location,(raw:any)=>{
+  result=await runTransaction(location,(raw:any)=>{
     if(!raw||raw.operationId===request.operationId)return undefined;
     if(fields.some(f=>raw[f]!==patch.baseValues[f])||violatesProgressBuildWritePolicy(raw,patch.changes))return undefined;
     const requested={...patch.changes};
@@ -129,7 +157,7 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       editProofs:{...(raw.editProofs??{}),...Object.fromEntries(fields.filter(f=>changed.includes(f)).map(f=>[f,request.leases![f].token]))},
       history:{...(raw.history??{}),[String(revision%50)]:{operationId:request.operationId,recordId:id,at,actor:session.uid,
         changes:Object.fromEntries(changed.map(f=>[f,requested[f]])),oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))}}};
-  },{applyLocally:false});}finally{release();}
+  },{applyLocally:false});
   const row=result.committed?result.snapshot.val():(await get(location)).val();
   if(!row||row.operationId!==request.operationId||fields.some(f=>row[f]!==patch.changes[f])){
     const changed=fields.some(f=>row&&row[f]!==patch.baseValues[f]);
@@ -139,4 +167,5 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   }
   await assertEpoch();
   return {status:'committed',operationId:request.operationId,row};
+  }finally{release();}
 }
