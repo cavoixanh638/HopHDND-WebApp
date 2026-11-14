@@ -62,6 +62,7 @@ const browsers=[];
 const blocked=[];
 const samples=[];
 const logs=[];
+const diagnostics=[];
 const writes=new Map();
 let holdNextRow=null;
 let heldWrite=null;
@@ -114,6 +115,7 @@ try{
     browsers.push(browser);
     const context=await browser.newContext({viewport:{width:1440,height:1000}});
     const page=await context.newPage();
+    if(index===0)writer=page;else receiver=page;
     await page.route('**/*',route=>{
       const url=new URL(route.request().url());
       if(url.hostname==='127.0.0.1'||url.hostname==='localhost')return route.continue();
@@ -141,6 +143,7 @@ try{
       upstream.onMessage(message=>socket.send(message));
     });
     page.on('console',message=>{
+      if(['error','warning'].includes(message.type()))diagnostics.push({browser:index,type:message.type(),text:message.text()});
       if(message.text().startsWith('HDND_RTDB_EDIT_PERF ')){
         const metric=JSON.parse(message.text().slice('HDND_RTDB_EDIT_PERF '.length));
         metrics.push({browser:index,at:performance.now(),...metric});
@@ -148,7 +151,8 @@ try{
     });
     page.on('pageerror',error=>logs.push({browser:index,error:String(error)}));
     await page.goto(origin+'/?editPerf=1',{waitUntil:'networkidle'});
-    await page.getByRole('button',{name:'Danh sách các ND trình HĐND',exact:true}).click();
+    // Guests enter List directly. Its compact public view intentionally hides
+    // the administrative two-section navigation.
     await fieldButton(page,'NQ01').waitFor();
     assert.equal(await page.locator('.item-data-table tbody tr').count(),3);
     if(index===0)writer=page;else receiver=page;
@@ -186,7 +190,7 @@ try{
     const after=await request('hdnd/items/'+rowIds[0]);
     assert.equal(after.progressCouncil,value);
     assert.equal(after.revision,before.revision+1);
-    assert.equal(Object.values(after.history).filter(event=>event.operationId===after.operationId).length,1);
+    assert.equal(Object.values(after.history).filter(event=>event?.operationId===after.operationId).length,1);
     assert.deepEqual(await normalUiHasNoSaveMessage(writer),{draftBars:0,status:false});
     samples.push({lockMs:Math.round(lockMs),ackMs:Math.round(ackMs),receiverMs:Math.round(receiverMs)});
   }
@@ -244,7 +248,9 @@ try{
   writeFileSync(output+'/report.json',JSON.stringify(report,null,2)+'\n');
   console.log('PR188_TWO_BROWSER_PASS',JSON.stringify({...report,samples:undefined}));
 }catch(error){
-  writeFileSync(output+'/failure.json',JSON.stringify({error:String(error),blocked,logs,samples},null,2));
+  writeFileSync(output+'/failure.json',JSON.stringify({error:String(error),blocked,logs,diagnostics,samples,
+    writerText:await writer?.locator('body').innerText().catch(()=>''),
+    receiverText:await receiver?.locator('body').innerText().catch(()=>'')},null,2));
   if(writer)await writer.screenshot({path:output+'/failure-writer.png'}).catch(()=>{});
   throw error;
 }finally{
