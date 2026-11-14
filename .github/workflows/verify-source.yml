@@ -59,10 +59,49 @@ jobs:
           java-version: '21'
       - name: Demonstrate isolated RTDB backup restore (synthetic data only)
         run: |
-          printf '%s\n' '{"hdnd":{"items":{"demo-1":{"recordId":"demo-1","note":"synthetic-only"}},"profile":{"dataSource":"primary"},"permissions":{"columns":{"note":true}}}}' > "$RUNNER_TEMP/hophdnd-demo-restore.json"
-          HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
+          # Generate a complete, hash-bound fixture IN RUNNER_TEMP.
+          # This is not a production backup and must never authorize a release.
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from 'node:fs';
+          import {createHash} from 'node:crypto';
+          import {join} from 'node:path';
+          const dir=process.env.RUNNER_TEMP;
+          if(!dir)throw Error('RUNNER_TEMP is required for synthetic fixture');
+          const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+          const record={
+            recordId:'demo-1',displayCode:'DEMO-1',stt:'1',revision:1,
+            content:'Synthetic fixture only',department:'',type:'',partyLevel:'',
+            progressParty:'',progressBuild:'',progressCouncil:'',specialist:'',
+            room:'',vpLeader:'',ubndLeader:'',specificProgress:'',note:'synthetic-only'
+          };
+          const data=Buffer.from(JSON.stringify({hdnd:{
+            items:{'demo-1':record},profile:{dataSource:'primary'},
+            permissions:{columns:{note:true}}
+          }})+'\n');
+          const rules=Buffer.from(JSON.stringify({rules:{'.read':false,'.write':false}})+'\n');
+          const dataFile='hophdnd-demo-restore.json';
+          const rulesFile='hophdnd-demo-restore.rules.json';
+          writeFileSync(join(dir,dataFile),data,{flag:'wx'});
+          writeFileSync(join(dir,rulesFile),rules,{flag:'wx'});
+          const manifest={
+            projectId:'demo-hdnd',instanceId:'demo-hdnd-restore',
+            stability:'Two successive exports matched byte-for-byte',
+            rtdbFile:dataFile,rtdbSha256:sha(data),rtdbBytes:data.length,
+            rulesFile,rulesSha256:sha(rules),rulesBytes:rules.length,
+            rootKeysCount:1,hdndItemsCount:1,hdndMirrorsCount:0,
+            productionRulesIndependentlyVerified:false,restoreDrillPerformed:false,
+            releaseAuthorization:false
+          };
+          writeFileSync(join(dir,'hophdnd-demo-restore.manifest.json'),
+            JSON.stringify(manifest,null,2)+'\n',{flag:'wx'});
+          NODE
+          HDND_PRIVATE_BACKUP="$RUNNER_TEMP/hophdnd-demo-restore.json" HDND_PRIVATE_MANIFEST="$RUNNER_TEMP/hophdnd-demo-restore.manifest.json" npx firebase emulators:exec --project demo-hdnd-restore --only database --config scripts/restore-emulator/firebase.json "node scripts/firebase-backup-emulator-restore.mjs"
       - name: Documentation checks
         run: npm run docs:check
+      - name: Install locked local Functions dependencies for legacy Emulator matrix
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Firebase emulator tests
         run: npm run test:firebase
       - name: Build split, on-demand Pages artifact

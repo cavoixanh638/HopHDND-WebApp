@@ -267,6 +267,25 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       .rejects.toThrow(/đã có dữ liệu/);
     expect((await get(ref(db,'hdnd/items/'+snapshot.recordId))).val()).toEqual(saved);
   });
+  it('first import accepts only valid paired partyLevel/progressParty values',async()=>{
+    await env.withSecurityRulesDisabled(async context=>{
+      await set(ref(context.database() as never,'hdnd/items'),null);
+    });
+    const db=admin() as never;
+    const invalid={...row,recordId:'bootstrap-invalid-party',displayCode:'NQ-INVALID-PARTY',
+      partyLevel:'BCH',progressParty:'Không phải trình'};
+    await expect(bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[invalid]))
+      .rejects.toThrow();
+    expect((await get(ref(db,'hdnd/items'))).exists()).toBe(false);
+
+    const valid={...row,recordId:'bootstrap-no-party',displayCode:'NQ-NO-PARTY',
+      partyLevel:'Không',progressParty:'Không phải trình'};
+    const count=await bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[valid]);
+    expect(count).toEqual({sourceCount:1,importedCount:1});
+    const stored=(await get(ref(db,'hdnd/items/bootstrap-no-party'))).val();
+    expect(stored.partyLevel).toBe('Không');
+    expect(stored.progressParty).toBe('Không phải trình');
+  });
   it('approved initial bootstrap denies non-admin, duplicate business codes and closed freeze',async()=>{
     await env.withSecurityRulesDisabled(async context=>{
       await set(ref(context.database() as never,'hdnd/items'),null);
