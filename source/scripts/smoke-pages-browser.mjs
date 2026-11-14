@@ -936,13 +936,19 @@ try{
     const doc=document.querySelector('.item-data-table tbody td[data-col-key=content]');
     const head=doc?.querySelector('.compact-document-heading');
     const body=doc?.querySelector('.compact-document-content');
-    return !!doc&&!!head&&!!body&&
-      getComputedStyle(body).whiteSpace==='pre-wrap'&&
-      getComputedStyle(doc).verticalAlign==='top'&&
-      !!doc.querySelector('.compact-document-badge')&&
-      !!doc.querySelector('.compact-document-department');
+    const whiteSpace=body?getComputedStyle(body).whiteSpace:null;
+    const align=doc?getComputedStyle(doc).verticalAlign:null;
+    const badge=!!doc?.querySelector('.compact-document-badge');
+    const department=!!doc?.querySelector('.compact-document-department');
+    // The 08/11 List design centers the L01 group within its table cell.
+    // Its business content remains the first internal row and source metadata
+    // stays below it. Popup positioning is tested separately.
+    const rowsOrdered=!!head&&!!body&&
+      body.getBoundingClientRect().bottom<=head.getBoundingClientRect().top+1;
+    return {ok:!!doc&&!!head&&!!body&&whiteSpace==='pre-wrap'&&align==='middle'&&badge&&department&&rowsOrdered,
+      whiteSpace,align,badge,department,rowsOrdered,head:!!head,body:!!body};
   })()`);
-  if(!cellAlignment)throw Error('U01 document top-row/second-row styling regression');
+  if(!cellAlignment.ok)throw Error('U01 document top-row/second-row styling regression: '+JSON.stringify(cellAlignment));
 
   if(await evaluate("!!document.querySelector('.source-column-visibility button')"))
     throw Error('Guest must not change admin source column visibility');
@@ -1025,10 +1031,12 @@ try{
   console.log('LIST_VIEWPORT_FIT_PASS',JSON.stringify(fit));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
+    const activeNode=document.querySelector('.list-active-filters');
     const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect(),
-      active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+      active=activeNode?.getBoundingClientRect(),style=activeNode?getComputedStyle(activeNode):null;
+    const activeMargins=style?parseFloat(style.marginTop)+parseFloat(style.marginBottom):0;
     return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
-      bottom:g.bottom,activeHeight:active?.height??0,
+      bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
       gapBelowFilters:active?g.top-active.bottom:null};
   })()`);
   // V6 L4: an active predicate creates a *real* filter-chip row. Its height
@@ -1036,14 +1044,17 @@ try{
   // Assert that the ENTIRE movement is explained by the visible filter bar.
   const assertStable=async(label)=>{
     const result=await evaluate(`(()=>{
+      const activeNode=document.querySelector('.list-active-filters');
       const g=document.querySelector('.item-table-scroll').getBoundingClientRect(),
         h=document.querySelector('.item-data-region').getBoundingClientRect(),
-        active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+        active=activeNode?.getBoundingClientRect(),style=activeNode?getComputedStyle(activeNode):null;
+      const activeMargins=style?parseFloat(style.marginTop)+parseFloat(style.marginBottom):0;
       return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
-        bottom:g.bottom,activeHeight:active?.height??0,
+        bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
         gapBelowFilters:active?g.top-active.bottom:null};
     })()`);
-    const filterGrowth=result.activeHeight-tablePosition.activeHeight;
+    const filterGrowth=result.activeHeight+result.activeMargins-
+      tablePosition.activeHeight-tablePosition.activeMargins;
     if(Math.abs(result.top-tablePosition.top-filterGrowth)>2||
        Math.abs(result.left-tablePosition.left)>2||
        Math.abs(result.height-tablePosition.height+filterGrowth)>2||
@@ -1143,7 +1154,7 @@ try{
   if(!v2Department)throw Error('V2 department dropdown missing');
   // V6 L4 replaces the obsolete bare count with a scoped N / prefilter
   // denominator and a specifically removable, selected Sở/ngành chip.
-  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.includes(' / ')",
+  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.trim()==='53/54'",
     'V6 department chip and before-filter denominator did not render');
   // Escape inside dropdown keeps its native behavior and does not erase filters.
   await evaluate(`(()=>{
@@ -2203,9 +2214,11 @@ try{
 
   const menuOpened=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');
-    if(!menu)return false;menu.open=true;return !!menu.querySelector('.compact-columns-options');
+    if(!menu)return false;menu.open=true;return true;
   })()`);
   if(!menuOpened)throw Error('Staff compact menu missing');
+  await eventually("!!document.querySelector('.compact-columns-options-floating')",
+    'Staff menu portal did not open');
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
@@ -2267,6 +2280,9 @@ try{
   console.log('COMPACT_TABLET_768_PASS',JSON.stringify(tabletGroups));
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await evaluate("(()=>{const menu=document.querySelector('.compact-columns-menu');if(menu)menu.open=true;})()");
+  await eventually("(()=>{const panel=document.querySelector('.compact-columns-options');return !!panel&&panel.getBoundingClientRect().right<=innerWidth+1;})()",
+    'Mobile staff portal did not reflow into viewport');
   const mobileGroups=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(menu)menu.open=true;
     const panel=document.querySelector('.compact-columns-options');
@@ -2341,14 +2357,16 @@ try{
       const caretX=b.right;
       const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
       const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
+      // The 07/11 shared picker parity uses a 26px minimum and one 5x3
+      // triangle. Keep full saved-track width and both edge hit targets.
       return {ok:style.display==='flex'&&style.borderTopWidth!=='0px'&&
-        b.height>=34&&b.height<=38&&Math.abs(b.width-s.width)<1&&
+        b.height>=26&&b.height<=38&&Math.abs(b.width-s.width)<1&&
         b.left>=frame.left-1&&b.right<=frame.right+1&&
         style.borderTopWidth!=='0px'&&
         style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
         dot.content==='none'&&dot.display==='none'&&
         rail.content==='none'&&
-        arrow.content==='""'&&arrow.display==='block'&&
+        arrow.content==='""'&&arrow.display==='block'&&arrow.width==='5px'&&arrow.height==='3px'&&
         hit(leftX)&&hit(rightX),
         stage:row.dataset.stageField,caretX,leftX,rightX,midY,
         hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
@@ -2452,7 +2470,7 @@ try{
       const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
       const track=0;
       return {stage:row.dataset.stageField,caret:b.right,
-        ok:b.height>=34&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+        ok:b.height>=26&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
           style.borderTopWidth!=='0px'&&dot.content==='none'&&style.display==='flex',
         width:b.width,height:b.height,frameWidth:frame.width,track};
     });
@@ -2475,7 +2493,7 @@ try{
       const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
       const frame=row.getBoundingClientRect();
       return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
-        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=34&&b.height<=38};
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=26&&b.height<=38};
     });
     return {ok:data.length===3&&data.every(x=>x.ok)&&
       Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
@@ -2497,7 +2515,7 @@ try{
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
       arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
       b.borderTopWidth!=='0px'&&getComputedStyle(button,'::before').content==='none'&&
-      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 241, 243)',
+      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 227, 233)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);
@@ -2908,10 +2926,15 @@ try{
   await eventually("document.querySelector('.list-filter-other-panel')===null",
     'Advanced select DOM must unmount when panel closes');
 
-  const toggleLeader=await evaluate(`(()=>{
+  const r01Menu=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
-    menu.open=true;
-    const label=[...menu.querySelectorAll('label')]
+    menu.open=true;return true;
+  })()`);
+  if(!r01Menu)throw Error('R01 staff menu missing');
+  await eventually("!!document.querySelector('.compact-columns-options-floating')",
+    'R01 staff menu portal did not open');
+  const toggleLeader=await evaluate(`(()=>{
+    const label=[...document.querySelectorAll('.compact-columns-options label')]
       .find(x=>x.textContent.includes('Lãnh đạo UBND + VP'));
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
@@ -3067,16 +3090,17 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=['not-submitted','office','done'];
-  const targetInks=['rgb(177, 64, 82)','rgb(128, 92, 34)','rgb(52, 110, 72)'];
+  const targetInks=['rgb(163, 45, 70)','rgb(128, 83, 31)','rgb(37, 100, 65)'];
+  const targetFills=['rgb(255, 227, 233)','rgb(255, 238, 218)','rgb(222, 243, 229)'];
   const clear='rgba(0, 0, 0, 0)';
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
       x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
-      x.pill===clear&&x.pillBorder==='0px'&&!x.editable&&
+      x.pill===targetFills[i]&&x.pillBorder==='0px'&&!x.editable&&
       x.pillText===targetInks[i]&&x.labelFits&&x.stateFits)||
     new Set(r05List.map(x=>x.pillText)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
-    r05Neutral[0].pill!==clear||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
+    r05Neutral[0].pill!=='rgb(226, 232, 240)'||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
     r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
     throw Error('R05 status colors / neutral / independent stages: '+
@@ -3704,7 +3728,7 @@ try{
   })`);
   // Seven active-summary rows, eight source rows: the unified active bar counts
   // all source rows before filters, unlike the historical B00 active-only card.
-  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 8')||
+  if(quickSummary.selected!==1||quickSummary.total!==7||quickSummary.result.replace(/\s/g,'')!=='2/8'||
       !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
@@ -4183,7 +4207,7 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
-  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=34&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=26&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
   if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
   const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
