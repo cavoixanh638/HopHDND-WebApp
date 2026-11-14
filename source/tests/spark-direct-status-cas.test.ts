@@ -204,6 +204,48 @@ describe.skipIf(!enabled)('Direct Spark status CAS / adversarial live Rules, NO 
     }
     expect((await read()).revision).toBe(1);
   });
+  it('rejects forged mixed status and text despite correctly formed row audit',async()=>{
+    await setup();
+    const prior=await read();
+    const operationId=crypto.randomUUID(),revision=prior.revision+1;
+    const attack={...prior,progressCouncil:'VP đang xử lý',note:'FORGED NOTE',
+      revision,operationId,updatedAt:serverTimestamp(),updatedBy:A.user.uid,
+      history:{...(prior.history??{}),[String(revision%50)]:{
+        operationId,recordId:'r1',at:serverTimestamp(),actor:A.user.uid,
+        changes:{progressCouncil:'VP đang xử lý',note:'FORGED NOTE'},
+        oldValues:{progressCouncil:prior.progressCouncil,note:prior.note}
+      }}};
+    // The official status grant cannot silently elevate an unleased note edit.
+    await assertFails(set(ref(A.db,'hdnd/items/r1'),attack));
+    expect((await read()).revision).toBe(1);
+    expect((await read()).note).toBe(prior.note);
+  });
+  it('rejects forged inconsistent dependent F/G pair and anonymous row creation',async()=>{
+    await setup();
+    const prior=await read(),operationId=crypto.randomUUID(),revision=2;
+    const wrong={...prior,partyLevel:'Không',revision,operationId,
+      updatedAt:serverTimestamp(),updatedBy:A.user.uid,
+      history:{[String(revision%50)]:{
+        operationId,recordId:'r1',at:serverTimestamp(),actor:A.user.uid,
+        changes:{partyLevel:'Không'},oldValues:{partyLevel:prior.partyLevel}
+      }}};
+    // Changing Cấp trình to "Không" MUST atomically derive progressParty.
+    await assertFails(set(ref(A.db,'hdnd/items/r1'),wrong));
+    await assertFails(set(ref(A.db,'hdnd/items/r2'),{...seedRow(),recordId:'r2'}));
+    expect((await read()).revision).toBe(1);
+  });
+  it('rejects status writes when editing is paused and forged admin sessions',async()=>{
+    await setup();
+    await env.withSecurityRulesDisabled(async ctx=>
+      set(ref(ctx.database(),'hdnd/control/editingLocked'),true));
+    expect((await write(A,{progressCouncil:'VP đang xử lý'})).ok).toBe(false);
+    // Anonymous Auth may not mint its own privileged Spark tab session.
+    await assertFails(set(ref(A.db,'hdnd/sparkSessions/'+A.user.uid),{
+      ownerUid:A.user.uid,admin:true,createdAt:Date.now(),
+      expiresAt:Date.now()+120000
+    }));
+    expect((await read()).revision).toBe(1);
+  });
   it('lost caller acknowledgement resolves by operationId without duplicate history',async()=>{
     await setup();
     const x=model(A),row=(await x.list())[0],patch=updateDraft(row,undefined,{progressCouncil:'VP đang xử lý'})!;
