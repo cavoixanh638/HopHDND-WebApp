@@ -107,7 +107,12 @@ export class FirebaseRepository implements Repository {
         const fields=Object.keys(patch.changes) as EditableField[];
         // This branch exists only for a SINGLE discrete field on the legacy
         // Spark source, with matching server Rules deployed in advance.
-        const direct=directStatusCasPatch(patch.changes,!!this.expectedActive);
+        // Admin transitional/bulk tools may have intentionally acquired a
+        // lease already. Honor that credential rather than taking the new
+        // no-lease path (which correctly rejects an active older lease).
+        const heldByThisTab=Object.keys(patch.changes).every(field=>
+          !!this.leaseManager?.credential(patch.recordId,field as EditableField));
+        const direct=directStatusCasPatch(patch.changes,!!this.expectedActive)&&!heldByThisTab;
         // No fallback: if a one-CAS status write is denied we keep its draft.
         if(!direct&&!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
         if(!fields.length||fields.some(field=>!(field in patch.baseValues)||
