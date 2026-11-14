@@ -2,6 +2,8 @@ import fs from 'node:fs';
 // The legacy Functions candidate evolves independently from the deployed Spark
 // contract. Keep its reviewed Spark input explicit so legacy-only exceptions
 // cannot propagate into production Rules through regeneration.
+// Spark rule changes update this base and regenerate the output together;
+// simple-admin CI checks that regeneration produces no unexpected drift.
 const rules=JSON.parse(fs.readFileSync('firebase/database.spark-base.rules.json','utf8'));
 const googleAdmin="(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')";
 const binding="root.child('hdnd/sparkSessions').child(auth.uid)";
