@@ -1,0 +1,46 @@
+name: Spark two-browser ACK and latency acceptance
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  two-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked dependencies and browser driver
+        run: |
+          npm ci
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          command -v google-chrome
+      - name: Build real Spark client pinned to local demo emulators
+        env:
+          VITE_FIREBASE_WRITE_MODE: spark
+        run: |
+          node node_modules/vite/bin/vite.js build --mode pages-test --outDir dist-pages-test
+          node scripts/prepare-pages.mjs dist-pages-test
+      - name: Two independent Chrome processes with synthetic Auth and RTDB
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node scripts/pr188-two-browser.mjs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr188-two-browser
+          path: source/qa-results/pr188-two-browser/
+          if-no-files-found: ignore
