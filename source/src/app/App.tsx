@@ -45,6 +45,7 @@ import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {FirebaseRepository,mayEdit} from '../data/firebase-repository';
 import {bootstrapApprovedRowsToPrimary} from '../data/firebase-primary-bootstrap';
 import {CellEditSessionManager,type EditorKind} from '../data/cell-edit-leases';
+import {directStatusCasField,directStatusCasPatch} from '../data/status-direct-cas';
 import {assertTransitionBaseline,type TransitionRowChange} from '../data/transition-import';
 import type {FirebaseController} from '../state/use-firebase';
 import {FirebasePanel} from '../features/settings/FirebasePanel';
@@ -122,6 +123,12 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const isDemo = repository.sourceKind==='demo';
   // Administration is independent of the content repository.
   const isFirebase=!!firebase;
+  // Fast status mode requires the separately reviewed and deployed server
+  // Rules; normal production builds and V2 generations keep exclusive locks.
+  const directStatusCasActive=!!firebase&&selectedSource==='primary'&&
+    firebase.datasetEpochReady&&firebase.datasetActive===null&&
+    directStatusCasField('progressBuild')&&
+    (firebase.freezeControl?.mode==='OPEN'||!firebase.freezeControl?.mode);
   const firebaseEditRevision=useRef(0);
   const privateTest=window.HDND_TEST===true;
   const [storageHint, setStorageHint] = useState('');
@@ -379,7 +386,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if('progressParty' in changes&&partyStatusLocked(id,'progressParty')){
       setLayoutMessage('Cấp trình Không: Tiến độ Thành ủy được khóa sửa trực tiếp.');return false;
     }
-    if(leaseManager&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
+    const direct=directStatusCasActive&&directStatusCasPatch(changes);
+    if(leaseManager&&!direct&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return false;
     }
     if(firebase&&!firebase.isAdmin&&firebase.editingLocked){
@@ -395,7 +403,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     // mark this lease pending. Invalid choices must not strand a pending lease.
     if(leaseManager)Object.entries(changes).forEach(([field,value])=>{
       leaseManager.preserveDraft(id,field as EditableField,value);
-      leaseManager.markPending(id,field as EditableField);
+      if(!direct)leaseManager.markPending(id,field as EditableField);
     });
     return workspace.update(id,changes);
   };
@@ -719,7 +727,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {adminTools&&page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
       {(page === 'items' || adminTools&&(page === 'items-customize' || page==='items-permissions')) && <ItemList key={`${sourceKey}:${page}:${adminTools?'admin':'guest'}`} compactChrome={page==='items'} statusPaletteStore={statusPaletteStore} onStatusPaletteChange={adminTools?updateStatusPaletteStore:undefined} permissionModeOnly={adminTools&&page==='items-permissions'} externalSectionTabs={true} onPersistCatalog={adminTools?saveCatalogConfig:undefined} canEditDraft={canEditDraft&&!workspace.protectedRecovery&&
           (!isFirebase||firebase!.isAdmin||!firebase!.editingLocked)} saveDataHint={dataSaveHint} onKeepDraft={workspace.keepDraft} sourceLabel={sourceLabel} draftOnly={isFirebase&&selectedSource!=='primary'&&!isDemo} viewerScope={isFirebase?firebase?.user?.uid??'signed-out':'local'} allowPersonalCompact={adminTools} onBulkApply={adminTools&&isFirebase&&selectedSource==='primary'&&firebase!.isAdmin?stageAdminBulkDraft:undefined} layoutSaveLabel={privateTest||!isDemo&&!isFirebase&&!isGoogleHost()?'Lưu cách hiển thị trên máy':'Lưu cách hiển thị chung'} sourceKey={sourceKey} initialLayout={itemLayout} onPersistLayout={adminTools?saveItemLayoutConfig:undefined} 
-        onPersistViewerLayout={adminTools&&isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
+        directStatusCasActive={directStatusCasActive} onPersistViewerLayout={adminTools&&isFirebase&&!!firebase?.isAdmin&&!!firebase.profile&&common.status==='ready'&&firebase.connected
           ?async(next,baseline,choices)=>{firebaseEditRevision.current=firebase.profile?.revision??0;
             return saveItemLayoutConfig(next,baseline,choices);}
           :undefined} catalog={catalog} items={workspace.workingItems} drafts={workspace.drafts} errors={workspace.errors} savingRows={workspace.savingRows} dataSaving={isFirebase&&workspace.savingRows.size>0} onFrameWidthChange={setListFramePreview} anonymousViewer={guestViewer} permissions={adminTools&&isFirebase?firebase!.permissions:undefined} onSavePermissions={adminTools&&isFirebase?firebase!.savePermissions:undefined} onReloadPermissions={adminTools&&isFirebase?firebase!.refreshPermissions:undefined} canEditCell={isFirebase?(id,field)=>
@@ -768,7 +776,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       canEditCell={(id,field)=>!workspace.savingRows.has(id)&&!partyStatusLocked(id,field)&&(!firebase||selectedSource==='primary'&&
         ((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
         mayEdit(firebase.permissions,id,field,firebase.isAdmin)))}
-      onUpdate={updateDataDraft} leaseManager={leaseManager} onKeepDraft={workspace.keepDraft}
+      onUpdate={updateDataDraft} leaseManager={leaseManager} directStatusCasActive={directStatusCasActive} onKeepDraft={workspace.keepDraft}
       onHistory={adminTools?(item)=>setHistory({item}):undefined}
       onCellHistory={(item,field)=>setHistory({item,field})}
       onOpenFullList={()=>{setSelection(null);setPage('items');}}
