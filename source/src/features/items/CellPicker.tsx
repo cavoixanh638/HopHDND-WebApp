@@ -110,6 +110,9 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   };
 
   const choose = (nextValue: string) => {
+    // The popup can be inspected immediately, but no draft may be accepted
+    // before the server grants the exclusive cell lease.
+    if(waiting)return;
     if(nextValue===value){chosen.current=false;close(true);return;}
     try{
       chosen.current=onChange(nextValue)!==false;
@@ -220,7 +223,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     observer?.observe(trigger);
     const firstFocus=requestAnimationFrame(() => {
       if (searchable) searchRef.current?.focus({preventScroll:true});
-      else focusFirstOption();
+      else if(!waiting)focusFirstOption();
       schedulePlace();
     });
 
@@ -244,9 +247,20 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   },[open,query,visibleOptions.length]);
 
   const focusOption = (index: number) => {
+    if(waiting)return;
     const next = Math.max(0, Math.min(index, visibleOptions.length - 1));
     optionRefs.current[next]?.focus();
   };
+  // An option cannot be focused while disabled. Move focus into the list as
+  // soon as the server grants the lease, preserving keyboard navigation.
+  useEffect(()=>{
+    if(!open||waiting||searchable)return;
+    const frame=requestAnimationFrame(()=>{
+      const current=visibleOptions.findIndex(option=>option.value===value);
+      optionRefs.current[current>=0?current:0]?.focus({preventScroll:true});
+    });
+    return()=>cancelAnimationFrame(frame);
+  },[open,waiting,searchable]);
 
   return <>
     <button
@@ -267,7 +281,11 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         claimedInCycle.current=true;
         pendingRelease.current=null; // new claim, old fence stays in coordinator
         const epoch=++requestEpoch.current;
+        setQuery('');
         setWaiting(true);
+        // UI opens in this same click; choices remain disabled until the
+        // authoritative RTDB lease is granted. Never impersonate a save ACK.
+        setOpen(true);
         // Claiming B synchronously closes A, then waits for A's safe lease
         // release. B still checks its own permission/lease before opening.
         const operation=claimCellPicker(trigger,()=>close()).then(async()=>{
@@ -283,6 +301,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
           setQuery('');setOpen(true);
         }).catch(error=>{
           if(epoch===requestEpoch.current){
+            setOpen(false);
             releaseCellPickerClaim(trigger);
             setLeaseError(error instanceof Error?error.message:'Ô đang được sửa ở phiên khác.');
           }
@@ -295,7 +314,6 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     >
       <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
     </button>
-    {waiting&&<small className="cell-picker-note cell-picker-feedback" role="status">Đang xác nhận quyền sửa ô…</small>}
     {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}
     {open && <div
       ref={popoverRef}
@@ -303,6 +321,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       data-choices-only={!searchable ? 'true' : undefined}
       popover="manual"
       role="dialog"
+      aria-busy={waiting}
       aria-label={label}
       onBlur={() => requestAnimationFrame(() => {
         const popover = popoverRef.current;
@@ -323,6 +342,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
             ref={element => { optionRefs.current[index] = element; }}
             type="button"
             role="option"
+            disabled={waiting}
+            aria-disabled={waiting}
             aria-selected={value === option.value}
             className="cell-picker-option"
             onClick={() => choose(option.value)}
