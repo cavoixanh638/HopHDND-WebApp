@@ -131,7 +131,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   },[repository,canStartDatabase]);
   const update = (recordId: string, changes: Changes):boolean => {
     const item = items.find(i => i.recordId === recordId);
-    if (!item || savingRowIds.current.has(recordId) || cachePending || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return false;
+    if (!item || cachePending || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return false;
     skipCheckpoint.current = false;
     const canonicalChanges:Changes=repository.sourceKind==='google'?Object.fromEntries(Object.entries(changes).map(([field,value])=>[field,typeof value==='string'?value.trim():value])):changes;
     setDrafts(previous => {
