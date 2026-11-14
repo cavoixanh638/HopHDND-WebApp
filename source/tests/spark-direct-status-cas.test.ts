@@ -195,7 +195,9 @@ describe.skipIf(!enabled)('Direct Spark status CAS / adversarial live Rules, NO 
     await setup();
     const base=(await model(A).list())[0];
     for(const bad of [{note:'Hacked'},{progressParty:'Không phải trình'},
-      {partyLevel:'INVALID'}, {progressCouncil:'VP đang xử lý',note:'Hacked'}]){
+      {partyLevel:'INVALID'},{progressBuild:'Injected arbitrary text'},
+      {progressCouncil:'Injected arbitrary text'},
+      {progressCouncil:'VP đang xử lý',note:'Hacked'}]){
       const patch=updateDraft(base,undefined,bad)!;
       await expect(callSparkCellEdit({action:'saveStatus',scope:'legacy',recordId:'r1',
         operationId:patch.operationId,patch},A.db)).rejects.toThrow();
