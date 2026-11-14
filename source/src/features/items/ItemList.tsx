@@ -1212,7 +1212,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             :<SearchHighlight value={value||'—'} query={columnFilters[column.key]}/>}</td>;
         }
         if(column.key==='displayCode')return <td key={column.key} data-col-key={column.key}
-          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<span className="item-save-error-marker"
+          style={cellHighlightStyle(displayId(item),column.key,activeLayout.cellHighlights)}><span className="code" tabIndex={0} aria-label={"Mã hồ sơ "+displayId(item)} title={isMissingDisplayCode(item.displayCode)?undefined:`Mã gốc: ${item.displayCode}`}>{displayId(item)}</span>{(aliasCounts.get(displayId(item))??0)>1&&<small className="warning-text">Trùng ID hiển thị · {item.displayCode}</small>}{sourceKind!=='firebase'&&drafts[item.recordId]&&<small>Chưa lưu</small>}{errors[item.recordId]&&<span className="item-save-error-marker"
               aria-label={'Lỗi lưu hồ sơ '+displayId(item)+'; xem thông báo trên bảng'}
               title={errors[item.recordId]}>Lỗi lưu</span>}</td>;
         if(column.key==='stt')return <td key={column.key} data-col-key={column.key} style={cellHighlightStyle(item.stt,column.key,activeLayout.cellHighlights)}>{item.stt}</td>;
