@@ -15,6 +15,10 @@ export function validateChanges(changes: Changes): string | null {
 export function updateDraft(item: Item, previous: Patch | undefined, changes: Changes): Patch | undefined {
   const merged: Changes = { ...(previous?.changes ?? {}), ...changes };
   const base: Changes = { ...(previous?.baseValues ?? {}) };
+  // If changing Cấp trình implicitly updates Tiến độ Thành ủy, protect the
+  // dependent old value too. Another tab's F/G edit must not be overwritten.
+  if('partyLevel' in merged&&!('progressParty' in base))
+    base.progressParty=item.progressParty;
   for (const key of Object.keys(merged) as EditableField[]) {
     if (!(key in base)) Object.assign(base, { [key]: item[key] });
     if (merged[key] === base[key]) { delete merged[key]; delete base[key]; }
