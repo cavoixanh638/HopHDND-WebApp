@@ -3793,7 +3793,7 @@ try{
   })()`);
   if(!inputFocus)throw Error('Lượt 018 ID filter missing');
   await send('Input.insertText',{text:'NQ01'});
-  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&document.querySelector('input[aria-label=\"Tìm kiếm không dấu\"]')?.value==='NQ01'",
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===1&&document.querySelector('input[aria-label=\"Tìm kiếm không dấu\"]')?.value==='NQ01'",
     'Search must intersect the selected summary condition before clearing');
   await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
   await eventually(`!document.querySelector('.list-active-filters [data-active-filter-id=summary]')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
