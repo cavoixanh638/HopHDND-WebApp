@@ -139,6 +139,55 @@ describe('Firebase autosave and in-flight edit preservation',()=>{
     expect(state.items[0].note).toBe('B');expect(state.drafts[original.recordId].changes.note).toBe('C');expect(state.drafts[original.recordId].baseValues.note).toBe('B');
     await state.save();expect(workspace(repo).items[0].note).toBe('C');expect(workspace(repo).drafts).toEqual({});
   });
+  it('lets a different row be edited while a Firebase save is pending, without declaring server ACK',async()=>{
+    const other={...original,recordId:'other-row',displayCode:'NQ02',note:'X'};
+    const first=deferred<any[]>();
+    const repo={sourceKind:'firebase',readOnly:false,canDraft:true,
+      list:vi.fn().mockResolvedValue([original,other]),
+      save:vi.fn().mockReturnValueOnce(first.promise).mockImplementation(async(patches:any[])=>
+        patches.map(patch=>({recordId:patch.recordId,ok:true,
+          item:{...(patch.recordId===other.recordId?other:original),...patch.changes,revision:2}}))),
+      history:vi.fn()};
+    workspace(repo);await settle();let state=workspace(repo);
+    state.update(original.recordId,{note:'B'});state=workspace(repo);
+    const awaiting=state.save();state=workspace(repo);
+    expect(state.busy).toBe(false);expect(state.savingRows.has(original.recordId)).toBe(true);
+    expect(state.savingRows.has(other.recordId)).toBe(false);
+    state.update(other.recordId,{note:'Y'});state=workspace(repo);
+    expect(state.workingItems.find(row=>row.recordId===other.recordId)?.note).toBe('Y');
+    expect(state.items.find(row=>row.recordId===original.recordId)?.note).toBe('A');
+    first.resolve([{recordId:original.recordId,ok:true,item:{...original,note:'B',revision:2}}]);
+    expect(await awaiting).toBe(true);
+    state=workspace(repo);expect(state.savingRows.size).toBe(0);
+    expect(state.drafts[other.recordId]?.changes.note).toBe('Y');
+    await state.save();state=workspace(repo);
+    expect(state.drafts).toEqual({});
+    expect(state.items.find(row=>row.recordId===other.recordId)?.note).toBe('Y');
+    expect(state.message).toBe('');
+  });
+  it('never auto-retries a rejected row when a different row gets a new draft',async()=>{
+    const other={...original,recordId:'another',displayCode:'NQ02',note:'X'};
+    const repo={sourceKind:'firebase',readOnly:false,canDraft:true,
+      list:vi.fn().mockResolvedValue([original,other]),
+      save:vi.fn()
+        .mockResolvedValueOnce([{recordId:original.recordId,ok:false,message:'permission denied'}])
+        .mockImplementation(async(patches:any[])=>patches.map(patch=>({
+          recordId:patch.recordId,ok:true,item:{...other,...patch.changes,revision:2}}))),
+      history:vi.fn()};
+    workspace(repo);await settle();let state=workspace(repo);
+    state.update(original.recordId,{note:'B'});state=workspace(repo);
+    expect(await state.save()).toBe(false);state=workspace(repo);
+    const rejected=state.drafts[original.recordId].operationId;
+    expect(state.errors[original.recordId]).toContain('permission denied');
+    state.update(other.recordId,{note:'Y'});state=workspace(repo);
+    await vi.advanceTimersByTimeAsync(800);await settle();state=workspace(repo);
+    expect(repo.save).toHaveBeenCalledTimes(2);
+    const sent=repo.save.mock.calls[1][0];
+    expect(sent.map((row:any)=>row.recordId)).toEqual([other.recordId]);
+    expect(state.drafts[original.recordId].operationId).toBe(rejected);
+    expect(state.errors[original.recordId]).toContain('permission denied');
+    expect(state.items.find(row=>row.recordId===other.recordId)?.note).toBe('Y');
+  });
   it('debounces automatic saves and retains failed edits without an endless retry',async()=>{
     const repo={sourceKind:'firebase',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue([original]),save:vi.fn().mockRejectedValue(new Error('permission denied')),history:vi.fn()};
     workspace(repo);await settle();let state=workspace(repo);state.update(original.recordId,{note:'B'});state=workspace(repo);await vi.advanceTimersByTimeAsync(400);expect(repo.save).not.toHaveBeenCalled();
