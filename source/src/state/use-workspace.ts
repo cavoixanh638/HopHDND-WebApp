@@ -181,7 +181,16 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         }
         return next;
       });
-      setErrors(Object.fromEntries(results.filter(r => !r.ok).map(r => [r.recordId, r.message ?? 'Không lưu được.'])));
+      // A save for a different row must never erase an earlier failed row's
+      // visible error: Firebase allows independent rows to continue editing.
+      setErrors(previous=>{
+        const next={...previous};
+        for(const result of results){
+          if(result.ok)delete next[result.recordId];
+          else next[result.recordId]=result.message??'Không lưu được.';
+        }
+        return next;
+      });
       // A successful Firebase save is deliberately silent: the value is already
       // shown in its cell. Preserve visible feedback only for errors or partial saves.
       setMessage(firebase
