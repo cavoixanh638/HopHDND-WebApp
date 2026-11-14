@@ -386,7 +386,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if('progressParty' in changes&&partyStatusLocked(id,'progressParty')){
       setLayoutMessage('Cấp trình Không: Tiến độ Thành ủy được khóa sửa trực tiếp.');return false;
     }
-    const direct=directStatusCasActive&&directStatusCasPatch(changes);
+    const direct=directStatusCasActive&&directStatusCasPatch(changes)&&
+      !Object.keys(changes).every(field=>!!leaseManager?.has(id,field as EditableField));
     if(leaseManager&&!direct&&Object.keys(changes).some(field=>!leaseManager.has(id,field as EditableField))){
       setLayoutMessage('Ô chưa được cấp khóa sửa độc quyền; dữ liệu chưa được áp dụng.');return false;
     }
