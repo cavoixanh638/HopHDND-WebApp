@@ -85,18 +85,19 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       :active!==null;
     if(changed)throw Error('Thế hệ dữ liệu đã thay đổi.');
   }
-  // The live generation fence and server clock are independent reads.
-  // Run them together to shorten the first editor's network wait without
-  // weakening either check or writing any unverified lease.
-  // Start the authoritative epoch/time checks while the lease listener is
-  // priming the transaction cache; do not serialize two independent reads.
-  const guards=Promise.all([serverNow(db),assertEpoch()]);
-  const rowPath=generation?`hdnd/datasetV2/generations/${generation.generationId}/items/${id}`:`hdnd/items/${id}`;
-  const leaseRoot=generation?`hdnd/datasetV2/leases/${generation.generationId}/${id}`:`hdnd/editLocks/${id}`;
+  const leaseAction=request.action==='acquire'||request.action==='renew'||request.action==='release';
   const field=request.field;
-  if(request.action==='acquire'||request.action==='renew'||request.action==='release'){
+  // Check malformed envelopes before starting any network request.
+  if(leaseAction){
     if(!field||!EDITABLE_FIELDS.includes(field))throw Error('Trường sửa không hợp lệ.');
     if(request.action==='acquire'&&(!request.kind||!Object.hasOwn(MAX_EDIT_MS,request.kind)))throw Error('Loại khóa không hợp lệ.');
+  }
+  const rowPath=generation?`hdnd/datasetV2/generations/${generation.generationId}/items/${id}`:`hdnd/items/${id}`;
+  const leaseRoot=generation?`hdnd/datasetV2/leases/${generation.generationId}/${id}`:`hdnd/editLocks/${id}`;
+  // Authoritative clock and generation checks run concurrently with the
+  // lock snapshot subscription, never weakening server Rules or CAS checks.
+  const guards=Promise.all([serverNow(db),assertEpoch()]);
+  if(leaseAction){
     const location=ref(db,leaseRoot+'/'+field);
     const watched=holdValue(db,leaseRoot+'/'+field);
     try {
