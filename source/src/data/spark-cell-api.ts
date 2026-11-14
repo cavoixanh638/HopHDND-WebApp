@@ -4,6 +4,7 @@ import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-poli
 import {sparkSession} from './spark-session';
 import type {CellEditEnvelope,CellEditAnswer} from './cell-edit-api';
 import type {CellLease,EditorKind} from './cell-edit-leases';
+import {recordSparkEditLatency} from './spark-edit-perf';
 
 const MAX_EDIT_MS:Record<EditorKind,number>={status:45000,search:90000,short:120000,multiline:300000,long:600000};
 const TTL=45000;
@@ -58,13 +59,17 @@ export async function callSparkCellEdit(request:CellEditEnvelope,database:Databa
     if(pending.input!==input)throw Error('Mã thao tác đang xử lý với nội dung khác.');
     return pending.result;
   }
+  const started=performance.now();
   const result=performSparkCellEdit(request,database).then(async answer=>{
     if(import.meta.env.MODE==='pages-test'||import.meta.env.MODE==='test'){
       const {maybeLoseSparkCellCallerAck}=await import('./spark-cell-ack-test');
       maybeLoseSparkCellCallerAck(database,request.action,answer.status);
     }
     return answer;
-  }).finally(()=>operations!.delete(request.operationId));
+  }).finally(()=>{
+    recordSparkEditLatency(request.action,performance.now()-started);
+    operations!.delete(request.operationId);
+  });
   operations.set(request.operationId,{input,result});
   return result;
 }
