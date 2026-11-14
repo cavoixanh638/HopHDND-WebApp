@@ -1,5 +1,8 @@
 import fs from 'node:fs';
-const rules=JSON.parse(fs.readFileSync('firebase/database.exclusive-candidate.rules.json','utf8'));
+// The legacy Functions candidate evolves independently from the deployed Spark
+// contract. Keep its reviewed Spark input explicit so legacy-only exceptions
+// cannot propagate into production Rules through regeneration.
+const rules=JSON.parse(fs.readFileSync('firebase/database.spark-base.rules.json','utf8'));
 const googleAdmin="(auth != null && auth.token.email === 'cavoixanh638@gmail.com' && auth.token.email_verified === true && auth.token.firebase.sign_in_provider === 'google.com')";
 const binding="root.child('hdnd/sparkSessions').child(auth.uid)";
 const bound=`(${binding}.exists() && ${binding}.child('expiresAt').val() > now)`;

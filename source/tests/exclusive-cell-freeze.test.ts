@@ -267,16 +267,28 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
       .rejects.toThrow(/đã có dữ liệu/);
     expect((await get(ref(db,'hdnd/items/'+snapshot.recordId))).val()).toEqual(saved);
   });
-  it('first import accepts only valid paired partyLevel/progressParty values',async()=>{
+  it('first import enforces its backend-specific party source contract',async()=>{
     await env.withSecurityRulesDisabled(async context=>{
       await set(ref(context.database() as never,'hdnd/items'),null);
     });
     const db=admin() as never;
     const invalid={...row,recordId:'bootstrap-invalid-party',displayCode:'NQ-INVALID-PARTY',
       partyLevel:'BCH',progressParty:'Không phải trình'};
-    await expect(bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[invalid]))
-      .rejects.toThrow();
-    expect((await get(ref(db,'hdnd/items'))).exists()).toBe(false);
+    if(process.env.VITE_FIREBASE_WRITE_MODE==='spark'){
+      // Spark initial import preserves the owner's exact reviewed source,
+      // including legacy aliases. Existing-row edits still enforce pairs.
+      await expect(bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[invalid]))
+        .resolves.toEqual({sourceCount:1,importedCount:1});
+      expect((await get(ref(db,'hdnd/items/'+invalid.recordId+'/progressParty'))).val())
+        .toBe('Không phải trình');
+      await env.withSecurityRulesDisabled(async context=>{
+        await set(ref(context.database() as never,'hdnd/items'),null);
+      });
+    }else{
+      await expect(bootstrapApprovedRowsToPrimary(db,actor('administrator',true),[invalid]))
+        .rejects.toThrow();
+      expect((await get(ref(db,'hdnd/items'))).exists()).toBe(false);
+    }
 
     const valid={...row,recordId:'bootstrap-no-party',displayCode:'NQ-NO-PARTY',
       partyLevel:'Không',progressParty:'Không phải trình'};
