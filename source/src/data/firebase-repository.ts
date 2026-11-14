@@ -8,6 +8,7 @@ import type {CellEditSessionManager} from './cell-edit-leases';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-policy';
 import {callCellEdit} from './cell-edit-api';
+import {directStatusCasPatch} from './status-direct-cas';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -104,14 +105,17 @@ export class FirebaseRepository implements Repository {
         const issue=validateChanges(patch.changes);
         if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
-        // No silent fallback to the old public-token RTDB write path.
-        if(!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
+        // This branch exists only for a SINGLE discrete field on the legacy
+        // Spark source, with matching server Rules deployed in advance.
+        const direct=directStatusCasPatch(patch.changes,!!this.expectedActive);
+        // No fallback: if a one-CAS status write is denied we keep its draft.
+        if(!direct&&!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
         if(!fields.length||fields.some(field=>!(field in patch.baseValues)||
           !mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))
           throw new Error('Bạn chưa được phép sửa ô này.');
         const leases:Record<string,{token:string;secret:string}>={};
-        for(const field of fields){
-          const credential=this.leaseManager.credential(patch.recordId,field);
+        if(!direct)for(const field of fields){
+          const credential=this.leaseManager!.credential(patch.recordId,field);
           if(!credential)throw new Error('Mất khóa ô '+field+'; bản nháp được giữ.');
           leases[field]=credential;
         }
@@ -124,7 +128,7 @@ export class FirebaseRepository implements Repository {
         // Backend verifies trusted UID, private lease proof and FULL candidate
         // RTDB Rules at commit, including field grants, generation and freeze.
         const answer=await callCellEdit({
-          action:'save',scope:this.expectedActive?'v2':'legacy',
+          action:direct?'saveStatus':'save',scope:this.expectedActive?'v2':'legacy',
           generation:this.expectedActive,operationId:patch.operationId,
           recordId:patch.recordId,patch,leases
         },this.database);
