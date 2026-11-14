@@ -573,8 +573,7 @@ try{
   if(!groupedDefault.ok)throw Error('V2 U01/U02 group projection or compact toolbar missing: '+JSON.stringify(groupedDefault));
   console.log('V2_MANDATORY_GROUPS_TOOLBAR_NO_STT_PASS',JSON.stringify(groupedDefault));
 
-  // Only V2 filter selectors change here; the baseline palette RGB oracle is
-  // unchanged on independent L1 (L2 owns the later colors diff).
+  // Current approved V2 L03 filled-pill RGB oracle (not historical transparent L1).
   const statusStyles=await evaluate(`(()=>{
     const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
     const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
@@ -594,12 +593,12 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgba(0, 0, 0, 0)'&&
-      colors[1].background==='rgba(0, 0, 0, 0)'&&
-      colors[2].background==='rgba(0, 0, 0, 0)'&&
-      colors[0].color==='rgb(177, 64, 82)'&&
-      colors[1].color==='rgb(128, 92, 34)'&&
-      colors[2].color==='rgb(52, 110, 72)'&&
+      colors[0].background==='rgb(255, 227, 233)'&&
+      colors[1].background==='rgb(255, 238, 218)'&&
+      colors[2].background==='rgb(222, 243, 229)'&&
+      colors[0].color==='rgb(163, 45, 70)'&&
+      colors[1].color==='rgb(128, 83, 31)'&&
+      colors[2].color==='rgb(37, 100, 65)'&&
       !!input&&!!selector&&
       getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
       tones,colors,header:getComputedStyle(th).backgroundColor};
@@ -627,12 +626,12 @@ try{
   if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
-    semanticCells.office.bg!=='rgb(255, 248, 233)'||
-    semanticCells.office.ink!=='rgb(128, 92, 34)')
+    semanticCells.office.bg!=='rgb(255, 238, 218)'||
+    semanticCells.office.ink!=='rgb(128, 83, 31)')
     throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
   const expectedBorder={ 'report-stage-source':'rgb(177, 64, 82)',
-    'report-stage-office':'rgb(128, 92, 34)',
-    'report-stage-completed':'rgb(52, 110, 72)'};
+    'report-stage-office':'rgb(128, 83, 31)',
+    'report-stage-completed':'rgb(37, 100, 65)'};
   for(const cell of semanticCells.statusCells){
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',
       x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
@@ -700,7 +699,8 @@ try{
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
 
-  // Note preview button also lifts, while an active multiline textarea stays flat.
+  // V2 note hit area is button-only: blank TD padding stays inert, actual
+  // button hover gets the inner 3D lift. Do not regress to cell-wide hovering.
   const noteProbe=await evaluate(`(()=>{
     const root=document.createElement('table');
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
@@ -708,23 +708,40 @@ try{
     root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger">Nội dung ghi chú</button></td></tr></tbody>';
     document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
-    return {x:box.right-9,y:box.top+box.height/2};
+    const inner=root.querySelector('button').getBoundingClientRect();
+    return {x:box.right-9,y:box.top+box.height/2,
+      innerX:inner.left+inner.width/2,innerY:inner.top+inner.height/2,
+      outsideInner:box.right-9>inner.right};
   })()`);
+  if(!noteProbe.outsideInner)throw Error('Note must retain inert outer TD padding: '+JSON.stringify(noteProbe));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.x,y:noteProbe.y});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const noteIdle=await evaluate(`(()=>{
+    const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
+    const style=getComputedStyle(button),parent=getComputedStyle(cell);
+    return {outerHovered:cell.matches(':hover'),innerHovered:button.matches(':hover'),
+      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      shadow:style.boxShadow};
+  })()`);
+  if(!noteIdle.outerHovered||noteIdle.innerHovered||noteIdle.outerShadow!=='none'||
+    Math.abs(noteIdle.liftY)>.25||noteIdle.shadow!=='none')
+    throw Error('Note TD padding must not activate inner hover: '+JSON.stringify(noteIdle));
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.innerX,y:noteProbe.innerY});
   await new Promise(resolve=>setTimeout(resolve,270));
   const note3d=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
     const style=getComputedStyle(button),parent=getComputedStyle(cell);
-    return {active:cell.matches(':hover'),outerShadow:parent.boxShadow,
-      liftY:new DOMMatrixReadOnly(style.transform).m42,shadow:style.boxShadow,
-      border:style.borderTopColor};
+    return {active:cell.matches(':hover'),innerHovered:button.matches(':hover'),
+      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      shadow:style.boxShadow,border:style.borderTopColor};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
-  if(!note3d.active||note3d.outerShadow!=='none'||Math.abs(note3d.liftY+3)>.25||
-    !note3d.shadow.includes('8px 16px')||note3d.border!=='rgb(46, 111, 149)')
-    throw Error('3D option B note affordance mismatch: '+JSON.stringify(note3d));
-  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify(note3d));
+  if(!note3d.active||!note3d.innerHovered||note3d.outerShadow!=='none'||
+    Math.abs(note3d.liftY+3)>.25||!note3d.shadow.includes('8px 16px')||
+    note3d.border!=='rgb(46, 111, 149)')
+    throw Error('3D option B note affordance mismatch: '+JSON.stringify({noteIdle,note3d}));
+  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify({noteIdle,note3d}));
 
 
   // Regression: textarea may remain focused for typing after pointer leaves.
