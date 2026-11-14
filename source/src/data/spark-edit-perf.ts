@@ -5,7 +5,7 @@
 const samples=new Map<string,number[]>();
 export function recordSparkEditLatency(action:string,ms:number):void{
   if(typeof location==='undefined'||new URLSearchParams(location.search).get('editPerf')!=='1')return;
-  if(!['acquire','renew','release','save','resolve'].includes(action)||!Number.isFinite(ms)||ms<0)return;
+  if(!['acquire','renew','release','save','saveStatus','resolve'].includes(action)||!Number.isFinite(ms)||ms<0)return;
   const values=samples.get(action)??[];
   values.push(ms);
   if(values.length>200)values.shift();
