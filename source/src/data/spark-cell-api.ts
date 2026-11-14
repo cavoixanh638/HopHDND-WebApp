@@ -88,7 +88,9 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   // The live generation fence and server clock are independent reads.
   // Run them together to shorten the first editor's network wait without
   // weakening either check or writing any unverified lease.
-  const [now]=await Promise.all([serverNow(db),assertEpoch()]);
+  // Start the authoritative epoch/time checks while the lease listener is
+  // priming the transaction cache; do not serialize two independent reads.
+  const guards=Promise.all([serverNow(db),assertEpoch()]);
   const rowPath=generation?`hdnd/datasetV2/generations/${generation.generationId}/items/${id}`:`hdnd/items/${id}`;
   const leaseRoot=generation?`hdnd/datasetV2/leases/${generation.generationId}/${id}`:`hdnd/editLocks/${id}`;
   const field=request.field;
@@ -96,9 +98,11 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     if(!field||!EDITABLE_FIELDS.includes(field))throw Error('Trường sửa không hợp lệ.');
     if(request.action==='acquire'&&(!request.kind||!Object.hasOwn(MAX_EDIT_MS,request.kind)))throw Error('Loại khóa không hợp lệ.');
     const location=ref(db,leaseRoot+'/'+field);
-    const release=await holdValue(db,leaseRoot+'/'+field);
-    let result;
-    try{result=await runTransaction(location,(raw:CellLease|null)=>{
+    const watched=holdValue(db,leaseRoot+'/'+field);
+    try {
+      const [[now]]=await Promise.all([guards,watched]);
+      let result;
+      try{result=await runTransaction(location,(raw:CellLease|null)=>{
       if(raw?.lastOperationId===request.operationId&&raw.uid===session.uid)return undefined;
       if(request.action==='acquire'){
         if(raw&&raw.expiresAt>now)return undefined;
@@ -112,7 +116,7 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     },{applyLocally:false});}catch(error){
       if(String(error).includes('permission_denied'))throw Error('Quyền, khóa, generation hoặc freeze đã đổi trước khi máy chủ xác nhận.');
       throw error;
-    }finally{release();}
+    }
     // A committed transaction resolves only after the server accepted it;
     // its returned snapshot is already authoritative. Avoid an additional
     // round-trip on every picker open; retain readback for ambiguous retries.
@@ -121,7 +125,13 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
       throw Error(stored&&stored.expiresAt>now?'Ô đang được phiên khác giữ khóa.':'Khóa đã hết hạn hoặc chưa xác nhận.');
     await assertEpoch();
     return {status:request.action==='acquire'?'acquired':request.action==='release'?'released':'renewed',lease:stored};
+    } finally {
+      // Also unsubscribes if a preceding epoch/time check fails before the
+      // initial lease snapshot arrives. Never leave an orphan listener.
+      void watched.then(stop=>stop(),()=>{});
+    }
   }
+  await guards;
   const location=ref(db,rowPath);
   // Resolve is a read-only path; it must not retain an unnecessary listener.
   if(request.action==='resolve'){
