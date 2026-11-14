@@ -573,8 +573,7 @@ try{
   if(!groupedDefault.ok)throw Error('V2 U01/U02 group projection or compact toolbar missing: '+JSON.stringify(groupedDefault));
   console.log('V2_MANDATORY_GROUPS_TOOLBAR_NO_STT_PASS',JSON.stringify(groupedDefault));
 
-  // Only V2 filter selectors change here; the baseline palette RGB oracle is
-  // unchanged on independent L1 (L2 owns the later colors diff).
+  // Current approved V2 L03 filled-pill RGB oracle (not historical transparent L1).
   const statusStyles=await evaluate(`(()=>{
     const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
     const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
@@ -594,12 +593,12 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgba(0, 0, 0, 0)'&&
-      colors[1].background==='rgba(0, 0, 0, 0)'&&
-      colors[2].background==='rgba(0, 0, 0, 0)'&&
-      colors[0].color==='rgb(177, 64, 82)'&&
-      colors[1].color==='rgb(128, 92, 34)'&&
-      colors[2].color==='rgb(52, 110, 72)'&&
+      colors[0].background==='rgb(255, 227, 233)'&&
+      colors[1].background==='rgb(255, 238, 218)'&&
+      colors[2].background==='rgb(222, 243, 229)'&&
+      colors[0].color==='rgb(163, 45, 70)'&&
+      colors[1].color==='rgb(128, 83, 31)'&&
+      colors[2].color==='rgb(37, 100, 65)'&&
       !!input&&!!selector&&
       getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
       tones,colors,header:getComputedStyle(th).backgroundColor};
