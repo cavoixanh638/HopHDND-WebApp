@@ -106,6 +106,8 @@ function appendDirectStatusRules(h){
   const unlocked=(field)=>"(!root.child('hdnd/editLocks').child($id).child('"+field+"').exists() || root.child('hdnd/editLocks').child($id).child('"+field+"').child('expiresAt').val() <= now)";
   const oldLevel="data.parent().child('partyLevel').val()",newLevel="newData.parent().child('partyLevel').val()";
   const statusEnum=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const buildEnum=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const councilEnum=['Sở chưa trình','VP đang xử lý','Hoàn thành'].map(v=>"newData.val() === '"+v+"'").join(" || ");
   const levelEnum=['Không','TTTU','BTV','BCH'].map(v=>"newData.val() === '"+v+"'").join(" || ");
   const nonNo="("+newLevel+" === 'TTTU' || "+newLevel+" === 'BTV' || "+newLevel+" === 'BCH')";
   const allow={
@@ -113,8 +115,8 @@ function appendDirectStatusRules(h){
     progressParty:"newData.isString() && ("+statusEnum+") && (("+
       newLevel+" === "+oldLevel+" && "+newLevel+" !== 'Không' && "+oldLevel+" !== 'Không phải trình' && newData.val() !== 'Không phải trình' && "+grant('progressParty')+" && "+unlocked('progressParty')+
       ") || ("+newLevel+" !== "+oldLevel+" && (("+newLevel+" === 'Không' && newData.val() === 'Không phải trình') || (("+oldLevel+" === 'Không' || "+oldLevel+" === 'Không phải trình') && "+nonNo+" && newData.val() === 'Sở chưa trình')) && "+grant('partyLevel')+" && "+unlocked('partyLevel')+" && "+unlocked('progressParty')+"))",
-    progressBuild:"newData.isString() && newData.val().length <= 20000 && "+grant('progressBuild')+" && "+unlocked('progressBuild'),
-    progressCouncil:"newData.isString() && newData.val().length <= 20000 && "+grant('progressCouncil')+" && "+unlocked('progressCouncil'),
+    progressBuild:"newData.isString() && ("+buildEnum+") && "+grant('progressBuild')+" && "+unlocked('progressBuild'),
+    progressCouncil:"newData.isString() && ("+councilEnum+") && "+grant('progressCouncil')+" && "+unlocked('progressCouncil'),
     isDropped:"newData.isBoolean() && "+grant('isDropped')+" && "+unlocked('isDropped')
   };
   for(const [field,check] of Object.entries(allow)){
