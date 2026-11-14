@@ -96,6 +96,20 @@ describe.skipIf(!enabled)('Direct Spark status CAS / adversarial live Rules, NO 
       (await get(ref(ctx.database(),'hdnd/editLocks'))).val());
     expect(locks??null).toBeNull(); // RulesTestEnvironment may return undefined for absent parent
   });
+  it('all approved discrete status types use direct-CAS, including boolean withdrawal',async()=>{
+    await setup();
+    const first=await write(A,{isDropped:true});
+    expect(first.ok,first.message).toBe(true);
+    expect(first.item?.isDropped).toBe(true);
+    expect((await read()).history['2'].changes).toEqual({isDropped:true});
+    const second=await write(B,{progressParty:'VP đang xử lý'});
+    expect(second.ok,second.message).toBe(true);
+    expect((await read()).progressParty).toBe('VP đang xử lý');
+    expect((await read()).revision).toBe(3);
+    const locks=await env.withSecurityRulesDisabled(async ctx=>
+      (await get(ref(ctx.database(),'hdnd/editLocks'))).val());
+    expect(locks??null).toBeNull();
+  });
   it('same-field simultaneous edits are first-CAS-wins, second draft conflicts',async()=>{
     await setup();
     const x=model(A),y=model(B);
