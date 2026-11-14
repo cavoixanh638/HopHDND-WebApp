@@ -91,11 +91,11 @@ async function open(page,code){
   await fieldButton(page,code).click();
   const picker=page.getByRole('listbox',{name:code+': Tiến độ trình HĐND ban hành NQ/BC',exact:true});
   await picker.waitFor();
-  const visibleMs=performance.now()-start;
-  // Visibility is NOT permission to write. Keep the historic "lockMs"
-  // measure tied to the actual server grant, not speculative popup paint.
-  await until(()=>picker.getByRole('option').first().isEnabled(),'authorized picker '+code);
-  return {lockMs:performance.now()-start,visibleMs};
+  // Direct-CAS has no remote lease. The option must be enabled as soon as
+  // the popover is visible; use one real numeric wall-time measurement.
+  if(!(await picker.getByRole('option').first().isEnabled()))
+    throw Error('Direct-CAS choice was disabled after popup paint: '+code);
+  return performance.now()-start;
 }
 async function select(page,code,value){
   const picker=page.getByRole('listbox',{name:code+': Tiến độ trình HĐND ban hành NQ/BC',exact:true});
