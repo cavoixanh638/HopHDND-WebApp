@@ -25,7 +25,9 @@ function scopedDatabaseURL(){
   // redirects it to the local RTDB host without contacting production.
   const demoLocal=NAMESPACE.startsWith('demo-') &&
     /^(127\.0\.0\.1|localhost):9000$/.test(process.env.FIREBASE_DATABASE_EMULATOR_HOST??'');
-  const value=demoLocal?`https://${NAMESPACE}-default-rtdb.firebaseio.com`:
+  // Match the exact namespace used by the Auth/RTDB rules-unit-test clients.
+  // `demo-hdnd-default-rtdb` is a DIFFERENT emulator database from `demo-hdnd`.
+  const value=demoLocal?`https://${NAMESPACE}.firebaseio.com`:
     (process.env.FIREBASE_DATABASE_URL||runtime.databaseURL);
   if(!value)fail('unavailable','Chưa cấu hình đường dẫn Realtime Database cho dịch vụ sửa ô.');
   try{
