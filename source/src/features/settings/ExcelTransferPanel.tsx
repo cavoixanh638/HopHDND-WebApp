@@ -17,7 +17,12 @@ import type {ActiveDatasetPointer} from '../../data/dataset-replacement-integrit
 export function ExcelTransferPanel({items,isAdmin,disabled,onImport,onClose,profile,onSaveProfile,importEnabled=true,transitionSheetUrl,onTransitionApply,transitionDisabled=true,initialSheetUrl,onInitialImport,initialImportDisabled=true,versioned}:{versioned?:{database:Database;user:User|null;active?:ActiveDatasetPointer|null;reports:readonly ReportConfig[];enabled:boolean;readyForMutation:boolean};items:Item[];isAdmin:boolean;importEnabled?:boolean;transitionSheetUrl?:string;onTransitionApply?:(changes:TransitionRowChange[])=>Promise<number>;transitionDisabled?:boolean;initialSheetUrl?:string;onInitialImport?:(rows:Item[])=>Promise<number>;initialImportDisabled?:boolean;disabled:boolean;onImport:(items:Item[])=>Promise<void>;onClose:()=>void;profile:Omit<FirebaseProfile,'revision'>;onSaveProfile:(profile:Omit<FirebaseProfile,'revision'>)=>Promise<void>}){
   const [preview,setPreview]=useState<Item[]|null>(null),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
   const [profilePending,setProfilePending]=useState(false),[confirmExit,setConfirmExit]=useState(false);
-  const simpleAdmin=!!(isAdmin&&versioned&&versioned.active==null);
+  // Historical Functions/V2 activation remains exercised only by the isolated
+  // non-Spark pages-test matrix. Spark tests and every production build keep
+  // the current direct-maintenance UI; this cannot enable legacy production UI.
+  const historicalV2Qa=import.meta.env.MODE==='pages-test'&&
+    import.meta.env.VITE_FIREBASE_WRITE_MODE!=='spark';
+  const simpleAdmin=!!(isAdmin&&versioned&&versioned.active==null&&!historicalV2Qa);
   const close=()=>{if(preview||profilePending)setConfirmExit(true);else onClose();};
   const download=(rows:Item[],name:string)=>{try{const bytes=createExcel(rows);const blob=new Blob([new Uint8Array(bytes)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(cause){setMessage((cause as Error).message);}};
   const load=async(file:File)=>{setMessage('');setPreview(null);try{if(file.size>5*1024*1024)throw new Error('Tệp tối đa 5 MB.');const parsed=readExcel(await file.arrayBuffer());if(!parsed.items.length)throw new Error('Tệp chưa có nội dung.');setPreview(parsed.items);}catch(cause){setMessage((cause as Error).message);}};
