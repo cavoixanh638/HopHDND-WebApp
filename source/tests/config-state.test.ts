@@ -130,7 +130,7 @@ describe('real-source drafts and honest synchronization',()=>{
 
 describe('Firebase autosave and in-flight edit preservation',()=>{
   const original={...createDemoItems(1)[0],revision:1,note:'A'};
-  function workspace(repo:any){h.begin();const value=useWorkspace(repo,'firebase:demo-hdnd');h.flush();return value;}
+  function workspace(repo:any,sourceKey='firebase:demo-hdnd'){h.begin();const value=useWorkspace(repo,sourceKey);h.flush();return value;}
   it('keeps C when an earlier A-to-B save is acknowledged, then saves C using B as baseline',async()=>{
     const first=deferred<any[]>();
     const repo={sourceKind:'firebase',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue([original]),save:vi.fn().mockReturnValueOnce(first.promise).mockImplementation(async(patches:any[])=>patches.map(patch=>({recordId:patch.recordId,ok:true,item:{...original,...patch.changes,revision:3}}))),history:vi.fn()};
@@ -187,6 +187,59 @@ describe('Firebase autosave and in-flight edit preservation',()=>{
     expect(state.drafts[original.recordId].operationId).toBe(rejected);
     expect(state.errors[original.recordId]).toContain('permission denied');
     expect(state.items.find(row=>row.recordId===other.recordId)?.note).toBe('Y');
+  });
+  it('keeps a thrown save visibly failed after another row saves successfully',async()=>{
+    const other={...original,recordId:'second-row',displayCode:'NQ02',note:'X'};
+    const repo={sourceKind:'firebase',readOnly:false,canDraft:true,
+      list:vi.fn().mockResolvedValue([original,other]),
+      save:vi.fn().mockRejectedValueOnce(new Error('reply lost'))
+        .mockImplementation(async(patches:any[])=>patches.map(patch=>({
+          recordId:patch.recordId,ok:true,item:{...other,...patch.changes,revision:2}}))),
+      history:vi.fn()};
+    workspace(repo);await settle();let state=workspace(repo);
+    state.update(original.recordId,{note:'B'});state=workspace(repo);
+    expect(await state.save()).toBe(false);state=workspace(repo);
+    const failedOperation=state.drafts[original.recordId].operationId;
+    expect(state.errors[original.recordId]).toBe('reply lost');
+    state.update(other.recordId,{note:'Y'});state=workspace(repo);
+    await vi.advanceTimersByTimeAsync(800);await settle();state=workspace(repo);
+    expect(repo.save).toHaveBeenCalledTimes(2);
+    expect(repo.save.mock.calls[1][0].map((patch:any)=>patch.recordId)).toEqual([other.recordId]);
+    expect(state.drafts[original.recordId].operationId).toBe(failedOperation);
+    expect(state.items.find(row=>row.recordId===original.recordId)?.note).toBe('A');
+    expect(state.errors[original.recordId]).toBe('reply lost');
+    expect(state.items.find(row=>row.recordId===other.recordId)?.note).toBe('Y');
+    await vi.advanceTimersByTimeAsync(5000);workspace(repo);
+    expect(repo.save).toHaveBeenCalledTimes(2);
+  });
+  it.each(['success','failure'])('ignores a late old-source %s while a new-source save is pending',async outcome=>{
+    const oldSave=deferred<any[]>(),newSave=deferred<any[]>();
+    const oldRepo={sourceKind:'firebase',readOnly:false,canDraft:true,
+      list:vi.fn().mockResolvedValue([original]),save:vi.fn().mockReturnValue(oldSave.promise),history:vi.fn()};
+    const newOriginal={...original,note:'new source'};
+    const newRepo={sourceKind:'firebase',readOnly:false,canDraft:true,
+      list:vi.fn().mockResolvedValue([newOriginal]),save:vi.fn().mockReturnValue(newSave.promise),history:vi.fn()};
+    workspace(oldRepo,'generation:old');await settle();let state=workspace(oldRepo,'generation:old');
+    state.update(original.recordId,{note:'old pending'});state=workspace(oldRepo,'generation:old');
+    const oldResult=state.save();state=workspace(oldRepo,'generation:old');
+    expect(state.savingRows.has(original.recordId)).toBe(true);
+    workspace(newRepo,'generation:new');await settle();state=workspace(newRepo,'generation:new');
+    expect(state.savingRows.size).toBe(0);
+    expect(state.items[0].note).toBe('new source');
+    state.update(original.recordId,{note:'new pending'});state=workspace(newRepo,'generation:new');
+    const newResult=state.save();state=workspace(newRepo,'generation:new');
+    expect(newRepo.save).toHaveBeenCalledTimes(1);
+    if(outcome==='success')oldSave.resolve([{recordId:original.recordId,ok:true,item:{...original,note:'old pending',revision:2}}]);
+    else oldSave.reject(new Error('old source failed'));
+    expect(await oldResult).toBe(false);state=workspace(newRepo,'generation:new');
+    expect(state.savingRows.has(original.recordId)).toBe(true);
+    expect(state.items[0].note).toBe('new source');
+    expect(state.drafts[original.recordId].changes.note).toBe('new pending');
+    expect(state.message).toBe('');expect(state.errors).toEqual({});
+    newSave.resolve([{recordId:original.recordId,ok:true,item:{...newOriginal,note:'new pending',revision:2}}]);
+    expect(await newResult).toBe(true);state=workspace(newRepo,'generation:new');
+    expect(state.savingRows.size).toBe(0);expect(state.drafts).toEqual({});
+    expect(state.items[0].note).toBe('new pending');
   });
   it('debounces automatic saves and retains failed edits without an endless retry',async()=>{
     const repo={sourceKind:'firebase',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue([original]),save:vi.fn().mockRejectedValue(new Error('permission denied')),history:vi.fn()};
