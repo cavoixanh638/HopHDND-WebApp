@@ -84,6 +84,46 @@ function allowOnlyAdminFrozenReplacementValidation(node){
 }
 allowOnlyAdminFrozenReplacementValidation(h.items);
 
+// Direct-CAS status path: release gated, legacy primary only, no pre-open lease.
+function appendDirectStatusRules(h){
+  // This is intentionally called AFTER the legacy admin-maintenance wrapper.
+  // Appending a narrow alternative here preserves all prior lease branches.
+  const row=h.items.$id;
+  const identity="(auth != null && auth.token.firebase.sign_in_provider === 'anonymous')";
+  const binding="root.child('hdnd/sparkSessions').child(auth.uid)";
+  const bound="("+binding+".exists() && "+binding+".child('expiresAt').val() > now)";
+  const admin="("+identity+" && "+bound+" && "+binding+".child('admin').val() === true)";
+  const staff="("+binding+".child('admin').val() === true || root.child('hdnd/editors').child("+binding+".child('ownerUid').val()).val() === true)";
+  const session="(!"+binding+".exists() || ("+bound+" && "+staff+"))";
+  const base="("+[
+    identity,session,"data.parent().exists()",
+    "!root.child('hdnd/datasetV2/active').exists()",
+    "(root.child('hdnd/freezeControl/mode').val() === 'OPEN' || !root.child('hdnd/freezeControl/mode').exists())",
+    "(root.child('hdnd/control/editingLocked').val() !== true || "+admin+")"
+  ].join(" && ")+")";
+  const perms="root.child('hdnd/permissions')";
+  const grant=(field)=>"("+admin+" || ("+perms+".child('cells').child($id).child('"+field+"').exists() ? "+perms+".child('cells').child($id).child('"+field+"').val() === true : ("+perms+".child('rows').child($id).exists() ? "+perms+".child('rows').child($id).val() === true : "+perms+".child('columns').child('"+field+"').val() === true)))";
+  const unlocked=(field)=>"(!root.child('hdnd/editLocks').child($id).child('"+field+"').exists() || root.child('hdnd/editLocks').child($id).child('"+field+"').child('expiresAt').val() <= now)";
+  const oldLevel="data.parent().child('partyLevel').val()",newLevel="newData.parent().child('partyLevel').val()";
+  const statusEnum=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const levelEnum=['Không','TTTU','BTV','BCH'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const nonNo="("+newLevel+" === 'TTTU' || "+newLevel+" === 'BTV' || "+newLevel+" === 'BCH')";
+  const allow={
+    partyLevel:"newData.isString() && ("+levelEnum+") && "+grant('partyLevel')+" && "+unlocked('partyLevel'),
+    progressParty:"newData.isString() && ("+statusEnum+") && (("+
+      newLevel+" === "+oldLevel+" && "+newLevel+" !== 'Không' && "+oldLevel+" !== 'Không phải trình' && newData.val() !== 'Không phải trình' && "+grant('progressParty')+" && "+unlocked('progressParty')+
+      ") || ("+newLevel+" !== "+oldLevel+" && (("+newLevel+" === 'Không' && newData.val() === 'Không phải trình') || (("+oldLevel+" === 'Không' || "+oldLevel+" === 'Không phải trình') && "+nonNo+" && newData.val() === 'Sở chưa trình')) && "+grant('partyLevel')+" && "+unlocked('partyLevel')+" && "+unlocked('progressParty')+"))",
+    progressBuild:"newData.isString() && newData.val().length <= 20000 && "+grant('progressBuild')+" && "+unlocked('progressBuild'),
+    progressCouncil:"newData.isString() && newData.val().length <= 20000 && "+grant('progressCouncil')+" && "+unlocked('progressCouncil'),
+    isDropped:"newData.isBoolean() && "+grant('isDropped')+" && "+unlocked('isDropped')
+  };
+  for(const [field,check] of Object.entries(allow)){
+    if(typeof row[field]?.['.validate']!=='string')throw Error('Spark direct-CAS requires existing field rule '+field);
+    row[field]['.validate']='('+row[field]['.validate']+') || ('+base+' && newData.val() !== data.val() && '+check+')';
+  }
+}
+appendDirectStatusRules(h);
+
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,
