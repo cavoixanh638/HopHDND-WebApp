@@ -94,7 +94,7 @@ describe.skipIf(!enabled)('Direct Spark status CAS / adversarial live Rules, NO 
     expect(row.history['2'].oldValues).toEqual({progressCouncil:'Sở chưa trình'});
     const locks=await env.withSecurityRulesDisabled(async ctx=>
       (await get(ref(ctx.database(),'hdnd/editLocks'))).val());
-    expect(locks).toBeNull();
+    expect(locks??null).toBeNull(); // RulesTestEnvironment may return undefined for absent parent
   });
   it('same-field simultaneous edits are first-CAS-wins, second draft conflicts',async()=>{
     await setup();
