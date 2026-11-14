@@ -5,6 +5,7 @@ import {sparkSession} from './spark-session';
 import type {CellEditEnvelope,CellEditAnswer} from './cell-edit-api';
 import type {CellLease,EditorKind} from './cell-edit-leases';
 import {recordSparkEditLatency} from './spark-edit-perf';
+import {directStatusCasPatch} from './status-direct-cas';
 
 const MAX_EDIT_MS:Record<EditorKind,number>={status:45000,search:90000,short:120000,multiline:300000,long:600000};
 const TTL=45000;
@@ -96,7 +97,8 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   const leaseRoot=generation?`hdnd/datasetV2/leases/${generation.generationId}/${id}`:`hdnd/editLocks/${id}`;
   // Authoritative clock and generation checks run concurrently with the
   // lock snapshot subscription, never weakening server Rules or CAS checks.
-  const guards=Promise.all([serverNow(db),assertEpoch()]);
+  // No server-clock read on the one-CAS status path; Rules use server 'now'.
+  const guards=leaseAction?Promise.all([serverNow(db),assertEpoch()]):assertEpoch();
   if(leaseAction){
     const location=ref(db,leaseRoot+'/'+field);
     const watched=holdValue(db,leaseRoot+'/'+field);
@@ -146,7 +148,15 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   const issue=validateChanges(patch.changes);
   if(issue)throw Error(issue);
   const fields=Object.keys(patch.changes) as (keyof typeof patch.changes)[];
-  if(!fields.length||fields.some(f=>!Object.hasOwn(patch.baseValues,f)||!request.leases?.[f]))throw Error('Thiếu giá trị gốc hoặc khóa ô.');
+  const direct=request.action==='saveStatus';
+  if(request.action!=='save'&&!direct)throw Error('Hành động lưu không hợp lệ.');
+  if(direct&&(!directStatusCasPatch(patch.changes,request.scope!=='legacy')||!!generation))
+    throw Error('Giao dịch trạng thái không khóa chưa được kích hoạt hoặc không hợp lệ.');
+  if(!fields.length||fields.some(f=>!Object.hasOwn(patch.baseValues,f)||(!direct&&!request.leases?.[f])))
+    throw Error('Thiếu giá trị gốc hoặc khóa ô.');
+  // The implied F/G dependent status is not allowed to overwrite a peer edit.
+  if(direct&&fields.includes('partyLevel')&&!Object.hasOwn(patch.baseValues,'progressParty'))
+    throw Error('Thiếu giá trị gốc tiến độ Thành ủy để chống ghi đè.');
   if(fields.includes('partyLevel')&&!PARTY_LEVELS.has(String(patch.changes.partyLevel)))throw Error('Cấp trình không thuộc danh mục.');
   if(fields.includes('progressParty')&&!PARTY_STATUSES.has(String(patch.changes.progressParty)))throw Error('Tiến độ Thành ủy không thuộc danh mục.');
   if(fields.includes('partyLevel')&&fields.includes('progressParty'))throw Error('Chỉ gửi cấp trình; tiến độ phụ thuộc do giao dịch quyết định.');
@@ -159,7 +169,9 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
   let result;
   result=await runTransaction(location,(raw:any)=>{
     if(!raw||raw.operationId===request.operationId)return undefined;
-    if(fields.some(f=>raw[f]!==patch.baseValues[f])||violatesProgressBuildWritePolicy(raw,patch.changes))return undefined;
+    if(fields.some(f=>raw[f]!==patch.baseValues[f])||
+      (direct&&fields.includes('partyLevel')&&raw.progressParty!==patch.baseValues.progressParty)||
+      violatesProgressBuildWritePolicy(raw,patch.changes))return undefined;
     const requested={...patch.changes};
     if(fields.includes('partyLevel')&&raw.partyLevel!==requested.partyLevel){
       if(requested.partyLevel==='Không')requested.progressParty='Không phải trình';
@@ -170,7 +182,9 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     if(!changed.length)return undefined;
     const revision=raw.revision+1,at=serverTimestamp();
     return {...raw,...requested,revision,operationId:request.operationId,updatedAt:at,updatedBy:session.uid,
-      editProofs:{...(raw.editProofs??{}),...Object.fromEntries(fields.filter(f=>changed.includes(f)).map(f=>[f,request.leases![f].token]))},
+      // Direct-CAS does not fabricate an editProof. Only server status Rules
+      // can authorize a change without a pre-existing exclusive cell lease.
+      ...(direct?{}:{editProofs:{...(raw.editProofs??{}),...Object.fromEntries(fields.filter(f=>changed.includes(f)).map(f=>[f,request.leases![f].token]))}}),
       history:{...(raw.history??{}),[String(revision%50)]:{operationId:request.operationId,recordId:id,at,actor:session.uid,
         changes:Object.fromEntries(changed.map(f=>[f,requested[f]])),oldValues:Object.fromEntries(changed.map(f=>[f,raw[f]]))}}};
   },{applyLocally:false});
@@ -179,7 +193,7 @@ async function performSparkCellEdit(request:CellEditEnvelope,database:Database):
     const changed=fields.some(f=>row&&row[f]!==patch.baseValues[f]);
     throw Error(result.committed?'Chưa xác minh bản ghi sau lưu.':
       changed?'Giá trị ô trên Firebase đã thay đổi; cần đọc lại dữ liệu trước khi sửa.':
-      'Máy chủ chưa chấp nhận giao dịch; có thể quyền hoặc khóa ô đã thay đổi. Giữ bản nháp để đối chiếu.');
+      (direct?'Máy chủ chưa chấp nhận giao dịch; quyền, phiên dữ liệu hoặc trạng thái đã thay đổi. Giữ bản nháp.':'Máy chủ chưa chấp nhận giao dịch; có thể quyền hoặc khóa ô đã thay đổi. Giữ bản nháp để đối chiếu.'));
   }
   await assertEpoch();
   return {status:'committed',operationId:request.operationId,row};
