@@ -4416,18 +4416,39 @@ try{
       [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
         .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
     })()`);
-    await adminA.until("!!document.querySelector('[data-ui-ref-code=A01]')",
-      'real App admin reference overlay');
-    const appCodes=await adminA.js(`(()=>{
-      const layer=document.querySelector('[data-ui-reference-layer]');
-      const codes=[...layer?.querySelectorAll('[data-ui-ref-code]')??[]].map(node=>node.dataset.uiRefCode);
-      return {codes,hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
-        nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
-          [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents==='none')};
-    })()`);
-    if(!appCodes.hasAdminToggle||!appCodes.nonblocking||
-      !['A01','A02','A03'].every(code=>appCodes.codes.includes(code)))
-      throw Error('UI V4 L3 App admin reference selectors/roles: '+JSON.stringify(appCodes));
+    await adminA.until("!!document.querySelector('[data-ui-reference-layer]')",
+      'real App admin hover reference layer');
+    const appCodes={codes:[],hasAdminToggle:false,nonblocking:true};
+    for(const [code,selector] of [
+      ['A01','.primary-section-switcher [data-ui-reference-nav=overview]'],
+      ['A02','.primary-section-switcher [data-ui-reference-nav=items]'],
+      ['A03','.v3-settings-menu > summary']]){
+      const point=await adminA.js(`(()=>{
+        const el=document.querySelector(${JSON.stringify(selector)});
+        el.scrollIntoView({block:'center',inline:'nearest'});
+        const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+      })()`);
+      await adminA.call('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+      await adminA.until("!!document.querySelector('[data-ui-ref-code="+code+"]')",
+        'semantic hover code '+code);
+      const observed=await adminA.js(`(()=>{
+        const layer=document.querySelector('[data-ui-reference-layer]');
+        const badge=layer?.querySelector('[data-ui-ref-code]');
+        const copy=badge?.querySelector('.ui-reference-copy');
+        return {code:badge?.dataset.uiRefCode,
+          hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
+          nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
+            [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents===
+              (node.classList.contains('ui-reference-copy')?'auto':'none')),
+          copyLabel:copy?.getAttribute('aria-label'),
+          badgeCount:document.querySelectorAll('[data-ui-ref-code]').length};
+      })()`);
+      if(observed.code!==code||!observed.hasAdminToggle||!observed.nonblocking||
+        observed.copyLabel!=='Sao chép mã '+code||observed.badgeCount!==1)
+        throw Error('Admin hover reference/copy regression: '+JSON.stringify(observed));
+      appCodes.codes.push(observed.code);appCodes.hasAdminToggle=observed.hasAdminToggle;
+      appCodes.nonblocking=appCodes.nonblocking&&observed.nonblocking;
+    }
     await adminA.js(`(()=>{
       document.querySelector('.v3-settings-menu > summary').click();
       [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
