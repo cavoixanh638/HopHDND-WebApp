@@ -6,6 +6,8 @@ Kiểm thử cục bộ dùng hai tiến trình Chromium và hai tài khoản An
 
 Generator Spark dùng đầu vào riêng `firebase/database.spark-base.rules.json`. SHA256 của Rules sinh ra vẫn là `024d77f6adea53b4878e0be65b75515624dbf4e87d3d8fbba0475916b30bd6c3`. Các sửa import của candidate Functions chỉ phục vụ ma trận legacy. Workflow khôi phục dùng snapshot và manifest giả gắn checksum, và các dịch vụ Emulator được cài từ lockfile.
 
+Smoke tổng hợp được đối chiếu lại với các hợp đồng UI đã phát hành: nhãn bộ lọc, bảng màu L03, dropdown 26 px và năm rail L03 độc lập. Kiểm tra bàn phím/con trỏ ở giới hạn 1.600 px chuyển sang cột thường; ba giá trị legacy 1.470/1.550/1.600 px phải giữ nguyên L03. Tổng hợp nguồn vẫn giữ 7 hồ sơ trong fixture khi bảng được lọc xuống một hồ sơ. Không sửa CSS hoặc nới quyền để làm bài kiểm thử xanh.
+
 ---
 
 ## 02/11/2026 — Candidate tích hợp đủ 5 phần, chưa phát hành

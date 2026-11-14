@@ -360,6 +360,18 @@ async function eventually(expression,why,tries=75){
     if(await evaluate(expression))return;
     await sleep(200);
   }
+  if(why.startsWith('Report hover transition')){
+    const probe=await evaluate(`(()=>{
+      const node=document.querySelector('#report-cell-3d-probe td.report-clickable-cell');
+      if(!node)return {exists:false};
+      const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+      return {exists:true,hover:node.matches(':hover'),transform:style.transform,
+        animations:node.getAnimations({subtree:true}).map(a=>({state:a.playState,time:a.currentTime})),
+        rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},
+        hit:document.elementFromPoint(rect.x+rect.width*.8,rect.y+rect.height/2)?.className};
+    })()`);
+    console.log('REPORT_HOVER_TIMEOUT_DIAGNOSTIC',JSON.stringify(probe));
+  }
   throw Error('Browser smoke failed: '+why);
 }
 try{
@@ -384,6 +396,7 @@ try{
   await send('Runtime.enable');
   await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   // UI6-R02: anonymous startup intentionally has no A01/A02 nav.
   await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",
@@ -2572,10 +2585,10 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV');
     if(!next)return false;next.click();return true;
   })()`);
-  if(!selected)throw Error('QA BTV TU official choice missing');
+  if(!selected)throw Error('QA canonical BTV official choice missing');
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
     'Selecting staged Cấp value failed');
   const isolatedEdit=await evaluate(`(()=>{
@@ -2636,6 +2649,14 @@ try{
   if(!v3Opened)throw Error('V3 status dropdown not available on granted QPPL NQ07 field');
   await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-options [role=option]')",
     'V3 QPPL status options did not open');
+  const activeTriggerPoint=await evaluate(`(()=>{
+    const trigger=[...document.querySelectorAll('.item-data-table tbody tr')]
+      .find(row=>row.querySelector('td[data-col-key=displayCode]')?.textContent.trim()==='NQ07')
+      .querySelector('[data-stage-field=progressBuild] button.cell-picker-trigger');
+    const rect=trigger.getBoundingClientRect();return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...activeTriggerPoint});
+  await sleep(250);
   const v3Choices=await evaluate(`(()=>{
     const p=document.querySelector('.cell-picker-popover:popover-open');
     const children=[...p?.children??[]], choices=[...p?.querySelectorAll('.cell-picker-option')??[]];
@@ -2671,12 +2692,11 @@ try{
       selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      // UI A: L03 keeps the focus ring on the ACTIVE state trigger, not
-      // the entire mixed-permission stage row. Assert a visible, 2px
-      // high-contrast focus outline while its own dialog is expanded.
-      stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
-      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 109, 134)'&&
-      parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
+      // The approved picker parity uses each status's own ink on the active
+      // trigger ring. The mixed-permission stage row stays undecorated.
+      stageComputed?.outlineStyle==='none'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor===triggerComputed?.color&&
+      triggerComputed?.outlineOffset==='0px'&&
       checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
       stageOutline:{style:stageComputed?.outlineStyle,width:stageComputed?.outlineWidth,color:stageComputed?.outlineColor},
@@ -2996,9 +3016,9 @@ try{
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
       qpplKind==='QPPL'&&hcLocked&&
-      // This default fixture has NO edit grant: highlighted source is
-      // labeled and has semantic ink, but cannot look like a clickable button.
-      p?.background==='rgba(0, 0, 0, 0)'&&p?.tag==='true'&&
+      // Read-only source highlights retain both exact saved colors on their
+      // member. The absence of a picker still enforces the read-only contract.
+      p?.background==='rgb(255, 238, 85)'&&p?.tag==='true'&&
       !highlightedTrigger&&p?.text==='rgb(0, 0, 0)',
       dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p,highlightedTrigger:triggerPaint};
   })()`);
@@ -3156,7 +3176,7 @@ try{
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
     r05Highlight.row!=='rgba(0, 0, 0, 0)'||
-    r05Highlight.pill!==clear||r05Highlight.pillText!=='rgb(0, 0, 0)'||
+    r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.pillText!=='rgb(0, 0, 0)'||
     r05Highlight.editable||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
@@ -3167,7 +3187,7 @@ try{
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
-    r05Custom[1].pill!==clear||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
+    r05Custom[1].pill!=='rgb(252, 221, 160)'||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
     r05Custom[0].pillText!==r05List[0].pillText)
     throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
@@ -3179,7 +3199,7 @@ try{
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
     x.border==='0px'&&x.tone===target[i]&&
-     x.pill===clear&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
+     x.pill===r05List[i].pill&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
     throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
@@ -3211,7 +3231,7 @@ try{
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
     if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
-      x.tone===target[i]&&x.pill===clear&&!x.editable&&
+      x.tone===target[i]&&x.pill===r05List[i].pill&&!x.editable&&
       x.pillText===r05List[i].pillText&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
@@ -3234,6 +3254,7 @@ try{
     return {keys,widths,total:widths.reduce((a,b)=>a+b,0),
       table:table.getBoundingClientRect().width,
       content:widths[keys.indexOf('content')],id:widths[keys.indexOf('displayCode')],
+      staff:widths[keys.indexOf('room')],
       party:widths[keys.indexOf('partyLevel')]};
   })()`);
   const realArrow=async(key,modifier=0)=>{
@@ -3266,6 +3287,11 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
+  if(await evaluate("!!document.querySelector('th[data-column-key=content] .column-resizer,th[data-column-key=partyLevel] .column-resizer')"))
+    throw Error('L03 independent track widths must not expose an indirect neighbor resize');
+  // L03 has independently saved tracks. Move it away from the boundary so
+  // the generic neighbor/fallback contract is tested against the staff group.
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const r02Before=await widthSnapshot();
   const focusResizer=await evaluate(`(()=>{
@@ -3274,21 +3300,21 @@ try{
   })()`);
   if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=310.5",
-    'L019 adjacent progress group did not shrink when content grew');
+  await eventually("document.querySelector('td[data-col-key=room]')?.getBoundingClientRect().width<="+(r02Before.staff-9.5),
+    'L019 adjacent staff group did not shrink when content grew');
   const r02Right=await widthSnapshot();
   assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
   if(r02Right.content!==r02Before.content+10||
-    r02Right.party!==r02Before.party-10||r02Right.id!==r02Before.id)
+    r02Right.staff!==r02Before.staff-10||r02Right.party!==r02Before.party||r02Right.id!==r02Before.id)
     throw Error('L019 neighbor-first changed wrong column: '+JSON.stringify({r02Before,r02Right}));
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowLeft');
-  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=320",
+  await eventually("document.querySelector('td[data-col-key=room]')?.getBoundingClientRect().width>="+r02Before.staff,
     'L019 ArrowLeft did not restore adjacent group width');
   const r02Left=await widthSnapshot();
   assertSameTotal(r02Before,r02Left,'L019 ArrowLeft');
   if(r02Left.content!==r02Before.content||r02Left.party!==r02Before.party||
-    r02Left.id!==r02Before.id)
+    r02Left.staff!==r02Before.staff||r02Left.id!==r02Before.id)
     throw Error('L019 round-trip drag has width drift: '+JSON.stringify({r02Before,r02Left}));
   const dragStart=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
@@ -3305,7 +3331,7 @@ try{
   const r02Drag=await widthSnapshot();
   assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
   if(r02Drag.content!==r02Before.content+5||
-    r02Drag.party!==r02Before.party-5||r02Drag.id!==r02Before.id)
+    r02Drag.staff!==r02Before.staff-5||r02Drag.party!==r02Before.party||r02Drag.id!==r02Before.id)
     throw Error('L019 pointer drag altered ID or trailing column: '+JSON.stringify({r02Before,r02Drag}));
   const r02shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
@@ -3315,6 +3341,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 fallback baseline missing');
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
   const fallbackEdge=await evaluate(`(()=>{
@@ -3330,8 +3357,8 @@ try{
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
   assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
-  if(fallbackAfter.content!==fallbackBefore.content+136||
-    fallbackAfter.party!==190||fallbackAfter.id!==46)
+  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-130)+(fallbackBefore.id-46)||
+    fallbackAfter.staff!==130||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
     throw Error('L019 fallback exceeded min or skipped adjacent: '+
       JSON.stringify({fallbackBefore,fallbackAfter}));
   const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
@@ -3340,16 +3367,17 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
     'R02 custom ID source width 125 not projected');
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const customBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('.item-data-table td[data-col-key=partyLevel]')?.getBoundingClientRect().width<320",
+  await eventually("document.querySelector('.item-data-table td[data-col-key=room]')?.getBoundingClientRect().width<"+customBefore.staff,
     'L019 custom-ID adjacent group did not give pixels');
   const customAfter=await widthSnapshot();
   assertSameTotal(customBefore,customAfter,'R02 custom ID');
   if(customAfter.content!==customBefore.content+10||
-    customAfter.party!==customBefore.party-10||customAfter.id!==customBefore.id)
+    customAfter.staff!==customBefore.staff-10||customAfter.party!==customBefore.party||customAfter.id!==customBefore.id)
     throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
@@ -3362,6 +3390,7 @@ try{
     'R02 grouped last-column compensation did not move');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
+  if(groupedAfter.party!==groupedBefore.party)throw Error('L03 last group was resized indirectly');
   console.log('L019_ADJACENT_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
@@ -3524,98 +3553,59 @@ try{
   console.log('V3_GUEST_NO_SORT_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
-  // Codex 008 / R02: 1600px physical cap on a grouped source field.
-  // Check REAL keyboard and pointer, including when the capped group is last.
-  const r02Cap=[];
+  // L03 owns independent track widths: legacy source widths cannot resize it.
+  const l03LegacyWidths=[];
   for(const sourceCap of [1470,1550,1600]){
     await send('Page.navigate',{url:'http://127.0.0.1:'+port+
       '/compact-qa/compact-qa.html?cap-party='+sourceCap});
     await eventually("document.querySelectorAll('.item-heading-row th').length===6",
-      'R02 capped source fixture did not mount');
+      'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
-    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2772)>1)
-      throw Error('R04/R02 V2 no-STT cap baseline not 1600 / 2772: '+JSON.stringify({sourceCap,before}));
-    const focusCap=await evaluate(`(()=>{
-      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
-      if(!el)return false;el.focus();return document.activeElement===el;
-    })()`);
-    if(!focusCap)throw Error('R02 cap group cannot receive keyboard focus');
-    await realArrow('ArrowRight');
-    const atCap=await widthSnapshot();
-    assertSameTotal(before,atCap,'R02 cap ArrowRight source '+sourceCap);
-    if(atCap.party!==1600||atCap.widths[atCap.keys.indexOf('note')]!==240)
-      throw Error('R02 cap ArrowRight transferred hidden pixels: '+JSON.stringify(atCap));
-    await evaluate("document.querySelector('th[data-column-key=partyLevel] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
-      'R02 cap ArrowLeft did not visibly shrink group');
-    const left=await widthSnapshot();
-    assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
-    const nextAfterParty=left.keys[left.keys.indexOf('partyLevel')+1];
-    if(left.party!==1590||left.widths[left.keys.indexOf(nextAfterParty)]!==
-      before.widths[before.keys.indexOf(nextAfterParty)]+10||
-      left.widths[left.keys.indexOf('note')]!==240)
-      throw Error('L019 cap shrink must grow adjacent, not note: '+JSON.stringify(left));
-    const point=await evaluate(`(()=>{
-      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
-      el.scrollIntoView({block:'center',inline:'nearest'});
-      const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
-    })()`);
-    if(point.x<0||point.x>1600)throw Error('R02 cap drag divider offscreen');
-    await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
-    await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
-    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+20,y:point.y,button:'left'});
-    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x+20,y:point.y,button:'left',clickCount:1});
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1599.5",
-      'R02 cap pointer drag did not clamp to physical max');
-    const drag=await widthSnapshot();
-    assertSameTotal(before,drag,'R02 cap pointer source '+sourceCap);
-    if(drag.party!==1600||drag.widths[drag.keys.indexOf('note')]!==240)
-      throw Error('R02 cap drag mismatch: '+JSON.stringify(drag));
-    if(sourceCap===1550){
-      const shot=await send('Page.captureScreenshot',{format:'png'});
-      writeFileSync('hophdnd-review-r02-cap-after.png',Buffer.from(shot.data,'base64'));
-    }
-
-    // Move grouped progress column to the last physical position; it now
-    // compensates for content (target) instead of Ghi chú (last).
-    await moveLast('partyLevel');
-    const lastBefore=await widthSnapshot();
-    if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowRight');
-    const afterContentKey=lastBefore.keys[lastBefore.keys.indexOf('content')+1];
-    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width<="+
-      (lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10.0),
-      'L019 capped group last must remain unchanged while neighbor compensates');
-    const lastRight=await widthSnapshot();
-    assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
-    if(lastRight.content!==450||lastRight.party!==1600||
-      lastRight.widths[lastRight.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10)
-      throw Error('L019 cap group-last: adjacent must compensate before capped group '+JSON.stringify(lastRight));
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width>="+
-      lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)],
-      'L019 group-last adjacent width not restored');
-    const lastLeft=await widthSnapshot();
-    assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
-    if(lastLeft.content!==440||lastLeft.party!==1600||
-      lastLeft.widths[lastLeft.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)])
-      throw Error('L019 cap group-last reverse must restore neighbor '+JSON.stringify(lastLeft));
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    const lastAtCap=await widthSnapshot();
-    assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
-    if(lastAtCap.party!==1600||lastAtCap.content!==430||
-      lastAtCap.widths[lastAtCap.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]+10)
-      throw Error('L019 group-last uses adjacent and must not touch capped last '+JSON.stringify(lastAtCap));
-    r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
+    if(before.party!==276||Math.abs(before.total-1448)>1||
+      await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
+      throw Error('L03 independent tracks changed with legacy source width: '+JSON.stringify({sourceCap,before}));
+    l03LegacyWidths.push({sourceCap,before});
   }
-  console.log('L019_ADJACENT_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
+  console.log('L03_LEGACY_SOURCE_WIDTH_INDEPENDENCE_PASS',JSON.stringify(l03LegacyWidths));
+
+  // Keep the physical 1600px cap regression on an ordinarily resizable field.
+  // L03 deliberately has no resize handle in the approved independent-rail UI.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?cap-progress=1'});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
+    '1600px ordinary column fixture did not mount');
+  const capBefore=await widthSnapshot();
+  const capWidth=s=>s.widths[s.keys.indexOf('specificProgress')];
+  await evaluate("document.querySelector('th[data-column-key=specificProgress] .column-resizer').focus()");
+  await realArrow('ArrowRight');
+  const capRight=await widthSnapshot();
+  assertSameTotal(capBefore,capRight,'1600 cap ArrowRight');
+  if(capWidth(capRight)!==1600||JSON.stringify(capRight.widths)!==JSON.stringify(capBefore.widths))
+    throw Error('Capped column transferred hidden pixels: '+JSON.stringify(capRight));
+  await realArrow('ArrowLeft');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1590",
+    'Capped ordinary column did not shrink');
+  const capLeft=await widthSnapshot();
+  assertSameTotal(capBefore,capLeft,'1600 cap ArrowLeft');
+  if(capLeft.widths[capLeft.keys.indexOf('note')]!==capBefore.widths[capBefore.keys.indexOf('note')]+10||
+    capLeft.party!==capBefore.party)
+    throw Error('Cap shrink must grow adjacent note and preserve L03: '+JSON.stringify(capLeft));
+  const capPoint=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=specificProgress] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...capPoint});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...capPoint,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:capPoint.x+30,y:capPoint.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:capPoint.x+30,y:capPoint.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
+    'Pointer drag did not clamp to physical cap');
+  const capDrag=await widthSnapshot();
+  assertSameTotal(capBefore,capDrag,'1600 cap pointer');
+  if(JSON.stringify(capDrag.widths)!==JSON.stringify(capBefore.widths))
+    throw Error('Pointer cap did not restore exact adjacent widths: '+JSON.stringify(capDrag));
+  console.log('ORDINARY_COLUMN_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify({capBefore,capRight,capLeft,capDrag}));
 
 
   // Lượt 018: real main-list cards and stable group titles, not report modal cards.
@@ -3729,7 +3719,7 @@ try{
   // Seven active-summary rows, eight source rows: the unified active bar counts
   // all source rows before filters, unlike the historical B00 active-only card.
   if(quickSummary.selected!==1||quickSummary.total!==7||quickSummary.result.replace(/\s/g,'')!=='2/8'||
-      !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
+      quickSummary.selectedSummary!=='Bước tiếp theo'||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
   // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
@@ -3803,8 +3793,8 @@ try{
   })()`);
   if(!inputFocus)throw Error('Lượt 018 ID filter missing');
   await send('Input.insertText',{text:'NQ01'});
-  await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
-    'Lượt 018 summary total failed to follow ID column filter');
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===0&&document.querySelector('input[aria-label=\"Tìm kiếm không dấu\"]')?.value==='NQ01'",
+    'Search must intersect the selected summary condition before clearing');
   await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
   await eventually(`!document.querySelector('.list-active-filters [data-active-filter-id=summary]')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
@@ -3814,8 +3804,8 @@ try{
     const rows=document.querySelectorAll('.item-data-table tbody tr.color-row').length;
     return {total,rows};
   })()`);
-  if(filteredSummary.total!==1||filteredSummary.rows!==1)
-    throw Error('Lượt 018 summary/list filter scope differs: '+JSON.stringify(filteredSummary));
+  if(filteredSummary.total!==7||filteredSummary.rows!==1)
+    throw Error('Source summary must stay at 7 while filtered list contains one row: '+JSON.stringify(filteredSummary));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&popup=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stages')!==null",
     'Lượt 018 popup group missing');

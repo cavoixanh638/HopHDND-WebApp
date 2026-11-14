@@ -49,6 +49,8 @@ function CompactVisualQa(){
     const cappedParty=Number(params.get('cap-party'));
     if([1470,1550,1600].includes(cappedParty))base.columns=base.columns.map(c=>
       c.key==='partyLevel'?{...c,width:cappedParty}:c);
+    if(params.get('cap-progress')==='1')base.columns=base.columns.map(c=>
+      c.key==='specificProgress'?{...c,width:1600}:c);
     // Owner L019: exact reported neighbor order (progress then staff group).
     if(params.get('progress-before-staff')==='1'){
       const progress=base.columns.find(c=>c.key==='specificProgress')!;
@@ -184,7 +186,7 @@ function CompactVisualQa(){
 // now exposes the complete two-tab, six-section V2 preview by default.
 const query=new URLSearchParams(window.location.search);
 const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
-  'custom-id','cap-party','progress-before-staff','hide-dept','fit','frame',
+  'custom-id','cap-progress','cap-party','progress-before-staff','hide-dept','fit','frame',
   'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings',
   'clear-qa','popup-clear-qa','mixed','popup-mixed','wrap-status'];
 // The pre-existing source smoke hosts this fixture under /compact-qa/ and
