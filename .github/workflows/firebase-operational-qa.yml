@@ -55,6 +55,10 @@ jobs:
           java-version: "21"
       - name: Install locked dependencies
         run: npm ci
+      - name: Install locked local Functions dependencies (emulator only)
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          npm ci --prefix parent-commit-service --no-audit --no-fund
       - name: Assert QA cannot run outside emulators
         run: |
           node --check scripts/firebase-functional-qa.mjs

@@ -360,6 +360,18 @@ async function eventually(expression,why,tries=75){
     if(await evaluate(expression))return;
     await sleep(200);
   }
+  if(why.startsWith('Report hover transition')){
+    const probe=await evaluate(`(()=>{
+      const node=document.querySelector('#report-cell-3d-probe td.report-clickable-cell');
+      if(!node)return {exists:false};
+      const rect=node.getBoundingClientRect(),style=getComputedStyle(node);
+      return {exists:true,hover:node.matches(':hover'),transform:style.transform,
+        animations:node.getAnimations({subtree:true}).map(a=>({state:a.playState,time:a.currentTime})),
+        rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height},
+        hit:document.elementFromPoint(rect.x+rect.width*.8,rect.y+rect.height/2)?.className};
+    })()`);
+    console.log('REPORT_HOVER_TIMEOUT_DIAGNOSTIC',JSON.stringify(probe));
+  }
   throw Error('Browser smoke failed: '+why);
 }
 try{
@@ -384,6 +396,7 @@ try{
   await send('Runtime.enable');
   await send('Network.enable');
   await send('Emulation.setDeviceMetricsOverride',{width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+  await send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   // UI6-R02: anonymous startup intentionally has no A01/A02 nav.
   await eventually("document.querySelector('.v3-settings-menu .v3-gear-login')!==null",
@@ -573,8 +586,7 @@ try{
   if(!groupedDefault.ok)throw Error('V2 U01/U02 group projection or compact toolbar missing: '+JSON.stringify(groupedDefault));
   console.log('V2_MANDATORY_GROUPS_TOOLBAR_NO_STT_PASS',JSON.stringify(groupedDefault));
 
-  // Only V2 filter selectors change here; the baseline palette RGB oracle is
-  // unchanged on independent L1 (L2 owns the later colors diff).
+  // Current approved V2 L03 filled-pill RGB oracle (not historical transparent L1).
   const statusStyles=await evaluate(`(()=>{
     const status=document.querySelector('.item-data-table tbody td[data-col-key=partyLevel] .compact-stage-state');
     const input=document.querySelector('input[aria-label="Tìm kiếm không dấu"]');
@@ -594,12 +606,12 @@ try{
     });
     return {ok:status.getAttribute('data-progress-tone')==='not-submitted'&&
       status.textContent?.includes('Sở chưa trình')&&
-      colors[0].background==='rgba(0, 0, 0, 0)'&&
-      colors[1].background==='rgba(0, 0, 0, 0)'&&
-      colors[2].background==='rgba(0, 0, 0, 0)'&&
-      colors[0].color==='rgb(177, 64, 82)'&&
-      colors[1].color==='rgb(128, 92, 34)'&&
-      colors[2].color==='rgb(52, 110, 72)'&&
+      colors[0].background==='rgb(255, 227, 233)'&&
+      colors[1].background==='rgb(255, 238, 218)'&&
+      colors[2].background==='rgb(222, 243, 229)'&&
+      colors[0].color==='rgb(163, 45, 70)'&&
+      colors[1].color==='rgb(128, 83, 31)'&&
+      colors[2].color==='rgb(37, 100, 65)'&&
       !!input&&!!selector&&
       getComputedStyle(th).backgroundColor==='rgb(239, 245, 249)',
       tones,colors,header:getComputedStyle(th).backgroundColor};
@@ -627,12 +639,12 @@ try{
   if(semanticCells.header.bg!=='rgb(250, 251, 252)'||
     semanticCells.percent.bg!==semanticCells.complete.bg||
     semanticCells.percent.ink!==semanticCells.complete.ink||
-    semanticCells.office.bg!=='rgb(255, 248, 233)'||
-    semanticCells.office.ink!=='rgb(128, 92, 34)')
+    semanticCells.office.bg!=='rgb(255, 238, 218)'||
+    semanticCells.office.ink!=='rgb(128, 83, 31)')
     throw Error('Semantic office/percent/header styling regression: '+JSON.stringify(semanticCells));
   const expectedBorder={ 'report-stage-source':'rgb(177, 64, 82)',
-    'report-stage-office':'rgb(128, 92, 34)',
-    'report-stage-completed':'rgb(52, 110, 72)'};
+    'report-stage-office':'rgb(128, 83, 31)',
+    'report-stage-completed':'rgb(37, 100, 65)'};
   for(const cell of semanticCells.statusCells){
     await send('Input.dispatchMouseEvent',{type:'mouseMoved',
       x:cell.rect.x+cell.rect.width/2,y:cell.rect.y+cell.rect.height/2});
@@ -700,7 +712,8 @@ try{
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
 
-  // Note preview button also lifts, while an active multiline textarea stays flat.
+  // V2 note hit area is button-only: blank TD padding stays inert, actual
+  // button hover gets the inner 3D lift. Do not regress to cell-wide hovering.
   const noteProbe=await evaluate(`(()=>{
     const root=document.createElement('table');
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
@@ -708,23 +721,40 @@ try{
     root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger">Nội dung ghi chú</button></td></tr></tbody>';
     document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
-    return {x:box.right-9,y:box.top+box.height/2};
+    const inner=root.querySelector('button').getBoundingClientRect();
+    return {x:box.right-9,y:box.top+box.height/2,
+      innerX:inner.left+inner.width/2,innerY:inner.top+inner.height/2,
+      outsideInner:box.right-9>inner.right};
   })()`);
+  if(!noteProbe.outsideInner)throw Error('Note must retain inert outer TD padding: '+JSON.stringify(noteProbe));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.x,y:noteProbe.y});
+  await new Promise(resolve=>setTimeout(resolve,270));
+  const noteIdle=await evaluate(`(()=>{
+    const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
+    const style=getComputedStyle(button),parent=getComputedStyle(cell);
+    return {outerHovered:cell.matches(':hover'),innerHovered:button.matches(':hover'),
+      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      shadow:style.boxShadow};
+  })()`);
+  if(!noteIdle.outerHovered||noteIdle.innerHovered||noteIdle.outerShadow!=='none'||
+    Math.abs(noteIdle.liftY)>.25||noteIdle.shadow!=='none')
+    throw Error('Note TD padding must not activate inner hover: '+JSON.stringify(noteIdle));
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.innerX,y:noteProbe.innerY});
   await new Promise(resolve=>setTimeout(resolve,270));
   const note3d=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
     const style=getComputedStyle(button),parent=getComputedStyle(cell);
-    return {active:cell.matches(':hover'),outerShadow:parent.boxShadow,
-      liftY:new DOMMatrixReadOnly(style.transform).m42,shadow:style.boxShadow,
-      border:style.borderTopColor};
+    return {active:cell.matches(':hover'),innerHovered:button.matches(':hover'),
+      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      shadow:style.boxShadow,border:style.borderTopColor};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
-  if(!note3d.active||note3d.outerShadow!=='none'||Math.abs(note3d.liftY+3)>.25||
-    !note3d.shadow.includes('8px 16px')||note3d.border!=='rgb(46, 111, 149)')
-    throw Error('3D option B note affordance mismatch: '+JSON.stringify(note3d));
-  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify(note3d));
+  if(!note3d.active||!note3d.innerHovered||note3d.outerShadow!=='none'||
+    Math.abs(note3d.liftY+3)>.25||!note3d.shadow.includes('8px 16px')||
+    note3d.border!=='rgb(46, 111, 149)')
+    throw Error('3D option B note affordance mismatch: '+JSON.stringify({noteIdle,note3d}));
+  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify({noteIdle,note3d}));
 
 
   // Regression: textarea may remain focused for typing after pointer leaves.
@@ -772,41 +802,36 @@ try{
   // Guest receives the palette but never an editable palette control.
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
+  // Exercise the saved-palette entry point. L03 intentionally has dedicated
+  // default colors, so mutating only generic CSS vars bypasses its real mapping.
+  const paletteKey='hdnd.status-palettes.v1:pages:gen:'+SMOKE_GENERATION+':'+SMOKE_OPERATION+':1';
+  const previousPalette=await evaluate(`localStorage.getItem(${JSON.stringify(paletteKey)})`);
+  const customPalette={version:1,activePresetId:'',presets:[],active:{
+    'not-submitted':{text:'#A10022',background:'#F1CBDB'},
+    office:{text:'#80531F',background:'#FFEEDA'},
+    done:{text:'#256441',background:'#DEF3E5'},
+    other:{text:'#426274',background:'#F2F6F9'},otherEnabled:false
+  }};
+  await evaluate(`localStorage.setItem(${JSON.stringify(paletteKey)},${JSON.stringify(JSON.stringify(customPalette))})`);
+  await send('Page.reload');
+  await eventually(`(()=>{const node=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return !!node&&getComputedStyle(node).color==='rgb(161, 0, 34)'&&
+      getComputedStyle(node).backgroundColor==='rgb(241, 203, 219)';})()`,
+    'Saved custom palette did not reach the real guest L03 status',150);
   const paletteCascade=await evaluate(`(()=>{
-    const sample=document.querySelector('.item-data-table tbody td[data-col-key="partyLevel"] .compact-stage-state[data-progress-tone="not-submitted"]');
-    const frame=sample?.closest('.compact-stage-row');
-    if(!sample||!frame)return {ok:false,reason:'missing real grouped stage'};
-    // App may supply a nearer scoped palette than the outer app-shell. Edit the
-    // actual closest CSS-variable owner, then restore it without writing storage.
-    let owner=sample.parentElement;
-    while(owner&&!owner.style.getPropertyValue('--hdnd-status-not-submitted-text'))
-      owner=owner.parentElement;
-    owner??=document.querySelector('.app-shell');
-    if(!owner)return {ok:false,reason:'missing palette owner'};
-    const beforeText=owner.style.getPropertyValue('--hdnd-status-not-submitted-text');
-    const beforeBg=owner.style.getPropertyValue('--hdnd-status-not-submitted-bg');
-    owner.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
-    owner.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
-    const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
-    const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
-    const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    // REV2: this is a guest/read-only status. The source text inherits the
-    // palette ink, but only a real editable CellPicker button gets a filled
-    // palette background. Never require a fake filled guest affordance.
-    const isReadonly=sample.getAttribute('data-editable')!=='true'&&
-      !sample.querySelector('button.cell-picker-trigger');
-    const inheritedBg=style.getPropertyValue('--hdnd-status-not-submitted-bg').trim();
-    const ok=isReadonly&&text==='rgb(161, 0, 34)'&&
-      background==='rgba(0, 0, 0, 0)'&&
-      inherited==='#A10022'&&inheritedBg==='#F1CBDB'&&
-      frameBackground==='rgba(0, 0, 0, 0)';
-    if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
-    else owner.style.removeProperty('--hdnd-status-not-submitted-text');
-    if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
-    else owner.style.removeProperty('--hdnd-status-not-submitted-bg');
-    return {ok,text,background,frameBackground,inherited,owner:owner.className};
+    const sample=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return {text:getComputedStyle(sample).color,background:getComputedStyle(sample).backgroundColor,
+      guestToolsHidden:!document.querySelector('.item-header-actions .status-palette-trigger')};
   })()`);
-  if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
+  if(!paletteCascade.guestToolsHidden)throw Error('Custom palette exposed guest Admin tools');
+  console.log('SAVED_CUSTOM_L03_PALETTE_PASS',JSON.stringify(paletteCascade));
+  await evaluate(previousPalette===null
+    ?`localStorage.removeItem(${JSON.stringify(paletteKey)})`
+    :`localStorage.setItem(${JSON.stringify(paletteKey)},${JSON.stringify(previousPalette)})`);
+  await send('Page.reload');
+  await eventually(`(()=>{const node=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return !!node&&getComputedStyle(node).color==='rgb(163, 45, 70)';})()`,
+    'Default palette did not return after restoring saved state',150);
   const sortAndGuestLayout=await evaluate(`(()=>{
     const topbar=document.querySelector('.topbar');
     const nav=document.querySelector('nav.primary-section-switcher');
@@ -819,14 +844,17 @@ try{
     const cardHeader=document.querySelector('.item-data-region .card-header');
     const stt=document.querySelector('.item-heading-row th[data-column-key="stt"]');
     const sort=document.querySelector('.item-heading-row .column-sort-button');
-    if(!topbar||!summary||!heading||!toolbar||!activeBar||!viewport||sort||stt||nav)
-      return {ok:false,reason:'Guest List B/C/heading/F/active-filter bar missing, sort/nav/STT unexpectedly present'};
-    const rects=[topbar,summary,heading,toolbar,activeBar,viewport].map(x=>x.getBoundingClientRect());
+    if(!topbar||!summary||!heading||!toolbar||!viewport||sort||stt||nav)
+      return {ok:false,reason:'Guest required layout or authorization regression',
+        topbar:!!topbar,summary:!!summary,heading:!!heading,toolbar:!!toolbar,viewport:!!viewport,
+        sort:!!sort,stt:!!stt,nav:!!nav};
+    // Reloading the saved palette starts with clear filters. A filter bar is
+    // conditional on active conditions, while the table order remains fixed.
+    const ordered=[topbar,summary,heading,toolbar,...(activeBar?[activeBar]:[]),viewport];
+    const rects=ordered.map(x=>x.getBoundingClientRect());
     const gaps=rects.slice(1).map((r,i)=>r.top-rects[i].bottom);
-    const order=summary.compareDocumentPosition(heading)&Node.DOCUMENT_POSITION_FOLLOWING &&
-      heading.compareDocumentPosition(toolbar)&Node.DOCUMENT_POSITION_FOLLOWING &&
-      toolbar.compareDocumentPosition(activeBar)&Node.DOCUMENT_POSITION_FOLLOWING &&
-      activeBar.compareDocumentPosition(viewport)&Node.DOCUMENT_POSITION_FOLLOWING;
+    const order=ordered.slice(1).every((node,index)=>
+      !!(ordered[index].compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING));
     const localMenu=document.querySelector('.guest-compact-menu-bar .compact-columns-menu');
     // Preserve L3's semantic order and L4's strict gaps around real filter content.
     const ok=!!order&&gaps.every((gap,i)=>gap>=(i>=3?0:-2)&&gap<([100,24,30,24,30][i]))&&
@@ -921,13 +949,19 @@ try{
     const doc=document.querySelector('.item-data-table tbody td[data-col-key=content]');
     const head=doc?.querySelector('.compact-document-heading');
     const body=doc?.querySelector('.compact-document-content');
-    return !!doc&&!!head&&!!body&&
-      getComputedStyle(body).whiteSpace==='pre-wrap'&&
-      getComputedStyle(doc).verticalAlign==='top'&&
-      !!doc.querySelector('.compact-document-badge')&&
-      !!doc.querySelector('.compact-document-department');
+    const whiteSpace=body?getComputedStyle(body).whiteSpace:null;
+    const align=doc?getComputedStyle(doc).verticalAlign:null;
+    const badge=!!doc?.querySelector('.compact-document-badge');
+    const department=!!doc?.querySelector('.compact-document-department');
+    // The 08/11 List design centers the L01 group within its table cell.
+    // Its business content remains the first internal row and source metadata
+    // stays below it. Popup positioning is tested separately.
+    const rowsOrdered=!!head&&!!body&&
+      body.getBoundingClientRect().bottom<=head.getBoundingClientRect().top+1;
+    return {ok:!!doc&&!!head&&!!body&&whiteSpace==='pre-wrap'&&align==='middle'&&badge&&department&&rowsOrdered,
+      whiteSpace,align,badge,department,rowsOrdered,head:!!head,body:!!body};
   })()`);
-  if(!cellAlignment)throw Error('U01 document top-row/second-row styling regression');
+  if(!cellAlignment.ok)throw Error('U01 document top-row/second-row styling regression: '+JSON.stringify(cellAlignment));
 
   if(await evaluate("!!document.querySelector('.source-column-visibility button')"))
     throw Error('Guest must not change admin source column visibility');
@@ -1010,10 +1044,12 @@ try{
   console.log('LIST_VIEWPORT_FIT_PASS',JSON.stringify(fit));
   const tablePosition=await evaluate(`(()=>{
     const grid=document.querySelector('.item-table-scroll'),host=document.querySelector('.item-data-region');
+    const activeNode=document.querySelector('.list-active-filters');
     const g=grid.getBoundingClientRect(),h=host.getBoundingClientRect(),
-      active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+      active=activeNode?.getBoundingClientRect(),style=activeNode?getComputedStyle(activeNode):null;
+    const activeMargins=style?parseFloat(style.marginTop)+parseFloat(style.marginBottom):0;
     return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
-      bottom:g.bottom,activeHeight:active?.height??0,
+      bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
       gapBelowFilters:active?g.top-active.bottom:null};
   })()`);
   // V6 L4: an active predicate creates a *real* filter-chip row. Its height
@@ -1021,14 +1057,17 @@ try{
   // Assert that the ENTIRE movement is explained by the visible filter bar.
   const assertStable=async(label)=>{
     const result=await evaluate(`(()=>{
+      const activeNode=document.querySelector('.list-active-filters');
       const g=document.querySelector('.item-table-scroll').getBoundingClientRect(),
         h=document.querySelector('.item-data-region').getBoundingClientRect(),
-        active=document.querySelector('.list-active-filters')?.getBoundingClientRect();
+        active=activeNode?.getBoundingClientRect(),style=activeNode?getComputedStyle(activeNode):null;
+      const activeMargins=style?parseFloat(style.marginTop)+parseFloat(style.marginBottom):0;
       return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
-        bottom:g.bottom,activeHeight:active?.height??0,
+        bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
         gapBelowFilters:active?g.top-active.bottom:null};
     })()`);
-    const filterGrowth=result.activeHeight-tablePosition.activeHeight;
+    const filterGrowth=result.activeHeight+result.activeMargins-
+      tablePosition.activeHeight-tablePosition.activeMargins;
     if(Math.abs(result.top-tablePosition.top-filterGrowth)>2||
        Math.abs(result.left-tablePosition.left)>2||
        Math.abs(result.height-tablePosition.height+filterGrowth)>2||
@@ -1128,7 +1167,7 @@ try{
   if(!v2Department)throw Error('V2 department dropdown missing');
   // V6 L4 replaces the obsolete bare count with a scoped N / prefilter
   // denominator and a specifically removable, selected Sở/ngành chip.
-  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.includes(' / ')",
+  await eventually("document.querySelector('.list-active-filters [data-active-filter-id=department]')?.textContent.includes('Sở')===true && document.querySelector('.list-active-filter-results')?.textContent.trim()==='53/54'",
     'V6 department chip and before-filter denominator did not render');
   // Escape inside dropdown keeps its native behavior and does not erase filters.
   await evaluate(`(()=>{
@@ -2188,9 +2227,11 @@ try{
 
   const menuOpened=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');
-    if(!menu)return false;menu.open=true;return !!menu.querySelector('.compact-columns-options');
+    if(!menu)return false;menu.open=true;return true;
   })()`);
   if(!menuOpened)throw Error('Staff compact menu missing');
+  await eventually("!!document.querySelector('.compact-columns-options-floating')",
+    'Staff menu portal did not open');
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
@@ -2252,6 +2293,9 @@ try{
   console.log('COMPACT_TABLET_768_PASS',JSON.stringify(tabletGroups));
 
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:850,deviceScaleFactor:1,mobile:false});
+  await evaluate("(()=>{const menu=document.querySelector('.compact-columns-menu');if(menu)menu.open=true;})()");
+  await eventually("(()=>{const panel=document.querySelector('.compact-columns-options');return !!panel&&panel.getBoundingClientRect().right<=innerWidth+1;})()",
+    'Mobile staff portal did not reflow into viewport');
   const mobileGroups=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(menu)menu.open=true;
     const panel=document.querySelector('.compact-columns-options');
@@ -2326,14 +2370,16 @@ try{
       const caretX=b.right;
       const leftX=b.left+4,rightX=b.right-4,midY=b.top+b.height/2;
       const hit=(x)=>document.elementFromPoint(x,midY)?.closest('button.cell-picker-trigger')===button;
+      // The 07/11 shared picker parity uses a 26px minimum and one 5x3
+      // triangle. Keep full saved-track width and both edge hit targets.
       return {ok:style.display==='flex'&&style.borderTopWidth!=='0px'&&
-        b.height>=34&&b.height<=38&&Math.abs(b.width-s.width)<1&&
+        b.height>=26&&b.height<=38&&Math.abs(b.width-s.width)<1&&
         b.left>=frame.left-1&&b.right<=frame.right+1&&
         style.borderTopWidth!=='0px'&&
         style.backgroundColor!=='rgba(0, 0, 0, 0)'&&
         dot.content==='none'&&dot.display==='none'&&
         rail.content==='none'&&
-        arrow.content==='""'&&arrow.display==='block'&&
+        arrow.content==='""'&&arrow.display==='block'&&arrow.width==='5px'&&arrow.height==='3px'&&
         hit(leftX)&&hit(rightX),
         stage:row.dataset.stageField,caretX,leftX,rightX,midY,
         hitLeft:hit(leftX),hitRight:hit(rightX),height:b.height,width:b.width,
@@ -2437,7 +2483,7 @@ try{
       const style=getComputedStyle(button),dot=getComputedStyle(state,'::before');
       const track=0;
       return {stage:row.dataset.stageField,caret:b.right,
-        ok:b.height>=34&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
+        ok:b.height>=26&&b.height<=38&&b.width>80&&b.right<=frame.right+1&&b.left>=frame.left-1&&
           style.borderTopWidth!=='0px'&&dot.content==='none'&&style.display==='flex',
         width:b.width,height:b.height,frameWidth:frame.width,track};
     });
@@ -2460,7 +2506,7 @@ try{
       const b=row.querySelector('.compact-stage-state button.cell-picker-trigger')?.getBoundingClientRect();
       const frame=row.getBoundingClientRect();
       return {stage:row.dataset.stageField,width:b?.width,right:b?.right,frameRight:frame.right,
-        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=34&&b.height<=38};
+        height:b?.height,ok:!!b&&b.width>60&&b.right<=frame.right+1&&b.height>=26&&b.height<=38};
     });
     return {ok:data.length===3&&data.every(x=>x.ok)&&
       Math.max(...data.map(x=>x.right))-Math.min(...data.map(x=>x.right))<1.1,data};
@@ -2482,7 +2528,7 @@ try{
     return {ok:m.color==='rgb(136, 68, 34)'&&b.color===m.color&&
       arrow.borderRightColor===m.color&&r.backgroundColor==='rgba(0, 0, 0, 0)'&&
       b.borderTopWidth!=='0px'&&getComputedStyle(button,'::before').content==='none'&&
-      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 241, 243)',
+      getComputedStyle(other.querySelector('.compact-stage-state button.cell-picker-trigger')).backgroundColor==='rgb(255, 227, 233)',
       memberInk:m.color,caretInk:arrow.borderRightColor,buttonInk:b.color,
       customFrame:r.backgroundColor,otherFrame:getComputedStyle(other).backgroundColor};
   })()`);
@@ -2539,10 +2585,10 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV');
     if(!next)return false;next.click();return true;
   })()`);
-  if(!selected)throw Error('QA BTV TU official choice missing');
+  if(!selected)throw Error('QA canonical BTV official choice missing');
   await eventually("document.querySelector('.item-data-table tbody tr td[data-col-key=partyLevel]')?.textContent?.includes('BTV')",
     'Selecting staged Cấp value failed');
   const isolatedEdit=await evaluate(`(()=>{
@@ -2603,6 +2649,14 @@ try{
   if(!v3Opened)throw Error('V3 status dropdown not available on granted QPPL NQ07 field');
   await eventually("!!document.querySelector('.cell-picker-popover:popover-open .cell-picker-options [role=option]')",
     'V3 QPPL status options did not open');
+  const activeTriggerPoint=await evaluate(`(()=>{
+    const trigger=[...document.querySelectorAll('.item-data-table tbody tr')]
+      .find(row=>row.querySelector('td[data-col-key=displayCode]')?.textContent.trim()==='NQ07')
+      .querySelector('[data-stage-field=progressBuild] button.cell-picker-trigger');
+    const rect=trigger.getBoundingClientRect();return {x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...activeTriggerPoint});
+  await sleep(250);
   const v3Choices=await evaluate(`(()=>{
     const p=document.querySelector('.cell-picker-popover:popover-open');
     const children=[...p?.children??[]], choices=[...p?.querySelectorAll('.cell-picker-option')??[]];
@@ -2638,12 +2692,11 @@ try{
       selected[0].textContent?.trim()===stage?.querySelector('.compact-stage-state button')?.textContent?.trim()&&
       choices.every(x=>x.getAttribute('role')==='option')&&
       p.textContent?.trim()===choices.map(x=>x.textContent).join('').trim()&&
-      // UI A: L03 keeps the focus ring on the ACTIVE state trigger, not
-      // the entire mixed-permission stage row. Assert a visible, 2px
-      // high-contrast focus outline while its own dialog is expanded.
-      stageComputed?.outlineStyle==='none'&&stageComputed?.outlineWidth==='0px'&&
-      checks.triggerOutline&&triggerComputed?.outlineColor==='rgb(53, 109, 134)'&&
-      parseFloat(triggerComputed?.outlineOffset||'0')>=1&&
+      // The approved picker parity uses each status's own ink on the active
+      // trigger ring. The mixed-permission stage row stays undecorated.
+      stageComputed?.outlineStyle==='none'&&
+      checks.triggerOutline&&triggerComputed?.outlineColor===triggerComputed?.color&&
+      triggerComputed?.outlineOffset==='0px'&&
       checks.triggerExpanded&&checks.triggerHaspopup&&checks.popupRole&&
       !p.querySelector('h1,h2,h3,.cell-picker-note,.cell-picker-search'),
       stageOutline:{style:stageComputed?.outlineStyle,width:stageComputed?.outlineWidth,color:stageComputed?.outlineColor},
@@ -2893,10 +2946,15 @@ try{
   await eventually("document.querySelector('.list-filter-other-panel')===null",
     'Advanced select DOM must unmount when panel closes');
 
-  const toggleLeader=await evaluate(`(()=>{
+  const r01Menu=await evaluate(`(()=>{
     const menu=document.querySelector('.compact-columns-menu');if(!menu)return false;
-    menu.open=true;
-    const label=[...menu.querySelectorAll('label')]
+    menu.open=true;return true;
+  })()`);
+  if(!r01Menu)throw Error('R01 staff menu missing');
+  await eventually("!!document.querySelector('.compact-columns-options-floating')",
+    'R01 staff menu portal did not open');
+  const toggleLeader=await evaluate(`(()=>{
+    const label=[...document.querySelectorAll('.compact-columns-options label')]
       .find(x=>x.textContent.includes('Lãnh đạo UBND + VP'));
     const input=label?.querySelector('input');if(!input)return false;input.click();return true;
   })()`);
@@ -2958,9 +3016,9 @@ try{
       currentLevel.includes('BCH')&&
       l?.background==='rgba(0, 0, 0, 0)'&&l.tag===null&&
       qpplKind==='QPPL'&&hcLocked&&
-      // This default fixture has NO edit grant: highlighted source is
-      // labeled and has semantic ink, but cannot look like a clickable button.
-      p?.background==='rgba(0, 0, 0, 0)'&&p?.tag==='true'&&
+      // Read-only source highlights retain both exact saved colors on their
+      // member. The absence of a picker still enforces the read-only contract.
+      p?.background==='rgb(255, 238, 85)'&&p?.tag==='true'&&
       !highlightedTrigger&&p?.text==='rgb(0, 0, 0)',
       dept:d,type:t,content:c,level:l,levelValue:currentLevel,highlightedKind:qpplKind,hcBuildLocked:hcLocked,progressBuild:p,highlightedTrigger:triggerPaint};
   })()`);
@@ -3052,16 +3110,17 @@ try{
   const r05Neutral=await stageFrames('.item-data-table tbody tr:nth-child(2) td[data-col-key=partyLevel]');
   const r05Unknown=await stageFrames('.item-data-table tbody tr:nth-child(3) td[data-col-key=partyLevel]');
   const target=['not-submitted','office','done'];
-  const targetInks=['rgb(177, 64, 82)','rgb(128, 92, 34)','rgb(52, 110, 72)'];
+  const targetInks=['rgb(163, 45, 70)','rgb(128, 83, 31)','rgb(37, 100, 65)'];
+  const targetFills=['rgb(255, 227, 233)','rgb(255, 238, 218)','rgb(222, 243, 229)'];
   const clear='rgba(0, 0, 0, 0)';
   if(r05List.length!==3||!r05List.every((x,i)=>x.tone===target[i]&&
       x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&x.gradient==='none'&&
-      x.pill===clear&&x.pillBorder==='0px'&&!x.editable&&
+      x.pill===targetFills[i]&&x.pillBorder==='0px'&&!x.editable&&
       x.pillText===targetInks[i]&&x.labelFits&&x.stateFits)||
     new Set(r05List.map(x=>x.pillText)).size!==3||
     r05Neutral.length!==3||r05Neutral[0].tone!=='neutral'||
     r05Neutral[0].bg!=='rgba(0, 0, 0, 0)'||
-    r05Neutral[0].pill!==clear||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
+    r05Neutral[0].pill!=='rgb(226, 232, 240)'||r05Neutral[0].pillText!=='rgb(71, 85, 105)'||r05Neutral[0].editable||
     r05Neutral[1].tone!=='neutral'||r05Neutral[2].tone!=='done'||
     r05Unknown[0].tone!=='neutral'||r05Unknown[0].bg!=='rgba(0, 0, 0, 0)')
     throw Error('R05 status colors / neutral / independent stages: '+
@@ -3117,7 +3176,7 @@ try{
   // frame/pill/field rule checks; assert the unaffected label remains plain.
   if(r05Highlight.kind!=='QPPL'||!r05Highlight.bcLocked||
     r05Highlight.row!=='rgba(0, 0, 0, 0)'||
-    r05Highlight.pill!==clear||r05Highlight.pillText!=='rgb(0, 0, 0)'||
+    r05Highlight.pill!=='rgb(255, 238, 85)'||r05Highlight.pillText!=='rgb(0, 0, 0)'||
     r05Highlight.editable||r05Highlight.highlight!=='true'||
     r05Highlight.level!=='rgba(0, 0, 0, 0)'||
     !r05Highlight.levelValue.includes('BCH')||r05Highlight.levelHighlighted!==null)
@@ -3128,7 +3187,7 @@ try{
     'R05 custom palette fixture missing');
   const r05Custom=await stageFrames('.item-data-table tbody tr:first-child td[data-col-key=partyLevel]');
   if(r05Custom[1].bg!=='rgba(0, 0, 0, 0)'||
-    r05Custom[1].pill!==clear||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
+    r05Custom[1].pill!=='rgb(252, 221, 160)'||r05Custom[1].pillBorder!=='0px'||r05Custom[1].editable||
     r05Custom[1].pillText!=='rgb(136, 68, 34)'||
     r05Custom[0].pillText!==r05List[0].pillText)
     throw Error('R05 custom palette did not tint its own status: '+JSON.stringify(r05Custom));
@@ -3140,7 +3199,7 @@ try{
   const r05Popup=await stageFrames('.report-detail-grid tbody tr:first-child');
   if(r05Popup.length!==3||!r05Popup.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&
     x.border==='0px'&&x.tone===target[i]&&
-     x.pill===clear&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
+     x.pill===r05List[i].pill&&!x.editable&&x.pillText===r05List[i].pillText&&x.pillBorder==='0px'))
     throw Error('R05 popup and list stage statuses differ: '+JSON.stringify(r05Popup));
   const r05PopupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-r05-after-multitone-popup.png',Buffer.from(r05PopupShot.data,'base64'));
@@ -3172,7 +3231,7 @@ try{
         bodyWidth:document.scrollingElement.scrollWidth,viewport:innerWidth};
     })()`);
     if(!samples.every((x,i)=>x.bg==='rgba(0, 0, 0, 0)'&&x.border==='0px'&&
-      x.tone===target[i]&&x.pill===clear&&!x.editable&&
+      x.tone===target[i]&&x.pill===r05List[i].pill&&!x.editable&&
       x.pillText===r05List[i].pillText&&
       x.labelFits&&x.stateFits)||!geometry.labelInFrame||!geometry.stateInFrame||
       geometry.idWidth!==52||geometry.bodyWidth>vw+5)
@@ -3195,6 +3254,7 @@ try{
     return {keys,widths,total:widths.reduce((a,b)=>a+b,0),
       table:table.getBoundingClientRect().width,
       content:widths[keys.indexOf('content')],id:widths[keys.indexOf('displayCode')],
+      staff:widths[keys.indexOf('room')],
       party:widths[keys.indexOf('partyLevel')]};
   })()`);
   const realArrow=async(key,modifier=0)=>{
@@ -3227,6 +3287,11 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
+  if(await evaluate("!!document.querySelector('th[data-column-key=content] .column-resizer,th[data-column-key=partyLevel] .column-resizer')"))
+    throw Error('L03 independent track widths must not expose an indirect neighbor resize');
+  // L03 has independently saved tracks. Move it away from the boundary so
+  // the generic neighbor/fallback contract is tested against the staff group.
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const r02Before=await widthSnapshot();
   const focusResizer=await evaluate(`(()=>{
@@ -3235,21 +3300,21 @@ try{
   })()`);
   if(!focusResizer)throw Error('R02 content separator unavailable with ID last');
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=310.5",
-    'L019 adjacent progress group did not shrink when content grew');
+  await eventually("document.querySelector('td[data-col-key=room]')?.getBoundingClientRect().width<="+(r02Before.staff-9.5),
+    'L019 adjacent staff group did not shrink when content grew');
   const r02Right=await widthSnapshot();
   assertSameTotal(r02Before,r02Right,'R02 ArrowRight');
   if(r02Right.content!==r02Before.content+10||
-    r02Right.party!==r02Before.party-10||r02Right.id!==r02Before.id)
+    r02Right.staff!==r02Before.staff-10||r02Right.party!==r02Before.party||r02Right.id!==r02Before.id)
     throw Error('L019 neighbor-first changed wrong column: '+JSON.stringify({r02Before,r02Right}));
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowLeft');
-  await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=320",
+  await eventually("document.querySelector('td[data-col-key=room]')?.getBoundingClientRect().width>="+r02Before.staff,
     'L019 ArrowLeft did not restore adjacent group width');
   const r02Left=await widthSnapshot();
   assertSameTotal(r02Before,r02Left,'L019 ArrowLeft');
   if(r02Left.content!==r02Before.content||r02Left.party!==r02Before.party||
-    r02Left.id!==r02Before.id)
+    r02Left.staff!==r02Before.staff||r02Left.id!==r02Before.id)
     throw Error('L019 round-trip drag has width drift: '+JSON.stringify({r02Before,r02Left}));
   const dragStart=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
@@ -3266,7 +3331,7 @@ try{
   const r02Drag=await widthSnapshot();
   assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
   if(r02Drag.content!==r02Before.content+5||
-    r02Drag.party!==r02Before.party-5||r02Drag.id!==r02Before.id)
+    r02Drag.staff!==r02Before.staff-5||r02Drag.party!==r02Before.party||r02Drag.id!==r02Before.id)
     throw Error('L019 pointer drag altered ID or trailing column: '+JSON.stringify({r02Before,r02Drag}));
   const r02shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r02-after.png',Buffer.from(r02shot.data,'base64'));
@@ -3276,6 +3341,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 fallback baseline missing');
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
   const fallbackEdge=await evaluate(`(()=>{
@@ -3291,8 +3357,8 @@ try{
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
   assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
-  if(fallbackAfter.content!==fallbackBefore.content+136||
-    fallbackAfter.party!==190||fallbackAfter.id!==46)
+  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-130)+(fallbackBefore.id-46)||
+    fallbackAfter.staff!==130||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
     throw Error('L019 fallback exceeded min or skipped adjacent: '+
       JSON.stringify({fallbackBefore,fallbackAfter}));
   const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
@@ -3301,16 +3367,17 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
     'R02 custom ID source width 125 not projected');
+  await moveLast('partyLevel');
   await moveLast('displayCode');
   const customBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('.item-data-table td[data-col-key=partyLevel]')?.getBoundingClientRect().width<320",
+  await eventually("document.querySelector('.item-data-table td[data-col-key=room]')?.getBoundingClientRect().width<"+customBefore.staff,
     'L019 custom-ID adjacent group did not give pixels');
   const customAfter=await widthSnapshot();
   assertSameTotal(customBefore,customAfter,'R02 custom ID');
   if(customAfter.content!==customBefore.content+10||
-    customAfter.party!==customBefore.party-10||customAfter.id!==customBefore.id)
+    customAfter.staff!==customBefore.staff-10||customAfter.party!==customBefore.party||customAfter.id!==customBefore.id)
     throw Error('L019 custom ID must stay untouched while adjacent can shrink: '+JSON.stringify({customBefore,customAfter}));
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
@@ -3323,6 +3390,7 @@ try{
     'R02 grouped last-column compensation did not move');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
+  if(groupedAfter.party!==groupedBefore.party)throw Error('L03 last group was resized indirectly');
   console.log('L019_ADJACENT_ID_LAST_KEYBOARD_DRAG_CUSTOM_GROUP_PASS',
     JSON.stringify({r02Before,r02Right,r02Left,r02Drag,customBefore,customAfter,groupedBefore,groupedAfter}));
 
@@ -3485,98 +3553,59 @@ try{
   console.log('V3_GUEST_NO_SORT_RESIZE_OR_SHARED_WRITE_PASS',
     JSON.stringify({guestBefore,guestAfter,guestReload}));
 
-  // Codex 008 / R02: 1600px physical cap on a grouped source field.
-  // Check REAL keyboard and pointer, including when the capped group is last.
-  const r02Cap=[];
+  // L03 owns independent track widths: legacy source widths cannot resize it.
+  const l03LegacyWidths=[];
   for(const sourceCap of [1470,1550,1600]){
     await send('Page.navigate',{url:'http://127.0.0.1:'+port+
       '/compact-qa/compact-qa.html?cap-party='+sourceCap});
     await eventually("document.querySelectorAll('.item-heading-row th').length===6",
-      'R02 capped source fixture did not mount');
+      'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
-    if(Math.abs(before.party-1600)>1||Math.abs(before.total-2772)>1)
-      throw Error('R04/R02 V2 no-STT cap baseline not 1600 / 2772: '+JSON.stringify({sourceCap,before}));
-    const focusCap=await evaluate(`(()=>{
-      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
-      if(!el)return false;el.focus();return document.activeElement===el;
-    })()`);
-    if(!focusCap)throw Error('R02 cap group cannot receive keyboard focus');
-    await realArrow('ArrowRight');
-    const atCap=await widthSnapshot();
-    assertSameTotal(before,atCap,'R02 cap ArrowRight source '+sourceCap);
-    if(atCap.party!==1600||atCap.widths[atCap.keys.indexOf('note')]!==240)
-      throw Error('R02 cap ArrowRight transferred hidden pixels: '+JSON.stringify(atCap));
-    await evaluate("document.querySelector('th[data-column-key=partyLevel] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width<=1590",
-      'R02 cap ArrowLeft did not visibly shrink group');
-    const left=await widthSnapshot();
-    assertSameTotal(before,left,'R02 cap ArrowLeft source '+sourceCap);
-    const nextAfterParty=left.keys[left.keys.indexOf('partyLevel')+1];
-    if(left.party!==1590||left.widths[left.keys.indexOf(nextAfterParty)]!==
-      before.widths[before.keys.indexOf(nextAfterParty)]+10||
-      left.widths[left.keys.indexOf('note')]!==240)
-      throw Error('L019 cap shrink must grow adjacent, not note: '+JSON.stringify(left));
-    const point=await evaluate(`(()=>{
-      const el=document.querySelector('th[data-column-key=partyLevel] .column-resizer');
-      el.scrollIntoView({block:'center',inline:'nearest'});
-      const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
-    })()`);
-    if(point.x<0||point.x>1600)throw Error('R02 cap drag divider offscreen');
-    await send('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
-    await send('Input.dispatchMouseEvent',{type:'mousePressed',...point,button:'left',clickCount:1});
-    await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:point.x+20,y:point.y,button:'left'});
-    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x+20,y:point.y,button:'left',clickCount:1});
-    await eventually("document.querySelector('td[data-col-key=partyLevel]')?.getBoundingClientRect().width>=1599.5",
-      'R02 cap pointer drag did not clamp to physical max');
-    const drag=await widthSnapshot();
-    assertSameTotal(before,drag,'R02 cap pointer source '+sourceCap);
-    if(drag.party!==1600||drag.widths[drag.keys.indexOf('note')]!==240)
-      throw Error('R02 cap drag mismatch: '+JSON.stringify(drag));
-    if(sourceCap===1550){
-      const shot=await send('Page.captureScreenshot',{format:'png'});
-      writeFileSync('hophdnd-review-r02-cap-after.png',Buffer.from(shot.data,'base64'));
-    }
-
-    // Move grouped progress column to the last physical position; it now
-    // compensates for content (target) instead of Ghi chú (last).
-    await moveLast('partyLevel');
-    const lastBefore=await widthSnapshot();
-    if(lastBefore.keys.at(-1)!=='partyLevel')throw Error('R02 group not last');
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowRight');
-    const afterContentKey=lastBefore.keys[lastBefore.keys.indexOf('content')+1];
-    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width<="+
-      (lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10.0),
-      'L019 capped group last must remain unchanged while neighbor compensates');
-    const lastRight=await widthSnapshot();
-    assertSameTotal(lastBefore,lastRight,'R02 cap group-last ArrowRight '+sourceCap);
-    if(lastRight.content!==450||lastRight.party!==1600||
-      lastRight.widths[lastRight.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]-10)
-      throw Error('L019 cap group-last: adjacent must compensate before capped group '+JSON.stringify(lastRight));
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    await eventually("document.querySelector('td[data-col-key="+afterContentKey+"]')?.getBoundingClientRect().width>="+
-      lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)],
-      'L019 group-last adjacent width not restored');
-    const lastLeft=await widthSnapshot();
-    assertSameTotal(lastBefore,lastLeft,'R02 cap group-last ArrowLeft '+sourceCap);
-    if(lastLeft.content!==440||lastLeft.party!==1600||
-      lastLeft.widths[lastLeft.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)])
-      throw Error('L019 cap group-last reverse must restore neighbor '+JSON.stringify(lastLeft));
-    await evaluate("document.querySelector('th[data-column-key=content] .column-resizer').focus()");
-    await realArrow('ArrowLeft');
-    const lastAtCap=await widthSnapshot();
-    assertSameTotal(lastBefore,lastAtCap,'R02 cap group-last left at cap '+sourceCap);
-    if(lastAtCap.party!==1600||lastAtCap.content!==430||
-      lastAtCap.widths[lastAtCap.keys.indexOf(afterContentKey)]!==
-        lastBefore.widths[lastBefore.keys.indexOf(afterContentKey)]+10)
-      throw Error('L019 group-last uses adjacent and must not touch capped last '+JSON.stringify(lastAtCap));
-    r02Cap.push({sourceCap,before,atCap,left,drag,lastBefore,lastRight,lastLeft,lastAtCap});
+    if(before.party!==276||Math.abs(before.total-1448)>1||
+      await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
+      throw Error('L03 independent tracks changed with legacy source width: '+JSON.stringify({sourceCap,before}));
+    l03LegacyWidths.push({sourceCap,before});
   }
-  console.log('L019_ADJACENT_GROUP_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify(r02Cap));
+  console.log('L03_LEGACY_SOURCE_WIDTH_INDEPENDENCE_PASS',JSON.stringify(l03LegacyWidths));
+
+  // Keep the physical 1600px cap regression on an ordinarily resizable field.
+  // L03 deliberately has no resize handle in the approved independent-rail UI.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?cap-progress=1'});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
+    '1600px ordinary column fixture did not mount');
+  const capBefore=await widthSnapshot();
+  const capWidth=s=>s.widths[s.keys.indexOf('specificProgress')];
+  await evaluate("document.querySelector('th[data-column-key=specificProgress] .column-resizer').focus()");
+  await realArrow('ArrowRight');
+  const capRight=await widthSnapshot();
+  assertSameTotal(capBefore,capRight,'1600 cap ArrowRight');
+  if(capWidth(capRight)!==1600||JSON.stringify(capRight.widths)!==JSON.stringify(capBefore.widths))
+    throw Error('Capped column transferred hidden pixels: '+JSON.stringify(capRight));
+  await realArrow('ArrowLeft');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1590",
+    'Capped ordinary column did not shrink');
+  const capLeft=await widthSnapshot();
+  assertSameTotal(capBefore,capLeft,'1600 cap ArrowLeft');
+  if(capLeft.widths[capLeft.keys.indexOf('note')]!==capBefore.widths[capBefore.keys.indexOf('note')]+10||
+    capLeft.party!==capBefore.party)
+    throw Error('Cap shrink must grow adjacent note and preserve L03: '+JSON.stringify(capLeft));
+  const capPoint=await evaluate(`(()=>{
+    const el=document.querySelector('th[data-column-key=specificProgress] .column-resizer');
+    el.scrollIntoView({block:'center',inline:'nearest'});
+    const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+  })()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',...capPoint});
+  await send('Input.dispatchMouseEvent',{type:'mousePressed',...capPoint,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:capPoint.x+30,y:capPoint.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:capPoint.x+30,y:capPoint.y,button:'left',clickCount:1});
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
+    'Pointer drag did not clamp to physical cap');
+  const capDrag=await widthSnapshot();
+  assertSameTotal(capBefore,capDrag,'1600 cap pointer');
+  if(JSON.stringify(capDrag.widths)!==JSON.stringify(capBefore.widths))
+    throw Error('Pointer cap did not restore exact adjacent widths: '+JSON.stringify(capDrag));
+  console.log('ORDINARY_COLUMN_1600_CAP_KEYBOARD_DRAG_PASS',JSON.stringify({capBefore,capRight,capLeft,capDrag}));
 
 
   // Lượt 018: real main-list cards and stable group titles, not report modal cards.
@@ -3689,8 +3718,8 @@ try{
   })`);
   // Seven active-summary rows, eight source rows: the unified active bar counts
   // all source rows before filters, unlike the historical B00 active-only card.
-  if(quickSummary.selected!==1||quickSummary.total!==7||!quickSummary.result.includes('2 / 8')||
-      !quickSummary.selectedSummary?.includes('Trình Thành ủy')||
+  if(quickSummary.selected!==1||quickSummary.total!==7||quickSummary.result.replace(/\s/g,'')!=='2/8'||
+      quickSummary.selectedSummary!=='Bước tiếp theo'||
       !quickSummary.totalLabelBeforeCount||quickSummary.bucketHeight<44||quickSummary.bucketHeight>54)
     throw Error('Summary compact/order/selected-state regression: '+JSON.stringify(quickSummary));
   // Public PR QA: record the actual SELECTED filter on the synthetic 7-row
@@ -3764,8 +3793,8 @@ try{
   })()`);
   if(!inputFocus)throw Error('Lượt 018 ID filter missing');
   await send('Input.insertText',{text:'NQ01'});
-  await eventually("document.querySelector('[data-summary-card=total] .item-summary-total-count')?.textContent==='1'",
-    'Lượt 018 summary total failed to follow ID column filter');
+  await eventually("document.querySelectorAll('.item-data-table tbody tr.color-row').length===1&&document.querySelector('input[aria-label=\"Tìm kiếm không dấu\"]')?.value==='NQ01'",
+    'Search must intersect the selected summary condition before clearing');
   await evaluate("document.querySelector('.list-active-filters [data-active-filter-id=summary] button').click()");
   await eventually(`!document.querySelector('.list-active-filters [data-active-filter-id=summary]')&&document.querySelector('input[aria-label="Tìm kiếm không dấu"]')?.value==='NQ01'`,
     'Clearing summary condition must preserve the ID column filter');
@@ -3775,8 +3804,8 @@ try{
     const rows=document.querySelectorAll('.item-data-table tbody tr.color-row').length;
     return {total,rows};
   })()`);
-  if(filteredSummary.total!==1||filteredSummary.rows!==1)
-    throw Error('Lượt 018 summary/list filter scope differs: '+JSON.stringify(filteredSummary));
+  if(filteredSummary.total!==7||filteredSummary.rows!==1)
+    throw Error('Source summary must stay at 7 while filtered list contains one row: '+JSON.stringify(filteredSummary));
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?group-title=1&popup=1'});
   await eventually("document.querySelector('.report-detail-grid .compact-stages')!==null",
     'Lượt 018 popup group missing');
@@ -4168,7 +4197,7 @@ try{
   if(!editingStarted)throw Error('R-V3-03 authorized edit button missing');
   await eventually("document.querySelector("+JSON.stringify(councilStageSel+" .cell-picker-trigger")+")!==null",
     'R-V3-03 authorized Council picker missing');
-  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=34&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
+  const v4PopupEditable=await evaluate("(()=>{const stage=document.querySelector("+JSON.stringify(councilStageSel)+");const state=stage?.querySelector('.compact-stage-state');const b=state?.querySelector('button.cell-picker-trigger');if(!stage||!state||!b)return {ok:false,reason:'no authorized popup status editor'};b.scrollIntoView({block:'center',inline:'nearest'});const br=b.getBoundingClientRect(),st=getComputedStyle(b),dot=getComputedStyle(state,'::before'),arrow=getComputedStyle(b,'::after');const hit=x=>document.elementFromPoint(x,br.top+br.height/2)?.closest('button.cell-picker-trigger')===b;return {ok:st.display==='flex'&&br.height>=26&&br.height<=38&&st.borderTopWidth!=='0px'&&dot.content==='none'&&arrow.display==='block'&&hit(br.left+4)&&hit(br.right-4),width:br.width,height:br.height,ink:st.color,fill:st.backgroundColor,dot:dot.content,arrowColumn:arrow.gridColumnStart,hitLeft:hit(br.left+4),hitRight:hit(br.right-4)};})()");
   if(!v4PopupEditable.ok)throw Error('UI V4 real popup full-width hitbox: '+JSON.stringify(v4PopupEditable));
   const v4PopupEditableShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-v4-l2-after-popup-editable.png',Buffer.from(v4PopupEditableShot.data,'base64'));
@@ -4387,18 +4416,39 @@ try{
       [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
         .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
     })()`);
-    await adminA.until("!!document.querySelector('[data-ui-ref-code=A01]')",
-      'real App admin reference overlay');
-    const appCodes=await adminA.js(`(()=>{
-      const layer=document.querySelector('[data-ui-reference-layer]');
-      const codes=[...layer?.querySelectorAll('[data-ui-ref-code]')??[]].map(node=>node.dataset.uiRefCode);
-      return {codes,hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
-        nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
-          [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents==='none')};
-    })()`);
-    if(!appCodes.hasAdminToggle||!appCodes.nonblocking||
-      !['A01','A02','A03'].every(code=>appCodes.codes.includes(code)))
-      throw Error('UI V4 L3 App admin reference selectors/roles: '+JSON.stringify(appCodes));
+    await adminA.until("!!document.querySelector('[data-ui-reference-layer]')",
+      'real App admin hover reference layer');
+    const appCodes={codes:[],hasAdminToggle:false,nonblocking:true};
+    for(const [code,selector] of [
+      ['A01','.primary-section-switcher [data-ui-reference-nav=overview]'],
+      ['A02','.primary-section-switcher [data-ui-reference-nav=items]'],
+      ['A03','.v3-settings-menu > summary']]){
+      const point=await adminA.js(`(()=>{
+        const el=document.querySelector(${JSON.stringify(selector)});
+        el.scrollIntoView({block:'center',inline:'nearest'});
+        const r=el.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};
+      })()`);
+      await adminA.call('Input.dispatchMouseEvent',{type:'mouseMoved',...point});
+      await adminA.until("!!document.querySelector('[data-ui-ref-code="+code+"]')",
+        'semantic hover code '+code);
+      const observed=await adminA.js(`(()=>{
+        const layer=document.querySelector('[data-ui-reference-layer]');
+        const badge=layer?.querySelector('[data-ui-ref-code]');
+        const copy=badge?.querySelector('.ui-reference-copy');
+        return {code:badge?.dataset.uiRefCode,
+          hasAdminToggle:!!document.querySelector('.v3-settings-menu .ui-reference-toggle[aria-pressed=true]'),
+          nonblocking:!!layer&&getComputedStyle(layer).pointerEvents==='none'&&
+            [...layer.querySelectorAll('*')].every(node=>getComputedStyle(node).pointerEvents===
+              (node.classList.contains('ui-reference-copy')?'auto':'none')),
+          copyLabel:copy?.getAttribute('aria-label'),
+          badgeCount:document.querySelectorAll('[data-ui-ref-code]').length};
+      })()`);
+      if(observed.code!==code||!observed.hasAdminToggle||!observed.nonblocking||
+        observed.copyLabel!=='Sao chép mã '+code||observed.badgeCount!==1)
+        throw Error('Admin hover reference/copy regression: '+JSON.stringify(observed));
+      appCodes.codes.push(observed.code);appCodes.hasAdminToggle=observed.hasAdminToggle;
+      appCodes.nonblocking=appCodes.nonblocking&&observed.nonblocking;
+    }
     await adminA.js(`(()=>{
       document.querySelector('.v3-settings-menu > summary').click();
       [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]

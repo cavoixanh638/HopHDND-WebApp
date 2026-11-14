@@ -6,6 +6,7 @@ import type {CellEditSessionManager} from '../data/cell-edit-leases';
 import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-checkpoints';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {markStartup} from '../data/startup-timings';
+import {firebaseAutosaveDelay} from '../data/firebase-autosave-policy';
 
 export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true,leaseManager?:CellEditSessionManager) {
   const [items, setItems] = useState<Item[]>([]);
@@ -21,6 +22,15 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   const canDraft=repository.canDraft??!repository.readOnly;
   const protectedRecovery=useRef(false);
   const saving=useRef(false);
+  // Keep other rows interactive while an RTDB row CAS is in flight. The same
+  // row stays fenced until its authoritative ACK, including uncertain results.
+  const saveEpoch=useRef(0);
+  const [savingRows,setSavingRows]=useState<ReadonlySet<string>>(()=>new Set());
+  const [savingActive,setSavingActive]=useState(false);
+  // Never auto-resend an unconfirmed operationId merely because another row
+  // changed. A fresh user edit creates a new operationId; explicit manual
+  // resolution still uses the original idempotent server protocol.
+  const autoRejected=useRef(new Set<string>());
   const recovered = useRef<Repository | null>(null);
   const skipCheckpoint = useRef(false);
   const latestDraft = useRef({items,drafts}); latestDraft.current = {items,drafts};
@@ -69,12 +79,16 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     }
   }, [repository, sourceKey,canDraft]);
   useEffect(() => {
+    // An old repository request must not fence reused row IDs or alter the
+    // new generation's save state when its delayed response finally arrives.
+    saveEpoch.current++;
+    saving.current=false;setSavingRows(new Set());setSavingActive(false);
+    autoFailed.current='';autoRejected.current.clear();
     // Never apply a checkpoint from a previous generation to reused IDs.
     if(previousSourceKey.current!==sourceKey){
       if(previousSourceKey.current.startsWith('pages:gen:')||previousSourceKey.current==='pages:primary')
         clearCheckpoint(`data:${previousSourceKey.current}`);
       previousSourceKey.current=sourceKey;
-      autoFailed.current='';
     }
     lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});setCachePending(false);
     setLoadedAt('');setMessage('');setAutosaveMessage('');
@@ -119,9 +133,9 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     },cause=>{if(!subscribed)return;if(repository.subscribeInitial)setBusy(false);setMessage(`Mất kết nối dữ liệu: ${cause.message}. Phần sửa được giữ trên máy.`);});
     return()=>{subscribed=false;stop();};
   },[repository,canStartDatabase]);
-  const update = (recordId: string, changes: Changes) => {
+  const update = (recordId: string, changes: Changes):boolean => {
     const item = items.find(i => i.recordId === recordId);
-    if (!item || cachePending || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return;
+    if (!item || cachePending || (!firebase&&(busy||saving.current)) || !canDraft||protectedRecovery.current) return false;
     skipCheckpoint.current = false;
     const canonicalChanges:Changes=repository.sourceKind==='google'?Object.fromEntries(Object.entries(changes).map(([field,value])=>[field,typeof value==='string'?value.trim():value])):changes;
     setDrafts(previous => {
@@ -132,22 +146,32 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     });
     setErrors(previous => { const next = { ...previous }; delete next[recordId]; return next; });
     setMessage('');
+    return true;
   };
   const discard = () => { protectedRecovery.current=false;skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage(''); setDrafts({}); setErrors({}); setMessage('Đã bỏ phần sửa trên máy. File nguồn không thay đổi.'); };
-  const save = async () => {
+  const save = async (automatic=false) => {
     if (busy || cachePending || saving.current||!canDraft||!canStartDatabase||dataSource!==repository) return false;
     if (!Object.keys(drafts).length) return true;
-    saving.current=true;setBusy(true);
+    const pending=Object.values(drafts).filter(patch=>!automatic||!autoRejected.current.has(patch.operationId));
+    if(!pending.length)return false;
+    saving.current=true;
+    const requestEpoch=saveEpoch.current;
+    if(firebase){
+      const rows=new Set(pending.map(patch=>patch.recordId));
+      setSavingRows(rows);setSavingActive(true);
+    }else setBusy(true);
     const requestRepository=repository;
     try {
-      const pending=Object.values(drafts);
       const results = await repository.save(pending);
-      if(sourceRef.current!==requestRepository)return false;
+      if(sourceRef.current!==requestRepository||saveEpoch.current!==requestEpoch)return false;
       const expected=new Map(pending.map(patch=>[patch.recordId,patch]));
       const seen=new Set<string>();
       if(!Array.isArray(results)||results.some(r=>!expected.has(r.recordId)||seen.has(r.recordId)||!seen.add(r.recordId)))throw new Error('Phản hồi lưu không khớp yêu cầu; nháp được giữ.');
       const saved = results.filter(result => result.ok && result.item&&result.item.recordId===result.recordId&&Object.entries(expected.get(result.recordId)!.changes).every(([key,value])=>result.item![key as keyof Item]===value));
       const confirmed = new Map(saved.map(result => [result.recordId, result.item!]));
+      for(const patch of pending)
+        if(confirmed.has(patch.recordId))autoRejected.current.delete(patch.operationId);
+        else autoRejected.current.add(patch.operationId);
       if(leaseManager)for(const result of saved){
         const patch=expected.get(result.recordId);
         if(patch)for(const field of Object.keys(patch.changes))
@@ -162,29 +186,60 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         }
         return next;
       });
-      setErrors(Object.fromEntries(results.filter(r => !r.ok).map(r => [r.recordId, r.message ?? 'Không lưu được.'])));
-      setMessage(`Đã lưu ${saved.length} nội dung${firebase?' vào Firebase, máy chủ đã xác nhận':repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
+      // A save for a different row must never erase an earlier failed row's
+      // visible error: Firebase allows independent rows to continue editing.
+      setErrors(previous=>{
+        const next={...previous};
+        for(const result of results){
+          if(result.ok)delete next[result.recordId];
+          else next[result.recordId]=result.message??'Không lưu được.';
+        }
+        return next;
+      });
+      // A successful Firebase save is deliberately silent: the value is already
+      // shown in its cell. Preserve visible feedback only for errors or partial saves.
+      setMessage(firebase
+        ?(pending.length===saved.length?'':`${pending.length-saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.`)
+        :`Đã lưu ${saved.length} nội dung${repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
       if (saved.length === pending.length) { if(!firebase){skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage('');} return true; }
       return false;
-    } catch(cause) { setMessage(cause instanceof Error?cause.message:'Chưa xác định kết quả lưu. Giữ bản nháp để kiểm tra; không tự gửi lại.'); return false; }
-    finally {saving.current=false;if(sourceRef.current===requestRepository)setBusy(false); }
+    } catch(cause) {
+      if(sourceRef.current!==requestRepository||saveEpoch.current!==requestEpoch)return false;
+      for(const patch of pending)autoRejected.current.add(patch.operationId);
+      const reason=cause instanceof Error?cause.message:'Chưa xác định kết quả lưu. Giữ bản nháp để kiểm tra; không tự gửi lại.';
+      setErrors(previous=>({...previous,...Object.fromEntries(pending.map(patch=>[patch.recordId,reason]))}));
+      setMessage(reason);
+      return false;
+    }finally {
+      if(sourceRef.current===requestRepository&&saveEpoch.current===requestEpoch){
+        saving.current=false;
+        if(firebase){setSavingRows(new Set());setSavingActive(false);}
+        else setBusy(false);
+      }
+    }
   };
   const autoSave=useRef(save);autoSave.current=save;
   useEffect(()=>{
     // Deterministic Chrome E2E only: simulate an editor still typing while
     // a peer commits a new generation. Production builds constant-fold this
-    // pages-test-only hook out and retain the normal 800ms autosave.
+    // pages-test-only hook out and retain normal status/text save policies.
     const testHold=import.meta.env.MODE==='pages-test'&&
       typeof window!=='undefined'&&
       ['127.0.0.1','localhost'].includes(window.location.hostname)&&
       (window as Window & {__pr142TestHoldAutosave?:boolean}).__pr142TestHoldAutosave===true;
     if(testHold)return;
-    if(!firebase||busy||protectedRecovery.current||!Object.keys(drafts).length)return;
-    const signature=Object.values(drafts).map(patch=>patch.operationId).sort().join(':');
+    if(!firebase||busy||savingActive||protectedRecovery.current)return;
+    const eligible=Object.values(drafts).filter(patch=>!autoRejected.current.has(patch.operationId));
+    if(!eligible.length)return;
+    const signature=eligible.map(patch=>patch.operationId).sort().join(':');
     if(autoFailed.current===signature)return;
-    const timer=window.setTimeout(()=>{void autoSave.current().then(ok=>{if(!ok)autoFailed.current=signature;});},800);
+    const eligibleDrafts=Object.fromEntries(eligible.map(patch=>[patch.recordId,patch]));
+    const epoch=saveEpoch.current;
+    const timer=window.setTimeout(()=>{void autoSave.current(true).then(ok=>{
+      if(!ok&&saveEpoch.current===epoch)autoFailed.current=signature;
+    });},firebaseAutosaveDelay(eligibleDrafts));
     return()=>clearTimeout(timer);
-  },[firebase,drafts,busy]);
+  },[firebase,drafts,busy,savingActive]);
   const keepDraft=()=>{const current=latestDraft.current;if(!Object.keys(current.drafts).length)return true;const saved=writeCheckpoint(`data:${sourceKey}`,{items:current.items,drafts:{}},current);setAutosaveMessage(saved?'Đã giữ thay đổi trên trình duyệt này; chưa lưu vào file nguồn.':'Không giữ được thay đổi trên trình duyệt này. Đừng đóng trang; hãy sao chép nội dung để tránh mất.');return saved;};
   const visibleItems = dataSource === repository ? items : [];
   const workingItems = useMemo(() => visibleItems.map(item => drafts[item.recordId] ? { ...item, ...drafts[item.recordId].changes } : item), [visibleItems, drafts]);
@@ -207,5 +262,5 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     return () => { clearInterval(interval); window.removeEventListener('pagehide',flush); window.removeEventListener('beforeunload',unload); document.removeEventListener('visibilitychange',visibility); flush(); };
   },[repository,sourceKey,canDraft]);
   useEffect(()=>{const timer=window.setTimeout(()=>checkpoint.current(),800);return()=>clearTimeout(timer);},[drafts]);
-  return { keepDraft,protectedRecovery:protectedRecovery.current,cachePending,items: visibleItems, workingItems, drafts, errors, busy, message, loadedAt, autosaveMessage, refresh, update, discard, save };
+  return { keepDraft,protectedRecovery:protectedRecovery.current,cachePending,items: visibleItems, workingItems, drafts, errors, busy, savingRows, message, loadedAt, autosaveMessage, refresh, update, discard, save };
 }
