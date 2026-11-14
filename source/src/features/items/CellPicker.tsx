@@ -5,6 +5,7 @@ import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-leases';
 import type {EditableField} from '../../../shared/types';
+import {directStatusCasField} from '../../data/status-direct-cas';
 import './cell-picker.css';
 
 /** R-V3-01: List intentionally strips empty catalog values before passing
@@ -33,9 +34,11 @@ type CellPickerProps = {
   /** false means the action was rejected before a draft was accepted. */
   onChange: (value: string) => boolean|void;
   leaseManager?:CellEditSessionManager;recordId?:string;field?:EditableField;editorKind?:EditorKind;
+  /** True only after the matching server Rules have been activated and verified. */
+  directStatusCas?:boolean;
 };
 
-export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange, leaseManager,recordId,field,editorKind='status' }: CellPickerProps) {
+export function CellPicker({ label, value, displayValue, options, searchable = false, disabled = false, highlightQuery, onChange, leaseManager,recordId,field,editorKind='status',directStatusCas=false }: CellPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [waiting,setWaiting]=useState(false);
@@ -49,7 +52,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const claimedInCycle=useRef(false);
   const placementRef=useRef<(()=>void)|null>(null);
   const switchingPointer=useRef(false);
-  const leaseProps=!!leaseManager&&!!recordId&&!!field;
+  // A discrete status selection accepts a local draft immediately. The server
+  // enforces permissions, conflicts and row history in ONE guarded transaction.
+  const direct=directStatusCas&&directStatusCasField(field);
+  const leaseProps=!direct&&!!leaseManager&&!!recordId&&!!field;
   const cancelUnused=():Promise<void>=>{
     if(leaseProps&&!chosen.current&&!leaseManager!.isPending(recordId!,field!))
       return leaseManager!.cancel(recordId!,field!);
@@ -110,8 +116,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   };
 
   const choose = (nextValue: string) => {
-    // The popup can be inspected immediately, but no draft may be accepted
-    // before the server grants the exclusive cell lease.
+    // Non-direct editing cannot accept a draft before the server lease grants.
+    // Direct status saves are validated by the server transaction instead.
     if(waiting)return;
     if(nextValue===value){chosen.current=false;close(true);return;}
     try{
@@ -129,6 +135,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     window.addEventListener('hdnd:drain-editors',forced);
     return()=>window.removeEventListener('hdnd:drain-editors',forced);
   },[leaseProps,recordId,field]);
+  // A late permission revocation closes the locally open selector immediately.
+  useEffect(()=>{if(disabled&&open)void close();},[disabled]);
   // A popup may unmount during a role revoke, navigation or data generation
   // switch. Do not allow a late lease ACK to resurrect that editor.
   useEffect(()=>{
@@ -282,9 +290,9 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         pendingRelease.current=null; // new claim, old fence stays in coordinator
         const epoch=++requestEpoch.current;
         setQuery('');
-        setWaiting(true);
-        // UI opens in this same click; choices remain disabled until the
-        // authoritative RTDB lease is granted. Never impersonate a save ACK.
+        setWaiting(!direct);
+        // With matching direct-CAS Rules, choices are enabled immediately.
+        // All other fields still wait for the authoritative lease.
         setOpen(true);
         // Claiming B synchronously closes A, then waits for A's safe lease
         // release. B still checks its own permission/lease before opening.
