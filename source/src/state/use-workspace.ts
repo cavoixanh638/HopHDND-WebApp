@@ -6,6 +6,7 @@ import type {CellEditSessionManager} from '../data/cell-edit-leases';
 import { AUTOSAVE_MS, clearCheckpoint, writeCheckpoint } from '../data/draft-checkpoints';
 import { readWorkspaceRecovery } from '../data/workspace-recovery';
 import {markStartup} from '../data/startup-timings';
+import {firebaseAutosaveDelay} from '../data/firebase-autosave-policy';
 
 export function useWorkspace(repository: Repository, sourceKey = 'demo',canStartDatabase=true,leaseManager?:CellEditSessionManager) {
   const [items, setItems] = useState<Item[]>([]);
@@ -163,7 +164,11 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         return next;
       });
       setErrors(Object.fromEntries(results.filter(r => !r.ok).map(r => [r.recordId, r.message ?? 'Không lưu được.'])));
-      setMessage(`Đã lưu ${saved.length} nội dung${firebase?' vào Firebase, máy chủ đã xác nhận':repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
+      // A successful Firebase save is deliberately silent: the value is already
+      // shown in its cell. Preserve visible feedback only for errors or partial saves.
+      setMessage(firebase
+        ?(pending.length===saved.length?'':`${pending.length-saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.`)
+        :`Đã lưu ${saved.length} nội dung${repository.sourceKind==='google'?' vào Excel và đọc lại xác nhận':repository.readOnly?' về nguồn':' trong phiên thử'}.${pending.length > saved.length ? ` ${pending.length - saved.length} nội dung chưa lưu; phần sửa trên máy vẫn được giữ.` : ''}`);
       if (saved.length === pending.length) { if(!firebase){skipCheckpoint.current=true; clearCheckpoint(`data:${sourceKey}`); setAutosaveMessage('');} return true; }
       return false;
     } catch(cause) { setMessage(cause instanceof Error?cause.message:'Chưa xác định kết quả lưu. Giữ bản nháp để kiểm tra; không tự gửi lại.'); return false; }
@@ -173,7 +178,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   useEffect(()=>{
     // Deterministic Chrome E2E only: simulate an editor still typing while
     // a peer commits a new generation. Production builds constant-fold this
-    // pages-test-only hook out and retain the normal 800ms autosave.
+    // pages-test-only hook out and retain normal status/text save policies.
     const testHold=import.meta.env.MODE==='pages-test'&&
       typeof window!=='undefined'&&
       ['127.0.0.1','localhost'].includes(window.location.hostname)&&
@@ -182,7 +187,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     if(!firebase||busy||protectedRecovery.current||!Object.keys(drafts).length)return;
     const signature=Object.values(drafts).map(patch=>patch.operationId).sort().join(':');
     if(autoFailed.current===signature)return;
-    const timer=window.setTimeout(()=>{void autoSave.current().then(ok=>{if(!ok)autoFailed.current=signature;});},800);
+    const timer=window.setTimeout(()=>{void autoSave.current().then(ok=>{if(!ok)autoFailed.current=signature;});},firebaseAutosaveDelay(drafts));
     return()=>clearTimeout(timer);
   },[firebase,drafts,busy]);
   const keepDraft=()=>{const current=latestDraft.current;if(!Object.keys(current.drafts).length)return true;const saved=writeCheckpoint(`data:${sourceKey}`,{items:current.items,drafts:{}},current);setAutosaveMessage(saved?'Đã giữ thay đổi trên trình duyệt này; chưa lưu vào file nguồn.':'Không giữ được thay đổi trên trình duyệt này. Đừng đóng trang; hãy sao chép nội dung để tránh mất.');return saved;};
