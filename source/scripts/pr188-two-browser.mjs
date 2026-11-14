@@ -188,6 +188,20 @@ try{
   await until(()=>quickPopup.getByRole('option',{name:'VP đang xử lý'}).isEnabled(),'choice enabled by granted lease');
   await writer.keyboard.press('Escape');
   await waitReleased(rowIds[0]);
+  // Dismissing an optimistic popup WHILE lease acquisition is still in
+  // flight must not leave a ghost lock. A late grant must be released once.
+  heldLeaseWrite=null;
+  holdNextLease='hdnd/editLocks/'+rowIds[0]+'/progressCouncil';
+  await fieldButton(writer,'NQ01').click();
+  const pendingPopup=writer.getByRole('listbox',{name:'NQ01: Tiến độ trình HĐND ban hành NQ/BC',exact:true});
+  await pendingPopup.waitFor();
+  await until(()=>heldLeaseWrite,'intercept second outbound lock transaction');
+  assert.equal(await pendingPopup.getByRole('option',{name:'VP đang xử lý'}).isEnabled(),false);
+  await writer.keyboard.press('Escape');
+  await pendingPopup.waitFor({state:'hidden'});
+  releaseHeldLease();releaseHeldLease=null;
+  await waitReleased(rowIds[0]);
+  assert.equal((await request('hdnd/items/'+rowIds[0])).revision,1);
   await open(writer,'NQ01');
   const firstLock=await request('hdnd/editLocks/'+rowIds[0]+'/progressCouncil');
   const firstUid=firstLock.uid;
