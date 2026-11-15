@@ -21,6 +21,7 @@ const bootstrapParent='937c1295cd598e8c9e7ea1878093918d0d5d884f';
 const bootstrapOnly=new Set([
   '.github/workflows/publish-pages.yml',
   '.github/workflows/spark-pages-release-preflight.yml',
+  '.github/workflows/guest-cell-save-ux-20261113.yml',
   'source/scripts/pages-release-policy.mjs',
   'source/scripts/pages-release-policy.check.mjs',
   'source/tests/pages-release-policy.test.ts',
