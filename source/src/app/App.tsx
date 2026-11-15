@@ -242,6 +242,12 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   // itself is not an administrator grant; guard both render and handlers.
   const adminTools=canCustomize&&(!isFirebase||
     (!!firebase?.isAdmin&&!!firebase.user&&firebase.connected&&firebase.datasetEpochReady));
+  // A verified admin whose connection is temporarily unavailable is not
+  // the same as a revoked user. Writes remain fail-closed; the page survives.
+  const adminSessionTemporarilyBlocked=isFirebase&&!!firebase?.isAdmin&&
+    !!firebase.user&&!adminTools;
+  const signedInStaff=isFirebase&&!!firebase?.user&&!firebase.user.isAnonymous&&
+    !firebase.isAdmin;
   // Visual reference codes are per-view ephemeral state, not a Firebase or
   // personal/shared profile preference. Default OFF, fail closed on role loss.
   const referenceRoot=useRef<HTMLDivElement|null>(null);
@@ -263,13 +269,13 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   useEffect(()=>{
     if(!adminTools){
       settingsMenu.current?.removeAttribute('open');
-      if(page!=='items'){
+      if(!adminSessionTemporarilyBlocked&&page!=='items'){
         setPage('items');setEditorUnsaved(false);
         setReportWidthPreview(null);setListFramePreview(null);
       }
       setSelection(null);setHistory(null);
     }else setGearLoginError('');
-  },[adminTools,page]);
+  },[adminTools,adminSessionTemporarilyBlocked,page]);
   const canEditDraft=!comparison&&(repository.canDraft??!repository.readOnly)&&!workspace.cachePending;
   const changeDataSource=async(next:'excel'|'database'|'primary')=>{
     if(comparison)throw new Error('Đang chạy phép thử tốc độ; không thay đổi nguồn admin.');
@@ -625,19 +631,35 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           <summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
           <div className="options-popover" role="group" aria-label="Công cụ theo quyền tài khoản">
             {adminTools?<>
-              <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
-              <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
-              <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
-              <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
-              {isFirebase&&<button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>}
-              <button type="button" className="ui-reference-toggle" aria-pressed={referenceCodesVisible}
-                onClick={()=>{setReferenceCodesOn(previous=>!previous);settingsMenu.current?.removeAttribute('open');}}>
-                Hiện mã khu vực
-              </button>
-              {referenceCodesVisible&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
-                {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
-                Trỏ vào ô để xem mã kèm ID nội dung.
-              </p>}
+              <div className="settings-menu-group" role="group" aria-label="Giao diện và bố cục">
+                <p className="settings-menu-group-label">Giao diện và bố cục</p>
+                <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
+                <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
+              </div>
+              <div className="settings-menu-group" role="group" aria-label="Tài khoản và phân quyền">
+                <p className="settings-menu-group-label">Tài khoản và phân quyền</p>
+                <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
+                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
+              </div>
+              {isFirebase&&<div className="settings-menu-group" role="group" aria-label="Dữ liệu và vận hành">
+                <p className="settings-menu-group-label">Dữ liệu và vận hành</p>
+                <button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>
+                <button type="button" onClick={event=>openOptions('review',event)}>Chốt số liệu</button>
+              </div>}
+              <details className="settings-menu-advanced">
+                <summary>Công cụ kiểm tra</summary>
+                <button type="button" className="ui-reference-toggle" aria-pressed={referenceCodesVisible}
+                  onClick={()=>{setReferenceCodesOn(previous=>!previous);settingsMenu.current?.removeAttribute('open');}}>Hiện mã khu vực</button>
+                {referenceCodesVisible&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
+                  {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
+                  Trỏ vào ô để xem mã kèm ID nội dung.
+                </p>}
+              </details>
+            </>:adminSessionTemporarilyBlocked?<p className="v3-gear-status" role="status">Đang xác minh lại kết nối quản trị. Các thao tác ghi tạm khóa; bản nháp được giữ trên máy.</p>:signedInStaff?<>
+              <p className="v3-gear-status" role="status">Nhân viên Google · {firebase?.user?.email??'Đã đăng nhập'}</p>
+              <button type="button" className="v3-gear-login" disabled={gearLoginBusy}
+                onClick={()=>void firebase!.logout().catch(cause=>setGearLoginError(cause instanceof Error?cause.message:'Chưa đăng xuất được.'))}>Đăng xuất Google</button>
+              {gearLoginError&&<p className="v3-gear-status" role="alert">{gearLoginError}</p>}
             </>:<>
               <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
                 onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':
@@ -703,6 +725,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         {isFirebase&&firebase!.isAdmin&&<>{legacySourceTests&&<button className={page==='source'?'active':''} onClick={event=>openOptions('source',event)}>Google Sheets</button>}<button className={page==='transfer'?'active':''} onClick={event=>openOptions('transfer',event)}>{legacySourceTests?'Excel · Trích xuất':'Excel · Nhập/Xuất'}</button></>}
         {!isFirebase&&<button className={page==='sync'?'active':''} onClick={event=>openOptions('sync',event)}>Cấu hình chung</button>}
       </nav>}
+      {adminSessionTemporarilyBlocked&&<p className="notice" role="status">Kết nối quản trị tạm gián đoạn. Trang hiện tại sẽ được khôi phục khi xác minh lại; các thao tác ghi đang bị khóa. Thay đổi chưa lưu được giữ trên trình duyệt, không tự ghi Firebase.</p>}
       {adminTools&&isFirebase&&common.config&&common.status!=='ready'&&<p className="muted" role="status">Đang xem bố cục admin đã lưu gần nhất trên máy; quyền đổi cấu hình vẫn bị khóa tới khi Firebase xác nhận.</p>}
       {comparison&&<p className="notice" role="status">ĐANG SO SÁNH TỐC ĐỘ — {compareSource==='excel'?'đọc Excel trực tiếp qua Google Sheets GViz':'đọc Firebase Realtime Database'}. Dữ liệu chỉ xem; không thay nguồn mặc định admin đã lưu. Hai nguồn có thể có số dòng/thời điểm cập nhật khác nhau.</p>}
       {isFirebase&&firebase!.datasetEpochReady===false&&<p className="notice" role="alert">Chưa xác minh được thế hệ Firebase đang hoạt động. Đã khóa đọc và lưu dữ liệu; không quay về nguồn cũ.</p>}
