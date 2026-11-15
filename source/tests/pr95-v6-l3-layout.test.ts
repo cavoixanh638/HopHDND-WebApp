@@ -11,7 +11,7 @@ describe('PR95 UI V6 L3 — owner-only layout changes',()=>{
   it('starts real App on List and uses verified admin gate for both nav tiles',()=>{
     expect(app).toContain("const [page, setPage] = useState<Page>('items')");
     expect(app).toContain("{adminTools&&<nav className=\"nav-tabs primary-section-switcher\"");
-    expect(app).toContain("if(page!=='items')");
+    expect(app).toContain("if(!adminSessionTemporarilyBlocked&&page!=='items')");
     expect(app).toContain('const adminTools=canCustomize&&');
     expect(app).toContain('gearLoginBusy');
     expect(app).toContain('onClick={()=>void loginFromGear()}');
