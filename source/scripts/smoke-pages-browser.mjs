@@ -357,7 +357,16 @@ async function evaluate(expression){
 async function eventually(expression,why,tries=75){
   for(let i=0;i<tries;i++){
     if(interceptError)throw interceptError;
-    if(await evaluate(expression))return;
+    try{
+      if(await evaluate(expression))return;
+    }catch(error){
+      // Page.reload can invalidate a Chrome execution context between CDP
+      // request and response. Retry ONLY that known transient navigation race;
+      // do not swallow syntax, styling, permission or application errors.
+      const message=String(error?.message??error);
+      if(!/Inspected target navigated or closed|Execution context was destroyed|Cannot find context with specified id/.test(message))
+        throw error;
+    }
     await sleep(200);
   }
   if(why.startsWith('Report hover transition')){
