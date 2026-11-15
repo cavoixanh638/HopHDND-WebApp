@@ -2402,6 +2402,74 @@ try{
   console.log('COMPACT_U01_U02_DESKTOP_PASS',JSON.stringify(desktopGroups));
 
   const l03ReadonlyTypography=await verifyL03Typography('readonly');
+  // Admin saved-wide-layout reproduction: when the six-column sum exceeds
+  // the screen, fit ordinary columns to the measured scroll viewport while
+  // preserving the five L03 tracks. This test never touches real Firebase.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?wide-cols=1'});
+  await eventually("!!document.querySelector('.item-data-table tbody tr .compact-stage-row')",
+    'Wide-source-width ItemList QA did not mount');
+  const wideFit=await evaluate(`(()=>{
+    const viewport=document.querySelector('.item-data-region .item-table-scroll');
+    const table=viewport?.querySelector('.item-data-table');
+    const headers=[...table?.querySelectorAll('thead .item-heading-row th')??[]];
+    const columns=[...table?.querySelectorAll('colgroup col')??[]];
+    const l03=table?.querySelector('tbody tr:first-child td[data-l03-layout] .compact-stages');
+    const labels=[...l03?.querySelectorAll('.compact-stage-label')??[]];
+    const contentIndex=headers.findIndex(h=>h.dataset.columnKey==='content');
+    const l03Index=headers.findIndex(h=>h.dataset.columnKey==='partyLevel');
+    const handles=headers.map(h=>({key:h.dataset.columnKey,resize:!!h.querySelector('.column-resizer')}));
+    return {viewport:viewport?.clientWidth,tableWidth:table?.getBoundingClientRect().width,
+      scrollWidth:viewport?.scrollWidth,scrollExcess:viewport?viewport.scrollWidth-viewport.clientWidth:null,
+      headers:headers.map(h=>h.dataset.columnKey),columns:columns.map(c=>c.getBoundingClientRect().width),
+      contentIndex,l03Index,handles,
+      labelWidths:labels.map(el=>({text:el.textContent.trim(),scroll:el.scrollWidth,client:el.clientWidth})),
+      l03Scroll:l03?.scrollWidth,l03Client:l03?.clientWidth};
+  })()`);
+  console.log('ADMIN_WIDE_SAVED_COLUMN_FIT_AUDIT',JSON.stringify(wideFit));
+  if(!wideFit.viewport||wideFit.tableWidth>wideFit.viewport+2||wideFit.scrollExcess>2||
+    wideFit.contentIndex<0||wideFit.l03Index!==wideFit.contentIndex+1||
+    !wideFit.handles.find(h=>h.key==='content')?.resize)
+    throw Error('Wide admin List must auto-fit and expose content/L03 boundary drag: '+
+      JSON.stringify(wideFit));
+  console.log('ADMIN_WIDE_SAVED_COLUMN_AUTO_FIT_PASS',JSON.stringify({
+    viewport:wideFit.viewport,table:wideFit.tableWidth,columns:wideFit.columns}));
+
+  // Explicitly resize Content RIGHT NEXT TO fixed L03 using the keyboard
+  // separator. The adjacent compensator is the NEXT NON-L03 column; the L03
+  // total and overall table width must remain unchanged and the new width
+  // must survive the actual React state + shared-layout callback.
+  const initialContentWidth=wideFit.columns[wideFit.contentIndex];
+  const initialL03Width=wideFit.columns[wideFit.l03Index];
+  await evaluate(`(()=>{
+    const handle=document.querySelector('.item-heading-row th[data-column-key="content"] .column-resizer');
+    if(!handle)throw Error('Content resize boundary missing');
+    handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  })()`);
+  await eventually(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cols=[...table?.querySelectorAll('colgroup col')??[]];
+    return Math.abs((cols[${wideFit.contentIndex}]?.getBoundingClientRect().width??0)-
+      ${initialContentWidth+10})<2;
+  })()`,'Admin content column did not resize across fixed L03',60);
+  const wideDrag=await evaluate(`(()=>{
+    const vp=document.querySelector('.item-data-region .item-table-scroll');
+    const table=vp?.querySelector('.item-data-table');
+    const col=[...table?.querySelectorAll('colgroup col')??[]];
+    return {content:col[${wideFit.contentIndex}]?.getBoundingClientRect().width,
+      l03:col[${wideFit.l03Index}]?.getBoundingClientRect().width,
+      table:table?.getBoundingClientRect().width,viewport:vp?.clientWidth,
+      excess:vp?vp.scrollWidth-vp.clientWidth:null};
+  })()`);
+  if(Math.abs(wideDrag.l03-initialL03Width)>1||wideDrag.excess>2)
+    throw Error('Admin drag changed L03 or reintroduced horizontal overflow: '+JSON.stringify(wideDrag));
+  console.log('ADMIN_RESIZE_ACROSS_FIXED_L03_PASS',JSON.stringify(wideDrag));
+
+  // Return to the original fixture so all pre-existing W0/W1 and keyboard
+  // smoke checks keep their source data and saved geometry unchanged.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.item-data-table tbody tr')",
+    'Original compact ItemList QA did not remount after responsive test');
+
   // W0 is a DOM-only reconstruction using the prior saved source width (68px)
   // and the SAME synthetic data, viewport, browser and CSS. It is NOT a live
   // snapshot of the historical deployed version; the report explicitly says so.
