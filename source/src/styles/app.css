@@ -2697,20 +2697,20 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   width:100%;max-width:100%;
 }
 .app-shell.imperial-sky-theme > header.v3-shell-topbar > .top-actions {
-  position:absolute;top:8px;right:0;z-index:45;
+  position:absolute;top:6px;right:0;z-index:45;
   margin:0;width:auto;pointer-events:auto;
 }
 .app-shell.imperial-sky-theme .v3-settings-menu > summary {
-  display:grid;place-items:center;width:34px;height:34px;min-width:34px;
-  padding:0;border:1px solid #d8e2de;border-radius:8px;background:#fff;
-  color:#52717e;font-size:18px;line-height:1;
+  display:grid;place-items:center;width:28px;height:28px;min-width:28px;
+  padding:0;border:1px solid #e3eae9;border-radius:6px;background:transparent;
+  color:#69828b;font-size:14px;line-height:1;
 }
 .app-shell.imperial-sky-theme .v3-settings-menu > summary:hover,
 .app-shell.imperial-sky-theme .v3-settings-menu[open] > summary {
   background:#eaf1f5;border-color:#b7cdd9;
 }
 .app-shell.imperial-sky-theme .v3-settings-menu > .options-popover {
-  position:absolute;right:0;top:41px;z-index:60;
+  position:absolute;right:0;top:35px;z-index:60;
   width:248px;max-width:calc(100vw - 28px);
 }
 .v3-settings-menu .v3-gear-status {

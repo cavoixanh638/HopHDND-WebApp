@@ -17,6 +17,15 @@ const node=(tree:any,type:string):any=>{
 };
 beforeEach(()=>hook.reset());
 describe('Inline Note editor never opens a popup',()=>{
+  it('shows an add prompt only for an editable blank value',()=>{
+    const render=()=>{hook.begin();return InlineNoteEditor({value:'',label:'Ghi chú',onCommit:vi.fn()});};
+    const button=render();
+    expect(button.type).toBe('button');
+    expect(button.props.className).toContain('inline-note-empty');
+    expect(node(button,'span')?.props.children).toBe('Bấm vào để thêm');
+    button.props.onClick();
+    expect(node(render(),'textarea')).toBeDefined();
+  });
   it('uses a multiline textarea and commits on Ctrl+Enter',()=>{
     const onCommit=vi.fn().mockReturnValue(true);
     const render=()=>{hook.begin();return InlineNoteEditor({value:'Bản gốc',label:'Ghi chú',onCommit});};

@@ -1,4 +1,5 @@
 import {describe,it,expect} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {LIST_A4_PRINT_CSS} from '../src/features/items/list-print';
 describe('A4 print content contract',()=>{
   it('uses landscape A4 and only heading + copied visible table, no extra labels',()=>{
@@ -18,5 +19,9 @@ describe('A4 print content contract',()=>{
     expect(LIST_A4_PRINT_CSS).not.toContain('Ngày in');
     expect(LIST_A4_PRINT_CSS).not.toContain('Báo cáo');
     expect(LIST_A4_PRINT_CSS).toContain('thead{display:table-header-group}');
+  });
+  it('never prints an editable placeholder as business content',()=>{
+    const source=readFileSync(new URL('../src/features/items/list-print.ts',import.meta.url),'utf8');
+    expect(source).toContain("value.classList.contains('inline-note-empty')?'—':displayText(value)");
   });
 });
