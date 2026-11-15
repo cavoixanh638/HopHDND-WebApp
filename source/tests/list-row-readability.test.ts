@@ -11,8 +11,10 @@ describe('HĐND List reading continuity',()=>{
     expect(list).toContain('data-document-kind={item.documentKind}');
     expect(list).toContain("className={['color-row',itemColor(item,colorRules)");
   });
-  it('uses the shared user-controlled font size, including three-stage values and ID',()=>{
-    expect(css).toContain('font-size:var(--table-font-size,13px)!important');
+  it('uses a compact 12px List scale at the 13px setting, retaining control range and an 11px floor',()=>{
+    expect(css).toContain('--hdnd-list-business-font-size:max(11px,calc(var(--table-font-size,13px) - 1px))');
+    expect(css).toContain('font-size:var(--hdnd-list-business-font-size,12px)!important');
+    expect(css).not.toContain('font-size:var(--table-font-size,13px)!important');
     for(const selector of ['.code','.compact-stage-label','.compact-stage-state','.compact-stage-level',
       '.workflow-status-value','.compact-document-content','.compact-pair-tag',
       '.inline-note-trigger','.cell-picker-trigger'])expect(css).toContain(selector);
