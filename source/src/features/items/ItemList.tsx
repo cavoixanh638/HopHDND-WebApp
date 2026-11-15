@@ -1286,7 +1286,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
-    </tbody></table></div></>}
+    </tbody></table></div>
+      <footer className="item-list-table-footer" aria-label="Chân bảng Danh sách"
+        data-visible-count={rows.length} data-total-count={items.length}>
+        <span>Đang hiển thị <strong>{rows.length}</strong> / {items.length} nội dung</span>
+      </footer></>}
     </div>
     {bulkPasteOpen&&denseChrome&&onBulkApply&&<BulkPasteModal rows={rows} live={sourceKind==='firebase'}
       canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}

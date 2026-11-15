@@ -34,6 +34,22 @@
   overflow-x:auto;
   overflow-y:hidden;
 }
+/* The List already has its own horizontal scrollbar. At Chrome 75% zoom
+   subpixel rounding in a fixed three-rail grid can expose a second, tiny bar
+   at the bottom of EVERY record. Do not create 59 nested scrollbar gutters.
+   Keep the x-scroll behavior for exceptionally narrow owner-defined tracks,
+   but hide its redundant chrome; preserve all text, rail pixels and pickers.
+   Report-detail popup is intentionally not modified. */
+.item-data-table tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"] {
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.item-data-table tbody td[data-l03-layout]
+  .compact-stages[data-rev2="true"]::-webkit-scrollbar {
+  width:0;height:0;display:none;
+}
+
 /* Fixed pixel tracks. No percentage, auto, max-content, 1fr or hidden
    viewport redistribution is allowed in this specific L03 subgrid. */
 :is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout="readonly"]

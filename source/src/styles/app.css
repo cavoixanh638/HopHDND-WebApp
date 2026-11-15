@@ -2094,6 +2094,47 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
 }
 
+/* 15/11 — List end-of-table affordance. Previously the viewport-locked
+   shell hid the site footer AND the table had no own footer, so its lower edge
+   looked abruptly cut off, particularly near the bottom of the screen.
+   Reserve a quiet 12px floor and a fixed small result-count strip. */
+.app-shell.list-fit-page:not(.guest-view) {padding-bottom:12px;}
+.app-shell.list-fit-page .item-data-region .item-list-table-footer {
+  box-sizing:border-box;display:flex;flex:0 0 auto;
+  justify-content:flex-end;align-items:center;
+  width:100%;min-width:0;min-height:23px;
+  margin:3px 0 0;padding:4px 3px 0;
+  border-top:1px solid #dce5e4;
+  color:#667988;font-size:11px;line-height:1.25;
+  font-variant-numeric:tabular-nums;
+}
+.app-shell.list-fit-page .item-list-table-footer strong {color:#35566a;font-weight:700;}
+
+/* A guest has no admin header/options, so the fixed 100dvh List can leave
+   a large empty scroll *surface* after a short/filtered table. Let the guest
+   page end at its actual content, and cap ONLY the data grid for long lists.
+   The table retains its own sticky heading and x/y scrollbar; a short result
+   never reserves an artificial 260–760px viewport. No permissions change. */
+@media screen {
+  .app-shell.guest-view.list-fit-page {
+    height:auto;min-height:0;overflow:visible;padding-bottom:14px;
+  }
+  .app-shell.guest-view.list-fit-page > main,
+  .app-shell.guest-view.list-fit-page .item-list-card,
+  .app-shell.guest-view.list-fit-page .item-list-card > .item-data-region {
+    flex:0 0 auto;min-height:0;max-height:none;overflow:visible;
+  }
+  .app-shell.guest-view.wide-table-page.list-fit-page
+    .item-data-region .item-table-scroll {
+    flex:0 0 auto;height:auto;min-height:0;
+    max-height:clamp(220px,64dvh,760px);
+    overflow:auto;overscroll-behavior-y:auto;
+  }
+}
+@media print {
+  .item-list-table-footer {display:none!important;}
+}
+
 /* 24/10 — Navigation is a pair of short, legible tabs, not two large cards.
    Retain both active-status colors and the approved 3D hover shadow. */
 .app-shell > nav.nav-tabs.primary-section-switcher {
