@@ -47,7 +47,7 @@ import './inline-note-hit-area.css';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {ColumnResizeHandle} from '../../components/ColumnResizeHandle';
 import {projectedIdWidth,projectedPhysicalLimits,projectedAdjacentBounds,resizeProjectedWithAdjacent} from '../../data/resize-last-column';
-import {fitTableColumns} from '../../data/fit-table-columns';
+import {fitTableColumnsResponsive} from '../../data/fit-table-columns';
 import {ItemSummaryCards} from './ItemSummaryCards';
 import {summarizeListItems,type SummarySelection} from '../../domain/item-summary';
 import {DETAIL_FIELDS,SEARCH_FIELDS,SEARCHABLE_ITEM_FIELDS,newToolbarState,filterToolbarRows,filterByChips,
@@ -557,10 +557,22 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const flexibleWidths=baseWidths.filter(c=>c.key!==l03Key);
   const priorGrowth=fitGrowth.current?.signature===fitSignature
     ?Object.fromEntries(flexibleWidths.map(c=>[c.key,fitGrowth.current!.growth[c.key]??0])):undefined;
-  const fittedOther=fitTableColumns(flexibleWidths,
-    !customizing&&!showAllSourceColumns
-      ?Math.max(0,Math.max(500,viewportWidth)-(l03Key?l03PhysicalWidth:0)):0,
-    weights,priorGrowth);
+  // Project the saved configuration into the ACTUAL scroll viewport. Grow or
+  // shrink only flexible columns; keep compact ID and all five L03 rails at
+  // their original physical width. Never persist a fit projection by itself.
+  const fitMinimums=Object.fromEntries(flexibleWidths.map(c=>{
+    const extra=compactPairs.find(pair=>pair.anchor===c.key)?.extraWidth??0;
+    const readableFloor:Record<string,number>={
+      content:250,specificProgress:155,note:95,
+      room:compactDisplay.teamTogether?215:145,
+      specialist:125,vpLeader:125,ubndLeader:125,department:135
+    };
+    return [c.key,Math.min(c.width,Math.max(60+extra,readableFloor[c.key]??80))];
+  }));
+  const fitViewport=!customizing&&!showAllSourceColumns&&viewportWidth>0
+    ?Math.max(0,viewportWidth-(l03Key?l03PhysicalWidth:0)):0;
+  const fittedOther=fitTableColumnsResponsive(flexibleWidths,fitViewport,
+    weights,priorGrowth,fitMinimums);
   const fittedWidths=l03Key
     ?{...fittedOther,[l03Key]:l03PhysicalWidth}:fittedOther;
   fitGrowth.current={signature:fitSignature,growth:Object.fromEntries(baseWidths.map(c=>
@@ -591,7 +603,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     !personalViewActive&&!showAllSourceColumns&&!locked&&!permissionMode;
   // A visual column drag is not a shared-layout write. Only verified admins
   // use the Firebase CAS writer; demo edits remain in this component's RAM.
-  const canViewerResize=adminControls&&!customizing&&!showAllSourceColumns&&!permissionMode;
+  const canViewerResize=canEditListSettings&&!customizing&&!showAllSourceColumns;
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
     baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
     kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
@@ -1128,15 +1140,17 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
-    // No per-track or indirect neighbor resize may silently alter the L03 modes.
-    column.key!==l03Key&&displayedColumns[index+1]?.key!==l03Key&&
+    // L03 itself is changed only via its five-track editor. A handle next to
+    // L03 may resize the ordinary column on its far side without changing L03.
+    column.key!==l03Key&&
     resizeKeys.indexOf(column.key)<resizeKeys.length-1&&
     projectedAdjacentBounds(activeLayout,resizeKeys,column.key,
       projectedExtras,compactOn,groupExtras)&&
     <ColumnResizeHandle windowDragFallback columnIndex={index} width={visualWidth(column.width,column.key)}
-      adjacent={{index:index+1,
-        width:visualWidth(displayedColumns[index+1].width,displayedColumns[index+1].key),
-        ...projectedPhysicalLimits(displayedColumns[index+1].key,groupExtras,compactOn)}}
+      adjacent={{index:displayedColumns.findIndex(c=>c.key===resizeKeys[resizeKeys.indexOf(column.key)+1]),
+        width:visualWidth(activeLayout.columns.find(c=>c.key===resizeKeys[resizeKeys.indexOf(column.key)+1])!.width,
+          resizeKeys[resizeKeys.indexOf(column.key)+1]),
+        ...projectedPhysicalLimits(resizeKeys[resizeKeys.indexOf(column.key)+1],groupExtras,compactOn)}}
       fallback={resizeKeys.indexOf(column.key)<resizeKeys.length-2?{
         index:displayedColumns.findIndex(c=>c.key===resizeKeys.at(-1)),
         width:visualWidth(activeLayout.columns.find(c=>c.key===resizeKeys.at(-1))!.width,resizeKeys.at(-1)),
@@ -1150,7 +1164,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           column.key,width,projectedExtras,compactOn,groupExtras));
         else if(canViewerArrange)void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
-        else if(canViewerResize)setApplied(previous=>resizeProjectedWithAdjacent(previous,keys,
+        else if(canViewerResize)void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
       }}/>}</ColumnHeader>)}</tr>{adminControls&&(customizing||permissionMode)&&<tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
