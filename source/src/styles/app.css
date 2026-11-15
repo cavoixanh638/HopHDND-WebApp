@@ -2878,3 +2878,16 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 }
 .report-grid-presets-disclosure {margin:8px 0 3px;}
 .report-grid-presets-disclosure .report-grid-presets {margin:8px 0 0;}
+
+/* Report editing uses progressive disclosure: business numbers stay visible. */
+.report-global-options {margin:0 0 14px;border:1px solid #dce8e1;border-radius:9px;padding:0 10px 10px;}
+.report-global-options > summary {cursor:pointer;padding:12px 5px;font-size:13px;font-weight:750;color:#2c604d;}
+.report-global-options > summary:focus-visible,
+.report-columns-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-global-options:not([open]) {padding-bottom:0;}
+.report-global-options .report-page-width-controls {margin-top:8px;}
+.report-per-table-heading {margin:14px 2px 9px;font-size:14px;}
+.report-columns-disclosure {min-width:0;margin:12px 0;}
+.report-columns-disclosure > summary {cursor:pointer;font-size:12px;font-weight:650;padding:8px;color:#35664f;}
+.report-columns-disclosure > fieldset {margin-top:7px;}
+.build-count-setting small {display:block;line-height:1.45;}
