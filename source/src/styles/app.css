@@ -2912,3 +2912,10 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .account-diagnostics > summary {cursor:pointer;padding:11px 4px;font-size:12px;font-weight:700;color:#4a6456;}
 .account-diagnostics > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
 .account-diagnostics > .notice {margin:5px 0 12px;}
+
+/* The first report shows a preview; four other preview tables expand on demand. */
+.report-preview-disclosure {min-width:0;border:1px solid #e0e9e3;border-radius:9px;padding:0 9px 9px;}
+.report-preview-disclosure > summary {cursor:pointer;color:#375c4c;font-size:12px;font-weight:700;line-height:1.4;padding:10px 3px;}
+.report-preview-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-preview-disclosure:not([open]) {padding-bottom:0;}
+.report-preview-disclosure > .muted {margin:6px 4px 8px;}
