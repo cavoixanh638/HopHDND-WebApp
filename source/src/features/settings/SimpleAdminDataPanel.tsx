@@ -127,7 +127,7 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
       </section>
       <details className="admin-maintenance-operation">
         <summary>2. Nhập hoặc thay thế danh sách bằng Excel A–O</summary>
-        <label className="field">Chọn file Excel (.xlsx)
+        <label className="field">Nhập Excel (.xlsx)
           <input type="file" accept=".xlsx" disabled={busy||disabled}
             onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadExcel(file);
               e.currentTarget.value='';}}/>
