@@ -102,6 +102,9 @@ function CompactVisualQa(){
       ?r03.map((item,index)=>index===0?{...item,
         progressCouncil:'Đang xử lý hồ sơ thử nghiệm rất dài để kiểm tra trạng thái xuống dòng mà không bị cắt chữ trong cụm ba khâu'}:item)
       :r03;
+    // Only this QA URL mimics a guest filter with two result rows; the
+    // viewport must shrink to those rows instead of adding empty white space.
+    if(params.get('short-rows')==='1')return wrap.slice(0,2);
     if(params.get('r05')!=='1')return wrap;
     // Synthetic only: red / amber / green in one record, neutral and
     // unknown in a second. The third includes an R03 source-specific rule.
