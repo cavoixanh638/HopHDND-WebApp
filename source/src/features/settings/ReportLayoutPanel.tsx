@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import type { GroupField, Item } from '../../../shared/types';
 import type {ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
 import {configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,
@@ -17,6 +18,9 @@ type ReportLayoutPanelProps = {
 };
 
 export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, groupOrder, groupIdentities }: ReportLayoutPanelProps) {
+  // Opening a report preview is transient UI state; do not persist it with
+  // reporting rules and do not force other previews closed on every edit.
+  const [openPreviews,setOpenPreviews]=useState<string[]>(()=>draft.length?[draft[0].id]:[]);
   const update = (index: number, change: Partial<ReportLayout>) => {
     onChange(draft.map((report, current) => current === index ? { ...report, ...change } : report));
   };
@@ -187,7 +191,14 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </fieldset></details>
             </div>
             <div className="report-layout-preview">
-              <details className="report-preview-disclosure" open={index===0}>
+              <details className="report-preview-disclosure" open={openPreviews.includes(report.id)}
+                onToggle={event=>{
+                  const opened=event.currentTarget.open;
+                  setOpenPreviews(current=>{
+                    const present=current.includes(report.id);
+                    return present===opened?current:opened?[...current,report.id]:current.filter(id=>id!==report.id);
+                  });
+                }}>
                 <summary>Xem trước bảng {index+1}: {report.title}{report.visible?'':' (đang ẩn)'}</summary>
                 <p className="muted">Kéo đường phân cách ở tiêu đề để điều chỉnh độ rộng cột. Chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
                 <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
