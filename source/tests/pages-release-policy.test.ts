@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
   it('passes standalone Node policy regression matrix before allowing a UI release',()=>{
-    const cwd=new URL('../',import.meta.url).pathname;
+    const cwd=fileURLToPath(new URL('../',import.meta.url));
     const output=execFileSync(process.execPath,
       ['--test','scripts/pages-release-policy.test.mjs'],
       {cwd,encoding:'utf8',timeout:12000});
