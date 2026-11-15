@@ -854,19 +854,25 @@ try{
     throw Error('Guest List font audit did not find source columns: '+JSON.stringify(visibleFontAudit));
   console.log('GUEST_LIST_COLUMN_FONT_AUDIT',JSON.stringify(visibleFontAudit));
 
-  // The 13px saved base must render a truly COMPACT 12px List across all
-  // business values and nested L03 labels; no global or A4 setting changes.
+  // All List business values stay at 12px for a 13px base. The ONLY
+  // deliberate 11px exception is the L03 caption (and its inline level text)
+  // to keep the original 110px owner-configured rail on one line.
   const compactDisplaySize='12px';
+  const l03LabelDisplaySize='11px';
   const inconsistent=visibleFontAudit.columns.flatMap(col=>{
+    const target=(member)=>col.key==='partyLevel'&&
+      ['primary','stageLabel','stageLevel'].includes(member)
+      ?l03LabelDisplaySize:compactDisplaySize;
     const mismatches=[
-      ...(col.cellFont===compactDisplaySize?[]:[{member:'cell',size:col.cellFont}]),
-      ...(col.primaryFont===compactDisplaySize?[]:[{member:'primary',size:col.primaryFont}]),
-      ...col.segments.filter(member=>member.size!==compactDisplaySize).map(member=>({member:member.name,size:member.size}))
+      ...(col.cellFont===target('cell')?[]:[{member:'cell',size:col.cellFont}]),
+      ...(col.primaryFont===target('primary')?[]:[{member:'primary',size:col.primaryFont}]),
+      ...col.segments.filter(member=>member.size!==target(member.name))
+        .map(member=>({member:member.name,size:member.size}))
     ];
     return mismatches.map(member=>({column:col.key,...member}));
   });
   if(visibleFontAudit.tableFont!=='13px'||inconsistent.length)
-    throw Error('Guest List must render 12px text at 13px configured base: '+JSON.stringify({inconsistent,visibleFontAudit}));
+    throw Error('Guest List 12px values + 11px L03 captions must match configured 13px base: '+JSON.stringify({inconsistent,visibleFontAudit}));
   console.log('GUEST_LIST_FONT_UNIFIED_PASS',JSON.stringify({
     columns:visibleFontAudit.columns.map(col=>({key:col.key,size:col.primaryFont,segments:col.segments})),
     configured:visibleFontAudit.tableFont,rendered:compactDisplaySize
