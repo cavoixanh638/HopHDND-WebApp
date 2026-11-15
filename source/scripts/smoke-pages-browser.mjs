@@ -2428,8 +2428,10 @@ try{
   console.log('ADMIN_WIDE_SAVED_COLUMN_FIT_AUDIT',JSON.stringify(wideFit));
   if(!wideFit.viewport||wideFit.tableWidth>wideFit.viewport+2||wideFit.scrollExcess>2||
     wideFit.contentIndex<0||wideFit.l03Index!==wideFit.contentIndex+1||
-    !wideFit.handles.find(h=>h.key==='content')?.resize)
-    throw Error('Wide admin List must auto-fit and expose content/L03 boundary drag: '+
+    !wideFit.handles.find(h=>h.key==='content')?.resize||
+    wideFit.labelWidths.some(x=>x.scroll>x.client+1)||
+    wideFit.l03Scroll>wideFit.l03Client+1)
+    throw Error('Wide admin List must fit without outer/inner scroll and expose content/L03 drag: '+
       JSON.stringify(wideFit));
   console.log('ADMIN_WIDE_SAVED_COLUMN_AUTO_FIT_PASS',JSON.stringify({
     viewport:wideFit.viewport,table:wideFit.tableWidth,columns:wideFit.columns}));
@@ -3595,8 +3597,16 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
-  if(await evaluate("!!document.querySelector('th[data-column-key=content] .column-resizer,th[data-column-key=partyLevel] .column-resizer')"))
-    throw Error('L03 independent track widths must not expose an indirect neighbor resize');
+  // The column immediately LEFT of L03 now has a valid drag handle.
+  // It must compensate using the next NON-L03 column; L03 itself still has
+  // no handle and its owner-selected two/three-stage widths remain fixed.
+  const stageBoundary=await evaluate(`({
+    content:!!document.querySelector('th[data-column-key=content] .column-resizer'),
+    l03:!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')
+  })`);
+  if(!stageBoundary.content||stageBoundary.l03)
+    throw Error('Only the ordinary Content boundary may resize around fixed L03: '+
+      JSON.stringify(stageBoundary));
   // L03 has independently saved tracks. Move it away from the boundary so
   // the generic neighbor/fallback contract is tested against the staff group.
   await moveLast('partyLevel');
