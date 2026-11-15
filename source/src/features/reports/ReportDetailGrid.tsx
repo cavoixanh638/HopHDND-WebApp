@@ -308,15 +308,20 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>}
         {!guestViewer&&<button type="button" className="button ghost" onClick={clearFilters}
           disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>}
-        {!guestViewer&&<label className="report-grid-quick-width">Rộng popup
-          <DeferredWidthInput label="Độ rộng toàn popup (px)"
-            min={minDialogWidth} max={availableWidth}
-            value={Math.min(displayedLayout.dialogWidth,availableWidth)}
-            onCommit={changeDialogWidth}/>
-          <span>px</span>
-        </label>}
-        {!guestViewer&&statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
-          store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
+        {!guestViewer&&<details className="report-grid-display-options">
+          <summary>Hiển thị nâng cao</summary>
+          <div className="report-grid-display-options-content">
+            <label className="report-grid-quick-width">Rộng popup
+              <DeferredWidthInput label="Độ rộng toàn popup (px)"
+                min={minDialogWidth} max={availableWidth}
+                value={Math.min(displayedLayout.dialogWidth,availableWidth)}
+                onCommit={changeDialogWidth}/>
+              <span>px</span>
+            </label>
+            {statusPaletteStore&&onStatusPaletteChange&&<StatusPaletteManager compact
+              store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
+          </div>
+        </details>}
         {!guestViewer&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
@@ -325,7 +330,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           onClick={onOpenFullList}>Mở Danh sách dữ liệu</button>}
       </div>}
     </div>
-    {!readOnlyViewer&&!guestViewer&&<div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
+    {!readOnlyViewer&&!guestViewer&&<details className="report-grid-presets-disclosure"><summary>Mẫu hiển thị cá nhân · Chỉ trên trình duyệt này</summary><div className="report-grid-presets" role="group" aria-label="Mẫu hiển thị riêng của bảng popup">
       <label>Mẫu bảng popup <select aria-label="Mẫu hiển thị popup" value={selectedPreset}
         onChange={e=>loadPreset(e.target.value)}>
         <option value="">Mặc định</option>
@@ -337,7 +342,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {selectedPreset&&<><button type="button" className="button ghost"
         onClick={updatePreset}>Cập nhật mẫu</button>
         <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
-    </div>}
+    </div></details>}
     {!readOnlyViewer&&!guestViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
