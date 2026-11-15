@@ -185,7 +185,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(false);
     expect(text(tree)).toContain('Đang xác minh lại kết nối quản trị'); // Fail closed without misclassifying a verified admin as guest.
     firebase.common.status='ready';
-    tree=open('Tài khoản và dữ liệu');
+    tree=open('Tài khoản');
     expect(tree.props.className).toContain('settings-page');
     expect(tree.props.style['--page-content-width']).toBe('1100px');
     expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(true);
@@ -194,7 +194,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     grantAdmin();
     saveSheetConfig(parseSheetConfig('https://docs.google.com/spreadsheets/d/fake-sheet/edit?gid=42'));
     render();expect(new URL(scripts[0].src).searchParams.get('gid')).toBe('42');respond();await settle();render();
-    open('Tài khoản và dữ liệu');
+    open('Tài khoản');
     button(render(),'Làm mới dữ liệu').props.onClick();expect(scripts).toHaveLength(2);expect(firebase.common.refresh).toHaveBeenCalledOnce();respond('Sau đọc lại');await settle();render();
     await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);respond('Sau polling');await settle();render();
     (document as any).hidden=true;await vi.advanceTimersByTimeAsync(60000);expect(scripts).toHaveLength(3);
@@ -247,11 +247,11 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   });
   it('exposes only relevant anonymous browsing and a permitted edit entry, with no technical Firebase details',async()=>{
     render();respond();await settle();const tree=open('Danh sách các ND trình HĐND');
-    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    expect(button(tree,'Đăng nhập Google')).toBeDefined();
     expect(nodes(tree).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
     const gear=nodes(tree).find(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'));
     expect(gear).toBeDefined();
-    expect(nodes(gear).filter(n=>n.type==='button').map(text)).toEqual(['Đăng nhập quản trị']);
+    expect(nodes(gear).filter(n=>n.type==='button').map(text)).toEqual(['Đăng nhập Google']);
     expect(nodes(tree).some(n=>n.type==='span'&&n.props.className==='version')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='demo-banner')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='brand')).toBe(false);
@@ -264,7 +264,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
   it('keeps guest Google login inside gear with no permission or settings shortcut',async()=>{
     render();respond();await settle();
     let tree=open('Danh sách các ND trình HĐND');
-    const login=button(tree,'Đăng nhập quản trị');
+    const login=button(tree,'Đăng nhập Google');
     expect(nodes(tree).some(n=>n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
     login.props.onClick();await settle();
     expect(firebase.login).toHaveBeenCalledOnce();
@@ -344,7 +344,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     (window as any)[name]({status:'ok',table:{cols:Array.from({length:16},()=>({})),rows:[{c:[null,null,{v:'Nội dung trình'},{v:'Sở, ngành'}]}]}});
     await settle();render();
     expect(nodes(render()).some(n=>n.type==='button'&&text(n)==='Sửa thử nội dung')).toBe(false);
-    expect(button(render(),'Đăng nhập quản trị')).toBeDefined();
+    expect(button(render(),'Đăng nhập Google')).toBeDefined();
     grantAdmin();
     let list=nodes(open('Chỉnh sửa')).find(n=>n.type===ItemList);
     expect(list.props.items).toHaveLength(0);
@@ -352,7 +352,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
   });
   it('keeps the last Sheets snapshot when a subsequent GViz read fails',async()=>{
-    grantAdmin();render();respond();await settle();render();open('Tài khoản và dữ liệu');button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
+    grantAdmin();render();respond();await settle();render();open('Tài khoản');button(render(),'Làm mới dữ liệu').props.onClick();scripts.at(-1).onerror();await settle();
     const tree=open('Danh sách các ND trình HĐND'),list=nodes(tree).find(n=>n.type===ItemList);expect(list.props.items[0].note).toBe('Nguồn Sheets');expect(text(tree)).toContain('Bản đọc trước được giữ');
   });
   it('uses the same Firebase save path for reports, catalogs and item layout after switching to Sheets',async()=>{
@@ -467,7 +467,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(menu).toBeDefined();
     const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
     expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual([
-      'Chỉnh sửa','Tùy chỉnh báo cáo','Phân quyền chỉnh sửa ô','Tài khoản và dữ liệu','Nhập / Xuất Excel','Chốt số liệu','Hiện mã khu vực'
+      'Chỉnh sửa','Tùy chỉnh báo cáo','Phân quyền chỉnh sửa ô','Tài khoản','Nhập / Xuất Excel','Chốt số liệu','Hiện mã khu vực'
     ]);
     expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(2);
     tree=open('Chỉnh sửa');
@@ -476,7 +476,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
     tree=open('Bảng thống kê');
     expect(nodes(tree).some(n=>n.type===ReportSettings)).toBe(true);
-    tree=open('Tài khoản và dữ liệu');
+    tree=open('Tài khoản');
     expect(nodes(tree).some(n=>n.props?.className==='settings-hub-tabs')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
     expect(nodes(tree).some(n=>n.type==='div'&&n.props?.className==='options-popover')).toBe(true);
@@ -516,8 +516,8 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.type===ItemList)).toBe(true);
   });
   it('keeps Excel content import blocked and selecting another Sheets source read-only',async()=>{
-    grantAdmin();render();respond();await settle();open('Tài khoản và dữ liệu');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
-    open('Tài khoản và dữ liệu');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
+    grantAdmin();render();respond();await settle();open('Tài khoản');const tree=open('Excel · Trích xuất'),panel=nodes(tree).find(n=>n.type===ExcelTransferPanel);expect(panel.props.importEnabled).toBe(false);await expect(panel.props.onImport([])).rejects.toThrow('chuyển đổi');panel.props.onClose();
+    open('Tài khoản');const source=nodes(open('Google Sheets')).find(n=>n.type===ConnectionPanel);const pending=source.props.onConnect(parseSheetConfig('https://docs.google.com/spreadsheets/d/another-fake/edit?gid=9'));respond();await pending;await settle();render();await settle();source.props.onClose();
     const list=nodes(open('Danh sách các ND trình HĐND')).find(n=>n.type===ItemList);expect(list.props.sourceKind).toBe('google');expect(list.props.readOnly).toBe(true);expect(list.props.items[0].recordId).toContain('another-fake:9');
   });
 });
