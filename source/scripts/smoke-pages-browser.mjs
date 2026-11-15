@@ -4369,6 +4369,102 @@ try{
     throw Error('R06 desktop list-fit changed while enough room: '+JSON.stringify(r06Desktop));
   console.log('R06_APP_SHELL_MOBILE_TABLE_REACHABLE_PASS',JSON.stringify({r06Screens,r06Desktop}));
 
+  // Desktop List must NOT trap expanded admin options inside its locked
+  // viewport. Real ItemList + real CSS, only loopback synthetic source data.
+  // The collapsed desktop stays one screen; expanding L03 controls makes the
+  // entire DOCUMENT scrollable while the table keeps its own scrollbar.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:900,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&r05=1'});
+  await eventually("!!document.querySelector('.app-shell.list-fit-page .admin-preview-options-toggle')",
+    'Dense admin preview options missing');
+  const adminClosedScroll=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
+    return {overflow:getComputedStyle(shell).overflowY,max:doc.scrollHeight-doc.clientHeight,
+      hidden:!!document.querySelector('.admin-list-controls[hidden]')};
+  })()`);
+  if(!adminClosedScroll.hidden||adminClosedScroll.max>3||adminClosedScroll.overflow!=='hidden')
+    throw Error('ADMIN_OPTIONS_COLLAPSED_ONE_SCREEN_FAIL '+JSON.stringify(adminClosedScroll));
+  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
+  await eventually("!!document.querySelector('.admin-list-controls:not([hidden])')",
+    'Dense admin options did not expand');
+  await evaluate("document.querySelector('.admin-l03-widths button')?.click()");
+  await eventually("!!document.querySelector('#admin-l03-width-editor button[type=submit]')",
+    'Five L03 widths admin editor missing');
+  const adminOpenScroll=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
+    const table=document.querySelector('.item-table-scroll');
+    return {overflow:getComputedStyle(shell).overflowY,max:doc.scrollHeight-doc.clientHeight,
+      docScroll:doc.scrollTop,tableHeight:table.clientHeight,
+      tableScrollMax:table.scrollHeight-table.clientHeight,
+      tableOverscroll:getComputedStyle(table).overscrollBehaviorY,
+      mainOverflow:getComputedStyle(shell.querySelector('main')).overflowY,
+      itemOverflow:getComputedStyle(shell.querySelector('.item-list-card')).overflowY};
+  })()`);
+  if(adminOpenScroll.overflow!=='visible'||adminOpenScroll.mainOverflow!=='visible'||
+    adminOpenScroll.itemOverflow!=='visible'||adminOpenScroll.max<120||
+    adminOpenScroll.tableHeight<300||adminOpenScroll.tableScrollMax<10||
+    adminOpenScroll.tableOverscroll!=='auto')
+    throw Error('ADMIN_OPTIONS_OPEN_DOCUMENT_SCROLL_FAIL '+JSON.stringify(adminOpenScroll));
+  // Actual document scroll: all fields can be brought into view, independently
+  // of the table scroll and without writing any configuration to Firebase.
+  const l03Reach=await evaluate(`(()=>{
+    const save=document.querySelector('#admin-l03-width-editor button[type=submit]');
+    save.scrollIntoView({block:'center'});
+    const rect=save.getBoundingClientRect();
+    return {y:document.scrollingElement.scrollTop,top:rect.top,bottom:rect.bottom,
+      height:innerHeight};
+  })()`);
+  if(l03Reach.top<0||l03Reach.bottom>l03Reach.height)
+    throw Error('ADMIN_L03_EDITOR_UNREACHABLE '+JSON.stringify(l03Reach));
+  const pageAndTable=await evaluate(`(()=>{
+    const doc=document.scrollingElement,table=document.querySelector('.item-table-scroll');
+    doc.scrollTop=0;
+    const pageBefore=doc.scrollTop;
+    doc.scrollTop=doc.scrollHeight;
+    const pageAfter=doc.scrollTop;
+    const tableBefore=table.scrollTop;table.scrollTop+=115;
+    return {pageBefore,pageAfter,pageMax:doc.scrollHeight-doc.clientHeight,
+      tableBefore,tableAfter:table.scrollTop,tableMax:table.scrollHeight-table.clientHeight};
+  })()`);
+  if(pageAndTable.pageAfter<=pageAndTable.pageBefore||
+    pageAndTable.tableAfter<=pageAndTable.tableBefore)
+    throw Error('ADMIN_PAGE_AND_INNER_TABLE_SCROLL_NOT_INDEPENDENT '+JSON.stringify(pageAndTable));
+  console.log('ADMIN_OPTIONS_DOCUMENT_AND_TABLE_SCROLL_PASS',JSON.stringify({
+    collapsed:adminClosedScroll,expanded:adminOpenScroll,l03Reach,pageAndTable}));
+  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
+  await eventually("!!document.querySelector('.admin-list-controls[hidden]')",
+    'Dense admin options did not collapse');
+  const restored=await evaluate(`(()=>{
+    const root=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
+    return {overflow:getComputedStyle(root).overflowY,
+      max:doc.scrollHeight-doc.clientHeight};
+  })()`);
+  if(restored.overflow!=='hidden'||restored.max>3)
+    throw Error('ADMIN_OPTIONS_COLLAPSE_RESTORES_VIEWPORT_FAIL '+JSON.stringify(restored));
+  console.log('ADMIN_OPTIONS_COLLAPSE_RESTORE_PASS',JSON.stringify(restored));
+
+  // The same page-shell CSS must not activate admin scrolling for a guest,
+  // including a granted editable cell in the guest's real ItemList.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&guest=1&edit=1'});
+  await eventually("!!document.querySelector('.app-shell.list-fit-page .item-table-scroll')",
+    'Guest List scroll fixture missing');
+  const guestDoc=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
+    return {adminMenu:!!document.querySelector('.admin-list-controls'),
+      overflow:getComputedStyle(shell).overflowY,
+      max:doc.scrollHeight-doc.clientHeight,
+      table:document.querySelector('.item-table-scroll').clientHeight};
+  })()`);
+  if(guestDoc.adminMenu||guestDoc.overflow!=='hidden'||guestDoc.max>3||guestDoc.table<200)
+    throw Error('GUEST_LIST_SCROLL_ISOLATION_FAIL '+JSON.stringify(guestDoc));
+  console.log('GUEST_LIST_SCROLL_ISOLATION_PASS',JSON.stringify(guestDoc));
+  // Return Chrome dimensions to the existing smoke baseline.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
+
   // Codex Lượt 020 R07/P2: use real popup configuration input (not an
   // injected localStorage value).  Verify immediately after save, reopening
   // settings, closing/reopening modal via remount, and full reload.

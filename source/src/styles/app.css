@@ -2058,6 +2058,42 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
 }
 
+/* 15/11: the desktop one-screen List may only be viewport-locked while
+   admin presentation controls are COLLAPSED. Their expanded content can be
+   taller than the remaining flex height, otherwise main/card overflow:hidden
+   clips the L03 rails editor, other checkboxes and the whole lower table.
+   Switch to natural DOCUMENT scrolling only when the actual admin options
+   panel is visible; the List retains independent table x/y scrolling.
+   No page state, saved widths or Firebase preference is changed. */
+@media screen and (min-width:981px) and (min-height:851px) {
+  .app-shell.list-fit-page:has(
+    .item-list-card[data-compact-chrome="true"] .admin-list-controls:not([hidden])
+  ) {
+    height:auto;min-height:100dvh;overflow:visible;
+    padding-bottom:24px;
+  }
+  .app-shell.list-fit-page:has(
+    .item-list-card[data-compact-chrome="true"] .admin-list-controls:not([hidden])
+  ) > main,
+  .app-shell.list-fit-page:has(
+    .item-list-card[data-compact-chrome="true"] .admin-list-controls:not([hidden])
+  ) .item-list-card,
+  .app-shell.list-fit-page:has(
+    .item-list-card[data-compact-chrome="true"] .admin-list-controls:not([hidden])
+  ) .item-list-card > .item-data-region {
+    flex:0 0 auto;min-height:0;max-height:none;overflow:visible;
+  }
+  .app-shell.wide-table-page.list-fit-page:has(
+    .item-list-card[data-compact-chrome="true"] .admin-list-controls:not([hidden])
+  ) .item-data-region .item-table-scroll {
+    flex:0 0 auto;height:clamp(320px,53dvh,640px);
+    min-height:0;max-height:none;overflow:auto;
+    /* Wheel at the table boundary must be able to continue scrolling the
+       document, rather than getting trapped by overscroll-behavior:contain. */
+    overscroll-behavior-y:auto;overscroll-behavior-x:contain;
+  }
+}
+
 /* 24/10 — Navigation is a pair of short, legible tabs, not two large cards.
    Retain both active-status colors and the approved 3D hover shadow. */
 .app-shell > nav.nav-tabs.primary-section-switcher {

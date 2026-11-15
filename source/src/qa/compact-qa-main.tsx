@@ -165,6 +165,7 @@ function CompactVisualQa(){
         readOnly={!editing} canEditDraft={editing}
         canEditCell={editing?(id,field)=>mixed?mixedGrant(id,field):!clearQa||field==='vpLeader'||field==='ubndLeader':undefined}
         customizing={adminLayoutQa} anonymousViewer={guest} viewerScope={guest?'synthetic-guest':'synthetic-admin'} allowPersonalCompact={guest}
+        compactChrome={params.get('dense-chrome')==='1'}
         initialLayout={layout} statusPaletteStore={palette}
         onUpdate={(recordId,changes)=>{
           if(!editing)throw Error('QA READ-ONLY');
