@@ -41,6 +41,9 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
   sourceRef.current = repository;
   const fetching = useRef<Repository | null>(null);
   const lastRowsSignature=useRef<string|null>(null);
+  // Undefined is an unobserved/ordinary source; null is a fenced legacy source
+  // whose coherent snapshot is currently closed or empty.
+  const legacyMaintenanceEpoch=useRef<number|null|undefined>(undefined);
   // Background refresh must never replace mounted content with a loading shell,
   // nor mark a no-change response as a new data revision.
   const refresh = useCallback(async (background=false) => {
@@ -90,6 +93,7 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
         clearCheckpoint(`data:${previousSourceKey.current}`);
       previousSourceKey.current=sourceKey;
     }
+    legacyMaintenanceEpoch.current=undefined;
     lastRowsSignature.current=null;setItems([]);setDrafts({});setErrors({});setCachePending(false);
     setLoadedAt('');setMessage('');setAutosaveMessage('');
     skipCheckpoint.current=false;latestDraft.current={items:[],drafts:{}};
@@ -120,6 +124,26 @@ export function useWorkspace(repository: Repository, sourceKey = 'demo',canStart
     const stop=repository.subscribe(rows=>{
       if(!subscribed)return;
       if(sourceRef.current!==repository)return;
+      const stamp=rows.find(row=>Number.isSafeInteger(row.legacyMaintenanceEpoch)&&
+        Number(row.legacyMaintenanceEpoch)>=0)?.legacyMaintenanceEpoch;
+      // Only the new coherent legacy source carries this stamp. A fresh epoch,
+      // or losing its OPEN stamp at freeze, invalidates delayed save callbacks.
+      // Drafts remain pinned to their original context and are never replayed.
+      if(stamp!==undefined||legacyMaintenanceEpoch.current!==undefined){
+        const nextEpoch=stamp??null;
+        if(legacyMaintenanceEpoch.current!==undefined&&legacyMaintenanceEpoch.current!==nextEpoch){
+          saveEpoch.current++;
+          saving.current=false;setSavingRows(new Set());setSavingActive(false);
+          const pending=Object.values(latestDraft.current.drafts);
+          if(pending.length){
+            for(const patch of pending)autoRejected.current.add(patch.operationId);
+            const reason='Phiên dữ liệu đã thay đổi; giữ bản nháp để đối chiếu, không tự gửi lại.';
+            setErrors(previous=>({...previous,...Object.fromEntries(pending.map(patch=>[patch.recordId,reason]))}));
+            setMessage(reason);
+          }
+        }
+        legacyMaintenanceEpoch.current=nextEpoch;
+      }
       const signature=JSON.stringify(rows);
       if(lastRowsSignature.current!==signature||dataSourceRef.current!==repository){
         lastRowsSignature.current=signature;

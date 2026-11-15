@@ -84,6 +84,10 @@ function allowOnlyAdminFrozenReplacementValidation(node){
 }
 allowOnlyAdminFrozenReplacementValidation(h.items);
 
+// Drafts bind to the OPEN primary maintenance epoch in their read baseline.
+// A client cannot carry an old proposal across freeze/replace/reopen; check
+// this again against server root state at the actual transaction commit.
+const primaryEpoch="(root.child('hdnd/freezeControl/epoch').exists() ? root.child('hdnd/freezeControl/epoch').val() : 0)";
 // Direct-CAS status path: release gated, legacy primary only, no pre-open lease.
 function appendDirectStatusRules(h){
   // This is intentionally called AFTER the legacy admin-maintenance wrapper.
@@ -97,6 +101,8 @@ function appendDirectStatusRules(h){
   const session="(!"+binding+".exists() || ("+bound+" && "+staff+"))";
   const base="("+[
     identity,session,"data.parent().exists()",
+    "newData.parent().child('history').child((newData.parent().child('revision').val() % 50) + '').child('maintenanceEpoch').isNumber()",
+    "newData.parent().child('history').child((newData.parent().child('revision').val() % 50) + '').child('maintenanceEpoch').val() === "+primaryEpoch,
     "!root.child('hdnd/datasetV2/active').exists()",
     "(root.child('hdnd/freezeControl/mode').val() === 'OPEN' || !root.child('hdnd/freezeControl/mode').exists())",
     "(root.child('hdnd/control/editingLocked').val() !== true || "+admin+")"
@@ -138,7 +144,9 @@ const preserveOldAudit=['changes','oldValues'].flatMap(section=>
     `newData.child('${section}/${field}').val() === data.child('${section}/${field}').val()`)
 ).join(' && ');
 const auditSlot=h.items.$id.history.$slot;
-auditSlot['.validate']=`(${auditSlot['.validate']}) && (${simpleAdminMaintenance} || $slot === (newData.parent().parent().child('revision').val() % 50) + '' || (${preserveOldAudit}))`;
+const preserveEpoch="newData.child('maintenanceEpoch').val() === data.child('maintenanceEpoch').val()";
+auditSlot.maintenanceEpoch={'.validate':`(${simpleAdminMaintenance}) || (newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && ($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '' ? newData.val() === ${primaryEpoch} : newData.val() === data.val()))`};
+auditSlot['.validate']=`(${auditSlot['.validate']}) && (${simpleAdminMaintenance} || $slot === (newData.parent().parent().child('revision').val() % 50) + '' || (${preserveOldAudit} && ${preserveEpoch}))`;
 
 h.sparkSessions={
   $session:{

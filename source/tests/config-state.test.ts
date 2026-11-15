@@ -241,6 +241,55 @@ describe('Firebase autosave and in-flight edit preservation',()=>{
     expect(state.savingRows.size).toBe(0);expect(state.drafts).toEqual({});
     expect(state.items[0].note).toBe('new pending');
   });
+  it.each(['new epoch','closed source'])('fences delayed legacy ACK after a coherent %s without discarding drafts',async transition=>{
+    const initial={...original,progressCouncil:'Sở chưa trình',legacyMaintenanceEpoch:1};
+    const {legacyMaintenanceEpoch:_oldEpoch,...unstamped}=initial;
+    const replacement={...unstamped,content:'New approved dataset',revision:1,
+      ...(transition==='new epoch'?{legacyMaintenanceEpoch:2}:{})};
+    const late=deferred<any[]>();
+    let publish!:(rows:typeof initial[])=>void;
+    const repo={sourceKind:'firebase',readOnly:false,canDraft:true,subscribeInitial:true,
+      list:vi.fn().mockResolvedValue([initial]),save:vi.fn().mockReturnValue(late.promise),
+      subscribe:(next:typeof publish)=>{publish=next;return()=>{};},history:vi.fn()};
+    workspace(repo);publish([initial]);let state=workspace(repo);
+    state.update(initial.recordId,{progressCouncil:'VP đang xử lý'});state=workspace(repo);
+    const operationId=state.drafts[initial.recordId].operationId;
+    const saving=state.save();state=workspace(repo);
+    expect(state.savingRows.has(initial.recordId)).toBe(true);
+    publish([replacement as typeof initial]);state=workspace(repo);
+    expect(state.items[0]).toEqual(replacement);
+    expect(state.savingRows.size).toBe(0);
+    expect(state.drafts[initial.recordId].operationId).toBe(operationId);
+    expect(state.drafts[initial.recordId].legacyMaintenanceEpoch).toBe(1);
+    expect(state.errors[initial.recordId]).toContain('Phiên dữ liệu đã thay đổi');
+    late.resolve([{recordId:initial.recordId,ok:true,item:{...initial,
+      progressCouncil:'VP đang xử lý',revision:2}}]);
+    expect(await saving).toBe(false);state=workspace(repo);
+    expect(state.items[0]).toEqual(replacement);
+    expect(state.drafts[initial.recordId].operationId).toBe(operationId);
+    expect(state.errors[initial.recordId]).toContain('Phiên dữ liệu đã thay đổi');
+    await vi.advanceTimersByTimeAsync(5000);workspace(repo);
+    expect(repo.save).toHaveBeenCalledTimes(1);
+  });
+  it('keeps a same-epoch peer update compatible with a pending legacy status save',async()=>{
+    const initial={...original,progressCouncil:'Sở chưa trình',legacyMaintenanceEpoch:1};
+    const late=deferred<any[]>();let publish!:(rows:typeof initial[])=>void;
+    const repo={sourceKind:'firebase',readOnly:false,canDraft:true,subscribeInitial:true,
+      list:vi.fn().mockResolvedValue([initial]),save:vi.fn().mockReturnValue(late.promise),
+      subscribe:(next:typeof publish)=>{publish=next;return()=>{};},history:vi.fn()};
+    workspace(repo);publish([initial]);let state=workspace(repo);
+    state.update(initial.recordId,{progressCouncil:'VP đang xử lý'});state=workspace(repo);
+    const saving=state.save();
+    const peer={...initial,note:'Peer update',revision:2};
+    publish([peer]);state=workspace(repo);
+    expect(state.savingRows.has(initial.recordId)).toBe(true);
+    late.resolve([{recordId:initial.recordId,ok:true,item:{...peer,
+      progressCouncil:'VP đang xử lý',revision:3}}]);
+    expect(await saving).toBe(true);state=workspace(repo);
+    expect(state.items[0].note).toBe('Peer update');
+    expect(state.items[0].progressCouncil).toBe('VP đang xử lý');
+    expect(state.drafts).toEqual({});expect(state.errors).toEqual({});
+  });
   it('debounces automatic saves and retains failed edits without an endless retry',async()=>{
     const repo={sourceKind:'firebase',readOnly:false,canDraft:true,list:vi.fn().mockResolvedValue([original]),save:vi.fn().mockRejectedValue(new Error('permission denied')),history:vi.fn()};
     workspace(repo);await settle();let state=workspace(repo);state.update(original.recordId,{note:'B'});state=workspace(repo);await vi.advanceTimersByTimeAsync(400);expect(repo.save).not.toHaveBeenCalled();

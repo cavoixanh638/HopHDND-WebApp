@@ -8,7 +8,8 @@ import type {CellEditSessionManager} from './cell-edit-leases';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-policy';
 import {callCellEdit} from './cell-edit-api';
-import {directStatusCasPatch} from './status-direct-cas';
+import {directStatusCasField,directStatusCasPatch} from './status-direct-cas';
+import {readLegacyMaintenanceRows} from './legacy-maintenance-context';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -70,13 +71,48 @@ export class FirebaseRepository implements Repository {
     if(!sameDatasetEpoch(current,this.expectedActive))
       throw new Error('Thế hệ Firebase đã thay đổi; phiên đọc/sửa cũ bị vô hiệu hóa.');
   }
+  private get directLegacySource(){
+    return !this.expectedActive&&this.itemPath==='hdnd/items'&&directStatusCasField('progressCouncil');
+  }
   async list(){
+    if(this.directLegacySource){
+      const snapshot=await readLegacyMaintenanceRows(this.database,this.user());
+      return rowsFrom(snapshot.value).map(item=>snapshot.context.mode==='OPEN'
+        ?{...item,legacyMaintenanceEpoch:snapshot.context.epoch}:item);
+    }
     await this.assertEpoch();
     const rows=rowsFrom((await get(ref(this.database,this.itemPath))).val());
     await this.assertEpoch();
     return rows;
   }
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void){
+    if(this.directLegacySource){
+      // SDK cache events are triggers only. Never combine their row value with
+      // a newer epoch: each publish uses a coherent server-only sandwich.
+      let stopped=false,running=false,dirty=false;
+      const refresh=()=>{
+        dirty=true;
+        if(running)return;
+        running=true;
+        void (async()=>{
+          try{
+            while(dirty&&!stopped){
+              dirty=false;
+              try{
+                const rows=await this.list();
+                if(!stopped&&!dirty)next(rows);
+              }catch(cause){if(!stopped&&!dirty)error(cause as Error);}
+            }
+          }finally{running=false;}
+        })();
+      };
+      const fail=(cause:Error)=>{if(!stopped)error(cause);};
+      const stops=[onValue(ref(this.database,this.itemPath),refresh,fail),
+        onValue(ref(this.database,'hdnd/freezeControl'),refresh,fail),
+        onValue(ref(this.database,'.info/connected'),refresh,fail)];
+      return()=>{stopped=true;for(const stop of stops)stop();};
+    }
+
     if(!this.expectedActive)return onValue(ref(this.database,this.itemPath),snapshot=>{
       try{next(rowsFrom(snapshot.val()));}catch(cause){error(cause as Error);}
     },error);
@@ -140,7 +176,9 @@ export class FirebaseRepository implements Repository {
         if(answer.status!=='committed'||!answer.row)
           throw new Error('Dịch vụ chưa xác nhận bản ghi; không tự lưu lại.');
         await this.assertEpoch();
-        const item=validateFirebaseItem(answer.row);
+        const item={...validateFirebaseItem(answer.row),
+          ...(Number.isSafeInteger(patch.legacyMaintenanceEpoch)&&Number(patch.legacyMaintenanceEpoch)>=0
+            ?{legacyMaintenanceEpoch:patch.legacyMaintenanceEpoch}:{})};
         if(item.recordId!==patch.recordId||
           fields.some(field=>item[field]!==patch.changes[field]))
           throw new Error('Máy chủ phản hồi giá trị không khớp bản nháp.');

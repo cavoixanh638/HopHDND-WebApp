@@ -23,6 +23,8 @@ export interface Item {
   isDropped: boolean;
   archivedAt: string | null;
   revision: number;
+  /** Read-only legacy source fence; client context only, never a business field. */
+  legacyMaintenanceEpoch?: number;
 }
 export type TextField = 'content' | 'department' | 'type' | 'partyLevel' | 'progressParty' | 'progressBuild' | 'progressCouncil' | 'specialist' | 'room' | 'vpLeader' | 'ubndLeader' | 'specificProgress' | 'note';
 export type EditableField = TextField | 'documentKind' | 'isDropped';
@@ -32,6 +34,8 @@ export interface Patch {
   /** Frozen original code from the edit baseline; never the formatted UI ID. */
   sourceCode?: string;
   baseRevision: number;
+  /** Frozen source epoch from original read; old recovered drafts may lack it. */
+  legacyMaintenanceEpoch?: number;
   baseValues: Changes;
   changes: Changes;
   operationId: string;

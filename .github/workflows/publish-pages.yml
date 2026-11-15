@@ -86,7 +86,7 @@ jobs:
         env:
           VITE_FIREBASE_WRITE_MODE: spark
           VITE_FIREBASE_STATUS_CAS: 'true'
-        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node node_modules/vitest/vitest.mjs run tests/spark-direct-status-cas.test.ts --pool=threads --maxWorkers=1 --no-file-parallelism"
+        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node node_modules/vitest/vitest.mjs run tests/spark-direct-status-cas.test.ts tests/pr190-independent-security.test.ts --pool=threads --maxWorkers=1 --no-file-parallelism"
       - name: Build the Spark PUBLIC Pages client only (never the local operator)
         env:
           VITE_PARENT_REPLACEMENT_ENABLED: 'false'
@@ -111,7 +111,7 @@ jobs:
           cp dist-spark/index.html ../index.html
           mkdir -p ../assets
           rsync -a dist-spark/assets/ ../assets/
-          printf '{"mode":"spark","source_sha":"%s"}\n' "$GITHUB_SHA" > ../version.json
+          printf '{"mode":"spark","source_sha":"%s","status_cas":%s}\n' "$GITHUB_SHA" '${{ steps.status_cas.outputs.status_cas }}' > ../version.json
           test -s ../index.html
           test -f ../.nojekyll || { echo "::error::Missing .nojekyll; GitHub Pages Jekyll will parse TypeScript documentation and fail."; exit 1; }
           echo "PAGES_JEKYLL_DISABLED_PASS"

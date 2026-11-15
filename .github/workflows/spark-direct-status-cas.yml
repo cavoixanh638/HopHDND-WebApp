@@ -38,7 +38,7 @@ jobs:
         env:
           VITE_FIREBASE_WRITE_MODE: spark
           VITE_FIREBASE_STATUS_CAS: 'true'
-        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node node_modules/vitest/vitest.mjs run tests/spark-direct-status-cas.test.ts --pool=threads --maxWorkers=1 --no-file-parallelism"
+        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node node_modules/vitest/vitest.mjs run tests/spark-direct-status-cas.test.ts tests/pr190-independent-security.test.ts --pool=threads --maxWorkers=1 --no-file-parallelism"
       - name: Install locked local browser runner
         run: |
           npm ci --prefix cell-edit-service --no-audit --no-fund

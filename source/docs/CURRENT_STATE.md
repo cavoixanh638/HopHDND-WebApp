@@ -1,3 +1,15 @@
+## 15/11/2026 — PR #190: both security blockers repaired; final release gate pending
+
+Both independent review findings are repaired in the candidate. Older audit slot payloads and maintenance epoch metadata are preserved at a non-deleted parent, with the 50-slot rollover and Google Admin maintenance restore rights retained. Each lease-free status draft pins its original OPEN legacy maintenance epoch; Rules require that epoch in the new audit event at server commit. Missing/recovered old epochs, stale maintenance drafts and queued offline CAS are rejected. Current epoch is checked again before committed/idempotent acknowledgements. Coherent server-only reads never attach a new epoch to cached old rows; workspace epoch transitions retain drafts and operationIds, block replay and fence delayed callbacks.
+
+Independent security review GO is conditional on final exact-head CI and production preflight. Affected coverage passed in explicitly separate local runs: original13 + new19, then four completion/cache cases and one actual bound Google Admin case; no claim that these cumulative37 were one exact-head run. Three focused workspace callback regressions and typecheck PASS. The direct-security workflow and enabled-CAS publisher now run both security files together on the final SHA.
+
+Two independent Chromium processes, distinct Anonymous principals, 24 synthetic saves, same-field collision, lost caller ACK/no replay, zero external requests/production writes: PASS. Local p50/p95 popup80/139 ms, writer ACK129/147 ms, peer rendering198/213 ms; first open65 ms. These are Emulator measurements, not live-network claims. Candidate Rules249585 bytes, SHA256 `e180280cc5225726dee36dcb7fd5a081f06ddc4bf74e6c64c8245d6e605eba34`. V2 and prior lease authorization remain intact; only legacy audit/status validation is hardened.
+
+Next: exact-head applicable CI → fresh private full database/Rules backup + restore drill → deploy reviewed Rules first → read back exact hash, verify old-client compatibility and unchanged business data → mergePR190 at reviewed head → set confirmed Rules hash and exact main SHA in protected Actions variables → publish with `status_cas:true` version marker → verify real website and data. No production action has yet been taken in this repair phase. Runtime rollback publishes lease-mode JS first and keeps compatible Rules until all fast clients reload; never restore older business data over acknowledged writes. [PR #190](https://github.com/cavoixanh638/HopHDND-WebApp/pull/190) records final receipts.
+
+---
+
 ## 14/11/2026 — PR #190: Independent review / PRODUCTION NO-GO
 
 Reviewed PR head `d7d7bdd45ab71651d0c87dbe7374a18e5380876f`: all 11 existing workflow conclusions SUCCESS. Those unchanged suites were reused, not rerun. Independent adversarial review found two additional release blockers in audit preservation and stale drafts across legacy-primary maintenance epochs. No production Rules deploy, Actions-variable change, PR merge or Pages publication was performed.
