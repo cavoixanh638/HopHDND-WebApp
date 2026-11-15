@@ -74,58 +74,85 @@
   transform:none!important;border-color:#cdd9d4!important;box-shadow:none!important;
 }
 
-/* 15/11: only EMPTY, actually editable text fields get the + affordance.
- * No fabricated input value, no extra permission path and no whole-cell tint. */
-:is(.item-data-table,.report-detail-grid) tbody td.editable-cell
-  button.inline-note-empty {
-  position:relative!important;
-  overflow:visible!important;
-  display:inline-flex!important;align-items:center;justify-content:flex-start;
-  gap:6px;min-height:30px;
-  border-color:#b7d5c7!important;
-  border-style:solid!important;
-  background:#f4faf6!important;
-  cursor:pointer;
+/* Blank, writable Note / Current Progress remains completely clean at rest.
+ * A pencil is shown on cell hover and keyboard focus. The full permitted
+ * table cell still forwards clicks to the existing lease-checked editor. */
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="note"],[data-col-key="specificProgress"])
+  button.inline-note-trigger.inline-note-empty:not(:disabled),
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="note"],[data-col-key="specificProgress"]):hover
+  button.inline-note-trigger.inline-note-empty:not(:disabled),
+:is(.item-data-table,.report-detail-grid) tbody
+  td.editable-cell:is([data-col-key="note"],[data-col-key="specificProgress"])
+  button.inline-note-trigger.inline-note-empty:is(:hover,:focus-visible):not(:disabled) {
+  display:flex!important;align-items:center;justify-content:flex-end;
+  position:relative!important;overflow:visible!important;box-sizing:border-box;
+  width:100%!important;max-width:100%!important;min-height:27px;
+  margin:0;padding:4px 6px!important;
+  border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+  outline:none!important;transform:none!important;
+  color:inherit;cursor:pointer!important;
+}
+/* The table padding, not an inner fake input, shows the subtle hover cue. */
+.item-data-table tbody
+  td.editable-cell:is([data-col-key="note"],[data-col-key="specificProgress"]):has(button.inline-note-empty):hover:not(:focus-within) {
+  background-color:#f7faf8!important;
+  box-shadow:none!important;
 }
 :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
-  button.inline-note-empty .inline-note-add-icon {
-  display:inline-grid;place-items:center;flex:none;
-  width:22px;height:22px;box-sizing:border-box;
-  border:1px solid #96c7b0;border-radius:50%;
-  color:#156649;background:#e0f2e7;
-  font-family:"Segoe UI",system-ui,sans-serif;
-  font-size:20px!important;font-weight:500;line-height:1!important;
-  transition:transform .16s ease,background .16s ease;
+  button.inline-note-empty .inline-note-pencil {
+  display:block;flex:none;width:14px;height:14px;
+  opacity:0;visibility:hidden;
+  color:#55786b;
+  transform:translateY(1px);
+  transition:opacity .14s ease,transform .14s ease,visibility .14s ease;
+  pointer-events:none;
 }
+:is(.item-data-table,.report-detail-grid) tbody td.editable-cell:hover
+  button.inline-note-empty .inline-note-pencil,
 :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
-  button.inline-note-empty:is(:hover,:focus-visible) .inline-note-add-icon {
-  transform:scale(1.08) rotate(90deg);
-  background:#d0ebda;
+  button.inline-note-empty:is(:hover,:focus-visible) .inline-note-pencil {
+  opacity:1;visibility:visible;transform:none;
 }
-/* Immediate hover/focus tooltip, also duplicated in native title for
- * accessibility and as a fallback in clipped table scroll regions. */
+/* Focus indication exists only for keyboard focus; no permanent cell border. */
+:is(.item-data-table,.report-detail-grid) tbody td.editable-cell
+  button.inline-note-trigger.inline-note-empty:focus-visible {
+  outline:2px solid #8bc1aa!important;outline-offset:-2px;
+  border-radius:4px!important;
+}
+/* Tooltip is announced by the text aria-label and has a native title fallback. */
 :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
   button.inline-note-empty[data-add-hint]::after {
   content:attr(data-add-hint);
-  position:absolute;left:0;bottom:calc(100% + 6px);z-index:25;
-  box-sizing:border-box;min-width:max-content;max-width:190px;
-  padding:5px 9px;border:1px solid #b4cec1;border-radius:6px;
-  color:#163c2e;background:#fff;
+  position:absolute;right:1px;bottom:calc(100% + 5px);z-index:40;
+  box-sizing:border-box;width:max-content;max-width:min(185px,90vw);
+  padding:5px 8px;border:1px solid #d3e0d9;border-radius:5px;
+  color:#324a3e;background:#fff;
   font-family:"Segoe UI",system-ui,sans-serif;
-  font-size:12px!important;font-weight:600;line-height:1.3;
+  font-size:12px!important;font-weight:500;line-height:1.35;
   white-space:normal;text-align:left;
-  box-shadow:0 4px 13px rgba(16,58,44,.18);
-  opacity:0;visibility:hidden;transform:translateY(3px);
-  transition:opacity .12s ease,transform .12s ease,visibility .12s ease;
+  box-shadow:0 3px 9px rgba(20,51,40,.11);
+  opacity:0;visibility:hidden;transform:translateY(2px);
+  transition:opacity .12s ease,visibility .12s ease,transform .12s ease;
   pointer-events:none;
 }
+:is(.item-data-table,.report-detail-grid) tbody td.editable-cell:hover
+  button.inline-note-empty[data-add-hint]::after,
 :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
   button.inline-note-empty[data-add-hint]:is(:hover,:focus-visible)::after {
   opacity:1;visibility:visible;transform:none;
 }
-.item-data-table tbody td[data-col-key="note"] button.inline-note-empty::after {
-  left:auto;right:0;
+@media (prefers-reduced-motion:reduce) {
+  :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
+    button.inline-note-empty .inline-note-pencil,
+  :is(.item-data-table,.report-detail-grid) tbody td.editable-cell
+    button.inline-note-empty::after {
+    transition:none!important;transform:none!important;
+  }
 }
+
 .inline-note-save-error {
   display:flex;flex-wrap:wrap;align-items:center;gap:6px;
   margin-top:4px;color:#9b3530;font-size:12px;line-height:1.4;
@@ -169,9 +196,4 @@
   td .compact-pair-lines .compact-pair-tag {
   min-width:48px;padding:1px 4px;font-weight:500;
 }
-/* The plus is an icon, not a body glyph: keep its visual geometry independent
- * of font-size settings used for real text. */
-.app-shell.guest-view.list-visual-parity .item-data-table tbody
-  td button.inline-note-empty .inline-note-add-icon {
-  font-size:20px!important;line-height:1!important;
-}
+/* Pencil is a 14px SVG, unaffected by the chosen table body font. */
