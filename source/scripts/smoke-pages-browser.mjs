@@ -357,7 +357,16 @@ async function evaluate(expression){
 async function eventually(expression,why,tries=75){
   for(let i=0;i<tries;i++){
     if(interceptError)throw interceptError;
-    if(await evaluate(expression))return;
+    try{
+      if(await evaluate(expression))return;
+    }catch(error){
+      // Page.reload can invalidate a Chrome execution context between CDP
+      // request and response. Retry ONLY that known transient navigation race;
+      // do not swallow syntax, styling, permission or application errors.
+      const message=String(error?.message??error);
+      if(!/Inspected target navigated or closed|Execution context was destroyed|Cannot find context with specified id/.test(message))
+        throw error;
+    }
     await sleep(200);
   }
   if(why.startsWith('Report hover transition')){
@@ -854,24 +863,65 @@ try{
     throw Error('Guest List font audit did not find source columns: '+JSON.stringify(visibleFontAudit));
   console.log('GUEST_LIST_COLUMN_FONT_AUDIT',JSON.stringify(visibleFontAudit));
 
-  // The 13px saved base must render a truly COMPACT 12px List across all
-  // business values and nested L03 labels; no global or A4 setting changes.
+  // All List business values stay at 12px for a 13px base. The ONLY
+  // deliberate 11px exception is the L03 caption (and its inline level text)
+  // to keep the original 110px owner-configured rail on one line.
   const compactDisplaySize='12px';
+  const l03LabelDisplaySize='11px';
   const inconsistent=visibleFontAudit.columns.flatMap(col=>{
+    const target=(member)=>col.key==='partyLevel'&&
+      ['primary','stageLabel','stageLevel'].includes(member)
+      ?l03LabelDisplaySize:compactDisplaySize;
     const mismatches=[
-      ...(col.cellFont===compactDisplaySize?[]:[{member:'cell',size:col.cellFont}]),
-      ...(col.primaryFont===compactDisplaySize?[]:[{member:'primary',size:col.primaryFont}]),
-      ...col.segments.filter(member=>member.size!==compactDisplaySize).map(member=>({member:member.name,size:member.size}))
+      ...(col.cellFont===target('cell')?[]:[{member:'cell',size:col.cellFont}]),
+      ...(col.primaryFont===target('primary')?[]:[{member:'primary',size:col.primaryFont}]),
+      ...col.segments.filter(member=>member.size!==target(member.name))
+        .map(member=>({member:member.name,size:member.size}))
     ];
     return mismatches.map(member=>({column:col.key,...member}));
   });
   if(visibleFontAudit.tableFont!=='13px'||inconsistent.length)
-    throw Error('Guest List must render 12px text at 13px configured base: '+JSON.stringify({inconsistent,visibleFontAudit}));
+    throw Error('Guest List 12px values + 11px L03 captions must match configured 13px base: '+JSON.stringify({inconsistent,visibleFontAudit}));
   console.log('GUEST_LIST_FONT_UNIFIED_PASS',JSON.stringify({
     columns:visibleFontAudit.columns.map(col=>({key:col.key,size:col.primaryFont,segments:col.segments})),
     configured:visibleFontAudit.tableFont,rendered:compactDisplaySize
   }));
 
+  // L03 typography contract across real guest List, synthetic readonly, and
+  // granted editable ItemList. Inspect rendered pixels, not only source CSS.
+  const l03TypographyProbe=String.raw`(()=>{
+    const row=document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="partyLevel"]');
+    const stages=[...row?.querySelectorAll('.compact-stage-row')??[]];
+    const records=stages.map(stage=>{
+      const title=stage.querySelector('.compact-stage-title');
+      const label=stage.querySelector('.compact-stage-label');
+      const state=stage.querySelector('.compact-stage-state');
+      const value=state?.querySelector('.workflow-status-value,.compact-part,.cell-picker-trigger,.cell-picker-value-text');
+      const lc=title&&getComputedStyle(title);
+      return {field:stage.dataset.stageField,label:title?.textContent?.trim(),
+        whiteSpace:lc?.whiteSpace,wordBreak:lc?.wordBreak,
+        labelSize:lc?.fontSize,stateSize:state&&getComputedStyle(state).fontSize,
+        valueSize:value&&getComputedStyle(value).fontSize,
+        labelWidth:label?.getBoundingClientRect().width,
+        titleWidth:title?.getBoundingClientRect().width,
+        editable:!!state?.querySelector('button.cell-picker-trigger')};
+    });
+    return {records,layout:row?.dataset.l03Layout??null};
+  })()`;
+  const verifyL03Typography=async(mode)=>{
+    const result=await evaluate(l03TypographyProbe);
+    const rows=result.records??[];
+    const valid=rows.length===3&&
+      rows.every(x=>x.whiteSpace==='nowrap'&&x.wordBreak==='normal'&&
+        x.labelSize&&x.stateSize&&x.valueSize===x.stateSize)&&
+      rows.filter(x=>x.field!=='progressParty').every(x=>
+        x.titleWidth<=x.labelWidth+1)&&
+      new Set(rows.map(x=>x.stateSize)).size===1;
+    if(!valid)throw Error('L03 '+mode+' label/status font regression: '+JSON.stringify(result));
+    console.log('L03_'+mode.toUpperCase()+'_SINGLE_LINE_STATUS_FONT_PASS',JSON.stringify(result));
+    return result;
+  };
+  const l03GuestTypography=await verifyL03Typography('guest');
   // Font slider still works: 16px configuration -> 15px List; 11px stays
   // readable at its floor. Verify every edited value restores on exit.
   const compactSliderProbe=await evaluate(`(()=>{
@@ -2351,6 +2401,7 @@ try{
   if(!desktopGroups.ok)throw Error('U01/U02/team desktop regression: '+JSON.stringify(desktopGroups));
   console.log('COMPACT_U01_U02_DESKTOP_PASS',JSON.stringify(desktopGroups));
 
+  const l03ReadonlyTypography=await verifyL03Typography('readonly');
   // W0 is a DOM-only reconstruction using the prior saved source width (68px)
   // and the SAME synthetic data, viewport, browser and CSS. It is NOT a live
   // snapshot of the historical deployed version; the report explicitly says so.
@@ -2533,6 +2584,9 @@ try{
   })()`);
   if(!v3Editable.ok)throw Error('UI_V3_L2 single editable stage frame: '+JSON.stringify(v3Editable));
   console.log('UI_V3_L2_SINGLE_EDITABLE_STAGE_CHROME_PASS',JSON.stringify(v3Editable));
+  const l03EditableTypography=await verifyL03Typography('editable');
+  if(l03EditableTypography.records[0].stateSize!==l03ReadonlyTypography.records[0].stateSize)
+    throw Error('L03 read-only and editable status fonts must match across identical List settings');
   // UI V4 L2: geometry of the ACTUAL built CompactGroupedValue and CellPicker.
   // All three statuses are granted in this RAM-only QA; the separate
   // readonly/grant-specific suite below checks absence of imaginary arrows.
