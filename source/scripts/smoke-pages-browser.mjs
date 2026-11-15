@@ -719,7 +719,7 @@ try{
     const root=document.createElement('table');
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
     root.style.cssText='position:fixed;left:20px;top:130px;width:350px;z-index:20000;background:#fff';
-    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger inline-note-empty"><span class="inline-note-placeholder">Bấm vào để thêm</span></button></td></tr></tbody>';
+    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger inline-note-empty" title="Thêm ghi chú" data-add-hint="Thêm ghi chú"><span class="inline-note-add-icon" aria-hidden="true">+</span></button></td></tr></tbody>';
     document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
     const inner=root.querySelector('button').getBoundingClientRect();
@@ -742,24 +742,55 @@ try{
   if(!notePadding.outerHovered||notePadding.innerHovered||notePadding.cursor!=='pointer'||
     !notePadding.outerShadow.includes('196, 223, 211')||
     Math.abs(notePadding.liftY)>.25||notePadding.shadow!=='none'||
-    notePadding.placeholder!=='Bấm vào để thêm')
+    notePadding.placeholder!=='+')
     throw Error('Permitted Note TD blank area must be clickable but not lift the editor: '+JSON.stringify(notePadding));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.innerX,y:noteProbe.innerY});
   await new Promise(resolve=>setTimeout(resolve,270));
   const noteButton=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
-    const style=getComputedStyle(button);
+    const style=getComputedStyle(button),tooltip=getComputedStyle(button,'::after');
     return {active:cell.matches(':hover'),innerHovered:button.matches(':hover'),
       liftY:new DOMMatrixReadOnly(style.transform).m42,
-      shadow:style.boxShadow,border:style.borderTopColor};
+      shadow:style.boxShadow,border:style.borderTopColor,
+      tipContent:tooltip.content,tipOpacity:tooltip.opacity};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
   if(!noteButton.active||!noteButton.innerHovered||
     Math.abs(noteButton.liftY)>.25||!noteButton.shadow.includes('214, 234, 223')||
-    noteButton.border!=='rgb(150, 199, 176)')
+    noteButton.border!=='rgb(150, 199, 176)'||
+    !noteButton.tipContent.includes('Thêm ghi chú')||noteButton.tipOpacity!=='1')
     throw Error('Note editor must show only the new subtle hover cue: '+JSON.stringify({notePadding,noteButton}));
   console.log('LIST_NOTE_FULL_CELL_HIT_AREA_PASS',JSON.stringify({notePadding,noteButton}));
+
+  // Guest reading typography: all four requested business-text columns must
+  // inherit the SAME shared font-size, even under compact/merged wrappers.
+  const guestFonts=await evaluate(`(()=>{
+    const root=document.createElement('div');
+    root.className='app-shell guest-view list-visual-parity';
+    root.id='guest-font-parity-probe';
+    root.style.cssText='position:fixed;left:-12000px;top:50px;width:900px;--table-font-size:14px';
+    root.innerHTML='<table class="data-table item-data-table"><tbody><tr>'+
+      '<td data-col-key="content"><div class="compact-document-content">Nội dung trình</div></td>'+
+      '<td data-col-key="specificProgress"><button class="inline-note-trigger">Tiến độ hiện tại</button></td>'+
+      '<td data-col-key="note"><button class="inline-note-trigger">Ghi chú</button></td>'+
+      '<td data-col-key="room" class="compact-merged-cell"><div class="compact-pair-lines"><div><span class="compact-pair-tag">UBND</span><span class="compact-highlight-member">Lãnh đạo / Phòng / CV</span></div></div></td>'+
+      '</tr></tbody></table>';
+    document.body.appendChild(root);
+    const selectors=[
+      '[data-col-key="content"] .compact-document-content',
+      '[data-col-key="specificProgress"] .inline-note-trigger',
+      '[data-col-key="note"] .inline-note-trigger',
+      '[data-col-key="room"] .compact-highlight-member',
+      '[data-col-key="room"] .compact-pair-tag'
+    ];
+    const sizes=selectors.map(sel=>getComputedStyle(root.querySelector(sel)).fontSize);
+    root.remove();
+    return {sizes,allEqual:sizes.every(size=>size==='14px')};
+  })()`);
+  if(!guestFonts.allEqual)
+    throw Error('Guest content/progress/note/personnel must share the chosen body font size: '+JSON.stringify(guestFonts));
+  console.log('GUEST_READING_FONT_PARITY_PASS',JSON.stringify(guestFonts));
 
   // Regression: textarea may remain focused for typing after pointer leaves.
   // That MUST NOT look like the active green/blue mouse-hover highlight.
