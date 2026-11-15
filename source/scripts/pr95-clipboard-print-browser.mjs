@@ -41,6 +41,10 @@ try{
   const toggle=page.getByRole('button',
     {name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'});
   await toggle.click();
+  // Advanced search scope is intentionally collapsed until the admin requests it.
+  await page.locator('.admin-control-section > summary').first().click();
+  await page.locator('.admin-control-section[open] .admin-search-scope-options input').first()
+    .waitFor({state:'visible'});
   const checks=page.locator('.admin-search-scope-options input[type=checkbox]');
   const count=await checks.count();
   assert(count>=13,'Missing configurable search columns');
