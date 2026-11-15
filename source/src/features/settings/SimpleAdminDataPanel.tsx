@@ -123,7 +123,7 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
         <h4>1. Sao lưu dữ liệu hiện tại</h4>
         <p className="muted">Tải JSON dữ liệu nghiệp vụ trước khi thay thế hoặc xóa. Backup này không phải JSON cấu hình bố cục.</p>
         <button className="button primary" type="button" disabled={busy||disabled}
-          onClick={()=>void backup()}>Tải backup dữ liệu JSON</button>
+          onClick={()=>void backup()}>Tải backup JSON (dữ liệu)</button>
       </section>
       <details className="admin-maintenance-operation">
         <summary>2. Nhập hoặc thay thế danh sách bằng Excel A–O</summary>
