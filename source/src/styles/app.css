@@ -2891,3 +2891,18 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .report-columns-disclosure > summary {cursor:pointer;font-size:12px;font-weight:650;padding:8px;color:#35664f;}
 .report-columns-disclosure > fieldset {margin-top:7px;}
 .build-count-setting small {display:block;line-height:1.45;}
+
+/* Admin data maintenance makes the backup requirement and destructive actions distinct. */
+.admin-data-hub > .admin-data-export,
+.admin-data-hub > .admin-profile-restore {margin:12px 0;padding:12px;border:1px solid #dbe5df;border-radius:9px;}
+.admin-data-hub h4,
+.admin-data-maintenance h4 {font-size:13px;margin:0 0 7px;}
+.admin-maintenance-steps {display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0;}
+.admin-maintenance-backup,
+.admin-maintenance-operation {padding:12px;border:1px solid #dce7df;border-radius:8px;background:#fbfdfb;}
+.admin-maintenance-operation > summary {cursor:pointer;font-size:13px;font-weight:700;line-height:1.45;}
+.admin-maintenance-operation[open] > summary {margin-bottom:10px;}
+.admin-maintenance-danger {border-color:#efc9c9;background:#fffafa;}
+.admin-maintenance-danger > summary {color:#a42e30;}
+.admin-maintenance-steps .field {margin-top:8px;}
+.admin-maintenance-steps summary:focus-visible {outline:2px solid var(--green);outline-offset:3px;}
