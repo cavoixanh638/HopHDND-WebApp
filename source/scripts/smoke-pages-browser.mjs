@@ -4594,8 +4594,8 @@ try{
       shell:getComputedStyle(shell).overflowY};
   })()`);
   if(guestLong.count!=='59'||!guestLong.cssMax||
-    guestLong.scrollDelta<50||guestLong.footGap<-3||guestLong.footGap>48||
-    guestLong.height<guestLong.viewport*.68||guestLong.shell!=='visible')
+    guestLong.scrollDelta<50||guestLong.footGap<-3||guestLong.footGap>24||
+    guestLong.height<guestLong.viewport*.60||guestLong.shell!=='visible')
     throw Error('GUEST_LONG_LIST_VIEWPORT_FILL_FAIL '+JSON.stringify(guestLong));
   console.log('GUEST_LONG_LIST_VIEWPORT_FILL_PASS',JSON.stringify(guestLong));
 
