@@ -262,7 +262,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     setGearLoginBusy(true);setGearLoginError('');
     try{
       await firebase.login();
-      setGearLoginError('Đã xác thực Google. Đang xác minh quyền quản trị qua Firebase.');
+      setGearLoginError('Đã xác thực Google. Đang kiểm tra quyền tài khoản trên Firebase.');
     }catch(cause){setGearLoginError(cause instanceof Error?cause.message:'Không đăng nhập được.');}
     finally{setGearLoginBusy(false);}
   };
@@ -639,7 +639,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
               <div className="settings-menu-group" role="group" aria-label="Tài khoản và phân quyền">
                 <p className="settings-menu-group-label">Tài khoản và phân quyền</p>
                 <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
-                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
+                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản</button>
               </div>
               {isFirebase&&<div className="settings-menu-group" role="group" aria-label="Dữ liệu và vận hành">
                 <p className="settings-menu-group-label">Dữ liệu và vận hành</p>
@@ -663,7 +663,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
             </>:<>
               <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
                 onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':
-                  import.meta.env.MODE==='pages-test'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&firebase?.emulator?'Đăng nhập quản trị (Emulator)':'Đăng nhập quản trị'}</button>
+                  import.meta.env.MODE==='pages-test'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&firebase?.emulator?'Đăng nhập Google (Emulator)':'Đăng nhập Google'}</button>
               {gearLoginError&&<p className="v3-gear-status" role="status">{gearLoginError}</p>}
             </>}
           </div>
