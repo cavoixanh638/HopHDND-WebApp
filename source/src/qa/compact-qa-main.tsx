@@ -67,6 +67,14 @@ function CompactVisualQa(){
       base.columns=base.columns.map(c=>({...c,width:wide[c.key]??c.width,
         visible:c.key==='stt'?false:c.visible}));
     }
+    if(params.get('l03-zoom')==='1'){
+      // RAM-only replica of owner-selected 326/399px L03 modes, used for
+      // 75%-zoom overflow measurements. Never read or write Firebase.
+      base.partyTrackWidths={
+        readonly:{label:110,status:185}, // 110+185+8+23=326
+        editable:{label:110,level:65,status:185} // 110+65+185+16+23=399
+      };
+    }
     if(params.get('fit')==='1'){
       // Reproduce the owner's small saved widths inside a wide selected frame.
       const widths:Record<string,number>={displayCode:60,content:170,partyLevel:60,
