@@ -2858,3 +2858,23 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
   .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-state {display:none;}
 }
+
+/* Popup controls stay concise until the reader chooses an optional view. */
+.report-grid-display-options {position:relative;z-index:5;max-width:100%;}
+.report-grid-display-options > summary,
+.report-grid-presets-disclosure > summary {
+  cursor:pointer;list-style:auto;border:1px solid #d4e1da;border-radius:7px;
+  background:#f8fbf9;color:#355a48;font-weight:650;font-size:12px;
+  padding:8px 10px;line-height:1.35;
+}
+.report-grid-display-options > summary:focus-visible,
+.report-grid-presets-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-grid-display-options[open] > summary,
+.report-grid-presets-disclosure[open] > summary {background:#edf5f0;}
+.report-grid-display-options-content {
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:9px 10px;border:1px solid #d4e1da;border-radius:8px;
+  background:#fff;max-width:100%;
+}
+.report-grid-presets-disclosure {margin:8px 0 3px;}
+.report-grid-presets-disclosure .report-grid-presets {margin:8px 0 0;}
