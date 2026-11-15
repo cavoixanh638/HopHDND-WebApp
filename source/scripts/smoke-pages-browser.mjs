@@ -1288,9 +1288,11 @@ try{
       bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
       gapBelowFilters:active?g.top-active.bottom:null};
   })()`);
-  // V6 L4: an active predicate creates a *real* filter-chip row. Its height
-  // pushes the table down while the viewport's bottom remains stationary.
-  // Assert that the ENTIRE movement is explained by the visible filter bar.
+  // V6 L4: active filters add a real chip row. Previously the guest
+  // List filled a locked viewport, so its bottom never moved. Guests now use
+  // content-sized tables: with zero/two results the table MUST shrink rather
+  // than leaving hundreds of pixels empty. Still audit exact filter movement,
+  // fixed horizontal geometry and content-height fit.
   const assertStable=async(label)=>{
     const result=await evaluate(`(()=>{
       const activeNode=document.querySelector('.list-active-filters');
@@ -1298,20 +1300,29 @@ try{
         h=document.querySelector('.item-data-region').getBoundingClientRect(),
         active=activeNode?.getBoundingClientRect(),style=activeNode?getComputedStyle(activeNode):null;
       const activeMargins=style?parseFloat(style.marginTop)+parseFloat(style.marginBottom):0;
+      const innerTable=document.querySelector('.item-table-scroll > table');
       return {top:g.top-h.top,left:g.left-h.left,height:g.height,width:g.width,
         bottom:g.bottom,activeHeight:active?.height??0,activeMargins,
-        gapBelowFilters:active?g.top-active.bottom:null};
+        gapBelowFilters:active?g.top-active.bottom:null,
+        intrinsic:innerTable?.getBoundingClientRect().height??0,
+        naturalGuest:getComputedStyle(document.querySelector('.app-shell')).overflowY==='visible'};
     })()`);
     const filterGrowth=result.activeHeight+result.activeMargins-
       tablePosition.activeHeight-tablePosition.activeMargins;
-    if(Math.abs(result.top-tablePosition.top-filterGrowth)>2||
-       Math.abs(result.left-tablePosition.left)>2||
-       Math.abs(result.height-tablePosition.height+filterGrowth)>2||
-       Math.abs(result.bottom-tablePosition.bottom)>2||
-       Math.abs(result.width-tablePosition.width)>2||
-       (result.gapBelowFilters!==null&&tablePosition.gapBelowFilters!==null&&
-        Math.abs(result.gapBelowFilters-tablePosition.gapBelowFilters)>2))
-      throw Error('List grid shifted beyond active-filter height while '+label+': '+
+    const movedOnlyByFilters=Math.abs(result.top-tablePosition.top-filterGrowth)<=2&&
+      Math.abs(result.left-tablePosition.left)<=2&&
+      Math.abs(result.width-tablePosition.width)<=2;
+    const naturalGuestFits=!result.naturalGuest||
+      (result.height<=tablePosition.height+2&&
+       (result.intrinsic>=result.height-4)&&
+       (result.height>=result.intrinsic-4||result.intrinsic>tablePosition.height));
+    const oldLockedFit=result.naturalGuest||(
+      Math.abs(result.height-tablePosition.height+filterGrowth)<=2&&
+      Math.abs(result.bottom-tablePosition.bottom)<=2);
+    if(!movedOnlyByFilters||!naturalGuestFits||!oldLockedFit||
+      (result.gapBelowFilters!==null&&tablePosition.gapBelowFilters!==null&&
+       Math.abs(result.gapBelowFilters-tablePosition.gapBelowFilters)>2))
+      throw Error('List grid shifted or guest short result left an empty viewport while '+label+': '+
         JSON.stringify({tablePosition,result,filterGrowth}));
   };
 
