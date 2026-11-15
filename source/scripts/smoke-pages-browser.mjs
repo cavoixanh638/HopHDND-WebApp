@@ -874,7 +874,7 @@ try{
   // Test three adjacent NQ records with and without a user-assigned row
   // palette. Zebra + 2px separation may NOT erase the saved mint background,
   // direct status tone, or an explicitly highlighted source cell.
-  const rowProbe=await evaluate(\`(()=>{
+  const rowProbe=await evaluate(`(()=>{
     const host=document.createElement('div');host.id='resolution-row-boundary-probe';
     host.style.cssText='position:fixed;left:-12000px;top:80px;width:650px';
     host.innerHTML='<table class="data-table item-data-table" style="width:640px"><tbody>'+
@@ -897,7 +897,7 @@ try{
       idSize:style(rows[1].querySelector('.code')).fontSize
     };
     host.remove();return result;
-  })()\`);
+  })()`);
   if(rowProbe.firstBorder!=='0px'||rowProbe.secondBorder!=='2px'||
     rowProbe.nqsBorderColor!=='rgb(183, 202, 192)'||
     rowProbe.secondBackground!=='rgb(248, 250, 249)'||
