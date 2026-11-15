@@ -49,6 +49,26 @@
   font-size:var(--hdnd-list-business-font-size,12px)!important;
 }
 
+/* The real ItemList fixture can render without the optional
+ * list-visual-parity shell class. Use the same L03 font contract for BOTH
+ * editor modes in every List, while leaving report-detail-grid and A4 alone.
+ * It must beat picker-parity-stages.css's 11px readonly !important rule. */
+.item-data-table tbody tr.color-row td[data-l03-layout]
+  .compact-stages[data-rev2="true"]
+  :is(.compact-stage-label,.compact-stage-title,
+      .compact-stage-title .compact-stage-level) {
+  font-size:max(11px,calc(var(--table-font-size,13px) - 2px))!important;
+  white-space:nowrap!important;
+}
+.item-data-table tbody tr.color-row td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-state,
+.item-data-table tbody tr.color-row td[data-l03-layout]
+  .compact-stages[data-rev2="true"]
+  .compact-stage-state :is(.workflow-status-value,.compact-part,
+      .cell-picker-trigger,.cell-picker-value-text) {
+  font-size:max(11px,calc(var(--table-font-size,13px) - 1px))!important;
+}
+
 /* Do not enlarge UI affordance icons/tooltips or warning indicators. */
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row
   td[data-col-key] button.inline-note-empty .inline-note-pencil {
