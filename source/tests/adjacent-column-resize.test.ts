@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {defaultItemLayout,validateItemLayout} from '../src/data/item-preferences';
-import {fitTableColumns} from '../src/data/fit-table-columns';
+import {fitTableColumns,fitTableColumnsResponsive} from '../src/data/fit-table-columns';
 import {planAdjacentTransfer,resizeProjectedWithAdjacent,projectedAdjacentBounds,
   projectedPhysicalWidth,projectedIdWidth} from '../src/data/resize-last-column';
 
@@ -95,6 +95,36 @@ describe('Owner L019: adjacent first, last as overflow reservoir',()=>{
    expect([plan.target,plan.adjacent,plan.last])
      .toEqual(keys.map(k=>width(layout,k)));
    expect(plan.min).toBe(60);expect(plan.max).toBe(490);
+ });
+
+ it('resizes across the fixed L03 physical rail after a shrink-fit projection',()=>{
+   const layout=defaultItemLayout();
+   layout.columns=layout.columns.map(c=>({...c,width:{
+     displayCode:68,content:500,specificProgress:300,room:300,note:150
+   }[c.key]??c.width}));
+   // L03 belongs to the five independently configured rails and is deliberately
+   // absent from the ordinary resize keys. The next REAL visible column after
+   // content is L03; the compensator must skip it to specificProgress.
+   const resizeKeys=['displayCode','content','specificProgress','room','note'];
+   const bases=resizeKeys.map(key=>({key,width:width(layout,key)}));
+   const min={content:250,specificProgress:155,room:215,note:95};
+   const fitted=fitTableColumnsResponsive(bases,1100,{},undefined,min);
+   const extras=Object.fromEntries(resizeKeys.map(key=>[key,fitted[key]-width(layout,key)]));
+   const target=fitted.content+25;
+   const next=resizeProjectedWithAdjacent(layout,resizeKeys,'content',target,extras,true,{});
+   expect(next).not.toBe(layout);
+   expect(width(next,'content')).toBe(target);
+   expect(width(next,'specificProgress')).toBe(fitted.specificProgress-25);
+   expect(width(next,'room')).toBe(fitted.room);
+   expect(width(next,'note')).toBe(fitted.note);
+   expect(width(next,'displayCode')).toBe(52);
+   expect(resizeKeys.reduce((sum,key)=>sum+width(next,key),0)).toBe(1100);
+   expect(next.partyTrackWidths).toEqual(layout.partyTrackWidths);
+   expect(validateItemLayout(next)).toBeTruthy();
+   // A new render must not auto-return to the original saved column widths.
+   const after=fitTableColumnsResponsive(
+     resizeKeys.map(key=>({key,width:width(next,key)})),1100,{},undefined,min);
+   expect(after.content).toBe(target);
  });
  it('last displayed column cannot have a divider; reordered/hidden scopes use current neighbor',()=>{
    const old=defaultItemLayout(),keys=['room','content','note'];

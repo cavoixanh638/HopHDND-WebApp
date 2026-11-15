@@ -2402,6 +2402,76 @@ try{
   console.log('COMPACT_U01_U02_DESKTOP_PASS',JSON.stringify(desktopGroups));
 
   const l03ReadonlyTypography=await verifyL03Typography('readonly');
+  // Admin saved-wide-layout reproduction: when the six-column sum exceeds
+  // the screen, fit ordinary columns to the measured scroll viewport while
+  // preserving the five L03 tracks. This test never touches real Firebase.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?wide-cols=1'});
+  await eventually("!!document.querySelector('.item-data-table tbody tr .compact-stage-row')",
+    'Wide-source-width ItemList QA did not mount');
+  const wideFit=await evaluate(`(()=>{
+    const viewport=document.querySelector('.item-data-region .item-table-scroll');
+    const table=viewport?.querySelector('.item-data-table');
+    const headers=[...table?.querySelectorAll('thead .item-heading-row th')??[]];
+    const columns=[...table?.querySelectorAll('colgroup col')??[]];
+    const l03=table?.querySelector('tbody tr:first-child td[data-l03-layout] .compact-stages');
+    const labels=[...l03?.querySelectorAll('.compact-stage-label')??[]];
+    const contentIndex=headers.findIndex(h=>h.dataset.columnKey==='content');
+    const l03Index=headers.findIndex(h=>h.dataset.columnKey==='partyLevel');
+    const handles=headers.map(h=>({key:h.dataset.columnKey,resize:!!h.querySelector('.column-resizer')}));
+    return {viewport:viewport?.clientWidth,tableWidth:table?.getBoundingClientRect().width,
+      scrollWidth:viewport?.scrollWidth,scrollExcess:viewport?viewport.scrollWidth-viewport.clientWidth:null,
+      headers:headers.map(h=>h.dataset.columnKey),columns:columns.map(c=>c.getBoundingClientRect().width),
+      contentIndex,l03Index,handles,
+      labelWidths:labels.map(el=>({text:el.textContent.trim(),scroll:el.scrollWidth,client:el.clientWidth})),
+      l03Scroll:l03?.scrollWidth,l03Client:l03?.clientWidth};
+  })()`);
+  console.log('ADMIN_WIDE_SAVED_COLUMN_FIT_AUDIT',JSON.stringify(wideFit));
+  if(!wideFit.viewport||wideFit.tableWidth>wideFit.viewport+2||wideFit.scrollExcess>2||
+    wideFit.contentIndex<0||wideFit.l03Index!==wideFit.contentIndex+1||
+    !wideFit.handles.find(h=>h.key==='content')?.resize||
+    wideFit.labelWidths.some(x=>x.scroll>x.client+1)||
+    wideFit.l03Scroll>wideFit.l03Client+1)
+    throw Error('Wide admin List must fit without outer/inner scroll and expose content/L03 drag: '+
+      JSON.stringify(wideFit));
+  console.log('ADMIN_WIDE_SAVED_COLUMN_AUTO_FIT_PASS',JSON.stringify({
+    viewport:wideFit.viewport,table:wideFit.tableWidth,columns:wideFit.columns}));
+
+  // Explicitly resize Content RIGHT NEXT TO fixed L03 using the keyboard
+  // separator. The adjacent compensator is the NEXT NON-L03 column; the L03
+  // total and overall table width must remain unchanged and the new width
+  // must survive the actual React state + shared-layout callback.
+  const initialContentWidth=wideFit.columns[wideFit.contentIndex];
+  const initialL03Width=wideFit.columns[wideFit.l03Index];
+  await evaluate(`(()=>{
+    const handle=document.querySelector('.item-heading-row th[data-column-key="content"] .column-resizer');
+    if(!handle)throw Error('Content resize boundary missing');
+    handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  })()`);
+  await eventually(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    const cols=[...table?.querySelectorAll('colgroup col')??[]];
+    return Math.abs((cols[${wideFit.contentIndex}]?.getBoundingClientRect().width??0)-
+      ${initialContentWidth+10})<2;
+  })()`,'Admin content column did not resize across fixed L03',60);
+  const wideDrag=await evaluate(`(()=>{
+    const vp=document.querySelector('.item-data-region .item-table-scroll');
+    const table=vp?.querySelector('.item-data-table');
+    const col=[...table?.querySelectorAll('colgroup col')??[]];
+    return {content:col[${wideFit.contentIndex}]?.getBoundingClientRect().width,
+      l03:col[${wideFit.l03Index}]?.getBoundingClientRect().width,
+      table:table?.getBoundingClientRect().width,viewport:vp?.clientWidth,
+      excess:vp?vp.scrollWidth-vp.clientWidth:null};
+  })()`);
+  if(Math.abs(wideDrag.l03-initialL03Width)>1||wideDrag.excess>2)
+    throw Error('Admin drag changed L03 or reintroduced horizontal overflow: '+JSON.stringify(wideDrag));
+  console.log('ADMIN_RESIZE_ACROSS_FIXED_L03_PASS',JSON.stringify(wideDrag));
+
+  // Return to the original fixture so all pre-existing W0/W1 and keyboard
+  // smoke checks keep their source data and saved geometry unchanged.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.item-data-table tbody tr')",
+    'Original compact ItemList QA did not remount after responsive test');
+
   // W0 is a DOM-only reconstruction using the prior saved source width (68px)
   // and the SAME synthetic data, viewport, browser and CSS. It is NOT a live
   // snapshot of the historical deployed version; the report explicitly says so.
@@ -3527,8 +3597,16 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
-  if(await evaluate("!!document.querySelector('th[data-column-key=content] .column-resizer,th[data-column-key=partyLevel] .column-resizer')"))
-    throw Error('L03 independent track widths must not expose an indirect neighbor resize');
+  // The column immediately LEFT of L03 now has a valid drag handle.
+  // It must compensate using the next NON-L03 column; L03 itself still has
+  // no handle and its owner-selected two/three-stage widths remain fixed.
+  const stageBoundary=await evaluate(`({
+    content:!!document.querySelector('th[data-column-key=content] .column-resizer'),
+    l03:!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')
+  })`);
+  if(!stageBoundary.content||stageBoundary.l03)
+    throw Error('Only the ordinary Content boundary may resize around fixed L03: '+
+      JSON.stringify(stageBoundary));
   // L03 has independently saved tracks. Move it away from the boundary so
   // the generic neighbor/fallback contract is tested against the staff group.
   await moveLast('partyLevel');
@@ -3566,8 +3644,8 @@ try{
   await send('Input.dispatchMouseEvent',{type:'mousePressed',...dragStart,button:'left',clickCount:1});
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:dragStart.x+5,y:dragStart.y,button:'left'});
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:dragStart.x+5,y:dragStart.y,button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>433",
-    'R02 real pointer drag did not resize');
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>"+(r02Before.content+4.5),
+    'R02 real pointer drag did not resize relative to the fitted baseline');
   const r02Drag=await widthSnapshot();
   assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
   if(r02Drag.content!==r02Before.content+5||
@@ -3584,6 +3662,11 @@ try{
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
+  // The responsive projection changes how much room the staff group can
+  // donate. Drag far enough to exhaust its actual current capacity plus the
+  // 6px compact-ID fallback, not an obsolete hard-coded 160px baseline.
+  const fallbackTravel=Math.max(160,
+    fallbackBefore.staff-130+(fallbackBefore.id-46)+8);
   const fallbackEdge=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -3591,8 +3674,8 @@ try{
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',...fallbackEdge});
   await send('Input.dispatchMouseEvent',{type:'mousePressed',...fallbackEdge,button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left'});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+fallbackTravel,y:fallbackEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+fallbackTravel,y:fallbackEdge.y,button:'left',clickCount:1});
   await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
@@ -3626,8 +3709,9 @@ try{
   const groupedBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>=450",
-    'R02 grouped last-column compensation did not move');
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>="+
+    (groupedBefore.content+9.5),
+    'R02 grouped last-column compensation did not move relative to fitted baseline');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
   if(groupedAfter.party!==groupedBefore.party)throw Error('L03 last group was resized indirectly');
@@ -3733,9 +3817,12 @@ try{
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
   // Grouped Staff has 70px mandatory extra width (min physical 130px).
-  // Drag 250px: first 110px from Staff (240→130), then 140px from Note.
-  // The other physical widths stay put.
+  // A 250px pointer move is CLAMPED to the actual remaining slack in Staff
+  // then Note after responsive fit. Neither saved min nor total may be broken.
   const wideBefore=await widthSnapshot();
+  const wideStaffSlack=Math.max(0,wideBefore.staff-130);
+  const wideNoteSlack=Math.max(0,wideBefore.widths.at(-1)-60);
+  const wideDragBudget=Math.min(250,wideStaffSlack+wideNoteSlack);
   const wideEdge=await evaluate(`(()=>{
     const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
       .getBoundingClientRect();
@@ -3748,16 +3835,20 @@ try{
     button:'left'});
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:wideEdge.x+250,y:wideEdge.y,
     button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=449",
-    'L023 drag +250 stopped too early despite last-column fallback');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>="+
+    (wideBefore.widths[wideBefore.keys.indexOf('specificProgress')]+wideDragBudget-.5),
+    'L023 owner drag did not reach its dynamically clamped target');
   const wideAfter=await widthSnapshot();
   assertSameTotal(wideBefore,wideAfter,'L023 owner wide drag');
   const ix=wideBefore.keys.indexOf('specificProgress');
-  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+250||
-    wideAfter.widths[ix+1]!==130||
-    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-140||
+  const expectedStaff=wideBefore.staff-Math.min(wideDragBudget,wideStaffSlack);
+  const expectedNote=wideBefore.widths.at(-1)-Math.max(0,wideDragBudget-wideStaffSlack);
+  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+wideDragBudget||
+    wideAfter.widths[ix+1]!==expectedStaff||
+    wideAfter.widths.at(-1)!==expectedNote||
     wideAfter.id!==wideBefore.id)
-    throw Error('L023 adjacent→last fallback incorrect: '+JSON.stringify({wideBefore,wideAfter}));
+    throw Error('L023 adjacent→last fallback incorrect: '+
+      JSON.stringify({wideBefore,wideAfter,wideDragBudget,expectedStaff,expectedNote}));
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
     JSON.stringify({textGeometry,wideBefore,wideAfter}));
 
@@ -3801,10 +3892,14 @@ try{
     await eventually("document.querySelectorAll('.item-heading-row th').length===6",
       'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
-    if(before.party!==276||Math.abs(before.total-1448)>1||
+    const l03Viewport=await evaluate("document.querySelector('.item-table-scroll')?.clientWidth");
+    if(before.party!==276||Math.abs(before.total-l03Viewport)>1||
+      (l03LegacyWidths.length&&JSON.stringify(before.widths)!==
+        JSON.stringify(l03LegacyWidths[0].before.widths))||
       await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
-      throw Error('L03 independent tracks changed with legacy source width: '+JSON.stringify({sourceCap,before}));
-    l03LegacyWidths.push({sourceCap,before});
+      throw Error('L03 independent tracks changed with legacy source width: '+
+        JSON.stringify({sourceCap,l03Viewport,before}));
+    l03LegacyWidths.push({sourceCap,before,l03Viewport});
   }
   console.log('L03_LEGACY_SOURCE_WIDTH_INDEPENDENCE_PASS',JSON.stringify(l03LegacyWidths));
 
@@ -3812,8 +3907,15 @@ try{
   // L03 deliberately has no resize handle in the approved independent-rail UI.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?cap-progress=1'});
+  await eventually("!!document.querySelector('.item-table-scroll')",
+    'Capped ordinary column fixture did not mount');
+  // Dedicated wide synthetic viewport: a 1600px source column cannot stay
+  // physically 1600px inside a normal 1362px responsive List, by design.
+  // Expand only this QA container to test the real physical cap, without
+  // weakening responsive fit on actual screens or changing persisted widths.
+  await evaluate("(()=>{const main=document.querySelector('[data-qa=compact-real-itemlist] main');main.style.width='3000px';main.style.maxWidth='none';})()");
   await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
-    '1600px ordinary column fixture did not mount');
+    '1600px ordinary column fixture did not fit after widening QA container');
   const capBefore=await widthSnapshot();
   const capWidth=s=>s.widths[s.keys.indexOf('specificProgress')];
   await evaluate("document.querySelector('th[data-column-key=specificProgress] .column-resizer').focus()");

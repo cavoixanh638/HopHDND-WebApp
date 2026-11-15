@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {fitTableColumns} from '../src/data/fit-table-columns';
+import {fitTableColumns,fitTableColumnsResponsive} from '../src/data/fit-table-columns';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {projectedPhysicalWidth,resizeProjectedWithLastColumn} from '../src/data/resize-last-column';
 
@@ -52,5 +52,45 @@ describe('fill the selected list viewport without changing saved widths',()=>{
     for(const key of keys.filter(k=>k!==target&&k!==last))expect(after[key]).toBe(fitted[key]);
     expect(Object.values(after).reduce((a,b)=>a+b,0)).toBe(1800);
     expect(next.columns.filter(c=>!keys.includes(c.key))).toEqual(layout.columns.filter(c=>!keys.includes(c.key)));
+  });
+});
+
+describe('responsive List projection: no unwanted horizontal scroll',()=>{
+  const min={content:250,specificProgress:155,note:95,room:215};
+  const columns=[{key:'displayCode',width:52},{key:'content',width:460},
+    {key:'specificProgress',width:270},{key:'note',width:160},
+    {key:'room',width:350}];
+  it('fits a 1490px table with fixed 349px L03, preserving saved widths',()=>{
+    const before=JSON.parse(JSON.stringify(columns));
+    const width=1490-349;
+    const projected=fitTableColumnsResponsive(columns,width,{content:3,specificProgress:2},undefined,min);
+    expect(Object.values(projected).reduce((sum,n)=>sum+n,0)).toBe(width);
+    expect(projected.displayCode).toBe(52);
+    for(const c of columns)expect(projected[c.key]).toBeGreaterThanOrEqual(
+      Math.min(c.width,Math.max(min[c.key as keyof typeof min]??0,c.key==='displayCode'?52:60)));
+    expect(columns).toEqual(before); // no shared-layout/Firebase mutation
+    expect(projected.content).toBeLessThan(460);
+    expect(projected.room).toBeLessThan(350);
+  });
+  it('preserves exact fit when the viewport grows or is not yet measured',()=>{
+    const expanded=fitTableColumnsResponsive(columns,1700);
+    expect(Object.values(expanded).reduce((sum,n)=>sum+n,0)).toBe(1700);
+    expect(expanded.displayCode).toBe(52);
+    expect(fitTableColumnsResponsive(columns,0)).toEqual(
+      Object.fromEntries(columns.map(c=>[c.key,c.width])));
+  });
+  it('honors hard readable minima on truly narrow screens (scroll allowed only then)',()=>{
+    const projected=fitTableColumnsResponsive(columns,500,{},undefined,min);
+    expect(projected).toEqual({displayCode:52,content:250,specificProgress:155,
+      note:95,room:215});
+    expect(Object.values(projected).reduce((sum,n)=>sum+n,0)).toBeGreaterThan(500);
+  });
+  it('retains valid negative fit deltas for a stable manual drag, rejecting stale deltas',()=>{
+    const initial=fitTableColumnsResponsive(columns,1100,{},undefined,min);
+    const delta=Object.fromEntries(columns.map(c=>[c.key,initial[c.key]-c.width]));
+    expect(fitTableColumnsResponsive(columns,1100,{},delta,min)).toEqual(initial);
+    const newViewport=fitTableColumnsResponsive(columns,1080,{},delta,min);
+    expect(Object.values(newViewport).reduce((a,b)=>a+b,0)).toBe(1080);
+    expect(newViewport).not.toEqual(initial);
   });
 });

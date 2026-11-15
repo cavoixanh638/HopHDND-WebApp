@@ -59,6 +59,14 @@ function CompactVisualQa(){
       base.columns=others;
     }
     if(params.get('hide-dept')==='1')base.columns=base.columns.map(c=>c.key==='department'?{...c,visible:false}:c);
+    if(params.get('wide-cols')==='1'){
+      // Synthetic reproduction of an admin-saved table wider than its viewport.
+      // Do not write these QA widths to Firebase or the real shared layout.
+      const wide:Record<string,number>={displayCode:68,content:520,partyLevel:60,
+        specificProgress:340,room:380,note:180};
+      base.columns=base.columns.map(c=>({...c,width:wide[c.key]??c.width,
+        visible:c.key==='stt'?false:c.visible}));
+    }
     if(params.get('fit')==='1'){
       // Reproduce the owner's small saved widths inside a wide selected frame.
       const widths:Record<string,number>={displayCode:60,content:170,partyLevel:60,
@@ -188,6 +196,7 @@ const query=new URLSearchParams(window.location.search);
 const classicOnly=['layout-admin','use-saved-layout','highlight','group-title',
   'custom-id','cap-progress','cap-party','progress-before-staff','hide-dept','fit','frame',
   'review-staff','r05','edit','guest','r05-palette','app-shell','popup','popup-settings',
+  'wide-cols',
   'clear-qa','popup-clear-qa','mixed','popup-mixed','wrap-status'];
 // The pre-existing source smoke hosts this fixture under /compact-qa/ and
 // checks the original read-only 8-row component. Do not change L1's runner or
