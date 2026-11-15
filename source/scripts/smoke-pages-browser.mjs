@@ -2026,11 +2026,11 @@ try{
     const gear=document.querySelector('header.v3-shell-topbar .v3-settings-menu > summary')?.getBoundingClientRect();
     // V3 intentionally uses a zero-height, full-width corner-gear header.
     // Retain strict centering of the two wide cards relative to page content,
-    // while checking that the separate 34px gear stays in the right corner.
+    // while checking that the separate compact 28px gear stays in the right corner.
     return {ok:all.every(r=>!!r)&&reference.width>=expected-15&&
       Math.abs((top.left+top.right)/2-(reference.left+reference.right)/2)<=3&&
       top.left>=0&&top.right<=window.innerWidth+1&&top.width>=nav.width&&
-      !!gear&&gear.width>=33&&gear.width<=35&&
+      !!gear&&gear.width>=27&&gear.width<=29&&
       gear.left>=nav.right&&gear.right>=top.right-40&&gear.right<=top.right+2&&
       nav.width<=1000&&Math.abs((nav.left+nav.right)/2-(reference.left+reference.right)/2)<=3&&
       reference.left>=0&&reference.right<=window.innerWidth+1,
@@ -2122,7 +2122,7 @@ try{
       !document.querySelector('.app-shell.settings-page')&&
       tabs.length===0&&!nav&&
       !!document.querySelector('.item-data-region .item-list-page-title')&&
-      sr.width===34&&sr.height===34&&gr.right>innerWidth-85,
+      sr.width===28&&sr.height===28&&gr.right>innerWidth-85,
       actions:links,gear:{right:gr.right,top:sr.top,width:sr.width,height:sr.height},
       tabs:tabs.map(t=>t.getBoundingClientRect().height)};
   })()`);
