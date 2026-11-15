@@ -712,14 +712,14 @@ try{
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
 
-  // Owner 15/11: the permitted Note cell opens from ALL its padding.
-  // The blank row stays actionable, yet only its inner editor receives a soft
-  // hover cue; there is no retained 3D lift or broad colored background.
+  // Empty permitted Note cells must be visually blank at rest; only a small
+  // 14px pencil + brief tooltip appears on hover/keyboard focus.
+  // The parent click forwarding remains live, with no new write permission.
   const noteProbe=await evaluate(`(()=>{
     const root=document.createElement('table');
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
     root.style.cssText='position:fixed;left:20px;top:130px;width:350px;z-index:20000;background:#fff';
-    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger inline-note-empty" title="Thêm ghi chú" data-add-hint="Thêm ghi chú"><span class="inline-note-add-icon" aria-hidden="true">+</span></button></td></tr></tbody>';
+    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger inline-note-empty" title="Thêm ghi chú" data-add-hint="Thêm ghi chú"><svg class="inline-note-pencil" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></button></td></tr></tbody>';
     document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
     const inner=root.querySelector('button').getBoundingClientRect();
@@ -730,38 +730,63 @@ try{
   })()`);
   if(!noteProbe.outsideInner||noteProbe.innerWidth<noteProbe.outerWidth-35)
     throw Error('Note must retain whole-width editor with clickable outer TD height: '+JSON.stringify(noteProbe));
+  const noteAtRest=await evaluate(`(()=>{
+    const button=document.querySelector('#hover-3d-note-probe button');
+    const pen=button.querySelector('.inline-note-pencil');
+    const style=getComputedStyle(button),icon=getComputedStyle(pen),
+      tip=getComputedStyle(button,'::after');
+    return {glyph:button.textContent.trim(),iconSize:[icon.width,icon.height],
+      iconOpacity:icon.opacity,border:style.borderTopWidth,
+      background:style.backgroundColor,tooltipOpacity:tip.opacity};
+  })()`);
+  if(noteAtRest.glyph!==''||noteAtRest.iconSize.some(size=>size!=='14px')||
+     noteAtRest.iconOpacity!=='0'||noteAtRest.border!=='0px'||
+     noteAtRest.background!=='rgba(0, 0, 0, 0)'||noteAtRest.tooltipOpacity!=='0')
+    throw Error('Empty note has an unwanted permanent icon/pill: '+JSON.stringify(noteAtRest));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.x,y:noteProbe.y});
   await new Promise(resolve=>setTimeout(resolve,270));
   const notePadding=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
     const style=getComputedStyle(button),parent=getComputedStyle(cell);
     return {outerHovered:cell.matches(':hover'),innerHovered:button.matches(':hover'),
-      cursor:parent.cursor,outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
-      shadow:style.boxShadow,placeholder:button.textContent.trim()};
+      cursor:parent.cursor,outerShadow:parent.boxShadow,cellBackground:parent.backgroundColor,
+      liftY:new DOMMatrixReadOnly(style.transform).m42,
+      iconOpacity:getComputedStyle(button.querySelector('.inline-note-pencil')).opacity,
+      tooltipOpacity:getComputedStyle(button,'::after').opacity,
+      buttonShadow:style.boxShadow};
   })()`);
   if(!notePadding.outerHovered||notePadding.innerHovered||notePadding.cursor!=='pointer'||
-    !notePadding.outerShadow.includes('196, 223, 211')||
-    Math.abs(notePadding.liftY)>.25||notePadding.shadow!=='none'||
-    notePadding.placeholder!=='+')
-    throw Error('Permitted Note TD blank area must be clickable but not lift the editor: '+JSON.stringify(notePadding));
+    notePadding.outerShadow!=='none'||notePadding.cellBackground!=='rgb(247, 250, 248)'||
+    Math.abs(notePadding.liftY)>.25||notePadding.buttonShadow!=='none'||
+    notePadding.iconOpacity!=='1'||notePadding.tooltipOpacity!=='1')
+    throw Error('Note padding must reveal only a subtle pencil and tooltip: '+JSON.stringify(notePadding));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.innerX,y:noteProbe.innerY});
   await new Promise(resolve=>setTimeout(resolve,270));
-  const noteButton=await evaluate(`(()=>{
+  const noteHover=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
     const style=getComputedStyle(button),tooltip=getComputedStyle(button,'::after');
     return {active:cell.matches(':hover'),innerHovered:button.matches(':hover'),
       liftY:new DOMMatrixReadOnly(style.transform).m42,
-      shadow:style.boxShadow,border:style.borderTopColor,
-      tipContent:tooltip.content,tipOpacity:tooltip.opacity};
+      shadow:style.boxShadow,border:style.borderTopWidth,
+      tipContent:tooltip.content,tipOpacity:tooltip.opacity,
+      iconOpacity:getComputedStyle(button.querySelector('.inline-note-pencil')).opacity};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
+  await new Promise(resolve=>setTimeout(resolve,230));
+  const noteAfterLeave=await evaluate(`(()=>{
+    const button=document.querySelector('#hover-3d-note-probe button');
+    return {iconOpacity:getComputedStyle(button.querySelector('.inline-note-pencil')).opacity,
+      tipOpacity:getComputedStyle(button,'::after').opacity};
+  })()`);
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
-  if(!noteButton.active||!noteButton.innerHovered||
-    Math.abs(noteButton.liftY)>.25||!noteButton.shadow.includes('214, 234, 223')||
-    noteButton.border!=='rgb(150, 199, 176)'||
-    !noteButton.tipContent.includes('Thêm ghi chú')||noteButton.tipOpacity!=='1')
-    throw Error('Note editor must show only the new subtle hover cue: '+JSON.stringify({notePadding,noteButton}));
-  console.log('LIST_NOTE_FULL_CELL_HIT_AREA_PASS',JSON.stringify({notePadding,noteButton}));
+  if(!noteHover.active||!noteHover.innerHovered||
+    Math.abs(noteHover.liftY)>.25||noteHover.shadow!=='none'||noteHover.border!=='0px'||
+    !noteHover.tipContent.includes('Thêm ghi chú')||noteHover.tipOpacity!=='1'||noteHover.iconOpacity!=='1'||
+    noteAfterLeave.iconOpacity!=='0'||noteAfterLeave.tipOpacity!=='0')
+    throw Error('Pencil/tooltip must appear only on hover and disappear on leave: '+
+      JSON.stringify({noteAtRest,notePadding,noteHover,noteAfterLeave}));
+  console.log('LIST_NOTE_PENCIL_HOVER_PASS',
+    JSON.stringify({noteAtRest,notePadding,noteHover,noteAfterLeave}));
 
   // Guest reading typography: all four requested business-text columns must
   // inherit the SAME shared font-size, even under compact/merged wrappers.
@@ -791,6 +816,44 @@ try{
   if(!guestFonts.allEqual)
     throw Error('Guest content/progress/note/personnel must share the chosen body font size: '+JSON.stringify(guestFonts));
   console.log('GUEST_READING_FONT_PARITY_PASS',JSON.stringify(guestFonts));
+  // Audit the exact DOM of every CURRENTLY VISIBLE source column in the
+  // authenticated-guest fixture, rather than inferring from a single CSS rule.
+  // The owner's saved layout/font-size may differ from this isolated fixture.
+  const visibleFontAudit=await evaluate(`(()=>{
+    const table=document.querySelector('.app-shell.guest-view .item-data-table');
+    const row=table?.querySelector('tbody tr.color-row')??table?.querySelector('tbody tr');
+    if(!table||!row)return {error:'No visible guest ItemList row'};
+    const getSize=node=>node?getComputedStyle(node).fontSize:null;
+    const selectors=[
+      ['id','.code'],['content','.compact-document-content'],
+      ['contentMeta','.compact-document-heading'],
+      ['stageLabel','.compact-stage-label'],
+      ['stageStatus','.compact-stage-state'],
+      ['stageLevel','.compact-stage-level'],
+      ['teamText','.compact-highlight-member'],
+      ['teamLabel','.compact-pair-tag'],
+      ['progressText','.inline-note-trigger'],
+      ['statusText','.workflow-status-value'],
+      ['pickerText','.cell-picker-trigger']
+    ];
+    const heading=[...table.querySelectorAll('thead tr.item-heading-row th')]
+      .map(th=>({key:th.getAttribute('data-column-key'),text:th.textContent.trim().slice(0,80)}));
+    return {tableFont:getSize(table),
+      fontVariable:getComputedStyle(table).getPropertyValue('--table-font-size').trim(),
+      columns:[...row.querySelectorAll('td[data-col-key]')].map(td=>{
+        const key=td.dataset.colKey;
+        const segments=selectors.flatMap(([name,selector])=>{
+          const found=td.querySelector(selector);
+          return found?[{name,size:getSize(found)}]:[];
+        });
+        return {key,heading:heading.find(h=>h.key===key)?.text??'',
+          cellFont:getSize(td),primaryFont:segments[0]?.size??getSize(td),segments};
+      })};
+  })()`);
+  if(visibleFontAudit.error||!visibleFontAudit.columns?.length)
+    throw Error('Guest List font audit did not find source columns: '+JSON.stringify(visibleFontAudit));
+  console.log('GUEST_LIST_COLUMN_FONT_AUDIT',JSON.stringify(visibleFontAudit));
+
 
   // Regression: textarea may remain focused for typing after pointer leaves.
   // That MUST NOT look like the active green/blue mouse-hover highlight.

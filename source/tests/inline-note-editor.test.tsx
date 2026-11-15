@@ -18,7 +18,7 @@ const node=(tree:any,type:string):any=>{
 };
 beforeEach(()=>hook.reset());
 describe('Inline Note editor never opens a popup',()=>{
-  it('renders a legible + with hover tip, without mutating a blank source value',()=>{
+  it('keeps blank fields empty with a pencil hint and hover tooltip, without changing the value',()=>{
     const onCommit=vi.fn();
     const render=()=>{hook.begin();return InlineNoteEditor({value:'',label:'Ghi chú',onCommit});};
     const button=render();
@@ -26,7 +26,9 @@ describe('Inline Note editor never opens a popup',()=>{
     expect(button.props.className).toContain('inline-note-empty');
     expect(button.props['data-add-hint']).toBe('Thêm ghi chú');
     expect(button.props.title).toBe('Thêm ghi chú');
-    expect(node(button,'span')?.props.children).toBe('+');
+    expect(node(button,'svg')?.props.className).toBe('inline-note-pencil');
+    expect(node(button,'svg')?.props.width).toBe('14');
+    expect(node(button,'span')).toBeUndefined();
     button.props.onClick();
     expect(node(render(),'textarea')).toBeDefined();
     expect(onCommit).not.toHaveBeenCalled();

@@ -80,11 +80,18 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
     window.addEventListener('hdnd:drain-editors',drain);
     return()=>window.removeEventListener('hdnd:drain-editors',drain);
   },[editing,draft,value]);
-  // The + control is presentation only, never a source value or print value.
+  // Empty source fields stay visually blank at rest. The pencil is an
+  // interaction hint only, not content; the same editor still checks lease
+  // and permissions before any save.
   const emptyValue=value.trim().length===0;
   const addHint=field==='specificProgress'?'Thêm tiến độ hiện tại':'Thêm ghi chú';
   const shownValue=emptyValue
-    ?<span className="inline-note-add-icon" aria-hidden="true">+</span>
+    ?<svg className="inline-note-pencil" aria-hidden="true" focusable="false"
+      width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+    </svg>
     :<SearchHighlight value={value} query={highlightQuery}/>;
   const savedDraft=leaseManager&&recordId&&field?leaseManager.recoverDraft(recordId,field):null;
   const beginLease=()=>{
