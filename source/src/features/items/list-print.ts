@@ -175,7 +175,9 @@ function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement):
     // .code is the canonical visible ID; history icons are not table values.
     const code=kind==='displayCode'?cell.querySelector('.code'):null;
     const value=code??cell.querySelector('.inline-note-trigger')??cell;
-    appendPart(target,'div','hdnd-print-plain',displayText(value));
+    // An on-screen add prompt is an affordance, never printed business data.
+    appendPart(target,'div','hdnd-print-plain',
+      value.classList.contains('inline-note-empty')?'—':displayText(value));
   }
 }
 

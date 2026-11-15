@@ -26,9 +26,15 @@ beforeEach(()=>{
 });
 afterEach(()=>vi.unstubAllGlobals());
 describe('click empty space in a writable detail-list cell',()=>{
-  it.each(['note','specificProgress'])('never forwards a blank %s TD click to its editor',(colKey)=>{
+  it.each(['note','specificProgress'])('opens the one permitted %s editor from blank TD space',(colKey)=>{
     const editor=new FakeButton(),cell=makeCell([editor],true,colKey);
     invoke(cell,new FakeElement());
+    expect(editor.click).toHaveBeenCalledOnce();
+  });
+  it.each(['note','specificProgress'])('does not open read-only %s or an already-open textarea',(colKey)=>{
+    const editor=new FakeButton();
+    invoke(makeCell([editor],false,colKey),new FakeElement());
+    invoke(makeCell([],true,colKey),new FakeElement());
     expect(editor.click).not.toHaveBeenCalled();
   });
   it('opens the only enabled status editor when the user clicks the parent cell',()=>{

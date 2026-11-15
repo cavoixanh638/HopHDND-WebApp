@@ -612,9 +612,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       :firebase!.editingLocked?'Quản trị đang tạm khóa chỉnh sửa.'
       :firebase!.freezeControl?.mode!=='OPEN'?'Dữ liệu đang được chốt hoặc tạm khóa; chưa thể mở lượt sửa mới.'
       :!firebase!.editorAuthorized?'Tài khoản Google này chưa được duyệt quyền UID chỉnh sửa.'
-      :!viewerMayEdit?null
-      :anonymousVisitor?'Khách có thể chỉnh sửa các ô được quản trị cho phép; các ô khác chỉ xem. Không cần đăng nhập.'
-      :'Chỉ các ô được cấp quyền mới được chỉnh sửa.'
+      :null
     :null;
   // UI V5 L2: this is the verified adminTools gate, not edit permissions.
   // Provider only passes context; it adds no DOM container or layout shift.

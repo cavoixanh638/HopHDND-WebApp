@@ -1,19 +1,15 @@
-/* Only the inner multiline editors of "Tiến độ hiện tại" and "Ghi chú"
- * are actionable. The surrounding TD is an inert layout surface.
- * Previous theme CSS lifts the inner trigger whenever the TD is hovered;
- * undo that ONLY when the trigger itself is not hovered or focus-visible.
- * Keep every other column's established editable-cell behavior unchanged.
- */
-:is(.item-data-table,.report-detail-grid) tbody
+/* The report-detail popup keeps its original value-only editing surface.
+ * The main List separately supports whole-cell click on the two text fields. */
+.report-detail-grid tbody
   td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) {
   cursor:default!important;
 }
-:is(.item-data-table,.report-detail-grid) tbody
+.report-detail-grid tbody
   td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]):is(:hover,:focus-within) {
   box-shadow:none!important;
   outline:none!important;
 }
-:is(.item-data-table,.report-detail-grid) tbody
+.report-detail-grid tbody
   td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
   button.inline-note-trigger {
   display:inline-flex!important;
@@ -21,7 +17,7 @@
   max-width:100%!important;
   cursor:pointer!important;
 }
-:is(.item-data-table,.report-detail-grid) tbody
+.report-detail-grid tbody
   td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
   button.inline-note-trigger:not(:hover):not(:focus-visible) {
   position:static!important;
@@ -34,9 +30,46 @@
 }
 /* An open textarea keeps its legitimate own hover and editing focus.
  * Moving over blank TD padding must not fabricate a textarea hover halo. */
-:is(.item-data-table,.report-detail-grid) tbody
+.report-detail-grid tbody
   td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"])
   textarea.inline-note-textarea:not(:hover):not(:focus) {
   border-color:#CDD9D4!important;
   box-shadow:none!important;
+}
+
+/* List: the whole permitted Note/Current Progress cell is actionable.
+ * Read-only / denied cells never receive editable-cell and stay inert. */
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) {
+  cursor:pointer!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]):hover:not(:focus-within) {
+  box-shadow:inset 0 0 0 1px #c4dfd3!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]):focus-within {
+  outline:none!important;box-shadow:none!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-trigger {
+  box-sizing:border-box;display:block!important;width:100%!important;max-width:100%!important;
+  min-height:27px;padding:4px 6px;line-height:1.34;cursor:pointer!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-trigger:not(:hover):not(:focus-visible) {
+  position:static!important;z-index:auto!important;transform:none!important;
+  border-color:#cfdbd5!important;box-shadow:none!important;outline:none!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]):hover button.inline-note-trigger:not(:focus-visible) {
+  transform:none!important;border-color:#a9c9b9!important;
+  background:#f6faf8!important;box-shadow:none!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-empty {
+  border-style:dashed!important;background:#f8faf9!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-trigger:hover:not(:disabled) {
+  transform:none!important;border-color:#96c7b0!important;
+  background:#f1f8f4!important;box-shadow:0 0 0 1px #d6eadf!important;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-placeholder {
+  color:#71877e;font-size:.91em;font-weight:400;font-style:normal;
+}
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) textarea.inline-note-textarea:not(:focus) {
+  transform:none!important;border-color:#cdd9d4!important;box-shadow:none!important;
 }

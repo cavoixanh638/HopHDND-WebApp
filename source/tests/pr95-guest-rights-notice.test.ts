@@ -7,7 +7,9 @@ const app=readFileSync(fileURLToPath(new URL('../src/app/App.tsx',import.meta.ur
 describe('PR95 read-only guest notice regression',()=>{
   it('removes only the no-editable-cell sentence and its empty banner',()=>{
     expect(app).not.toContain('Không có ô nào được cấp quyền sửa trong phần dữ liệu đang xem.');
-    expect(app).toContain(':!viewerMayEdit?null');
+    expect(app).not.toContain('Khách có thể chỉnh sửa các ô được quản trị cho phép');
+    expect(app).not.toContain('Không cần đăng nhập.');
+    expect(app).not.toContain('Chỉ các ô được cấp quyền mới được chỉnh sửa.');
     expect(app).toContain('{guestRightsNotice&&<p className="guest-rights-hint"');
   });
   it('retains actual connection, freeze, authorization and error guards',()=>{

@@ -48,6 +48,11 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
     window.addEventListener('hdnd:drain-editors',drain);
     return()=>window.removeEventListener('hdnd:drain-editors',drain);
   },[editing,draft,value]);
+  // A placeholder is visual only; keep the original blank source value.
+  const emptyValue=value.trim().length===0;
+  const shownValue=emptyValue
+    ?<span className="inline-note-placeholder">Bấm vào để thêm</span>
+    :<SearchHighlight value={value} query={highlightQuery}/>;
   const savedDraft=leaseManager&&recordId&&field?leaseManager.recoverDraft(recordId,field):null;
   const beginEdit=(initial:string)=>{
     const begin=()=>{
@@ -60,14 +65,14 @@ export function InlineNoteEditor({value,label,highlightQuery,onCommit,leaseManag
       .catch(e=>setError(e instanceof Error?e.message:'Ô đang có người khác sửa.'))
       .finally(()=>setWaiting(false));
   };
-  if(!editing&&!leaseManager)return <button type="button" className="inline-note-trigger"
+  if(!editing&&!leaseManager)return <button type="button" className={emptyValue?'inline-note-trigger inline-note-empty':'inline-note-trigger'}
     aria-label={label} onClick={()=>beginEdit(value)}>
-      <SearchHighlight value={value||'—'} query={highlightQuery}/>
+      {shownValue}
     </button>;
   if(!editing)return <span className="inline-note-entry">
-    <button type="button" className="inline-note-trigger"
+    <button type="button" className={emptyValue?'inline-note-trigger inline-note-empty':'inline-note-trigger'}
       aria-label={label} disabled={waiting} onClick={()=>beginEdit(value)}>
-      <SearchHighlight value={value||'—'} query={highlightQuery}/>
+      {shownValue}
     </button>
     {savedDraft!==null&&savedDraft!==value&&<button type="button" className="button ghost" disabled={waiting}
       onClick={()=>beginEdit(savedDraft)} title="Nháp chỉ có trên máy này, chưa lưu vào Firebase">Khôi phục nháp chưa lưu</button>}
