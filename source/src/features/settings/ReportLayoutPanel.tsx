@@ -187,9 +187,12 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </fieldset></details>
             </div>
             <div className="report-layout-preview">
-              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'} · Kéo đường phân cách ở tiêu đề để thay đổi độ rộng cột.</p>
-              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
-                 onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
+              <details className="report-preview-disclosure" defaultOpen={index===0}>
+                <summary>Xem trước bảng {index+1}: {report.title}{report.visible?'':' (đang ẩn)'}</summary>
+                <p className="muted">Kéo đường phân cách ở tiêu đề để điều chỉnh độ rộng cột. Chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
+                <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
+                  onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
+              </details>
             </div>
           </article>;
         })}
