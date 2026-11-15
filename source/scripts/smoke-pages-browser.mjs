@@ -4545,7 +4545,7 @@ try{
     {width:1600,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&guest=1&short-rows=1'});
-  await eventually("document.querySelector('.item-list-table-footer[data-visible-count=2]')!==null",
+  await eventually("document.querySelector('.item-list-table-footer')?.dataset.visibleCount==='2'",
     'Short guest List with 2 records did not render');
   const guestShort=await evaluate(`(()=>{
     const table=document.querySelector('.item-table-scroll');
