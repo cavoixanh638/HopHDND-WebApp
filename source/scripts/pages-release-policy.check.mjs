@@ -79,6 +79,7 @@ test('single first rollout of the guarded workflow is accepted only from its exa
   const migration=commit(head,[
     '.github/workflows/publish-pages.yml',
     '.github/workflows/spark-pages-release-preflight.yml',
+    '.github/workflows/guest-cell-save-ux-20261113.yml',
     'source/scripts/pages-release-policy.mjs',
     'source/scripts/pages-release-policy.check.mjs',
     'source/tests/pages-release-policy.test.ts',
