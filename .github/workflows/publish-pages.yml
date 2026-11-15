@@ -24,11 +24,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  release-gate:
+    # Cutover remains independently confirmed. UI-only source changes may
+    # publish after validation; unknown/security/data changes still need
+    # approval for EXACTLY this main SHA. Never deploy Rules or database here.
+    if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_allowed: ${{ steps.policy.outputs.release_allowed }}
+      policy_mode: ${{ steps.policy.outputs.policy_mode }}
+      baseline_sha: ${{ steps.policy.outputs.baseline_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify UI-only release guard (NO DEPLOY)
+        run: node --test source/scripts/pages-release-policy.check.mjs
+      - name: Classify every unpublished commit (fail closed)
+        id: policy
+        env:
+          APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
+        run: |
+          node source/scripts/pages-release-policy.mjs --head "$GITHUB_SHA" --approved "$APPROVED_MAIN_SHA"
   publish:
-    # Fail closed until the ONE-TIME Spark RTDB security/data cutover is
-    # independently verified and the exact main source SHA is approved.
-    # Never use the historic Functions approval in a no-billing Spark release.
-    if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true' && vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha }}
+    needs: release-gate
+    if: ${{ needs.release-gate.outputs.release_allowed == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -117,21 +143,33 @@ jobs:
           echo "PAGES_JEKYLL_DISABLED_PASS"
           test -n "$(find ../assets -type f -name '*.js' -print -quit)"
           node scripts/check-published-assets.mjs ../index.html /tmp/hophdnd-previous-index.html ../assets
-      - name: Commit and push only if main still matches approved exact SHA
+      - name: Commit and push only if main still matches verified source
         working-directory: .
         shell: bash
         env:
           APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
           SPARK_PRODUCTION_CONFIRMED: ${{ vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED }}
+          RELEASE_MODE: ${{ needs.release-gate.outputs.policy_mode }}
+          RELEASE_BASELINE: ${{ needs.release-gate.outputs.baseline_sha }}
         run: |
           set -euo pipefail
-          # An approval is bound to one exact main commit, not merely a source tree.
           if [ "$GITHUB_REF" != "refs/heads/main" ] ||
-             [ "$APPROVED_MAIN_SHA" != "$GITHUB_SHA" ] ||
-             [ "$SPARK_PRODUCTION_CONFIRMED" != "true" ]; then
-            echo "::error::PAGES_RELEASE_HOLD: main ref or approval does not match job SHA"
+             [ "$SPARK_PRODUCTION_CONFIRMED" != "true" ] ||
+             [ -z "$RELEASE_BASELINE" ]; then
+            echo "::error::PAGES_RELEASE_HOLD: wrong ref, Spark not confirmed, or release baseline missing"
             exit 1
           fi
+          if [ "$RELEASE_MODE" != "auto" ] && 
+             { [ "$RELEASE_MODE" != "approved" ] || [ "$APPROVED_MAIN_SHA" != "$GITHUB_SHA" ]; }; then
+            echo "::error::PAGES_RELEASE_HOLD: security/data changes require exact main SHA approval"
+            exit 1
+          fi
+          # Re-evaluate against the original published baseline: version.json
+          # has already been regenerated in this worktree, so never use it as
+          # a fresh baseline for this final check.
+          node source/scripts/pages-release-policy.mjs \
+            --head "$GITHUB_SHA" --baseline "$RELEASE_BASELINE" \
+            --approved "$APPROVED_MAIN_SHA" --assert-mode "$RELEASE_MODE" --print-mode >/dev/null
           git fetch origin main
           if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ] ||
              [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
@@ -146,7 +184,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "build(pages): publish verified Spark WebApp from approved source"
-          # Race-safe: no rebase onto newer main, even if only docs changed.
+          # Race-safe: never rebase an artifact onto a newer source commit.
           # If main advances after this fetch, non-force push will fail closed.
           git fetch origin main
           if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
@@ -157,4 +195,4 @@ jobs:
             echo "::error::PAGES_RELEASE_HOLD: non-force push rejected; do not retry on newer main"
             exit 1
           fi
-          echo "Pages published from exact approved main SHA."
+          echo "Pages published from CI-verified main SHA (mode: $RELEASE_MODE)."
