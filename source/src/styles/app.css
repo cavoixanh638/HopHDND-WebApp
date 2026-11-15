@@ -444,6 +444,25 @@ body:not(.is-printing) #print-target {  display:none!important}
   overflow-wrap:normal;
   word-break:normal;
 }
+/* The admin gear groups tasks while retaining role guards and existing actions. */
+.options-popover .settings-menu-group + .settings-menu-group {border-top:1px solid #e5ede7;margin-top:4px;padding-top:4px;}
+.options-popover .settings-menu-group-label {margin:6px 12px 3px;font-size:11px;font-weight:750;letter-spacing:.025em;color:#63736a;}
+.options-popover .settings-menu-group > button,
+.options-popover .settings-menu-advanced > button {
+  display:block;width:100%;min-height:36px;padding:8px 12px;border:0;border-radius:7px;
+  background:transparent;text-align:left;color:var(--ink);font-size:13px;font-weight:600;line-height:1.35;
+}
+.options-popover .settings-menu-group > button:hover,
+.options-popover .settings-menu-advanced > button:hover {background:var(--soft);}
+.options-popover .settings-menu-group > button:focus-visible,
+.options-popover .settings-menu-advanced > button:focus-visible,
+.options-popover .settings-menu-advanced > summary:focus-visible {
+  outline:2px solid var(--green);outline-offset:-2px;
+}
+.options-popover .settings-menu-advanced {margin-top:5px;border-top:1px solid #e5ede7;padding-top:4px;}
+.options-popover .settings-menu-advanced > summary {cursor:pointer;padding:9px 12px;font-size:12px;color:#5b7064;font-weight:650;}
+.options-popover .settings-menu-advanced .ui-reference-help {margin:6px 9px;max-height:180px;overflow:auto;font-size:11px;}
+.options-popover .v3-gear-status {padding:8px 12px;line-height:1.4;overflow-wrap:anywhere;}
 .options-popover > button + button {border-top:1px solid #edf0ed;}
 .options-popover > button:hover {background:var(--soft);}
 .options-popover > button:focus-visible {outline:2px solid var(--green);outline-offset:-2px;}
