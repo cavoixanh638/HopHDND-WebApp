@@ -2906,3 +2906,9 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .admin-maintenance-danger > summary {color:#a42e30;}
 .admin-maintenance-steps .field {margin-top:8px;}
 .admin-maintenance-steps summary:focus-visible {outline:2px solid var(--green);outline-offset:3px;}
+
+/* UID approval and per-cell permissions stay distinct; technical checks collapse. */
+.account-diagnostics {margin:12px 0;border:1px solid #dce7e0;border-radius:9px;padding:0 10px;}
+.account-diagnostics > summary {cursor:pointer;padding:11px 4px;font-size:12px;font-weight:700;color:#4a6456;}
+.account-diagnostics > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.account-diagnostics > .notice {margin:5px 0 12px;}
